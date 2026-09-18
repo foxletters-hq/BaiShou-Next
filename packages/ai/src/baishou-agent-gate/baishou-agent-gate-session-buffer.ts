@@ -29,6 +29,13 @@ export class BaishouAgentGateSessionBuffer {
         selectedOptionIds: event.selectedOptionIds,
         resolvedAt: Date.now()
       }
+      return
+    }
+
+    if (event.type === 'agent_gate.cancelled') {
+      for (const requestId of event.requestIds) {
+        this.records.delete(requestId)
+      }
     }
   }
 

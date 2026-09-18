@@ -1,8 +1,10 @@
 import { z } from 'zod'
 import {
+  AgentGateCancelledError,
   AgentGateCorrectedError,
   AgentGateKind,
   AgentGateRejectedError,
+  companionAskCancelledMessage,
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
@@ -85,11 +87,20 @@ export class CompanionAskTool extends AgentTool<typeof companionAskParams> {
         selectedOptionIds: resolution.selectedOptionIds ?? []
       })
     } catch (error) {
+      if (error instanceof AgentGateCancelledError) {
+        return JSON.stringify({
+          approved: false,
+          declined: true,
+          question: args.question
+        })
+      }
       if (error instanceof AgentGateCorrectedError) {
         return error.feedback
       }
       if (error instanceof AgentGateRejectedError) {
-        return 'User declined to answer.'
+        const locale =
+          typeof context.userConfig?.locale === 'string' ? context.userConfig.locale : undefined
+        return companionAskCancelledMessage(locale)
       }
       throw error
     }

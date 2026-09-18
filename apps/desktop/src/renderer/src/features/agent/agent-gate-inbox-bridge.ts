@@ -4,6 +4,7 @@ import type { AgentGateRequest } from '@baishou/shared'
 let bridgeStarted = false
 let unsubscribeAsked: (() => void) | null = null
 let unsubscribeReplied: (() => void) | null = null
+let unsubscribeCancelled: (() => void) | null = null
 
 async function hydrateFromMain(): Promise<void> {
   const listPending = window.api?.agentGate?.listPending
@@ -48,14 +49,22 @@ export function ensureDesktopAgentGateInboxBridge(): void {
       })
     }) ?? null
 
+  unsubscribeCancelled =
+    window.api.agentGate.onCancelled?.((payload) => {
+      if (!payload?.requestIds?.length) return
+      useAgentGateInboxStore.getState().removeCancelled(payload.requestIds)
+    }) ?? null
+
   void hydrateFromMain()
 }
 
 export function disposeDesktopAgentGateInboxBridge(): void {
   unsubscribeAsked?.()
   unsubscribeReplied?.()
+  unsubscribeCancelled?.()
   unsubscribeAsked = null
   unsubscribeReplied = null
+  unsubscribeCancelled = null
   bridgeStarted = false
 }
 

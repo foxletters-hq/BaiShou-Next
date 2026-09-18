@@ -64,6 +64,25 @@ describe('agent-gate-inbox.store', () => {
     expect(next.pending.map((r) => r.id)).toEqual(['b', 'c'])
   })
 
+  it('should drop cancelled requests without treating them as answered', () => {
+    useAgentGateInboxStore
+      .getState()
+      .hydrate([
+        req({
+          id: 'ask',
+          sessionId: 's1',
+          createdAt: 1,
+          kind: AgentGateKind.Proactive,
+          action: 'companion_ask'
+        }),
+        req({ id: 'keep', sessionId: 's1', createdAt: 2, action: 'workspace_write' })
+      ])
+    useAgentGateInboxStore.getState().removeCancelled(['ask'])
+    const next = useAgentGateInboxStore.getState()
+    expect(next.pending.map((item) => item.id)).toEqual(['keep'])
+    expect(selectResolvedLiveForSession(next, 's1')).toEqual([])
+  })
+
   it('hydrates authoritatively and prunes ghost pending', () => {
     useAgentGateInboxStore
       .getState()

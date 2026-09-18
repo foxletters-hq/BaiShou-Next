@@ -166,6 +166,13 @@ export const agentApi = {
       ipcRenderer.on('agent-gate:replied', handler)
       return () => ipcRenderer.removeListener('agent-gate:replied', handler)
     },
+    onCancelled: (
+      callback: (payload: { sessionId: string; requestIds: string[]; reason?: string }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:cancelled', handler)
+      return () => ipcRenderer.removeListener('agent-gate:cancelled', handler)
+    },
     onAllowlistChanged: (
       callback: (
         allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],

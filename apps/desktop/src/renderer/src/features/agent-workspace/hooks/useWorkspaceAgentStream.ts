@@ -5,6 +5,7 @@ import {
   finishStreamingSession,
   type UseAgentStreamResult
 } from '../../agent/hooks/useAgentStream'
+import { refreshDesktopAgentGateInbox } from '../../agent/agent-gate-inbox-bridge'
 
 export interface StartWorkspaceChatResult {
   sessionId: string
@@ -144,6 +145,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
           detail: { sessionId }
         })
       )
+      void refreshDesktopAgentGateInbox()
     }
     wasStreamingRef.current = stream.isStreaming
   }, [sessionId, stream.isStreaming])

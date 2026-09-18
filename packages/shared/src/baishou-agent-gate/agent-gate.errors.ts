@@ -21,6 +21,19 @@ export class AgentGateRejectedError extends Error {
   }
 }
 
+export function isAgentGateRejectedError(error: unknown): boolean {
+  if (error instanceof AgentGateRejectedError) return true
+  if (typeof error !== 'object' || error === null) {
+    return typeof error === 'string' && error.includes('用户拒绝了本次操作')
+  }
+  const record = error as { name?: unknown; code?: unknown; message?: unknown; cause?: unknown }
+  if (record.code === 'agent_gate.rejected' || record.name === 'AgentGateRejectedError') return true
+  if (typeof record.message === 'string' && record.message.includes('用户拒绝了本次操作')) {
+    return true
+  }
+  return record.cause !== undefined && isAgentGateRejectedError(record.cause)
+}
+
 export class AgentGateCorrectedError extends Error {
   readonly code = 'agent_gate.corrected' as const
 

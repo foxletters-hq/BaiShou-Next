@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
+  AgentGateCancelledError,
   AgentGateCorrectedError,
   AgentGateKind,
   AgentGateRejectedError,
@@ -74,13 +75,49 @@ describe('CompanionAskTool', () => {
     expect(result).toBe('自定义答案')
   })
 
-  it('returns declined message on rejection', async () => {
+  it('returns declined JSON when the gate is cancelled', async () => {
+    const gate = {
+      assertWithResolution: vi.fn().mockRejectedValue(new AgentGateCancelledError('stream aborted'))
+    } as unknown as IBaishouAgentGate
+
+    const result = await tool.execute({ question: '选哪个？' }, { ...baseContext, agentGate: gate })
+    expect(JSON.parse(result)).toEqual({
+      approved: false,
+      declined: true,
+      question: '选哪个？'
+    })
+  })
+
+  it('returns the cancelled notice when the user declines', async () => {
     const gate = {
       assertWithResolution: vi.fn().mockRejectedValue(new AgentGateRejectedError())
     } as unknown as IBaishouAgentGate
 
     const result = await tool.execute({ question: '选哪个？' }, { ...baseContext, agentGate: gate })
-    expect(result).toBe('User declined to answer.')
+    expect(result).toBe('用户取消了这一次操作')
+  })
+
+  it('returns the cancelled notice in the current locale', async () => {
+    const gate = {
+      assertWithResolution: vi.fn().mockRejectedValue(new AgentGateRejectedError())
+    } as unknown as IBaishouAgentGate
+
+    const result = await tool.execute(
+      { question: '选哪个？' },
+      { ...baseContext, agentGate: gate, userConfig: { locale: 'en' } }
+    )
+    expect(result).toBe('The user cancelled this operation.')
+  })
+
+  it('does not convert a rejection into a tool failure string', async () => {
+    const vercelTool = tool.toVercelTool({
+      ...baseContext,
+      agentGate: {
+        assertWithResolution: vi.fn().mockRejectedValue(new AgentGateRejectedError())
+      } as unknown as IBaishouAgentGate
+    })
+
+    await expect(vercelTool.execute({ question: '选哪个？' })).resolves.toBe('用户取消了这一次操作')
   })
 
   it('does not use tool interceptor metadata', () => {

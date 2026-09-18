@@ -50,4 +50,28 @@ describe('StreamAccumulator interleaved timeline', () => {
       { type: 'text', text: 'final', seq: 3 }
     ])
   })
+
+  it('should persist a waiting companion_ask as running, not failed', () => {
+    const acc = new StreamAccumulator()
+    acc.add({
+      type: 'tool-call',
+      toolCallId: 'ask-1',
+      toolName: 'companion_ask',
+      input: { question: '继续吗？', options: ['是', '否'] }
+    } as any)
+
+    const parts = buildAssistantPartsFromTimeline({
+      accumulator: acc,
+      assistantMsgId: 'msg',
+      sessionId: 'sess'
+    })
+    const toolPart = parts.find((part) => part.type === 'tool')
+    expect(toolPart?.data).toEqual(
+      expect.objectContaining({
+        callId: 'ask-1',
+        name: 'companion_ask',
+        status: 'running'
+      })
+    )
+  })
 })

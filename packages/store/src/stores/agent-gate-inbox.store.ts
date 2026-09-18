@@ -64,6 +64,7 @@ export interface AgentGateHydrateOptions {
 export interface AgentGateInboxActions {
   upsertAsked: (request: AgentGateRequest) => void
   removeReplied: (requestId: string, resolution?: AgentGateResolution) => void
+  removeCancelled: (requestIds: string[]) => void
   hydrate: (requests: AgentGateRequest[], options?: AgentGateHydrateOptions) => void
   replaceAll: (requests: AgentGateRequest[]) => void
   setFocusedRequest: (sessionId: string, requestId: string | null) => void
@@ -131,6 +132,23 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
           )
         }
         return { pending, focusedRequestIdBySession, resolvedLive }
+      })
+    },
+
+    removeCancelled: (requestIds) => {
+      const ids = requestIds.filter((id) => Boolean(id))
+      if (ids.length === 0) return
+      for (const id of ids) markRepliedTombstone(id)
+      const idSet = new Set(ids)
+      set((state: AgentGateInboxState) => {
+        const pending = state.pending.filter((item) => !idSet.has(item.id))
+        const focusedRequestIdBySession = { ...state.focusedRequestIdBySession }
+        for (const [sessionId, focusedId] of Object.entries(focusedRequestIdBySession)) {
+          if (focusedId && idSet.has(focusedId)) {
+            focusedRequestIdBySession[sessionId] = null
+          }
+        }
+        return { pending, focusedRequestIdBySession }
       })
     },
 

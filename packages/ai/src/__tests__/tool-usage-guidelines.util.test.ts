@@ -45,7 +45,10 @@ describe('buildToolUsageGuidelines', () => {
     expect(guidelines).toContain('向用户提问')
     expect(guidelines).toContain('companion_ask')
     expect(guidelines).toContain('多次调用')
+    expect(guidelines).toContain('同一次 companion_ask')
     expect(guidelines).toContain('不要把问题写在普通回复里')
+    expect(guidelines).toContain('用户取消了这一次操作')
+    expect(guidelines).toContain('用自然语言询问用户接下来希望怎么做')
   })
 
   it('requires unique memory id when memory_delete is available', () => {

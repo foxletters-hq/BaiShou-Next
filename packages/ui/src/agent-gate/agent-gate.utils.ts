@@ -80,6 +80,11 @@ export function shouldShowCustomRejectInput(request: AgentGateRequest): boolean 
   return request.allowCustomInput === true
 }
 
+/** 工具门控的拒绝可附带说明；伙伴提问点拒绝时直接否决本次调用 */
+export function shouldCollectRejectFeedback(request: AgentGateRequest): boolean {
+  return request.kind === AgentGateKind.Tool && request.allowCustomInput === true
+}
+
 /**
  * Pattern that Always will persist (tool-declared alwaysPatterns first).
  * Null when not applicable or cannot be permanently allowed.

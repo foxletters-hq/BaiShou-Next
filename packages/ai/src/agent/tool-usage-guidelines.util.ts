@@ -61,9 +61,15 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
       '- 需要用户做选择、确认、同意或提供名称时，**必须**调用 companion_ask，不要把问题写在普通回复里。'
     )
     lines.push(
-      '- companion_ask 必须带 question，以及至少两个 options。彼此独立的多个问题，可以在同一步里多次调用 companion_ask，用户会在确认卡里翻页逐题回答。'
+      '- companion_ask 必须带 question，以及至少两个 options。能一次问清的相关选择，必须收进同一次 companion_ask，不要先问一件事、用户答完再追问第二件。'
     )
-    lines.push('- 后一题依赖前一题答案时，必须等该次工具返回后再问。')
+    lines.push(
+      '- 彼此真正独立的多个问题，必须在同一步里多次调用 companion_ask，用户会在确认卡里翻页逐题回答。'
+    )
+    lines.push('- 只有后一题的选项集合必须依赖前一题答案时，才等该次工具返回后再问。')
+    lines.push(
+      '- 若 companion_ask 返回用户取消了这一次操作，不要再对刚才那件事调用 companion_ask；用自然语言询问用户接下来希望怎么做。'
+    )
   }
 
   if (hasDiaryEdit && hasDiaryRead) {

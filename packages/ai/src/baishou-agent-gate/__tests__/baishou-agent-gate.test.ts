@@ -643,6 +643,32 @@ describe('BaishouAgentGateService', () => {
     expect(gate.listPending()).toHaveLength(0)
   })
 
+  it('cancelSession 会广播 cancelled，让确认卡从收件箱消失', async () => {
+    const { gate, eventBus } = createBaishouAgentGate()
+    const cancelled: string[] = []
+    const unsub = eventBus.subscribe((event) => {
+      if (event.type === 'agent_gate.cancelled') {
+        cancelled.push(...event.requestIds)
+      }
+    })
+
+    const pending = gate
+      .assert({
+        ...baseAssertInput,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask',
+        title: '继续吗？'
+      })
+      .catch((error) => error)
+    await Promise.resolve()
+    gate.cancelSession('sess_1', 'stream aborted')
+
+    expect(await pending).toBeInstanceOf(AgentGateCancelledError)
+    expect(cancelled.length).toBe(1)
+    expect(gate.listPending()).toHaveLength(0)
+    unsub()
+  })
+
   it('assertWithResolution 在 allow 时直接返回空 requestId', async () => {
     const { gate } = createBaishouAgentGate({
       config: {

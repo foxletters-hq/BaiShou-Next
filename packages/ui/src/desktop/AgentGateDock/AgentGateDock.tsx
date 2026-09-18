@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../Button/Button'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
+  shouldCollectRejectFeedback,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -102,7 +103,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
     Boolean(numberedOptionsText) && descriptionText === numberedOptionsText
 
   const handleReject = () => {
-    if (allowCustomInput) {
+    if (shouldCollectRejectFeedback(request)) {
       setShowFeedback(true)
       return
     }
