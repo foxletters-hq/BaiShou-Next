@@ -38,6 +38,7 @@ import {
   isMissingWorkbenchFileError,
   isWorkbenchTabPathDeleted
 } from './workbench-tab-close.util'
+import { shouldEnableWorkbenchTabReorder } from './workbench-tab-reorder.util'
 import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
 import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
 import workbenchMascot from './assets/workbench-mascot.png'
@@ -429,55 +430,86 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             </button>
           </div>
 
-          <DragDropContext onDragEnd={handleTabDragEnd}>
-            <Droppable droppableId="workbench-tabs" direction="horizontal">
-              {(droppableProvided) => (
-                <div
-                  className={styles.tabScroll}
-                  ref={droppableProvided.innerRef}
-                  {...droppableProvided.droppableProps}
-                >
-                  {tabs.map((tab, index) => (
-                    <Draggable key={tab.id} draggableId={tab.id} index={index}>
-                      {(draggableProvided, snapshot) => (
-                        <div
-                          ref={draggableProvided.innerRef}
-                          {...draggableProvided.draggableProps}
-                          {...draggableProvided.dragHandleProps}
-                          style={{
-                            ...draggableProvided.draggableProps.style,
-                            cursor: 'default'
-                          }}
-                          className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''} ${snapshot.isDragging ? styles.tabDragging : ''}`}
-                          onMouseDown={(event) => handleTabMouseDown(event, tab.id, true)}
-                          onClick={() => setActiveTabId(tab.id)}
-                          title={tab.relativePath || tab.title}
-                        >
-                          <span className={styles.tabIcon} aria-hidden>
-                            {getFileTypeIcon(tabIconName(tab), 16)}
-                          </span>
-                          <span className={styles.tabLabel}>{tab.title}</span>
-                          <button
-                            type="button"
-                            className={styles.tabClose}
-                            onMouseDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              closeTab(tab.id)
+          {shouldEnableWorkbenchTabReorder(tabs.length) ? (
+            <DragDropContext onDragEnd={handleTabDragEnd}>
+              <Droppable droppableId="workbench-tabs" direction="horizontal">
+                {(droppableProvided) => (
+                  <div
+                    className={styles.tabScroll}
+                    ref={droppableProvided.innerRef}
+                    {...droppableProvided.droppableProps}
+                  >
+                    {tabs.map((tab, index) => (
+                      <Draggable key={tab.id} draggableId={tab.id} index={index}>
+                        {(draggableProvided, snapshot) => (
+                          <div
+                            ref={draggableProvided.innerRef}
+                            {...draggableProvided.draggableProps}
+                            {...draggableProvided.dragHandleProps}
+                            style={{
+                              ...draggableProvided.draggableProps.style,
+                              cursor: 'default'
                             }}
-                            aria-label={t('common.close', '关闭')}
+                            className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''} ${snapshot.isDragging ? styles.tabDragging : ''}`}
+                            onMouseDown={(event) => handleTabMouseDown(event, tab.id, true)}
+                            onClick={() => setActiveTabId(tab.id)}
+                            title={tab.relativePath || tab.title}
                           >
-                            <X size={14} strokeWidth={2} />
-                          </button>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {droppableProvided.placeholder}
+                            <span className={styles.tabIcon} aria-hidden>
+                              {getFileTypeIcon(tabIconName(tab), 16)}
+                            </span>
+                            <span className={styles.tabLabel}>{tab.title}</span>
+                            <button
+                              type="button"
+                              className={styles.tabClose}
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                closeTab(tab.id)
+                              }}
+                              aria-label={t('common.close', '关闭')}
+                            >
+                              <X size={14} strokeWidth={2} />
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {droppableProvided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          ) : (
+            <div className={styles.tabScroll}>
+              {tabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''}`}
+                  onMouseDown={(event) => handleTabMouseDown(event, tab.id, true)}
+                  onClick={() => setActiveTabId(tab.id)}
+                  title={tab.relativePath || tab.title}
+                >
+                  <span className={styles.tabIcon} aria-hidden>
+                    {getFileTypeIcon(tabIconName(tab), 16)}
+                  </span>
+                  <span className={styles.tabLabel}>{tab.title}</span>
+                  <button
+                    type="button"
+                    className={styles.tabClose}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      closeTab(tab.id)
+                    }}
+                    aria-label={t('common.close', '关闭')}
+                  >
+                    <X size={14} strokeWidth={2} />
+                  </button>
                 </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+              ))}
+            </div>
+          )}
 
           <div className={styles.tabBarTrailing}>
             <button
