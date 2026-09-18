@@ -23,6 +23,12 @@ export const BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY = 'baishou_workspace_agent_
 /** userData 下工作区策略文件名（非 Vault settings） */
 export const AGENT_WORKSPACE_POLICY_STORE_FILE = 'agent-workspace-policy.json'
 
+/** 工作区工具开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY = 'workspace_tool_management'
+
+/** 工作区个人记忆只读开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY = 'workspace_personal_memory_read'
+
 export const AGENT_GATE_LIFECYCLE_COMPRESSION_SAVE_DIARY = 'lifecycle_compression_save_diary'
 
 /** Default consecutive same-fingerprint asserts before forcing Ask */

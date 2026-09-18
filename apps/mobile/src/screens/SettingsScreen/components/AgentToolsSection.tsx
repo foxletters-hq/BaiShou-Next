@@ -67,9 +67,6 @@ export const AgentToolsSection: React.FC = () => {
       setGateConfig(nextConfig)
       try {
         await services.settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, nextConfig)
-        const { invalidateMobileMcpToolContextCache } =
-          await import('../../../services/mobile-mcp-context.service')
-        invalidateMobileMcpToolContextCache()
         await reloadAgentGateConfig?.()
       } catch {
         setGateConfig(prev)

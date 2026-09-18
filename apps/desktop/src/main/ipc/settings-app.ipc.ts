@@ -70,8 +70,6 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
-    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-    invalidateMcpToolContextCache()
     return true
   })
 
@@ -98,8 +96,6 @@ export function registerSettingsAppIPC() {
           : ({ kind: 'companion' } as const)
       const patch = sanitizeBaishouAgentGateConfigPatch(config)
       const saved = await patchScopedAgentGateConfig(normalized, patch)
-      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-      invalidateMcpToolContextCache()
       return saved
     }
   )
@@ -131,8 +127,6 @@ export function registerSettingsAppIPC() {
               : {}
         })
       )
-      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-      invalidateMcpToolContextCache()
       return saved
     }
   )
@@ -155,8 +149,6 @@ export function registerSettingsAppIPC() {
         throw new Error('workspaceId is required')
       }
       const saved = await setWorkspacePersonalMemoryRead(workspaceId.trim(), enabled !== false)
-      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-      invalidateMcpToolContextCache()
       return saved
     }
   )
