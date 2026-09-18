@@ -30,3 +30,11 @@ export function basenameFromPath(filePath: string): string {
   const segments = normalized.split('/').filter(Boolean)
   return segments[segments.length - 1] ?? filePath
 }
+
+/** 列表里带上父目录，避免多个「规范.md」看起来像同一条变更 */
+export function formatFileChangeListPath(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/')
+  const segments = normalized.split('/').filter(Boolean)
+  if (segments.length <= 1) return segments[0] ?? filePath
+  return `${segments[segments.length - 2]}/${segments[segments.length - 1]}`
+}
