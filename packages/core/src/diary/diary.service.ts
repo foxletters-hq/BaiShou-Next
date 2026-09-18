@@ -13,18 +13,18 @@ import {
   formatLocalDate,
   parseDateStr,
   toDiaryEmbedDetectionRow,
-  weatherMatchesFilter,
-  moodMatchesFilter,
-  resolveWeatherId,
-  resolveMoodId,
-  normalizeDiaryPreviewMarkdown,
-  mergeDiaryTagColorRegistries,
-  normalizeDiaryTagColorRegistry,
-  resolveDiaryTagsFromSources,
   applyDiaryPersistTags
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 import { emitDomainMutation } from '../events'
+import { mergeDiariesOnDateJump } from './diary-merge.util'
+import {
+  buildDiaryFromShadowRow,
+  hasPostSearchFilter,
+  mapFtsHitsToFilteredMetas,
+  mapShadowRowToMeta,
+  matchesListFilter
+} from './diary-query'
 
 /**
  * 彻底脱离双写架构（Anti-pattern）的正统白守日记统筹层：
@@ -145,7 +145,7 @@ export class DiaryService {
     if (inputDate && isDateJumped) {
       const conflict = await this.fileSync.readJournal(inputDate)
       if (conflict) {
-        this._mergeDiaries(input, conflict)
+        mergeDiariesOnDateJump(input, conflict)
         conflictId = conflict.id // 保留目标（存量文件）的主键，防止孤儿或者冲撞
       }
 
@@ -231,7 +231,7 @@ export class DiaryService {
     const existingDiary = await this.fileSync.readJournal(inputDate)
     if (existingDiary) {
       // 若已存在，则合并内容并做更新
-      this._mergeDiaries(input, existingDiary)
+      mergeDiariesOnDateJump(input, existingDiary)
       const resolvedId = await this.resolveDiaryIdForDate(inputDate, existingDiary.id)
       if (!resolvedId) {
         throw new DiaryNotFoundError(existingDiary.id ?? 0)
@@ -281,7 +281,7 @@ export class DiaryService {
     }
 
     if (shadow.rawContent?.trim()) {
-      return this.buildDiaryFromShadowRow(shadow, date)
+      return buildDiaryFromShadowRow(shadow, date)
     }
 
     if (fromDisk) {
@@ -306,7 +306,7 @@ export class DiaryService {
       const dateStr = String(shadow.date).split('T')[0]!
       const date = parseDateStr(dateStr)
       if (shadow.rawContent?.trim()) {
-        result.set(shadow.id, this.buildDiaryFromShadowRow(shadow, date))
+        result.set(shadow.id, buildDiaryFromShadowRow(shadow, date))
       } else {
         diskFallbackIds.push(shadow.id)
       }
@@ -322,31 +322,6 @@ export class DiaryService {
     return result
   }
 
-  private buildDiaryFromShadowRow(
-    shadow: NonNullable<Awaited<ReturnType<ShadowIndexRepository['findById']>>>,
-    date: Date
-  ): Diary {
-    const parsedTags = resolveDiaryTagsFromSources(shadow.tags ?? '', shadow.rawContent ?? '')
-
-    return {
-      id: shadow.id,
-      date,
-      content: shadow.rawContent ?? '',
-      tags: parsedTags.length > 0 ? parsedTags.join(',') : undefined,
-      tagColors:
-        Object.keys(normalizeDiaryTagColorRegistry(shadow.tagColors)).length > 0
-          ? normalizeDiaryTagColorRegistry(shadow.tagColors)
-          : undefined,
-      updatedAt: shadow.updatedAt ? new Date(shadow.updatedAt) : undefined,
-      weather: shadow.weather ?? undefined,
-      mood: shadow.mood ?? undefined,
-      location: shadow.location ?? undefined,
-      locationDetail: shadow.locationDetail ?? undefined,
-      isFavorite: shadow.isFavorite,
-      mediaPaths: []
-    }
-  }
-
   /** 批量读取影子索引元数据（不读磁盘日记正文，供搜索列表等场景） */
   async findMetaByIds(ids: number[]): Promise<DiaryMeta[]> {
     if (ids.length === 0) return []
@@ -355,7 +330,7 @@ export class DiaryService {
     return ids
       .map((id) => rowMap.get(id))
       .filter((row): row is NonNullable<typeof row> => row != null)
-      .map((row) => this.mapShadowRowToMeta(row))
+      .map((row) => mapShadowRowToMeta(row))
   }
 
   async findByDate(date: Date): Promise<Diary | null> {
@@ -367,7 +342,7 @@ export class DiaryService {
 
     // 打开编辑器时优先用影子索引正文，避免每次读盘阻塞 IPC
     if (shadow?.rawContent?.trim()) {
-      return this.buildDiaryFromShadowRow(shadow, date)
+      return buildDiaryFromShadowRow(shadow, date)
     }
 
     // 穿透底层：真相来自物理文件；优先使用影子索引记录的实际路径（外部存储 / Obsidian 布局）
@@ -383,7 +358,7 @@ export class DiaryService {
 
   async listAll(options?: { limit?: number; offset?: number }): Promise<DiaryMeta[]> {
     const shadows = await this.shadowRepo.listAllWithFTS(options)
-    return shadows.map((s) => this.mapShadowRowToMeta(s))
+    return shadows.map((s) => mapShadowRowToMeta(s))
   }
 
   /** 待嵌入检测：无条数截断，正文哈希来自 raw_content，不用文件级 content_hash。 */
@@ -394,7 +369,7 @@ export class DiaryService {
 
   async listFiltered(filter: DiaryListFilter = {}): Promise<DiaryMeta[]> {
     const shadows = await this.shadowRepo.listFiltered(filter)
-    return shadows.map((s) => this.mapShadowRowToMeta(s))
+    return shadows.map((s) => mapShadowRowToMeta(s))
   }
 
   async countFiltered(filter: Omit<DiaryListFilter, 'limit' | 'offset'> = {}): Promise<number> {
@@ -423,11 +398,11 @@ export class DiaryService {
     const filterOpts = filterRest as Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
     const needCount = offset + limit + 1
 
-    if (!this.hasPostSearchFilter(filterOpts)) {
+    if (!hasPostSearchFilter(filterOpts)) {
       const ftsResults = await this.shadowRepo.searchFTS(query, limit + 1, offset)
       const hasMore = ftsResults.length > limit
       const pageHits = ftsResults.slice(0, limit)
-      const items = await this.mapFtsHitsToFilteredMetas(pageHits, filterOpts)
+      const items = await mapFtsHitsToFilteredMetas(this.shadowRepo, pageHits, filterOpts)
       return { items, hasMore }
     }
 
@@ -439,7 +414,7 @@ export class DiaryService {
       const batch = await this.shadowRepo.searchFTS(query, batchSize, ftsOffset)
       if (batch.length === 0) break
 
-      const filtered = await this.mapFtsHitsToFilteredMetas(batch, filterOpts)
+      const filtered = await mapFtsHitsToFilteredMetas(this.shadowRepo, batch, filterOpts)
       collected.push(...filtered)
       ftsOffset += batch.length
     }
@@ -448,40 +423,6 @@ export class DiaryService {
       items: collected.slice(offset, offset + limit),
       hasMore: collected.length > offset + limit
     }
-  }
-
-  private hasPostSearchFilter(
-    filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
-  ): boolean {
-    return Boolean(
-      filter.favorite ||
-      (filter.weathers && filter.weathers.length > 0) ||
-      (filter.moods && filter.moods.length > 0) ||
-      (filter.year != null && filter.month != null)
-    )
-  }
-
-  private async mapFtsHitsToFilteredMetas(
-    hits: Awaited<ReturnType<ShadowIndexRepository['searchFTS']>>,
-    filterOpts: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
-  ): Promise<DiaryMeta[]> {
-    if (hits.length === 0) return []
-
-    const missingIds = hits.filter((h) => !h.indexRow).map((h) => h.rowid)
-    const batchRows = missingIds.length > 0 ? await this.shadowRepo.findByIds(missingIds) : []
-    const rowMap = new Map(batchRows.map((r) => [r.id, r]))
-    for (const hit of hits) {
-      if (hit.indexRow) rowMap.set(hit.rowid, hit.indexRow)
-    }
-
-    return hits
-      .map((hit) => {
-        const row = hit.indexRow ?? rowMap.get(hit.rowid)
-        if (!row) return null
-        const meta = this.mapShadowRowToMeta(row, hit.contentSnippet)
-        return this.matchesListFilter(meta, filterOpts) ? meta : null
-      })
-      .filter((item): item is DiaryMeta => item !== null)
   }
 
   /** 全文搜索命中总数（不含月份筛选，供日记页跨月搜索分页） */
@@ -514,65 +455,9 @@ export class DiaryService {
     return ftsResults.filter((hit) => {
       const row = hit.indexRow ?? rowMap.get(hit.rowid)
       if (!row) return false
-      const meta = this.mapShadowRowToMeta(row)
-      return this.matchesListFilter(meta, filterOpts)
+      const meta = mapShadowRowToMeta(row)
+      return matchesListFilter(meta, filterOpts)
     }).length
-  }
-
-  private matchesListFilter(
-    meta: DiaryMeta,
-    filter: Omit<DiaryListFilter, 'limit' | 'offset' | 'orderBy'>
-  ): boolean {
-    if (filter.year != null && filter.month != null) {
-      if (meta.date.getFullYear() !== filter.year || meta.date.getMonth() + 1 !== filter.month) {
-        return false
-      }
-    }
-    if (filter.favorite && !meta.isFavorite) return false
-    if (filter.weathers && filter.weathers.length > 0) {
-      if (!weatherMatchesFilter(meta.weather, filter.weathers)) return false
-    }
-    if (filter.moods && filter.moods.length > 0) {
-      if (!moodMatchesFilter(meta.mood, filter.moods)) return false
-    }
-    return true
-  }
-
-  private mapShadowRowToMeta(
-    s: {
-      id: number
-      date: string
-      updatedAt: string
-      weather: string | null
-      mood: string | null
-      location: string | null
-      isFavorite: boolean
-      hasMedia: boolean
-      rawContent?: string | null
-      tags?: string | null
-      tagsStr?: string | null
-      tagColors?: string | null
-    },
-    previewOverride?: string
-  ): DiaryMeta {
-    const tagColors = normalizeDiaryTagColorRegistry(s.tagColors)
-    const rawContent = s.rawContent ?? ''
-    const parsedTags = resolveDiaryTagsFromSources(s.tags ?? s.tagsStr ?? '', rawContent)
-    return {
-      id: s.id,
-      date: parseDateStr(s.date.split('T')[0]!),
-      preview: normalizeDiaryPreviewMarkdown(
-        previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
-      ),
-      tags: parsedTags,
-      tagColors: Object.keys(tagColors).length > 0 ? tagColors : undefined,
-      updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
-      weather: resolveWeatherId(s.weather) ?? undefined,
-      mood: resolveMoodId(s.mood) ?? undefined,
-      location: s.location || undefined,
-      isFavorite: s.isFavorite || false,
-      hasMedia: s.hasMedia || false
-    }
   }
 
   async count(): Promise<number> {
@@ -611,48 +496,5 @@ export class DiaryService {
   ): Promise<number | null> {
     const shadow = await this.resolveDiaryShadowForDate(date, preferredId)
     return shadow?.id ?? null
-  }
-
-  /**
-   * SOLID: 单一职责，处理由于日期飞跃造成的覆盖冲撞时，对文本和内部属性的安全合并
-   * @param source 正在迁移的原件更新负荷
-   * @param target 目标日期的驻留文件体
-   */
-  private _mergeDiaries(source: UpdateDiaryInput, target: Diary): void {
-    const oldContent = (target.content || '').trimEnd()
-    const newContent = (source.content || '').trimEnd()
-
-    // 合流机制：如果目标已有内容，用两个空行追加。
-    source.content = oldContent ? `${oldContent}\n\n${newContent}` : newContent
-
-    // 标签去重归并
-    const mergedTags = new Set<string>()
-    const parseTags = (t: any): string[] => {
-      if (!t) return []
-      if (Array.isArray(t)) return t
-      if (typeof t === 'string')
-        return t
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      return []
-    }
-
-    parseTags(target.tags).forEach((t) => mergedTags.add(t))
-    parseTags(source.tags).forEach((t) => mergedTags.add(t))
-    source.tags = Array.from(mergedTags).join(',')
-
-    const mergedTagColors = mergeDiaryTagColorRegistries(
-      normalizeDiaryTagColorRegistry(target.tagColors),
-      normalizeDiaryTagColorRegistry(source.tagColors)
-    )
-    source.tagColors = Object.keys(mergedTagColors).length > 0 ? mergedTagColors : undefined
-
-    // 其他必要元数据如果有丢失则补充
-    source.weather = source.weather ?? target.weather
-    source.mood = source.mood ?? target.mood
-    source.location = source.location ?? target.location
-    source.locationDetail = source.locationDetail ?? target.locationDetail
-    source.isFavorite = source.isFavorite ?? target.isFavorite
   }
 }
