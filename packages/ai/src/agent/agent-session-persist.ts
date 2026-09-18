@@ -7,6 +7,7 @@ import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-
 import { StreamAccumulator } from './stream-accumulator'
 import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
 import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -35,6 +36,7 @@ export interface PersistResultParams {
   namingModelConfigured?: boolean
   namingProvider?: IAIProvider
   namingModelId?: string
+  namingReasoningEffort?: import('@baishou/shared').ReasoningEffortSetting
   flushSessionToDisk?: (sessionId: string) => Promise<void>
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
@@ -107,15 +109,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
         }
       }
     } catch (e: unknown) {
-      const isNoOutputError =
-        (e as { [key: symbol]: unknown } | null)?.[
-          Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
-        ] === true
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'
         )
-      } else if (isNoOutputError) {
+      } else if (isNoOutputGeneratedError(e)) {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage skipped (no model output generated).'
         )
@@ -246,7 +244,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
           userText: rawUserText,
           namingModelConfigured: params.namingModelConfigured,
           namingProvider: params.namingProvider,
-          namingModelId: params.namingModelId
+          namingModelId: params.namingModelId,
+          namingReasoningEffort: params.namingReasoningEffort
         })
       }
     })()

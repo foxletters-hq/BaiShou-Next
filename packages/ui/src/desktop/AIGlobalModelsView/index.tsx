@@ -3,10 +3,16 @@ import styles from './AIGlobalModelsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
+import { SessionModelMenu } from '../SessionModelMenu'
 import {
   GlobalModelsConfig as SharedGlobalModelsConfig,
+  formatReasoningEffortLabel,
   isEmbeddingModel,
-  isTtsModel
+  isTtsModel,
+  resolveReasoningEffortForSlot,
+  setReasoningEffortForSlot,
+  type ModelReasoningSlot,
+  type ReasoningEffortSetting
 } from '@baishou/shared'
 import { Database, Cloud, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
@@ -44,6 +50,11 @@ export interface AIGlobalModelsViewProps {
 
 type ModelSelectorKey = 'dialogue' | 'graph' | 'naming' | 'summary' | 'embedding'
 
+function selectorReasoningSlot(key: ModelSelectorKey): ModelReasoningSlot | null {
+  if (key === 'embedding') return null
+  return key
+}
+
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   config,
   availableProviders,
@@ -57,6 +68,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const { isDark } = useTheme()
 
   const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
+  const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null)
 
   const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
     return Object.values(availableProviders)
@@ -150,6 +162,22 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     setActiveSelector(null)
   }
 
+  const handleEffortChange = async (value: ReasoningEffortSetting) => {
+    if (!activeSelector) return
+    const slot = selectorReasoningSlot(activeSelector)
+    if (!slot) return
+    await Promise.resolve(
+      onChange({
+        ...config,
+        reasoningEffortBySlot: setReasoningEffortForSlot(
+          config.reasoningEffortBySlot,
+          slot,
+          value
+        )
+      })
+    )
+  }
+
   const renderSection = (
     key: ModelSelectorKey | 'graph',
     title: string,
@@ -160,6 +188,10 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   ) => {
     const { isDanger = false, readOnly = false } = options
     const isModelSet = Boolean(currentProvider && currentModel)
+    const slot = selectorReasoningSlot(key as ModelSelectorKey)
+    const effortLabel = slot
+      ? formatReasoningEffortLabel(resolveReasoningEffortForSlot(config.reasoningEffortBySlot, slot))
+      : null
     const providerMeta = availableProviders[currentProvider]
     const providerIconUrl =
       getProviderIcon(currentProvider, isDark) ||
@@ -209,7 +241,12 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             readOnly ? styles.selectorBtnReadonly : ''
           }`}
           onClick={
-            readOnly ? undefined : () => setActiveSelector(key as ModelSelectorKey)
+            readOnly
+              ? undefined
+              : (event) => {
+                  setMenuAnchor(event.currentTarget.getBoundingClientRect())
+                  setActiveSelector(key as ModelSelectorKey)
+                }
           }
           aria-disabled={readOnly}
         >
@@ -219,6 +256,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
                 {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <Cloud size={18} />}
               </span>
               <span className={styles.selectedModelName}>{currentModel}</span>
+              {effortLabel ? <span className={styles.selectedEffort}>{effortLabel}</span> : null}
             </div>
           ) : (
             <div className={styles.placeholderText}>
@@ -316,16 +354,34 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         {footer}
       </div>
 
-      {activeSelector && (
+      {activeSelector === 'embedding' ? (
         <ModelSwitcherPopup
-          providers={activeSelector === 'embedding' ? embeddingProviders : nonEmbeddingProviders}
+          providers={embeddingProviders}
           currentProviderId={currentProviderForSelector()}
           currentModelId={currentModelForSelector()}
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
           onManageProviders={onManageProviders}
         />
-      )}
+      ) : activeSelector ? (
+        <SessionModelMenu
+          providers={nonEmbeddingProviders}
+          currentProviderId={currentProviderForSelector()}
+          currentModelId={currentModelForSelector()}
+          onSelect={handleSelectModel}
+          onClose={() => setActiveSelector(null)}
+          onManageProviders={onManageProviders}
+          reasoningEffort={resolveReasoningEffortForSlot(
+            config.reasoningEffortBySlot,
+            selectorReasoningSlot(activeSelector) ?? 'dialogue'
+          )}
+          onReasoningEffortChange={(value) => {
+            void handleEffortChange(value)
+          }}
+          anchorRect={menuAnchor}
+          showReasoningPanel
+        />
+      ) : null}
     </SettingsPageChrome>
   )
 }

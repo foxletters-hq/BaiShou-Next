@@ -8,7 +8,8 @@ import {
   getProviderIcon,
   toast,
   AgentGateDock,
-  resolveDesktopAssistantAvatarSrc
+  resolveDesktopAssistantAvatarSrc,
+  useReasoningCatalogEpoch
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import {
@@ -18,7 +19,8 @@ import {
   isConfiguredProviderId,
   getReasoningControlForModel,
   type ReasoningEffortSetting,
-  normalizeReasoningEffortSetting
+  normalizeReasoningEffortSetting,
+  resolveDialogueEffortPreference
 } from '@baishou/shared'
 import { selectSameActionCountInSession, useAgentGateInboxStore } from '@baishou/store'
 import { WorkbenchNotebookMountDialog } from '../agent-workspace/workbench/WorkbenchNotebookMountDialog'
@@ -42,6 +44,7 @@ import {
   buildModelReasoningPreviewMap,
   formatReasoningControlPreview
 } from './format-reasoning-control-preview'
+import { useDialogueSlotEffort } from './use-dialogue-slot-effort'
 import { useAgentIdleGreeting } from './utils/agent-idle-greeting'
 import partnerWelcomeMascot from './assets/partner-welcome.png'
 
@@ -91,8 +94,12 @@ export const AgentScreen: React.FC = () => {
     ? flow.t('agent.no_model_selected', '暂未选择模型')
     : flow.model.currentModelId
 
+  const dialogueSlotEffort = useDialogueSlotEffort()
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>(() =>
-    getReasoningEffortForModel(flow.model.currentProviderId, flow.model.currentModelId)
+    resolveDialogueEffortPreference(
+      getReasoningEffortForModel(flow.model.currentProviderId, flow.model.currentModelId),
+      dialogueSlotEffort
+    )
   )
   const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
 
@@ -102,21 +109,21 @@ export const AgentScreen: React.FC = () => {
     return provider?.type || providerId || undefined
   }, [flow.model.currentProviderId, flow.providers])
 
+  const reasoningCatalogEpoch = useReasoningCatalogEpoch()
   const reasoningControl = useMemo(
-    () =>
-      getReasoningControlForModel(flow.model.currentModelId || '', reasoningProviderType),
-    [flow.model.currentModelId, reasoningProviderType]
+    () => getReasoningControlForModel(flow.model.currentModelId || '', reasoningProviderType),
+    [flow.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch]
   )
 
-  // 切换模型时恢复该模型记忆的档位
+  // 切换模型时：按模型记忆优先，否则用对话用途分档
   useEffect(() => {
-    const next = getReasoningEffortForModel(
-      flow.model.currentProviderId,
-      flow.model.currentModelId
+    const next = resolveDialogueEffortPreference(
+      getReasoningEffortForModel(flow.model.currentProviderId, flow.model.currentModelId),
+      dialogueSlotEffort
     )
     setReasoningEffort(next)
     setSessionReasoningEffortOverride(next)
-  }, [flow.model.currentProviderId, flow.model.currentModelId])
+  }, [dialogueSlotEffort, flow.model.currentProviderId, flow.model.currentModelId])
 
   const handleReasoningEffortChange = (value: ReasoningEffortSetting) => {
     const normalized = normalizeReasoningEffortSetting(value)
@@ -150,8 +157,7 @@ export const AgentScreen: React.FC = () => {
   }
 
   const assistantAvatar = resolveDesktopAssistantAvatarSrc(flow.currentAssistant?.avatarPath)
-  const displayAssistantName =
-    flow.currentAssistant?.name || flow.t('agent.partner_label', '伙伴')
+  const displayAssistantName = flow.currentAssistant?.name || flow.t('agent.partner_label', '伙伴')
 
   const composerFooter = (
     <div className={styles.metaRow}>
@@ -221,8 +227,12 @@ export const AgentScreen: React.FC = () => {
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
   const pendingGate = flow.stream.pendingAgentGate
   const hasPendingGate = Boolean(pendingGate)
-  const { queueIndex: gateQueueIndex, queueTotal: gateQueueTotal, onQueuePrev, onQueueNext } =
-    useAgentGateQueuePager(flow.sessionId, pendingGate?.id)
+  const {
+    queueIndex: gateQueueIndex,
+    queueTotal: gateQueueTotal,
+    onQueuePrev,
+    onQueueNext
+  } = useAgentGateQueuePager(flow.sessionId, pendingGate?.id)
   const sameActionCount = useAgentGateInboxStore((state) =>
     selectSameActionCountInSession(state, flow.sessionId, pendingGate?.action)
   )

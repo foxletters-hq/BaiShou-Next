@@ -37,6 +37,7 @@ export interface StreamChatOptions {
     namingProvider?: IAIProvider
     namingModelId?: string
     namingModelConfigured?: boolean
+    namingReasoningEffort?: import('@baishou/shared').ReasoningEffortSetting
     summaryProvider?: IAIProvider
     summaryModelId?: string
     embeddingProvider?: IAIProvider

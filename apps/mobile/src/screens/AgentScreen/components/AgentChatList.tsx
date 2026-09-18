@@ -193,6 +193,7 @@ export function AgentChatList(props: AgentChatListProps) {
         <SessionReasoningSelect
           sessionId={p.currentSessionId ?? null}
           providerId={p.currentProviderId}
+          providerType={p.currentProviderType}
           modelId={p.currentModelId ?? null}
         />
 

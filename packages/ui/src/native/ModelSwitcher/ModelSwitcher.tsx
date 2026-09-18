@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,13 @@ import { Check, Search, Store, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import {
+  formatReasoningEffortLabel,
+  getReasoningCatalogEpoch,
+  listSessionReasoningEffortSettings,
+  subscribeReasoningCatalog,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
@@ -34,6 +41,9 @@ interface NativeModelSwitcherProps {
   currentModelId?: string | null
   onSelect: (providerId: string, modelId: string) => void
   onManageProviders?: () => void
+  showReasoningPanel?: boolean
+  reasoningEffort?: ReasoningEffortSetting
+  onReasoningEffortChange?: (value: ReasoningEffortSetting) => void
 }
 
 export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
@@ -43,10 +53,18 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
   currentProviderId,
   currentModelId,
   onSelect,
-  onManageProviders
+  onManageProviders,
+  showReasoningPanel = false,
+  reasoningEffort,
+  onReasoningEffortChange
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const catalogEpoch = useSyncExternalStore(
+    subscribeReasoningCatalog,
+    getReasoningCatalogEpoch,
+    getReasoningCatalogEpoch
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const scaleAnim = useRef(new Animated.Value(0.85)).current
@@ -71,6 +89,19 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
 
     return { filteredProviders: pList, filteredModels: mDict }
   }, [providers, searchQuery])
+
+  const currentProvider = providers.find((provider) => provider.id === currentProviderId)
+  const effortOptions = useMemo(
+    () =>
+      listSessionReasoningEffortSettings(
+        currentModelId || '',
+        currentProvider?.type || currentProviderId || undefined
+      ),
+    [catalogEpoch, currentModelId, currentProvider?.type, currentProviderId]
+  )
+  const selectedEffort = effortOptions.includes(reasoningEffort ?? 'auto')
+    ? (reasoningEffort ?? 'auto')
+    : 'auto'
 
   useEffect(() => {
     if (isOpen) {
@@ -280,6 +311,31 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             )}
           </ScrollView>
 
+          {showReasoningPanel ? (
+            <View
+              style={[
+                styles.effortWrap,
+                { borderTopColor: colors.borderSubtle }
+              ]}
+            >
+              <Text style={[styles.effortLabel, { color: colors.textSecondary }]}>
+                {t('agent.reasoning.effort_label', '思考强度')}
+              </Text>
+              <View style={styles.effortRow}>
+                {effortOptions.map((opt) => (
+                  <Button
+                    key={opt}
+                    variant={opt === selectedEffort ? 'primary' : 'secondary'}
+                    onPress={() => onReasoningEffortChange?.(opt)}
+                    style={styles.effortChip}
+                  >
+                    {formatReasoningEffortLabel(opt)}
+                  </Button>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {onManageProviders && filteredProviders.length > 0 && (
             <Button
               variant="ghost"
@@ -390,5 +446,23 @@ const styles = StyleSheet.create({
   modelName: {
     flexShrink: 1,
     fontSize: 14
+  },
+  effortWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 12,
+    marginTop: 4,
+    gap: 8
+  },
+  effortLabel: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  effortRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  effortChip: {
+    marginBottom: 4
   }
 })

@@ -1,9 +1,14 @@
 import { generateText } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
-import { deriveSessionTitleFromUserText, logger } from '@baishou/shared'
+import {
+  deriveSessionTitleFromUserText,
+  logger,
+  normalizeReasoningEffortSetting,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
-import { buildSmallTaskReasoningOptions } from '../providers/reasoning'
+import { buildDefaultReasoningOptions } from '../providers/reasoning'
 import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
 
 export class TitleGeneratorService {
@@ -62,7 +67,8 @@ export class TitleGeneratorService {
     modelId: string,
     sessionRepo: SessionRepository,
     sessionId: string,
-    userTrivialText: string
+    userTrivialText: string,
+    reasoningEffort?: ReasoningEffortSetting
   ): Promise<void> {
     try {
       const baseModel = provider.getLanguageModel(modelId)
@@ -74,10 +80,11 @@ export class TitleGeneratorService {
         baseUrl: provider.config?.baseUrl
       })
 
-      const builtReasoning = buildSmallTaskReasoningOptions({
+      const builtReasoning = buildDefaultReasoningOptions({
         modelId,
         providerType: provider.config?.type || 'openai',
-        baseUrl: provider.config?.baseUrl
+        baseUrl: provider.config?.baseUrl,
+        effort: normalizeReasoningEffortSetting(reasoningEffort)
       })
 
       const { text } = await runWithOpenAiThinkingInjectAsync(
@@ -113,6 +120,7 @@ export class TitleGeneratorService {
     namingModelConfigured?: boolean
     namingProvider?: IAIProvider
     namingModelId?: string
+    namingReasoningEffort?: ReasoningEffortSetting
   }): Promise<void> {
     const {
       sessionRepo,
@@ -120,7 +128,8 @@ export class TitleGeneratorService {
       userText,
       namingModelConfigured,
       namingProvider,
-      namingModelId
+      namingModelId,
+      namingReasoningEffort
     } = params
 
     if (namingModelConfigured && namingProvider && namingModelId) {
@@ -129,7 +138,8 @@ export class TitleGeneratorService {
         namingModelId,
         sessionRepo,
         sessionId,
-        userText
+        userText,
+        namingReasoningEffort
       )
       return
     }

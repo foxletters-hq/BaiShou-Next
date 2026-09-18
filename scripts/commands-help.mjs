@@ -77,9 +77,12 @@ const sections = [
     id: 'sync',
     title: '同步生成物',
     commands: [
-      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉模型快照（manifest 未变时快速跳过）'],
+      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉/思考快照（manifest 未变时快速跳过）'],
       ['pnpm sync:check', '校验生成物是否最新（ci:check 内含）'],
-      ['pnpm sync --only=providers', '仅同步单项（icons / version / providers / vision）']
+      [
+        'pnpm sync --only=providers',
+        '仅同步单项（icons / version / providers / vision / reasoning）'
+      ]
     ]
   },
   {

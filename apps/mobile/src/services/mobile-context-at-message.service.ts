@@ -22,6 +22,7 @@ import {
   assistantRowToEmojiPrefs,
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
+  resolveReasoningEffortForSlot,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -175,14 +176,11 @@ export async function buildMobileStreamUserConfig(
     ),
     locale,
     baishou_agent_gate_config,
-    reasoningEffort:
-      typeof behaviorConfig?.reasoningEffortDefault === 'string'
-        ? behaviorConfig.reasoningEffortDefault
-        : 'auto',
-    reasoningEffortDefault:
-      typeof behaviorConfig?.reasoningEffortDefault === 'string'
-        ? behaviorConfig.reasoningEffortDefault
-        : 'auto'
+    reasoningEffort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'dialogue'),
+    reasoningEffortDefault: resolveReasoningEffortForSlot(
+      globalModels?.reasoningEffortBySlot,
+      'dialogue'
+    )
   }
 }
 

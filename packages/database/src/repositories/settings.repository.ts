@@ -3,6 +3,7 @@ import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   normalizeToolManagementConfig,
+  normalizeReasoningEffortBySlot,
   stripLegacyDefaultSummaryTemplates
 } from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
@@ -172,7 +173,12 @@ export class SettingsRepository {
   }
 
   async getGlobalModelsConfig(): Promise<GlobalModelsConfig> {
-    return (await this.get<GlobalModelsConfig>('global_models')) ?? DEFAULT_GLOBAL_MODELS
+    const raw = (await this.get<GlobalModelsConfig>('global_models')) ?? DEFAULT_GLOBAL_MODELS
+    return {
+      ...DEFAULT_GLOBAL_MODELS,
+      ...raw,
+      reasoningEffortBySlot: normalizeReasoningEffortBySlot(raw.reasoningEffortBySlot)
+    }
   }
   async setGlobalModelsConfig(config: GlobalModelsConfig): Promise<void> {
     await this.set('global_models', config)

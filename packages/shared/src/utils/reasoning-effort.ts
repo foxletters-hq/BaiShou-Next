@@ -1,5 +1,7 @@
 import { normalizeModelBaseId } from './provider-vision-models'
 import { isOpenAiStyleReasoningModel } from './model-capabilities'
+import { getReasoningOverlayControl } from './reasoning-catalog.overlay'
+import { lookupReasoningCatalogControl } from './reasoning-catalog-store'
 
 /** 统一思考档位（UX）；按模型裁剪后再映射为各厂原生字段 */
 export const REASONING_EFFORTS = [
@@ -99,7 +101,9 @@ export function resolveEffectiveReasoningEffort(
 
 export function isDeepSeekV4Model(modelId: string): boolean {
   const id = normalizeModelBaseId(modelId)
-  return Boolean(id && id.includes('deepseek-v4'))
+  if (!id) return false
+  if (id.includes('deepseek-v4')) return true
+  return id === 'deepseek-flash' || id.startsWith('deepseek-flash-')
 }
 
 /** Kimi / Moonshot 可配思考（开关 + 预算）的模型族 */
@@ -309,7 +313,10 @@ function listEffortModeEfforts(
   return null
 }
 
-function attachReasoningBudgetCatalog(modelId: string, control: ReasoningControl): ReasoningControl {
+function attachReasoningBudgetCatalog(
+  modelId: string,
+  control: ReasoningControl
+): ReasoningControl {
   const bounds = getReasoningBudgetBoundsForModel(modelId)
   if (bounds.catalogMax == null && bounds.catalogMin == null) return control
   return {
@@ -331,6 +338,22 @@ export function getReasoningControlForModel(
   providerTypeOrId?: string
 ): ReasoningControl {
   if (!modelId?.trim()) return { mode: 'none' }
+
+  const overlay = getReasoningOverlayControl(modelId)
+  if (overlay) return attachReasoningBudgetCatalog(modelId, overlay)
+
+  // V4 族（含官方 flash 短名）保持产品档位，不被目录收窄
+  if (isDeepSeekV4Model(modelId)) {
+    return attachReasoningBudgetCatalog(modelId, {
+      mode: 'effort',
+      efforts: listDeepSeekReasoningEfforts(modelId)
+    })
+  }
+
+  const catalogControl = lookupReasoningCatalogControl(modelId, providerTypeOrId)
+  if (catalogControl && !isReasoningEffortBlacklistedModel(modelId)) {
+    return attachReasoningBudgetCatalog(modelId, catalogControl)
+  }
 
   const type = (providerTypeOrId || '').toLowerCase()
 
@@ -370,7 +393,14 @@ export function listReasoningEffortsForModel(
 export function isReasoningCapableModel(modelId: string, providerType?: string): boolean {
   if (!modelId) return false
   const type = (providerType || '').toLowerCase()
+  if (getReasoningOverlayControl(modelId)) return true
   if (isDeepSeekV4Model(modelId)) return true
+  if (
+    lookupReasoningCatalogControl(modelId, providerType) &&
+    !isReasoningEffortBlacklistedModel(modelId)
+  ) {
+    return true
+  }
   if (isKimiThinkingControlModel(modelId)) return true
   if (isDashScopeThinkingToggleModel(modelId, providerType)) return true
   if (isReasoningEffortBlacklistedModel(modelId)) {
@@ -485,17 +515,11 @@ export function normalizeReasoningBudgetTokens(
 }
 
 /** 从可用档位中取最弱档（探活/小任务） */
-export function pickWeakestReasoningEffort(efforts: ReasoningEffort[]): ReasoningEffort | undefined {
+export function pickWeakestReasoningEffort(
+  efforts: ReasoningEffort[]
+): ReasoningEffort | undefined {
   if (efforts.length === 0) return undefined
-  const order: ReasoningEffort[] = [
-    'none',
-    'minimal',
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-    'max'
-  ]
+  const order: ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
   for (const e of order) {
     if (efforts.includes(e)) return e
   }

@@ -1,8 +1,11 @@
 import { ipcMain } from 'electron'
 import { logger } from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai'
+import { broadcastReasoningCatalog, registerReasoningCatalogIPC } from './reasoning-catalog.ipc'
 
 export function registerPricingIPC() {
+  registerReasoningCatalogIPC()
+
   // ==========================================
   // API: 获取价格表最后更新时间
   // ==========================================
@@ -22,6 +25,7 @@ export function registerPricingIPC() {
       logger.warn('[ModelPricingService] ensureLoaded failed in pricing:get-status:', err)
     }
 
+    broadcastReasoningCatalog()
     return {
       lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
       hasPrices: pricingService.hasCachedPrices,
@@ -36,6 +40,7 @@ export function registerPricingIPC() {
     try {
       const pricingService = ModelPricingService.getInstance()
       await pricingService.forceRefresh()
+      broadcastReasoningCatalog()
       return {
         success: !pricingService.lastFetchFailed,
         lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
@@ -51,6 +56,7 @@ export function registerPricingIPC() {
   // 软件启动时，自动尝试异步拉取最新的计费信息，确保首屏加载或点开计费面板时有最新价格和有效更新时间
   ModelPricingService.getInstance()
     .ensureLoaded()
+    .then(() => broadcastReasoningCatalog())
     .catch((err) => {
       logger.warn('[ModelPricingService] Failed to auto-fetch pricing on boot:', err)
     })

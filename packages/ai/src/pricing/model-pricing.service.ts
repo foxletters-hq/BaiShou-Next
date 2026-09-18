@@ -4,7 +4,7 @@
  * 返回微美分 (costMicros)。
  */
 
-import { logger } from '@baishou/shared'
+import { applyReasoningCatalogFromModelsDevApi, logger } from '@baishou/shared'
 
 export interface TokenUsage {
   inputTokens: number
@@ -163,6 +163,7 @@ export class ModelPricingService {
       }
 
       const data = await response.json()
+      applyReasoningCatalogFromModelsDevApi(data)
       this.prices.clear()
 
       for (const providerId of Object.keys(data)) {

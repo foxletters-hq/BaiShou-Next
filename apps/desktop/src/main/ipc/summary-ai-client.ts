@@ -4,6 +4,7 @@ import {
   canUseProviderModel,
   logger,
   normalizeReasoningEffortSetting,
+  resolveReasoningEffortForSlot,
   prepareProviderConfigForRuntime,
   resolveSummaryConfigFromSettings,
   type AIProviderConfig
@@ -101,13 +102,14 @@ export function buildSummaryAiClient(): SummaryAiClient {
           `[SummaryAI] Invoking streamText with ${timeoutSeconds}s first-output timeout...`
         )
 
-        const providerOptions = options?.reasoningEffort
-          ? buildReasoningProviderOptions({
-              modelId: finalModelId,
-              providerType: providerConfig.type || providerConfig.id,
-              effort: normalizeReasoningEffortSetting(options.reasoningEffort)
-            })
-          : undefined
+        const providerOptions = buildReasoningProviderOptions({
+          modelId: finalModelId,
+          providerType: providerConfig.type || providerConfig.id,
+          effort: normalizeReasoningEffortSetting(
+            options?.reasoningEffort ??
+              resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'summary')
+          )
+        })
         const text = await generateSummaryTextFromModel({
           model,
           prompt,

@@ -230,7 +230,8 @@ export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
     speed: 1.0,
     responseFormat: 'mp3'
   },
-  monthlySummarySource: 'weeklies'
+  monthlySummarySource: 'weeklies',
+  reasoningEffortBySlot: {}
 }
 
 export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {

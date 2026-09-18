@@ -17,4 +17,11 @@ describe('AIGlobalModelsView graph slot', () => {
     expect(src).not.toContain('图关系抽取始终跟随对话模型')
     expect(src).not.toContain("{ readOnly: true }")
   })
+
+  it('should persist reasoning effort by model use on non-embedding pickers', () => {
+    expect(src).toContain('SessionModelMenu')
+    expect(src).toContain('reasoningEffortBySlot')
+    expect(src).toContain('setReasoningEffortForSlot')
+    expect(src).toContain('showReasoningPanel')
+  })
 })

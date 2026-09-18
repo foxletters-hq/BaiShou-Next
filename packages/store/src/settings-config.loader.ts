@@ -1,6 +1,7 @@
 import {
   AUTO_INJECT_TIME_TOOL_ID,
   normalizeEmojiToolConfig,
+  normalizeReasoningEffortBySlot,
   type AgentBehaviorConfig,
   type AIProviderConfig,
   type GlobalModelsConfig,
@@ -94,7 +95,8 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
       speed: 1.0,
       responseFormat: 'mp3'
     },
-    monthlySummarySource: 'weeklies'
+    monthlySummarySource: 'weeklies',
+    reasoningEffortBySlot: {}
   }
 }
 
@@ -227,13 +229,16 @@ export function normalizeSettingsConfigKey(
   switch (key) {
     case 'providers':
       return { providers: (raw as AIProviderConfig[] | null) || [] }
-    case 'globalModels':
+    case 'globalModels': {
+      const incoming: Partial<GlobalModelsConfig> = (raw as GlobalModelsConfig | null) || {}
       return {
         globalModels: {
           ...getDefaultGlobalModels(),
-          ...((raw as GlobalModelsConfig | null) || {})
+          ...incoming,
+          reasoningEffortBySlot: normalizeReasoningEffortBySlot(incoming.reasoningEffortBySlot)
         }
       }
+    }
     case 'agentBehavior': {
       const behavior = raw as AgentBehaviorConfig | null
       const defaults = getDefaultAgentBehavior()
