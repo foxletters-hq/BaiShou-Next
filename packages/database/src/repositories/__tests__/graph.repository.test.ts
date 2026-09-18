@@ -531,6 +531,43 @@ describe('GraphRepository keyed queries', () => {
     expect((await repo.getNodeById('n-split', VAULT))?.discriminator).toBe('同事')
   })
 
+  it('should list only pending nodes that already have a suspectReason', async () => {
+    await repo.upsertNode({
+      id: 'n-suspect',
+      forceId: true,
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '可疑',
+      shardMonth: '2026-03',
+      reviewStatus: 'pending',
+      propsJson: JSON.stringify({ suspectReason: '同时挂了两家公司' })
+    })
+    await repo.upsertNode({
+      id: 'n-pending',
+      forceId: true,
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '仅待审',
+      shardMonth: '2026-03',
+      reviewStatus: 'pending',
+      propsJson: JSON.stringify({})
+    })
+    await repo.upsertNode({
+      id: 'n-approved',
+      forceId: true,
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '已通过',
+      shardMonth: '2026-03',
+      reviewStatus: 'approved',
+      propsJson: JSON.stringify({ suspectReason: '不应出现' })
+    })
+    const suspects = await repo.listSuspectNodes(VAULT)
+    expect(suspects.map((row) => row.id)).toEqual(['n-suspect'])
+    const scan = await repo.listLiveScanGraph(VAULT)
+    expect(scan.nodes.map((row) => row.id).sort()).toEqual(['n-approved', 'n-pending', 'n-suspect'])
+  })
+
   it('should persist an empty-string discriminator when upsert omits it', async () => {
     await repo.upsertNode({
       id: 'n-empty',

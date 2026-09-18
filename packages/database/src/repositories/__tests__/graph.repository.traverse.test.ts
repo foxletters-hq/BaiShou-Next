@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createClient, type Client } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { GraphRepository } from '../graph.repository'
+import { GraphTraverseOps } from '../graph.repository.traverse'
 import {
   GRAPH_EDGES_CREATE_SQL,
   GRAPH_INDEXES_SQL,
@@ -243,9 +244,10 @@ describe('GraphRepository.traverse prune', () => {
 
   it('keeps neighbors in vector-rank order when the SQL vector path succeeds', async () => {
     await seedStar('c-me', 5, 50)
+    // 向量排序在遍历职责里，打桩必须打到实际执行的类上
     const spy = vi
       .spyOn(
-        GraphRepository.prototype as unknown as NeighborVectorRanker,
+        GraphTraverseOps.prototype as unknown as NeighborVectorRanker,
         'selectNeighborIdsByVector'
       )
       .mockResolvedValue(['n-01', 'n-03'])

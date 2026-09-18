@@ -1,10 +1,11 @@
+import type { GraphSimilarPendingPair } from '@baishou/shared'
 import type {
   GraphEdgeRow,
   GraphNodeRow,
   GraphPath,
   UpsertEdgeInput,
   UpsertNodeInput
-} from './graph.repository'
+} from './graph.repository.types'
 
 /** Name / id lookup only — extract, chat, find-or-create. */
 export interface GraphNodeLookup {
@@ -100,6 +101,24 @@ export interface GraphReview {
     edges: GraphEdgeRow[]
     endpointNodes: GraphNodeRow[]
   }>
+  listSuspectNodes(vaultId: string): Promise<GraphNodeRow[]>
+  listSimilarPendingPairs(vaultId: string): Promise<GraphSimilarPendingPair[]>
+  listLiveScanGraph(vaultId: string): Promise<{
+    nodes: Array<{
+      id: string
+      name: string
+      nodeType: string
+      discriminator: string
+      propsJson: string
+    }>
+    edges: Array<{
+      fromId: string
+      toId: string
+      edgeType: string
+      isCurrent: boolean
+      sourceRef: string | null
+    }>
+  }>
 }
 
 /** pending-index apply + orphan sweep. */
@@ -125,7 +144,7 @@ export interface GraphSyncApply {
     shardMonth?: string
     embedding?: number[] | null
     modelId?: string
-  }): Promise<import('./graph.repository').ApplyRawNodeResult | void>
+  }): Promise<import('./graph.repository.types').ApplyRawNodeResult | void>
   applyRawEdge(row: {
     id: string
     vaultId: string
