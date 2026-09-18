@@ -19,6 +19,19 @@ export function parentRelativePath(relativePath: string): string {
   return idx >= 0 ? posix.slice(0, idx) : ''
 }
 
+export function toAbsoluteWorkspacePath(folderRoot: string, relativePath?: string): string {
+  const base = folderRoot.replace(/[/\\]+$/, '')
+  if (!relativePath) return base
+  return `${base}/${relativePath.replace(/^[/\\]+/, '').replace(/\\/g, '/')}`
+}
+
+export function resolveExplorerParentDir(
+  selected: { relativePath: string; isDirectory: boolean } | null
+): string {
+  if (!selected) return ''
+  return selected.isDirectory ? selected.relativePath : parentRelativePath(selected.relativePath)
+}
+
 /** 被改动条目的祖先目录（含根 `''`，不含叶子本身），供写盘后按层刷新文件树。 */
 export function ancestorDirPaths(relativePath: string): string[] {
   const posix = normalizeRelativePath(relativePath)
