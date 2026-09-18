@@ -1,53 +1,14 @@
 import { logger } from '@baishou/shared'
 import { searchExaMcp } from './exa-mcp-search'
-import { HtmlToMarkdownConverter } from './html-to-markdown'
 import { LocalBingProvider } from './local-bing-provider'
 import { LocalGoogleProvider } from './local-google-provider'
 import { DEFAULT_WEB_SEARCH_LIMITS } from './web-search-config.util'
 import { truncateSearchSnippet } from './web-content.util'
+import { parseDuckDuckGoResults, searchDuckDuckGo } from './web-search-duckduckgo'
+import { searchAnysearch, searchExa, searchTavily } from './web-search-remote-api'
+import type { SearchDiagnostics, SearchEngineType, SearchResult } from './web-search.types'
 
-export interface SearchResult {
-  title: string
-  url: string
-  snippet: string
-}
-
-export type SearchEngineType =
-  | 'tavily'
-  | 'exa'
-  | 'exa-mcp'
-  | 'anysearch'
-  | 'duckduckgo'
-  | 'local-bing'
-  | 'local-google'
-
-/** 单次搜索诊断信息，便于排查「无结果」问题 */
-export interface SearchDiagnostics {
-  engine: SearchEngineType
-  query: string
-  httpStatus?: number
-  htmlBytes?: number
-  parsedCount?: number
-  error?: string
-  detail?: string
-}
-
-function createFetchSignal(timeoutMs: number): AbortSignal {
-  if (
-    typeof AbortSignal !== 'undefined' &&
-    'timeout' in AbortSignal &&
-    typeof AbortSignal.timeout === 'function'
-  ) {
-    return AbortSignal.timeout(timeoutMs)
-  }
-  const controller = new AbortController()
-  setTimeout(() => controller.abort(), timeoutMs)
-  return controller.signal
-}
-
-function cleanApiKey(apiKey?: string): string {
-  return (apiKey || '').replace(/[\s\u200B-\u200D\uFEFF\u00A0]/g, '').trim()
-}
+export type { SearchDiagnostics, SearchEngineType, SearchResult } from './web-search.types'
 
 /**
  * 搜索引擎分流网关及底层抓取器（无头实现）
@@ -56,26 +17,8 @@ function cleanApiKey(apiKey?: string): string {
 export class WebSearchService {
   private static readonly defaultMaxResults = DEFAULT_WEB_SEARCH_LIMITS.maxResults
 
-  private static readonly userAgentPool = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
-  ]
-
-  private static get browserHeaders() {
-    const ua = this.userAgentPool[Math.floor(Math.random() * this.userAgentPool.length)]
-    return {
-      'User-Agent':
-        ua ||
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate',
-      DNT: '1',
-      Connection: 'keep-alive',
-      'Upgrade-Insecure-Requests': '1'
-    }
+  public static parseDuckDuckGoResults(html: string, maxResults: number): SearchResult[] {
+    return parseDuckDuckGoResults(html, maxResults)
   }
 
   /**
@@ -154,7 +97,6 @@ export class WebSearchService {
       }
     }
 
-    // 只保留配置的最高上限
     return merged.slice(0, totalMaxResults)
   }
 
@@ -175,16 +117,16 @@ export class WebSearchService {
     )
 
     if (engine === 'duckduckgo') {
-      return this.searchDuckDuckGo(query, maxResults, onDiagnostics)
+      return searchDuckDuckGo(query, maxResults, onDiagnostics)
     }
     if (engine === 'exa') {
-      return this.searchExa(query, maxResults, exaApiKey, onDiagnostics)
+      return searchExa(query, maxResults, exaApiKey, onDiagnostics)
     }
     if (engine === 'exa-mcp') {
       return searchExaMcp(query, maxResults, onDiagnostics, plainSnippetLength)
     }
     if (engine === 'anysearch') {
-      return this.searchAnysearch(query, maxResults, anysearchApiKey, onDiagnostics)
+      return searchAnysearch(query, maxResults, anysearchApiKey, onDiagnostics)
     }
     if (engine === 'local-bing') {
       return this.searchLocalBing(
@@ -204,322 +146,9 @@ export class WebSearchService {
         plainSnippetLength
       )
     }
-    return this.searchTavily(query, maxResults, apiKey, onDiagnostics)
+    return searchTavily(query, maxResults, apiKey, onDiagnostics)
   }
 
-  // --- DuckDuckGo 骨灰级抓取器 (避开封禁方案) ---
-  private static async searchDuckDuckGo(
-    query: string,
-    maxResults: number,
-    onDiagnostics?: (diag: SearchDiagnostics) => void
-  ): Promise<SearchResult[]> {
-    const url = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query)
-    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
-      const diag: SearchDiagnostics = { engine: 'duckduckgo', query, ...partial }
-      onDiagnostics?.(diag)
-      logger.info('[WebSearchService] DDG diagnostics:', JSON.stringify(diag))
-    }
-
-    const maxRetries = 2 // DuckDuckGo 经常返回 403 或 202（流控）
-    for (let i = 0; i <= maxRetries; i++) {
-      try {
-        const resp = await fetch(url, {
-          headers: this.browserHeaders,
-          signal: createFetchSignal(10000)
-        })
-        if (resp.status !== 200) {
-          emit({
-            httpStatus: resp.status,
-            error: `HTTP ${resp.status}`,
-            detail: i < maxRetries ? `retry ${i + 1}/${maxRetries}` : 'max retries reached'
-          })
-          if (i === maxRetries)
-            throw new Error('DuckDuckGo blocked request. Status: ' + resp.status)
-          await new Promise((r) => setTimeout(r, 1000)) // sleep 缓刑
-          continue
-        }
-        const html = await resp.text()
-        const results = this.parseDuckDuckGoResults(html, maxResults)
-        const titleBlocks = (html.match(/class="result__title"/g) || []).length
-        emit({
-          httpStatus: resp.status,
-          htmlBytes: html.length,
-          parsedCount: results.length,
-          detail:
-            results.length === 0
-              ? `HTML has ${titleBlocks} result__title blocks but parser returned 0`
-              : `parsed ${results.length} results`
-        })
-        return results
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        emit({ error: msg, detail: i < maxRetries ? `retry ${i + 1}/${maxRetries}` : 'failed' })
-        if (i === maxRetries) throw e
-      }
-    }
-    return []
-  }
-
-  public static parseDuckDuckGoResults(html: string, maxResults: number): SearchResult[] {
-    const results: SearchResult[] = []
-    const blocks = html.split('class="result__title"')
-
-    for (let i = 1; i < blocks.length; i++) {
-      if (results.length >= maxResults) break
-      const block = blocks[i] || ''
-
-      // 强摘链接片段和标题：<a rel="nofollow" href="...url...">标题部分</a>
-      const aTagStart = block.indexOf('<a')
-      if (aTagStart === -1) continue
-      const aTagEnd = block.indexOf('</a>', aTagStart)
-      if (aTagEnd === -1) continue
-
-      const aTag = block.substring(aTagStart, aTagEnd + 4)
-      const urlMatch = /href="([^"]+)"/.exec(aTag)
-      const rawUrl = urlMatch?.[1] || ''
-
-      const titleMatch = />([\s\S]*?)<\/a>/.exec(aTag)
-      const title = titleMatch ? titleMatch[1]!.replace(/<[^>]+>/g, '').trim() : ''
-
-      // 解析结果 Snippet
-      const snippetStart = block.indexOf('class="result__snippet"')
-      let snippetRaw = ''
-      if (snippetStart !== -1) {
-        const snippetEnd = block.indexOf('</a>', snippetStart)
-        if (snippetEnd !== -1) {
-          const snipTag = block.substring(snippetStart, snippetEnd + 4)
-          const sMatch = />([\s\S]*?)<\/a>/.exec(snipTag)
-          snippetRaw = sMatch ? sMatch[1]! : ''
-        }
-      }
-
-      const snippetClean = snippetRaw
-        .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-      let actualUrl = rawUrl
-
-      // DuckDuckGo 中的转义和跳板提取
-      try {
-        const uUrl = rawUrl.startsWith('//') ? 'https:' + rawUrl : rawUrl
-        const parsed = new URL(uUrl)
-        if (parsed.searchParams.has('uddg')) {
-          const uddg = parsed.searchParams.get('uddg')
-          if (uddg) actualUrl = decodeURIComponent(uddg)
-        }
-      } catch (e) {
-        // 解析错误则保持原样
-      }
-
-      if (actualUrl && title) {
-        // 由于部分 DuckDuckGo 搜出的标题和 Snippet 可能带有 HTML Entites
-        // 此处复用刚写的 converter 强制 decode 它保证中文和符号没有烂在里面
-        const decodedSnippet = snippetClean.replace(/&#(\d+);|&[a-z]+;/g, (m) =>
-          HtmlToMarkdownConverter.convert(m)
-        )
-        results.push({
-          title: title.replace(/&#(\d+);|&[a-z]+;/g, (m) => HtmlToMarkdownConverter.convert(m)),
-          url: actualUrl,
-          snippet: decodedSnippet || title
-        })
-      }
-    }
-
-    return results
-  }
-
-  // --- Exa RESTful 获取 ---
-  private static async searchExa(
-    query: string,
-    maxResults: number,
-    apiKey?: string,
-    onDiagnostics?: (diag: SearchDiagnostics) => void
-  ): Promise<SearchResult[]> {
-    const cleanKey = cleanApiKey(apiKey)
-    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
-      const diag: SearchDiagnostics = { engine: 'exa', query, ...partial }
-      onDiagnostics?.(diag)
-      logger.info('[WebSearchService] Exa diagnostics:', JSON.stringify(diag))
-    }
-
-    if (!cleanKey) {
-      emit({ error: 'Exa API key is missing or invalid.' })
-      throw new Error('Exa API key is missing or invalid.')
-    }
-
-    const resp = await fetch('https://api.exa.ai/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': cleanKey
-      },
-      signal: createFetchSignal(15000),
-      body: JSON.stringify({
-        query,
-        numResults: maxResults,
-        contents: { text: true }
-      })
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text()
-      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
-      throw new Error('Exa search failed: ' + resp.status + ' ' + text)
-    }
-
-    const data = (await resp.json()) as {
-      results?: Array<{ title?: string | null; url?: string; text?: string }>
-    }
-    const resultsRaw = Array.isArray(data.results) ? data.results : []
-    const results: SearchResult[] = []
-
-    for (const item of resultsRaw) {
-      if (results.length >= maxResults) break
-      const t = item.title?.trim() || ''
-      const u = item.url?.trim() || ''
-      const c = item.text?.trim() || ''
-      if (u && (t || c)) {
-        results.push({ title: t || u, url: u, snippet: c || t })
-      }
-    }
-
-    emit({ httpStatus: resp.status, parsedCount: results.length })
-    return results
-  }
-
-  // --- AnySearch RESTful 获取 ---
-  private static async searchAnysearch(
-    query: string,
-    maxResults: number,
-    apiKey?: string,
-    onDiagnostics?: (diag: SearchDiagnostics) => void
-  ): Promise<SearchResult[]> {
-    const cleanKey = cleanApiKey(apiKey)
-    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
-      const diag: SearchDiagnostics = { engine: 'anysearch', query, ...partial }
-      onDiagnostics?.(diag)
-      logger.info('[WebSearchService] AnySearch diagnostics:', JSON.stringify(diag))
-    }
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (cleanKey) {
-      headers.Authorization = 'Bearer ' + cleanKey
-    }
-
-    const resp = await fetch('https://api.anysearch.com/v1/search', {
-      method: 'POST',
-      headers,
-      signal: createFetchSignal(15000),
-      body: JSON.stringify({
-        query,
-        max_results: Math.min(Math.max(maxResults, 1), 100),
-        zone: 'cn',
-        language: 'zh-CN'
-      })
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text()
-      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
-      throw new Error('AnySearch failed: ' + resp.status + ' ' + text)
-    }
-
-    const data = (await resp.json()) as {
-      code?: number
-      message?: string
-      data?: {
-        results?: Array<{
-          title?: string | null
-          url?: string
-          snippet?: string
-          content?: string
-        }>
-      }
-    }
-
-    if (data.code !== undefined && data.code !== 0) {
-      emit({ error: data.message || `code=${data.code}` })
-      throw new Error('AnySearch API error: ' + (data.message || String(data.code)))
-    }
-
-    const resultsRaw = Array.isArray(data.data?.results) ? data.data.results : []
-    const results: SearchResult[] = []
-
-    for (const item of resultsRaw) {
-      if (results.length >= maxResults) break
-      const t = item.title?.trim() || ''
-      const u = item.url?.trim() || ''
-      const snippet = item.snippet?.trim() || ''
-      const content = item.content?.trim() || ''
-      const body = content || snippet
-      if (u && (t || body)) {
-        results.push({ title: t || u, url: u, snippet: body || t })
-      }
-    }
-
-    emit({ httpStatus: resp.status, parsedCount: results.length })
-    return results
-  }
-
-  // --- Tavily RESTful 获取 ---
-  private static async searchTavily(
-    query: string,
-    maxResults: number,
-    apiKey?: string,
-    onDiagnostics?: (diag: SearchDiagnostics) => void
-  ): Promise<SearchResult[]> {
-    const cleanKey = cleanApiKey(apiKey)
-    const emit = (partial: Omit<SearchDiagnostics, 'engine' | 'query'>) => {
-      const diag: SearchDiagnostics = { engine: 'tavily', query, ...partial }
-      onDiagnostics?.(diag)
-      logger.info('[WebSearchService] Tavily diagnostics:', JSON.stringify(diag))
-    }
-
-    if (!cleanKey) {
-      emit({ error: 'Tavily API key is missing or invalid.' })
-      throw new Error('Tavily API key is missing or invalid.')
-    }
-
-    const resp = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + cleanKey
-      },
-      signal: createFetchSignal(15000),
-      body: JSON.stringify({
-        query,
-        max_results: maxResults,
-        search_depth: 'basic',
-        include_answer: false
-      })
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text()
-      emit({ httpStatus: resp.status, error: text.slice(0, 200) })
-      throw new Error('Tavily search failed: ' + resp.status + ' ' + text)
-    }
-
-    const data = (await resp.json()) as any
-    const resultsRaw = Array.isArray(data.results) ? data.results : []
-    const results: SearchResult[] = []
-
-    for (const item of resultsRaw) {
-      if (results.length >= maxResults) break
-      const t = item.title?.trim() || ''
-      const u = item.url?.trim() || ''
-      const c = item.content?.trim() || ''
-      if (t && u) {
-        results.push({ title: t, url: u, snippet: c })
-      }
-    }
-
-    emit({ httpStatus: resp.status, parsedCount: results.length })
-    return results
-  }
-
-  // --- 本地 Bing 搜索 ---
   private static async searchLocalBing(
     query: string,
     maxResults: number,
@@ -550,7 +179,6 @@ export class WebSearchService {
     }
   }
 
-  // --- 本地 Google 搜索 ---
   private static async searchLocalGoogle(
     query: string,
     maxResults: number,
