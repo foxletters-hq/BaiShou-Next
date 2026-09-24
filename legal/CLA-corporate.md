@@ -2,10 +2,12 @@
 
 **Organization Corporate Contributor License Agreement**
 
-**版本**：1.0  
-**生效日期**：2026-07-05  
-**组织**：[foxletters你那-hq](https://github.com/foxletters-hq)  
-**项目托管方（Project Steward）**：Anson-Trio / foxletters-hq（白守项目当前托管组织）
+**版本**：1.1  
+**生效日期**：2026-09-24（v1.0 生效日期：2026-07-05）  
+**组织**：[foxletters-hq](https://github.com/foxletters-hq)  
+**项目托管方（Project Steward）**：郑州市金水区狐信网络科技工作室（个体工商户，统一社会信用代码 92410105MAKMWQ1PX9）及其经营者
+
+> **v1.1 修订说明**：仅明确托管方的法律主体，与 [组织级个人 CLA](./CLA-organization.md) v1.1 一致；授权范围未改变。请将签署文件发送至 `foxletters@163.com`。
 
 ---
 
@@ -20,7 +22,7 @@
 1. **「企业」或「您」**：签署本协议的法律实体。
 2. **「关联方」**：控制、受控制或与企业共同受控制的实体。
 3. **「贡献」**：由企业员工、承包商或关联方提交至覆盖仓库的代码类原创作品。
-4. **「托管方」**：Anson-Trio / foxletters-hq（白守项目当前托管组织）。
+4. **「托管方」**：郑州市金水区狐信网络科技工作室（个体工商户）及其经营者，GitHub 账号为 Anson-Trio、组织为 foxletters-hq。
 5. **「覆盖仓库」**：同 [CLA-organization.md](./CLA-organization.md) 第一节第 3 款（以 CLA Assistant 关联为准，不写死仓库名）。
 
 ---
@@ -55,7 +57,7 @@
 | 拟贡献的覆盖仓库（可填「全部」） |      |
 | 签署日期                         |      |
 
-请将签署后的扫描件或电子版发送至项目维护者，归档于 `legal/signatures/corporate/`。
+请将签署后的扫描件或电子版发送至 `foxletters@163.com`，归档于 `legal/signatures/corporate/`。
 
 ---
 
@@ -68,7 +70,7 @@
 
 # Organization Corporate Contributor License Agreement (English)
 
-**Version**: 1.0 · **Steward**: Anson-Trio / foxletters-hq
+**Version**: 1.1 · **Steward**: Zhengzhou Jinshui District Huxin Network Technology Studio (郑州市金水区狐信网络科技工作室, individual business, USCC 92410105MAKMWQ1PX9) and its operator; GitHub: Anson-Trio / foxletters-hq
 
 When Contributions are made on behalf of a corporation to any **Covered Repository** (see [CLA-organization.md](./CLA-organization.md)), the corporation must execute this agreement in addition to individual CLA signing.
 

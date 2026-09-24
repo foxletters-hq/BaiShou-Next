@@ -134,10 +134,12 @@ pnpm ci:check
 
 <!-- CONTRIBUTORS-WALL:START -->
 <!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。展示 80px / 源图 240px。勿手改；运行: pnpm sync:contributors -->
+
 <a href="https://github.com/Anson-Trio" title="Anson-Trio"><img src="https://avatars.githubusercontent.com/u/107763915?v=4&s=240" width="80" height="80" alt="Anson-Trio" style="border-radius:50%;"/></a>
 <a href="https://github.com/Ratman463" title="Ratman463"><img src="https://avatars.githubusercontent.com/u/187963490?v=4&s=240" width="80" height="80" alt="Ratman463" style="border-radius:50%;"/></a>
 <a href="https://github.com/ctnilpp" title="ctnilpp"><img src="https://avatars.githubusercontent.com/u/49940531?v=4&s=240" width="80" height="80" alt="ctnilpp" style="border-radius:50%;"/></a>
 <a href="https://github.com/david082321" title="david082321"><img src="https://avatars.githubusercontent.com/u/7046617?v=4&s=240" width="80" height="80" alt="david082321" style="border-radius:50%;"/></a>
+
 <!-- CONTRIBUTORS-WALL:END -->
 
 [查看完整贡献者列表](https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors)
@@ -178,7 +180,8 @@ pnpm ci:check
 - 客户端代码完全开源，鼓励社区参与改进。
 - 请遵守 AGPLv3 协议：若您修改了本项目的代码并在网络上提供服务，您的修改版本也必须开源。
 - 向本项目提交**代码 PR** 须签署 [组织级 CLA](./legal/CLA-organization.md)（CLA Assistant，多仓通用）。
-- 版权与商业化策略详见 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
+- **美术与角色资产**：官方立绘、三视图及看板娘 Latte 相关资产不属于 AGPL 代码开源范畴，社区非商用二次创作与商用授权指引详见 [legal/LICENSE-ASSETS.md](./legal/LICENSE-ASSETS.md)。
+- 版权、商标与商业化策略详见 [legal/COPYRIGHT](./legal/COPYRIGHT)、[legal/TRADEMARK.md](./legal/TRADEMARK.md) 及 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
 
 完整条文见 [LICENSE](./LICENSE)。
 
