@@ -129,10 +129,12 @@ Thanks to everyone who has contributed time and energy to BaiShou—together, yo
 
 <!-- CONTRIBUTORS-WALL:START -->
 <!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。展示 80px / 源图 240px。勿手改；运行: pnpm sync:contributors -->
+
 <a href="https://github.com/Anson-Trio" title="Anson-Trio"><img src="https://avatars.githubusercontent.com/u/107763915?v=4&s=240" width="80" height="80" alt="Anson-Trio" style="border-radius:50%;"/></a>
 <a href="https://github.com/Ratman463" title="Ratman463"><img src="https://avatars.githubusercontent.com/u/187963490?v=4&s=240" width="80" height="80" alt="Ratman463" style="border-radius:50%;"/></a>
 <a href="https://github.com/ctnilpp" title="ctnilpp"><img src="https://avatars.githubusercontent.com/u/49940531?v=4&s=240" width="80" height="80" alt="ctnilpp" style="border-radius:50%;"/></a>
 <a href="https://github.com/david082321" title="david082321"><img src="https://avatars.githubusercontent.com/u/7046617?v=4&s=240" width="80" height="80" alt="david082321" style="border-radius:50%;"/></a>
+
 <!-- CONTRIBUTORS-WALL:END -->
 
 [View full contributors list](https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors)
@@ -172,6 +174,9 @@ This project is licensed under **AGPLv3** (GNU Affero General Public License v3.
 
 - Client code is fully open source; community contributions are encouraged.
 - If you modify this project and offer it as a network service, your modified version must also be open source under AGPLv3.
+- Code PRs require signing the [Organization CLA](../../legal/CLA-organization.md).
+- **Artwork and characters**: Official artwork and the Latte character are **not** covered by the AGPL. Non-commercial fan works are welcome; see [legal/LICENSE-ASSETS.md](../../legal/LICENSE-ASSETS.md) (Chinese).
+- Trademarks: see [legal/TRADEMARK.md](../../legal/TRADEMARK.md).
 
 Full text: [LICENSE](../../LICENSE).
 

@@ -1,10 +1,15 @@
 BaiShou-Next (白守 Next)
-Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
 by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
+
+This license applies to the source code only. Official artwork and
+character assets (including the Latte character) are not licensed under
+the AGPL; see legal/LICENSE-ASSETS.md. Trademarks are not licensed; see
+legal/TRADEMARK.md.
 
 See legal/COPYRIGHT for copyright notices and legal/LICENSE-STRATEGY.md
 for licensing and commercial-use policy.
