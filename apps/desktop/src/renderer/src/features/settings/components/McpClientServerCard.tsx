@@ -115,7 +115,6 @@ export function McpClientServerCard({
           <label className={styles.field}>
             <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
             <Input
-              fieldSize="small"
               value={server.url}
               onChange={(event) => onDraftUrl(event.target.value)}
               onBlur={(event) => {
@@ -131,7 +130,6 @@ export function McpClientServerCard({
           <label className={styles.field}>
             <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
             <Input
-              fieldSize="small"
               type="password"
               autoComplete="off"
               value={server.authToken ?? ''}

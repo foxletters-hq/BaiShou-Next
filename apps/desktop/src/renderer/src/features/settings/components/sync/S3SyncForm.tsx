@@ -35,7 +35,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_endpoint', 'Endpoint')}</label>
         <Input
-          fieldSize="small"
           type="text"
           value={config.endpoint || ''}
           onChange={(e) => onChange({ endpoint: e.target.value })}
@@ -44,7 +43,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_bucket', 'Bucket')}</label>
         <Input
-          fieldSize="small"
           type="text"
           value={config.bucket || ''}
           onChange={(e) => onChange({ bucket: e.target.value })}
@@ -53,7 +51,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_region', 'Region (Optional)')}</label>
         <Input
-          fieldSize="small"
           type="text"
           value={config.region || ''}
           onChange={(e) => onChange({ region: e.target.value })}
@@ -62,7 +59,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
         <Input
-          fieldSize="small"
           type="text"
           value={config.s3Path || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ s3Path: e.target.value })}
@@ -71,7 +67,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_access_key', 'Access Key')}</label>
         <Input
-          fieldSize="small"
           type={showAccessKey ? 'text' : 'password'}
           value={config.s3AccessKey || ''}
           onChange={(e) => onChange({ s3AccessKey: e.target.value })}
@@ -89,7 +84,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_secret_key', 'Secret Key')}</label>
         <Input
-          fieldSize="small"
           type={showSecretKey ? 'text' : 'password'}
           value={config.s3SecretKey || ''}
           onChange={(e) => onChange({ s3SecretKey: e.target.value })}
@@ -112,7 +106,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
           value={String(config.fileConcurrency || 5)}
           onChange={(e) => onChange({ fileConcurrency: parseInt(e.target.value) })}
           options={fileConcurrencyOptions}
-          size="small"
         />
       </div>
       <div>
@@ -123,7 +116,6 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
           value={String(config.chunkConcurrency || 5)}
           onChange={(e) => onChange({ chunkConcurrency: parseInt(e.target.value) })}
           options={chunkConcurrencyOptions}
-          size="small"
         />
       </div>
     </div>

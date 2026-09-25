@@ -1,30 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { classifyAiApiCallError, resolveMigrationStatusText } from '@baishou/shared'
+import { localizeAiApiErrorMessage, resolveMigrationStatusText } from '@baishou/shared'
 import {
   getCachedRagActiveState,
   patchCachedRagStats,
   setCachedRagActiveState
 } from '../rag-runtime-cache'
-
-function localizeRagEmbedError(raw: string, t: (key: string, fallback: string) => string): string {
-  const kind = classifyAiApiCallError({ message: raw, responseBody: raw })
-  switch (kind) {
-    case 'balance':
-      return t('agent.error.quota', '模型服务商提示账号额度不足。')
-    case 'auth':
-      return t(
-        'ai_config.error_no_model',
-        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-      )
-    case 'rate_limit':
-      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
-    case 'network':
-      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
-    default:
-      return raw
-  }
-}
 
 function extractIpcErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -81,10 +62,7 @@ export function useRagRuntimeBridge(active: boolean): void {
         : state.statusText || ''
       const errorText =
         typeof state.error === 'string' && state.error.trim()
-          ? localizeRagEmbedError(
-              extractIpcErrorMessage({ message: state.error.trim() }),
-              translate
-            )
+          ? localizeAiApiErrorMessage(extractIpcErrorMessage(new Error(state.error.trim())), translate)
           : undefined
 
       const previous = getCachedRagActiveState()

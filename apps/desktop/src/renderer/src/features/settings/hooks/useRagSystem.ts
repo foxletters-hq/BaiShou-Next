@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import {
-  classifyAiApiCallError,
   formatAiApiCallError,
+  localizeAiApiErrorMessage,
   type EmbeddingMigrationStateView
 } from '@baishou/shared'
 import { showMigrationResultToast } from './migration-result-toast'
@@ -11,25 +11,6 @@ import {
   setCachedRagActiveState,
   subscribeRagRuntime
 } from '../rag-runtime-cache'
-
-function localizeRagEmbedError(raw: string, t: (key: string, fallback: string) => string): string {
-  const kind = classifyAiApiCallError({ message: raw, responseBody: raw })
-  switch (kind) {
-    case 'balance':
-      return t('agent.error.quota', '模型服务商提示账号额度不足。')
-    case 'auth':
-      return t(
-        'ai_config.error_no_model',
-        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-      )
-    case 'rate_limit':
-      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
-    case 'network':
-      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
-    default:
-      return raw
-  }
-}
 
 function extractIpcErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -201,7 +182,7 @@ export function useRagSystem(
       }
     } catch (e: unknown) {
       const raw = extractIpcErrorMessage(e)
-      const detail = localizeRagEmbedError(raw, t)
+      const detail = localizeAiApiErrorMessage(raw, t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
@@ -268,7 +249,7 @@ export function useRagSystem(
       showMigrationResultToast(result, t, toast)
       await checkMigrationStatus()
     } catch (e: unknown) {
-      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      const detail = localizeAiApiErrorMessage(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
@@ -333,7 +314,7 @@ export function useRagSystem(
       showMigrationResultToast(result, t, toast)
       await checkMigrationStatus()
     } catch (e: unknown) {
-      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      const detail = localizeAiApiErrorMessage(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
@@ -423,10 +404,8 @@ export function useRagSystem(
         kinds.includes('life_graph') && !kinds.includes('graph_node')
           ? [...kinds, 'graph_node' as const]
           : kinds
-      const needsRag =
-        ragKinds.some((kind) => kind !== 'life_graph') ||
-        ragKinds.includes('partner') ||
-        ragKinds.includes('manual')
+      const needsRag = ragKinds.some((kind) => kind !== 'life_graph')
+      await (window as any).api?.rag?.cancelBatchEmbed?.()
       if (needsRag) {
         await (window as any).api?.rag?.clearAll({ kinds: ragKinds })
       }
@@ -434,6 +413,14 @@ export function useRagSystem(
         await window.api.graph.clearLifeGraph()
       }
       await fetchRagInfo()
+      toast.showSuccess(t('settings.rag_clear_all_done', '已清除所选记忆'))
+    } catch (e: any) {
+      toast.showError(
+        t('settings.rag_clear_all_failed', '清除记忆失败：{{message}}', {
+          message: e?.message || String(e)
+        })
+      )
+      throw e
     } finally {
       setIsProcessing(false)
     }

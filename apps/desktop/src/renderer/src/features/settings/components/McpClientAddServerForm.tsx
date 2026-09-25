@@ -58,7 +58,6 @@ export function McpClientAddServerForm({
           <label className={styles.field}>
             <span>{t('settings.mcp_custom_name', '名称')}</span>
             <Input
-              fieldSize="small"
               value={draftName}
               placeholder={t('settings.mcp_custom_name_placeholder', '例如检索服务')}
               onChange={(event) => onDraftName(event.target.value)}
@@ -67,7 +66,6 @@ export function McpClientAddServerForm({
           <label className={styles.field}>
             <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
             <Input
-              fieldSize="small"
               value={draftUrl}
               placeholder="http://127.0.0.1:31004/mcp"
               onChange={(event) => onDraftUrl(event.target.value)}
@@ -76,7 +74,6 @@ export function McpClientAddServerForm({
           <label className={styles.field}>
             <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
             <Input
-              fieldSize="small"
               type="password"
               autoComplete="off"
               value={draftToken}

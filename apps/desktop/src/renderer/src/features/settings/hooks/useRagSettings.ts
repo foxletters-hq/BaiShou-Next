@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
-import type { RagVectorKindFilter } from '@baishou/shared'
+import { localizeAiApiErrorMessage, type RagVectorKindFilter } from '@baishou/shared'
 import { useRagSystem } from './useRagSystem'
 import { useRagActions } from './useRagActions'
 import {
@@ -66,8 +66,11 @@ export function useRagSettings({
       page: number,
       size: number,
       generation = dataGenerationRef.current,
-      kind: RagVectorKindFilter = stateRef.current.sourceKind
+      kind: RagVectorKindFilter = stateRef.current.sourceKind,
+      options?: { includeStats?: boolean; checkMigration?: boolean }
     ) => {
+      const includeStats = options?.includeStats ?? true
+      const checkMigration = options?.checkMigration ?? includeStats
       setIsSearching(true)
       try {
         const limit = size
@@ -83,7 +86,7 @@ export function useRagSettings({
         }
 
         const [statsResult, entriesResult] = await Promise.all([
-          (window as any).api?.rag?.getStats(),
+          includeStats ? (window as any).api?.rag?.getStats() : Promise.resolve(null),
           (window as any).api?.rag?.queryEntries(params)
         ])
 
@@ -102,7 +105,10 @@ export function useRagSettings({
             if (total > 0 && (page - 1) * size >= total) {
               const maxPage = Math.max(1, Math.ceil(total / size))
               setCurrentPage(maxPage)
-              await loadRagData(q, mode, maxPage, size, generation)
+              await loadRagData(q, mode, maxPage, size, generation, kind, {
+                includeStats: false,
+                checkMigration: false
+              })
               return
             }
             if (q && q.trim() !== '' && mode === 'semantic') {
@@ -129,9 +135,13 @@ export function useRagSettings({
 
         if (isDataRequestStale(generation)) return
         setIsSearching(false)
-        await checkMigrationStatusRef.current()
+        if (checkMigration) await checkMigrationStatusRef.current()
       } catch (err) {
         console.error('[SettingsPage] loadRagData failed:', err)
+        if (!isDataRequestStale(generation)) {
+          setRagEntries([])
+          toast.showError(localizeAiApiErrorMessage(err, t))
+        }
       } finally {
         if (!isDataRequestStale(generation)) {
           setIsSearching(false)
@@ -190,7 +200,11 @@ export function useRagSettings({
 
   useEffect(() => {
     const generation = ++dataGenerationRef.current
-    void loadRagData(searchQuery, searchMode, currentPage, pageSize, generation, sourceKind)
+    // 筛选/翻页只重拉当前页列表。统计与迁移检查由 prefetch / useRagSystem / 写后 reload 负责。
+    void loadRagData(searchQuery, searchMode, currentPage, pageSize, generation, sourceKind, {
+      includeStats: false,
+      checkMigration: false
+    })
     return () => {
       dataGenerationRef.current += 1
     }

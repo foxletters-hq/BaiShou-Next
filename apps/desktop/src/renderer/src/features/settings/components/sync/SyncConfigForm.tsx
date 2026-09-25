@@ -326,7 +326,6 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
                 ? t('data_sync.max_divergence_remove_protection', '100 (remove protection)')
                 : t('data_sync.max_divergence_option', '{{percent}}%', { percent })
           }))}
-          size="small"
         />
         <p
           style={{
