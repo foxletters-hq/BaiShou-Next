@@ -162,8 +162,8 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: color-mix(in srgb, var(--text-primary) 28%, transparent);
-  backdrop-filter: blur(2px);
+  background: var(--bg-overlay);
+  backdrop-filter: none;
 }
 
 .modal {

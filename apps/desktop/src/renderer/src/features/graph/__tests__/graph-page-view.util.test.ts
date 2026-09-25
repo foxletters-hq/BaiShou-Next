@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canApproveGraphNode,
+  formatGraphRailCount,
+  graphSuspectReviewCopy,
+  stripGraphNodeSuspectReason,
   graphBareNodeIdForRevert,
   graphMergeSearchSeed,
   graphRevertSplitStayId,
@@ -38,6 +42,53 @@ describe('readGraphNodeSuspectReason', () => {
     )
     expect(readGraphNodeSuspectReason({ propsJson: '{"suspectReason":123}' })).toBe('')
     expect(readGraphNodeSuspectReason(null)).toBe('')
+  })
+})
+
+describe('canApproveGraphNode', () => {
+  it('should allow approve when the node is pending or still marked suspect', () => {
+    expect(canApproveGraphNode({ reviewStatus: 'pending' })).toBe(true)
+    expect(
+      canApproveGraphNode({
+        reviewStatus: 'approved',
+        propsJson: '{"suspectReason":"同人异职"}'
+      })
+    ).toBe(true)
+    expect(canApproveGraphNode({ reviewStatus: 'approved' })).toBe(false)
+    expect(canApproveGraphNode(null)).toBe(false)
+  })
+})
+
+describe('graphSuspectReviewCopy', () => {
+  it('should use 解除怀疑 when the node still has a suspect reason', () => {
+    expect(
+      graphSuspectReviewCopy({ propsJson: '{"suspectReason":"同人异职"}' }).actionDefault
+    ).toBe('解除怀疑')
+    expect(graphSuspectReviewCopy({ reviewStatus: 'pending' }).actionDefault).toBe('通过')
+  })
+})
+
+describe('stripGraphNodeSuspectReason', () => {
+  it('should drop suspectReason from props json and leave other fields', () => {
+    expect(
+      stripGraphNodeSuspectReason({
+        id: 'n1',
+        propsJson: '{"aliases":["阿三"],"suspectReason":"同人异职"}'
+      })
+    ).toEqual({ id: 'n1', propsJson: '{"aliases":["阿三"]}' })
+    expect(stripGraphNodeSuspectReason({ id: 'n2', propsJson: '{}' })).toEqual({
+      id: 'n2',
+      propsJson: '{}'
+    })
+  })
+})
+
+describe('formatGraphRailCount', () => {
+  it('should keep small counts and cap large pending counts at 99+', () => {
+    expect(formatGraphRailCount(0)).toBe('')
+    expect(formatGraphRailCount(8)).toBe('8')
+    expect(formatGraphRailCount(99)).toBe('99')
+    expect(formatGraphRailCount(467)).toBe('99+')
   })
 })
 
@@ -143,6 +194,17 @@ describe('graphMergeSearchSeed', () => {
         selectedId: null,
         selectedNode: null,
         findNode: () => ({ id: 'x', name: 'X', nodeType: 'person' })
+      })
+    ).toBeNull()
+  })
+
+  it('should skip source anchors when they are forbidden', () => {
+    expect(
+      graphMergeSearchSeed({
+        selectedId: 's1',
+        selectedNode: { id: 's1', name: '资料', nodeType: 'source' },
+        findNode: () => null,
+        forbiddenNodeTypes: ['source']
       })
     ).toBeNull()
   })
