@@ -65,7 +65,7 @@
   border-radius: 6px;
   border: none;
   overflow-x: auto;
-  background: var(--bg-code-block, #eceef2);
+  background: var(--bg-code-block);
   font-family: var(--font-family-main, var(--font-family));
   font-size: inherit;
   line-height: 1.6;

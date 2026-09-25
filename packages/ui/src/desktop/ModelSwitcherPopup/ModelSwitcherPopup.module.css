@@ -2,8 +2,8 @@
   position: fixed;
   inset: 0;
   background-color: var(--bg-overlay);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   /* 高于知识库等业务弹窗（约 10000），避免嵌套打开时被挡住 */
   z-index: 11000;
 }

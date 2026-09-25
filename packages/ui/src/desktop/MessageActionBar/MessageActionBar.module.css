@@ -38,12 +38,12 @@
 }
 
 :global(.chat-over-background) .iconBtn {
-  color: #fff;
+  color: var(--text-on-primary);
   mix-blend-mode: difference;
 }
 
 :global(.chat-over-background) .iconBtn:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: color-mix(in srgb, var(--text-on-primary) 14%, transparent);
 }
 
 :global(.chat-over-background) .dangerBtn:hover {

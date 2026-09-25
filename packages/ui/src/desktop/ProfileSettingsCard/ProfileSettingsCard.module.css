@@ -106,8 +106,8 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(8px);
+  background: var(--bg-overlay);
+  backdrop-filter: none;
   z-index: 1000;
   display: flex;
   justify-content: center;

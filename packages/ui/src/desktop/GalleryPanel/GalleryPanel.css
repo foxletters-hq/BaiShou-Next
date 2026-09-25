@@ -443,11 +443,11 @@
   right: 0;
   bottom: 0;
   z-index: 10000;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
 }
 
 /* 弹窗卡片 Content */
