@@ -31,8 +31,8 @@ export async function runMobileGraphSuspectScan(input: {
     return { collected: 0, persisted: 0 }
   }
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-  const { modelId } = resolveGlobalGraphModelIds(globalModels)
-  if (!modelId) {
+  const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
+  if (!providerId || !modelId) {
     logger.warn('[GraphSuspectScan] graph model missing, skip persist')
     return { collected: 0, persisted: 0 }
   }
@@ -55,7 +55,9 @@ export async function runMobileGraphSuspectScan(input: {
     edges,
     maxLlmCalls: GRAPH_SUSPECT_LLM_CAP,
     llm: async (prompt) => {
+      // 必须带上图抽取槽位的服务商，否则会落到记忆总结槽位
       const text = await summaryClient.generateContent(prompt.user, modelId, {
+        providerId,
         system: prompt.system,
         reasoningEffort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'graph')
       })

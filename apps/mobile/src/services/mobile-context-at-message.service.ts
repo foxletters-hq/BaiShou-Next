@@ -23,6 +23,8 @@ import {
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   resolveReasoningEffortForSlot,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -252,17 +254,21 @@ export async function loadContextAtMessage(
   const session = await deps.sessionRepo.getSessionById(sessionId)
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
   const globalModels = await deps.settingsManager.get<any>('global_models')
-  const providerId = session?.providerId || globalModels?.globalDialogueProviderId
-  const providerConfig =
-    providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
+  const providerId = isConfiguredProviderId(session?.providerId)
+    ? session?.providerId
+    : isConfiguredProviderId(globalModels?.globalDialogueProviderId)
+      ? globalModels.globalDialogueProviderId
+      : ''
+  const providerConfig = providerId
+    ? providers.find((p) => p.id === providerId && p.isEnabled !== false)
+    : undefined
   const registry = AIProviderRegistry.getInstance()
   const provider = providerConfig ? registry.getOrUpdateProvider(providerConfig) : undefined
-  const modelId =
-    session?.modelId ||
-    globalModels?.globalDialogueModelId ||
-    providerConfig?.defaultDialogueModel ||
-    providerConfig?.models?.[0] ||
-    'deepseek-chat'
+  const modelId = isConfiguredDialogueModelId(session?.modelId)
+    ? session?.modelId
+    : isConfiguredDialogueModelId(globalModels?.globalDialogueModelId)
+      ? globalModels.globalDialogueModelId
+      : ''
 
   const systemPrompt = provider
     ? await buildSystemPromptForSession({

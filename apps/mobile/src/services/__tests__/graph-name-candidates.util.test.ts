@@ -3,6 +3,9 @@ import {
   graphBareNodeIdForRevert,
   graphRevertSplitStayId,
   listRegisteredSameNameEntities,
+  canApproveGraphNode,
+  graphSuspectReviewCopy,
+  stripGraphNodeSuspectReason,
   parseGraphNodePropsJson,
   pickBareGraphNameHit,
   readGraphNodeSuspectReason
@@ -81,6 +84,40 @@ describe('readGraphNodeSuspectReason', () => {
     )
     expect(readGraphNodeSuspectReason({ propsJson: '{"suspectReason":123}' })).toBe('')
     expect(readGraphNodeSuspectReason(null)).toBe('')
+  })
+})
+
+describe('canApproveGraphNode', () => {
+  it('should allow approve when the node is pending or still marked suspect', () => {
+    expect(canApproveGraphNode({ reviewStatus: 'pending' })).toBe(true)
+    expect(
+      canApproveGraphNode({
+        reviewStatus: 'approved',
+        propsJson: '{"suspectReason":"同人异职"}'
+      })
+    ).toBe(true)
+    expect(canApproveGraphNode({ reviewStatus: 'approved' })).toBe(false)
+    expect(canApproveGraphNode(null)).toBe(false)
+  })
+})
+
+describe('graphSuspectReviewCopy', () => {
+  it('should use 解除怀疑 when the node still has a suspect reason', () => {
+    expect(
+      graphSuspectReviewCopy({ propsJson: '{"suspectReason":"同人异职"}' }).actionDefault
+    ).toBe('解除怀疑')
+    expect(graphSuspectReviewCopy({ reviewStatus: 'pending' }).actionDefault).toBe('通过')
+  })
+})
+
+describe('stripGraphNodeSuspectReason', () => {
+  it('should drop suspectReason from props json and leave other fields', () => {
+    expect(
+      stripGraphNodeSuspectReason({
+        id: 'n1',
+        propsJson: '{"aliases":["阿三"],"suspectReason":"同人异职"}'
+      })
+    ).toEqual({ id: 'n1', propsJson: '{"aliases":["阿三"]}' })
   })
 })
 

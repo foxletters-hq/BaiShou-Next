@@ -20,6 +20,7 @@ function applyLifecycleToInbox(event: AgentGateLifecycleEvent): void {
       reply: event.reply,
       message: event.message,
       selectedOptionIds: event.selectedOptionIds,
+      questionAnswers: event.questionAnswers,
       resolvedAt: Date.now()
     })
   }
