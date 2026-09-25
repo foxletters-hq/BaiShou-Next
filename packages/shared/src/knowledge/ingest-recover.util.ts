@@ -4,9 +4,9 @@ export type KnowledgeRecoverStaleResult = {
   droppedExtractJobs: number
 }
 
-/** 打开笔记本只恢复账本；没有欠账时不要把提取/嵌入再拉起来，避免主进程卡在 PDF/视觉抽取。 */
+/** 恢复账本后不要把提取/嵌入拉起来；未完成的资料由用户在笔记本里点嵌入、重试或开始整理。 */
 export function shouldKickKnowledgeIngestAfterRecover(
-  result: KnowledgeRecoverStaleResult
+  _result: KnowledgeRecoverStaleResult
 ): boolean {
-  return result.resetSources > 0 || result.reclaimedEmbedJobs > 0 || result.droppedExtractJobs > 0
+  return false
 }
