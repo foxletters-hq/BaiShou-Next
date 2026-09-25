@@ -23,41 +23,6 @@
   border: 0;
 }
 
-.openExternalIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.openExternalIcon:hover {
-  color: var(--text-primary);
-}
-
-.openExternal {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: var(--font-family);
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.openExternal:hover {
-  background: var(--bg-surface-high);
-}
-
 .fallback {
   position: absolute;
   inset: 48px 20px 20px;

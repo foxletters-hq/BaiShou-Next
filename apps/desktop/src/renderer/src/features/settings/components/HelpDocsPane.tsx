@@ -58,15 +58,10 @@ export const HelpDocsPane: React.FC = () => {
       title={t('settings.help_docs', '使用教程')}
       layout="stack"
       trailing={
-        <button
-          type="button"
-          className={styles.openExternalIcon}
-          title={t('settings.help_docs_open_browser', '在浏览器中打开')}
-          aria-label={t('settings.help_docs_open_browser', '在浏览器中打开')}
-          onClick={openInBrowser}
-        >
+        <Button type="button" variant="outlined" size="small" onClick={openInBrowser}>
           <ExternalLink size={14} />
-        </button>
+          {t('settings.help_docs_open_browser', '在浏览器中打开')}
+        </Button>
       }
       bodyClassName={styles.frameBody}
     >

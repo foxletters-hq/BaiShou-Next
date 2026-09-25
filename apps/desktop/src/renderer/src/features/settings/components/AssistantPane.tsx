@@ -1,8 +1,10 @@
 import React from 'react'
 import { IdentitySettingsCard } from '@baishou/ui'
 import { AssistantManagementScreen } from '../../agent/AssistantManagementScreen'
+import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 
 export const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
+  const settingsNav = useSettingsScopeNavigation()
   return (
     <div className="settings-pane settings-pane-full" style={{ padding: 0 }}>
       {settings.userProfileConfig && (
@@ -10,6 +12,7 @@ export const AssistantPane: React.FC<{ settings: any }> = ({ settings }) => {
           <IdentitySettingsCard
             profile={settings.userProfileConfig}
             onChange={(profile) => settings.setUserProfileConfig(profile)}
+            onManageIdentity={() => settingsNav.goIdentityCards()}
           />
         </div>
       )}

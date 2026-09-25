@@ -104,6 +104,44 @@
   gap: 2px;
 }
 
+.settings-management-row-main-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-management-current-label {
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.settings-management-current-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-management-current-card:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
 .settings-management-row-title {
   font-size: var(--settings-font-row-size);
   font-weight: var(--settings-font-row-weight);
