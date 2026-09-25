@@ -12,6 +12,7 @@ import {
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-desktop'
 import {
   SUMMARY_AI_GENERATION_TIMEOUT_MS,
+  SUMMARY_AI_IDLE_TIMEOUT_MS,
   generateSummaryTextFromModel,
   isSummaryFirstOutputTimeoutError
 } from '@baishou/core/shared'
@@ -63,7 +64,9 @@ export function buildSummaryAiClient(): SummaryAiClient {
             )
           }
           if (resolution.reason === 'no_model') {
-            throw new Error('No summary model configured')
+            throw new Error(
+              'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+            )
           }
           throw new Error('No active AI provider configured for summary generation')
         }
@@ -116,6 +119,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
           system: options?.system,
           abortController,
           firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS,
+          idleTimeoutMs: SUMMARY_AI_IDLE_TIMEOUT_MS,
           providerOptions,
           onFirstOutput: () => {
             logger.info(

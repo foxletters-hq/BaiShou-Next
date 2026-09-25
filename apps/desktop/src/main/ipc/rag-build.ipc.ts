@@ -5,7 +5,11 @@ import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { vaultService, resolveActiveVaultId } from './vault.ipc'
-import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
+import {
+  ensureRawDataRuntime,
+  getMemoryRawManager,
+  getRawDataSourceManager
+} from '../services/raw-data-source.runtime'
 import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import {
@@ -22,6 +26,10 @@ import {
 } from '@baishou/shared'
 import { newMemoryId } from './rag-build.util'
 import { registerRagBatchEmbedIpc } from './rag-batch-embed.ipc'
+import { requestBatchEmbedCancel } from '../services/batch-embed-control.service'
+import { GraphExtractQueueService } from '../services/graph-extract-queue.service'
+import { clearLifeGraphData } from '@baishou/core-desktop'
+import { requireGraphRepo, requireVaultId } from './graph-ipc.context'
 import {
   resolveRollbackConfig,
   restoreInterruptedMigration,
@@ -108,6 +116,9 @@ export function registerRagBuildIPC() {
   ipcMain.handle('rag:clear-all', async (_event, opts?: { kinds?: unknown }) => {
     await config.load()
     const kinds = parseMemoryClearKinds(opts?.kinds)
+    requestBatchEmbedCancel()
+    const extractQueue = GraphExtractQueueService.getInstance()
+    extractQueue.stop()
     const vectorKinds = memoryClearVectorKindsOf(kinds)
     await tombstoneMemoryShards(kinds)
     const { DesktopEmbeddingStorage } = await import('./rag.storage')
@@ -117,6 +128,16 @@ export function registerRagBuildIPC() {
     }
     if ((await storage.countEmbeddings()) === 0) {
       await config.setGlobalEmbeddingDimension(0)
+    }
+    if (kinds.includes('life_graph')) {
+      const { graphManager, freshness } = ensureRawDataRuntime()
+      await clearLifeGraphData({
+        vaultId: requireVaultId(),
+        graphRepo: requireGraphRepo(),
+        graphManager,
+        freshness,
+        stopExtract: () => extractQueue.stop()
+      })
     }
     const { invalidatePendingEmbedCountsCache } =
       await import('../services/pending-embed-counts.service')

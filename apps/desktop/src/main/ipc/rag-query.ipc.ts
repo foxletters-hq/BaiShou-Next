@@ -19,7 +19,8 @@ import {
   type RagVectorKindFilter,
   GRAPH_NODE_SOURCE_TYPE,
   graphNodeEmbeddingId,
-  parseGraphNodeEmbeddingId
+  parseGraphNodeEmbeddingId,
+  toSerializableAiError
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
@@ -158,7 +159,6 @@ export function registerRagQueryIPC() {
         sourceKind?: RagVectorKindFilter
       }
     ) => {
-      await config.load()
       const db = getAppDb()
       const activeVaultId = resolveActiveVaultId()
       const sourceKind = params.sourceKind
@@ -172,6 +172,7 @@ export function registerRagQueryIPC() {
 
       // ── 语义检索分支（Semantic Search Mode） ──
       if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
+        await config.load()
         try {
           if (embeddingService.isConfigured) {
             const queryVector = await embeddingService.embedQuery(params.keyword)
@@ -250,22 +251,31 @@ export function registerRagQueryIPC() {
                   : []
 
                 const graphEntries = includeGraph
-                  ? (
-                      await new GraphRepository(db).searchNodesByVector(
-                        activeVaultId,
-                        queryVector,
-                        limit
-                      )
-                    ).map((row) =>
-                      graphNodeToEntry({
-                        id: row.id,
-                        name: row.name,
-                        summary: row.summary ?? '',
-                        modelId: row.modelId ?? '',
-                        updatedAt: row.updatedAt,
-                        similarity: Number.isFinite(row.distance) ? 1 - row.distance : undefined
-                      })
-                    )
+                  ? await (async () => {
+                      try {
+                        return (
+                          await new GraphRepository(db).searchNodesByVector(
+                            activeVaultId,
+                            queryVector,
+                            limit
+                          )
+                        ).map((row) =>
+                          graphNodeToEntry({
+                            id: row.id,
+                            name: row.name,
+                            summary: row.summary ?? '',
+                            modelId: row.modelId ?? '',
+                            updatedAt: row.updatedAt,
+                            similarity: Number.isFinite(row.distance)
+                              ? 1 - row.distance
+                              : undefined
+                          })
+                        )
+                      } catch (err) {
+                        console.error('[rag.ipc] Graph semantic search failed:', err)
+                        return []
+                      }
+                    })()
                   : []
 
                 const entries = [...memoryEntries, ...graphEntries]
@@ -283,11 +293,13 @@ export function registerRagQueryIPC() {
             }
           }
         } catch (err) {
-          console.error('[rag.ipc] Semantic search failed, falling back to text search:', err)
+          console.error('[rag.ipc] Semantic search failed:', err)
+          throw toSerializableAiError(err)
         }
+        throw new Error('语义搜索未能完成：嵌入服务未就绪或未返回向量。')
       }
 
-      // ── 传统文本检索分支（Keyword/Text Search Mode, or fallback） ──
+      // ── 传统文本检索分支（仅 mode === 'text'，或未带关键词的浏览列表） ──
       const keyword = params.keyword?.trim() || ''
       const limit = params.limit || 10
       const offset = params.offset || 0
@@ -306,7 +318,7 @@ export function registerRagQueryIPC() {
         ? and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${keyword}%`))
         : vaultScopeFilter
 
-      const memoryQuery = db
+      const memoryListQuery = db
         .select({
           embeddingId: memoryEmbeddingsTable.embeddingId,
           text: memoryEmbeddingsTable.chunkText,
@@ -318,14 +330,32 @@ export function registerRagQueryIPC() {
         })
         .from(memoryEmbeddingsTable)
         .where(listFilter)
-
-      const memoryResults = await memoryQuery
         .orderBy(
           sql.raw(`${EMBEDDING_SOURCE_SORT_MILLIS_SQL} DESC`),
           desc(memoryEmbeddingsTable.embeddingId)
         )
         .limit(includeGraph ? limit + offset : limit)
         .offset(includeGraph ? 0 : offset)
+
+      const memoryCountQuery = db
+        .select({ count: sql<number>`count(*)` })
+        .from(memoryEmbeddingsTable)
+        .where(listFilter)
+
+      const [memoryResults, memoryCountRes, nodeRows, nodeTotal] = await Promise.all([
+        memoryListQuery,
+        memoryCountQuery,
+        includeGraph
+          ? graphRepo.listEmbeddedLiveNodesPage(activeVaultId, {
+              keyword,
+              limit: limit + offset,
+              offset: 0
+            })
+          : Promise.resolve([]),
+        includeGraph
+          ? graphRepo.countEmbeddedLiveNodes(activeVaultId, keyword || undefined)
+          : Promise.resolve(0)
+      ])
 
       const memoryEntries = memoryResults.map((r) =>
         enrichEntryFromMetadata({
@@ -340,22 +370,9 @@ export function registerRagQueryIPC() {
       )
 
       let entries = memoryEntries
-      let total = 0
-      const memoryCountRes = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(memoryEmbeddingsTable)
-        .where(listFilter)
-      total = Number(memoryCountRes[0]?.count || 0)
+      let total = Number(memoryCountRes[0]?.count || 0)
 
       if (includeGraph) {
-        const [nodeRows, nodeTotal] = await Promise.all([
-          graphRepo.listEmbeddedLiveNodesPage(activeVaultId, {
-            keyword,
-            limit: limit + offset,
-            offset: 0
-          }),
-          graphRepo.countEmbeddedLiveNodes(activeVaultId, keyword || undefined)
-        ])
         const merged = [...memoryEntries, ...nodeRows.map((row) => graphNodeToEntry(row))].sort(
           (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
         )
@@ -372,72 +389,69 @@ export function registerRagQueryIPC() {
   )
 
   ipcMain.handle('rag:delete-entry', async (_, embeddingId: string) => {
-    const db = getAppDb()
-    const graphNodeId = parseGraphNodeEmbeddingId(embeddingId)
-    if (graphNodeId) {
-      const graphRepo = new GraphRepository(db)
-      await graphRepo.clearNodeEmbedding(graphNodeId, resolveActiveVaultId())
-      const { invalidatePendingEmbedCountsCache } =
-        await import('../services/pending-embed-counts.service')
-      invalidatePendingEmbedCountsCache()
-      return true
-    }
-    const records = await db
-      .select()
-      .from(memoryEmbeddingsTable)
-      .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
-    const record = records[0]
-    if (!record) return true
-
-    const sourceType = record.sourceType
-    const sourceId = record.sourceId
-
-    if (sourceType === MEMORY_SOURCE_TYPE || sourceType === 'manual') {
-      const createdAtMs = embeddingInstantMs(record.sourceCreatedAt)
-      const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
-      try {
-        await getRawDataSourceManager().tombstone('memory', sourceId, { shardMonth })
-      } catch {
-        // legacy / already-absent JSONL rows: still drop derived embeddings
+    try {
+      const db = getAppDb()
+      const graphNodeId = parseGraphNodeEmbeddingId(embeddingId)
+      if (graphNodeId) {
+        const graphRepo = new GraphRepository(db)
+        await graphRepo.clearNodeEmbedding(graphNodeId, resolveActiveVaultId())
+        return true
       }
-      const { DesktopEmbeddingStorage } = await import('./rag.storage')
-      const storage = new DesktopEmbeddingStorage()
-      await storage.deleteEmbeddingsBySource(sourceType, sourceId)
-      if (sourceType === 'manual') {
-        await storage.deleteEmbeddingsBySource(MEMORY_SOURCE_TYPE, sourceId)
-      }
-      return true
-    }
+      const records = await db
+        .select()
+        .from(memoryEmbeddingsTable)
+        .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+      const record = records[0]
+      if (!record) return true
 
-    if (sourceType === 'diary') {
-      const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
-      const { deleteDiaryEmbeddingAliases } = await import('../services/diary-embedding.util')
-      const { BrowserWindow } = await import('electron')
+      const sourceType = record.sourceType
+      const sourceId = record.sourceId
 
-      const parsed = parseDiaryEmbeddingSourceId(sourceId)
-      const vaultId =
-        parsed?.vaultId?.trim() || String(record.vaultId ?? '').trim() || resolveActiveVaultId()
-      const diaryIdRaw = parsed?.diaryId ?? sourceId
-      const diaryId = Number(diaryIdRaw)
-      if (Number.isFinite(diaryId)) {
-        await deleteDiaryEmbeddingAliases(vaultId, diaryId)
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send('diary:sync-event', {
-            type: 'embed-pending-changed',
-            diaryId,
-            vaultId
-          })
+      if (sourceType === MEMORY_SOURCE_TYPE || sourceType === 'manual') {
+        const createdAtMs = embeddingInstantMs(record.sourceCreatedAt)
+        const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
+        try {
+          await getRawDataSourceManager().tombstone('memory', sourceId, { shardMonth })
+        } catch {
+          // legacy / already-absent JSONL rows: still drop derived embeddings
         }
-      } else {
-        await db
-          .delete(memoryEmbeddingsTable)
-          .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+        const { DesktopEmbeddingStorage } = await import('./rag.storage')
+        const storage = new DesktopEmbeddingStorage()
+        await storage.deleteEmbeddingsBySource(sourceType, sourceId)
+        if (sourceType === 'manual') {
+          await storage.deleteEmbeddingsBySource(MEMORY_SOURCE_TYPE, sourceId)
+        }
+        return true
       }
-      return true
-    }
 
-    await db.delete(memoryEmbeddingsTable).where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
-    return true
+      if (sourceType === 'diary') {
+        const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
+        const { deleteDiaryEmbeddingAliases } = await import('../services/diary-embedding.util')
+
+        const parsed = parseDiaryEmbeddingSourceId(sourceId)
+        const vaultId =
+          parsed?.vaultId?.trim() || String(record.vaultId ?? '').trim() || resolveActiveVaultId()
+        const diaryIdRaw = parsed?.diaryId ?? sourceId
+        const diaryId = Number(diaryIdRaw)
+        if (Number.isFinite(diaryId)) {
+          await deleteDiaryEmbeddingAliases(vaultId, diaryId)
+        } else {
+          await db
+            .delete(memoryEmbeddingsTable)
+            .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+        }
+        return true
+      }
+
+      await db
+        .delete(memoryEmbeddingsTable)
+        .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+      return true
+    } finally {
+      const { notifyPendingEmbedCountsChanged } =
+        await import('../services/pending-embed-counts.service')
+      notifyPendingEmbedCountsChanged()
+    }
   })
 
   ipcMain.handle('rag:edit-entry', async (_, params: { embeddingId: string; newText: string }) => {

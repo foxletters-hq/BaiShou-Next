@@ -20,6 +20,14 @@ import {
 import { pathService, vaultService, notifyVaultRegistryUpdated } from './vault.ipc'
 import { getOrchestrator, getSyncService } from './incremental-sync-service.factory'
 
+/** 记忆或人生图文件有下载/删本地时，必须灌派生索引（与日记层索引独立） */
+export function incrementalSyncShouldHydrateDerivedIndex(cls: {
+  memory: boolean
+  graph: boolean
+}): boolean {
+  return Boolean(cls.memory || cls.graph)
+}
+
 export function incrementalSyncNeedsBootstrap(result: {
   downloaded: string[]
   deletedLocal: string[]
@@ -126,13 +134,20 @@ export async function afterIncrementalSync(
       sessions: cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)),
       skipEnsures: true
     })
-  } else if (cls.memory || cls.graph) {
-    // Memory/Graph-only downloads skip selective resync but still need derived-index hydration
+  }
+
+  // 日记同批下载时 selectiveResync 也会灌一次，但仍要带上 deletedShardPaths，
+  // 否则同批 Graph/Memory 删除不会清 SQLite 派生索引。
+  if (incrementalSyncShouldHydrateDerivedIndex(cls)) {
     const { runDerivedIndexHydration } = await import('../services/raw-data-source.runtime')
     await runDerivedIndexHydration('incremental-sync-memory-graph', {
       deletedShardPaths: result.deletedLocal
     })
-  } else if (!cls.notebooks && cls.notebookGraphIds.length === 0) {
+  } else if (
+    !needsLayerIndex &&
+    !cls.notebooks &&
+    cls.notebookGraphIds.length === 0
+  ) {
     logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
     return
   }

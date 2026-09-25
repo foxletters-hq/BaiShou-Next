@@ -15,7 +15,10 @@ vi.mock('../incremental-sync-service.factory', () => ({
   getOrchestrator: vi.fn()
 }))
 
-import { incrementalSyncNeedsBootstrap } from '../incremental-sync-plan.ipc'
+import {
+  incrementalSyncNeedsBootstrap,
+  incrementalSyncShouldHydrateDerivedIndex
+} from '../incremental-sync-plan.ipc'
 
 describe('incrementalSyncNeedsBootstrap', () => {
   it('should require index bootstrap when local files were downloaded or deleted', () => {
@@ -43,5 +46,14 @@ describe('incrementalSyncNeedsBootstrap', () => {
         conflicted: ['x.md']
       })
     ).toBe(false)
+  })
+})
+
+describe('incrementalSyncShouldHydrateDerivedIndex', () => {
+  it('should hydrate when memory or graph files changed even if journals also synced', () => {
+    expect(incrementalSyncShouldHydrateDerivedIndex({ memory: true, graph: false })).toBe(true)
+    expect(incrementalSyncShouldHydrateDerivedIndex({ memory: false, graph: true })).toBe(true)
+    expect(incrementalSyncShouldHydrateDerivedIndex({ memory: true, graph: true })).toBe(true)
+    expect(incrementalSyncShouldHydrateDerivedIndex({ memory: false, graph: false })).toBe(false)
   })
 })
