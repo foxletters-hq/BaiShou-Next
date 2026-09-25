@@ -1,12 +1,18 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
-import styles from './StreamingBubble.module.css'
+import {
+  assistantStreamTimelineSignature,
+  groupStreamTimelineForDisplay,
+  type AgentStreamTimelineItem,
+  type MockChatAttachment
+} from '@baishou/shared'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { AgentToolChainSection } from '../AgentToolChain'
 import { AssistantAvatar } from '../AssistantAvatar'
+import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
 import { ChatBubbleAttachments } from '../ChatBubble/ChatBubbleAttachments'
-import type { MockChatAttachment } from '@baishou/shared'
+import styles from './StreamingBubble.module.css'
 
 export interface ToolExecution {
   name: string
@@ -21,6 +27,8 @@ export interface StreamingBubbleProps {
   isTextStreaming?: boolean
   activeToolName?: string | null
   completedTools?: ToolExecution[]
+  /** 按发生顺序展开思考 / 工具 / 正文；有值时优先于压扁字段 */
+  timeline?: AgentStreamTimelineItem[]
   aiProfile?: {
     name: string
     avatarPath?: string | null
@@ -39,6 +47,7 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
+  timeline,
   aiProfile = { name: 'AI' },
   attachments = [],
   error = null,
@@ -46,12 +55,18 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   onStop
 }) => {
   const { t } = useTranslation()
+  const liveTimeline = timeline ?? []
+  const timelineKey = assistantStreamTimelineSignature(liveTimeline)
+  const timelineItems = useMemo(
+    () => groupStreamTimelineForDisplay(liveTimeline),
+    [liveTimeline, timelineKey]
+  )
+  const useTimeline = timelineItems.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
   const hasAttachments = attachments.length > 0
-  const useWideBubble = hasTools
+  const showStickerAttachments = hasAttachments && !isTextStreaming
   const aiName = aiProfile.name || t('agent.chat.ai_label')
 
-  // 零副作用过滤提取 think 标签，并脱壳误泄漏的 message 元数据
   const { cleanContent: cleanText, cleanReasoning } = useMemo(
     () => parseRedactedThinking(text, reasoning),
     [text, reasoning]
@@ -59,15 +74,71 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
 
   const hasReasoning = cleanReasoning.length > 0 || isReasoning
   const hasText = cleanText.length > 0
+  const hasBody = useTimeline || hasText || hasTools || hasReasoning || showStickerAttachments
 
   return (
     <div className={styles.container}>
       <div className={styles.avatarWrap}>
         <AssistantAvatar avatarPath={aiProfile.avatarPath} size={36} borderRadius="50%" />
       </div>
-      <div className={`${styles.messageCol} ${useWideBubble ? styles.messageColWide : ''}`}>
+      <div className={styles.messageCol}>
+        {hasBody ? (
+          <>
+            <div className={styles.nameTimeRow}>
+              <span className={styles.nameLabel}>{aiName}</span>
+            </div>
+            <div className={styles.bubbleCard}>
+              {useTimeline ? (
+                <AssistantDisplayTimeline
+                  items={timelineItems}
+                  isStreaming={!error}
+                  isTextStreaming={isTextStreaming && !error}
+                  error={error}
+                />
+              ) : (
+                <>
+                  {hasReasoning && (
+                    <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
+                  )}
+
+                  {hasTools && (
+                    <AgentToolChainSection
+                      completedTools={completedTools}
+                      activeToolName={activeToolName}
+                      isStreaming={!error}
+                    />
+                  )}
+
+                  {hasText && (
+                    <AgentMarkdownRenderer
+                      content={cleanText}
+                      isStreaming={isTextStreaming && !error}
+                    />
+                  )}
+                </>
+              )}
+              {showStickerAttachments ? (
+                <ChatBubbleAttachments
+                  attachments={attachments}
+                  display="sticker"
+                  placement="after"
+                />
+              ) : null}
+            </div>
+            {isTextStreaming && !error && !hasText && !isReasoning && !activeToolName ? (
+              <div className={styles.dotsWrap}>
+                <BouncingDotsIndicator />
+              </div>
+            ) : null}
+          </>
+        ) : error ? null : (
+          <div className={styles.dotsWrap}>
+            <BouncingDotsIndicator />
+          </div>
+        )}
+
         {error ? (
-          <div className={styles.errorBox}>
+          <div className={styles.errorBox} role="alert">
             <span className={styles.errorText}>⚠ {error}</span>
             {onRetry && (
               <button className={styles.retryBtn} onClick={onRetry}>
@@ -75,56 +146,13 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
               </button>
             )}
           </div>
-        ) : (
-          <>
-            {hasText || hasTools || hasReasoning || hasAttachments ? (
-              <>
-                <div className={styles.nameTimeRow}>
-                  <span className={styles.nameLabel}>{aiName}</span>
-                </div>
-                <div
-                  className={`${styles.bubbleCard} ${useWideBubble ? styles.bubbleCardWide : ''}`}
-                >
-                  {hasAttachments ? <ChatBubbleAttachments attachments={attachments} /> : null}
-                  {/* Reasoning 块 - 移到 bubbleCard 内部 */}
-                  {hasReasoning && (
-                    <AgentThinkSection content={cleanReasoning} isStreaming={isReasoning} />
-                  )}
-
-                  {/* 工具调用 */}
-                  {hasTools && (
-                    <AgentToolChainSection
-                      completedTools={completedTools}
-                      activeToolName={activeToolName}
-                      isStreaming
-                    />
-                  )}
-
-                  {hasText && (
-                    <AgentMarkdownRenderer content={cleanText} isStreaming={isTextStreaming} />
-                  )}
-                </div>
-                {isTextStreaming && !hasText && !isReasoning && !activeToolName ? (
-                  <div className={styles.dotsWrap}>
-                    <BouncingDotsIndicator />
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className={styles.dotsWrap}>
-                <BouncingDotsIndicator />
-              </div>
-            )}
-
-            {onStop && (
-              <div className={styles.stopBtnWrap}>
-                <button className={styles.stopBtn} onClick={onStop}>
-                  🛑 {t('common.stop_generate', '停止生成')}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+        ) : onStop ? (
+          <div className={styles.stopBtnWrap}>
+            <button className={styles.stopBtn} onClick={onStop}>
+              🛑 {t('common.stop_generate', '停止生成')}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   )

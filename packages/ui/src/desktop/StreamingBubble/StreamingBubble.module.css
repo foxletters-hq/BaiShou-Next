@@ -1,14 +1,15 @@
 .container {
-  --chat-bubble-side-inset: 100px;
   padding: 8px 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  column-gap: 10px;
+  align-items: start;
   width: 100%;
   box-sizing: border-box;
 }
 
 .avatarWrap {
+  grid-column: 1;
   flex-shrink: 0;
 }
 
@@ -37,13 +38,11 @@
 .messageCol {
   display: flex;
   flex-direction: column;
-  width: fit-content;
-  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
-  align-items: flex-start;
-}
-
-.messageColWide {
-  width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: stretch;
 }
 
 .nameTimeRow {
@@ -64,7 +63,7 @@
 }
 
 :global(.chat-over-background) .nameLabel {
-  color: #fff;
+  color: var(--text-on-primary);
   mix-blend-mode: difference;
 }
 
@@ -74,13 +73,9 @@
   border: 1px solid var(--border-subtle);
   border-radius: 4px 20px 20px 20px;
   box-shadow: none;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-}
-
-.bubbleCardWide {
-  width: 100%;
 }
 
 .dotsWrap {

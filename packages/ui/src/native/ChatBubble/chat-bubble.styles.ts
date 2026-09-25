@@ -42,7 +42,7 @@ const chatBubbleLayoutStyles = StyleSheet.create({
     flexShrink: 1,
     alignItems: 'flex-start',
     alignSelf: 'flex-start',
-    marginRight: CHAT_BUBBLE_OPPOSITE_GAP,
+    marginRight: 0,
     maxWidth: CHAT_BUBBLE_MAX_WIDTH,
     minWidth: 0
   },
