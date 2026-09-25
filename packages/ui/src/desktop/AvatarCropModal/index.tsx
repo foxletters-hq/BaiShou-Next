@@ -38,7 +38,12 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
   }
 
   const modalRender = (
-    <div className={withAppContentOverlay(styles.modalOverlay)}>
+    <div
+      className={withAppContentOverlay(styles.modalOverlay)}
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onCanceled()
+      }}
+    >
       <div className={styles.modalContent}>
         <div className={styles.cropperContainer}>
           <Cropper

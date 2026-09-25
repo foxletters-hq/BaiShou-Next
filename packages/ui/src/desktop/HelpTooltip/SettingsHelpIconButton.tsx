@@ -24,14 +24,16 @@ export const SettingsHelpIconButton: React.FC<SettingsHelpIconButtonProps> = ({
   className = '',
   onActivate
 }) => (
-  <button
-    type="button"
-    className={`${styles.helpBtn} ${className}`.trim()}
-    aria-label={ariaLabel}
-    {...mergeSettingsHelpButtonHandlers(() => {
-      onActivate()
-    })}
-  >
-    <CircleHelp size={HELP_ICON_SIZE} className={styles.helpIcon} aria-hidden />
-  </button>
+  <span className={`${styles.helpBtnHost} ${className}`.trim()}>
+    <button
+      type="button"
+      className={styles.helpBtn}
+      aria-label={ariaLabel}
+      {...mergeSettingsHelpButtonHandlers(() => {
+        onActivate()
+      })}
+    >
+      <CircleHelp size={HELP_ICON_SIZE} className={styles.helpIcon} aria-hidden />
+    </button>
+  </span>
 )

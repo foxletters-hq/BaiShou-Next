@@ -1,14 +1,21 @@
 /**
  * Desktop help "?" icon SSOT — tertiary → primary on hover.
  * Used by HelpTooltip (hover) and SettingsHelpIconButton (click / modal).
+ * 点击钮必须等宽等高：border-radius 50% 在非正方形上会变成椭圆选中态。
  */
 
-.helpHost {
+.helpHost,
+.helpBtnHost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   vertical-align: middle;
+  line-height: 0;
+  user-select: none;
+}
+
+.helpHost {
   cursor: help;
 }
 
@@ -17,17 +24,29 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  padding: 4px;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   margin: 0;
   border: none;
   border-radius: 50%;
+  aspect-ratio: 1;
   background: transparent;
   cursor: pointer;
   vertical-align: middle;
   line-height: 0;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color 0.15s ease,
     transform 0.1s ease;
+}
+
+.helpBtn:focus,
+.helpBtn:focus-visible {
+  outline: none;
 }
 
 .helpBtn:hover {

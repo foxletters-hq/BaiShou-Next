@@ -1,7 +1,9 @@
 .pagination {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
+  min-height: 32px;
   font-family: var(--font-family-main, sans-serif);
   line-height: 1;
 }
@@ -69,13 +71,20 @@
   height: 32px;
 }
 
-.jumperInput {
+.jumper .jumperInput {
   width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   height: 32px;
+  min-height: 32px;
+  max-height: 32px;
   padding: 0 6px;
   font-size: 13px;
   line-height: 1;
   text-align: center;
+  display: inline-block;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .jumperInput::placeholder {
