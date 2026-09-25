@@ -8,6 +8,10 @@ import {
   translateGraphNodeType
 } from '@baishou/shared'
 import { Checkbox, useNativeTheme } from '@baishou/ui/native'
+import {
+  graphSuspectReviewCopy,
+  readGraphNodeSuspectReason
+} from '@/src/services/graph-name-candidates.util'
 import { GraphDiscriminatorLabel } from './GraphNodeSameNameList'
 import { styles } from './GraphScreen.styles'
 import type { GraphPendingItem } from './graph-screen.types'
@@ -53,6 +57,16 @@ export function GraphScreenPendingTab(props: {
               '确认关系会同时通过两端节点；确认节点也会通过与它相连的待审关系。可勾选后批量处理。'
             )}
           </Text>
+          {props.pendingItems.some(
+            (item) => item.kind === 'node' && readGraphNodeSuspectReason(item.data)
+          ) ? (
+            <Text style={[styles.pendingHintText, { color: colors.textSecondary }]}>
+              {t(
+                'graph.suspect_pending_hint',
+                '带「可疑」的节点可能把多个现实实体折在一起。通过表示就是一个人；要拆开请点查看后拆分。'
+              )}
+            </Text>
+          ) : null}
           <View style={styles.pendingToolbarRow}>
             <Pressable
               onPress={props.onToggleSelectAll}
@@ -185,16 +199,25 @@ export function GraphScreenPendingTab(props: {
                     <>
                       <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                         {t('graph.pending_node', '节点')} · {item.data.name}
+                        {readGraphNodeSuspectReason(item.data)
+                          ? ` · ${t('graph.suspect_badge', '可疑')}`
+                          : ''}
                       </Text>
                       <GraphDiscriminatorLabel value={item.data.discriminator} />
                       <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
                         {translateGraphNodeType(tr, item.data.nodeType)}
                         {item.data.summary ? ` · ${item.data.summary}` : ''}
+                        {readGraphNodeSuspectReason(item.data)
+                          ? ` · ${t('graph.suspect_reason', '怀疑理由')}：${readGraphNodeSuspectReason(item.data)}`
+                          : ''}
                       </Text>
                       <View style={styles.row}>
                         <Pressable onPress={() => void props.onReviewNode(item.id, 'approved')}>
                           <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                            {t('graph.approve', '通过')}
+                            {t(
+                              graphSuspectReviewCopy(item.data).actionKey,
+                              graphSuspectReviewCopy(item.data).actionDefault
+                            )}
                           </Text>
                         </Pressable>
                         <Pressable onPress={() => void props.onReviewNode(item.id, 'rejected')}>

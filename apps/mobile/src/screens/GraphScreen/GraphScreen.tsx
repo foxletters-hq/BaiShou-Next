@@ -16,6 +16,7 @@ import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useGraphScreenModel } from './useGraphScreenModel'
 import { GRAPH_FILTER_NODE_TYPES } from './graph-screen-display.util'
+import { graphSuspectReviewCopy } from '@/src/services/graph-name-candidates.util'
 
 export function GraphScreen() {
   const m = useGraphScreenModel()
@@ -127,7 +128,6 @@ export function GraphScreen() {
                 selectedNode={search.selectedNode}
                 estimate={data.estimate}
                 pendingCount={data.pending.length}
-                formatTokens={m.formatTokens}
                 onStartOrganize={() => void m.startOrganize()}
                 onDismissGuide={() => m.setDismissGuide(true)}
                 onResetMonthRange={m.resetMonthRange}
@@ -344,6 +344,15 @@ export function GraphScreen() {
         onSplit={(id) => {
           detail.setSplitOpen(false)
           void data.refresh().then(() => search.onSelectNode(id))
+        }}
+        onApprove={() => {
+          const nodeId = search.selectedNode?.id
+          if (!nodeId) return
+          const copy = graphSuspectReviewCopy(search.selectedNode)
+          void review.reviewNode(nodeId, 'approved').then(() => {
+            detail.setSplitOpen(false)
+            m.toast.showSuccess(m.t(copy.doneKey, copy.doneDefault))
+          })
         }}
         onCloseMergeSearch={() => review.setMergeSearchOpen(false)}
         onRequestMerge={review.setMergeConfirm}

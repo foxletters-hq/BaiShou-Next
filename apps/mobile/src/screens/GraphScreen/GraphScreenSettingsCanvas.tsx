@@ -151,7 +151,7 @@ export function GraphScreenSettingsCanvas(props: {
             >
               <Text
                 style={{
-                  color: active ? '#fff' : colors.textSecondary,
+                  color: active ? colors.textOnPrimary : colors.textSecondary,
                   fontSize: 12,
                   fontWeight: active ? '700' : '500'
                 }}

@@ -7,6 +7,7 @@ import {
   USER_GENDER_OPTIONS,
   type UserGender
 } from '@baishou/shared'
+import { settingsTypography } from '@baishou/ui/theme/tokens'
 import { useNativeTheme } from '@baishou/ui/native'
 import { GraphExtractHelpButton } from './GraphExtractHelpButton'
 import { styles } from './GraphScreen.styles'
@@ -104,7 +105,7 @@ export function GraphScreenSettingsOrganize(props: {
                 >
                   <Text
                     style={{
-                      color: active ? '#fff' : colors.textSecondary,
+                      color: active ? colors.textOnPrimary : colors.textSecondary,
                       fontSize: 12,
                       fontWeight: active ? '700' : '500'
                     }}
@@ -133,7 +134,13 @@ export function GraphScreenSettingsOrganize(props: {
           }
         ]}
       >
-        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+        <Text
+          style={{
+            color: colors.textOnPrimary,
+            fontSize: settingsTypography.label.fontSize,
+            fontWeight: settingsTypography.label.fontWeight
+          }}
+        >
           {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
             count: props.pendingCount
           })}
@@ -170,7 +177,7 @@ export function GraphScreenSettingsOrganize(props: {
           >
             <Text
               style={{
-                color: n === props.extractConcurrency ? '#fff' : colors.textSecondary,
+                color: n === props.extractConcurrency ? colors.textOnPrimary : colors.textSecondary,
                 fontSize: 12,
                 fontWeight: '600'
               }}
