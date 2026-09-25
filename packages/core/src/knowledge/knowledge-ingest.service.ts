@@ -6,6 +6,7 @@ import { processEmbedJob, processGraphJob } from './knowledge-ingest.embed'
 import { processExtractJob } from './knowledge-ingest.extract'
 import {
   createNotebook,
+  deleteNotebook,
   listNotebooks,
   reorderNotebooks,
   setCoverImage,
@@ -13,6 +14,7 @@ import {
 } from './knowledge-ingest.notebook'
 import {
   manageNotebookData,
+  organizeNotebook,
   rebuildIndex,
   rebuildNotebookGraph,
   rebuildNotebookVectors
@@ -85,6 +87,10 @@ export class KnowledgeIngestService {
     return reorderNotebooks(this.deps, orderedIds)
   }
 
+  async deleteNotebook(notebookId: string): Promise<void> {
+    return deleteNotebook(this.deps, notebookId)
+  }
+
   async importSource(input: {
     notebookId: string
     title: string
@@ -146,6 +152,10 @@ export class KnowledgeIngestService {
 
   async rebuildNotebookGraph(notebookId: string): Promise<number> {
     return rebuildNotebookGraph(this.deps, notebookId)
+  }
+
+  async organizeNotebook(notebookId: string): Promise<{ queued: number }> {
+    return organizeNotebook(this.deps, notebookId)
   }
 
   async processExtractJob(

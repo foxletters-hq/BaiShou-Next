@@ -160,7 +160,7 @@ async function runExtract(
             sourceId,
             page: info.page,
             total: info.total,
-            phase
+            phase: info.phase ?? phase
           })
         }
       })

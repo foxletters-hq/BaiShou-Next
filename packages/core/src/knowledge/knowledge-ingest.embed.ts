@@ -76,6 +76,12 @@ export async function processEmbedJob(deps: KnowledgeIngestDeps, sourceId: strin
   const chunks = splitTextIntoChunks(text)
   let charCursor = 0
   let lastDimension = 0
+  deps.onExtractProgress?.({
+    sourceId,
+    page: 0,
+    total: chunks.length,
+    phase: 'embed'
+  })
 
   try {
     for (const chunk of chunks) {
@@ -110,6 +116,12 @@ export async function processEmbedJob(deps: KnowledgeIngestDeps, sourceId: strin
         embedding: vector,
         modelId,
         vaultId: chunkVaultId
+      })
+      deps.onExtractProgress?.({
+        sourceId,
+        page: chunk.index + 1,
+        total: chunks.length,
+        phase: 'embed'
       })
     }
 

@@ -6,6 +6,15 @@ import {
   sourceHasChunkEmbeddings
 } from './knowledge-ingest.jobs'
 
+/** 空图「开始整理」：有抽出正文则入队向量并跟抽图，否则先提取。进行中的任务不重复入队。 */
+export function resolveNotebookOrganizeStage(source: {
+  extractedTextHash?: string | null
+  status?: string
+}): 'extract' | 'embed' | null {
+  if (source.status === 'extracting' || source.status === 'embedding') return null
+  return source.extractedTextHash ? 'embed' : 'extract'
+}
+
 export async function rebuildNotebookVectors(
   deps: KnowledgeIngestDeps,
   notebookId: string,
@@ -119,4 +128,31 @@ export async function manageNotebookData(
   const vectorQueued = vector ? await rebuildNotebookVectors(deps, id, { followGraph: graph }) : 0
   const graphQueued = graph ? (vector ? vectorQueued : await rebuildNotebookGraph(deps, id)) : 0
   return { action, vector, graph, sourceCount, vectorQueued, graphQueued }
+}
+
+export async function organizeNotebook(
+  deps: KnowledgeIngestDeps,
+  notebookId: string
+): Promise<{ queued: number }> {
+  const vaultId = requireVaultId(deps.getVaultId)
+  const id = String(notebookId || '').trim()
+  if (!id) throw new Error('notebookId required')
+  const sources = await deps.repo.listSources(id)
+  let queued = 0
+  for (const source of sources) {
+    const stage = resolveNotebookOrganizeStage(source)
+    if (!stage) continue
+    await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+    await deps.repo.enqueueIngestJob({
+      notebookId: id,
+      sourceId: source.id,
+      stage,
+      vaultId: source.vaultId?.trim() || vaultId
+    })
+    if (stage === 'embed') {
+      markGraphFollowAfterEmbed(source.id)
+    }
+    queued += 1
+  }
+  return { queued }
 }

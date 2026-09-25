@@ -6,6 +6,7 @@ import {
 } from '@baishou/shared'
 import type { KnowledgeIngestDeps } from './knowledge-ingest.types'
 import { newId, requireVaultId, toNotebookRawRecord } from './knowledge-ingest.helpers'
+import { deleteSource } from './knowledge-ingest.source'
 
 async function removeCoverImageFile(
   deps: KnowledgeIngestDeps,
@@ -166,4 +167,36 @@ export async function reorderNotebooks(deps: KnowledgeIngestDeps, orderedIds: st
     )
   }
   return deps.repo.listNotebooks({ vaultId })
+}
+
+export async function deleteNotebook(deps: KnowledgeIngestDeps, notebookId: string): Promise<void> {
+  const vaultId = requireVaultId(deps.getVaultId)
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const existing = await deps.repo.getNotebook(id)
+  if (!existing || existing.vaultId !== vaultId) {
+    throw new Error('notebook not found')
+  }
+  const sources = await deps.repo.listSources(id)
+  for (const source of sources) {
+    try {
+      await deleteSource(deps, source.id)
+    } catch {
+      /* 单份资料删失败不拦整本删除 */
+    }
+  }
+  const now = Date.now()
+  await deps.notebookManager.appendNotebookRecord({
+    ...toNotebookRawRecord({ ...existing, updatedAt: now }),
+    deletedAt: now
+  })
+  try {
+    const abs = await deps.notebookManager.absolutePath(id)
+    if (await deps.fs.exists(abs)) {
+      await deps.fs.rm(abs, { recursive: true, force: true })
+    }
+  } catch {
+    /* 目录缺失不拦删除 */
+  }
+  await deps.repo.deleteNotebook(id)
 }

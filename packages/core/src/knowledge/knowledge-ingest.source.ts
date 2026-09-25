@@ -119,6 +119,7 @@ export async function importSource(
     title: input.title,
     kind: sourceKind,
     path: relativePath ? relativePath.replace(/\\/g, '/').split('/').slice(-2).join('/') : null,
+    originUrl,
     contentHash,
     extractEngine,
     createdAt: now,
@@ -177,6 +178,7 @@ export async function deleteSource(deps: KnowledgeIngestDeps, sourceId: string):
     path: source.relativePath
       ? source.relativePath.replace(/\\/g, '/').split('/').slice(-2).join('/')
       : null,
+    originUrl: source.originUrl,
     contentHash: source.contentHash,
     extractEngine: source.extractEngine,
     pageCount: source.pageCount,
@@ -305,6 +307,7 @@ export async function cancelExtract(
   return { cancelled: true, status }
 }
 
+/** 只把卡住的提取恢复成 pending，不重新入队；由用户在笔记本里点重试或开始整理。 */
 export async function recoverStaleIngestState(
   deps: KnowledgeIngestDeps,
   options?: { olderThanMs?: number }
@@ -328,21 +331,13 @@ export async function recoverStaleIngestState(
   const extracting = await deps.repo.listSourcesByStatus('extracting', { vaultId })
   const extractJobs =
     extracting.length > 0 ? await deps.repo.listIngestJobs({ vaultId, stage: 'extract' }) : []
-  const activeExtract = new Set(
-    extractJobs
-      .filter((job) => job.status === 'pending' || job.status === 'running')
-      .map((job) => job.sourceId)
+  const runningExtract = new Set(
+    extractJobs.filter((job) => job.status === 'running').map((job) => job.sourceId)
   )
   for (const source of extracting) {
     if (isExtractProtected(source.id)) continue
-    if (activeExtract.has(source.id)) continue
+    if (runningExtract.has(source.id)) continue
     await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
-    await deps.repo.enqueueIngestJob({
-      notebookId: source.notebookId,
-      sourceId: source.id,
-      stage: 'extract',
-      vaultId: source.vaultId?.trim() || vaultId
-    })
     resetSources += 1
   }
 

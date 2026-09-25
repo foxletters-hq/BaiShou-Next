@@ -263,6 +263,38 @@ describeHydration('KnowledgeHydrationService', () => {
     expect(await repo.listChunksBySource('orphan')).toEqual([])
   })
 
+  it('水合时把 sources.jsonl 的 originUrl 写回资料行', async () => {
+    const now = Date.now()
+    await notebookManager.appendNotebookRecord({
+      id: 'nb_url',
+      name: '网址',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await notebookManager.appendSourceRecord('nb_url', {
+      id: 'src_url',
+      title: '外链',
+      kind: 'url',
+      path: 'sources/src_url.md',
+      originUrl: 'https://example.com/a',
+      contentHash: 'hash-url',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+
+    const svc = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => false
+    })
+    await svc.hydrate()
+    const row = await repo.getSource('src_url')
+    expect(row?.originUrl).toBe('https://example.com/a')
+  })
+
   it('JSONL 无 pageCount 时不得清空库内页数', async () => {
     const now = Date.now()
     await notebookManager.appendNotebookRecord({

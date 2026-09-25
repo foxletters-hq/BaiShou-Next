@@ -269,15 +269,16 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     const stale = await svc.recoverStaleIngestState({ olderThanMs: 0 })
     expect(stale.droppedExtractJobs).toBe(0)
     expect(stale.reclaimedEmbedJobs).toBeGreaterThan(0)
+    expect(stale.resetSources).toBe(1)
     const after = await knowledgeRepo.getSource(sourceId)
-    expect(after?.status).toBe('extracting')
+    expect(after?.status).toBe('pending')
     const reclaimed = (await knowledgeRepo.listIngestJobs()).find(
       (j) => j.sourceId === sourceId && j.stage === 'extract'
     )
     expect(reclaimed?.status).toBe('pending')
   })
 
-  it('recoverStale 对 extracting 且无 extract job 的资料重新入队', async () => {
+  it('recoverStale 对 extracting 且无 extract job 的资料只恢复为 pending，不重新入队', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
     const { id: notebookId } = await svc.createNotebook({ name: '缺 job 本' })
@@ -297,7 +298,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     const extractJob = (await knowledgeRepo.listIngestJobs()).find(
       (j) => j.sourceId === sourceId && j.stage === 'extract'
     )
-    expect(extractJob?.status).toBe('pending')
+    expect(extractJob).toBeUndefined()
   })
 
   it('claim 可按 stage 只取 embed，不受 running graph 挡住', async () => {
@@ -438,6 +439,21 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     await expect(fs.access(path.join(notebooksDir, a.id, 'cover.png'))).rejects.toBeTruthy()
   })
 
+  it('网址导入把 originUrl 写入 sources.jsonl', async () => {
+    const { id: notebookId } = await svc.createNotebook({ name: '网址本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: '文章',
+      kind: 'url',
+      originUrl: 'https://example.com/note',
+      textContent: '# 标题\n正文',
+      importProcessMode: 'later'
+    })
+    const jsonl = await fs.readFile(path.join(notebooksDir, notebookId, 'sources.jsonl'), 'utf8')
+    expect(jsonl).toContain('"originUrl":"https://example.com/note"')
+    expect((await repo.getSource(sourceId))?.originUrl).toBe('https://example.com/note')
+  })
+
   it('导入时可稍后整理：只保存文件，不入队提取或嵌入', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
@@ -510,6 +526,28 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     expect(await knowledgeRepo.getSource(sourceId)).toBeFalsy()
     await expect(fs.access(abs)).rejects.toBeTruthy()
     expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
+  })
+
+  it('should tombstone the notebook record and remove its directory when deleting a notebook', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '整本删除' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '整本一起删'
+    })
+    const source = await knowledgeRepo.getSource(sourceId)
+    const sourceAbs = path.join(notebooksDir, source!.relativePath!)
+    await fs.access(sourceAbs)
+    await svc.deleteNotebook(notebookId)
+    expect(await knowledgeRepo.getNotebook(notebookId)).toBeFalsy()
+    expect(await knowledgeRepo.getSource(sourceId)).toBeFalsy()
+    await expect(fs.access(path.join(notebooksDir, notebookId))).rejects.toBeTruthy()
+    const jsonl = await fs.readFile(path.join(notebooksDir, 'notebooks.jsonl'), 'utf8')
+    expect(jsonl).toContain(`"id":"${notebookId}"`)
+    expect(jsonl).toMatch(/"deletedAt":\s*\d+/)
   })
 
   it('重新处理可只入队向量或只入队图数据', async () => {
