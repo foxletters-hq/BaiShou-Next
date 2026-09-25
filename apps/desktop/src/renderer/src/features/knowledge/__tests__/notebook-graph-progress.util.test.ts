@@ -31,6 +31,23 @@ describe('notebookGraphProgressCopy', () => {
     expect(view.detailParams).toEqual({ done: 2, total: 5 })
   })
 
+  it('should show a page range when the current window covers pages', () => {
+    const view = notebookGraphProgressCopy({
+      pending: 1,
+      running: 1,
+      failed: 0,
+      currentSourceTitle: '年度报告',
+      windowsDone: 2,
+      windowsTotal: 20,
+      pageFrom: 12,
+      pageTo: 15,
+      pageTotal: 186
+    })
+    expect(view.percent).toBe(8)
+    expect(view.detailKey).toBe('knowledge.graph_progress_page_range')
+    expect(view.detailParams).toEqual({ from: 12, to: 15, total: 186 })
+  })
+
   it('hides when the queue is empty', () => {
     expect(
       notebookGraphProgressCopy({
@@ -75,5 +92,24 @@ describe('notebookGraphProgressCopy', () => {
     })
     expect(formatted.headline).toBe('Extracting “年度报告”')
     expect(formatted.detail).toBe('Finished 3 / 5')
+  })
+
+  it('should show the failed source and reason instead of a retry placeholder', () => {
+    const view = notebookGraphProgressCopy({
+      pending: 0,
+      running: 0,
+      failed: 1,
+      currentSourceTitle: null,
+      failedSourceTitle: '深度关系',
+      lastError: '还没配置图抽取模型。请先在设置里选好图抽取模型。'
+    })
+    expect(view.visible).toBe(true)
+    expect(view.percent).toBe(0)
+    expect(view.headlineKey).toBe('knowledge.graph_progress_failed_named')
+    expect(view.headlineParams).toEqual({ title: '深度关系' })
+    expect(view.detailKey).toBe('knowledge.graph_progress_failed_reason')
+    expect(view.detailParams).toEqual({
+      reason: '还没配置图抽取模型。请先在设置里选好图抽取模型。'
+    })
   })
 })
