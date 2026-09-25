@@ -12,7 +12,12 @@ import { GraphMergeSearchModal } from './GraphMergeSearchModal'
 import { GraphSplitNodeModal } from './GraphSplitNodeModal'
 import type { GraphExtractQueueSnapshot } from './graph-extract-queue.api'
 import type { GraphNameCandidate, GraphPageNode, GraphSourcePreview } from './graph-page.types'
-import { graphMergeSearchSeed, graphSplitInitialLabel } from './graph-page-view.util'
+import {
+  canApproveGraphNode,
+  graphMergeSearchSeed,
+  graphSplitInitialLabel,
+  readGraphNodeSuspectReason
+} from './graph-page-view.util'
 import styles from './GraphPage.module.css'
 
 export function GraphPageOverlays(props: {
@@ -36,6 +41,7 @@ export function GraphPageOverlays(props: {
   onOpenExisting: (id: string) => void
   onCloseSplit: () => void
   onSplit: (id: string) => void
+  onApprove: () => void
   onCloseMergeSearch: () => void
   onRequestMerge: (target: GraphMergeConfirmTarget) => void
   onCancelMerge: () => void
@@ -62,8 +68,11 @@ export function GraphPageOverlays(props: {
         initialDiscriminator={props.selectedNode?.discriminator || ''}
         initialLabel={graphSplitInitialLabel(props.selectedNode, props.nameCandidates)}
         busy={props.busy}
+        canApprove={canApproveGraphNode(props.selectedNode)}
+        hasSuspectReason={Boolean(readGraphNodeSuspectReason(props.selectedNode))}
         onClose={props.onCloseSplit}
         onSplit={props.onSplit}
+        onApprove={props.onApprove}
       />
       <GraphMergeSearchModal
         isOpen={props.mergeSearchOpen}

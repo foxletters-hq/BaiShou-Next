@@ -46,7 +46,7 @@ export function GraphPageCanvasPane(props: {
           {t('graph.force_reset', '恢复默认')}
         </button>
       </div>
-      <div className={styles.panel}>
+      <div className={styles.panel} data-graph-side-scroll>
         <div className={styles.opsBlock}>
           <div className={styles.filterSectionHead}>
             <span className={styles.viewFieldLabel}>{t('graph.filter', '筛选')}</span>

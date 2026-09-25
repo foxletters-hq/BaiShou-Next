@@ -43,7 +43,7 @@ export function GraphPageOrganizePane(props: {
       <div className={styles.settingsHeader}>
         <div className={styles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
       </div>
-      <div className={styles.panel}>
+      <div className={styles.panel} data-graph-side-scroll>
         <div className={styles.settingsSection}>
           <button
             type="button"

@@ -3,15 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { formatGraphMonth, parseGraphMonthToDate, type GraphMonthRange } from '@baishou/shared'
 import { Button } from '@baishou/ui'
 import { GraphForceCanvas } from './GraphForceCanvas'
-import { graphTokenCountDisplay } from './graph-page-derive.util'
-import type { GraphCostEstimate } from './graph-page.types'
 import styles from './GraphPage.module.css'
 
 export function GraphPageCanvasStage(props: {
+  paused?: boolean
   showEmptyGuide: boolean
   showMonthEmpty: boolean
-  estimate: GraphCostEstimate | null
-  pendingReextractCount: number
+  organizePendingCount: number
   highlightStartOrganize: boolean
   onStartOrganize: () => void
   onDismissGuide: () => void
@@ -34,7 +32,6 @@ export function GraphPageCanvasStage(props: {
   focusDepth: number
 }): React.ReactElement {
   const { t } = useTranslation()
-  const tokenCopy = graphTokenCountDisplay(props.estimate?.estimatedTokens ?? 0)
   return (
     <div className={styles.canvasWrap}>
       {props.showEmptyGuide ? (
@@ -45,17 +42,11 @@ export function GraphPageCanvasStage(props: {
           <div className={styles.emptyGuideBody}>
             {t(
               'graph.empty_guide_body',
-              '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens，用时约 {{minLow}}–{{minHigh}} 分钟。',
+              '有 {{count}} 篇还没整理。点「开始整理记忆」会补齐向量并整理关系图谱。',
               {
-                count: props.estimate?.entryCount ?? props.pendingReextractCount,
-                tokens: t(tokenCopy.key, tokenCopy.fallback, tokenCopy.params),
-                minLow: props.estimate?.estimatedMinutesLow ?? 1,
-                minHigh: props.estimate?.estimatedMinutesHigh ?? 1
+                count: props.organizePendingCount
               }
             )}
-          </div>
-          <div className={styles.emptyGuideHint}>
-            {t('graph.legend_pending', '虚线的关系伙伴还看不到，需要你确认。')}
           </div>
           <div className={styles.rowActions}>
             <Button
@@ -63,7 +54,7 @@ export function GraphPageCanvasStage(props: {
               className={props.highlightStartOrganize ? styles.highlightStartOrganize : ''}
               onClick={props.onStartOrganize}
             >
-              {t('graph.start_organize', '开始整理')}
+              {t('memory.start_organize', '开始整理记忆')}
             </Button>
             <Button type="button" onClick={props.onDismissGuide}>
               {t('graph.later', '以后再说')}
@@ -73,6 +64,7 @@ export function GraphPageCanvasStage(props: {
       ) : (
         <>
           <GraphForceCanvas
+            paused={props.paused}
             nodes={props.displayNodes}
             edges={props.displayEdges}
             highlightIds={props.highlightIds}

@@ -8,6 +8,7 @@ import { GraphPageOverlays } from './GraphPageOverlays'
 import { GraphPageSideColumn } from './GraphPageSideColumn'
 import { GraphPageToolbar } from './GraphPageToolbar'
 import type { GraphPageProps } from './graph-page.types'
+import { graphSuspectReviewCopy } from './graph-page-view.util'
 import { useGraphPageModel } from './useGraphPageModel'
 import styles from './GraphPage.module.css'
 
@@ -17,6 +18,7 @@ const PHASE_TRANSITION = { duration: 0.36, ease: [0.22, 1, 0.36, 1] as const }
 
 export const GraphPage: React.FC<GraphPageProps> = ({
   embedded = false,
+  active = true,
   highlightStartOrganize = false,
   autoStartOrganize = false,
   onAutoStartOrganizeConsumed,
@@ -83,7 +85,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             transition={PHASE_TRANSITION}
           >
             <div className={styles.chrome}>
-              <GraphPageToolbar
+              {embedded && m.showEmptyGuide ? null : (
+                <GraphPageToolbar
                 embedded={embedded}
                 showEmptyGuide={m.showEmptyGuide}
                 searchGroupRef={search.searchGroupRef}
@@ -101,29 +104,21 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 monthRange={m.month.monthRange}
                 onMonthRangeChange={m.updateMonthRange}
                 onClearToGlobal={m.clearToGlobal}
+                pinNeighborhood={selection.pinNeighborhood}
                 sideCollapsed={side.sideCollapsed}
                 highlightStartOrganize={highlightStartOrganize}
                 pendingReextractCount={data.pendingReextract.length}
                 onRunExtract={() => void extract.runExtract()}
-                extractRunning={extract.extractRunning}
-                onOpenQueue={() => extract.setQueueModalOpen(true)}
-              />
-              {m.status ? (
-                <button
-                  type="button"
-                  className={`${styles.statusBar} ${extract.extractRunning || m.busy ? styles.statusBarBusy : ''} ${
-                    extract.extractRunning || extract.queueItemCount > 0
-                      ? styles.statusBarAction
-                      : ''
-                  }`}
-                  onClick={() => {
-                    if (extract.extractRunning || extract.queueItemCount > 0) {
-                      extract.setQueueModalOpen(true)
-                    }
-                  }}
-                >
-                  {m.status}
-                </button>
+                />
+              )}
+              {m.status && !extract.extractRunning ? (
+                <div className={styles.statusRow}>
+                  <p
+                    className={`${styles.statusBar} ${m.busy ? styles.statusBarBusy : ''}`}
+                  >
+                    {m.status}
+                  </p>
+                </div>
               ) : null}
               {embedded ? null : (
                 <div className={styles.chipRow}>
@@ -133,6 +128,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     onConfigureEmbedding={() => m.navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
                     onStartIndex={() => m.navigate('/memory/vectors')}
                     onStartOrganize={m.startOrganize}
+                    onOpenOrganize={() => m.navigate('/memory/vectors')}
                     pendingEmbedParts={readiness.pendingEmbedParts}
                     indexing={readiness.indexing}
                     extracting={readiness.graphExtracting}
@@ -143,10 +139,15 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             </div>
 
             <GraphPageCanvasStage
+              paused={!active}
               showEmptyGuide={m.showEmptyGuide}
               showMonthEmpty={m.showMonthEmpty}
-              estimate={data.estimate}
-              pendingReextractCount={data.pendingReextract.length}
+              organizePendingCount={Math.max(
+                readiness.pendingEmbedCount,
+                readiness.pendingGraphCount,
+                data.estimate?.entryCount ?? 0,
+                data.pendingReextract.length
+              )}
               highlightStartOrganize={highlightStartOrganize}
               onStartOrganize={m.startOrganize}
               onDismissGuide={() => m.setDismissGuide(true)}
@@ -184,9 +185,17 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 sideCollapsed={side.sideCollapsed}
                 sideMode={side.sideMode}
                 pendingReextractCount={data.pendingReextract.length}
+                pendingReviewCount={review.pendingCount}
                 extractRunning={extract.extractRunning}
                 filterActive={m.filterActive}
-                onOpenSide={side.openSide}
+                onOpenSide={(mode) => {
+                  const jumpToPending =
+                    mode === 'content' &&
+                    review.pendingCount > 0 &&
+                    (side.sideCollapsed || side.sideMode !== 'content')
+                  side.openSide(mode)
+                  if (jumpToPending) m.setTab('pending')
+                }}
                 onToggleCollapsed={() => side.setSideCollapsedPersist(!side.sideCollapsed)}
                 onSideResizeDown={side.onSideResizeDown}
                 organize={{
@@ -352,6 +361,15 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           detail.setSplitOpen(false)
           m.toast.showSuccess(m.t('graph.split_done', '已拆出新实体'))
           void data.refresh().then(() => selection.onSelectNode(id))
+        }}
+        onApprove={() => {
+          const nodeId = selection.selectedNode?.id
+          if (!nodeId) return
+          const copy = graphSuspectReviewCopy(selection.selectedNode)
+          void review.reviewNode(nodeId, 'approved').then(() => {
+            detail.setSplitOpen(false)
+            m.toast.showSuccess(m.t(copy.doneKey, copy.doneDefault))
+          })
         }}
         onCloseMergeSearch={() => review.setMergeSearchOpen(false)}
         onRequestMerge={review.openMergeConfirm}

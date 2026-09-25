@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdArticle, MdChevronLeft, MdChevronRight, MdSettings, MdTune } from 'react-icons/md'
 import type { GraphSideMode } from './graph-page.types'
+import { formatGraphRailCount } from './graph-page-view.util'
 import { GraphPageCanvasPane } from './GraphPageCanvasPane'
 import { GraphPageContentPane } from './GraphPageContentPane'
 import { GraphPageOrganizePane } from './GraphPageOrganizePane'
@@ -12,6 +13,7 @@ export function GraphPageSideColumn(props: {
   sideCollapsed: boolean
   sideMode: GraphSideMode
   pendingReextractCount: number
+  pendingReviewCount: number
   extractRunning: boolean
   filterActive: boolean
   onOpenSide: (mode: GraphSideMode) => void
@@ -77,10 +79,21 @@ export function GraphPageSideColumn(props: {
           className={`${styles.railBtn} ${
             !props.sideCollapsed && sideMode === 'content' ? styles.railBtnActive : ''
           }`}
-          title={t('graph.side_content', '内容')}
+          title={
+            props.pendingReviewCount > 0
+              ? t('graph.side_content_pending', '内容 · 待确认 {{count}}', {
+                  count: props.pendingReviewCount
+                })
+              : t('graph.side_content', '内容')
+          }
           onClick={() => props.onOpenSide('content')}
         >
           <MdArticle size={18} />
+          {props.pendingReviewCount > 0 ? (
+            <span className={styles.railCount} aria-hidden>
+              {formatGraphRailCount(props.pendingReviewCount)}
+            </span>
+          ) : null}
         </button>
         <button
           type="button"
