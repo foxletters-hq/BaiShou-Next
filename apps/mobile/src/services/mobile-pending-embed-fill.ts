@@ -15,10 +15,6 @@ import {
 } from '@baishou/shared'
 import { MobileRagAbortError, assertMobileRagCanContinue } from './mobile-rag-operation-control'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
-import {
-  consumeMobileKnowledgeGraphJobs,
-  consumeMobileKnowledgeIngestJobs
-} from './mobile-knowledge-ingest-jobs.consumer'
 import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
 import { invalidateMobilePendingEmbedCountsCache } from './mobile-pending-embed-counts'
 import type { MobileRagServiceDeps } from './mobile-rag-core.helpers'
@@ -43,18 +39,16 @@ export type MobilePendingEmbedFillResult = {
   skippedReason?: 'no-vault' | 'adapter-unavailable' | 'nothing-to-embed'
 }
 
-type OrganizeFillCounts = Pick<
-  PendingEmbedCounts,
-  'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'notebookGraphNodes' | 'total'
-> & { graphExtract?: number; graphDisambiguate?: number }
+type OrganizeFillCounts = Pick<PendingEmbedCounts, 'diaries' | 'memories' | 'graphNodes' | 'total'> & {
+  graphExtract?: number
+  graphDisambiguate?: number
+}
 
 function pendingAsideDiary(counts?: OrganizeFillCounts): number | null {
   if (!counts) return null
   return (
     counts.memories +
     counts.graphNodes +
-    counts.knowledgeSources +
-    counts.notebookGraphNodes +
     (counts.graphExtract ?? 0) +
     (counts.graphDisambiguate ?? 0)
   )
@@ -97,8 +91,6 @@ export async function runMobileManualPendingEmbedFill(
       diaries: counts?.diaries ?? 0,
       memories: counts?.memories ?? 0,
       graphNodes: counts?.graphNodes ?? 0,
-      knowledgeSources: counts?.knowledgeSources ?? 0,
-      notebookGraphNodes: counts?.notebookGraphNodes ?? 0,
       graphExtract: counts?.graphExtract ?? 0,
       graphDisambiguate: counts?.graphDisambiguate ?? 0
     }),
@@ -111,9 +103,7 @@ export async function runMobileManualPendingEmbedFill(
     const statusText =
       phase === 'memory'
         ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
-        : phase === 'knowledge'
-          ? i18n.t('settings.rag_indexing_knowledge', '正在嵌入知识库…')
-          : phase === 'graph_extract'
+        : phase === 'graph_extract'
             ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
             : phase === 'graph_node'
               ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
@@ -149,78 +139,10 @@ export async function runMobileManualPendingEmbedFill(
   }
   phases = markPhaseDone(phases, 'memory')
 
-  let knowledgeDone = 0
-  if (phases.knowledgeSources.total > 0) {
-    report('knowledge', phases)
-  }
-  try {
-    await assertMobileRagCanContinue()
-    const { expoKnowledgeConnectionManager, KnowledgeRepository } =
-      await import('@baishou/database/expo')
-    if (expoKnowledgeConnectionManager.isConnected()) {
-      const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
-      const pending = await repo.listPendingEmbedSources(vaultId, {
-        modelId: adapter.embeddingModelId
-      })
-      phases = patchPhaseCounts(phases, 'knowledge', { total: pending.length })
-      if (pending.length > 0) {
-        report('knowledge', phases)
-      }
-      for (const source of pending) {
-        await assertMobileRagCanContinue()
-        await repo.enqueueIngestJob({
-          notebookId: source.notebookId,
-          sourceId: source.id,
-          stage: 'embed',
-          vaultId: source.vaultId || vaultId
-        })
-      }
-      if (pending.length > 0) {
-        for (let i = 0; i < 20; i += 1) {
-          await assertMobileRagCanContinue()
-          const result = await consumeMobileKnowledgeIngestJobs({
-            reason: 'manual-pending-fill',
-            limit: 10
-          })
-          if (!result.processed) break
-          knowledgeDone += result.processed
-          report(
-            'knowledge',
-            patchPhaseCounts(phases, 'knowledge', {
-              completed: knowledgeDone,
-              total: pending.length
-            })
-          )
-        }
-      }
-    }
-  } catch (error) {
-    if (error instanceof MobileRagAbortError) throw error
-    logger.warn('[PendingEmbedFill] mobile knowledge fill failed', error as Error)
-  }
-  phases = markPhaseDone(phases, 'knowledge')
-
   let extractDone = 0
   try {
     await assertMobileRagCanContinue()
     let extractTotal = phases.graphExtract.total
-    for (let i = 0; i < 20; i += 1) {
-      await assertMobileRagCanContinue()
-      const result = await consumeMobileKnowledgeGraphJobs({
-        reason: 'manual-pending-fill',
-        limit: 10
-      })
-      if (!result.processed) break
-      extractDone += result.processed
-      extractTotal = Math.max(extractTotal, extractDone)
-      report(
-        'graph_extract',
-        patchPhaseCounts(phases, 'graph_extract', {
-          completed: extractDone,
-          total: extractTotal
-        })
-      )
-    }
     invalidateMobilePendingEmbedCountsCache()
     const queued = await mobileGraphExtractQueue.enqueue({})
     extractTotal = Math.max(extractTotal, extractDone + queued.totalPending)
@@ -269,19 +191,10 @@ export async function runMobileManualPendingEmbedFill(
     const liveUnembedded = drizzleDb
       ? await new GraphRepository(drizzleDb).listUnembeddedLiveNodes(vaultId)
       : []
-    const { expoKnowledgeConnectionManager, NotebookGraphRepository } =
-      await import('@baishou/database/expo')
-    const notebookUnembedded = expoKnowledgeConnectionManager.isConnected()
-      ? await new NotebookGraphRepository(
-          expoKnowledgeConnectionManager.getDb()
-        ).listUnembeddedLiveNodes(vaultId)
-      : []
-    const notebookById = new Map(notebookUnembedded.map((row) => [row.id, row]))
-    const combinedTotal = liveUnembedded.length + notebookUnembedded.length
-    if (combinedTotal > 0) {
+    if (liveUnembedded.length > 0) {
       phases = patchPhaseCounts(phases, 'graph_node', {
         completed: 0,
-        total: combinedTotal
+        total: liveUnembedded.length
       })
       report('graph_node', phases)
     }
@@ -300,7 +213,7 @@ export async function runMobileManualPendingEmbedFill(
             'graph_node',
             patchPhaseCounts(phases, 'graph_node', {
               completed,
-              total: combinedTotal || total
+              total: liveUnembedded.length || total
             })
           )
           if (completed % 8 === 0) {
@@ -308,37 +221,6 @@ export async function runMobileManualPendingEmbedFill(
           }
         }
       })
-    }
-    if (notebookUnembedded.length > 0) {
-      const notebookRepo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-      const notebookResult = await backfillUnembeddedGraphNodes({
-        vaultId,
-        listUnembeddedLiveNodes: async () => notebookUnembedded,
-        updateNodeEmbedding: (id, vid, embedding, modelId) => {
-          const row = notebookById.get(id)
-          if (!row) return Promise.resolve()
-          return notebookRepo.updateNodeEmbedding(id, vid, row.notebookId, embedding, modelId)
-        },
-        embedQuery: (text) => adapter.embedQuery(text),
-        modelId: adapter.embeddingModelId ?? '',
-        onBeforeItem: () => assertMobileRagCanContinue(),
-        onProgress: ({ completed }) => {
-          report(
-            'graph_node',
-            patchPhaseCounts(phases, 'graph_node', {
-              completed: graphResult.updated + graphResult.failed + completed,
-              total: combinedTotal
-            })
-          )
-        }
-      })
-      graphResult = {
-        updated: graphResult.updated + notebookResult.updated,
-        failed: graphResult.failed + notebookResult.failed,
-        total: combinedTotal
-      }
-    } else {
-      graphResult = { ...graphResult, total: combinedTotal }
     }
   } catch (error) {
     if (error instanceof MobileRagAbortError) throw error
@@ -377,7 +259,7 @@ export async function runMobileManualPendingEmbedFill(
 
   invalidateMobilePendingEmbedCountsCache()
   report('finishing', phases)
-  const discovered = graphResult.total + knowledgeDone + extractDone + scanCollected
+  const discovered = graphResult.total + extractDone + scanCollected
   if (asideDiary === 0 && discovered === 0) {
     return { ...empty, skippedReason: 'nothing-to-embed' }
   }

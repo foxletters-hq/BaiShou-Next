@@ -18,6 +18,10 @@ import {
   resolveMobileEmbeddingForHydration
 } from './mobile-raw-data-source.runtime'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import {
+  emitMobileKnowledgeExtractProgress,
+  resolveMobileKnowledgeExtractConfig
+} from './mobile-knowledge-extract-config'
 
 type ConsumeResult = { processed: number; failed: number; skipped?: string }
 
@@ -81,6 +85,8 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
       })
     },
     deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
+    getExtractConfig: resolveMobileKnowledgeExtractConfig,
+    onExtractProgress: emitMobileKnowledgeExtractProgress,
     extractNotebookGraph: (
       await import('./mobile-knowledge-graph-extract')
     ).createMobileKnowledgeGraphExtractFn()
@@ -123,6 +129,24 @@ async function consumeMobileKnowledgeLane(
 
     const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
     const runtime = agentDbRuntimeRef.current
+    try {
+      const recoverSvc = await buildMobileKnowledgeIngestService()
+      if (recoverSvc) {
+        const recovered = await recoverSvc.recoverStaleIngestState()
+        if (recovered.resetSources || recovered.droppedExtractJobs || recovered.reclaimedEmbedJobs) {
+          logger.info('[MobileKnowledgeIngestJobs] recovered stale state', {
+            lane,
+            reason: options?.reason ?? 'unspecified',
+            ...recovered
+          })
+        }
+      }
+    } catch (e) {
+      logger.warn('[MobileKnowledgeIngestJobs] recover stale state failed', {
+        lane,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
     const vaultId =
       (await runtime?.pathService?.getLocalActiveVaultId()) ||
       deriveLegacyVaultId(
@@ -160,17 +184,6 @@ async function consumeMobileKnowledgeLane(
         try {
           // 移动端是消费端：优先 embed；若误排了 extract 则跳过并标失败提示
           if (job.stage === 'extract') {
-            // K1.5：text/url/note/md 可在移动端 extract；PDF 跳过（无 OCR）
-            const source = await repo.getSource(job.sourceId)
-            const rel = source?.relativePath || ''
-            const isPdf = /\.pdf$/i.test(rel) || /\.pdf$/i.test(source?.title || '')
-            if (isPdf) {
-              await repo.failIngestJob(job.id, 'mobile-skip-pdf-extract', {
-                backoffMs: 24 * 60 * 60_000
-              })
-              failed++
-              continue
-            }
             await svc.processExtractJob(job.sourceId)
             await repo.completeIngestJob(job.id)
             processed++
