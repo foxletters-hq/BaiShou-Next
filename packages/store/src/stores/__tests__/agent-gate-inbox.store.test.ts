@@ -188,6 +188,63 @@ describe('agent-gate-inbox.store', () => {
     expect(selectResolvedLiveForSession(state, 's1')).toBe(live)
   })
 
+  it('should hide resolved live gates when the current session id is missing', () => {
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'ws', sessionId: 'workspace-session', createdAt: 1 }))
+    useAgentGateInboxStore.getState().removeReplied('ws', {
+      requestId: 'ws',
+      reply: AgentGateReply.Always,
+      resolvedAt: 99
+    })
+    const state = useAgentGateInboxStore.getState()
+    expect(selectResolvedLiveForSession(state, 'workspace-session')).toHaveLength(1)
+    expect(selectResolvedLiveForSession(state, undefined)).toEqual([])
+    expect(selectResolvedLiveForSession(state, null)).toEqual([])
+    expect(selectResolvedLiveForSession(state, '')).toEqual([])
+    expect(selectResolvedLiveForSession(state, 'companion-draft')).toEqual([])
+  })
+
+  it('should keep workspace gates off the companion surface even in the same session', () => {
+    useAgentGateInboxStore.getState().hydrate([
+      req({
+        id: 'companion',
+        sessionId: 's1',
+        createdAt: 1,
+        action: 'companion_ask',
+        scope: { kind: 'companion' }
+      }),
+      req({
+        id: 'workspace',
+        sessionId: 's1',
+        createdAt: 2,
+        action: 'workspace_write',
+        scope: { kind: 'workspace', workspaceId: 'ws-1' }
+      })
+    ])
+    const pending = useAgentGateInboxStore.getState()
+    expect(selectActivePendingForSession(pending, 's1', 'companion')?.id).toBe('companion')
+    expect(selectActivePendingForSession(pending, 's1', 'workspace')?.id).toBe('workspace')
+
+    useAgentGateInboxStore.getState().removeReplied('companion', {
+      requestId: 'companion',
+      reply: AgentGateReply.Once,
+      resolvedAt: 10
+    })
+    useAgentGateInboxStore.getState().removeReplied('workspace', {
+      requestId: 'workspace',
+      reply: AgentGateReply.Once,
+      resolvedAt: 11
+    })
+    const resolved = useAgentGateInboxStore.getState()
+    expect(selectResolvedLiveForSession(resolved, 's1', 'companion').map((item) => item.request.id)).toEqual([
+      'companion'
+    ])
+    expect(selectResolvedLiveForSession(resolved, 's1', 'workspace').map((item) => item.request.id)).toEqual([
+      'workspace'
+    ])
+  })
+
   it('should return the previous and next pending ids for queue paging', () => {
     useAgentGateInboxStore.getState().hydrate([
       req({

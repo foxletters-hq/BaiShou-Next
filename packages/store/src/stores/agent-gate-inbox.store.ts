@@ -2,10 +2,12 @@ import {
   AgentGateReply,
   AgentGateRequestStatus,
   collapseAgentGatePendingRequests,
+  isAgentGateScopeOnSurface,
   type AgentGateConfigScope,
   type AgentGatePartData,
   type AgentGateRequest,
-  type AgentGateResolution
+  type AgentGateResolution,
+  type AgentGateSurface
 } from '@baishou/shared'
 import { createStore } from '../create-store'
 
@@ -245,10 +247,14 @@ export function selectPendingCount(state: AgentGateInboxState): number {
 
 export function selectPendingForSession(
   state: AgentGateInboxState,
-  sessionId: string | null | undefined
+  sessionId: string | null | undefined,
+  surface?: AgentGateSurface
 ): AgentGateRequest[] {
   if (!sessionId) return EMPTY_PENDING
-  return state.pending.filter((item) => item.sessionId === sessionId)
+  return state.pending.filter((item) => {
+    if (item.sessionId !== sessionId) return false
+    return surface ? isAgentGateScopeOnSurface(surface, item.scope) : true
+  })
 }
 
 export function selectPendingForScope(
@@ -264,9 +270,10 @@ export function selectPendingForScope(
  */
 export function selectActivePendingForSession(
   state: AgentGateInboxState,
-  sessionId: string | null | undefined
+  sessionId: string | null | undefined,
+  surface?: AgentGateSurface
 ): AgentGateRequest | null {
-  const queue = selectPendingForSession(state, sessionId)
+  const queue = selectPendingForSession(state, sessionId, surface)
   if (queue.length === 0 || !sessionId) return null
   const focusedId = state.focusedRequestIdBySession[sessionId]
   if (focusedId) {
@@ -280,9 +287,10 @@ export function selectQueueNeighborId(
   state: AgentGateInboxState,
   sessionId: string | null | undefined,
   requestId: string | null | undefined,
-  delta: -1 | 1
+  delta: -1 | 1,
+  surface?: AgentGateSurface
 ): string | null {
-  const queue = selectPendingForSession(state, sessionId)
+  const queue = selectPendingForSession(state, sessionId, surface)
   const index = queue.findIndex((item) => item.id === requestId)
   if (index < 0) return null
   return queue[index + delta]?.id ?? null
@@ -291,9 +299,10 @@ export function selectQueueNeighborId(
 export function selectQueuePosition(
   state: AgentGateInboxState,
   sessionId: string | null | undefined,
-  requestId: string | null | undefined
+  requestId: string | null | undefined,
+  surface?: AgentGateSurface
 ): { index: number; total: number } {
-  const queue = selectPendingForSession(state, sessionId)
+  const queue = selectPendingForSession(state, sessionId, surface)
   if (queue.length === 0) return EMPTY_QUEUE_POSITION
   if (!requestId) {
     return { index: 0, total: queue.length }
@@ -312,28 +321,35 @@ const resolvedLiveCacheBySession = new Map<string, AgentGatePartData[]>()
 
 export function selectResolvedLiveForSession(
   state: AgentGateInboxState,
-  sessionId: string | null | undefined
+  sessionId: string | null | undefined,
+  surface?: AgentGateSurface
 ): AgentGatePartData[] {
   if (!sessionId) return EMPTY_RESOLVED_LIVE
   if (resolvedLiveCacheSource !== state.resolvedLive) {
     resolvedLiveCacheBySession.clear()
     resolvedLiveCacheSource = state.resolvedLive
   }
-  const cached = resolvedLiveCacheBySession.get(sessionId)
+  const cacheKey = `${sessionId}::${surface ?? '*'}`
+  const cached = resolvedLiveCacheBySession.get(cacheKey)
   if (cached) return cached
-  const next = state.resolvedLive.filter((item) => item.request.sessionId === sessionId)
+  const next = state.resolvedLive.filter((item) => {
+    if (item.request.sessionId !== sessionId) return false
+    return surface ? isAgentGateScopeOnSurface(surface, item.request.scope) : true
+  })
   const stable = next.length === 0 ? EMPTY_RESOLVED_LIVE : next
-  resolvedLiveCacheBySession.set(sessionId, stable)
+  resolvedLiveCacheBySession.set(cacheKey, stable)
   return stable
 }
 
 export function selectSameActionCountInSession(
   state: AgentGateInboxState,
   sessionId: string | null | undefined,
-  action: string | null | undefined
+  action: string | null | undefined,
+  surface?: AgentGateSurface
 ): number {
   if (!sessionId || !action) return 0
-  return selectPendingForSession(state, sessionId).filter((item) => item.action === action).length
+  return selectPendingForSession(state, sessionId, surface).filter((item) => item.action === action)
+    .length
 }
 
 export function selectGroupedPending(state: AgentGateInboxState): AgentGateGroupedPending[] {
