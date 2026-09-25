@@ -155,6 +155,30 @@ describe('resolveCompanionAskPresentation', () => {
     expect(presentation.selectedOptionIds).toEqual(['0'])
   })
 
+  it('turns a multi-question companion_ask result into stacked items', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: {
+        questions: [
+          { question: '放在哪个文件夹？', options: ['当前根目录下新建', '先不创建'] },
+          { question: '文件夹叫什么？', options: ['写作-3'] }
+        ]
+      },
+      result: JSON.stringify({
+        approved: true,
+        answers: [
+          { question: '放在哪个文件夹？', answer: '当前根目录下新建', selectedOptionIds: ['0'] },
+          { question: '文件夹叫什么？', answer: '写作-3', selectedOptionIds: ['0'] }
+        ]
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.items).toHaveLength(2)
+    expect(presentation.items?.[1]?.answer).toBe('写作-3')
+  })
+
   it('treats the cancelled notice as declined', () => {
     const presentation = resolveToolResultPresentation({
       toolName: 'companion_ask',
