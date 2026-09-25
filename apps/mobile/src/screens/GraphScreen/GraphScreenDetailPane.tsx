@@ -9,6 +9,8 @@ import {
 import { GRAPH_EDGE_TYPES } from '@baishou/database'
 import { useNativeTheme } from '@baishou/ui/native'
 import {
+  canApproveGraphNode,
+  graphSuspectReviewCopy,
   parseGraphNodePropsJson,
   readGraphNodeSuspectReason,
   type GraphRegisteredSameNameEntity
@@ -101,8 +103,10 @@ export function GraphScreenDetailPane(props: {
         value={typeof selectedNode.discriminator === 'string' ? selectedNode.discriminator : ''}
       />
       <GraphNodeSameNameList
-        entities={props.sameNameEntities}
+        entities={props.sameNameEntities.filter((item) => item.nodeId !== selectedNode.id)}
         onOpen={(id) => void props.onSelectNode(id)}
+        onRevertSplit={props.onRevertSplit}
+        busy={props.busy}
       />
       {(() => {
         const ambiguousRefs = listAmbiguousSourceRefs(
@@ -190,18 +194,23 @@ export function GraphScreenDetailPane(props: {
             {t('graph.save_edit', '保存修改')}
           </Text>
         </Pressable>
-        {selectedNode.reviewStatus === 'pending' ? (
+        {canApproveGraphNode(selectedNode) ? (
           <>
             <Pressable onPress={() => void props.onReviewNode(selectedNode.id, 'approved')}>
               <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                {t('graph.approve', '通过')}
+                {t(
+                  graphSuspectReviewCopy(selectedNode).actionKey,
+                  graphSuspectReviewCopy(selectedNode).actionDefault
+                )}
               </Text>
             </Pressable>
-            <Pressable onPress={() => void props.onReviewNode(selectedNode.id, 'rejected')}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                {t('graph.reject', '拒绝')}
-              </Text>
-            </Pressable>
+            {selectedNode.reviewStatus === 'pending' ? (
+              <Pressable onPress={() => void props.onReviewNode(selectedNode.id, 'rejected')}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+                  {t('graph.reject', '拒绝')}
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         ) : null}
         <Pressable onPress={props.onDeleteSelected}>
@@ -328,7 +337,7 @@ export function GraphScreenDetailPane(props: {
             >
               <Text
                 style={{
-                  color: active ? '#fff' : colors.textSecondary,
+                  color: active ? colors.textOnPrimary : colors.textSecondary,
                   fontSize: 11,
                   fontWeight: active ? '700' : '500'
                 }}

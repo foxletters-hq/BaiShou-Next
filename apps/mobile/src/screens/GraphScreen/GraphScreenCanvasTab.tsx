@@ -9,7 +9,7 @@ import {
   type GraphForceSettings,
   type GraphMonthRange
 } from '@baishou/shared'
-import { useNativeTheme } from '@baishou/ui/native'
+import { Button, useNativeTheme } from '@baishou/ui/native'
 import { GraphForceWebView } from './GraphForceWebView'
 import { GraphMonthRangeSheet } from './GraphMonthRangeSheet'
 import { GraphScreenDepthChips } from './GraphScreenDepthChips'
@@ -32,7 +32,6 @@ export function GraphScreenCanvasTab(props: {
   selectedNode: any | null
   estimate: GraphCostEstimate | null
   pendingCount: number
-  formatTokens: (n: number) => string
   onStartOrganize: () => void
   onDismissGuide: () => void
   onResetMonthRange: () => void
@@ -199,26 +198,19 @@ export function GraphScreenCanvasTab(props: {
           <Text style={[styles.guideBody, { color: colors.textSecondary }]}>
             {t(
               'graph.empty_guide_body',
-              '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens，用时约 {{minLow}}–{{minHigh}} 分钟。',
+              '有 {{count}} 篇还没整理。点「开始整理记忆」会补齐向量并整理关系图谱。',
               {
-                count: props.estimate?.entryCount ?? props.pendingCount,
-                tokens: props.formatTokens(props.estimate?.estimatedTokens ?? 0),
-                minLow: props.estimate?.estimatedMinutesLow ?? 1,
-                minHigh: props.estimate?.estimatedMinutesHigh ?? 1
+                count: props.estimate?.entryCount ?? props.pendingCount
               }
             )}
           </Text>
           <View style={styles.row}>
-            <Pressable onPress={props.onStartOrganize}>
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                {t('graph.start_organize', '开始整理')}
-              </Text>
-            </Pressable>
-            <Pressable onPress={props.onDismissGuide}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                {t('graph.later', '以后再说')}
-              </Text>
-            </Pressable>
+            <Button onPress={props.onStartOrganize}>
+              {t('memory.start_organize', '开始整理记忆')}
+            </Button>
+            <Button variant="outlined" onPress={props.onDismissGuide}>
+              {t('graph.later', '以后再说')}
+            </Button>
           </View>
         </View>
       ) : props.showMonthEmpty ? (

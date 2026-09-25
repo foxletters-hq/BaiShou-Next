@@ -17,6 +17,10 @@ import {
   graphExtractOverallProgress
 } from '@baishou/shared'
 import { FloatingModal, MarkdownRenderer, useNativeTheme } from '@baishou/ui/native'
+import {
+  canApproveGraphNode,
+  readGraphNodeSuspectReason
+} from '@/src/services/graph-name-candidates.util'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import { GraphCreateNodeSheet } from './GraphCreateNodeSheet'
 import { GraphExtractHelpButton } from './GraphExtractHelpButton'
@@ -55,6 +59,7 @@ export function GraphScreenOverlays(props: {
   onOpenExisting: (id: string) => void
   onCloseSplit: () => void
   onSplit: (id: string) => void
+  onApprove: () => void
   onCloseMergeSearch: () => void
   onRequestMerge: (target: GraphMergeConfirmTarget) => void
   onCancelMerge: () => void
@@ -111,7 +116,7 @@ export function GraphScreenOverlays(props: {
               >
                 <Text
                   style={{
-                    color: n === props.extractConcurrency ? '#fff' : colors.textSecondary,
+                    color: n === props.extractConcurrency ? colors.textOnPrimary : colors.textSecondary,
                     fontSize: 12,
                     fontWeight: '600'
                   }}
@@ -278,6 +283,15 @@ export function GraphScreenOverlays(props: {
             contentContainerStyle={styles.sourceScrollContent}
             showsVerticalScrollIndicator
           >
+            {props.sourcePreview?.excerpt?.trim() &&
+            props.sourcePreview.excerpt.trim() !== (props.sourcePreview.content || '').trim() ? (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>
+                  {t('graph.source_excerpt_label', '关系摘录')}
+                </Text>
+                <MarkdownRenderer content={props.sourcePreview.excerpt} variant="preview" />
+              </View>
+            ) : null}
             <MarkdownRenderer content={props.sourcePreview?.content || ''} variant="preview" />
           </ScrollView>
         )}
@@ -314,8 +328,11 @@ export function GraphScreenOverlays(props: {
           vaultId={props.vaultId}
           vaultName={props.vaultName}
           busy={props.busy}
+          canApprove={canApproveGraphNode(props.selectedNode)}
+          hasSuspectReason={Boolean(readGraphNodeSuspectReason(props.selectedNode))}
           onClose={props.onCloseSplit}
           onSplit={props.onSplit}
+          onApprove={props.onApprove}
         />
       ) : null}
       <GraphMergeSearchSheet
