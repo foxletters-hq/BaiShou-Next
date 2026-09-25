@@ -21,10 +21,6 @@
   animation: scaleIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
-[data-theme='dark'] .dialog {
-  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-}
-
 .header {
   display: flex;
   justify-content: space-between;

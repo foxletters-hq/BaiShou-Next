@@ -84,7 +84,7 @@
 }
 
 .color-dot-check {
-  color: white;
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 600;
 }
@@ -145,13 +145,13 @@
 }
 
 .color-dot.active {
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: color-mix(in srgb, var(--text-on-primary) 80%, transparent);
   box-shadow: 0 0 12px var(--text-secondary);
 }
 
 .custom-color-picker {
-  border: 1px dashed rgba(255, 255, 255, 0.5);
-  color: #fff;
+  border: 1px dashed color-mix(in srgb, var(--text-on-primary) 50%, transparent);
+  color: var(--text-on-primary);
   font-weight: 600;
 }
 
@@ -204,11 +204,6 @@
   border-color: var(--color-primary);
   color: var(--text-primary);
   font-weight: 600;
-}
-
-[data-theme='dark'] .lang-chip.active {
-  background: var(--color-primary-light, rgba(var(--color-primary-rgb), 0.22));
-  border-color: var(--color-primary);
 }
 
 /* 字体大小：离散刻度滑条（对齐常规设置示意） */

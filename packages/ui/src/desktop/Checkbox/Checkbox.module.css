@@ -9,8 +9,8 @@
   position: relative;
   box-sizing: border-box;
   border-radius: 5px;
-  border: 1.5px solid var(--border-control, rgba(0, 0, 0, 0.22));
-  background: var(--bg-surface, #fff);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
   outline: none;
   box-shadow: none;
   transition:
@@ -48,7 +48,7 @@
 }
 
 .checkbox:checked::after {
-  border-color: var(--text-on-primary, #fff);
+  border-color: var(--text-on-primary);
 }
 
 .checkbox:indeterminate::after {
@@ -58,7 +58,7 @@
   height: 0;
   border-width: 0 0 1.5px 0;
   transform: none;
-  border-color: var(--text-on-primary, #fff);
+  border-color: var(--text-on-primary);
 }
 
 .checkbox:disabled {

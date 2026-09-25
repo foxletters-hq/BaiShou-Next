@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-overlay);
   z-index: 1000;
   animation: fadeIn 0.2s ease-out;
 }
@@ -17,17 +17,13 @@
   z-index: 1001;
   font-family: var(--font-family-main);
   animation: slideUp 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.15);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='dark'] .sheet {
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .handleBar {
   width: 36px;
   height: 4px;
-  background: rgba(128, 128, 128, 0.3);
+  background: color-mix(in srgb, var(--text-secondary) 30%, transparent);
   border-radius: 2px;
   margin: 10px auto;
 }

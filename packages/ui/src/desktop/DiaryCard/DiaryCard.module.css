@@ -2,7 +2,7 @@
   background: var(--bg-surface);
   border-radius: 24px;
   border: 1px solid var(--border-control);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-md);
   padding: 24px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -13,18 +13,9 @@
   font-family: var(--font-family-main);
 }
 
-[data-theme='dark'] .card {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
 .card.hovered {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
-}
-
-[data-theme='dark'] .card.hovered {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .header {
@@ -114,42 +105,25 @@
 
 /* 4 distinct tag color sets based on modulo hashing */
 .tagColor0 {
-  background: rgba(59, 130, 246, 0.15);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   color: var(--color-primary);
 }
 .tagColor1 {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
 }
 .tagColor2 {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
 }
 .tagColor3 {
-  background: rgba(139, 92, 246, 0.15);
-  color: #8b5cf6;
+  background: color-mix(in srgb, var(--color-accent-purple) 15%, transparent);
+  color: var(--color-accent-purple);
 }
 
 .tagOverflow {
-  background: rgba(148, 163, 184, 0.18);
+  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
   color: var(--text-secondary);
-}
-
-[data-theme='dark'] .tagColor0 {
-  background: rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
-}
-[data-theme='dark'] .tagColor1 {
-  background: rgba(16, 185, 129, 0.25);
-  color: #34d399;
-}
-[data-theme='dark'] .tagColor2 {
-  background: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-}
-[data-theme='dark'] .tagColor3 {
-  background: rgba(139, 92, 246, 0.25);
-  color: #a78bfa;
 }
 
 .actionBar {

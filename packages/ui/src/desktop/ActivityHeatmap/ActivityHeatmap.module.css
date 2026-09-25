@@ -4,13 +4,9 @@
   border: 1px solid var(--border-card);
   border-radius: 16px;
   font-family: var(--font-family-main);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-md);
   max-width: 100%;
   min-width: 0;
-}
-
-[data-theme='dark'] .container {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .header {
@@ -74,7 +70,7 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
-  backdrop-filter: var(--blur-overlay);
+  backdrop-filter: none;
   animation: fadeIn 0.2s ease-out;
 }
 
