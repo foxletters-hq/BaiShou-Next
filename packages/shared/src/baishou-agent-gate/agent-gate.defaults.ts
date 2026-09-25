@@ -97,7 +97,8 @@ export const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS = [
   'diary_read',
   'vector_search',
   'summary_read',
-  'message_search'
+  'message_search',
+  'session_list'
 ] as const
 
 export function normalizeWorkspacePersonalMemoryReadEnabled(value: unknown): boolean {

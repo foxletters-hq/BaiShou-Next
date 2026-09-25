@@ -1,5 +1,10 @@
 import { AgentGateKind } from './agent-gate.enums'
-import { shouldDisableAlwaysForPreview, type AgentGatePreview } from './agent-gate-preview.types'
+import { isWorkspaceEditGateAction } from './agent-gate-capability.util'
+import {
+  mergeAgentGatePreviews,
+  shouldDisableAlwaysForPreview,
+  type AgentGatePreview
+} from './agent-gate-preview.types'
 import type { AgentGateRequest, AgentGateResourceRef } from './agent-gate.types'
 import { extractAgentGateResourcesFromMetadata } from './agent-gate-policy.util'
 import { resolveCommandPrefixPatternFromCommand } from './agent-gate-shell-match.util'
@@ -39,7 +44,10 @@ export function resolveAgentGateToolCoalesceKey(input: {
   metadata?: Record<string, unknown>
 }): string | null {
   if (input.kind !== AgentGateKind.Tool) return null
-  if (shouldDisableAlwaysForPreview(input.preview)) return null
+  // 危险命令单独确认；截断文件改动仍并入同类编辑卡，Always 按钮由 shouldDisableAlwaysForRequest 关掉
+  if (input.preview?.type === 'command' && shouldDisableAlwaysForPreview(input.preview)) {
+    return null
+  }
 
   if (input.action === 'workspace_run') {
     const pattern = resolveWorkspaceRunPattern(input)
@@ -56,6 +64,9 @@ export function resolveAgentGateToolCoalesceKey(input: {
   const external = (input.resources ?? []).find((item) => item.kind === 'external_path')
   if (external) {
     return `${input.action}::external::${external.value}`
+  }
+  if (isWorkspaceEditGateAction(input.action)) {
+    return 'workspace_edit'
   }
   return input.action
 }
@@ -96,8 +107,17 @@ export function collapseAgentGatePendingRequests<T extends AgentGateRequest>(req
     })
     const head = items[0]!
     const uniqueIds = new Set(items.map((item) => item.id))
+    const previews = mergeAgentGatePreviews(...items)
     const coalescedCount = Math.max(head.coalescedCount ?? 1, uniqueIds.size)
-    if (coalescedCount === (head.coalescedCount ?? 1)) return head
-    return { ...head, coalescedCount }
+    const previewsChanged =
+      previews.length !== (head.previews?.length ?? (head.preview ? 1 : 0)) ||
+      previews.some((preview, index) => preview !== (head.previews?.[index] ?? head.preview))
+    if (coalescedCount === (head.coalescedCount ?? 1) && !previewsChanged) return head
+    return {
+      ...head,
+      coalescedCount,
+      previews: previews.length > 0 ? previews : head.previews,
+      preview: head.preview ?? previews[0]
+    }
   })
 }

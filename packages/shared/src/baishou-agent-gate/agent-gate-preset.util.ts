@@ -4,7 +4,8 @@ import { hasCatchAllAllowRule, setCatchAllAllowRule } from './agent-gate-migrate
 import { applyCapabilityStateToConfig } from './agent-gate-capability.util'
 import {
   DEFAULT_WORKSPACE_COMMAND_BLACKLIST,
-  isDangerousShellCommand
+  isDangerousShellCommand,
+  unwrapWindowsCmdInvocation
 } from './agent-gate-shell-match.util'
 
 export type { AgentWorkspaceSecurityMode }
@@ -40,10 +41,9 @@ export function applyWorkspaceSecurityModeToConfig(
 
   next = setCatchAllAllowRule(next, fullAccess)
 
-  const commandBlacklist =
-    next.commandBlacklist && next.commandBlacklist.length > 0
-      ? [...next.commandBlacklist]
-      : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
+  const commandBlacklist = Array.isArray(next.commandBlacklist)
+    ? [...next.commandBlacklist]
+    : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
 
   return {
     ...next,
@@ -92,11 +92,11 @@ export function matchesCommandBlacklist(
   command: string,
   blacklist: readonly string[] | undefined
 ): boolean {
-  const normalized = command.replace(/\s+/g, ' ').trim()
+  const normalized = unwrapWindowsCmdInvocation(command)
   if (!normalized) return false
   if (isDangerousShellCommand(normalized)) return true
 
-  const patterns = blacklist?.length ? blacklist : DEFAULT_WORKSPACE_COMMAND_BLACKLIST
+  const patterns = Array.isArray(blacklist) ? blacklist : DEFAULT_WORKSPACE_COMMAND_BLACKLIST
   const haystack = normalized.toLowerCase()
   return patterns.some((raw) => {
     const pattern = raw.trim().toLowerCase()

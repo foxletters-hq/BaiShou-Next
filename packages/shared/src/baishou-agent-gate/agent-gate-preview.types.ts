@@ -84,3 +84,49 @@ export function shouldDisableAlwaysForPreview(preview: AgentGatePreview | undefi
   if (preview.type === 'command' && preview.dangerous) return true
   return false
 }
+
+export function agentGatePreviewIdentityKey(preview: AgentGatePreview): string {
+  if (preview.type === 'file_change') {
+    return `file_change:${preview.kind}:${preview.path.replace(/\\/g, '/')}:${preview.previousPath ?? ''}`
+  }
+  if (preview.type === 'command') {
+    return `command:${preview.command}:${preview.workdir ?? ''}`
+  }
+  return `content:${preview.subject}`
+}
+
+export function collectAgentGatePreviews(request: {
+  preview?: AgentGatePreview
+  previews?: AgentGatePreview[]
+}): AgentGatePreview[] {
+  if (request.previews && request.previews.length > 0) return [...request.previews]
+  return request.preview ? [request.preview] : []
+}
+
+export function listAgentGateFileChangePreviews(request: {
+  preview?: AgentGatePreview
+  previews?: AgentGatePreview[]
+}): AgentGateFileChangePreview[] {
+  return collectAgentGatePreviews(request).filter(isAgentGateFileChangePreview)
+}
+
+/** 后写入的同路径预览覆盖先前的，不同文件全部保留 */
+export function mergeAgentGatePreviews(
+  ...sources: Array<{ preview?: AgentGatePreview; previews?: AgentGatePreview[] } | undefined>
+): AgentGatePreview[] {
+  const byKey = new Map<string, AgentGatePreview>()
+  for (const source of sources) {
+    if (!source) continue
+    for (const preview of collectAgentGatePreviews(source)) {
+      byKey.set(agentGatePreviewIdentityKey(preview), preview)
+    }
+  }
+  return [...byKey.values()]
+}
+
+export function shouldDisableAlwaysForRequest(request: {
+  preview?: AgentGatePreview
+  previews?: AgentGatePreview[]
+}): boolean {
+  return collectAgentGatePreviews(request).some((item) => shouldDisableAlwaysForPreview(item))
+}
