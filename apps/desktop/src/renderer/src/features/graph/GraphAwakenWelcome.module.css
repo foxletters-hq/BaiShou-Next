@@ -92,7 +92,7 @@
 
 .error {
   font-size: 12px;
-  color: var(--color-danger, #c2410c);
+  color: var(--color-error);
 }
 
 .actions {
