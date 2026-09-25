@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { getHelpDocsLatteUrl } from '../../constants/github.constants'
 import { decideHelpDocsNavigation, isHelpDocsInAppUrl } from '../help-docs-navigation.util'
 
 describe('decideHelpDocsNavigation', () => {
@@ -19,5 +20,13 @@ describe('decideHelpDocsNavigation', () => {
 
   it('should block non-http schemes', () => {
     expect(decideHelpDocsNavigation('javascript:alert(1)')).toBe('block')
+  })
+})
+
+describe('getHelpDocsLatteUrl', () => {
+  it('should keep zh on the default latte docs path and prefix en/ja', () => {
+    expect(getHelpDocsLatteUrl('zh')).toBe('https://foxletters.com/docs/basics/latte/')
+    expect(getHelpDocsLatteUrl('en-US')).toBe('https://foxletters.com/en/docs/basics/latte/')
+    expect(getHelpDocsLatteUrl('ja')).toBe('https://foxletters.com/ja/docs/basics/latte/')
   })
 })

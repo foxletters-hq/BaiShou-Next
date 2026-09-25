@@ -1,6 +1,9 @@
 import { DEFAULT_USER_PROFILE } from '../constants/user-profile.constants'
 import type { GlobalModelsConfig, RagConfig } from '../types/settings.types'
-import { isConfiguredDialogueModelId } from './agent-dialogue-model.util'
+import {
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId
+} from './agent-dialogue-model.util'
 import { isRagMemoryEnabled } from './rag-embed-failure.util'
 
 /** 默认昵称不算已配置自称 */
@@ -23,16 +26,13 @@ export function isGraphSelfNameConfigured(
   return !isDefaultGraphSelfName(name)
 }
 
-/**
- * 图抽取模型是否足以驱动图谱抽取。
- * 优先看独立图抽取槽位；未单独配置时回退到对话模型。
- */
+/** 图抽取模型是否已单独配好。对话模型不算。 */
 export function hasGraphModelConfigured(
   models: Partial<GlobalModelsConfig> | null | undefined
 ): boolean {
   return (
-    isConfiguredDialogueModelId(models?.globalGraphModelId) ||
-    isConfiguredDialogueModelId(models?.globalDialogueModelId)
+    isConfiguredProviderId(models?.globalGraphProviderId) &&
+    isConfiguredDialogueModelId(models?.globalGraphModelId)
   )
 }
 
@@ -44,7 +44,7 @@ export function isGraphFeatureConfigured(opts: {
 }
 
 /**
- * 底栏「待抽取」就绪：仅要求图抽取模型已配（可回退对话模型）。
+ * 底栏「待抽取」就绪：仅要求图抽取模型已配。
  * 自称未配时仍显示数量，点击进图谱页再引导填写。
  */
 export function isGraphStatusBarReady(opts: { hasGraphModel: boolean }): boolean {
