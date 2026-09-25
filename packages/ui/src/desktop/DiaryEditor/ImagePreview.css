@@ -9,8 +9,7 @@
 
 .image-preview-overlay {
   position: fixed;
-  /* 桌面端顶栏固定盖住上方（约 48px），居中只算顶栏以下可视区 */
-  top: var(--titlebar-height, 48px);
+  top: var(--app-titlebar-height);
   left: 0;
   right: 0;
   bottom: 0;
@@ -20,16 +19,12 @@
   justify-items: center;
   box-sizing: border-box;
   z-index: 450;
-  background: rgba(100, 116, 139, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   animation: image-preview-fade-in 0.2s ease;
   cursor: zoom-out;
   overflow: hidden;
-}
-
-:global(body[data-theme='dark']) .image-preview-overlay {
-  background: rgba(15, 23, 42, 0.45);
 }
 
 @keyframes image-preview-fade-in {
@@ -54,7 +49,7 @@
 .image-preview-stage-img {
   max-width: min(76vw, 600px);
   /* 可视高度 = 视口 - 顶栏 - 底栏工具条预留 */
-  max-height: min(100%, calc(100vh - var(--titlebar-height, 48px) - 120px), 72vh);
+  max-height: min(100%, calc(100vh - var(--app-titlebar-height) - 120px), 72vh);
   width: auto;
   height: auto;
   object-fit: contain;
@@ -78,31 +73,19 @@
   gap: 4px;
   padding: 6px 8px;
   border-radius: 14px;
-  background: var(--bg-surface, rgba(255, 255, 255, 0.96));
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  box-shadow:
-    0 10px 40px rgba(15, 23, 42, 0.12),
-    0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-lg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-}
-
-:global(body[data-theme='dark']) .image-preview-controls {
-  background: var(--bg-surface-raised, rgba(30, 30, 30, 0.94));
-  border-color: var(--border-muted);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
 .image-preview-controls-divider {
   width: 1px;
   height: 22px;
   margin: 0 4px;
-  background: var(--border-subtle);
-  flex-shrink: 0;
-}
-
-:global(body[data-theme='dark']) .image-preview-controls-divider {
   background: var(--border-muted);
+  flex-shrink: 0;
 }
 
 .image-preview-controls button {

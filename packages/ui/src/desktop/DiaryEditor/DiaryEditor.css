@@ -209,16 +209,9 @@
   border-radius: 0;
   overflow: hidden;
   --tag-0-fg: var(--color-primary);
-  --tag-1-fg: #10b981;
-  --tag-2-fg: #f59e0b;
-  --tag-3-fg: #8b5cf6;
-}
-
-[data-theme='dark'] .de-content-section {
-  --tag-0-fg: #60a5fa;
-  --tag-1-fg: #34d399;
-  --tag-2-fg: #fbbf24;
-  --tag-3-fg: #a78bfa;
+  --tag-1-fg: var(--color-success);
+  --tag-2-fg: var(--color-warning);
+  --tag-3-fg: var(--color-accent-purple);
 }
 
 /* CodeMirror Editor Wrapper */
