@@ -1,5 +1,8 @@
 import { isAgentStreamAbortError, isAgentGateRejectedError, logger } from '@baishou/shared'
+import { isAgentFirstOutputTimeoutError, isAgentStreamUserAborted } from './agent-stream-timeout'
 import {
+  UNEXPECTED_AGENT_STREAM_ABORT_MESSAGE,
+  applyFailedIncompleteToolResults,
   applyRejectedCompanionAskResults,
   shouldReportAgentStreamAsError
 } from './companion-ask-reject.util'
@@ -62,8 +65,11 @@ export async function finishAgentSessionStream(input: {
     abortSignal
   } = options
 
-  const streamAborted = Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
-  const userAborted = streamAborted && !doomTripped
+  const userAborted = isAgentStreamUserAborted({
+    streamError,
+    abortSignalAborted: Boolean(abortSignal?.aborted),
+    doomTripped
+  })
 
   if (isNoOutputGeneratedError(streamError)) {
     streamError = null
@@ -76,9 +82,7 @@ export async function finishAgentSessionStream(input: {
     gateSessionBuffer.buildPartDataList().length > 0 ||
     workspaceSessionBuffer.buildPartDataList().length > 0
 
-  if (doomTripped) {
-    streamError = new Error('检测到工具调用死循环，已中断本轮')
-  } else if (userAborted) {
+  if (userAborted) {
     streamError = isAgentStreamAbortError(streamError)
       ? streamError
       : new DOMException('The operation was aborted', 'AbortError')
@@ -86,11 +90,22 @@ export async function finishAgentSessionStream(input: {
     streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
   }
 
-  if (isAgentGateRejectedError(streamError)) {
+  if (isAgentGateRejectedError(streamError) || userAborted) {
     applyRejectedCompanionAskResults(accumulator.timeline)
+  } else if (streamError && shouldReportAgentStreamAsError(streamError, { userAborted })) {
+    const failMessage =
+      isAgentStreamAbortError(streamError) && !userAborted
+        ? UNEXPECTED_AGENT_STREAM_ABORT_MESSAGE
+        : streamError instanceof Error
+          ? streamError.message
+          : String(streamError)
+    applyFailedIncompleteToolResults(accumulator.timeline, failMessage)
+    if (isAgentStreamAbortError(streamError) && !userAborted) {
+      streamError = new Error(UNEXPECTED_AGENT_STREAM_ABORT_MESSAGE)
+    }
   }
 
-  if (streamError && !userAborted && !doomTripped && shouldReportAgentStreamAsError(streamError)) {
+  if (streamError && !userAborted && shouldReportAgentStreamAsError(streamError, { userAborted })) {
     logger.warn(
       '[AgentSessionService] Stream encountered a fatal error:',
       streamError instanceof Error ? streamError.message : String(streamError)
@@ -103,22 +118,6 @@ export async function finishAgentSessionStream(input: {
   ) {
     logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`)
     recordRuntimeInterrupted('superseded')
-    await assistantCheckpoint.discard()
-    return
-  }
-
-  if (doomTripped) {
-    logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: doom-loop`)
-    const doomErr =
-      streamError instanceof Error ? streamError : new Error('检测到工具调用死循环，已中断本轮')
-    runtimeRecorder.record({
-      type: 'session.stream_finished',
-      sessionId,
-      success: false,
-      error: doomErr.message,
-      timestamp: Date.now()
-    })
-    callbacks?.onError?.(doomErr)
     await assistantCheckpoint.discard()
     return
   }
@@ -170,7 +169,8 @@ export async function finishAgentSessionStream(input: {
     userConfig: mergedUserConfig,
     agentGateParts: gateSessionBuffer.buildPartDataList(),
     fileChangeParts: workspaceSessionBuffer.buildPartDataList(),
-    existingAssistantMessageId
+    existingAssistantMessageId,
+    userAborted
   })
 
   if (!streamError && accumulator.toolCalls.length > 0) {
@@ -179,7 +179,11 @@ export async function finishAgentSessionStream(input: {
     })
   }
 
-  if (streamError && shouldReportAgentStreamAsError(streamError) && !abortSignal?.aborted) {
+  if (
+    streamError &&
+    shouldReportAgentStreamAsError(streamError, { userAborted }) &&
+    (!abortSignal?.aborted || isAgentFirstOutputTimeoutError(streamError))
+  ) {
     const errObj = streamError instanceof Error ? streamError : new Error(String(streamError))
     runtimeRecorder.record({
       type: 'session.stream_finished',
@@ -189,7 +193,11 @@ export async function finishAgentSessionStream(input: {
       timestamp: Date.now()
     })
     callbacks?.onError?.(errObj)
-  } else if (!streamError || userAborted || !shouldReportAgentStreamAsError(streamError)) {
+  } else if (
+    !streamError ||
+    userAborted ||
+    !shouldReportAgentStreamAsError(streamError, { userAborted })
+  ) {
     runtimeRecorder.record({
       type: 'session.stream_finished',
       sessionId,

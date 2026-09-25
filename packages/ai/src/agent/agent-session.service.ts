@@ -1,7 +1,6 @@
 import {
   isVisionModel,
   logger,
-  isAgentStreamAbortError,
   normalizeReasoningEffortSetting,
   type ReasoningEffortSetting
 } from '@baishou/shared'
@@ -19,6 +18,8 @@ import { prepareAgentSessionContext } from './agent-session-context'
 import { buildAgentSessionToolsAndPrompt } from './agent-session-tools'
 import { runAgentSessionStream } from './agent-session-stream-run'
 import { finishAgentSessionStream } from './agent-session-stream-finish'
+import { isAgentFirstOutputTimeoutError } from './agent-stream-timeout'
+import { shouldKeepCompanionAskAfterStream } from '../tools/companion-ask-stream.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -224,7 +225,8 @@ export class AgentSessionService {
       })
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      const aborted = isAgentStreamAbortError(err) || abortSignal?.aborted === true
+      const aborted =
+        !isAgentFirstOutputTimeoutError(err) && abortSignal?.aborted === true
       if (!aborted) {
         runtimeRecorder.record({
           type: 'session.stream_finished',
@@ -268,7 +270,12 @@ export class AgentSessionService {
       unsubGateBuffer()
       abortSignal?.removeEventListener('abort', onAbortCancelGate)
       abortSignal?.removeEventListener('abort', onAbortRuntime)
-      sessionAgentGate?.cancelSession(sessionId, 'stream ended')
+      const keepCompanionAsk = shouldKeepCompanionAskAfterStream(
+        sessionAgentGate?.listPending(sessionId) ?? []
+      )
+      if (!keepCompanionAsk) {
+        sessionAgentGate?.cancelSession(sessionId, 'stream ended')
+      }
     }
   }
 }

@@ -6,6 +6,7 @@ import {
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
+import { detectProcessCommandRuntime } from '../agent-workspace/workspace-host-process'
 import { SystemPromptBuilder } from './system-prompt.builder'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import { ContextCompressorService } from './context-compressor.service'
@@ -96,13 +97,8 @@ export async function buildAgentSessionToolsAndPrompt(input: {
   }
 
   let dedupService: any = undefined
-  if (embAdapter && systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
-    dedupService = new MemoryDeduplicationServiceImpl(
-      embAdapter,
-      dbAdapter,
-      systemModels.embeddingProvider,
-      systemModels.embeddingModelId
-    )
+  if (embAdapter && provider && modelId) {
+    dedupService = new MemoryDeduplicationServiceImpl(embAdapter, dbAdapter, provider, modelId)
   }
 
   const contextCompressionRunner = {
@@ -219,14 +215,20 @@ export async function buildAgentSessionToolsAndPrompt(input: {
           : undefined,
     workspaceEnv:
       workspaceOptions?.sessionKind === 'workspace' && workspaceOptions.folderRoot
-        ? {
-            folderRoot: workspaceOptions.folderRoot,
-            platform: workspaceOptions.env?.platform ?? process.platform,
-            isGitRepo: workspaceOptions.env?.isGitRepo,
-            gitBranch: workspaceOptions.env?.gitBranch,
-            gitChangesCount: workspaceOptions.env?.gitChangesCount,
-            notebookIds: workspaceOptions.notebookIds
-          }
+        ? (() => {
+            const runtime = detectProcessCommandRuntime()
+            return {
+              folderRoot: workspaceOptions.folderRoot,
+              platform: workspaceOptions.env?.platform ?? process.platform,
+              commandRuntimeBinary: runtime.binary,
+              commandRuntimeFamily: runtime.family,
+              commandRuntimeLabel: runtime.label,
+              isGitRepo: workspaceOptions.env?.isGitRepo,
+              gitBranch: workspaceOptions.env?.gitBranch,
+              gitChangesCount: workspaceOptions.env?.gitChangesCount,
+              notebookIds: workspaceOptions.notebookIds
+            }
+          })()
         : undefined,
     knowledgeMount: {
       notebookIds: workspaceOptions?.notebookIds ?? []
