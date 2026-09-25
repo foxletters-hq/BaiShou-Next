@@ -15,6 +15,7 @@ describe('mobile graph suspect', () => {
     expect(reviewSrc).toContain('writeMobileNodeSuspectReason')
     expect(reviewSrc).toContain("reviewStatus: 'pending'")
     expect(reviewSrc).toContain('applySuspectReasonToProps')
+    expect(reviewSrc).toContain('removeSuspectReasonFromProps')
   })
 
   it('should run the suspect scan after graph extract in pending fill', () => {
@@ -24,19 +25,30 @@ describe('mobile graph suspect', () => {
     )
   })
 
-  it('should fill memory then knowledge then extract then graph nodes', () => {
-    expect(fillSrc.indexOf("markPhaseDone(phases, 'memory')")).toBeLessThan(
-      fillSrc.indexOf('await consumeMobileKnowledgeIngestJobs')
+  it('should fill memory then diary extract then diary graph nodes', () => {
+    expect(fillSrc).not.toContain('consumeMobileKnowledgeIngestJobs')
+    expect(fillSrc).not.toContain('consumeMobileKnowledgeGraphJobs')
+    expect(fillSrc).not.toContain('NotebookGraphRepository')
+    expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'memory')")).toBeLessThan(
+      fillSrc.indexOf('await mobileGraphExtractQueue.enqueue')
     )
-    expect(fillSrc.indexOf("markPhaseDone(phases, 'knowledge')")).toBeLessThan(
-      fillSrc.indexOf('await consumeMobileKnowledgeGraphJobs')
-    )
-    expect(fillSrc.indexOf("markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
+    expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
       fillSrc.indexOf('await backfillUnembeddedGraphNodes')
     )
     expect(fillSrc.indexOf('await backfillUnembeddedGraphNodes')).toBeLessThan(
       fillSrc.indexOf('runMobileGraphSuspectScan({ vaultId })')
     )
     expect(fillSrc).toContain('const report = (phase: RagBatchEmbedPhaseKind')
+  })
+
+  it('should send the graph provider into generateContent instead of the summary slot', () => {
+    const extract = readFileSync(join(dir, '../mobile-knowledge-graph-extract.ts'), 'utf8')
+    expect(extract).toContain('const { providerId, modelId } = resolveGlobalGraphModelIds')
+    expect(extract).toContain('abortSignal: AbortSignal.timeout(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)')
+    expect(extract).toContain('graph-extract-window-timeout')
+    expect(extract).toMatch(/generateContent\([\s\S]*?providerId/)
+    const suspect = readFileSync(join(dir, '../mobile-graph-suspect-scan.ts'), 'utf8')
+    expect(suspect).toContain('const { providerId, modelId } = resolveGlobalGraphModelIds')
+    expect(suspect).toMatch(/generateContent\([\s\S]*?providerId/)
   })
 })

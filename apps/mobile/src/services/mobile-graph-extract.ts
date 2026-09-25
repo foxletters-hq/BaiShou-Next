@@ -12,7 +12,8 @@ import {
 } from '@baishou/core-mobile'
 import {
   GraphRepository,
-  memoryEmbeddingsTable,
+  SqliteHybridSearchRepository,
+  createSqlExecutorFromDrizzleDb,
   type AppDatabase,
   type ShadowIndexRepository
 } from '@baishou/database'
@@ -32,7 +33,6 @@ import {
   type GraphExtractQueueProgressUpdate,
   type GraphExtractQueuePhase
 } from '@baishou/shared'
-import { and, eq } from 'drizzle-orm'
 import i18n from 'i18next'
 import {
   ensureMobileRawDataRuntime,
@@ -84,7 +84,7 @@ async function resolveChatLlm(settingsManager: SettingsManagerService): Promise<
   try {
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
-    if (!providerId) return null
+    if (!providerId || !modelId) return null
     const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
     const cfg = providers.find((p) => p.id === providerId)
     if (!cfg) return null
@@ -142,37 +142,27 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
 }): Promise<GraphExtractAlignDeps> {
   let embedQuery: GraphExtractAlignDeps['embedQuery']
   let modelId: string | undefined
+  const embeddedSourceIds = new Set<string>()
   try {
     const { EmbeddingAdapter } = await import('@baishou/ai')
     const emb = await resolveMobileEmbeddingForHydration(options.settingsManager)
+    const hsRepo = new SqliteHybridSearchRepository(
+      createSqlExecutorFromDrizzleDb(options.drizzleDb)
+    )
     if (emb.embeddingProvider && emb.embeddingModelId) {
-      const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
+      const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId, hsRepo)
       if (adapter.isConfigured) {
         embedQuery = (text) => adapter.embedQuery(text)
         modelId = adapter.embeddingModelId
       }
     }
+    const sourceIds = await hsRepo.listSourceIdsByType('diary', {
+      vaultId: options.vaultId,
+      groupId: DIARY_EMBED_GROUP_ID
+    })
+    for (const id of sourceIds) embeddedSourceIds.add(id)
   } catch {
     embedQuery = undefined
-  }
-
-  const embeddedSourceIds = new Set<string>()
-  try {
-    const rows = await options.drizzleDb
-      .select({ sourceId: memoryEmbeddingsTable.sourceId })
-      .from(memoryEmbeddingsTable)
-      .where(
-        and(
-          eq(memoryEmbeddingsTable.sourceType, 'diary'),
-          eq(memoryEmbeddingsTable.vaultId, options.vaultId),
-          eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID)
-        )
-      )
-    for (const row of rows) {
-      if (row.sourceId) embeddedSourceIds.add(String(row.sourceId))
-    }
-  } catch {
-    // table may be missing in tests
   }
 
   const diaryIdByPath = new Map<string, string>()

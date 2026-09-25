@@ -24,6 +24,44 @@ export function readGraphNodeSuspectReason(node: { propsJson?: string | null } |
   return typeof raw === 'string' ? raw.trim() : ''
 }
 
+/** 待确认，或仍带可疑标记时，都可以在详情/拆分页点通过或解除怀疑 */
+export function canApproveGraphNode(
+  node: { reviewStatus?: string; propsJson?: string | null } | null
+): boolean {
+  if (!node) return false
+  return node.reviewStatus === 'pending' || Boolean(readGraphNodeSuspectReason(node))
+}
+
+export function graphSuspectReviewCopy(node: { propsJson?: string | null } | null): {
+  actionKey: string
+  actionDefault: string
+  doneKey: string
+  doneDefault: string
+} {
+  if (readGraphNodeSuspectReason(node)) {
+    return {
+      actionKey: 'graph.clear_suspect',
+      actionDefault: '解除怀疑',
+      doneKey: 'graph.clear_suspect_done',
+      doneDefault: '已解除怀疑'
+    }
+  }
+  return {
+    actionKey: 'graph.approve',
+    actionDefault: '通过',
+    doneKey: 'graph.approve_done',
+    doneDefault: '通过成功'
+  }
+}
+
+export function stripGraphNodeSuspectReason<T extends { propsJson?: string | null }>(node: T): T {
+  const props = parseGraphNodePropsJson(node.propsJson)
+  if (!('suspectReason' in props)) return node
+  const next = { ...props }
+  delete next.suspectReason
+  return { ...node, propsJson: JSON.stringify(next) }
+}
+
 export function graphBareNodeIdForRevert(
   selectedNode: { id: string; discriminator?: string | null } | null,
   sameNameEntities: readonly { nodeId: string; discriminator?: string | null }[]

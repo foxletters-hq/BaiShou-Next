@@ -1,5 +1,6 @@
 import {
   applySuspectReasonToProps,
+  removeSuspectReasonFromProps,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -53,7 +54,7 @@ async function writeMobileNodeReview(options: {
     }
   }
 
-  const props = parseGraphNodePropsJson(node.propsJson)
+  const props = removeSuspectReasonFromProps(parseGraphNodePropsJson(node.propsJson))
   await graphManager.writeRecord(
     {
       id: node.id,

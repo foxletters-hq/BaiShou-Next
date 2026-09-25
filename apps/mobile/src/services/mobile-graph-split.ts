@@ -6,7 +6,7 @@ import {
   type IStoragePathService
 } from '@baishou/core-mobile'
 import { GraphRepository, type AppDatabase } from '@baishou/database'
-import { readGraphNameRegistry } from '@baishou/shared'
+import { formatGraphSplitPartnerName, readGraphNameRegistry } from '@baishou/shared'
 import i18n from 'i18next'
 import {
   ensureMobileRawDataRuntime,
@@ -101,7 +101,7 @@ export async function mobileListSplitEdges(
     return {
       edgeId: edge.id,
       edgeType: edge.edgeType,
-      partnerName: nameById.get(partnerId) || partnerId,
+      partnerName: formatGraphSplitPartnerName(nameById.get(partnerId) || partnerId),
       sourceRef: edge.sourceRef,
       sourceExcerpt: edge.sourceExcerpt ?? ''
     }
@@ -140,7 +140,10 @@ export async function mobileSplitGraphNode(options: {
     manager: graphManager,
     repo
   })
-  await syncMobileGraphPendingIndex({ drizzleDb: options.drizzleDb })
+  await syncMobileGraphPendingIndex({
+    drizzleDb: options.drizzleDb,
+    absentSweep: 'off'
+  })
   return result
 }
 
