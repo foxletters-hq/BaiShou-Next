@@ -20,6 +20,11 @@ export interface ClampAgentGateEffectInput {
    * 破坏性操作仅在此为 true 时放行，避免 `*: allow` 垫底误放行删除。
    */
   explicitAllow?: boolean
+  /**
+   * 本轮「本次允许」命中时不再因截断预览压回 Ask。
+   * 始终允许（remembered）仍要为截断预览单独确认。
+   */
+  skipTruncatedPreviewClamp?: boolean
 }
 
 /**
@@ -46,7 +51,7 @@ export function clampAgentGateEffect(
     return AgentGateEffect.Ask
   }
 
-  if (shouldDisableAlwaysForPreview(input.preview)) {
+  if (shouldDisableAlwaysForPreview(input.preview) && !input.skipTruncatedPreviewClamp) {
     return AgentGateEffect.Ask
   }
 

@@ -282,5 +282,22 @@ describe('agent-gate-ruleset.util', () => {
         })
       ).toBe(AgentGateEffect.Ask)
     })
+
+    it('should keep session Once Allow when the next preview is truncated', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_write',
+          skipTruncatedPreviewClamp: true,
+          preview: {
+            type: 'file_change',
+            path: 'a.ts',
+            kind: 'modify',
+            additions: 1,
+            deletions: 0,
+            truncated: true
+          }
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
   })
 })

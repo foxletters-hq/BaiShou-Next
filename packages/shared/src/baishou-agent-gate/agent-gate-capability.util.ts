@@ -27,6 +27,7 @@ export type AgentGateCapabilityId =
   | 'diary_search'
   | 'summary_read'
   | 'message_search'
+  | 'session_list'
   | 'vector_search'
   | 'memory_store'
   | 'memory_delete'
@@ -60,9 +61,18 @@ export interface AgentGateCapabilityState {
 }
 
 const WORKSPACE_BROWSE_ACTIONS = ['workspace_list', 'workspace_read'] as const
-const WORKSPACE_EDIT_ACTIONS = ['workspace_write', 'workspace_patch', 'workspace_rename'] as const
+export const WORKSPACE_EDIT_GATE_ACTIONS = [
+  'workspace_write',
+  'workspace_patch',
+  'workspace_rename'
+] as const
+const WORKSPACE_EDIT_ACTIONS = WORKSPACE_EDIT_GATE_ACTIONS
 const WORKSPACE_DELETE_ACTIONS = ['workspace_delete'] as const
 const WORKSPACE_COMMAND_ACTIONS = ['workspace_run'] as const
+
+export function isWorkspaceEditGateAction(action: string): boolean {
+  return (WORKSPACE_EDIT_GATE_ACTIONS as readonly string[]).includes(action)
+}
 
 export const WORKSPACE_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'browse', actions: WORKSPACE_BROWSE_ACTIONS, defaultEffect: AgentGateEffect.Allow },
@@ -91,6 +101,7 @@ export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'diary_search', actions: ['diary_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'summary_read', actions: ['summary_read'], defaultEffect: AgentGateEffect.Allow },
   { id: 'message_search', actions: ['message_search'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'session_list', actions: ['session_list'], defaultEffect: AgentGateEffect.Allow },
   { id: 'vector_search', actions: ['vector_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'memory_store', actions: ['memory_store'], defaultEffect: AgentGateEffect.Ask },
   { id: 'memory_delete', actions: ['memory_delete'], defaultEffect: AgentGateEffect.Ask },

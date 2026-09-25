@@ -90,8 +90,7 @@ const DANGEROUS_SHELL_PATTERNS: RegExp[] = [
   /\bpython3?\s+-[cE]\b/i,
   /\bnode\s+-e\b/i,
   /\b(bash|sh|zsh)\s+-c\b/i,
-  /\b(powershell|pwsh)\b.*\b-Command\b/i,
-  /\bcmd\s+(\/c|\/k)\b/i
+  /\b(powershell|pwsh)\b.*\b-Command\b/i
 ]
 
 /**
@@ -168,20 +167,77 @@ export function resolveCommandPrefixPattern(tokens: string[]): string | null {
   return `${prefix} *`
 }
 
+function stripOuterQuotes(value: string): string {
+  if (
+    (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
+    (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+  ) {
+    return value.slice(1, -1).trim()
+  }
+  return value
+}
+
+function unwrapCmdOnce(command: string): string | null {
+  const match = command.match(/^(?:cmd(?:\.exe)?)\s+(?:\/[a-z]\s+)*(\/c|\/k)\s+(.+)$/i)
+  const inner = match?.[2]?.trim()
+  if (!inner) return null
+  return stripOuterQuotes(inner)
+}
+
+function unwrapPowerShellOnce(command: string): string | null {
+  const tokens = tokenizeCommand(command)
+  if (tokens.length < 3) return null
+  const binary = normalizeBinary(tokens[0] ?? '')
+  if (binary !== 'powershell' && binary !== 'pwsh') return null
+  if (tokens.some((token) => /^-(encodedcommand|ec)$/i.test(token))) return null
+  for (let i = 1; i < tokens.length; i++) {
+    const flag = (tokens[i] ?? '').replace(/^-/, '').toLowerCase()
+    if (flag === 'command' || flag === 'c') {
+      const rest = tokens
+        .slice(i + 1)
+        .join(' ')
+        .trim()
+      return rest || null
+    }
+    if (flag === 'executionpolicy') i += 1
+  }
+  return null
+}
+
+/**
+ * 工作台已经会按本机命令运行环境启动进程。模型再写一层启动器时，匹配和高风险看内层。
+ * 不解开 bash/sh/zsh -c：那是解释器执行任意脚本，不能落可复用 Always。
+ */
+export function unwrapWorkspaceCommandLine(command: string): string {
+  let current = command.replace(/\s+/g, ' ').trim()
+  for (let depth = 0; depth < 2; depth++) {
+    const next = unwrapCmdOnce(current) ?? unwrapPowerShellOnce(current)
+    if (!next || next === current) break
+    current = next
+  }
+  return current
+}
+
+export function unwrapWindowsCmdInvocation(command: string): string {
+  return unwrapWorkspaceCommandLine(command)
+}
+
 export function resolveCommandPrefixPatternFromCommand(command: string): string | null {
-  if (commandHasShellOperators(command)) return null
-  if (isDangerousShellCommand(command)) return null
-  return resolveCommandPrefixPattern(tokenizeCommand(command))
+  const unwrapped = unwrapWorkspaceCommandLine(command)
+  if (commandHasShellOperators(unwrapped)) return null
+  if (isDangerousShellCommand(unwrapped)) return null
+  return resolveCommandPrefixPattern(tokenizeCommand(unwrapped))
 }
 
 /**
  * Whether this shell command may be permanently allowlisted at all.
  */
 export function canPermanentlyAllowShellCommand(command: string): boolean {
-  if (!command.trim()) return false
-  if (commandHasShellOperators(command)) return false
-  if (isDangerousShellCommand(command)) return false
-  return resolveCommandPrefixPatternFromCommand(command) != null
+  const unwrapped = unwrapWorkspaceCommandLine(command)
+  if (!unwrapped) return false
+  if (commandHasShellOperators(unwrapped)) return false
+  if (isDangerousShellCommand(unwrapped)) return false
+  return resolveCommandPrefixPatternFromCommand(unwrapped) != null
 }
 
 /**
@@ -191,13 +247,14 @@ export function canPermanentlyAllowShellCommand(command: string): boolean {
  * - Never matches by raw substring of the full command string
  */
 export function matchShellCommandPattern(command: string, pattern: string): boolean {
-  if (commandHasShellOperators(command)) return false
+  const live = unwrapWorkspaceCommandLine(command)
+  if (commandHasShellOperators(live)) return false
 
-  const cmdTokens = tokenizeCommand(command)
+  const cmdTokens = tokenizeCommand(live)
   if (cmdTokens.length === 0) return false
   if (cmdTokens[0]) cmdTokens[0] = normalizeBinary(cmdTokens[0])
 
-  const trimmed = pattern.trim()
+  const trimmed = unwrapWorkspaceCommandLine(pattern)
   if (!trimmed) return false
   // Reject over-broad patterns like bare `*` or `* *`
   if (trimmed === '*' || trimmed === '* *') return false
@@ -223,7 +280,7 @@ export function matchShellCommandPattern(command: string, pattern: string): bool
 }
 
 export function isDangerousShellCommand(command: string): boolean {
-  const normalized = command.replace(/\s+/g, ' ').trim()
+  const normalized = unwrapWorkspaceCommandLine(command)
   if (!normalized) return false
   if (
     commandHasShellOperators(normalized) &&

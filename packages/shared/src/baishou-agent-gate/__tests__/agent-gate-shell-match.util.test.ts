@@ -36,6 +36,26 @@ describe('matchShellCommandPattern', () => {
     expect(matchShellCommandPattern('git push origin main', 'git status *')).toBe(false)
   })
 
+  it('should match mkdir allowlist against a Windows cmd /c wrapper', () => {
+    expect(
+      matchShellCommandPattern('cmd /c mkdir "作-3\\素材\\参考资料" "作-3\\素材\\图像"', 'mkdir *')
+    ).toBe(true)
+    expect(matchShellCommandPattern('cmd.exe /c mkdir foo', 'mkdir *')).toBe(true)
+  })
+
+  it('should match mkdir allowlist against a PowerShell -Command wrapper', () => {
+    expect(matchShellCommandPattern('powershell -NoProfile -Command mkdir foo', 'mkdir *')).toBe(
+      true
+    )
+    expect(matchShellCommandPattern('pwsh -Command "mkdir foo"', 'mkdir *')).toBe(true)
+    expect(
+      matchShellCommandPattern(
+        'powershell -Command "New-Item -ItemType Directory -Path a"',
+        'mkdir *'
+      )
+    ).toBe(false)
+  })
+
   it('never matches by raw substring', () => {
     expect(matchShellCommandPattern('echo harmless', 'rm *')).toBe(false)
     expect(matchShellCommandPattern('harmless', 'rm')).toBe(false)
@@ -55,6 +75,27 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
     expect(isDangerousShellCommand('rm -r dist')).toBe(true)
     expect(isDangerousShellCommand('python -c "print(1)"')).toBe(true)
     expect(isDangerousShellCommand('git status')).toBe(false)
+  })
+
+  it('should not treat Windows cmd /c mkdir as dangerous', () => {
+    expect(
+      isDangerousShellCommand('cmd /c mkdir "作-3\\素材\\参考资料" "作-3\\素材\\图像"')
+    ).toBe(false)
+    expect(canPermanentlyAllowShellCommand('cmd /c mkdir foo')).toBe(true)
+    expect(resolveCommandPrefixPatternFromCommand('cmd /c mkdir foo bar')).toBe('mkdir *')
+  })
+
+  it('should unwrap powershell -Command mkdir and still flag powershell -Command rm -rf', () => {
+    expect(isDangerousShellCommand('powershell -Command mkdir foo')).toBe(false)
+    expect(canPermanentlyAllowShellCommand('powershell -NoProfile -Command mkdir foo')).toBe(true)
+    expect(resolveCommandPrefixPatternFromCommand('pwsh -Command mkdir foo')).toBe('mkdir *')
+    expect(isDangerousShellCommand('powershell -Command rm -rf dist')).toBe(true)
+    expect(canPermanentlyAllowShellCommand('powershell -Command rm -rf dist')).toBe(false)
+  })
+
+  it('should still treat cmd /c rm -rf as dangerous', () => {
+    expect(isDangerousShellCommand('cmd /c rm -rf dist')).toBe(true)
+    expect(canPermanentlyAllowShellCommand('cmd /c rm -rf dist')).toBe(false)
   })
 
   it('blocks Always for interpreters and operators', () => {

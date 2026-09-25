@@ -61,6 +61,20 @@ describe('agent-gate-preset.util (security modes)', () => {
   it('matchesCommandBlacklist catches rm -rf', () => {
     expect(matchesCommandBlacklist('rm -rf /tmp/x', undefined)).toBe(true)
     expect(matchesCommandBlacklist('git status', undefined)).toBe(false)
+    expect(matchesCommandBlacklist('cmd /c mkdir foo', undefined)).toBe(false)
+  })
+
+  it('should keep an empty user blacklist instead of falling back to defaults', () => {
+    expect(matchesCommandBlacklist('mkdir foo', [])).toBe(false)
+    expect(matchesCommandBlacklist('mkdir foo', ['mkdir'])).toBe(true)
+    const next = applyWorkspaceSecurityModeToConfig(
+      {
+        ...cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+        commandBlacklist: []
+      },
+      'auto_review'
+    )
+    expect(next.commandBlacklist).toEqual([])
   })
 
   it('sortPermissionRulesForLastMatch keeps pattern rules after bare', () => {

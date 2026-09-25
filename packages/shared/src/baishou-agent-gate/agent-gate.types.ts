@@ -14,6 +14,20 @@ export interface AgentGateOption {
   description?: string
 }
 
+/** 一次提问里的一题；多题时收在同一张确认卡里一起回答 */
+export interface AgentGateQuestion {
+  id: string
+  question: string
+  options: AgentGateOption[]
+  allowCustomInput?: boolean
+}
+
+export interface AgentGateQuestionAnswer {
+  questionId: string
+  selectedOptionIds?: string[]
+  message?: string
+}
+
 /** Resource kinds that permission patterns can target */
 export type AgentGateResourceKind =
   | 'file_path'
@@ -156,9 +170,13 @@ export interface AgentGateRequest {
   description?: string
   options: AgentGateOption[]
   allowCustomInput: boolean
+  /** 一次问多题时使用；缺省则按 title + options 当作单题 */
+  questions?: AgentGateQuestion[]
   metadata: Record<string, unknown>
-  /** 预执行结构化预览（旧请求可能缺省） */
+  /** 预执行结构化预览（旧请求可能缺省；合并写入时表示第一份） */
   preview?: AgentGatePreview
+  /** 合并进同一张确认卡的全部预览（含第一份）；缺省则只看 preview */
+  previews?: AgentGatePreview[]
   /** 伙伴 / 工作区作用域（旧请求可能缺省） */
   scope?: AgentGateConfigScope
   /** Assert fingerprint used for repeat Ask protection (UI may show truncated). */
@@ -178,6 +196,7 @@ export interface AgentGateReplyInput {
   reply: AgentGateReply
   message?: string
   selectedOptionIds?: string[]
+  questionAnswers?: AgentGateQuestionAnswer[]
 }
 
 export interface AgentGateResolution {
@@ -185,6 +204,7 @@ export interface AgentGateResolution {
   reply: AgentGateReply
   selectedOptionIds?: string[]
   message?: string
+  questionAnswers?: AgentGateQuestionAnswer[]
   resolvedAt: number
 }
 
@@ -213,6 +233,7 @@ export interface AgentGateAssertInput {
   description?: string
   options?: AgentGateOption[]
   allowCustomInput?: boolean
+  questions?: AgentGateQuestion[]
   metadata?: Record<string, unknown>
   /** 预执行结构化预览（会写入 pending request） */
   preview?: AgentGatePreview
@@ -279,6 +300,7 @@ export interface AgentGateRepliedEvent {
   reply: AgentGateReply
   message?: string
   selectedOptionIds?: string[]
+  questionAnswers?: AgentGateQuestionAnswer[]
 }
 
 export interface AgentGateAllowlistChangedEvent {
