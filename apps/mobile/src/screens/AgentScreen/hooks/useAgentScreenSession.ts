@@ -3,10 +3,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   type WebSearchConfig,
   type AIProviderConfig,
+  type AgentBehaviorConfig,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
-import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
+import { DEFAULT_AGENT_BEHAVIOR, DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAgentSession } from '../../../hooks/useAgentSession'
@@ -52,7 +53,19 @@ export function useAgentScreenSession(deps: {
   } = useBaishou()
   const currentSessionIdRef = useRef<string | null>(null)
   const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([])
+  const [restoreLastSessionOnReturn, setRestoreLastSessionOnReturn] = useState(true)
   const userProfile = useAgentUserProfile()
+
+  useEffect(() => {
+    if (!dbReady || !services) return
+    void services.settingsManager
+      .get<AgentBehaviorConfig>('agent_behavior')
+      .then((saved) => {
+        const merged = { ...DEFAULT_AGENT_BEHAVIOR, ...saved }
+        setRestoreLastSessionOnReturn(merged.restoreLastSessionOnReturn !== false)
+      })
+      .catch(() => setRestoreLastSessionOnReturn(true))
+  }, [dbReady, services, vaultRevision])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -196,6 +209,7 @@ export function useAgentScreenSession(deps: {
     dbReady,
     vaultSwitching,
     vaultRevision,
+    restoreLastSessionOnReturn,
     services,
     assistants,
     currentAssistant,

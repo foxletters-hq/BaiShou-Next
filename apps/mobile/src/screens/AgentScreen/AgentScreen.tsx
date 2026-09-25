@@ -29,6 +29,7 @@ export const AgentScreen = () => {
           currentProviderId={c.currentProviderId}
           currentModelId={c.currentModelId}
           currentSessionId={c.currentSessionId}
+          assistantId={c.currentAssistant?.id}
           currentProviderType={c.currentProviderType}
           totalCostMicros={c.totalCostMicros}
           setDrawerOpen={c.setDrawerOpen}
@@ -70,6 +71,7 @@ export const AgentScreen = () => {
           compressionReasoning={c.compressionReasoning}
           IDLE_LIVE_COMPRESSION={c.streaming.IDLE_LIVE_COMPRESSION}
           lastMessage={c.lastMessage}
+          streamError={c.streamError}
           liveAssistantActive={c.streaming.liveAssistantActive}
           keepLiveRowAfterHold={c.streaming.keepLiveRowAfterHold}
           markdownPresentationActive={c.streaming.markdownPresentationActive}

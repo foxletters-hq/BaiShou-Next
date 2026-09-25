@@ -6,7 +6,7 @@ import {
   CompressionDivider,
   AgentGatePartCard
 } from '@baishou/ui/native'
-import type { AgentGatePartData } from '@baishou/shared'
+import { collectAgentGatePartDataForSurface } from '@baishou/shared'
 import type { CompactionMarkerData } from '@baishou/ai'
 import type { MockChatAttachment } from '@baishou/shared'
 
@@ -77,7 +77,9 @@ export interface AgentMessageRowProps {
       args?: unknown
     }>
     attachments?: MockChatAttachment[]
+    error?: string | null
   }
+  error?: string | null
   deferAssistantChrome?: boolean
 }
 
@@ -101,7 +103,8 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
   invertMetaOverBackground = false,
   retryDisabled = false,
   liveStream,
-  deferAssistantChrome = false
+  deferAssistantChrome = false,
+  error = null
 }: AgentMessageRowProps) {
   const persistedCompaction =
     item.role === 'user' && item.compactionRecord ? item.compactionRecord : null
@@ -130,12 +133,12 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
 
   const showDivider = showPersistedCompression && persistedCompaction?.status !== 'failed'
 
-  const agentGateParts = (item.parts ?? []).filter((part) => part.type === 'agent_gate')
+  const agentGateParts = collectAgentGatePartDataForSurface(item.parts, 'companion')
 
   return (
     <View style={styles.row}>
-      {agentGateParts.map((part) => (
-        <AgentGatePartCard key={part.id} data={part.data as AgentGatePartData} />
+      {agentGateParts.map((data) => (
+        <AgentGatePartCard key={data.request.id} data={data} />
       ))}
       <ChatBubble
         message={{
@@ -171,6 +174,7 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
         retryDisabled={retryDisabled}
         liveStream={liveStream}
         deferAssistantChrome={deferAssistantChrome}
+        error={error}
       />
 
       {(showLiveCompression || showPersistedCompression) && (

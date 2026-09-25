@@ -27,6 +27,7 @@ type UseAgentNavigationPersistenceOptions = {
   dbReady: boolean
   vaultSwitching: boolean
   vaultRevision: number
+  restoreLastSessionOnReturn?: boolean
   services: Services | null
   assistants: MobileAssistantUi[]
   currentAssistant: MobileAssistantUi | null
@@ -53,6 +54,7 @@ export function useAgentNavigationPersistence({
   dbReady,
   vaultSwitching,
   vaultRevision,
+  restoreLastSessionOnReturn = true,
   services,
   assistants,
   currentAssistant,
@@ -129,6 +131,10 @@ export function useAgentNavigationPersistence({
       initialRestoreDoneRef.current = true
       return
     }
+    if (!restoreLastSessionOnReturn) {
+      initialRestoreDoneRef.current = true
+      return
+    }
     if (assistants.length === 0) return
 
     let cancelled = false
@@ -197,6 +203,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     navigationHydrationEpoch,
+    restoreLastSessionOnReturn,
     services,
     vaultSwitching
   ])
@@ -307,6 +314,7 @@ export function useAgentNavigationPersistence({
     }
 
     if (!currentSessionId) {
+      if (!restoreLastSessionOnReturn) return
       if (!saved.sessionId) return
       if (persistedSessionId == null) return
       if (assistants.length === 0) return
@@ -368,6 +376,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     persistSnapshot,
+    restoreLastSessionOnReturn,
     services,
     vaultSwitching
   ])

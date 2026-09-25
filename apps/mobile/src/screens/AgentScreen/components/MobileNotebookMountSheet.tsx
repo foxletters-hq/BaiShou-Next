@@ -1,51 +1,69 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import {
   canToggleMountedNotebook,
+  getPendingMountedNotebookIds,
+  isDraftNotebookMountSessionId,
+  notebookMountPendingKey,
   parseMountedNotebookIds,
+  setPendingMountedNotebookIds,
   toggleMountedNotebook,
   type NotebookMountCandidate
 } from '@baishou/shared'
+import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { Button, Checkbox, Modal, useNativeTheme } from '@baishou/ui/native'
 import { mobileListMountSummaries } from '../../../services/mobile-knowledge.service'
 import { agentDbRuntimeRef } from '../../../services/mobile-agent-db-runtime-ref'
 
 export function MobileNotebookMountSheet({
   visible,
   sessionId,
+  assistantId,
   onClose
 }: {
   visible: boolean
   sessionId?: string | null
+  assistantId?: string | null
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const { colors, tokens } = useNativeTheme()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [candidates, setCandidates] = useState<NotebookMountCandidate[]>([])
   const [error, setError] = useState('')
+  const draft = isDraftNotebookMountSessionId(sessionId)
+  const pendingKey = notebookMountPendingKey({
+    sessionId,
+    assistantId,
+    scope: 'companion'
+  })
 
   const refresh = useCallback(async () => {
-    if (!sessionId) {
-      setSelectedIds([])
-      setCandidates([])
-      return
-    }
     setError('')
     try {
-      const runtime = agentDbRuntimeRef.current
-      const session = runtime ? await runtime.sessionRepo.getSessionById(sessionId) : null
-      setSelectedIds(parseMountedNotebookIds(session?.mountedNotebookIds))
       setCandidates(await mobileListMountSummaries())
+      if (draft) {
+        setSelectedIds(getPendingMountedNotebookIds(pendingKey))
+        return
+      }
+      const runtime = agentDbRuntimeRef.current
+      const session = runtime && sessionId ? await runtime.sessionRepo.getSessionById(sessionId) : null
+      setSelectedIds(parseMountedNotebookIds(session?.mountedNotebookIds))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     }
-  }, [sessionId])
+  }, [draft, pendingKey, sessionId])
 
   useEffect(() => {
     if (visible) void refresh()
   }, [visible, refresh])
 
   const persist = async (next: string[]) => {
+    if (draft) {
+      setSelectedIds(setPendingMountedNotebookIds(pendingKey, next))
+      return
+    }
     if (!sessionId) return
     const runtime = agentDbRuntimeRef.current
     if (!runtime) return
@@ -54,89 +72,110 @@ export function MobileNotebookMountSheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => undefined}>
-          <Text style={styles.title}>{t('knowledge.notebook_mount_title')}</Text>
-          <Text style={styles.hint}>{t('knowledge.notebook_mount_hint')}</Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {!sessionId ? (
-            <Text style={styles.empty}>{t('knowledge.notebook_mount_need_session')}</Text>
-          ) : (
-            <ScrollView style={styles.list}>
-              {candidates.map((row) => {
-                const selected = selectedIds.includes(row.id)
-                const gate = canToggleMountedNotebook({
-                  selectedIds,
-                  candidate: row,
-                  candidates
-                })
-                const dim =
-                  row.dimension != null
-                    ? t('knowledge.notebook_mount_dimension', { count: row.dimension })
-                    : t('knowledge.notebook_mount_not_embedded')
-                return (
-                  <Pressable
-                    key={row.id}
-                    style={[styles.item, selected ? styles.itemActive : null]}
-                    disabled={!selected && !gate.allowed}
-                    onPress={() => {
-                      const result = toggleMountedNotebook({
-                        selectedIds,
-                        candidateId: row.id,
-                        candidates
-                      })
-                      if (result.error) {
-                        setError(result.error)
-                        return
-                      }
-                      void persist(result.next)
+    <Modal
+      visible={visible}
+      title={t('knowledge.notebook_mount_title')}
+      onClose={onClose}
+      contentMaxHeight={tokens.spacing.xl * 13}
+    >
+      <Text
+        style={{
+          color: colors.textSecondary,
+          fontSize: settingsTypography.desc.fontSize,
+          fontWeight: settingsTypography.desc.fontWeight,
+          marginBottom: tokens.spacing.sm
+        }}
+      >
+        {t('knowledge.notebook_mount_hint')}
+      </Text>
+      {error ? (
+        <Text
+          style={{
+            color: colors.error,
+            fontSize: settingsTypography.desc.fontSize,
+            marginBottom: tokens.spacing.sm
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
+      <ScrollView style={{ maxHeight: tokens.spacing.xl * 9 }}>
+        {candidates.map((row) => {
+          const selected = selectedIds.includes(row.id)
+          const gate = canToggleMountedNotebook({
+            selectedIds,
+            candidate: row,
+            candidates
+          })
+          const dim =
+            row.dimension != null
+              ? t('knowledge.notebook_mount_dimension', { count: row.dimension })
+              : t('knowledge.notebook_mount_not_embedded')
+          return (
+            <View
+              key={row.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: tokens.spacing.sm,
+                paddingVertical: tokens.spacing.sm
+              }}
+            >
+              <Checkbox
+                selected={selected}
+                disabled={!selected && !gate.allowed}
+                onPress={() => {
+                  const result = toggleMountedNotebook({
+                    selectedIds,
+                    candidateId: row.id,
+                    candidates
+                  })
+                  if (result.error) {
+                    setError(result.error)
+                    return
+                  }
+                  void persist(result.next)
+                }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: settingsTypography.row.fontSize,
+                    fontWeight: settingsTypography.row.fontWeight
+                  }}
+                >
+                  {row.name}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: settingsTypography.meta.fontSize,
+                    fontWeight: settingsTypography.meta.fontWeight,
+                    marginTop: tokens.spacing.xs
+                  }}
+                >
+                  {t('knowledge.notebook_mount_meta', { count: row.sources, dim })}
+                </Text>
+                {!selected && gate.reason ? (
+                  <Text
+                    style={{
+                      color: colors.textTertiary,
+                      fontSize: settingsTypography.meta.fontSize,
+                      marginTop: tokens.spacing.xs
                     }}
                   >
-                    <Text style={styles.name}>{row.name}</Text>
-                    <Text style={styles.meta}>
-                      {t('knowledge.notebook_mount_meta', { count: row.sources, dim })}
-                    </Text>
-                    {!selected && gate.reason ? (
-                      <Text style={styles.warn}>{gate.reason}</Text>
-                    ) : null}
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
-          )}
-          <Pressable style={styles.close} onPress={onClose}>
-            <Text style={styles.closeText}>{t('common.close')}</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
+                    {gate.reason}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          )
+        })}
+      </ScrollView>
+      <View style={{ marginTop: tokens.spacing.md }}>
+        <Button onPress={onClose}>{t('common.close')}</Button>
+      </View>
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end'
-  },
-  sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-    maxHeight: '72%'
-  },
-  title: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
-  hint: { fontSize: 13, color: '#666', marginBottom: 10 },
-  error: { fontSize: 13, color: '#c0392b', marginBottom: 8 },
-  empty: { fontSize: 14, color: '#666', paddingVertical: 16 },
-  list: { maxHeight: 320 },
-  item: { paddingVertical: 10 },
-  itemActive: { opacity: 1 },
-  name: { fontSize: 15, fontWeight: '600' },
-  meta: { fontSize: 12, color: '#666', marginTop: 2 },
-  warn: { fontSize: 12, color: '#888', marginTop: 2 },
-  close: { alignSelf: 'flex-end', paddingTop: 12 },
-  closeText: { fontSize: 14, color: '#444' }
-})

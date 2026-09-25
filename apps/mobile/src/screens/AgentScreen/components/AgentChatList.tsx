@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   View,
   StyleSheet,
@@ -10,7 +10,11 @@ import {
   type NativeSyntheticEvent
 } from 'react-native'
 import { AgentGatePartCard, InputBar } from '@baishou/ui/native'
-import { useAgentGateInboxStore } from '@baishou/store'
+import {
+  collectAgentGatePartDataForSurface,
+  collectUnresolvedAgentGateRequestsForSurface
+} from '@baishou/shared'
+import { selectResolvedLiveForSession, useAgentGateInboxStore } from '@baishou/store'
 
 type ComposerOnSend = (
   text: string,
@@ -87,6 +91,7 @@ export type AgentChatListProps = {
   compressionReasoning: string
   IDLE_LIVE_COMPRESSION: any
   lastMessage: any
+  streamError?: string | null
   liveAssistantActive: boolean
   keepLiveRowAfterHold: boolean
   markdownPresentationActive: boolean
@@ -133,26 +138,31 @@ export type AgentChatListProps = {
   ttsMode: 'manual' | 'always'
   toggleTtsMode: () => void
   currentSessionId?: string | null
+  assistantId?: string | null
 }
 
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
-  const resolvedLiveAll = useAgentGateInboxStore((state) => state.resolvedLive)
+  const resolvedLive = useAgentGateInboxStore((state) =>
+    selectResolvedLiveForSession(state, p.currentSessionId, 'companion')
+  )
+  useEffect(() => {
+    for (const msg of p.messages ?? []) {
+      for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
+        useAgentGateInboxStore.getState().upsertAsked(request)
+      }
+    }
+  }, [p.messages])
   const liveGateParts = useMemo(() => {
     const persisted = new Set<string>()
     for (const msg of p.messages ?? []) {
-      for (const part of msg.parts ?? []) {
-        const requestId = part?.type === 'agent_gate' ? part.data?.request?.id : undefined
-        if (requestId) persisted.add(requestId)
+      for (const data of collectAgentGatePartDataForSurface(msg.parts, 'companion')) {
+        persisted.add(data.request.id)
       }
     }
-    return resolvedLiveAll.filter(
-      (item) =>
-        (!p.currentSessionId || item.request.sessionId === p.currentSessionId) &&
-        !persisted.has(item.request.id)
-    )
-  }, [p.currentSessionId, p.messages, resolvedLiveAll])
+    return resolvedLive.filter((item) => !persisted.has(item.request.id))
+  }, [p.messages, resolvedLive])
   const ChatBackgroundWrapper = (
     p.resolvedChatBackgroundUri ? ImageBackground : View
   ) as typeof View
@@ -290,6 +300,7 @@ export function AgentChatList(props: AgentChatListProps) {
                         onCopy={() => {}}
                         onDelete={() => {}}
                         invertMetaOverBackground={p.hasChatBackground}
+                        error={p.streamError ?? null}
                         retryDisabled
                       />
                     </View>
@@ -331,7 +342,8 @@ export function AgentChatList(props: AgentChatListProps) {
                       isThinkStreaming: false,
                       activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
                       completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
-                      attachments: p.liveStreamProps.attachments
+                      attachments: p.liveStreamProps.attachments,
+                      error: p.streamError ?? p.liveStreamProps.error ?? null
                     }
                   : undefined
 
@@ -383,6 +395,7 @@ export function AgentChatList(props: AgentChatListProps) {
                       onBubbleEditingChange={p.handleBubbleEditingChange}
                       invertMetaOverBackground={p.hasChatBackground}
                       retryDisabled={p.isRetryActionBusy || p.isStreaming || p.isCompressing}
+                      error={isLastAssistant ? (p.streamError ?? null) : null}
                     />
                   </View>
                 )
@@ -450,6 +463,7 @@ export function AgentChatList(props: AgentChatListProps) {
         <MobileNotebookMountSheet
           visible={notebookMountOpen}
           sessionId={p.currentSessionId}
+          assistantId={p.assistantId}
           onClose={() => setNotebookMountOpen(false)}
         />
       </View>

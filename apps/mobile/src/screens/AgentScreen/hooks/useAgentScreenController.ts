@@ -305,7 +305,8 @@ export function useAgentScreenController() {
     contentAnchorMinHeight,
     listSpacerAnimatedStyle,
     colors,
-    t: tr
+    t: tr,
+    streamError
   })
 
   const {
@@ -410,6 +411,7 @@ export function useAgentScreenController() {
     compressionText,
     compressionReasoning,
     lastMessage,
+    streamError,
     activeToolDisplayName,
     editingMessageId,
     handleRegenerate,
