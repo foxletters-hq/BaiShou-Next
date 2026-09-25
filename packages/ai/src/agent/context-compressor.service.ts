@@ -16,6 +16,7 @@ import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-
 import { MessageWithParts } from './message.adapter'
 import {
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   resolveCompressionBatch,
   hasEnoughMessagesForRecompress,
   hasUserContentInCompressionBatch,
@@ -43,6 +44,12 @@ import {
 } from './compaction-marker'
 import { consumeCompressionModelStream } from './compression-stream.utils'
 import {
+  AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+  isAgentFirstOutputTimeoutError,
+  runWithFirstOutputTimeout
+} from './agent-stream-timeout'
+import { abortAgentStreamSession } from './stream-session-guard'
+import {
   wrapLanguageModelWithMiddlewares,
   buildCachedSystemForStream
 } from '../middleware/middleware-factory'
@@ -53,6 +60,8 @@ export type CompressionRunOptions = {
   /** 方案 A：触发发送前压缩的用户消息 ID */
   triggerUserMessageId?: string
   abortSignal?: AbortSignal
+  /** 当前对话流 claim 代数；压缩超时时只中止这一轮 */
+  streamClaimGeneration?: number
   /** 是否在压缩 transcript 中包裹消息时间元数据，默认 true */
   wrapMessageTime?: boolean
   /** 调用方已加载的会话消息，避免重复全量查询 */
@@ -61,6 +70,8 @@ export type CompressionRunOptions = {
   recentCount?: number
   /** 对话系统提示词，用于触发估算与 UI 对齐 */
   systemPrompt?: string
+  /** 重发：触发量只算上一张快照之后的增量 */
+  countTokensSinceLastSnapshot?: boolean
 }
 
 export type RecompressResult = {
@@ -167,13 +178,22 @@ export class ContextCompressorService {
       const latestSnapshot = await ensureSessionSnapshotsRestored(
         sessionId,
         snapshotRepo,
-        sessionRepo
+        sessionRepo,
+        {
+          restoreSynthesizedFromMarkers: runOptions?.countTokensSinceLastSnapshot !== true
+        }
       )
 
-      const contextTokens = estimateContextTokensForTrigger(allMessages, latestSnapshot, {
-        recentCount: runOptions?.recentCount,
-        systemPrompt: runOptions?.systemPrompt
-      })
+      if (runOptions?.countTokensSinceLastSnapshot && !latestSnapshot) {
+        return false
+      }
+      const contextTokens =
+        runOptions?.countTokensSinceLastSnapshot && latestSnapshot
+          ? estimateTokensSinceLastSnapshot(allMessages, latestSnapshot)
+          : estimateContextTokensForTrigger(allMessages, latestSnapshot, {
+              recentCount: runOptions?.recentCount,
+              systemPrompt: runOptions?.systemPrompt
+            })
       if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
         logger.info(
           `[ContextCompressor] Session(${sessionId}) skip: ~${contextTokens} tokens below threshold ${compressionConfig.threshold}.`
@@ -233,7 +253,10 @@ export class ContextCompressorService {
         latestSnapshot?.summaryText ?? null,
         providerType,
         runOptions?.abortSignal,
-        { wrapMessageTime: runOptions?.wrapMessageTime }
+        {
+          wrapMessageTime: runOptions?.wrapMessageTime,
+          streamClaimGeneration: runOptions?.streamClaimGeneration
+        }
       )
       if (!generated) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
@@ -294,7 +317,7 @@ export class ContextCompressorService {
       if (compressionStarted) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
       }
-      if (aborted) {
+      if (aborted || isAgentFirstOutputTimeoutError(e)) {
         throw e
       }
       return false
@@ -449,7 +472,7 @@ export class ContextCompressorService {
     priorSummaryText: string | null,
     providerType: string,
     abortSignal?: AbortSignal,
-    options?: { wrapMessageTime?: boolean }
+    options?: { wrapMessageTime?: boolean; streamClaimGeneration?: number }
   ): Promise<{
     text: string
     reasoning?: string
@@ -478,32 +501,43 @@ export class ContextCompressorService {
       baseUrl: provider.config?.baseUrl
     })
 
-    const streamResult = await runWithOpenAiThinkingInjectAsync(
-      builtReasoning.openAiThinkingInject,
-      async () =>
-        streamText({
-          model,
-          system: buildCachedSystemForStream(systemBase, {
-            providerType,
-            modelId,
-            sessionId
-          }),
-          allowSystemInMessages: true,
-          messages,
-          temperature: 0.1,
-          abortSignal,
-          ...(builtReasoning.providerOptions
-            ? { providerOptions: builtReasoning.providerOptions as never }
-            : {})
-        })
-    )
-
     let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
     try {
-      streamed = await consumeCompressionModelStream(streamResult, sessionId, abortSignal)
+      streamed = await runWithFirstOutputTimeout({
+        timeoutMs: AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+        abort: () => {
+          if (options?.streamClaimGeneration !== undefined) {
+            abortAgentStreamSession(sessionId, options.streamClaimGeneration)
+          }
+        },
+        run: async (markFirstOutput) => {
+          const streamResult = await runWithOpenAiThinkingInjectAsync(
+            builtReasoning.openAiThinkingInject,
+            async () =>
+              streamText({
+                model,
+                system: buildCachedSystemForStream(systemBase, {
+                  providerType,
+                  modelId,
+                  sessionId
+                }),
+                allowSystemInMessages: true,
+                messages,
+                temperature: 0.1,
+                abortSignal,
+                ...(builtReasoning.providerOptions
+                  ? { providerOptions: builtReasoning.providerOptions as never }
+                  : {})
+              })
+          )
+          return consumeCompressionModelStream(streamResult, sessionId, abortSignal, {
+            onFirstOutput: markFirstOutput
+          })
+        }
+      })
     } catch (streamErr: unknown) {
       const aborted = streamErr instanceof DOMException && streamErr.name === 'AbortError'
-      if (!aborted) {
+      if (!aborted && !isAgentFirstOutputTimeoutError(streamErr)) {
         const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
         logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
       }

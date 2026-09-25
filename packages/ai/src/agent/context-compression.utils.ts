@@ -31,6 +31,7 @@ export {
   buildCompressionOldSummaryPrefix,
   computeTailStartMessageId,
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   getMessagesAfterSnapshot,
   getMessagesForRecompress,
   resolveCompressionBatch,

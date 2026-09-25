@@ -67,7 +67,8 @@ function throwIfAborted(abortSignal?: AbortSignal): void {
 export async function consumeCompressionModelStream(
   streamResult: StreamTextResult<any, any, any>,
   sessionId: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  options?: { onFirstOutput?: () => void }
 ): Promise<CompressionStreamConsumeResult> {
   let summaryText = ''
   let reasoningText = ''
@@ -93,6 +94,7 @@ export async function consumeCompressionModelStream(
               if (!chunk) break
               hasReasoning = true
               reasoningText += chunk
+              options?.onFirstOutput?.()
               batcher.pushReasoning(chunk)
               break
             }
@@ -103,6 +105,7 @@ export async function consumeCompressionModelStream(
                 firstTextDeltaTime = Date.now()
               }
               summaryText += chunk
+              options?.onFirstOutput?.()
               batcher.pushDelta(chunk)
               break
             }
@@ -121,6 +124,7 @@ export async function consumeCompressionModelStream(
           firstTextDeltaTime = Date.now()
         }
         summaryText += chunk
+        options?.onFirstOutput?.()
         batcher.pushDelta(chunk)
       }
     }

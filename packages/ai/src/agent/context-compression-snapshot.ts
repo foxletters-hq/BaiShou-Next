@@ -36,6 +36,14 @@ export function estimateContextTokensForTrigger(
   return tokens
 }
 
+/** 重发：只估上一张快照之后的消息，不含摘要、系统提示、recentCount */
+export function estimateTokensSinceLastSnapshot(
+  allMessages: MessageWithParts[],
+  latestSnapshot: CompressionSnapshotRef
+): number {
+  return estimateMessagesTokens(resolveRetainMessagesAfterSnapshot(allMessages, latestSnapshot), true)
+}
+
 /** 解析快照之后应保留的消息（优先 tailStartMessageId，其次 coveredUpTo） */
 export function resolveRetainMessagesAfterSnapshot(
   messages: MessageWithParts[],

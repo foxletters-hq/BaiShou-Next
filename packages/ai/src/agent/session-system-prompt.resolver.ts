@@ -91,16 +91,12 @@ async function buildToolExecutionContext(
   }
 
   let dedupService: any
-  if (
-    embAdapter &&
-    params.systemModels?.embeddingProvider &&
-    params.systemModels?.embeddingModelId
-  ) {
+  if (embAdapter && params.provider && params.modelId) {
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,
       dbAdapter,
-      params.systemModels.embeddingProvider,
-      params.systemModels.embeddingModelId
+      params.provider,
+      params.modelId
     )
   }
 
