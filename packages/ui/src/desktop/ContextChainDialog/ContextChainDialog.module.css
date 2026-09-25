@@ -1,13 +1,13 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 16px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .dialog {
@@ -193,13 +193,13 @@
 .detailOverlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1010;
   padding: 24px;
-  backdrop-filter: blur(1px);
+  backdrop-filter: none;
 }
 
 .detailDialog {

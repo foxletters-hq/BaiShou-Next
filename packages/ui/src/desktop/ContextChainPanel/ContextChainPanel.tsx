@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
 import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
@@ -153,12 +154,10 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
   const messageCount = view.messageEntries.length
 
-  return (
-    <>
+  return createPortal(
+    <div className={withAppContentOverlay(panelStyles.shell)}>
       <div
-        className={withAppContentOverlay(
-          `${panelStyles.backdrop} ${transition.active ? panelStyles.backdropActive : ''}`
-        )}
+        className={`${panelStyles.backdrop} ${transition.active ? panelStyles.backdropActive : ''}`}
         onClick={onClose}
         aria-hidden
       />
@@ -265,7 +264,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                   <span className={panelStyles.estimateTitle}>
                     {view.t('agent.chat.next_request_estimate', '下次请求预计')}
                   </span>
-                  <ContextChainCompressionHelpButton size={15} />
+                  <ContextChainCompressionHelpButton size={14} />
                 </div>
                 <div className={panelStyles.footerRow}>
                   <span className={panelStyles.footerStat}>
@@ -302,6 +301,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
           </div>
         )}
       </aside>
-    </>
+    </div>,
+    document.body
   )
 }

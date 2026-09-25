@@ -429,7 +429,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: transparent;
+  background: var(--bg-overlay);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -857,8 +857,8 @@
   width: 100vw;
   height: 100vh;
   background-color: var(--bg-overlay);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -869,11 +869,9 @@
 @keyframes fadeInTest {
   from {
     opacity: 0;
-    backdrop-filter: blur(0px);
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(4px);
   }
 }
 
