@@ -40,11 +40,13 @@ import {
   persistNotebookGraphSideWidth
 } from './notebook-graph-side.util'
 import { NotebookGraphEmptyGuide, NotebookGraphToolbar } from './NotebookGraphToolbar'
+import { NotebookGraphOverlays } from './NotebookGraphOverlays'
 import {
   NotebookGraphSidePanel,
   type NotebookGraphSideMode,
   type NotebookGraphSideTab
 } from './NotebookGraphSidePanel'
+import { useNotebookGraphMerge } from './useNotebookGraphMerge'
 import graphStyles from '../graph/GraphPage.module.css'
 import styles from './KnowledgePage.module.css'
 
@@ -56,6 +58,7 @@ export const NotebookGraphPane: React.FC<{
   reloadKey: string
   onStartExtract: () => void
   onRebuildGraph?: () => void
+  onOpenQueue: () => void
   onPreviewFragments?: (edges: NotebookGraphViewEdge[]) => void
 }> = ({
   notebookId,
@@ -65,6 +68,7 @@ export const NotebookGraphPane: React.FC<{
   reloadKey,
   onStartExtract,
   onRebuildGraph,
+  onOpenQueue,
   onPreviewFragments
 }) => {
   const { t } = useTranslation()
@@ -88,8 +92,8 @@ export const NotebookGraphPane: React.FC<{
   )
   const [animationTick, setAnimationTick] = useState(0)
   const [dismissGuide, setDismissGuide] = useState(false)
-  const [sideMode, setSideMode] = useState<NotebookGraphSideMode>('content')
-  const [tab, setTab] = useState<NotebookGraphSideTab>('detail')
+  const [sideMode, setSideMode] = useState<NotebookGraphSideMode>('ops')
+  const [tab, setTab] = useState<NotebookGraphSideTab>('reextract')
   const [sideWidth, setSideWidth] = useState(loadNotebookGraphSideWidth)
   const [sideCollapsed, setSideCollapsed] = useState(loadNotebookGraphSideCollapsed)
 
@@ -112,14 +116,6 @@ export const NotebookGraphPane: React.FC<{
   useEffect(() => {
     void loadView()
   }, [loadView, reloadKey])
-
-  useEffect(() => {
-    if (!progress.visible) return
-    setTab('queue')
-    setSideMode('content')
-    setSideCollapsed(false)
-    persistNotebookGraphSideCollapsed(false)
-  }, [progress.visible])
 
   const pending = useMemo(() => splitNotebookGraphPending(nodes, edges), [nodes, edges])
   const pendingCount = pending.pendingNodes.length + pending.pendingEdges.length
@@ -229,6 +225,20 @@ export const NotebookGraphPane: React.FC<{
     setLocateSeq((n) => n + 1)
     setTab('detail')
   }
+
+  const merge = useNotebookGraphMerge({
+    notebookId,
+    nodes,
+    selectedId,
+    selectedNode,
+    t,
+    loadView,
+    locateNode
+  })
+
+  useEffect(() => {
+    void merge.loadSimilar()
+  }, [merge.loadSimilar, reloadKey])
 
   const togglePendingItem = (key: string) => {
     setPendingSelected((current) => {
@@ -364,7 +374,6 @@ export const NotebookGraphPane: React.FC<{
             query={query}
             extracting={extracting}
             sourceCount={sourceCount}
-            progress={progress}
             onQueryChange={setQuery}
             onSearch={() => void onSearch()}
             onRebuildGraph={onRebuildGraph}
@@ -415,23 +424,39 @@ export const NotebookGraphPane: React.FC<{
               sourceCount={sourceCount}
               progress={progress}
               pending={pending}
+              similarPairs={merge.similarPairs}
+              mergeSearchOpen={merge.mergeSearchOpen}
               nodes={nodes}
               selectedNode={selectedNode}
               relatedEdges={relatedEdges}
               pendingSelected={pendingSelected}
               allPendingSelected={allPendingSelected}
               pendingSelectedCount={pendingSelectedCount}
-              reviewBusy={reviewBusy}
+              reviewBusy={reviewBusy || merge.mergeBusy}
               focusDepth={focusDepth}
               appearanceSettings={appearanceSettings}
               forceSettings={forceSettings}
               tr={tr}
               onSideResizeMouseDown={sideResize.onMouseDown}
-              onOpenSide={openSide}
+              onOpenSide={(mode) => {
+                const jumpToPending =
+                  mode === 'content' &&
+                  pendingCount > 0 &&
+                  (sideCollapsed || sideMode !== 'content')
+                openSide(mode)
+                if (jumpToPending) setTab('pending')
+              }}
               onToggleCollapsed={() => persistCollapsed(!sideCollapsed)}
               onTabChange={setTab}
               onRebuildGraph={onRebuildGraph}
               onStartExtract={onStartExtract}
+              onOpenQueue={onOpenQueue}
+              onOpenMerge={() => {
+                merge.setMergeSearchOpen(true)
+                openSide('ops')
+              }}
+              onMergeSimilar={merge.mergePair}
+              onKeepApartSimilar={(pair) => void merge.dismissPair(pair)}
               onToggleSelectAll={toggleSelectAllPending}
               onToggleItem={togglePendingItem}
               onApproveSelected={() => void applyPendingReviews({ reviewStatus: 'approved' })}
@@ -455,6 +480,19 @@ export const NotebookGraphPane: React.FC<{
           ) : null}
         </div>
       </div>
+      <NotebookGraphOverlays
+        mergeSearchOpen={merge.mergeSearchOpen}
+        mergeConfirm={merge.mergeConfirm}
+        mergeBusy={merge.mergeBusy}
+        selectedId={selectedId}
+        selectedNode={selectedNode}
+        nodes={nodes}
+        searchMergeNodes={merge.searchMergeNodes}
+        onCloseMergeSearch={() => merge.setMergeSearchOpen(false)}
+        onRequestMerge={merge.openMergeConfirm}
+        onCancelMerge={() => merge.setMergeConfirm(null)}
+        onConfirmMerge={() => void merge.runConfirmedMerge()}
+      />
     </div>
   )
 }

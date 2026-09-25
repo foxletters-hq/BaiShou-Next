@@ -2,7 +2,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search } from 'lucide-react'
 import { Button, HelpTooltip, Input } from '@baishou/ui'
-import type { NotebookGraphProgressView } from './notebook-graph-progress.util'
 import graphStyles from '../graph/GraphPage.module.css'
 import styles from './KnowledgePage.module.css'
 
@@ -10,7 +9,6 @@ export function NotebookGraphToolbar({
   query,
   extracting,
   sourceCount,
-  progress,
   onQueryChange,
   onSearch,
   onRebuildGraph,
@@ -19,7 +17,6 @@ export function NotebookGraphToolbar({
   query: string
   extracting: boolean
   sourceCount: number
-  progress: NotebookGraphProgressView
   onQueryChange: (value: string) => void
   onSearch: () => void
   onRebuildGraph?: () => void
@@ -75,26 +72,6 @@ export function NotebookGraphToolbar({
           </Button>
         </div>
       </div>
-      {progress.visible ? (
-        <div className={styles.graphProgress}>
-          <div className={styles.graphProgressText}>
-            <strong>{progress.headline}</strong>
-            <span>{progress.detail}</span>
-          </div>
-          <div
-            className={styles.graphProgressBar}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress.percent}
-          >
-            <div
-              className={styles.graphProgressFill}
-              style={{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }}
-            />
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
