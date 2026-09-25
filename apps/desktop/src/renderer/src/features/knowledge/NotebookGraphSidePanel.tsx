@@ -1,16 +1,23 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdArticle, MdChevronLeft, MdChevronRight, MdSettings, MdTune } from 'react-icons/md'
-import type { GraphAppearanceSettings, GraphFocusDepth, GraphForceSettings } from '@baishou/shared'
+import type {
+  GraphAppearanceSettings,
+  GraphFocusDepth,
+  GraphForceSettings,
+  GraphSimilarPendingPair
+} from '@baishou/shared'
 import { Button } from '@baishou/ui'
+import { formatGraphRailCount } from '../graph/graph-page-view.util'
 import { GraphCanvasSettingsPanel } from '../graph/GraphCanvasSettingsPanel'
 import type { NotebookGraphProgressView } from './notebook-graph-progress.util'
+import { GraphPageSimilarPane } from '../graph/GraphPageSimilarPane'
 import { NotebookGraphDetailTab } from './NotebookGraphDetailTab'
 import { NotebookGraphPendingTab } from './NotebookGraphPendingTab'
 import type { NotebookGraphViewEdge, NotebookGraphViewNode } from './notebook-graph-view.util'
 import graphStyles from '../graph/GraphPage.module.css'
 
-export type NotebookGraphSideTab = 'queue' | 'pending' | 'detail'
+export type NotebookGraphSideTab = 'reextract' | 'pending' | 'similar' | 'detail'
 export type NotebookGraphSideMode = 'ops' | 'content' | 'settings'
 
 export function NotebookGraphSidePanel({
@@ -22,6 +29,8 @@ export function NotebookGraphSidePanel({
   sourceCount,
   progress,
   pending,
+  similarPairs,
+  mergeSearchOpen,
   nodes,
   selectedNode,
   relatedEdges,
@@ -39,6 +48,10 @@ export function NotebookGraphSidePanel({
   onTabChange,
   onRebuildGraph,
   onStartExtract,
+  onOpenQueue,
+  onOpenMerge,
+  onMergeSimilar,
+  onKeepApartSimilar,
   onToggleSelectAll,
   onToggleItem,
   onApproveSelected,
@@ -63,6 +76,8 @@ export function NotebookGraphSidePanel({
   sourceCount: number
   progress: NotebookGraphProgressView
   pending: { pendingNodes: NotebookGraphViewNode[]; pendingEdges: NotebookGraphViewEdge[] }
+  similarPairs: GraphSimilarPendingPair[]
+  mergeSearchOpen: boolean
   nodes: NotebookGraphViewNode[]
   selectedNode: NotebookGraphViewNode | null
   relatedEdges: NotebookGraphViewEdge[]
@@ -80,6 +95,10 @@ export function NotebookGraphSidePanel({
   onTabChange: (tab: NotebookGraphSideTab) => void
   onRebuildGraph?: () => void
   onStartExtract: () => void
+  onOpenQueue: () => void
+  onOpenMerge: () => void
+  onMergeSimilar: (pair: GraphSimilarPendingPair) => void
+  onKeepApartSimilar: (pair: GraphSimilarPendingPair) => void
   onToggleSelectAll: () => void
   onToggleItem: (key: string) => void
   onApproveSelected: () => void
@@ -120,16 +139,7 @@ export function NotebookGraphSidePanel({
           onClick={() => onOpenSide('ops')}
         >
           <MdTune size={18} />
-        </button>
-        <button
-          type="button"
-          className={`${graphStyles.railBtn} ${
-            !sideCollapsed && sideMode === 'content' ? graphStyles.railBtnActive : ''
-          }`}
-          title={t('graph.side_content', '内容')}
-          onClick={() => onOpenSide('content')}
-        >
-          <MdArticle size={18} />
+          {extracting ? <span className={graphStyles.railDot} aria-hidden /> : null}
         </button>
         <button
           type="button"
@@ -140,6 +150,27 @@ export function NotebookGraphSidePanel({
           onClick={() => onOpenSide('settings')}
         >
           <MdSettings size={18} />
+        </button>
+        <button
+          type="button"
+          className={`${graphStyles.railBtn} ${
+            !sideCollapsed && sideMode === 'content' ? graphStyles.railBtnActive : ''
+          }`}
+          title={
+            pendingCount > 0
+              ? t('graph.side_content_pending', '内容 · 待确认 {{count}}', {
+                  count: pendingCount
+                })
+              : t('graph.side_content', '内容')
+          }
+          onClick={() => onOpenSide('content')}
+        >
+          <MdArticle size={18} />
+          {pendingCount > 0 ? (
+            <span className={graphStyles.railCount} aria-hidden>
+              {formatGraphRailCount(pendingCount)}
+            </span>
+          ) : null}
         </button>
         <button
           type="button"
@@ -161,8 +192,16 @@ export function NotebookGraphSidePanel({
               <div className={graphStyles.settingsHeader}>
                 <div className={graphStyles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
               </div>
-              <div className={graphStyles.panel}>
+              <div className={graphStyles.panel} data-graph-side-scroll>
                 <div className={graphStyles.opsBlock}>
+                  <Button
+                    type="button"
+                    className={mergeSearchOpen ? graphStyles.btnActive : ''}
+                    disabled={reviewBusy || nodes.length === 0}
+                    onClick={onOpenMerge}
+                  >
+                    {t('graph.merge_nodes', '合并节点')}
+                  </Button>
                   <Button
                     type="button"
                     disabled={extracting || sourceCount === 0}
@@ -170,16 +209,17 @@ export function NotebookGraphSidePanel({
                   >
                     {t('knowledge.rebuild_graph', '重新抽取图谱')}
                   </Button>
-                  {progress.visible ? (
-                    <p className={graphStyles.empty}>{progress.detail}</p>
-                  ) : (
-                    <p className={graphStyles.empty}>
-                      {t(
-                        'knowledge.graph_ops_hint',
-                        '重新抽取只会整理这本笔记本。人生关系图不会被改动。'
-                      )}
-                    </p>
-                  )}
+                  {extracting ? (
+                    <Button type="button" onClick={onOpenQueue}>
+                      {t('graph.queue_view_progress', '查看进度')}
+                    </Button>
+                  ) : null}
+                  <p className={graphStyles.empty}>
+                    {t(
+                      'knowledge.graph_ops_hint',
+                      '重新抽取只会整理这本笔记本。人生关系图不会被改动。'
+                    )}
+                  </p>
                 </div>
               </div>
             </>
@@ -190,10 +230,10 @@ export function NotebookGraphSidePanel({
               <div className={graphStyles.tabs}>
                 <button
                   type="button"
-                  className={`${graphStyles.tab} ${tab === 'queue' ? graphStyles.tabActive : ''}`}
-                  onClick={() => onTabChange('queue')}
+                  className={`${graphStyles.tab} ${tab === 'reextract' ? graphStyles.tabActive : ''}`}
+                  onClick={() => onTabChange('reextract')}
                 >
-                  {t('knowledge.graph_tab_queue', '抽取')}
+                  {t('graph.tab_reextract', '待重抽')}
                 </button>
                 <button
                   type="button"
@@ -204,24 +244,58 @@ export function NotebookGraphSidePanel({
                 </button>
                 <button
                   type="button"
+                  className={`${graphStyles.tab} ${tab === 'similar' ? graphStyles.tabActive : ''}`}
+                  onClick={() => onTabChange('similar')}
+                >
+                  {t('graph.tab_similar_count', '相似待合并 ({{count}})', {
+                    count: similarPairs.length
+                  })}
+                </button>
+                <button
+                  type="button"
                   className={`${graphStyles.tab} ${tab === 'detail' ? graphStyles.tabActive : ''}`}
                   onClick={() => onTabChange('detail')}
                 >
                   {t('graph.tab_detail', '详情')}
                 </button>
               </div>
-              <div className={graphStyles.panel}>
-                {tab === 'queue' ? (
+              <div className={graphStyles.panel} data-graph-side-scroll>
+                {tab === 'reextract' ? (
                   progress.visible ? (
                     <div className={graphStyles.itemCompact}>
-                      <div className={graphStyles.itemTitle}>{progress.headline}</div>
-                      <div className={graphStyles.itemMetaCompact}>{progress.detail}</div>
+                      <div className={graphStyles.itemRow}>
+                        <div className={graphStyles.itemTitle}>{progress.headline}</div>
+                        <span
+                          className={
+                            progress.headlineKey.includes('failed')
+                              ? graphStyles.queueBadgeError
+                              : graphStyles.queueBadge
+                          }
+                        >
+                          {progress.headlineKey.includes('failed')
+                            ? t('graph.queue_error', '失败')
+                            : t('graph.queue_running', '抽取中')}
+                        </span>
+                      </div>
+                      {progress.detail ? (
+                        <div className={graphStyles.itemMetaCompact}>{progress.detail}</div>
+                      ) : null}
                     </div>
                   ) : (
                     <div className={graphStyles.empty}>
-                      {t('knowledge.graph_queue_idle', '当前没有正在抽取的资料')}
+                      {t('knowledge.graph_reextract_empty', '暂无待重抽资料')}
                     </div>
                   )
+                ) : null}
+
+                {tab === 'similar' ? (
+                  <GraphPageSimilarPane
+                    pairs={similarPairs}
+                    busy={reviewBusy}
+                    onMerge={onMergeSimilar}
+                    onKeepApart={onKeepApartSimilar}
+                    onLocateNode={onLocate}
+                  />
                 ) : null}
 
                 {tab === 'pending' ? (
@@ -278,7 +352,7 @@ export function NotebookGraphSidePanel({
                   {t('graph.force_reset', '恢复默认')}
                 </button>
               </div>
-              <div className={graphStyles.panel}>
+              <div className={graphStyles.panel} data-graph-side-scroll>
                 <GraphCanvasSettingsPanel
                   focusDepth={focusDepth}
                   appearanceSettings={appearanceSettings}
