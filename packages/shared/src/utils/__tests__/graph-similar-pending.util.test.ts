@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
   applyAlignedSimilarPendingToProps,
   applySimilarPendingToProps,
   collectSimilarPendingPairs,
   listGraphSimilarPending,
+  meetsGraphSimilarPendingThreshold,
   nodePropsHaveSimilarPending,
   parseGraphSimilarPending,
   removeSimilarPendingPeerFromProps
@@ -38,7 +40,26 @@ describe('parseGraphSimilarPending', () => {
   })
 })
 
+describe('meetsGraphSimilarPendingThreshold', () => {
+  it('should enter similar-pending only when similarity is greater than 70%', () => {
+    expect(GRAPH_ALIGN_MIN_SIMILARITY_PERCENT).toBe(70)
+    expect(meetsGraphSimilarPendingThreshold(0.7)).toBe(false)
+    expect(meetsGraphSimilarPendingThreshold(0.71)).toBe(true)
+  })
+
+  it('should treat 0–100 scores as percent so 45% stays below the bar', () => {
+    expect(meetsGraphSimilarPendingThreshold(45)).toBe(false)
+    expect(meetsGraphSimilarPendingThreshold(72)).toBe(true)
+  })
+})
+
 describe('applySimilarPendingToProps / removeSimilarPendingPeerFromProps', () => {
+  it('should skip writing when similarity is 70% or lower', () => {
+    expect(
+      applySimilarPendingToProps({}, { ...PENDING, similarity: 0.7 })
+    ).toEqual({})
+  })
+
   it('should write a single pair as similarPending', () => {
     const props = applySimilarPendingToProps({ keep: true }, PENDING)
     expect(props.similarPending).toEqual(PENDING)
@@ -144,6 +165,59 @@ describe('collectSimilarPendingPairs', () => {
         new Map()
       )
     ).toEqual([])
+  })
+
+  it('should hide a stored pair when similarity is 70% or lower', () => {
+    expect(
+      collectSimilarPendingPairs(
+        [
+          {
+            id: 'n-new',
+            name: '小张',
+            props: { similarPending: { ...PENDING, similarity: 0.7 } }
+          }
+        ],
+        new Map([['n-old', '张三']])
+      )
+    ).toEqual([])
+    expect(
+      nodePropsHaveSimilarPending(JSON.stringify({ similarPending: { ...PENDING, similarity: 0.7 } }))
+    ).toBe(false)
+  })
+
+  it('should hide a stored pair written as 45 percent instead of 0.45', () => {
+    expect(
+      collectSimilarPendingPairs(
+        [
+          {
+            id: 'n-new',
+            name: '小张',
+            props: { similarPending: { ...PENDING, similarity: 45 } }
+          }
+        ],
+        new Map([['n-old', '张三']])
+      )
+    ).toEqual([])
+  })
+
+  it('should list a stored pair written as 72 percent as 72%', () => {
+    const pairs = collectSimilarPendingPairs(
+      [
+        {
+          id: 'n-new',
+          name: '小张',
+          props: { similarPending: { ...PENDING, similarity: 72 } }
+        }
+      ],
+      new Map([['n-old', '张三']])
+    )
+    expect(pairs).toEqual([
+      expect.objectContaining({
+        nodeId: 'n-new',
+        peerId: 'n-old',
+        similarity: 0.72
+      })
+    ])
   })
 
   it('should ignore suspectReason-only props', () => {

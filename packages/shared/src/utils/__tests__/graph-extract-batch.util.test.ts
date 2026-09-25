@@ -4,6 +4,7 @@ import {
   GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
   GRAPH_EXTRACT_CONCURRENCY_MAX,
   GRAPH_EXTRACT_EMPTY_RESPONSE_ERROR,
+  GRAPH_EXTRACT_WINDOW_TIMEOUT_MS,
   buildGraphExtractEnqueueItems,
   entityAlignKey,
   graphCosineDistanceToSimilarity,
@@ -24,6 +25,12 @@ describe('resolveGraphExtractConcurrency', () => {
     expect(resolveGraphExtractConcurrency(0)).toBe(1)
     expect(resolveGraphExtractConcurrency(99)).toBe(GRAPH_EXTRACT_CONCURRENCY_MAX)
     expect(resolveGraphExtractConcurrency('3')).toBe(3)
+  })
+})
+
+describe('graph extract window timeout', () => {
+  it('should keep a 10-minute wall clock so a hung window cannot block overnight', () => {
+    expect(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS).toBe(10 * 60_000)
   })
 })
 

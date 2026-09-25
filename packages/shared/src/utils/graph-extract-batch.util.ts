@@ -1,6 +1,9 @@
 import { buildDiaryEmbeddingSourceId } from './rag-diary.util'
 import { normalizeGraphFilePath, normalizeGraphName } from './graph-identity.util'
 
+/** 笔记本单窗抽图墙钟上限。首个 token 之后模型仍可能挂死，不能只靠首字超时。 */
+export const GRAPH_EXTRACT_WINDOW_TIMEOUT_MS = 10 * 60_000
+
 /** 图谱抽取 LLM 并发：用户可选，默认 5，上限 10。 */
 export const GRAPH_EXTRACT_CONCURRENCY_MIN = 1
 export const GRAPH_EXTRACT_CONCURRENCY_MAX = 10
