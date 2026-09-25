@@ -8,6 +8,7 @@ import {
   parseRedactedThinking
 } from '@baishou/ui'
 import {
+  type AgentGateRequest,
   type AgentStreamTimelineItem,
   type MockToolInvocation,
   type WorkspaceChangeEntry
@@ -21,6 +22,10 @@ import {
   groupStreamTimelineItems,
   type WorkspaceStreamTimelineGroup
 } from '../utils/workspace-message-parts.util'
+import {
+  mergeWorkspaceChangeEntries,
+  workspaceChangesFromGateRequest
+} from '../utils/workspace-gate-file-changes.util'
 import { WorkspaceFileChangeList } from './WorkspaceFileChangeList'
 import styles from './AgentWorkspaceMessageList.module.css'
 
@@ -51,9 +56,13 @@ function renderStreamFileOps(
   options: {
     onSelectChange?: (change: WorkspaceChangeEntry) => void
     onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
+    gateChanges?: WorkspaceChangeEntry[]
   }
 ) {
-  const changes = buildFileOpEntries('stream', items.map(streamToolToInvocation), [])
+  const changes = mergeWorkspaceChangeEntries(
+    buildFileOpEntries('stream', items.map(streamToolToInvocation), []),
+    options.gateChanges ?? []
+  )
   if (changes.length === 0) return null
   return (
     <WorkspaceFileChangeList
@@ -99,6 +108,7 @@ function renderStreamTimelineItem(
     failedByName: Map<string, string>
     onSelectChange?: (change: WorkspaceChangeEntry) => void
     onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
+    gateChanges?: WorkspaceChangeEntry[]
   }
 ) {
   if (item.kind === 'reasoning') {
@@ -153,6 +163,7 @@ export function WorkspaceStreamingTurn(props: {
   streamShowWaiting: boolean
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
+  pendingAsk?: AgentGateRequest | null
 }) {
   const { t } = useTranslation()
   const {
@@ -174,8 +185,12 @@ export function WorkspaceStreamingTurn(props: {
     streamShowPlaceholder,
     streamShowWaiting,
     onSelectChange,
-    onReviewAll
+    onReviewAll,
+    pendingAsk
   } = props
+  const gateChanges = workspaceChangesFromGateRequest(pendingAsk)
+  const streamGroups = useLiveTimeline ? groupStreamTimelineItems(streamingTimeline) : []
+  const streamHasFileOps = streamGroups.some((item) => item.kind === 'file_ops')
 
   return (
     <div
@@ -189,15 +204,26 @@ export function WorkspaceStreamingTurn(props: {
         </div>
       ) : null}
       {useLiveTimeline ? (
-        groupStreamTimelineItems(streamingTimeline).map((item, index, groups) =>
-          renderStreamTimelineItem(item, index, {
-            isStreaming: isStreaming && !isBridgeActive,
-            isLast: index === groups.length - 1,
-            failedByName,
-            onSelectChange,
-            onReviewAll
-          })
-        )
+        <>
+          {streamGroups.map((item, index, groups) =>
+            renderStreamTimelineItem(item, index, {
+              isStreaming: isStreaming && !isBridgeActive,
+              isLast: index === groups.length - 1,
+              failedByName,
+              onSelectChange,
+              onReviewAll,
+              gateChanges
+            })
+          )}
+          {!streamHasFileOps && gateChanges.length > 0 ? (
+            <WorkspaceFileChangeList
+              changes={gateChanges}
+              running
+              onSelectChange={onSelectChange ?? (() => undefined)}
+              onReviewAll={onReviewAll}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           {streamHasReasoning ? (

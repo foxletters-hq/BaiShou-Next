@@ -28,7 +28,7 @@
   justify-content: center;
   border-radius: 999px;
   border: 1px solid var(--border-control, var(--border-muted));
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.08));
   cursor: pointer;
@@ -122,7 +122,7 @@
   align-items: flex-end;
   padding: 10px 14px;
   border-radius: 16px 16px 4px 16px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   font-size: var(--ui-fs-lg);
@@ -162,7 +162,7 @@
   padding: 10px 14px;
   border: none;
   border-radius: 16px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--ui-fs-lg);
   line-height: 1.6;

@@ -11,16 +11,20 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import {
+  AgentGatePartBubble,
   CompanionAskInteractionProvider,
   parseRedactedThinking,
   type AgentGateReplyPayload
 } from '@baishou/ui'
 import {
+  collectAgentGatePartDataForSurface,
+  type AgentGatePartData,
   type AgentGateRequest,
   type AgentStreamTimelineItem,
   type PromptFileRef,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
+import { selectResolvedLiveForSession, useAgentGateInboxStore } from '@baishou/store'
 import type {
   WorkspaceChatMessage,
   PendingWorkspaceAssistantMsg
@@ -208,6 +212,23 @@ export const AgentWorkspaceMessageList = forwardRef<
     return map
   }, [completedTools, failedTools])
 
+  const resolvedLive = useAgentGateInboxStore((state) =>
+    selectResolvedLiveForSession(state, sessionId, 'workspace')
+  )
+  const persistedGateIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const msg of messages) {
+      for (const data of collectAgentGatePartDataForSurface(msg.parts, 'workspace')) {
+        ids.add(data.request.id)
+      }
+    }
+    return ids
+  }, [messages])
+  const liveGateParts = useMemo(
+    () => resolvedLive.filter((item: AgentGatePartData) => !persistedGateIds.has(item.request.id)),
+    [persistedGateIds, resolvedLive]
+  )
+
   const lastMessage = messages[messages.length - 1]
   const assistantPersistedDuringBridge =
     isBridgeActive &&
@@ -328,35 +349,40 @@ export const AgentWorkspaceMessageList = forwardRef<
               </p>
             ) : null}
             {messages.map((msg, index) => {
-              if (msg.role === 'user') {
-                return (
-                  <WorkspaceUserTurn
-                    key={msg.id}
-                    msg={msg}
-                    dimmed={editingIndex >= 0 && index > editingIndex}
-                    editingActive={editingMessageId === msg.id}
-                    onEditingChange={setEditingMessageId}
-                    onEditResend={onEditResend}
-                    bubbleActions={bubbleActions}
-                    onOpenFile={onOpenFile}
-                  />
-                )
-              }
-
+              const gateParts = collectAgentGatePartDataForSurface(msg.parts, 'workspace')
               return (
-                <WorkspaceAssistantTurn
-                  key={msg.id}
-                  msg={msg}
-                  dimmed={editingIndex >= 0 && index > editingIndex}
-                  editingActive={editingMessageId === msg.id}
-                  onEditingChange={setEditingMessageId}
-                  onSelectChange={onSelectChange}
-                  onReviewAll={onReviewAll}
-                  bubbleActions={bubbleActions}
-                  suppressIncompleteBanner={Boolean(pendingAsk)}
-                />
+                <React.Fragment key={msg.id}>
+                  {gateParts.map((data) => (
+                    <AgentGatePartBubble key={data.request.id} data={data} />
+                  ))}
+                  {msg.role === 'user' ? (
+                    <WorkspaceUserTurn
+                      msg={msg}
+                      dimmed={editingIndex >= 0 && index > editingIndex}
+                      editingActive={editingMessageId === msg.id}
+                      onEditingChange={setEditingMessageId}
+                      onEditResend={onEditResend}
+                      bubbleActions={bubbleActions}
+                      onOpenFile={onOpenFile}
+                    />
+                  ) : (
+                    <WorkspaceAssistantTurn
+                      msg={msg}
+                      dimmed={editingIndex >= 0 && index > editingIndex}
+                      editingActive={editingMessageId === msg.id}
+                      onEditingChange={setEditingMessageId}
+                      onSelectChange={onSelectChange}
+                      onReviewAll={onReviewAll}
+                      bubbleActions={bubbleActions}
+                      suppressIncompleteBanner={Boolean(pendingAsk)}
+                    />
+                  )}
+                </React.Fragment>
               )
             })}
+            {liveGateParts.map((data) => (
+              <AgentGatePartBubble key={data.request.id} data={data} />
+            ))}
 
             {showStreamingBubble ? (
               <WorkspaceStreamingTurn
@@ -379,6 +405,7 @@ export const AgentWorkspaceMessageList = forwardRef<
                 streamShowWaiting={streamShowWaiting}
                 onSelectChange={onSelectChange}
                 onReviewAll={onReviewAll}
+                pendingAsk={pendingAsk}
               />
             ) : null}
 
