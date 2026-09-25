@@ -47,7 +47,7 @@ export interface TtsProviderConnectionConfig {
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string
   globalDialogueModelId: string
-  /** 日记与笔记本图关系抽取；可单独配置，未配置时运行时回退到对话模型 */
+  /** 日记与笔记本图关系抽取。未配置时不改用对话模型，由界面提示用户去选。 */
   globalGraphProviderId: string
   globalGraphModelId: string
   globalNamingProviderId: string
