@@ -39,6 +39,10 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
     return this.query.getNodeById(...args)
   }
 
+  listEdgesTouching(...args: Parameters<NotebookGraphQueryOps['listEdgesTouching']>) {
+    return this.query.listEdgesTouching(...args)
+  }
+
   findNodesByNameOrAlias(...args: Parameters<NotebookGraphQueryOps['findNodesByNameOrAlias']>) {
     return this.query.findNodesByNameOrAlias(...args)
   }

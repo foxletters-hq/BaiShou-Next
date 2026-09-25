@@ -41,8 +41,8 @@ describe('message_search vault isolation (P0-1)', () => {
         total_cache_read_input_tokens INTEGER NOT NULL DEFAULT 0,
         total_cache_write_input_tokens INTEGER NOT NULL DEFAULT 0,
         total_cost_micros INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-        updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `)
     await client.execute(`
@@ -60,7 +60,7 @@ describe('message_search vault isolation (P0-1)', () => {
         cache_read_input_tokens INTEGER,
         cache_write_input_tokens INTEGER,
         cost_micros INTEGER,
-        created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `)
     await client.execute(`
@@ -70,7 +70,7 @@ describe('message_search vault isolation (P0-1)', () => {
         session_id TEXT NOT NULL,
         type TEXT NOT NULL,
         data TEXT,
-        created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `)
     await client.execute(`
@@ -156,5 +156,17 @@ describe('message_search vault isolation (P0-1)', () => {
     } finally {
       ;(repo as any).searchMessagesViaFts = originalFts
     }
+  })
+
+  it('should keep date-range session and message lists inside the requested vault', async () => {
+    const today = new Date()
+    const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const sessions = await repo.listSessionsInDateRange(VAULT_A, ymd, ymd, 20)
+    expect(sessions.some((row) => row.sessionTitle === '会话A')).toBe(true)
+    expect(sessions.some((row) => row.sessionTitle === '会话B')).toBe(false)
+
+    const messages = await repo.listMessagesInDateRange(VAULT_A, 20, { startDate: ymd, endDate: ymd })
+    expect(messages.some((row) => String(row.content).includes('vault A'))).toBe(true)
+    expect(messages.some((row) => String(row.content).includes('vault B'))).toBe(false)
   })
 })

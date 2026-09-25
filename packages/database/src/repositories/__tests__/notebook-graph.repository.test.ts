@@ -511,6 +511,8 @@ describeGraph('NotebookGraphRepository supersede', () => {
     })
     expect(view.nodes.map((n) => n.id).sort()).toEqual(['a', 'b'])
     expect(view.edges.map((e) => e.id)).toEqual(['e-ab'])
+    const touching = await repo.listEdgesTouching('v1', 'nb1', 'a')
+    expect(touching.map((e) => e.id)).toEqual(['e-ab'])
   })
 
   it('softDeleteNode 级联删除相连的边', async () => {

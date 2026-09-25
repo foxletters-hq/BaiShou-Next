@@ -181,6 +181,28 @@ export class NotebookGraphQueryOps {
       )
   }
 
+  async listEdgesTouching(
+    vaultId: string,
+    notebookId: string,
+    nodeId: string
+  ): Promise<NotebookGraphEdgeRow[]> {
+    const nb = requireNotebookId(notebookId)
+    const vid = vaultId.trim()
+    const id = nodeId.trim()
+    if (!vid || !id) return []
+    return this.db
+      .select()
+      .from(notebookGraphEdgesTable)
+      .where(
+        and(
+          eq(notebookGraphEdgesTable.vaultId, vid),
+          eq(notebookGraphEdgesTable.notebookId, nb),
+          isNull(notebookGraphEdgesTable.deletedAt),
+          or(eq(notebookGraphEdgesTable.fromId, id), eq(notebookGraphEdgesTable.toId, id))
+        )
+      )
+  }
+
   async getNodeById(
     id: string,
     vaultId: string,

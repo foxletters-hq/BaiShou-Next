@@ -78,6 +78,20 @@ describe('knowledge_embed_ledger (libsql)', () => {
     expect(await repo.countPendingEmbedSources('vault-a')).toBe(1)
   })
 
+  it('should queue when hydration marked pending even if ledger is still embedded', async () => {
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceId: 'src1',
+      contentHash: 'aaa',
+      chunkCount: 0,
+      modelId: 'm1',
+      dimension: 8
+    })
+    expect(await repo.countPendingEmbedSources('vault-a', { modelId: 'm1', dimension: 8 })).toBe(0)
+    await repo.updateSourceStatus('src1', 'pending')
+    expect(await repo.countPendingEmbedSources('vault-a', { modelId: 'm1', dimension: 8 })).toBe(1)
+  })
+
   it('SUM(chunk_count) 与切片数不一致时从切片表重建', async () => {
     await repo.insertChunk({
       chunkId: 'src1_0',

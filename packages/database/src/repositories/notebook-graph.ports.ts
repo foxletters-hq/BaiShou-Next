@@ -44,6 +44,11 @@ export interface NotebookGraphQuery {
     maxHops?: number
   }): Promise<NotebookGraphPath | null>
   getEdgeById(id: string, vaultId: string, notebookId: string): Promise<NotebookGraphEdgeRow | null>
+  listEdgesTouching(
+    vaultId: string,
+    notebookId: string,
+    nodeId: string
+  ): Promise<NotebookGraphEdgeRow[]>
   listPendingNodes(vaultId: string, notebookId: string): Promise<NotebookGraphNodeRow[]>
   listPendingEdges(vaultId: string, notebookId: string): Promise<NotebookGraphEdgeRow[]>
 }
