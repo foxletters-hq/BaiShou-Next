@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   formatKnowledgeBytesMb,
   knowledgeIngestUserMessage,
+  knowledgeSourceCanCancelExtract,
+  knowledgeSourceCanEmbed,
   knowledgeSourceCanReembedGraph,
   knowledgeSourceCanRetry,
-  knowledgeSourceStatusLabel
+  knowledgeSourceNeedsOcr,
+  knowledgeSourceStatusLabel,
+  moveNotebookByOffset,
+  resolveNotebookRename,
+  sortNotebooksForMobileList
 } from '../knowledge-screen.util'
 
 describe('knowledge-screen.util', () => {
@@ -28,6 +34,22 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeSourceCanRetry('stored')).toBe(false)
   })
 
+  it('should allow stored sources to embed and extracting sources to cancel', () => {
+    expect(knowledgeSourceCanEmbed('stored')).toBe(true)
+    expect(knowledgeSourceCanEmbed('ready')).toBe(false)
+    expect(knowledgeSourceCanCancelExtract({ status: 'extracting', extractEngine: 'ocr' })).toBe(
+      true
+    )
+    expect(knowledgeSourceNeedsOcr('needs_ocr')).toBe(true)
+  })
+
+  it('should translate knowledge-model-mismatch', () => {
+    const t = (_key: string, fallback: string) => fallback
+    expect(knowledgeIngestUserMessage(new Error('knowledge-model-mismatch'), t)).toContain(
+      '提问已硬拦截'
+    )
+  })
+
   it('should allow graph-only reprocess for ready or partial sources', () => {
     expect(knowledgeSourceCanReembedGraph('ready')).toBe(true)
     expect(knowledgeSourceCanReembedGraph('partial')).toBe(true)
@@ -43,5 +65,29 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeIngestUserMessage(new Error('notebookId required'), t)).toBe(
       'notebookId required'
     )
+    expect(knowledgeIngestUserMessage(new Error('graph-step:node-embed:Payment Required'), t)).toBe(
+      '模型服务商提示账号额度不足。'
+    )
+  })
+
+  it('should sort notebooks by sortOrder then newer createdAt', () => {
+    const rows = sortNotebooksForMobileList([
+      { id: 'b', name: 'B', sortOrder: 2, createdAt: 1 },
+      { id: 'a', name: 'A', sortOrder: 1, createdAt: 2 }
+    ])
+    expect(rows.map((row) => row.id)).toEqual(['a', 'b'])
+  })
+
+  it('should resolve rename only when the name actually changes', () => {
+    expect(resolveNotebookRename('旧名', ' 新名 ')).toBe('新名')
+    expect(resolveNotebookRename('旧名', '旧名')).toBeNull()
+    expect(resolveNotebookRename('旧名', '   ')).toBeNull()
+  })
+
+  it('should move a notebook by offset and stop at the edges', () => {
+    const list = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+    expect(moveNotebookByOffset(list, 1, -1)?.map((row) => row.id)).toEqual(['b', 'a', 'c'])
+    expect(moveNotebookByOffset(list, 0, -1)).toBeNull()
+    expect(moveNotebookByOffset(list, 2, 1)).toBeNull()
   })
 })
