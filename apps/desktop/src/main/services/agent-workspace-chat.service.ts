@@ -221,6 +221,9 @@ export async function runWorkspaceStreamChat(params: {
       skillsCatalog = undefined
     }
 
+    const { getRawDataSourceManager, syncGraphPendingIndex } =
+      await import('./raw-data-source.runtime')
+
     const streamResult = await AgentChatCoreService.runStreamChat({
       emitter,
       sessionId: params.sessionId,
@@ -249,6 +252,8 @@ export async function runWorkspaceStreamChat(params: {
       persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
         await setWorkspaceGateConfig(workspaceId, config)
       },
+      rawDataSourceManager: getRawDataSourceManager(),
+      syncGraphPendingIndex,
       knowledgeReader,
       knowledgeGraphReader,
       skillsCatalog,

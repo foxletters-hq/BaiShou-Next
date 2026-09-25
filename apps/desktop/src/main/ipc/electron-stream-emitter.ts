@@ -12,9 +12,6 @@ export class ElectronStreamEmitter implements IStreamEmitter {
   }
 
   sendReasoningChunk(sessionId: string, chunk: string) {
-    logger.info(
-      `[ElectronStreamEmitter] sendReasoningChunk - sessionId=${sessionId}, chunkLength=${chunk.length}`
-    )
     this.event.sender.send('agent:reasoning-chunk', { sessionId, chunk })
   }
 

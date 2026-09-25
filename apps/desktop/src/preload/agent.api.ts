@@ -128,6 +128,7 @@ export const agentApi = {
       reply: import('@baishou/shared').AgentGateReply
       message?: string
       selectedOptionIds?: string[]
+      questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
     }) => ipcRenderer.invoke('agent-gate:reply', input),
     listPending: (sessionId?: string) =>
       ipcRenderer.invoke('agent-gate:list-pending', sessionId) as Promise<
@@ -160,6 +161,9 @@ export const agentApi = {
         sessionId: string
         requestId: string
         reply: import('@baishou/shared').AgentGateReply
+        message?: string
+        selectedOptionIds?: string[]
+        questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
       }) => void
     ) => {
       const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
