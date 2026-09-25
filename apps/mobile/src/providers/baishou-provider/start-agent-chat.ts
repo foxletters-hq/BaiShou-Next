@@ -79,11 +79,16 @@ export function createStartAgentChat(deps: {
       const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
       const globalModels = await runtime.settingsManager.get<any>('global_models')
 
-      const providerId = overrides?.providerId || globalModels?.globalDialogueProviderId
-      const config =
-        providers.find((p: any) => p.id === providerId) || providers.find((p: any) => p.isEnabled)
+      const providerId = isConfiguredProviderId(overrides?.providerId)
+        ? overrides!.providerId
+        : isConfiguredProviderId(globalModels?.globalDialogueProviderId)
+          ? globalModels.globalDialogueProviderId
+          : ''
+      const config = providerId
+        ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)
+        : undefined
 
-      if (!config) throw new Error('No active provider configured')
+      if (!config) throw new Error(`No active provider configured (provider: ${providerId || 'unset'})`)
 
       const provider = registry.getOrUpdateProvider(config)
 
@@ -125,11 +130,12 @@ export function createStartAgentChat(deps: {
         }
       }
 
-      const modelId =
-        overrides?.modelId ||
-        globalModels?.globalDialogueModelId ||
-        config.defaultDialogueModel ||
-        config.models[0]
+      const modelId = isConfiguredDialogueModelId(overrides?.modelId)
+        ? overrides!.modelId
+        : isConfiguredDialogueModelId(globalModels?.globalDialogueModelId)
+          ? globalModels.globalDialogueModelId
+          : ''
+      if (!modelId) throw new Error('No dialogue model configured')
 
       const systemModels = {
         namingModelConfigured,
@@ -307,7 +313,12 @@ export function createStartAgentChat(deps: {
               notebookIds: opts.notebookIds,
               limit: opts.limit
             })
-          })
+          }),
+          extraVercelToolsFactory: async (toolContext) => {
+            const { mobileExtraVercelToolsFactory } =
+              await import('../../services/mobile-mcp-client-runtime')
+            return mobileExtraVercelToolsFactory(toolContext)
+          }
         },
         callbacks
       )

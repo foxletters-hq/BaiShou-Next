@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   createStreamingTextDisplayBuffer,
   AgentGateReply,
+  type AgentGateQuestionAnswer,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
@@ -60,7 +61,7 @@ export function useAgentStream(
     null
   )
   const pendingAgentGate = useAgentGateInboxStore((state) =>
-    selectActivePendingForSession(state, currentSessionId)
+    selectActivePendingForSession(state, currentSessionId, 'companion')
   )
   const [isAgentGateReplying, setIsAgentGateReplying] = useState(false)
 
@@ -313,7 +314,11 @@ export function useAgentStream(
     async (
       requestId: string,
       reply: AgentGateReply,
-      extras?: { message?: string; selectedOptionIds?: string[] }
+      extras?: {
+        message?: string
+        selectedOptionIds?: string[]
+        questionAnswers?: AgentGateQuestionAnswer[]
+      }
     ) => {
       if (!agentGate) {
         toast.showError(t('agent_gate.unavailable', '操作确认服务未就绪'))
@@ -326,6 +331,7 @@ export function useAgentStream(
           reply,
           message: extras?.message,
           selectedOptionIds: extras?.selectedOptionIds,
+          questionAnswers: extras?.questionAnswers,
           resolvedAt: Date.now()
         })
         await agentGate.reply({ requestId, reply, ...extras })

@@ -4,11 +4,7 @@ import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { reconcileCompressionStateAfterTruncate } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
-import {
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
-  isAgentStreamAbortError
-} from '@baishou/shared'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import { abortAgentStreamSession } from '@baishou/ai'
 
 import { useBaishou } from '../providers/BaishouProvider'
@@ -217,7 +213,7 @@ export function useAgentStreamActions({
 
       const failRegenerate = (errorMsg: string) => {
         if (epoch !== retryEpochRef.current) return
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -257,7 +253,7 @@ export function useAgentStreamActions({
           { retryReleaseEpoch: epoch }
         )
       } catch (e) {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+        if (userStoppedStreamRef.current) {
           userStoppedStreamRef.current = false
           setStreamError(null)
         } else {

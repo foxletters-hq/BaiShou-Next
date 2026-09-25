@@ -7,7 +7,8 @@ import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   deriveSessionTitleFromUserText,
-  isAgentStreamAbortError
+  notebookMountPendingKey,
+  takePendingMountedNotebookIds
 } from '@baishou/shared'
 
 import { useBaishou } from '../providers/BaishouProvider'
@@ -135,7 +136,7 @@ export function useAgentStreamChat({
               onToolCallResult: handleToolCallResult,
               onFinish: () => {},
               onError: (err) => {
-                if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
+                if (userStoppedStreamRef.current) return
                 const msg = err.message || t('app.unknown_error', '未知网络或系统错误')
                 streamAttemptErrorRef.current = msg
                 onFail(msg)
@@ -145,7 +146,7 @@ export function useAgentStreamChat({
           )
         } catch (e) {
           thrownError = e
-          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) return
+          if (userStoppedStreamRef.current) return
           const msg = e instanceof Error ? e.message : String(e)
           streamAttemptErrorRef.current = msg
           onFail(msg)
@@ -198,7 +199,7 @@ export function useAgentStreamChat({
       }
 
       const fail = (errorMsg: string) => {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -238,7 +239,7 @@ export function useAgentStreamChat({
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
       } catch (e) {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+        if (userStoppedStreamRef.current) {
           userStoppedStreamRef.current = false
           setStreamError(null)
         } else {
@@ -333,6 +334,18 @@ export function useAgentStreamChat({
             )
           })
           sessionId = newSessionId
+          const pending = takePendingMountedNotebookIds(
+            notebookMountPendingKey({
+              sessionId: undefined,
+              assistantId: currentAssistant?.id,
+              scope: 'companion'
+            })
+          )
+          if (pending.length > 0) {
+            await runMobileAgentDbWrite('mountPendingNotebooks', async (runtime) => {
+              await runtime.sessionManager.updateMountedNotebookIds(newSessionId, pending)
+            })
+          }
         } catch (e) {
           console.error('Failed to create session', e)
           toast.showError(
@@ -397,7 +410,7 @@ export function useAgentStreamChat({
       resetStreamingBuffers()
 
       const failStream = (errorMsg: string) => {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -422,7 +435,7 @@ export function useAgentStreamChat({
           )
           await finishStream(streamSessionId, { waitForLatestUsage: true })
         } catch (e: unknown) {
-          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+          if (userStoppedStreamRef.current) {
             userStoppedStreamRef.current = false
             setStreamError(null)
           } else {
