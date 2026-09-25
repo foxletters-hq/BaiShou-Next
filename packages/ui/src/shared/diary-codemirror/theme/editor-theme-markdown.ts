@@ -33,7 +33,7 @@ export const editorThemeMarkdown = {
     lineHeight: '1.6'
   },
   '.cm-code-line': {
-    backgroundColor: 'var(--bg-code-block, #eceef2) !important',
+    backgroundColor: 'var(--bg-code-block) !important',
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     paddingLeft: '12px !important',
     paddingRight: '12px !important',
@@ -47,11 +47,11 @@ export const editorThemeMarkdown = {
     borderRadius: '0 !important'
   },
   '.cm-activeLine.cm-code-line': {
-    backgroundColor: 'var(--bg-code-block, #eceef2) !important'
+    backgroundColor: 'var(--bg-code-block) !important'
   },
   '.cm-line.cm-wb-properties': {
     backgroundColor:
-      'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-editor, #fff)))',
+      'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-editor)))',
     padding: '4px 12px'
   },
   '.cm-line.cm-wb-properties-first': {
@@ -171,20 +171,20 @@ export const editorThemeMarkdown = {
     boxSizing: 'border-box'
   },
   '.cm-diary-tag-c0': {
-    color: 'var(--tag-0-fg, #1a1c23)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg, #1a1c23) 15%, transparent)'
+    color: 'var(--tag-0-fg)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg) 15%, transparent)'
   },
   '.cm-diary-tag-c1': {
-    color: 'var(--tag-1-fg, #10b981)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-1-fg, #10b981) 15%, transparent)'
+    color: 'var(--tag-1-fg)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-1-fg) 15%, transparent)'
   },
   '.cm-diary-tag-c2': {
-    color: 'var(--tag-2-fg, #f59e0b)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-2-fg, #f59e0b) 15%, transparent)'
+    color: 'var(--tag-2-fg)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-2-fg) 15%, transparent)'
   },
   '.cm-diary-tag-c3': {
-    color: 'var(--tag-3-fg, #8b5cf6)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-3-fg, #8b5cf6) 15%, transparent)'
+    color: 'var(--tag-3-fg)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-3-fg) 15%, transparent)'
   },
   '& .cm-line:has(.cm-diary-tag-token)': {
     lineHeight: 'inherit'

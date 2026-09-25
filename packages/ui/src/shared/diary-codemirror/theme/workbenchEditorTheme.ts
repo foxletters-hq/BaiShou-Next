@@ -38,14 +38,14 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     padding: '0'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-blockquote': {
-    borderLeft: '3px solid var(--color-primary, #5ba8f5)',
+    borderLeft: '3px solid var(--color-primary)',
     /* 必须用完整 padding 盖过上方 .cm-line { padding: 0 }，否则竖线贴字 */
     padding: '0 0 0 12px',
     color: 'var(--text-secondary)',
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-blockquote-content': {
-    borderLeft: '3px solid var(--color-primary, #5ba8f5)',
+    borderLeft: '3px solid var(--color-primary)',
     padding: '0 0 0 12px',
     color: 'var(--text-secondary)',
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
@@ -155,7 +155,7 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     boxSizing: 'border-box'
   },
   '&.workbench-cm-editor .cm-rendered-link': {
-    color: 'var(--color-primary, #5ba8f5)',
+    color: 'var(--color-primary)',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
     cursor: 'pointer'
