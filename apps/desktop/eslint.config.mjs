@@ -1,15 +1,22 @@
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 import { createBaishouEslintConfig } from '../../eslint.baishou.base.mjs'
+import portalClipRule from '../../scripts/eslint-plugin-ui-theme.mjs'
 
 export default [
   ...createBaishouEslintConfig({
     extraIgnores: ['electron.vite.config.*', 'eslint.config.mjs'],
     extraPlugins: {
-      'react-refresh': eslintPluginReactRefresh
+      'react-refresh': eslintPluginReactRefresh,
+      'ui-theme': {
+        rules: {
+          'portal-must-clip-to-content-card': portalClipRule
+        }
+      }
     },
     extraRules: {
       ...eslintPluginReactRefresh.configs.vite.rules,
-      'react-refresh/only-export-components': 'off'
+      'react-refresh/only-export-components': 'off',
+      'ui-theme/portal-must-clip-to-content-card': 'error'
     }
   }),
   {
