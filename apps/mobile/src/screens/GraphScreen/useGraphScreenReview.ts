@@ -28,7 +28,7 @@ type ReviewDeps = {
   setSelectedNode: (node: any | null) => void
   setBusy: (busy: boolean) => void
   refresh: () => Promise<void>
-  refreshVisibleAfterReview: () => Promise<void>
+  refreshVisibleAfterReview: (opts?: { stripSuspectOnNodeId?: string }) => Promise<void>
 }
 
 export function useGraphScreenReview(deps: ReviewDeps) {
@@ -115,7 +115,7 @@ export function useGraphScreenReview(deps: ReviewDeps) {
         })
       }
     }
-    await deps.refreshVisibleAfterReview()
+    await deps.refreshVisibleAfterReview({ stripSuspectOnNodeId: nodeId })
   }
 
   const togglePendingItem = (key: string) => {

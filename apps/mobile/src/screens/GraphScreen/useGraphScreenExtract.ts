@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 import {
+  GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
   GRAPH_EXTRACT_CONCURRENCY_MAX,
   GRAPH_EXTRACT_CONCURRENCY_MIN,
   emptyGraphExtractQueueSnapshot,
@@ -111,10 +112,11 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         deps.t('graph.process_pending_reextract_title', '梳理待重抽'),
         deps.t(
           'graph.confirm_batch_extract',
-          '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 50% 的候选并由模型判断是否合并再写入。',
+          '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 {{similarity}}% 的候选并由模型判断是否合并再写入。',
           {
             count,
-            concurrency: extractConcurrency
+            concurrency: extractConcurrency,
+            similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
           }
         ),
         [

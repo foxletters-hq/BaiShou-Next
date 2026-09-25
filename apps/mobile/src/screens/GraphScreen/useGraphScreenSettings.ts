@@ -10,6 +10,7 @@ import {
   clampGraphMonthRange,
   defaultGraphMonthRange,
   loadGraphForceSettings,
+  saveGraphAppearanceSettings,
   saveGraphForceSettings,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
@@ -186,6 +187,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
   const updateAppearance = useCallback((patch: Partial<GraphAppearanceSettings>) => {
     setAppearanceSettings((prev) => {
       const next = clampGraphAppearanceSettings({ ...prev, ...patch })
+      saveGraphAppearanceSettings(next)
       void AsyncStorage.setItem(GRAPH_APPEARANCE_STORAGE_KEY, JSON.stringify(next))
       return next
     })
@@ -198,6 +200,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     saveGraphForceSettings(force)
     void AsyncStorage.setItem(GRAPH_FORCE_STORAGE_KEY, JSON.stringify(force))
     setAppearanceSettings(appearance)
+    saveGraphAppearanceSettings(appearance)
     void AsyncStorage.setItem(GRAPH_APPEARANCE_STORAGE_KEY, JSON.stringify(appearance))
   }, [])
 

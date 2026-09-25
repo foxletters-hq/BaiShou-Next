@@ -8,6 +8,7 @@ import {
 } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { stripGraphNodeSuspectReason } from '@/src/services/graph-name-candidates.util'
 import {
   mobileEstimateExtraction,
   mobileGetNode,
@@ -120,12 +121,18 @@ export function useGraphScreenData(deps: DataDeps) {
     focusDepth: GraphFocusDepth
     setSelectedNode: (node: any | null) => void
     setLocalView: (view: { nodes: any[]; edges: any[] } | null) => void
+    stripSuspectOnNodeId?: string
   }) => {
     await refresh()
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
     if (opts.selectedId) {
-      opts.setSelectedNode(await mobileGetNode(runtime.drizzleDb, deps.vaultId, opts.selectedId))
+      const fresh = await mobileGetNode(runtime.drizzleDb, deps.vaultId, opts.selectedId)
+      opts.setSelectedNode(
+        fresh && opts.stripSuspectOnNodeId === fresh.id
+          ? stripGraphNodeSuspectReason(fresh)
+          : fresh
+      )
     }
     if (!opts.pinNeighborhood || !opts.localView) return
     if (opts.selectedId) {
