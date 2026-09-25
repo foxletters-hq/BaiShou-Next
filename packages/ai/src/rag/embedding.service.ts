@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { embed } from 'ai'
 import {
   formatAiApiCallError,
+  toSerializableAiError,
   deriveLegacyVaultId,
   isVaultId,
   logger,
@@ -133,7 +134,9 @@ export class EmbeddingService {
     try {
       const modelId = this.config.getGlobalEmbeddingModelId()
       const provider = await this.config.getProviderInstance()
-      if (!provider) return null
+      if (!provider) {
+        throw new Error('嵌入服务商实例不可用')
+      }
 
       const aiModel = provider.getEmbeddingModel(modelId)
       const { embedding } = await embed({
@@ -144,7 +147,7 @@ export class EmbeddingService {
       return this.normalize(embedding)
     } catch (e) {
       logger.error('Query embedding failed', { error: e })
-      return null
+      throw toSerializableAiError(e)
     }
   }
 

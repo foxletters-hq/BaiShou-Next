@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AgentGateDeniedError, AgentGateEffect, deriveLegacyVaultId } from '@baishou/shared'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { buildExternalMcpVercelTools } from '../external-mcp-tools'
 import type { ToolContext } from '../../tools/agent.tool'
 
@@ -33,15 +33,22 @@ describe('buildExternalMcpVercelTools', () => {
     expect(callTool).toHaveBeenCalledWith('alpha', 'ping', { q: 'hi' })
   })
 
-  it('hides built-in baishou_memory_delete when companion denied it', () => {
+  it('should omit built-in BaiShou mirrors so the in-app agent does not get a second web_search', () => {
     const callTool = vi.fn()
     const tools = buildExternalMcpVercelTools({
       tools: [
         {
           serverId: 'local',
           serverName: 'BaiShou',
-          name: 'baishou_memory_delete',
-          description: 'Delete memory',
+          name: 'baishou_web_search',
+          description: 'Search the web',
+          inputSchema: { type: 'object', properties: {}, required: [] }
+        },
+        {
+          serverId: 'local',
+          serverName: 'BaiShou',
+          name: 'baishou_url_read',
+          description: 'Read a URL',
           inputSchema: { type: 'object', properties: {}, required: [] }
         },
         {
@@ -50,6 +57,13 @@ describe('buildExternalMcpVercelTools', () => {
           name: 'baishou_diary_list',
           description: 'List diaries',
           inputSchema: { type: 'object', properties: {}, required: [] }
+        },
+        {
+          serverId: 'browser',
+          serverName: 'Browser',
+          name: 'navigate',
+          description: 'Open a page',
+          inputSchema: { type: 'object', properties: {}, required: [] }
         }
       ],
       callTool,
@@ -57,15 +71,15 @@ describe('buildExternalMcpVercelTools', () => {
         sessionId: 's',
         vaultId: deriveLegacyVaultId('Personal'),
         vaultName: 'Personal',
-        userConfig: { disabledToolIds: ['memory_delete'] }
+        userConfig: {}
       }
     })
 
-    expect(Object.keys(tools)).toEqual(['mcp_local_baishou_diary_list'])
+    expect(Object.keys(tools)).toEqual(['mcp_browser_navigate'])
     expect(callTool).not.toHaveBeenCalled()
   })
 
-  it('hides built-in baishou_memory_delete when gate probeEffect is Deny', () => {
+  it('should omit built-in mirrors even when hideDeniedTools is false', () => {
     const callTool = vi.fn()
     const tools = buildExternalMcpVercelTools({
       tools: [
@@ -82,53 +96,11 @@ describe('buildExternalMcpVercelTools', () => {
         sessionId: 's',
         vaultId: deriveLegacyVaultId('Personal'),
         vaultName: 'Personal',
-        userConfig: {},
-        agentGate: {
-          probeEffect: () => AgentGateEffect.Deny
-        } as unknown as ToolContext['agentGate']
+        userConfig: { baishou_agent_gate_config: { hideDeniedTools: false } }
       }
     })
 
     expect(Object.keys(tools)).toEqual([])
     expect(callTool).not.toHaveBeenCalled()
-  })
-
-  it('asserts extra baishou_memory_delete as memory_delete, not mcp_client', async () => {
-    const callTool = vi.fn()
-    const assert = vi.fn(async (input: { action: string }) => {
-      if (input.action === 'memory_delete') {
-        throw new AgentGateDeniedError('memory_delete')
-      }
-    })
-    const tools = buildExternalMcpVercelTools({
-      tools: [
-        {
-          serverId: 'local',
-          serverName: 'BaiShou',
-          name: 'baishou_memory_delete',
-          description: 'Delete memory',
-          inputSchema: { type: 'object', properties: {}, required: [] }
-        }
-      ],
-      callTool,
-      context: {
-        sessionId: 's',
-        vaultId: deriveLegacyVaultId('Personal'),
-        vaultName: 'Personal',
-        userConfig: { baishou_agent_gate_config: { hideDeniedTools: false } },
-        agentGate: {
-          assert,
-          probeEffect: () => AgentGateEffect.Deny
-        } as unknown as ToolContext['agentGate']
-      }
-    })
-
-    const id = Object.keys(tools)[0] ?? ''
-    expect(id).toBe('mcp_local_baishou_memory_delete')
-    const vercelTool = tools[id] as { execute: (args: Record<string, unknown>) => Promise<string> }
-    const result = await vercelTool.execute({ memory_id: 'mem-1' })
-    expect(assert).toHaveBeenCalledWith(expect.objectContaining({ action: 'memory_delete' }))
-    expect(callTool).not.toHaveBeenCalled()
-    expect(result).toContain('已被禁用')
   })
 })
