@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { emptyGraphExtractQueueSnapshot } from '@baishou/shared'
@@ -28,6 +28,7 @@ import { useGraphPageSelection } from './useGraphPageSelection'
 import { useGraphPageSettings } from './useGraphPageSettings'
 import { useGraphPageSideLayout } from './useGraphPageSideLayout'
 import { useGraphPageSourcePreview } from './useGraphPageSourcePreview'
+import { consumeGraphPendingFocus, subscribeGraphPendingFocus } from './graph-pending-focus'
 
 export function useGraphPageModel({
   autoStartOrganize = false,
@@ -53,6 +54,15 @@ export function useGraphPageModel({
   const month = useGraphPageMonthRange()
   const settings = useGraphPageSettings()
   const side = useGraphPageSideLayout()
+  useEffect(() => {
+    const applyPendingFocus = () => {
+      if (!consumeGraphPendingFocus()) return
+      side.openSide('content')
+      setTab('pending')
+    }
+    applyPendingFocus()
+    return subscribeGraphPendingFocus(applyPendingFocus)
+  }, [side])
   const data = useGraphPageData(month.monthRange)
   const selection = useGraphPageSelection({
     nodes: data.nodes,
@@ -159,10 +169,6 @@ export function useGraphPageModel({
     setDismissGuide,
     pendingReextract: data.pendingReextract,
     refreshRef: data.refreshRef,
-    graphHydrated: data.graphHydrated,
-    selfNameReady: awaken.selfNameReady,
-    autoStartOrganize,
-    onAutoStartOrganizeConsumed,
     navigate
   })
   const source = useGraphPageSourcePreview({ t: translate, toast })
@@ -190,6 +196,20 @@ export function useGraphPageModel({
     void data.refresh().catch((e) => setStatus(String((e as Error)?.message || e)))
     // 自称就绪后拉图；data 对象每次渲染都会换引用
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上
+  }, [awaken.selfNameReady, data.refresh])
+
+  useEffect(() => {
+    const api = window.api as {
+      diary?: { onSyncEvent?: (cb: (event: { type?: string }) => void) => () => void }
+    }
+    const unsubscribe = api.diary?.onSyncEvent?.((event) => {
+      if (event?.type !== 'embed-pending-changed') return
+      if (awaken.selfNameReady !== true) return
+      void data.refresh().catch((e) => setStatus(String((e as Error)?.message || e)))
+    })
+    return () => {
+      unsubscribe?.()
+    }
   }, [awaken.selfNameReady, data.refresh])
 
   const updateMonthRange = (next: Parameters<typeof selection.updateMonthRange>[0]) => {
@@ -268,6 +288,32 @@ export function useGraphPageModel({
     enabledNodeTypes: settings.enabledNodeTypes
   })
 
+  const startOrganize = useCallback(() => {
+    if (onUnifiedOrganize) {
+      onUnifiedOrganize()
+      return
+    }
+    void (
+      window as { api?: { rag?: { triggerBatchEmbed?: () => Promise<unknown> } } }
+    ).api?.rag?.triggerBatchEmbed?.()
+  }, [onUnifiedOrganize])
+
+  const autoStartConsumedRef = useRef(false)
+  useEffect(() => {
+    if (!autoStartOrganize || autoStartConsumedRef.current) return
+    if (awaken.selfNameReady !== true) return
+    if (!data.graphHydrated) return
+    autoStartConsumedRef.current = true
+    startOrganize()
+    onAutoStartOrganizeConsumed?.()
+  }, [
+    autoStartOrganize,
+    awaken.selfNameReady,
+    data.graphHydrated,
+    startOrganize,
+    onAutoStartOrganizeConsumed
+  ])
+
   return {
     t,
     navigate,
@@ -297,7 +343,7 @@ export function useGraphPageModel({
     typeFilterActive,
     filterActive,
     phaseKey: graphPagePhaseKey({ awakenPending, showAwakenGate }),
-    startOrganize: () => (onUnifiedOrganize ? onUnifiedOrganize() : void extract.runExtract()),
+    startOrganize,
     setDismissGuide,
     GRAPH_FILTER_NODE_TYPES
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
   emptyGraphExtractQueueSnapshot,
   formatLocalDate,
   graphExtractOverallProgress,
@@ -40,10 +41,6 @@ type ExtractDeps = {
   setDismissGuide: (dismiss: boolean) => void
   pendingReextract: any[]
   refreshRef: { current: () => Promise<void> }
-  graphHydrated: boolean
-  selfNameReady: boolean | null
-  autoStartOrganize?: boolean
-  onAutoStartOrganizeConsumed?: () => void
   navigate: (path: string) => void
 }
 
@@ -136,10 +133,11 @@ export function useGraphPageExtract(deps: ExtractDeps) {
     return deps.dialog.confirm(
       deps.t(
         'graph.confirm_batch_extract',
-        '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 50% 的候选并由模型判断是否合并再写入。',
+        '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 {{similarity}}% 的候选并由模型判断是否合并再写入。',
         {
           count,
-          concurrency: extractConcurrency
+          concurrency: extractConcurrency,
+          similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
         }
       ),
       deps.t('graph.process_pending_reextract_title', '梳理待重抽')
@@ -221,20 +219,6 @@ export function useGraphPageExtract(deps: ExtractDeps) {
     }
   }
 
-  const runExtractRef = useRef(runExtract)
-  runExtractRef.current = runExtract
-  const onAutoStartOrganizeConsumedRef = useRef(deps.onAutoStartOrganizeConsumed)
-  onAutoStartOrganizeConsumedRef.current = deps.onAutoStartOrganizeConsumed
-
-  useEffect(() => {
-    if (!deps.autoStartOrganize) return
-    if (deps.selfNameReady === null) return
-    if (deps.selfNameReady === false) return
-    if (!deps.graphHydrated) return
-    void runExtractRef.current(undefined, { skipConfirm: true })
-    onAutoStartOrganizeConsumedRef.current?.()
-  }, [deps.autoStartOrganize, deps.selfNameReady, deps.graphHydrated])
-
   const runExtractOne = async () => {
     const date = extractDate.trim()
     if (!isGraphExtractDate(date)) {
@@ -300,7 +284,6 @@ export function useGraphPageExtract(deps: ExtractDeps) {
     queueItemCount,
     queueOverallPct,
     runExtract,
-    runExtractRef,
     runExtractOne,
     cancelExtract,
     cancelQueueItem,

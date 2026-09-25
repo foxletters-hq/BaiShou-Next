@@ -15,7 +15,7 @@ type ReviewDeps = {
   setSelectedNode: (node: any | null) => void
   setBusy: (busy: boolean) => void
   refresh: () => Promise<void>
-  refreshVisibleAfterReview: () => Promise<void>
+  refreshVisibleAfterReview: (opts?: { stripSuspectOnNodeId?: string }) => Promise<void>
   onSelectNode: (id: string) => Promise<void> | void
 }
 
@@ -130,7 +130,7 @@ export function useGraphPageReview(deps: ReviewDeps) {
         await window.api.graph.setEdgeReview({ edgeId: edge.id, reviewStatus: 'approved' })
       }
     }
-    await deps.refreshVisibleAfterReview()
+    await deps.refreshVisibleAfterReview({ stripSuspectOnNodeId: nodeId })
   }
 
   const togglePendingItem = (key: string) => {
