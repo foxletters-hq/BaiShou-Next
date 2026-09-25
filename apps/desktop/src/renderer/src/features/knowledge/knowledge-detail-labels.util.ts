@@ -23,6 +23,12 @@ export function knowledgeSourceStatusLabel(t: Translate, status: string): string
       return t('knowledge.status_embedding', '正在建立索引')
     case 'ready':
       return t('knowledge.status_ready', '就绪')
+    case 'graph_organizing':
+      return t('knowledge.status_graph_organizing', '正在整理图谱')
+    case 'graph_queued':
+      return t('knowledge.status_graph_queued', '等待整理图谱')
+    case 'graph_failed':
+      return t('knowledge.status_graph_failed', '图谱整理失败')
     case 'failed':
       return t('knowledge.status_failed', '失败')
     case 'stored':

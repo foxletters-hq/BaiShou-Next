@@ -12,6 +12,9 @@ describe('knowledge-detail-labels.util', () => {
   it('should map known source statuses and keep unknown values', () => {
     expect(knowledgeSourceStatusLabel(t, 'stored')).toBe('待整理')
     expect(knowledgeSourceStatusLabel(t, 'ready')).toBe('就绪')
+    expect(knowledgeSourceStatusLabel(t, 'graph_organizing')).toBe('正在整理图谱')
+    expect(knowledgeSourceStatusLabel(t, 'graph_queued')).toBe('等待整理图谱')
+    expect(knowledgeSourceStatusLabel(t, 'graph_failed')).toBe('图谱整理失败')
     expect(knowledgeSourceStatusLabel(t, 'custom')).toBe('custom')
   })
 
