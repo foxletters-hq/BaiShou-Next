@@ -74,6 +74,7 @@ describe('flushReasonFromStreamChunk', () => {
     expect(flushReasonFromStreamChunk('text-delta')).toBe('token')
     expect(flushReasonFromStreamChunk('reasoning-delta')).toBe('token')
     expect(flushReasonFromStreamChunk('tool-call')).toBe('tool')
+    expect(flushReasonFromStreamChunk('tool-input-start')).toBe('tool')
     expect(flushReasonFromStreamChunk('tool-result')).toBe('tool')
     expect(flushReasonFromStreamChunk('step-finish')).toBe('step')
     expect(flushReasonFromStreamChunk('finish')).toBeNull()

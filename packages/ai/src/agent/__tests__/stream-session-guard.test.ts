@@ -73,4 +73,17 @@ describe('stream-session-guard', () => {
 
     expect(claim.signal.aborted).toBe(false)
   })
+
+  it('should not abort a newer claim when a stale generation times out', () => {
+    resetAgentStreamSessionGuardForTests()
+
+    const first = claimAgentStreamSession('s1')
+    const second = claimAgentStreamSession('s1')
+
+    abortAgentStreamSession('s1', first.generation)
+
+    expect(first.signal.aborted).toBe(true)
+    expect(second.signal.aborted).toBe(false)
+    expect(isAgentStreamSessionClaimActive('s1', second.generation)).toBe(true)
+  })
 })
