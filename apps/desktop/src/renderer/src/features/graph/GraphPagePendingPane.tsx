@@ -7,6 +7,7 @@ import {
   translateGraphEdgeType,
   translateGraphNodeType
 } from '@baishou/shared'
+import { graphSuspectReviewCopy, readGraphNodeSuspectReason } from './graph-page-view.util'
 import { Checkbox } from '@baishou/ui'
 import styles from './GraphPage.module.css'
 
@@ -46,6 +47,14 @@ export function GraphPagePendingPane(props: {
             '确认关系会同时通过两端节点；确认节点也会通过与它相连的待审关系。可勾选后批量处理。'
           )}
         </p>
+        {props.pendingNodes.some((node) => readGraphNodeSuspectReason(node)) ? (
+          <p className={styles.pendingHint}>
+            {t(
+              'graph.suspect_pending_hint',
+              '带「可疑」的节点可能把多个现实实体折在一起。通过表示就是一个人；要拆开请点查看后拆分。'
+            )}
+          </p>
+        ) : null}
         <div className={styles.pendingToolbar}>
           <label className={styles.pendingSelectAll}>
             <Checkbox
@@ -104,6 +113,7 @@ export function GraphPagePendingPane(props: {
       </div>
       {props.pendingNodes.map((node) => {
         const key = graphPendingItemKey('node', node.id)
+        const suspectReason = readGraphNodeSuspectReason(node)
         return (
           <div key={`n-${node.id}`} className={styles.itemCompact}>
             <div className={styles.itemRow}>
@@ -114,6 +124,7 @@ export function GraphPagePendingPane(props: {
                 />
                 <span className={styles.itemTitle}>
                   {t('graph.pending_node', '节点')} · {node.name}
+                  {suspectReason ? ` · ${t('graph.suspect_badge', '可疑')}` : ''}
                 </span>
               </label>
               <div className={styles.rowActionsInline}>
@@ -122,7 +133,10 @@ export function GraphPagePendingPane(props: {
                   className={styles.linkBtn}
                   onClick={() => void props.onReviewNode(node.id, 'approved')}
                 >
-                  {t('graph.approve', '通过')}
+                  {t(
+                    graphSuspectReviewCopy(node).actionKey,
+                    graphSuspectReviewCopy(node).actionDefault
+                  )}
                 </button>
                 <button
                   type="button"
@@ -140,10 +154,13 @@ export function GraphPagePendingPane(props: {
                 </button>
               </div>
             </div>
-            {node.nodeType || node.summary ? (
+            {node.nodeType || node.summary || suspectReason ? (
               <div className={styles.itemMetaCompact}>
                 {translateGraphNodeType(tr, node.nodeType)}
                 {node.summary ? ` · ${node.summary}` : ''}
+                {suspectReason
+                  ? ` · ${t('graph.suspect_reason', '怀疑理由')}：${suspectReason}`
+                  : ''}
               </div>
             ) : null}
           </div>

@@ -10,7 +10,12 @@ import {
 } from '@baishou/shared'
 import { Button, Input, Select } from '@baishou/ui'
 import type { GraphEditNameConflict, GraphNameCandidate, GraphPageNode } from './graph-page.types'
-import { parseGraphNodeProps, readGraphNodeSuspectReason } from './graph-page-view.util'
+import {
+  canApproveGraphNode,
+  graphSuspectReviewCopy,
+  parseGraphNodeProps,
+  readGraphNodeSuspectReason
+} from './graph-page-view.util'
 import styles from './GraphPage.module.css'
 
 export function GraphPageDetailPane(props: {
@@ -64,6 +69,7 @@ export function GraphPageDetailPane(props: {
     )
   }
   const selectedNode = props.selectedNode
+  const suspectReview = graphSuspectReviewCopy(selectedNode)
   return (
     <>
       <div className={styles.detailDepthRow}>
@@ -258,20 +264,22 @@ export function GraphPageDetailPane(props: {
           </Button>
         ) : null}
       </div>
-      {selectedNode.reviewStatus === 'pending' ? (
+      {canApproveGraphNode(selectedNode) ? (
         <div className={styles.rowActions}>
           <Button
             type="button"
             onClick={() => void props.onReviewNode(selectedNode.id, 'approved')}
           >
-            {t('graph.approve', '通过')}
+            {t(suspectReview.actionKey, suspectReview.actionDefault)}
           </Button>
-          <Button
-            type="button"
-            onClick={() => void props.onReviewNode(selectedNode.id, 'rejected')}
-          >
-            {t('graph.reject', '拒绝')}
-          </Button>
+          {selectedNode.reviewStatus === 'pending' ? (
+            <Button
+              type="button"
+              onClick={() => void props.onReviewNode(selectedNode.id, 'rejected')}
+            >
+              {t('graph.reject', '拒绝')}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

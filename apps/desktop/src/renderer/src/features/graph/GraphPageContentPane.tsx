@@ -55,7 +55,7 @@ export function GraphPageContentPane(props: {
           {t('graph.tab_detail', '详情')}
         </button>
       </div>
-      <div className={styles.panel}>
+      <div className={styles.panel} data-graph-side-scroll>
         {tab === 'reextract' && <GraphPageReextractPane {...props.reextract} />}
 
         {tab === 'pending' && <GraphPagePendingPane {...props.pending} />}
