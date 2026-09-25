@@ -31,12 +31,11 @@ export function GraphPageToolbar(props: {
   monthRange: GraphMonthRange
   onMonthRangeChange: (next: GraphMonthRange | Partial<GraphMonthRange>) => void
   onClearToGlobal: () => void
+  pinNeighborhood: boolean
   sideCollapsed: boolean
   highlightStartOrganize: boolean
   pendingReextractCount: number
   onRunExtract: () => void
-  extractRunning: boolean
-  onOpenQueue: () => void
 }): React.ReactElement {
   const { t } = useTranslation()
   const tr = asGraphTranslateFn(t)
@@ -142,33 +141,31 @@ export function GraphPageToolbar(props: {
           </div>
         ) : null}
       </div>
-      {!props.showEmptyGuide || props.extractRunning ? (
+      {!props.showEmptyGuide ? (
         <div className={styles.toolbarRight}>
-          {!props.showEmptyGuide ? (
-            <>
-              <GraphMonthRangePicker
-                value={props.monthRange}
-                onChange={(next) => props.onMonthRangeChange(next)}
-                trailing={
-                  <button
-                    type="button"
-                    title={t(
-                      'graph.global_view_hint',
-                      '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                    )}
-                    aria-label={t(
-                      'graph.global_view_hint',
-                      '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                    )}
-                    onClick={props.onClearToGlobal}
-                  >
-                    {t('graph.global_view', '全局')}
-                  </button>
-                }
-              />
-            </>
-          ) : null}
-          {props.sideCollapsed && !props.showEmptyGuide ? (
+          <GraphMonthRangePicker
+            value={props.monthRange}
+            onChange={(next) => props.onMonthRangeChange(next)}
+            trailing={
+              props.pinNeighborhood ? (
+                <button
+                  type="button"
+                  title={t(
+                    'graph.global_view_hint',
+                    '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                  )}
+                  aria-label={t(
+                    'graph.global_view_hint',
+                    '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                  )}
+                  onClick={props.onClearToGlobal}
+                >
+                  {t('graph.global_view', '看全部节点')}
+                </button>
+              ) : undefined
+            }
+          />
+          {props.sideCollapsed ? (
             <Button
               type="button"
               className={`${styles.btnBatchExtract} ${
@@ -181,11 +178,6 @@ export function GraphPageToolbar(props: {
               {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
                 count: props.pendingReextractCount
               })}
-            </Button>
-          ) : null}
-          {props.extractRunning ? (
-            <Button type="button" onClick={props.onOpenQueue}>
-              {t('graph.queue_view_progress', '查看进度')}
             </Button>
           ) : null}
         </div>

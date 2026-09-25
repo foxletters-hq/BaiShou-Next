@@ -206,4 +206,20 @@ describe('seedGraphForceNodePosition', () => {
     expect(pos.y).not.toBe(0)
     expect(Math.hypot(pos.x, pos.y)).toBeLessThanOrEqual(80 + Math.sqrt(9) * 12)
   })
+
+  it('should seed an isolated node on the outer disk instead of the core', () => {
+    const pos = seedGraphForceNodePosition({
+      locating: false,
+      isSelected: false,
+      isolated: true,
+      isolatedCount: 16,
+      cx: 0,
+      cy: 0,
+      nodeCount: 20,
+      random: () => 0.25
+    })
+    const radius = Math.hypot(pos.x, pos.y)
+    expect(radius).toBeGreaterThan(0)
+    expect(radius).toBeLessThanOrEqual(240)
+  })
 })
