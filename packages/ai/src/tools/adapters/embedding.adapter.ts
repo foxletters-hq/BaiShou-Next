@@ -2,7 +2,12 @@ import { ToolEmbeddingService } from '../agent.tool'
 import { IAIProvider } from '../../providers/provider.interface'
 import { embed } from 'ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
-import { hashEmbedSourceContent, logger, mergeEmbedContentHashIntoMetadata } from '@baishou/shared'
+import {
+  hashEmbedSourceContent,
+  logger,
+  mergeEmbedContentHashIntoMetadata,
+  toSerializableAiError
+} from '@baishou/shared'
 import { normalizeEmbeddingVector } from '../../rag/embedding-chunk'
 import { SEMANTIC_SEARCH_TIMEOUT_MS, withPromiseTimeout } from '@baishou/shared'
 
@@ -47,7 +52,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
       return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
       logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
-      return null
+      throw toSerializableAiError(e)
     }
   }
 

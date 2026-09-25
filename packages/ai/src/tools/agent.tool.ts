@@ -110,13 +110,41 @@ export interface ToolMessageSearcher {
     limit: number,
     /** 活跃仓库 ID；缺省时由实现方 fail-closed */
     vaultId?: string,
-    options?: { startDate?: string; endDate?: string }
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
   ): Promise<
     Array<{
       role: string
       snippet: string
       sessionTitle: string
       date: string
+    }>
+  >
+  listSessionsInDateRange?(
+    vaultId: string,
+    startDate: string,
+    endDate: string,
+    limit: number
+  ): Promise<
+    Array<{
+      sessionId: string
+      sessionTitle: string
+      firstDate: string
+      lastDate: string
+      messageCount: number
+      preview: string
+    }>
+  >
+  listMessagesInDateRange?(
+    vaultId: string,
+    limit: number,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
+  ): Promise<
+    Array<{
+      role: string
+      snippet: string
+      sessionTitle: string
+      date: string
+      sessionId?: string
     }>
   >
 }

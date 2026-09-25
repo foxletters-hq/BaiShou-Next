@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   AgentGateCancelledError,
   AgentGateCorrectedError,
@@ -11,6 +11,10 @@ import { CompanionAskTool } from '../companion-ask.tool'
 import type { ToolContext } from '../agent.tool'
 import type { IBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-gate.service'
 import { createBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-gate.service'
+import {
+  clearCompanionAskStreamSessionsForTests,
+  startCompanionAskFromStreamInput
+} from '../companion-ask-stream.util'
 
 const baseContext: ToolContext = {
   sessionId: 'sess_1',
@@ -18,12 +22,20 @@ const baseContext: ToolContext = {
   vaultName: 'Personal'
 }
 
+afterEach(() => {
+  clearCompanionAskStreamSessionsForTests()
+})
+
 describe('CompanionAskTool', () => {
   const tool = new CompanionAskTool()
 
   it('returns approved JSON when gate is absent', async () => {
     const result = await tool.execute({ question: '继续吗？' }, baseContext)
-    expect(JSON.parse(result)).toEqual({ approved: true, question: '继续吗？' })
+    expect(JSON.parse(result)).toEqual({
+      approved: true,
+      question: '继续吗？',
+      answers: [{ question: '继续吗？', answer: null, selectedOptionIds: [] }]
+    })
   })
 
   it('calls proactive gate assertWithResolution with options', async () => {
@@ -55,6 +67,17 @@ describe('CompanionAskTool', () => {
         options: [
           { id: '0', label: 'A' },
           { id: '1', label: 'B' }
+        ],
+        questions: [
+          {
+            id: '0',
+            question: '选哪个？',
+            options: [
+              { id: '0', label: 'A' },
+              { id: '1', label: 'B' }
+            ],
+            allowCustomInput: false
+          }
         ]
       })
     )
@@ -62,7 +85,8 @@ describe('CompanionAskTool', () => {
       approved: true,
       question: '选哪个？',
       answer: 'A',
-      selectedOptionIds: ['0']
+      selectedOptionIds: ['0'],
+      answers: [{ question: '选哪个？', answer: 'A', selectedOptionIds: ['0'] }]
     })
   })
 
@@ -84,7 +108,8 @@ describe('CompanionAskTool', () => {
     expect(JSON.parse(result)).toEqual({
       approved: false,
       declined: true,
-      question: '选哪个？'
+      question: '选哪个？',
+      answers: [{ question: '选哪个？', answer: null, selectedOptionIds: [] }]
     })
   })
 
@@ -124,6 +149,102 @@ describe('CompanionAskTool', () => {
     expect(tool.agentGateMetadata).toBeUndefined()
   })
 
+  it('should open the gate when argument deltas complete before the stream finishes', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+    const vercelTool = tool.toVercelTool({ ...baseContext, agentGate: gate })
+
+    vercelTool.onInputDelta({
+      toolCallId: 'call_1',
+      inputTextDelta: '{"question":"你在哪个城市？","options":["北京","上海"]}'
+    })
+
+    const [request] = gate.listPending('sess_1')
+    expect(request?.action).toBe('companion_ask')
+    expect(request?.title).toBe('你在哪个城市？')
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    const pending = vercelTool.execute(
+      { question: '你在哪个城市？', options: ['北京', '上海'] },
+      { toolCallId: 'call_1' }
+    )
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    await gate.reply({
+      requestId: request!.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: ['0']
+    })
+
+    expect(JSON.parse(await pending)).toEqual({
+      approved: true,
+      question: '你在哪个城市？',
+      answer: '北京',
+      selectedOptionIds: ['0'],
+      answers: [{ question: '你在哪个城市？', answer: '北京', selectedOptionIds: ['0'] }]
+    })
+  })
+
+  it('should open the gate when complete input is available before execute', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+    const vercelTool = tool.toVercelTool({ ...baseContext, agentGate: gate })
+
+    vercelTool.onInputAvailable({
+      toolCallId: 'call_1',
+      input: { question: '你在哪个城市？', options: ['北京', '上海'] }
+    })
+
+    const [request] = gate.listPending('sess_1')
+    expect(request?.title).toBe('你在哪个城市？')
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    const pending = vercelTool.execute(
+      { question: '你在哪个城市？', options: ['北京', '上海'] },
+      { toolCallId: 'call_1' }
+    )
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    await gate.reply({
+      requestId: request!.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: ['0']
+    })
+    await pending
+  })
+
+  it('should open the gate from a streamed TOOL_CALL without going through execute', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+    tool.toVercelTool({ ...baseContext, agentGate: gate })
+
+    startCompanionAskFromStreamInput(
+      { companion_ask: {} },
+      {
+        toolName: 'companion_ask',
+        toolCallId: 'call_1',
+        input: { question: '你在哪个城市？', options: ['北京', '上海'] }
+      },
+      'sess_1'
+    )
+
+    await Promise.resolve()
+    const [request] = gate.listPending('sess_1')
+    expect(request?.title).toBe('你在哪个城市？')
+  })
+
   it('resolves selected option through real gate service', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
@@ -152,7 +273,8 @@ describe('CompanionAskTool', () => {
       approved: true,
       question: '选哪个？',
       answer: 'B',
-      selectedOptionIds: ['1']
+      selectedOptionIds: ['1'],
+      answers: [{ question: '选哪个？', answer: 'B', selectedOptionIds: ['1'] }]
     })
   })
 
@@ -181,7 +303,52 @@ describe('CompanionAskTool', () => {
       approved: true,
       question: '你的偏好？',
       answer: '我喜欢简洁风格',
-      selectedOptionIds: []
+      selectedOptionIds: [],
+      answers: [{ question: '你的偏好？', answer: '我喜欢简洁风格', selectedOptionIds: [] }]
+    })
+  })
+
+  it('asks independent questions together on one card', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const pending = tool.execute(
+      {
+        questions: [
+          { question: '放在哪个文件夹？', options: ['当前根目录下新建', '先不创建'] },
+          { question: '文件夹叫什么？', options: ['写作-3'], allow_custom_input: true }
+        ]
+      },
+      { ...baseContext, agentGate: gate }
+    )
+
+    const [request] = gate.listPending('sess_1')
+    expect(request?.questions).toHaveLength(2)
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    await gate.reply({
+      requestId: request!.id,
+      reply: AgentGateReply.Once,
+      questionAnswers: [
+        { questionId: '0', selectedOptionIds: ['0'] },
+        { questionId: '1', selectedOptionIds: ['0'] }
+      ]
+    })
+
+    const result = await pending
+    expect(JSON.parse(result)).toEqual({
+      approved: true,
+      question: '放在哪个文件夹？',
+      answer: '当前根目录下新建',
+      selectedOptionIds: ['0'],
+      answers: [
+        { question: '放在哪个文件夹？', answer: '当前根目录下新建', selectedOptionIds: ['0'] },
+        { question: '文件夹叫什么？', answer: '写作-3', selectedOptionIds: ['0'] }
+      ]
     })
   })
 })

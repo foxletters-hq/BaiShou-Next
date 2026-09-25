@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod'
+import { formatAiApiCallError } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 import {
@@ -77,8 +78,7 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
         citations: citationsFromKnowledgeHits(hits)
       })
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      return `知识库检索失败：${message}。同一查询不要再调用该工具。`
+      return `知识库检索失败：${formatAiApiCallError(e)}。同一查询不要再调用该工具。`
     }
   }
 }

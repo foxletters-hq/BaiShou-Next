@@ -88,7 +88,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     query: string,
     limit: number,
     vaultId?: string,
-    options?: { startDate?: string; endDate?: string }
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
   ) {
     const scoped = String(vaultId ?? this.tryVaultId() ?? '').trim()
     // 缺 vaultId → fail-closed，避免跨仓泄漏
@@ -101,6 +101,44 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       snippet: r.content,
       sessionTitle: r.sessionTitle || '未命名对话',
       date: formatRecallTimestamp(r.createdAt)
+    }))
+  }
+
+  async listSessionsInDateRange(
+    vaultId: string,
+    startDate: string,
+    endDate: string,
+    limit: number
+  ) {
+    const scoped = String(vaultId ?? this.tryVaultId() ?? '').trim()
+    if (!scoped) return []
+
+    const rows = await this.messageRepo.listSessionsInDateRange(scoped, startDate, endDate, limit)
+    return rows.map((r) => ({
+      sessionId: r.sessionId,
+      sessionTitle: r.sessionTitle || '未命名对话',
+      firstDate: formatRecallTimestamp(r.firstCreatedAt),
+      lastDate: formatRecallTimestamp(r.lastCreatedAt),
+      messageCount: r.messageCount,
+      preview: r.preview
+    }))
+  }
+
+  async listMessagesInDateRange(
+    vaultId: string,
+    limit: number,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
+  ) {
+    const scoped = String(vaultId ?? this.tryVaultId() ?? '').trim()
+    if (!scoped) return []
+
+    const rows = await this.messageRepo.listMessagesInDateRange(scoped, limit, options)
+    return rows.map((r) => ({
+      role: r.role,
+      snippet: r.content,
+      sessionTitle: r.sessionTitle || '未命名对话',
+      date: formatRecallTimestamp(r.createdAt),
+      sessionId: r.sessionId
     }))
   }
 
