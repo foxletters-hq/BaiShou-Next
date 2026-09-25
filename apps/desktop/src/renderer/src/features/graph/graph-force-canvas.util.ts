@@ -1,4 +1,4 @@
-import { fitGraphCameraToPoints } from '@baishou/shared'
+import { fitGraphCameraToPoints, graphForceIsolatedSeedOffset } from '@baishou/shared'
 import type { GraphCanvasEdge, GraphCanvasNode } from './graph-force-canvas.types'
 
 export const GRAPH_CANVAS_DRAG_THRESHOLD_PX = 5
@@ -143,6 +143,8 @@ export function seedGraphForceNodePosition(opts: {
   prev?: { x?: number | null; y?: number | null; vx?: number | null; vy?: number | null }
   locating: boolean
   isSelected: boolean
+  isolated?: boolean
+  isolatedCount?: number
   cx: number
   cy: number
   nodeCount: number
@@ -155,6 +157,10 @@ export function seedGraphForceNodePosition(opts: {
     if (opts.isSelected) {
       x = opts.cx
       y = opts.cy
+    } else if (opts.isolated) {
+      const offset = graphForceIsolatedSeedOffset(opts.isolatedCount ?? 0, random)
+      x = opts.cx + offset.dx
+      y = opts.cy + offset.dy
     } else {
       const spread = Math.min(280, 80 + Math.sqrt(opts.nodeCount) * 12)
       const angle = random() * Math.PI * 2

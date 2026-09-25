@@ -1,4 +1,25 @@
-import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force'
+import {
+  forceCollide,
+  forceLink,
+  forceSimulation,
+  forceX,
+  forceY,
+  type ForceLink,
+  type ForceX,
+  type ForceY,
+  type Simulation
+} from 'd3-force'
+import {
+  GRAPH_FORCE_VELOCITY_DECAY,
+  countIsolatedGraphForceNodes,
+  graphForceCenterNeedsUpdate,
+  graphForceNodeCenterStrength,
+  type GraphForceSettings
+} from '@baishou/shared'
+import {
+  createGraphAwareChargeForce,
+  type GraphAwareChargeForce
+} from './graph-force-canvas-charge'
 import type {
   GraphCanvasEdge,
   GraphCanvasNode,
@@ -12,6 +33,44 @@ import {
   seedGraphForceNodePosition
 } from './graph-force-canvas.util'
 import type { GraphForceCanvasEngineRefs } from './graph-force-canvas-engine.types'
+
+const lastForceCenter = new WeakMap<
+  Simulation<GraphForceSimNode, GraphForceSimLink>,
+  { x: number; y: number }
+>()
+
+export function applyGraphForceCenter(
+  sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
+  x: number,
+  y: number
+): void {
+  const next = { x, y }
+  if (!graphForceCenterNeedsUpdate(lastForceCenter.get(sim), next)) return
+  lastForceCenter.set(sim, next)
+  const fx = sim.force('x') as ForceX<GraphForceSimNode> | undefined
+  const fy = sim.force('y') as ForceY<GraphForceSimNode> | undefined
+  fx?.x(x)
+  fy?.y(y)
+}
+
+export function applyGraphForceStrengths(
+  sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
+  forces: GraphForceSettings,
+  degreeById: Map<string, number>
+): void {
+  const link = sim.force('link') as ForceLink<GraphForceSimNode, GraphForceSimLink> | undefined
+  const charge = sim.force('charge') as GraphAwareChargeForce | undefined
+  const fx = sim.force('x') as ForceX<GraphForceSimNode> | undefined
+  const fy = sim.force('y') as ForceY<GraphForceSimNode> | undefined
+  link?.distance(forces.linkDistance).strength(forces.linkStrength)
+  charge?.configure(forces.chargeStrength, degreeById)
+  fx?.strength((d) =>
+    graphForceNodeCenterStrength(forces.centerStrength, degreeById.get(d.id) ?? 0)
+  )
+  fy?.strength((d) =>
+    graphForceNodeCenterStrength(forces.centerStrength, degreeById.get(d.id) ?? 0)
+  )
+}
 
 export function patchGraphForceSimulationMeta(
   refs: GraphForceCanvasEngineRefs,
@@ -60,6 +119,10 @@ export function rebuildGraphForceSimulation(
   const cy = Math.max(1, canvas.clientHeight) / 2
   const locating = refs.followUntilRef.current > performance.now() || refs.pendingZoomRef.current
   const selected = refs.selectedRef.current
+  const isolatedCount = countIsolatedGraphForceNodes(
+    topology.nodes.map((n) => n.id),
+    refs.degreeByIdRef.current
+  )
 
   const simNodes: GraphForceSimNode[] = topology.nodes.map((n) => {
     const prev = prevById.get(n.id)
@@ -67,6 +130,8 @@ export function rebuildGraphForceSimulation(
       prev,
       locating,
       isSelected: n.id === selected,
+      isolated: (refs.degreeByIdRef.current.get(n.id) ?? 0) <= 0,
+      isolatedCount,
       cx,
       cy,
       nodeCount: topology.nodes.length
@@ -87,6 +152,7 @@ export function rebuildGraphForceSimulation(
   const forces = refs.forceRef.current
   refs.simRef.current?.stop()
   const sim = forceSimulation(simNodes)
+    .velocityDecay(GRAPH_FORCE_VELOCITY_DECAY)
     .force(
       'link',
       forceLink<GraphForceSimNode, GraphForceSimLink>(simLinks)
@@ -94,9 +160,9 @@ export function rebuildGraphForceSimulation(
         .distance(forces.linkDistance)
         .strength(forces.linkStrength)
     )
-    .force('charge', forceManyBody().strength(forces.chargeStrength))
-    .force('x', forceX(cx).strength(forces.centerStrength))
-    .force('y', forceY(cy).strength(forces.centerStrength))
+    .force('charge', createGraphAwareChargeForce())
+    .force('x', forceX(cx))
+    .force('y', forceY(cy))
     .force(
       'collide',
       forceCollide<GraphForceSimNode>().radius(
@@ -106,6 +172,7 @@ export function rebuildGraphForceSimulation(
     )
     .on('tick', () => refs.drawRef.current())
 
+  applyGraphForceStrengths(sim, forces, refs.degreeByIdRef.current)
   refs.simRef.current = sim
   return true
 }

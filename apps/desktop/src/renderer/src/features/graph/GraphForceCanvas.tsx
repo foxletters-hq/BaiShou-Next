@@ -1,11 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import {
-  type ForceLink,
-  type ForceManyBody,
-  type ForceX,
-  type ForceY,
-  type Simulation
-} from 'd3-force'
+import { type Simulation } from 'd3-force'
 import type { GraphForceSimLink, GraphForceSimNode } from './graph-force-canvas.types'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
@@ -19,17 +13,24 @@ import {
   easeGraphForceCameraTowardSelected,
   startGraphForceCameraEase
 } from './graph-force-canvas-camera'
-import { rebuildGraphForceSimulation } from './graph-force-canvas-simulation'
+import {
+  applyGraphForceCenter,
+  applyGraphForceStrengths,
+  rebuildGraphForceSimulation
+} from './graph-force-canvas-simulation'
 import type { GraphForceCanvasEngineRefs } from './graph-force-canvas-engine.types'
 import type { GraphCanvasEdge, GraphCanvasNode } from './graph-force-canvas.types'
 import {
   GRAPH_CANVAS_CAMERA_FOLLOW_LERP,
-  GRAPH_CANVAS_LOCATE_TARGET_K
+  GRAPH_CANVAS_LOCATE_TARGET_K,
+  seedGraphForceNodePosition
 } from './graph-force-canvas.util'
 
 export type { GraphCanvasEdge, GraphCanvasNode } from './graph-force-canvas.types'
 
 export const GraphForceCanvas: React.FC<{
+  /** 标签页切走时停力导向 tick，避免隐藏画布继续占 CPU。 */
+  paused?: boolean
   nodes: GraphCanvasNode[]
   edges: GraphCanvasEdge[]
   highlightIds?: Set<string>
@@ -51,6 +52,7 @@ export const GraphForceCanvas: React.FC<{
   /** Bump to pan+zoom the current selectedId into view (e.g. pending「查看」). */
   locateSeq?: number
 }> = ({
+  paused = false,
   nodes,
   edges,
   highlightIds,
@@ -109,6 +111,8 @@ export const GraphForceCanvas: React.FC<{
   )
   const [followKick, setFollowKick] = useState(0)
   const graphFpRef = useRef('')
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const degreeByIdRef = useRef(new Map<string, number>())
   const engineRefsRef = useRef<GraphForceCanvasEngineRefs | null>(null)
   if (!engineRefsRef.current) {
@@ -223,16 +227,7 @@ export const GraphForceCanvas: React.FC<{
       canvas.style.height = '100%'
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const sim = simRef.current
-      if (sim) {
-        const fx = sim.force('x') as
-          | ForceX<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-          | undefined
-        const fy = sim.force('y') as
-          | ForceY<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-          | undefined
-        fx?.x(w / 2)
-        fy?.y(h / 2)
-      }
+      if (sim) applyGraphForceCenter(sim, w / 2, h / 2)
       drawRef.current()
     }
 
@@ -266,18 +261,7 @@ export const GraphForceCanvas: React.FC<{
         const wx = (w / 2 - tx0) / k0
         const wy = (h / 2 - ty0) / k0
         const sim = simRef.current
-        if (sim) {
-          ;(
-            sim.force('x') as
-              | ForceX<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-              | undefined
-          )?.x(wx)
-          ;(
-            sim.force('y') as
-              | ForceY<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-              | undefined
-          )?.y(wy)
-        }
+        if (sim) applyGraphForceCenter(sim, wx, wy)
       }
 
       // Soft-follow after scripted animation (skip while easing or user dragging).
@@ -317,33 +301,26 @@ export const GraphForceCanvas: React.FC<{
     drawRef.current = draw
 
     rebuildGraphForceSimulation(refs, canvas, nodes, edges)
+    if (pausedRef.current) {
+      simRef.current?.stop()
+      return
+    }
     draw()
   }, [nodes, edges, refs])
+
+  useEffect(() => {
+    if (paused) {
+      simRef.current?.stop()
+      return
+    }
+    drawRef.current()
+  }, [paused])
 
   // Live-update forces without rebuilding the whole simulation.
   useEffect(() => {
     const sim = simRef.current
-    if (!sim) return
-    const link = sim.force('link') as
-      | ForceLink<
-          GraphForceCanvasEngineRefs['nodesRef']['current'][number],
-          GraphForceCanvasEngineRefs['linksRef']['current'][number]
-        >
-      | undefined
-    const charge = sim.force('charge') as
-      | ForceManyBody<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-      | undefined
-    const fx = sim.force('x') as
-      | ForceX<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-      | undefined
-    const fy = sim.force('y') as
-      | ForceY<GraphForceCanvasEngineRefs['nodesRef']['current'][number]>
-      | undefined
-    link?.strength(forceSettings.linkStrength)
-    link?.distance(forceSettings.linkDistance)
-    charge?.strength(forceSettings.chargeStrength)
-    fx?.strength(forceSettings.centerStrength)
-    fy?.strength(forceSettings.centerStrength)
+    if (!sim || pausedRef.current) return
+    applyGraphForceStrengths(sim, forceSettings, degreeByIdRef.current)
     sim.alpha(0.35).restart()
   }, [
     forceSettings.centerStrength,
@@ -355,11 +332,33 @@ export const GraphForceCanvas: React.FC<{
   useEffect(() => {
     if (animationTick <= 0) return
     const sim = simRef.current
-    if (!sim) return
-    // Visible re-layout: scatter nodes slightly then reheat the simulation.
+    if (!sim || pausedRef.current) return
+    // Visible re-layout: isolated nodes re-seed around the cluster, others jitter.
+    const canvas = canvasRef.current
+    const cx = Math.max(1, canvas?.clientWidth ?? 800) / 2
+    const cy = Math.max(1, canvas?.clientHeight ?? 600) / 2
+    const isolatedCount = nodesRef.current.filter(
+      (n) => (degreeByIdRef.current.get(n.id) ?? 0) <= 0
+    ).length
     const jitter = 48
     for (const n of nodesRef.current) {
       if (n.x == null || n.y == null) continue
+      if ((degreeByIdRef.current.get(n.id) ?? 0) <= 0) {
+        const pos = seedGraphForceNodePosition({
+          locating: false,
+          isSelected: false,
+          isolated: true,
+          isolatedCount,
+          cx,
+          cy,
+          nodeCount: nodesRef.current.length
+        })
+        n.x = pos.x
+        n.y = pos.y
+        n.vx = 0
+        n.vy = 0
+        continue
+      }
       n.x += (Math.random() - 0.5) * jitter * 2
       n.y += (Math.random() - 0.5) * jitter * 2
       n.vx = (Math.random() - 0.5) * 12

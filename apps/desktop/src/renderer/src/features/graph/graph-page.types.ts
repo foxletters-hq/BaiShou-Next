@@ -63,9 +63,11 @@ export type GraphPageTranslateFn = (
 
 export type GraphPageProps = {
   embedded?: boolean
+  /** 记忆中心切走关系图谱时为 false，用来停画布力导向，避免后台空转。 */
+  active?: boolean
   highlightStartOrganize?: boolean
   autoStartOrganize?: boolean
   onAutoStartOrganizeConsumed?: () => void
-  /** 与记忆中心共用的整理入口；未传时空态仍走本页抽图。 */
+  /** 与记忆中心「开始整理记忆」同一条入口；未传时回退为触发 batchEmbed。 */
   onUnifiedOrganize?: () => void
 }
