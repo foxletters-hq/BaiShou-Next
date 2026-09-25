@@ -104,11 +104,11 @@ export const GraphCreateNodeModal: React.FC<{
     const disc = registerDiscriminator.trim()
     const nextLabel = registerLabel.trim() || name.trim()
     if (!disc) {
-      setError(t('graph.split_discriminator_required', '请填写区分信息'))
+      setError(t('graph.split_discriminator_required', '请填写怎么区分这两个人'))
       return
     }
     if (!nextLabel) {
-      setError(t('graph.split_label_required', '请填写展示标签'))
+      setError(t('graph.split_label_required', '请填写图谱上怎么称呼新的这个'))
       return
     }
     setSaving(true)
@@ -139,12 +139,11 @@ export const GraphCreateNodeModal: React.FC<{
     >
       <div className={styles.detailBlock}>
         <div className={styles.detailLabel}>{t('graph.label_name', '名称')}</div>
-        <Input fieldSize="small" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className={styles.detailBlock}>
         <div className={styles.detailLabel}>{t('graph.label_type', '类型')}</div>
         <Select
-          size="small"
           value={nodeType}
           onChange={(e) => setNodeType(e.target.value)}
           options={CREATE_NODE_TYPES.map((type) => ({
@@ -165,7 +164,6 @@ export const GraphCreateNodeModal: React.FC<{
       <div className={styles.detailBlock}>
         <div className={styles.detailLabel}>{t('graph.label_aliases', '别名')}</div>
         <Input
-          fieldSize="small"
           value={aliases}
           onChange={(e) => setAliases(e.target.value)}
           placeholder={t('graph.aliases_placeholder', '逗号分隔')}
@@ -183,20 +181,25 @@ export const GraphCreateNodeModal: React.FC<{
       {conflict ? (
         <>
           <div className={styles.detailBlock}>
-            <div className={styles.detailLabel}>{t('graph.discriminator_label', '区分信息')}</div>
+            <div className={styles.detailLabel}>
+              {t('graph.split_discriminator', '怎么区分这两个人')}
+            </div>
             <Input
-              fieldSize="small"
               value={registerDiscriminator}
               onChange={(e) => setRegisterDiscriminator(e.target.value)}
+              placeholder={t('graph.discriminator_placeholder', '例如：同事、大学同学')}
             />
           </div>
           <div className={styles.detailBlock}>
-            <div className={styles.detailLabel}>{t('graph.split_label', '展示标签')}</div>
+            <div className={styles.detailLabel}>
+              {t('graph.split_label', '图谱上怎么称呼新的这个')}
+            </div>
             <Input
-              fieldSize="small"
               value={registerLabel}
               onChange={(e) => setRegisterLabel(e.target.value)}
-              placeholder={name.trim()}
+              placeholder={t('graph.split_label_placeholder', '例如：{{name}}（同事）', {
+                name: name.trim() || conflict.name
+              })}
             />
           </div>
         </>

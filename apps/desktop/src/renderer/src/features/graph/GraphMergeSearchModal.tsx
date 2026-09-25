@@ -12,15 +12,28 @@ export type GraphMergePick = {
   nodeType: string
 }
 
+export type GraphMergeSearchHit = GraphMergePick & {
+  reviewStatus?: string
+}
+
 export const GraphMergeSearchModal: React.FC<{
   isOpen: boolean
   seed: GraphMergePick | null
   busy?: boolean
+  forbiddenAnchorTypes?: readonly string[]
+  searchNodes?: (input: {
+    query: string
+    nodeTypes?: string[]
+    limit?: number
+  }) => Promise<GraphMergeSearchHit[]>
   onClose: () => void
   onRequestMerge: (target: GraphMergeConfirmTarget) => void
-}> = ({ isOpen, seed, busy, onClose, onRequestMerge }) => {
+}> = ({ isOpen, seed, busy, forbiddenAnchorTypes, searchNodes, onClose, onRequestMerge }) => {
   const { t } = useTranslation()
   const tr = asGraphTranslateFn(t)
+  const forbidden = new Set(
+    (forbiddenAnchorTypes ?? ['entry']).map((type) => type.trim()).filter(Boolean)
+  )
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<GraphMergePick[]>([])
   const [picks, setPicks] = useState<GraphMergePick[]>([])
@@ -32,7 +45,7 @@ export const GraphMergeSearchModal: React.FC<{
   useEffect(() => {
     if (!isOpen) return
     const start =
-      seed && seed.nodeType !== 'entry'
+      seed && !forbidden.has(seed.nodeType)
         ? [{ id: seed.id, name: seed.name, nodeType: seed.nodeType }]
         : []
     setQuery('')
@@ -56,11 +69,17 @@ export const GraphMergeSearchModal: React.FC<{
     setSearching(true)
     try {
       const nodeType = picks[0]?.nodeType
-      const found = (await window.api.graph.search({
-        query: q,
-        nodeTypes: nodeType ? [nodeType] : undefined,
-        limit: 20
-      })) as Array<{ id: string; name: string; nodeType: string; reviewStatus?: string }>
+      const found = searchNodes
+        ? await searchNodes({
+            query: q,
+            nodeTypes: nodeType ? [nodeType] : undefined,
+            limit: 20
+          })
+        : ((await window.api.graph.search({
+            query: q,
+            nodeTypes: nodeType ? [nodeType] : undefined,
+            limit: 20
+          })) as GraphMergeSearchHit[])
       const picked = new Set(picks.map((p) => p.id))
       setHits(
         found
@@ -68,7 +87,7 @@ export const GraphMergeSearchModal: React.FC<{
             (n) =>
               n?.id &&
               !picked.has(n.id) &&
-              n.nodeType !== 'entry' &&
+              !forbidden.has(n.nodeType) &&
               n.reviewStatus !== 'rejected' &&
               (!nodeType || n.nodeType === nodeType)
           )
@@ -97,8 +116,12 @@ export const GraphMergeSearchModal: React.FC<{
   }, [isOpen, query, picks])
 
   const addPick = (hit: GraphMergePick) => {
-    if (hit.nodeType === 'entry') {
-      setError(t('graph.merge_entry_forbidden', '日记锚点不能合并'))
+    if (forbidden.has(hit.nodeType)) {
+      setError(
+        hit.nodeType === 'source'
+          ? t('graph.merge_source_forbidden', '资料锚点不能合并')
+          : t('graph.merge_entry_forbidden', '日记锚点不能合并')
+      )
       return
     }
     const first = picks[0]

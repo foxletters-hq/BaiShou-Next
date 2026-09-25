@@ -14,7 +14,7 @@ import {
   buildGraphPageDisplayEdges,
   buildGraphPageDisplayNodes
 } from './graph-page-display.util'
-import { viewDepthFor } from './graph-page-view.util'
+import { stripGraphNodeSuspectReason, viewDepthFor } from './graph-page-view.util'
 import type { GraphSideMode, GraphSideTab } from './graph-page.types'
 
 type SelectionDeps = {
@@ -228,11 +228,16 @@ export function useGraphPageSelection(deps: SelectionDeps) {
     setLocateSeq((n) => n + 1)
   }
 
-  const refreshVisibleAfterReview = async () => {
+  const refreshVisibleAfterReview = async (opts?: { stripSuspectOnNodeId?: string }) => {
     await deps.refresh()
     if (selectedId) {
       try {
-        setSelectedNode(await window.api.graph.getNode(selectedId))
+        const fresh = await window.api.graph.getNode(selectedId)
+        setSelectedNode(
+          fresh && opts?.stripSuspectOnNodeId === fresh.id
+            ? stripGraphNodeSuspectReason(fresh)
+            : fresh
+        )
       } catch {
         setSelectedNode(null)
       }
