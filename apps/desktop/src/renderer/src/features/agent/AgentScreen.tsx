@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import {
   InputBar,
   ContextChainPanel,
@@ -32,6 +32,12 @@ import chromeStyles from './components/AgentChatChrome.module.css'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import { useAgentGateQueuePager } from './hooks/useAgentGateQueuePager'
+import { refreshDesktopAgentGateInbox } from './agent-gate-inbox-bridge'
+import {
+  isLocalCompanionAskRequestId,
+  resolveCompanionAskDockRequest,
+  waitForLiveCompanionAskRequest
+} from './utils/running-companion-ask-request.util'
 import type { AgentOutletContext } from './agent-outlet-context'
 import styles from './AgentScreen.module.css'
 import { Cloud, Sparkles, ChevronDown, History } from 'lucide-react'
@@ -88,7 +94,16 @@ export const AgentScreen: React.FC = () => {
   const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
   const modelTriggerRef = useRef<HTMLButtonElement>(null)
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get('focus') !== 'notebook-mount') return
+    setNotebookMountOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('focus')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const displayModelName = noModelSelected
     ? flow.t('agent.no_model_selected', '暂未选择模型')
@@ -227,15 +242,36 @@ export const AgentScreen: React.FC = () => {
   const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
   const pendingGate = flow.stream.pendingAgentGate
-  const hasPendingGate = Boolean(pendingGate)
+  const dockRequest = resolveCompanionAskDockRequest({
+    pendingGate,
+    sessionId: flow.sessionId,
+    timeline: flow.stream.timeline,
+    isStreaming: flow.stream.isStreaming
+  })
+  const hasPendingGate = Boolean(dockRequest)
+  const askingCallIds = flow.stream.timeline
+    .filter(
+      (item) => item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
+    )
+    .map((item) => item.callId)
+    .join(',')
+  useEffect(() => {
+    if (!askingCallIds || pendingGate) return
+    // 工具名到达时确认门往往还没挂上，只拉一次会落空；流还开着就继续补拉
+    void refreshDesktopAgentGateInbox()
+    const timer = window.setInterval(() => {
+      void refreshDesktopAgentGateInbox()
+    }, 500)
+    return () => window.clearInterval(timer)
+  }, [askingCallIds, pendingGate])
   const {
     queueIndex: gateQueueIndex,
     queueTotal: gateQueueTotal,
     onQueuePrev,
     onQueueNext
-  } = useAgentGateQueuePager(flow.sessionId, pendingGate?.id)
+  } = useAgentGateQueuePager(flow.sessionId, pendingGate?.id, 'companion')
   const sameActionCount = useAgentGateInboxStore((state) =>
-    selectSameActionCountInSession(state, flow.sessionId, pendingGate?.action)
+    selectSameActionCountInSession(state, flow.sessionId, pendingGate?.action, 'companion')
   )
   const composerBlocked =
     hasPendingGate ||
@@ -347,10 +383,27 @@ export const AgentScreen: React.FC = () => {
             </button>
           ) : null}
           <AgentGateDock
-            request={pendingGate}
+            request={dockRequest}
             isReplying={flow.stream.isAgentGateReplying}
             onReply={async (payload) => {
-              await flow.stream.replyAgentGate(payload)
+              let requestId = payload.requestId
+              if (isLocalCompanionAskRequestId(requestId)) {
+                const live = flow.sessionId
+                  ? await waitForLiveCompanionAskRequest({
+                      sessionId: flow.sessionId,
+                      listPending: (sessionId) => window.api.agentGate.listPending(sessionId),
+                      readInbox: () => useAgentGateInboxStore.getState().pending
+                    })
+                  : undefined
+                if (!live) {
+                  toast.showError(
+                    flow.t('agent_gate.ask_not_ready', '确认卡还没连上，请再点一次')
+                  )
+                  return
+                }
+                requestId = live.id
+              }
+              await flow.stream.replyAgentGate({ ...payload, requestId })
               flow.scroll.scrollToBottom()
             }}
             queueIndex={gateQueueIndex}
@@ -362,6 +415,8 @@ export const AgentScreen: React.FC = () => {
           />
           <KnowledgeMountHint
             sessionId={flow.sessionId}
+            assistantId={flow.currentAssistant?.id}
+            scope="companion"
             onOpen={() => setNotebookMountOpen(true)}
           />
           <InputBar
@@ -397,6 +452,8 @@ export const AgentScreen: React.FC = () => {
       <WorkbenchNotebookMountDialog
         open={notebookMountOpen}
         sessionId={flow.sessionId}
+        assistantId={flow.currentAssistant?.id}
+        scope="companion"
         onClose={() => setNotebookMountOpen(false)}
       />
 

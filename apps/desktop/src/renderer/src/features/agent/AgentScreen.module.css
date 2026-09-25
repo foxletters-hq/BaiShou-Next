@@ -144,13 +144,14 @@
 }
 
 .messageContent {
-  flex: 1;
-  min-height: 100%;
+  /* 短对话贴输入框：高度不够时靠 margin-top:auto 沉底；变长后照常向上滚 */
+  margin-top: auto;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 1000px;
   /* 顶栏改为右上浮层后，给消息区留出按钮高度，避免首条消息被挡 */
   padding: 56px 0 40px;
-  max-width: 1000px;
-  margin: 0 auto;
-  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -334,18 +335,19 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* 纯表情包消息行：头像 + 图片，不包裹气泡卡片 */
+/* 纯表情包消息行：与聊天气泡同一三列，左右头像槽对齐 */
 .emojiOnlyRow {
-  --chat-bubble-side-inset: 100px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  column-gap: 10px;
+  align-items: start;
   padding: 4px 16px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .emojiOnlyAvatar {
+  grid-column: 1;
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -364,7 +366,10 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: flex-start;
-  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .emojiOnlyImg {
@@ -375,11 +380,12 @@
   background-color: var(--bg-surface-normal);
 }
 
-/* 输入框底部 meta 行：伙伴与模型相邻，不拉到两端 */
+/* 输入框底部 meta 行：伙伴在左，模型与上下文在右 */
 .metaRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-xs) var(--spacing-sm);
   width: 100%;
   min-width: 0;
@@ -400,6 +406,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   min-width: 0;
+  margin-left: auto;
 }
 
 .metaChip {
