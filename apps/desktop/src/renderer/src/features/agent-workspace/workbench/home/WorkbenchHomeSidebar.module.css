@@ -32,7 +32,7 @@
   border-radius: 8px;
   margin-right: 16px;
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;

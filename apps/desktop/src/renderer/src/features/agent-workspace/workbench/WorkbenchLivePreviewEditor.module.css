@@ -21,7 +21,7 @@
 /* 盖过主题里 .cm-line { padding: 0 }，避免引用竖线贴字 */
 .editor :global(.cm-line.cm-rendered-blockquote),
 .editor :global(.cm-line.cm-rendered-blockquote-content) {
-  border-left: 3px solid var(--color-primary, #5ba8f5);
+  border-left: 3px solid var(--color-primary);
   padding: 0 0 0 12px !important;
   color: var(--text-secondary);
 }

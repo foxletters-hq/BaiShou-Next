@@ -227,12 +227,7 @@
 
 .fileHeader:hover,
 .matchRow:hover {
-  background: #f0f0f0;
-}
-
-:global(html[data-theme='dark']) .fileHeader:hover,
-:global(html[data-theme='dark']) .matchRow:hover {
-  background: #2a2d2e;
+  background: var(--bg-surface-high);
 }
 
 .fileIcon {
