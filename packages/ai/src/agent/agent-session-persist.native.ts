@@ -5,12 +5,13 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
-import {
-  resolveAssistantParentOrderIndex,
-  buildEmojiImagePartsFromToolCalls
-} from './agent-session-persist.utils'
-import { buildAssistantPartsFromTimeline } from './build-assistant-parts-from-timeline'
+import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
+import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import {
+  shouldReadStreamUsageAfterInterrupt,
+  shouldWarnLimitedPersist
+} from './persist-stream-interrupt.util'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -43,6 +44,8 @@ export interface PersistResultParams {
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
   agentGateParts?: import('@baishou/shared').AgentGatePartData[]
+  /** 用户主动停止时不把 Abort 当成落盘失败 */
+  userAborted?: boolean
 }
 
 /**
@@ -68,7 +71,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
     modelId,
     skipUserMessageRecording,
     userMessageId,
-    streamError
+    streamError,
+    userAborted
   } = params
 
   const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
@@ -76,31 +80,15 @@ export async function persistResult(params: PersistResultParams): Promise<{
     userMessageId
   })
 
-  // ======== 构建 assistant 消息 Parts（按时间线）========
+  // ======== 构建 assistant 消息 Parts（按时间线，表情包排在正文之后）========
   const assistantMsgId = generateUUID()
-  const emojiParts = buildEmojiImagePartsFromToolCalls(
-    accumulator.toolCalls,
-    assistantMsgId,
-    sessionId,
-    params.userConfig
-  )
-  const timelineParts = buildAssistantPartsFromTimeline({
+  const partsToInsert: any[] = assembleAssistantPersistParts({
     accumulator,
     assistantMsgId,
     sessionId,
-    startSeq: emojiParts.length
+    userConfig: params.userConfig,
+    agentGateParts: params.agentGateParts
   })
-  const partsToInsert: any[] = [...emojiParts, ...timelineParts]
-
-  for (const gatePart of params.agentGateParts ?? []) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'agent_gate',
-      data: { ...gatePart, seq: partsToInsert.length }
-    })
-  }
 
   // 从 Vercel AI SDK 获取最终 usage
   let streamUsage = mergeStreamUsageFromSdk(accumulator.usage, null)
@@ -110,7 +98,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
   let costMicros = 0
 
-  if (!streamError) {
+  if (shouldReadStreamUsageAfterInterrupt(streamError, { userAborted }) && streamResult) {
     try {
       const u = await streamResult.usage
       logger.info('[AgentSessionService Debug] streamResult.usage resolved to:', JSON.stringify(u))
@@ -186,7 +174,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       logger.info(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`)
     }
     logger.info('==============================================\n')
-  } else {
+  } else if (shouldWarnLimitedPersist(streamError, { userAborted })) {
     logger.warn(
       '[AgentSessionService] 流式过程发生错误，使用 Accumulator 中的有限数据落盘。错误:',
       streamError

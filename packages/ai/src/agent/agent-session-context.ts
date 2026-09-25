@@ -9,10 +9,15 @@ import {
 import { AssistantRepository } from '@baishou/database'
 import {
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   resolveSessionCompressionConfig,
   resolveCompressionTrigger,
   usableContextTokens
 } from './context-compression.utils'
+import {
+  shouldCountTokensSinceLastSnapshot,
+  shouldEvaluateCompressionAfterResend
+} from './agent-session-recompress.util'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import { ContextCompressorService } from './context-compressor.service'
 import { ContextWindowBuilder } from './context-window.builder'
@@ -58,6 +63,7 @@ export async function prepareAgentSessionContext(input: {
     userConfig,
     abortSignal,
     userMessageId,
+    streamClaimGeneration,
     forceRecompress,
     flushSessionToDisk,
     resolveVaultDisplayName,
@@ -145,11 +151,9 @@ export async function prepareAgentSessionContext(input: {
   let sessionMessages = await loadSessionMessages()
   let snapshotForWindow = await (
     await import('./session-snapshot-restore')
-  ).ensureSessionSnapshotsRestored(sessionId, snapshotRepo, sessionRepo)
-  if (forceRecompress === true && sessionMessages.length >= 4) {
-    compressionConfig = { ...compressionConfig, force: true }
-  }
-
+  ).ensureSessionSnapshotsRestored(sessionId, snapshotRepo, sessionRepo, {
+    restoreSynthesizedFromMarkers: forceRecompress !== true
+  })
   {
     if (abortSignal?.aborted) {
       throw new DOMException('The operation was aborted', 'AbortError')
@@ -160,18 +164,28 @@ export async function prepareAgentSessionContext(input: {
       compressionConfig.reservedTokens
     )
     const shouldEvaluateCompression =
-      compressionConfig.force || compressionConfig.threshold > 0 || usableWindow > 0
+      shouldEvaluateCompressionAfterResend({
+        forceRecompress,
+        hasCompressionSnapshot: Boolean(snapshotForWindow)
+      }) &&
+      (compressionConfig.force || compressionConfig.threshold > 0 || usableWindow > 0)
 
     if (shouldEvaluateCompression) {
-      const contextTokens = estimateContextTokensForTrigger(sessionMessages, snapshotForWindow, {
-        recentCount: configRecentCount,
-        systemPrompt: effectiveSystemPrompt
+      const countTokensSinceLastSnapshot = shouldCountTokensSinceLastSnapshot({
+        forceRecompress,
+        hasCompressionSnapshot: Boolean(snapshotForWindow)
       })
+      const contextTokens =
+        countTokensSinceLastSnapshot && snapshotForWindow
+          ? estimateTokensSinceLastSnapshot(sessionMessages, snapshotForWindow)
+          : estimateContextTokensForTrigger(sessionMessages, snapshotForWindow, {
+              recentCount: configRecentCount,
+              systemPrompt: effectiveSystemPrompt
+            })
       if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
         logger.info(
           `[AgentSessionService] Context ~${contextTokens} tokens hit compression trigger (threshold=${compressionConfig.threshold}, window=${compressionConfig.modelContextWindow ?? 0}, force=${Boolean(compressionConfig.force)}), compressing before request.`
         )
-        await saveDiaryBeforeCompression(sessionMessages)
         const compressed = await ContextCompressorService.tryCompress(
           provider,
           modelId,
@@ -183,10 +197,12 @@ export async function prepareAgentSessionContext(input: {
           {
             ...(userMessageId ? { triggerUserMessageId: userMessageId } : {}),
             abortSignal,
+            streamClaimGeneration,
             wrapMessageTime: injectMessageTime,
             prefetchedMessages: sessionMessages,
             recentCount: configRecentCount,
-            systemPrompt: effectiveSystemPrompt
+            systemPrompt: effectiveSystemPrompt,
+            countTokensSinceLastSnapshot
           }
         )
         if (abortSignal?.aborted) {

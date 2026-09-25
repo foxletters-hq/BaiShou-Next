@@ -6,13 +6,18 @@ import { ChunkType } from './stream-chunk.types'
 import { StreamingAssistantCheckpoint } from './streaming-assistant-checkpoint'
 import { flushReasonFromStreamChunk } from './streaming-assistant-flush.util'
 import { abortAgentStreamSession } from './stream-session-guard'
+import {
+  AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+  isAgentFirstOutputTimeoutError,
+  runWithFirstOutputTimeout
+} from './agent-stream-timeout'
 import { buildToolCallRepairHandler } from './tool-call-repair.util'
 import {
   runWithOpenAiThinkingInjectAsync,
   type OpenAiThinkingBodyInject
 } from '../providers/reasoning/openai-thinking-inject'
 import { prepareSystemPromptWithEpoch } from '../session-runtime/context-epoch'
-import { attachDoomLoopObserver } from '../session-runtime'
+import { attachDoomLoopObserver, createDoomLoopCallGate } from '../session-runtime'
 import {
   emitTurnFinished,
   emitTurnStarted,
@@ -22,11 +27,16 @@ import { readProviderTurnMessages } from '../session-runtime/read-provider-turn-
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import { isAgentStreamAbortError, logger } from '@baishou/shared'
 import {
+  startCompanionAskFromStreamInput,
+  waitCompanionAskInflight
+} from '../tools/companion-ask-stream.util'
+import {
   AgentSessionRuntimeRecorder,
   bridgeStreamChunkToRuntimeEvents,
   createSessionRuntimeBridgeState
 } from './session-runtime-event'
 import { dispatchChunkToCallbacks } from './agent-session-chunk-dispatch'
+import { onAgentGateLifecycle } from './agent-gate-lifecycle'
 import type { StreamChatCallbacks } from './agent-session.types'
 import type { BaishouAgentGateSessionBuffer } from '../baishou-agent-gate/baishou-agent-gate-session-buffer'
 import type { WorkspaceSessionBuffer } from '../agent-workspace/workspace-session-buffer'
@@ -119,21 +129,31 @@ export async function runAgentSessionStream(input: {
   let doomTripped = false
   const doomObserver = attachDoomLoopObserver({
     sessionId,
-    threshold: doomLoopThreshold,
-    onTripped: () => {
-      doomTripped = true
-      abortAgentStreamSession(sessionId)
-    }
+    threshold: doomLoopThreshold
   })
+  const doomCallGate = createDoomLoopCallGate((toolName, args) =>
+    doomObserver.observe(toolName, args)
+  )
   let lastFinishReason = 'unknown'
   let turnToolCalls = 0
   const runtimeBridgeState = createSessionRuntimeBridgeState()
 
+  const unsubGateFlush = onAgentGateLifecycle((event) => {
+    if (event.type !== 'agent_gate.asked') return
+    if (event.request.sessionId !== sessionId) return
+    assistantCheckpoint.schedule('tool')
+  })
+
+  try {
   const adapter = new StreamChunkAdapter(accumulator, {
     onChunk: (chunk) => {
       if (chunk.type === ChunkType.TOOL_CALL) {
         turnToolCalls += 1
-        doomObserver.observe(chunk.toolName, chunk.input)
+        doomCallGate.onToolCall(chunk)
+        startCompanionAskFromStreamInput(enabledTools, chunk, sessionId)
+      }
+      if (chunk.type === ChunkType.TOOL_RESULT) {
+        doomCallGate.onToolResult(chunk.toolCallId)
       }
       if (chunk.type === ChunkType.STEP_FINISH) {
         lastFinishReason = chunk.finishReason || lastFinishReason
@@ -176,6 +196,23 @@ export async function runAgentSessionStream(input: {
       } as any)
     )
 
+  const consumeTurn = async (
+    messages: typeof messagesForModel,
+    maxStepsThisTurn: number,
+    systemPromptThisTurn: string
+  ) =>
+    runWithFirstOutputTimeout({
+      timeoutMs: AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+      abort: () => abortAgentStreamSession(sessionId, options.streamClaimGeneration),
+      run: async (markFirstOutput) => {
+        const turnStream = await runOneStream(messages, maxStepsThisTurn, systemPromptThisTurn)
+        const consumed = await adapter.consumeStream(turnStream, { onFirstOutput: markFirstOutput })
+        // HTTP 可能在 SDK 调用 execute 之前就结束；等用户答完再收尾，避免确认门被拆掉
+        await waitCompanionAskInflight(sessionId)
+        return { turnStream, consumed }
+      }
+    })
+
   let streamResult: Awaited<ReturnType<typeof runOneStream>>
   let streamError: unknown = null
 
@@ -192,11 +229,18 @@ export async function runAgentSessionStream(input: {
       emitTurnStarted(sessionId, turnIndex)
       turnToolCalls = 0
       lastFinishReason = 'unknown'
-      const turnStream = await runOneStream(turnMessages, 1, turned.systemPrompt)
-      streamResult = turnStream
-      const consumed = await adapter.consumeStream(turnStream)
-      if (consumed.error && !isNoOutputGeneratedError(consumed.error)) {
-        streamError = consumed.error
+      try {
+        const turnedStream = await consumeTurn(turnMessages, 1, turned.systemPrompt)
+        streamResult = turnedStream.turnStream
+        if (turnedStream.consumed.error && !isNoOutputGeneratedError(turnedStream.consumed.error)) {
+          streamError = turnedStream.consumed.error
+        }
+      } catch (error) {
+        if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
+          streamError = error
+        } else {
+          throw error
+        }
       }
       const continueNeeded = needsProviderTurnContinuation({
         finishReason: lastFinishReason,
@@ -213,7 +257,7 @@ export async function runAgentSessionStream(input: {
       })
       if (!continueNeeded || doomTripped || abortSignal?.aborted || streamError) break
       try {
-        const nextMessages = await readProviderTurnMessages(turnStream)
+        const nextMessages = await readProviderTurnMessages(streamResult)
         if (nextMessages) {
           turnMessages.push(...(nextMessages as any[]))
         } else {
@@ -223,19 +267,37 @@ export async function runAgentSessionStream(input: {
         break
       }
     }
-    if (!streamResult) {
+    if (!streamResult && !streamError) {
       if (!systemForModel) {
         systemForModel = prepareSystemPromptWithEpoch({
           sessionId,
           fullSystemPrompt: builtSystemPrompt
         }).systemPrompt
       }
-      streamResult = await runOneStream(messagesForModel, 1, systemForModel)
-      streamError = (await adapter.consumeStream(streamResult)).error
+      try {
+        const fallback = await consumeTurn(messagesForModel, 1, systemForModel)
+        streamResult = fallback.turnStream
+        streamError = fallback.consumed.error
+      } catch (error) {
+        if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
+          streamError = error
+        } else {
+          throw error
+        }
+      }
     }
   } else {
-    streamResult = await runOneStream(messagesForModel, effectiveMaxSteps, systemForModel)
-    streamError = (await adapter.consumeStream(streamResult)).error
+    try {
+      const single = await consumeTurn(messagesForModel, effectiveMaxSteps, systemForModel)
+      streamResult = single.turnStream
+      streamError = single.consumed.error
+    } catch (error) {
+      if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
+        streamError = error
+      } else {
+        throw error
+      }
+    }
   }
 
   const metrics = adapter.getMetrics()
@@ -244,4 +306,7 @@ export async function runAgentSessionStream(input: {
   )
 
   return { streamResult, streamError, accumulator, assistantCheckpoint, doomTripped }
+  } finally {
+    unsubGateFlush()
+  }
 }

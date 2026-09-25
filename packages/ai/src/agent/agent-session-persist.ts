@@ -8,6 +8,10 @@ import { StreamAccumulator } from './stream-accumulator'
 import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
 import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import {
+  shouldReadStreamUsageAfterInterrupt,
+  shouldWarnLimitedPersist
+} from './persist-stream-interrupt.util'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -44,6 +48,8 @@ export interface PersistResultParams {
   fileChangeParts?: import('@baishou/shared').FileChangePartData[]
   /** 流式检查点已写入的同一条助手消息 */
   existingAssistantMessageId?: string
+  /** 用户主动停止时不把 Abort 当成落盘失败 */
+  userAborted?: boolean
 }
 
 /**
@@ -70,7 +76,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
     skipUserMessageRecording,
     userMessageId,
     streamError,
-    flushSessionToDisk
+    flushSessionToDisk,
+    userAborted
   } = params
 
   const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
@@ -97,7 +104,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
   let costMicros = 0
 
-  if (!streamError) {
+  if (shouldReadStreamUsageAfterInterrupt(streamError, { userAborted }) && streamResult) {
     try {
       const u = await streamResult.usage
       logger.info('[AgentSessionService Debug] streamResult.usage resolved to:', JSON.stringify(u))
@@ -173,7 +180,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       logger.info(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`)
     }
     logger.info('==============================================\n')
-  } else {
+  } else if (shouldWarnLimitedPersist(streamError, { userAborted })) {
     logger.warn(
       '[AgentSessionService] 流式过程发生错误，使用 Accumulator 中的有限数据落盘。错误:',
       streamError

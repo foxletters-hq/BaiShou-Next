@@ -27,25 +27,28 @@ export function assembleAssistantPersistParts(params: {
   data: Record<string, unknown>
 }> {
   const { accumulator, assistantMsgId, sessionId } = params
+  const timelineParts = buildAssistantPartsFromTimeline({
+    accumulator,
+    assistantMsgId,
+    sessionId,
+    startSeq: 0
+  })
   const emojiParts = buildEmojiImagePartsFromToolCalls(
     accumulator.toolCalls,
     assistantMsgId,
     sessionId,
     params.userConfig
-  )
-  const timelineParts = buildAssistantPartsFromTimeline({
-    accumulator,
-    assistantMsgId,
-    sessionId,
-    startSeq: emojiParts.length
-  })
+  ).map((part, index) => ({
+    ...part,
+    data: { ...part.data, seq: timelineParts.length + index }
+  }))
   const parts: Array<{
     id: string
     messageId: string
     sessionId: string
     type: string
     data: Record<string, unknown>
-  }> = [...emojiParts, ...timelineParts]
+  }> = [...timelineParts, ...emojiParts]
 
   for (const gatePart of params.agentGateParts ?? []) {
     parts.push({

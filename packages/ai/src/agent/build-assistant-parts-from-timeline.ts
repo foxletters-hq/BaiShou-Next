@@ -21,7 +21,7 @@ export type TimelinePersistPart = {
 
 /**
  * 按时间线顺序把 reasoning / tool / text 落成 parts（带 seq，便于读取排序）。
- * emoji 等前置 parts 由调用方先放入再 concat。
+ * emoji 等后置 image parts 由调用方 concat 到时间线之后。
  */
 export function buildAssistantPartsFromTimeline(params: {
   accumulator: StreamAccumulator
@@ -102,7 +102,10 @@ export function buildAssistantPartsFromTimeline(params: {
           toolName: item.name,
           status: item.status,
           hasResult: item.result != null && item.result !== ''
-        })
+        }),
+        ...(typeof item.durationMs === 'number' && item.durationMs > 0
+          ? { durationMs: Math.round(item.durationMs) }
+          : {})
       })
       parts.push({
         id: generateUUID(),

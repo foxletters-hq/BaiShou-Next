@@ -1,10 +1,12 @@
 import { AgentSessionService } from './agent-session.service'
 import type { IStreamEmitter } from './stream-emitter.interface'
 import { isAgentStreamAbortError } from '@baishou/shared'
+import { isAgentFirstOutputTimeoutError } from './agent-stream-timeout'
 import {
   abortAllAgentStreamSessions,
   abortAgentStreamSession,
   claimAgentStreamSession,
+  clearPendingAgentStreamStop,
   releaseAgentStreamSession
 } from './stream-session-guard'
 import { clearCompressionSessionLock } from './compression-session-lock'
@@ -65,7 +67,10 @@ export class AgentChatCoreService {
     maxSteps?: number
     sessionRuntimeV2?: boolean
   }): Promise<{ aborted: boolean }> {
+    clearPendingAgentStreamStop(params.sessionId)
     const claim = claimAgentStreamSession(params.sessionId)
+    // 重发/新一轮不能等待上一轮挂死的压缩；只摘掉锁，旧任务仍按自己的 abortSignal 收尾
+    clearCompressionSessionLock(params.sessionId)
 
     try {
       if (claim.signal.aborted) {
@@ -120,10 +125,6 @@ export class AgentChatCoreService {
           onToolCallResult: (name, result, toolCallId) =>
             params.emitter.sendToolResult(params.sessionId, name, result, toolCallId),
           onError: (err) => {
-            if (isAgentStreamAbortError(err)) {
-              params.emitter.sendFinish(params.sessionId, { success: true })
-              return
-            }
             params.emitter.sendFinish(params.sessionId, { error: err.message })
           },
           onFinish: (result) =>
@@ -132,6 +133,7 @@ export class AgentChatCoreService {
       )
       return { aborted: claim.signal.aborted }
     } catch (error) {
+      if (isAgentFirstOutputTimeoutError(error)) throw error
       if (isAgentStreamAbortError(error) || claim.signal.aborted) {
         return { aborted: true }
       }
