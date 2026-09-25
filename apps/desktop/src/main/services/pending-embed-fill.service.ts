@@ -9,9 +9,6 @@ import {
   connectionManager,
   createSqlExecutorFromDrizzleDb,
   GraphRepository,
-  KnowledgeRepository,
-  knowledgeConnectionManager,
-  NotebookGraphRepository,
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import {
@@ -29,12 +26,11 @@ import {
   assertBatchEmbedCanContinue,
   isBatchEmbedAbortedError
 } from './batch-embed-control.service'
-import {
-  consumeKnowledgeGraphJobs,
-  consumeKnowledgeIngestJobs
-} from './knowledge-ingest-jobs.consumer'
 import { syncMemoryPendingIndex } from './raw-data-source.runtime'
-import { invalidatePendingEmbedCountsCache } from './pending-embed-counts.service'
+import {
+  invalidatePendingEmbedCountsCache,
+  notifyPendingEmbedCountsChanged
+} from './pending-embed-counts.service'
 import { probeEmbeddingApi } from './embed-api-probe.util'
 
 export type PendingEmbedFillProgress = {
@@ -54,10 +50,10 @@ export type PendingEmbedFillResult = {
 
 export async function runManualPendingEmbedFill(options?: {
   onProgress?: (progress: PendingEmbedFillProgress) => void
-  counts?: Pick<
-    PendingEmbedCounts,
-    'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'notebookGraphNodes' | 'total'
-  > & { graphExtract?: number; graphDisambiguate?: number }
+  counts?: Pick<PendingEmbedCounts, 'diaries' | 'memories' | 'graphNodes' | 'total'> & {
+    graphExtract?: number
+    graphDisambiguate?: number
+  }
 }): Promise<PendingEmbedFillResult> {
   const empty: PendingEmbedFillResult = { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
   const vaultId = resolveActiveVaultId()?.trim()
@@ -92,8 +88,6 @@ export async function runManualPendingEmbedFill(options?: {
       diaries: options?.counts?.diaries ?? 0,
       memories: options?.counts?.memories ?? 0,
       graphNodes: options?.counts?.graphNodes ?? 0,
-      knowledgeSources: options?.counts?.knowledgeSources ?? 0,
-      notebookGraphNodes: options?.counts?.notebookGraphNodes ?? 0,
       graphExtract: options?.counts?.graphExtract ?? 0,
       graphDisambiguate: options?.counts?.graphDisambiguate ?? 0
     }),
@@ -108,9 +102,7 @@ export async function runManualPendingEmbedFill(options?: {
         ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
         : phase === 'graph_node'
           ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
-          : phase === 'knowledge'
-            ? i18n.t('settings.rag_indexing_knowledge', '正在嵌入知识库…')
-            : phase === 'graph_extract'
+          : phase === 'graph_extract'
               ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
               : phase === 'graph_disambiguate'
                 ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
@@ -141,79 +133,10 @@ export async function runManualPendingEmbedFill(options?: {
   }
   phases = markPhaseDone(phases, 'memory')
 
-  if (phases.knowledgeSources.total > 0) {
-    report('knowledge', phases)
-  }
-  try {
-    await assertBatchEmbedCanContinue()
-    if (knowledgeConnectionManager.isConnected()) {
-      const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
-      const pending = await repo.listPendingEmbedSources(vaultId, {
-        modelId: adapter.embeddingModelId
-      })
-      phases = patchPhaseCounts(phases, 'knowledge', { total: pending.length })
-      if (pending.length > 0) {
-        report('knowledge', phases)
-      }
-      for (const source of pending) {
-        await assertBatchEmbedCanContinue()
-        await repo.enqueueIngestJob({
-          notebookId: source.notebookId,
-          sourceId: source.id,
-          stage: 'embed',
-          vaultId: source.vaultId || vaultId
-        })
-      }
-      if (pending.length > 0) {
-        let knowledgeDone = 0
-        for (let i = 0; i < 20; i += 1) {
-          await assertBatchEmbedCanContinue()
-          const result = await consumeKnowledgeIngestJobs({
-            reason: 'manual-pending-fill',
-            limit: 10
-          })
-          if (!result.processed) break
-          knowledgeDone += result.processed
-          report(
-            'knowledge',
-            patchPhaseCounts(phases, 'knowledge', {
-              completed: knowledgeDone,
-              total: pending.length
-            })
-          )
-        }
-      }
-    }
-  } catch (error) {
-    if (isBatchEmbedAbortedError(error)) throw error
-    logger.warn('[PendingEmbedFill] knowledge fill failed', error as Error)
-  }
-  phases = markPhaseDone(phases, 'knowledge')
-
   try {
     await assertBatchEmbedCanContinue()
     let extractDone = 0
     let extractTotal = phases.graphExtract.total
-
-    if (knowledgeConnectionManager.isConnected()) {
-      for (let i = 0; i < 20; i += 1) {
-        await assertBatchEmbedCanContinue()
-        const result = await consumeKnowledgeGraphJobs({
-          reason: 'manual-pending-fill',
-          limit: 10
-        })
-        if (!result.processed) break
-        extractDone += result.processed
-        extractTotal = Math.max(extractTotal, extractDone)
-        report(
-          'graph_extract',
-          patchPhaseCounts(phases, 'graph_extract', {
-            completed: extractDone,
-            total: extractTotal
-          })
-        )
-      }
-    }
 
     const { GraphExtractQueueService } = await import('./graph-extract-queue.service')
     const { enqueueGraphExtract } = await import('../ipc/graph.ipc')
@@ -272,17 +195,10 @@ export async function runManualPendingEmbedFill(options?: {
     await assertBatchEmbedCanContinue()
     const graphRepo = new GraphRepository(drizzleDb)
     const liveUnembedded = await graphRepo.listUnembeddedLiveNodes(vaultId)
-    const notebookUnembedded = knowledgeConnectionManager.isConnected()
-      ? await new NotebookGraphRepository(
-          knowledgeConnectionManager.getDb()
-        ).listUnembeddedLiveNodes(vaultId)
-      : []
-    const notebookById = new Map(notebookUnembedded.map((row) => [row.id, row]))
-    const combinedTotal = liveUnembedded.length + notebookUnembedded.length
-    if (combinedTotal > 0) {
+    if (liveUnembedded.length > 0) {
       phases = patchPhaseCounts(phases, 'graph_node', {
         completed: 0,
-        total: combinedTotal
+        total: liveUnembedded.length
       })
       report('graph_node', phases)
     }
@@ -299,7 +215,7 @@ export async function runManualPendingEmbedFill(options?: {
           'graph_node',
           patchPhaseCounts(phases, 'graph_node', {
             completed,
-            total: combinedTotal || total
+            total: liveUnembedded.length || total
           })
         )
         if (completed % 8 === 0) {
@@ -307,35 +223,6 @@ export async function runManualPendingEmbedFill(options?: {
         }
       }
     })
-    if (notebookUnembedded.length > 0) {
-      const notebookRepo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-      const notebookResult = await backfillUnembeddedGraphNodes({
-        vaultId,
-        listUnembeddedLiveNodes: async () => notebookUnembedded,
-        updateNodeEmbedding: (id, vid, embedding, modelId) => {
-          const row = notebookById.get(id)
-          if (!row) return Promise.resolve()
-          return notebookRepo.updateNodeEmbedding(id, vid, row.notebookId, embedding, modelId)
-        },
-        embedQuery: (text) => adapter.embedQuery(text),
-        modelId: adapter.embeddingModelId ?? '',
-        onBeforeItem: () => assertBatchEmbedCanContinue(),
-        onProgress: ({ completed }) => {
-          report(
-            'graph_node',
-            patchPhaseCounts(phases, 'graph_node', {
-              completed: graphResult.updated + graphResult.failed + completed,
-              total: combinedTotal
-            })
-          )
-        }
-      })
-      graphResult = {
-        updated: graphResult.updated + notebookResult.updated,
-        failed: graphResult.failed + notebookResult.failed,
-        total: combinedTotal
-      }
-    }
   } catch (error) {
     if (isBatchEmbedAbortedError(error) || isEmbedApiUnavailableError(error)) throw error
     logger.warn('[PendingEmbedFill] graph node fill failed', error as Error)
@@ -376,6 +263,9 @@ export async function runManualPendingEmbedFill(options?: {
       }),
       'graph_disambiguate'
     )
+    if (scanResult.persisted > 0) {
+      notifyPendingEmbedCountsChanged()
+    }
   } catch (error) {
     if (isBatchEmbedAbortedError(error)) throw error
     logger.warn('[PendingEmbedFill] graph disambiguate phase failed', error as Error)

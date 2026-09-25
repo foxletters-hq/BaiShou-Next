@@ -1,11 +1,12 @@
 import { BrowserWindow } from 'electron'
 import {
+  buildVisionLanguageSlots,
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
   logger,
   isVisionModel,
+  resolveProviderModelSlot,
   normalizeKnowledgeDefaultExtractEngine,
-  type GlobalModelsConfig,
   type KnowledgeConfig,
   type AIProviderConfig
 } from '@baishou/shared'
@@ -23,9 +24,13 @@ import {
 } from '@baishou/core-desktop'
 import { getNotebookRawManager } from './raw-data-source.runtime'
 import { fileSystem } from './node-file-system'
+import { clearGraphWindowProgress } from './graph-window-progress'
 
 type IngestLane = 'index' | 'graph'
 type ConsumeResult = { processed: number; failed: number; skipped?: string }
+
+/** 本进程第一次整理时，把上次退出留下的 running 任务收回。独立线程的进度不落盘。 */
+let reclaimedDeadProcessWork = false
 
 /** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队，不在这条消费队列并行。 */
 const INDEX_STAGES = ['extract', 'embed'] as const
@@ -98,24 +103,18 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
         ...raw
       }
       cfg.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(cfg.defaultExtractEngine)
-      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
       const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-      const modelId =
-        cfg.visionModelId ||
-        globalModels?.globalDialogueModelId ||
-        globalModels?.globalSummaryModelId ||
-        null
-      const providerId =
-        cfg.visionProviderId ||
-        globalModels?.globalDialogueProviderId ||
-        globalModels?.globalSummaryProviderId ||
-        null
-      const provider =
-        (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
-        providers.find((p) => p.isEnabled)
-      const visionConfigured = Boolean(
-        modelId && isVisionModel(modelId, provider?.type || provider?.id)
+      const hit = resolveProviderModelSlot(
+        providers,
+        buildVisionLanguageSlots({
+          visionProviderId: cfg.visionProviderId,
+          visionModelId: cfg.visionModelId
+        })
       )
+      const visionConfigured = Boolean(
+        hit && isVisionModel(hit.modelId, hit.provider.type || hit.provider.id)
+      )
+      const modelId = hit?.modelId ?? null
       return {
         defaultEngine: cfg.defaultExtractEngine,
         ocrLanguage: cfg.ocrLanguage,
@@ -192,7 +191,10 @@ async function consumeKnowledgeLane(
     }
 
     try {
-      const recovered = await svc.recoverStaleIngestState()
+      const recovered = await svc.recoverStaleIngestState(
+        reclaimedDeadProcessWork ? undefined : { olderThanMs: 0 }
+      )
+      reclaimedDeadProcessWork = true
       if (recovered.resetSources || recovered.droppedExtractJobs || recovered.reclaimedEmbedJobs) {
         logger.info('[KnowledgeIngestJobs] recovered stale state', {
           lane,
@@ -296,7 +298,10 @@ async function consumeKnowledgeLane(
       for (const job of jobs) {
         if (job.stage === 'extract') unmarkExtractJobLive(job.sourceId)
         if (job.stage === 'embed') unmarkEmbedJobLive(job.sourceId)
-        if (job.stage === 'graph') unmarkGraphJobLive(job.sourceId)
+        if (job.stage === 'graph') {
+          unmarkGraphJobLive(job.sourceId)
+          clearGraphWindowProgress(job.notebookId, job.sourceId)
+        }
       }
       if (jobs.some((job) => job.stage === 'graph')) {
         broadcastKnowledgeGraphProgress()

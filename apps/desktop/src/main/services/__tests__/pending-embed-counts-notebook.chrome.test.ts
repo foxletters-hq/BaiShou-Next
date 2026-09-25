@@ -8,11 +8,19 @@ const src = readFileSync(
   'utf8'
 )
 
-describe('desktop pending embed counts notebook nodes', () => {
-  it('should count notebook graph nodes separately from knowledge sources', () => {
-    expect(src).toContain('listUnembeddedLiveNodes')
-    expect(src).toContain('missingNotebookGraphNodeCount')
-    expect(src).toContain('countPendingNotebookGraphNodes')
-    expect(src).toContain('countPendingKnowledgeSources')
+describe('desktop pending embed counts stay on the memory system', () => {
+  it('should not count notebook vectors or notebook graph nodes for memory pending embeds', () => {
+    expect(src).not.toContain('missingNotebookGraphNodeCount')
+    expect(src).not.toContain('countPendingNotebookGraphNodes')
+    expect(src).not.toContain('countPendingKnowledgeSources')
+    expect(src).not.toContain("stages: ['graph']")
+    expect(src).toContain('countUnindexedDiariesForActiveVault')
+    expect(src).toContain('countPendingMemories')
+    expect(src).toContain('countPendingGraphNodes')
+  })
+
+  it('should broadcast embed-pending-changed when notifying count changes', () => {
+    expect(src).toContain('export function notifyPendingEmbedCountsChanged')
+    expect(src).toContain("type: 'embed-pending-changed'")
   })
 })

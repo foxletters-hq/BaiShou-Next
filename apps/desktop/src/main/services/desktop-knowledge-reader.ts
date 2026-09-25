@@ -8,6 +8,7 @@ import {
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
 import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
+import { assertKnowledgeModelMatch } from '../ipc/knowledge-ipc.context'
 
 /**
  * Build a ToolKnowledgeReader for companion / workspace chat injection.
@@ -32,14 +33,7 @@ export function createDesktopKnowledgeReader(
   })
 
   const resolveEmbed =
-    embedQuery ??
-    (async (text: string) => {
-      try {
-        return await getEmbeddingService().embedQuery(text)
-      } catch {
-        return null
-      }
-    })
+    embedQuery ?? ((text: string) => getEmbeddingService().embedQuery(text))
 
   return new KnowledgeReaderAdapter(async (opts) => {
     const notebookIds = parseMountedNotebookIds(opts.notebookIds)
@@ -49,6 +43,7 @@ export function createDesktopKnowledgeReader(
     await embeddingConfig.load()
     const modelId = embeddingConfig.getGlobalEmbeddingModelId()
     const vaultId = resolveActiveVaultId()
+    await assertKnowledgeModelMatch(repo, notebookIds)
     const profiles = await repo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })
 
     const queryVector = await resolveEmbed(opts.query)

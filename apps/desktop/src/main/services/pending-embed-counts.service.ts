@@ -1,6 +1,5 @@
 import {
   buildPendingEmbedCounts,
-  countPendingFromUnembeddedList,
   createPendingEmbedCountCache,
   EMPTY_PENDING_EMBED_COUNTS,
   logger,
@@ -17,6 +16,26 @@ const cache = createPendingEmbedCountCache()
 
 export function invalidatePendingEmbedCountsCache(): void {
   cache.invalidate()
+}
+
+/** 清缓存并通知渲染进程重拉「未整理」篇数（删除向量、整理完成等） */
+export function notifyPendingEmbedCountsChanged(extra?: {
+  diaryId?: number
+  vaultId?: string
+}): void {
+  cache.invalidate()
+  void import('electron')
+    .then(({ BrowserWindow }) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('diary:sync-event', {
+          type: 'embed-pending-changed',
+          ...extra
+        })
+      }
+    })
+    .catch(() => {
+      // 非 Electron 环境不广播
+    })
 }
 
 async function countPendingMemories(vaultId: string): Promise<number> {
@@ -46,41 +65,13 @@ async function countPendingGraphNodes(vaultId: string): Promise<number> {
   return listed.length
 }
 
-async function countPendingKnowledgeSources(vaultId: string): Promise<number> {
+async function countPendingGraphExtract(): Promise<number> {
   try {
-    const { KnowledgeRepository, knowledgeConnectionManager } =
-      await import('@baishou/database-desktop')
-    if (!knowledgeConnectionManager.isConnected?.()) return 0
-    const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
-    return await repo.countPendingEmbedSources(vaultId)
+    const { getDerivedFreshness } = await import('./raw-data-source.runtime')
+    return (await getDerivedFreshness().listPendingReextract()).length
   } catch {
     return 0
   }
-}
-
-async function countPendingGraphExtract(vaultId: string): Promise<number> {
-  let diary = 0
-  try {
-    const { getDerivedFreshness } = await import('./raw-data-source.runtime')
-    diary = (await getDerivedFreshness().listPendingReextract()).length
-  } catch {
-    diary = 0
-  }
-  let knowledge = 0
-  try {
-    const { KnowledgeRepository, knowledgeConnectionManager } =
-      await import('@baishou/database-desktop')
-    if (!knowledgeConnectionManager.isConnected?.()) return diary
-    const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
-    knowledge = await repo.countIngestJobs({
-      vaultId,
-      stages: ['graph'],
-      claimableOnly: true
-    })
-  } catch {
-    knowledge = 0
-  }
-  return diary + knowledge
 }
 
 async function countPendingGraphDisambiguate(vaultId: string): Promise<number> {
@@ -107,21 +98,9 @@ export async function getOrganizePendingSnapshot(): Promise<
 > {
   const embed = await getPendingEmbedCountsForActiveVault()
   const vaultId = resolveActiveVaultId()
-  const graphExtract = vaultId ? await countPendingGraphExtract(vaultId) : 0
+  const graphExtract = vaultId ? await countPendingGraphExtract() : 0
   const graphDisambiguate = vaultId ? await countPendingGraphDisambiguate(vaultId) : 0
   return { ...embed, graphExtract, graphDisambiguate }
-}
-
-async function countPendingNotebookGraphNodes(vaultId: string): Promise<number> {
-  try {
-    const { NotebookGraphRepository, knowledgeConnectionManager } =
-      await import('@baishou/database-desktop')
-    if (!knowledgeConnectionManager.isConnected?.()) return 0
-    const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-    return await countPendingFromUnembeddedList(() => repo.listUnembeddedLiveNodes(vaultId))
-  } catch {
-    return 0
-  }
 }
 
 export async function getPendingEmbedCountsForActiveVault(): Promise<PendingEmbedCounts> {
@@ -140,18 +119,14 @@ export async function getPendingEmbedCountsForActiveVault(): Promise<PendingEmbe
         logger.warn('[PendingEmbedCounts] graph node count failed', error as Error)
       }
     }
-    const [diaries, memories, knowledgeSources, notebookGraphNodes] = await Promise.all([
+    const [diaries, memories] = await Promise.all([
       countUnindexedDiariesForActiveVault(),
-      countPendingMemories(vaultId),
-      countPendingKnowledgeSources(vaultId),
-      countPendingNotebookGraphNodes(vaultId)
+      countPendingMemories(vaultId)
     ])
     return buildPendingEmbedCounts({
       unindexedDiaryCount: diaries,
       missingMemoryCount: memories,
-      missingGraphNodeCount: graphNodes,
-      missingKnowledgeSourceCount: knowledgeSources,
-      missingNotebookGraphNodeCount: notebookGraphNodes
+      missingGraphNodeCount: graphNodes
     })
   }
 

@@ -335,6 +335,7 @@ export async function syncGraphPendingIndexWithDeps(options: {
 export async function syncGraphPendingIndex(opts?: {
   absentSweep?: 'shard-present' | 'off'
   deletedShardPaths?: string[]
+  embedMissing?: boolean
 }): Promise<void> {
   if (!connectionManager.isConnected()) return
   const drizzleDb = connectionManager.getDb()
@@ -356,7 +357,8 @@ export async function syncGraphPendingIndex(opts?: {
     embeddingAdapter,
     vaultId: resolveActiveVaultId(),
     absentSweep: opts?.absentSweep,
-    deletedShardPaths: opts?.deletedShardPaths
+    deletedShardPaths: opts?.deletedShardPaths,
+    embedMissing: opts?.embedMissing
   })
 }
 

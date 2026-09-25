@@ -16,20 +16,14 @@ function indexOfCall(marker: string): number {
   return index
 }
 
-describe('desktop pending embed fill order', () => {
-  it('should fill knowledge after memory when running desktop pending fill', () => {
-    expect(indexOfCall("markPhaseDone(phases, 'memory')")).toBeLessThan(
-      indexOfCall('await consumeKnowledgeIngestJobs')
-    )
+describe('desktop pending embed fill stays on the memory system', () => {
+  it('should not consume notebook ingest or notebook graph jobs', () => {
+    expect(src).not.toContain('consumeKnowledgeIngestJobs')
+    expect(src).not.toContain('consumeKnowledgeGraphJobs')
+    expect(src).not.toContain('NotebookGraphRepository')
   })
 
-  it('should extract graph after knowledge when running desktop pending fill', () => {
-    expect(indexOfCall("markPhaseDone(phases, 'knowledge')")).toBeLessThan(
-      indexOfCall('await consumeKnowledgeGraphJobs')
-    )
-  })
-
-  it('should backfill graph node embeddings after extract when running desktop pending fill', () => {
+  it('should backfill diary graph node embeddings after extract', () => {
     expect(indexOfCall("markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
       indexOfCall('await backfillUnembeddedGraphNodes')
     )
@@ -38,6 +32,9 @@ describe('desktop pending embed fill order', () => {
   it('should scan suspects after graph node fill when running desktop pending fill', () => {
     expect(indexOfCall('[PendingEmbedFill] graph node fill failed')).toBeLessThan(
       indexOfCall('runDesktopGraphSuspectScan')
+    )
+    expect(indexOfCall('runDesktopGraphSuspectScan')).toBeLessThan(
+      indexOfCall('notifyPendingEmbedCountsChanged()')
     )
   })
 })
