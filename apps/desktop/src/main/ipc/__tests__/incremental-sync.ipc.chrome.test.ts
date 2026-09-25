@@ -28,4 +28,10 @@ describe('incremental sync ipc split', () => {
     expect(planSrc).toContain('export async function afterIncrementalSync')
     expect(shellSrc).not.toContain("'incrementalSync:planSync'")
   })
+
+  it('should hydrate derived indexes when graph files arrive with journals', () => {
+    expect(planSrc).toContain('incrementalSyncShouldHydrateDerivedIndex')
+    expect(planSrc).toContain('if (incrementalSyncShouldHydrateDerivedIndex(cls))')
+    expect(planSrc).not.toMatch(/else if \(cls\.memory \|\| cls\.graph\)/)
+  })
 })

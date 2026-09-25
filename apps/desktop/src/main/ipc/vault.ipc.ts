@@ -186,15 +186,6 @@ export async function initVaultSystem() {
   // 全量扫盘延后到渲染进程首屏，避免与 Vite 模块图抢主线程/磁盘
   const { armDeferredColdStartResync } = await import('../services/vault-resync.service')
   armDeferredColdStartResync()
-
-  // 冷启动挂知识库摄入消费者
-  try {
-    const { scheduleConsumeKnowledgeIngestJobs } =
-      await import('../services/knowledge-ingest-jobs.consumer')
-    scheduleConsumeKnowledgeIngestJobs('cold-start')
-  } catch (e) {
-    logger.warn('[VaultIPC] schedule knowledge ingest consumer failed:', e as Error)
-  }
 }
 
 export function registerVaultIPC() {
