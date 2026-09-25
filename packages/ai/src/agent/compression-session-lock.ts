@@ -25,8 +25,10 @@ export async function runCompressionWithSessionLock(
     try {
       return await fn()
     } finally {
-      inFlight.delete(sessionId)
-      lastCompletedAt.set(sessionId, Date.now())
+      if (inFlight.get(sessionId) === job) {
+        inFlight.delete(sessionId)
+        lastCompletedAt.set(sessionId, Date.now())
+      }
     }
   })()
 
@@ -40,6 +42,13 @@ export function clearCompressionSessionLock(sessionId: string): void {
 }
 
 const recompressInFlight = new Map<string, Promise<unknown>>()
+
+/** 测试专用：清空压缩锁 */
+export function resetCompressionSessionLockForTests(): void {
+  inFlight.clear()
+  lastCompletedAt.clear()
+  recompressInFlight.clear()
+}
 
 /** 重新压缩专用锁（返回 undefined 表示已有任务在跑） */
 export async function runRecompressWithSessionLock<T>(

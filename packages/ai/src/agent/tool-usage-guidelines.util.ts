@@ -10,8 +10,12 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
   const hasDiaryRead = ids.has('diary_read')
   const hasDiaryEdit = ids.has('diary_edit')
   const hasDiaryList = ids.has('diary_list')
+  const hasSessionList = ids.has('session_list')
+  const hasMessageSearch = ids.has('message_search')
+  const hasCurrentTime = ids.has('current_time')
 
-  const canSearchPersonalRecords = hasDiarySearch || hasVectorSearch
+  const canSearchPersonalRecords =
+    hasDiarySearch || hasVectorSearch || hasSessionList || hasMessageSearch
 
   if (canSearchPersonalRecords) {
     lines.push('## 查事实，禁止装懂')
@@ -26,7 +30,30 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     if (hasVectorSearch) {
       lookupSteps.push('vector_search（语义搜索对话与记忆）')
     }
+    if (hasSessionList) {
+      lookupSteps.push('session_list（按时间列出会话）')
+    }
+    if (hasMessageSearch) {
+      lookupSteps.push('message_search（按关键词或日期搜索压缩前原文）')
+    }
     lines.push(`- **必须**先调用 ${lookupSteps.join(' 和/或 ')} 查阅，再回答。`)
+
+    if (hasSessionList && hasMessageSearch) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 session_list 列出会话；需要原文时再用 message_search（须同时填写 start_date 和 end_date，可再加 session_id）。`
+      )
+    } else if (hasSessionList) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 session_list 列出会话。`
+      )
+    } else if (hasMessageSearch) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 message_search 查阅压缩前原文（可填关键词，或同时填写 start_date 和 end_date 按时间列出）。`
+      )
+    }
 
     if (hasDiaryRead) {
       lines.push('- 若搜索已定位到具体日记日期，须用 diary_read 读取完整正文后再引用或编辑。')
@@ -61,10 +88,10 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
       '- 需要用户做选择、确认、同意或提供名称时，**必须**调用 companion_ask，不要把问题写在普通回复里。'
     )
     lines.push(
-      '- companion_ask 必须带 question，以及至少两个 options。能一次问清的相关选择，必须收进同一次 companion_ask，不要先问一件事、用户答完再追问第二件。'
+      '- companion_ask 必须带 question 或 questions，以及每题至少两个 options。能一次问清的相关选择，收进同一题的 options。'
     )
     lines.push(
-      '- 彼此真正独立的多个问题，必须在同一步里多次调用 companion_ask，用户会在确认卡里翻页逐题回答。'
+      '- 彼此独立但可以同时决定的问题，必须放进同一次 companion_ask 的 questions，用户会在同一张确认卡里一起回答。不要先问一件事、等用户答完再追问第二件。'
     )
     lines.push('- 只有后一题的选项集合必须依赖前一题答案时，才等该次工具返回后再问。')
     lines.push(

@@ -10,6 +10,7 @@ export type ToolPartData = {
   arguments?: unknown
   result?: unknown
   status?: string
+  durationMs?: number
   contentPreview?: string
   contentLength?: number
   contentPruned?: boolean
