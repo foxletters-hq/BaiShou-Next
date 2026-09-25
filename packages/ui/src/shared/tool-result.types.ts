@@ -5,11 +5,19 @@ export interface ToolInvocationLike {
   toolName?: string
   result?: unknown
   args?: unknown
+  state?: 'partial-call' | 'call' | 'result' | string
 }
 
 export type CompanionAskOptionView = {
   id: string
   label: string
+}
+
+export type CompanionAskItemView = {
+  question: string
+  answer: string | null
+  options: CompanionAskOptionView[]
+  selectedOptionIds: string[]
 }
 
 export type CompanionAskPresentation = {
@@ -19,6 +27,7 @@ export type CompanionAskPresentation = {
   declined: boolean
   options: CompanionAskOptionView[]
   selectedOptionIds: string[]
+  items?: CompanionAskItemView[]
 }
 
 export type ToolResultPresentation =

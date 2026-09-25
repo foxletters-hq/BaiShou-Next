@@ -3,9 +3,13 @@ import {
   AgentGateKind,
   canPermanentlyAllowAgentGateAction,
   extractAgentGateResourcesFromMetadata,
+  collectAgentGatePreviews,
+  listAgentGateFileChangePreviews,
+  resolveCompanionAskQuestions,
   resolveCommandPrefixPatternFromCommand,
-  shouldDisableAlwaysForPreview,
+  shouldDisableAlwaysForRequest,
   type AgentGateDecisionSource,
+  type AgentGateQuestionAnswer,
   type AgentGateReply,
   type AgentGateRequest,
   type AgentGateResourceRef
@@ -16,6 +20,7 @@ export interface AgentGateReplyPayload {
   reply: AgentGateReply
   message?: string
   selectedOptionIds?: string[]
+  questionAnswers?: AgentGateQuestionAnswer[]
 }
 
 export function resolveRequestGateResources(request: AgentGateRequest): AgentGateResourceRef[] {
@@ -44,25 +49,27 @@ export function canAlwaysAllowForRequest(request: AgentGateRequest): boolean {
 }
 
 export function shouldShowProactiveOptions(request: AgentGateRequest): boolean {
-  return request.kind === AgentGateKind.Proactive && request.options.length > 0
+  if (request.kind !== AgentGateKind.Proactive) return false
+  if (request.options.length > 0) return true
+  return resolveCompanionAskQuestions(request).length > 0
 }
 
 export function shouldShowAlwaysAllow(request: AgentGateRequest): boolean {
   if (request.kind !== AgentGateKind.Tool) return false
-  if (shouldDisableAlwaysForPreview(request.preview)) return false
+  if (shouldDisableAlwaysForRequest(request)) return false
   return canAlwaysAllowForRequest(request)
 }
 
 export function resolveAlwaysDisabledReason(request: AgentGateRequest): string | null {
   if (request.kind !== AgentGateKind.Tool) return null
-  if (shouldDisableAlwaysForPreview(request.preview)) {
-    if (request.preview?.type === 'file_change' && request.preview.truncated) {
+  if (shouldDisableAlwaysForRequest(request)) {
+    if (listAgentGateFileChangePreviews(request).some((item) => item.truncated)) {
       return i18n.t(
         'auto.packages.ui.src.agent.gate.agent.gate.utils.L59',
         '预览已截断，仅可本次允许'
       )
     }
-    if (request.preview?.type === 'command' && request.preview.dangerous) {
+    if (collectAgentGatePreviews(request).some((item) => item.type === 'command' && item.dangerous)) {
       return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L62', '危险命令不可始终允许')
     }
     return i18n.t(

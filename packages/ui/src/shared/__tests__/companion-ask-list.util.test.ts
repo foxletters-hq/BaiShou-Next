@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CompanionAskPresentation } from '../tool-result.util'
-import {
-  isCompanionAskAwaitingAnswer,
-  shouldRenderCompanionAskResultInList
-} from '../companion-ask-list.util'
+import { companionAskWaitingSubtitle, isCompanionAskAwaitingAnswer } from '../companion-ask-list.util'
 
 function ask(partial: Partial<CompanionAskPresentation> = {}): CompanionAskPresentation {
   return {
@@ -20,6 +17,13 @@ function ask(partial: Partial<CompanionAskPresentation> = {}): CompanionAskPrese
   }
 }
 
+describe('companionAskWaitingSubtitle', () => {
+  it('should show the pending question so the asking row is not an empty spinner', () => {
+    expect(companionAskWaitingSubtitle(ask())).toBe('要搜哪类新闻？')
+    expect(companionAskWaitingSubtitle(ask({ question: '  ' }))).toBeUndefined()
+  })
+})
+
 describe('isCompanionAskAwaitingAnswer', () => {
   it('should be true when the question has options but no answer yet', () => {
     expect(isCompanionAskAwaitingAnswer(ask())).toBe(true)
@@ -30,17 +34,11 @@ describe('isCompanionAskAwaitingAnswer', () => {
       false
     )
     expect(isCompanionAskAwaitingAnswer(ask({ declined: true }))).toBe(false)
+    expect(isCompanionAskAwaitingAnswer(ask({ selectedOptionIds: ['0'] }))).toBe(false)
+  })
+
+  it('should be false when the tool already returned a result without an answer', () => {
+    expect(isCompanionAskAwaitingAnswer(ask(), { hasResult: true })).toBe(false)
   })
 })
 
-describe('shouldRenderCompanionAskResultInList', () => {
-  it('should hide the option card while the ask is still loading', () => {
-    expect(shouldRenderCompanionAskResultInList(ask({ answer: '科技' }), 'loading')).toBe(false)
-  })
-
-  it('should show the result card only after an answer or decline', () => {
-    expect(shouldRenderCompanionAskResultInList(ask(), 'success')).toBe(false)
-    expect(shouldRenderCompanionAskResultInList(ask({ answer: '科技' }), 'success')).toBe(true)
-    expect(shouldRenderCompanionAskResultInList(ask({ declined: true }), 'success')).toBe(true)
-  })
-})

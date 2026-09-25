@@ -1,16 +1,25 @@
 import type { CompanionAskPresentation } from './tool-result.util'
 
-/** 还在等用户作答时，消息列表只显示「正在提问...」，选项留给确认卡。 */
-export function isCompanionAskAwaitingAnswer(
+/** 还在等用户作答时，工具行标题保持「正在提问...」，副标题带上问题，选项留给确认卡。 */
+export function companionAskWaitingSubtitle(
   presentation: CompanionAskPresentation | null | undefined
-): boolean {
-  return Boolean(presentation && !presentation.declined && !presentation.answer)
+): string | undefined {
+  const question = presentation?.question?.trim()
+  return question || undefined
 }
 
-export function shouldRenderCompanionAskResultInList(
+export function isCompanionAskAwaitingAnswer(
   presentation: CompanionAskPresentation | null | undefined,
-  status: 'loading' | 'success' | 'error'
-): presentation is CompanionAskPresentation {
-  if (!presentation || status === 'loading' || status === 'error') return false
-  return presentation.declined || Boolean(presentation.answer)
+  extras?: { hasResult?: boolean }
+): boolean {
+  if (extras?.hasResult) return false
+  if (!presentation || presentation.declined) return false
+  if (presentation.answer) return false
+  if (presentation.selectedOptionIds.length > 0) return false
+  if (
+    presentation.items?.some((item) => Boolean(item.answer) || item.selectedOptionIds.length > 0)
+  ) {
+    return false
+  }
+  return true
 }
