@@ -3,7 +3,8 @@ import { AgentGateKind, AgentGateRequestStatus, type AgentGateRequest } from '@b
 import {
   resolveAlwaysDisabledReason,
   shouldCollectRejectFeedback,
-  shouldShowAlwaysAllow
+  shouldShowAlwaysAllow,
+  shouldShowProactiveOptions
 } from '../agent-gate.utils'
 
 function baseRequest(partial: Partial<AgentGateRequest> = {}): AgentGateRequest {
@@ -34,6 +35,37 @@ describe('agent-gate.utils always disable', () => {
         deletions: 1,
         truncated: true
       }
+    })
+    expect(shouldShowAlwaysAllow(request)).toBe(false)
+    expect(resolveAlwaysDisabledReason(request)).toContain('截断')
+  })
+
+  it('hides Always when a later coalesced file preview is truncated', () => {
+    const request = baseRequest({
+      preview: {
+        type: 'file_change',
+        path: 'a.ts',
+        kind: 'modify',
+        additions: 1,
+        deletions: 1
+      },
+      previews: [
+        {
+          type: 'file_change',
+          path: 'a.ts',
+          kind: 'modify',
+          additions: 1,
+          deletions: 1
+        },
+        {
+          type: 'file_change',
+          path: 'b.ts',
+          kind: 'modify',
+          additions: 1,
+          deletions: 1,
+          truncated: true
+        }
+      ]
     })
     expect(shouldShowAlwaysAllow(request)).toBe(false)
     expect(resolveAlwaysDisabledReason(request)).toContain('截断')
@@ -108,5 +140,27 @@ describe('shouldCollectRejectFeedback', () => {
         })
       )
     ).toBe(false)
+  })
+})
+
+describe('shouldShowProactiveOptions', () => {
+  it('should show options when companion_ask carries questions', () => {
+    expect(
+      shouldShowProactiveOptions(
+        baseRequest({
+          kind: AgentGateKind.Proactive,
+          action: 'companion_ask',
+          title: '请一并确认以下几项。',
+          options: [],
+          questions: [
+            {
+              id: '0',
+              question: '放在哪？',
+              options: [{ id: '0', label: 'A' }]
+            }
+          ]
+        })
+      )
+    ).toBe(true)
   })
 })
