@@ -17,7 +17,7 @@ export function shouldFlushStreamingAssistant(input: {
 
 export function flushReasonFromStreamChunk(type: string): StreamingAssistantFlushReason | null {
   if (type === 'text-delta' || type === 'reasoning-delta') return 'token'
-  if (type === 'tool-call' || type === 'tool-result') return 'tool'
+  if (type === 'tool-call' || type === 'tool-input-start' || type === 'tool-result') return 'tool'
   if (type === 'step-finish') return 'step'
   return null
 }
@@ -28,6 +28,7 @@ export function streamingAssistantSnapshotKey(input: {
   toolCount: number
   fileChangeCount: number
   gateCount: number
+  toolSignature?: string
 }): string {
-  return `${input.text.length}:${input.reasoning.length}:${input.toolCount}:${input.fileChangeCount}:${input.gateCount}`
+  return `${input.text.length}:${input.reasoning.length}:${input.toolCount}:${input.fileChangeCount}:${input.gateCount}:${input.toolSignature ?? ''}`
 }

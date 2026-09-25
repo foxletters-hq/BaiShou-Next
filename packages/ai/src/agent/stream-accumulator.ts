@@ -29,11 +29,18 @@ export type StreamTimelineItem =
       arguments: string
       result?: unknown
       status: 'running' | 'completed' | 'failed'
+      startTime?: number
+      durationMs?: number
     }
 
 function readNumber(value: unknown): number {
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function readToolCallId(part: Record<string, unknown>): string {
+  const value = part.toolCallId ?? part.id
+  return value == null ? '' : String(value).trim()
 }
 
 function extractCacheUsageFromRecord(
@@ -142,6 +149,11 @@ export class StreamAccumulator {
   add(part: unknown): void {
     const p = part as Record<string, unknown>
     switch (p.type) {
+      case 'tool-input-start': {
+        this.upsertToolStart(p, { argumentsIfMissing: '{}' })
+        break
+      }
+
       case 'text-delta': {
         const delta =
           p.textDelta != null ? String(p.textDelta) : p.text != null ? String(p.text) : ''
@@ -157,38 +169,36 @@ export class StreamAccumulator {
       }
 
       case 'tool-call': {
-        const toolName = String(p.toolName ?? p.name ?? '').trim()
-        if (p.toolCallId && toolName) {
-          const legacyArgs =
-            p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
-          const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
-          const inputArgs =
-            typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? rawInput ?? {})
-
-          this._timeline.push({
-            kind: 'tool',
-            callId: String(p.toolCallId),
-            name: toolName,
-            arguments: inputArgs,
-            status: 'running'
-          })
-        }
+        this.upsertToolStart(p)
         break
       }
 
       case 'tool-result': {
-        if (p.toolCallId) {
-          const callId = String(p.toolCallId)
-          const tool = this._timeline.find(
-            (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
-              item.kind === 'tool' && item.callId === callId
-          )
-          if (tool) {
-            const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
-            tool.result = p.output ?? p.result ?? raw
-            tool.status = 'completed'
+        const callId = readToolCallId(p)
+        if (!callId) break
+        const tool = this.findTool(callId)
+        const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+        const result = p.output ?? p.result ?? raw
+        if (tool) {
+          tool.result = result
+          tool.status = 'completed'
+          if (tool.startTime != null) {
+            tool.durationMs = Math.max(0, Date.now() - tool.startTime)
           }
+          break
         }
+        const toolName = String(p.toolName ?? p.name ?? '').trim()
+        if (!toolName) break
+        this._timeline.push({
+          kind: 'tool',
+          callId,
+          name: toolName,
+          arguments: '{}',
+          result,
+          status: 'completed',
+          startTime: Date.now(),
+          durationMs: 0
+        })
         break
       }
 
@@ -226,6 +236,47 @@ export class StreamAccumulator {
         break
       }
     }
+  }
+
+  private findTool(callId: string): Extract<StreamTimelineItem, { kind: 'tool' }> | undefined {
+    return this._timeline.find(
+      (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
+        item.kind === 'tool' && item.callId === callId
+    )
+  }
+
+  private upsertToolStart(
+    part: Record<string, unknown>,
+    extras?: { argumentsIfMissing?: string }
+  ): void {
+    const callId = readToolCallId(part)
+    const toolName = String(part.toolName ?? part.name ?? '').trim()
+    if (!callId || !toolName) return
+
+    const legacyArgs =
+      part.args ?? (part.providerMetadata as Record<string, unknown> | undefined)?.raw
+    const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
+    const hasInput = part.input !== undefined || rawInput !== undefined || part.args !== undefined
+    const inputArgs = hasInput
+      ? typeof part.input === 'string'
+        ? part.input
+        : JSON.stringify(part.input ?? rawInput ?? part.args ?? {})
+      : extras?.argumentsIfMissing
+
+    const existing = this.findTool(callId)
+    if (existing) {
+      if (inputArgs != null) existing.arguments = inputArgs
+      return
+    }
+
+    this._timeline.push({
+      kind: 'tool',
+      callId,
+      name: toolName,
+      arguments: inputArgs ?? '{}',
+      status: 'running',
+      startTime: Date.now()
+    })
   }
 
   private appendReasoning(delta: string): void {

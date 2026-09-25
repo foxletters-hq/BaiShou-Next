@@ -52,6 +52,8 @@ export interface ToolCallChunk {
   toolCallId: string
   toolName: string
   input: unknown
+  /** tool-input-start：仅用于界面占位，参数尚未齐 */
+  partial?: boolean
 }
 
 export interface ToolResultChunk {

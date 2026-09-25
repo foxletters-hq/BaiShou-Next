@@ -49,12 +49,15 @@ export function releaseAgentStreamSession(sessionId: string, generation: number)
   }
 }
 
-export function abortAgentStreamSession(sessionId: string): void {
+export function abortAgentStreamSession(sessionId: string, generation?: number): void {
   const claim = sessionClaims.get(sessionId)
   if (claim) {
+    if (generation !== undefined && claim.generation !== generation) return
     claim.abortController.abort()
     return
   }
+  // 过期代次的超时不要毒死下一轮 claim
+  if (generation !== undefined) return
   // claim 尚未建立（如仍在 buildStreamConfig）：登记 pending，待 claim 时立即 abort
   pendingStopSessionIds.add(sessionId)
 }

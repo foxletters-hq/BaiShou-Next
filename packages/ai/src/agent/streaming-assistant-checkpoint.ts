@@ -70,7 +70,11 @@ export class StreamingAssistantCheckpoint {
       reasoning: snapshot.accumulator.reasoning,
       toolCount: snapshot.accumulator.toolCalls.length,
       fileChangeCount: snapshot.fileChangeParts?.length ?? 0,
-      gateCount: snapshot.agentGateParts?.length ?? 0
+      gateCount: snapshot.agentGateParts?.length ?? 0,
+      toolSignature: snapshot.accumulator.timeline
+        .filter((item) => item.kind === 'tool')
+        .map((item) => `${item.callId}:${item.status}`)
+        .join(',')
     })
     const shouldWrite = shouldFlushStreamingAssistant({
       reason,

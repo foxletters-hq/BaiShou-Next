@@ -11,10 +11,28 @@
  */
 
 import type { StreamTextResult } from 'ai'
+import { parseCompanionAskStreamArgs } from '../tools/companion-ask-stream.util'
 import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types'
 import { StreamAccumulator } from './stream-accumulator'
 import { isAgentStreamAbortError, logger } from '@baishou/shared'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import { isAgentStreamFirstOutputChunk } from './agent-stream-timeout'
+
+function readToolCallIds(part: {
+  id?: unknown
+  toolCallId?: unknown
+}): { canonical: string; aliases: string[] } {
+  const toolCallId = String(part.toolCallId ?? '').trim()
+  const id = String(part.id ?? '').trim()
+  const aliases = [...new Set([toolCallId, id].filter((value) => value.length > 0))]
+  return { canonical: aliases[0] ?? '', aliases }
+}
+
+function readToolInputDelta(part: { delta?: unknown; inputTextDelta?: unknown }): string {
+  if (typeof part.delta === 'string' && part.delta) return part.delta
+  if (typeof part.inputTextDelta === 'string') return part.inputTextDelta
+  return ''
+}
 
 export interface StreamChunkAdapterCallbacks {
   onChunk?: (chunk: StreamChunk) => void
@@ -27,10 +45,34 @@ export class StreamChunkAdapter {
   // ─── 性能指标追踪 ───
   private streamStartTime: number = 0
   private firstTokenTime: number | null = null
+  private readonly toolNames = new Map<string, string>()
+  private readonly canonicalCallIds = new Map<string, string>()
+  private readonly argBuffers = new Map<string, string>()
+  private readonly forwardedAsks = new Set<string>()
 
   constructor(accumulator: StreamAccumulator, callbacks: StreamChunkAdapterCallbacks = {}) {
     this.accumulator = accumulator
     this.callbacks = callbacks
+  }
+
+  private rememberCallId(ids: { canonical: string; aliases: string[] }): string {
+    const known =
+      this.canonicalCallIds.get(ids.canonical) ??
+      ids.aliases.map((alias) => this.canonicalCallIds.get(alias)).find((value) => Boolean(value))
+    const canonical = known || ids.canonical
+    for (const alias of ids.aliases) {
+      this.canonicalCallIds.set(alias, canonical)
+    }
+    this.canonicalCallIds.set(canonical, canonical)
+    return canonical
+  }
+
+  private resolveCallId(ids: { canonical: string; aliases: string[] }): string {
+    return (
+      this.canonicalCallIds.get(ids.canonical) ??
+      ids.aliases.map((alias) => this.canonicalCallIds.get(alias)).find((value) => Boolean(value)) ??
+      ids.canonical
+    )
   }
 
   /**
@@ -39,7 +81,8 @@ export class StreamChunkAdapter {
    * @returns 流执行过程中遇到的致命错误（如果有），null 表示正常结束。
    */
   async consumeStream(
-    streamResult: StreamTextResult<any, any, any>
+    streamResult: StreamTextResult<any, any, any>,
+    options?: { onFirstOutput?: () => void }
   ): Promise<{ error: any | null }> {
     if (!streamResult.fullStream) {
       return { error: null }
@@ -80,6 +123,9 @@ export class StreamChunkAdapter {
             (chunk.type === ChunkType.TEXT_DELTA || chunk.type === ChunkType.REASONING_DELTA)
           ) {
             this.firstTokenTime = Date.now()
+          }
+          if (isAgentStreamFirstOutputChunk(chunk.type)) {
+            options?.onFirstOutput?.()
           }
 
           this.callbacks.onChunk?.(chunk)
@@ -149,14 +195,43 @@ export class StreamChunkAdapter {
         return { type: ChunkType.REASONING_DELTA, text }
       }
 
+      case 'tool-input-start':
       case 'tool-call': {
         const toolName = String(part.toolName ?? '').trim()
-        if (!toolName) return null
+        const ids = readToolCallIds(part)
+        if (!toolName || !ids.canonical) return null
+        const canonical = this.rememberCallId(ids)
+        this.toolNames.set(canonical, toolName)
+        for (const alias of ids.aliases) {
+          this.toolNames.set(alias, toolName)
+        }
+        const partial = part.type === 'tool-input-start'
         return {
           type: ChunkType.TOOL_CALL,
-          toolCallId: part.toolCallId,
+          toolCallId: canonical,
           toolName,
-          input: part.input ?? part.args ?? {}
+          input: part.input ?? part.args ?? {},
+          ...(partial ? { partial: true } : {})
+        }
+      }
+
+      case 'tool-input-delta': {
+        const ids = readToolCallIds(part)
+        const delta = readToolInputDelta(part)
+        const canonical = this.resolveCallId(ids)
+        if (!canonical || !delta || this.forwardedAsks.has(canonical)) return null
+        const toolName = this.toolNames.get(canonical)
+        if (toolName !== 'companion_ask') return null
+        const next = (this.argBuffers.get(canonical) ?? '') + delta
+        this.argBuffers.set(canonical, next)
+        const parsed = parseCompanionAskStreamArgs(next)
+        if (!parsed) return null
+        this.forwardedAsks.add(canonical)
+        return {
+          type: ChunkType.TOOL_CALL,
+          toolCallId: canonical,
+          toolName,
+          input: parsed
         }
       }
 

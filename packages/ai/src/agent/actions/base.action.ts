@@ -3,6 +3,36 @@ import { AgentChatCoreService } from '../agent-chat-core.service'
 import type { IStreamEmitter } from '../stream-emitter.interface'
 import type { AttachmentInput } from '../agent-session.types'
 
+type CoreStreamParams = Parameters<typeof AgentChatCoreService.runStreamChat>[0]
+
+/**
+ * 宿主注入的会话依赖（关系图读取、门控、知识库、MCP 工具、挂载笔记本等）。
+ * 重新生成 / 编辑 / 重发必须与正常发送注入同一套，否则工具会拿不到读取器。
+ */
+export type ActionStreamHost = Partial<
+  Omit<
+    CoreStreamParams,
+    | 'emitter'
+    | 'sessionId'
+    | 'userText'
+    | 'userMessageId'
+    | 'provider'
+    | 'modelId'
+    | 'systemModels'
+    | 'userConfig'
+    | 'attachments'
+    | 'skipUserMessageRecording'
+    | 'forceRecompress'
+    | 'realSessionRepo'
+    | 'realSnapshotRepo'
+    | 'toolRegistry'
+    | 'diarySearcher'
+    | 'webSearchResultFetcher'
+    | 'fetchSearchPage'
+    | 'flushSessionToDisk'
+  >
+>
+
 export interface ActionDeps {
   emitter: IStreamEmitter
   sessionId: string
@@ -20,6 +50,7 @@ export interface ActionDeps {
     sessionId: string,
     parts: ReadonlyArray<{ type?: string; data?: unknown }>
   ) => Promise<void>
+  streamHost?: ActionStreamHost
 }
 
 export interface StreamRunConfig {
@@ -104,6 +135,7 @@ export async function runStreamWithPersistence(
 ): Promise<boolean> {
   try {
     await AgentChatCoreService.runStreamChat({
+      ...deps.streamHost,
       emitter: deps.emitter,
       sessionId: deps.sessionId,
       userText: config.userText,

@@ -24,7 +24,7 @@ describe('shouldPersistPartialAssistantAfterStop', () => {
     ).toBe(false)
   })
 
-  it('should skip persist when a doom-loop abort trips', () => {
+  it('should persist when the user stops even if a doom-loop fingerprint was observed', () => {
     expect(
       shouldPersistPartialAssistantAfterStop({
         userAborted: true,
@@ -32,7 +32,7 @@ describe('shouldPersistPartialAssistantAfterStop', () => {
         superseded: false,
         hasModelOutput: true
       })
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('should skip persist when this stream was superseded', () => {
