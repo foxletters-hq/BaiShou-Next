@@ -6,15 +6,15 @@ import type { EmbeddedMigrations } from './migration.service'
  */
 export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
   journal: {
-    version: '7',
-    dialect: 'sqlite',
-    entries: [
+    "version": "7",
+    "dialect": "sqlite",
+    "entries": [
       {
-        idx: 0,
-        version: '6',
-        when: 1781510528245,
-        tag: '0000_agent_schema',
-        breakpoints: true
+        "idx": 0,
+        "version": "6",
+        "when": 1781510528245,
+        "tag": "0000_agent_schema",
+        "breakpoints": true
       }
     ]
   },
@@ -37,6 +37,7 @@ export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
 	\`compress_model_context_window\` integer,
 	\`compress_preserve_recent_tokens\` integer,
 	\`compress_system_prompt\` text,
+	\`custom_system_prompt\` text,
 	\`assistant_kind\` text DEFAULT 'companion' NOT NULL,
 	\`sort_order\` integer DEFAULT 0 NOT NULL,
 	\`created_at\` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
@@ -51,6 +52,7 @@ CREATE TABLE \`agent_sessions\` (
 	\`assistant_id\` text,
 	\`is_pinned\` integer DEFAULT false NOT NULL,
 	\`system_prompt\` text,
+	\`mounted_notebook_ids\` text DEFAULT '' NOT NULL,
 	\`provider_id\` text NOT NULL,
 	\`model_id\` text NOT NULL,
 	\`total_input_tokens\` integer DEFAULT 0 NOT NULL,

@@ -115,4 +115,18 @@ describeLedger('knowledge_embed_ledger', () => {
     await repo.recordEmbedFailure({ vaultId: 'vault-a', sourceId: 'src1', lastError: 'boom' })
     expect(await repo.countPendingEmbedSources('vault-a')).toBe(1)
   })
+
+  it('should queue when hydration marked pending even if ledger is still embedded', async () => {
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceId: 'src1',
+      contentHash: 'aaa',
+      chunkCount: 0,
+      modelId: 'm1',
+      dimension: 8
+    })
+    expect(await repo.countPendingEmbedSources('vault-a', { modelId: 'm1', dimension: 8 })).toBe(0)
+    await repo.updateSourceStatus('src1', 'pending')
+    expect(await repo.countPendingEmbedSources('vault-a', { modelId: 'm1', dimension: 8 })).toBe(1)
+  })
 })

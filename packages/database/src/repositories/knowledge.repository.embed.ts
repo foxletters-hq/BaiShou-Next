@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
+import { shouldQueueKnowledgeSourceEmbed } from '@baishou/shared'
 import {
   knowledgeChunksTable,
   knowledgeEmbedLedgerTable,
@@ -282,7 +283,8 @@ export class KnowledgeEmbedOps {
         id: knowledgeSourcesTable.id,
         notebookId: knowledgeSourcesTable.notebookId,
         vaultId: knowledgeSourcesTable.vaultId,
-        extractedTextHash: knowledgeSourcesTable.extractedTextHash
+        extractedTextHash: knowledgeSourcesTable.extractedTextHash,
+        status: knowledgeSourcesTable.status
       })
       .from(knowledgeSourcesTable)
       .where(eq(knowledgeSourcesTable.vaultId, vid))
@@ -297,19 +299,26 @@ export class KnowledgeEmbedOps {
     const dimension = options?.dimension ?? 0
     const pending: Array<{ id: string; notebookId: string; vaultId: string }> = []
     for (const source of sources) {
-      if (!source.extractedTextHash?.trim()) continue
       const ledger = ledgerBySource.get(source.id)
-      if (!ledger || ledger.status !== 'embedded') {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
+      if (
+        !shouldQueueKnowledgeSourceEmbed({
+          extractedTextHash: source.extractedTextHash,
+          sourceStatus: source.status,
+          ledger: ledger
+            ? {
+                contentHash: ledger.contentHash,
+                modelId: ledger.modelId,
+                dimension: ledger.dimension,
+                status: ledger.status
+              }
+            : null,
+          currentModelId: modelId,
+          currentDimension: dimension
+        })
+      ) {
         continue
       }
-      if (modelId && ledger.modelId !== modelId) {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
-        continue
-      }
-      if (dimension > 0 && ledger.dimension !== dimension) {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
-      }
+      pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
     }
     return pending
   }
