@@ -1,11 +1,13 @@
 import { ipcRenderer } from 'electron'
 
 export type KnowledgeSourceFilePreview = {
-  kind: 'pdf' | 'text' | 'url' | 'unsupported'
+  kind: 'pdf' | 'epub' | 'text' | 'url' | 'unsupported'
   fileName: string
   localUrl: string | null
   fileBytes: Uint8Array | null
   textContent: string | null
+  /** EPUB 按目录拆开的章节正文 */
+  pages?: string[] | null
   originUrl: string | null
 }
 
@@ -13,7 +15,7 @@ export type KnowledgeOcrProgress = {
   sourceId: string
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render'
+  phase?: 'ocr' | 'vision' | 'render' | 'parse' | 'recognize'
 }
 
 export const knowledgeApi = {
@@ -39,6 +41,8 @@ export const knowledgeApi = {
       ipcRenderer.invoke('knowledge:set-cover-image', input),
     reorderNotebooks: (orderedIds: string[]) =>
       ipcRenderer.invoke('knowledge:reorder-notebooks', orderedIds),
+    deleteNotebook: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:delete-notebook', notebookId) as Promise<{ deleted: true }>,
     listNotebookStats: () => ipcRenderer.invoke('knowledge:list-notebook-stats'),
     importSource: (input: {
       notebookId: string
@@ -58,6 +62,8 @@ export const knowledgeApi = {
       ipcRenderer.invoke('knowledge:reprocess-source', input),
     deleteSource: (sourceId: string) => ipcRenderer.invoke('knowledge:delete-source', sourceId),
     rebuildIndex: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
+    organizeNotebook: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:organize-notebook', notebookId) as Promise<{ queued: number }>,
     manageData: (input: {
       notebookId: string
       action: 'clear' | 'reprocess'
@@ -165,6 +171,22 @@ export const knowledgeApi = {
       edgeIds?: string[]
       allPending?: boolean
     }) => ipcRenderer.invoke('knowledge:set-graph-reviews-batch', input),
+    mergeGraphNodes: (input: {
+      notebookId: string
+      survivorId: string
+      loserId: string
+      reason?: string
+    }) => ipcRenderer.invoke('knowledge:merge-graph-nodes', input),
+    mergeGraphNodesBatch: (input: {
+      notebookId: string
+      survivorId: string
+      loserIds: string[]
+      reason?: string
+    }) => ipcRenderer.invoke('knowledge:merge-graph-nodes-batch', input),
+    listGraphSimilarPairs: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:list-graph-similar-pairs', notebookId),
+    dismissGraphSimilarPair: (input: { notebookId: string; nodeId: string; peerId: string }) =>
+      ipcRenderer.invoke('knowledge:dismiss-graph-similar-pair', input),
     rebuildGraph: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-graph', notebookId),
     onGraphProgress: (
       callback: (progress: {
@@ -173,6 +195,9 @@ export const knowledgeApi = {
         sourceId?: string
         windowsDone?: number
         windowsTotal?: number
+        pageFrom?: number
+        pageTo?: number
+        pageTotal?: number
       }) => void
     ) => {
       const handler = (
@@ -183,6 +208,9 @@ export const knowledgeApi = {
           sourceId?: string
           windowsDone?: number
           windowsTotal?: number
+          pageFrom?: number
+          pageTo?: number
+          pageTotal?: number
         }
       ) => {
         callback(progress)

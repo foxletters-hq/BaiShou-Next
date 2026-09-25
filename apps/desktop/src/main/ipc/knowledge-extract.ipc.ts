@@ -12,7 +12,6 @@ import {
   clampOcrConcurrency,
   normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
-  shouldKickKnowledgeIngestAfterRecover,
   type KnowledgeConfig
 } from '@baishou/shared'
 import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
@@ -108,11 +107,7 @@ export function registerKnowledgeExtractIpc(): void {
 
   handleKnowledgeIpc('knowledge:recover-stale', async () => {
     const svc = getKnowledgeIngestService()
-    const result = await svc.recoverStaleIngestState()
-    if (shouldKickKnowledgeIngestAfterRecover(result)) {
-      scheduleConsumeKnowledgeIngestJobs('recover')
-    }
-    return result
+    return svc.recoverStaleIngestState()
   })
 
   handleKnowledgeIpc(

@@ -1,3 +1,4 @@
+import { EMBEDDING_NOT_CONFIGURED } from '@baishou/shared'
 import { getEmbeddingService } from './rag.ipc'
 import {
   assertKnowledgeModelMatch,
@@ -56,9 +57,12 @@ export function registerKnowledgeSearchIpc(): void {
       const repo = requireKnowledgeRepo()
       await assertKnowledgeModelMatch(repo, [input.notebookId])
       const embeddingService = getEmbeddingService()
+      if (!embeddingService.isConfigured) {
+        throw new Error(EMBEDDING_NOT_CONFIGURED)
+      }
       const queryVector = await embeddingService.embedQuery(input.query)
       if (!queryVector?.length) {
-        throw new Error('embedding-not-configured')
+        throw new Error('查询嵌入失败：未得到向量')
       }
       const search = buildSearchService()
       return search.search({

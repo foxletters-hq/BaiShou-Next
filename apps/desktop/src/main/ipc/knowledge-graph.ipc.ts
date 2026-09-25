@@ -1,11 +1,22 @@
 import { BrowserWindow } from 'electron'
-import { listLiveGraphSourceIds } from '@baishou/core-desktop'
+import { listLiveGraphSourceIds, NotebookGraphRawManager } from '@baishou/core-desktop'
+import { logger } from '@baishou/shared'
+import { fileSystem } from '../services/node-file-system'
 import {
   reviewNotebookGraphBatch,
   reviewNotebookGraphEdge,
   reviewNotebookGraphNode
 } from '../services/notebook-graph-review'
-import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
+import {
+  dismissDesktopNotebookSimilarPair,
+  listDesktopNotebookSimilarPairs,
+  mergeDesktopNotebookGraphNodeGroup,
+  mergeDesktopNotebookGraphNodes
+} from '../services/notebook-graph-mutate'
+import {
+  consumeKnowledgeGraphJobs,
+  scheduleConsumeKnowledgeIngestJobs
+} from '../services/knowledge-ingest-jobs.consumer'
 import { knowledgeConnectionManager } from '@baishou/database-desktop'
 import {
   getKnowledgeIngestService,
@@ -13,6 +24,13 @@ import {
   requireActiveVaultId,
   requireKnowledgeRepo
 } from './knowledge-ipc.context'
+import { pathService } from './vault.ipc'
+import {
+  readGraphWindowProgress,
+  resolveListedGraphJobStatus,
+  resolveListedGraphWindowProgress,
+  shouldResumeListedGraphJobs
+} from '../services/graph-window-progress'
 
 export function registerKnowledgeGraphIpc(): void {
   handleKnowledgeIpc('knowledge:list-graph-jobs', async (_e, notebookId: string) => {
@@ -23,13 +41,51 @@ export function registerKnowledgeGraphIpc(): void {
     const live = new Set(listLiveGraphSourceIds())
     const sources = await repo.listSources(id)
     const titleById = new Map(sources.map((row) => [row.id, row.title]))
-    const items = jobs.map((job) => ({
-      sourceId: job.sourceId,
-      title: titleById.get(job.sourceId) || job.sourceId,
-      status: live.has(job.sourceId) ? 'running' : job.status,
-      lastError: job.lastError
-    }))
+    const items = []
+    for (const job of jobs) {
+      const status = resolveListedGraphJobStatus(job.status, live.has(job.sourceId))
+      let checkpoint: { windowsDone: number; windowsTotal: number } | null = null
+      try {
+        const state = await new NotebookGraphRawManager(pathService, fileSystem).getExtractState(
+          id,
+          job.sourceId
+        )
+        if (state && Number(state.windowsTotal) > 0) {
+          checkpoint = {
+            windowsDone: Number(state.windowsDone) || 0,
+            windowsTotal: Number(state.windowsTotal)
+          }
+        }
+      } catch {
+        /* 检查点读不到时仍返回任务计数 */
+      }
+      const resolved = resolveListedGraphWindowProgress({
+        running: status === 'running',
+        checkpoint,
+        live: readGraphWindowProgress(id, job.sourceId)
+      })
+      items.push({
+        sourceId: job.sourceId,
+        title: titleById.get(job.sourceId) || job.sourceId,
+        status,
+        lastError: job.lastError,
+        windowsDone: resolved?.windowsDone,
+        windowsTotal: resolved?.windowsTotal,
+        pageFrom: resolved?.pageFrom,
+        pageTo: resolved?.pageTo,
+        pageTotal: resolved?.pageTotal
+      })
+    }
+    if (shouldResumeListedGraphJobs(items)) {
+      void consumeKnowledgeGraphJobs({ reason: 'list-graph-jobs' }).catch((e) => {
+        logger.warn('[KnowledgeGraphJobs] resume leftover graph jobs failed', {
+          error: e instanceof Error ? e.message : String(e)
+        })
+      })
+    }
     const running = items.find((item) => item.status === 'running')
+    const failedItem = items.find((item) => item.status === 'failed')
+    const focus = running || items.find((item) => item.status === 'pending') || failedItem
     return {
       pending: items.filter((item) => item.status === 'pending' || item.status === 'running')
         .length,
@@ -37,6 +93,13 @@ export function registerKnowledgeGraphIpc(): void {
       failed: items.filter((item) => item.status === 'failed').length,
       currentSourceId: running?.sourceId ?? null,
       currentSourceTitle: running?.title ?? null,
+      lastError: failedItem?.lastError ?? null,
+      failedSourceTitle: failedItem?.title ?? null,
+      windowsDone: focus?.windowsDone,
+      windowsTotal: focus?.windowsTotal,
+      pageFrom: focus?.pageFrom,
+      pageTo: focus?.pageTo,
+      pageTotal: focus?.pageTotal,
       items
     }
   })
@@ -102,6 +165,30 @@ export function registerKnowledgeGraphIpc(): void {
         allPending?: boolean
       }
     ) => reviewNotebookGraphBatch(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:merge-graph-nodes',
+    async (_e, input: { notebookId: string; survivorId: string; loserId: string; reason?: string }) =>
+      mergeDesktopNotebookGraphNodes(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:merge-graph-nodes-batch',
+    async (
+      _e,
+      input: { notebookId: string; survivorId: string; loserIds: string[]; reason?: string }
+    ) => mergeDesktopNotebookGraphNodeGroup(input)
+  )
+
+  handleKnowledgeIpc('knowledge:list-graph-similar-pairs', async (_e, notebookId: string) =>
+    listDesktopNotebookSimilarPairs(notebookId)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:dismiss-graph-similar-pair',
+    async (_e, input: { notebookId: string; nodeId: string; peerId: string }) =>
+      dismissDesktopNotebookSimilarPair(input)
   )
 
   handleKnowledgeIpc('knowledge:rebuild-graph', async (_e, notebookId: string) => {
