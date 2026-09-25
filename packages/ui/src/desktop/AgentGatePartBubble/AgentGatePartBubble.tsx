@@ -1,6 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
+import {
+  AgentGateReply,
+  shouldRenderAgentGateHistoryCard,
+  type AgentGatePartData,
+  type AgentGateRequest
+} from '@baishou/shared'
 import { summarizePreviewForHistory } from '../../agent-gate/agent-gate-preview-copy'
 import styles from './AgentGatePartBubble.module.css'
 
@@ -45,6 +50,7 @@ function selectedOptionLabel(
 
 export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }) => {
   const { t } = useTranslation()
+  if (!shouldRenderAgentGateHistoryCard(data)) return null
   const { request, resolution } = data
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)

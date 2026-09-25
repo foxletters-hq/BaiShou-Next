@@ -11,15 +11,24 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AgentGateReply, type AgentGateRequest } from '@baishou/shared'
+import {
+  AgentGateReply,
+  buildCompanionAskQuestionAnswers,
+  listAgentGateFileChangePreviews,
+  resolveCompanionAskQuestions,
+  type AgentGateRequest
+} from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
+  formatCoalescedToolHint,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
   type AgentGateReplyPayload
 } from '../../agent-gate'
+import { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
+import { CompanionAskFields } from './CompanionAskFields'
 import {
   formatFileChangeKindLabel,
   formatGateQueueLabel
@@ -47,14 +56,14 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const { height } = useWindowDimensions()
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedback, setFeedback] = useState('')
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
-  const [diffExpanded, setDiffExpanded] = useState(false)
+  const [expandedDiffs, setExpandedDiffs] = useState<Record<string, boolean>>({})
+  const askQuestions = request ? resolveCompanionAskQuestions(request) : []
+  const askDrafts = useCompanionAskDrafts(askQuestions)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
-    setSelectedOptionId(null)
-    setDiffExpanded(false)
+    setExpandedDiffs({})
   }, [request?.id])
 
   const handleReply = useCallback(
@@ -72,13 +81,16 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
   const preview = request.preview
+  const filePreviews = listAgentGateFileChangePreviews(request)
+  const coalescedHint = formatCoalescedToolHint(request, t)
+  const anyDiffExpanded = filePreviews.some((item) => expandedDiffs[item.path])
   const numberedOptionsText =
     proactiveOptions && request.options.length > 0
       ? request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
       : null
   const descriptionIsOptionsDump =
     Boolean(request.description) && request.description?.trim() === numberedOptionsText
-  const scrollMaxHeight = Math.min(height * 0.62, diffExpanded ? 520 : 360)
+  const scrollMaxHeight = Math.min(height * 0.62, anyDiffExpanded ? 520 : 360)
 
   return (
     <Modal
@@ -135,58 +147,76 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               ) : null}
             </View>
             <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
-              {request.title}
+              {askQuestions.length > 1
+                ? t('agent_gate.multi_ask_desc', '请一并确认以下几项。')
+                : request.title}
             </Text>
+            {coalescedHint ? (
+              <Text style={[styles.hint, { color: colors.textSecondary }]}>{coalescedHint}</Text>
+            ) : null}
             {!preview && request.description && !descriptionIsOptionsDump ? (
               <Text style={[styles.description, { color: colors.textSecondary }]}>
                 {request.description}
               </Text>
             ) : null}
-            {preview?.type === 'file_change' ? (
-              <View
-                style={[
-                  styles.previewBlock,
-                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
-                ]}
-              >
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  {formatFileChangeKindLabel(preview.kind)} · {preview.path}
-                  {preview.previousPath ? ` ← ${preview.previousPath}` : ''}
-                </Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  {preview.additions > 0 ? (
-                    <Text style={{ color: '#15803d', fontWeight: '600' }}>
-                      +{preview.additions}
-                    </Text>
-                  ) : null}
-                  {preview.additions > 0 && preview.deletions > 0 ? '  ' : null}
-                  {preview.deletions > 0 ? (
-                    <Text style={{ color: '#b91c1c', fontWeight: '600' }}>
-                      -{preview.deletions}
-                    </Text>
-                  ) : null}
-                  {preview.truncated ? `  ${t('agent_gate.diff_truncated', '预览已截断')}` : ''}
-                </Text>
-                {preview.diff ? (
-                  <>
-                    <Pressable onPress={() => setDiffExpanded((v) => !v)}>
-                      <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-                        {diffExpanded
-                          ? t('agent_gate.collapse_diff', '收起 Diff')
-                          : t('agent_gate.expand_diff', '展开 Diff')}
+            {filePreviews.map((filePreview) => {
+              const expanded = Boolean(expandedDiffs[filePreview.path])
+              return (
+                <View
+                  key={`${filePreview.kind}:${filePreview.path}:${filePreview.previousPath ?? ''}`}
+                  style={[
+                    styles.previewBlock,
+                    { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
+                  ]}
+                >
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {formatFileChangeKindLabel(filePreview.kind)} · {filePreview.path}
+                    {filePreview.previousPath ? ` ← ${filePreview.previousPath}` : ''}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    {filePreview.additions > 0 ? (
+                      <Text style={{ color: '#15803d', fontWeight: '600' }}>
+                        +{filePreview.additions}
                       </Text>
-                    </Pressable>
-                    {diffExpanded ? (
-                      <ScrollView style={styles.diffScroll} nestedScrollEnabled>
-                        <Text style={[styles.diffText, { color: colors.textPrimary }]}>
-                          {preview.diff}
-                        </Text>
-                      </ScrollView>
                     ) : null}
-                  </>
-                ) : null}
-              </View>
-            ) : null}
+                    {filePreview.additions > 0 && filePreview.deletions > 0 ? '  ' : null}
+                    {filePreview.deletions > 0 ? (
+                      <Text style={{ color: '#b91c1c', fontWeight: '600' }}>
+                        -{filePreview.deletions}
+                      </Text>
+                    ) : null}
+                    {filePreview.truncated
+                      ? `  ${t('agent_gate.diff_truncated', '预览已截断')}`
+                      : ''}
+                  </Text>
+                  {filePreview.diff ? (
+                    <>
+                      <Pressable
+                        onPress={() =>
+                          setExpandedDiffs((current) => ({
+                            ...current,
+                            [filePreview.path]: !current[filePreview.path]
+                          }))
+                        }
+                      >
+                        <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                          {expanded
+                            ? t('agent_gate.collapse_diff', '收起 Diff')
+                            : t('agent_gate.expand_diff', '展开 Diff')}
+                        </Text>
+                      </Pressable>
+                      {expanded ? (
+                        <ScrollView style={styles.diffScroll} nestedScrollEnabled>
+                          <Text style={[styles.diffText, { color: colors.textPrimary }]}>
+                            {filePreview.diff}
+                          </Text>
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                </View>
+              )
+            })}
 
             {preview?.type === 'command' ? (
               <View
@@ -232,28 +262,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               </View>
             ) : null}
 
-            {proactiveOptions && !showFeedback
-              ? request.options.map((option) => {
-                  const selected = selectedOptionId === option.id
-                  return (
-                    <Pressable
-                      key={option.id}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected }}
-                      onPress={() => setSelectedOptionId(option.id)}
-                      style={[
-                        styles.option,
-                        {
-                          borderColor: selected ? colors.primary : colors.borderControl,
-                          backgroundColor: selected ? colors.primaryLight : 'transparent'
-                        }
-                      ]}
-                    >
-                      <Text style={{ color: colors.textPrimary }}>{option.label}</Text>
-                    </Pressable>
-                  )
-                })
-              : null}
+            {proactiveOptions && !showFeedback ? (
+              <CompanionAskFields
+                questions={askQuestions}
+                isReplying={isReplying}
+                drafts={askDrafts}
+              />
+            ) : null}
 
             {showFeedback ? (
               <TextInput
@@ -312,16 +327,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               </>
             ) : proactiveOptions ? (
               <>
-                {allowCustomInput ? (
-                  <Button
-                    variant="outline"
-                    onPress={() => setShowFeedback(true)}
-                    disabled={isReplying}
-                    style={styles.actionButton}
-                  >
-                    {t('agent_gate.custom_answer', '自定义回答')}
-                  </Button>
-                ) : null}
                 <Button
                   variant="outline"
                   destructive
@@ -336,14 +341,21 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 </Button>
                 <Button
                   variant="primary"
-                  onPress={() =>
+                  onPress={() => {
+                    const questionAnswers = buildCompanionAskQuestionAnswers(
+                      askQuestions,
+                      askDrafts.drafts
+                    )
+                    const first = questionAnswers[0]
                     void handleReply({
                       requestId: request.id,
                       reply: AgentGateReply.Once,
-                      selectedOptionIds: selectedOptionId ? [selectedOptionId] : undefined
+                      selectedOptionIds: first?.selectedOptionIds,
+                      message: first?.message,
+                      questionAnswers
                     })
-                  }
-                  disabled={isReplying || !selectedOptionId}
+                  }}
+                  disabled={isReplying || !askDrafts.complete}
                   style={styles.actionButton}
                 >
                   {t('agent_gate.confirm', '确认')}

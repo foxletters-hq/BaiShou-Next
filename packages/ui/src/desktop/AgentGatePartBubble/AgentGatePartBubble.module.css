@@ -12,8 +12,8 @@
 }
 
 .bubble[data-reply='reject'] {
-  border-color: color-mix(in srgb, var(--color-error, #ef4444) 40%, var(--border-muted));
-  background: color-mix(in srgb, var(--color-error, #ef4444) 8%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--color-error) 40%, var(--border-muted));
+  background: color-mix(in srgb, var(--color-error) 8%, var(--bg-surface));
 }
 
 .badge {
@@ -24,7 +24,7 @@
 }
 
 .bubble[data-reply='reject'] .badge {
-  color: var(--color-error, #ef4444);
+  color: var(--color-error);
 }
 
 .bubble[data-reply='always'] .badge,

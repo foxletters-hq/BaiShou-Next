@@ -11,6 +11,14 @@ const dockSource = readFileSync(
 describe('AgentGateDock reject', () => {
   it('should reject companion questions immediately instead of opening custom input', () => {
     expect(dockSource).toContain('shouldCollectRejectFeedback')
+    expect(dockSource).toContain('formatCoalescedToolHint')
+    expect(dockSource).toContain('listAgentGateFileChangePreviews')
+    expect(dockSource).toContain('onOpenFileChange')
+    expect(dockSource).toContain('DiffChanges')
+    expect(dockSource).not.toContain('expand_diff')
+    expect(dockSource).not.toContain('function DiffLines')
+    expect(dockSource).toContain('CompanionAskFields')
+    expect(dockSource).toContain('questionAnswers')
     expect(dockSource).not.toMatch(
       /const handleReject = \(\) => \{\s*if \(allowCustomInput\) \{\s*setShowFeedback\(true\)/
     )
