@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   collectSummaryStreamText,
   createSummaryFirstOutputTimeoutError,
+  createSummaryIdleTimeoutError,
   isSummaryFirstOutputTimeoutError,
+  isSummaryIdleTimeoutError,
   isSummaryModelOutputPart,
   isSummaryUserAbortError,
   suppressUnusedSummaryStreamSettlements
@@ -75,6 +77,13 @@ describe('summary first-output timeout classification', () => {
     const error = new Error('AI generation timed out after 120 seconds waiting for first output.')
     error.name = 'AbortError'
     expect(isSummaryFirstOutputTimeoutError(error)).toBe(true)
+    expect(isSummaryUserAbortError(error)).toBe(false)
+  })
+
+  it('does not treat idle timeout as first-output timeout or user abort', () => {
+    const error = createSummaryIdleTimeoutError(120_000)
+    expect(isSummaryIdleTimeoutError(error)).toBe(true)
+    expect(isSummaryFirstOutputTimeoutError(error)).toBe(false)
     expect(isSummaryUserAbortError(error)).toBe(false)
   })
 
@@ -231,6 +240,74 @@ describe('collectSummaryStreamText', () => {
 
     await vi.advanceTimersByTimeAsync(80)
     await expect(promise).resolves.toBe('foobar')
+  })
+
+  it('should abort a hanging read after the first output arrives', async () => {
+    const abortController = new AbortController()
+    const promise = collectSummaryStreamText({
+      fullStream: {
+        getReader: () => {
+          let first = true
+          return {
+            read: () => {
+              if (first) {
+                first = false
+                return Promise.resolve({
+                  done: false,
+                  value: { type: 'text-delta', text: 'hi' }
+                })
+              }
+              return new Promise(() => undefined)
+            },
+            releaseLock: () => {}
+          }
+        }
+      },
+      abortController,
+      firstOutputTimeoutMs: 30_000
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+    abortController.abort()
+    await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('should time out when output stops after the first token', async () => {
+    vi.useFakeTimers()
+    const abortController = new AbortController()
+    const promise = collectSummaryStreamText({
+      fullStream: {
+        getReader: () => {
+          let first = true
+          return {
+            read: () => {
+              if (first) {
+                first = false
+                return Promise.resolve({
+                  done: false,
+                  value: { type: 'text-delta', text: 'hi' }
+                })
+              }
+              return new Promise(() => undefined)
+            },
+            releaseLock: () => {}
+          }
+        }
+      },
+      abortController,
+      firstOutputTimeoutMs: 30_000,
+      idleTimeoutMs: 20
+    })
+
+    const assertion = expect(promise).rejects.toMatchObject({
+      name: 'TimeoutError',
+      message: expect.stringContaining('without further output')
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(20)
+    await assertion
+    expect(abortController.signal.aborted).toBe(true)
   })
 
   it('aborts immediately when abortController is aborted before first output', async () => {

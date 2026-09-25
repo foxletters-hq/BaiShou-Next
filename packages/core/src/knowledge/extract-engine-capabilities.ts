@@ -68,7 +68,7 @@ export async function probeExtractEngineCapabilities(
   if (!opts.visionModelConfigured) {
     vision = {
       available: false,
-      reason: '未配置多模态（视觉）对话模型'
+      reason: '还没配置视觉模型。请先在设置里选好视觉模型。'
     }
   } else if (!hasRenderer) {
     vision = {

@@ -19,16 +19,27 @@ export function createSummaryFirstOutputTimeoutError(timeoutMs: number): Error {
 
 export function isSummaryFirstOutputTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
-  const name = 'name' in error ? String(error.name) : ''
   const message = 'message' in error ? String(error.message) : ''
-  return (
-    name === SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME || message.includes('waiting for first output')
+  return message.includes('waiting for first output')
+}
+
+export function createSummaryIdleTimeoutError(timeoutMs: number): Error {
+  const error = new Error(
+    `AI generation timeout: timed out after ${timeoutMs / 1000} seconds without further output.`
   )
+  error.name = SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME
+  return error
+}
+
+export function isSummaryIdleTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error ? String(error.message) : ''
+  return message.includes('without further output')
 }
 
 export function isSummaryUserAbortError(error: unknown, userSignal?: AbortSignal): boolean {
   if (userSignal?.aborted) return true
-  if (isSummaryFirstOutputTimeoutError(error)) return false
+  if (isSummaryFirstOutputTimeoutError(error) || isSummaryIdleTimeoutError(error)) return false
   return Boolean(
     error && typeof error === 'object' && 'name' in error && error.name === 'AbortError'
   )
@@ -60,63 +71,93 @@ function readPartText(part: { textDelta?: string; text?: string }): string {
 }
 
 /**
- * 只在尚未收到模型输出时计时。
- * 收到 text-delta 或 reasoning-delta 后清除超时，之后只响应用户取消。
+ * 首个输出前按 firstOutputTimeoutMs 计时。
+ * 之后每次增量重置空闲计时；读流始终与 abort 赛跑，避免首个 token 后挂死。
  */
 export async function collectSummaryStreamText(options: {
   fullStream?: SummaryStreamReaderSource
   textStream?: AsyncIterable<string>
   abortController: AbortController
   firstOutputTimeoutMs: number
+  idleTimeoutMs?: number
   onFirstOutput?: () => void
   onTextDelta?: (text: string) => void
   onReasoningDelta?: (reasoning: string) => void
 }): Promise<string> {
-  const { abortController, firstOutputTimeoutMs, onFirstOutput } = options
+  const { abortController, firstOutputTimeoutMs, idleTimeoutMs, onFirstOutput } = options
   if (abortController.signal.aborted) {
     throw new DOMException('The operation was aborted', 'AbortError')
   }
 
   let firstOutputSeen = false
   let timedOut = false
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
-  let rejectWait: ((error: Error) => void) | undefined
-  const waitingForFirstOutput = new Promise<never>((_, reject) => {
-    rejectWait = reject
-    timeoutId = setTimeout(() => {
-      timedOut = true
-      abortController.abort()
-      reject(createSummaryFirstOutputTimeoutError(firstOutputTimeoutMs))
-    }, firstOutputTimeoutMs)
+  let idleTimedOut = false
+  let firstOutputTimeoutId: ReturnType<typeof setTimeout> | undefined
+  let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
+  let rejectPending: ((error: Error) => void) | undefined
+  const pendingAbort = new Promise<never>((_, reject) => {
+    rejectPending = reject
   })
 
+  const fail = (error: Error) => {
+    rejectPending?.(error)
+  }
+
+  firstOutputTimeoutId = setTimeout(() => {
+    if (firstOutputSeen) return
+    timedOut = true
+    abortController.abort()
+    fail(createSummaryFirstOutputTimeoutError(firstOutputTimeoutMs))
+  }, firstOutputTimeoutMs)
+
+  const clearIdleTimeout = () => {
+    if (idleTimeoutId !== undefined) {
+      clearTimeout(idleTimeoutId)
+      idleTimeoutId = undefined
+    }
+  }
+
+  const resetIdleTimeout = () => {
+    if (!idleTimeoutMs || idleTimeoutMs <= 0) return
+    clearIdleTimeout()
+    idleTimeoutId = setTimeout(() => {
+      idleTimedOut = true
+      abortController.abort()
+      fail(createSummaryIdleTimeoutError(idleTimeoutMs))
+    }, idleTimeoutMs)
+  }
+
   const onAbort = () => {
-    if (timedOut) return
-    rejectWait?.(new DOMException('The operation was aborted', 'AbortError'))
+    if (timedOut || idleTimedOut) return
+    fail(new DOMException('The operation was aborted', 'AbortError'))
   }
   abortController.signal.addEventListener('abort', onAbort, { once: true })
 
-  const markFirstOutput = () => {
-    if (firstOutputSeen) return
-    firstOutputSeen = true
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId)
-      timeoutId = undefined
+  const markOutput = () => {
+    if (!firstOutputSeen) {
+      firstOutputSeen = true
+      if (firstOutputTimeoutId !== undefined) {
+        clearTimeout(firstOutputTimeoutId)
+        firstOutputTimeoutId = undefined
+      }
+      onFirstOutput?.()
     }
-    onFirstOutput?.()
+    resetIdleTimeout()
   }
 
-  const awaitBeforeFirstOutput = async <T>(operation: Promise<T>): Promise<T> => {
-    if (firstOutputSeen) return operation
-    return Promise.race([operation, waitingForFirstOutput])
+  const awaitRead = async <T>(operation: Promise<T>): Promise<T> => {
+    if (abortController.signal.aborted && !timedOut && !idleTimedOut) {
+      throw new DOMException('The operation was aborted', 'AbortError')
+    }
+    return Promise.race([operation, pendingAbort])
   }
 
   try {
     if (options.fullStream) {
       return await collectFromFullStream(
         options.fullStream,
-        awaitBeforeFirstOutput,
-        markFirstOutput,
+        awaitRead,
+        markOutput,
         options.onTextDelta,
         options.onReasoningDelta
       )
@@ -124,20 +165,22 @@ export async function collectSummaryStreamText(options: {
     if (options.textStream) {
       return await collectFromTextStream(
         options.textStream,
-        awaitBeforeFirstOutput,
-        markFirstOutput,
+        awaitRead,
+        markOutput,
         options.onTextDelta
       )
     }
     throw new Error('Summary stream is missing both fullStream and textStream')
   } catch (error) {
     if (timedOut) throw createSummaryFirstOutputTimeoutError(firstOutputTimeoutMs)
+    if (idleTimedOut && idleTimeoutMs) throw createSummaryIdleTimeoutError(idleTimeoutMs)
     throw error
   } finally {
     abortController.signal.removeEventListener('abort', onAbort)
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId)
+    if (firstOutputTimeoutId !== undefined) {
+      clearTimeout(firstOutputTimeoutId)
     }
+    clearIdleTimeout()
   }
 }
 
@@ -219,6 +262,7 @@ export async function generateSummaryTextFromModel(options: {
   system?: string
   abortController: AbortController
   firstOutputTimeoutMs: number
+  idleTimeoutMs?: number
   onFirstOutput?: () => void
   onTextDelta?: (text: string) => void
   onReasoningDelta?: (reasoning: string) => void
@@ -240,6 +284,7 @@ export async function generateSummaryTextFromModel(options: {
     textStream: streamResult.textStream,
     abortController: options.abortController,
     firstOutputTimeoutMs: options.firstOutputTimeoutMs,
+    idleTimeoutMs: options.idleTimeoutMs,
     onFirstOutput: options.onFirstOutput,
     onTextDelta: options.onTextDelta,
     onReasoningDelta: options.onReasoningDelta

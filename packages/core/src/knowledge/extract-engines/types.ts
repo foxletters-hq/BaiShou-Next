@@ -30,6 +30,7 @@ export type PdfPageBitmapRenderer = (opts: {
   /** 1-based；缺省全部页 */
   pageNumbers?: number[]
   dpi?: number
+  onProgress?: (info: { page: number; total: number }) => void
 }) => Promise<PdfPageBitmap[]>
 
 /** 平台注入：视觉模型识别单页 */
@@ -51,7 +52,12 @@ export interface ExtractEngineContext {
   dpi?: number
   /** OCR / vision 并发页数（1–10，默认 3） */
   concurrency?: number
-  onProgress?: (info: { page: number; total: number }) => void
+  /** 进度只通知主线程界面，不写入资料。关掉软件后这段进度作废，下次整段重算。 */
+  onProgress?: (info: {
+    page: number
+    total: number
+    phase?: 'parse' | 'render' | 'recognize'
+  }) => void
   /** 取消提取时中断 */
   signal?: AbortSignal
   /** 默认写入进程内页缓存；试抽传 false，避免污染正式提取 */
