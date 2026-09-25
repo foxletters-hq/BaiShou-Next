@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, MoreHorizontal } from 'lucide-react'
 import type { NotebookCardTone } from '@baishou/shared'
-import { Input } from '@baishou/ui'
+import { Button, Input } from '@baishou/ui'
 import { NotebookCoverEditor } from './NotebookCoverEditor'
 import { NotebookCoverIcon } from './NotebookCoverIcon'
 import { TONE_CLASS } from './NotebookCoverTonePicker'
@@ -33,6 +33,7 @@ export const SortableNotebookCard: React.FC<{
     pickIcon: string
     uploadImage: string
     clearImage: string
+    deleteNotebook: string
   }
   onOpen: () => void
   onOpenMenu: () => void
@@ -42,6 +43,7 @@ export const SortableNotebookCard: React.FC<{
   onPickIcon: () => void
   onUploadImage: () => void
   onClearImage: () => void
+  onDelete: () => void
 }> = ({
   notebook,
   menuOpen,
@@ -54,7 +56,8 @@ export const SortableNotebookCard: React.FC<{
   onChangeCover,
   onPickIcon,
   onUploadImage,
-  onClearImage
+  onClearImage,
+  onDelete
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: notebook.id
@@ -164,6 +167,16 @@ export const SortableNotebookCard: React.FC<{
                     clearImage: labels.clearImage
                   }}
                 />
+                <Button
+                  type="button"
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onDelete()
+                  }}
+                >
+                  {labels.deleteNotebook}
+                </Button>
               </div>
             ) : null}
           </div>

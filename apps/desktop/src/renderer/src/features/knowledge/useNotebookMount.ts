@@ -1,30 +1,39 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  getPendingMountedNotebookIds,
+  isDraftNotebookMountSessionId,
+  notebookMountPendingKey,
   parseMountedNotebookIds,
+  setPendingMountedNotebookIds,
   toggleMountedNotebook,
-  type NotebookMountCandidate
+  type NotebookMountCandidate,
+  type NotebookMountScope
 } from '@baishou/shared'
 
-export function useNotebookMount(sessionId?: string) {
+export function useNotebookMount(
+  sessionId?: string,
+  opts?: { assistantId?: string | null; scope?: NotebookMountScope }
+) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [candidates, setCandidates] = useState<NotebookMountCandidate[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const draft = isDraftNotebookMountSessionId(sessionId)
+  const pendingKey = notebookMountPendingKey({
+    sessionId,
+    assistantId: opts?.assistantId,
+    scope: opts?.scope ?? 'companion'
+  })
 
   const refresh = useCallback(async () => {
-    if (!sessionId || sessionId === 'new-session') {
-      setSelectedIds([])
-      setCandidates([])
-      return
-    }
     setError('')
     try {
-      const [ids, list] = await Promise.all([
-        window.api.getMountedNotebooks
-          ? window.api.getMountedNotebooks(sessionId)
-          : Promise.resolve([] as string[]),
-        window.api.knowledge.listMountSummaries()
-      ])
+      const list = await window.api.knowledge.listMountSummaries()
+      const ids = draft
+        ? getPendingMountedNotebookIds(pendingKey)
+        : window.api.getMountedNotebooks
+          ? await window.api.getMountedNotebooks(sessionId!)
+          : []
       setSelectedIds(parseMountedNotebookIds(ids))
       setCandidates(
         (list || []).map((row) => ({
@@ -39,17 +48,21 @@ export function useNotebookMount(sessionId?: string) {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     }
-  }, [sessionId])
+  }, [draft, pendingKey, sessionId])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
   const persist = async (next: string[]) => {
-    if (!sessionId || sessionId === 'new-session') return
     setBusy(true)
     setError('')
     try {
+      if (draft) {
+        setSelectedIds(setPendingMountedNotebookIds(pendingKey, next))
+        return
+      }
+      if (!sessionId) return
       if (window.api.setMountedNotebooks) {
         await window.api.setMountedNotebooks(sessionId, next)
       } else {

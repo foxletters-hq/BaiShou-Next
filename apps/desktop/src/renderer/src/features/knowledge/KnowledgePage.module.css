@@ -92,12 +92,12 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: var(--bg-surface-raised, var(--bg-surface));
+  background: var(--bg-surface-raised);
   border: 1px solid var(--border-default);
 }
 
 .createCard:hover:not(:disabled) {
-  background: var(--bg-surface-high, var(--bg-surface));
+  background: var(--bg-surface-high);
   transform: translateY(-1px);
 }
 
@@ -113,8 +113,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--color-primary, #4b7bec) 16%, #ffffff);
-  color: color-mix(in srgb, var(--color-primary, #3b5bdb) 82%, #1c2a5a);
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-surface));
+  color: var(--color-primary);
 }
 
 .createCardLabel {
@@ -158,12 +158,12 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid color-mix(in srgb, #000 12%, #fff);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   appearance: none;
-  background: #fff;
+  background: var(--bg-surface);
   box-shadow: none;
-  color: color-mix(in srgb, var(--text-primary) 58%, #444);
+  color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -179,8 +179,8 @@
 .notebookDragHandle:focus,
 .notebookCardMenu:hover,
 .notebookCardMenuOpen {
-  background: #fff;
-  border-color: color-mix(in srgb, #000 18%, #fff);
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
@@ -202,7 +202,7 @@
   justify-content: center;
   font-size: 48px;
   line-height: 1;
-  filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 6%, transparent));
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent));
 }
 
 .notebookCardCoverFill {
@@ -240,11 +240,11 @@
 }
 
 .notebookCardHasImage .notebookCardTitle {
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .notebookCardHasImage .notebookCardMeta {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--text-on-primary);
 }
 
 .notebookCardMenuWrap {
@@ -265,7 +265,7 @@
   width: 268px;
   padding: 10px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--text-primary) 12%, transparent);
   display: flex;
@@ -409,9 +409,9 @@
   position: absolute;
   inset: 0;
   pointer-events: auto;
-  background: rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: var(--bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .coverEmojiPanel {
@@ -424,9 +424,9 @@
   max-height: min(520px, calc(100vh - 72px));
   padding: 12px 12px 16px;
   border-radius: 20px;
-  background: #fff;
-  border: 1px solid color-mix(in srgb, #000 8%, #fff);
-  box-shadow: 0 18px 48px color-mix(in srgb, #000 18%, transparent);
+  background: var(--bg-surface-highest);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -446,8 +446,8 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 12px;
-  background: color-mix(in srgb, #000 5%, #fff);
-  color: color-mix(in srgb, #000 45%, #666);
+  background: var(--bg-surface-normal);
+  color: var(--text-secondary);
 }
 
 .coverEmojiSearchInput {
@@ -474,7 +474,7 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: color-mix(in srgb, #000 42%, #666);
+  color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -482,8 +482,8 @@
 }
 
 .coverEmojiClose:hover {
-  background: color-mix(in srgb, #000 6%, #fff);
-  color: #111;
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
 }
 
 .coverEmojiGrid {
@@ -508,26 +508,7 @@
 }
 
 .coverEmojiBtn:hover {
-  background: color-mix(in srgb, #000 6%, #fff);
-}
-
-:global(body[data-theme='dark']) .coverEmojiPanel {
-  background: var(--bg-surface);
-  border-color: var(--border-default);
-}
-
-:global(body[data-theme='dark']) .coverEmojiSearch {
-  background: color-mix(in srgb, #fff 8%, transparent);
-  color: var(--text-secondary);
-}
-
-:global(body[data-theme='dark']) .coverEmojiClose {
-  color: var(--text-secondary);
-}
-
-:global(body[data-theme='dark']) .coverEmojiBtn:hover,
-:global(body[data-theme='dark']) .coverEmojiClose:hover {
-  background: color-mix(in srgb, #fff 8%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .coverImageBtn {
@@ -597,81 +578,35 @@
 }
 
 .toneLavender {
-  background: #e8dff5;
+  background: color-mix(in srgb, #b39ddb 32%, var(--bg-surface));
 }
 
 .toneCream {
-  background: #fbf3d5;
+  background: color-mix(in srgb, #e6d48a 28%, var(--bg-surface));
 }
 
 .tonePeach {
-  background: #ffe5d4;
+  background: color-mix(in srgb, #f0b090 30%, var(--bg-surface));
 }
 
 .toneMint {
-  background: #d5ede3;
+  background: color-mix(in srgb, #7dcea0 30%, var(--bg-surface));
 }
 
 .toneSky {
-  background: #d6eaf8;
+  background: color-mix(in srgb, #85c1e9 32%, var(--bg-surface));
 }
 
 .toneRose {
-  background: #f5d6e0;
+  background: color-mix(in srgb, #f5b7c4 32%, var(--bg-surface));
 }
 
 .toneLilac {
-  background: #e4d9f5;
+  background: color-mix(in srgb, #c39bd3 32%, var(--bg-surface));
 }
 
 .toneSand {
-  background: #f3e6d4;
-}
-
-:global(body[data-theme='dark']) .coverMenu {
-  background: var(--bg-surface);
-  box-shadow: 0 10px 28px color-mix(in srgb, #000 36%, transparent);
-}
-
-:global(body[data-theme='dark']) .createCard {
-  background: var(--bg-surface-raised, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .createCardIcon {
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 28%, transparent);
-  color: color-mix(in srgb, var(--color-primary, #8fb0ff) 90%, #fff);
-}
-
-:global(body[data-theme='dark']) .toneLavender {
-  background: color-mix(in srgb, #b39ddb 28%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneCream {
-  background: color-mix(in srgb, #e6d48a 24%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .tonePeach {
-  background: color-mix(in srgb, #f0b090 26%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneMint {
-  background: color-mix(in srgb, #7dcea0 26%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneSky {
-  background: color-mix(in srgb, #85c1e9 28%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneRose {
-  background: color-mix(in srgb, #f5b7c4 28%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneLilac {
-  background: color-mix(in srgb, #c39bd3 28%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .toneSand {
-  background: color-mix(in srgb, #d7b899 24%, var(--bg-surface));
+  background: color-mix(in srgb, #d7b899 28%, var(--bg-surface));
 }
 
 @media (max-width: 720px) {
@@ -765,7 +700,7 @@
 .errorLine {
   margin: 0 0 16px;
   font-size: 13px;
-  color: var(--danger, #c44);
+  color: var(--color-error);
 }
 
 .grid {
@@ -914,8 +849,8 @@
 }
 
 .bannerError {
-  color: var(--color-error, #c44);
-  background: color-mix(in srgb, var(--color-error, #c44) 10%, var(--bg-surface));
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, var(--bg-surface));
 }
 
 .sourcesStage {
@@ -1058,19 +993,25 @@
 }
 
 .sourceCardItem {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
-  min-height: 0;
+  min-height: 220px;
 }
 
 .sourceCardItem .createCard,
 .sourceCardItem .sourceCard,
 .sourceCardItem .sourceCardFailWrap {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 220px;
   height: 100%;
 }
 
 .sourceCardFailWrap {
-  display: block;
   min-width: 0;
 }
 
@@ -1099,19 +1040,19 @@
 }
 
 .iconPdf {
-  color: var(--color-error, #e25c5c);
+  color: var(--color-error);
 }
 
 .iconText {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .iconCode {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .iconUrl {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .sourceProgressTrack {
@@ -1125,12 +1066,12 @@
 .sourceProgressFill {
   height: 100%;
   border-radius: inherit;
-  background: var(--color-primary, #3b6fd4);
+  background: var(--color-primary);
   transition: width 0.2s ease;
 }
 
 .sourceProgressFailed .sourceProgressFill {
-  background: var(--color-error, #e25c5c);
+  background: var(--color-error);
 }
 
 .sourceProgressIndeterminate .sourceProgressFill {
@@ -1148,7 +1089,7 @@
 .linkBtn {
   border: none;
   background: transparent;
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
   font-size: 11px;
   padding: 0;
   cursor: pointer;
@@ -1265,7 +1206,7 @@
 }
 
 .citation {
-  border-left: 3px solid color-mix(in srgb, var(--color-primary, #6b8fd4) 55%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
   padding: 4px 0 4px 10px;
 }
 
@@ -1381,21 +1322,21 @@
   cursor: not-allowed;
 }
 
-/* 马卡龙色块：装饰色，不随主题语义 token 变化 */
+/* 马卡龙色块：装饰色混入 --bg-surface，深浅模式共用同一条规则 */
 .studioTileSky {
-  background: #d6eaf8;
+  background: color-mix(in srgb, #85c1e9 32%, var(--bg-surface));
 }
 
 .studioTileLemon {
-  background: #fbf3d5;
+  background: color-mix(in srgb, #e6d48a 30%, var(--bg-surface));
 }
 
 .studioTileMint {
-  background: #d5ede3;
+  background: color-mix(in srgb, #7dcea0 32%, var(--bg-surface));
 }
 
 .studioTileRose {
-  background: #f5d6e0;
+  background: color-mix(in srgb, #f5b7c4 32%, var(--bg-surface));
 }
 
 .studioFab {
@@ -1473,22 +1414,6 @@
   line-height: 1.45;
 }
 
-:global(body[data-theme='dark']) .studioTileSky {
-  background: color-mix(in srgb, #85c1e9 30%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .studioTileLemon {
-  background: color-mix(in srgb, #e6d48a 26%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .studioTileMint {
-  background: color-mix(in srgb, #7dcea0 28%, var(--bg-surface));
-}
-
-:global(body[data-theme='dark']) .studioTileRose {
-  background: color-mix(in srgb, #f5b7c4 28%, var(--bg-surface));
-}
-
 .vectorScroll {
   flex: 1;
   min-height: 0;
@@ -1520,7 +1445,7 @@
 
 .vectorStatIcon {
   display: inline-flex;
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .vectorStatLabel {
@@ -1582,7 +1507,7 @@
 }
 
 .vectorSearchClear:hover {
-  color: var(--color-error, #c44);
+  color: var(--color-error);
 }
 
 .vectorEmpty {
@@ -1628,7 +1553,7 @@
 }
 
 .vectorCardMark {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: 16px;
   font-weight: 600;
@@ -1727,9 +1652,9 @@
   justify-content: center;
   padding: 24px;
   box-sizing: border-box;
-  background: color-mix(in srgb, var(--text-primary) 28%, transparent);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: var(--bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .dialog {
@@ -2071,10 +1996,48 @@
   margin-top: 4px;
 }
 
-.previewDialog {
+.previewDialog.previewDialog {
   width: min(1100px, calc(100vw - 32px));
   max-height: min(92vh, 960px);
   overflow: hidden;
+  animation: none;
+}
+
+.previewTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.previewHeading {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.previewDialog :global(button).previewCloseBtn {
+  width: var(--spacing-xl);
+  height: var(--spacing-xl);
+  padding: 0;
+  flex-shrink: 0;
+  margin-left: auto;
+  border-color: transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.previewDialog :global(button).previewCloseBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
 }
 
 .fragmentDialog {
@@ -2089,7 +2052,33 @@
   gap: 12px;
   min-height: 0;
   max-height: min(72vh, 760px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  padding-right: var(--spacing-xs);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-primary) 28%, transparent) transparent;
+}
+
+.fragmentList::-webkit-scrollbar {
+  width: 10px;
+}
+
+.fragmentList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fragmentList::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-primary) 22%, transparent);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.fragmentList::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-primary) 36%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .fragmentCard {
@@ -2143,74 +2132,141 @@
 .pdfPreview {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   min-height: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: var(--bg-surface);
 }
 
 .pdfToolbar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 2px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 4px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
 }
 
-.pdfNavBtn {
-  border: 1px solid var(--border-muted);
+.pdfToolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pdfToolbarDivider {
+  width: 1px;
+  height: 14px;
+  margin: 0 6px;
+  background: var(--border-muted);
+}
+
+.pdfToolbar :global(button).pdfIconBtn,
+.pdfToolbar :global(button).pdfZoomLabel {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.pdfToolbar :global(button).pdfZoomLabel {
+  width: auto;
+  min-width: 3.25rem;
+  padding: 0 4px;
+  font-size: var(--ui-fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfToolbar :global(button).pdfIconBtn:hover:not(:disabled),
+.pdfToolbar :global(button).pdfZoomLabel:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+  border-color: transparent;
+}
+
+.pdfViewSelect {
+  width: 5.5rem;
+  flex: none;
+}
+
+.pdfViewSelect :global([role='combobox']) {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--ui-fs-sm);
+}
+
+.pdfPageJump {
+  width: 2.75rem;
+  flex: none;
+}
+
+.pdfPageJump :global(input) {
+  height: 26px;
+  padding: 0 2px;
+  text-align: center;
+  border-radius: var(--radius-xs);
+  border-color: var(--border-muted);
   background: var(--bg-surface);
   color: var(--text-primary);
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  font-variant-numeric: tabular-nums;
 }
 
-.pdfNavBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--bg-surface) 70%, var(--color-primary) 12%);
-}
-
-.pdfNavBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.pdfPageJump :global(input):focus {
+  border-color: var(--border-control);
+  background: var(--bg-surface);
 }
 
 .pdfPageLabel {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
-  min-width: 72px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pdfCanvasWrap {
   flex: 1;
-  min-height: 280px;
-  max-height: min(72vh, 760px);
+  height: min(74vh, 780px);
+  min-height: 420px;
   overflow: auto;
-  border: 1px solid var(--border-muted);
-  border-radius: var(--radius-sm);
-  background: var(--bg-app);
-  padding: 8px;
+  scrollbar-gutter: stable;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-surface-normal);
 }
 
 .pdfSpread,
 .pdfSingle {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: safe center;
   width: max-content;
   min-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 28px 20px;
 }
 
 .pdfSpread {
-  gap: 12px;
+  gap: 16px;
 }
 
 .pdfCanvas {
   display: block;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--bg-surface);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  transition: none;
 }
 
 .previewStack {
@@ -2243,7 +2299,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
-  color: var(--color-warning, #c47d12);
+  color: var(--color-warning);
 }
 
 .previewBox,
@@ -2264,6 +2320,51 @@
   white-space: pre-wrap;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.epubViewport {
+  position: relative;
+  height: min(62vh, 640px);
+  min-height: 320px;
+  overflow: hidden;
+  background: var(--bg-app);
+  --epub-column-gap: var(--spacing-xl);
+}
+
+.epubClip {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 平移放在分栏外面。直接平移分栏容器会让全书重新分页。 */
+.epubShift {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  will-change: transform;
+}
+
+.epubFlow {
+  height: 100%;
+  box-sizing: border-box;
+  column-fill: auto;
+  padding-top: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  overflow-wrap: anywhere;
+  orphans: 1;
+  widows: 1;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: var(--font-family);
+}
+
+.epubFlow pre {
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .chatChromeWrap {
@@ -2306,7 +2407,7 @@
 }
 
 .guideValueWarn {
-  color: var(--color-warning, #c47d12);
+  color: var(--color-warning);
   font-weight: 600;
   text-align: right;
   word-break: break-all;
@@ -2659,41 +2760,198 @@
   transition: width 0.2s ease;
 }
 
-.graphProgress {
-  margin: 0 12px 8px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--bg-surface-normal);
-  border: 1px solid var(--border-subtle);
+.organizeCompact {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.graphProgressText {
+.organizeSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: knowledgeOrganizeSpin 1s linear infinite;
+}
+
+@keyframes knowledgeOrganizeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.organizePhaseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
+  gap: 8px;
+}
+
+.organizePhaseRow {
+  display: grid;
+  grid-template-columns: 5.5em minmax(64px, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-primary);
+}
+
+.organizePhaseRowCurrent {
+  font-weight: 500;
+}
+
+.organizePhaseRowMuted {
+  color: var(--text-tertiary);
+}
+
+.organizePhaseRowFailed {
+  color: var(--color-error);
+}
+
+.organizeError {
+  margin: 12px 0 0;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.5;
+  color: var(--color-error);
+  word-break: break-word;
+}
+
+.organizePhaseLabel {
+  min-width: 0;
+}
+
+.organizePhaseValue {
+  justify-self: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.organizePhaseBar,
+.organizePhaseBarSpacer {
+  height: 4px;
+  border-radius: var(--radius-full);
+}
+
+.organizePhaseBar {
+  background: var(--bg-surface-normal);
+  overflow: hidden;
+}
+
+.organizePhaseBarFill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.2s ease;
+}
+
+.organizePhaseBarSpacer {
+  background: transparent;
+}
+
+.organizeModal {
+  width: min(480px, calc(100vw - 48px));
+}
+
+.organizeSourceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.organizeSourceItem {
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.organizeSourceItemOpen {
+  border-color: var(--border-control);
+}
+
+.organizeSourceRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  appearance: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.organizeSourceRow:hover,
+.organizeSourceItemOpen .organizeSourceRow {
+  background: var(--bg-surface-high);
+}
+
+.organizeSourceTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organizeSourceSummary {
+  flex-shrink: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 400;
   color: var(--text-secondary);
 }
 
-.graphProgressText strong {
-  color: var(--text-primary);
-  font-weight: 600;
+.organizeSourcePhases {
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
 }
 
-.graphProgressBar {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border-card);
+.organizeItemList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.organizeItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.organizeItemTitle {
+  min-width: 0;
   overflow: hidden;
-  margin-top: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
 }
 
-.graphProgressFill {
-  height: 100%;
-  width: 0;
-  border-radius: inherit;
-  background: var(--color-primary);
-  transition: width 0.2s ease;
+.organizeItemValue {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.organizeModalActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .spinIcon {
