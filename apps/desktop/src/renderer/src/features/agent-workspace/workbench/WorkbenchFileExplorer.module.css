@@ -113,11 +113,7 @@
 }
 
 .row:hover:not(.rowSelected):not(.rowDropTarget):not(.rowEditing) {
-  background: #f0f0f0;
-}
-
-:global(html[data-theme='dark']) .row:hover:not(.rowSelected):not(.rowDropTarget):not(.rowEditing) {
-  background: #2a2d2e;
+  background: var(--bg-surface-high);
 }
 
 .rowSelected {
