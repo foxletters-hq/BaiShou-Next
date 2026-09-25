@@ -461,7 +461,7 @@
 }
 
 .diary-card-content-text pre {
-  background: var(--bg-code-block, #eceef2);
+  background: var(--bg-code-block);
   border: none;
 }
 
@@ -671,8 +671,8 @@
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--bg-overlay);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 9999;
   display: flex;
   align-items: center;

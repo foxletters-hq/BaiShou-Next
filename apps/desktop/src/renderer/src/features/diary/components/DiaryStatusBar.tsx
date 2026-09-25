@@ -11,10 +11,7 @@ export interface DiaryStatusBarProps {
   pendingExtractCount: number
   showPendingEmbed: boolean
   pendingEmbedCount: number
-  pendingEmbedParts?: Pick<
-    PendingEmbedCounts,
-    'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'notebookGraphNodes'
-  >
+  pendingEmbedParts?: Pick<PendingEmbedCounts, 'diaries' | 'memories' | 'graphNodes'>
   onPendingExtractClick?: () => void
   onPendingEmbedClick?: () => void
   indexing?: RagIndexingSnapshot | null
@@ -51,12 +48,6 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
         }),
         t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
           count: pendingEmbedParts.graphNodes
-        }),
-        t('memory.pending_embed_part_notebook_graph_nodes', '笔记本图节点 {{count}} 个', {
-          count: pendingEmbedParts.notebookGraphNodes
-        }),
-        t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
-          count: pendingEmbedParts.knowledgeSources
         })
       ].join(' · ')
     : ''

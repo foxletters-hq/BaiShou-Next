@@ -56,8 +56,8 @@ class ErrorBoundaryClass extends Component<Props & { t: any }, State> {
             style={{
               marginTop: '1rem',
               padding: '8px 16px',
-              background: '#333',
-              color: '#fff',
+              background: 'var(--text-primary)',
+              color: 'var(--text-on-primary)',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer'

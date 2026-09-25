@@ -134,6 +134,7 @@ interface AgentGateAPI {
     reply: import('@baishou/shared').AgentGateReply
     message?: string
     selectedOptionIds?: string[]
+    questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
   }): Promise<{ success: boolean }>
   listPending(sessionId?: string): Promise<import('@baishou/shared').AgentGateRequest[]>
   getNotificationPrefs(): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
@@ -154,6 +155,9 @@ interface AgentGateAPI {
       sessionId: string
       requestId: string
       reply: import('@baishou/shared').AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+      questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
     }) => void
   ): () => void
   onCancelled(
