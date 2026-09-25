@@ -4,8 +4,12 @@ import { MoreHorizontal, Plus } from 'lucide-react'
 import { HelpTooltip, Tooltip } from '@baishou/ui'
 import { KnowledgeSourceFileIcon } from './KnowledgeSourceFileIcon'
 import { knowledgeSourceStatusLabel } from './knowledge-detail-labels.util'
+import { knowledgeIngestProgressLabel } from './knowledge-ingest-progress-label.util'
 import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
-import { knowledgeSourceShowsPendingOrganizeHelp } from './knowledge-source-status.util'
+import {
+  knowledgeSourceDisplayStatus,
+  knowledgeSourceShowsPendingOrganizeHelp
+} from './knowledge-source-status.util'
 import {
   pickSourceCardEvidence,
   sourceCardFailureReason,
@@ -76,29 +80,27 @@ export function KnowledgeUploadingCard({
 export function KnowledgeSourceCard({
   source,
   ocrProgress,
+  graphJobStatus,
   onPreview,
   onOpenMenu
 }: {
   source: KnowledgeSourceRow
   ocrProgress?: KnowledgeOcrProgressState
+  graphJobStatus?: string | null
   onPreview: (source: KnowledgeSourceRow) => void
   onOpenMenu: (source: KnowledgeSourceRow, x: number, y: number) => void
 }) {
   const { t } = useTranslation()
   const missingPages = sourceMissingPageCount(source)
+  const displayStatus = knowledgeSourceDisplayStatus(source.status, graphJobStatus)
   const statusText =
-    ocrProgress && ocrProgress.total > 0
-      ? t('knowledge.status_ocr_progress', 'OCR 中 {{page}}/{{total}}', {
-          page: ocrProgress.page,
-          total: ocrProgress.total
-        })
-      : ocrProgress
-        ? t('knowledge.status_extracting', '正在提取文本')
-        : knowledgeSourceStatusLabel(t, source.status)
+    knowledgeIngestProgressLabel(t, ocrProgress) || knowledgeSourceStatusLabel(t, displayStatus)
   const pageProgress =
     ocrProgress && ocrProgress.total > 0
       ? Math.max(2, Math.round((Math.max(ocrProgress.page, 0) / ocrProgress.total) * 100))
-      : null
+      : source.status === 'embedding'
+        ? 2
+        : null
   const evidence = pickSourceCardEvidence({
     pageCount: source.pageCount,
     missingPages,
@@ -208,6 +210,7 @@ export function KnowledgeSourcesColumn({
   sources,
   uploadingSources,
   ocrProgressBySource,
+  graphJobStatusBySource,
   onAddSource,
   onPreview,
   onOpenMenu,
@@ -218,6 +221,7 @@ export function KnowledgeSourcesColumn({
   sources: KnowledgeSourceRow[]
   uploadingSources: KnowledgeUploadingSource[]
   ocrProgressBySource: Record<string, KnowledgeOcrProgressState>
+  graphJobStatusBySource?: Record<string, string>
   onAddSource: () => void
   onPreview: (source: KnowledgeSourceRow) => void
   onOpenMenu: (source: KnowledgeSourceRow, x: number, y: number) => void
@@ -250,6 +254,7 @@ export function KnowledgeSourcesColumn({
             key={source.id}
             source={source}
             ocrProgress={ocrProgressBySource[source.id]}
+            graphJobStatus={graphJobStatusBySource?.[source.id]}
             onPreview={onPreview}
             onOpenMenu={onOpenMenu}
           />

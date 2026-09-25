@@ -5,7 +5,9 @@ import {
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
   normalizeKnowledgeDefaultExtractEngine,
-  resolveGlobalGraphModelIds
+  buildVisionLanguageSlots,
+  resolveGlobalGraphModelIds,
+  resolveProviderModelSlot
 } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import { callKnowledgeApi } from './call-knowledge-api'
@@ -18,11 +20,14 @@ import type {
 } from './knowledge-detail.types'
 import { buildNotebookOpenGuideRows } from './notebook-open-guide.util'
 import { resolveNotebookProviderIconSrc } from './notebook-status-icon.util'
+import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
 import {
   formatNotebookGraphProgress,
-  notebookGraphProgressCopy
+  graphPageSpan,
+  notebookGraphProgressCopy,
+  type NotebookGraphJobsState
 } from './notebook-graph-progress.util'
-import { notebookJobProgressCopy } from './notebook-job-progress.util'
+import { notebookOrganizeProgressCopy } from './notebook-job-progress.util'
 import type { KnowledgeDetailJobProgressView } from './KnowledgeDetailJobBanner'
 
 export function useKnowledgeDetailRefresh(
@@ -37,23 +42,24 @@ export function useKnowledgeDetailRefresh(
   const [sources, setSources] = useState<KnowledgeSourceRow[]>([])
   const [sourcesLoaded, setSourcesLoaded] = useState(false)
   const [graphBusy, setGraphBusy] = useState(false)
-  const [graphJobs, setGraphJobs] = useState<{
-    pending: number
-    running: number
-    failed: number
-    currentSourceId: string | null
-    currentSourceTitle: string | null
-  }>({
+  const [graphJobs, setGraphJobs] = useState<NotebookGraphJobsState>({
     pending: 0,
     running: 0,
     failed: 0,
     currentSourceId: null,
-    currentSourceTitle: null
+    currentSourceTitle: null,
+    lastError: null,
+    failedSourceTitle: null,
+    statusBySourceId: {},
+    jobsBySourceId: {}
   })
   const [graphKnownTotal, setGraphKnownTotal] = useState(0)
   const [graphWindowProgress, setGraphWindowProgress] = useState<{
     done: number
     total: number
+    pageFrom?: number
+    pageTo?: number
+    pageTotal?: number
   } | null>(null)
   const [ocrProgressBySource, setOcrProgressBySource] = useState<
     Record<string, KnowledgeOcrProgressState>
@@ -73,7 +79,9 @@ export function useKnowledgeDetailRefresh(
   const [visionModelId, setVisionModelId] = useState<string | null>(null)
   const [engineCaps, setEngineCaps] = useState<KnowledgeEngineCaps | null>(null)
   const [vectorKnownTotal, setVectorKnownTotal] = useState(0)
+  const [queuedSourceIds, setQueuedSourceIds] = useState<string[]>([])
   const [reprocessWatching, setReprocessWatching] = useState(false)
+  const [modelMismatch, setModelMismatch] = useState(false)
   const reprocessSawWorkRef = useRef(false)
   const providers = useSettingsStore((s) => s.providers)
   const globalModels = useSettingsStore((s) => s.globalModels)
@@ -88,20 +96,87 @@ export function useKnowledgeDetailRefresh(
         failed: number
         currentSourceId: string | null
         currentSourceTitle: string | null
+        lastError?: string | null
+        failedSourceTitle?: string | null
+        windowsDone?: number
+        windowsTotal?: number
+        pageFrom?: number
+        pageTo?: number
+        pageTotal?: number
+        items?: Array<{
+          sourceId: string
+          status: string
+          lastError?: string | null
+          windowsDone?: number
+          windowsTotal?: number
+          pageFrom?: number
+          pageTo?: number
+          pageTotal?: number
+        }>
       }>('listGraphJobs', 'knowledge:list-graph-jobs', notebookId)
-      setGraphJobs(
-        snap || {
-          pending: 0,
-          running: 0,
-          failed: 0,
-          currentSourceId: null,
-          currentSourceTitle: null
+      const statusBySourceId: Record<string, string> = {}
+      const jobsBySourceId: NotebookGraphJobsState['jobsBySourceId'] = {}
+      for (const item of snap?.items ?? []) {
+        const sourceId = item.sourceId?.trim()
+        if (!sourceId) continue
+        statusBySourceId[sourceId] = item.status
+        jobsBySourceId[sourceId] = {
+          sourceId,
+          status: item.status,
+          lastError: item.lastError,
+          windowsDone: item.windowsDone,
+          windowsTotal: item.windowsTotal,
+          pageFrom: item.pageFrom,
+          pageTo: item.pageTo,
+          pageTotal: item.pageTotal
         }
+      }
+      setGraphJobs(
+        snap
+          ? {
+              pending: snap.pending,
+              running: snap.running,
+              failed: snap.failed,
+              currentSourceId: snap.currentSourceId,
+              currentSourceTitle: snap.currentSourceTitle,
+              lastError: snap.lastError ?? null,
+              failedSourceTitle: snap.failedSourceTitle ?? null,
+              statusBySourceId,
+              jobsBySourceId
+            }
+          : {
+              pending: 0,
+              running: 0,
+              failed: 0,
+              currentSourceId: null,
+              currentSourceTitle: null,
+              lastError: null,
+              failedSourceTitle: null,
+              statusBySourceId: {},
+              jobsBySourceId: {}
+            }
       )
       if ((snap?.pending || 0) > 0) {
         setGraphKnownTotal((prev) => Math.max(prev, snap.pending))
       }
-      if ((snap?.pending || 0) === 0 && (snap?.running || 0) === 0) {
+      if ((snap?.windowsTotal || 0) > 0) {
+        setGraphWindowProgress((prev) => {
+          const total = Math.max(prev?.total ?? 0, snap.windowsTotal ?? 0)
+          const done = Math.min(total, Math.max(prev?.done ?? 0, snap.windowsDone ?? 0))
+          const pages =
+            (snap.windowsDone ?? 0) >= (prev?.done ?? 0)
+              ? graphPageSpan(snap) ?? graphPageSpan(prev)
+              : graphPageSpan(prev) ?? graphPageSpan(snap)
+          return {
+            done,
+            total,
+            pageFrom: pages?.pageFrom,
+            pageTo: pages?.pageTo,
+            pageTotal: pages?.pageTotal
+          }
+        })
+      }
+      if ((snap?.pending || 0) === 0 && (snap?.running || 0) === 0 && (snap?.failed || 0) === 0) {
         setGraphWindowProgress(null)
       }
     } catch {
@@ -118,8 +193,15 @@ export function useKnowledgeDetailRefresh(
           failed: graphJobs.failed,
           currentSourceTitle: graphJobs.currentSourceTitle,
           knownTotal: graphKnownTotal,
-          windowsDone: graphWindowProgress?.done,
-          windowsTotal: graphWindowProgress?.total
+        windowsDone: graphWindowProgress?.done,
+        windowsTotal: graphWindowProgress?.total,
+        pageFrom: graphWindowProgress?.pageFrom,
+        pageTo: graphWindowProgress?.pageTo,
+        pageTotal: graphWindowProgress?.pageTotal,
+        lastError: graphJobs.lastError
+          ? knowledgeIngestUserMessage(graphJobs.lastError, t)
+          : null,
+          failedSourceTitle: graphJobs.failedSourceTitle
         }),
         (key, params) => t(key, params)
       ),
@@ -127,9 +209,26 @@ export function useKnowledgeDetailRefresh(
   )
 
   const jobProgress = useMemo<KnowledgeDetailJobProgressView>(() => {
-    const copy = notebookJobProgressCopy({
-      vectorActive: vectorPending,
-      vectorKnownTotal,
+    const graphJobsBySource = { ...graphJobs.jobsBySourceId }
+    const liveSourceId = graphJobs.currentSourceId
+    if (liveSourceId && graphWindowProgress) {
+      const current = graphJobsBySource[liveSourceId]
+      graphJobsBySource[liveSourceId] = {
+        sourceId: liveSourceId,
+        status: current?.status || 'running',
+        lastError: current?.lastError,
+        windowsDone: graphWindowProgress.done,
+        windowsTotal: graphWindowProgress.total,
+        pageFrom: graphWindowProgress.pageFrom,
+        pageTo: graphWindowProgress.pageTo,
+        pageTotal: graphWindowProgress.pageTotal
+      }
+    }
+    const copy = notebookOrganizeProgressCopy({
+      sources,
+      ingestProgress: ocrProgressBySource,
+      queuedSourceIds,
+      graphJobsBySource,
       graph: {
         pending: graphJobs.pending,
         running: graphJobs.running,
@@ -137,44 +236,41 @@ export function useKnowledgeDetailRefresh(
         currentSourceTitle: graphJobs.currentSourceTitle,
         knownTotal: graphKnownTotal,
         windowsDone: graphWindowProgress?.done,
-        windowsTotal: graphWindowProgress?.total
+        windowsTotal: graphWindowProgress?.total,
+        pageFrom: graphWindowProgress?.pageFrom,
+        pageTo: graphWindowProgress?.pageTo,
+        pageTotal: graphWindowProgress?.pageTotal,
+        lastError: graphJobs.lastError,
+        failedSourceTitle: graphJobs.failedSourceTitle
       }
     })
-    return {
-      visible: copy.visible,
-      vector: copy.vector
-        ? {
-            detail:
-              copy.vector.detailKey === 'knowledge.job_vector_done_of'
-                ? t(
-                    'knowledge.job_vector_done_of',
-                    '已完成 {{done}} / {{total}} 份资料',
-                    copy.vector.detailParams
-                  )
-                : t(
-                    'knowledge.job_vector_active',
-                    '正在整理 {{count}} 份资料',
-                    copy.vector.detailParams
-                  ),
-            percent: copy.vector.percent
-          }
-        : null,
-      graph: copy.graph
-        ? formatNotebookGraphProgress(copy.graph, (key, params) => t(key, params))
-        : null
-    }
-  }, [graphJobs, graphKnownTotal, graphWindowProgress, t, vectorKnownTotal, vectorPending])
+    return copy
+  }, [
+    graphJobs,
+    graphKnownTotal,
+    graphWindowProgress,
+    ocrProgressBySource,
+    queuedSourceIds,
+    sources
+  ])
 
   const statusRows = useMemo(() => {
     const providerType = (providerId?: string | null) =>
       providers.find((row) => row.id === providerId)?.type || null
     const extract = resolveGlobalGraphModelIds(globalModels)
-    const visionProvider = visionProviderId || globalModels?.globalDialogueProviderId || ''
+    const visionHit = resolveProviderModelSlot(
+      providers,
+      buildVisionLanguageSlots({
+        visionProviderId,
+        visionModelId
+      })
+    )
+    const visionProvider = visionHit?.providerId || ''
     const embeddingProviderId = globalModels?.globalEmbeddingProviderId || ''
     return buildNotebookOpenGuideRows({
       embeddingModelId: globalModels?.globalEmbeddingModelId,
       graphModelId: extract.modelId,
-      visionModelId: visionModelId || globalModels?.globalDialogueModelId,
+      visionModelId: visionHit?.modelId,
       extractEngine: engine,
       sourceCount: sources.length,
       icons: {
@@ -198,8 +294,15 @@ export function useKnowledgeDetailRefresh(
   }, [engine, globalModels, isDark, providers, sources.length, visionModelId, visionProviderId])
 
   const visionDisplay = useMemo(() => {
-    const providerId = visionProviderId || globalModels?.globalDialogueProviderId || ''
-    const modelId = visionModelId || globalModels?.globalDialogueModelId || ''
+    const visionHit = resolveProviderModelSlot(
+      providers,
+      buildVisionLanguageSlots({
+        visionProviderId,
+        visionModelId
+      })
+    )
+    const providerId = visionHit?.providerId || ''
+    const modelId = visionHit?.modelId || ''
     const provider = providers.find((p) => p.id === providerId)
     const iconSrc =
       (providerId ? getProviderIcon(providerId, isDark) : undefined) ||
@@ -231,6 +334,18 @@ export function useKnowledgeDetailRefresh(
     setSources(list || [])
     setSourcesLoaded(true)
     const byId = new Map((list || []).map((s) => [s.id, s]))
+    setQueuedSourceIds((prev) => {
+      const next = prev.filter((id) => {
+        const row = byId.get(id)
+        return Boolean(
+          row &&
+            (row.status === 'pending' || row.status === 'extracting' || row.status === 'embedding')
+        )
+      })
+      return next.length === prev.length && next.every((id, index) => id === prev[index])
+        ? prev
+        : next
+    })
     setOcrProgressBySource((prev) => {
       const next = { ...prev }
       let changed = false
@@ -249,6 +364,12 @@ export function useKnowledgeDetailRefresh(
       return changed ? next : prev
     })
     void refreshGraphJobs()
+    try {
+      const mismatch = await window.api.knowledge.hasModelMismatch([notebookId])
+      if (gen === refreshGen.current) setModelMismatch(Boolean(mismatch))
+    } catch {
+      if (gen === refreshGen.current) setModelMismatch(false)
+    }
     try {
       const stats = await window.api.knowledge.getStats(notebookId)
       if (gen !== refreshGen.current) return
@@ -307,6 +428,7 @@ export function useKnowledgeDetailRefresh(
 
   useEffect(() => {
     setSourcesLoaded(false)
+    setQueuedSourceIds([])
   }, [notebookId])
 
   useEffect(() => {
@@ -360,11 +482,21 @@ export function useKnowledgeDetailRefresh(
   }, [])
 
   useEffect(() => {
-    const onProgress = (progress?: { windowsDone?: number; windowsTotal?: number }) => {
+    const onProgress = (progress?: {
+      windowsDone?: number
+      windowsTotal?: number
+      pageFrom?: number
+      pageTo?: number
+      pageTotal?: number
+    }) => {
       if (typeof progress?.windowsTotal === 'number' && progress.windowsTotal > 0) {
+        const pages = graphPageSpan(progress)
         setGraphWindowProgress({
           done: Number(progress.windowsDone ?? 0),
-          total: progress.windowsTotal
+          total: progress.windowsTotal,
+          pageFrom: pages?.pageFrom,
+          pageTo: pages?.pageTo,
+          pageTotal: pages?.pageTotal
         })
       }
       void refreshGraphJobs()
@@ -375,7 +507,13 @@ export function useKnowledgeDetailRefresh(
     if (!unsubscribe && typeof window.electron?.ipcRenderer?.on === 'function') {
       const handler = (
         _event: unknown,
-        progress?: { windowsDone?: number; windowsTotal?: number }
+        progress?: {
+          windowsDone?: number
+          windowsTotal?: number
+          pageFrom?: number
+          pageTo?: number
+          pageTotal?: number
+        }
       ) => onProgress(progress)
       const off = window.electron.ipcRenderer.on('knowledge:graph-progress', handler)
       fallback = typeof off === 'function' ? off : undefined
@@ -447,6 +585,8 @@ export function useKnowledgeDetailRefresh(
     engineCaps,
     vectorKnownTotal,
     setVectorKnownTotal,
+    queuedSourceIds,
+    setQueuedSourceIds,
     reprocessWatching,
     setReprocessWatching,
     reprocessSawWorkRef,
@@ -462,6 +602,7 @@ export function useKnowledgeDetailRefresh(
     refresh,
     refreshCaps,
     refreshGraphJobs,
-    hasActiveIngest
+    hasActiveIngest,
+    modelMismatch
   }
 }

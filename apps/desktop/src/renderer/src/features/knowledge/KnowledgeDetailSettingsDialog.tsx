@@ -92,7 +92,6 @@ export function KnowledgeDetailSettingsDialog(props: {
               </div>
               <Select
                 className={styles.settingsControl}
-                size="small"
                 value={props.engine}
                 options={[
                   {
@@ -128,7 +127,6 @@ export function KnowledgeDetailSettingsDialog(props: {
                   </div>
                   <Select
                     className={styles.settingsControl}
-                    size="small"
                     value={props.ocrPresetValue}
                     options={[
                       ...OCR_LANGUAGE_PRESETS.map((p) => ({
@@ -155,7 +153,6 @@ export function KnowledgeDetailSettingsDialog(props: {
                     <div className={styles.settingsDivider} />
                     <div className={styles.settingsRow}>
                       <Input
-                        fieldSize="small"
                         value={props.ocrLanguage}
                         onChange={(e) => props.onOcrLanguageChange(e.target.value)}
                         placeholder="chi_sim+eng"
@@ -180,7 +177,6 @@ export function KnowledgeDetailSettingsDialog(props: {
                   </div>
                   <Select
                     className={styles.settingsControl}
-                    size="small"
                     value={String(props.ocrConcurrency)}
                     options={listOcrConcurrencyValues().map((n) => ({
                       value: String(n),

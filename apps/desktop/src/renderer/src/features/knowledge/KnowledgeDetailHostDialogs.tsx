@@ -165,11 +165,7 @@ export function KnowledgeDetailHostDialogs(props: {
       <KnowledgeSourcePreviewDialog
         open={props.previewOpen}
         onClose={props.onClosePreview}
-        title={
-          props.previewTitle
-            ? `${t('knowledge.preview_source_title', '源文件预览')} · ${props.previewTitle}`
-            : t('knowledge.preview_source_title', '源文件预览')
-        }
+        title={props.previewTitle || t('knowledge.preview_source_title', '源文件预览')}
         loading={props.previewLoading}
         error={props.previewError}
         payload={props.previewPayload}

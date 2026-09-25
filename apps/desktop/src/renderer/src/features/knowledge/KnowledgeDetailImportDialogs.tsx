@@ -150,7 +150,6 @@ export function KnowledgeDetailImportDialogs(props: {
         <label className={styles.field}>
           <span className={styles.fieldLabel}>{t('knowledge.source_title', '标题')}</span>
           <Input
-            fieldSize="small"
             value={props.pasteTitle}
             onChange={(e) => props.onPasteTitleChange(e.target.value)}
           />
@@ -187,7 +186,6 @@ export function KnowledgeDetailImportDialogs(props: {
         <label className={styles.field}>
           <span className={styles.fieldLabel}>URL</span>
           <Input
-            fieldSize="small"
             value={props.urlValue}
             onChange={(e) => props.onUrlChange(e.target.value)}
             placeholder="https://"

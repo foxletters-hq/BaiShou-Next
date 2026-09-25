@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clampOcrConcurrency, normalizeKnowledgeDefaultExtractEngine } from '@baishou/shared'
+import { Button } from '@baishou/ui'
 import { KnowledgeShell } from './KnowledgeShell'
 import { KnowledgeNotebookTabBar } from './KnowledgeNotebookTabBar'
 import { KnowledgeVectorPane } from './KnowledgeVectorPane'
@@ -14,6 +15,7 @@ import { KnowledgeDetailJobBanner } from './KnowledgeDetailJobBanner'
 import { KnowledgeDetailSettingsDialog } from './KnowledgeDetailSettingsDialog'
 import { KnowledgeDetailImportDialogs } from './KnowledgeDetailImportDialogs'
 import { KnowledgeDetailHostDialogs } from './KnowledgeDetailHostDialogs'
+import { KnowledgeDeleteNotebookDialog } from './KnowledgeDeleteNotebookDialog'
 import { useKnowledgeDetailRefresh } from './useKnowledgeDetailRefresh'
 import { useKnowledgeDetailImport } from './useKnowledgeDetailImport'
 import { useKnowledgeDetailActions } from './useKnowledgeDetailActions'
@@ -33,11 +35,13 @@ export const KnowledgeDetailPage: React.FC = () => {
   const setFolderRoot = outlet?.setFolderRoot ?? (() => undefined)
 
   const [activeTab, setActiveTab] = useState<KnowledgeNotebookTab>('sources')
+  const [organizeOpen, setOrganizeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [dataManageOpen, setDataManageOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const settingsWasOpenRef = useRef(false)
   const visionModelTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -88,6 +92,7 @@ export const KnowledgeDetailPage: React.FC = () => {
     setGraphJobs: detail.setGraphJobs,
     setPendingJobs: detail.setPendingJobs,
     setVectorKnownTotal: detail.setVectorKnownTotal,
+    setQueuedSourceIds: detail.setQueuedSourceIds,
     setReprocessWatching: detail.setReprocessWatching,
     reprocessSawWorkRef: detail.reprocessSawWorkRef,
     setDataManageOpen
@@ -151,15 +156,35 @@ export const KnowledgeDetailPage: React.FC = () => {
             </h1>
           </div>
           <KnowledgeNotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className={styles.detailTopRight} />
+          <div className={styles.detailTopRight}>
+            <Button type="button" disabled={busy} onClick={() => setDeleteOpen(true)}>
+              {t('knowledge.delete_notebook', '删除笔记本')}
+            </Button>
+          </div>
         </header>
 
         <KnowledgeDetailJobBanner
-          activeTab={activeTab}
           jobProgress={detail.jobProgress}
           status={status}
           error={error}
+          open={organizeOpen}
+          onOpenChange={setOrganizeOpen}
         />
+
+        {detail.modelMismatch ? (
+          <div className={styles.bannerError} data-testid="knowledge-model-mismatch">
+            <strong>{t('knowledge.model_mismatch_title', '嵌入模型不一致')}</strong>
+            <p>
+              {t(
+                'knowledge.model_mismatch_hard_block',
+                '提问已硬拦截。请重建索引后再问，否则答案会错得很像样。'
+              )}
+            </p>
+            <Button type="button" disabled={busy} onClick={() => void actions.onRebuild()}>
+              {t('knowledge.rebuild_index', '重建索引')}
+            </Button>
+          </div>
+        ) : null}
 
         {activeTab === 'sources' ? (
           <div className={styles.sourcesStage}>
@@ -179,6 +204,7 @@ export const KnowledgeDetailPage: React.FC = () => {
               sources={detail.sources}
               uploadingSources={importing.uploadingSources}
               ocrProgressBySource={detail.ocrProgressBySource}
+              graphJobStatusBySource={detail.graphJobs.statusBySourceId}
               onAddSource={importing.openAddSource}
               onPreview={actions.onPreview}
               onOpenMenu={(source, x, y) => actions.setSourceMenu({ sourceId: source.id, x, y })}
@@ -197,14 +223,13 @@ export const KnowledgeDetailPage: React.FC = () => {
             }
             reloadKey={`${detail.graphJobs.pending}:${detail.graphJobs.running}:${detail.graphJobs.failed}:${detail.graphJobs.currentSourceTitle ?? ''}:${detail.sources.length}:${detail.graphWindowProgress?.done ?? 0}:${detail.graphWindowProgress?.total ?? 0}`}
             onStartExtract={() => {
-              void (
-                window as { api?: { rag?: { triggerBatchEmbed?: () => Promise<unknown> } } }
-              ).api?.rag?.triggerBatchEmbed?.()
+              void window.api.knowledge.organizeNotebook(notebookId)
             }}
             onRebuildGraph={() => {
               actions.setHeavyConfirmSource(null)
               actions.setHeavyConfirmKind('rebuild-graph')
             }}
+            onOpenQueue={() => setOrganizeOpen(true)}
             onPreviewFragments={(edges) => void actions.onPreviewGraphFragments(edges)}
           />
         ) : null}
@@ -283,6 +308,31 @@ export const KnowledgeDetailPage: React.FC = () => {
           setShowSettings(true)
         }}
         onSettleImportProcess={importing.settleImportProcess}
+      />
+
+      <KnowledgeDeleteNotebookDialog
+        open={deleteOpen}
+        notebookName={detail.notebookName || t('knowledge.title', '知识库')}
+        busy={busy}
+        onCancel={() => {
+          if (busy) return
+          setDeleteOpen(false)
+        }}
+        onConfirm={() => {
+          void (async () => {
+            setBusy(true)
+            setError('')
+            try {
+              await window.api.knowledge.deleteNotebook(notebookId)
+              setDeleteOpen(false)
+              goBackToList()
+            } catch (e: unknown) {
+              setError(e instanceof Error ? e.message : String(e))
+            } finally {
+              setBusy(false)
+            }
+          })()
+        }}
       />
 
       <KnowledgeDetailHostDialogs
