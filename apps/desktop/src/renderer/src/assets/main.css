@@ -14,15 +14,8 @@ code {
   font-weight: 600;
   padding: 3px 5px;
   border-radius: 2px;
-  background-color: var(--color-background-mute);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    Liberation Mono,
-    monospace;
+  background-color: var(--bg-surface-normal);
+  font-family: var(--font-family-mono);
   font-size: 85%;
 }
 
@@ -44,20 +37,20 @@ code {
 }
 
 .logo:hover {
-  filter: drop-shadow(0 0 1.2em #6988e6aa);
+  filter: drop-shadow(0 0 1.2em color-mix(in srgb, var(--color-primary) 55%, transparent));
 }
 
 .creator {
   font-size: 14px;
   line-height: 16px;
-  color: var(--ev-c-text-2);
+  color: var(--text-secondary);
   font-weight: 600;
   margin-bottom: 10px;
 }
 
 .text {
   font-size: 28px;
-  color: var(--ev-c-text-1);
+  color: var(--text-primary);
   font-weight: 700;
   line-height: 32px;
   text-align: center;
@@ -68,24 +61,8 @@ code {
 .tip {
   font-size: 16px;
   line-height: 24px;
-  color: var(--ev-c-text-2);
+  color: var(--text-secondary);
   font-weight: 600;
-}
-
-.react {
-  background: -webkit-linear-gradient(315deg, #087ea4 55%, #7c93ee);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
-}
-
-.ts {
-  background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
 }
 
 .actions {
@@ -105,7 +82,7 @@ code {
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-control);
   text-align: center;
   font-weight: 600;
   white-space: nowrap;
@@ -113,15 +90,12 @@ code {
   padding: 0 20px;
   line-height: 38px;
   font-size: 14px;
-  border-color: var(--ev-button-alt-border);
-  color: var(--ev-button-alt-text);
-  background-color: var(--ev-button-alt-bg);
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
 }
 
 .action a:hover {
-  border-color: var(--ev-button-alt-hover-border);
-  color: var(--ev-button-alt-hover-text);
-  background-color: var(--ev-button-alt-hover-bg);
+  background-color: var(--bg-surface-high);
 }
 
 .versions {
@@ -129,19 +103,19 @@ code {
   bottom: 30px;
   margin: 0 auto;
   padding: 15px 0;
-  font-family: 'Menlo', 'Lucida Console', monospace;
+  font-family: var(--font-family-mono);
   display: inline-flex;
   overflow: hidden;
   align-items: center;
   border-radius: 22px;
-  background-color: #202127;
+  background-color: var(--bg-surface);
   backdrop-filter: blur(24px);
 }
 
 .versions li {
   display: block;
   float: left;
-  border-right: 1px solid var(--ev-c-gray-1);
+  border-right: 1px solid var(--border-muted);
   padding: 0 20px;
   font-size: 14px;
   line-height: 14px;

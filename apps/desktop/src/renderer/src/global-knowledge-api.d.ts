@@ -61,6 +61,7 @@ interface KnowledgeAPI {
     coverImageUrl?: string | null
   }>
   reorderNotebooks(orderedIds: string[]): Promise<unknown[]>
+  deleteNotebook(notebookId: string): Promise<{ deleted: true }>
   listNotebookStats(): Promise<
     Array<{
       notebookId: string
@@ -90,6 +91,7 @@ interface KnowledgeAPI {
   reprocessSource(input: { sourceId: string; target: 'embed' | 'graph' }): Promise<{ ok: boolean }>
   deleteSource(sourceId: string): Promise<{ ok: boolean }>
   rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
+  organizeNotebook(notebookId: string): Promise<{ queued: number }>
   manageData(input: {
     notebookId: string
     action: 'clear' | 'reprocess'
@@ -205,11 +207,12 @@ interface KnowledgeAPI {
     }>
   }>
   getSourceFile(input: { sourceId: string }): Promise<{
-    kind: 'pdf' | 'text' | 'url' | 'unsupported'
+    kind: 'pdf' | 'epub' | 'text' | 'url' | 'unsupported'
     fileName: string
     localUrl: string | null
     fileBytes: Uint8Array | null
     textContent: string | null
+    pages?: string[] | null
     originUrl: string | null
   }>
   onOcrProgress(
@@ -217,7 +220,7 @@ interface KnowledgeAPI {
       sourceId: string
       page: number
       total: number
-      phase?: 'ocr' | 'vision' | 'render'
+      phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
     }) => void
   ): () => void
   getGraphView(input: { notebookId: string; maxNodes?: number }): Promise<{
@@ -261,6 +264,35 @@ interface KnowledgeAPI {
     edgeIds?: string[]
     allPending?: boolean
   }): Promise<{ ok: boolean; nodeCount: number; edgeCount: number }>
+  mergeGraphNodes(input: {
+    notebookId: string
+    survivorId: string
+    loserId: string
+    reason?: string
+  }): Promise<{ ok: boolean; survivorId: string; loserId: string }>
+  mergeGraphNodesBatch(input: {
+    notebookId: string
+    survivorId: string
+    loserIds: string[]
+    reason?: string
+  }): Promise<{ ok: boolean; survivorId: string; loserIds: string[] }>
+  listGraphSimilarPairs(notebookId: string): Promise<
+    Array<{
+      nodeId: string
+      nodeName: string
+      peerId: string
+      peerName: string
+      similarity: number
+      reason: string
+      sourceExcerpt?: string
+      createdAt?: string
+    }>
+  >
+  dismissGraphSimilarPair(input: {
+    notebookId: string
+    nodeId: string
+    peerId: string
+  }): Promise<{ ok: boolean }>
   rebuildGraph(notebookId: string): Promise<{ ok: boolean }>
   listGraphJobs(notebookId: string): Promise<{
     pending: number
@@ -268,6 +300,13 @@ interface KnowledgeAPI {
     failed: number
     currentSourceId: string | null
     currentSourceTitle: string | null
+    lastError?: string | null
+    failedSourceTitle?: string | null
+    windowsDone?: number
+    windowsTotal?: number
+    pageFrom?: number
+    pageTo?: number
+    pageTotal?: number
     items: Array<{
       sourceId: string
       title: string
@@ -282,6 +321,9 @@ interface KnowledgeAPI {
       sourceId?: string
       windowsDone?: number
       windowsTotal?: number
+      pageFrom?: number
+      pageTo?: number
+      pageTotal?: number
     }) => void
   ): () => void
 }

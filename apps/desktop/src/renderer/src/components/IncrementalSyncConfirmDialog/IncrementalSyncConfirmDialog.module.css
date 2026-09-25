@@ -85,7 +85,7 @@
 }
 
 .calloutInfo {
-  border-left-color: var(--color-success, #10b981);
+  border-left-color: var(--color-success);
 }
 
 .calloutTitle {
@@ -223,7 +223,7 @@
 }
 
 .dotDownload {
-  background: var(--color-success, #10b981);
+  background: var(--color-success);
 }
 
 .dotDelete {
