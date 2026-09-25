@@ -93,6 +93,7 @@ export function AssistantPickerPromptTab({
         hint={descriptionHint}
       />
       <ResizableMarkdownEditor
+        variant="formField"
         content={editingDescription}
         onChange={(value) => setEditingDescription(value || '')}
         onBlur={() => void saveDescription()}
@@ -108,6 +109,7 @@ export function AssistantPickerPromptTab({
         hint={promptHint}
       />
       <ResizableMarkdownEditor
+        variant="formField"
         content={editingPrompt}
         onChange={(value) => setEditingPrompt(value || '')}
         onBlur={() => saveConfig()}

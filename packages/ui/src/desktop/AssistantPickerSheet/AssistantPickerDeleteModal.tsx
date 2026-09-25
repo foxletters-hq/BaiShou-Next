@@ -17,8 +17,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(4px)'
+        backgroundColor: 'var(--bg-overlay)'
       }}
       onClick={() => setDeleteTargetId(null)}
     >

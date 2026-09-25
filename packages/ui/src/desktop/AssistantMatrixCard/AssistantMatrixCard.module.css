@@ -60,7 +60,7 @@
 .launchBtn {
   padding: 10px 20px;
   background: #f97316;
-  color: white;
+  color: var(--text-on-primary);
   border: none;
   border-radius: 8px;
   font-size: 13px;

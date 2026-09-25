@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '../Button/Button'
 import type { AssistantEditPageProps } from './assistant-edit.types'
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH, isSystemLatteAssistantId } from '@baishou/shared'
@@ -70,7 +71,6 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             <div className={styles.fieldBlock}>
               <h3 className={stack.sectionLabel}>{t('agent.assistant.name_label', '名称')}</h3>
               <Input
-                fieldSize="small"
                 value={form.name}
                 onChange={(e) => form.setName(e.target.value)}
                 placeholder={t('agent.assistant.name_hint')}
@@ -125,6 +125,11 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                 onClick={() => setMoreOpen((open) => !open)}
               >
                 {t('agent.assistant.more_settings_label', '更多设置')}
+                <ChevronDown
+                  size={14}
+                  aria-hidden
+                  className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ''}`}
+                />
               </Button>
               {moreOpen ? (
                 <section className={stack.cardSection}>

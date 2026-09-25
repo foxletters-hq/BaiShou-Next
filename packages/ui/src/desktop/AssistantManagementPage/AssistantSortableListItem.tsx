@@ -56,7 +56,7 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
             {isPinned ? (
               <Pin
                 size={14}
-                color="var(--color-primary, #5BA8F5)"
+                color="var(--color-primary)"
                 style={{ marginLeft: 6, opacity: 0.8 }}
               />
             ) : null}
