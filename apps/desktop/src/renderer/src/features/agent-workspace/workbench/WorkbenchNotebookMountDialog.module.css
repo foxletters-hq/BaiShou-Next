@@ -12,7 +12,7 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.04));
+  background: var(--bg-surface-high);
 }
 
 .icon {
@@ -45,7 +45,7 @@
 
 .unmounted {
   font-size: var(--ui-fs-md);
-  color: var(--text-tertiary, var(--text-secondary));
+  color: var(--text-tertiary);
 }
 
 .actionBtn {
@@ -74,7 +74,7 @@
 .error {
   margin: 0;
   font-size: var(--ui-fs-sm);
-  color: var(--danger, #c0392b);
+  color: var(--color-error);
 }
 
 .hint {
@@ -94,16 +94,19 @@
   overflow: auto;
 }
 
-.notebookBtn {
+.notebookRow {
   width: 100%;
-  text-align: left;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
   cursor: pointer;
-  padding: 8px 10px;
-  font-size: var(--ui-fs-md);
+}
+
+.notebookCopy {
+  min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -111,6 +114,7 @@
 
 .notebookName {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .notebookMeta {
@@ -120,16 +124,15 @@
 
 .notebookWarn {
   font-size: var(--ui-fs-sm);
-  color: var(--text-tertiary, var(--text-secondary));
+  color: var(--text-tertiary);
 }
 
-.notebookBtn:hover:not(:disabled) {
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.04));
+.notebookRow:hover {
+  background: var(--bg-surface-high);
 }
 
-.notebookBtnActive {
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.06));
-  font-weight: 600;
+.notebookRowActive {
+  background: var(--bg-surface-high);
 }
 
 .empty {
@@ -149,7 +152,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border-muted, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--border-muted);
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
@@ -159,6 +162,6 @@
 }
 
 .closeBtn:hover {
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.04));
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
