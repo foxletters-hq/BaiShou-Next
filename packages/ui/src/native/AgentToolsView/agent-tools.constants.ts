@@ -35,6 +35,10 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L80',
     '消息搜索'
   ),
+  'agent.tools.session_list': i18n.t(
+    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L80b',
+    '会话列表'
+  ),
   'agent.tools.vector_search': i18n.t(
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L81',
     '语义搜索'

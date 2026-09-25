@@ -16,6 +16,7 @@ import {
   ScanSearch,
   FileText,
   MessageSquare,
+  MessagesSquare,
   Database,
   DatabaseZap,
   Clock,
@@ -49,6 +50,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   diary_search: <Search size={20} />,
   summary_read: <FileText size={20} />,
   message_search: <MessageSquare size={20} />,
+  session_list: <MessagesSquare size={20} />,
   vector_search: <ScanSearch size={20} />,
   memory_store: <Database size={20} />,
   memory_delete: <DatabaseZap size={20} />,
@@ -173,6 +175,10 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.message_search': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L140',
     '消息搜索'
+  ),
+  'agent.tools.session_list': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L140b',
+    '会话列表'
   ),
   'agent.tools.vector_search': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L141',
