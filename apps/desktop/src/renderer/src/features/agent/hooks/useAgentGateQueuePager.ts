@@ -1,15 +1,17 @@
 import { useCallback } from 'react'
+import type { AgentGateSurface } from '@baishou/shared'
 import { selectQueueNeighborId, selectQueuePosition, useAgentGateInboxStore } from '@baishou/store'
 
 export function useAgentGateQueuePager(
   sessionId: string | undefined,
-  requestId: string | undefined
+  requestId: string | undefined,
+  surface: AgentGateSurface = 'companion'
 ) {
   const queueIndex = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, sessionId, requestId).index
+    (state) => selectQueuePosition(state, sessionId, requestId, surface).index
   )
   const queueTotal = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, sessionId, requestId).total
+    (state) => selectQueuePosition(state, sessionId, requestId, surface).total
   )
 
   const flip = useCallback(
@@ -19,13 +21,14 @@ export function useAgentGateQueuePager(
         useAgentGateInboxStore.getState(),
         sessionId,
         requestId,
-        delta
+        delta,
+        surface
       )
       if (nextId) {
         useAgentGateInboxStore.getState().setFocusedRequest(sessionId, nextId)
       }
     },
-    [requestId, sessionId]
+    [requestId, sessionId, surface]
   )
 
   const onQueuePrev = useCallback(() => flip(-1), [flip])

@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
-import type { AgentGateReply, AgentGateRequest } from '@baishou/shared'
+import type {
+  AgentGateQuestionAnswer,
+  AgentGateReply,
+  AgentGateRequest,
+  AgentGateSurface
+} from '@baishou/shared'
 import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 import { ensureDesktopAgentGateInboxBridge } from '../agent-gate-inbox-bridge'
@@ -13,6 +18,7 @@ import {
   resetCompressionDisplayBuffers,
   clearCompressionStreamState,
   clearStreamBridgeState,
+  finishStreamingSession,
   getOrCreateSessionState,
   markAgentStreamUserStopped,
   type ToolExecution,
@@ -40,7 +46,7 @@ export interface UseAgentStreamResult {
   compressionTriggerMessageId: string | null
   activeTool: { name: string; args: any; callId?: string } | null
   completedTools: ToolExecution[]
-  /** 流式期间收到的 emoji_send 表情包，即时显示为图片 */
+  /** 流式期间收到的 emoji_send 表情包，流结束后显示为图片 */
   pendingEmojis: PendingEmoji[]
   error: string | null
   /** 流已结束、DB 消息尚未刷新时，继续展示 StreamingBubble 避免闪断或重复气泡 */
@@ -95,15 +101,19 @@ export interface UseAgentStreamResult {
     reply: AgentGateReply
     message?: string
     selectedOptionIds?: string[]
+    questionAnswers?: AgentGateQuestionAnswer[]
   }) => Promise<void>
 }
 
-export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
+export function useAgentStream(
+  currentSessionId?: string,
+  surface: AgentGateSurface = 'companion'
+): UseAgentStreamResult {
   const [, setVersion] = useState(0)
   const sessionIdRef = useRef(currentSessionId)
   const isPageActive = useContext(MainPageCacheActiveContext)
   const pendingAgentGate = useAgentGateInboxStore((state) =>
-    selectActivePendingForSession(state, currentSessionId)
+    selectActivePendingForSession(state, currentSessionId, surface)
   )
 
   useEffect(() => {
@@ -202,16 +212,21 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke('agent:chat', {
-        sessionId,
-        text: userText,
-        providerId,
-        modelId,
-        attachments,
-        searchMode,
-        userMsgId,
-        reasoningEffort: getSessionReasoningEffortOverride()
-      })
+      try {
+        await window.electron.ipcRenderer.invoke('agent:chat', {
+          sessionId,
+          text: userText,
+          providerId,
+          modelId,
+          attachments,
+          searchMode,
+          userMsgId,
+          reasoningEffort: getSessionReasoningEffortOverride()
+        })
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
   )
@@ -242,17 +257,22 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke(
-        'agent:edit-message',
-        sessionId,
-        messageId,
-        userText,
-        providerId,
-        modelId,
-        attachments,
-        searchMode,
-        getSessionReasoningEffortOverride()
-      )
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:edit-message',
+          sessionId,
+          messageId,
+          userText,
+          providerId,
+          modelId,
+          attachments,
+          searchMode,
+          getSessionReasoningEffortOverride()
+        )
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
   )
@@ -281,15 +301,20 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke(
-        'agent:resend',
-        sessionId,
-        messageId,
-        searchMode,
-        providerId,
-        modelId,
-        getSessionReasoningEffortOverride()
-      )
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:resend',
+          sessionId,
+          messageId,
+          searchMode,
+          providerId,
+          modelId,
+          getSessionReasoningEffortOverride()
+        )
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
   )
@@ -320,6 +345,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       reply: AgentGateReply
       message?: string
       selectedOptionIds?: string[]
+      questionAnswers?: AgentGateQuestionAnswer[]
     }): Promise<void> => {
       const sessionId = currentSessionId ?? sessionIdRef.current
       if (sessionId) {
@@ -334,6 +360,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
           reply: input.reply,
           message: input.message,
           selectedOptionIds: input.selectedOptionIds,
+          questionAnswers: input.questionAnswers,
           resolvedAt: Date.now()
         })
         await window.api.agentGate.reply(input)

@@ -30,6 +30,7 @@ import {
   isConfiguredProviderId,
   isAgentStreamAbortError
 } from '@baishou/shared'
+import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
 
 /** 尚未落库的草稿会话路由（/chat、/chat/new-session、首页临时 new-<ts>） */
 function isDraftChatSessionId(sessionId: string | undefined): boolean {
@@ -316,6 +317,11 @@ export function useAgentChatFlow() {
         if (!targetSessionId) {
           throw new Error(t('agent.error.create_session_failed', '创建会话失败'))
         }
+        await applyPendingNotebookMountToSession({
+          sessionId: targetSessionId,
+          assistantId: currentAssistant?.id,
+          scope: 'companion'
+        })
       }
 
       const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {

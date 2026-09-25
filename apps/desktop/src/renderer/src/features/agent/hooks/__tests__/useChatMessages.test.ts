@@ -112,7 +112,7 @@ describe('useChatMessages', () => {
         await result.current.refreshMessages(2)
       })
 
-      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's1', 60, 0, false)
+      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's1', 60, 0, true)
       expect(result.current.messages).toHaveLength(2)
       expect(result.current.messages[0].id).toBe('db-1')
     })
@@ -216,7 +216,7 @@ describe('useChatMessages', () => {
         await Promise.resolve()
       })
 
-      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's2', 60, 0, false)
+      expect(mockRenderer.invoke).toHaveBeenCalledWith('agent:get-messages', 's2', 60, 0, true)
     })
 
     it('should restore cached messages with token usage when switching back', async () => {

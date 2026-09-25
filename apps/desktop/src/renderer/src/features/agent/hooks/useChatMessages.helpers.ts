@@ -155,7 +155,7 @@ export async function fetchMessagesFromIpc(
     sessionId,
     limit,
     offset,
-    false
+    true
   )
   return fetched ?? null
 }

@@ -220,6 +220,19 @@ describe('useAgentStream', () => {
       )
       sessionStorage.removeItem('baishou.reasoningEffort.sessionOverride')
     })
+
+    it('should clear isStreaming when resend invoke fails', async () => {
+      mockRenderer.invoke.mockRejectedValue(new Error('IPC failed'))
+      const { result } = renderHook(() => useAgentStream('s1'))
+
+      await act(async () => {
+        await expect(result.current.resendChat('s1', 'm-user', false, 'p1', 'm1')).rejects.toThrow(
+          'IPC failed'
+        )
+      })
+
+      expect(result.current.isStreaming).toBe(false)
+    })
   })
 
   describe('stream events', () => {
@@ -241,6 +254,18 @@ describe('useAgentStream', () => {
       })
       expect(result.current.isStreaming).toBe(false)
       expect(result.current.error).toBe('超时错误')
+    })
+
+    it('should keep an unexpected abort error instead of clearing the stream', () => {
+      const { result } = renderHook(() => useAgentStream('s1'))
+      act(() => {
+        emit('agent:stream-finish', {
+          sessionId: 's1',
+          error: 'The operation was aborted'
+        })
+      })
+      expect(result.current.isStreaming).toBe(false)
+      expect(result.current.error).toBe('The operation was aborted')
     })
 
     it('should accumulate text from stream-chunk events', () => {
