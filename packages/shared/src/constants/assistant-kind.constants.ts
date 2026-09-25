@@ -18,6 +18,7 @@ export const WORK_ASSISTANT_DISABLED_TOOL_IDS = [
   'memory_delete',
   'vector_search',
   'message_search',
+  'session_list',
   'recall_relations',
   'graph_upsert'
 ] as const

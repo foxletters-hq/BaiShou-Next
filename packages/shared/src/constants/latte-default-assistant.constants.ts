@@ -19,6 +19,9 @@ export const SYSTEM_LATTE_ASSISTANT_ID = 'latte'
 
 export const LATTE_ASSISTANT_NAME = 'Latte'
 
+/** Q 版立绘（桌面 / 移动端共用，源文件在 packages/shared/assets/images/） */
+export const LATTE_CHIBI_IMAGE_PATH = 'assets/images/latte-chibi.png'
+
 /** @deprecated 请使用 {@link getDefaultLatteAssistantDescription} */
 export const LATTE_ASSISTANT_DESCRIPTION = getDefaultLatteAssistantDescription('zh')
 

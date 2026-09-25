@@ -104,6 +104,12 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.message_search_tooltip'
   },
   {
+    id: 'session_list',
+    category: 'memory',
+    nameKey: 'agent.tools.session_list',
+    tooltipKey: 'agent.tools.session_list_tooltip'
+  },
+  {
     id: 'vector_search',
     category: 'memory',
     nameKey: 'agent.tools.vector_search',
