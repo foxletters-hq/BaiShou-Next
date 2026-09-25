@@ -1,5 +1,5 @@
 import i18n from 'i18next'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MEMORY_CLEAR_KINDS,
@@ -83,6 +83,12 @@ export const RagClearMemoryModal: React.FC<RagClearMemoryModalProps> = ({
   )
   const [typed, setTyped] = useState('')
 
+  useEffect(() => {
+    if (!open) return
+    setTyped('')
+    setSelected(new Set(MEMORY_CLEAR_VECTOR_KINDS))
+  }, [open])
+
   const selectedKinds = useMemo(
     () => MEMORY_CLEAR_KINDS.filter((kind) => selected.has(kind)),
     [selected]
@@ -142,7 +148,6 @@ export const RagClearMemoryModal: React.FC<RagClearMemoryModalProps> = ({
         })}
       </p>
       <Input
-        fieldSize="small"
         value={typed}
         disabled={busy}
         onChange={(e) => setTyped(e.target.value)}

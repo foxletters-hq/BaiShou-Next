@@ -28,14 +28,16 @@ interface RagMemoryToolbarProps {
   onSourceKindChange: (kind: RagVectorKindFilter) => void
   onAddManualMemory?: () => Promise<void>
   onOpenClear?: () => void
+  suspectCount?: number
+  onReviewSuspects?: () => void
 }
 
 const KIND_FALLBACK: Record<RagVectorKindFilter, string> = {
   all: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L39', '全部'),
   diary: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L40', '日记'),
+  graph_node: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L43', '节点'),
   partner: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L41', '伙伴'),
-  manual: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L42', '手动'),
-  graph_node: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L43', '节点')
+  manual: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagMemoryToolbar.L42', '手动')
 }
 
 export const RagMemoryToolbar: React.FC<RagMemoryToolbarProps> = ({
@@ -50,7 +52,9 @@ export const RagMemoryToolbar: React.FC<RagMemoryToolbarProps> = ({
   onToggleSearchMode,
   onSourceKindChange,
   onAddManualMemory,
-  onOpenClear
+  onOpenClear,
+  suspectCount = 0,
+  onReviewSuspects
 }) => {
   const { t } = useTranslation()
   const [paramsOpen, setParamsOpen] = useState(false)
@@ -119,6 +123,16 @@ export const RagMemoryToolbar: React.FC<RagMemoryToolbarProps> = ({
         <Button type="button" variant="outlined" size="small" onClick={() => setParamsOpen(true)}>
           {t('settings.rag_change_retrieval', '更改检索设置')}
         </Button>
+
+        {onReviewSuspects ? (
+          <Button type="button" variant="outlined" size="small" onClick={onReviewSuspects}>
+            {suspectCount > 0
+              ? t('memory.review_suspects_toolbar_count', '检查待确认节点 ({{count}})', {
+                  count: suspectCount
+                })
+              : t('memory.review_suspects_toolbar', '检查待确认节点')}
+          </Button>
+        ) : null}
 
         <button
           type="button"
