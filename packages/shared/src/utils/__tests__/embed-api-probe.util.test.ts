@@ -25,4 +25,20 @@ describe('probeEmbeddingApi', () => {
       message: EMBED_API_PROBE_FAILURE_MESSAGE
     })
   })
+
+  it('should keep the provider balance message when embedQuery throws', async () => {
+    await expect(
+      probeEmbeddingApi(async () => {
+        throw {
+          message: 'Payment Required',
+          statusCode: 402,
+          responseBody:
+            '{"code":30001,"message":"Sorry, your account balance is insufficient","data":null}'
+        }
+      })
+    ).resolves.toEqual({
+      ok: false,
+      message: 'Sorry, your account balance is insufficient'
+    })
+  })
 })

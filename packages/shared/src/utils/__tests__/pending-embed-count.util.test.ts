@@ -6,7 +6,7 @@ import {
 } from '../pending-embed-count.util'
 
 describe('buildPendingEmbedCounts', () => {
-  it('keeps notebook graph nodes separate from knowledge sources and sums them into total', () => {
+  it('should keep notebook leftovers off the memory-system total', () => {
     expect(
       buildPendingEmbedCounts({
         unindexedDiaryCount: 2,
@@ -21,7 +21,7 @@ describe('buildPendingEmbedCounts', () => {
       graphNodes: 4,
       knowledgeSources: 5,
       notebookGraphNodes: 6,
-      total: 20
+      total: 9
     })
   })
 
@@ -106,5 +106,41 @@ describe('createPendingEmbedCountCache', () => {
     const third = await cache.get(loader)
     expect(third.diaries).toBe(2)
     expect(calls).toBe(2)
+  })
+
+  it('should not write a stale in-flight result after invalidate', async () => {
+    const cache = createPendingEmbedCountCache()
+    let resolveFirst!: (value: ReturnType<typeof buildPendingEmbedCounts>) => void
+    const firstPending = cache.get(
+      () =>
+        new Promise<ReturnType<typeof buildPendingEmbedCounts>>((resolve) => {
+          resolveFirst = resolve
+        })
+    )
+    cache.invalidate()
+    const second = cache.get(async () =>
+      buildPendingEmbedCounts({
+        unindexedDiaryCount: 9,
+        missingMemoryCount: 0,
+        missingGraphNodeCount: 0
+      })
+    )
+    resolveFirst(
+      buildPendingEmbedCounts({
+        unindexedDiaryCount: 1,
+        missingMemoryCount: 0,
+        missingGraphNodeCount: 0
+      })
+    )
+    expect((await second).diaries).toBe(9)
+    expect((await firstPending).diaries).toBe(1)
+    const third = await cache.get(async () =>
+      buildPendingEmbedCounts({
+        unindexedDiaryCount: 3,
+        missingMemoryCount: 0,
+        missingGraphNodeCount: 0
+      })
+    )
+    expect(third.diaries).toBe(9)
   })
 })

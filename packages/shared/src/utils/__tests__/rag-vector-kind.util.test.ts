@@ -4,6 +4,8 @@ import {
   isGraphNodeRagEntry,
   parseGraphNodeEmbeddingId,
   ragVectorKindLabelKey,
+  RAG_VECTOR_KIND_FILTERS,
+  RAG_VECTOR_KINDS,
   resolveRagVectorKind
 } from '../rag-vector-kind.util'
 
@@ -30,5 +32,12 @@ describe('ragVectorKindLabelKey', () => {
   it('maps filter to i18n keys', () => {
     expect(ragVectorKindLabelKey('all')).toBe('settings.rag_filter_all')
     expect(ragVectorKindLabelKey('graph_node')).toBe('settings.rag_source_node')
+  })
+})
+
+describe('RAG_VECTOR_KIND_FILTERS', () => {
+  it('should list all, diary, node, partner, then manual', () => {
+    expect(RAG_VECTOR_KINDS).toEqual(['diary', 'graph_node', 'partner', 'manual'])
+    expect(RAG_VECTOR_KIND_FILTERS).toEqual(['all', 'diary', 'graph_node', 'partner', 'manual'])
   })
 })
