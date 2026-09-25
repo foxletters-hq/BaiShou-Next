@@ -1,8 +1,13 @@
 import React, { useMemo } from 'react'
-import { collectKnowledgeCitationsFromInvocations, type MockChatMessage } from '@baishou/shared'
+import {
+  buildAssistantDisplayTimelineFromParts,
+  collectKnowledgeCitationsFromInvocations,
+  type MockChatMessage
+} from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import { MessageActionBar } from '../MessageActionBar'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
+import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
 import { ToolResultGroup } from '../ToolResultGroupCard'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { ChatBubbleAttachments } from './ChatBubbleAttachments'
@@ -32,6 +37,7 @@ interface ChatBubbleAiRowProps {
   onShowContext?: (msg: MockChatMessage) => void
   onReadAloud?: (content: string) => void
   isTtsPlaying: boolean
+  error?: string | null
   t: (key: string, fallback: string) => string
 }
 
@@ -40,11 +46,18 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = (props) => {
     () => collectKnowledgeCitationsFromInvocations(props.message.toolInvocations),
     [props.message.toolInvocations]
   )
-  return <ChatBubbleAiRowInner {...props} citations={citations} />
+  const timelineItems = useMemo(
+    () => buildAssistantDisplayTimelineFromParts(props.message.parts),
+    [props.message.parts]
+  )
+  return <ChatBubbleAiRowInner {...props} citations={citations} timelineItems={timelineItems} />
 }
 
 const ChatBubbleAiRowInner: React.FC<
-  ChatBubbleAiRowProps & { citations: ReturnType<typeof collectKnowledgeCitationsFromInvocations> }
+  ChatBubbleAiRowProps & {
+    citations: ReturnType<typeof collectKnowledgeCitationsFromInvocations>
+    timelineItems: ReturnType<typeof buildAssistantDisplayTimelineFromParts>
+  }
 > = ({
   message,
   aiProfile,
@@ -66,8 +79,10 @@ const ChatBubbleAiRowInner: React.FC<
   onShowContext,
   onReadAloud,
   isTtsPlaying,
+  error,
   t,
-  citations
+  citations,
+  timelineItems
 }) => (
   <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
     <div className={styles.avatarWrap}>
@@ -102,16 +117,31 @@ const ChatBubbleAiRowInner: React.FC<
       ) : (
         <>
           <div className={styles.aiBubbleCard}>
+            {timelineItems.length > 0 ? (
+              <AssistantDisplayTimeline items={timelineItems} />
+            ) : (
+              <>
+                {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
+                {message.toolInvocations && message.toolInvocations.length > 0 && (
+                  <ToolResultGroup invocations={message.toolInvocations} />
+                )}
+                {cleanContent && <AgentMarkdownRenderer content={cleanContent} />}
+              </>
+            )}
             {message.attachments && message.attachments.length > 0 && (
-              <ChatBubbleAttachments attachments={message.attachments} />
+              <ChatBubbleAttachments
+                attachments={message.attachments}
+                display="sticker"
+                placement="after"
+              />
             )}
-            {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
-            {message.toolInvocations && message.toolInvocations.length > 0 && (
-              <ToolResultGroup invocations={message.toolInvocations} />
-            )}
-            {cleanContent && <AgentMarkdownRenderer content={cleanContent} />}
           </div>
           {citations.length > 0 ? <KnowledgeCitationBlock citations={citations} /> : null}
+          {error ? (
+            <div className={styles.errorBox} role="alert">
+              <span className={styles.errorText}>⚠ {error}</span>
+            </div>
+          ) : null}
 
           <div className={styles.aiFooterRow}>
             <MessageActionBar
