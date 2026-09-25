@@ -99,6 +99,16 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     setupMobileLocalFileReader(fileSystem)
     setupMobileImageCompressor()
     setupMobileTtsRefAudioReader(fileSystem)
+    const { registerMobilePdfExtractor } = await import('../../services/register-mobile-pdf-extractor')
+    const { registerMobilePdfPageBitmapRenderer } = await import(
+      '../../services/register-mobile-pdf-bitmap-renderer'
+    )
+    const { registerMobileVisionPageRecognizer } = await import(
+      '../../services/register-mobile-vision-ocr'
+    )
+    registerMobilePdfExtractor()
+    registerMobilePdfPageBitmapRenderer()
+    registerMobileVisionPageRecognizer()
     const pathService = new MobileStoragePathService(fileSystem) as any
 
     const startupIntegrity = await verifyExpoAgentDatabaseIntegrity(install.expoDb)
