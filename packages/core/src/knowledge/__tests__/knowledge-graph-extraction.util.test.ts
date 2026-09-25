@@ -246,6 +246,84 @@ describe('KnowledgeGraphExtractionService source shards', () => {
     expect(writes[writes.length - 1]!.aliases).toEqual(expect.arrayContaining(['小明', '明明']))
   })
 
+  it('should report the current window before the model returns so the UI can advance', async () => {
+    const progress: Array<{ windowsDone: number; windowsTotal: number }> = []
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const service = new KnowledgeGraphExtractionService({
+      raw: {
+        getExtractState: vi.fn(async () => null),
+        replaceSourceGraph: vi.fn(async () => undefined)
+      } as never,
+      repo: {
+        findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
+        supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
+      } as never,
+      index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
+      llm: async () => {
+        await gate
+        return JSON.stringify({ entities: [{ name: '甲', type: 'person' }], edges: [] })
+      },
+      getVaultName: () => 'Personal'
+    })
+
+    const run = service.extractSource({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      sourceId: 'src1',
+      sourceTitle: '资料',
+      text: `${'甲'.repeat(5000)}${'乙'.repeat(5000)}`,
+      textHash: 'h-live',
+      onProgress: (info) => progress.push(info)
+    })
+
+    await vi.waitFor(() => {
+      expect(progress.some((row) => row.windowsDone >= 1 && row.windowsTotal >= 1)).toBe(true)
+    })
+    release()
+    await run
+  })
+
+  it('should skip a timed-out window and keep extracting later windows', async () => {
+    const states: number[] = []
+    let calls = 0
+    const service = new KnowledgeGraphExtractionService({
+      raw: {
+        getExtractState: vi.fn(async () => null),
+        replaceSourceGraph: vi.fn(async (input: { extractState: { windowsDone: number } }) => {
+          states.push(input.extractState.windowsDone)
+        })
+      } as never,
+      repo: {
+        findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
+        supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
+      } as never,
+      index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
+      llm: async () => {
+        calls += 1
+        if (calls === 1) throw new Error('graph-extract-window-timeout')
+        return JSON.stringify({ entities: [{ name: '乙', type: 'person' }], edges: [] })
+      },
+      getVaultName: () => 'Personal'
+    })
+
+    const result = await service.extractSource({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      sourceId: 'src1',
+      sourceTitle: '资料',
+      text: `${'甲'.repeat(5000)}${'乙'.repeat(5000)}`,
+      textHash: 'h-timeout-skip'
+    })
+    expect(result.windows).toBe(1)
+    expect(calls).toBe(2)
+    expect(states.at(-1)).toBe(2)
+  })
+
   it('解析失败不推进 windowsDone', async () => {
     const states: number[] = []
     let calls = 0

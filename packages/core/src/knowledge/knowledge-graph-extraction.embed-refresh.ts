@@ -61,10 +61,11 @@ export async function refreshNotebookEmbeddingsAfterAlign(
     notebookId: string
     nodes: Iterable<NotebookGraphNodeRawRecord>
     pendingEmbeddings: Map<string, number[]>
-  }
+  },
+  options?: { requireEmbed?: boolean }
 ): Promise<void> {
   const embedQuery = deps.align?.embedQuery
-  const clear = deps.repo.clearNodeEmbedding
+  const clear = deps.repo.clearNodeEmbedding?.bind(deps.repo)
   for (const node of input.nodes) {
     if (node.nodeType === 'source' || node.nodeType === 'entry') continue
     const prior = await lookupPriorCard(deps, input.vaultId, input.notebookId, node)
@@ -79,8 +80,8 @@ export async function refreshNotebookEmbeddingsAfterAlign(
           input.pendingEmbeddings.set(node.id, embedding)
           wrote = true
         }
-      } catch {
-        // 算失败则清旧向量，避免旧名片向量留在库里
+      } catch (error) {
+        if (options?.requireEmbed) throw error
       }
     }
     if (!wrote && clear) {
