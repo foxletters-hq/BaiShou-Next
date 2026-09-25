@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,8 +11,10 @@ import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { GraphPage } from '../graph/GraphPage'
 import { MemoryHelpButton } from './MemoryHelpButton'
+import { MemoryOrganizePanelHost } from './MemoryOrganizePanelHost'
 import { MemoryReadinessBar } from './MemoryReadinessBar'
 import { MemoryVectorTab } from './MemoryVectorTab'
+import { consumeMemoryGraphTab, subscribeMemoryGraphTab } from './memory-graph-tab-focus'
 import { setMemoryOrganizePipeline, useMemoryReadiness } from './useMemoryReadiness'
 import { patchCachedRagActiveState } from '../settings/rag-runtime-cache'
 import {
@@ -30,7 +32,18 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   const routeTab = memoryCenterTabFromPath(location.pathname)
   const [localTab, setLocalTab] = useState<MemoryCenterTab>(embedded ? 'vectors' : routeTab)
   const tab = embedded ? localTab : routeTab
+  const [mountedTabs, setMountedTabs] = useState<Set<MemoryCenterTab>>(() => new Set([tab]))
+  const [organizeOpen, setOrganizeOpen] = useState(false)
   const readiness = useMemoryReadiness()
+
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(tab)) return prev
+      const next = new Set(prev)
+      next.add(tab)
+      return next
+    })
+  }, [tab])
 
   const goConfigure = useCallback(() => {
     if (location.pathname.startsWith('/settings')) {
@@ -50,6 +63,14 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
     },
     [embedded, navigate]
   )
+
+  useEffect(() => {
+    const applyGraphTab = () => {
+      if (consumeMemoryGraphTab()) selectTab('graph')
+    }
+    applyGraphTab()
+    return subscribeMemoryGraphTab(applyGraphTab)
+  }, [selectTab])
 
   const startBatchEmbed = useCallback(async (): Promise<
     'ok' | 'cancelled' | 'already-running' | 'failed'
@@ -132,6 +153,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       onConfigureEmbedding={goConfigure}
       onStartIndex={startOrganizeMemory}
       onStartOrganize={startOrganizeMemory}
+      onOpenOrganize={() => setOrganizeOpen(true)}
       pendingEmbedParts={readiness.pendingEmbedParts}
       pendingGraphCount={readiness.pendingGraphCount}
       indexing={readiness.indexing}
@@ -160,7 +182,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
         <div className={styles.titleRow}>
           <div className={styles.titleLead}>
             <h1 className={styles.title}>{t('memory.title', '全局 AI 记忆')}</h1>
-            <MemoryHelpButton className={styles.titleHelp} />
+            <MemoryHelpButton />
             <div className={styles.tabs}>
               <SegmentedControl
                 value={tab}
@@ -175,14 +197,26 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       </header>
 
       <div className={styles.body}>
-        {tab === 'vectors' ? (
-          <MemoryVectorTab />
-        ) : (
-          <div className={styles.graphHost}>
-            <GraphPage embedded onUnifiedOrganize={startOrganizeMemory} />
+        {mountedTabs.has('vectors') ? (
+          <div
+            className={`${styles.vectorHost} ${tab === 'vectors' ? '' : styles.tabPanelHidden}`}
+            aria-hidden={tab !== 'vectors'}
+            inert={tab !== 'vectors'}
+          >
+            <MemoryVectorTab />
           </div>
-        )}
+        ) : null}
+        {mountedTabs.has('graph') ? (
+          <div
+            className={`${styles.graphHost} ${tab === 'graph' ? '' : styles.tabPanelHidden}`}
+            aria-hidden={tab !== 'graph'}
+            inert={tab !== 'graph'}
+          >
+            <GraphPage embedded active={tab === 'graph'} onUnifiedOrganize={startOrganizeMemory} />
+          </div>
+        ) : null}
       </div>
+      <MemoryOrganizePanelHost open={organizeOpen} onClose={() => setOrganizeOpen(false)} />
     </div>
   )
 }

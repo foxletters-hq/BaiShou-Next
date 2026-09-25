@@ -30,6 +30,9 @@ describe('memory center chrome', () => {
     )
     expect(readSrc('features/memory/MemoryCenterPage.tsx')).toContain('<MemoryReadinessBar')
     expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain('extraStatsChips')
+    expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
+      'hideOrganizeProgress={embedded}'
+    )
   })
 
   it('B2: MainPageCache maps /memory and /memory/vectors to the memory page', () => {
@@ -78,6 +81,7 @@ describe('memory center chrome', () => {
     expect(pageCss).toMatch(/\.title \{[^}]*display: inline-flex/)
     expect(pageCss).toMatch(/\.title \{[^}]*align-items: center/)
     expect(pageCss).toMatch(/\.title \{[^}]*line-height: 1/)
+    expect(pageCss).not.toContain('.titleHelp')
     expect(ragCss).toMatch(/\.statusStrip \{[^}]*align-items: center/)
     expect(ragCss).toMatch(/\.enableChip \{[^}]*align-items: center/)
     expect(ragCss).toMatch(/\.enableChip \{[^}]*line-height: 1/)
@@ -96,9 +100,23 @@ describe('memory center chrome', () => {
     )
     expect(src).toContain('to="/memory/vectors"')
     expect(src).toContain('<MemoryHelpButton')
+    expect(src).not.toContain('className={styles.titleHelp}')
     expect(src).not.toContain('HelpTooltip')
     expect(src.indexOf('styles.titleRow')).toBeLessThan(src.indexOf('styles.tabs'))
     expect(src.indexOf('styles.tabs')).toBeLessThan(src.indexOf('</header>'))
+  })
+
+  it('keeps both memory tabs mounted after the first visit and only hides the inactive one', () => {
+    const src = readSrc('features/memory/MemoryCenterPage.tsx')
+    const css = readSrc('features/memory/MemoryCenterPage.module.css')
+    expect(src).toContain('mountedTabs')
+    expect(src).toContain("mountedTabs.has('vectors')")
+    expect(src).toContain("mountedTabs.has('graph')")
+    expect(src).toContain('tabPanelHidden')
+    expect(src).toContain('active={tab === \'graph\'}')
+    expect(css).toContain('.tabPanelHidden')
+    expect(css).toMatch(/\.tabPanelHidden \{[^}]*visibility: hidden/)
+    expect(css).toMatch(/\.tabPanelHidden \{[^}]*position: absolute/)
   })
 
   it('vector tab fills the remaining height so the list can scroll', () => {
@@ -118,11 +136,15 @@ describe('memory center chrome', () => {
     expect(types).toContain('isSearching?: boolean')
     expect(view).toContain('isSearching')
     expect(view).toContain('styles.searchingState')
+    expect(view).toContain('styles.searchingOverlay')
     expect(view).toContain('settings.rag_searching')
     expect(css).toContain('.searchingState')
     expect(css).toContain('.searchingSpinner')
+    expect(css).toContain('.searchingOverlay')
     expect(hook).toContain('invalidateInFlightListQuery')
     expect(hook).toContain('handleSourceKindChange')
+    expect(hook).toContain('includeStats: false')
+    expect(hook).toContain('checkMigration: false')
     expect(pane).toContain('isSearching={isSearching}')
   })
 
@@ -154,6 +176,13 @@ describe('memory center chrome', () => {
     expect(modal).toContain('settings.rag_clear_kind_graph')
     expect(hook).toContain('clearAll({ kinds')
     expect(hook).toContain('clearLifeGraph')
+    expect(hook).toContain('cancelBatchEmbed')
+    expect(hook).toContain('toast.showSuccess')
+    expect(hook).toContain('toast.showError')
+    expect(hook).toContain('settings.rag_clear_all_done')
+    expect(modal).toContain('useEffect')
+    expect(modal).toContain('if (!open) return')
+    expect(modal).toContain("setTyped('')")
   })
 
   it('retrieval sliders live in a modal instead of eating the page header', () => {
@@ -162,6 +191,19 @@ describe('memory center chrome', () => {
     expect(view).not.toContain('RagMemoryConfigBlock')
     expect(toolbar).toContain('RagMemoryParamsModal')
     expect(readRagSrc('RagMemoryParamsModal.tsx')).toContain('<RagMemoryConfigBlock')
+  })
+
+  it('should keep suspect review next to retrieval settings in the toolbar', () => {
+    const view = readRagSrc('RagMemoryView.tsx')
+    const toolbar = readRagSrc('RagMemoryToolbar.tsx')
+    expect(toolbar).toContain('onReviewSuspects')
+    expect(toolbar).toContain('memory.review_suspects_toolbar')
+    expect(toolbar).toContain('settings.rag_change_retrieval')
+    expect(toolbar.indexOf('settings.rag_change_retrieval')).toBeLessThan(
+      toolbar.indexOf('memory.review_suspects_toolbar')
+    )
+    expect(view).toContain('suspectCount={suspectCount}')
+    expect(view).toContain('onReviewSuspects={onReviewSuspects}')
   })
 
   it('B8: DiaryPage status bar jumps to memory tabs', () => {
@@ -193,6 +235,12 @@ describe('memory center chrome', () => {
     expect(readSrc('features/memory/pending-embed-part-lines.util.ts')).toContain(
       'pending_embed_part_graph_extract'
     )
+    expect(readSrc('features/memory/pending-embed-part-lines.util.ts')).not.toContain(
+      'pending_embed_part_notebook_graph_nodes'
+    )
+    expect(readSrc('features/memory/pending-embed-part-lines.util.ts')).not.toContain(
+      'pending_embed_part_knowledge'
+    )
     expect(bar).toContain('listPendingEmbedPartLines')
     expect(bar).toContain('AnchoredContextMenu')
     expect(bar).toContain('alignEnd')
@@ -214,8 +262,25 @@ describe('memory center chrome', () => {
     expect(page).toContain('onUnifiedOrganize')
     expect(page).not.toContain('finishEmbedThenGraph')
     expect(page).not.toContain('graphQueueExtract')
-    expect(page).not.toContain("selectTab('graph')")
+    const organizeFn = page.slice(
+      page.indexOf('const startOrganizeMemory'),
+      page.indexOf('const topBarOmit')
+    )
+    expect(organizeFn).not.toContain("selectTab('graph')")
+    expect(organizeFn).not.toContain("selectTab('vectors')")
+    expect(page).toContain('consumeMemoryGraphTab')
+    expect(page).toContain("selectTab('graph')")
     expect(page).not.toContain("selectTab('vectors')")
+    expect(page).toContain('MemoryOrganizePanelHost')
+    expect(page).toContain('onOpenOrganize={() => setOrganizeOpen(true)}')
+    expect(bar).toContain('onOpenOrganize')
+    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain('RagMemoryOrganizeModal')
+    expect(readRagSrc('RagMemoryView.tsx')).toContain('hideOrganizeProgress')
+    expect(readRagSrc('RagMemoryAlerts.tsx')).toContain("surface !== 'organize'")
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('surface="organize"')
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('<Modal')
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('memory.organize_done')
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('common.got_it')
     expect(bar).toContain('memory.readiness_need_embedding')
     expect(bar).toContain('memory.go_configure')
     expect(css).toMatch(/\.titleRow \{[^}]*flex-wrap: wrap/)
@@ -249,6 +314,7 @@ describe('memory center chrome', () => {
     expect(bar).toContain('extracting')
     expect(bar).toContain('graph.extract_progress')
     expect(rag).toContain('embed-pending-changed')
+    expect(readiness).toContain("event?.type === 'embed-pending-changed'")
     expect(rag).toContain("type === 'batchEmbed'")
     expect(rag).toContain('reloadRagList')
     expect(readiness).toContain('setMemoryOrganizePipeline')
@@ -259,6 +325,8 @@ describe('memory center chrome', () => {
     expect(page).toContain('firstActivePhase')
     expect(page).toContain('memory.readiness_organizing')
     expect(bar).toContain('readiness_graph_starting')
+    expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('MEMORY_ORGANIZE_PHASE_IDS')
+    expect(readRagSrc('RagMemoryAlerts.tsx')).not.toContain('RAG_BATCH_EMBED_PHASE_IDS')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('completed: item.completed')
     expect(readRagSrc('RagMemoryAlerts.tsx')).not.toContain('completed: item.total')
     expect(readRagSrc('RagMemoryView.tsx')).not.toContain('RagMemoryDiaryEmbedHint')
@@ -269,8 +337,38 @@ describe('memory center chrome', () => {
     expect(readSrc('features/settings/hooks/useRagSystem.ts')).toContain('toast.showError')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('graphExtractWaiting')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('showGraphExtractCard')
+    expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('memory.suspects_need_review')
+    expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('memory.review_suspects')
+    expect(readSrc('features/memory/useMemoryReadiness.ts')).toContain('listSuspectNodes')
+    expect(readSrc('features/memory/useMemoryReadiness.ts')).toContain(
+      "setMemoryOrganizePipeline('idle')"
+    )
+    expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
+      'shouldWaitForGraphExtract'
+    )
+    expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
+      'requestMemoryGraphTab'
+    )
+    expect(readSrc('features/settings/components/RagSettingsPane.tsx')).not.toContain(
+      "navigate('/memory/graph')"
+    )
+    expect(readSrc('features/memory/MemoryCenterPage.tsx')).toContain('consumeMemoryGraphTab')
+    expect(readSrc('features/graph/useGraphPageModel.ts')).toContain('subscribeGraphPendingFocus')
+    expect(readSrc('features/graph/GraphPagePendingPane.tsx')).toContain('graph.suspect_badge')
+    expect(readSrc('features/graph/GraphPagePendingPane.tsx')).toContain('graph.suspect_pending_hint')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('memory.readiness_organizing')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('life_graph')
+    const ragCss = readRagSrc('RagMemoryView.module.css')
+    const alertBlock = ragCss.slice(
+      ragCss.indexOf('.migrationAlert {'),
+      ragCss.indexOf('.migrationRow {')
+    )
+    expect(alertBlock).toContain('background: var(--bg-surface)')
+    expect(alertBlock).toContain('border: 1px solid var(--border-card)')
+    expect(alertBlock).not.toContain('--color-primary-light')
+    const titleBlock = ragCss.slice(ragCss.indexOf('.migTitle {'), ragCss.indexOf('.spinner {'))
+    expect(titleBlock).toContain('color: var(--text-primary)')
+    expect(titleBlock).not.toContain('--color-primary')
   })
 
   it('C3: memory help stays mounted independently of the readiness bar', () => {
@@ -282,6 +380,33 @@ describe('memory center chrome', () => {
     const barIndex = page.indexOf('<MemoryReadinessBar')
     expect(helpIndex).toBeGreaterThanOrEqual(0)
     expect(barIndex).toBeGreaterThanOrEqual(0)
+  })
+
+  it('should call the review entry 检查待确认节点 instead of 检查可疑节点', () => {
+    const zh = readFileSync(join(repoRoot, 'packages/shared/src/i18n/zh.i18n.json'), 'utf8')
+    expect(zh).toContain('"review_suspects_toolbar": "检查待确认节点"')
+    expect(zh).toContain('"review_suspects_toolbar_count": "检查待确认节点 ({{count}})"')
+    expect(zh).not.toContain('检查可疑节点')
+    const toolbar = readRagSrc('RagMemoryToolbar.tsx')
+    expect(toolbar).toContain('检查待确认节点')
+    expect(toolbar).not.toContain('检查可疑节点')
+  })
+
+  it('should keep suspect review i18n keys in all four locale files', () => {
+    const keys = [
+      'suspects_need_review',
+      'review_suspects',
+      'review_suspects_toolbar',
+      'review_suspects_toolbar_count',
+      'rag_clear_all_done',
+      'rag_clear_all_failed'
+    ]
+    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
+      const json = readFileSync(join(repoRoot, 'packages/shared/src/i18n', locale), 'utf8')
+      for (const key of keys) {
+        expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
+      }
+    }
   })
 
   it('C4: Chinese copy states notebook memory is not merged into the center', () => {
