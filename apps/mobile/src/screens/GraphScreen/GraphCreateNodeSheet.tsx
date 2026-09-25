@@ -120,11 +120,11 @@ export function GraphCreateNodeSheet(props: {
     const disc = registerDiscriminator.trim()
     const nextLabel = registerLabel.trim() || name.trim()
     if (!disc) {
-      setError(t('graph.split_discriminator_required', '请填写区分信息'))
+      setError(t('graph.split_discriminator_required', '请填写怎么区分这两个人'))
       return
     }
     if (!nextLabel) {
-      setError(t('graph.split_label_required', '请填写展示标签'))
+      setError(t('graph.split_label_required', '请填写图谱上怎么称呼新的这个'))
       return
     }
     setSaving(true)
@@ -188,6 +188,12 @@ export function GraphCreateNodeSheet(props: {
           multiline
           textarea
         />
+        <Input
+          label={t('graph.label_aliases', '别名')}
+          value={aliases}
+          onChangeText={setAliases}
+          placeholder={t('graph.aliases_placeholder', '逗号分隔')}
+        />
         {conflict ? (
           <View style={{ gap: 8 }}>
             <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18 }}>
@@ -200,14 +206,18 @@ export function GraphCreateNodeSheet(props: {
               )}
             </Text>
             <Input
-              label={t('graph.discriminator_label', '区分信息')}
+              label={t('graph.split_discriminator', '怎么区分这两个人')}
               value={registerDiscriminator}
               onChangeText={setRegisterDiscriminator}
+              placeholder={t('graph.discriminator_placeholder', '例如：同事、大学同学')}
             />
             <Input
-              label={t('graph.split_label', '展示标签')}
+              label={t('graph.split_label', '图谱上怎么称呼新的这个')}
               value={registerLabel}
               onChangeText={setRegisterLabel}
+              placeholder={t('graph.split_label_placeholder', '例如：{{name}}（同事）', {
+                name: name.trim() || conflict.name
+              })}
             />
           </View>
         ) : null}

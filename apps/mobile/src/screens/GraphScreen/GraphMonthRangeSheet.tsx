@@ -190,7 +190,7 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
                   >
                     <Text
                       style={{
-                        color: active ? '#fff' : colors.textPrimary,
+                        color: active ? colors.textOnPrimary : colors.textPrimary,
                         fontWeight: active || selectedYear ? '700' : '500',
                         fontSize: 13,
                         textAlign: 'center'
@@ -225,7 +225,7 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
                   >
                     <Text
                       style={{
-                        color: selected ? '#fff' : colors.textPrimary,
+                        color: selected ? colors.textOnPrimary : colors.textPrimary,
                         fontSize: 12,
                         fontWeight: selected ? '700' : '500'
                       }}

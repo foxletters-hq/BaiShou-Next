@@ -10,7 +10,17 @@ function step(){
       const a=nodes[i], b=nodes[j];
       let dx=a.x-b.x, dy=a.y-b.y;
       let dist2=dx*dx+dy*dy||1;
-      let f=chargeMag*4.5/dist2;
+      const degA = degreeById.get(a.id)||0;
+      const degB = degreeById.get(b.id)||0;
+      const bothIso = degA <= 0 && degB <= 0;
+      const mixed = (degA <= 0) !== (degB <= 0);
+      const pairScale = bothIso ? ISOLATED_CHARGE_SCALE : mixed ? MIXED_CHARGE_SCALE : 1;
+      if(!bothIso){
+        const chargeMax = Math.max(CHARGE_DISTANCE_MAX_MIN, linkDist * CHARGE_DISTANCE_MAX_LINK_SCALE);
+        if(dist2 > chargeMax*chargeMax) continue;
+      }
+      if(pairScale === 0) continue;
+      let f=chargeMag*4.5*pairScale/dist2;
       let dist=Math.sqrt(dist2);
       dx/=dist; dy/=dist;
       a.vx+=dx*f; a.vy+=dy*f;
@@ -31,9 +41,12 @@ function step(){
   const cy = (H/2 - transform.y) / k;
   for(const nd of nodes){
     if(dragNode && nd.id===dragNode) continue;
-    nd.vx += (cx - nd.x) * centerK * 0.15;
-    nd.vy += (cy - nd.y) * centerK * 0.15;
-    nd.vx*=0.85; nd.vy*=0.85;
+    const deg = degreeById.get(nd.id)||0;
+    const ck = deg <= 0 ? centerK * ISOLATED_CENTER_SCALE : centerK;
+    nd.vx += (cx - nd.x) * ck * 0.15;
+    nd.vy += (cy - nd.y) * ck * 0.15;
+    const damp = deg <= 0 ? (1 - VELOCITY_DECAY) : 0.85;
+    nd.vx*=damp; nd.vy*=damp;
     nd.x+=nd.vx; nd.y+=nd.vy;
   }
 }

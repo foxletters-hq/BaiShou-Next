@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { asGraphTranslateFn, translateGraphEdgeType } from '@baishou/shared'
-import { Button, FloatingModal, Input, SegmentedControl, useNativeTheme } from '@baishou/ui/native'
+import {
+  asGraphTranslateFn,
+  formatGraphSplitPartnerName,
+  graphSplitEdgePageCount,
+  graphSplitNewDisplayName,
+  shouldCloseGraphSplitAfterSave,
+  sliceGraphSplitEdges,
+  translateGraphEdgeType
+} from '@baishou/shared'
+import {
+  Button,
+  FloatingModal,
+  Input,
+  Pagination,
+  SegmentedControl,
+  useNativeTheme
+} from '@baishou/ui/native'
 import type { AppDatabase } from '@baishou/database'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
 import {
@@ -27,14 +42,18 @@ export function GraphSplitNodeSheet(props: {
   vaultId: string
   vaultName: string
   busy?: boolean
+  canApprove?: boolean
+  hasSuspectReason?: boolean
   onClose: () => void
   onSplit: (splitNodeId: string) => void
+  onApprove?: () => void
 }): React.ReactElement {
   const { t } = useTranslation()
   const tr = asGraphTranslateFn(t)
   const { colors } = useNativeTheme()
   const [discriminator, setDiscriminator] = useState('')
   const [label, setLabel] = useState('')
+  const [labelTouched, setLabelTouched] = useState(false)
   const [summary, setSummary] = useState('')
   const [bareNodeId, setBareNodeId] = useState<string | null>(null)
   const [edges, setEdges] = useState<MobileSplitEdgeRow[]>([])
@@ -43,15 +62,18 @@ export function GraphSplitNodeSheet(props: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (!props.visible || !props.nodeId || !props.drizzleDb) return
     setDiscriminator(props.initialDiscriminator ?? '')
     setLabel(props.initialLabel ?? '')
+    setLabelTouched(Boolean(props.initialLabel?.trim()))
     setSummary('')
     setError('')
     setUnassignedIds([])
     setSaving(false)
+    setPage(1)
     let cancelled = false
     setLoading(true)
     void (async () => {
@@ -88,21 +110,55 @@ export function GraphSplitNodeSheet(props: {
     props.drizzleDb
   ])
 
+  const originalName = (props.nodeName ?? '').trim()
+  const newDisplayName = graphSplitNewDisplayName({
+    nodeName: originalName,
+    discriminator,
+    label
+  })
+  const pageCount = graphSplitEdgePageCount(edges.length)
+  const visibleEdges = useMemo(() => sliceGraphSplitEdges(edges, page), [edges, page])
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount)
+  }, [page, pageCount])
+
   const unassignedCount = useMemo(
     () => edges.filter((edge) => (targets[edge.edgeId] ?? 'unassigned') === 'unassigned').length,
     [edges, targets]
   )
 
+  const changeDiscriminator = (value: string) => {
+    setDiscriminator(value)
+    if (labelTouched) return
+    setLabel(
+      graphSplitNewDisplayName({
+        nodeName: originalName,
+        discriminator: value,
+        label: ''
+      })
+    )
+  }
+
   const submit = async () => {
-    if (!bareNodeId || !props.drizzleDb) return
+    if (!bareNodeId || !props.drizzleDb) {
+      setError(t('graph.split_not_ready', '节点还没准备好，请关了再打开一次'))
+      return
+    }
     const trimmedDisc = discriminator.trim()
-    const trimmedLabel = label.trim()
+    const trimmedLabel =
+      label.trim() ||
+      graphSplitNewDisplayName({
+        nodeName: originalName,
+        discriminator: trimmedDisc,
+        label: ''
+      })
     if (!trimmedDisc) {
-      setError(t('graph.split_discriminator_required', '请填写区分信息'))
+      setError(t('graph.split_discriminator_required', '请填写怎么区分这两个人'))
       return
     }
     if (!trimmedLabel) {
-      setError(t('graph.split_label_required', '请填写展示标签'))
+      setError(t('graph.split_label_required', '请填写图谱上怎么称呼新的这个'))
       return
     }
     setSaving(true)
@@ -127,16 +183,11 @@ export function GraphSplitNodeSheet(props: {
         summary,
         edgeAssignments
       })
-      setUnassignedIds(result.unassignedEdgeIds)
-      if (result.unassignedEdgeIds.length === 0) {
-        props.onSplit(result.splitNodeId)
+      if (!shouldCloseGraphSplitAfterSave(result)) {
+        setError(t('graph.split_failed', '拆分失败'))
         return
       }
-      setTargets((prev) => {
-        const next = { ...prev }
-        for (const edgeId of result.unassignedEdgeIds) next[edgeId] = 'unassigned'
-        return next
-      })
+      props.onSplit(result.splitNodeId)
     } catch (e) {
       setError(mobileSplitErrorMessage(e))
     } finally {
@@ -148,25 +199,43 @@ export function GraphSplitNodeSheet(props: {
     <FloatingModal visible={props.visible} onClose={props.onClose} closeOnBackdropPress={!saving}>
       <View style={{ padding: 20, gap: 10, maxHeight: 560 }}>
         <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
-          {t('graph.split_node_title', '拆分同名实体')}
+          {t('graph.split_node_title', '把同名的拆成两个')}
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
           {t(
             'graph.split_node_hint',
-            '填写区分信息和展示标签，再把关系留给原实体或归给新实体。还没分配的关系下次还能继续。'
+            '先写清新的这个和原来的怎么区分。下面每条关系可以留给原来的、给新的，或先不管。先不管的下次还能继续分。'
           )}
         </Text>
         <Input
-          label={t('graph.discriminator_label', '区分信息')}
+          label={t('graph.split_discriminator', '怎么区分这两个人')}
           value={discriminator}
-          onChangeText={setDiscriminator}
+          onChangeText={changeDiscriminator}
+          placeholder={t('graph.discriminator_placeholder', '例如：同事、大学同学')}
         />
-        <Input label={t('graph.split_label', '展示标签')} value={label} onChangeText={setLabel} />
-        <Input label={t('graph.label_summary', '摘要')} value={summary} onChangeText={setSummary} />
+        <Input
+          label={t('graph.split_label', '图谱上怎么称呼新的这个')}
+          value={label}
+          onChangeText={(value) => {
+            setLabelTouched(true)
+            setLabel(value)
+          }}
+          placeholder={t('graph.split_label_placeholder', '例如：{{name}}（同事）', {
+            name: originalName || '张三'
+          })}
+        />
+        <Input
+          label={t('graph.split_summary', '一句话介绍新的这个')}
+          value={summary}
+          onChangeText={setSummary}
+        />
+        <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>
+          {t('graph.split_edges_heading', '这些关系分别是谁的')}
+        </Text>
         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
           {loading
             ? t('graph.source_loading', '加载中…')
-            : t('graph.split_unassigned_count', '还有 {{count}} 条关系尚未分配', {
+            : t('graph.split_unassigned_count', '还有 {{count}} 条关系还没决定给谁', {
                 count: unassignedIds.length > 0 ? unassignedIds.length : unassignedCount
               })}
         </Text>
@@ -176,26 +245,36 @@ export function GraphSplitNodeSheet(props: {
               {t('graph.split_edges_empty', '这个节点目前没有可分配的关系')}
             </Text>
           ) : (
-            edges.map((edge) => {
+            visibleEdges.map((edge) => {
               const leftover = unassignedIds.includes(edge.edgeId)
               return (
                 <View key={edge.edgeId} style={{ gap: 6, marginBottom: 12 }}>
                   <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-                    {edge.partnerName}
+                    {formatGraphSplitPartnerName(edge.partnerName)}
                   </Text>
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                     {translateGraphEdgeType(tr, edge.edgeType)}
                     {edge.sourceExcerpt ? ` · ${edge.sourceExcerpt}` : ''}
-                    {leftover ? ` · ${t('graph.split_unassigned', '尚未分配')}` : ''}
+                    {leftover ? ` · ${t('graph.split_unassigned', '先不管')}` : ''}
                   </Text>
                   <SegmentedControl
                     accessibilityLabel={t('graph.split_edge_assign', '分配这条关系')}
                     value={targets[edge.edgeId] ?? 'unassigned'}
                     onChange={(value) => setTargets((prev) => ({ ...prev, [edge.edgeId]: value }))}
                     options={[
-                      { value: 'unassigned', label: t('graph.split_unassigned', '尚未分配') },
-                      { value: 'bare', label: t('graph.split_keep_bare', '留在原实体') },
-                      { value: 'split', label: t('graph.split_move_to_new', '归给新实体') }
+                      { value: 'unassigned', label: t('graph.split_unassigned', '先不管') },
+                      {
+                        value: 'bare',
+                        label: t('graph.split_keep_bare', '原来的 · {{name}}', {
+                          name: originalName || '—'
+                        })
+                      },
+                      {
+                        value: 'split',
+                        label: t('graph.split_move_to_new', '新的 · {{name}}', {
+                          name: newDisplayName || originalName || '—'
+                        })
+                      }
                     ]}
                   />
                 </View>
@@ -203,16 +282,37 @@ export function GraphSplitNodeSheet(props: {
             })
           )}
         </ScrollView>
+        {pageCount > 1 ? (
+          <Pagination
+            current={page}
+            total={pageCount}
+            onChange={setPage}
+            showJumper={pageCount > 8}
+          />
+        ) : null}
         {error ? <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+          {props.canApprove ? (
+            <Button
+              variant="outlined"
+              disabled={saving || props.busy}
+              onPress={() => void props.onApprove?.()}
+            >
+              {props.hasSuspectReason
+                ? t('graph.clear_suspect', '解除怀疑')
+                : t('graph.approve', '通过')}
+            </Button>
+          ) : null}
           <Button variant="outlined" disabled={saving || props.busy} onPress={props.onClose}>
             {t('common.cancel', '取消')}
           </Button>
           <Button
-            disabled={saving || props.busy || loading || !discriminator.trim() || !label.trim()}
+            disabled={saving || props.busy || loading || !discriminator.trim()}
             onPress={() => void submit()}
           >
-            {t('graph.split_confirm', '确认拆分')}
+            {saving
+              ? t('graph.split_saving', '拆分中…')
+              : t('graph.split_confirm', '确认拆分')}
           </Button>
         </View>
       </View>

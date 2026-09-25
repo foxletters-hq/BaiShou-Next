@@ -13,6 +13,7 @@ export type GraphCostEstimate = {
 export type GraphSourcePreview = {
   date: string | null
   content: string
+  excerpt?: string | null
   loading: boolean
 }
 
