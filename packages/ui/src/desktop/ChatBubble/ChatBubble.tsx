@@ -22,7 +22,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   onResendEdit,
   onShowContext,
   onReadAloud,
-  isTtsPlaying = false
+  isTtsPlaying = false,
+  error = null
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -119,6 +120,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onShowContext={onShowContext}
             onReadAloud={onReadAloud}
             isTtsPlaying={isTtsPlaying}
+            error={error}
             t={t}
           />
         )}
