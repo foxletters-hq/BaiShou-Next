@@ -10,6 +10,7 @@ import {
   Input,
   Pagination,
   Button,
+  IdentityFactsDialog,
   removeRecentPersonaId,
   renameRecentPersonaId,
   updateRecentPersonaIds
@@ -27,7 +28,7 @@ const PAGE_SIZE = 10
 
 interface PersonaInfo {
   id: string
-  factsCount: number
+  facts: Record<string, string>
 }
 
 export const IdentityCardManagementScreen: React.FC = () => {
@@ -42,6 +43,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
   const [activePersonaId, setActivePersonaId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [factsPersonaId, setFactsPersonaId] = useState<string | null>(null)
 
   const loadPersonas = useCallback(async () => {
     if (!services || !dbReady) return
@@ -50,7 +52,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
       const personasMap = userProfile.personas || {}
       const list: PersonaInfo[] = Object.keys(personasMap).map((id) => ({
         id,
-        factsCount: Object.keys(personasMap[id]?.facts || {}).length
+        facts: { ...(personasMap[id]?.facts || {}) }
       }))
       setPersonas(list)
       setActivePersonaId(userProfile.activePersonaId || Object.keys(personasMap)[0] || '')
@@ -87,6 +89,29 @@ export const IdentityCardManagementScreen: React.FC = () => {
   }, [filteredPersonas, safePage])
 
   const showPagination = filteredPersonas.length > PAGE_SIZE
+  const currentPersona = personas.find((persona) => persona.id === activePersonaId) ?? null
+  const factsPersona = personas.find((persona) => persona.id === factsPersonaId) ?? null
+
+  const handleChangeFacts = async (nextFacts: Record<string, string>) => {
+    if (!services || !factsPersonaId) return
+    try {
+      const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      const personasMap = { ...userProfile.personas }
+      const current = personasMap[factsPersonaId]
+      if (!current) return
+      const next: UserProfile = {
+        ...userProfile,
+        personas: {
+          ...personasMap,
+          [factsPersonaId]: { ...current, facts: nextFacts }
+        }
+      }
+      await saveUserProfileToSettings(services.settingsManager, next)
+      await loadPersonas()
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }
 
   const handleCreate = async () => {
     const name = await dialog.prompt(
@@ -173,6 +198,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
       }
       await saveUserProfileToSettings(services!.settingsManager, next)
       await loadPersonas()
+      if (factsPersonaId === personaId) setFactsPersonaId(newName.trim())
       toast.showSuccess(t('common.save_success'))
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -207,6 +233,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
       }
       await saveUserProfileToSettings(services!.settingsManager, next)
       await loadPersonas()
+      if (factsPersonaId === personaId) setFactsPersonaId(null)
       toast.showSuccess(t('common.save_success'))
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -224,6 +251,35 @@ export const IdentityCardManagementScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         indicatorStyle={scrollIndicatorStyle(isDark)}
       >
+        {currentPersona ? (
+          <Pressable
+            onPress={() => setFactsPersonaId(currentPersona.id)}
+            style={[
+              styles.currentCard,
+              {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderControl,
+                borderRadius: tokens.radius.md
+              }
+            ]}
+          >
+            <Text style={[styles.currentLabel, { color: colors.textSecondary }]}>
+              {t('settings.identity_current_card', '当前身份卡')}
+            </Text>
+            <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
+              {currentPersona.id}
+            </Text>
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>
+              {t('settings.identity_facts_count', {
+                count: Object.keys(currentPersona.facts).length
+              })}
+            </Text>
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>
+              {t('settings.identity_tap_to_view', '点击查看全部属性')}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View
           style={[
             styles.card,
@@ -262,14 +318,19 @@ export const IdentityCardManagementScreen: React.FC = () => {
                   }
                 ]}
               >
-                <View style={{ flex: 1, gap: 2 }}>
+                <Pressable
+                  style={{ flex: 1, gap: 2 }}
+                  onPress={() => {
+                    if (isActive) setFactsPersonaId(persona.id)
+                  }}
+                >
                   <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{persona.id}</Text>
                   <Text style={[styles.sub, { color: colors.textSecondary }]}>
                     {t('settings.identity_facts_count', {
-                      count: persona.factsCount
+                      count: Object.keys(persona.facts).length
                     })}
                   </Text>
-                </View>
+                </Pressable>
                 {isActive ? (
                   <Text style={[styles.badge, { color: colors.primary }]}>
                     {t('settings.identity_active_mark')}
@@ -332,6 +393,13 @@ export const IdentityCardManagementScreen: React.FC = () => {
           + {t('settings.create_new_identity')}
         </Button>
       </KeyboardAwareScrollView>
+      <IdentityFactsDialog
+        visible={Boolean(factsPersona)}
+        personaName={factsPersona?.id ?? ''}
+        facts={factsPersona?.facts ?? {}}
+        onClose={() => setFactsPersonaId(null)}
+        onChangeFacts={handleChangeFacts}
+      />
     </StackScreenLayout>
   )
 }
@@ -345,6 +413,17 @@ const styles = StyleSheet.create({
   },
   card: {
     overflow: 'hidden'
+  },
+  currentCard: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    gap: 4
+  },
+  currentLabel: {
+    fontSize: 13,
+    fontWeight: '500'
   },
   searchWrap: {
     paddingHorizontal: 14,

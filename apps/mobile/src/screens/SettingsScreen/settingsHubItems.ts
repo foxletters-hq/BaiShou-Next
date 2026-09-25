@@ -78,10 +78,22 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'stack', pathname: '/settings/assistants' }
       },
       {
+        id: 'latte',
+        titleKey: 'settings.latte_settings_title',
+        icon: 'latte',
+        route: { type: 'section', section: 'latte' }
+      },
+      {
         id: 'agent-tools',
         titleKey: 'settings.companion_chat_tools_title',
         icon: 'agent-tools',
         route: { type: 'stack', pathname: '/settings/agent-tools' }
+      },
+      {
+        id: 'agent-behavior',
+        titleKey: 'settings.agent_behavior',
+        icon: 'agent-tools',
+        route: { type: 'section', section: 'agent-behavior' }
       },
       {
         id: 'rag',

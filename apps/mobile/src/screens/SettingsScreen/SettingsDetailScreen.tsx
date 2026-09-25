@@ -17,6 +17,8 @@ import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettings
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
+import { AgentBehaviorSection } from './components/AgentBehaviorSection'
+import { LatteSettingsSection } from './components/LatteSettingsSection'
 export interface SettingsDetailScreenProps {
   section: string
 }
@@ -47,6 +49,10 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <McpSettingsSection />
       case 'agent-tools':
         return <AgentToolsSection />
+      case 'agent-behavior':
+        return <AgentBehaviorSection />
+      case 'latte':
+        return <LatteSettingsSection />
       case 'agent-gate':
         return <AgentGateSettingsSection />
       case 'diary-template':
