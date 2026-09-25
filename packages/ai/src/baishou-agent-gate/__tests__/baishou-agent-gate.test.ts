@@ -13,7 +13,8 @@ import {
   applyCapabilityStateToConfig,
   applyWorkspaceSecurityModeToConfig,
   cloneBaishouAgentGateConfig,
-  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  listAgentGateFileChangePreviews
 } from '@baishou/shared'
 import { BaishouAgentGatePolicyService } from '../baishou-agent-gate-policy.service'
 import { BaishouAgentGateAllowlistStore } from '../baishou-agent-gate-allowlist.store'
@@ -852,6 +853,88 @@ describe('BaishouAgentGateService', () => {
     unsub()
   })
 
+  it('should keep every coalesced write preview on the pending card', async () => {
+    const { gate } = createBaishouAgentGate()
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入 a.md',
+      preview: {
+        type: 'file_change',
+        path: 'a.md',
+        kind: 'create',
+        additions: 1,
+        deletions: 0,
+        diff: '+a'
+      }
+    })
+    const second = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入 b.md',
+      preview: {
+        type: 'file_change',
+        path: 'b.md',
+        kind: 'create',
+        additions: 2,
+        deletions: 0,
+        diff: '+b'
+      }
+    })
+
+    const pending = gate.listPending('sess_1')
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.coalescedCount).toBe(2)
+    expect(listAgentGateFileChangePreviews(pending[0]!).map((item) => item.path)).toEqual([
+      'a.md',
+      'b.md'
+    ])
+
+    await gate.reply({ requestId: pending[0]!.id, reply: AgentGateReply.Once })
+    await Promise.all([first, second])
+  })
+
+  it('should keep write and patch on one pending card', async () => {
+    const { gate } = createBaishouAgentGate()
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入 a.md',
+      preview: {
+        type: 'file_change',
+        path: 'a.md',
+        kind: 'create',
+        additions: 1,
+        deletions: 0,
+        diff: '+a'
+      }
+    })
+    const second = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_patch',
+      title: '补丁 b.md',
+      preview: {
+        type: 'file_change',
+        path: 'b.md',
+        kind: 'modify',
+        additions: 2,
+        deletions: 1,
+        diff: '+b'
+      }
+    })
+
+    const pending = gate.listPending('sess_1')
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.coalescedCount).toBe(2)
+    expect(listAgentGateFileChangePreviews(pending[0]!).map((item) => item.path)).toEqual([
+      'a.md',
+      'b.md'
+    ])
+
+    await gate.reply({ requestId: pending[0]!.id, reply: AgentGateReply.Once })
+    await Promise.all([first, second])
+  })
+
   it('伙伴提问不合并，即使连续发起多次', async () => {
     const { gate } = createBaishouAgentGate()
     const first = gate
@@ -923,6 +1006,135 @@ describe('BaishouAgentGateService', () => {
       reply: AgentGateReply.Once
     })
     await afterTurn
+  })
+
+  it('should allow patch after once on write in the same turn', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入文件',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'create',
+        additions: 1,
+        deletions: 0
+      }
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    await expect(
+      gate.assert({
+        ...baseAssertInput,
+        action: 'workspace_patch',
+        title: '补丁文件',
+        resources: [{ kind: 'workspace_path', value: 'src/b.ts' }],
+        preview: {
+          type: 'file_change',
+          path: 'src/b.ts',
+          kind: 'modify',
+          additions: 2,
+          deletions: 1
+        }
+      })
+    ).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+  })
+
+  it('should allow a later truncated write after once in the same turn', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入文件',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'create',
+        additions: 1,
+        deletions: 0
+      }
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    await expect(
+      gate.assert({
+        ...baseAssertInput,
+        action: 'workspace_write',
+        title: '写入大文件',
+        resources: [{ kind: 'workspace_path', value: 'src/big.ts' }],
+        preview: {
+          type: 'file_change',
+          path: 'src/big.ts',
+          kind: 'modify',
+          additions: 80,
+          deletions: 12,
+          truncated: true
+        }
+      })
+    ).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+  })
+
+  it('should still ask delete after once on write', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入文件',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }]
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    const remove = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_delete',
+      title: '删除文件',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }]
+    })
+    await Promise.resolve()
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await remove
   })
 
   it('workspace_run 的 once 只放行同类命令前缀', async () => {
@@ -1071,14 +1283,20 @@ describe('BaishouAgentGateService', () => {
         contentDigest: 'full'
       }
     })
+    await Promise.resolve()
+    const normalReq = gate.listPending('sess_1')[0]
+    expect(normalReq).toBeTruthy()
+    await gate.reply({ requestId: normalReq!.id, reply: AgentGateReply.Always })
+    await normal
+
     const truncated = gate.assert({
       ...baseAssertInput,
       action: 'workspace_write',
       title: '写截断',
-      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      resources: [{ kind: 'workspace_path', value: 'src/b.ts' }],
       preview: {
         type: 'file_change',
-        path: 'src/a.ts',
+        path: 'src/b.ts',
         kind: 'modify',
         additions: 1,
         deletions: 0,
@@ -1086,13 +1304,7 @@ describe('BaishouAgentGateService', () => {
         contentDigest: 'cut'
       }
     })
-
-    const pending = gate.listPending('sess_1')
-    const normalReq = pending.find((r) => r.title === '写完整')
-    expect(normalReq).toBeTruthy()
-    await gate.reply({ requestId: normalReq!.id, reply: AgentGateReply.Always })
-    await normal
-
+    await Promise.resolve()
     const stillPending = gate.listPending('sess_1')
     expect(stillPending).toHaveLength(1)
     expect(stillPending[0]?.title).toBe('写截断')

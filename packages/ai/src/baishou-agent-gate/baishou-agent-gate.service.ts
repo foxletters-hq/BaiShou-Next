@@ -15,7 +15,7 @@ import {
   canPermanentlyAllowShellCommand,
   resolveAgentGateToolCoalesceKey,
   resolveCommandPrefixPatternFromCommand,
-  shouldDisableAlwaysForPreview,
+  shouldDisableAlwaysForRequest,
   type AgentGateAssertInput,
   type AgentGateConfigScope,
   type AgentGateEvaluateInput,
@@ -36,7 +36,7 @@ import { AgentGateTurnAllowStore } from './baishou-agent-gate-turn-allow'
 import type { AgentGateRiskClassifier } from './agent-gate-risk-classifier.types'
 import type { EvaluatePolicyInput, IBaishouAgentGate } from './baishou-agent-gate.types'
 import { AgentGatePendingRegistry } from './baishou-agent-gate-pending'
-import { buildTurnAllowRule, isSafeGateRisk } from './baishou-agent-gate-turn-rule'
+import { buildTurnAllowRules, isSafeGateRisk } from './baishou-agent-gate-turn-rule'
 import {
   applyAutoReviewClassification,
   applyAutoReviewClassifierFailed,
@@ -166,6 +166,10 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
+    if (turnAllowed && assertInput.kind === AgentGateKind.Tool && effect === AgentGateEffect.Ask) {
+      effect = AgentGateEffect.Allow
+    }
+
     const coalesceKey = resolveAgentGateToolCoalesceKey({
       kind: assertInput.kind,
       action: assertInput.action,
@@ -176,13 +180,15 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     if (effect === AgentGateEffect.Ask && coalesceKey) {
       const existing = this.pending.findCoalesciblePending(assertInput.sessionId, coalesceKey)
       if (existing) {
-        return this.pending.attachCoalescedWaiter(existing)
+        return this.pending.attachCoalescedWaiter(existing, {
+          preview: assertInput.preview
+        })
       }
     }
 
     if (effect === AgentGateEffect.Allow) {
       if (safeRisk && assertInput.kind === AgentGateKind.Tool) {
-        const turnRule = buildTurnAllowRule({
+        for (const turnRule of buildTurnAllowRules({
           action: assertInput.action,
           resources: assertResources,
           alwaysPatterns: Array.isArray(assertInput.metadata?.alwaysPatterns)
@@ -191,8 +197,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
               )
             : undefined,
           preview: assertInput.preview
-        })
-        if (turnRule) {
+        })) {
           this.turnAllow.add(assertInput.sessionId, turnRule)
         }
       }
@@ -248,7 +253,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       : undefined
     if (input.reply === AgentGateReply.Always) {
       if (
-        shouldDisableAlwaysForPreview(request.preview) ||
+        shouldDisableAlwaysForRequest(request) ||
         !canPermanentlyAllowAgentGateAction(request.action, {
           exclusionList: this.policy.getConfig().exclusionList,
           metadata: request.metadata,
@@ -278,6 +283,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       reply: input.reply,
       message: input.message,
       selectedOptionIds: input.selectedOptionIds,
+      questionAnswers: input.questionAnswers,
       resolvedAt
     }
 
@@ -287,7 +293,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       requestId: request.id,
       reply: input.reply,
       message: input.message,
-      selectedOptionIds: input.selectedOptionIds
+      selectedOptionIds: input.selectedOptionIds,
+      questionAnswers: input.questionAnswers
     })
 
     if (input.reply === AgentGateReply.Reject) {
@@ -338,13 +345,12 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
     this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
     if (request.kind === AgentGateKind.Tool) {
-      const turnRule = buildTurnAllowRule({
+      for (const turnRule of buildTurnAllowRules({
         action: request.action,
         resources: replyResources,
         alwaysPatterns: alwaysPatternsFromMeta,
         preview: request.preview
-      })
-      if (turnRule) {
+      })) {
         this.turnAllow.add(request.sessionId, turnRule)
       }
     }
@@ -389,11 +395,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       description: input.description,
       options: input.options ?? [],
       allowCustomInput: input.allowCustomInput ?? false,
+      questions: input.questions,
       metadata: {
         ...(input.metadata ?? {}),
         ...(decisionSource ? { decisionSource } : {})
       },
       preview: input.preview,
+      previews: input.preview ? [input.preview] : undefined,
       scope: input.scope ?? this.configScope,
       fingerprint,
       coalescedCount: 1,

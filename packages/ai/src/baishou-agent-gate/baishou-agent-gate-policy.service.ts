@@ -155,7 +155,8 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       metadata: input.metadata,
       riskLevel,
       preview: input.preview,
-      explicitAllow
+      explicitAllow,
+      skipTruncatedPreviewClamp: matched?.layer === 'session'
     })
 
     const decisionSource: AgentGateDecisionSource = matched
