@@ -231,4 +231,67 @@ describe('mergeDiaryGraphNodes', () => {
     })
     expect(order).toEqual(['sync:off', 'soft:lose1', 'soft:lose2'])
   })
+
+  it('should reject diary anchors by default and source anchors when they are forbidden', async () => {
+    const manager = {
+      writeRecord: vi.fn(),
+      removeRecordsFromShard: vi.fn()
+    }
+    const entryRepo = {
+      getNodeById: vi.fn(async (id: string) => ({
+        id,
+        vaultId: 'v1',
+        nodeType: 'entry',
+        name: id,
+        aliases: [],
+        summary: '',
+        mentionCount: 1,
+        firstSeenAt: 1,
+        lastSeenAt: 1,
+        origin: 'ai',
+        shardMonth: '2026-01',
+        createdAt: 1
+      })),
+      listEdgesTouching: vi.fn(async () => [])
+    }
+    await expect(
+      mergeDiaryGraphNodes({
+        vaultId: 'v1',
+        vaultName: 'Personal',
+        survivorId: 'surv',
+        loserId: 'lose',
+        manager: manager as never,
+        repo: entryRepo as never
+      })
+    ).rejects.toThrow('日记锚点不能合并')
+
+    const sourceRepo = {
+      getNodeById: vi.fn(async (id: string) => ({
+        id,
+        vaultId: 'v1',
+        nodeType: 'source',
+        name: id,
+        aliases: [],
+        summary: '',
+        mentionCount: 1,
+        firstSeenAt: 1,
+        lastSeenAt: 1,
+        origin: 'ai',
+        shardMonth: 'src1',
+        createdAt: 1
+      })),
+      listEdgesTouching: vi.fn(async () => [])
+    }
+    await expect(
+      mergeDiaryGraphNodes({
+        vaultId: 'v1',
+        vaultName: 'Personal',
+        survivorId: 'surv',
+        loserId: 'lose',
+        forbiddenAnchorTypes: ['source'],
+        manager: manager as never,
+        repo: sourceRepo as never
+      })
+    ).rejects.toThrow('资料锚点不能合并')
+  })
 })

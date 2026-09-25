@@ -101,6 +101,8 @@ export async function mergeDiaryGraphNodes(input: {
   loserId: string
   reason?: string
   now?: number
+  /** 默认日记锚点；笔记本图传入 `['source']` */
+  forbiddenAnchorTypes?: readonly string[]
   manager: GraphMergeRawWriter
   repo: GraphMergeLookup
 }): Promise<{ survivorId: string; loserId: string }> {
@@ -121,8 +123,15 @@ export async function mergeDiaryGraphNodes(input: {
   if (survivor.nodeType !== loser.nodeType) {
     throw new Error('只能合并同一类型的节点')
   }
-  if (survivor.nodeType === 'entry' || loser.nodeType === 'entry') {
-    throw new Error('日记锚点不能合并')
+  const forbidden = new Set(
+    (input.forbiddenAnchorTypes ?? ['entry']).map((type) => type.trim()).filter(Boolean)
+  )
+  if (forbidden.has(survivor.nodeType) || forbidden.has(loser.nodeType)) {
+    throw new Error(
+      survivor.nodeType === 'source' || loser.nodeType === 'source'
+        ? '资料锚点不能合并'
+        : '日记锚点不能合并'
+    )
   }
 
   const now = input.now ?? Date.now()
@@ -193,6 +202,7 @@ export async function mergeDiaryGraphNodeGroup(input: {
   loserIds: string[]
   reason?: string
   now?: number
+  forbiddenAnchorTypes?: readonly string[]
   manager: GraphMergeRawWriter
   repo: GraphMergeLookup
 }): Promise<{ survivorId: string; loserIds: string[] }> {
@@ -211,6 +221,7 @@ export async function mergeDiaryGraphNodeGroup(input: {
       loserId,
       reason: input.reason,
       now: input.now,
+      forbiddenAnchorTypes: input.forbiddenAnchorTypes,
       manager: input.manager,
       repo: input.repo
     })

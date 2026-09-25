@@ -177,7 +177,7 @@
 
 **改名片重算向量。** 人生图 `GraphSyncService` 用 `shouldReuseGraphNodeEmbed`：同模型且 `${name}\n${summary}` 没变才跳过。笔记本图抽图覆盖走 `refreshNotebookEmbeddingsAfterAlign`。笔记本图 pending-index 用 `shouldRefreshExistingGraphNodeEmbed`：库里已有同模型向量且名片变了才重算；新节点仍留给抽图落库或集中补齐，避免同步灌库时把整本再嵌一遍。抽图路径不把嵌入器传给 `NotebookGraphIndexService`，避免和 `writeAlignedEmbeddings` 算两次。
 
-**高准确合并。** 相似度 > 50% 仍交给二次判定，并带上裁剪后的日记片段。模型吃不准时新建第二个节点，在 JSONL `props` 写 `similarPending`，不改 `reviewStatus`。同 peer 后写覆盖先写。不建详细出处登记。
+**高准确合并。** 相似度 > 70% 仍交给二次判定，并带上裁剪后的日记片段。模型吃不准时新建第二个节点，在 JSONL `props` 写 `similarPending`，不改 `reviewStatus`。同 peer 后写覆盖先写。不建详细出处登记。
 
 **相似待合并页。** 两端关系图各加一页，只列相似待合并对；合并保留已有节点，不是同一人则去掉这对标记。可疑扫描理由仍写在节点详情。
 

@@ -133,12 +133,72 @@ describe('alignEntityPool', () => {
     expect(created?.similarPending).toEqual(
       expect.objectContaining({
         peerId: dbId,
-        similarity: 0.72,
+        similarity: 0.88,
         reason: '像同一个人但又不敢并',
         sourceExcerpt: '今天见到小张，有点像张三'
       })
     )
     expect(created?.similarPending?.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  })
+
+  it('should keep the vector score when the judge invents a lower similarity', async () => {
+    const dbId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const out = await alignEntityPool([{ name: '小张', nodeType: 'person', summary: '同事' }], {
+      findCandidatesByNameOrAlias: async () => [],
+      embedQuery: async () => [1, 0],
+      searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
+      judgeMerges: async () => ({
+        merges: [],
+        uncertain: [
+          {
+            incomingRef: 'i1',
+            existingRef: 'e1',
+            reason: '模型自己写了 40%',
+            similarity: 0.4
+          }
+        ]
+      })
+    })
+    expect(out.get('person\0小张')?.similarPending).toEqual(
+      expect.objectContaining({
+        peerId: dbId,
+        similarity: 0.88
+      })
+    )
+  })
+
+  it('should not attach similarPending when the judge points at a node recalled for someone else', async () => {
+    const zhangId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const wangId = graphNodeIdForEntity(VAULT, 'person', '王五')
+    const out = await alignEntityPool(
+      [
+        { name: '小张', nodeType: 'person', summary: '同事' },
+        { name: '李四', nodeType: 'person', summary: '同学' }
+      ],
+      {
+        findCandidatesByNameOrAlias: async () => [],
+        embedQuery: async (text) => (text.startsWith('小张') ? [1, 0] : [0, 1]),
+        searchByVector: async (vector) =>
+          vector[0] === 1
+            ? [{ id: zhangId, name: '张三', aliases: [], nodeType: 'person', distance: 0.12 }]
+            : [{ id: wangId, name: '王五', aliases: [], nodeType: 'person', distance: 0.15 }],
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
+        judgeMerges: async () => ({
+          merges: [],
+          uncertain: [
+            {
+              incomingRef: 'i2',
+              existingRef: 'e1',
+              reason: '把李四对到张三',
+              similarity: 0.9
+            }
+          ]
+        })
+      }
+    )
+    expect(out.get('person\0李四')?.similarPending).toBeUndefined()
+    expect(out.get('person\0小张')?.similarPending).toBeUndefined()
   })
 
   it('lets a second LLM call merge incoming names onto an existing node', async () => {
@@ -156,7 +216,7 @@ describe('alignEntityPool', () => {
         findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [
-          { id: dbId, name: '张三', aliases: ['三哥'], nodeType: 'person', distance: 0.35 }
+          { id: dbId, name: '张三', aliases: ['三哥'], nodeType: 'person', distance: 0.25 }
         ],
         nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
         judgeMerges
@@ -181,7 +241,7 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0小张')?.embedText).toBe('小张\n同事')
   })
 
-  it('does not recall a 50% vector hit for the judge', async () => {
+  it('does not recall a 70% vector hit for the judge', async () => {
     const judgeMerges = vi.fn().mockResolvedValue([])
     await alignEntityPool(
       [
@@ -192,7 +252,7 @@ describe('alignEntityPool', () => {
         findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [
-          { id: 'other', name: '上海', aliases: [], nodeType: 'place', distance: 0.5 }
+          { id: 'other', name: '上海', aliases: [], nodeType: 'place', distance: 0.3 }
         ],
         nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
         judgeMerges
@@ -484,6 +544,30 @@ describe('parseEntityAlignDecisions', () => {
         })
       )
     ).toBeNull()
+  })
+
+  it('should rethrow embedQuery errors when requireEmbedQuery is set', async () => {
+    await expect(
+      alignEntityPool([{ name: '小红', nodeType: 'person', summary: '同学' }], {
+        findCandidatesByNameOrAlias: async () => [],
+        embedQuery: async () => {
+          throw new Error('Payment Required')
+        },
+        requireEmbedQuery: true,
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      })
+    ).rejects.toThrow('Payment Required')
+  })
+
+  it('should keep creating a node when embedQuery fails and is optional', async () => {
+    const out = await alignEntityPool([{ name: '小红', nodeType: 'person', summary: '同学' }], {
+      findCandidatesByNameOrAlias: async () => [],
+      embedQuery: async () => {
+        throw new Error('Payment Required')
+      },
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+    })
+    expect(out.get('person\0小红')?.mergedBy).toBe('create')
   })
 })
 

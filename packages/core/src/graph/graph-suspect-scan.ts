@@ -66,6 +66,16 @@ export function applySuspectReasonToProps(
   return { ...props, suspectReason: reason }
 }
 
+/** 用户确认「就是一个人」或拒绝后，去掉可疑标记 */
+export function removeSuspectReasonFromProps(
+  props: Record<string, unknown>
+): Record<string, unknown> {
+  if (!('suspectReason' in props)) return props
+  const next = { ...props }
+  delete next.suspectReason
+  return next
+}
+
 export function readSuspectReason(props: Record<string, unknown>): string {
   const raw = props.suspectReason
   return typeof raw === 'string' ? raw.trim() : ''
