@@ -7,9 +7,14 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const page = [
   'KnowledgeDetailScreen.tsx',
   'useKnowledgeDetail.ts',
+  'KnowledgeDetailCoverSection.tsx',
   'KnowledgeDetailImportSection.tsx',
   'KnowledgeDetailSourcesSection.tsx',
-  'KnowledgeDetailManageSection.tsx'
+  'KnowledgeDetailManageSection.tsx',
+  'KnowledgeDetailExtractSection.tsx',
+  'KnowledgeNotebookGraphSection.tsx',
+  'KnowledgeDetailVectorsSection.tsx',
+  'KnowledgeNotebookDeleteDialog.tsx'
 ]
   .map((name) => readFileSync(join(dir, '..', name), 'utf8'))
   .join('\n')
@@ -37,7 +42,10 @@ describe('mobile knowledge detail chrome', () => {
     expect(page).toContain('mobileReprocessSource')
     expect(page).toContain("mobileReprocessSource(source.id, 'graph')")
     expect(page).toContain('mobileRebuildNotebookGraph')
-    expect(page).toContain('batchEmbed')
+    expect(page).toContain('mobileOrganizeNotebook')
+    expect(page).not.toContain('batchEmbed')
+    expect(page).toContain('knowledgeImportProcessSelectOptions')
+    expect(page).toContain('import_file')
     expect(page).toContain("t('knowledge.retry'")
     expect(page).toContain("t('knowledge.reembed_graph'")
     expect(page).toContain("t('knowledge.rebuild_graph'")
@@ -47,7 +55,26 @@ describe('mobile knowledge detail chrome', () => {
     expect(page).toContain('knowledgeSourceCanReembedGraph')
     expect(page).toContain('manageVector')
     expect(page).toContain('manageGraph')
-    expect(page).not.toContain('pendingEdges')
-    expect(page).not.toContain('similarMerge')
+    expect(page).toContain('pendingEdges')
+    expect(page).toContain('similarPairs')
+    expect(page).toContain('GraphForceWebView')
+    expect(page).toContain('mobileCancelExtract')
+    expect(page).toContain('mobileRecoverStaleIngest')
+    expect(page).toContain('mobileEmbedSource')
+    expect(page).toContain('mobileGetExtractedPreview')
+    expect(page).toContain('mobileSetKnowledgeConfig')
+    expect(page).toContain('mobileListKnowledgeChunks')
+  })
+
+  it('should use settings sections and require a three-second delete countdown', () => {
+    expect(page).toContain('SettingsSection')
+    expect(page).toContain("from '@baishou/ui/native'")
+    expect(page).toContain('KnowledgeNotebookDeleteDialog')
+    expect(page).toContain('mobileDeleteNotebook')
+    expect(page).toContain('isNotebookHeavyConfirmReady')
+    expect(page).toContain('notebookHeavyConfirmSecondsLeft')
+    expect(page).toContain('knowledge.delete_notebook')
+    expect(page).not.toContain('#fff')
+    expect(page).not.toContain('#666')
   })
 })
