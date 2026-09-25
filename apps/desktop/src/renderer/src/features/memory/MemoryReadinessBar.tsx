@@ -18,6 +18,8 @@ export type MemoryReadinessBarProps = {
   onConfigureEmbedding?: () => void
   onStartIndex?: () => void
   onStartOrganize?: () => void
+  /** 整理进行中点「正在整理记忆」打开统一整理面板 */
+  onOpenOrganize?: () => void
   pendingEmbedParts?: PendingEmbedCounts
   pendingGraphCount?: number
   indexing?: RagIndexingSnapshot | null
@@ -47,6 +49,7 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
   onConfigureEmbedding,
   onStartIndex,
   onStartOrganize,
+  onOpenOrganize,
   pendingEmbedParts,
   pendingGraphCount = 0,
   indexing = null,
@@ -92,13 +95,16 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
               organizePipeline === 'embed' || organizePipeline === 'graph'
                 ? t('memory.readiness_organizing', '正在整理记忆…')
                 : formatRagIndexingStatus(t, indexing)
+            onAction = onOpenOrganize ? () => onOpenOrganize() : undefined
           } else if (extracting && extracting.total > 0) {
             value = t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
               current: extracting.current,
               total: extracting.total
             })
+            onAction = onOpenOrganize ? () => onOpenOrganize() : undefined
           } else if (organizePipeline === 'graph') {
             value = t('memory.readiness_graph_starting', '正在开始整理关系图谱')
+            onAction = onOpenOrganize ? () => onOpenOrganize() : undefined
           } else if (row.state === 'ready' && pendingGraphCount <= 0) {
             value = t('memory.readiness_vector_done', '已全部整理')
           } else if (row.state === 'pending' || pendingGraphCount > 0) {
@@ -171,7 +177,7 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
             </span>
             {showLabel ? <span className={styles.chipLabel}>{rowLabel(row.id, t)}</span> : null}
             <span className={styles.chipValue}>{value}</span>
-            {onAction ? <span className={styles.chipHint}>{actionLabel}</span> : null}
+            {onAction && actionLabel ? <span className={styles.chipHint}>{actionLabel}</span> : null}
           </>
         )
 

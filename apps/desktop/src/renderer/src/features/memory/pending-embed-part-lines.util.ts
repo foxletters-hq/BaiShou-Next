@@ -5,7 +5,7 @@ export type PendingEmbedPartLine = {
   count: number
 }
 
-/** 开始整理菜单里的分项：日记 / 伙伴 / 全局节点 / 笔记本图节点 / 知识库 / 关系图谱。 */
+/** 开始整理菜单里的分项：日记 / 伙伴记忆 / 日记图谱节点 / 日记抽图。 */
 export function listPendingEmbedPartLines(
   parts: PendingEmbedCounts,
   pendingGraphCount: number
@@ -22,14 +22,6 @@ export function listPendingEmbedPartLines(
     {
       key: 'memory.pending_embed_part_graph_nodes',
       count: parts.graphNodes
-    },
-    {
-      key: 'memory.pending_embed_part_notebook_graph_nodes',
-      count: parts.notebookGraphNodes
-    },
-    {
-      key: 'memory.pending_embed_part_knowledge',
-      count: parts.knowledgeSources
     },
     {
       key: 'memory.pending_embed_part_graph_extract',

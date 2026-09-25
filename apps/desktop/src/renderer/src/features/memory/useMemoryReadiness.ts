@@ -28,6 +28,7 @@ type ReadinessSnapshot = {
   pendingEmbedCount: number
   pendingEmbedParts: PendingEmbedCounts
   pendingGraphCount: number
+  suspectCount: number
   graphExtracting: MemoryGraphExtractingSnapshot | null
   organizePipeline: MemoryOrganizePipeline
 }
@@ -44,6 +45,7 @@ const EMPTY: ReadinessSnapshot = {
   pendingEmbedCount: 0,
   pendingEmbedParts: EMPTY_PENDING_EMBED_COUNTS,
   pendingGraphCount: 0,
+  suspectCount: 0,
   graphExtracting: null,
   organizePipeline: 'idle'
 }
@@ -170,15 +172,17 @@ async function fetchMemoryReadinessSnapshot(): Promise<ReadinessSnapshot> {
         rag?: { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> }
       }
     ).rag
-    const [pending, embedCounts, globalModels, ragConfig] = await Promise.all([
+    const [pending, embedCounts, globalModels, ragConfig, suspects] = await Promise.all([
       window.api.graph.listPendingReextract().catch(() => []),
       (ragApi?.getPendingEmbedCounts?.() ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)).catch(
         () => EMPTY_PENDING_EMBED_COUNTS
       ),
       window.api.settings.getGlobalModels().catch(() => null),
-      window.api.settings.getRagConfig().catch(() => null)
+      window.api.settings.getRagConfig().catch(() => null),
+      window.api.graph.listSuspectNodes().catch(() => [])
     ])
     const pendingGraphCount = Array.isArray(pending) ? pending.length : 0
+    const suspectCount = Array.isArray(suspects) ? suspects.length : 0
     const counts =
       embedCounts && typeof embedCounts === 'object' && 'total' in embedCounts
         ? embedCounts
@@ -196,7 +200,8 @@ async function fetchMemoryReadinessSnapshot(): Promise<ReadinessSnapshot> {
       unindexedDiaryCount: counts.diaries,
       pendingEmbedCount: counts.total,
       pendingEmbedParts: counts,
-      pendingGraphCount
+      pendingGraphCount,
+      suspectCount
     })
   })().finally(() => {
     inFlight = null
@@ -221,7 +226,8 @@ export async function refreshMemoryReadiness(): Promise<void> {
       unindexedDiaryCount: EMPTY.unindexedDiaryCount,
       pendingEmbedCount: EMPTY.pendingEmbedCount,
       pendingEmbedParts: EMPTY.pendingEmbedParts,
-      pendingGraphCount: EMPTY.pendingGraphCount
+      pendingGraphCount: EMPTY.pendingGraphCount,
+      suspectCount: EMPTY.suspectCount
     })
   } finally {
     cachedLoading = false
@@ -287,6 +293,7 @@ export function useMemoryReadiness() {
     }
     if (wasIndexingRef.current) {
       wasIndexingRef.current = false
+      setMemoryOrganizePipeline('idle')
       void refresh()
     }
   }, [ragState.isRunning, ragState.type, refresh])
