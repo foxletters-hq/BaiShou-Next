@@ -45,6 +45,9 @@ export function ensureDesktopAgentGateInboxBridge(): void {
       useAgentGateInboxStore.getState().removeReplied(payload.requestId, {
         requestId: payload.requestId,
         reply: payload.reply,
+        message: payload.message,
+        selectedOptionIds: payload.selectedOptionIds,
+        questionAnswers: payload.questionAnswers,
         resolvedAt: Date.now()
       })
     }) ?? null

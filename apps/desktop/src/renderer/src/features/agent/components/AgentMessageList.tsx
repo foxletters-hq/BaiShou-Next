@@ -5,7 +5,9 @@ import {
   resolveAttachmentImageSrc,
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig,
-  assistantRowToEmojiPrefs
+  assistantRowToEmojiPrefs,
+  collectAgentGatePartDataForSurface,
+  collectUnresolvedAgentGateRequestsForSurface
 } from '@baishou/shared'
 import {
   ChatBubble,
@@ -16,9 +18,13 @@ import {
   CompanionAskInteractionProvider,
   resolveActiveToolDisplayName
 } from '@baishou/ui'
-import type { AgentGatePartData } from '@baishou/shared'
-import { useAgentGateInboxStore, useSettingsStore } from '@baishou/store'
+import {
+  selectResolvedLiveForSession,
+  useAgentGateInboxStore,
+  useSettingsStore
+} from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
+import { shouldHidePersistedStreamingAssistant, resolvePersistedAssistantStreamError } from '../utils/persisted-streaming-assistant.util'
 import styles from '../AgentScreen.module.css'
 
 /**
@@ -99,21 +105,22 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   loadSessions
 }) => {
   const settings = useSettingsStore()
-  const resolvedLiveAll = useAgentGateInboxStore((state) => state.resolvedLive)
-  const resolvedLive = useMemo(
-    () =>
-      sessionId
-        ? resolvedLiveAll.filter((item) => item.request.sessionId === sessionId)
-        : resolvedLiveAll,
-    [resolvedLiveAll, sessionId]
+  const resolvedLive = useAgentGateInboxStore((state) =>
+    selectResolvedLiveForSession(state, sessionId, 'companion')
   )
+  useEffect(() => {
+    for (const msg of chat.messages ?? []) {
+      for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
+        useAgentGateInboxStore.getState().upsertAsked(request)
+      }
+    }
+  }, [chat.messages])
+
   const persistedGateIds = useMemo(() => {
     const ids = new Set<string>()
     for (const msg of chat.messages ?? []) {
-      for (const part of msg.parts ?? []) {
-        if (part?.type !== 'agent_gate') continue
-        const requestId = (part.data as AgentGatePartData | undefined)?.request?.id
-        if (requestId) ids.add(requestId)
+      for (const data of collectAgentGatePartDataForSurface(msg.parts, 'companion')) {
+        ids.add(data.request.id)
       }
     }
     return ids
@@ -326,6 +333,15 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   }, [stream.pendingEmojis, settings.toolManagementConfig?.emojiConfig, currentAssistant])
 
   const lastMessage = chat.messages[chat.messages.length - 1]
+  const lastAssistantMessageId = [...chat.messages]
+    .reverse()
+    .find((message) => message.role === 'assistant')?.id
+  const hidePersistedLiveTurn = shouldHidePersistedStreamingAssistant({
+    isStreaming: stream.isStreaming,
+    isBridgeActive: stream.isBridgeActive,
+    lastMessage
+  })
+  const visibleMessages = hidePersistedLiveTurn ? chat.messages.slice(0, -1) : chat.messages
   const assistantPersistedDuringBridge =
     stream.isBridgeActive &&
     lastMessage?.role === 'assistant' &&
@@ -335,6 +351,16 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
       (lastMessage.toolInvocations?.length ?? 0) > 0 ||
       (lastMessage.attachments?.length ?? 0) > 0
     )
+  const showStreamingBubble =
+    (stream.isStreaming || stream.isBridgeActive || Boolean(stream.error)) &&
+    (!assistantPersistedDuringBridge || hidePersistedLiveTurn) &&
+    (!stream.isCompressing ||
+      Boolean(stream.text?.trim()) ||
+      Boolean(stream.reasoning?.trim()) ||
+      stream.activeTool ||
+      stream.completedTools.length > 0 ||
+      pendingEmojiAttachments.length > 0 ||
+      Boolean(stream.error))
 
   return (
     <CompanionAskInteractionProvider
@@ -359,7 +385,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             </div>
           )}
 
-          {[...chat.messages].map((msg) => {
+          {visibleMessages.map((msg) => {
             const isLiveCompressionAnchor =
               (stream.compressionPhase === 'auto' || stream.compressionPhase === 'manual') &&
               stream.compressionTriggerMessageId === msg.id &&
@@ -396,9 +422,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               : (persistedCompaction?.phase ?? 'auto')
 
             const bubbleAttachments = msg.attachments ?? mapAttachmentsFromParts(msg.parts)
-            const agentGateParts = (msg.parts ?? []).filter(
-              (part: { type?: string }) => part.type === 'agent_gate'
-            )
+            const agentGateParts = collectAgentGatePartDataForSurface(msg.parts, 'companion')
 
             const bubbleMessage = {
               id: msg.id,
@@ -410,6 +434,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               toolInvocations: msg.toolInvocations,
               attachments: bubbleAttachments,
               skillRefs: msg.skillRefs,
+              parts: msg.parts,
               inputTokens: msg.inputTokens,
               outputTokens: msg.outputTokens,
               cacheReadInputTokens: msg.cacheReadInputTokens,
@@ -420,8 +445,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
             return (
               <React.Fragment key={msg.id}>
-                {agentGateParts.map((part: { id: string; data?: unknown }) => (
-                  <AgentGatePartBubble key={part.id} data={part.data as AgentGatePartData} />
+                {agentGateParts.map((data) => (
+                  <AgentGatePartBubble key={data.request.id} data={data} />
                 ))}
                 <ChatBubble
                   message={bubbleMessage}
@@ -454,6 +479,14 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                   onResend={msg.role === 'user' ? () => actions.handleResend(msg) : undefined}
                   onDelete={() => actions.handleDelete(msg)}
                   onBranch={msg.role === 'assistant' ? () => actions.handleBranch(msg) : undefined}
+                  error={resolvePersistedAssistantStreamError({
+                    messageRole: msg.role,
+                    messageId: msg.id,
+                    lastAssistantMessageId,
+                    lastMessageRole: lastMessage?.role,
+                    streamError: stream.error,
+                    liveBubbleVisible: showStreamingBubble
+                  })}
                 />
                 {(showLiveCompressionActivity || showCompressionDivider) && (
                   <div className={styles.compressionAnchor}>
@@ -480,18 +513,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             <AgentGatePartBubble key={data.request.id} data={data} />
           ))}
 
-          {(() => {
-            const showStreamingBubble =
-              (stream.isStreaming || stream.isBridgeActive) &&
-              !assistantPersistedDuringBridge &&
-              (!stream.isCompressing ||
-                Boolean(stream.text?.trim()) ||
-                Boolean(stream.reasoning?.trim()) ||
-                stream.activeTool ||
-                stream.completedTools.length > 0 ||
-                pendingEmojiAttachments.length > 0)
-
-            return showStreamingBubble ? (
+          {showStreamingBubble ? (
               <StreamingBubble
                 text={stream.text}
                 reasoning={stream.reasoning}
@@ -499,15 +521,16 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 isTextStreaming={stream.isStreaming}
                 activeToolName={activeToolDisplayName}
                 completedTools={stream.completedTools}
+                timeline={stream.timeline}
                 attachments={pendingEmojiAttachments}
+                error={stream.error}
                 aiProfile={{
                   name: currentAssistant?.name || 'AI',
                   avatarPath: currentAssistant?.avatarPath,
                   emoji: currentAssistant?.emoji
                 }}
               />
-            ) : null
-          })()}
+            ) : null}
 
           {chat.messages.length === 0 && !stream.isStreaming && !stream.isBridgeActive && (
             <div style={{ flex: 1 }} />

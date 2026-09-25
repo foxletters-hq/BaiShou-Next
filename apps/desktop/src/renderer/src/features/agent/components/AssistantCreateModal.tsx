@@ -20,7 +20,7 @@ export function AssistantCreateModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={dismiss} closeOnOverlayClick={false} style={{ padding: 0 }}>
+    <Modal isOpen={isOpen} onClose={dismiss} style={{ padding: 0 }}>
       <div style={{ width: '86vw', maxWidth: '960px', height: '85vh', overflow: 'hidden' }}>
         <AssistantEditPage
           assistant={null}

@@ -101,17 +101,6 @@
   border-color: var(--border-control);
 }
 
-:global(body[data-theme='dark']) .currentAssistantCard {
-  background: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
-}
-
-:global(body[data-theme='dark']) .currentAssistantCard:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-control);
-}
-
 .assistantInfo {
   flex: 1;
   margin-left: 10px;
