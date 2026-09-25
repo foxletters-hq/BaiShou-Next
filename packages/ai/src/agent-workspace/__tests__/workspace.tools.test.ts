@@ -9,6 +9,7 @@ import {
   WorkspaceRenameTool,
   WorkspaceWriteTool
 } from '../workspace.tools'
+import { WorkspaceRunTool } from '../workspace-run.tool'
 import { resolveAgentGateToolMetadata } from '../../baishou-agent-gate/agent-gate-tool-metadata'
 import { AgentGateRiskLevel, deriveLegacyVaultId } from '@baishou/shared'
 // @ts-ignore - Node built-in, available at runtime
@@ -247,5 +248,11 @@ describe('workspace gate metadata', () => {
     ).toBe(true)
     expect(resolveAgentGateToolMetadata('workspace_read')).toBeUndefined()
     expect(resolveAgentGateToolMetadata('workspace_list')).toBeUndefined()
+  })
+
+  it('should describe the detected host shell and forbid wrappers', () => {
+    const description = new WorkspaceRunTool().description
+    expect(description).toContain('inner command')
+    expect(description).toMatch(/Windows console|Windows PowerShell|PowerShell Core|Unix shell/)
   })
 })

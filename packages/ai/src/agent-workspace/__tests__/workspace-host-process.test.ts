@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 // @ts-ignore - Node built-in, available at runtime
 import { join } from 'node:path'
-import { runHostProcess } from '../workspace-host-process'
+import { detectProcessCommandRuntime, runHostProcess } from '../workspace-host-process'
 
 describe('runHostProcess', () => {
   const cwd = mkdtempSync(join(tmpdir(), 'baishou-workspace-run-'))
@@ -24,8 +24,13 @@ describe('runHostProcess', () => {
   })
 
   it('marks timedOut when the command exceeds timeout', async () => {
+    const runtime = detectProcessCommandRuntime()
     const hang =
-      process.platform === 'win32' ? 'powershell -Command "Start-Sleep -Seconds 30"' : 'sleep 30'
+      runtime.family === 'win_powershell' || runtime.family === 'win_pwsh'
+        ? 'Start-Sleep -Seconds 30'
+        : process.platform === 'win32'
+          ? 'ping -n 30 127.0.0.1 >nul'
+          : 'sleep 30'
 
     const result = await runHostProcess({
       command: hang,

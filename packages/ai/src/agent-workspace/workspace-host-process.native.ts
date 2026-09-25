@@ -1,8 +1,24 @@
+import type { WorkspaceCommandRuntime } from './workspace-command-runtime'
+
 export interface RunHostProcessParams {
   command: string
   cwd: string
   timeoutMs?: number
   abortSignal?: AbortSignal
+  runtime?: WorkspaceCommandRuntime
+}
+
+export function detectProcessCommandRuntime(): WorkspaceCommandRuntime {
+  return {
+    executable: '/bin/sh',
+    binary: 'sh',
+    family: 'unix_shell',
+    label: 'Unix shell (sh)'
+  }
+}
+
+export function resetWorkspaceCommandRuntimeCache(): void {
+  // native stub
 }
 
 export interface RunHostProcessResult {
