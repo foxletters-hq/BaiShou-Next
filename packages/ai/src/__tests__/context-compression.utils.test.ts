@@ -15,6 +15,7 @@ import {
   usableContextTokens,
   resolveCompressionTrigger,
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   readCompressTokenThreshold,
   computeTailStartMessageId,
   DEFAULT_MODEL_CONTEXT_WINDOW
@@ -326,6 +327,37 @@ describe('context-compression.utils', () => {
     // disabled → never (unless force)
     expect(resolveCompressionTrigger(999_999, { threshold: 0, keepTurns: 3 })).toBe(false)
     expect(resolveCompressionTrigger(0, { threshold: 0, keepTurns: 3, force: true })).toBe(true)
+  })
+
+  it('should count only messages after the last snapshot when estimating resend increment', () => {
+    const snapshot = {
+      id: 1,
+      sessionId: 's1',
+      summaryText: 'long summary '.repeat(400),
+      coveredUpToMessageId: '1',
+      tailStartMessageId: '3',
+      messageCount: 2,
+      tokenCount: null,
+      createdAt: new Date()
+    }
+    const afterSnapshot = [msg('3', 'user', 3, 'new'), msg('4', 'assistant', 4, 'new reply')]
+    const messages = [
+      msg('1', 'user', 1, 'old '.repeat(80)),
+      msg('2', 'assistant', 2, 'old reply '.repeat(80)),
+      ...afterSnapshot
+    ]
+
+    const increment = estimateTokensSinceLastSnapshot(messages, snapshot)
+    const windowTokens = estimateContextTokensForTrigger(messages, snapshot, {
+      recentCount: 1,
+      systemPrompt: 'system prompt '.repeat(200)
+    })
+
+    expect(increment).toBe(estimateMessagesTokens(afterSnapshot, true))
+    expect(increment).toBeLessThan(windowTokens)
+    expect(
+      estimateTokensSinceLastSnapshot(messages, { ...snapshot, summaryText: 'x' })
+    ).toBe(increment)
   })
 
   it('estimateContextTokensForTrigger ignores stale usage after snapshot', () => {

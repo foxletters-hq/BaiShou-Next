@@ -56,6 +56,119 @@ describe('MessageSearchTool', () => {
       messageSearcher: {} as any
     } as ToolContext)
     expect(output).toContain('Error')
+    expect(output).toContain('start_date')
+  })
+
+  it('should list original messages when query is empty and dates are present', async () => {
+    const lister = vi.fn().mockResolvedValue([
+      {
+        role: 'user',
+        snippet: '区间内原文',
+        sessionTitle: '日期会话',
+        date: '2026-09-03 10:00'
+      }
+    ])
+    const output = await tool.execute(
+      { query: '', start_date: '2026-09-01', end_date: '2026-09-07' },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: vi.fn(), listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(lister).toHaveBeenCalledWith(deriveLegacyVaultId('/tmp'), 21, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07'
+    })
+    expect(output).toContain('2026-09-01 ~ 2026-09-07 的历史消息')
+    expect(output).toContain('区间内原文')
+  })
+
+  it('should require both dates when listing without a keyword', async () => {
+    const lister = vi.fn()
+    const output = await tool.execute(
+      { start_date: '2026-09-01' },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: vi.fn(), listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(output).toContain('start_date')
+    expect(output).toContain('end_date')
+    expect(lister).not.toHaveBeenCalled()
+  })
+
+  it('should forward session_id when listing or searching', async () => {
+    const lister = vi.fn().mockResolvedValue([])
+    const searcher = vi.fn().mockResolvedValue([])
+    await tool.execute(
+      {
+        start_date: '2026-09-01',
+        end_date: '2026-09-07',
+        session_id: 'sess-date'
+      },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: searcher, listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(lister).toHaveBeenCalledWith(deriveLegacyVaultId('/tmp'), 21, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07',
+      sessionId: 'sess-date'
+    })
+
+    await tool.execute(
+      { query: '原文', session_id: 'sess-date' },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: searcher, listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(searcher).toHaveBeenCalledWith('原文', 10, deriveLegacyVaultId('/tmp'), {
+      startDate: undefined,
+      endDate: undefined,
+      sessionId: 'sess-date'
+    })
+  })
+
+  it('should request one extra message when the display limit is 50', async () => {
+    const lister = vi.fn().mockResolvedValue([])
+    await tool.execute(
+      { start_date: '2026-09-01', end_date: '2026-09-07', limit: 50 },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: vi.fn(), listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(lister).toHaveBeenCalledWith(deriveLegacyVaultId('/tmp'), 51, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07'
+    })
+  })
+
+  it('should reject inverted dates before listing', async () => {
+    const lister = vi.fn()
+    const output = await tool.execute(
+      { start_date: '2026-09-07', end_date: '2026-09-01' },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: { searchMessages: vi.fn(), listMessagesInDateRange: lister }
+      } as ToolContext
+    )
+    expect(output).toContain('不能晚于')
+    expect(lister).not.toHaveBeenCalled()
   })
 
   it('returns empty message when no hits', async () => {

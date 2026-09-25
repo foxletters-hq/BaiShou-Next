@@ -44,4 +44,33 @@ describe('consumeCompressionModelStream', () => {
       expect.objectContaining({ type: 'delta', chunk: 'summary done' })
     )
   })
+
+  it('should mark first output on the first reasoning or text delta', async () => {
+    const onFirstOutput = vi.fn()
+    const chunks = [{ type: 'text-delta', textDelta: '摘要' }]
+    let index = 0
+    const fullStream = {
+      getReader: () => ({
+        read: async () => {
+          if (index >= chunks.length) return { done: true, value: undefined }
+          const value = chunks[index++]
+          return { done: false, value }
+        },
+        releaseLock: () => {}
+      })
+    }
+
+    await consumeCompressionModelStream(
+      {
+        fullStream,
+        textStream: (async function* () {})(),
+        usage: Promise.resolve({ completionTokens: 1 })
+      } as any,
+      'sess-1',
+      undefined,
+      { onFirstOutput }
+    )
+
+    expect(onFirstOutput).toHaveBeenCalledOnce()
+  })
 })
