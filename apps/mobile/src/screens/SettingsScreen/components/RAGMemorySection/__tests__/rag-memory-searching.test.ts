@@ -20,4 +20,12 @@ describe('mobile rag memory searching', () => {
     expect(data).toContain('setIsSearching(true)')
     expect(data).toContain('setIsSearching(false)')
   })
+
+  it('should send suspect review to the graph pending tab', () => {
+    const view = readSection('RAGMemorySectionView.tsx')
+    expect(view).toContain('useMobileSuspectCount')
+    expect(view).toContain('requestGraphPendingFocus')
+    expect(view).toContain('suspectCount={suspectCount}')
+    expect(view).toContain("router.push('/graph')")
+  })
 })
