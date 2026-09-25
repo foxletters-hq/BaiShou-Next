@@ -13,8 +13,13 @@ import {
   resolveStreamDialogueSelection
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
+import { buildCompanionStreamHost } from './companion-stream-host'
 
-function buildActionDeps(event: Electron.IpcMainInvokeEvent, sessionId: string): ActionDeps {
+async function buildActionDeps(
+  event: Electron.IpcMainInvokeEvent,
+  sessionId: string,
+  systemModels: unknown
+): Promise<ActionDeps> {
   const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
     getAgentManagers()
   return {
@@ -27,7 +32,8 @@ function buildActionDeps(event: Electron.IpcMainInvokeEvent, sessionId: string):
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
     sessionManager,
-    cleanupAttachments: (sid, parts) => cleanupAttachmentsForParts(attachmentManager, sid, parts)
+    cleanupAttachments: (sid, parts) => cleanupAttachmentsForParts(attachmentManager, sid, parts),
+    streamHost: await buildCompanionStreamHost({ sessionId, systemModels })
   }
 }
 
@@ -56,7 +62,7 @@ export class AgentChatActionRunner {
     )
 
     return AgentChatActionCoreRunner.regenerate(
-      buildActionDeps(event, sessionId),
+      await buildActionDeps(event, sessionId, systemModels),
       {
         provider,
         modelId: resolved.modelId,
@@ -96,7 +102,7 @@ export class AgentChatActionRunner {
     )
 
     return AgentChatActionCoreRunner.editMessage(
-      buildActionDeps(event, sessionId),
+      await buildActionDeps(event, sessionId, systemModels),
       {
         provider,
         modelId: resolved.modelId,
@@ -136,7 +142,7 @@ export class AgentChatActionRunner {
     )
 
     return AgentChatActionCoreRunner.resend(
-      buildActionDeps(event, sessionId),
+      await buildActionDeps(event, sessionId, systemModels),
       {
         provider,
         modelId: resolved.modelId,

@@ -12,7 +12,13 @@ import {
   syncMcpToolUserConfig,
   type ToolContext
 } from '@baishou/ai'
-import { deriveLegacyVaultId } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
+  logger,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import { getAgentGate, getWorkspaceAgentGate } from '../services/agent-gate.service'
 import { resolveActiveWorkspaceToolContext } from '../services/agent-workspace-tool-context'
 import { resolveOrCreateWorkspaceIdByFolder } from '../services/agent-workspace-registry.store'
@@ -26,8 +32,10 @@ import { createDiarySearcher } from './agent-diary-searcher'
 import { createFetchSearchPage, createWebSearchResultFetcher } from './agent-web-fetch'
 import {
   buildAgentUserConfigFromSettings,
+  getActiveProvider,
   resolveEmbeddingSystemModels
 } from './agent-stream-config'
+import { settingsManager } from './settings.ipc'
 
 /** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
@@ -70,13 +78,25 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   }
 
   let dedupService: MemoryDeduplicationServiceImpl | undefined
-  if (embAdapter && embeddingProvider && embeddingModelId) {
-    dedupService = new MemoryDeduplicationServiceImpl(
-      embAdapter,
-      dbAdapter,
-      embeddingProvider,
-      embeddingModelId
-    )
+  if (embAdapter) {
+    try {
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const dialogueModelId = globalModels?.globalDialogueModelId
+      if (
+        isConfiguredProviderId(globalModels?.globalDialogueProviderId) &&
+        isConfiguredDialogueModelId(dialogueModelId)
+      ) {
+        const chatProvider = await getActiveProvider(globalModels?.globalDialogueProviderId)
+        dedupService = new MemoryDeduplicationServiceImpl(
+          embAdapter,
+          dbAdapter,
+          chatProvider,
+          dialogueModelId!.trim()
+        )
+      }
+    } catch (error) {
+      logger.warn('[agent-mcp] dialogue model unavailable, skip memory merge', error as Error)
+    }
   }
 
   const activeWorkspace = await resolveActiveWorkspaceToolContext()
@@ -117,6 +137,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     rawDataSourceManager: (
       await import('../services/raw-data-source.runtime')
     ).getRawDataSourceManager(),
+    graphReader: (await import('../services/desktop-graph-reader')).createDesktopGraphReader(
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+    ),
     knowledgeReader: (
       await import('../services/desktop-knowledge-reader')
     ).createDesktopKnowledgeReader(

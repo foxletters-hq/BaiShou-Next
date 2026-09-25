@@ -3,8 +3,6 @@ import {
   assistantRowToEmojiPrefs,
   isAgentStreamAbortError,
   type AssistantEmojiPrefs,
-  BAISHOU_AGENT_GATE_CONFIG_KEY,
-  type BaishouAgentGateConfig,
   type SessionInputDelivery,
   type SessionInputRecord
 } from '@baishou/shared'
@@ -25,17 +23,9 @@ import {
   resolveStreamDialogueSelection,
   applySessionReasoningEffort
 } from './agent-helpers'
-import { desktopExtraVercelToolsFactory } from '../services/mcp-client-runtime'
-import { settingsManager } from './settings.ipc'
-import { resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
+import { buildCompanionStreamHost } from './companion-stream-host'
 import { searchService } from '../services/search.service'
-import {
-  cancelAllAgentGateSessions,
-  cancelAgentGateSession,
-  getAgentGate
-} from '../services/agent-gate.service'
-import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
-import { createDesktopSkillsWriter } from '../services/desktop-skills-writer'
+import { cancelAllAgentGateSessions, cancelAgentGateSession } from '../services/agent-gate.service'
 import { drainSessionInbox } from '../services/session-inbox-drain'
 import { initDesktopSessionInboxStore } from '../services/session-inbox.store'
 
@@ -146,123 +136,13 @@ export class AgentChatService {
   }) {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
-    const agentGate = await getAgentGate()
-    const { getRawDataSourceManager, syncGraphPendingIndex } =
-      await import('../services/raw-data-source.runtime')
-    const rawDataSourceManager = getRawDataSourceManager()
-    const { GraphReaderAdapter, createCompanionGraphLookups, EmbeddingAdapter } =
-      await import('@baishou/ai')
-    const { GraphRagService } = await import('@baishou/core-desktop')
-    const { connectionManager, GraphRepository } = await import('@baishou/database-desktop')
-    const systemModels = params.systemModels as {
-      embeddingProvider?: { getLanguageModel?: unknown } & object
-      embeddingModelId?: string
-    } | null
-    let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
-    if (systemModels?.embeddingProvider && systemModels.embeddingModelId) {
-      try {
-        const adapter = new EmbeddingAdapter(
-          systemModels.embeddingProvider as never,
-          systemModels.embeddingModelId
-        )
-        if (adapter.isConfigured) {
-          embedQuery = (text) => adapter.embedQuery(text)
-        }
-      } catch {
-        embedQuery = undefined
-      }
-    }
-    const graphReader = connectionManager.isConnected()
-      ? new GraphReaderAdapter(async (opts) => {
-          const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
-          const vaultId = resolveActiveVaultId()
-          const result = await rag.recallRelations({
-            vaultId,
-            entity: opts.entity,
-            mode: opts.mode,
-            depth: opts.depth,
-            nodeType: opts.nodeType,
-            limit: opts.limit,
-            embedQuery
-          })
-          return {
-            anchors: result.anchors.map((a) => ({
-              id: a.id,
-              name: a.name,
-              nodeType: a.nodeType,
-              summary: a.summary
-            })),
-            subgraph: result.subgraph.map((e) => ({
-              id: e.id,
-              fromId: e.fromId,
-              toId: e.toId,
-              edgeType: e.edgeType,
-              sourceRef: e.sourceRef,
-              sourceExcerpt: e.sourceExcerpt,
-              validFrom: e.validFrom
-            })),
-            timeline: result.timeline?.map((e) => ({
-              id: e.id,
-              fromId: e.fromId,
-              toId: e.toId,
-              edgeType: e.edgeType,
-              sourceRef: e.sourceRef,
-              sourceExcerpt: e.sourceExcerpt,
-              validFrom: e.validFrom
-            })),
-            nodes: result.nodes.map((n) => ({
-              id: n.id,
-              name: n.name,
-              nodeType: n.nodeType,
-              summary: n.summary
-            })),
-            paths: (result.paths ?? []).map((p) => ({
-              nodeIds: p.nodeIds,
-              nodeNames: p.nodeNames,
-              edges: p.edges.map((e) => ({
-                id: e.id,
-                fromId: e.fromId,
-                toId: e.toId,
-                edgeType: e.edgeType,
-                sourceRef: e.sourceRef,
-                sourceExcerpt: e.sourceExcerpt
-              })),
-              edgeDirections: p.edgeDirections
-            }))
-          }
-        })
-      : undefined
-    const { graphNodeLookup, graphEdgeLookup } = connectionManager.isConnected()
-      ? createCompanionGraphLookups(async () => {
-          const repo = new GraphRepository(connectionManager.getDb())
-          const vaultId = resolveActiveVaultId()
-          return {
-            findByNameOrAlias: async (name, nodeType) =>
-              (await repo.findNodesByNameOrAlias(vaultId, name, nodeType))[0] ?? null,
-            getNodeById: (id) => repo.getNodeById(id, vaultId),
-            getEdgeById: (id) => repo.getEdgeById(id, vaultId)
-          }
-        })
-      : { graphNodeLookup: undefined, graphEdgeLookup: undefined }
-
-    const knowledgeReader = createDesktopKnowledgeReader(embedQuery)
-    const { createDesktopKnowledgeGraphReader } =
-      await import('../services/desktop-knowledge-graph-reader')
-    const knowledgeGraphReader = createDesktopKnowledgeGraphReader()
-
-    const { DesktopStoragePathService } = await import('../services/path.service')
-    const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
-    await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
-
-    let skillsCatalog: Array<{ name: string; description?: string }> | undefined
-    try {
-      const { listAgentSkillsCatalog } = await import('../services/agent-skills.service')
-      skillsCatalog = await listAgentSkillsCatalog()
-    } catch {
-      skillsCatalog = undefined
-    }
+    const streamHost = await buildCompanionStreamHost({
+      sessionId: params.sessionId,
+      systemModels: params.systemModels
+    })
 
     return AgentChatCoreService.runStreamChat({
+      ...streamHost,
       emitter,
       sessionId: params.sessionId,
       userText: params.userText,
@@ -274,51 +154,13 @@ export class AgentChatService {
       attachments: params.attachments,
       skipUserMessageRecording: params.skipUserMessageRecording,
       forceRecompress: params.forceRecompress,
-      agentGate,
-      persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
-        await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
-      },
-      rawDataSourceManager,
-      syncGraphPendingIndex,
-      deleteGraphRecord: async ({ kind, id }) => {
-        if (!connectionManager.isConnected()) {
-          throw new Error('Database not connected')
-        }
-        const { applyDiaryGraphSurgicalDelete } = await import('@baishou/core-desktop')
-        const { getGraphRawManager } = await import('../services/raw-data-source.runtime')
-        await applyDiaryGraphSurgicalDelete({
-          kind,
-          id,
-          vaultId: resolveActiveVaultId(),
-          manager: getGraphRawManager(),
-          repo: new GraphRepository(connectionManager.getDb())
-        })
-      },
-      graphReader,
-      graphNodeLookup,
-      graphEdgeLookup,
-      knowledgeReader,
-      knowledgeGraphReader,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,
       diarySearcher: createDiarySearcher(),
-      skillsWriter: createDesktopSkillsWriter(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
-      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId),
-      resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
-      skillsCatalog,
-      extraVercelToolsFactory: desktopExtraVercelToolsFactory,
-      workspace: {
-        folderRoot: '',
-        sessionKind: 'companion',
-        notebookIds: await (async () => {
-          const { readSessionMountedNotebookIds } =
-            await import('../services/session-mounted-notebooks')
-          return readSessionMountedNotebookIds(params.sessionId)
-        })()
-      }
+      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
     })
   }
 

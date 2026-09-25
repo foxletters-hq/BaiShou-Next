@@ -75,7 +75,9 @@ async function persistWorkspaceConfig(
     current.hideDeniedTools = saved.hideDeniedTools
     current.repeatAssertAskThreshold = saved.repeatAssertAskThreshold
     current.securityMode = saved.securityMode
-    current.commandBlacklist = saved.commandBlacklist ? [...saved.commandBlacklist] : undefined
+    current.commandBlacklist = Array.isArray(saved.commandBlacklist)
+      ? [...saved.commandBlacklist]
+      : undefined
     current.scopePreset = saved.scopePreset
     current.approvalPreset = saved.approvalPreset
   }
@@ -268,7 +270,9 @@ export async function patchScopedAgentGateConfig(
     next.hideDeniedTools = expanded.hideDeniedTools
     next.repeatAssertAskThreshold = expanded.repeatAssertAskThreshold
     next.securityMode = mode
-    next.commandBlacklist = expanded.commandBlacklist ? [...expanded.commandBlacklist] : undefined
+    next.commandBlacklist = Array.isArray(expanded.commandBlacklist)
+      ? [...expanded.commandBlacklist]
+      : undefined
     // 清除旧二维预设，防止回读时误判成白名单
     delete next.approvalPreset
     delete next.scopePreset
@@ -410,7 +414,10 @@ export function registerAgentGateEventBridge(): void {
             win.webContents.send('agent-gate:replied', {
               sessionId: event.sessionId,
               requestId: event.requestId,
-              reply: event.reply
+              reply: event.reply,
+              message: event.message,
+              selectedOptionIds: event.selectedOptionIds,
+              questionAnswers: event.questionAnswers
             })
           }
         }

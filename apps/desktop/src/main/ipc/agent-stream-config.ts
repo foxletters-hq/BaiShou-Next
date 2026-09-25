@@ -8,7 +8,6 @@ import {
   logger,
   formatUserCardFromProfile,
   isConfiguredProviderId,
-  isConfiguredDialogueModelId,
   normalizeToolManagementConfig,
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig,
@@ -21,6 +20,7 @@ import {
   type BaishouAgentGateConfig,
   requireResolvedDialogueModel,
   resolveReasoningEffortForSlot,
+  resolveProviderModelSlot,
   type ResolvedDialogueModel
 } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
@@ -31,11 +31,21 @@ export async function getActiveProvider(requestedProviderId?: string) {
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
 
-  const providerId = requestedProviderId || globalModels?.globalDialogueProviderId
-  const config = providers.find((p: AIProviderConfig) => p.id === providerId)
-
-  const actualConfig = config || providers.find((p: AIProviderConfig) => p.isEnabled)
-  if (!actualConfig) throw new Error('No active provider configured')
+  const explicitId = isConfiguredProviderId(requestedProviderId)
+    ? requestedProviderId!.trim()
+    : ''
+  const providerId =
+    explicitId ||
+    (isConfiguredProviderId(globalModels?.globalDialogueProviderId)
+      ? globalModels!.globalDialogueProviderId.trim()
+      : '')
+  if (!providerId) throw new Error('No active provider configured')
+  const actualConfig = providers.find(
+    (p: AIProviderConfig) => p.id === providerId && p.isEnabled !== false
+  )
+  if (!actualConfig) {
+    throw new Error(`No active provider configured (provider: ${providerId})`)
+  }
 
   const registry = AIProviderRegistry.getInstance()
   const provider = registry.getOrUpdateProvider(actualConfig)
@@ -211,36 +221,25 @@ export async function buildStreamConfig(
 ) {
   const provider = await getActiveProvider(requestedProviderId)
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+  const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
-  const namingProviderId = globalModels?.globalNamingProviderId || provider.config.id
-  let namingModelId =
-    globalModels?.globalNamingModelId ||
-    requestedModelId ||
-    globalModels?.globalDialogueModelId ||
-    'deepseek-chat'
-  let namingProvider = provider
-  if (namingProviderId !== provider.config.id) {
-    try {
-      namingProvider = await getActiveProvider(namingProviderId)
-    } catch (e) {
-      namingModelId = requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat'
+  const namingHit = resolveProviderModelSlot(providers, [
+    {
+      providerId: globalModels?.globalNamingProviderId,
+      modelId: globalModels?.globalNamingModelId
     }
-  }
+  ])
+  const namingProvider = namingHit ? await getActiveProvider(namingHit.providerId) : undefined
+  const namingModelId = namingHit?.modelId
 
-  const summaryProviderId = globalModels?.globalSummaryProviderId || provider.config.id
-  let summaryModelId =
-    globalModels?.globalSummaryModelId ||
-    requestedModelId ||
-    globalModels?.globalDialogueModelId ||
-    'deepseek-chat'
-  let summaryProvider = provider
-  if (summaryProviderId !== provider.config.id) {
-    try {
-      summaryProvider = await getActiveProvider(summaryProviderId)
-    } catch (e) {
-      summaryModelId = requestedModelId || globalModels?.globalDialogueModelId || 'deepseek-chat'
+  const summaryHit = resolveProviderModelSlot(providers, [
+    {
+      providerId: globalModels?.globalSummaryProviderId,
+      modelId: globalModels?.globalSummaryModelId
     }
-  }
+  ])
+  const summaryProvider = summaryHit ? await getActiveProvider(summaryHit.providerId) : undefined
+  const summaryModelId = summaryHit?.modelId
 
   const { hasEmbeddingModel, embeddingProvider, embeddingModelId } =
     await resolveEmbeddingSystemModels(globalModels)
@@ -253,9 +252,7 @@ export async function buildStreamConfig(
     assistantEmojiPrefs
   })
 
-  const namingModelConfigured =
-    isConfiguredProviderId(globalModels?.globalNamingProviderId) &&
-    isConfiguredDialogueModelId(globalModels?.globalNamingModelId)
+  const namingModelConfigured = Boolean(namingHit)
 
   return {
     provider,

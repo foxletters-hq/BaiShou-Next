@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const src = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../AgentChatService.ts'),
+  join(dirname(fileURLToPath(import.meta.url)), '../companion-stream-host.ts'),
   'utf8'
 )
 
