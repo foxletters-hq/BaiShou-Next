@@ -306,7 +306,14 @@ export async function runMobileDerivedIndexHydration(options: {
     })
 
     // 同步下载后图谱节点照常入库，但不调用嵌入接口；缺向量的节点计入待嵌入项目，由手动补齐处理
-    const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {})
+    const embedMissing = false
+    const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
+      embedQuery:
+        embedMissing && embeddingAdapter?.isConfigured
+          ? (text) => embeddingAdapter.embedQuery(text)
+          : undefined,
+      modelId: embedMissing ? embeddingAdapter?.embeddingModelId : undefined
+    })
     await graphSync.syncPendingIndex({
       vaultId: options.vaultId,
       deletedShardPaths: options.deletedShardPaths

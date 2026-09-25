@@ -96,7 +96,9 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
         })`
       )
     }
-    throw new Error('No summary model configured')
+    throw new Error(
+      'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+    )
   }
 
   return {

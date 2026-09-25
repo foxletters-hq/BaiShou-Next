@@ -10,7 +10,8 @@ const src = readFileSync(
 
 describe('mobile rag batch embed diary tags', () => {
   it('should read tags from the loaded diary row instead of the detection row', () => {
-    expect(src).toContain('resolveDiaryEmbedTagsFromLoadedRow(diary)')
+    expect(src).toContain('tags: []')
+    expect(src).not.toContain('resolveDiaryEmbedTagsFromLoadedRow(diary)')
     expect(src).not.toContain('meta.tags')
   })
 

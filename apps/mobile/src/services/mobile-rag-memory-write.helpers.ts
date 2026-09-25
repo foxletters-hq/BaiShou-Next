@@ -208,64 +208,69 @@ export async function deleteMobileRagEntry(
   deps: MobileRagServiceDeps,
   embeddingId: string
 ): Promise<void> {
-  const vaultScope = await resolveVaultScope(deps)
-  const activeVaultId = await vaultScope.resolveActiveVaultId()
-  if (await clearGraphNodeEmbeddingIfNeeded(embeddingId, activeVaultId)) return
-  const client = deps.rawSqlClient as RawSqlClient
-  if (!client?.execute) return
-  const rowRes = await client.execute({
-    sql: `SELECT source_type, source_id, source_created_at FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
-    args: [embeddingId]
-  })
-  const row = rowRes.rows?.[0] as Record<string, unknown> | undefined
-  if (!row) return
+  try {
+    const vaultScope = await resolveVaultScope(deps)
+    const activeVaultId = await vaultScope.resolveActiveVaultId()
+    if (await clearGraphNodeEmbeddingIfNeeded(embeddingId, activeVaultId)) return
+    const client = deps.rawSqlClient as RawSqlClient
+    if (!client?.execute) return
+    const rowRes = await client.execute({
+      sql: `SELECT source_type, source_id, source_created_at FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
+      args: [embeddingId]
+    })
+    const row = rowRes.rows?.[0] as Record<string, unknown> | undefined
+    if (!row) return
 
-  const sourceType = String(row.source_type)
-  const sourceId = String(row.source_id)
-  if (sourceType === MEMORY_SOURCE_TYPE || sourceType === 'manual') {
-    const createdAtRaw = row.source_created_at
-    const createdAtMs =
-      typeof createdAtRaw === 'number'
-        ? createdAtRaw > 1e12
-          ? createdAtRaw
-          : createdAtRaw * 1000
-        : undefined
-    const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
-    const rawManager = getMobileRawDataSourceManager()
-    try {
-      await rawManager?.tombstone('memory', sourceId, { shardMonth })
-    } catch {
-      // legacy / already-absent
+    const sourceType = String(row.source_type)
+    const sourceId = String(row.source_id)
+    if (sourceType === MEMORY_SOURCE_TYPE || sourceType === 'manual') {
+      const createdAtRaw = row.source_created_at
+      const createdAtMs =
+        typeof createdAtRaw === 'number'
+          ? createdAtRaw > 1e12
+            ? createdAtRaw
+            : createdAtRaw * 1000
+          : undefined
+      const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
+      const rawManager = getMobileRawDataSourceManager()
+      try {
+        await rawManager?.tombstone('memory', sourceId, { shardMonth })
+      } catch {
+        // legacy / already-absent
+      }
+      await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
+      if (sourceType === 'manual') {
+        await deps.hsRepo.deleteEmbeddingsBySource(MEMORY_SOURCE_TYPE, sourceId)
+      }
+      return
     }
-    await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
-    if (sourceType === 'manual') {
-      await deps.hsRepo.deleteEmbeddingsBySource(MEMORY_SOURCE_TYPE, sourceId)
+
+    if (sourceType === 'diary') {
+      const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
+      const { deleteDiaryEmbeddingAliases } = await import('./mobile-diary-embedding.util')
+      const parsed = parseDiaryEmbeddingSourceId(sourceId)
+      const vaultId = parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
+      const diaryIdRaw = parsed?.diaryId ?? sourceId
+      const diaryId = Number(diaryIdRaw)
+      if (Number.isFinite(diaryId)) {
+        await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultId, diaryId)
+      } else {
+        await client.execute({
+          sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
+          args: [embeddingId]
+        })
+      }
+      return
     }
-    return
+
+    await client.execute({
+      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
+      args: [embeddingId]
+    })
+  } finally {
+    const { notifyMobilePendingEmbedCountsChanged } = await import('./mobile-pending-embed-counts')
+    notifyMobilePendingEmbedCountsChanged()
   }
-
-  if (sourceType === 'diary') {
-    const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
-    const { deleteDiaryEmbeddingAliases } = await import('./mobile-diary-embedding.util')
-    const parsed = parseDiaryEmbeddingSourceId(sourceId)
-    const vaultId = parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
-    const diaryIdRaw = parsed?.diaryId ?? sourceId
-    const diaryId = Number(diaryIdRaw)
-    if (Number.isFinite(diaryId)) {
-      await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultId, diaryId)
-    } else {
-      await client.execute({
-        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
-        args: [embeddingId]
-      })
-    }
-    return
-  }
-
-  await client.execute({
-    sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
-    args: [embeddingId]
-  })
 }
 
 export async function clearAllMobileRag(deps: MobileRagServiceDeps): Promise<void> {
