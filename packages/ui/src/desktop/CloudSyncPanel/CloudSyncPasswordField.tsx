@@ -21,7 +21,6 @@ export const CloudSyncPasswordField: React.FC<CloudSyncPasswordFieldProps> = ({
   <>
     <label style={labelStyle}>{label}</label>
     <Input
-      fieldSize="small"
       type={showPassword ? 'text' : 'password'}
       value={value}
       onChange={(e) => onChange(e.target.value)}

@@ -685,7 +685,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: transparent;
+  background: var(--bg-overlay);
   z-index: 100000;
   display: flex;
   align-items: center;

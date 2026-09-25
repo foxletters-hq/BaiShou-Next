@@ -41,7 +41,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-author-name"
-          fieldSize="small"
           type="text"
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
@@ -52,7 +51,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-author-email"
-          fieldSize="small"
           type="text"
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
@@ -75,7 +73,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-remote-url"
-          fieldSize="small"
           type="text"
           value={remoteUrl}
           onChange={(e) => setRemoteUrl(e.target.value)}
@@ -89,7 +86,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-remote-branch"
-          fieldSize="small"
           type="text"
           value={remoteBranch}
           onChange={(e) => setRemoteBranch(e.target.value)}
@@ -100,7 +96,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-remote-username"
-          fieldSize="small"
           type="text"
           value={remoteUsername}
           onChange={(e) => setRemoteUsername(e.target.value)}
@@ -111,7 +106,6 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
         </label>
         <Input
           id="gmp-remote-token"
-          fieldSize="small"
           type={showPassword ? 'text' : 'password'}
           value={remoteToken}
           onChange={(e) => setRemoteToken(e.target.value)}

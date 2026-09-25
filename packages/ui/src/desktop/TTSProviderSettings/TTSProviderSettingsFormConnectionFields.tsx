@@ -26,7 +26,6 @@ export function TTSProviderSettingsFormConnectionFields({
       <div className={styles.section}>
         <label className={styles.label}>{t('tts.settings.provider_label', 'TTS 供应商')}</label>
         <Select
-          size="small"
           options={providerOptions}
           value={providerType}
           onChange={(e) => {
@@ -37,7 +36,6 @@ export function TTSProviderSettingsFormConnectionFields({
 
       <div className={styles.section}>
         <Input
-          fieldSize="small"
           label={t('tts.settings.base_url_label', 'API Base URL')}
           placeholder={
             providerType === 'clone-tts'
@@ -79,7 +77,6 @@ export function TTSProviderSettingsFormConnectionFields({
             )}
           </div>
           <Input
-            fieldSize="small"
             type={showApiKey ? 'text' : 'password'}
             placeholder={t('tts.settings.api_key_placeholder', 'sk-...（可选）')}
             value={currentConfig.apiKey}
