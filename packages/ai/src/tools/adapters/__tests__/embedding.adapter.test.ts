@@ -32,6 +32,20 @@ describe('EmbeddingAdapter', () => {
     mockEmbed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
   })
 
+  it('should throw the provider balance message from embedQuery', async () => {
+    mockEmbed.mockRejectedValue({
+      message: 'Payment Required',
+      statusCode: 402,
+      responseBody:
+        '{"code":30001,"message":"Sorry, your account balance is insufficient","data":null}'
+    })
+    const adapter = new EmbeddingAdapter(provider, 'Qwen/Qwen3-Embedding-4B')
+
+    await expect(adapter.embedQuery('天气')).rejects.toThrow(
+      'Sorry, your account balance is insufficient'
+    )
+  })
+
   it('throws when requireSuccess and all chunks fail', async () => {
     mockEmbed.mockRejectedValue(new Error('api down'))
     const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)

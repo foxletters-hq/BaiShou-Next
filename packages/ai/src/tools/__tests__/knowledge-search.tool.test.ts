@@ -101,4 +101,25 @@ describe('KnowledgeSearchTool', () => {
     expect(result).toMatch(/不在已挂载集合/)
     expect(search).not.toHaveBeenCalled()
   })
+
+  it('should surface the embed API error instead of embedding-not-configured', async () => {
+    const search = vi.fn().mockRejectedValue({
+      message: 'Payment Required',
+      statusCode: 402,
+      responseBody:
+        '{"code":30001,"message":"Sorry, your account balance is insufficient","data":null}'
+    })
+    const context = {
+      knowledgeReader: { search },
+      workspace: {
+        folderRoot: '',
+        sessionKind: 'companion',
+        notebookIds: ['nb-bound']
+      }
+    } as unknown as ToolContext
+
+    const result = await tool.execute({ query: '天气' }, context)
+    expect(result).toContain('Sorry, your account balance is insufficient')
+    expect(result).not.toContain('embedding-not-configured')
+  })
 })

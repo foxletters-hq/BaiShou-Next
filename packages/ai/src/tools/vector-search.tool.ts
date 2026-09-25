@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchTimeFilter } from './agent.tool'
-import { formatStoredTimestamp } from '@baishou/shared'
+import { formatAiApiCallError, formatStoredTimestamp } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
 import {
@@ -86,6 +86,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
     if (!embeddingService || !vectorStore) {
       return '嵌入服务或向量数据库未配置，无法执行语义搜索。'
     }
+    if (!embeddingService.isConfigured) {
+      return '嵌入模型未配置，无法执行语义搜索。请在设置中配置嵌入模型。'
+    }
 
     const dateRange = resolveVectorSearchDateRange(args.start_date, args.end_date)
     if ('error' in dateRange) {
@@ -110,7 +113,7 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
     try {
       const queryEmbedding = await embeddingService.embedQuery(args.query)
       if (!queryEmbedding) {
-        return '嵌入模型未配置或查询嵌入失败。请在设置中配置嵌入模型。'
+        return '查询嵌入失败：未得到向量。请检查嵌入模型服务是否可用。'
       }
 
       const pipeline: string[] = []
@@ -205,7 +208,7 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
       return lines.join('\n')
     } catch (e) {
-      return `语义搜索失败: ${e instanceof Error ? e.message : String(e)}`
+      return `语义搜索失败: ${formatAiApiCallError(e)}`
     }
   }
 }

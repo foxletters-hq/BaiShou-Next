@@ -98,6 +98,24 @@ describe('VectorSearchTool', () => {
     expect(result).toContain('喜欢深色主题')
   })
 
+  it('should surface the embed API error instead of saying the model is not configured', async () => {
+    const result = await tool.execute(
+      { query: '天气' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockRejectedValue(
+            new Error('Sorry, your account balance is insufficient')
+          ),
+          embedText: vi.fn()
+        },
+        vectorStore: { searchSimilar: vi.fn(), deleteBySource: vi.fn() }
+      })
+    )
+    expect(result).toContain('Sorry, your account balance is insufficient')
+    expect(result).not.toContain('嵌入模型未配置')
+  })
+
   it('passes time filter to FTS in hybrid mode', async () => {
     const searchSimilar = vi.fn().mockResolvedValue([])
     const searchFts = vi.fn().mockResolvedValue([])
