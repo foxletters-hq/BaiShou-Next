@@ -1,7 +1,12 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
+import {
+  AgentGateReply,
+  shouldRenderAgentGateHistoryCard,
+  type AgentGatePartData,
+  type AgentGateRequest
+} from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 
 export interface AgentGatePartCardProps {
@@ -33,6 +38,7 @@ function selectedOptionLabel(
 export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  if (!shouldRenderAgentGateHistoryCard(data)) return null
   const { request, resolution } = data
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)

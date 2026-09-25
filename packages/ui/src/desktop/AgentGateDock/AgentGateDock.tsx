@@ -2,14 +2,26 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../Button/Button'
-import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
+  AgentGateKind,
+  AgentGateReply,
+  buildCompanionAskQuestionAnswers,
+  listAgentGateFileChangePreviews,
+  resolveCompanionAskQuestions,
+  type AgentGateFileChangePreview,
+  type AgentGateRequest
+} from '@baishou/shared'
+import {
+  formatCoalescedToolHint,
   shouldCollectRejectFeedback,
   shouldShowAlwaysAllow,
-  shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
   type AgentGateReplyPayload
 } from '../../agent-gate'
+import { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
+import { CompanionAskFields } from './CompanionAskFields'
+import { DiffChanges } from '../../agent-workspace/DiffChanges'
+import { formatFileChangeListPath } from '../../agent-workspace/file-change.utils'
 import {
   canFlipGateQueue,
   formatFileChangeKindLabel,
@@ -30,28 +42,45 @@ export interface AgentGateDockProps {
   sameActionCount?: number
   /** inline：嵌入输入区上方；overlay：兼容旧浮层 */
   placement?: 'inline' | 'overlay'
+  /** 工作台点文件行时打开中间编辑器 diff；缺省则只展示文件与加减行 */
+  onOpenFileChange?: (preview: AgentGateFileChangePreview) => void
 }
 
-function DiffLines({ diff }: { diff: string }) {
-  return (
-    <div className={styles.diffBody}>
-      {diff.split('\n').map((line, index) => {
-        let className = styles.diffLine
-        if (line.startsWith('+') && !line.startsWith('+++')) {
-          className = `${styles.diffLine} ${styles.diffAdd}`
-        } else if (line.startsWith('-') && !line.startsWith('---')) {
-          className = `${styles.diffLine} ${styles.diffDel}`
-        } else if (line.startsWith('@@')) {
-          className = `${styles.diffLine} ${styles.diffHunk}`
-        }
-        return (
-          <div key={index} className={className}>
-            {line}
-          </div>
-        )
-      })}
-    </div>
+function FileChangePreviewRow({
+  preview,
+  onOpen
+}: {
+  preview: AgentGateFileChangePreview
+  onOpen?: (preview: AgentGateFileChangePreview) => void
+}) {
+  const { t } = useTranslation()
+  const pathLabel = preview.previousPath
+    ? `${formatFileChangeListPath(preview.previousPath)} → ${formatFileChangeListPath(preview.path)}`
+    : formatFileChangeListPath(preview.path)
+  const content = (
+    <>
+      <span className={styles.fileKind}>{formatFileChangeKindLabel(preview.kind)}</span>
+      <span className={styles.filePath}>{pathLabel}</span>
+      <DiffChanges additions={preview.additions} deletions={preview.deletions} />
+      {preview.truncated ? (
+        <span className={styles.fileHint}>{t('agent_gate.diff_truncated', '预览已截断')}</span>
+      ) : null}
+      {onOpen ? <ChevronRight className={styles.fileChevron} size={14} aria-hidden /> : null}
+    </>
   )
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        className={`${styles.fileRow} ${styles.fileRowButton}`}
+        onClick={() => onOpen(preview)}
+        title={t('workbench.open_changed_file', '在中间打开 {{path}}', { path: preview.path })}
+      >
+        {content}
+      </button>
+    )
+  }
+  return <div className={styles.fileRow}>{content}</div>
 }
 
 export const AgentGateDock: React.FC<AgentGateDockProps> = ({
@@ -62,21 +91,20 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   queueTotal = 0,
   onQueuePrev,
   onQueueNext,
-  placement = 'inline'
+  placement = 'inline',
+  onOpenFileChange
 }) => {
   const { t } = useTranslation()
   const titleId = useId()
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedback, setFeedback] = useState('')
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
-  const [diffExpanded, setDiffExpanded] = useState(false)
+  const askQuestions = request ? resolveCompanionAskQuestions(request) : []
+  const askDrafts = useCompanionAskDrafts(askQuestions)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
-    setSelectedOptionId(null)
-    setDiffExpanded(false)
   }, [request?.id])
 
   useEffect(() => {
@@ -90,10 +118,14 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
-  const allowCustomInput = shouldShowCustomRejectInput(request)
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
   const preview = request.preview
-  const questionText = request.title?.trim() || ''
+  const filePreviews = listAgentGateFileChangePreviews(request)
+  const coalescedHint = formatCoalescedToolHint(request, t)
+  const questionText =
+    askQuestions.length > 1
+      ? t('agent_gate.multi_ask_desc', '请一并确认以下几项。')
+      : request.title?.trim() || ''
   const descriptionText = request.description?.trim() || ''
   const numberedOptionsText =
     proactiveOptions && request.options.length > 0
@@ -121,11 +153,15 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   }
 
   const submitProactiveConfirm = () => {
-    if (!selectedOptionId) return
+    if (!askDrafts.complete) return
+    const questionAnswers = buildCompanionAskQuestionAnswers(askQuestions, askDrafts.drafts)
+    const first = questionAnswers[0]
     void onReply({
       requestId: request.id,
       reply: AgentGateReply.Once,
-      selectedOptionIds: [selectedOptionId]
+      selectedOptionIds: first?.selectedOptionIds,
+      message: first?.message,
+      questionAnswers
     })
   }
 
@@ -198,41 +234,23 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       )}
       {!preview &&
       proactiveOptions &&
+      askQuestions.length <= 1 &&
       descriptionText &&
       !descriptionIsOptionsDump &&
       descriptionText !== questionText ? (
         <p className={styles.hint}>{descriptionText}</p>
       ) : null}
+      {coalescedHint ? <p className={styles.hint}>{coalescedHint}</p> : null}
 
-      {preview?.type === 'file_change' ? (
-        <div className={styles.previewBlock}>
-          <div className={styles.previewStats}>
-            <span>
-              {formatFileChangeKindLabel(preview.kind)} · {preview.path}
-              {preview.previousPath ? ` ← ${preview.previousPath}` : ''}
-            </span>
-            {preview.additions > 0 ? (
-              <span className={styles.additions}>+{preview.additions}</span>
-            ) : null}
-            {preview.deletions > 0 ? (
-              <span className={styles.deletions}>-{preview.deletions}</span>
-            ) : null}
-            {preview.truncated ? <span>{t('agent_gate.diff_truncated', '预览已截断')}</span> : null}
-          </div>
-          {preview.diff ? (
-            <>
-              <button
-                type="button"
-                className={styles.diffToggle}
-                onClick={() => setDiffExpanded((v) => !v)}
-              >
-                {diffExpanded
-                  ? t('agent_gate.collapse_diff', '收起 Diff')
-                  : t('agent_gate.expand_diff', '展开 Diff')}
-              </button>
-              {diffExpanded ? <DiffLines diff={preview.diff} /> : null}
-            </>
-          ) : null}
+      {filePreviews.length > 0 ? (
+        <div className={styles.fileList}>
+          {filePreviews.map((filePreview) => (
+            <FileChangePreviewRow
+              key={`${filePreview.kind}:${filePreview.path}:${filePreview.previousPath ?? ''}`}
+              preview={filePreview}
+              onOpen={onOpenFileChange}
+            />
+          ))}
         </div>
       ) : null}
 
@@ -275,20 +293,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       ) : null}
 
       {proactiveOptions && !showFeedback ? (
-        <div className={styles.options} role="radiogroup" aria-label={request.title}>
-          {request.options.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={selectedOptionId === option.id}
-              className={`${styles.option} ${selectedOptionId === option.id ? styles.optionSelected : ''}`}
-              onClick={() => setSelectedOptionId(option.id)}
-            >
-              <span className={styles.optionLabel}>{option.label}</span>
-            </button>
-          ))}
-        </div>
+        <CompanionAskFields questions={askQuestions} isReplying={isReplying} drafts={askDrafts} />
       ) : null}
 
       {showFeedback ? (
@@ -330,11 +335,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         </div>
       ) : proactiveOptions ? (
         <div className={styles.actions}>
-          {allowCustomInput ? (
-            <Button type="button" disabled={isReplying} onClick={() => setShowFeedback(true)}>
-              {t('agent_gate.custom_answer', '自定义回答')}
-            </Button>
-          ) : null}
           <Button
             type="button"
             className={styles.btnReject}
@@ -345,7 +345,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
           </Button>
           <Button
             type="button"
-            disabled={isReplying || !selectedOptionId}
+            disabled={isReplying || !askDrafts.complete}
             onClick={submitProactiveConfirm}
           >
             {t('agent_gate.confirm', '确认')}
