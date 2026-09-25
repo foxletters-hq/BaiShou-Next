@@ -12,7 +12,7 @@ export interface ResizableMarkdownEditorProps {
   minHeight?: number
   maxHeight?: number
   onBlur?: () => void
-  /** 与表单小输入框同一套描边、圆角和内边距 */
+  /** 与默认尺寸的表单输入框同一套描边、圆角、内边距和字号 */
   variant?: 'default' | 'formField'
 }
 

@@ -32,7 +32,6 @@ export const ShortcutManagerEditForm: React.FC<ShortcutManagerEditFormProps> = (
       <div className={styles.field}>
         <label className={styles.fieldLabel}>{t('shortcut.label_name', '展示名称')}</label>
         <Input
-          fieldSize="small"
           value={draftName}
           onChange={(e) => onDraftNameChange(e.target.value)}
           placeholder={t('shortcut.label_hint', '例如: 翻译')}
@@ -43,7 +42,6 @@ export const ShortcutManagerEditForm: React.FC<ShortcutManagerEditFormProps> = (
           {t('shortcut.command_label', 'Skill 名称 (用于 / 触发)')}
         </label>
         <Input
-          fieldSize="small"
           value={draftCommand}
           onChange={(e) => onDraftCommandChange(e.target.value)}
           placeholder={t('shortcut.command_hint', '例如: review, translate')}
