@@ -2,10 +2,39 @@ export type NotebookGraphJobSnapshot = {
   pending: number
   running: number
   failed: number
+  currentSourceId?: string | null
   currentSourceTitle: string | null
   knownTotal?: number
   windowsDone?: number
   windowsTotal?: number
+  pageFrom?: number
+  pageTo?: number
+  pageTotal?: number
+  lastError?: string | null
+  failedSourceTitle?: string | null
+}
+
+export type NotebookGraphJobItemState = {
+  sourceId: string
+  status: string
+  lastError?: string | null
+  windowsDone?: number
+  windowsTotal?: number
+  pageFrom?: number
+  pageTo?: number
+  pageTotal?: number
+}
+
+export type NotebookGraphJobsState = {
+  pending: number
+  running: number
+  failed: number
+  currentSourceId: string | null
+  currentSourceTitle: string | null
+  lastError: string | null
+  failedSourceTitle: string | null
+  statusBySourceId: Record<string, string>
+  jobsBySourceId: Record<string, NotebookGraphJobItemState>
 }
 
 export type NotebookGraphProgressCopy = {
@@ -24,6 +53,22 @@ export type NotebookGraphProgressView = NotebookGraphProgressCopy & {
 
 type TranslateFn = (key: string, options?: Record<string, string | number>) => string
 
+export function graphPageSpan(input?: {
+  pageFrom?: number
+  pageTo?: number
+  pageTotal?: number
+} | null): { pageFrom: number; pageTo: number; pageTotal: number } | null {
+  const pageTotal = Math.max(0, input?.pageTotal ?? 0)
+  const pageTo = Math.min(pageTotal, Math.max(0, input?.pageTo ?? 0))
+  if (pageTotal <= 0 || pageTo <= 0) return null
+  const rawFrom = Math.max(0, input?.pageFrom ?? 0)
+  return {
+    pageFrom: Math.min(pageTo, rawFrom > 0 ? rawFrom : pageTo),
+    pageTo,
+    pageTotal
+  }
+}
+
 export function notebookGraphProgressCopy(
   snapshot: NotebookGraphJobSnapshot
 ): NotebookGraphProgressCopy {
@@ -33,8 +78,10 @@ export function notebookGraphProgressCopy(
   const done = Math.max(0, total - remaining)
   const windowTotal = Math.max(0, snapshot.windowsTotal ?? 0)
   const windowDone = Math.max(0, Math.min(windowTotal, snapshot.windowsDone ?? 0))
-  const percent =
-    windowTotal > 0
+  const pages = graphPageSpan(snapshot)
+  const percent = pages
+    ? Math.min(100, Math.round((pages.pageTo / pages.pageTotal) * 100))
+    : windowTotal > 0
       ? Math.min(100, Math.round((windowDone / windowTotal) * 100))
       : total === 0
         ? 0
@@ -57,26 +104,39 @@ export function notebookGraphProgressCopy(
         ? 'knowledge.graph_progress_current'
         : 'knowledge.graph_progress_generic',
       headlineParams: current ? { title: current } : undefined,
-      detailKey:
-        windowTotal > 0
+      detailKey: pages
+        ? pages.pageFrom === pages.pageTo
+          ? 'knowledge.graph_progress_page'
+          : 'knowledge.graph_progress_page_range'
+        : windowTotal > 0
           ? 'knowledge.graph_progress_window'
           : total > 0
             ? 'knowledge.graph_progress_done_of'
             : 'knowledge.graph_progress_queued',
-      detailParams:
-        windowTotal > 0
+      detailParams: pages
+        ? pages.pageFrom === pages.pageTo
+          ? { page: pages.pageTo, total: pages.pageTotal }
+          : { from: pages.pageFrom, to: pages.pageTo, total: pages.pageTotal }
+        : windowTotal > 0
           ? { done: windowDone, total: windowTotal }
           : total > 0
             ? { done, total }
             : { remaining }
     }
   }
+  const failedTitle = snapshot.failedSourceTitle?.trim() || ''
+  const reason = snapshot.lastError?.trim() || ''
   return {
     visible: true,
-    percent: 100,
-    headlineKey: 'knowledge.graph_progress_failed_headline',
-    detailKey: 'knowledge.graph_progress_failed_detail',
-    detailParams: { failed }
+    percent: 0,
+    headlineKey: failedTitle
+      ? 'knowledge.graph_progress_failed_named'
+      : 'knowledge.graph_progress_failed_headline',
+    headlineParams: failedTitle ? { title: failedTitle } : undefined,
+    detailKey: reason
+      ? 'knowledge.graph_progress_failed_reason'
+      : 'knowledge.graph_progress_failed_detail',
+    detailParams: reason ? { reason } : { failed }
   }
 }
 
