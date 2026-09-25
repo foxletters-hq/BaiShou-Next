@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { SYSTEM_LATTE_ASSISTANT_ID, getDefaultLatteAssistantSystemPrompt } from '@baishou/shared'
 import { Button, HelpTooltip, SettingsPageChrome, useDialog, useToast } from '@baishou/ui'
 import { useAssistantStore } from '@baishou/store'
+import { LatteProfileIntro } from './LatteProfileIntro'
 import styles from './DiarySettingsPane.module.css'
 import pane from './GeneralSettingsPane.module.css'
 
@@ -95,6 +96,8 @@ export const LatteSettingsPane: React.FC = () => {
       }
     >
       <div className={pane.stack}>
+        <LatteProfileIntro />
+
         {loading ? (
           <div className={styles.loadingRow}>
             {t('settings.latte_ensure_loading', '正在准备系统伙伴 Latte…')}
