@@ -27,7 +27,6 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
         <div className={styles.comboboxWrapper}>
           <Input
             type="text"
-            fieldSize="small"
             placeholder={
               providerType === 'clone-tts' || providerType === 'gpt-sovits'
                 ? 'default'

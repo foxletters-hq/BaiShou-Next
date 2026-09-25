@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import {
   resolveSessionContextUsage,
+  shouldShowSessionContextUsageRing,
   type LastRoundUsageMessage,
   type SessionTokenTotals
 } from '@baishou/shared'
@@ -40,7 +41,7 @@ export const SessionContextUsageRing: React.FC<SessionContextUsageRingProps> = (
       totals.estimatedCost
     ]
   )
-  if (hidden) return null
+  if (!shouldShowSessionContextUsageRing({ messageCount: messages.length, hidden })) return null
   return (
     <ContextUsageRing
       lastRound={resolved.lastRound}

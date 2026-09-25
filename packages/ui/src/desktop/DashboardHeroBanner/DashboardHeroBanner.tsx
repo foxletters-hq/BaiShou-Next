@@ -11,7 +11,7 @@ export const DashboardHeroBanner: React.FC = () => {
       style={{
         width: '100%',
         height: 140,
-        backgroundColor: 'var(--color-primary, #5BA8F5)',
+        backgroundColor: 'var(--color-primary)',
         borderRadius: 20,
         display: 'flex',
         flexDirection: 'column',
@@ -19,14 +19,14 @@ export const DashboardHeroBanner: React.FC = () => {
         padding: '0 28px',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 8px 20px rgba(var(--color-primary-rgb, 91, 168, 245), 0.25)'
+        boxShadow: 'var(--shadow-md)'
       }}
     >
       <div
         style={{
           fontSize: 22,
           fontWeight: '600',
-          color: 'var(--text-on-primary, #ffffff)',
+          color: 'var(--text-on-primary)',
           zIndex: 1,
           letterSpacing: '-0.5px'
         }}
@@ -36,7 +36,7 @@ export const DashboardHeroBanner: React.FC = () => {
       <div
         style={{
           fontSize: 13,
-          color: 'rgba(255, 255, 255, 0.8)',
+          color: 'color-mix(in srgb, var(--text-on-primary) 80%, transparent)',
           marginTop: 8,
           zIndex: 1
         }}
