@@ -5,16 +5,24 @@ import {
   markPhaseDone,
   overallFromPhaseCounts,
   phaseCountsFromPending,
+  MEMORY_ORGANIZE_PHASE_IDS,
   RAG_BATCH_EMBED_PHASE_IDS,
   resolvePhaseRowStatus
 } from '../rag-batch-embed-progress.util'
 
 describe('rag-batch-embed-progress', () => {
-  it('should list knowledge then extract then graph_node when reading shared phase ids', () => {
+  it('should keep knowledge in the shared id union but omit it from memory organize phases', () => {
     expect(RAG_BATCH_EMBED_PHASE_IDS).toEqual([
       'diary',
       'memory',
       'knowledge',
+      'graph_extract',
+      'graph_node',
+      'graph_disambiguate'
+    ])
+    expect(MEMORY_ORGANIZE_PHASE_IDS).toEqual([
+      'diary',
+      'memory',
       'graph_extract',
       'graph_node',
       'graph_disambiguate'
@@ -32,7 +40,7 @@ describe('rag-batch-embed-progress', () => {
     ).toBe('memory')
   })
 
-  it('should return knowledge when knowledge and graph nodes both have work', () => {
+  it('should skip knowledge leftovers when choosing the next memory organize phase', () => {
     expect(
       firstActivePhase({
         diaries: 0,
@@ -41,7 +49,7 @@ describe('rag-batch-embed-progress', () => {
         knowledgeSources: 2,
         graphExtract: 3
       })
-    ).toBe('knowledge')
+    ).toBe('graph_extract')
   })
 
   it('should return graph_extract when extract and graph nodes both have work', () => {
@@ -68,16 +76,16 @@ describe('rag-batch-embed-progress', () => {
     ).toBe('graph_extract')
   })
 
-  it('should return graph_node when only notebook graph nodes remain', () => {
+  it('should finish when only notebook leftovers remain', () => {
     expect(
       firstActivePhase({
         diaries: 0,
         memories: 0,
         graphNodes: 0,
-        knowledgeSources: 0,
+        knowledgeSources: 2,
         notebookGraphNodes: 2
       })
-    ).toBe('graph_node')
+    ).toBe('finishing')
   })
 
   it('should return graph_disambiguate when only disambiguate remains', () => {
@@ -103,7 +111,7 @@ describe('rag-batch-embed-progress', () => {
     ).toBe('finishing')
   })
 
-  it('should mark knowledge done when current phase is graph_node', () => {
+  it('should skip knowledge when current phase is graph_node', () => {
     const phases = phaseCountsFromPending({
       diaries: 0,
       memories: 0,
@@ -111,7 +119,9 @@ describe('rag-batch-embed-progress', () => {
       knowledgeSources: 3,
       graphExtract: 1
     })
-    expect(resolvePhaseRowStatus('knowledge', 'graph_node', phases.knowledgeSources)).toBe('done')
+    expect(resolvePhaseRowStatus('knowledge', 'graph_node', phases.knowledgeSources)).toBe(
+      'skipped'
+    )
   })
 
   it('should mark graph_extract done when current phase is graph_node', () => {
@@ -188,20 +198,20 @@ describe('rag-batch-embed-progress', () => {
     ).toEqual({ completed: 16, total: 336 })
   })
 
-  it('should fold notebook graph nodes into graph_node when counting pending phases', () => {
+  it('should keep notebook leftovers out of memory organize phase totals', () => {
     expect(
       phaseCountsFromPending({
         diaries: 0,
         memories: 0,
         graphNodes: 2,
-        knowledgeSources: 0,
+        knowledgeSources: 5,
         notebookGraphNodes: 4,
         graphExtract: 3
       })
     ).toEqual({
       diaries: { completed: 0, total: 0 },
       memories: { completed: 0, total: 0 },
-      graphNodes: { completed: 0, total: 6 },
+      graphNodes: { completed: 0, total: 2 },
       knowledgeSources: { completed: 0, total: 0 },
       graphExtract: { completed: 0, total: 3 },
       graphDisambiguate: { completed: 0, total: 0 }

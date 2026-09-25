@@ -11,6 +11,15 @@ export const RAG_BATCH_EMBED_PHASE_IDS = [
 
 export type RagBatchEmbedPhaseId = (typeof RAG_BATCH_EMBED_PHASE_IDS)[number]
 
+/** 常规记忆整理进度条用的阶段，不含笔记本资料。 */
+export const MEMORY_ORGANIZE_PHASE_IDS = [
+  'diary',
+  'memory',
+  'graph_extract',
+  'graph_node',
+  'graph_disambiguate'
+] as const satisfies readonly RagBatchEmbedPhaseId[]
+
 export type RagBatchEmbedPhaseKind = RagBatchEmbedPhaseId | 'starting' | 'finishing'
 
 export type RagBatchEmbedPhaseStatus = 'pending' | 'running' | 'done' | 'skipped'
@@ -70,12 +79,11 @@ export type OrganizePhaseCountInput = Pick<
 }
 
 export function phaseCountsFromPending(counts: OrganizePhaseCountInput): RagBatchEmbedPhaseCounts {
-  const graphNodes = counts.graphNodes + Math.max(0, Math.floor(counts.notebookGraphNodes ?? 0))
   return {
     diaries: createPhaseCount(0, counts.diaries),
     memories: createPhaseCount(0, counts.memories),
-    graphNodes: createPhaseCount(0, graphNodes),
-    knowledgeSources: createPhaseCount(0, counts.knowledgeSources),
+    graphNodes: createPhaseCount(0, counts.graphNodes),
+    knowledgeSources: createPhaseCount(0, 0),
     graphExtract: createPhaseCount(0, counts.graphExtract ?? 0),
     graphDisambiguate: createPhaseCount(0, counts.graphDisambiguate ?? 0)
   }
@@ -143,9 +151,8 @@ export function overallFromPhaseCounts(phases: RagBatchEmbedPhaseCounts): {
 export function firstActivePhase(counts: OrganizePhaseCountInput): RagBatchEmbedPhaseKind {
   if (counts.diaries > 0) return 'diary'
   if (counts.memories > 0) return 'memory'
-  if (counts.knowledgeSources > 0) return 'knowledge'
   if ((counts.graphExtract ?? 0) > 0) return 'graph_extract'
-  if (counts.graphNodes > 0 || (counts.notebookGraphNodes ?? 0) > 0) return 'graph_node'
+  if (counts.graphNodes > 0) return 'graph_node'
   if ((counts.graphDisambiguate ?? 0) > 0) return 'graph_disambiguate'
   return 'finishing'
 }

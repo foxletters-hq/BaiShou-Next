@@ -1,4 +1,4 @@
-export const RAG_VECTOR_KINDS = ['diary', 'partner', 'manual', 'graph_node'] as const
+export const RAG_VECTOR_KINDS = ['diary', 'graph_node', 'partner', 'manual'] as const
 
 export type RagVectorKind = (typeof RAG_VECTOR_KINDS)[number]
 

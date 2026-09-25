@@ -4,7 +4,7 @@ import {
   organizePhaseOrder,
   runOrganizePhases
 } from '../organize-pipeline.util'
-import { RAG_BATCH_EMBED_PHASE_IDS } from '../rag-batch-embed-progress.util'
+import { MEMORY_ORGANIZE_PHASE_IDS } from '../rag-batch-embed-progress.util'
 
 const empty = {
   diaries: 0,
@@ -16,22 +16,21 @@ const empty = {
   graphDisambiguate: 0
 }
 
-const NEW_PHASE_ORDER = [
+const MEMORY_PHASE_ORDER = [
   'diary',
   'memory',
-  'knowledge',
   'graph_extract',
   'graph_node',
   'graph_disambiguate'
 ] as const
 
 describe('organize-pipeline', () => {
-  it('should keep knowledge then extract then graph_node when listing shared phase order', () => {
-    expect(organizePhaseOrder()).toEqual([...NEW_PHASE_ORDER])
+  it('should list extract then graph_node when listing memory organize phase order', () => {
+    expect(organizePhaseOrder()).toEqual([...MEMORY_PHASE_ORDER])
   })
 
-  it('should match organizePhaseOrder when reading RAG_BATCH_EMBED_PHASE_IDS', () => {
-    expect(RAG_BATCH_EMBED_PHASE_IDS).toEqual(organizePhaseOrder())
+  it('should match organizePhaseOrder when reading MEMORY_ORGANIZE_PHASE_IDS', () => {
+    expect(MEMORY_ORGANIZE_PHASE_IDS).toEqual(organizePhaseOrder())
   })
 
   it('should list leftover phases in shared order when some counts are zero', () => {
@@ -43,10 +42,10 @@ describe('organize-pipeline', () => {
         graphExtract: 4,
         graphDisambiguate: 1
       })
-    ).toEqual(['memory', 'knowledge', 'graph_extract', 'graph_disambiguate'])
+    ).toEqual(['memory', 'graph_extract', 'graph_disambiguate'])
   })
 
-  it('should list knowledge extract then graph_node when every phase has leftover work', () => {
+  it('should list memory extract then graph_node when every memory phase has leftover work', () => {
     expect(
       listRunnableOrganizePhases({
         ...empty,
@@ -57,16 +56,16 @@ describe('organize-pipeline', () => {
         graphExtract: 1,
         graphDisambiguate: 1
       })
-    ).toEqual([...NEW_PHASE_ORDER])
+    ).toEqual(['diary', 'memory', 'graph_extract', 'graph_node', 'graph_disambiguate'])
   })
 
-  it('should fold notebook graph nodes into graph_node when only notebook nodes remain', () => {
+  it('should ignore notebook graph nodes when listing memory organize phases', () => {
     expect(
       listRunnableOrganizePhases({
         ...empty,
         notebookGraphNodes: 3
       })
-    ).toEqual(['graph_node'])
+    ).toEqual([])
   })
 
   it('should return no phases when every count is zero', () => {
@@ -81,7 +80,7 @@ describe('organize-pipeline', () => {
     expect(result).toEqual({ ran: ['graph_extract'], abortedAt: null })
   })
 
-  it('should run leftover phases in shared order when every count is positive', async () => {
+  it('should run leftover memory phases without knowledge when every count is positive', async () => {
     const result = await runOrganizePhases({
       input: {
         ...empty,
@@ -94,10 +93,10 @@ describe('organize-pipeline', () => {
       },
       runPhase: async () => undefined
     })
-    expect(result.ran).toEqual([...NEW_PHASE_ORDER])
+    expect(result.ran).toEqual(['diary', 'memory', 'graph_extract', 'graph_node', 'graph_disambiguate'])
   })
 
-  it('should abort at knowledge when stopping after two phases', async () => {
+  it('should abort at graph_extract when stopping after two phases', async () => {
     let calls = 0
     const interrupted = await runOrganizePhases({
       input: {
@@ -113,10 +112,10 @@ describe('organize-pipeline', () => {
       },
       shouldContinue: () => calls < 2
     })
-    expect(interrupted.abortedAt).toBe('knowledge')
+    expect(interrupted.abortedAt).toBe('graph_extract')
   })
 
-  it('should keep diary and memory in ran when aborting before knowledge', async () => {
+  it('should keep diary and memory in ran when aborting before graph extract', async () => {
     let calls = 0
     const interrupted = await runOrganizePhases({
       input: {
@@ -146,6 +145,6 @@ describe('organize-pipeline', () => {
       },
       runPhase: async () => undefined
     })
-    expect(resumed.ran).toEqual(['knowledge', 'graph_extract', 'graph_node', 'graph_disambiguate'])
+    expect(resumed.ran).toEqual(['graph_extract', 'graph_node', 'graph_disambiguate'])
   })
 })

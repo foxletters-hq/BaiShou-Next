@@ -5,6 +5,7 @@ export interface PendingEmbedCounts {
   knowledgeSources: number
   /** 笔记本图节点向量，与资料分块向量分开计。 */
   notebookGraphNodes: number
+  /** 常规记忆待嵌入合计，不含笔记本向量/图。 */
   total: number
 }
 
@@ -41,7 +42,7 @@ export function buildPendingEmbedCounts(input: {
     graphNodes,
     knowledgeSources,
     notebookGraphNodes,
-    total: diaries + memories + graphNodes + knowledgeSources + notebookGraphNodes
+    total: diaries + memories + graphNodes
   }
 }
 
@@ -61,21 +62,25 @@ export async function countPendingFromUnembeddedList(
 export function createPendingEmbedCountCache() {
   let cached: PendingEmbedCounts | null = null
   let inflight: Promise<PendingEmbedCounts> | null = null
+  let generation = 0
 
   return {
     invalidate(): void {
       cached = null
+      inflight = null
+      generation += 1
     },
     async get(loader: () => Promise<PendingEmbedCounts>): Promise<PendingEmbedCounts> {
       if (cached) return cached
       if (inflight) return inflight
+      const started = generation
       inflight = loader()
         .then((value) => {
-          cached = value
+          if (started === generation) cached = value
           return value
         })
         .finally(() => {
-          inflight = null
+          if (started === generation) inflight = null
         })
       return inflight
     }

@@ -1,10 +1,10 @@
 import type { PendingEmbedCounts } from './pending-embed-count.util'
 import {
-  RAG_BATCH_EMBED_PHASE_IDS,
+  MEMORY_ORGANIZE_PHASE_IDS,
   type RagBatchEmbedPhaseId
 } from './rag-batch-embed-progress.util'
 
-/** 整理流水的待办快照：嵌入四类 + 笔记本图节点 + 抽图 + 可疑节点扫描。 */
+/** 整理流水的待办快照：常规记忆嵌入 + 日记抽图 + 可疑节点扫描。笔记本欠账不进入这条流水。 */
 export type OrganizePendingInput = Pick<
   PendingEmbedCounts,
   'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources'
@@ -15,17 +15,16 @@ export type OrganizePendingInput = Pick<
 }
 
 export function graphNodePhaseTotal(input: OrganizePendingInput): number {
-  return Math.max(0, input.graphNodes) + Math.max(0, input.notebookGraphNodes ?? 0)
+  return Math.max(0, input.graphNodes)
 }
 
 /**
- * 按固定顺序列出仍有待办的阶段。已清空的阶段不会出现，因此中断后续跑会从第一个仍有待办的阶段开始。
+ * 按固定顺序列出常规记忆仍有待办的阶段。笔记本向量/图不进入这条流水。
  */
 export function listRunnableOrganizePhases(input: OrganizePendingInput): RagBatchEmbedPhaseId[] {
   const ids: RagBatchEmbedPhaseId[] = []
   if (input.diaries > 0) ids.push('diary')
   if (input.memories > 0) ids.push('memory')
-  if (input.knowledgeSources > 0) ids.push('knowledge')
   if ((input.graphExtract ?? 0) > 0) ids.push('graph_extract')
   if (graphNodePhaseTotal(input) > 0) ids.push('graph_node')
   if ((input.graphDisambiguate ?? 0) > 0) ids.push('graph_disambiguate')
@@ -49,5 +48,5 @@ export async function runOrganizePhases(options: {
 }
 
 export function organizePhaseOrder(): readonly RagBatchEmbedPhaseId[] {
-  return RAG_BATCH_EMBED_PHASE_IDS
+  return MEMORY_ORGANIZE_PHASE_IDS
 }

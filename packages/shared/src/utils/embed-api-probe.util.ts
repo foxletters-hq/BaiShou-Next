@@ -1,3 +1,5 @@
+import { formatAiApiCallError } from './ai-api-error.util'
+
 export const EMBED_API_PROBE_TEXT = '记忆整理连通检查'
 
 export const EMBED_API_PROBE_FAILURE_MESSAGE =
@@ -6,7 +8,11 @@ export const EMBED_API_PROBE_FAILURE_MESSAGE =
 export async function probeEmbeddingApi(
   embedQuery: (text: string) => Promise<number[] | null>
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const vector = await embedQuery(EMBED_API_PROBE_TEXT)
-  if (vector && vector.length > 0) return { ok: true }
-  return { ok: false, message: EMBED_API_PROBE_FAILURE_MESSAGE }
+  try {
+    const vector = await embedQuery(EMBED_API_PROBE_TEXT)
+    if (vector && vector.length > 0) return { ok: true }
+    return { ok: false, message: EMBED_API_PROBE_FAILURE_MESSAGE }
+  } catch (error) {
+    return { ok: false, message: formatAiApiCallError(error) }
+  }
 }
