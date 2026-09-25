@@ -114,6 +114,7 @@
       "AppearanceSettingsCard",
       "ProfileSettingsCard",
       "IdentitySettingsCard",
+      "IdentityFactsDialog",
       "ChatBackgroundSettingsCard",
       "AboutSettingsCard"
     ],
@@ -127,7 +128,7 @@
       "McpSettingsCard",
       "HotkeySettingsCard"
     ],
-    "记忆与总结设置": ["RagMemoryView", "SummarySettingsView", "EmojiSettingsView"],
+    "记忆与总结设置": ["RagMemoryView", "RagMemoryOrganizeModal", "SummarySettingsView", "EmojiSettingsView"],
     "更新": ["UpdateChecker", "VersionManager"]
   },
   "native": {
@@ -247,6 +248,7 @@
       "AppearanceSettingsCard",
       "ProfileSettingsCard",
       "IdentitySettingsCard",
+      "IdentityFactsDialog",
       "ChatBackgroundSettingsCard",
       "AboutSettingsCard"
     ],

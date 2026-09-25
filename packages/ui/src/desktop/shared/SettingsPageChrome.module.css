@@ -71,12 +71,20 @@
   margin-left: auto;
 }
 
-/* 右侧控件不得撑高顶栏 */
+/* 右侧控件不得撑高顶栏；标题旁仍固定成图标方钮，最右侧允许文字按钮按内容变宽 */
 .trailing :is(button, a),
 .titleAccessory :is(button, a) {
-  width: 28px;
   height: 28px;
   box-sizing: border-box;
+}
+
+.titleAccessory :is(button, a) {
+  width: 28px;
+}
+
+.trailing :is(button, a) {
+  width: auto;
+  min-width: 28px;
 }
 
 .title,
@@ -95,6 +103,8 @@
   gap: 16px;
   height: 100%;
   box-sizing: border-box;
+  container-type: inline-size;
+  container-name: settings-page-scroll;
 }
 
 .scrollArea::-webkit-scrollbar {

@@ -29,14 +29,14 @@ import { Button, Switch } from '@baishou/ui/native'
 
 ## 官方零件（禁止在页面里再实现一份）
 
-| 组件               | 说明                                                         |
-| ------------------ | ------------------------------------------------------------ |
-| `Switch`           | 默认尺寸 sm，轨道 42×24；需要大号时传 `size="md"`（52×32）   |
-| `Checkbox`         | 业务文件里不允许再写 `type="checkbox"`                       |
-| `SegmentedControl` | 分段切换，桌面端在 `src/desktop/shared/SegmentedControl.tsx` |
-| `Button`           | 变体一律描边；默认 `outlined` + `size="small"`；不要撑满整行 |
-| `Input`            | 单行输入框；设置区用 `fieldSize="small"`                     |
-| `Select`           | 下拉选择；设置区用 `size="small"`                            |
+| 组件               | 说明                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
+| `Switch`           | 默认尺寸 sm，轨道 42×24；需要大号时传 `size="md"`（52×32）           |
+| `Checkbox`         | 业务文件里不允许再写 `type="checkbox"`                               |
+| `SegmentedControl` | 分段切换，桌面端在 `src/desktop/shared/SegmentedControl.tsx`         |
+| `Button`           | 变体一律描边；默认 `outlined` + `size="small"`；不要撑满整行         |
+| `Input`            | 单行输入框；表单用默认尺寸，搜索框等紧凑场景才用 `fieldSize="small"` |
+| `Select`           | 下拉选择；表单用默认尺寸，工具栏等紧凑场景才用 `size="small"`        |
 
 以下三种做法都不允许：在页面里用 CSS 再画开关、勾选或分段控件；在业务文件里写 `type="checkbox"`；在移动端从 `react-native` 引入 `Switch` 或 `Checkbox`。实现只放在本包对应目录。
 
@@ -67,9 +67,9 @@ import { Button, Switch } from '@baishou/ui/native'
 - **助手**：`AssistantPicker` `AssistantPickerSheet` `PromptShortcutSheet` `AssistantAvatar` `AssistantAvatarPicker` `AssistantKindTabBar` `AssistantKindBadge` `AvatarEditor` `AvatarCropModal`
 - **管理页与开发者选项**：`SessionManagementPage` `AssistantManagementPage` `AssistantManagementView` `AssistantEditPage` `AssistantMatrixCard` `GitManagementPage` `VersionHistorySidebar` `AttachmentManagementView` `DeveloperOptionsView`
 - **同步与存储**：`IncrementalSyncPanel` `IncrementalSyncScopeList` `SyncModeComparisonNotice` `BackupScopeList` `LanSyncCard` `CloudSyncPanel` `DataManagementCard` `StorageSettingsCard` `WorkspaceSettingsCard`
-- **外观与身份设置**：`AppearanceSettingsCard` `ProfileSettingsCard` `IdentitySettingsCard` `ChatBackgroundSettingsCard` `AboutSettingsCard`
+- **外观与身份设置**：`AppearanceSettingsCard` `ProfileSettingsCard` `IdentitySettingsCard` `IdentityFactsDialog` `ChatBackgroundSettingsCard` `AboutSettingsCard`
 - **模型与工具设置**：`AIModelServicesView` `AIGlobalModelsView` `TTSProviderSettings` `AgentBehaviorSettingsCard` `AgentToolsView` `WebSearchSettingsView` `McpSettingsCard` `HotkeySettingsCard`
-- **记忆与总结设置**：`RagMemoryView` `SummarySettingsView` `EmojiSettingsView`
+- **记忆与总结设置**：`RagMemoryView` `RagMemoryOrganizeModal` `SummarySettingsView` `EmojiSettingsView`
 - **更新**：`UpdateChecker` `VersionManager`
 
 <!-- desktop:end -->
@@ -93,7 +93,7 @@ import { Button, Switch } from '@baishou/ui/native'
 - **模型**：`ModelSwitcher` `ModelSwitcherPopup` `ModelVisionBadge` `ProviderBrandIcon`
 - **助手**：`AssistantPicker` `AssistantPickerSheet` `PromptShortcutSheet` `AssistantAvatar` `AssistantAvatarPicker` `AssistantKindTabBar` `AssistantKindBadge` `AssistantManagementView` `AssistantMatrixCard` `AssistantEditEmojiSection`
 - **同步与存储**：`IncrementalSyncPanel` `IncrementalSyncProgressOverlay` `IncrementalSyncConfirmDialog` `IncrementalSyncScopeList` `SyncModeComparisonNotice` `BackupScopeList` `LanSyncCard` `CloudSyncPanel` `DataManagementCard` `StorageSettingsCard` `StoragePermissionPrompt` `WorkspaceSettingsCard` `AttachmentManagementView`
-- **外观与身份设置**：`AppearanceSettingsCard` `ProfileSettingsCard` `IdentitySettingsCard` `ChatBackgroundSettingsCard` `AboutSettingsCard`
+- **外观与身份设置**：`AppearanceSettingsCard` `ProfileSettingsCard` `IdentitySettingsCard` `IdentityFactsDialog` `ChatBackgroundSettingsCard` `AboutSettingsCard`
 - **模型与工具设置**：`TTSProviderSettings` `AgentBehaviorSettingsCard` `AgentToolsView` `McpSettingsCard` `FeatureSettingsView`
 - **记忆与总结设置**：`RagMemoryView` `SummarySettingsView` `EmojiSettingsView`
 
