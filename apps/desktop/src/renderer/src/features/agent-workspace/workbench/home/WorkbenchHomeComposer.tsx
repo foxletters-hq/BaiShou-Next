@@ -15,6 +15,8 @@ import type { AgentWorkspaceSecurityMode } from '@baishou/shared'
 import { usePromptShortcutStore, useUserProfileStore } from '@baishou/store'
 import { Check, ChevronDown, Folder } from 'lucide-react'
 import workbenchMascot from '../assets/workbench-mascot.png'
+import { KnowledgeMountHint } from '../../../knowledge/KnowledgeMountHint'
+import { WorkbenchNotebookMountDialog } from '../WorkbenchNotebookMountDialog'
 import { useWorkbenchInputPlaceholder } from '../../utils/workbench-input-placeholder'
 import { createWorkspaceComposerDropResolver } from '../../utils/workspace-composer-drop.util'
 import { searchWorkspaceFileNames } from '../../utils/workspace-file-mention-search.util'
@@ -124,6 +126,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   const resolvedShortcuts = shortcuts ?? storeShortcuts
   const inputBarRef = useRef<InputBarRef>(null)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
+  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const [greetingIndex] = useState(() => Math.floor(Math.random() * COMPOSER_GREETING_KEYS.length))
   const [metaMenu, setMetaMenu] = useState<MetaMenuState | null>(null)
   const inputPlaceholder = useWorkbenchInputPlaceholder()
@@ -279,6 +282,11 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
         </div>
         <p className={styles.greeting}>{greetingText}</p>
       </div>
+      <KnowledgeMountHint
+        assistantId={currentAssistant?.id}
+        scope="workbench"
+        onOpen={() => setNotebookMountOpen(true)}
+      />
       <InputBar
         ref={inputBarRef}
         isLoading={Boolean(sending)}
@@ -291,7 +299,14 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
         searchMode={searchMode}
         onToggleSearchMode={onToggleSearchMode}
         placeholder={inputPlaceholder}
+        onOpenNotebookMount={() => setNotebookMountOpen(true)}
         footer={footer}
+      />
+      <WorkbenchNotebookMountDialog
+        open={notebookMountOpen}
+        assistantId={currentAssistant?.id}
+        scope="workbench"
+        onClose={() => setNotebookMountOpen(false)}
       />
       <ShortcutManagerDialog
         isOpen={showShortcutManager}

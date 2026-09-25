@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import type { PromptFileRef } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import type {
+  AgentGateFileChangePreview,
   AgentWorkspaceEntry,
   AgentWorkspaceSessionListItem,
+  PromptFileRef,
   WorkspaceChangeEntry
 } from '@baishou/shared'
 import { WorkbenchSidePane } from './WorkbenchSidePane'
@@ -16,6 +17,7 @@ import {
 import { joinWorkspaceAbsolutePath } from '../utils/workspace-composer-drop.util'
 import { dispatchWorkbenchRevealPath } from './workbench-explorer-selection.util'
 import { shouldQueueWorkbenchFileContext } from './workbench-file-context-queue.util'
+import { workspaceChangeFromGatePreview } from '../utils/workspace-gate-file-changes.util'
 import { WorkbenchResizeSash } from './WorkbenchResizeSash'
 import { useWorkbenchLayoutState } from './useWorkbenchLayoutState'
 import { usePanelResize } from './usePanelResize'
@@ -198,6 +200,11 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     mainPaneRef.current?.openDiffs(reviewChanges)
   }
 
+  const handleOpenGateFileChange = (preview: AgentGateFileChangePreview) => {
+    const change = workspaceChangeFromGatePreview(agentPanel.pendingAsk, preview)
+    if (change) mainPaneRef.current?.openDiff(change)
+  }
+
   const handleOpenGitDiff = (
     filePath: string,
     options?: { staged?: boolean; commitHash?: string }
@@ -332,6 +339,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               loadingSessions={loadingSessions}
               onSelectChange={handleSelectChange}
               onReviewAll={handleReviewAll}
+              onOpenGateFileChange={handleOpenGateFileChange}
               sessionsViewActive={agentSessionsOpen}
               onToggleSessionsView={handleToggleSessionsView}
               onNewSession={handleAgentNewSession}

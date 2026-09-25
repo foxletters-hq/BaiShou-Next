@@ -100,9 +100,9 @@ export const AgentWorkspaceScreen: React.FC = () => {
     queueTotal: gateQueueTotal,
     onQueuePrev,
     onQueueNext
-  } = useAgentGateQueuePager(gateSessionId, pendingGate?.id)
+  } = useAgentGateQueuePager(gateSessionId, pendingGate?.id, 'workspace')
   const sameActionCount = useAgentGateInboxStore((state) =>
-    selectSameActionCountInSession(state, gateSessionId, pendingGate?.action)
+    selectSameActionCountInSession(state, gateSessionId, pendingGate?.action, 'workspace')
   )
   useStreamError(stream.error, stream.isStreaming)
   const resolvedActiveWorkspace = resolveActiveWorkspace({

@@ -1,5 +1,7 @@
 import React, {
+  cloneElement,
   forwardRef,
+  isValidElement,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -11,7 +13,8 @@ import { useTranslation } from 'react-i18next'
 import {
   formatDialogueModelLabel,
   isConfiguredProviderId,
-  skillToPromptShortcut
+  skillToPromptShortcut,
+  type AgentGateFileChangePreview
 } from '@baishou/shared'
 import {
   ShortcutManagerDialog,
@@ -81,7 +84,8 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
       gateBlocksComposer = false,
       pendingAsk = null,
       isAskReplying = false,
-      onAskReply
+      onAskReply,
+      onOpenGateFileChange
     },
     ref
   ) {
@@ -98,6 +102,15 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
       }),
       []
     )
+    const resolvedGateSlot = useMemo(() => {
+      if (!isValidElement(gateSlot) || !onOpenGateFileChange) return gateSlot
+      return cloneElement(
+        gateSlot as React.ReactElement<{
+          onOpenFileChange?: (preview: AgentGateFileChangePreview) => void
+        }>,
+        { onOpenFileChange: onOpenGateFileChange }
+      )
+    }, [gateSlot, onOpenGateFileChange])
     const [notebookMountOpen, setNotebookMountOpen] = useState(false)
     const [pendingQueue, setPendingQueue] = useState<Array<{ id: string; text: string }>>([])
     const [showShortcutManager, setShowShortcutManager] = useState(false)
@@ -364,9 +377,10 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
             {hasWorkspace ? (
               <WorkbenchAgentComposer
                 hasConfiguredModel={hasConfiguredModel}
-                gateSlot={gateSlot}
+                gateSlot={resolvedGateSlot}
                 pendingQueue={pendingQueue}
                 sessionId={sessionId}
+                assistantId={chrome.currentAssistant?.id}
                 onOpenNotebookMount={() => setNotebookMountOpen(true)}
                 inputBarRef={inputBarRef}
                 messageListRef={messageListRef}
@@ -402,6 +416,8 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
         <WorkbenchNotebookMountDialog
           open={notebookMountOpen}
           sessionId={sessionId}
+          assistantId={chrome.currentAssistant?.id}
+          scope="workbench"
           onClose={() => setNotebookMountOpen(false)}
         />
       </aside>

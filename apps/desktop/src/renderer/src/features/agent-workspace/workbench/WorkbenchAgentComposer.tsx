@@ -117,6 +117,7 @@ export function WorkbenchAgentComposer({
   gateSlot,
   pendingQueue,
   sessionId,
+  assistantId,
   onOpenNotebookMount,
   inputBarRef,
   messageListRef,
@@ -136,6 +137,7 @@ export function WorkbenchAgentComposer({
   gateSlot?: React.ReactNode
   pendingQueue: Array<{ id: string; text: string }>
   sessionId?: string
+  assistantId?: string | null
   onOpenNotebookMount: () => void
   inputBarRef: React.RefObject<InputBarRef | null>
   messageListRef: React.RefObject<AgentWorkspaceMessageListHandle | null>
@@ -207,7 +209,12 @@ export function WorkbenchAgentComposer({
           </ul>
         </div>
       ) : null}
-      <KnowledgeMountHint sessionId={sessionId} onOpen={onOpenNotebookMount} />
+      <KnowledgeMountHint
+        sessionId={sessionId}
+        assistantId={assistantId}
+        scope="workbench"
+        onOpen={onOpenNotebookMount}
+      />
       <InputBar
         ref={inputBarRef}
         isLoading={stream.isStreaming}

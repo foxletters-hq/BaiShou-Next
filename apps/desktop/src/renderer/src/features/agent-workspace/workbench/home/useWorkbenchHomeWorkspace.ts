@@ -18,6 +18,7 @@ import {
 } from '../../utils/workspace-message-display.util'
 import { mergeWorkspaceFileRefsIntoAttachments } from '../../utils/workspace-file-ref-send.util'
 import { persistSecurityMode } from './workbench-home-security.util'
+import { applyPendingNotebookMountToSession } from '../../../knowledge/apply-pending-notebook-mount'
 
 export function useWorkbenchHomeWorkspace({
   setFolderRoot,
@@ -374,6 +375,11 @@ export function useWorkbenchHomeWorkspace({
           assistantId: selectedAssistantId,
           providerId: currentProviderId,
           modelId: currentModelId
+        })
+        await applyPendingNotebookMountToSession({
+          sessionId,
+          assistantId: selectedAssistantId,
+          scope: 'workbench'
         })
         stashWorkspaceInitMeta(sessionId, {
           text: trimmed,
