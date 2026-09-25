@@ -20,7 +20,6 @@ import {
   purgeLegacyDiaryEmbeddingsForVault
 } from './mobile-diary-embedding.util'
 import { buildDiaryEmbeddingSourceId } from '@baishou/shared'
-import { resolveDiaryEmbedTagsFromLoadedRow } from './mobile-rag-diary-embed-tags.util'
 import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 import { resetCachedMobileRagActiveState } from './mobile-rag-runtime-cache'
 import type { DiaryEmbedDetectionRow } from '@baishou/shared'
@@ -102,7 +101,7 @@ async function runPendingFillAfterDiaryBatch(
     })
   } catch (error) {
     logger.warn('[MobileRag] pending embed fill after diary batch failed', error as Error)
-    return { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
+    throw error
   }
 }
 
@@ -302,7 +301,7 @@ export async function runControlledDiaryBatchEmbedCore(
                 {
                   diaryId: meta.id,
                   content: content ?? '',
-                  tags: resolveDiaryEmbedTagsFromLoadedRow(diary),
+                  tags: [],
                   date: d,
                   updatedAt:
                     ('updatedAt' in diary && diary.updatedAt instanceof Date
