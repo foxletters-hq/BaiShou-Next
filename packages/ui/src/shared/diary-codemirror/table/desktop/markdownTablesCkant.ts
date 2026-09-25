@@ -15,19 +15,19 @@ import {
 function createDiaryMarkdownTablesTheme() {
   return TableTheme.light.with({
     '--tbl-theme-row-background': 'var(--bg-surface)',
-    '--tbl-theme-header-row-background': 'var(--bg-surface-high, #f0f2f5)',
+    '--tbl-theme-header-row-background': 'var(--bg-surface-high)',
     '--tbl-theme-even-row-background': 'var(--bg-surface)',
     '--tbl-theme-odd-row-background': 'var(--bg-surface)',
     '--tbl-theme-border-color': 'var(--border-muted)',
-    '--tbl-theme-border-hover-color': 'var(--color-primary, #5ba8f5)',
-    '--tbl-theme-border-active-color': 'var(--color-primary, #5ba8f5)',
-    '--tbl-theme-outline-color': 'var(--color-primary, #5ba8f5)',
-    '--tbl-theme-text-color': 'var(--text-primary, #1a1c23)',
+    '--tbl-theme-border-hover-color': 'var(--color-primary)',
+    '--tbl-theme-border-active-color': 'var(--color-primary)',
+    '--tbl-theme-outline-color': 'var(--color-primary)',
+    '--tbl-theme-text-color': 'var(--text-primary)',
     '--tbl-theme-menu-border-color': 'var(--border-muted)',
-    '--tbl-theme-menu-background': 'var(--bg-surface-raised, #ffffff)',
-    '--tbl-theme-menu-hover-background': 'var(--color-primary, #5ba8f5)',
-    '--tbl-theme-menu-text-color': 'var(--text-primary, #1a1c23)',
-    '--tbl-theme-menu-hover-text-color': 'var(--text-on-primary, #ffffff)',
+    '--tbl-theme-menu-background': 'var(--bg-surface-raised)',
+    '--tbl-theme-menu-hover-background': 'var(--color-primary)',
+    '--tbl-theme-menu-text-color': 'var(--text-primary)',
+    '--tbl-theme-menu-hover-text-color': 'var(--text-on-primary)',
     '--tbl-theme-select-all-focus-overlay':
       'var(--color-primary-light, rgba(var(--color-primary-rgb), 0.25))',
     '--tbl-theme-select-all-blur-overlay': 'rgba(2, 2, 2, 0.15)'

@@ -476,6 +476,6 @@ export const editorThemeTableChrome = {
   },
   '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active .cm-table-grip-icon':
     {
-      fill: '#fff'
+      fill: 'var(--text-on-primary)'
     }
 }

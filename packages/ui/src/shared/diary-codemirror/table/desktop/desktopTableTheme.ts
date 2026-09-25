@@ -324,7 +324,7 @@ export const desktopTableTheme = EditorView.baseTheme({
     {
       backgroundColor: 'var(--tbl-theme-outline-color)',
       borderColor: 'var(--tbl-theme-outline-color)',
-      color: '#ffffff'
+      color: 'var(--text-on-primary)'
     },
 
   '.cm-table-block--desktop[data-tbl-handle-position="outside"] .cm-table-col-handle': {
