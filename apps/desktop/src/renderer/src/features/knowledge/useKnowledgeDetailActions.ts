@@ -54,7 +54,15 @@ export function useKnowledgeDetailActions(input: {
   setOcrProgressBySource: Dispatch<SetStateAction<Record<string, KnowledgeOcrProgressState>>>
   setGraphBusy: (busy: boolean) => void
   setGraphKnownTotal: Dispatch<SetStateAction<number>>
-  setGraphWindowProgress: Dispatch<SetStateAction<{ done: number; total: number } | null>>
+  setGraphWindowProgress: Dispatch<
+    SetStateAction<{
+      done: number
+      total: number
+      pageFrom?: number
+      pageTo?: number
+      pageTotal?: number
+    } | null>
+  >
   setGraphJobs: Dispatch<
     SetStateAction<{
       pending: number
@@ -62,10 +70,15 @@ export function useKnowledgeDetailActions(input: {
       failed: number
       currentSourceId: string | null
       currentSourceTitle: string | null
+      lastError: string | null
+      failedSourceTitle: string | null
+      statusBySourceId: Record<string, string>
+      jobsBySourceId: Record<string, { sourceId: string; status: string }>
     }>
   >
   setPendingJobs: Dispatch<SetStateAction<number>>
   setVectorKnownTotal: Dispatch<SetStateAction<number>>
+  setQueuedSourceIds: Dispatch<SetStateAction<string[]>>
   setReprocessWatching: (watching: boolean) => void
   reprocessSawWorkRef: MutableRefObject<boolean>
   setDataManageOpen: (open: boolean) => void
@@ -90,6 +103,7 @@ export function useKnowledgeDetailActions(input: {
     setGraphJobs,
     setPendingJobs,
     setVectorKnownTotal,
+    setQueuedSourceIds,
     setReprocessWatching,
     reprocessSawWorkRef,
     setDataManageOpen
@@ -164,10 +178,15 @@ export function useKnowledgeDetailActions(input: {
     [refresh, setError, setOcrProgressBySource, setStatus, t]
   )
 
+  const queueSource = useCallback((sourceId: string) => {
+    setQueuedSourceIds((prev) => (prev.includes(sourceId) ? prev : [...prev, sourceId]))
+  }, [setQueuedSourceIds])
+
   const onRetry = useCallback(
     async (sourceId: string) => {
       setBusy(true)
       try {
+        queueSource(sourceId)
         await window.api.knowledge.retrySource(sourceId)
         await refresh()
       } catch (e: any) {
@@ -176,12 +195,13 @@ export function useKnowledgeDetailActions(input: {
         setBusy(false)
       }
     },
-    [refresh, setBusy, setError]
+    [queueSource, refresh, setBusy, setError]
   )
 
   const onEmbed = async (sourceId: string) => {
     setBusy(true)
     try {
+      queueSource(sourceId)
       await callKnowledgeApi('retrySource', 'knowledge:retry-source', sourceId)
       await refresh()
       setStatus(t('knowledge.embed_queued', '已开始嵌入'))
@@ -195,16 +215,23 @@ export function useKnowledgeDetailActions(input: {
   const onReprocess = async (sourceId: string, target: 'embed' | 'graph') => {
     setBusy(true)
     try {
+      queueSource(sourceId)
       if (target === 'graph') {
         const title = sources.find((row) => row.id === sourceId)?.title || null
         setGraphKnownTotal((prev) => Math.max(prev, 1))
         setGraphWindowProgress(null)
         setGraphJobs((prev) => ({
+          ...prev,
           pending: Math.max(prev.pending, 1),
-          running: prev.running,
-          failed: prev.failed,
           currentSourceId: sourceId,
-          currentSourceTitle: title
+          currentSourceTitle: title,
+          lastError: null,
+          failedSourceTitle: null,
+          statusBySourceId: { ...prev.statusBySourceId, [sourceId]: 'pending' },
+          jobsBySourceId: {
+            ...prev.jobsBySourceId,
+            [sourceId]: { sourceId, status: 'pending' }
+          }
         }))
         setActiveTab('graph')
       }
@@ -291,6 +318,7 @@ export function useKnowledgeDetailActions(input: {
         if (watch.vectorQueued > 0) {
           setPendingJobs((prev) => Math.max(prev, watch.vectorQueued))
           setVectorKnownTotal((prev) => Math.max(prev, watch.vectorQueued))
+          setQueuedSourceIds((prev) => [...new Set([...prev, ...sources.map((row) => row.id)])])
         }
         if (watch.graphQueued > 0) {
           setGraphKnownTotal((prev) => Math.max(prev, watch.graphQueued, sources.length))
@@ -409,6 +437,7 @@ export function useKnowledgeDetailActions(input: {
     onDeleteSource,
     onManageNotebookData,
     onRebuildGraph,
+    onRebuild,
     confirmHeavy
   }
 }

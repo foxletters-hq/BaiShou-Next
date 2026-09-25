@@ -68,7 +68,6 @@ export function KnowledgeImportProcessDialog({
         </span>
         <Select
           className={styles.settingsControl}
-          size="small"
           value={mode}
           options={knowledgeImportProcessSelectOptions()}
           onChange={(e) => setMode(normalizeKnowledgeImportProcessMode(e.target.value))}

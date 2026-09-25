@@ -19,6 +19,7 @@ function readKnowledgeDetailChrome(): string {
     'KnowledgeDetailSettingsDialog.tsx',
     'KnowledgeDetailImportDialogs.tsx',
     'KnowledgeDetailHostDialogs.tsx',
+    'KnowledgeSourceFragmentDialog.tsx',
     'knowledge-detail-labels.util.ts',
     'useKnowledgeDetailRefresh.ts',
     'useKnowledgeDetailImport.ts',
@@ -35,7 +36,9 @@ function readNotebookGraphChrome(): string {
     'NotebookGraphPane.tsx',
     'NotebookGraphToolbar.tsx',
     'NotebookGraphDetailTab.tsx',
-    'NotebookGraphSidePanel.tsx'
+    'NotebookGraphSidePanel.tsx',
+    'NotebookGraphOverlays.tsx',
+    'useNotebookGraphMerge.ts'
   ]
     .map(readKnowledge)
     .join('\n')
@@ -79,14 +82,34 @@ describe('knowledge detail chrome', () => {
     expect(page).toContain('styles.createCard')
     expect(page).toContain('styles.listGrid')
     expect(page).toContain('styles.sourceCard')
-    expect(page).toContain('styles.jobProgress')
+    expect(page).toContain('styles.organizeCompact')
     expect(page).toContain('pickSourceCardEvidence')
     expect(page).toContain('sourceCardFailureReason')
     expect(page).toContain('knowledgeIngestUserMessage')
     expect(readKnowledge('knowledge-ingest-user-error.util.ts')).toContain('source_not_embedded')
+    expect(readKnowledge('knowledge-ingest-user-error.util.ts')).toContain(
+      'graph_extract_not_configured'
+    )
+    expect(page).toContain("t('knowledge.organize_failed', '抽取失败')")
+    expect(page).toContain("t('knowledge.organize_failed_graph_nodes', '节点向量失败')")
+    expect(page).toContain('jobProgress.error')
+    expect(page).toContain('failedSourceTitle')
+    expect(page).toContain('lastError')
     expect(page).toContain('<Tooltip')
     expect(page).not.toContain("evidence?.type === 'error'")
-    expect(page).toContain('notebookJobProgressCopy')
+    expect(page).toContain('notebookOrganizeProgressCopy')
+    expect(page).toContain('knowledgeIngestProgressLabel')
+    expect(page).toContain('organizeCompact')
+    expect(page).toContain("t('knowledge.organize_title', '正在整理')")
+    expect(page).toContain("t('knowledge.status_graph_organizing', '正在整理图谱')")
+    expect(readKnowledge('KnowledgeSourceCards.tsx')).toContain('knowledgeSourceDisplayStatus')
+    expect(readKnowledge('KnowledgeSourceCards.tsx')).toContain('graphJobStatusBySource')
+    expect(page).toContain("t('knowledge.organize_phase_graph_nodes', '节点向量')")
+    expect(page).toContain('parseKnowledgeGraphStepError')
+    expect(page).toContain('organizePhaseList')
+    expect(page).toContain('queuedSourceIds')
+    expect(page).not.toContain('knowledge.job_vector_active')
+    expect(css).toMatch(/\.sourceCardItem \{[^}]*min-height: 220px/)
     expect(page).not.toContain('styles.addSourceBtn')
     expect(page).not.toContain('ingestProgressPercent')
     expect(page).not.toContain('engine_caps')
@@ -134,6 +157,63 @@ describe('knowledge detail chrome', () => {
     expect(page).toContain('Promise.all')
     expect(page).not.toContain("await callKnowledgeApi('recoverStale'")
     expect(page).toContain("void callKnowledgeApi('recoverStale'")
+    expect(page).toContain('hasModelMismatch')
+    expect(page).toContain('knowledge-model-mismatch')
+    expect(page).toContain('model_mismatch_hard_block')
+    expect(page).toContain('actions.onRebuild')
+  })
+
+  it('should reuse the memory-graph sidebar panel scrollbar for notebook graph', () => {
+    const pane = readNotebookGraphChrome()
+    expect(pane).toContain('graphStyles.side')
+    expect(pane).toContain('graphStyles.panel')
+    expect(pane).toContain('data-graph-side-scroll')
+    const css = readFileSync(join(knowledgeDir, '..', 'graph', 'GraphPage.module.css'), 'utf8')
+    expect(css).toMatch(/\.panel \{[^}]*min-height: 0/)
+    expect(css).toMatch(/\.panel \{[^}]*overflow-y: auto/)
+  })
+
+  it('should hint pending reviews on the notebook content rail', () => {
+    const pane = readNotebookGraphChrome()
+    expect(pane).toContain('formatGraphRailCount')
+    expect(pane).toContain('graphStyles.railCount')
+    expect(pane).toContain("t('graph.side_content_pending'")
+  })
+
+  it('should keep notebook graph side rails and content tabs in memory-graph order', () => {
+    const pane = readNotebookGraphChrome()
+    const page = readKnowledgeDetailChrome()
+    expect(pane.indexOf("onOpenSide('ops')")).toBeLessThan(pane.indexOf("onOpenSide('settings')"))
+    expect(pane.indexOf("onOpenSide('settings')")).toBeLessThan(pane.indexOf("onOpenSide('content')"))
+    expect(pane.indexOf("t('graph.tab_reextract'")).toBeLessThan(
+      pane.indexOf("t('graph.tab_pending_count'")
+    )
+    expect(pane.indexOf("t('graph.tab_pending_count'")).toBeLessThan(
+      pane.indexOf("t('graph.tab_similar_count'")
+    )
+    expect(pane.indexOf("t('graph.tab_similar_count'")).toBeLessThan(
+      pane.indexOf("t('graph.tab_detail'")
+    )
+    expect(pane).not.toContain("t('knowledge.graph_tab_queue'")
+    expect(pane).toContain("useState<NotebookGraphSideMode>('ops')")
+    expect(pane).toContain("useState<NotebookGraphSideTab>('reextract')")
+    expect(pane).toContain("t('graph.queue_view_progress'")
+    expect(pane).toContain('onOpenQueue')
+    expect(pane).not.toContain("setTab('queue')")
+    expect(pane).not.toContain('styles.graphProgress')
+    expect(page).not.toContain("activeTab !== 'graph'")
+    expect(page).toContain('onOpenChange={setOrganizeOpen}')
+  })
+
+  it('should reuse memory-graph merge search and similar pane for notebook graph ops', () => {
+    const pane = readNotebookGraphChrome()
+    expect(pane).toContain('GraphPageSimilarPane')
+    expect(pane).toContain("tab === 'similar'")
+    expect(pane).toContain("t('graph.merge_nodes'")
+    expect(pane).toContain('listGraphSimilarPairs')
+    expect(pane).toContain('mergeGraphNodes')
+    expect(pane).toContain('forbiddenAnchorTypes={[' + "'source'" + ']}')
+    expect(pane).toContain("searchNodes={props.searchMergeNodes}")
   })
 
   it('should render notebook graph inspector values with chrome classes', () => {
@@ -143,11 +223,55 @@ describe('knowledge detail chrome', () => {
     expect(pane).not.toContain('graphStyles.itemTitle}>{selectedNode.name}')
   })
 
+  it('should keep a visible scrollbar on graph node fragment preview', () => {
+    const page = readKnowledgeDetailChrome()
+    const css = readKnowledge('KnowledgePage.module.css')
+    expect(page).toContain('fragment_preview_title')
+    expect(page).toContain('styles.fragmentList')
+    expect(css).toMatch(/\.fragmentList \{[^}]*overflow-y: scroll/)
+    expect(css).toMatch(/\.fragmentList \{[^}]*scrollbar-gutter: stable/)
+    expect(css).toContain('.fragmentList::-webkit-scrollbar')
+  })
+
+  it('should list organizing sources and expand one source phases in the modal', () => {
+    const banner = readKnowledge('KnowledgeDetailJobBanner.tsx')
+    const css = readKnowledge('KnowledgePage.module.css')
+    const page = readKnowledgeDetailChrome()
+    expect(page).toContain('sourceRows')
+    expect(page).toContain('graphJobsBySource')
+    expect(banner).toContain('organizeSourceList')
+    expect(banner).toContain('knowledgeOrganizeDefaultSourceId')
+    expect(banner).toContain('setOpenSourceId')
+    expect(banner).toContain('knowledgeOrganizeSourceSummary')
+    expect(banner).toContain("t('knowledge.organize_count'")
+    expect(banner).toContain('organizeSourcePhases')
+    expect(banner.indexOf('</button>')).toBeLessThan(banner.indexOf('organizeSourcePhases'))
+    expect(css).toContain('.organizeSourceList')
+    expect(css).toContain('.organizeSourceRow')
+    expect(css).toContain('.organizeSourcePhases')
+    expect(css).toMatch(
+      /\.organizeSourcePhases \{[^}]*padding: var\(--spacing-sm\) var\(--spacing-md\) var\(--spacing-md\)/
+    )
+    expect(css).toMatch(/\.organizeSourceList \{[^}]*list-style: none/)
+    expect(css).toMatch(/\.organizeSourceItem \{[^}]*var\(--radius-md\)/)
+  })
+
   it('should start unified organize from the empty graph guide and keep rebuild as maintenance', () => {
     const page = readKnowledgeDetailChrome()
     const pane = readNotebookGraphChrome()
-    expect(page).toContain('triggerBatchEmbed')
+    expect(page).toContain('organizeNotebook')
+    expect(page).not.toContain('triggerBatchEmbed')
     expect(page).toContain('onRebuildGraph={() => {')
     expect(pane).toContain('onRebuildGraph ?? onStartExtract')
+  })
+
+  it('should delete the open notebook after a three-second confirm dialog', () => {
+    const page = readKnowledgeDetailChrome()
+    const dialog = readKnowledge('KnowledgeDeleteNotebookDialog.tsx')
+    expect(page).toContain('KnowledgeDeleteNotebookDialog')
+    expect(page).toContain('window.api.knowledge.deleteNotebook')
+    expect(page).toContain("t('knowledge.delete_notebook'")
+    expect(dialog).toContain('isNotebookHeavyConfirmReady')
+    expect(dialog).toContain('notebookHeavyConfirmSecondsLeft')
   })
 })
