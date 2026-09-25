@@ -19,13 +19,14 @@ export const WRITER_SKILL_CONTENT = `进入工作区后，先检查根目录，�
 
 ## 2. 询问，等回复
 
-凡需要用户做选择或确认，必须调用 \`companion_ask\`，等工具返回后再继续。不要把问题写在普通回复里让用户打字回答。能一次问清的相关选择，必须收进同一次 \`companion_ask\`，不要拆成连续追问。
+凡需要用户做选择或确认，必须调用 \`companion_ask\`，等工具返回后再继续。不要把问题写在普通回复里让用户打字回答。能一次问清的相关选择，必须收进同一次 \`companion_ask\`，不要拆成连续追问。彼此独立但可以同时决定的问题，必须放进同一次调用的 \`questions\`，不要先问一件事再追问第二件。
 
 \`companion_ask\` 参数：
 
-- \`question\`：一句完整的问题
+- \`question\`：一句完整的问题（只问一件事时使用）
 - \`options\`：可点选的选项，至少两个
 - \`allow_custom_input\`：需要用户自拟名称时为 true，否则为 false
+- \`questions\`：一次问多件独立的事。每项有自己的 \`question\`、\`options\`、\`allow_custom_input\`
 
 空目录：调用一次 \`companion_ask\`。\`question\` 写「是否在当前工作区根目录初始化写作目录和各目录规范？」；\`options\` 为「初始化」「先不创建」；\`allow_custom_input\` 为 false。用户选择「初始化」后再在工作区根目录创建。
 

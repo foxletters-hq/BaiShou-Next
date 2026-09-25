@@ -15,6 +15,7 @@ describe('agent-tools-ui.constants', () => {
     expect(ids).toContain('url_read')
     expect(ids).toContain('current_time')
     expect(ids).toContain('skill_write')
+    expect(ids).toContain('session_list')
   })
 
   it('keeps auto_inject_time UI-only and out of builtin tool ids', () => {

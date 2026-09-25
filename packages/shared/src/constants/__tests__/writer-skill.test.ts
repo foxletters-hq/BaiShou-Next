@@ -31,6 +31,7 @@ describe('writer-skill', () => {
     expect(WRITER_SKILL_CONTENT).toContain('非空目录')
     expect(WRITER_SKILL_CONTENT).toContain('要新建文件夹来放整套小说架构吗')
     expect(WRITER_SKILL_CONTENT).toContain('不要拆成连续追问')
+    expect(WRITER_SKILL_CONTENT).toContain('questions')
     expect(WRITER_SKILL_CONTENT).toContain('companion_ask')
     expect(WRITER_SKILL_CONTENT).toContain('不要把问题写在普通回复里')
     expect(WRITER_SKILL_CONTENT).toContain('写作根目录')

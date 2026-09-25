@@ -12,6 +12,7 @@ describe('assistant-kind.constants', () => {
     expect(ids).toContain('diary_edit')
     expect(ids).toContain('summary_read')
     expect(ids).toContain('vector_search')
+    expect(ids).toContain('session_list')
     expect(ids).not.toContain('web_search')
   })
 

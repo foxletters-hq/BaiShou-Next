@@ -9,6 +9,8 @@ describe('mcp-exposable-tool-ids.constants', () => {
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('web_search')
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('url_read')
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('current_time')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('session_list')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('message_search')
   })
 
   it('does not expose internal-only or app-specific tools', () => {
