@@ -47,7 +47,12 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isAddModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={withAppContentOverlay(styles.addModalOverlay)}>
+          <div
+            className={withAppContentOverlay(styles.addModalOverlay)}
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setIsAddModalOpen(false)
+            }}
+          >
             <div className={styles.addModalContent}>
               <div className={styles.addModalHeader}>
                 {t('agent.provider.add_title', '新增 AI 供应商')}
@@ -96,7 +101,6 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   </span>
                   <Input
                     type="text"
-                    fieldSize="small"
                     placeholder={t('agent.provider.add_name_hint', '例如: My OpenAI Proxy')}
                     value={addModalData.name}
                     onChange={(e) => setAddModalData({ ...addModalData, name: e.target.value })}
@@ -106,7 +110,6 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   <span className={styles.materialLabel}>Base URL</span>
                   <Input
                     type="text"
-                    fieldSize="small"
                     placeholder="https://api.example.com/v1"
                     value={addModalData.baseUrl}
                     onChange={(e) =>
@@ -134,7 +137,15 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isTestModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={withAppContentOverlay(styles.testModalOverlay)}>
+          <div
+            className={withAppContentOverlay(styles.testModalOverlay)}
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsTestModalOpen(false)
+                setSearchQuery('')
+              }
+            }}
+          >
             <div className={styles.testModalContent}>
               <div className={styles.addModalHeader}>
                 <h3>{t('ai_config.test_connection_title', '选择测试模型')}</h3>

@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import styles from './AIGlobalModelsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
-import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import { SessionModelMenu } from '../SessionModelMenu'
 import {
   GlobalModelsConfig as SharedGlobalModelsConfig,
@@ -352,32 +351,31 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         {footer}
       </div>
 
-      {activeSelector === 'embedding' ? (
-        <ModelSwitcherPopup
-          providers={embeddingProviders}
-          currentProviderId={currentProviderForSelector()}
-          currentModelId={currentModelForSelector()}
-          onSelect={handleSelectModel}
-          onClose={() => setActiveSelector(null)}
-          onManageProviders={onManageProviders}
-        />
-      ) : activeSelector ? (
+      {activeSelector ? (
         <SessionModelMenu
-          providers={nonEmbeddingProviders}
+          providers={activeSelector === 'embedding' ? embeddingProviders : nonEmbeddingProviders}
           currentProviderId={currentProviderForSelector()}
           currentModelId={currentModelForSelector()}
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
           onManageProviders={onManageProviders}
-          reasoningEffort={resolveReasoningEffortForSlot(
-            config.reasoningEffortBySlot,
-            selectorReasoningSlot(activeSelector) ?? 'dialogue'
-          )}
-          onReasoningEffortChange={(value) => {
-            void handleEffortChange(value)
-          }}
+          reasoningEffort={
+            selectorReasoningSlot(activeSelector)
+              ? resolveReasoningEffortForSlot(
+                  config.reasoningEffortBySlot,
+                  selectorReasoningSlot(activeSelector) ?? 'dialogue'
+                )
+              : undefined
+          }
+          onReasoningEffortChange={
+            selectorReasoningSlot(activeSelector)
+              ? (value) => {
+                  void handleEffortChange(value)
+                }
+              : undefined
+          }
           anchorRect={menuAnchor}
-          showReasoningPanel
+          showReasoningPanel={Boolean(selectorReasoningSlot(activeSelector))}
         />
       ) : null}
     </SettingsPageChrome>

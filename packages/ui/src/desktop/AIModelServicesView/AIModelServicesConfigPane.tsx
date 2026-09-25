@@ -103,7 +103,6 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.inputGroup}>
               <Input
                 type="text"
-                fieldSize="small"
                 value={localFormData.baseUrl}
                 onChange={(e) =>
                   setLocalFormData({
@@ -120,7 +119,6 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.inputGroup}>
               <Input
                 type={isObscure ? 'password' : 'text'}
-                fieldSize="small"
                 value={localFormData.apiKey}
                 onChange={(e) =>
                   setLocalFormData({
