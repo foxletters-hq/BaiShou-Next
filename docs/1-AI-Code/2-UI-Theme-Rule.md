@@ -137,7 +137,8 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 4. 交互行统一 ListTile 节奏：**14/400 + 13 说明**；行图标 **20 / 18**，勿再写 24dp。
 5. 灰底上只铺一层内容卡（`--border-card`）；**禁止大卡套小卡**（内层再起白底+描边）。
 6. About 营销区、品牌名等展示型文案可例外，但普通设置行仍跟本表。
-7. 设置区单行输入与下拉对齐供应商页：`Input` 传 `fieldSize="small"`，`Select` 传 `size="small"`（内边距 `6px 10px`、字号 `--ui-fs-md`、圆角 `--radius-sm`）。不要改这两个组件的全局默认尺寸。
+7. 设置页、配置表单、对话框里的单行输入与下拉一律用默认尺寸：`Input` 与 `Select` 不传尺寸参数（内边距 `10px 14px`、字号 `--ui-fs-lg`、圆角 `--radius-md`）。多行 Markdown 编辑框用 `ResizableMarkdownEditor` 的 `variant="formField"`，与单行输入框同一套字号、内边距、圆角。
+8. 小号（`fieldSize="small"` / `size="small"`，内边距 `6px 10px`、字号 `--ui-fs-md`、圆角 `--radius-sm`）只留给紧凑场景：工具栏与列表顶部的搜索框、嵌入式输入框（`baishou-form-field--embed`）、数字步进框、弹出菜单内的输入框、工作台界面，以及“输入框紧挨小号按钮”的同一行。
 
 ### 3.7 设置页分割层级
 
@@ -187,7 +188,7 @@ stackGroup
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                                                               |
 | 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉）                                                    |
-| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；**仅** `:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`，**禁止 `:hover` 加深描边**；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
+| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；设置页 / 对话框 **不传** `fieldSize` / `size`（默认：`10px 14px`、`--ui-fs-lg`、`--radius-md`）；小号见 §3.6 第 8 条。禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；**仅** `:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`，**禁止 `:hover` 加深描边**；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
 | 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                                                           |
 | 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                                                          |
 | 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                                                       |
@@ -265,6 +266,13 @@ stackGroup
 - [ ] 设置页分割：大板块用卡外标题 + sibling 卡间距；卡内才用细线（§3.7），无「全页同款水平线」切板块
 - [ ] 桌面全屏 Dialog/Modal 遮罩裁到内容卡（`Modal` 默认或 `withAppContentOverlay`），未透过 TitleBar 露模糊（§4.1）；全窗沉浸才显式关闭裁切
 - [ ] 表单聚焦描边使用 `--form-field-border-focus` 浅灰加深，仅 `:focus` / `:focus-within`，未在 `:hover` 变色，未自写更重描边
+- [ ] 设置页 / 对话框的 `Input` / `Select` 用默认尺寸；小号只出现在 §3.6 第 8 条列出的紧凑场景
 - [ ] 锚定菜单 / 下拉使用 `--menu-popup-*`（§3.8），未用 raised/glass/重阴影/主色洗底选中
+
+机械检查（提交前会跑，不必靠人工扫全仓）：
+
+- `pnpm lint`：ESLint `ui-theme/portal-must-clip-to-content-card` 查 `createPortal` 全屏遮罩是否调用 `withAppContentOverlay` / `Modal`（锚定菜单、Tooltip、拖拽预览、大图预览除外）
+- `pnpm lint:css`：Stylelint 查业务 CSS 是否重画开关
+- `@baishou/ui` 测试：`settings-form-field-size.test.ts` 查设置区输入框尺寸；`ui-theme-guard.test.ts` 查 `[data-theme=dark]` 只允许出现在主题 SSOT、禁止写死 `#fff` / `white` 表面色、禁止 `var(--token, #hex)` 兜底、以及 `top: 48px` / `52px` 平行裁切。
 
 _—— 适用于桌面与移动前端组件渲染行为。_
