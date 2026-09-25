@@ -45,34 +45,68 @@ function isElectronRuntime(): boolean {
   return typeof process !== 'undefined' && Boolean(process.versions?.electron)
 }
 
-async function resizeWithElectron(filePath: string): Promise<NormalizedImagePayload | null> {
-  if (!isElectronRuntime()) return null
+type ElectronNativeImage = {
+  isEmpty: () => boolean
+  getSize: () => { width: number; height: number }
+  resize: (opts: { width: number; height: number }) => ElectronNativeImage
+  toJPEG: (quality: number) => Buffer
+}
 
+function jpegFromNativeImage(image: ElectronNativeImage): NormalizedImagePayload | null {
+  if (image.isEmpty()) return null
+
+  const { width, height } = image.getSize()
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height)
+  const working =
+    scale < 1
+      ? image.resize({
+          width: Math.max(1, Math.round(width * scale)),
+          height: Math.max(1, Math.round(height * scale))
+        })
+      : image
+
+  for (const quality of JPEG_QUALITIES) {
+    const buf = working.toJPEG(quality)
+    const base64 = buf.toString('base64')
+    if (base64.length <= MAX_IMAGE_BASE64_CHARS) {
+      return { base64, mimeType: 'image/jpeg' }
+    }
+  }
+
+  const buf = working.toJPEG(30)
+  return { base64: buf.toString('base64'), mimeType: 'image/jpeg' }
+}
+
+async function loadElectronNativeImage(): Promise<{
+  createFromPath: (filePath: string) => ElectronNativeImage
+  createFromBuffer: (buffer: Buffer) => ElectronNativeImage
+} | null> {
+  if (!isElectronRuntime()) return null
   try {
     const { nativeImage } = await import('electron')
-    const image = nativeImage.createFromPath(filePath)
-    if (image.isEmpty()) return null
+    return nativeImage
+  } catch {
+    return null
+  }
+}
 
-    const { width, height } = image.getSize()
-    const scale = Math.min(1, MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height)
-    const working =
-      scale < 1
-        ? image.resize({
-            width: Math.max(1, Math.round(width * scale)),
-            height: Math.max(1, Math.round(height * scale))
-          })
-        : image
+async function resizeWithElectron(filePath: string): Promise<NormalizedImagePayload | null> {
+  const nativeImage = await loadElectronNativeImage()
+  if (!nativeImage) return null
+  try {
+    return jpegFromNativeImage(nativeImage.createFromPath(filePath))
+  } catch {
+    return null
+  }
+}
 
-    for (const quality of JPEG_QUALITIES) {
-      const buf = working.toJPEG(quality)
-      const base64 = buf.toString('base64')
-      if (base64.length <= MAX_IMAGE_BASE64_CHARS) {
-        return { base64, mimeType: 'image/jpeg' }
-      }
-    }
-
-    const buf = working.toJPEG(30)
-    return { base64: buf.toString('base64'), mimeType: 'image/jpeg' }
+async function resizeWithElectronFromBase64(
+  base64: string
+): Promise<NormalizedImagePayload | null> {
+  const nativeImage = await loadElectronNativeImage()
+  if (!nativeImage) return null
+  try {
+    return jpegFromNativeImage(nativeImage.createFromBuffer(Buffer.from(base64, 'base64')))
   } catch {
     return null
   }
@@ -148,6 +182,8 @@ export async function normalizeImageForModel(
   if (att.data) {
     const { base64, mimeType } = parseDataUrl(att.data)
     if (!base64) return null
+    const resized = await resizeWithElectronFromBase64(base64)
+    if (resized) return resized
     return finalizeImagePayload(base64, mimeType || att.mimeType || 'image/jpeg')
   }
 

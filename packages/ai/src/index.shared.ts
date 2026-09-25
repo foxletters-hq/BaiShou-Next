@@ -120,6 +120,10 @@ export {
   MAX_IMAGE_DIMENSION,
   type NormalizedImagePayload
 } from './platform/normalize-image-for-model'
+export {
+  buildVisionPageImagePart,
+  type VisionPageImagePart
+} from './platform/vision-page-image-part'
 
 export type { IStreamEmitter, StreamFinishPayload } from './agent/stream-emitter.interface'
 export { AgentChatCoreService } from './agent/agent-chat-core.service'
@@ -133,7 +137,7 @@ export {
   clearPendingAgentStreamStop
 } from './agent/stream-session-guard'
 export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
-export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'
+export type { ActionDeps, ActionStreamHost, StreamRunConfig } from './agent/actions/base.action'
 export * from './baishou-agent-gate'
 export * from './agent-workspace'
 export * from './session-runtime'

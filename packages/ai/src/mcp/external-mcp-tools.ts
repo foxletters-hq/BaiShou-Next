@@ -9,7 +9,6 @@ import {
 import type { ToolContext } from '../tools/agent.tool'
 import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
-import { isNamedToolDenied } from '../tools/tool-context.util'
 import { unwrapBaishouMcpToolName } from '../tools/mcp-tool.util'
 
 export type ExternalMcpToolDescriptor = {
@@ -73,7 +72,9 @@ export function buildExternalMcpVercelTools(params: {
 
   for (const item of params.tools) {
     const builtinName = unwrapBaishouMcpToolName(item.name)
-    if (isMcpExposableToolId(builtinName) && isNamedToolDenied(builtinName, params.context)) {
+    // 应用内 Agent 已有同名内置工具。再注入 baishou_web_search 等镜像会让模型搜两次。
+    // 这些工具只留给外部 MCP 客户端。
+    if (isMcpExposableToolId(builtinName)) {
       continue
     }
 

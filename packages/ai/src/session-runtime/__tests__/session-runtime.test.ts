@@ -6,6 +6,8 @@ import {
   MemorySessionInboxStore,
   clampMaxSteps,
   createDoomLoopTracker,
+  createDoomLoopCallGate,
+  shouldObserveDoomLoopToolCall,
   needsProviderTurnContinuation,
   resolveSessionRuntimeProfile,
   prepareSystemPromptWithEpoch
@@ -347,6 +349,49 @@ describe('session-runtime guards', () => {
     expect(tracker.observe('t', { a: 1 }).tripped).toBe(false)
     expect(tracker.observe('t', { a: 2 }).tripped).toBe(false)
     expect(tracker.observe('t', { a: 2 }).count).toBe(2)
+  })
+
+  it('should skip doom-loop observation while a tool call is still partial or empty', () => {
+    expect(shouldObserveDoomLoopToolCall({ partial: true, input: { url: 'https://a' } })).toBe(
+      false
+    )
+    expect(shouldObserveDoomLoopToolCall({ input: {} })).toBe(false)
+    expect(shouldObserveDoomLoopToolCall({})).toBe(false)
+    expect(shouldObserveDoomLoopToolCall({ input: { url: 'https://a' } })).toBe(true)
+  })
+
+  it('should not trip when three webpage reads start in parallel with empty args', () => {
+    const tracker = createDoomLoopTracker(3)
+    const gate = createDoomLoopCallGate((name, args) => tracker.observe(name, args).tripped)
+    gate.onToolCall({ toolCallId: 'a', toolName: 'url_read', input: {}, partial: true })
+    gate.onToolCall({ toolCallId: 'b', toolName: 'url_read', input: {}, partial: true })
+    gate.onToolCall({ toolCallId: 'c', toolName: 'url_read', input: {} })
+    expect(gate.onToolResult('a')).toBe(false)
+    expect(gate.onToolResult('b')).toBe(false)
+    expect(gate.onToolResult('c')).toBe(false)
+  })
+
+  it('should trip only after the same complete call returns three times', () => {
+    const tracker = createDoomLoopTracker(3)
+    const gate = createDoomLoopCallGate((name, args) => tracker.observe(name, args).tripped)
+    const args = { url: 'https://weather.example/zhengzhou' }
+    gate.onToolCall({ toolCallId: '1', toolName: 'url_read', input: args })
+    expect(gate.onToolResult('1')).toBe(false)
+    gate.onToolCall({ toolCallId: '2', toolName: 'url_read', input: args })
+    expect(gate.onToolResult('2')).toBe(false)
+    gate.onToolCall({ toolCallId: '3', toolName: 'url_read', input: args })
+    expect(gate.onToolResult('3')).toBe(true)
+  })
+
+  it('should not trip when three webpage reads return different urls', () => {
+    const tracker = createDoomLoopTracker(3)
+    const gate = createDoomLoopCallGate((name, args) => tracker.observe(name, args).tripped)
+    gate.onToolCall({ toolCallId: '1', toolName: 'url_read', input: { url: 'https://a' } })
+    gate.onToolCall({ toolCallId: '2', toolName: 'url_read', input: { url: 'https://b' } })
+    gate.onToolCall({ toolCallId: '3', toolName: 'url_read', input: { url: 'https://c' } })
+    expect(gate.onToolResult('1')).toBe(false)
+    expect(gate.onToolResult('2')).toBe(false)
+    expect(gate.onToolResult('3')).toBe(false)
   })
 
   it('needs continuation for tool-calls under maxSteps', () => {

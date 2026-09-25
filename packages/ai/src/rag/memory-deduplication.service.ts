@@ -16,7 +16,7 @@ import type {
   ToolVectorStore,
   ToolDeduplicationService
 } from '../tools/agent.tool'
-import { logger, formatLocalDateTime } from '@baishou/shared'
+import { AI_FIRST_OUTPUT_TIMEOUT_MS, logger, formatLocalDateTime } from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 /** 相似度 > 此值视为精确重复 */
@@ -191,8 +191,8 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   }
 
   /**
-   * 调用 LLM 判断是否应合并记忆
-   * 使用全局对话模型（与原版一致）
+   * 调用 LLM 判断是否应合并记忆。
+   * 必须使用调用方传入的对话模型，不能改用嵌入模型。
    */
   private async _callLlmForMerge(
     candidates: CandidateMemory[],
@@ -215,6 +215,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
 
       const { text } = await generateText({
         model,
+        abortSignal: AbortSignal.timeout(AI_FIRST_OUTPUT_TIMEOUT_MS),
         system: '你是AI记忆管理器。请严格按照要求输出JSON，不要添加任何额外解释。',
         messages: [
           {

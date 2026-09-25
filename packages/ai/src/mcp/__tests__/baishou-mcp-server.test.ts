@@ -169,6 +169,8 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools).toContain('baishou_current_time')
     expect(mcpTools).toContain('baishou_diary_list')
     expect(mcpTools).toContain('baishou_vector_search')
+    expect(mcpTools).toContain('baishou_session_list')
+    expect(mcpTools).toContain('baishou_message_search')
   })
 
   it('does not expose emoji_send via MCP even when emoji config is enabled', () => {

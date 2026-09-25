@@ -22,7 +22,7 @@ export interface SessionRunnerTurnHooks {
 }
 
 /**
- * 显式 provider-turn 外环：直到不需续跑或触达 maxSteps / doom-loop / abort。
+ * 显式 provider-turn 外环：直到不需续跑或触达 maxSteps / abort。
  */
 export async function runSessionTurnLoop(params: {
   sessionId: string
@@ -83,7 +83,7 @@ export async function runSessionTurnLoop(params: {
   return { turns, stoppedReason }
 }
 
-/** 供 stream 路径挂接：观察 tool 指纹，熔断时发事件 */
+/** 供 stream 路径挂接：观察 tool 指纹，重复时只发事件，不掐断本轮 */
 export function attachDoomLoopObserver(params: {
   sessionId: string
   threshold?: number
