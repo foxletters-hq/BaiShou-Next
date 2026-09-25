@@ -26,6 +26,12 @@ export function HelpDocsScreen() {
       title={t('settings.help_docs', '帮助文档')}
       {...chrome}
       onBack={() => router.back()}
+      headerRight={{
+        label: t('settings.help_docs_open_browser', '在浏览器中打开'),
+        onPress: () => {
+          void Linking.openURL(HELP_DOCS_QUICK_START_URL)
+        }
+      }}
       contentStyle={{ flex: 1 }}
     >
       {failed ? (

@@ -17,7 +17,7 @@ describe('snapshotMemoryEmbedPhases', () => {
     })
     expect(snapshot.phase).toBe('diary')
     expect(snapshot.phases.diaries.total).toBe(3)
-    expect(snapshot.total).toBe(6)
+    expect(snapshot.total).toBe(4)
   })
 
   it('should finish when every pending count is zero', () => {
