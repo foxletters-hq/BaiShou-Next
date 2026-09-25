@@ -104,9 +104,16 @@ export function effectLabel(effect: AgentGateEffect, t: AgentGateSettingsTransla
 export function resolveCommandBlacklist(
   config: Pick<BaishouAgentGateConfig, 'commandBlacklist'>
 ): string[] {
-  return config.commandBlacklist && config.commandBlacklist.length > 0
-    ? config.commandBlacklist
+  return Array.isArray(config.commandBlacklist)
+    ? [...config.commandBlacklist]
     : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
+}
+
+export function isDefaultCommandBlacklist(list: readonly string[]): boolean {
+  if (list.length !== DEFAULT_WORKSPACE_COMMAND_BLACKLIST.length) return false
+  const left = [...list].sort()
+  const right = [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST].sort()
+  return left.every((item, index) => item === right[index])
 }
 
 export function resolveExclusionList(

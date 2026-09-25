@@ -8,8 +8,13 @@ import {
   type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
-import { Button, HelpTooltip, Switch } from '@baishou/ui'
+import { Button, HelpTooltip, Input, Switch } from '@baishou/ui'
 import { ArrowLeft, Check, ChevronRight } from 'lucide-react'
+import {
+  isDefaultCommandBlacklist,
+  nextExclusionList,
+  resolveCommandBlacklist
+} from './agent-gate-settings.util'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import pane from './GeneralSettingsPane.module.css'
 import styles from './AgentGateSettings.module.css'
@@ -21,6 +26,7 @@ export interface WorkspaceGatePermissionsPanelProps {
   saving: boolean
   notificationPrefs: AgentGateNotificationPrefs
   onSaveSecurityMode: (mode: AgentWorkspaceSecurityMode) => void | Promise<void>
+  onPatchConfig: (patch: Partial<BaishouAgentGateConfig>) => void | Promise<void>
   onRemoveAllowlistEntry: (entry: AgentGateAllowlistEntry) => void | Promise<void>
   onUpdateNotificationPrefs: (patch: Partial<AgentGateNotificationPrefs>) => void | Promise<void>
   onSubpageActiveChange?: (active: boolean) => void
@@ -31,12 +37,14 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
   saving,
   notificationPrefs,
   onSaveSecurityMode,
+  onPatchConfig,
   onRemoveAllowlistEntry,
   onUpdateNotificationPrefs,
   onSubpageActiveChange
 }) => {
   const { t } = useTranslation()
   const [view, setView] = useState<WorkspaceGatePermissionsView>('home')
+  const [blacklistDraft, setBlacklistDraft] = useState('')
 
   const navigate = (next: WorkspaceGatePermissionsView) => {
     setView(next)
@@ -62,11 +70,19 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
   }, [view, onSubpageActiveChange])
 
   const securityMode = resolveWorkspaceSecurityMode(config)
-  const commandBlacklist =
-    config.commandBlacklist && config.commandBlacklist.length > 0
-      ? config.commandBlacklist
-      : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
+  const commandBlacklist = resolveCommandBlacklist(config)
   const commandAllowlist = config.allowlist.filter((entry) => entry.action === 'workspace_run')
+  const blacklistIsDefault = isDefaultCommandBlacklist(commandBlacklist)
+
+  const addBlacklistPattern = () => {
+    const next = nextExclusionList(commandBlacklist, blacklistDraft)
+    if (next === 'empty') return
+    if (next === 'duplicate') {
+      setBlacklistDraft('')
+      return
+    }
+    void Promise.resolve(onPatchConfig({ commandBlacklist: next })).then(() => setBlacklistDraft(''))
+  }
 
   const goHome = () => navigate('home')
 
@@ -81,29 +97,101 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
           <p className={styles.emptyHint}>
             {t(
               'settings.agent_gate_blacklist_page_hint',
-              '全局生效。命中的命令强制询问，且不可「始终允许」。'
+              '全局生效。命中的命令强制询问，且不可「始终允许」。可增删改条目，也可恢复默认推荐。'
             )}
           </p>
           <section className={pane.cardSection}>
             <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+              <div className="settings-list-tile settings-list-tile-noclick">
+                <div className="settings-list-tile-content">
+                  <span className="settings-list-tile-title">
+                    {t('settings.reset_default', '恢复默认')}
+                  </span>
+                  <span className="settings-list-tile-subtitle">
+                    {t(
+                      'settings.agent_gate_blacklist_restore_hint',
+                      '恢复为推荐的危险命令列表，不会影响白名单。'
+                    )}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  disabled={saving || blacklistIsDefault}
+                  onClick={() =>
+                    void onPatchConfig({
+                      commandBlacklist: [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
+                    })
+                  }
+                >
+                  {t('settings.reset_default', '恢复默认')}
+                </Button>
+              </div>
+              <div className={pane.divider} />
               {commandBlacklist.length === 0 ? (
                 <p className={styles.emptyHint}>
                   {t('settings.agent_gate_blacklist_empty', '暂无黑名单命令')}
                 </p>
               ) : (
                 commandBlacklist.map((pattern, index) => (
-                  <React.Fragment key={pattern}>
+                  <React.Fragment key={`${pattern}-${index}`}>
                     {index > 0 ? <div className={pane.divider} /> : null}
                     <div className="settings-list-tile settings-list-tile-noclick">
                       <div className="settings-list-tile-content">
-                        <span className="settings-list-tile-title settings-monospace">
-                          {pattern}
-                        </span>
+                        <Input
+                          key={`${index}:${pattern}`}
+                          fieldSize="small"
+                          className={`${styles.textInput} settings-monospace`}
+                          defaultValue={pattern}
+                          disabled={saving}
+                          aria-label={t('settings.agent_gate_blacklist_edit', '编辑黑名单命令')}
+                          onBlur={(e) => {
+                            const next = e.target.value.trim()
+                            if (!next || next === pattern || commandBlacklist.includes(next)) {
+                              e.target.value = pattern
+                              return
+                            }
+                            const list = [...commandBlacklist]
+                            list[index] = next
+                            void onPatchConfig({ commandBlacklist: list })
+                          }}
+                        />
                       </div>
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={() =>
+                          void onPatchConfig({
+                            commandBlacklist: commandBlacklist.filter((_, i) => i !== index)
+                          })
+                        }
+                      >
+                        {t('common.remove', '移除')}
+                      </Button>
                     </div>
                   </React.Fragment>
                 ))
               )}
+              <div className={styles.formRow}>
+                <Input
+                  fieldSize="small"
+                  className={styles.textInput}
+                  value={blacklistDraft}
+                  onChange={(e) => setBlacklistDraft(e.target.value)}
+                  placeholder={t('settings.agent_gate_blacklist_placeholder', '例如 rmdir /s')}
+                  disabled={saving}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addBlacklistPattern()
+                    }
+                  }}
+                />
+                <Button type="button" disabled={saving} onClick={addBlacklistPattern}>
+                  {t('common.add', '添加')}
+                </Button>
+              </div>
             </div>
           </section>
         </div>

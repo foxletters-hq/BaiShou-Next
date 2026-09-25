@@ -11,6 +11,7 @@ import {
   nextExclusionList,
   nextTrustedDirs,
   normalizeTrustedDirDraft,
+  isDefaultCommandBlacklist,
   resolveCommandBlacklist,
   resolveExclusionList,
   scopesMatch,
@@ -70,11 +71,12 @@ describe('effectLabel', () => {
 })
 
 describe('resolveCommandBlacklist', () => {
-  it('should use the default blacklist when the config list is empty', () => {
-    expect(resolveCommandBlacklist({ commandBlacklist: [] })).toEqual([
-      ...DEFAULT_WORKSPACE_COMMAND_BLACKLIST
-    ])
+  it('should keep an empty user blacklist and use defaults only when omitted', () => {
+    expect(resolveCommandBlacklist({})).toEqual([...DEFAULT_WORKSPACE_COMMAND_BLACKLIST])
+    expect(resolveCommandBlacklist({ commandBlacklist: [] })).toEqual([])
     expect(resolveCommandBlacklist({ commandBlacklist: ['rm -rf'] })).toEqual(['rm -rf'])
+    expect(isDefaultCommandBlacklist([...DEFAULT_WORKSPACE_COMMAND_BLACKLIST])).toBe(true)
+    expect(isDefaultCommandBlacklist(['rm -rf'])).toBe(false)
   })
 })
 

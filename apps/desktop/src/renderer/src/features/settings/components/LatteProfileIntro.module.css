@@ -1,0 +1,72 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-width: 0;
+}
+
+.portrait {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border-muted);
+}
+
+.heroMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  padding: 0;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
+  line-height: 1.35;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+}
+
+.quote {
+  margin: 0;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.65;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  white-space: pre-wrap;
+}

@@ -62,6 +62,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
         saving={saving}
         notificationPrefs={notificationPrefs}
         onSaveSecurityMode={saveSecurityMode}
+        onPatchConfig={patchConfig}
         onRemoveAllowlistEntry={removeAllowlistEntry}
         onUpdateNotificationPrefs={updateNotificationPrefs}
         onSubpageActiveChange={onSubpageActiveChange}
