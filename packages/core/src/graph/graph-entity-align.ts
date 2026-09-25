@@ -1,4 +1,8 @@
-import { entityAlignKey, graphCosineDistanceToSimilarity } from '@baishou/shared'
+import {
+  entityAlignKey,
+  graphCosineDistanceToSimilarity,
+  meetsGraphSimilarPendingThreshold
+} from '@baishou/shared'
 import {
   type AlignableEntity,
   type AlignedEntity,
@@ -22,8 +26,6 @@ export {
   parseNameCandidateDecision
 } from './graph-entity-align.prompt'
 
-/** 只把相似度大于 50% 的库内节点给模型看；合不合并由二次 LLM 决定。 */
-const CANDIDATE_MIN_SIMILARITY = 0.5
 const VECTOR_CANDIDATE_TOP_K = 5
 
 function uniqueEntities(entities: AlignableEntity[]): Map<string, AlignableEntity> {
@@ -110,7 +112,7 @@ async function pickNameCandidate(
 
 /**
  * 名字/别名等值先复用；同名多条时若配置了 judgeNameCandidates 则只从候选里选。
- * 其余只召回相似度大于 50% 的候选，交给二次 LLM 判断。
+ * 其余只召回相似度大于 70% 的候选，交给二次 LLM 判断。
  * 模型失败或未配置时全部新建，不做向量硬合并。
  */
 export async function alignEntityPool(
@@ -158,8 +160,8 @@ export async function alignEntityPool(
         try {
           const vector = await lookup.embedQuery!(embedText(entity))
           if (vector?.length) vectors.set(key, vector)
-        } catch {
-          // optional
+        } catch (error) {
+          if (lookup.requireEmbedQuery) throw error
         }
       })
     )
@@ -193,6 +195,7 @@ async function alignWithLlm(
   const incomingByRef = new Map(incoming.map((item, index) => [item.ref, unresolved[index]!]))
 
   const existingById = new Map<string, AlignedEntityHit & { nodeType: string; distance?: number }>()
+  const similarityByIncomingExisting = new Map<string, Map<string, number>>()
   if (lookup.searchByVector) {
     const recalled = await Promise.all(
       unresolved.map(async ({ key, entity }) => {
@@ -200,13 +203,17 @@ async function alignWithLlm(
         if (!vector) return [] as Array<AlignedEntityHit & { distance: number; nodeType: string }>
         try {
           const hits = await lookup.searchByVector!(vector, entity.nodeType, VECTOR_CANDIDATE_TOP_K)
-          return hits
-            .filter(
-              (hit) =>
-                (!hit.nodeType || hit.nodeType === entity.nodeType) &&
-                shouldRecallAlignCandidate(hit.distance)
-            )
-            .map((hit) => ({ ...hit, nodeType: entity.nodeType }))
+          const kept = hits.filter(
+            (hit) =>
+              (!hit.nodeType || hit.nodeType === entity.nodeType) &&
+              shouldRecallAlignCandidate(hit.distance)
+          )
+          const byPeer = new Map<string, number>()
+          for (const hit of kept) {
+            byPeer.set(hit.id, graphCosineDistanceToSimilarity(hit.distance))
+          }
+          similarityByIncomingExisting.set(key, byPeer)
+          return kept.map((hit) => ({ ...hit, nodeType: entity.nodeType }))
         } catch {
           return []
         }
@@ -242,13 +249,6 @@ async function alignWithLlm(
   if (!judged) return false
   const decisions = judged.merges
   const createdAt = new Date().toISOString()
-  const similarityByExistingId = new Map<string, number>()
-  for (const hit of existingById.values()) {
-    const distance = 'distance' in hit ? Number((hit as { distance?: number }).distance) : NaN
-    if (Number.isFinite(distance)) {
-      similarityByExistingId.set(hit.id, graphCosineDistanceToSimilarity(distance))
-    }
-  }
 
   const existingByRef = new Map(existing.map((item) => [item.ref, item]))
   const parent = new Map<string, string>()
@@ -329,14 +329,14 @@ async function alignWithLlm(
             (row) => row.incomingRef === item.ref && existingByRef.has(row.existingRef)
           )
       const peer = uncertain ? existingByRef.get(uncertain.existingRef) : undefined
+      const similarity = peer
+        ? (similarityByIncomingExisting.get(item.key)?.get(peer.id) ?? 0)
+        : 0
       const similarPending =
-        peer && uncertain
+        peer && uncertain && meetsGraphSimilarPendingThreshold(similarity)
           ? {
               peerId: peer.id,
-              similarity:
-                typeof uncertain.similarity === 'number' && Number.isFinite(uncertain.similarity)
-                  ? uncertain.similarity
-                  : (similarityByExistingId.get(peer.id) ?? 0),
+              similarity,
               reason: (uncertain.reason || '').trim() || '吃不准',
               sourceExcerpt: clipNameCandidateSourceContext(item.entity.sourceContext) || undefined,
               createdAt
@@ -400,5 +400,5 @@ function withAlignEmbedding(
 }
 
 function shouldRecallAlignCandidate(distance: number): boolean {
-  return graphCosineDistanceToSimilarity(distance) > CANDIDATE_MIN_SIMILARITY
+  return meetsGraphSimilarPendingThreshold(graphCosineDistanceToSimilarity(distance))
 }

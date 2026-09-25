@@ -160,7 +160,7 @@ describe('GraphLlmExtractionService draft/commit', () => {
           aliases: ['三哥'],
           summary: '同事',
           nodeType: 'person',
-          distance: 0.35
+          distance: 0.25
         }
       ])
     })
@@ -448,7 +448,7 @@ describe('GraphLlmExtractionService draft/commit', () => {
           aliases: ['三哥'],
           summary: '老朋友',
           nodeType: 'person',
-          distance: 0.35
+          distance: 0.25
         }
       ]),
       getNodeById: vi.fn(async (id: string) => {

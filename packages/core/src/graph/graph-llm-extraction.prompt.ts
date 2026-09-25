@@ -5,7 +5,7 @@ import {
   runWithOpenAiThinkingInjectAsync,
   wrapLanguageModelWithMiddlewares
 } from '@baishou/ai'
-import { normalizeReasoningEffortSetting } from '@baishou/shared'
+import { AI_FIRST_OUTPUT_TIMEOUT_MS, normalizeReasoningEffortSetting } from '@baishou/shared'
 import type {
   ExtractionCostEstimate,
   GraphExtractLlmDeps,
@@ -218,12 +218,27 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
       effort: normalizeReasoningEffortSetting(deps.reasoningEffort)
     })
     return runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () => {
+      const abortController = new AbortController()
+      const onUserAbort = () => abortController.abort()
+      signal?.addEventListener('abort', onUserAbort)
+      let firstOutputSeen = false
+      let timedOut = false
+      const timeoutId = setTimeout(() => {
+        if (firstOutputSeen) return
+        timedOut = true
+        abortController.abort()
+      }, AI_FIRST_OUTPUT_TIMEOUT_MS)
+      const markFirstOutput = () => {
+        if (firstOutputSeen) return
+        firstOutputSeen = true
+        clearTimeout(timeoutId)
+      }
       const streamResult = streamText({
         model,
         system,
         messages: [{ role: 'user', content: user }],
         temperature: 0.1,
-        abortSignal: signal,
+        abortSignal: abortController.signal,
         ...(builtReasoning.providerOptions
           ? { providerOptions: builtReasoning.providerOptions as never }
           : {})
@@ -232,15 +247,38 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
       void textPromise.catch(() => undefined)
       void Promise.resolve(streamResult.usage).catch(() => undefined)
       void Promise.resolve(streamResult.response).catch(() => undefined)
-      const text = await resolveGraphExtractLlmText({
-        fullStream: streamResult.fullStream,
-        textStream: streamResult.textStream,
-        textPromise,
-        signal,
-        onDelta,
-        onReasoning
-      })
-      return text?.trim() || null
+      try {
+        const text = await resolveGraphExtractLlmText({
+          fullStream: streamResult.fullStream,
+          textStream: streamResult.textStream,
+          textPromise,
+          signal: abortController.signal,
+          onDelta: (chars) => {
+            markFirstOutput()
+            onDelta?.(chars)
+          },
+          onReasoning: (chars) => {
+            markFirstOutput()
+            onReasoning?.(chars)
+          }
+        })
+        if (timedOut) {
+          throw new Error(
+            `AI generation timeout: timed out after ${AI_FIRST_OUTPUT_TIMEOUT_MS / 1000} seconds waiting for first output.`
+          )
+        }
+        return text?.trim() || null
+      } catch (error) {
+        if (timedOut) {
+          throw new Error(
+            `AI generation timeout: timed out after ${AI_FIRST_OUTPUT_TIMEOUT_MS / 1000} seconds waiting for first output.`
+          )
+        }
+        throw error
+      } finally {
+        clearTimeout(timeoutId)
+        signal?.removeEventListener('abort', onUserAbort)
+      }
     })
   }
 }

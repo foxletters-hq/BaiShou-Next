@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  applySuspectReasonToProps,
   collectSuspectSignals,
   parseSourceRefYearMonth,
   parseSuspectReasonDecision,
+  removeSuspectReasonFromProps,
   runGraphSuspectScan,
   sourceRefSpanMonths
 } from '../graph-suspect-scan'
@@ -214,6 +216,14 @@ describe('sourceRef date helpers', () => {
   it('should measure the month span between source refs', () => {
     expect(sourceRefSpanMonths(['2023-01-01', '2024-07-01'])).toBe(18)
     expect(sourceRefSpanMonths(['2023-01-01', '2024-06-01'])).toBe(17)
+  })
+})
+
+describe('removeSuspectReasonFromProps', () => {
+  it('should drop suspectReason when the user reviews the node', () => {
+    const marked = applySuspectReasonToProps({ aliases: ['阿三'] }, '同时挂了两家公司')
+    expect(removeSuspectReasonFromProps(marked)).toEqual({ aliases: ['阿三'] })
+    expect(removeSuspectReasonFromProps({ aliases: ['阿三'] })).toEqual({ aliases: ['阿三'] })
   })
 })
 

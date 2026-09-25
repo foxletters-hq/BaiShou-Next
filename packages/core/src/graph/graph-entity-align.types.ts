@@ -135,6 +135,8 @@ export type EntityAlignLookup = {
     topK?: number
   ) => Promise<Array<AlignedEntityHit & { distance: number }>>
   embedQuery?: (text: string) => Promise<number[] | null>
+  /** 笔记本抽图需要节点向量时为真；失败必须冒出来，不能当可选召回吞掉。 */
+  requireEmbedQuery?: boolean
   nodeIdForEntity: (type: string, name: string) => string
   /** 二次 LLM：判断合并或吃不准。返回 null 时全部新建，不再做向量硬合并。 */
   judgeMerges?: (
