@@ -22,4 +22,14 @@ describe('mobile memory center chrome', () => {
     expect(page).not.toContain('mobileGraphExtractQueue.enqueue')
     expect(page).not.toContain('runExtract')
   })
+
+  it('should refresh organize counts when a vector fragment is deleted', () => {
+    expect(page).toContain('subscribeMobilePendingEmbedCountsChanged')
+  })
+
+  it('should send the user to graph pending review when suspects exist', () => {
+    expect(page).toContain('useMobileSuspectCount')
+    expect(page).toContain('requestGraphPendingFocus')
+    expect(page).toContain('memory.review_suspects')
+  })
 })

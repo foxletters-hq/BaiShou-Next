@@ -29,11 +29,14 @@ import { RAGMemorySection } from '../SettingsScreen/components/RAGMemorySection'
 import { mobileListPendingReextract } from '@/src/services/mobile-graph.service'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { subscribeMobilePendingEmbedCountsChanged } from '@/src/services/mobile-pending-embed-counts'
 import {
   readMemoryOnboardingDismissed,
   writeMemoryOnboardingDismissed
 } from './memory-center-onboarding.storage'
 import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from './memory-center-data.util'
+import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
+import { requestGraphPendingFocus } from '../GraphScreen/graph-pending-focus'
 import { loadMemoryOrganizePending, snapshotMemoryEmbedPhases } from './memory-center-organize.util'
 
 function rowLabel(
@@ -85,6 +88,7 @@ export function MemoryCenterScreen() {
   const [ragConfig, setRagConfig] = useState<Pick<RagConfig, 'ragEnabled'> | null>(null)
   const [onboardingDismissed, setOnboardingDismissed] = useState(true)
   const [busy, setBusy] = useState(false)
+  const { suspectCount } = useMobileSuspectCount()
 
   useEffect(() => {
     if (isMemoryCenterTab(String(params.tab ?? ''))) {
@@ -134,6 +138,12 @@ export function MemoryCenterScreen() {
       void refresh()
     }, [refresh])
   )
+
+  useEffect(() => {
+    return subscribeMobilePendingEmbedCountsChanged(() => {
+      void refresh()
+    })
+  }, [refresh])
 
   const pendingEmbedCount = pendingEmbedParts.total
   const embeddingConfigured = isEmbeddingConfiguredForMemory(globalModels)
@@ -320,6 +330,18 @@ export function MemoryCenterScreen() {
               <Button onPress={() => void startOrganize()} isDisabled={busy}>
                 {t('memory.start_organize', '开始整理记忆')}
               </Button>
+              <View style={{ height: 12 }} />
+              {suspectCount > 0 ? (
+                <Button
+                  variant="outlined"
+                  onPress={() => {
+                    requestGraphPendingFocus()
+                    router.push('/graph')
+                  }}
+                >
+                  {t('memory.review_suspects', '去检查')}
+                </Button>
+              ) : null}
               <View style={{ height: 12 }} />
               <Button variant="outlined" onPress={() => router.push('/graph')}>
                 {t('nav.graph', '关系图谱')}

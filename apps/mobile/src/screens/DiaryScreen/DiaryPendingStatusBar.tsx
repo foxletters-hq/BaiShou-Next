@@ -54,10 +54,6 @@ export function DiaryPendingStatusBar(props: {
             count: pendingEmbedParts.memories
           })} · ${t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
             count: pendingEmbedParts.graphNodes
-          })} · ${t('memory.pending_embed_part_notebook_graph_nodes', '笔记本图节点 {{count}} 个', {
-            count: pendingEmbedParts.notebookGraphNodes
-          })} · ${t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
-            count: pendingEmbedParts.knowledgeSources
           })}）`}
         </Text>
       ) : null}
