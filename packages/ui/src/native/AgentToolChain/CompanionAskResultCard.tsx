@@ -1,34 +1,43 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import type { CompanionAskPresentation } from '../../shared/tool-result.util'
+import type {
+  CompanionAskOptionView,
+  CompanionAskPresentation
+} from '../../shared/tool-result.util'
 import { useNativeTheme } from '../theme'
 
-export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
+function CompanionAskResultItem({
+  question,
+  answer,
+  declined,
+  options,
+  selectedOptionIds
+}: {
+  question: string
+  answer: string | null
+  declined: boolean
+  options: CompanionAskOptionView[]
+  selectedOptionIds: string[]
+}) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const selected = new Set(data.selectedOptionIds)
-  const showOptions = !data.declined && data.options.length > 0
+  const selected = new Set(selectedOptionIds)
+  const showOptions = !declined && options.length > 0
 
   return (
-    <View
-      style={[styles.card, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}
-      accessibilityLabel={t('agent.tools.companion_ask', '伙伴提问')}
-    >
-      <Text style={[styles.label, { color: colors.textTertiary }]}>
-        {t('agent.tools.companion_ask_card_label', '提问')}
-      </Text>
-      {data.question ? (
-        <Text style={[styles.question, { color: colors.textPrimary }]}>{data.question}</Text>
+    <View style={styles.questionBlock}>
+      {question ? (
+        <Text style={[styles.question, { color: colors.textPrimary }]}>{question}</Text>
       ) : null}
-      {data.declined ? (
+      {declined ? (
         <Text style={[styles.status, { color: colors.textTertiary }]}>
           {t('agent.tools.companion_ask_declined', '没有作答')}
         </Text>
       ) : null}
       {showOptions
-        ? data.options.map((option) => {
-            const isSelected = selected.has(option.id) || option.label === data.answer
+        ? options.map((option) => {
+            const isSelected = selected.has(option.id) || option.label === answer
             return (
               <View
                 key={option.id}
@@ -56,7 +65,7 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
             )
           })
         : null}
-      {!data.declined && !showOptions && data.answer ? (
+      {!declined && !showOptions && answer ? (
         <View
           style={[
             styles.option,
@@ -66,9 +75,46 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
             }
           ]}
         >
-          <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>{data.answer}</Text>
+          <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>{answer}</Text>
         </View>
       ) : null}
+    </View>
+  )
+}
+
+export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const items = data.items && data.items.length > 1 ? data.items : null
+
+  return (
+    <View
+      style={[styles.card, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}
+      accessibilityLabel={t('agent.tools.companion_ask', '伙伴提问')}
+    >
+      <Text style={[styles.label, { color: colors.textTertiary }]}>
+        {t('agent.tools.companion_ask_card_label', '提问')}
+      </Text>
+      {items
+        ? items.map((item, index) => (
+            <CompanionAskResultItem
+              key={`${item.question}-${index}`}
+              question={item.question}
+              answer={item.answer}
+              declined={data.declined}
+              options={item.options}
+              selectedOptionIds={item.selectedOptionIds}
+            />
+          ))
+        : (
+            <CompanionAskResultItem
+              question={data.question}
+              answer={data.answer}
+              declined={data.declined}
+              options={data.options}
+              selectedOptionIds={data.selectedOptionIds}
+            />
+          )}
     </View>
   )
 }
@@ -82,6 +128,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
     marginVertical: 4
+  },
+  questionBlock: {
+    gap: 8
   },
   label: {
     fontSize: 12,

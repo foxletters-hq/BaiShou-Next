@@ -56,6 +56,14 @@ function streamingToolKey(tool: AgentToolChainStreamingTool, index: number): str
   return tool.toolCallId ?? `stream-done-${tool.name}-${tool.startTime ?? index}`
 }
 
+function readInvocationToolName(inv: ToolInvocationLike, index: number): string {
+  return inv.toolName || (inv as { name?: string }).name || inv.toolCallId || `inv-${index}`
+}
+
+function isUnansweredInvocation(inv: ToolInvocationLike): boolean {
+  return inv.result === undefined || inv.result === null || inv.result === ''
+}
+
 export function buildAgentToolChainItems(options: {
   invocations?: ToolInvocationLike[]
   completedTools?: AgentToolChainStreamingTool[]
@@ -66,6 +74,13 @@ export function buildAgentToolChainItems(options: {
   const items: AgentToolChainItemModel[] = []
   const indexByKey = new Map<string, number>()
   const isToolError = options.isToolError ?? (() => false)
+  const invocations = options.invocations ?? []
+  const unansweredActive = options.activeToolName
+    ? invocations.find((inv) => {
+        const name = inv.toolName || (inv as { name?: string }).name
+        return name === options.activeToolName && isUnansweredInvocation(inv)
+      })
+    : undefined
 
   const upsertItem = (item: AgentToolChainItemModel) => {
     const existingIdx = indexByKey.get(item.key)
@@ -96,7 +111,7 @@ export function buildAgentToolChainItems(options: {
     })
   }
 
-  if (options.activeToolName) {
+  if (options.activeToolName && !unansweredActive) {
     const invocation =
       options.activeToolArgs === undefined
         ? undefined
@@ -114,17 +129,23 @@ export function buildAgentToolChainItems(options: {
     })
   }
 
-  for (const [index, inv] of (options.invocations ?? []).entries()) {
-    const invToolName = inv.toolName || (inv as { name?: string }).name || inv.toolCallId || 'tool'
+  for (const [index, inv] of invocations.entries()) {
+    const invToolName = readInvocationToolName(inv, index)
     const key = inv.toolCallId || invToolName || `inv-${index}`
-    const awaitingAsk =
-      invToolName === 'companion_ask' &&
+    const isActiveUnanswered =
       !isToolError(inv) &&
-      (inv.result === undefined || inv.result === null)
+      isUnansweredInvocation(inv) &&
+      Boolean(options.activeToolName) &&
+      invToolName === options.activeToolName
+    const awaitingPersistedAsk =
+      !isToolError(inv) &&
+      invToolName === 'companion_ask' &&
+      isUnansweredInvocation(inv) &&
+      inv.state === 'partial-call'
     upsertItem({
       key,
       toolName: invToolName,
-      status: isToolError(inv) ? 'error' : awaitingAsk ? 'loading' : 'success',
+      status: isToolError(inv) ? 'error' : isActiveUnanswered || awaitingPersistedAsk ? 'loading' : 'success',
       invocation: inv,
       hasContent: hasInvocationContent(inv)
     })
