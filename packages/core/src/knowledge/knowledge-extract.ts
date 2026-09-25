@@ -128,8 +128,12 @@ export function analyzePageTexts(pageTexts: string[]): ExtractResult {
   }
 }
 
-/** 平台注入的按页 PDF 抽取（桌面用 pdf-parse pagerender） */
-export type PdfPageExtractor = (filePath: string) => Promise<string[]>
+/** 平台注入的按页 PDF 抽取。进度只在内存里上报，不写入资料。 */
+export type PdfPageExtractProgress = { page: number; total: number }
+export type PdfPageExtractor = (
+  filePath: string,
+  onProgress?: (info: PdfPageExtractProgress) => void
+) => Promise<string[]>
 
 let pdfPageExtractor: PdfPageExtractor | null = null
 
@@ -192,11 +196,14 @@ export async function extractMarkdownOrText(content: string): Promise<ExtractRes
 }
 
 /** 仅返回按页文本（供 OCR 引擎合并缺失页） */
-export async function extractPdfPageTexts(filePath: string): Promise<string[]> {
+export async function extractPdfPageTexts(
+  filePath: string,
+  onProgress?: (info: PdfPageExtractProgress) => void
+): Promise<string[]> {
   if (!pdfPageExtractor) {
     throw new Error('PDF page extractor not registered')
   }
-  return pdfPageExtractor(filePath)
+  return pdfPageExtractor(filePath, onProgress)
 }
 
 export async function extractPdfFromPath(filePath: string): Promise<ExtractResult> {

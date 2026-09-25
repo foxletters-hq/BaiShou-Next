@@ -23,7 +23,7 @@ export interface KnowledgeExtractProgress {
   sourceId: string
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render'
+  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
 }
 
 export interface KnowledgeIngestDeps {

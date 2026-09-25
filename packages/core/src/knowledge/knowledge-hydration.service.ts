@@ -173,6 +173,7 @@ export class KnowledgeHydrationService {
           title: src.title,
           sourceKind: src.kind || 'file',
           relativePath,
+          originUrl: src.originUrl ?? existing?.originUrl ?? null,
           contentHash: src.contentHash,
           extractedTextHash: extractedHash,
           extractEngine: src.extractEngine ?? 'simple',
