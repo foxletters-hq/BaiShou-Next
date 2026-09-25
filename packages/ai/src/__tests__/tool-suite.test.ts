@@ -12,6 +12,7 @@ import { MemoryStoreTool } from '../tools/memory-store.tool'
 import { MemoryDeleteTool } from '../tools/memory-delete.tool'
 import { VectorSearchTool } from '../tools/vector-search.tool'
 import { MessageSearchTool } from '../tools/message-search.tool'
+import { SessionListTool } from '../tools/session-list.tool'
 import { SummaryReadTool } from '../tools/summary-read.tool'
 import { WebSearchTool } from '../tools/web-search.tool'
 import { UrlReadTool } from '../tools/url-read.tool'
@@ -26,7 +27,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(30)
+    expect(allTools).toHaveLength(31)
 
     const toolNames = allTools.map((t) => t.name)
     expect(toolNames).toContain('current_time')
@@ -44,6 +45,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('memory_delete')
     expect(toolNames).toContain('vector_search')
     expect(toolNames).toContain('message_search')
+    expect(toolNames).toContain('session_list')
     expect(toolNames).toContain('summary_read')
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
@@ -68,7 +70,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     // 无 folderRoot 时跳过 workspace_*；web_search/vector_search/memory_store 缺依赖跳过；
     // 内部压缩工具不暴露。graph / knowledge_search / skill_write 仍会进入可调用集。
-    expect(Object.keys(vercelTools)).toHaveLength(17)
+    expect(Object.keys(vercelTools)).toHaveLength(18)
     expect(vercelTools['current_time']).toBeDefined()
     expect(vercelTools['companion_ask']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
@@ -98,7 +100,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(16)
+    expect(Object.keys(vercelTools)).toHaveLength(17)
   })
 
   it('keeps current_time enabled even when listed in disabledToolIds', () => {
@@ -156,6 +158,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
       new MemoryDeleteTool(),
       new VectorSearchTool(),
       new MessageSearchTool(),
+      new SessionListTool(),
       new SummaryReadTool(),
       new WebSearchTool(),
       new UrlReadTool(),

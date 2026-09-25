@@ -119,6 +119,78 @@ describe('DatabaseAdapter.searchMessages', () => {
       undefined
     )
   })
+
+  it('should format session list timestamps in local timezone', async () => {
+    const firstCreatedAt = new Date(2026, 8, 3, 10, 0)
+    const lastCreatedAt = new Date(2026, 8, 5, 16, 0)
+    const messageRepo = {
+      listSessionsInDateRange: vi.fn().mockResolvedValue([
+        {
+          sessionId: 's1',
+          sessionTitle: '日期会话',
+          firstCreatedAt,
+          lastCreatedAt,
+          messageCount: 2,
+          preview: '区间内原文'
+        }
+      ])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
+    const rows = await adapter.listSessionsInDateRange('vlt_explicit', '2026-09-01', '2026-09-07', 20)
+    expect(messageRepo.listSessionsInDateRange).toHaveBeenCalledWith(
+      'vlt_explicit',
+      '2026-09-01',
+      '2026-09-07',
+      20
+    )
+    expect(rows[0]?.sessionId).toBe('s1')
+    expect(rows[0]?.firstDate).toBe(formatRecallTimestamp(firstCreatedAt))
+    expect(rows[0]?.lastDate).toBe(formatRecallTimestamp(lastCreatedAt))
+  })
+
+  it('should fail-closed when listing messages without vaultId', async () => {
+    const messageRepo = { listMessagesInDateRange: vi.fn() }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(
+      await adapter.listMessagesInDateRange('', 20, { startDate: '2026-09-01', endDate: '2026-09-07' })
+    ).toEqual([])
+    expect(messageRepo.listMessagesInDateRange).not.toHaveBeenCalled()
+  })
+
+  it('should pass sessionId through when listing messages', async () => {
+    const createdAt = new Date(2026, 8, 3, 10, 0)
+    const messageRepo = {
+      listMessagesInDateRange: vi.fn().mockResolvedValue([
+        {
+          role: 'user',
+          content: '区间内原文',
+          sessionTitle: '日期会话',
+          sessionId: 'sess-date',
+          createdAt
+        }
+      ])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
+    const rows = await adapter.listMessagesInDateRange('vlt_explicit', 20, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07',
+      sessionId: 'sess-date'
+    })
+    expect(messageRepo.listMessagesInDateRange).toHaveBeenCalledWith('vlt_explicit', 20, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07',
+      sessionId: 'sess-date'
+    })
+    expect(rows[0]?.sessionId).toBe('sess-date')
+    expect(rows[0]?.snippet).toBe('区间内原文')
+  })
+
+  it('should fail-closed when listing sessions without vaultId', async () => {
+    const messageRepo = { listSessionsInDateRange: vi.fn() }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(await adapter.listSessionsInDateRange('', '2026-09-01', '2026-09-07', 20)).toEqual([])
+    expect(messageRepo.listSessionsInDateRange).not.toHaveBeenCalled()
+  })
 })
 
 describe('DatabaseAdapter.getBySource', () => {

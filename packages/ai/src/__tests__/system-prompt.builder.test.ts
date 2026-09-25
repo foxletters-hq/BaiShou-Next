@@ -213,11 +213,15 @@ describe('SystemPromptBuilder', () => {
         isGitRepo: true,
         gitBranch: 'main',
         gitChangesCount: 2,
-        notebookIds: ['nb-1']
+        notebookIds: ['nb-1'],
+        commandRuntimeLabel: 'Windows PowerShell',
+        commandRuntimeFamily: 'win_powershell'
       }
     })
     expect(workspacePrompt).toContain('<workspace_env>')
     expect(workspacePrompt).toContain('Working directory: D:/proj')
+    expect(workspacePrompt).toContain('Command environment: Windows PowerShell')
+    expect(workspacePrompt).toContain('inner command')
     expect(workspacePrompt).toContain('Is git repo: yes')
     expect(workspacePrompt).toContain('Git branch: main')
     expect(workspacePrompt).toContain('Mounted knowledge notebooks (1/3): nb-1')

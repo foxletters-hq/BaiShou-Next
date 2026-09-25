@@ -18,6 +18,26 @@ describe('ensureSessionSnapshotsRestored', () => {
     expect(sessionRepo.getSessionAggregate).not.toHaveBeenCalled()
   })
 
+  it('should still use the table snapshot when marker restore is disabled', async () => {
+    const existing = { id: 1, summaryText: '已有', coveredUpToMessageId: 'm1' }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(existing),
+      replaceSnapshotsForSession: vi.fn()
+    }
+    const sessionRepo = { getSessionAggregate: vi.fn() }
+
+    const result = await ensureSessionSnapshotsRestored(
+      's1',
+      snapshotRepo as never,
+      sessionRepo as never,
+      { restoreSynthesizedFromMarkers: false }
+    )
+
+    expect(result).toBe(existing)
+    expect(sessionRepo.getSessionAggregate).not.toHaveBeenCalled()
+    expect(snapshotRepo.replaceSnapshotsForSession).not.toHaveBeenCalled()
+  })
+
   it('restores from compaction parts when the table is empty', async () => {
     const restored = { id: 2, summaryText: '恢复', coveredUpToMessageId: 'm2' }
     const snapshotRepo = {
@@ -61,5 +81,44 @@ describe('ensureSessionSnapshotsRestored', () => {
       ])
     )
     expect(result).toBe(restored)
+  })
+
+  it('should not restore a synthesized snapshot from compaction markers when restore is disabled', async () => {
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null),
+      replaceSnapshotsForSession: vi.fn()
+    }
+    const sessionRepo = {
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 's1' },
+        messages: [
+          {
+            id: 'm2',
+            parts: [
+              {
+                type: 'compaction',
+                data: {
+                  status: 'completed',
+                  coveredUpToMessageId: 'm2',
+                  streamTranscript: '恢复'
+                }
+              }
+            ]
+          },
+          { id: 'm3', parts: [] }
+        ]
+      })
+    }
+
+    const result = await ensureSessionSnapshotsRestored(
+      's1',
+      snapshotRepo as never,
+      sessionRepo as never,
+      { restoreSynthesizedFromMarkers: false }
+    )
+
+    expect(result).toBeNull()
+    expect(sessionRepo.getSessionAggregate).not.toHaveBeenCalled()
+    expect(snapshotRepo.replaceSnapshotsForSession).not.toHaveBeenCalled()
   })
 })
