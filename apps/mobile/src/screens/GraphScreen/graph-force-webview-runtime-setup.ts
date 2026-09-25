@@ -29,13 +29,23 @@ let theme = Object.assign({
   }, DATA.theme || {});
 
 const rawNodes = (DATA.nodes||[]).filter(n=>n.reviewStatus!=='rejected');
+const connectedIds = new Set();
+for(const e of (DATA.edges||[])){
+  if(e.reviewStatus==='rejected') continue;
+  connectedIds.add(e.fromId); connectedIds.add(e.toId);
+}
+let isolatedCount = 0;
+for(const n of rawNodes){ if(!connectedIds.has(n.id)) isolatedCount++; }
 const nodes = rawNodes.map((n)=>{
-  const spread = Math.min(280, 80 + Math.sqrt(rawNodes.length) * 12)
-  const angle = Math.random() * Math.PI * 2
-  const rad = Math.sqrt(Math.random()) * spread
+  const isolated = !connectedIds.has(n.id);
+  const spread = isolated
+    ? Math.min(ISOLATED_SEED.max, ISOLATED_SEED.min + Math.sqrt(isolatedCount) * ISOLATED_SEED.countScale)
+    : Math.min(280, 80 + Math.sqrt(rawNodes.length) * 12);
+  const angle = Math.random() * Math.PI * 2;
+  const rad = Math.sqrt(Math.random()) * spread;
   return {
     ...n,
-    // Random disk seed — avoids charge+center locking into concentric rings.
+    // Isolated nodes start in an outer disk so they settle around the cluster.
     x: Math.cos(angle) * rad + 200,
     y: Math.sin(angle) * rad + 200,
     vx: 0,

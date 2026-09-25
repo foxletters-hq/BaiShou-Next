@@ -85,7 +85,10 @@ describe('GraphScreen chrome', () => {
       'props.showMonthEmpty ? ('
     )
     expect(emptyGuide).toContain('onStartOrganize')
-    expect(emptyGuide).toContain("t('graph.start_organize'")
+    expect(emptyGuide).toContain("t('memory.start_organize'")
+    expect(emptyGuide).toContain('<Button')
+    expect(emptyGuide).not.toContain('estimatedTokens')
+    expect(emptyGuide).not.toContain('formatTokens')
     expect(emptyGuide).not.toContain('onRunExtract')
     expect(emptyGuide).not.toContain('runExtract')
 
@@ -115,6 +118,12 @@ describe('GraphScreen chrome', () => {
     expect(pageChrome).toContain("t('graph.show_isolated_nodes'")
     expect(pageChrome).toContain('showIsolatedNodes')
     expect(webviewSrc).toContain('appearance.showIsolatedNodes !== false')
+    expect(webviewSrc).toContain('ISOLATED_CHARGE_SCALE')
+    expect(webviewSrc).toContain('MIXED_CHARGE_SCALE')
+    expect(webviewSrc).toContain('ISOLATED_CENTER_SCALE')
+    expect(webviewSrc).toContain('ISOLATED_SEED')
+    expect(webviewSrc).toContain('VELOCITY_DECAY')
+    expect(webviewSrc).toContain('CHARGE_DISTANCE_MAX_MIN')
   })
 
   it('keeps month range out of the canvas settings section', () => {
@@ -140,6 +149,7 @@ describe('GraphScreen chrome', () => {
     expect(organize).toContain("t('graph.create_node'")
     expect(organize).toContain("t('graph.merge_nodes'")
     expect(organize).toContain('GraphExtractHelpButton')
+    expect(readSrc('GraphExtractHelpButton.tsx')).toContain('GRAPH_ALIGN_MIN_SIMILARITY_PERCENT')
     expect(organize).toContain("t('graph.extract_one_action'")
     expect(organize).toContain("t('graph.profile_section'")
     expect(organize).toContain("t('graph.data_ops'")
@@ -254,11 +264,14 @@ describe('GraphScreen chrome', () => {
 
   it('should list registered same-name entities in node detail when the name has been split', () => {
     expect(pageChrome).toContain('GraphNodeSameNameList')
-    expect(pageChrome).toContain('listRegisteredSameNameEntities')
+    expect(pageChrome).toContain('mobileListNameCandidates')
     expect(candidatesUtilSrc).toContain('readGraphNameRegistry')
-    expect(sameNameListSrc).toContain("t('graph.same_name_entities'")
+    expect(sameNameListSrc).toContain("t('graph.same_name_siblings'")
     expect(sameNameListSrc).toContain("t('graph.discriminator_label'")
     expect(sameNameListSrc).toContain('onOpen')
+    expect(sameNameListSrc).toContain('onRevertSplit')
+    expect(overlaysSrc).toContain("t('graph.source_excerpt_label'")
+    expect(settingsHookSrc).toContain('saveGraphAppearanceSettings')
     expect(sameNameListSrc).not.toContain('${entity.name}')
     expect(sameNameListSrc).not.toContain("entity.name + ' ('")
   })
@@ -278,6 +291,10 @@ describe('GraphScreen chrome', () => {
   it('should show the persisted suspect reason and leftover ambiguous sources', () => {
     expect(pageChrome).toContain('readGraphNodeSuspectReason')
     expect(pageChrome).toContain("t('graph.suspect_reason'")
+    expect(pageChrome).toContain("'graph.suspect_badge'")
+    expect(pageChrome).toContain("'graph.suspect_pending_hint'")
+    expect(modelSrc).toContain('consumeGraphPendingFocus')
+    expect(modelSrc).toContain('subscribeGraphPendingFocus')
     expect(pageChrome).toContain('listAmbiguousSourceRefs')
     expect(pageChrome).toContain("t('graph.ambiguous_sources_hint'")
     expect(candidatesUtilSrc).toContain('readGraphNodeSuspectReason')
@@ -288,7 +305,37 @@ describe('GraphScreen chrome', () => {
     expect(splitSheetSrc).toContain('Button')
     expect(splitSheetSrc).toContain('Input')
     expect(splitSheetSrc).toContain('SegmentedControl')
+    expect(splitSheetSrc).toContain('Pagination')
     expect(splitSheetSrc).not.toMatch(/<TextInput[\s>]/)
+  })
+
+  it('should name original vs new person in split options and paginate the relation list', () => {
+    expect(splitSheetSrc).toContain('sliceGraphSplitEdges')
+    expect(splitSheetSrc).toContain('graphSplitNewDisplayName')
+    expect(splitSheetSrc).toContain('formatGraphSplitPartnerName')
+    expect(splitSheetSrc).toContain("t('graph.split_edges_heading'")
+    expect(splitSheetSrc).toContain("t('graph.split_discriminator'")
+    expect(splitSheetSrc).toContain("t('graph.discriminator_placeholder'")
+    expect(splitSheetSrc).toContain("t('graph.split_label_placeholder'")
+    expect(splitSheetSrc).toContain("t('graph.split_summary'")
+    expect(splitSheetSrc).toContain("t('graph.split_keep_bare'")
+    expect(splitSheetSrc).toContain('name:')
+  })
+
+  it('should let the user approve a suspect from the split sheet', () => {
+    expect(splitSheetSrc).toContain('onApprove')
+    expect(splitSheetSrc).toContain("t('graph.clear_suspect'")
+    expect(pageChrome).toContain('canApprove={canApproveGraphNode')
+    expect(src).toContain('graphSuspectReviewCopy')
+    expect(src).toContain('copy.doneKey')
+    expect(src).toContain('showSuccess')
+    expect(detailSrc).toContain('graphSuspectReviewCopy')
+  })
+
+  it('should close the split sheet after a successful save even when leftover relations remain', () => {
+    expect(splitSheetSrc).toContain('shouldCloseGraphSplitAfterSave')
+    expect(splitSheetSrc).toContain("t('graph.split_saving'")
+    expect(splitSheetSrc).not.toContain('if (result.unassignedEdgeIds.length === 0)')
   })
 
   it('should let create-node register another entity via mobileSplitGraphNode', () => {
@@ -297,25 +344,38 @@ describe('GraphScreen chrome', () => {
     expect(createSheetSrc).toContain("from '@baishou/ui/native'")
     expect(createSheetSrc).toContain('Input')
     expect(createSheetSrc).toContain('Button')
+    expect(createSheetSrc).toContain("t('graph.label_aliases'")
   })
 
   it('should keep new graph split i18n keys in all four locale files', () => {
     const i18nDir = join(dir, '../../../../../../packages/shared/src/i18n')
     const keys = [
       'discriminator_label',
+      'split_discriminator',
+      'discriminator_placeholder',
       'split_node',
       'split_node_title',
       'split_label',
+      'split_label_placeholder',
+      'split_summary',
+      'split_edges_heading',
       'split_keep_bare',
       'split_move_to_new',
       'split_unassigned',
       'split_unassigned_count',
       'split_confirm',
+      'split_saving',
+      'split_failed',
+      'split_not_ready',
       'register_another_entity',
       'same_name_siblings',
       'revert_split',
       'ambiguous_sources_hint',
       'suspect_reason',
+      'suspect_badge',
+      'clear_suspect',
+      'clear_suspect_done',
+      'suspect_pending_hint',
       'tab_similar',
       'tab_similar_count',
       'similar_empty',
@@ -339,5 +399,13 @@ describe('GraphScreen chrome', () => {
     expect(src).not.toContain("from '@baishou/core-mobile'")
     expect(pageChrome).not.toContain("from '@baishou/core-mobile'")
     expect(pageChrome).toContain("from '@/src/services/mobile-graph-split'")
+  })
+
+  it('should sync split writes without waiting on a full orphan sweep', () => {
+    const from = splitServiceSrc.indexOf('export async function mobileSplitGraphNode')
+    const to = splitServiceSrc.indexOf('export async function mobileRevertGraphNodeSplit')
+    const split = splitServiceSrc.slice(from, to)
+    expect(split).toContain('syncMobileGraphPendingIndex')
+    expect(split).toContain("absentSweep: 'off'")
   })
 })

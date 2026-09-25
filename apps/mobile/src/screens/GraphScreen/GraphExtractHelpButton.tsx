@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { CircleHelp } from 'lucide-react-native'
-import { GRAPH_EXTRACT_ALIGN_POOL_SIZE } from '@baishou/shared'
+import { GRAPH_ALIGN_MIN_SIMILARITY_PERCENT, GRAPH_EXTRACT_ALIGN_POOL_SIZE } from '@baishou/shared'
 import { FloatingModal, HELP_ICON_SIZE, useNativeTheme } from '@baishou/ui/native'
 
 export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _size }) => {
@@ -60,7 +60,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _siz
                 '单篇抽完不会立刻写入图谱。草稿先进入抽取池；攒满 {{pool}} 篇，或这一批都抽完了，再召回相似度大于 {{similarity}}% 的已有节点，由模型判断要不要合并，然后一起写入。这样相近的实体不容易拆成多个节点。',
                 {
                   pool: GRAPH_EXTRACT_ALIGN_POOL_SIZE,
-                  similarity: 50
+                  similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
                 }
               )}
             </Text>
