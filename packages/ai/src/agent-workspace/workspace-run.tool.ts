@@ -8,7 +8,8 @@ import {
   resolveWorkspacePath,
   WorkspacePathError
 } from './workspace-path.sandbox'
-import { runHostProcess } from './workspace-host-process'
+import { buildWorkspaceRunToolDescription } from './workspace-command-runtime'
+import { detectProcessCommandRuntime, runHostProcess } from './workspace-host-process'
 
 const WORKSPACE_TOOL_CATEGORY = 'workspace'
 const MIN_TIMEOUT_MS = 1_000
@@ -73,11 +74,10 @@ const workspaceRunParams = z.object({
 
 export class WorkspaceRunTool extends AgentTool<typeof workspaceRunParams> {
   readonly name = 'workspace_run'
-  readonly description =
-    'Run a command in the workspace folder on the host process. ' +
-    'There is no OS sandbox — the command runs with the app host privileges. ' +
-    'Prefer the workdir parameter instead of `cd &&` in the command. ' +
-    'Only available in workspace sessions.'
+
+  get description(): string {
+    return buildWorkspaceRunToolDescription(detectProcessCommandRuntime(), process.platform)
+  }
 
   readonly parameters = workspaceRunParams
 
@@ -103,10 +103,12 @@ export class WorkspaceRunTool extends AgentTool<typeof workspaceRunParams> {
 
       const cwd = resolveRunCwd(folderRoot, args.workdir)
       const timeoutMs = clampTimeoutMs(args.timeout_ms)
+      const runtime = detectProcessCommandRuntime()
       const result = await runHostProcess({
         command,
         cwd,
-        timeoutMs
+        timeoutMs,
+        runtime
       })
 
       return [

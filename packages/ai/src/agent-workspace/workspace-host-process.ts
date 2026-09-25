@@ -1,5 +1,11 @@
 // @ts-ignore - Node built-in, available at runtime
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import {
+  detectWorkspaceCommandRuntime,
+  planWorkspaceCommandSpawn,
+  type WorkspaceCommandRuntime
+} from './workspace-command-runtime'
+import { existsOnCommandPath, locateCommandRuntimeExecutable } from './workspace-command-runtime-locate'
 
 const DEFAULT_TIMEOUT_MS = 120_000
 const MAX_OUTPUT_BYTES = 50_000
@@ -10,6 +16,7 @@ export interface RunHostProcessParams {
   cwd: string
   timeoutMs?: number
   abortSignal?: AbortSignal
+  runtime?: WorkspaceCommandRuntime
 }
 
 export interface RunHostProcessResult {
@@ -19,11 +26,22 @@ export interface RunHostProcessResult {
   output: string
 }
 
-function resolveShell(): string | boolean {
-  if (process.platform === 'win32') {
-    return process.env.ComSpec || process.env.COMSPEC || 'cmd.exe'
-  }
-  return '/bin/sh'
+let cachedRuntime: WorkspaceCommandRuntime | undefined
+
+/** 探测本机命令运行环境；测试可调用 resetWorkspaceCommandRuntimeCache。 */
+export function detectProcessCommandRuntime(): WorkspaceCommandRuntime {
+  if (cachedRuntime) return cachedRuntime
+  cachedRuntime = detectWorkspaceCommandRuntime({
+    platform: process.platform,
+    env: process.env,
+    locate: (name) => locateCommandRuntimeExecutable(name),
+    exists: existsOnCommandPath
+  })
+  return cachedRuntime
+}
+
+export function resetWorkspaceCommandRuntimeCache(): void {
+  cachedRuntime = undefined
 }
 
 function killProcessTree(child: ChildProcessWithoutNullStreams): void {
@@ -94,14 +112,23 @@ export function runHostProcess(params: RunHostProcessParams): Promise<RunHostPro
       return
     }
 
-    const shell = resolveShell()
-    const child = spawn(params.command, {
-      cwd: params.cwd,
-      shell,
-      windowsHide: true,
-      // New process group on Unix so timeout can kill the whole tree via -pid.
-      detached: process.platform !== 'win32'
-    }) as ChildProcessWithoutNullStreams
+    const runtime = params.runtime ?? detectProcessCommandRuntime()
+    const spawnPlan = planWorkspaceCommandSpawn(runtime, params.command)
+    const child = (
+      spawnPlan.attachRuntimeAsShell
+        ? spawn(spawnPlan.file, {
+            cwd: params.cwd,
+            shell: runtime.executable,
+            windowsHide: true,
+            // New process group on Unix so timeout can kill the whole tree via -pid.
+            detached: process.platform !== 'win32'
+          })
+        : spawn(spawnPlan.file, spawnPlan.args, {
+            cwd: params.cwd,
+            windowsHide: true,
+            detached: false
+          })
+    ) as ChildProcessWithoutNullStreams
 
     let raw = ''
     let timedOut = false

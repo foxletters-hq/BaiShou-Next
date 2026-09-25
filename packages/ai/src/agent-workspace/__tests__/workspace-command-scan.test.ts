@@ -20,6 +20,26 @@ describe('scanWorkspaceRunCommand', () => {
     })
   })
 
+  it('should not mark Windows cmd /c mkdir as dangerous', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'cmd /c mkdir "作-3\\素材\\参考资料" "作-3\\素材\\图像"',
+      folderRoot: ROOT,
+      platform: 'win32'
+    })
+    expect(result.dangerous).toBe(false)
+    expect(result.prefixPattern).toBe('mkdir *')
+  })
+
+  it('should unwrap powershell -Command mkdir for prefix matching', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'powershell -NoProfile -Command mkdir foo',
+      folderRoot: ROOT,
+      platform: 'win32'
+    })
+    expect(result.dangerous).toBe(false)
+    expect(result.prefixPattern).toBe('mkdir *')
+  })
+
   it('marks dangerous commands and force-exclusion candidates', () => {
     const result = scanWorkspaceRunCommand({
       command: 'rm -rf /',

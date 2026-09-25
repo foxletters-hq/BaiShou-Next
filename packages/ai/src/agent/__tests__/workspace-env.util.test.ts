@@ -9,14 +9,19 @@ describe('buildWorkspaceEnvLines', () => {
       isGitRepo: true,
       gitBranch: 'main',
       gitChangesCount: 3,
-      notebookIds: ['nb']
+      notebookIds: ['nb'],
+      commandRuntimeLabel: 'Windows console',
+      commandRuntimeFamily: 'win_console'
     })
     expect(lines.join('\n')).toContain('Working directory: D:/proj')
     expect(lines.join('\n')).toContain('Platform: win32')
+    expect(lines.join('\n')).toContain('Command environment: Windows console')
+    expect(lines.join('\n')).toContain('inner command')
     expect(lines.join('\n')).toContain('Git branch: main')
     expect(lines.join('\n')).toContain('Git changes count: 3')
     expect(lines.join('\n')).toContain('Mounted knowledge notebooks (1/3): nb')
     expect(lines.join('\n')).toContain('companion_ask')
+    expect(lines.join('\n')).toContain('questions')
     expect(lines.join('\n')).toContain('user cancelled this operation')
   })
 
