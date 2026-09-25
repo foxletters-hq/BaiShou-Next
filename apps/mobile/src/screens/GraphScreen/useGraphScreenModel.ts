@@ -27,7 +27,6 @@ import {
 } from './graph-screen-display.util'
 import {
   graphScreenPhaseKey,
-  graphTokenCountDisplay,
   parseGraphSourceDate,
   shouldShowGraphEmptyGuide,
   shouldShowGraphMonthEmpty
@@ -42,6 +41,7 @@ import { useGraphScreenDetail } from './useGraphScreenDetail'
 import { useGraphScreenExtract } from './useGraphScreenExtract'
 import { useGraphScreenReview } from './useGraphScreenReview'
 import { useGraphScreenSearch } from './useGraphScreenSearch'
+import { consumeGraphPendingFocus, subscribeGraphPendingFocus } from './graph-pending-focus'
 import { useGraphScreenSettings } from './useGraphScreenSettings'
 
 export function useGraphScreenModel() {
@@ -58,6 +58,14 @@ export function useGraphScreenModel() {
   const [dismissGuide, setDismissGuide] = useState(false)
   const [animationTick, setAnimationTick] = useState(0)
   const [sourcePreview, setSourcePreview] = useState<GraphSourcePreview | null>(null)
+
+  useEffect(() => {
+    const applyPendingFocus = () => {
+      if (consumeGraphPendingFocus()) setTab('pending')
+    }
+    applyPendingFocus()
+    return subscribeGraphPendingFocus(applyPendingFocus)
+  }, [])
 
   const activeVault = services?.vaultService.getActiveVault()
   const vaultName = activeVault?.name || 'Personal'
@@ -89,14 +97,15 @@ export function useGraphScreenModel() {
     setTab,
     setStatus
   })
-  const refreshVisibleAfterReview = () =>
+  const refreshVisibleAfterReview = (opts?: { stripSuspectOnNodeId?: string }) =>
     data.refreshVisibleAfterReview({
       selectedId: search.selectedId,
       pinNeighborhood: search.pinNeighborhood,
       localView: search.localView,
       focusDepth: search.focusDepth,
       setSelectedNode: search.setSelectedNode,
-      setLocalView: search.setLocalView
+      setLocalView: search.setLocalView,
+      stripSuspectOnNodeId: opts?.stripSuspectOnNodeId
     })
   const review = useGraphScreenReview({
     t: translate,
@@ -303,11 +312,6 @@ export function useGraphScreenModel() {
     [t, data.pending.length, review.pendingItems.length, data.similarPairs.length]
   )
 
-  const formatTokens = (n: number) => {
-    const copy = graphTokenCountDisplay(n)
-    return t(copy.key, copy.fallback, copy.params)
-  }
-
   const openSource = async (
     dateOrRef: string | null | undefined,
     fallbackExcerpt?: string | null
@@ -315,15 +319,16 @@ export function useGraphScreenModel() {
     const { date } = parseGraphSourceDate(dateOrRef)
     const excerpt = String(fallbackExcerpt || '').trim()
     if (!date && !excerpt) return
-    setSourcePreview({ date, content: '', loading: Boolean(date) })
+    setSourcePreview({ date, content: excerpt || '', excerpt: excerpt || null, loading: Boolean(date) })
     if (!date) {
-      setSourcePreview({ date: null, content: excerpt, loading: false })
+      setSourcePreview({ date: null, content: excerpt, excerpt: excerpt || null, loading: false })
       return
     }
     if (!services?.diaryService) {
       setSourcePreview({
         date,
         content: excerpt || t('graph.source_load_failed', '加载原文失败'),
+        excerpt: excerpt || null,
         loading: false
       })
       return
@@ -334,6 +339,7 @@ export function useGraphScreenModel() {
       setSourcePreview({
         date,
         content: content || t('graph.source_not_found', '未找到该日日记原文'),
+        excerpt: excerpt || null,
         loading: false
       })
     } catch (e: any) {
@@ -341,6 +347,7 @@ export function useGraphScreenModel() {
         date,
         content:
           excerpt || String(e?.message || e) || t('graph.source_load_failed', '加载原文失败'),
+        excerpt: excerpt || null,
         loading: false
       })
     }
@@ -462,7 +469,6 @@ export function useGraphScreenModel() {
     focusIds,
     graphNodeNameById,
     detailEdges,
-    formatTokens,
     openSource,
     clearLifeGraph,
     saveProfileFromSettings,

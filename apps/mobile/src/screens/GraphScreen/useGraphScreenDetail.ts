@@ -3,23 +3,20 @@ import { GRAPH_EDGE_TYPES } from '@baishou/database'
 import { isGraphNodeSameNameConflict, type GraphSameNameExisting } from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
-  listRegisteredSameNameEntities,
   parseGraphNodePropsJson,
-  pickBareGraphNameHit,
   graphBareNodeIdForRevert,
   graphRevertSplitStayId,
   type GraphRegisteredSameNameEntity
 } from '@/src/services/graph-name-candidates.util'
 import {
   mobileFindNodeByName,
-  mobileFindNodesByName,
   mobileGetNode,
   mobileGetView,
   mobileSearchGraphNodes,
   mobileUpsertEdge,
   mobileUpsertNode
 } from '@/src/services/mobile-graph.service'
-import { mobileRevertGraphNodeSplit } from '@/src/services/mobile-graph-split'
+import { mobileListNameCandidates, mobileRevertGraphNodeSplit } from '@/src/services/mobile-graph-split'
 import { parseGraphAliasInput, viewDepthFor } from './graph-screen-view.util'
 import type { GraphScreenTranslateFn } from './graph-screen.types'
 import type { GraphFocusDepth } from '@baishou/shared'
@@ -132,34 +129,10 @@ export function useGraphScreenDetail(deps: DetailDeps) {
       setSameNameEntities([])
       return
     }
-    const currentProps = parseGraphNodePropsJson(deps.selectedNode.propsJson)
-    const currentDiscriminator =
-      typeof deps.selectedNode.discriminator === 'string' ? deps.selectedNode.discriminator : ''
     let cancelled = false
-    const apply = (bareNode?: { id: string; props: Record<string, unknown> } | null) => {
+    void mobileListNameCandidates(runtime.drizzleDb, deps.selectedNode.id).then((rows) => {
       if (cancelled) return
-      setSameNameEntities(
-        listRegisteredSameNameEntities({
-          currentId: deps.selectedNode.id,
-          currentName: String(deps.selectedNode.name || ''),
-          currentDiscriminator,
-          currentProps,
-          bareNode
-        })
-      )
-    }
-    if (!currentDiscriminator.trim()) {
-      apply(null)
-      return
-    }
-    void mobileFindNodesByName(
-      runtime.drizzleDb,
-      deps.vaultId,
-      String(deps.selectedNode.name || ''),
-      deps.selectedNode.nodeType
-    ).then((hits) => {
-      const bare = pickBareGraphNameHit(hits).hit
-      apply(bare ? { id: bare.id, props: parseGraphNodePropsJson(bare.propsJson) } : null)
+      setSameNameEntities(rows)
     })
     return () => {
       cancelled = true
