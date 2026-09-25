@@ -26,6 +26,7 @@ export interface NotebookSourceRawRecord {
   title: string
   kind: 'file' | 'url' | 'text' | string
   path?: string | null
+  originUrl?: string | null
   contentHash: string
   extractEngine?: string
   pageCount?: number | null

@@ -94,7 +94,9 @@ export const ocrExtractEngine: ExtractEngine = {
     let existing =
       ctx.existingPageTexts ??
       getRegisteredSimplePageTexts(ctx.absolutePath) ??
-      (await extractPdfPageTexts(ctx.absolutePath))
+      (await extractPdfPageTexts(ctx.absolutePath, (info) => {
+        ctx.onProgress?.({ page: info.page, total: info.total, phase: 'parse' })
+      }))
     if (ctx.persistCache !== false) {
       rememberSimplePageTexts(ctx.absolutePath, existing)
     }
@@ -144,6 +146,7 @@ export const ocrExtractEngine: ExtractEngine = {
           if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
           const worker = workers[workerIndex]
           if (!worker) return
+          ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'render' })
           const bitmaps = await renderer({
             absolutePath: ctx.absolutePath,
             pageNumbers: [pageNum],
@@ -152,6 +155,7 @@ export const ocrExtractEngine: ExtractEngine = {
           if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
           const bmp = bitmaps[0]
           if (!bmp) return
+          ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'recognize' })
           const imageDataUrl = `data:image/png;base64,${bmp.pngBase64}`
           const { data } = await worker.recognize(imageDataUrl)
           const text = (data.text || '').trim()
