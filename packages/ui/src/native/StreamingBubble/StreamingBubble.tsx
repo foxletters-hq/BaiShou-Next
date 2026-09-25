@@ -46,6 +46,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
   const hasAttachments = attachments.length > 0
+  const showStickerAttachments = hasAttachments && !isTextStreaming
+  const hasBody = hasText || hasReasoning || hasTools || showStickerAttachments
 
   return (
     <View style={[chatBubbleStyles.container, chatBubbleStyles.containerAssistant]}>
@@ -64,28 +66,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
           chatBubbleStyles.bubbleWrapperEditing
         ]}
       >
-        {error ? (
-          <View style={auxStyles.errorBox}>
-            <Text style={auxStyles.errorText}>⚠ {error}</Text>
-            {onRetry && (
-              <Pressable
-                onPress={onRetry}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                  backgroundColor: colors.error,
-                  borderRadius: tokens.radius.full,
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.xs,
-                  alignSelf: 'flex-start'
-                })}
-              >
-                <Text style={{ fontSize: 14, color: colors.onError, fontWeight: '600' }}>
-                  {t('common.retry', '重试')}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        ) : hasText || hasReasoning || hasTools || hasAttachments ? (
+        {hasBody ? (
           <>
             <View style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}>
               <Text
@@ -110,9 +91,6 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                 }
               ]}
             >
-              {hasAttachments ? (
-                <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
-              ) : null}
               {hasReasoning && (
                 <View
                   style={{
@@ -142,7 +120,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                       result: tool.result,
                       args: tool.args
                     }))}
-                    activeToolName={activeToolName}
+                    activeToolName={error ? null : activeToolName}
                   />
                 </View>
               ) : null}
@@ -151,19 +129,48 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                 <View style={chatBubbleStyles.markdownSlot}>
                   <AgentMarkdownRenderer
                     content={cleanText}
-                    isStreaming={isTextStreaming}
+                    isStreaming={isTextStreaming && !error}
                     variant="chat"
                   />
                 </View>
               )}
+              {showStickerAttachments ? (
+                <NativeChatBubbleAttachments
+                  attachments={attachments}
+                  display="sticker"
+                  placement="after"
+                />
+              ) : null}
               {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
             </View>
           </>
-        ) : (
+        ) : error ? null : (
           <View style={auxStyles.dotsWrap}>
             <StreamingBubbleBouncingDots />
           </View>
         )}
+        {error ? (
+          <View style={auxStyles.errorBox}>
+            <Text style={auxStyles.errorText}>⚠ {error}</Text>
+            {onRetry && (
+              <Pressable
+                onPress={onRetry}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: colors.error,
+                  borderRadius: tokens.radius.full,
+                  paddingHorizontal: tokens.spacing.md,
+                  paddingVertical: tokens.spacing.xs,
+                  alignSelf: 'flex-start'
+                })}
+              >
+                <Text style={{ fontSize: 14, color: colors.onError, fontWeight: '600' }}>
+                  {t('common.retry', '重试')}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
       </View>
     </View>
   )

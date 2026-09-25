@@ -65,7 +65,10 @@ export interface ChatBubbleProps {
     }>
     /** 流式阶段尚未落库的表情包附件 */
     attachments?: MockChatAttachment[]
+    error?: string | null
   }
+  /** 本轮流式失败时显示在助手气泡下 */
+  error?: string | null
   /** 流式/桥接期间隐藏操作栏与 token 行，避免结束时布局突增 */
   deferAssistantChrome?: boolean
   showReasoning?: boolean

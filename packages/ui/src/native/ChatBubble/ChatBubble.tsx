@@ -41,10 +41,12 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   retryDisabled = false,
   showReasoning = true,
   liveStream,
-  deferAssistantChrome = false
+  deferAssistantChrome = false,
+  error = null
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
+  const displayError = error ?? liveStream?.error ?? null
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
@@ -244,8 +246,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </View>
           ) : (
             <View style={styles.bubblePressable}>
-              {attachments.length > 0 ? (
-                <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
+              {!isAssistant && attachments.length > 0 ? (
+                <NativeChatBubbleAttachments attachments={attachments} isUserBubble />
               ) : null}
               {isAssistant && cleanContent ? (
                 <View style={styles.markdownSlot}>
@@ -288,11 +290,34 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                   ) : null}
                 </View>
               ) : null}
+              {isAssistant && attachments.length > 0 && !markdownStreaming ? (
+                <NativeChatBubbleAttachments
+                  attachments={attachments}
+                  display="sticker"
+                  placement="after"
+                />
+              ) : null}
             </View>
           )}
         </View>
         {isAssistant && knowledgeCitations.length > 0 ? (
           <KnowledgeCitationBlock citations={knowledgeCitations} />
+        ) : null}
+        {isAssistant && displayError ? (
+          <View
+            style={{
+              marginTop: tokens.spacing.sm,
+              paddingHorizontal: tokens.spacing.md,
+              paddingVertical: tokens.spacing.sm,
+              backgroundColor: colors.errorContainer,
+              borderRadius: tokens.radius.md,
+              borderWidth: 1,
+              borderColor: colors.error,
+              alignSelf: 'stretch'
+            }}
+          >
+            <Text style={{ color: colors.error }}>⚠ {displayError}</Text>
+          </View>
         ) : null}
 
         {edit.isEditing ? (
