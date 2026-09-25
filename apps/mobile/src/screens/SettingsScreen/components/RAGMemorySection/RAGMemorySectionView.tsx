@@ -4,12 +4,15 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { RagMemoryView, ModelSwitcher } from '@baishou/ui/native'
 import { TextPromptModal } from '../TextPromptModal'
+import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
+import { requestGraphPendingFocus } from '../../../GraphScreen/graph-pending-focus'
 import { useRagMemorySection } from './useRagMemorySection'
 
 export function RAGMemorySectionView() {
   const { t } = useTranslation()
   const router = useRouter()
   const vm = useRagMemorySection()
+  const { suspectCount } = useMobileSuspectCount()
   const {
     config,
     stats,
@@ -96,6 +99,11 @@ export function RAGMemorySectionView() {
           onEditEntry={handleEditEntry}
           onConfigureModel={openModelSwitcher}
           onPageChange={handlePageChange}
+          suspectCount={suspectCount}
+          onReviewSuspects={() => {
+            requestGraphPendingFocus()
+            router.push('/graph')
+          }}
         />
       )}
 

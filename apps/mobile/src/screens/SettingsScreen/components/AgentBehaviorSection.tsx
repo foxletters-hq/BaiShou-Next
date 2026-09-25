@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Input, Button, Switch } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
@@ -150,6 +150,22 @@ export const AgentBehaviorSection: React.FC = () => {
           textarea
           numberOfLines={4}
           placeholder={t('settings.agent_guidelines_placeholder')}
+        />
+      </View>
+
+      <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('settings.restore_last_session_on_return', '返回后继续上次会话')}
+        </Text>
+        <Text style={[styles.hint, { color: colors.textTertiary }]}>
+          {t(
+            'settings.restore_last_session_on_return_hint',
+            '关闭后进入伙伴页会停留在空白对话，不再自动打开上次会话。'
+          )}
+        </Text>
+        <Switch
+          value={config.restoreLastSessionOnReturn !== false}
+          onValueChange={(checked) => updateConfig({ restoreLastSessionOnReturn: checked })}
         />
       </View>
 
