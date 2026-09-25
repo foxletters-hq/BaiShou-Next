@@ -6,6 +6,7 @@ import {
   type UseAgentStreamResult
 } from '../../agent/hooks/useAgentStream'
 import { refreshDesktopAgentGateInbox } from '../../agent/agent-gate-inbox-bridge'
+import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
 
 export interface StartWorkspaceChatResult {
   sessionId: string
@@ -74,7 +75,7 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
 
 export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentStreamResult {
   const { t } = useTranslation()
-  const stream = useAgentStream(sessionId)
+  const stream = useAgentStream(sessionId, 'workspace')
   const { beginStreaming } = stream
   const [failedTools, setFailedTools] = useState<WorkspaceToolError[]>([])
 
@@ -188,6 +189,11 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         })
         activeSessionId = newId
         createdNew = true
+        await applyPendingNotebookMountToSession({
+          sessionId: newId,
+          assistantId: options?.assistantId,
+          scope: 'workbench'
+        })
         window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
       }
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type {
+  AgentGateFileChangePreview,
   AgentGateRequest,
   AgentWorkspaceEntry,
   AgentWorkspaceSessionListItem,
@@ -100,6 +101,7 @@ export interface WorkbenchAgentPanelProps {
   pendingAsk?: AgentGateRequest | null
   isAskReplying?: boolean
   onAskReply?: (payload: AgentGateReplyPayload) => void | Promise<void>
+  onOpenGateFileChange?: (preview: AgentGateFileChangePreview) => void
 }
 
 export interface WorkbenchAgentPanelHandle {

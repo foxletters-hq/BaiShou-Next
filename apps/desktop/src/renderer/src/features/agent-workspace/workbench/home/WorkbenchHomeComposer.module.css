@@ -66,11 +66,12 @@
   }
 }
 
-/* 工作路径 / 权限 / 模型：落在输入框底部延伸条内，相邻排列 */
+/* 工作路径 / 权限在左，模型与上下文在右 */
 .metaRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-xs) var(--spacing-sm);
   width: 100%;
   min-width: 0;
@@ -91,6 +92,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   min-width: 0;
+  margin-left: auto;
 }
 
 .metaChip {
