@@ -64,6 +64,7 @@ export function useAgentStreamingPresentation(deps: {
   listSpacerAnimatedStyle: object
   colors: { primary: string; textPrimary: string; textSecondary: string }
   t: (key: string, fallback?: string) => string
+  streamError?: string | null
 }) {
   const {
     currentSessionId,
@@ -87,13 +88,14 @@ export function useAgentStreamingPresentation(deps: {
     contentAnchorMinHeight,
     listSpacerAnimatedStyle,
     colors,
-    t
+    t,
+    streamError
   } = deps
 
   const [holdLivePresentation, setHoldLivePresentation] = useState(false)
   const [keepLiveRowAfterHold, setKeepLiveRowAfterHold] = useState(false)
 
-  const showStreamingFooter = isStreaming || isStreamBridgeActive
+  const showStreamingFooter = isStreaming || isStreamBridgeActive || Boolean(streamError)
 
   const lastMessage = messages[messages.length - 1]
   /** 对齐桌面 AgentMessageList：助手已落库后改由列表 ChatBubble 展示，不再挂 Footer StreamingBubble */
@@ -233,7 +235,8 @@ export function useAgentStreamingPresentation(deps: {
       isThinkStreaming: false,
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools,
-      attachments: pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined
+      attachments: pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined,
+      error: streamError ?? null
     }),
     [
       streamingText,
@@ -242,7 +245,8 @@ export function useAgentStreamingPresentation(deps: {
       streamingThinkLoading,
       activeToolDisplayName,
       streamingCompletedTools,
-      pendingEmojiAttachments
+      pendingEmojiAttachments,
+      streamError
     ]
   )
 
@@ -261,6 +265,7 @@ export function useAgentStreamingPresentation(deps: {
           attachments={pendingEmojiAttachments}
           aiProfile={chatAiProfile}
           invertMetaOverBackground={hasChatBackground}
+          error={streamError ?? null}
         />
       </View>
     ),
@@ -271,7 +276,8 @@ export function useAgentStreamingPresentation(deps: {
       streamingCompletedTools,
       pendingEmojiAttachments,
       chatAiProfile,
-      hasChatBackground
+      hasChatBackground,
+      streamError
     ]
   )
 
