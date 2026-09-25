@@ -4,7 +4,6 @@ import {
   appendTimelineToolStart,
   completeTimelineTool,
   createStreamingTextDisplayBuffer,
-  isAgentStreamAbortError,
   type AgentGateRequest,
   type AgentStreamTimelineItem,
   type StreamingTextDisplayBuffer
@@ -302,7 +301,7 @@ function registerGlobalStreamIpcListeners(): () => void {
       typeof payload === 'object' && typeof payload?.toolCallId === 'string'
         ? payload.toolCallId
         : `tool-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    // emoji_send 工具：即时将表情包加入 pendingEmojis（在流式文本之前显示）
+    // emoji_send 工具：先记下 pendingEmojis，流结束后再显示在正文之后
     if (name === 'emoji_send') {
       const emojiId =
         typeof args === 'object' && args !== null
@@ -373,7 +372,7 @@ function registerGlobalStreamIpcListeners(): () => void {
         fullText.trim() || fullReasoning.trim() || state.timeline.length > 0
       )
       state.isBridgeActive = hasContent
-      if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
+      if (!userStopped && payload?.error) {
         state.error = payload.error
       } else {
         state.error = null
