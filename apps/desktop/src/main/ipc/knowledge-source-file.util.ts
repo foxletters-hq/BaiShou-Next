@@ -1,6 +1,6 @@
 const TEXT_LIKE_EXTS = ['.md', '.txt', '.markdown']
 
-export type KnowledgeSourceFileKind = 'pdf' | 'url' | 'text' | 'unsupported'
+export type KnowledgeSourceFileKind = 'pdf' | 'epub' | 'url' | 'text' | 'unsupported'
 
 export function classifyKnowledgeSourceFile(params: {
   hasRelativePath: boolean
@@ -9,6 +9,7 @@ export function classifyKnowledgeSourceFile(params: {
 }): KnowledgeSourceFileKind {
   if (!params.hasRelativePath) return 'unsupported'
   if (params.ext === '.pdf') return 'pdf'
+  if (params.ext === '.epub') return 'epub'
   const isTextLike =
     params.sourceKind === 'text' ||
     params.sourceKind === 'note' ||

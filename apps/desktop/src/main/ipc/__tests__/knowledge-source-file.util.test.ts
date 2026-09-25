@@ -23,6 +23,12 @@ describe('classifyKnowledgeSourceFile', () => {
     ).toBe('text')
   })
 
+  it('should classify epub by extension', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.epub' })
+    ).toBe('epub')
+  })
+
   it('should mark unknown binary as unsupported', () => {
     expect(
       classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.bin' })

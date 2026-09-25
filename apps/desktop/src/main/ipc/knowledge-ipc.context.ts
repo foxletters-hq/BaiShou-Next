@@ -9,12 +9,13 @@ import {
 } from '@baishou/core-desktop'
 import { KnowledgeEmbeddingStorage } from '@baishou/ai'
 import {
+  buildVisionLanguageSlots,
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
   isVisionModel,
+  resolveProviderModelSlot,
   normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
-  type GlobalModelsConfig,
   type KnowledgeConfig,
   type AIProviderConfig
 } from '@baishou/shared'
@@ -119,25 +120,18 @@ export async function resolveVisionConfigured(): Promise<{
   providerId: string | null
 }> {
   const cfg = await loadKnowledgeConfig()
-  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
-  const modelId =
-    cfg.visionModelId ||
-    globalModels?.globalDialogueModelId ||
-    globalModels?.globalSummaryModelId ||
-    null
-  const providerId =
-    cfg.visionProviderId ||
-    globalModels?.globalDialogueProviderId ||
-    globalModels?.globalSummaryProviderId ||
-    null
-  const provider =
-    (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
-    providers.find((p) => p.isEnabled)
-  if (!modelId) return { configured: false, modelId: null, providerId: null }
-  const ok = isVisionModel(modelId, provider?.type || provider?.id)
-  return { configured: ok, modelId, providerId: provider?.id ?? providerId }
+  const hit = resolveProviderModelSlot(
+    providers,
+    buildVisionLanguageSlots({
+      visionProviderId: cfg.visionProviderId,
+      visionModelId: cfg.visionModelId
+    })
+  )
+  if (!hit) return { configured: false, modelId: null, providerId: null }
+  const ok = isVisionModel(hit.modelId, hit.provider.type || hit.provider.id)
+  return { configured: ok, modelId: hit.modelId, providerId: hit.providerId }
 }
 
 export function broadcastKnowledgeOcrProgress(info: KnowledgeExtractProgress): void {

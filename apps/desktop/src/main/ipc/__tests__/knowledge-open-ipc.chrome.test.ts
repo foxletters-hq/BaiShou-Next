@@ -11,8 +11,10 @@ const ipc = [
 ].join('\n')
 
 describe('knowledge open ipc', () => {
-  it('should not always kick ingest after recover-stale and should filter graph jobs in sql', () => {
-    expect(ipc).toContain('shouldKickKnowledgeIngestAfterRecover')
+  it('should recover stale ledger without starting ingest and should filter graph jobs in sql', () => {
+    expect(ipc).toContain("handleKnowledgeIpc('knowledge:recover-stale'")
+    expect(ipc).not.toContain('shouldKickKnowledgeIngestAfterRecover')
+    expect(ipc).not.toContain("scheduleConsumeKnowledgeIngestJobs('recover')")
     expect(ipc).toContain("listIngestJobs({ notebookId: id, stage: 'graph' })")
     expect(ipc).not.toContain('(await repo.listIngestJobs()).filter(')
   })

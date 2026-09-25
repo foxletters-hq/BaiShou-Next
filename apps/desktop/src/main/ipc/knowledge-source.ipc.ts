@@ -4,7 +4,7 @@ import {
   normalizeKnowledgeDefaultExtractEngine,
   type KnowledgeImportProcessMode
 } from '@baishou/shared'
-import type { ExtractEngineId } from '@baishou/core-desktop'
+import { extractEpubPageTexts, type ExtractEngineId } from '@baishou/core-desktop'
 import { toLocalProtocolFileUrl } from '../local-protocol.util'
 import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
 import { getNotebookRawManager } from '../services/raw-data-source.runtime'
@@ -109,6 +109,13 @@ export function registerKnowledgeSourceIpc(): void {
     return { ok: true }
   })
 
+  handleKnowledgeIpc('knowledge:organize-notebook', async (_e, notebookId: string) => {
+    const svc = getKnowledgeIngestService()
+    const result = await svc.organizeNotebook(String(notebookId || ''))
+    scheduleConsumeKnowledgeIngestJobs('after-organize-notebook')
+    return result
+  })
+
   handleKnowledgeIpc(
     'knowledge:manage-data',
     async (
@@ -168,6 +175,25 @@ export function registerKnowledgeSourceIpc(): void {
         localUrl,
         fileBytes: null as Uint8Array | null,
         textContent: null as string | null,
+        originUrl: source.originUrl ?? null
+      }
+    }
+
+    if (kind === 'epub') {
+      const encoded = await fileSystem.readFile(abs, 'base64')
+      let pages: string[]
+      try {
+        pages = extractEpubPageTexts(Buffer.from(encoded, 'base64'))
+      } catch {
+        throw new Error('这份 EPUB 暂时无法预览')
+      }
+      return {
+        kind: 'epub' as const,
+        fileName: fileNameFromPath || source.title,
+        localUrl,
+        fileBytes: null as Uint8Array | null,
+        textContent: null as string | null,
+        pages,
         originUrl: source.originUrl ?? null
       }
     }

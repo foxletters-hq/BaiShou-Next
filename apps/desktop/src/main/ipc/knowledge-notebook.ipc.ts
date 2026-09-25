@@ -99,4 +99,10 @@ export function registerKnowledgeNotebookIpc(): void {
     const repo = requireKnowledgeRepo()
     return repo.listNotebookStats(requireActiveVaultId())
   })
+
+  handleKnowledgeIpc('knowledge:delete-notebook', async (_e, notebookId: string) => {
+    const svc = getKnowledgeIngestService()
+    await svc.deleteNotebook(String(notebookId || ''))
+    return { deleted: true }
+  })
 }
