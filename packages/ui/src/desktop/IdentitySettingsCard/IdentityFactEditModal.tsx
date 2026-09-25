@@ -14,6 +14,7 @@ interface IdentityFactEditModalProps {
   onValueChange: (value: string) => void
   onSave: () => void
   onClose: () => void
+  zIndex?: number
 }
 
 export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
@@ -24,7 +25,8 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
   onKeyChange,
   onValueChange,
   onSave,
-  onClose
+  onClose,
+  zIndex
 }) => {
   const { t } = useTranslation()
 
@@ -32,6 +34,7 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      zIndex={zIndex}
       title={
         editingKey
           ? t('settings.edit_identity_entry', '编辑条目')
@@ -42,7 +45,6 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
         <div className={styles.modalField}>
           <label>{t('settings.identity_key', '标签')}</label>
           <Input
-            fieldSize="small"
             value={editKeyInput}
             onChange={(e) => onKeyChange(e.target.value)}
             placeholder={t('settings.identity_key_hint', '如：生日、职业')}
@@ -52,7 +54,6 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
         <div className={styles.modalField}>
           <label>{t('settings.identity_value', '内容')}</label>
           <Input
-            fieldSize="small"
             value={editValInput}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={t('settings.identity_value_hint', '如：2000-05-20')}

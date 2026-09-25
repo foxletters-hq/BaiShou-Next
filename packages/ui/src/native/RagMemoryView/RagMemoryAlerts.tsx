@@ -15,6 +15,8 @@ interface RagMemoryAlertsProps {
   onPauseBatchEmbed?: () => Promise<void>
   onResumeBatchEmbed?: () => Promise<void>
   onCancelBatchEmbed?: () => Promise<void>
+  suspectCount?: number
+  onReviewSuspects?: () => void
 }
 
 export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
@@ -25,7 +27,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   onCancelMigration,
   onPauseBatchEmbed,
   onResumeBatchEmbed,
-  onCancelBatchEmbed
+  onCancelBatchEmbed,
+  suspectCount = 0,
+  onReviewSuspects
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -51,13 +55,13 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           style={[
             styles.alertBox,
             {
-              backgroundColor: colors.primaryLight,
-              borderColor: colors.primaryTrackMuted
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
             }
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.primary, flex: 1, marginBottom: 0 }]}>
+            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
               {batchTitle}
             </Text>
             {(onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed) && (
@@ -121,13 +125,13 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           style={[
             styles.alertBox,
             {
-              backgroundColor: colors.primaryLight,
-              borderColor: colors.primaryTrackMuted
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
             }
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.primary, flex: 1, marginBottom: 0 }]}>
+            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
               {isAborting
                 ? t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
                 : t('settings.rag_migrating', '知识库正在迁移中...')}
@@ -171,6 +175,31 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           </Text>
         </View>
       )}
+
+      {!ragState.isRunning && !showEmbedError && suspectCount > 0 ? (
+        <View
+          style={[
+            styles.alertBox,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
+            }
+          ]}
+        >
+          <View style={styles.migrationRow}>
+            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
+              {t('memory.suspects_need_review', '有 {{count}} 个待确认节点', {
+                count: suspectCount
+              })}
+            </Text>
+            {onReviewSuspects ? (
+              <Button variant="outlined" onPress={onReviewSuspects}>
+                {t('memory.review_suspects', '去检查')}
+              </Button>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
 
       {!ragState.isRunning && hasMismatchModel && (
         <View

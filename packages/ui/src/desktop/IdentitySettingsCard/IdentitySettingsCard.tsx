@@ -1,111 +1,37 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight, IdCard } from 'lucide-react'
 import type { IdentitySettingsCardProps } from './identity-settings.types'
-import { useIdentitySettingsCard } from './useIdentitySettingsCard'
-import { IdentitySettingsHeader } from './IdentitySettingsHeader'
-import { IdentityPersonaChips } from './IdentityPersonaChips'
-import { IdentitySettingsPersonaSection } from './IdentitySettingsPersonaSection'
-import { IdentityFactsList } from './IdentityFactsList'
-import { IdentityFactEditModal } from './IdentityFactEditModal'
-import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
-import { Button } from '../Button/Button'
+import '../shared/SettingsListTile.css'
 import styles from './IdentitySettingsCard.module.css'
-import { IdCard } from 'lucide-react'
 
 export type { UserProfileConfig, IdentitySettingsCardProps } from './identity-settings.types'
 
 export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
   profile,
-  onChange,
   embedded = false,
-  isLast = false,
   onManageIdentity
 }) => {
   const { t } = useTranslation()
-  const card = useIdentitySettingsCard({ profile, onChange })
-
-  const factsBody = (
-    <>
-      <IdentityFactsList
-        currentFacts={card.currentFacts}
-        onAddFact={card.handleAddFact}
-        onEditFact={card.startEdit}
-        onDeleteFact={card.handleDeleteFact}
-      />
-      <IdentityFactEditModal
-        isOpen={card.isFactModalOpen}
-        editingKey={card.editingKey}
-        editKeyInput={card.editKeyInput}
-        editValInput={card.editValInput}
-        onKeyChange={card.setEditKeyInput}
-        onValueChange={card.setEditValInput}
-        onSave={card.saveEdit}
-        onClose={() => card.setIsFactModalOpen(false)}
-      />
-    </>
-  )
-
-  if (embedded) {
-    return (
-      <SettingsExpansionTile
-        embedded
-        isLast={isLast}
-        icon={<IdCard size={20} />}
-        title={t('settings.identity_card')}
-        subtitle={t('settings.identity_current_named', { name: card.activeId })}
-      >
-        <div className={styles.embeddedQuickSwitchBlock}>
-          <span className={styles.embeddedQuickSwitchHint}>
-            {t('settings.identity_recent_hint')}
-          </span>
-          <div className={styles.embeddedQuickSwitchRow}>
-            <IdentitySettingsPersonaSection
-              activeId={card.activeId}
-              allPersonas={card.allPersonas}
-              recentPersonaIds={profile.recentPersonaIds}
-              onSwitch={card.handleSwitch}
-            />
-            <Button
-              type="button"
-              variant="outlined"
-              size="small"
-              onClick={() => onManageIdentity?.()}
-              disabled={!onManageIdentity}
-            >
-              {t('settings.manage_identity_cards')}
-            </Button>
-          </div>
-        </div>
-        {factsBody}
-      </SettingsExpansionTile>
-    )
-  }
+  const activeId = profile.activePersonaId || ''
 
   return (
-    <div className={styles.flutterCardContainer}>
-      <IdentitySettingsHeader
-        factCount={Object.keys(card.currentFacts).length}
-        collapsed={card.collapsed}
-        onToggle={() => card.setCollapsed(!card.collapsed)}
-      />
-
-      <div className={`${styles.collapseWrapper} ${card.collapsed ? '' : styles.collapseOpen}`}>
-        <div className={styles.collapseInner}>
-          <div className={styles.descriptionText}>
-            {t('settings.identity_card_desc', '助手将自动结合这些核心词条构筑角色认知与您对话。')}
-          </div>
-
-          <IdentityPersonaChips
-            allPersonas={card.allPersonas}
-            activeId={card.activeId}
-            onSwitch={card.handleSwitch}
-            onAddPersona={card.handleAddPersona}
-            onDeletePersona={card.handleDeletePersona}
-          />
-
-          {factsBody}
-        </div>
+    <button
+      type="button"
+      className={`settings-list-tile ${embedded ? styles.embeddedNav : ''}`}
+      onClick={() => onManageIdentity?.()}
+      disabled={!onManageIdentity}
+    >
+      <div className="settings-list-tile-leading">
+        <IdCard size={20} />
       </div>
-    </div>
+      <div className="settings-list-tile-content">
+        <span className="settings-list-tile-title">{t('settings.identity_card')}</span>
+        <span className="settings-list-tile-subtitle">
+          {t('settings.identity_current_named', { name: activeId })}
+        </span>
+      </div>
+      <ChevronRight size={22} className="settings-list-tile-trailing" />
+    </button>
   )
 }
