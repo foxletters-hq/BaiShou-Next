@@ -144,7 +144,6 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
           {t('agent.tools.emoji_group_name', '组名称')}
         </span>
         <Input
-          fieldSize="small"
           value={group.name}
           onChange={(e) => updateGroup({ ...group, name: e.target.value })}
           placeholder={t('agent.tools.emoji_group_name_placeholder', '例如：日常、工作')}

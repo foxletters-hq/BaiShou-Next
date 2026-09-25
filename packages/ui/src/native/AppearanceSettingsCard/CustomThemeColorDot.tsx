@@ -1,6 +1,7 @@
 import React, { useId } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+import { useNativeTheme } from '../theme'
 
 /** 与桌面 custom-color-picker 一致：45° 炫彩渐变 + 白色「+」 */
 const GRADIENT_STOPS = [
@@ -25,6 +26,7 @@ export const CustomThemeColorDot: React.FC<CustomThemeColorDotProps> = ({
   active,
   onPress
 }) => {
+  const { colors } = useNativeTheme()
   const gradientId = useId().replace(/:/g, '')
 
   return (
@@ -52,7 +54,7 @@ export const CustomThemeColorDot: React.FC<CustomThemeColorDotProps> = ({
           />
         </Svg>
       )}
-      <Text style={styles.plus}>{isCustom ? '✓' : '+'}</Text>
+      <Text style={[styles.plus, { color: colors.textOnPrimary }]}>{isCustom ? '✓' : '+'}</Text>
     </Pressable>
   )
 }
@@ -84,7 +86,6 @@ const styles = StyleSheet.create({
   plus: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
     zIndex: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: 0, height: 1 },

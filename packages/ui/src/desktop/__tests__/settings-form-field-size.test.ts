@@ -20,8 +20,16 @@ const SETTINGS_DIRS = [
   'AssistantEditPage',
   'AgentToolsView',
   'AttachmentManagementView',
+  'PromptShortcutSheet',
   'Dialog'
 ]
+
+/** 紧凑行：输入框紧挨小号按钮，或是定宽的数字框 */
+const COMPACT_ROW_FILES = new Set([
+  'CloudSyncPanel/CloudSyncCountModal.tsx',
+  'GitManagementPage/GitVersionCommitBar.tsx',
+  'TTSProviderSettings/TTSProviderSettingsFormTestSection.tsx'
+])
 
 function listTsx(dir: string): string[] {
   const out: string[] = []
@@ -73,28 +81,32 @@ function rel(file: string): string {
   return file.slice(desktopRoot.length + 1).replace(/\\/g, '/')
 }
 
-describe('settings form field size', () => {
-  const files = SETTINGS_DIRS.flatMap((dir) => listTsx(join(desktopRoot, dir)))
+/** 搜索框、嵌入式输入框、数字步进框属于紧凑控件，允许小号 */
+function isCompactInput(attrs: string): boolean {
+  return /embed/.test(attrs) || /type=["'](search|number)["']/.test(attrs)
+}
 
-  it('uses Input fieldSize="small" in settings views', () => {
-    const missing = files.flatMap((file) =>
+describe('settings form field size', () => {
+  const files = SETTINGS_DIRS.flatMap((dir) => listTsx(join(desktopRoot, dir))).filter(
+    (file) => !COMPACT_ROW_FILES.has(rel(file))
+  )
+
+  it('uses default Input size for form fields in settings views', () => {
+    const small = files.flatMap((file) =>
       extractOpenTags(readFileSync(file, 'utf8'), 'Input')
-        .filter((hit) => !/fieldSize\s*=\s*["']small["']/.test(hit.attrs))
+        .filter((hit) => /fieldSize\s*=\s*["']small["']/.test(hit.attrs))
+        .filter((hit) => !isCompactInput(hit.attrs))
         .map((hit) => `${rel(file)}:${hit.line}`)
     )
-    expect(missing).toEqual([])
+    expect(small).toEqual([])
   })
 
-  it('uses Select size="small" in settings views', () => {
-    const missing = files.flatMap((file) =>
+  it('uses default Select size in settings views', () => {
+    const small = files.flatMap((file) =>
       extractOpenTags(readFileSync(file, 'utf8'), 'Select')
-        .filter(
-          (hit) =>
-            !/size\s*=\s*["']small["']/.test(hit.attrs) &&
-            !/variant\s*=\s*["']ghost["']/.test(hit.attrs)
-        )
+        .filter((hit) => /(?<![\w-])size\s*=\s*["']small["']/.test(hit.attrs))
         .map((hit) => `${rel(file)}:${hit.line}`)
     )
-    expect(missing).toEqual([])
+    expect(small).toEqual([])
   })
 })

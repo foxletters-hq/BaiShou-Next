@@ -13,8 +13,13 @@
 
 .shellFormField {
   border: 1px solid var(--form-field-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--form-field-bg);
+  transition: var(--form-field-transition);
+}
+
+.shellFormField:focus-within {
+  border-color: var(--form-field-border-focus);
 }
 
 .body {
@@ -51,8 +56,33 @@
   padding-right: 20px;
 }
 
+.shell.shellFormField .body :global(.cm-editor) {
+  font-size: var(--ui-fs-lg) !important;
+  line-height: 1.6;
+}
+
 .shell.shellFormField .body :global(.cm-content) {
-  padding: 6px 10px 22px;
+  padding: 10px 14px 22px;
+}
+
+/* 表单内的人设文本以正文为主，标题只比正文略大，避免压过页面标题 */
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h1) {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h2) {
+  font-size: 1.2em;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h3) {
+  font-size: 1.1em;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h4),
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h5),
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h6) {
+  font-size: 1em;
 }
 
 .shell.shellFormField .body :global(.cm-editor),
