@@ -14,7 +14,12 @@ import {
   createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
 import type { SettingsManagerService, VaultService } from '@baishou/core-mobile'
-import { deriveLegacyVaultId, logger } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
+  logger
+} from '@baishou/shared'
 import type { MobileStoragePathService } from './path.service'
 import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
 
@@ -126,13 +131,22 @@ export async function buildMobileMcpToolContext(
     }
 
     let dedupService: MemoryDeduplicationServiceImpl | undefined
-    if (embAdapter && embeddingProvider && embeddingModelId) {
-      dedupService = new MemoryDeduplicationServiceImpl(
-        embAdapter,
-        dbAdapter,
-        embeddingProvider,
-        embeddingModelId
-      )
+    if (embAdapter && isConfiguredProviderId(globalModels?.globalDialogueProviderId)) {
+      const dialogueModelId = globalModels?.globalDialogueModelId
+      const dialogueConfig = isConfiguredDialogueModelId(dialogueModelId)
+        ? providers.find(
+            (row) => row.id === globalModels.globalDialogueProviderId && row.isEnabled !== false
+          )
+        : undefined
+      if (dialogueConfig && dialogueModelId) {
+        const chatProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(dialogueConfig)
+        dedupService = new MemoryDeduplicationServiceImpl(
+          embAdapter,
+          dbAdapter,
+          chatProvider,
+          dialogueModelId.trim()
+        )
+      }
     }
 
     const context = syncMcpToolUserConfig({
