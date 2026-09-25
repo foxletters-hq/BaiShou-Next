@@ -1,24 +1,28 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Unlink, X } from 'lucide-react'
-import { Modal } from '@baishou/ui'
-import { canToggleMountedNotebook } from '@baishou/shared'
+import { BookOpen, Unlink } from 'lucide-react'
+import { Button, Checkbox, Modal } from '@baishou/ui'
+import { canToggleMountedNotebook, type NotebookMountScope } from '@baishou/shared'
 import { useNotebookMount } from '../../knowledge/useNotebookMount'
 import styles from './WorkbenchNotebookMountDialog.module.css'
 
 export interface WorkbenchNotebookMountDialogProps {
   open: boolean
   sessionId?: string
+  assistantId?: string | null
+  scope?: NotebookMountScope
   onClose: () => void
 }
 
 export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialogProps> = ({
   open,
   sessionId,
+  assistantId,
+  scope = 'companion',
   onClose
 }) => {
   const { t } = useTranslation()
-  const mount = useNotebookMount(open ? sessionId : undefined)
+  const mount = useNotebookMount(open ? sessionId : undefined, { assistantId, scope })
   const { refresh } = mount
 
   useEffect(() => {
@@ -68,11 +72,7 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
           {t('workbench.pick_notebook', '最多挂载 3 本，向量维度必须相同')}
         </p>
 
-        {!sessionId || sessionId === 'new-session' ? (
-          <p className={styles.empty}>
-            {t('workbench.need_session_for_notebook', '请先打开一个会话')}
-          </p>
-        ) : mount.candidates.length === 0 ? (
+        {mount.candidates.length === 0 ? (
           <p className={styles.empty}>
             {t('workbench.no_notebooks', '暂无笔记本，请先在知识库创建。')}
           </p>
@@ -91,23 +91,26 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
                   : t('workbench.notebook_no_embed', '尚未嵌入')
               return (
                 <li key={nb.id}>
-                  <button
-                    type="button"
-                    className={`${styles.notebookBtn} ${selected ? styles.notebookBtnActive : ''}`}
-                    disabled={mount.busy || (!selected && !gate.allowed)}
-                    title={!selected && gate.reason ? gate.reason : undefined}
-                    onClick={() => void mount.toggle(nb.id)}
+                  <label
+                    className={`${styles.notebookRow} ${selected ? styles.notebookRowActive : ''}`}
                   >
-                    <span className={styles.notebookName}>{nb.name}</span>
-                    <span className={styles.notebookMeta}>
-                      {t('workbench.notebook_sources', '{{count}} 份资料', { count: nb.sources })}
-                      {' · '}
-                      {dimLabel}
+                    <Checkbox
+                      checked={selected}
+                      disabled={mount.busy || (!selected && !gate.allowed)}
+                      onChange={() => void mount.toggle(nb.id)}
+                    />
+                    <span className={styles.notebookCopy}>
+                      <span className={styles.notebookName}>{nb.name}</span>
+                      <span className={styles.notebookMeta}>
+                        {t('workbench.notebook_sources', '{{count}} 份资料', { count: nb.sources })}
+                        {' · '}
+                        {dimLabel}
+                      </span>
+                      {!selected && gate.reason ? (
+                        <span className={styles.notebookWarn}>{gate.reason}</span>
+                      ) : null}
                     </span>
-                    {!selected && gate.reason ? (
-                      <span className={styles.notebookWarn}>{gate.reason}</span>
-                    ) : null}
-                  </button>
+                  </label>
                 </li>
               )
             })}
@@ -115,10 +118,9 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
         )}
 
         <div className={styles.footer}>
-          <button type="button" className={styles.closeBtn} onClick={onClose}>
-            <X size={14} strokeWidth={1.75} aria-hidden />
+          <Button type="button" onClick={onClose}>
             {t('common.close', '关闭')}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
