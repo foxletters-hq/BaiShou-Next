@@ -110,8 +110,8 @@
 .dateLabel {
   font-size: 10px;
   font-weight: 600;
-  color: white;
-  background: rgba(0, 0, 0, 0.5);
+  color: var(--text-on-primary);
+  background: color-mix(in srgb, var(--bg-overlay) 80%, transparent);
   padding: 2px 6px;
   border-radius: 4px;
   backdrop-filter: blur(2px);

@@ -7,29 +7,29 @@
 }
 
 .iconImage {
-  color: var(--color-success, #3d9a6a);
+  color: var(--color-success);
 }
 
 .iconVideo {
-  color: #9b59b6;
+  color: var(--color-accent-purple);
 }
 
 .iconPdf {
-  color: var(--color-error, #e25c5c);
+  color: var(--color-error);
 }
 
 .iconText {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .iconCode {
-  color: var(--color-primary, #3b6fd4);
+  color: var(--color-primary);
 }
 
 .iconArchive {
-  color: var(--color-warning, #d4a017);
+  color: var(--color-warning);
 }
 
 .iconAudio {
-  color: #e67e22;
+  color: var(--color-warning);
 }
