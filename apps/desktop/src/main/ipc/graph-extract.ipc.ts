@@ -135,9 +135,9 @@ export function registerGraphExtractIpc(): void {
       freshness,
       stopExtract: () => extractQueue.stop()
     })
-    const { invalidatePendingEmbedCountsCache } =
+    const { notifyPendingEmbedCountsChanged } =
       await import('../services/pending-embed-counts.service')
-    invalidatePendingEmbedCountsCache()
+    notifyPendingEmbedCountsChanged()
     return { ok: true, ...result }
   })
 }
