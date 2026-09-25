@@ -1,8 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import type { FileChangeKind, WorkspaceChangeEntry } from '@baishou/shared'
+import type { WorkspaceChangeEntry } from '@baishou/shared'
 import { DiffChanges, formatFileChangeListPath } from '@baishou/ui'
+import {
+  formatFileOpActionLabel,
+  formatWorkspaceFileOpListTitle
+} from '../utils/workspace-file-op-list.util'
 import styles from './WorkspaceFileChangeList.module.css'
 
 export interface WorkspaceFileChangeListProps {
@@ -10,16 +14,6 @@ export interface WorkspaceFileChangeListProps {
   running?: boolean
   onSelectChange: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
-}
-
-function fileOpActionLabel(
-  t: (key: string, fallback: string) => string,
-  kind: FileChangeKind
-): string {
-  if (kind === 'delete') return t('file_change.kind_delete', '删除')
-  if (kind === 'rename') return t('file_change.kind_rename', '重命名')
-  if (kind === 'create') return t('file_change.kind_create', '新建')
-  return t('file_change.kind_edit', '编辑')
 }
 
 export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = ({
@@ -45,9 +39,7 @@ export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = (
 
   if (changes.length === 0) return null
 
-  const title = running
-    ? t('workbench.writing_files', '正在写入 {{count}} 个文件', { count: changes.length })
-    : t('workbench.edited_files', '编辑了 {{count}} 个文件', { count: changes.length })
+  const title = formatWorkspaceFileOpListTitle(running, changes.length, t)
 
   const handleHeaderMain = () => {
     if (onReviewAll) {
@@ -89,7 +81,9 @@ export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = (
                   path: change.path
                 })}
               >
-                <span className={styles.action}>{fileOpActionLabel(t, change.kind)}</span>
+                <span className={styles.action}>
+                  {formatFileOpActionLabel(t, change.kind, running)}
+                </span>
                 <span className={styles.path}>{formatFileChangeListPath(change.path)}</span>
                 <DiffChanges additions={change.additions} deletions={change.deletions} />
                 <ChevronRight className={styles.itemChevron} size={12} aria-hidden />

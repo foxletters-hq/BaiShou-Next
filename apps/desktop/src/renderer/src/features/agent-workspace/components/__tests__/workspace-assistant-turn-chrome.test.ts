@@ -20,6 +20,7 @@ describe('workspace assistant turn chrome', () => {
     const src = readFileSync(join(here, '../WorkspaceFileChangeList.tsx'), 'utf8')
     expect(src).toContain('formatFileChangeListPath')
     expect(src).toContain('onReviewAll')
+    expect(src).toContain('formatWorkspaceFileOpListTitle')
     expect(src).toContain('useState(true)')
   })
 })
