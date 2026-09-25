@@ -7,6 +7,7 @@ export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
   isOpen: boolean
   onClose: () => void
   title?: React.ReactNode
+  /** 点击遮罩关闭。默认 true；忙碌中的流程可传 false */
   closeOnOverlayClick?: boolean
   /** Stack above other overlays (e.g. ModelSwitcherPopup). Default 1000. */
   zIndex?: number
@@ -21,7 +22,7 @@ export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
    * scale 会把文字先栅格化再拉伸，CJK 看起来像换了字体。
    * 确认框等短文案弹窗应使用 fade。
    */
-  animation?: 'scale' | 'fade'
+  animation?: 'scale' | 'fade' | 'none'
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -30,7 +31,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   className = '',
-  closeOnOverlayClick = false,
+  closeOnOverlayClick = true,
   zIndex = 1000,
   overlayClassName = '',
   containToContentCard = true,
@@ -56,14 +57,18 @@ export const Modal: React.FC<ModalProps> = ({
   }
 
   const overlayClasses = withAppContentOverlay(
-    `${styles.overlay} ${containToContentCard ? '' : styles.overlayFullWindow} ${overlayClassName}`.trim(),
+    `${styles.overlay} ${containToContentCard ? '' : styles.overlayFullWindow} ${
+      animation === 'none' ? styles.overlayStatic : ''
+    } ${overlayClassName}`.trim(),
     { fullWindow: !containToContentCard }
   )
+  const modalMotion =
+    animation === 'none' ? styles.modalStatic : animation === 'fade' ? styles.modalFade : ''
 
   return createPortal(
     <div className={overlayClasses} style={{ zIndex }} onPointerDown={handleOverlayPointerDown}>
       <div
-        className={`${styles.modal} ${animation === 'fade' ? styles.modalFade : ''} ${className}`.trim()}
+        className={`${styles.modal} ${modalMotion} ${className}`.trim()}
         style={{ zIndex: zIndex + 1 }}
         onClick={(e) => e.stopPropagation()}
         {...props}

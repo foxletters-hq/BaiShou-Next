@@ -329,13 +329,12 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   autoFocus
                   value={promptValue}
                   onChange={(e) => setPromptValue(e.target.value)}
-                  className={`baishou-form-field baishou-form-field--small ${styles.promptInput}`}
+                  className={`baishou-form-field ${styles.promptInput}`}
                   rows={6}
                 />
               ) : (
                 <Input
                   autoFocus
-                  fieldSize="small"
                   value={promptValue}
                   onChange={(e) => setPromptValue(e.target.value)}
                   onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
