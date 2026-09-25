@@ -9,18 +9,20 @@ interface IdentityFactsListProps {
   onAddFact: () => void
   onEditFact: (key: string, value: string) => void
   onDeleteFact: (key: string) => void
+  compact?: boolean
 }
 
 export const IdentityFactsList: React.FC<IdentityFactsListProps> = ({
   currentFacts,
   onAddFact,
   onEditFact,
-  onDeleteFact
+  onDeleteFact,
+  compact = false
 }) => {
   const { t } = useTranslation()
 
   return (
-    <div className={styles.factsContainer}>
+    <div className={`${styles.factsContainer}${compact ? ` ${styles.factsContainerCompact}` : ''}`}>
       <div className={styles.factsHeader}>
         <span className={styles.factsHeaderTitle}>
           {t('settings.identity_facts_title', '身份条目')}

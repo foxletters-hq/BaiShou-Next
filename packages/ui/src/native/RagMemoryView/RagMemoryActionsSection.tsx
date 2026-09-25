@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { Library, MessageSquarePlus } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RagState } from './rag-memory.types'
@@ -11,12 +12,16 @@ interface RagMemoryActionsSectionProps {
   ragState: RagState
   onBatchEmbed?: () => Promise<void>
   onAddManualMemory?: () => Promise<void>
+  suspectCount?: number
+  onReviewSuspects?: () => void
 }
 
 export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = ({
   ragState,
   onBatchEmbed,
-  onAddManualMemory
+  onAddManualMemory,
+  suspectCount = 0,
+  onReviewSuspects
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -101,6 +106,15 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
             </Text>
           </TouchableOpacity>
         )}
+        {onReviewSuspects ? (
+          <Button variant="outlined" onPress={onReviewSuspects}>
+            {suspectCount > 0
+              ? t('memory.review_suspects_toolbar_count', '检查待确认节点 ({{count}})', {
+                  count: suspectCount
+                })
+              : t('memory.review_suspects_toolbar', '检查待确认节点')}
+          </Button>
+        ) : null}
       </View>
     </View>
   )

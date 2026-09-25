@@ -88,4 +88,6 @@ export interface RagMemoryViewProps {
   onDetectDimension?: () => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
   migrationCancelBusy?: boolean
+  suspectCount?: number
+  onReviewSuspects?: () => void
 }

@@ -55,7 +55,9 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onTriggerMigration,
   onCancelMigration,
   migrationCancelBusy,
-  onPageChange
+  onPageChange,
+  suspectCount = 0,
+  onReviewSuspects
 }) => {
   const ragOn = config.ragEnabled
   const [showRetrievalSection, setShowRetrievalSection] = useState(Platform.OS !== 'android')
@@ -113,6 +115,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             onResumeBatchEmbed={onResumeBatchEmbed}
             onCancelBatchEmbed={onCancelBatchEmbed}
             migrationCancelBusy={migrationCancelBusy}
+            suspectCount={suspectCount}
+            onReviewSuspects={onReviewSuspects}
           />
 
           {showRetrievalSection ? (
@@ -128,6 +132,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             ragState={ragState}
             onBatchEmbed={onBatchEmbed}
             onAddManualMemory={onAddManualMemory}
+            suspectCount={suspectCount}
+            onReviewSuspects={onReviewSuspects}
           />
         </View>
       </SettingsGroupCard>

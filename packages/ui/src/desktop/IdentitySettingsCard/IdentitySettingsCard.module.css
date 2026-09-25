@@ -265,6 +265,21 @@
   padding: 0 16px 16px 16px;
 }
 
+.factsContainerCompact {
+  padding: 0;
+}
+
+.embeddedNav {
+  padding: 13px 14px;
+  min-height: 0;
+}
+
+.factsDialogBody {
+  min-width: min(420px, 72vw);
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
 .factsHeader {
   display: flex;
   justify-content: space-between;
