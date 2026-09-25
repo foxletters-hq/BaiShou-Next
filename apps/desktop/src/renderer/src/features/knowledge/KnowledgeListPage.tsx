@@ -15,6 +15,7 @@ import { Plus } from 'lucide-react'
 import type { NotebookCardTone } from '@baishou/shared'
 import { KnowledgeShell } from './KnowledgeShell'
 import { KnowledgeCreateNotebookDialog } from './KnowledgeCreateNotebookDialog'
+import { KnowledgeDeleteNotebookDialog } from './KnowledgeDeleteNotebookDialog'
 import { NotebookCoverEmojiPicker } from './NotebookCoverEmojiPicker'
 import { SortableNotebookCard } from './SortableNotebookCard'
 import { type NotebookCoverMode } from './notebook-cover-mode'
@@ -60,6 +61,7 @@ export const KnowledgeListPage: React.FC = () => {
   const [createCoverName, setCreateCoverName] = useState('')
   const [createCoverMode, setCreateCoverMode] = useState<NotebookCoverMode>('emoji')
   const [cardMenuId, setCardMenuId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const skipCardClickRef = useRef(false)
   const renameDraftRef = useRef('')
@@ -322,6 +324,21 @@ export const KnowledgeListPage: React.FC = () => {
     })
   }
 
+  const onDeleteNotebook = async () => {
+    if (!deleting) return
+    setBusy(true)
+    setError('')
+    try {
+      await window.api.knowledge.deleteNotebook(deleting.id)
+      setDeleting(null)
+      await refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const locale = i18n.language || 'zh-CN'
 
   return (
@@ -398,7 +415,8 @@ export const KnowledgeListPage: React.FC = () => {
                       coverEmoji: t('knowledge.cover_mode_emoji', 'emoji'),
                       pickIcon: t('knowledge.pick_cover_icon', '选择图标'),
                       uploadImage: t('knowledge.upload_cover_image', '上传图片'),
-                      clearImage: t('knowledge.clear_cover_image', '清除图片')
+                      clearImage: t('knowledge.clear_cover_image', '清除图片'),
+                      deleteNotebook: t('knowledge.delete_notebook', '删除笔记本')
                     }}
                     onOpen={() => openNotebook(nb.id)}
                     onOpenMenu={() => openCardMenu(nb)}
@@ -416,6 +434,10 @@ export const KnowledgeListPage: React.FC = () => {
                     }}
                     onUploadImage={() => void uploadCoverImage(nb.id)}
                     onClearImage={() => void clearCoverImage(nb.id)}
+                    onDelete={() => {
+                      setCardMenuId(null)
+                      setDeleting({ id: nb.id, name: nb.name })
+                    }}
                   />
                 )
               })}
@@ -455,6 +477,16 @@ export const KnowledgeListPage: React.FC = () => {
           setCreateCoverName('')
         }}
         onCreate={() => void onCreate()}
+      />
+      <KnowledgeDeleteNotebookDialog
+        open={deleting != null}
+        notebookName={deleting?.name || ''}
+        busy={busy}
+        onCancel={() => {
+          if (busy) return
+          setDeleting(null)
+        }}
+        onConfirm={() => void onDeleteNotebook()}
       />
       <NotebookCoverEmojiPicker
         open={iconPickerTarget != null}

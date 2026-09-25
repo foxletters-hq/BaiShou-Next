@@ -58,7 +58,6 @@ export function KnowledgeCreateNotebookDialog({
       <label className={styles.field}>
         <span className={styles.fieldLabel}>{t('knowledge.notebook_name', '名称')}</span>
         <Input
-          fieldSize="small"
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder={t('knowledge.notebook_name_placeholder', '笔记本名称')}

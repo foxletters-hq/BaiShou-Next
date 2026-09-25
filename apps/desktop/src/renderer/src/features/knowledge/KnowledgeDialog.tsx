@@ -11,6 +11,7 @@ export interface KnowledgeDialogProps {
   children: React.ReactNode
   /** 追加到面板上的 class */
   className?: string
+  animation?: 'fade' | 'none'
   'aria-label'?: string
 }
 
@@ -22,6 +23,7 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
   title,
   children,
   className,
+  animation = 'fade',
   'aria-label': ariaLabel
 }) => (
   <Modal
@@ -29,7 +31,7 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
     onClose={closeDisabled ? () => undefined : onClose}
     closeOnOverlayClick={!closeDisabled}
     title={title}
-    animation="fade"
+    animation={animation}
     className={[styles.dialog, className].filter(Boolean).join(' ')}
     zIndex={2000}
     aria-label={ariaLabel}
