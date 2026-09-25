@@ -5,6 +5,8 @@ import {
 } from '@baishou/core-mobile'
 import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
 import {
+  GRAPH_EXTRACT_WINDOW_TIMEOUT_MS,
+  isAgentStreamAbortError,
   resolveGlobalGraphModelIds,
   resolveReasoningEffortForSlot,
   type GlobalModelsConfig
@@ -33,8 +35,8 @@ export function createMobileKnowledgeGraphExtractFn() {
       throw new Error('graph-extract-not-configured')
     }
     const globalModels = await runtime.settingsManager.get<GlobalModelsConfig>('global_models')
-    const { modelId } = resolveGlobalGraphModelIds(globalModels)
-    if (!modelId) throw new Error('graph-extract-not-configured')
+    const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
+    if (!providerId || !modelId) throw new Error('graph-extract-not-configured')
 
     const fileSystem = createMobileFileSystem()
     const pathService =
@@ -49,11 +51,16 @@ export function createMobileKnowledgeGraphExtractFn() {
     let embedModelId: string | undefined
     try {
       const { EmbeddingAdapter } = await import('@baishou/ai')
+      const { createSqlExecutorFromDrizzleDb, SqliteHybridSearchRepository } =
+        await import('@baishou/database')
       const { resolveMobileEmbeddingForHydration } =
         await import('./mobile-raw-data-source.runtime')
       const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+      const hsRepo = runtime.drizzleDb
+        ? new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(runtime.drizzleDb))
+        : undefined
       if (emb.embeddingProvider && emb.embeddingModelId) {
-        const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
+        const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId, hsRepo)
         if (adapter.isConfigured) {
           embedQuery = (text) => adapter.embedQuery(text)
           embedModelId = adapter.embeddingModelId
@@ -69,14 +76,24 @@ export function createMobileKnowledgeGraphExtractFn() {
       getVaultName: () => vaultName,
       align: { embedQuery, modelId: embedModelId },
       llm: async ({ system, user }) => {
-        const text = await summaryClient.generateContent(user, modelId, {
-          system,
-          reasoningEffort: resolveReasoningEffortForSlot(
-            globalModels?.reasoningEffortBySlot,
-            'graph'
-          )
-        })
-        return text ?? null
+        // 必须带上图抽取槽位的服务商，否则会落到记忆总结槽位
+        try {
+          const text = await summaryClient.generateContent(user, modelId, {
+            providerId,
+            system,
+            reasoningEffort: resolveReasoningEffortForSlot(
+              globalModels?.reasoningEffortBySlot,
+              'graph'
+            ),
+            abortSignal: AbortSignal.timeout(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)
+          })
+          return text ?? null
+        } catch (error) {
+          if (isAgentStreamAbortError(error)) {
+            throw new Error('graph-extract-window-timeout')
+          }
+          throw error
+        }
       }
     })
     await svc.extractSource(input)

@@ -2,7 +2,10 @@ import {
   deriveLegacyVaultId,
   EMBEDDING_NOT_CONFIGURED,
   KNOWLEDGE_MODEL_MISMATCH,
+  normalizeKnowledgeImportProcessMode,
   parseMountedNotebookIds,
+  shouldDeferKnowledgeImportOrganize,
+  type KnowledgeImportProcessMode,
   type ToolKnowledgeGraphSearchResult
 } from '@baishou/shared'
 import {
@@ -31,7 +34,7 @@ function requireRepo(): KnowledgeRepository {
   return new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
 }
 
-async function resolveMobileActiveVaultId(): Promise<string> {
+export async function resolveMobileActiveVaultId(): Promise<string> {
   const runtime = agentDbRuntimeRef.current
   if (runtime?.pathService) {
     try {
@@ -273,7 +276,12 @@ async function buildMobileIngestService() {
     },
     deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
     deleteNotebookGraphSource: ({ notebookId, sourceId }) =>
-      graphRaw.deleteSourceShards(notebookId, sourceId)
+      graphRaw.deleteSourceShards(notebookId, sourceId),
+    getExtractConfig: (
+      await import('./mobile-knowledge-extract-config')
+    ).resolveMobileKnowledgeExtractConfig,
+    onExtractProgress: (await import('./mobile-knowledge-extract-config'))
+      .emitMobileKnowledgeExtractProgress
   })
 }
 
@@ -281,6 +289,37 @@ export async function mobileGetNotebook(notebookId: string) {
   const id = notebookId.trim()
   if (!id) throw new Error('notebookId required')
   return requireRepo().getNotebook(id)
+}
+
+export async function mobileCreateNotebook(input: {
+  name: string
+  description?: string
+  coverTone?: string
+  coverIcon?: string
+}) {
+  const svc = await buildMobileIngestService()
+  return svc.createNotebook(input)
+}
+
+export async function mobileReorderNotebooks(orderedIds: string[]) {
+  const svc = await buildMobileIngestService()
+  return svc.reorderNotebooks(orderedIds)
+}
+
+export async function mobileDeleteNotebook(notebookId: string): Promise<void> {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const svc = await buildMobileIngestService()
+  await svc.deleteNotebook(id)
+}
+
+export async function mobileOrganizeNotebook(notebookId: string): Promise<{ queued: number }> {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const svc = await buildMobileIngestService()
+  const result = await svc.organizeNotebook(id)
+  await kickMobileKnowledgeIngest('after-mobile-organize')
+  return result
 }
 
 export async function mobileUpdateNotebook(input: {
@@ -331,16 +370,20 @@ export async function mobileResolveNotebookCoverUri(relativePath: string): Promi
   }
 }
 
-/** K1.5：移动端粘贴文本 / URL 入库 */
+/** 移动端粘贴文本 / URL / 文件入库 */
 export async function mobileImportSource(input: {
   notebookId: string
   title: string
-  kind: 'text' | 'url'
+  kind: 'file' | 'text' | 'url'
   textContent?: string
   originUrl?: string
+  absolutePath?: string
+  fileName?: string
+  importProcessMode?: KnowledgeImportProcessMode | string
 }): Promise<{ sourceId: string }> {
   const { fetchUrlAsMarkdown } = await import('@baishou/ai')
   let payload = { ...input }
+  const importProcessMode = normalizeKnowledgeImportProcessMode(input.importProcessMode)
 
   if (input.kind === 'url') {
     const originUrl = (input.originUrl || input.textContent || '').trim()
@@ -356,17 +399,41 @@ export async function mobileImportSource(input: {
     }
   }
 
+  if (input.kind === 'file') {
+    if (!input.absolutePath?.trim()) throw new Error('import file requires absolutePath')
+  }
+
   const svc = await buildMobileIngestService()
   const result = await svc.importSource({
     notebookId: payload.notebookId,
     title: payload.title,
     kind: payload.kind,
     textContent: payload.textContent,
-    originUrl: payload.originUrl
+    originUrl: payload.originUrl,
+    absolutePath: payload.absolutePath,
+    fileName: payload.fileName,
+    importProcessMode
   })
 
-  await kickMobileKnowledgeIngest('after-mobile-import')
+  if (!shouldDeferKnowledgeImportOrganize(importProcessMode)) {
+    await kickMobileKnowledgeIngest('after-mobile-import')
+  }
   return result
+}
+
+/** 把相册 / DocumentPicker URI 落到本机绝对路径，再交给 copySourceFile */
+export async function resolveMobileKnowledgeFilePath(
+  uri: string,
+  fileName: string
+): Promise<string> {
+  const { cacheDirectory } = await import('./mobile-sandbox-fs')
+  const { importUriToPath } = await import('./mobile-uri-import')
+  const fileSystem = createMobileFileSystem()
+  const safeName = fileName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_') || 'import.bin'
+  const destUri = `${String(cacheDirectory || '').replace(/\/$/, '')}/kb-import-${Date.now()}-${safeName}`
+  const destPath = destUri.replace(/^file:\/\//, '')
+  await importUriToPath(uri, destPath, fileSystem)
+  return destPath
 }
 
 /** 供 Agent knowledge_search 工具注入 */
@@ -429,4 +496,167 @@ export async function mobileSearchKnowledge(opts: {
     limit: opts.limit,
     limitPerNotebook: opts.limitPerNotebook
   })
+}
+
+export {
+  mobileGetKnowledgeConfig,
+  mobileSetKnowledgeConfig,
+  subscribeMobileKnowledgeExtractProgress
+} from './mobile-knowledge-extract-config'
+
+export async function mobileGetKnowledgeCapabilities() {
+  const { probeExtractEngineCapabilities } = await import('@baishou/core-mobile')
+  const cfg = await (await import('./mobile-knowledge-extract-config')).resolveMobileKnowledgeExtractConfig()
+  return probeExtractEngineCapabilities({
+    visionModelConfigured: cfg.visionModelConfigured,
+    visionModelId: cfg.visionModelId,
+    ocrLanguage: cfg.ocrLanguage
+  })
+}
+
+export async function mobileCancelExtract(sourceId: string) {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  const result = await svc.cancelExtract(id)
+  const { emitMobileKnowledgeExtractProgress } = await import('./mobile-knowledge-extract-config')
+  emitMobileKnowledgeExtractProgress({ sourceId: id, page: 0, total: 0, phase: 'ocr' })
+  return result
+}
+
+export async function mobileRecoverStaleIngest() {
+  const svc = await buildMobileIngestService()
+  return svc.recoverStaleIngestState()
+}
+
+export async function mobileOcrMissingPages(
+  sourceId: string,
+  options?: { engine?: 'ocr' | 'vision'; pageNumbers?: number[] }
+) {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  const result = await svc.ocrMissingPages(id, options)
+  await kickMobileKnowledgeIngest('after-ocr')
+  return result
+}
+
+export async function mobileEmbedSource(sourceId: string) {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  await svc.reprocessSource(id, 'embed')
+  await kickMobileKnowledgeIngest('mobile-embed-source')
+}
+
+export async function mobileGetExtractedPreview(input: {
+  notebookId: string
+  sourceId: string
+  maxChars?: number
+}): Promise<{ text: string | null; truncated: boolean }> {
+  const notebookId = input.notebookId.trim()
+  const sourceId = input.sourceId.trim()
+  if (!notebookId || !sourceId) throw new Error('notebookId and sourceId required')
+  const manager = getMobileNotebookRawManager()
+  if (!manager) return { text: null, truncated: false }
+  const text = await manager.readExtractedText(notebookId, sourceId)
+  if (text == null) return { text: null, truncated: false }
+  const max = Math.max(200, input.maxChars ?? 4000)
+  if (text.length <= max) return { text, truncated: false }
+  return { text: text.slice(0, max), truncated: true }
+}
+
+export async function mobileProbeExtractSample(input: {
+  notebookId?: string
+  sourceId: string
+  engine: 'ocr' | 'vision'
+  ocrLanguage?: string
+  ocrConcurrency?: number
+}) {
+  const sourceId = input.sourceId.trim()
+  if (!sourceId) throw new Error('sourceId required')
+  const repo = requireRepo()
+  const source = await repo.getSource(sourceId)
+  if (!source) throw new Error(`source not found: ${sourceId}`)
+  const notebookId = String(input.notebookId || '').trim()
+  if (notebookId && source.notebookId !== notebookId) {
+    throw new Error('source not in notebook')
+  }
+  if (!source.relativePath) throw new Error('source file not found')
+  const manager = getMobileNotebookRawManager()
+  if (!manager) throw new Error('notebook manager unavailable')
+  const abs = await manager.absolutePath(source.relativePath)
+  const { probeKnowledgeExtractSample } = await import('@baishou/core-mobile')
+  const {
+    clampOcrConcurrency,
+    normalizeKnowledgeDefaultExtractEngine
+  } = await import('@baishou/shared')
+  const cfg = await (await import('./mobile-knowledge-extract-config')).mobileGetKnowledgeConfig()
+  return probeKnowledgeExtractSample({
+    source,
+    absolutePath: abs,
+    engine: normalizeKnowledgeDefaultExtractEngine(input.engine),
+    language: input.ocrLanguage ?? cfg.ocrLanguage,
+    dpi: cfg.ocrDpi,
+    concurrency: clampOcrConcurrency(input.ocrConcurrency ?? cfg.ocrConcurrency)
+  })
+}
+
+export async function mobileListKnowledgeChunks(input: {
+  notebookId: string
+  limit?: number
+  offset?: number
+  query?: string
+}) {
+  const notebookId = input.notebookId.trim()
+  if (!notebookId) throw new Error('notebookId required')
+  return requireRepo().listChunksByNotebook({
+    notebookId,
+    limit: input.limit,
+    offset: input.offset,
+    query: input.query
+  })
+}
+
+export async function mobileSearchNotebookGraphNodes(input: {
+  notebookId: string
+  query: string
+  limit?: number
+}) {
+  const notebookId = input.notebookId.trim()
+  if (!notebookId) throw new Error('notebookId required')
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  return repo.searchNodes({
+    vaultId: await resolveMobileActiveVaultId(),
+    notebookId,
+    query: input.query,
+    limit: input.limit
+  })
+}
+
+export async function mobileListNotebookGraphJobs(notebookId: string) {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const repo = requireRepo()
+  const { listLiveGraphSourceIds } = await import('@baishou/core-mobile')
+  const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
+  const live = new Set(listLiveGraphSourceIds())
+  const sources = await repo.listSources(id)
+  const titleById = new Map(sources.map((row) => [row.id, row.title]))
+  const items = jobs.map((job) => ({
+    sourceId: job.sourceId,
+    title: titleById.get(job.sourceId) || job.sourceId,
+    status: live.has(job.sourceId) ? 'running' : job.status,
+    lastError: job.lastError
+  }))
+  const running = items.find((item) => item.status === 'running')
+  return {
+    pending: items.filter((item) => item.status === 'pending' || item.status === 'running').length,
+    running: items.filter((item) => item.status === 'running').length,
+    failed: items.filter((item) => item.status === 'failed').length,
+    currentSourceId: running?.sourceId ?? null,
+    currentSourceTitle: running?.title ?? null,
+    items
+  }
 }

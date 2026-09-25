@@ -1,6 +1,5 @@
 import {
   buildPendingEmbedCounts,
-  countPendingFromUnembeddedList,
   createPendingEmbedCountCache,
   EMPTY_PENDING_EMBED_COUNTS,
   type PendingEmbedCounts
@@ -28,9 +27,22 @@ export type OrganizePendingSnapshot = PendingEmbedCounts & {
 }
 
 const cache = createPendingEmbedCountCache()
+const changeListeners = new Set<() => void>()
 
 export function invalidateMobilePendingEmbedCountsCache(): void {
   cache.invalidate()
+}
+
+export function subscribeMobilePendingEmbedCountsChanged(listener: () => void): () => void {
+  changeListeners.add(listener)
+  return () => {
+    changeListeners.delete(listener)
+  }
+}
+
+export function notifyMobilePendingEmbedCountsChanged(): void {
+  cache.invalidate()
+  for (const listener of changeListeners) listener()
 }
 
 export async function getPendingEmbedCounts(
@@ -41,21 +53,15 @@ export async function getPendingEmbedCounts(
     const vaultId = await vaultScope.resolveActiveVaultId()
     if (!vaultId) return EMPTY_PENDING_EMBED_COUNTS
 
-    const [diaries, memories, graphNodes, knowledgeSources, notebookGraphNodes] = await Promise.all(
-      [
-        countUnindexedDiariesForActiveVault(deps),
-        countPendingMemories(deps, vaultId),
-        countPendingGraphNodes(vaultId),
-        countPendingKnowledgeSources(vaultId),
-        countPendingNotebookGraphNodes(vaultId)
-      ]
-    )
+    const [diaries, memories, graphNodes] = await Promise.all([
+      countUnindexedDiariesForActiveVault(deps),
+      countPendingMemories(deps, vaultId),
+      countPendingGraphNodes(vaultId)
+    ])
     return buildPendingEmbedCounts({
       unindexedDiaryCount: diaries,
       missingMemoryCount: memories,
-      missingGraphNodeCount: graphNodes,
-      missingKnowledgeSourceCount: knowledgeSources,
-      missingNotebookGraphNodeCount: notebookGraphNodes
+      missingGraphNodeCount: graphNodes
     })
   })
 }
@@ -91,52 +97,12 @@ async function countPendingGraphNodes(vaultId: string): Promise<number> {
   }
 }
 
-async function countPendingKnowledgeSources(vaultId: string): Promise<number> {
+async function countPendingGraphExtract(): Promise<number> {
   try {
-    const { expoKnowledgeConnectionManager, KnowledgeRepository } =
-      await import('@baishou/database/expo')
-    if (!expoKnowledgeConnectionManager.isConnected()) return 0
-    const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
-    return await repo.countPendingEmbedSources(vaultId)
+    return (await getMobileDerivedFreshness()?.listPendingReextract())?.length ?? 0
   } catch {
     return 0
   }
-}
-
-async function countPendingNotebookGraphNodes(vaultId: string): Promise<number> {
-  try {
-    const { expoKnowledgeConnectionManager, NotebookGraphRepository } =
-      await import('@baishou/database/expo')
-    if (!expoKnowledgeConnectionManager.isConnected()) return 0
-    const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-    return await countPendingFromUnembeddedList(() => repo.listUnembeddedLiveNodes(vaultId))
-  } catch {
-    return 0
-  }
-}
-
-async function countPendingGraphExtract(vaultId: string): Promise<number> {
-  let diary = 0
-  try {
-    diary = (await getMobileDerivedFreshness()?.listPendingReextract())?.length ?? 0
-  } catch {
-    diary = 0
-  }
-  let knowledge = 0
-  try {
-    const { expoKnowledgeConnectionManager, KnowledgeRepository } =
-      await import('@baishou/database/expo')
-    if (!expoKnowledgeConnectionManager.isConnected()) return diary
-    const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
-    knowledge = await repo.countIngestJobs({
-      vaultId,
-      stages: ['graph'],
-      claimableOnly: true
-    })
-  } catch {
-    knowledge = 0
-  }
-  return diary + knowledge
 }
 
 async function countPendingGraphDisambiguate(vaultId: string): Promise<number> {
@@ -164,7 +130,7 @@ export async function getOrganizePendingSnapshot(
   const embed = await getPendingEmbedCounts(deps)
   const vaultScope = await resolveVaultScope(deps)
   const vaultId = await vaultScope.resolveActiveVaultId()
-  const graphExtract = vaultId ? await countPendingGraphExtract(vaultId) : 0
+  const graphExtract = vaultId ? await countPendingGraphExtract() : 0
   const graphDisambiguate = vaultId ? await countPendingGraphDisambiguate(vaultId) : 0
   return { ...embed, graphExtract, graphDisambiguate }
 }
