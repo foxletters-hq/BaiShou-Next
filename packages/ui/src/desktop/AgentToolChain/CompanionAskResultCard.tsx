@@ -1,25 +1,35 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CompanionAskPresentation } from '../../shared/tool-result.util'
+import type { CompanionAskOptionView, CompanionAskPresentation } from '../../shared/tool-result.util'
 import styles from './CompanionAskResultCard.module.css'
 
-/** 已作答的提问结果。待回答时消息列表不渲染本卡，选项只出现在确认卡里。 */
-export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
+function CompanionAskResultItem({
+  question,
+  answer,
+  declined,
+  options,
+  selectedOptionIds
+}: {
+  question: string
+  answer: string | null
+  declined: boolean
+  options: CompanionAskOptionView[]
+  selectedOptionIds: string[]
+}) {
   const { t } = useTranslation()
-  const selected = new Set(data.selectedOptionIds)
-  const showOptions = !data.declined && data.options.length > 0
+  const selected = new Set(selectedOptionIds)
+  const showOptions = !declined && options.length > 0
 
   return (
-    <section className={styles.card} aria-label={t('agent.tools.companion_ask', '伙伴提问')}>
-      <p className={styles.label}>{t('agent.tools.companion_ask_card_label', '提问')}</p>
-      {data.question ? <p className={styles.question}>{data.question}</p> : null}
-      {data.declined ? (
+    <div className={styles.questionBlock}>
+      {question ? <p className={styles.question}>{question}</p> : null}
+      {declined ? (
         <p className={styles.status}>{t('agent.tools.companion_ask_declined', '没有作答')}</p>
       ) : null}
       {showOptions ? (
         <div className={styles.options} role="list">
-          {data.options.map((option) => {
-            const isSelected = selected.has(option.id) || option.label === data.answer
+          {options.map((option) => {
+            const isSelected = selected.has(option.id) || option.label === answer
             return (
               <div
                 key={option.id}
@@ -38,17 +48,49 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
           })}
         </div>
       ) : null}
-      {!data.declined && !showOptions && data.answer ? (
+      {!declined && !showOptions && answer ? (
         <div className={styles.options} role="list">
           <div
             role="listitem"
             className={`${styles.option} ${styles.optionSelected}`}
             aria-current="true"
           >
-            {data.answer}
+            {answer}
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** 已作答的提问结果，只出现在折叠工具行展开后。 */
+export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
+  const { t } = useTranslation()
+  const items = data.items && data.items.length > 1 ? data.items : null
+
+  return (
+    <section className={styles.card} aria-label={t('agent.tools.companion_ask', '伙伴提问')}>
+      <p className={styles.label}>{t('agent.tools.companion_ask_card_label', '提问')}</p>
+      {items ? (
+        items.map((item, index) => (
+          <CompanionAskResultItem
+            key={`${item.question}-${index}`}
+            question={item.question}
+            answer={item.answer}
+            declined={data.declined}
+            options={item.options}
+            selectedOptionIds={item.selectedOptionIds}
+          />
+        ))
+      ) : (
+        <CompanionAskResultItem
+          question={data.question}
+          answer={data.answer}
+          declined={data.declined}
+          options={data.options}
+          selectedOptionIds={data.selectedOptionIds}
+        />
+      )}
     </section>
   )
 }

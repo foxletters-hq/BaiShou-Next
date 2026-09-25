@@ -18,6 +18,10 @@
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
 }
 
+.questionBlock + .questionBlock {
+  margin-top: 14px;
+}
+
 .question {
   margin: 0;
   font-size: 14px;
@@ -80,7 +84,7 @@
 
 .customSubmit {
   background: var(--color-primary);
-  color: var(--text-on-primary, #fff);
+  color: var(--text-on-primary);
 }
 
 .customToggle:hover:not(:disabled),

@@ -27,10 +27,9 @@ import {
   resolveCompanionAskPresentation,
   type ToolCopyTranslate
 } from '../../shared/tool-result.util'
-import { CompanionAskResultCard } from './CompanionAskResultCard'
 import {
-  isCompanionAskAwaitingAnswer,
-  shouldRenderCompanionAskResultInList
+  companionAskWaitingSubtitle,
+  isCompanionAskAwaitingAnswer
 } from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
 import styles from './AgentToolChainSection.module.css'
@@ -75,12 +74,14 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     if (model.status === 'error' || !invocation) return null
     return resolveCompanionAskPresentation(invocation)
   }, [invocation, model.status])
+  const hasAskResult =
+    invocation?.result !== undefined && invocation.result !== null && invocation.result !== ''
   const awaitingAsk =
     model.toolName === 'companion_ask' &&
-    (isLoading || isCompanionAskAwaitingAnswer(askPresentation))
-  const canExpand = Boolean(
-    model.hasContent && invocation && !isLoading && !askPresentation && !awaitingAsk
-  )
+    isLoading &&
+    (askPresentation == null ||
+      isCompanionAskAwaitingAnswer(askPresentation, { hasResult: hasAskResult }))
+  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !awaitingAsk)
 
   useEffect(() => {
     if (autoExpand && canExpand) {
@@ -101,23 +102,15 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   const subtitle = useMemo(
     () =>
       awaitingAsk
-        ? undefined
+        ? companionAskWaitingSubtitle(askPresentation)
         : getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
-    [awaitingAsk, invocation, model.status, t]
+    [askPresentation, awaitingAsk, invocation, model.status, t]
   )
 
   const handleToggle = useCallback(() => {
     if (!canExpand) return
     setExpanded((prev) => !prev)
   }, [canExpand])
-
-  if (shouldRenderCompanionAskResultInList(askPresentation, model.status)) {
-    return (
-      <div className={styles.item}>
-        <CompanionAskResultCard data={askPresentation} />
-      </div>
-    )
-  }
 
   return (
     <div className={styles.item} data-expanded={expanded ? 'true' : 'false'}>
@@ -150,7 +143,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
             <span className={styles.subtitleSpacer} />
           )}
         </span>
-        {model.durationMs != null ? (
+        {model.durationMs != null && model.durationMs > 0 ? (
           <span className={styles.duration}>{formatToolDurationMs(model.durationMs)}</span>
         ) : null}
         {canExpand ? (

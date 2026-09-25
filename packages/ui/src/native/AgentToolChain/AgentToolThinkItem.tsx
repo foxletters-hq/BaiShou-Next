@@ -13,10 +13,9 @@ import {
 import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIcon'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { useNativeTheme } from '../theme'
-import { CompanionAskResultCard } from './CompanionAskResultCard'
 import {
-  isCompanionAskAwaitingAnswer,
-  shouldRenderCompanionAskResultInList
+  companionAskWaitingSubtitle,
+  isCompanionAskAwaitingAnswer
 } from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
 
@@ -40,12 +39,14 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     if (!invocation || model.status === 'error') return null
     return resolveCompanionAskPresentation(invocation)
   }, [invocation, model.status])
+  const hasAskResult =
+    invocation?.result !== undefined && invocation.result !== null && invocation.result !== ''
   const awaitingAsk =
     model.toolName === 'companion_ask' &&
-    (isLoading || isCompanionAskAwaitingAnswer(askPresentation))
-  const canExpand = Boolean(
-    model.hasContent && invocation && !isLoading && !askPresentation && !awaitingAsk
-  )
+    isLoading &&
+    (askPresentation == null ||
+      isCompanionAskAwaitingAnswer(askPresentation, { hasResult: hasAskResult }))
+  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !awaitingAsk)
 
   useEffect(() => {
     if (autoExpand && canExpand) {
@@ -71,9 +72,9 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   const subtitle = useMemo(
     () =>
       awaitingAsk
-        ? undefined
+        ? companionAskWaitingSubtitle(askPresentation)
         : getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
-    [awaitingAsk, invocation, model.status, t]
+    [askPresentation, awaitingAsk, invocation, model.status, t]
   )
 
   const handleToggle = useCallback(() => {
@@ -84,10 +85,6 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
       return next
     })
   }, [canExpand])
-
-  if (shouldRenderCompanionAskResultInList(askPresentation, model.status)) {
-    return <CompanionAskResultCard data={askPresentation} />
-  }
 
   return (
     <View style={styles.root}>
@@ -117,7 +114,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
         ) : (
           <View style={styles.spacer} />
         )}
-        {model.durationMs != null ? (
+        {model.durationMs != null && model.durationMs > 0 ? (
           <Text style={[styles.duration, { color: colors.textTertiary }]}>
             {formatToolDurationMs(model.durationMs)}
           </Text>
