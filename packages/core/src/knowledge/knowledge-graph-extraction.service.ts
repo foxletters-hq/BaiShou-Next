@@ -1,6 +1,8 @@
 import {
   notebookGraphExtractStateId,
   notebookGraphSourceNodeId,
+  rethrowKnowledgeGraphStepError,
+  type KnowledgeGraphStep,
   type NotebookGraphExtractStateRawRecord,
   type NotebookGraphExtractedWindowPayload,
   type NotebookGraphNodeRawRecord
@@ -18,8 +20,13 @@ import {
 import type { NotebookGraphExtractRaw } from './notebook-graph-extract-raw'
 import type { NotebookGraphIndexService } from './notebook-graph-index.service'
 import { notebookGraphDeletedShardPaths } from '../raw-data/notebook-graph-shard-key.util'
-import { splitKnowledgeGraphWindows } from './knowledge-graph-windows.util'
 import {
+  knowledgeGraphExtractProgress,
+  knowledgeGraphPageTotal,
+  splitKnowledgeGraphWindows
+} from './knowledge-graph-windows.util'
+import {
+  isKnowledgeGraphExtractWindowSkipError,
   parseExtractJson,
   shouldSupersedeNotebookAiEdges,
   type KnowledgeGraphExtractAlignDeps,
@@ -28,6 +35,17 @@ import {
 } from './knowledge-graph-extraction.helpers'
 import { clipNameCandidateSourceContext } from '../graph/graph-entity-align'
 import { commitAlignedWindows, writeAlignedEmbeddings } from './knowledge-graph-extraction.align'
+
+async function runKnowledgeGraphStep<T>(
+  step: KnowledgeGraphStep,
+  run: () => Promise<T>
+): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    rethrowKnowledgeGraphStepError(step, error)
+  }
+}
 
 export type {
   KnowledgeGraphExtractAlignDeps,
@@ -84,7 +102,10 @@ export class KnowledgeGraphExtractionService {
       input.sourceId,
       input.pages
     )
-    await input.onProgress?.({ windowsDone: 0, windowsTotal: windows.length })
+    const pageTotal = knowledgeGraphPageTotal(input.pages)
+    const reportProgress = (windowsDone: number) =>
+      input.onProgress?.(knowledgeGraphExtractProgress(windows, windowsDone, pageTotal))
+    await reportProgress(0)
     const vaultName = this.deps.getVaultName()
     const now = Date.now()
     const shardKey = input.sourceId.trim()
@@ -105,50 +126,52 @@ export class KnowledgeGraphExtractionService {
         : []
     const skipExtract = shouldRunNotebookGraphAlignOnly(existing, input.textHash)
 
-    if (!skipExtract) {
-      const doneIndexes = new Set(
-        extractedWindows
-          .map((win) => win.index)
-          .filter((index) => Number.isInteger(index) && index >= 0)
-      )
-      for (let i = 0; i < windows.length; i += 1) {
-        if (doneIndexes.has(i)) continue
-        const win = windows[i]!
-        const payload = await this.extractWindow(win.text)
-        if (!payload) continue
-        extractedWindows.push({
-          index: i,
-          sourceRef: win.sourceRef,
-          sourceContext: clipNameCandidateSourceContext(win.text),
-          entities: payload.entities,
-          edges: payload.edges
-        })
-        await this.deps.raw.replaceSourceGraph({
-          notebookId,
-          sourceId: input.sourceId,
-          nodes: [sourceNode],
-          edges: [],
-          extractState: this.buildExtractState({
-            vaultId,
-            vaultName,
+    try {
+      if (!skipExtract) {
+        const doneIndexes = new Set(
+          extractedWindows
+            .map((win) => win.index)
+            .filter((index) => Number.isInteger(index) && index >= 0)
+        )
+        for (let i = 0; i < windows.length; i += 1) {
+          if (doneIndexes.has(i)) continue
+          const win = windows[i]!
+          // 界面按这一窗盖住的页码报进度；检查点 windowsDone 仍只在解析成功后写入
+          await reportProgress(i + 1)
+          const payload = await this.extractWindow(win.text)
+          if (!payload) continue
+          extractedWindows.push({
+            index: i,
+            sourceRef: win.sourceRef,
+            sourceContext: clipNameCandidateSourceContext(win.text),
+            entities: payload.entities,
+            edges: payload.edges
+          })
+          await this.deps.raw.replaceSourceGraph({
             notebookId,
             sourceId: input.sourceId,
-            textHash: input.textHash,
-            windowsDone: extractedWindows.length,
-            windowsTotal: windows.length,
-            truncated,
-            extractedWindows,
-            alignWritten: false,
-            now
+            nodes: [sourceNode],
+            edges: [],
+            extractState: this.buildExtractState({
+              vaultId,
+              vaultName,
+              notebookId,
+              sourceId: input.sourceId,
+              textHash: input.textHash,
+              windowsDone: extractedWindows.length,
+              windowsTotal: windows.length,
+              truncated,
+              extractedWindows,
+              alignWritten: false,
+              now
+            })
           })
-        })
-        await input.onProgress?.({
-          windowsDone: extractedWindows.length,
-          windowsTotal: windows.length
-        })
+        }
+      } else {
+        await reportProgress(windows.length)
       }
-    } else {
-      await input.onProgress?.({ windowsDone: windows.length, windowsTotal: windows.length })
+    } catch (error) {
+      rethrowKnowledgeGraphStepError('extract', error)
     }
 
     if (extractedWindows.length === 0 && windows.length > 0) {
@@ -171,7 +194,7 @@ export class KnowledgeGraphExtractionService {
           now
         })
       })
-      await input.onProgress?.({ windowsDone: windows.length, windowsTotal: windows.length })
+      await reportProgress(windows.length)
       logger.info('[KnowledgeGraphExtract] done', {
         sourceId: input.sourceId,
         windows: 0,
@@ -180,17 +203,19 @@ export class KnowledgeGraphExtractionService {
       return { windows: 0, truncated }
     }
 
-    const committed = await commitAlignedWindows(this.deps, {
-      vaultId,
-      vaultName,
-      notebookId,
-      sourceId: input.sourceId,
-      textHash: input.textHash,
-      shardKey,
-      now,
-      sourceNode,
-      extractedWindows
-    })
+    const committed = await runKnowledgeGraphStep('align', () =>
+      commitAlignedWindows(this.deps, {
+        vaultId,
+        vaultName,
+        notebookId,
+        sourceId: input.sourceId,
+        textHash: input.textHash,
+        shardKey,
+        now,
+        sourceNode,
+        extractedWindows
+      })
+    )
 
     await this.deps.raw.replaceSourceGraph({
       notebookId,
@@ -211,10 +236,7 @@ export class KnowledgeGraphExtractionService {
         now
       })
     })
-    await input.onProgress?.({
-      windowsDone: Math.max(extractedWindows.length, windows.length),
-      windowsTotal: windows.length
-    })
+    await reportProgress(Math.max(extractedWindows.length, windows.length))
 
     if (shouldSupersedeNotebookAiEdges(committed.exceptIds)) {
       await this.deps.repo.supersedeAiEdgesBySourcePrefix({
@@ -224,7 +246,9 @@ export class KnowledgeGraphExtractionService {
       })
     }
     await this.deps.index.syncPendingIndex({ vaultId, notebookId })
-    await writeAlignedEmbeddings(this.deps, vaultId, notebookId, committed.pendingEmbeddings)
+    await runKnowledgeGraphStep('node-embed', () =>
+      writeAlignedEmbeddings(this.deps, vaultId, notebookId, committed.pendingEmbeddings)
+    )
     logger.info('[KnowledgeGraphExtract] done', {
       sourceId: input.sourceId,
       windows: extractedWindows.length,
@@ -313,11 +337,21 @@ export class KnowledgeGraphExtractionService {
       confidence?: number
     }>
   } | null> {
-    const raw = await this.deps.llm({
-      system:
-        '你从资料片段抽取实体和关系。只输出 JSON：{"entities":[{"name","type","aliases","summary","confidence"}],"edges":[{"from","to","type","excerpt","confidence"}]}。type 只能是 person/place/organization/event/emotion/topic/work/activity/product/food。edge type 只能是 mentions/participates_in/located_at/evokes/role_of/relates_to。confidence 用 0 到 100 的整数，不要用 0 到 1。不要编造资料中没有的内容。',
-      user: text.slice(0, 8000)
-    })
-    return parseExtractJson(raw)
+    try {
+      const raw = await this.deps.llm({
+        system:
+          '你从资料片段抽取实体和关系。只输出 JSON：{"entities":[{"name","type","aliases","summary","confidence"}],"edges":[{"from","to","type","excerpt","confidence"}]}。type 只能是 person/place/organization/event/emotion/topic/work/activity/product/food。edge type 只能是 mentions/participates_in/located_at/evokes/role_of/relates_to。confidence 用 0 到 100 的整数，不要用 0 到 1。不要编造资料中没有的内容。',
+        user: text.slice(0, 8000)
+      })
+      return parseExtractJson(raw)
+    } catch (error) {
+      if (isKnowledgeGraphExtractWindowSkipError(error)) {
+        logger.warn('[KnowledgeGraphExtract] window timed out, skip', {
+          message: error instanceof Error ? error.message : String(error)
+        })
+        return null
+      }
+      throw error
+    }
   }
 }

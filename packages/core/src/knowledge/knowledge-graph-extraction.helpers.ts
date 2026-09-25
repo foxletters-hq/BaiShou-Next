@@ -1,6 +1,7 @@
 import { GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES } from '@baishou/database/shared'
 import { normalizeGraphName } from '@baishou/shared'
 import { extractFirstJsonObject } from '../graph/graph-llm-extraction.service'
+import type { KnowledgeGraphExtractProgress } from './knowledge-graph-windows.util'
 
 export type KnowledgeGraphExtractInput = {
   vaultId: string
@@ -11,7 +12,7 @@ export type KnowledgeGraphExtractInput = {
   textHash: string
   pages?: Array<{ page: number; start: number; end: number }> | null
   force?: boolean
-  onProgress?: (progress: { windowsDone: number; windowsTotal: number }) => void | Promise<void>
+  onProgress?: (progress: KnowledgeGraphExtractProgress) => void | Promise<void>
 }
 
 export interface KnowledgeGraphExtractLlm {
@@ -30,6 +31,17 @@ const EDGE_TYPE_SET = new Set<string>(GRAPH_EDGE_TYPES)
 /** 抽空 / 全窗解析失败时不得退役旧 AI 边 */
 export function shouldSupersedeNotebookAiEdges(keptEdgeIds: ReadonlySet<string>): boolean {
   return keptEdgeIds.size > 0
+}
+
+/** 单窗超时或中止：跳过这一窗，不让整份资料停住。额度/配置错误仍要失败。 */
+export function isKnowledgeGraphExtractWindowSkipError(error: unknown): boolean {
+  const name = error instanceof Error ? error.name : ''
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  if (message === 'graph-extract-window-timeout') return true
+  if (message.includes('waiting for first output')) return true
+  if (message.includes('without further output')) return true
+  if (name === 'AbortError') return true
+  return message.includes('The operation was aborted')
 }
 
 export function preferNotebookReviewStatus(

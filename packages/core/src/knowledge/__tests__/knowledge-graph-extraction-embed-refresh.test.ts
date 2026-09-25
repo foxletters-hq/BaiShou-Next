@@ -117,6 +117,29 @@ describe('refreshNotebookEmbeddingsAfterAlign', () => {
     expect(pendingEmbeddings.get('n1')).toEqual([9, 9])
   })
 
+  it('should rethrow embedQuery errors when requireEmbed is set', async () => {
+    const embedQuery = vi.fn(async () => {
+      throw new Error('Payment Required')
+    })
+    await expect(
+      refreshNotebookEmbeddingsAfterAlign(
+        {
+          repo: {
+            findNodesByNameOrAlias: async () => [{ id: 'n1', name: '张三', summary: '同事' }]
+          },
+          align: { embedQuery }
+        },
+        {
+          vaultId: 'vlt_aaaaaaaaaaaaaaaa',
+          notebookId: 'nb-this',
+          nodes: [personNode('大学同学')],
+          pendingEmbeddings: new Map()
+        },
+        { requireEmbed: true }
+      )
+    ).rejects.toThrow('Payment Required')
+  })
+
   it('should clear the old embedding when embedQuery fails', async () => {
     const pendingEmbeddings = new Map<string, number[]>()
     const embedQuery = vi.fn(async () => {
@@ -140,5 +163,33 @@ describe('refreshNotebookEmbeddingsAfterAlign', () => {
     )
     expect(pendingEmbeddings.size).toBe(0)
     expect(clearNodeEmbedding).toHaveBeenCalledWith('n1', 'vlt_aaaaaaaaaaaaaaaa', 'nb-this')
+  })
+
+  it('should keep repository this when clearing the old embedding', async () => {
+    const cleared: unknown[][] = []
+    class RepoLike {
+      embed = {
+        clearNodeEmbedding: async (...args: unknown[]) => {
+          cleared.push(args)
+        }
+      }
+      findNodesByNameOrAlias = async () => [{ id: 'n1', name: '张三', summary: '同事' }]
+      clearNodeEmbedding(id: string, vaultId: string, notebookId: string) {
+        return this.embed.clearNodeEmbedding(id, vaultId, notebookId)
+      }
+    }
+    const embedQuery = vi.fn(async () => {
+      throw new Error('embed down')
+    })
+    await refreshNotebookEmbeddingsAfterAlign(
+      { repo: new RepoLike(), align: { embedQuery } },
+      {
+        vaultId: 'vlt_aaaaaaaaaaaaaaaa',
+        notebookId: 'nb-this',
+        nodes: [personNode('大学同学')],
+        pendingEmbeddings: new Map()
+      }
+    )
+    expect(cleared).toEqual([['n1', 'vlt_aaaaaaaaaaaaaaaa', 'nb-this']])
   })
 })

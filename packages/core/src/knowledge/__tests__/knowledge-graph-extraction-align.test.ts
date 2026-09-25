@@ -4,6 +4,7 @@ import {
   listAmbiguousSourceRefs,
   notebookGraphNodeIdForEntity
 } from '@baishou/shared'
+import { writeAlignedEmbeddings } from '../knowledge-graph-extraction.align'
 import { KnowledgeGraphExtractionService } from '../knowledge-graph-extraction.service'
 
 const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
@@ -197,7 +198,7 @@ describe('KnowledgeGraphExtractionService entity align', () => {
             aliases: '["三哥"]',
             summary: '同事',
             nodeType: 'person',
-            distance: 0.35
+            distance: 0.25
           }
         ]
       })
@@ -229,7 +230,7 @@ describe('KnowledgeGraphExtractionService entity align', () => {
           aliases: '[]',
           summary: '另一个人',
           nodeType: 'person',
-          distance: 0.35
+          distance: 0.25
         }
       ])
     })
@@ -266,7 +267,7 @@ describe('KnowledgeGraphExtractionService entity align', () => {
           aliases: '[]',
           summary: '另一个人',
           nodeType: 'person',
-          distance: 0.35
+          distance: 0.25
         }
       ])
     })
@@ -279,7 +280,7 @@ describe('KnowledgeGraphExtractionService entity align', () => {
     expect((nodes[0]?.props as Record<string, unknown>).similarPending).toEqual(
       expect.objectContaining({
         peerId: existingId,
-        similarity: 0.72,
+        similarity: 0.75,
         reason: '像同一个人但不敢并'
       })
     )
@@ -374,7 +375,7 @@ describe('KnowledgeGraphExtractionService entity align', () => {
           aliases: '["三哥"]',
           summary: '老朋友',
           nodeType: 'person',
-          distance: 0.35
+          distance: 0.25
         }
       ])
     })
@@ -519,5 +520,35 @@ describe('KnowledgeGraphExtractionService entity align', () => {
 
     expect(nodes[0]?.id).toBe(splitId)
     expect(nodes[0]?.discriminator).toBe('同事')
+  })
+})
+
+describe('writeAlignedEmbeddings', () => {
+  it('should keep repository this when writing aligned embeddings', async () => {
+    const written: unknown[][] = []
+    class RepoLike {
+      embed = {
+        updateNodeEmbedding: async (...args: unknown[]) => {
+          written.push(args)
+        }
+      }
+      updateNodeEmbedding(
+        id: string,
+        vaultId: string,
+        notebookId: string,
+        embedding: number[],
+        modelId: string
+      ) {
+        return this.embed.updateNodeEmbedding(id, vaultId, notebookId, embedding, modelId)
+      }
+    }
+    const repo = new RepoLike()
+    await writeAlignedEmbeddings(
+      { repo: repo as never, llm: async () => null, align: { modelId: 'embed-v1' } },
+      VAULT,
+      NB_THIS,
+      new Map([['n1', [1, 0]]])
+    )
+    expect(written).toEqual([['n1', VAULT, NB_THIS, [1, 0], 'embed-v1']])
   })
 })

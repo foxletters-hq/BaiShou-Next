@@ -8,7 +8,8 @@ import {
   normalizeGraphExtractConfidence,
   type NotebookGraphEdgeRawRecord,
   type NotebookGraphExtractedWindowPayload,
-  type NotebookGraphNodeRawRecord
+  type NotebookGraphNodeRawRecord,
+  wrapKnowledgeGraphStepError
 } from '@baishou/shared'
 import type {
   NotebookGraphEmbedding,
@@ -105,6 +106,16 @@ export function buildAlignLookup(
       const fromSession = sessionHit(name, type)
       return fromSession ? [fromSession] : []
     },
+    requireEmbedQuery: Boolean(deps.align?.embedQuery),
+    embedQuery: deps.align?.embedQuery
+      ? async (text) => {
+          try {
+            return await deps.align!.embedQuery!(text)
+          } catch (error) {
+            throw wrapKnowledgeGraphStepError('node-embed', error)
+          }
+        }
+      : undefined,
     searchByVector:
       deps.align?.embedQuery && deps.repo.searchNodesByVector
         ? async (vector, type, topK) => {
@@ -125,7 +136,6 @@ export function buildAlignLookup(
             }))
           }
         : undefined,
-    embedQuery: deps.align?.embedQuery,
     nodeIdForEntity: (type, name) => notebookGraphNodeIdForEntity(vaultId, notebookId, type, name),
     judgeMerges: async (input) => {
       const prompt = buildEntityAlignPrompt(input)
@@ -252,7 +262,7 @@ export async function writeAlignedEmbeddings(
   embeddings: Map<string, number[]>
 ): Promise<void> {
   const modelId = deps.align?.modelId?.trim()
-  const update = deps.repo.updateNodeEmbedding
+  const update = deps.repo.updateNodeEmbedding?.bind(deps.repo)
   if (!modelId || !update || embeddings.size === 0) return
   for (const [id, embedding] of embeddings) {
     try {
@@ -474,12 +484,16 @@ export async function commitAlignedWindows(
     }
   }
 
-  await refreshNotebookEmbeddingsAfterAlign(deps, {
-    vaultId: input.vaultId,
-    notebookId: input.notebookId,
-    nodes: writtenNodes.values(),
-    pendingEmbeddings
-  })
+  await refreshNotebookEmbeddingsAfterAlign(
+    deps,
+    {
+      vaultId: input.vaultId,
+      notebookId: input.notebookId,
+      nodes: writtenNodes.values(),
+      pendingEmbeddings
+    },
+    { requireEmbed: Boolean(deps.align?.embedQuery) }
+  )
 
   return {
     nodes: [...writtenNodes.values()],
