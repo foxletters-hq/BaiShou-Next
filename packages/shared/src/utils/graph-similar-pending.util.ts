@@ -2,6 +2,25 @@
 
 export const GRAPH_SIMILAR_PENDING_KEY = 'similarPending'
 export const GRAPH_SIMILAR_PENDING_LIST_KEY = 'similarPendingList'
+/** 召回给模型看、以及进入相似待合并，共用这一条：必须大于 70%。 */
+export const GRAPH_SIMILAR_PENDING_MIN_SIMILARITY = 0.7
+export const GRAPH_ALIGN_MIN_SIMILARITY_PERCENT = Math.round(
+  GRAPH_SIMILAR_PENDING_MIN_SIMILARITY * 100
+)
+
+/** 向量分是 0–1；模型有时会写成 45 这种百分数。 */
+export function normalizeGraphSimilarPendingSimilarity(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  if (value > 1 && value <= 100) return value / 100
+  if (value < 0 || value > 100) return 0
+  return value
+}
+
+export function meetsGraphSimilarPendingThreshold(similarity: number): boolean {
+  return (
+    normalizeGraphSimilarPendingSimilarity(similarity) > GRAPH_SIMILAR_PENDING_MIN_SIMILARITY
+  )
+}
 
 export type GraphSimilarPending = {
   peerId: string
@@ -40,8 +59,9 @@ export function parseGraphSimilarPending(raw: unknown): GraphSimilarPending | nu
   const row = raw as Record<string, unknown>
   const peerId = typeof row.peerId === 'string' ? row.peerId.trim() : ''
   if (!peerId) return null
-  const similarity =
+  const similarity = normalizeGraphSimilarPendingSimilarity(
     typeof row.similarity === 'number' && Number.isFinite(row.similarity) ? row.similarity : 0
+  )
   const reason = typeof row.reason === 'string' ? row.reason : ''
   const createdAt = typeof row.createdAt === 'string' ? row.createdAt : ''
   const sourceExcerpt =
@@ -58,10 +78,15 @@ export function listGraphSimilarPending(props: Record<string, unknown>): GraphSi
       )
     : []
   const single = parseGraphSimilarPending(props[GRAPH_SIMILAR_PENDING_KEY])
-  if (single && !fromList.some((item) => item.peerId === single.peerId)) {
-    return [single, ...fromList]
-  }
-  return fromList.length > 0 ? fromList : single ? [single] : []
+  const items =
+    single && !fromList.some((item) => item.peerId === single.peerId)
+      ? [single, ...fromList]
+      : fromList.length > 0
+        ? fromList
+        : single
+          ? [single]
+          : []
+  return items.filter((item) => meetsGraphSimilarPendingThreshold(item.similarity))
 }
 
 export function nodePropsHaveSimilarPending(propsJson: string | null | undefined): boolean {
@@ -89,7 +114,7 @@ export function applySimilarPendingToProps(
   pending: GraphSimilarPending
 ): Record<string, unknown> {
   const parsed = parseGraphSimilarPending(pending)
-  if (!parsed) return { ...props }
+  if (!parsed || !meetsGraphSimilarPendingThreshold(parsed.similarity)) return { ...props }
   const current = listGraphSimilarPending(props).filter((item) => item.peerId !== parsed.peerId)
   current.push(parsed)
   return writeSimilarPendingList(props, current)

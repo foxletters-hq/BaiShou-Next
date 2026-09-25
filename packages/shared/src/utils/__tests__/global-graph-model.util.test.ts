@@ -13,7 +13,7 @@ describe('resolveGlobalGraphModelIds', () => {
     ).toEqual({ providerId: 'deepseek', modelId: 'deepseek-chat' })
   })
 
-  it('should fall back to the dialogue model when graph is unset or off', () => {
+  it('should stay empty when the graph slot is unset even if dialogue is configured', () => {
     expect(
       resolveGlobalGraphModelIds({
         globalDialogueProviderId: 'gemini',
@@ -21,15 +21,17 @@ describe('resolveGlobalGraphModelIds', () => {
         globalGraphProviderId: '',
         globalGraphModelId: 'off'
       })
-    ).toEqual({ providerId: 'gemini', modelId: 'gemini-pro' })
+    ).toEqual({ providerId: undefined, modelId: '' })
   })
 
-  it('should return empty ids when neither graph nor dialogue is configured', () => {
+  it('should return the graph model without a provider when only the model id is set', () => {
     expect(
       resolveGlobalGraphModelIds({
-        globalDialogueProviderId: '',
-        globalDialogueModelId: 'off'
+        globalGraphProviderId: '',
+        globalGraphModelId: 'deepseek-chat',
+        globalDialogueProviderId: 'gemini',
+        globalDialogueModelId: 'gemini-pro'
       })
-    ).toEqual({ providerId: undefined, modelId: '' })
+    ).toEqual({ providerId: undefined, modelId: 'deepseek-chat' })
   })
 })
