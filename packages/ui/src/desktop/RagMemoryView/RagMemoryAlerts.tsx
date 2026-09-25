@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RAG_BATCH_EMBED_PHASE_IDS,
+  MEMORY_ORGANIZE_PHASE_IDS,
   phaseCountForId,
   ragBatchEmbedPhaseLabelKey,
   resolvePhaseRowStatus,
@@ -27,6 +27,10 @@ interface RagMemoryAlertsProps {
   graphExtract?: { current: number; total: number; percent: number } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
+  suspectCount?: number
+  onReviewSuspects?: () => void
+  /** all：原样；organize：只出整理进度；idle：整理进度改走弹层，这里只留其它提示 */
+  surface?: 'all' | 'organize' | 'idle'
 }
 
 export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
@@ -43,9 +47,14 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   onResumeMigration,
   graphExtract = null,
   graphExtractWaiting = false,
-  pendingGraphCount = 0
+  pendingGraphCount = 0,
+  suspectCount = 0,
+  onReviewSuspects,
+  surface = 'all'
 }) => {
   const { t } = useTranslation()
+  const showOrganize = surface !== 'idle'
+  const showIdle = surface !== 'organize'
   const isMigrating = ragState.isRunning && ragState.type === 'migration'
   const isBatchEmbedding = ragState.isRunning && ragState.type === 'batchEmbed'
   const isAborting = ragState.statusKey === 'settings.rag_migration_aborting' || migrationCancelBusy
@@ -74,6 +83,16 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           ? t('memory.readiness_graph_pending', '待整理 {{count}} 篇', { count: pendingGraphCount })
           : t('settings.rag_phase_waiting', '等待中')
         : t('settings.rag_phase_skipped', '无需补齐')
+  const batchEmbedStatusTitle = ragState.cancelling
+    ? t('settings.rag_batch_embed_cancelling', '正在取消索引…')
+    : ragState.paused
+      ? t('settings.rag_batch_embed_paused', '索引已暂停')
+      : showGraphInEmbedPhases
+        ? t('memory.readiness_organizing', '正在整理记忆…')
+        : t('settings.rag_indexing', '正在补齐嵌入…')
+  const showOrganizeStatusTitle =
+    surface !== 'organize' || ragState.cancelling || Boolean(ragState.paused)
+
   const graphPhaseRow = (
     <li
       key="life_graph"
@@ -104,7 +123,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 
   return (
     <>
-      {isMigrating && (
+      {showIdle && isMigrating && (
         <div className={styles.migrationAlert}>
           <div className={styles.migrationRow}>
             <div className={styles.spinner}></div>
@@ -133,7 +152,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </div>
       )}
 
-      {isBatchEmbedding && (
+      {showOrganize && isBatchEmbedding && (
         <div className={styles.migrationAlert}>
           <div className={styles.migrationRow}>
             {ragState.paused && !ragState.cancelling ? (
@@ -141,15 +160,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             ) : (
               <div className={styles.spinner}></div>
             )}
-            <span className={styles.migTitle}>
-              {ragState.cancelling
-                ? t('settings.rag_batch_embed_cancelling', '正在取消索引…')
-                : ragState.paused
-                  ? t('settings.rag_batch_embed_paused', '索引已暂停')
-                  : showGraphInEmbedPhases
-                    ? t('memory.readiness_organizing', '正在整理记忆…')
-                    : t('settings.rag_indexing', '正在补齐嵌入…')}
-            </span>
+            {showOrganizeStatusTitle ? (
+              <span className={styles.migTitle}>{batchEmbedStatusTitle}</span>
+            ) : null}
             {(onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed) && (
               <div className={styles.batchEmbedActions}>
                 {ragState.paused && !ragState.cancelling
@@ -191,7 +204,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           </div>
           {ragState.phases ? (
             <ul className={styles.phaseList}>
-              {RAG_BATCH_EMBED_PHASE_IDS.map((id) => {
+              {MEMORY_ORGANIZE_PHASE_IDS.map((id) => {
                 const item = phaseCountForId(ragState.phases!, id)
                 const status = resolvePhaseRowStatus(id, ragState.phase, item)
                 const label = t(ragBatchEmbedPhaseLabelKey(id), id)
@@ -253,7 +266,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </div>
       )}
 
-      {showGraphExtractCard && (
+      {showOrganize && showGraphExtractCard && (
         <div className={styles.migrationAlert}>
           <div className={styles.migrationRow}>
             <div className={styles.spinner}></div>
@@ -270,7 +283,29 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </div>
       )}
 
-      {showInterrupted && (
+      {showIdle &&
+      !isMigrating &&
+      !isBatchEmbedding &&
+      !showGraphExtractCard &&
+      !showInterrupted &&
+      suspectCount > 0 ? (
+        <div className={styles.migrationAlert}>
+          <div className={styles.migrationRow}>
+            <span className={styles.migTitle}>
+              {t('memory.suspects_need_review', '有 {{count}} 个待确认节点', {
+                count: suspectCount
+              })}
+            </span>
+            {onReviewSuspects ? (
+              <Button type="button" variant="outlined" size="small" onClick={onReviewSuspects}>
+                {t('memory.review_suspects', '去检查')}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showIdle && showInterrupted && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
             <TriangleAlert size={18} color="var(--color-error)" />
@@ -314,7 +349,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </div>
       )}
 
-      {!isMigrating && !isBatchEmbedding && !showInterrupted && hasMismatchModel && (
+      {showIdle && !isMigrating && !isBatchEmbedding && !showInterrupted && hasMismatchModel && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
             <TriangleAlert size={18} color="var(--color-error)" />

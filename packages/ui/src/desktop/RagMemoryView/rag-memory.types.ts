@@ -98,4 +98,8 @@ export interface RagMemoryViewProps {
   graphExtract?: { current: number; total: number; percent: number } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
+  suspectCount?: number
+  onReviewSuspects?: () => void
+  /** 记忆中心把整理进度收到独立弹层时，向量页不再内嵌同一块 */
+  hideOrganizeProgress?: boolean
 }

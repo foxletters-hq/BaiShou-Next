@@ -32,7 +32,7 @@ const staleEntry: RagEntry = {
 }
 
 describe('RagMemoryView searching', () => {
-  it('hides stale entries and shows a searching status while the query is in flight', () => {
+  it('keeps existing entries visible and shows a searching overlay while the query is in flight', () => {
     render(
       <RagMemoryView
         config={config}
@@ -49,7 +49,28 @@ describe('RagMemoryView searching', () => {
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('正在搜索')
-    expect(screen.queryByText('上一分类的旧结果')).not.toBeInTheDocument()
+    expect(screen.getByText('上一分类的旧结果')).toBeInTheDocument()
+    expect(document.querySelector('.searchingOverlay')).not.toBeNull()
+  })
+
+  it('shows a full searching state when the list is still empty', () => {
+    render(
+      <RagMemoryView
+        config={config}
+        stats={{ ...stats, totalCount: 0 }}
+        ragState={idleState}
+        hasMismatchModel={false}
+        entries={[]}
+        totalCount={0}
+        isSearching
+        onChange={vi.fn()}
+        onSearch={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('正在搜索')
+    expect(document.querySelector('.searchingState')).not.toBeNull()
+    expect(document.querySelector('.searchingOverlay')).toBeNull()
   })
 
   it('shows entries again after the query finishes', () => {

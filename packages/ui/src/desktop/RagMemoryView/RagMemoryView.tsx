@@ -56,7 +56,10 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onPageChange,
   graphExtract = null,
   graphExtractWaiting = false,
-  pendingGraphCount = 0
+  pendingGraphCount = 0,
+  suspectCount = 0,
+  onReviewSuspects,
+  hideOrganizeProgress = false
 }) => {
   const { t } = useTranslation()
   const [clearOpen, setClearOpen] = useState(false)
@@ -96,6 +99,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         onSourceKindChange={onSourceKindChange ?? (() => undefined)}
         onAddManualMemory={onAddManualMemory}
         onOpenClear={() => setClearOpen(true)}
+        suspectCount={suspectCount}
+        onReviewSuspects={onReviewSuspects}
       />
 
       <div className={styles.alertsSlot}>
@@ -115,30 +120,41 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           graphExtract={graphExtract}
           graphExtractWaiting={graphExtractWaiting}
           pendingGraphCount={pendingGraphCount}
+          suspectCount={suspectCount}
+          onReviewSuspects={onReviewSuspects}
+          surface={hideOrganizeProgress ? 'idle' : 'all'}
         />
       </div>
 
       <div className={styles.listScroll} aria-busy={isSearching}>
-        {isSearching ? (
+        {isSearching && entries.length === 0 ? (
           <div className={styles.searchingState} role="status" aria-live="polite">
             <Loader2 className={styles.searchingSpinner} size={24} aria-hidden />
             <span>{t('settings.rag_searching', '正在搜索…')}</span>
           </div>
         ) : (
-          <RagMemoryEntriesList
-            entries={entries}
-            searchQuery={view.searchQuery}
-            sourceKind={sourceKind}
-            activeMenuId={view.activeMenuId}
-            setActiveMenuId={view.setActiveMenuId}
-            formatDate={formatRagEntryDate}
-            onEditEntry={onEditEntry}
-            onDeleteEntry={onDeleteEntry}
-          />
+          <>
+            {isSearching ? (
+              <div className={styles.searchingOverlay} role="status" aria-live="polite">
+                <Loader2 className={styles.searchingSpinner} size={24} aria-hidden />
+                <span>{t('settings.rag_searching', '正在搜索…')}</span>
+              </div>
+            ) : null}
+            <RagMemoryEntriesList
+              entries={entries}
+              searchQuery={view.searchQuery}
+              sourceKind={sourceKind}
+              activeMenuId={view.activeMenuId}
+              setActiveMenuId={view.setActiveMenuId}
+              formatDate={formatRagEntryDate}
+              onEditEntry={onEditEntry}
+              onDeleteEntry={onDeleteEntry}
+            />
+          </>
         )}
       </div>
 
-      {!isSearching && view.showPagination ? (
+      {view.showPagination ? (
         <RagMemoryPaginationBar
           effectiveTotal={view.effectiveTotal}
           pageSize={view.pageSize}

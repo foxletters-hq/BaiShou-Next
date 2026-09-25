@@ -411,6 +411,35 @@
   display: none;
 }
 
+.organizeModal {
+  width: min(32em, 92vw);
+}
+
+.organizeModal .migrationAlert {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.organizeDone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.organizeDoneText {
+  margin: 0;
+  font-size: var(--ui-fs-lg);
+  color: var(--text-secondary);
+}
+
+.organizeDoneActions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .disabledAlert {
   display: flex;
   align-items: center;
@@ -424,6 +453,7 @@
 
 /* === 5. Scrolling list === */
 .listScroll {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -515,23 +545,13 @@
 }
 
 .kindBadgeManual {
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.16);
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
 }
 
 .kindBadgeGraph {
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.12);
-}
-
-[data-theme='dark'] .kindBadgeManual {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.18);
-}
-
-[data-theme='dark'] .kindBadgeGraph {
-  color: #c4b5fd;
-  background: rgba(124, 58, 237, 0.2);
+  color: var(--color-accent-purple);
+  background: color-mix(in srgb, var(--color-accent-purple) 12%, transparent);
 }
 
 .memoryEntryText {
@@ -747,6 +767,20 @@
   animation: spin 1s linear infinite;
 }
 
+.searchingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  color: var(--text-tertiary);
+  font-size: var(--ui-fs-md);
+}
+
 /* === 6. Empty state === */
 .emptyStateContainer {
   flex: 1 1 auto;
@@ -864,8 +898,8 @@
 
 /* === 9. Migration / error alerts === */
 .migrationAlert {
-  background: var(--color-primary-light);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   padding: 16px;
 }
@@ -957,7 +991,7 @@
 .migTitle {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--text-primary);
 }
 .spinner {
   width: 16px;
