@@ -8,7 +8,7 @@
   font-weight: 600;
   font-family: var(--font-mono, monospace);
   color: var(--text-primary);
-  background-color: #fff;
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
   cursor: pointer;
   user-select: none;
@@ -24,14 +24,8 @@
 .container:hover {
   transform: translateY(-1px);
   box-shadow: none;
-  background-color: #fff;
-  border-color: var(--border-control);
-  color: var(--text-primary);
-}
-
-:global(body[data-theme='dark']) .container,
-:global(body[data-theme='dark']) .container:hover {
   background-color: var(--bg-surface);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 

@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   background: var(--color-primary);
-  color: white;
+  color: var(--text-on-primary);
   padding: 4px 10px;
   border-radius: 16px;
   font-size: 12px;
@@ -39,7 +39,7 @@
 .removeBtn {
   background: transparent;
   border: none;
-  color: white;
+  color: var(--text-on-primary);
   font-size: 10px;
   cursor: pointer;
   padding: 2px;

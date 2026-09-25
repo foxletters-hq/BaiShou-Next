@@ -6,8 +6,8 @@
   align-items: center;
   justify-content: center;
   background-color: var(--bg-overlay);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   pointer-events: all;
   user-select: none;
   animation: fadeIn 0.2s ease-out;
