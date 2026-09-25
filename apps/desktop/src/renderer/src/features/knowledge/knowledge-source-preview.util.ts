@@ -57,6 +57,23 @@ export function buildPdfJsDocumentParams(source: PdfPreviewSource): Record<strin
 export const PDF_PREVIEW_SPREAD_GAP = 12
 export const PDF_PREVIEW_MIN_PAGE_CSS_WIDTH = 280
 
+/**
+ * 容器宽度还没量到时不要画。先按整栏画再改成对开，后完成的那次会把第一页盖成过高的尺寸。
+ */
+export function resolvePdfPreviewLayout(input: {
+  containerWidth: number
+  pageWidth: number
+  pageCount: number
+}): { ready: boolean; useSpread: boolean } {
+  if (input.containerWidth <= 0 || input.pageWidth <= 0 || input.pageCount < 1) {
+    return { ready: false, useSpread: false }
+  }
+  return {
+    ready: true,
+    useSpread: shouldUsePdfBookSpread(input.containerWidth, input.pageWidth) && input.pageCount > 1
+  }
+}
+
 /** 容器够放下两页可读宽度时，用左右对开。 */
 export function shouldUsePdfBookSpread(
   containerWidth: number,
@@ -100,21 +117,75 @@ export function formatPdfPreviewPageLabel(
   }
 }
 
-/** 按容器宽度适配当前可见页（page-width），高度超出则由容器滚动。 */
+export const PDF_PREVIEW_MIN_SCALE = 0.25
+export const PDF_PREVIEW_MAX_SCALE = 4
+/** 与官方阅读器相同：每次按 1.1 倍缩放，1 就是原页大小。 */
+export const PDF_PREVIEW_SCALE_DELTA = 1.1
+
+export function clampPdfPreviewScale(scale: number): number {
+  if (!Number.isFinite(scale) || scale <= 0) return 1
+  return Math.min(PDF_PREVIEW_MAX_SCALE, Math.max(PDF_PREVIEW_MIN_SCALE, scale))
+}
+
+/** 按当前真实比例放大或缩小，不是在「适配后的尺寸」上再乘一档。 */
+export function stepPdfPreviewScale(current: number, direction: -1 | 1): number {
+  const next =
+    direction > 0 ? current * PDF_PREVIEW_SCALE_DELTA : current / PDF_PREVIEW_SCALE_DELTA
+  return clampPdfPreviewScale(next)
+}
+
+export function resolvePdfPreviewFitScale(input: {
+  pageWidth: number
+  pageHeight: number
+  pageCountInView: number
+  availableWidth: number
+  availableHeight?: number
+  gap?: number
+  spreadSlot?: boolean
+  fit?: 'page' | 'width'
+}): number {
+  if (input.pageWidth <= 0 || input.pageHeight <= 0) return 1
+  const pages = Math.max(1, input.pageCountInView)
+  const slots = input.spreadSlot ? Math.max(2, pages) : pages
+  const gap = slots > 1 ? (input.gap ?? PDF_PREVIEW_SPREAD_GAP) : 0
+  const usableWidth = Math.max(80, input.availableWidth - gap)
+  const widthScale = usableWidth / slots / input.pageWidth
+  const heightLimit = input.availableHeight ?? 0
+  if (input.fit === 'width' || heightLimit <= 0) return widthScale
+  return Math.min(widthScale, heightLimit / input.pageHeight)
+}
+
+/**
+ * scale = 1 表示原页大小（100%）。
+ * 未传入 scale 时按预览区适配；对开时单独一页也按半页宽度排。
+ */
 export function resolvePdfPreviewPageCssSize(input: {
   pageWidth: number
   pageHeight: number
   pageCountInView: number
   availableWidth: number
+  availableHeight?: number
   gap?: number
+  spreadSlot?: boolean
+  fit?: 'page' | 'width'
+  scale?: number
 }): { cssWidth: number; cssHeight: number; viewportScale: number } {
-  const pages = Math.max(1, input.pageCountInView)
-  const gap = pages > 1 ? (input.gap ?? PDF_PREVIEW_SPREAD_GAP) : 0
-  const usable = Math.max(80, input.availableWidth - gap)
-  const viewportScale = usable / pages / input.pageWidth
+  const viewportScale =
+    input.scale && input.scale > 0
+      ? clampPdfPreviewScale(input.scale)
+      : resolvePdfPreviewFitScale(input)
   return {
     cssWidth: input.pageWidth * viewportScale,
     cssHeight: input.pageHeight * viewportScale,
     viewportScale
   }
+}
+
+/** 回车或失焦时跳页。非法输入返回 null，超出总页数则停在最后一页。 */
+export function parsePdfPreviewPageJump(raw: string, pageCount: number): number | null {
+  const text = raw.trim()
+  if (!/^\d+$/.test(text) || pageCount < 1) return null
+  const page = Number(text)
+  if (!Number.isInteger(page) || page < 1) return null
+  return Math.min(pageCount, page)
 }

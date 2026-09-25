@@ -1,27 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { Button, MarkdownRenderer } from '@baishou/ui'
+import { ChevronLeft, ChevronRight, Minus, Plus, X } from 'lucide-react'
+import { Button, Input, MarkdownRenderer } from '@baishou/ui'
 import { assessFetchedWebPage, fetchedWebPageIssueMessage } from '@baishou/shared'
 import { KnowledgeDialog } from './KnowledgeDialog'
 import {
   buildPdfJsDocumentParams,
-  formatPdfPreviewPageLabel,
+  parsePdfPreviewPageJump,
   pdfBookSpreadPages,
   pdfSpreadStep,
+  resolvePdfPreviewFitScale,
   resolvePdfPreviewPageCssSize,
   resolvePdfPreviewSource,
-  shouldUsePdfBookSpread,
+  stepPdfPreviewScale,
   type PdfPreviewSource
 } from './knowledge-source-preview.util'
+import { EpubSourcePreview } from './EpubSourcePreview'
 import styles from './KnowledgePage.module.css'
 
 export type SourcePreviewPayload = {
-  kind: 'pdf' | 'text' | 'url' | 'unsupported'
+  kind: 'pdf' | 'epub' | 'text' | 'url' | 'unsupported'
   fileName: string
   localUrl: string | null
   fileBytes?: Uint8Array | ArrayBuffer | null
   textContent: string | null
+  pages?: string[] | null
   originUrl: string | null
 }
 
@@ -73,9 +76,11 @@ async function renderPdfPageToCanvas(
   canvas: HTMLCanvasElement,
   cssWidth: number,
   cssHeight: number,
-  viewportScale: number
-): Promise<{ cancel?: () => void }> {
+  viewportScale: number,
+  isCancelled: () => boolean
+): Promise<{ promise: Promise<void>; cancel?: () => void } | null> {
   const pdfPage = await doc.getPage(pageNumber)
+  if (isCancelled()) return null
   const outputScale = window.devicePixelRatio || 1
   const viewport = pdfPage.getViewport({ scale: viewportScale })
   const context = canvas.getContext('2d')
@@ -90,7 +95,6 @@ async function renderPdfPageToCanvas(
     viewport,
     ...(transform ? { transform } : {})
   })
-  await task.promise
   return task
 }
 
@@ -104,13 +108,28 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
   const [pageCount, setPageCount] = useState(0)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
-  const [useSpread, setUseSpread] = useState(false)
+  const [lockedScale, setLockedScale] = useState<number | null>(null)
+  const [displayScale, setDisplayScale] = useState(1)
+  const [viewport, setViewport] = useState({ width: 0, height: 0 })
+  const [pageDraft, setPageDraft] = useState('1')
   const renderTasksRef = useRef<Array<{ cancel?: () => void }>>([])
   const sourceRef = useRef(source)
   sourceRef.current = source
   const sourceKey = source.type === 'url' ? source.url : source.data
-  const visiblePages = useSpread ? pdfBookSpreadPages(page, pageCount) : [page]
-  const pageLabel = formatPdfPreviewPageLabel(visiblePages, pageCount)
+  const visiblePages = pdfBookSpreadPages(page, pageCount)
+
+  useEffect(() => {
+    setPageDraft(String(page))
+  }, [page])
+
+  const commitPageJump = () => {
+    const next = parsePdfPreviewPageJump(pageDraft, pageCount)
+    if (next == null) {
+      setPageDraft(String(page))
+      return
+    }
+    setPage(next)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -120,6 +139,9 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
     setPage(1)
     setPageCount(0)
     setDoc(null)
+    setLockedScale(null)
+    setDisplayScale(1)
+    setViewport({ width: 0, height: 0 })
 
     void (async () => {
       try {
@@ -151,29 +173,53 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
   useEffect(() => {
     if (!doc || status !== 'ready' || !wrapRef.current) return
     const wrap = wrapRef.current
-    const syncSpread = () => {
+    const syncViewport = () => {
       const width = wrap.clientWidth
-      void (async () => {
-        try {
-          const probe = await doc.getPage(page)
-          const base = probe.getViewport({ scale: 1 })
-          setUseSpread(shouldUsePdfBookSpread(width, base.width) && doc.numPages > 1)
-        } catch {
-          setUseSpread(false)
-        }
-      })()
+      const height = wrap.clientHeight
+      setViewport((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      )
     }
-    syncSpread()
-    const observer = new ResizeObserver(syncSpread)
+    syncViewport()
+    const observer = new ResizeObserver(syncViewport)
     observer.observe(wrap)
     return () => observer.disconnect()
-  }, [doc, page, status])
+  }, [doc, status])
 
   useEffect(() => {
-    if (!doc || status !== 'ready' || !wrapRef.current) return
+    if (status !== 'ready') return
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        setPage((current) => pdfSpreadStep(current, pageCount, -1))
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        setPage((current) => pdfSpreadStep(current, pageCount, 1))
+      } else if (event.key === '+' || event.key === '=') {
+        event.preventDefault()
+        setLockedScale((current) => stepPdfPreviewScale(current ?? displayScale, 1))
+      } else if (event.key === '-' || event.key === '_') {
+        event.preventDefault()
+        setLockedScale((current) => stepPdfPreviewScale(current ?? displayScale, -1))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [displayScale, pageCount, status])
+
+  useEffect(() => {
+    if (
+      viewport.width <= 0 ||
+      viewport.height <= 0 ||
+      !doc ||
+      status !== 'ready' ||
+      !wrapRef.current
+    )
+      return
     let cancelled = false
-    const wrap = wrapRef.current
-    const pages = useSpread ? pdfBookSpreadPages(page, pageCount) : [page]
+    const pages = pdfBookSpreadPages(page, pageCount)
     const canvases = [leftCanvasRef.current, rightCanvasRef.current].filter(
       Boolean
     ) as HTMLCanvasElement[]
@@ -185,32 +231,50 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
         const first = await doc.getPage(pages[0] ?? 1)
         if (cancelled) return
         const base = first.getViewport({ scale: 1 })
+        const fitScale = resolvePdfPreviewFitScale({
+          pageWidth: base.width,
+          pageHeight: base.height,
+          pageCountInView: pages.length,
+          availableWidth: Math.max(80, viewport.width - 32),
+          availableHeight: Math.max(80, viewport.height - 32),
+          spreadSlot: true,
+          fit: 'page'
+        })
+        const scale = lockedScale ?? fitScale
         const size = resolvePdfPreviewPageCssSize({
           pageWidth: base.width,
           pageHeight: base.height,
           pageCountInView: pages.length,
-          availableWidth: Math.max(80, wrap.clientWidth - 16)
+          availableWidth: Math.max(80, viewport.width - 32),
+          availableHeight: Math.max(80, viewport.height - 32),
+          spreadSlot: true,
+          scale
         })
-        const tasks: Array<{ cancel?: () => void }> = []
+        if (!cancelled) setDisplayScale(size.viewportScale)
         for (let i = 0; i < pages.length; i += 1) {
           const canvas = canvases[i]
           const pageNumber = pages[i]
           if (!canvas || !pageNumber) continue
+          const pdfPage = await doc.getPage(pageNumber)
+          if (cancelled) return
+          const pageBase = pdfPage.getViewport({ scale: 1 })
           const task = await renderPdfPageToCanvas(
             doc,
             pageNumber,
             canvas,
-            size.cssWidth,
-            size.cssHeight,
-            size.viewportScale
+            pageBase.width * size.viewportScale,
+            pageBase.height * size.viewportScale,
+            size.viewportScale,
+            () => cancelled
           )
-          if (cancelled) {
-            task.cancel?.()
+          if (!task || cancelled) {
+            task?.cancel?.()
             return
           }
-          tasks.push(task)
+          renderTasksRef.current.push(task)
+          await task.promise
+          if (cancelled) return
         }
-        renderTasksRef.current = tasks
       } catch (e: unknown) {
         if (cancelled) return
         const message = e instanceof Error ? e.message : String(e)
@@ -221,8 +285,9 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
     return () => {
       cancelled = true
       for (const task of renderTasksRef.current) task.cancel?.()
+      renderTasksRef.current = []
     }
-  }, [doc, page, pageCount, status, useSpread])
+  }, [doc, lockedScale, page, pageCount, status, viewport.height, viewport.width])
 
   if (status === 'loading') {
     return (
@@ -241,43 +306,90 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
   return (
     <div className={styles.pdfPreview}>
       <div className={styles.pdfToolbar}>
-        <button
-          type="button"
-          className={styles.pdfNavBtn}
-          disabled={page <= 1}
-          onClick={() =>
-            setPage((current) =>
-              useSpread ? pdfSpreadStep(current, pageCount, -1) : Math.max(1, current - 1)
-            )
-          }
-          aria-label={t('knowledge.preview_prev_page', '上一页')}
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <span className={styles.pdfPageLabel}>
-          {t('knowledge.preview_page_of', '{{page}} / {{total}}', {
-            page: pageLabel.page,
-            total: pageLabel.total
-          })}
-        </span>
-        <button
-          type="button"
-          className={styles.pdfNavBtn}
-          disabled={(visiblePages[visiblePages.length - 1] ?? page) >= pageCount}
-          onClick={() =>
-            setPage((current) =>
-              useSpread ? pdfSpreadStep(current, pageCount, 1) : Math.min(pageCount, current + 1)
-            )
-          }
-          aria-label={t('knowledge.preview_next_page', '下一页')}
-        >
-          <ChevronRight size={16} />
-        </button>
+        <div className={styles.pdfToolbarGroup}>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.pdfIconBtn}
+            disabled={page <= 1}
+            onClick={() => setPage((current) => pdfSpreadStep(current, pageCount, -1))}
+            aria-label={t('knowledge.preview_prev_page', '上一页')}
+          >
+            <ChevronLeft size={16} />
+          </Button>
+          <Input
+            fieldSize="small"
+            inputMode="numeric"
+            value={pageDraft}
+            aria-label={t('knowledge.preview_jump_page', '跳转到页')}
+            className={styles.pdfPageJump}
+            inputClassName={styles.pdfPageJumpField}
+            onChange={(event) => setPageDraft(event.target.value)}
+            onBlur={commitPageJump}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              commitPageJump()
+            }}
+          />
+          <span className={styles.pdfPageLabel}>
+            {t('knowledge.preview_page_total', '/ {{total}}', { total: pageCount })}
+          </span>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.pdfIconBtn}
+            disabled={(visiblePages[visiblePages.length - 1] ?? page) >= pageCount}
+            onClick={() => setPage((current) => pdfSpreadStep(current, pageCount, 1))}
+            aria-label={t('knowledge.preview_next_page', '下一页')}
+          >
+            <ChevronRight size={16} />
+          </Button>
+        </div>
+        <span className={styles.pdfToolbarDivider} aria-hidden />
+        <div className={styles.pdfToolbarGroup}>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.pdfIconBtn}
+            disabled={displayScale <= 0.25}
+            onClick={() => setLockedScale(stepPdfPreviewScale(displayScale, -1))}
+            aria-label={t('knowledge.preview_zoom_out', '缩小')}
+          >
+            <Minus size={16} />
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.pdfZoomLabel}
+            onClick={() => setLockedScale(1)}
+            aria-label={t('knowledge.preview_zoom_reset', '恢复 100%')}
+          >
+            {t('knowledge.preview_zoom_percent', '{{percent}}%', {
+              percent: Math.round(displayScale * 100)
+            })}
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.pdfIconBtn}
+            disabled={displayScale >= 4}
+            onClick={() => setLockedScale(stepPdfPreviewScale(displayScale, 1))}
+            aria-label={t('knowledge.preview_zoom_in', '放大')}
+          >
+            <Plus size={16} />
+          </Button>
+        </div>
       </div>
       <div ref={wrapRef} className={styles.pdfCanvasWrap}>
-        <div className={useSpread && visiblePages.length > 1 ? styles.pdfSpread : styles.pdfSingle}>
+        <div className={visiblePages.length > 1 ? styles.pdfSpread : styles.pdfSingle}>
           <canvas ref={leftCanvasRef} className={styles.pdfCanvas} />
-          {useSpread && visiblePages.length > 1 ? (
+          {visiblePages.length > 1 ? (
             <canvas ref={rightCanvasRef} className={styles.pdfCanvas} />
           ) : null}
         </div>
@@ -338,7 +450,24 @@ export const KnowledgeSourcePreviewDialog: React.FC<Props> = ({
     <KnowledgeDialog
       open={open}
       onClose={onClose}
-      title={title}
+      animation="none"
+      title={
+        <div className={styles.previewTitleRow}>
+          <span className={styles.previewHeading} title={title}>
+            {title}
+          </span>
+          <Button
+            type="button"
+            size="small"
+            variant="text"
+            className={styles.previewCloseBtn}
+            onClick={onClose}
+            aria-label={t('common.close', '关闭')}
+          >
+            <X size={16} strokeWidth={2} />
+          </Button>
+        </div>
+      }
       aria-label={t('knowledge.preview_source_title', '源文件预览')}
       className={styles.previewDialog}
     >
@@ -356,6 +485,9 @@ export const KnowledgeSourcePreviewDialog: React.FC<Props> = ({
           {t('knowledge.preview_failed_read_source', '预览失败：无法读取源文件')}
         </div>
       ) : null}
+      {!loading && !error && payload?.kind === 'epub' ? (
+        <EpubSourcePreview pages={payload.pages ?? []} />
+      ) : null}
       {!loading && !error && (payload?.kind === 'text' || payload?.kind === 'url') ? (
         <UrlOrTextPreview payload={payload} />
       ) : null}
@@ -364,11 +496,6 @@ export const KnowledgeSourcePreviewDialog: React.FC<Props> = ({
           {t('knowledge.preview_unsupported', '暂不支持预览该类型文件')}
         </div>
       ) : null}
-      <div className={styles.dialogActions}>
-        <Button type="button" onClick={onClose}>
-          {t('common.close', '关闭')}
-        </Button>
-      </div>
     </KnowledgeDialog>
   )
 }
