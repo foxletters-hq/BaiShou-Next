@@ -283,7 +283,7 @@ export function registerGraphMutateIpc(): void {
         manager,
         repo
       })
-      await syncGraphPendingIndex()
+      await syncGraphPendingIndex({ absentSweep: 'off', embedMissing: false })
       return { ok: true, ...result }
     }
   )

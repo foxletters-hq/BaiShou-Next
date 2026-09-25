@@ -1,5 +1,6 @@
 import {
   applySuspectReasonToProps,
+  removeSuspectReasonFromProps,
   type GraphEdgeRawRecord,
   type GraphNodeRawRecord
 } from '@baishou/core-desktop'
@@ -48,7 +49,7 @@ export async function writeNodeReview(
     discriminator: node.discriminator ?? '',
     aliases: node.aliases,
     summary: node.summary,
-    props: parseProps(node.propsJson),
+    props: removeSuspectReasonFromProps(parseProps(node.propsJson)),
     mentionCount: node.mentionCount,
     firstSeenAt: node.firstSeenAt ?? now,
     lastSeenAt: node.lastSeenAt ?? now,

@@ -11,7 +11,7 @@ const src = [
   readFileSync(join(dir, '../graph-name-candidates.ts'), 'utf8'),
   readFileSync(join(dir, '../graph-query.ipc.ts'), 'utf8')
 ].join('\n')
-const agentSrc = readFileSync(join(dir, '../AgentChatService.ts'), 'utf8')
+const agentSrc = readFileSync(join(dir, '../companion-stream-host.ts'), 'utf8')
 const notebookReviewSrc = readFileSync(join(dir, '../../services/notebook-graph-review.ts'), 'utf8')
 
 function sliceBetween(source: string, start: string, end: string): string {
@@ -28,6 +28,13 @@ describe('graph split ipc', () => {
     expect(src).toContain("'graph:revert-node-split'")
     expect(src).toContain("'graph:list-name-candidates'")
     expect(src).toContain("'graph:list-split-edges'")
+  })
+
+  it('should sync split writes without waiting on a full orphan sweep or embed', () => {
+    const split = sliceBetween(src, "'graph:split-node'", "'graph:revert-node-split'")
+    expect(split).toContain('syncGraphPendingIndex')
+    expect(split).toContain("absentSweep: 'off'")
+    expect(split).toContain('embedMissing: false')
   })
 
   it('should soft-delete the split node and sync the index when reverting a split', () => {

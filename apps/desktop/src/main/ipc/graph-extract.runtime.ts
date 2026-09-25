@@ -25,7 +25,7 @@ export async function resolveExtractLlm() {
   const { settingsManager } = await import('./settings.ipc')
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
   const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
-  if (!modelId) throw new Error('graph-extract-not-configured')
+  if (!providerId || !modelId) throw new Error('graph-extract-not-configured')
   const provider = await getActiveProvider(providerId)
   return createDefaultGraphExtractLlm({
     provider,

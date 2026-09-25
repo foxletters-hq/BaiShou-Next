@@ -1,4 +1,4 @@
-import { readGraphNameRegistry } from '@baishou/shared'
+import { formatGraphSplitPartnerName, readGraphNameRegistry } from '@baishou/shared'
 import { parseProps, requireGraphRepo, writeVaultId } from './graph-ipc.context'
 import { toNameCandidate, type GraphNameCandidate } from './graph-name-candidates.util'
 
@@ -58,7 +58,7 @@ export async function listSplitEdgesForNode(nodeId: string): Promise<
     return {
       edgeId: edge.id,
       edgeType: edge.edgeType,
-      partnerName: nameById.get(partnerId) || partnerId,
+      partnerName: formatGraphSplitPartnerName(nameById.get(partnerId) || partnerId),
       sourceRef: edge.sourceRef,
       sourceExcerpt: edge.sourceExcerpt ?? ''
     }
