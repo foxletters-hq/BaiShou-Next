@@ -6,6 +6,9 @@ import { useRagSettings } from '../hooks/useRagSettings'
 import { useRagStatsPrefetch } from '../hooks/useRagStatsPrefetch'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 import { MemoryReadinessBar } from '../../memory/MemoryReadinessBar'
+import { requestGraphPendingFocus } from '../../graph/graph-pending-focus'
+import { requestMemoryGraphTab } from '../../memory/memory-graph-tab-focus'
+import { shouldWaitForGraphExtract } from '../../memory/organize-pipeline-waiting.util'
 import { useMemoryReadiness } from '../../memory/useMemoryReadiness'
 
 export const RagSettingsPane: React.FC<{
@@ -115,10 +118,17 @@ export const RagSettingsPane: React.FC<{
           isProcessing && activeRagState.isRunning && activeRagState.type === 'migration'
         }
         graphExtract={readiness.graphExtracting}
-        graphExtractWaiting={
-          readiness.organizePipeline === 'embed' || readiness.organizePipeline === 'graph'
-        }
+        graphExtractWaiting={shouldWaitForGraphExtract({
+          organizePipeline: readiness.organizePipeline,
+          indexing: Boolean(readiness.indexing)
+        })}
         pendingGraphCount={readiness.pendingGraphCount}
+        suspectCount={readiness.suspectCount}
+        onReviewSuspects={() => {
+          requestGraphPendingFocus()
+          requestMemoryGraphTab()
+        }}
+        hideOrganizeProgress={embedded}
       />
     </div>
   )

@@ -164,16 +164,16 @@
 }
 
 .statusOn {
-  background: var(--color-success, #22c55e);
+  background: var(--color-success);
 }
 
 .statusLoading {
-  background: var(--color-info, #3b82f6);
+  background: var(--color-accent-blue);
   animation: statusPulse 1.2s ease-in-out infinite;
 }
 
 .statusTimeout {
-  background: var(--color-warning, #f59e0b);
+  background: var(--color-warning);
 }
 
 .statusOff {
