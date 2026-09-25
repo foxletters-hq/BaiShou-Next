@@ -12,6 +12,7 @@ import {
   formatRagEntryTimestamp,
   formatStoredTimestamp,
   getSummaryWeekNumber,
+  isRealLocalCalendarDate,
   normalizeUnixToSeconds,
   timestampToMillis
 } from '../date.utils'
@@ -32,6 +33,15 @@ describe('normalizeUnixToSeconds', () => {
   it('converts milliseconds to seconds for storage', () => {
     const ms = new Date(2025, 4, 11).getTime()
     expect(normalizeUnixToSeconds(ms)).toBe(Math.floor(ms / 1000))
+  })
+})
+
+describe('isRealLocalCalendarDate', () => {
+  it('should accept a real local calendar day and reject overflow dates', () => {
+    expect(isRealLocalCalendarDate('2026-09-07')).toBe(true)
+    expect(isRealLocalCalendarDate('2026-02-31')).toBe(false)
+    expect(isRealLocalCalendarDate('2026-13-40')).toBe(false)
+    expect(isRealLocalCalendarDate('09-01')).toBe(false)
   })
 })
 

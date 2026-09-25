@@ -33,10 +33,32 @@ export function appendTimelineText(timeline: AgentStreamTimelineItem[], delta: s
   timeline.push({ kind: 'text', text: delta })
 }
 
+function hasMeaningfulToolArgs(args: unknown): boolean {
+  if (typeof args === 'string') {
+    const trimmed = args.trim()
+    return trimmed.length > 0 && trimmed !== '{}'
+  }
+  if (args && typeof args === 'object' && !Array.isArray(args)) {
+    return Object.keys(args as Record<string, unknown>).length > 0
+  }
+  return args != null
+}
+
 export function appendTimelineToolStart(
   timeline: AgentStreamTimelineItem[],
   params: { callId: string; name: string; args?: unknown; startTime?: number }
 ): void {
+  const existing = timeline.find(
+    (item): item is Extract<AgentStreamTimelineItem, { kind: 'tool' }> =>
+      item.kind === 'tool' && item.callId === params.callId
+  )
+  if (existing) {
+    // 工具名先到时空参数是 {}，后面补上的问题不能被再一次空参数盖掉
+    if (params.args !== undefined && hasMeaningfulToolArgs(params.args)) {
+      existing.arguments = params.args
+    }
+    return
+  }
   timeline.push({
     kind: 'tool',
     callId: params.callId,

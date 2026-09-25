@@ -49,7 +49,7 @@ describe('diary-status-bar.util', () => {
       expect(isGraphStatusBarReady({ hasGraphModel: false })).toBe(false)
     })
 
-    it('hasGraphModelConfigured prefers the dedicated graph model', () => {
+    it('hasGraphModelConfigured only accepts the graph slot', () => {
       expect(
         hasGraphModelConfigured({
           globalGraphProviderId: 'deepseek',
@@ -62,8 +62,8 @@ describe('diary-status-bar.util', () => {
           globalDialogueProviderId: 'openai',
           globalDialogueModelId: 'gpt-4o'
         })
-      ).toBe(true)
-      expect(hasGraphModelConfigured({ globalDialogueModelId: 'gpt-4o' })).toBe(true)
+      ).toBe(false)
+      expect(hasGraphModelConfigured({ globalDialogueModelId: 'gpt-4o' })).toBe(false)
       expect(hasGraphModelConfigured({})).toBe(false)
       expect(
         hasGraphModelConfigured({

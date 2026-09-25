@@ -63,10 +63,12 @@ describe('buildMemoryReadinessRows', () => {
     expect(rows[3]).toMatchObject({ id: 'graph', state: 'pending', count: 1 })
   })
 
-  it('uses resolveGlobalGraphModelIds for the extract model id', () => {
+  it('uses only the graph slot for the extract model id', () => {
     const models = {
       globalDialogueProviderId: 'gemini',
       globalDialogueModelId: 'gemini-pro',
+      globalGraphProviderId: 'deepseek',
+      globalGraphModelId: 'deepseek-chat',
       globalEmbeddingModelId: 'text-embedding-3-small'
     }
     const rows = buildMemoryReadinessRows({
@@ -75,7 +77,23 @@ describe('buildMemoryReadinessRows', () => {
       unindexedDiaryCount: 0,
       pendingGraphCount: 0
     })
+    expect(rows[1]?.state).toBe('ready')
     expect(rows[1]?.modelId).toBe(resolveGlobalGraphModelIds(models).modelId)
+    expect(rows[1]?.modelId).toBe('deepseek-chat')
+  })
+
+  it('marks extract missing when only the dialogue model is configured', () => {
+    const rows = buildMemoryReadinessRows({
+      globalModels: {
+        globalDialogueProviderId: 'gemini',
+        globalDialogueModelId: 'gemini-pro',
+        globalEmbeddingModelId: 'text-embedding-3-small'
+      },
+      ragConfig: { ragEnabled: true },
+      unindexedDiaryCount: 0,
+      pendingGraphCount: 0
+    })
+    expect(rows[1]).toMatchObject({ id: 'extract', state: 'missing' })
   })
 })
 
