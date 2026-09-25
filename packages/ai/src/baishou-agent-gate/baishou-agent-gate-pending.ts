@@ -6,7 +6,10 @@ import {
   AgentGateRejectedError,
   AgentGateReply,
   AgentGateRequestStatus,
-  shouldDisableAlwaysForPreview,
+  isWorkspaceEditGateAction,
+  mergeAgentGatePreviews,
+  shouldDisableAlwaysForRequest,
+  type AgentGatePreview,
   type AgentGateResolution
 } from '@baishou/shared'
 import type { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
@@ -61,10 +64,18 @@ export class AgentGatePendingRegistry {
     return undefined
   }
 
-  attachCoalescedWaiter(entry: PendingEntry): Promise<AgentGateResolution> {
+  attachCoalescedWaiter(
+    entry: PendingEntry,
+    incoming?: { preview?: AgentGatePreview; previews?: AgentGatePreview[] }
+  ): Promise<AgentGateResolution> {
     return new Promise<AgentGateResolution>((resolve, reject) => {
       entry.waiters.push({ resolve, reject })
       entry.request.coalescedCount = entry.waiters.length
+      const previews = mergeAgentGatePreviews(entry.request, incoming)
+      if (previews.length > 0) {
+        entry.request.previews = previews
+        if (!entry.request.preview) entry.request.preview = previews[0]
+      }
       this.eventBus.publish({ type: 'agent_gate.asked', request: entry.request })
     })
   }
@@ -141,10 +152,20 @@ export class AgentGatePendingRegistry {
   ): void {
     for (const [id, item] of this.pending.entries()) {
       if (item.request.sessionId !== sessionId || id === skipRequestId) continue
-      if (item.request.action !== action) continue
+      if (item.request.action !== action && !sameWorkspaceEditFamily(item.request.action, action)) {
+        continue
+      }
 
-      // 截断/危险预览必须显式确认，不可被 Always / Once 级联盲放行
-      if (shouldDisableAlwaysForPreview(item.request.preview)) {
+      // 区外路径必须单独确认，不能被区内写入的本次允许带走
+      if (item.resources?.some((resource) => resource.kind === 'external_path')) {
+        continue
+      }
+
+      // Always 不级联截断/危险预览；本次允许覆盖本轮已挂起的同类编辑
+      if (
+        resolution.reply === AgentGateReply.Always &&
+        shouldDisableAlwaysForRequest(item.request)
+      ) {
         continue
       }
 
@@ -196,4 +217,8 @@ export class AgentGatePendingRegistry {
     }
     return requestIds
   }
+}
+
+function sameWorkspaceEditFamily(left: string, right: string): boolean {
+  return isWorkspaceEditGateAction(left) && isWorkspaceEditGateAction(right)
 }

@@ -1,7 +1,9 @@
 import {
   AgentGateEffect,
   AgentGateRiskLevel,
+  isWorkspaceEditGateAction,
   resolveCommandPrefixPatternFromCommand,
+  WORKSPACE_EDIT_GATE_ACTIONS,
   type AgentGatePermissionRule,
   type AgentGatePreview,
   type AgentGateResourceRef
@@ -37,6 +39,22 @@ export function buildTurnAllowRule(input: {
   }
 
   return { action: input.action, effect: AgentGateEffect.Allow }
+}
+
+/** 工作区写/改/重命名视为同一族：本次允许后本轮不再拆卡询问 */
+export function buildTurnAllowRules(input: {
+  action: string
+  resources: AgentGateResourceRef[]
+  alwaysPatterns?: string[]
+  preview?: AgentGatePreview
+}): AgentGatePermissionRule[] {
+  const rule = buildTurnAllowRule(input)
+  if (!rule) return []
+  if (!isWorkspaceEditGateAction(input.action)) return [rule]
+  return WORKSPACE_EDIT_GATE_ACTIONS.map((action) => ({
+    action,
+    effect: AgentGateEffect.Allow
+  }))
 }
 
 export function isSafeGateRisk(metadata?: Record<string, unknown>): boolean {

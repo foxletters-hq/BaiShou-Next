@@ -83,4 +83,34 @@ describe('BaishouAgentGateSessionBuffer', () => {
     expect(parts).toHaveLength(1)
     expect(parts[0]?.request.coalescedCount).toBe(3)
   })
+
+  it('should keep questionAnswers on the replied part', () => {
+    const buffer = new BaishouAgentGateSessionBuffer()
+    buffer.handleEvent({
+      type: 'agent_gate.asked',
+      request: {
+        id: 'bag_ask',
+        sessionId: 'sess_1',
+        vaultName: 'Personal',
+        status: AgentGateRequestStatus.Pending,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask',
+        title: '放在哪？',
+        options: [],
+        allowCustomInput: true,
+        metadata: {},
+        createdAt: 1
+      }
+    })
+    buffer.handleEvent({
+      type: 'agent_gate.replied',
+      sessionId: 'sess_1',
+      requestId: 'bag_ask',
+      reply: AgentGateReply.Once,
+      questionAnswers: [{ questionId: '0', selectedOptionIds: ['0'] }]
+    })
+    expect(buffer.buildPartDataList()[0]?.resolution?.questionAnswers).toEqual([
+      { questionId: '0', selectedOptionIds: ['0'] }
+    ])
+  })
 })

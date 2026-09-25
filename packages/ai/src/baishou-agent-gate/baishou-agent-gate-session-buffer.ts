@@ -27,6 +27,7 @@ export class BaishouAgentGateSessionBuffer {
         reply: event.reply,
         message: event.message,
         selectedOptionIds: event.selectedOptionIds,
+        questionAnswers: event.questionAnswers,
         resolvedAt: Date.now()
       }
       return

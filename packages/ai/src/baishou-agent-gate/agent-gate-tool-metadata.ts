@@ -117,6 +117,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   diary_search: safeReadTool('diary_search', '搜索日记'),
   summary_read: safeReadTool('summary_read', '读取总结'),
   message_search: safeReadTool('message_search', '搜索消息'),
+  session_list: safeReadTool('session_list', '列出会话'),
   vector_search: safeReadTool('vector_search', '语义搜索'),
   recall_relations: safeReadTool('recall_relations', '回忆关系图谱'),
   web_search: safeReadTool('web_search', '网络搜索'),
