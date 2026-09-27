@@ -21,7 +21,8 @@ export async function runCompressionWithSessionLock(
     return existing
   }
 
-  const job = (async () => {
+  let job!: Promise<boolean>
+  job = (async () => {
     try {
       return await fn()
     } finally {

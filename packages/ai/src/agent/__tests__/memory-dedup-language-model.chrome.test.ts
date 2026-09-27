@@ -11,7 +11,9 @@ describe('memory dedup language model', () => {
     expect(tools).toContain(
       'new MemoryDeduplicationServiceImpl(embAdapter, dbAdapter, provider, modelId)'
     )
-    expect(tools).not.toContain('MemoryDeduplicationServiceImpl(embAdapter, dbAdapter, systemModels.embeddingProvider')
+    expect(tools).not.toContain(
+      'MemoryDeduplicationServiceImpl(embAdapter, dbAdapter, systemModels.embeddingProvider'
+    )
     const resolver = readFileSync(join(here, '../session-system-prompt.resolver.ts'), 'utf8')
     expect(resolver).toContain('new MemoryDeduplicationServiceImpl(')
     expect(resolver).toContain('params.provider,\n      params.modelId')
