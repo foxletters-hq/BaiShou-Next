@@ -1,111 +1,37 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy } from 'lucide-react'
-import { resolveAttachmentAbsolutePath } from '@baishou/shared'
+import { Copy, Download } from 'lucide-react'
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu'
 import { useToast } from '../Toast/useToast'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
+import { copyPreviewImage, savePreviewImage } from './image-preview.util'
 import './ImagePreview.css'
-
-type CopyAttachmentResult = { success: boolean; error?: string }
-
-/** 解析为可供复制的本地路径；data URL 不含在此（避免 IPC 写文本） */
-function resolveCopyFilePath(src: string): string | null {
-  const trimmed = src.trim()
-  if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return null
-  if (trimmed.startsWith('local://') || trimmed.startsWith('file://')) {
-    const abs = resolveAttachmentAbsolutePath(trimmed)
-    return abs || null
-  }
-  if (/^[a-zA-Z]:[\\/]/.test(trimmed) || trimmed.startsWith('/')) {
-    return trimmed
-  }
-  return null
-}
-
-function getDiaryCopyApi(): {
-  copyAttachment?: (p: string) => Promise<CopyAttachmentResult>
-} | null {
-  const w = window as Window & {
-    api?: { diary?: { copyAttachment?: (p: string) => Promise<CopyAttachmentResult> } }
-    electron?: { ipcRenderer?: { invoke: (ch: string, ...args: unknown[]) => Promise<unknown> } }
-  }
-  if (w.api?.diary?.copyAttachment) return w.api.diary
-  if (w.electron?.ipcRenderer?.invoke) {
-    return {
-      copyAttachment: (p: string) =>
-        w.electron!.ipcRenderer!.invoke('diary:copy-attachment', p) as Promise<CopyAttachmentResult>
-    }
-  }
-  return null
-}
-
-/** 渲染进程把 data URL 写成图片剪贴板（不走 IPC，避免把 base64 当文本） */
-async function copyDataUrlAsImage(dataUrl: string): Promise<CopyAttachmentResult> {
-  try {
-    const response = await fetch(dataUrl)
-    const blob = await response.blob()
-    const type = blob.type.startsWith('image/') ? blob.type : 'image/png'
-    await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
-    return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Copy failed' }
-  }
-}
-
-/**
- * 优先用本地文件路径走主进程 writeImage；
- * 仅预览 data URL 时在渲染进程写图片，绝不把 base64 文本写入剪贴板。
- */
-async function copyPreviewImage(src: string, copySource?: string): Promise<CopyAttachmentResult> {
-  const diary = getDiaryCopyApi()
-  const fileCandidates = [copySource, src]
-    .map((s) => (s ? resolveCopyFilePath(s) : null))
-    .filter((p): p is string => !!p)
-
-  for (const filePath of fileCandidates) {
-    if (!diary?.copyAttachment) break
-    const res = await diary.copyAttachment(filePath)
-    if (res?.success) return res
-  }
-
-  const dataUrl =
-    (copySource?.startsWith('data:image/') ? copySource : null) ||
-    (src.startsWith('data:image/') ? src : null)
-
-  if (dataUrl) {
-    const local = await copyDataUrlAsImage(dataUrl)
-    if (local.success) return local
-    // 渲染进程失败时再试主进程 createFromDataURL（仍不会 writeText）
-    if (diary?.copyAttachment) {
-      return diary.copyAttachment(dataUrl)
-    }
-    return local
-  }
-
-  return { success: false, error: 'No image to copy' }
-}
 
 interface ImagePreviewProps {
   src: string
   /** 复制用本地路径（优先于 src 的 data URL，避免剪贴板变成 base64 文本） */
   copySource?: string
   alt?: string
+  title?: string
   className?: string
   style?: React.CSSProperties
   isOpen?: boolean
   onClose?: () => void
+  /** 另存为时的建议文件名 */
+  downloadFileName?: string
 }
 
 export const ImagePreview: React.FC<ImagePreviewProps> = ({
   src,
   copySource,
   alt = '',
+  title,
   className = '',
   style,
   isOpen: controlledOpen,
-  onClose: controlledClose
+  onClose: controlledClose,
+  downloadFileName
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -272,10 +198,24 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
       } else {
         toast.showError(res?.error || t('markdown.copy_image_failed', '复制失败'))
       }
-    } catch (err: any) {
-      toast.showError(err?.message || t('markdown.copy_image_failed', '复制失败'))
+    } catch (err) {
+      toast.showError(err instanceof Error ? err.message : t('markdown.copy_image_failed', '复制失败'))
     }
   }, [src, copySource, t, toast])
+
+  const handleSaveImage = useCallback(async () => {
+    try {
+      const res = await savePreviewImage(src, { alt, fileName: downloadFileName })
+      if (res.canceled) return
+      if (res.success) {
+        toast.showSuccess(t('image_preview.save_success', '图片已保存'))
+      } else {
+        toast.showError(res.error || t('image_preview.save_failed', '保存失败'))
+      }
+    } catch (err) {
+      toast.showError(err instanceof Error ? err.message : t('image_preview.save_failed', '保存失败'))
+    }
+  }, [src, alt, downloadFileName, t, toast])
 
   const previewContextMenuItems = useMemo<ContextMenuItem[]>(
     () => [
@@ -285,9 +225,16 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         onClick: () => {
           void handleCopyImage()
         }
+      },
+      {
+        label: t('image_preview.save', '保存图片'),
+        icon: <Download size={14} />,
+        onClick: () => {
+          void handleSaveImage()
+        }
       }
     ],
-    [t, handleCopyImage]
+    [t, handleCopyImage, handleSaveImage]
   )
 
   return (
@@ -296,6 +243,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         <img
           src={src}
           alt={alt}
+          title={title}
           className={`image-preview-trigger ${className}`}
           style={style}
           onClick={handleOpenPreview}
@@ -406,6 +354,24 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
                   >
                     <path d="M1 4v6h6" />
                     <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveImage()}
+                  title={t('image_preview.save', '保存图片')}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
                 </button>
                 <span className="image-preview-controls-divider" aria-hidden="true" />

@@ -56,19 +56,22 @@
 
 .unifiedContent {
   margin: 0;
-  padding: 4px 0;
+  padding: 4px 0 16px 0;
   font-size: var(--ui-fs-sm);
   font-family: var(--font-family-mono);
   font-variant-ligatures: none;
   line-height: 1.55;
   color: var(--text-primary);
+  width: max-content;
+  min-width: 100%;
 }
 
 .unifiedRow {
   display: grid;
-  grid-template-columns: 3px 40px 40px 16px minmax(0, 1fr);
+  grid-template-columns: 3px 40px 40px 16px minmax(max-content, 1fr);
   align-items: stretch;
   min-height: 1.45em;
+  width: 100%;
 }
 
 .hunkHeader,
@@ -76,16 +79,19 @@
   display: block;
   padding: 4px 10px;
   font-size: var(--ui-fs-sm);
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-family-mono);
-  color: var(--text-tertiary);
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface-normal));
+  color: var(--diff-hunk-fg);
+  background: var(--diff-hunk-bg);
+  border-top: 1px solid var(--diff-hunk-border);
+  border-bottom: 1px solid var(--diff-hunk-border);
 }
 
 .metaLine {
   background: transparent;
-  font-style: italic;
   color: var(--text-tertiary);
+  border: none;
+  font-weight: 500;
 }
 
 .hunkText {
@@ -99,11 +105,11 @@
 }
 
 .lineAdd .gutterBar {
-  background: rgba(16, 185, 129, 0.85);
+  background: var(--diff-add-gutter);
 }
 
 .lineRemove .gutterBar {
-  background: rgba(239, 68, 68, 0.85);
+  background: var(--diff-remove-gutter);
 }
 
 .lineNum {
@@ -115,6 +121,14 @@
   font-size: var(--ui-fs-sm);
 }
 
+.lineAdd .lineNum {
+  color: color-mix(in srgb, var(--diff-add-gutter) 75%, var(--text-tertiary));
+}
+
+.lineRemove .lineNum {
+  color: color-mix(in srgb, var(--diff-remove-gutter) 75%, var(--text-tertiary));
+}
+
 .marker {
   text-align: center;
   user-select: none;
@@ -122,28 +136,29 @@
 }
 
 .lineAdd .marker {
-  color: var(--color-success);
+  color: var(--diff-add-gutter);
+  font-weight: 600;
 }
 
 .lineRemove .marker {
-  color: var(--color-error);
+  color: var(--diff-remove-gutter);
+  font-weight: 600;
 }
 
 .lineText {
-  padding: 0 10px 0 4px;
+  padding: 0 16px 0 4px;
   white-space: pre;
-  overflow-x: auto;
-  min-width: 0;
+  overflow-x: visible;
   font-family: var(--font-family-mono);
 }
 
 .lineAdd {
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--diff-add-bg);
   color: var(--text-primary);
 }
 
 .lineRemove {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--diff-remove-bg);
   color: var(--text-primary);
 }
 
@@ -152,24 +167,24 @@
 }
 
 .inlineChanged {
-  border-radius: 2px;
-  padding: 0 1px;
+  border-radius: 3px;
+  padding: 1px 2px;
 }
 
 .lineAdd .inlineChanged {
-  background: rgba(16, 185, 129, 0.32);
+  background: var(--diff-add-inline-bg);
 }
 
 .lineRemove .inlineChanged {
-  background: rgba(239, 68, 68, 0.28);
+  background: var(--diff-remove-inline-bg);
 }
 
 .rowAdd .inlineChanged {
-  background: rgba(16, 185, 129, 0.32);
+  background: var(--diff-add-inline-bg);
 }
 
 .rowRemove .inlineChanged {
-  background: rgba(239, 68, 68, 0.28);
+  background: var(--diff-remove-inline-bg);
 }
 
 .splitRoot {
@@ -192,6 +207,7 @@
   padding: 6px 12px;
   font-size: var(--ui-fs-sm);
   font-weight: 600;
+  font-family: var(--font-family);
   color: var(--text-secondary);
 }
 
@@ -223,8 +239,10 @@
 
 .splitRow {
   display: grid;
-  grid-template-columns: 44px 1fr;
+  grid-template-columns: 44px minmax(max-content, 1fr);
   min-height: 20px;
+  width: max-content;
+  min-width: 100%;
 }
 
 .splitRow .lineNum {
@@ -233,26 +251,73 @@
 }
 
 .splitRow .lineText {
-  padding: 0 10px;
+  padding: 0 16px 0 10px;
+  white-space: pre;
+  overflow-x: visible;
+}
+
+/* 专属覆盖全局隐藏滚动条：在底部和右侧显示清晰、易操作的编辑器滚动条 */
+.unified,
+.splitPane {
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-strong) var(--bg-surface-normal) !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+.unified::-webkit-scrollbar,
+.splitPane::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.unified::-webkit-scrollbar-track,
+.splitPane::-webkit-scrollbar-track {
+  display: block !important;
+  background: var(--bg-surface-normal) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+}
+
+.unified::-webkit-scrollbar-thumb,
+.splitPane::-webkit-scrollbar-thumb {
+  display: block !important;
+  background-color: var(--border-strong) !important;
+  border-radius: 6px !important;
+  border: 2px solid var(--bg-surface-normal) !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+}
+
+.unified::-webkit-scrollbar-thumb:hover,
+.splitPane::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-tertiary) !important;
+}
+
+.unified::-webkit-scrollbar-corner,
+.splitPane::-webkit-scrollbar-corner {
+  display: block !important;
+  background: var(--bg-surface-normal) !important;
 }
 
 .rowRemove .lineText {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--diff-remove-bg);
   color: var(--text-primary);
 }
 
 .rowAdd .lineText {
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--diff-add-bg);
   color: var(--text-primary);
 }
 
 .rowEmpty .lineText {
-  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  background: var(--diff-empty-bg);
 }
 
 .empty {
   padding: 16px;
   color: var(--text-tertiary);
   font-size: var(--ui-fs-sm);
-  font-style: italic;
+  font-family: var(--font-family);
 }

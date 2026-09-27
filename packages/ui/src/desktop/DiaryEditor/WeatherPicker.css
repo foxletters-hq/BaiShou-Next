@@ -136,7 +136,7 @@
 }
 
 .wp-option:active {
-  transform: scale(0.97);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .wp-option-selected {
@@ -166,21 +166,17 @@
 @keyframes wp-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes wp-slide-out {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
   }
 }

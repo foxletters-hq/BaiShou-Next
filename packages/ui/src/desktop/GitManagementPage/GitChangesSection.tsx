@@ -5,9 +5,15 @@ import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitChangesSectionProps {
   vm: GitManagementViewModel
+  inlineDiff?: boolean
+  activeFilePath?: string | null
 }
 
-export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
+export const GitChangesSection: React.FC<GitChangesSectionProps> = ({
+  vm,
+  inlineDiff = false,
+  activeFilePath
+}) => {
   const {
     t,
     isInitialized,
@@ -63,10 +69,13 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
             <>
               {gitStatus!.unstaged.map((file) => {
                 const canDiff = isTextDiffablePath(file.path)
+                const isActive =
+                  (expandedWorkingFile?.path === file.path && !expandedWorkingFile.staged) ||
+                  activeFilePath === file.path
                 return (
                   <div key={file.path}>
                     <div
-                      className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                      className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''} ${isActive ? 'gmp-file-row-active' : ''}`}
                       onClick={canDiff ? () => handleViewWorkingDiff(file.path, false) : undefined}
                     >
                       <span className={`gmp-file-badge gmp-file-${file.unstagedStatus}`}>
@@ -94,7 +103,8 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
                         </button>
                       </div>
                     </div>
-                    {expandedWorkingFile?.path === file.path &&
+                    {inlineDiff &&
+                      expandedWorkingFile?.path === file.path &&
                       !expandedWorkingFile.staged &&
                       workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                   </div>
@@ -102,10 +112,13 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
               })}
               {gitStatus!.untracked.map((file) => {
                 const canDiff = isTextDiffablePath(file)
+                const isActive =
+                  (expandedWorkingFile?.path === file && !expandedWorkingFile.staged) ||
+                  activeFilePath === file
                 return (
                   <div key={file}>
                     <div
-                      className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                      className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''} ${isActive ? 'gmp-file-row-active' : ''}`}
                       onClick={canDiff ? () => handleViewWorkingDiff(file, false) : undefined}
                     >
                       <span className="gmp-file-badge gmp-file-untracked">U</span>
@@ -131,7 +144,8 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
                         </button>
                       </div>
                     </div>
-                    {expandedWorkingFile?.path === file &&
+                    {inlineDiff &&
+                      expandedWorkingFile?.path === file &&
                       !expandedWorkingFile.staged &&
                       workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                   </div>

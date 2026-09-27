@@ -3,6 +3,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
   font-family: var(--font-family);
   color: var(--text-primary);
@@ -433,12 +434,12 @@
 }
 
 .gmp-diff-add {
-  background: rgba(34, 197, 94, 0.1);
-  color: var(--color-accent-green);
+  background: var(--diff-add-bg);
+  color: var(--color-success);
 }
 
 .gmp-diff-remove {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--diff-remove-bg);
   color: var(--color-error);
 }
 
@@ -458,40 +459,42 @@
 /* 提交输入区域 */
 .gmp-commit-area {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
   margin: 0;
-  padding: 12px 16px;
-  border-radius: 0;
+  padding: 12px 14px;
   background: var(--bg-surface);
-  border: none;
-  border-bottom: 1px solid var(--border-card);
-  box-shadow: none;
-  position: relative;
-  z-index: 1;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .gmp-commit-input {
-  flex: 1;
-  min-width: 0;
-  width: auto;
+  width: 100%;
   margin-bottom: 0;
 }
 
-/* 可折叠区域 */
+.gmp-commit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 可折叠区域（紧凑平铺风格，无多余嵌套外边距） */
 .gmp-collapsible-section {
-  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .gmp-collapsible-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 6px 10px;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s;
-  border-radius: 8px;
+  background: var(--bg-surface);
 }
 
 .gmp-collapsible-header:hover {
@@ -499,41 +502,43 @@
 }
 
 .gmp-collapsible-arrow {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
-  width: 16px;
+  width: 14px;
   flex-shrink: 0;
   transition: transform 0.15s;
 }
 
 .gmp-collapsible-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   flex: 1;
 }
 
 .gmp-collapsible-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
   background: var(--bg-surface-normal);
   color: var(--text-secondary);
-  min-width: 18px;
+  min-width: 16px;
   text-align: center;
 }
 
 .gmp-collapsible-body {
-  padding: 0;
+  padding: 2px 0 4px;
 }
 
-/* 文件行 */
+/* 文件行（无多余左边距，最大化文件名横向展示空间） */
 .gmp-file-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px 6px 38px;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  margin: 1px 4px;
+  border-radius: 4px;
   transition: background 0.15s;
 }
 
@@ -766,31 +771,35 @@
 }
 
 .gmp-graph-section {
-  padding: 8px 12px 4px;
+  padding: 6px 8px 4px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .gmp-graph-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .gmp-graph-row {
   display: flex;
-  min-height: 32px;
+  min-height: 36px;
 }
 
 .gmp-graph-lane {
-  width: 28px;
+  width: 18px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .gmp-graph-node {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   border: 2px solid var(--border-muted);
   flex-shrink: 0;
@@ -799,6 +808,8 @@
 
 .gmp-graph-node-head {
   border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .gmp-graph-line {
@@ -811,50 +822,96 @@
 .gmp-graph-content {
   flex: 1;
   min-width: 0;
-  padding: 2px 8px 2px 0;
+  padding: 2px 4px 4px 2px;
 }
 
 .gmp-graph-commit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.gmp-graph-commit:hover {
+  background: var(--bg-surface-normal);
+}
+
+.gmp-graph-commit-expanded {
+  background: var(--bg-surface-normal);
+  border-color: var(--border-subtle);
+}
+
+.gmp-graph-commit-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.gmp-graph-commit:hover,
-.gmp-graph-commit-expanded {
-  background: var(--bg-surface-normal);
 }
 
 .gmp-graph-message {
   flex: 1;
   min-width: 0;
   font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.gmp-graph-meta {
+.gmp-graph-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gmp-graph-commit-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 6px;
+  width: 100%;
+}
+
+.gmp-graph-hash {
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--border-control) 40%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+.gmp-graph-commit-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gmp-btn-rollback {
+  padding: 1px 6px !important;
+  font-size: 11px !important;
+  height: 20px !important;
 }
 
 .gmp-graph-head-badge,
 .gmp-current-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   background: var(--color-primary);
   color: var(--text-on-primary);
+  line-height: 1.3;
 }
 
 .gmp-graph-remote-icon {
@@ -862,14 +919,13 @@
   color: var(--text-secondary);
 }
 
-.gmp-graph-time,
-.gmp-graph-hash {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
 .gmp-graph-files {
-  padding: 4px 8px 10px 4px;
+  margin: 4px 0 8px 4px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .gmp-icon-btn {
@@ -971,4 +1027,658 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .gmp-split-layout {
+    flex-direction: column;
+  }
+
+  .gmp-split-left {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-muted);
+  }
+}
+
+/* ─── 方案 B：双栏分割视图（左侧控制与列表，右侧 Diff 对比主舞台） ─── */
+.gmp-split-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-app);
+}
+
+/* 拖拽调整双栏宽度的分隔手柄 */
+.gmp-split-resizer {
+  width: 9px;
+  margin: 0 -4px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.gmp-split-resizer::after {
+  content: '';
+  width: 1px;
+  height: 100%;
+  background: var(--border-muted);
+  transition:
+    background-color 0.15s ease,
+    width 0.15s ease;
+}
+
+.gmp-split-resizer:hover::after,
+.gmp-split-resizer-dragging::after {
+  width: 2px;
+  background: var(--color-primary);
+}
+
+/* ─── 顶部标题问号 Tooltip 内部卡片样式 ─── */
+.gmp-scope-tooltip {
+  max-width: 340px !important;
+  padding: 14px 16px !important;
+  border-radius: 12px !important;
+  background: var(--bg-surface-raised, var(--bg-surface)) !important;
+  border: 1px solid var(--border-card) !important;
+  box-shadow: var(--shadow-overlay, 0 8px 24px rgba(0, 0, 0, 0.12)) !important;
+}
+
+.gmp-scope-tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.gmp-scope-tooltip-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gmp-scope-tooltip-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gmp-scope-tooltip-lead {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.gmp-scope-tooltip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gmp-scope-tooltip-label {
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gmp-scope-tooltip-label-inc {
+  color: var(--color-success);
+}
+
+.gmp-scope-tooltip-label-exc {
+  color: var(--text-tertiary);
+}
+
+.gmp-scope-tooltip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.gmp-scope-tooltip-chip {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  line-height: 1.3;
+}
+
+.gmp-scope-chip-inc {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 24%, transparent);
+}
+
+.gmp-scope-chip-exc {
+  background: var(--bg-surface-normal);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-control);
+}
+
+.gmp-split-left {
+  /* 宽度由 inline style={{ width: leftWidth }} 驱动，用户可拖拽 */
+  min-width: 260px;
+  flex-shrink: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-muted);
+  background-color: var(--bg-surface);
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+/* 顶部紧凑远程状态栏 */
+.gmp-remote-strip {
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gmp-remote-toolbar {
+  height: 38px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gmp-remote-branch-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gmp-remote-branch-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.gmp-remote-branch-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.gmp-remote-sync-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.gmp-remote-sync-chip-synced {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.gmp-remote-sync-chip-diff {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.gmp-remote-sync-chip-unconfigured {
+  background: var(--bg-surface-normal);
+  color: var(--text-tertiary);
+}
+
+.gmp-remote-sync-chip-error {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.gmp-remote-actions-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.gmp-tool-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.gmp-tool-btn:hover:not(:disabled) {
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  border-color: var(--border-control);
+}
+
+.gmp-tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gmp-remote-uninit-bar {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.gmp-remote-uninit-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.gmp-remote-error-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
+  color: var(--color-error);
+  font-size: 11px;
+  border-top: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
+}
+
+.gmp-remote-error-icon {
+  flex-shrink: 0;
+}
+
+.gmp-remote-error-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes gmp-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gmp-spin {
+  animation: gmp-spin 1s linear infinite;
+}
+
+/* 冲突提示条 */
+.gmp-conflict-strip {
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent);
+}
+
+.gmp-conflict-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-warning);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.gmp-conflict-icon {
+  flex-shrink: 0;
+}
+
+.gmp-conflict-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gmp-conflict-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.gmp-conflict-file {
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.gmp-conflict-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 侧边栏 Tab 栏 */
+.gmp-sidebar-tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.gmp-sidebar-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  position: relative;
+}
+
+.gmp-sidebar-tab:hover {
+  color: var(--text-primary);
+}
+
+.gmp-sidebar-tab-active {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-bottom-color: var(--color-primary);
+}
+
+.gmp-sidebar-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.gmp-sidebar-tab-badge-muted {
+  background: var(--border-control);
+  color: var(--text-secondary);
+}
+
+/* 侧边栏内容主体（无卡片包裹，直接滚动） */
+.gmp-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-muted) transparent !important;
+}
+
+.gmp-sidebar-body::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+}
+
+.gmp-sidebar-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.gmp-sidebar-body::-webkit-scrollbar-thumb {
+  background-color: var(--border-muted) !important;
+  border-radius: 3px !important;
+}
+
+.gmp-sidebar-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong) !important;
+}
+
+.gmp-split-right {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  overflow: hidden;
+  position: relative;
+}
+
+/* 激活文件行（左侧列表选中高亮） */
+.gmp-file-row-active {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent) !important;
+}
+
+.gmp-file-row-active .gmp-file-path,
+.gmp-file-row-active .gmp-tl-file-path {
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+/* ─── 右侧 Diff 舞台 ─── */
+.gmp-diff-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.gmp-diff-stage-header {
+  height: 52px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  box-sizing: border-box;
+}
+
+.gmp-diff-stage-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gmp-diff-stage-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.gmp-diff-stage-path {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gmp-diff-stage-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.gmp-diff-stage-badge-staged {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+}
+
+.gmp-diff-stage-badge-unstaged {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+}
+
+.gmp-diff-stage-badge-history {
+  background: var(--bg-surface-normal);
+  color: var(--text-secondary);
+}
+
+.gmp-diff-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gmp-diff-close-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.gmp-diff-close-btn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.gmp-diff-viewer-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── 右侧空态（未选文件） ─── */
+.gmp-diff-empty-stage {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  box-sizing: border-box;
+}
+
+.gmp-diff-empty-card {
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.gmp-diff-empty-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.gmp-diff-empty-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gmp-diff-empty-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.gmp-diff-empty-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: var(--bg-surface-low, var(--bg-surface-normal));
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+}
+
+.gmp-diff-empty-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.gmp-diff-empty-stat-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gmp-diff-empty-stat-lbl {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.gmp-diff-empty-stat-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-subtle);
 }
