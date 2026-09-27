@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, Image } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { NOTEBOOK_CARD_ICONS, NOTEBOOK_CARD_TONES } from '@baishou/shared'
+import { NOTEBOOK_CARD_TONES } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
 import { Button, SettingsSection, useNativeTheme } from '@baishou/ui/native'
 import {
@@ -9,6 +9,7 @@ import {
   NOTEBOOK_TONE_COLORS,
   type KnowledgeNotebookStats
 } from './knowledge-screen.util'
+import { KnowledgeCoverEmojiPicker } from './KnowledgeCoverEmojiPicker'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
 
 export function KnowledgeDetailCoverSection(props: {
@@ -19,6 +20,7 @@ export function KnowledgeDetailCoverSection(props: {
   coverUri: string | null
   appearance: { tone: string; icon: string }
   stats: KnowledgeNotebookStats | null
+  description: string
   busy: boolean
   modelMismatch: boolean
   onSaveCover: (patch: {
@@ -27,6 +29,8 @@ export function KnowledgeDetailCoverSection(props: {
     coverImage?: string | null
   }) => void
   onPickCoverImage: () => void
+  onRename: () => void
+  onEditDescription: () => void
   onRebuildIndex: () => void
   onDelete: () => void
 }) {
@@ -40,16 +44,18 @@ export function KnowledgeDetailCoverSection(props: {
     coverUri,
     appearance,
     stats,
+    description,
     busy,
     modelMismatch,
     onSaveCover,
     onPickCoverImage,
+    onRename,
+    onEditDescription,
     onRebuildIndex,
     onDelete
   } = props
   const coverSize = tokens.spacing.xl + tokens.spacing.lg
   const toneSize = tokens.spacing.lg + tokens.spacing.xs
-  const iconSize = tokens.spacing.xl + tokens.spacing.xs
 
   return (
     <SettingsSection title={t('knowledge.cover_image', '封面图片')}>
@@ -85,6 +91,17 @@ export function KnowledgeDetailCoverSection(props: {
             {name}
           </Text>
         </View>
+        {description ? (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize,
+              fontWeight: settingsTypography.desc.fontWeight
+            }}
+          >
+            {description}
+          </Text>
+        ) : null}
         {stats ? (
           <Text
             style={{
@@ -137,27 +154,18 @@ export function KnowledgeDetailCoverSection(props: {
         >
           {t('knowledge.cover_icon', '图标')}
         </Text>
-        <View style={[styles.chipWrap, { gap: tokens.spacing.sm }]}>
-          {NOTEBOOK_CARD_ICONS.map((icon) => (
-            <Pressable
-              key={icon}
-              onPress={() => void onSaveCover({ coverIcon: icon })}
-              style={{
-                width: iconSize,
-                height: iconSize,
-                borderRadius: tokens.radius.sm,
-                borderWidth: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderColor: coverIcon === icon ? colors.primary : colors.borderMuted,
-                backgroundColor: colors.bgSurface
-              }}
-            >
-              <Text>{icon}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <KnowledgeCoverEmojiPicker
+          selected={coverIcon || appearance.icon}
+          disabled={busy}
+          onSelect={(icon) => void onSaveCover({ coverIcon: icon })}
+        />
         <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
+          <Button isDisabled={busy} onPress={() => void onRename()}>
+            {t('knowledge.rename_notebook', '重命名')}
+          </Button>
+          <Button isDisabled={busy} onPress={() => void onEditDescription()}>
+            {t('knowledge.edit_description', '简介')}
+          </Button>
           <Button isDisabled={busy} onPress={() => void onPickCoverImage()}>
             {t('knowledge.upload_cover_image', '上传图片')}
           </Button>

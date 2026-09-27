@@ -53,11 +53,7 @@ export function KnowledgeNotebookDeleteDialog(props: {
         <Button isDisabled={props.busy} onPress={props.onCancel}>
           {t('common.cancel', '取消')}
         </Button>
-        <Button
-          destructive
-          isDisabled={!ready || props.busy}
-          onPress={props.onConfirm}
-        >
+        <Button destructive isDisabled={!ready || props.busy} onPress={props.onConfirm}>
           {ready
             ? t('knowledge.delete_notebook', '删除笔记本')
             : t('knowledge.heavy_confirm_button', '确认（{{seconds}}）', { seconds: secondsLeft })}

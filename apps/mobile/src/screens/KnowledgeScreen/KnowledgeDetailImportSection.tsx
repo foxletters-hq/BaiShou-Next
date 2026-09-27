@@ -24,6 +24,9 @@ export function KnowledgeDetailImportSection(props: {
   onImportText: () => void
   onImportUrl: () => void
   onImportFile: () => void
+  embeddingModelLabel?: string
+  graphModelLabel?: string
+  extractEngineLabel?: string
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -61,6 +64,24 @@ export function KnowledgeDetailImportSection(props: {
           options={knowledgeImportProcessSelectOptions()}
           onValueChange={(value) => onImportProcessMode(value as KnowledgeImportProcessMode)}
         />
+        {props.embeddingModelLabel || props.graphModelLabel || props.extractEngineLabel ? (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize
+            }}
+          >
+            {t(
+              'knowledge.import_process_models_engine',
+              '嵌入 {{embedding}} · 图抽取 {{graph}} · 提取 {{engine}}',
+              {
+                embedding: props.embeddingModelLabel || '—',
+                graph: props.graphModelLabel || '—',
+                engine: props.extractEngineLabel || '—'
+              }
+            )}
+          </Text>
+        ) : null}
         <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
           <Button isDisabled={busy} onPress={() => void onImportFile()}>
             {t('knowledge.import_file', '导入文件')}

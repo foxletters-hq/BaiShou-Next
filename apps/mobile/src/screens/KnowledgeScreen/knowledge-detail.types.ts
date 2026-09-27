@@ -4,6 +4,11 @@ export type KnowledgeSourceRow = {
   status: string
   errorMessage?: string | null
   extractEngine?: string | null
+  sourceKind?: string
+  originUrl?: string | null
+  relativePath?: string | null
+  pageCount?: number | null
+  textPageCount?: number | null
 }
 
 export type KnowledgeGraphNodeRow = {
@@ -13,6 +18,7 @@ export type KnowledgeGraphNodeRow = {
   reviewStatus?: string
   summary?: string
   propsJson?: string
+  mentionCount?: number
 }
 
 export type KnowledgeGraphEdgeRow = {
@@ -22,10 +28,11 @@ export type KnowledgeGraphEdgeRow = {
   edgeType: string
   reviewStatus?: string
   sourceExcerpt?: string
+  sourceRef?: string | null
 }
 
 export type KnowledgeOcrProgressState = {
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render' | 'embed'
+  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
 }
