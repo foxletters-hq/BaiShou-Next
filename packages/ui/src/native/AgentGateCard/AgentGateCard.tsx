@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  Keyboard,
   Modal,
+  Platform,
   View,
   Text,
   StyleSheet,
@@ -9,6 +11,7 @@ import {
   ScrollView,
   useWindowDimensions
 } from 'react-native'
+import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import {
@@ -30,6 +33,7 @@ import {
 import { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
 import { CompanionAskFields } from './CompanionAskFields'
 import {
+  canFlipGateQueue,
   formatFileChangeKindLabel,
   formatGateQueueLabel
 } from '../../agent-gate/agent-gate-preview-copy'
@@ -41,6 +45,8 @@ export interface AgentGateCardProps {
   queueIndex?: number
   queueTotal?: number
   sameActionCount?: number
+  onQueuePrev?: () => void
+  onQueueNext?: () => void
 }
 
 export const AgentGateCard: React.FC<AgentGateCardProps> = ({
@@ -48,7 +54,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   isReplying = false,
   onReply,
   queueIndex = 0,
-  queueTotal = 0
+  queueTotal = 0,
+  onQueuePrev,
+  onQueueNext
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -57,14 +65,42 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [expandedDiffs, setExpandedDiffs] = useState<Record<string, boolean>>({})
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [askPage, setAskPage] = useState(0)
+  const scrollRef = useRef<ScrollView>(null)
   const askQuestions = request ? resolveCompanionAskQuestions(request) : []
+  const askQuestionKey = askQuestions.map((item) => item.id).join(':')
   const askDrafts = useCompanionAskDrafts(askQuestions)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
     setExpandedDiffs({})
+    setAskPage(0)
   }, [request?.id])
+
+  useEffect(() => {
+    setAskPage(0)
+  }, [askQuestionKey])
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates?.height ?? 0)
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
+
+  const revealCustomAnswer = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true })
+    })
+  }, [])
 
   const handleReply = useCallback(
     async (payload: AgentGateReplyPayload) => {
@@ -77,6 +113,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   if (!request) return null
 
   const proactiveOptions = shouldShowProactiveOptions(request)
+  const pagedAsk = proactiveOptions && askQuestions.length > 1
   const showAlways = shouldShowAlwaysAllow(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
@@ -90,7 +127,16 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       : null
   const descriptionIsOptionsDump =
     Boolean(request.description) && request.description?.trim() === numberedOptionsText
-  const scrollMaxHeight = Math.min(height * 0.62, anyDiffExpanded ? 520 : 360)
+  const scrollMaxHeight = Math.min(
+    height * (keyboardHeight > 0 ? 0.34 : 0.62),
+    keyboardHeight > 0 ? 220 : anyDiffExpanded ? 520 : 360
+  )
+  const questionPrompt =
+    !pagedAsk && request.title.trim() && request.title.trim() !== request.description?.trim()
+      ? request.title.trim()
+      : null
+  const canQueuePrev = canFlipGateQueue(queueIndex, queueTotal, -1) && !isReplying
+  const canQueueNext = canFlipGateQueue(queueIndex, queueTotal, 1) && !isReplying
 
   return (
     <Modal
@@ -110,7 +156,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           styles.overlay,
           {
             backgroundColor: colors.bgOverlay,
-            paddingBottom: 16 + insets.bottom
+            paddingBottom: keyboardHeight > 0 ? keyboardHeight + 12 : 16 + insets.bottom
           }
         ]}
       >
@@ -129,28 +175,64 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           pointerEvents="box-none"
           accessibilityRole="summary"
         >
-          <ScrollView style={{ maxHeight: scrollMaxHeight }} contentContainerStyle={styles.header}>
+          <ScrollView
+            ref={scrollRef}
+            keyboardShouldPersistTaps="handled"
+            style={{ maxHeight: scrollMaxHeight }}
+            contentContainerStyle={styles.header}
+          >
             <View style={styles.headerRow}>
               <Text
                 accessibilityRole="header"
-                style={[
-                  styles.badge,
-                  { color: colors.warning, backgroundColor: 'rgba(245, 158, 11, 0.12)' }
-                ]}
+                style={[styles.title, { color: colors.textPrimary }]}
               >
-                {t('agent_gate.pending_badge', '待确认')}
+                {t('agent_gate.dock_title', '需要确认')}
               </Text>
               {queueLabel ? (
-                <Text style={[styles.queueLabel, { color: colors.textTertiary }]}>
-                  {queueLabel}
-                </Text>
+                <View style={styles.queueNav}>
+                  <Pressable
+                    disabled={!canQueuePrev}
+                    onPress={onQueuePrev}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('agent_gate.queue_prev', '上一张')}
+                    style={[
+                      styles.queueNavBtn,
+                      {
+                        borderColor: colors.borderControl,
+                        backgroundColor: colors.bgSurface,
+                        opacity: canQueuePrev ? 1 : 0.4
+                      }
+                    ]}
+                  >
+                    <ChevronLeft size={16} color={colors.textSecondary} strokeWidth={2} />
+                  </Pressable>
+                  <Text style={[styles.queueLabel, { color: colors.textTertiary }]}>
+                    {queueLabel}
+                  </Text>
+                  <Pressable
+                    disabled={!canQueueNext}
+                    onPress={onQueueNext}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('agent_gate.queue_next', '下一张')}
+                    style={[
+                      styles.queueNavBtn,
+                      {
+                        borderColor: colors.borderControl,
+                        backgroundColor: colors.bgSurface,
+                        opacity: canQueueNext ? 1 : 0.4
+                      }
+                    ]}
+                  >
+                    <ChevronRight size={16} color={colors.textSecondary} strokeWidth={2} />
+                  </Pressable>
+                </View>
               ) : null}
             </View>
-            <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
-              {askQuestions.length > 1
-                ? t('agent_gate.multi_ask_desc', '请一并确认以下几项。')
-                : request.title}
-            </Text>
+            {questionPrompt ? (
+              <Text style={[styles.description, { color: colors.textPrimary }]}>
+                {questionPrompt}
+              </Text>
+            ) : null}
             {coalescedHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{coalescedHint}</Text>
             ) : null}
@@ -175,13 +257,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   </Text>
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                     {filePreview.additions > 0 ? (
-                      <Text style={{ color: '#15803d', fontWeight: '600' }}>
+                      <Text style={{ color: colors.success, fontWeight: '600' }}>
                         +{filePreview.additions}
                       </Text>
                     ) : null}
                     {filePreview.additions > 0 && filePreview.deletions > 0 ? '  ' : null}
                     {filePreview.deletions > 0 ? (
-                      <Text style={{ color: '#b91c1c', fontWeight: '600' }}>
+                      <Text style={{ color: colors.error, fontWeight: '600' }}>
                         -{filePreview.deletions}
                       </Text>
                     ) : null}
@@ -199,7 +281,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                           }))
                         }
                       >
-                        <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                        <Text
+                          style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}
+                        >
                           {expanded
                             ? t('agent_gate.collapse_diff', '收起 Diff')
                             : t('agent_gate.expand_diff', '展开 Diff')}
@@ -264,9 +348,30 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 
             {proactiveOptions && !showFeedback ? (
               <CompanionAskFields
+                part="body"
                 questions={askQuestions}
                 isReplying={isReplying}
                 drafts={askDrafts}
+                pageIndex={askPage}
+                onPageIndexChange={setAskPage}
+                onCustomFocus={revealCustomAnswer}
+                onSkip={() =>
+                  void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
+                }
+                onSubmit={() => {
+                  const questionAnswers = buildCompanionAskQuestionAnswers(
+                    askQuestions,
+                    askDrafts.drafts
+                  )
+                  const first = questionAnswers[0]
+                  void handleReply({
+                    requestId: request.id,
+                    reply: AgentGateReply.Once,
+                    selectedOptionIds: first?.selectedOptionIds,
+                    message: first?.message,
+                    questionAnswers
+                  })
+                }}
               />
             ) : null}
 
@@ -274,6 +379,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               <TextInput
                 value={feedback}
                 onChangeText={setFeedback}
+                onFocus={revealCustomAnswer}
                 multiline
                 placeholder={t(
                   proactiveOptions
@@ -309,7 +415,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   {t('common.cancel', '取消')}
                 </Button>
                 <Button
-                  variant="primary"
+                  variant="outline"
                   onPress={() =>
                     void handleReply({
                       requestId: request.id,
@@ -326,41 +432,71 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 </Button>
               </>
             ) : proactiveOptions ? (
-              <>
-                <Button
-                  variant="outline"
-                  destructive
-                  onPress={() =>
-                    void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
-                  }
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                  accessibilityLabel={t('agent_gate.reject', '拒绝')}
-                >
-                  {t('agent_gate.reject', '拒绝')}
-                </Button>
-                <Button
-                  variant="primary"
-                  onPress={() => {
-                    const questionAnswers = buildCompanionAskQuestionAnswers(
-                      askQuestions,
-                      askDrafts.drafts
-                    )
-                    const first = questionAnswers[0]
-                    void handleReply({
-                      requestId: request.id,
-                      reply: AgentGateReply.Once,
-                      selectedOptionIds: first?.selectedOptionIds,
-                      message: first?.message,
-                      questionAnswers
-                    })
-                  }}
-                  disabled={isReplying || !askDrafts.complete}
-                  style={styles.actionButton}
-                >
-                  {t('agent_gate.confirm', '确认')}
-                </Button>
-              </>
+              pagedAsk ? (
+                <View style={styles.askFooter}>
+                  <CompanionAskFields
+                    part="footer"
+                    questions={askQuestions}
+                    isReplying={isReplying}
+                    drafts={askDrafts}
+                    pageIndex={askPage}
+                    onPageIndexChange={setAskPage}
+                    onSkip={() =>
+                      void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
+                    }
+                    onSubmit={() => {
+                      const questionAnswers = buildCompanionAskQuestionAnswers(
+                        askQuestions,
+                        askDrafts.drafts
+                      )
+                      const first = questionAnswers[0]
+                      void handleReply({
+                        requestId: request.id,
+                        reply: AgentGateReply.Once,
+                        selectedOptionIds: first?.selectedOptionIds,
+                        message: first?.message,
+                        questionAnswers
+                      })
+                    }}
+                  />
+                </View>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    destructive
+                    onPress={() =>
+                      void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
+                    }
+                    disabled={isReplying}
+                    style={styles.actionButton}
+                    accessibilityLabel={t('agent_gate.reject', '拒绝')}
+                  >
+                    {t('agent_gate.reject', '拒绝')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onPress={() => {
+                      const questionAnswers = buildCompanionAskQuestionAnswers(
+                        askQuestions,
+                        askDrafts.drafts
+                      )
+                      const first = questionAnswers[0]
+                      void handleReply({
+                        requestId: request.id,
+                        reply: AgentGateReply.Once,
+                        selectedOptionIds: first?.selectedOptionIds,
+                        message: first?.message,
+                        questionAnswers
+                      })
+                    }}
+                    disabled={isReplying || !askDrafts.complete}
+                    style={styles.actionButton}
+                  >
+                    {t('agent_gate.confirm', '确认')}
+                  </Button>
+                </>
+              )
             ) : (
               <>
                 <Button
@@ -391,7 +527,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   </Button>
                 ) : null}
                 <Button
-                  variant="primary"
+                  variant="outline"
                   onPress={() =>
                     void handleReply({ requestId: request.id, reply: AgentGateReply.Once })
                   }
@@ -439,22 +575,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8
   },
-  badge: {
-    alignSelf: 'flex-start',
-    fontSize: 11,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  queueNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  queueNavBtn: {
+    width: 28,
+    height: 28,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 6,
-    overflow: 'hidden'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   queueLabel: {
     fontSize: 12
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 24
+    lineHeight: 22,
+    flexShrink: 1
   },
   description: {
     fontSize: 14,
@@ -502,14 +643,22 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top'
   },
   actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 18,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8
   },
-  actionButton: {
+  askFooter: {
     width: '100%',
-    alignSelf: 'stretch'
+    gap: 8
+  },
+  actionButton: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 96
   }
 })

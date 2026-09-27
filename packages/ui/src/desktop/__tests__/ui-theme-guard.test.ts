@@ -83,4 +83,18 @@ describe('UI theme guard', () => {
     }
     expect(unexpected).toEqual([])
   })
+
+  it('uses theme tokens for text selection instead of the system highlight', () => {
+    const tokens = readFileSync(join(repoRoot, 'packages/ui/src/theme/css-variables.css'), 'utf8')
+    const fields = readFileSync(join(repoRoot, 'packages/ui/src/theme/form-field.css'), 'utf8')
+    expect(tokens).toContain('--text-selection-bg:')
+    expect(tokens).toContain('--text-selection-fg:')
+    expect(fields).toContain('::selection')
+    expect(fields).toContain('var(--text-selection-bg)')
+    expect(fields).toContain('var(--text-selection-fg)')
+    expect(fields).toMatch(/:where\(\s*input,\s*textarea\s*\)::selection/)
+    expect(fields).toMatch(
+      /\.baishou-form-field\.baishou-form-field--embed[\s\S]*border-radius:\s*0/
+    )
+  })
 })

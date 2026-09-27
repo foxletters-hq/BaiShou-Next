@@ -36,22 +36,18 @@
 @keyframes slideInFromRight {
   from {
     opacity: 0;
-    transform: translateX(40px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
   }
 }
 
 @keyframes fadeOutToRight {
   from {
     opacity: 1;
-    transform: translateX(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateX(20px) scale(0.95);
   }
 }
 
