@@ -35,6 +35,16 @@ export function useCompanionAskDrafts(questions: AgentGateQuestion[]) {
     setCustomOpenId((prev) => (prev === questionId ? null : prev))
   }
 
+  const openCustom = (questionId: string) => {
+    setCustomOpenId(questionId)
+    setSelectedById((prev) => {
+      if (!(questionId in prev)) return prev
+      const next = { ...prev }
+      delete next[questionId]
+      return next
+    })
+  }
+
   const setCustomMessage = (questionId: string, message: string) => {
     setCustomById((prev) => ({ ...prev, [questionId]: message }))
     setSelectedById((prev) => {
@@ -52,6 +62,7 @@ export function useCompanionAskDrafts(questions: AgentGateQuestion[]) {
     customOpenId,
     setCustomOpenId,
     selectOption,
+    openCustom,
     setCustomMessage
   }
 }

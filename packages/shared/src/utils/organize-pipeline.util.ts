@@ -4,7 +4,7 @@ import {
   type RagBatchEmbedPhaseId
 } from './rag-batch-embed-progress.util'
 
-/** 整理流水的待办快照：常规记忆嵌入 + 日记抽图 + 可疑节点扫描。笔记本欠账不进入这条流水。 */
+/** 整理流水的待办快照：常规记忆嵌入 + 日记抽图。笔记本欠账不进入这条流水。结构可疑扫描不再跑。 */
 export type OrganizePendingInput = Pick<
   PendingEmbedCounts,
   'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources'
@@ -27,7 +27,6 @@ export function listRunnableOrganizePhases(input: OrganizePendingInput): RagBatc
   if (input.memories > 0) ids.push('memory')
   if ((input.graphExtract ?? 0) > 0) ids.push('graph_extract')
   if (graphNodePhaseTotal(input) > 0) ids.push('graph_node')
-  if ((input.graphDisambiguate ?? 0) > 0) ids.push('graph_disambiguate')
   return ids
 }
 

@@ -66,7 +66,8 @@ const mergeTheme = EditorView.theme({
   '.cm-gutters': {
     background: 'var(--bg-app)',
     borderRight: '1px solid var(--border-muted)',
-    color: 'var(--text-tertiary, var(--text-secondary))'
+    color: 'var(--text-tertiary, var(--text-secondary))',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
   '.cm-activeLineGutter': {
     backgroundColor: 'transparent'

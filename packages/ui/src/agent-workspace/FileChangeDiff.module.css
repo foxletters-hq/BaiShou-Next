@@ -88,7 +88,6 @@
 .empty {
   padding: 10px 12px;
   color: var(--text-secondary);
-  font-style: italic;
-  font-family: inherit;
+  font-family: var(--font-family);
   display: block;
 }
