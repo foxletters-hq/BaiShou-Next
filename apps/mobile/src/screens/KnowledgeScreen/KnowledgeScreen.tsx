@@ -5,10 +5,11 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus } from 'lucide-react-native'
-import { getNotebookCardAppearance } from '@baishou/shared'
+import { getNotebookCardAppearance, type NotebookCardTone } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
 import { Button, Card, useDialog, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '@/src/providers/BaishouProvider'
+import * as ImagePicker from 'expo-image-picker'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import {
@@ -18,9 +19,11 @@ import {
   mobileListNotebookStats,
   mobileReorderNotebooks,
   mobileResolveNotebookCoverUri,
+  mobileSetCoverImage,
   mobileUpdateNotebook
 } from '@/src/services/mobile-knowledge.service'
 import { KnowledgeNotebookDeleteDialog } from './KnowledgeNotebookDeleteDialog'
+import { KnowledgeCreateNotebookSheet } from './KnowledgeCreateNotebookSheet'
 import {
   formatKnowledgeBytesMb,
   moveNotebookByOffset,
@@ -47,6 +50,13 @@ export function KnowledgeScreen() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState<NotebookRow | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createDescription, setCreateDescription] = useState('')
+  const [createTone, setCreateTone] = useState<NotebookCardTone | ''>('')
+  const [createIcon, setCreateIcon] = useState('')
+  const [createCoverPath, setCreateCoverPath] = useState('')
+  const [createCoverName, setCreateCoverName] = useState('')
 
   const refreshList = useCallback(async () => {
     const list = sortNotebooksForMobileList((await mobileListNotebooks()) as NotebookRow[])
@@ -87,23 +97,44 @@ export function KnowledgeScreen() {
     void refreshList().catch((e) => setError(String((e as Error)?.message || e)))
   }, [dbReady, refreshList])
 
+  const resetCreateDraft = () => {
+    setCreateOpen(false)
+    setCreateName('')
+    setCreateDescription('')
+    setCreateTone('')
+    setCreateIcon('')
+    setCreateCoverPath('')
+    setCreateCoverName('')
+  }
+
+  const onPickCreateCover = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.9
+    })
+    if (picked.canceled || !picked.assets[0]?.uri) return
+    setCreateCoverPath(picked.assets[0].uri)
+    setCreateCoverName(picked.assets[0].fileName || t('knowledge.cover_image', '封面图片'))
+  }
+
   const onCreate = async () => {
-    const name = await dialog.prompt(
-      t('knowledge.notebook_name_placeholder', '例如：论文、项目资料'),
-      '',
-      t('knowledge.new_notebook', '新建笔记本')
-    )
-    const trimmed = name?.trim()
+    const trimmed = createName.trim()
     if (!trimmed) return
     setBusy(true)
     setError('')
     try {
-      const description = await dialog.prompt(
-        t('knowledge.notebook_description', '简介，可以留空'),
-        '',
-        t('knowledge.notebook_description_title', '笔记本简介')
-      )
-      await mobileCreateNotebook({ name: trimmed, description: description?.trim() || undefined })
+      const created = await mobileCreateNotebook({
+        name: trimmed,
+        description: createDescription.trim() || undefined,
+        coverTone: createTone || undefined,
+        coverIcon: createIcon || undefined
+      })
+      if (createCoverPath) {
+        await mobileSetCoverImage({ notebookId: created.id, absolutePath: createCoverPath })
+      }
+      resetCreateDraft()
       await refreshList()
     } catch (e) {
       setError(String((e as Error)?.message || e))
@@ -173,7 +204,7 @@ export function KnowledgeScreen() {
       onBack={() => router.back()}
       headerRight={{
         icon: Plus,
-        onPress: () => void onCreate(),
+        onPress: () => setCreateOpen(true),
         disabled: busy || !dbReady,
         accessibilityLabel: t('knowledge.new_notebook', '新建笔记本')
       }}
@@ -223,7 +254,9 @@ export function KnowledgeScreen() {
             return (
               <Pressable onPress={() => router.push(`/knowledge/${encodeURIComponent(item.id)}`)}>
                 <Card>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}>
+                  <View
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}
+                  >
                     <View
                       style={{
                         width: coverSize,
@@ -269,6 +302,11 @@ export function KnowledgeScreen() {
                       sources: stats?.sources ?? '…',
                       chunks: stats?.chunks ?? '…'
                     })}
+                    {stats && stats.pendingJobs > 0
+                      ? ` · ${t('knowledge.indexing_count', '索引中 {{count}}', {
+                          count: stats.pendingJobs
+                        })}`
+                      : ''}
                   </Text>
                   {stats ? (
                     <Text
@@ -348,11 +386,7 @@ export function KnowledgeScreen() {
                     >
                       {t('knowledge.move_down', '下移')}
                     </Button>
-                    <Button
-                      destructive
-                      isDisabled={busy}
-                      onPress={() => setDeleting(item)}
-                    >
+                    <Button destructive isDisabled={busy} onPress={() => setDeleting(item)}>
                       {t('knowledge.delete_notebook', '删除笔记本')}
                     </Button>
                   </View>
@@ -362,6 +396,29 @@ export function KnowledgeScreen() {
           }}
         />
       )}
+      <KnowledgeCreateNotebookSheet
+        visible={createOpen}
+        busy={busy}
+        name={createName}
+        description={createDescription}
+        tone={createTone}
+        icon={createIcon}
+        coverName={createCoverName}
+        onNameChange={setCreateName}
+        onDescriptionChange={setCreateDescription}
+        onToneChange={setCreateTone}
+        onIconChange={setCreateIcon}
+        onPickCoverImage={() => void onPickCreateCover()}
+        onClearCoverImage={() => {
+          setCreateCoverPath('')
+          setCreateCoverName('')
+        }}
+        onClose={() => {
+          if (busy) return
+          resetCreateDraft()
+        }}
+        onCreate={() => void onCreate()}
+      />
       <KnowledgeNotebookDeleteDialog
         visible={deleting != null}
         notebookName={deleting?.name || ''}

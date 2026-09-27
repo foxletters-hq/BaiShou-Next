@@ -107,6 +107,71 @@ export function knowledgeIngestUserMessage(
   return localizeAiApiErrorMessage(detail, t)
 }
 
+/** 资料库状态只覆盖提取/嵌入；图谱任务另算，不能把还在抽图的资料写成就绪。 */
+export function knowledgeSourceDisplayStatus(
+  sourceStatus: string,
+  graphJobStatus?: string | null
+): string {
+  const graph = graphJobStatus?.trim() || ''
+  if (sourceStatus !== 'ready' && sourceStatus !== 'partial') return sourceStatus
+  if (graph === 'running') return 'graph_organizing'
+  if (graph === 'pending') return 'graph_queued'
+  if (graph === 'failed') return 'graph_failed'
+  return sourceStatus
+}
+
+export function extractEngineShortLabel(
+  engine: 'ocr' | 'vision',
+  t: (key: string, fallback: string) => string
+): string {
+  if (engine === 'vision') return t('knowledge.engine_vision_short', '视觉模型')
+  return t('knowledge.engine_ocr_short', '本地 OCR')
+}
+
+export function knowledgeIngestProgressLabel(
+  t: (key: string, fallback: string, options?: Record<string, number>) => string,
+  progress?: { page: number; total: number; phase?: string } | null
+): string | null {
+  if (!progress) return null
+  const page = Math.max(0, progress.page)
+  const total = Math.max(0, progress.total)
+  if (progress.phase === 'embed') {
+    if (total <= 0) return t('knowledge.status_embedding', '正在建立索引')
+    return t('knowledge.status_embed_progress', '正在建立索引 {{page}}/{{total}}', { page, total })
+  }
+  if (progress.phase === 'parse') {
+    if (total > 0) {
+      return t('knowledge.status_pdf_parse_progress', '正在读取 PDF {{page}}/{{total}}', {
+        page,
+        total
+      })
+    }
+    if (page > 0)
+      return t('knowledge.status_pdf_parse_page', '正在读取 PDF 第 {{page}} 页', { page })
+    return t('knowledge.status_pdf_parse', '正在读取 PDF')
+  }
+  if (progress.phase === 'render') {
+    if (total > 0) {
+      return t('knowledge.status_pdf_render_progress', '正在渲染页面 {{page}}/{{total}}', {
+        page,
+        total
+      })
+    }
+    return t('knowledge.status_pdf_render', '正在渲染页面')
+  }
+  if (progress.phase === 'recognize') {
+    if (total > 0) {
+      return t('knowledge.status_recognize_progress', '正在识图 {{page}}/{{total}}', {
+        page,
+        total
+      })
+    }
+    return t('knowledge.status_recognize', '正在识图')
+  }
+  if (total <= 0) return t('knowledge.status_extracting', '正在提取文本')
+  return t('knowledge.status_ocr_progress', 'OCR 中 {{page}}/{{total}}', { page, total })
+}
+
 export function knowledgeSourceStatusLabel(
   status: string,
   t: (key: string, fallback: string) => string
@@ -124,6 +189,12 @@ export function knowledgeSourceStatusLabel(
       return t('knowledge.status_embedding', '索引中')
     case 'ready':
       return t('knowledge.status_ready', '就绪')
+    case 'graph_organizing':
+      return t('knowledge.status_graph_organizing', '正在整理图谱')
+    case 'graph_queued':
+      return t('knowledge.status_graph_queued', '等待整理图谱')
+    case 'graph_failed':
+      return t('knowledge.status_graph_failed', '图谱整理失败')
     case 'failed':
       return t('knowledge.status_failed', '失败')
     case 'stored':
