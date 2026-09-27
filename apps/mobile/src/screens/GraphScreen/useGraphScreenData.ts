@@ -110,7 +110,14 @@ export function useGraphScreenData(deps: DataDeps) {
     } catch {
       setEstimate(null)
     }
-  }, [deps.services, deps.dbReady, deps.vaultName, deps.vaultId, deps.monthRange, deps.viewMaxNodes])
+  }, [
+    deps.services,
+    deps.dbReady,
+    deps.vaultName,
+    deps.vaultId,
+    deps.monthRange,
+    deps.viewMaxNodes
+  ])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
@@ -129,9 +136,7 @@ export function useGraphScreenData(deps: DataDeps) {
     if (opts.selectedId) {
       const fresh = await mobileGetNode(runtime.drizzleDb, deps.vaultId, opts.selectedId)
       opts.setSelectedNode(
-        fresh && opts.stripSuspectOnNodeId === fresh.id
-          ? stripGraphNodeSuspectReason(fresh)
-          : fresh
+        fresh && opts.stripSuspectOnNodeId === fresh.id ? stripGraphNodeSuspectReason(fresh) : fresh
       )
     }
     if (!opts.pinNeighborhood || !opts.localView) return

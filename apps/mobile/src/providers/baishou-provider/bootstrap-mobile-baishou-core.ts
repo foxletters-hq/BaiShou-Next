@@ -99,13 +99,12 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     setupMobileLocalFileReader(fileSystem)
     setupMobileImageCompressor()
     setupMobileTtsRefAudioReader(fileSystem)
-    const { registerMobilePdfExtractor } = await import('../../services/register-mobile-pdf-extractor')
-    const { registerMobilePdfPageBitmapRenderer } = await import(
-      '../../services/register-mobile-pdf-bitmap-renderer'
-    )
-    const { registerMobileVisionPageRecognizer } = await import(
-      '../../services/register-mobile-vision-ocr'
-    )
+    const { registerMobilePdfExtractor } =
+      await import('../../services/register-mobile-pdf-extractor')
+    const { registerMobilePdfPageBitmapRenderer } =
+      await import('../../services/register-mobile-pdf-bitmap-renderer')
+    const { registerMobileVisionPageRecognizer } =
+      await import('../../services/register-mobile-vision-ocr')
     registerMobilePdfExtractor()
     registerMobilePdfPageBitmapRenderer()
     registerMobileVisionPageRecognizer()
@@ -139,9 +138,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       const knowledgeDbDir = await pathService.getRootDirectory()
       await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
       await expoKnowledgeConnectionManager.connect(knowledgeDbDir)
-      const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
-        '../../services/mobile-knowledge-ingest-jobs.consumer'
-      )
+      const { scheduleConsumeMobileKnowledgeIngestJobs } =
+        await import('../../services/mobile-knowledge-ingest-jobs.consumer')
       scheduleConsumeMobileKnowledgeIngestJobs('bootstrap')
       if (expoKnowledgeConnectionManager.isSqliteVecLoaded()) {
         logger.info('[BaishouProvider] Native sqlite-vec active on knowledge database.')

@@ -310,9 +310,7 @@ export function GraphSplitNodeSheet(props: {
             disabled={saving || props.busy || loading || !discriminator.trim()}
             onPress={() => void submit()}
           >
-            {saving
-              ? t('graph.split_saving', '拆分中…')
-              : t('graph.split_confirm', '确认拆分')}
+            {saving ? t('graph.split_saving', '拆分中…') : t('graph.split_confirm', '确认拆分')}
           </Button>
         </View>
       </View>

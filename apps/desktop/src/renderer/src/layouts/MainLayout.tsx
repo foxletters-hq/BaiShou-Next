@@ -46,10 +46,7 @@ export const MainLayout: React.FC = () => {
       event.stopPropagation()
       onMouseNav(event.button === 3 ? 'back' : 'forward')
     }
-    const onAppCommand = (
-      _event: unknown,
-      payload: { direction?: 'back' | 'forward' }
-    ) => {
+    const onAppCommand = (_event: unknown, payload: { direction?: 'back' | 'forward' }) => {
       if (payload?.direction !== 'back' && payload?.direction !== 'forward') return
       onMouseNav(payload.direction)
     }

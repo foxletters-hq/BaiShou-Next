@@ -116,7 +116,8 @@ export function GraphScreenOverlays(props: {
               >
                 <Text
                   style={{
-                    color: n === props.extractConcurrency ? colors.textOnPrimary : colors.textSecondary,
+                    color:
+                      n === props.extractConcurrency ? colors.textOnPrimary : colors.textSecondary,
                     fontSize: 12,
                     fontWeight: '600'
                   }}
