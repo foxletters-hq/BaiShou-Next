@@ -2,11 +2,12 @@ import type { EditorState } from '@codemirror/state'
 import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNodeRef } from '@lezer/common'
-import { hideSyntaxReplaceSpec, inlineCodeMark, linkMark } from './styles'
+import { hideSyntaxReplaceSpec, inlineCodeMark, linkMark, renderedLinkMark } from './styles'
 import type { ImageRange } from './buildImages'
 import { rangeOverlapsTableBlocks, type TableBlockRange } from './buildTableChrome'
 import { pushReplaceDecoration } from './decorationMarks'
 import {
+  markdownInlineLinkDestination,
   markdownInlineLinkPreviewRanges,
   selectionTouchesLinkRange
 } from './markdown-link-preview.util'
@@ -90,7 +91,13 @@ export function collectTreeDecorations(
       for (const range of parts.hideRanges) {
         pushReplaceDecoration(marks, doc, range.from, range.to, hideSpec)
       }
-      pushDecoration(marks, linkMark, parts.labelFrom, parts.labelTo)
+      const href = markdownInlineLinkDestination(raw)
+      pushDecoration(
+        marks,
+        href ? renderedLinkMark(href) : linkMark,
+        parts.labelFrom,
+        parts.labelTo
+      )
     }
   })
 }

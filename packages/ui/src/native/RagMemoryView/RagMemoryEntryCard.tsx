@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import {
   buildRagEntryListPreview,
   formatRagEntryTimestamp,
+  splitGraphNodeCardText,
   isGraphNodeRagEntry,
   isRagEntryEditable,
   ragVectorKindLabelKey,
@@ -57,6 +58,9 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   const menuOpen = activeMenuId === item.embeddingId
   const keyword = searchQuery.trim()
   const { preview } = buildRagEntryListPreview(item.text, keyword || undefined)
+  const nodeCard = isGraphNodeRagEntry(item.sourceType)
+    ? splitGraphNodeCardText(item.text)
+    : null
 
   const openPreview = () => {
     setActiveMenuId(null)
@@ -159,8 +163,26 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           )
         })()}
         <TouchableOpacity activeOpacity={0.7} onPress={openPreview}>
-          <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
-            {splitTextByKeyword(preview, keyword || undefined).map((part, index) => (
+          {nodeCard ? (
+            <View>
+              <Text style={[styles.entryNodeLine, { color: colors.textPrimary }]} numberOfLines={2}>
+                <Text style={{ color: colors.textSecondary }}>
+                  {t('settings.rag_node_name', '节点名称')}{' '}
+                </Text>
+                {nodeCard.name}
+              </Text>
+              <Text style={[styles.entryNodeLine, { color: colors.textPrimary }]} numberOfLines={2}>
+                <Text style={{ color: colors.textSecondary }}>
+                  {t('settings.rag_node_summary', '摘要')}{' '}
+                </Text>
+                <Text style={nodeCard.summary ? undefined : { color: colors.textTertiary }}>
+                  {nodeCard.summary || t('settings.rag_node_summary_empty', '无')}
+                </Text>
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
+              {splitTextByKeyword(preview, keyword || undefined).map((part, index) => (
               <Text
                 key={`${part.kind}-${index}`}
                 style={
@@ -172,7 +194,8 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
                 {part.value}
               </Text>
             ))}
-          </Text>
+            </Text>
+          )}
         </TouchableOpacity>
         <Button variant="outlined" onPress={openPreview}>
           {t('settings.rag_view_entry', '查看完整片段')}

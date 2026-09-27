@@ -9,6 +9,11 @@ const mergeDiff = readFileSync(
   join(dir, '../../../agent-workspace/FileChangeMergeDiff.tsx'),
   'utf8'
 )
+const cssVariables = readFileSync(join(dir, '../../../theme/css-variables.css'), 'utf8')
+const gitDiffCss = readFileSync(
+  join(dir, '../../../desktop/GitManagementPage/GitDiffViewer.module.css'),
+  'utf8'
+)
 
 describe('workbench editor font', () => {
   it('should cap merge-diff and chrome editors at the sidebar content token', () => {
@@ -56,5 +61,25 @@ describe('workbench editor font', () => {
     expect(theme).not.toMatch(
       /'&\.workbench-cm-editor \.cm-activeLine'\s*:\s*\{[^}]*--color-primary/s
     )
+  })
+
+  it('should keep merge-diff scroller on the source-han family so CJK does not fall to system serif', () => {
+    expect(mergeDiff).toMatch(
+      /fontFamily:\s*'var\(--font-family-main, var\(--font-family, inherit\)\)'/
+    )
+  })
+
+  it('should put the CJK family before generic monospace so Diff Chinese stays source-han', () => {
+    const monoBlock = cssVariables.match(/--font-family-mono:\s*([^;]+);/s)?.[1] ?? ''
+    const cjkIndex = monoBlock.indexOf('var(--font-family)')
+    const genericIndex = monoBlock.search(/ui-monospace|\bmonospace\b/)
+    expect(cssVariables).toContain("'Noto Sans SC'")
+    expect(cjkIndex).toBeGreaterThan(-1)
+    expect(genericIndex).toBeGreaterThan(-1)
+    expect(cjkIndex).toBeLessThan(genericIndex)
+  })
+
+  it('should not italicize git diff empty copy because source-han has no italic face', () => {
+    expect(gitDiffCss).not.toMatch(/\.empty\s*\{[^}]*font-style:\s*italic/s)
   })
 })
