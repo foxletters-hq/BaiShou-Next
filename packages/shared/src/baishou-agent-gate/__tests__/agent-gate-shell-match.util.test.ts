@@ -80,9 +80,9 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
   })
 
   it('should not treat Windows cmd /c mkdir as dangerous', () => {
-    expect(
-      isDangerousShellCommand('cmd /c mkdir "作-3\\素材\\参考资料" "作-3\\素材\\图像"')
-    ).toBe(false)
+    expect(isDangerousShellCommand('cmd /c mkdir "作-3\\素材\\参考资料" "作-3\\素材\\图像"')).toBe(
+      false
+    )
     expect(canPermanentlyAllowShellCommand('cmd /c mkdir foo')).toBe(true)
     expect(resolveCommandPrefixPatternFromCommand('cmd /c mkdir foo bar')).toBe('mkdir *')
   })
@@ -108,8 +108,7 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
   })
 
   it('should remember a piped command by its command head', () => {
-    const command =
-      'Get-ChildItem -LiteralPath . -Filter "*简报*" | Select-Object Name, Length'
+    const command = 'Get-ChildItem -LiteralPath . -Filter "*简报*" | Select-Object Name, Length'
     expect(canPermanentlyAllowShellCommand(command)).toBe(true)
     expect(resolveCommandPrefixPatternFromCommand(command)).toBe('get-childitem *')
     expect(matchShellCommandPattern(command, 'get-childitem *')).toBe(true)

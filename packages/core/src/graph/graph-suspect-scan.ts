@@ -255,7 +255,9 @@ function namesForTargets(
 ): string[] {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
   const current = edges.filter((edge) => edge.deletedAt == null && edge.isCurrent)
-  const ids = [...(groupCurrentTargets(current, edgeType, nodeById, acceptTarget).get(nodeId) ?? [])]
+  const ids = [
+    ...(groupCurrentTargets(current, edgeType, nodeById, acceptTarget).get(nodeId) ?? [])
+  ]
   return ids
     .map((id) => nodeById.get(id)?.name?.trim())
     .filter((name): name is string => Boolean(name))

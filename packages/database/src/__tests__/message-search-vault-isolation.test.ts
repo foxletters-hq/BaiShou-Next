@@ -165,7 +165,10 @@ describe('message_search vault isolation (P0-1)', () => {
     expect(sessions.some((row) => row.sessionTitle === '会话A')).toBe(true)
     expect(sessions.some((row) => row.sessionTitle === '会话B')).toBe(false)
 
-    const messages = await repo.listMessagesInDateRange(VAULT_A, 20, { startDate: ymd, endDate: ymd })
+    const messages = await repo.listMessagesInDateRange(VAULT_A, 20, {
+      startDate: ymd,
+      endDate: ymd
+    })
     expect(messages.some((row) => String(row.content).includes('vault A'))).toBe(true)
     expect(messages.some((row) => String(row.content).includes('vault B'))).toBe(false)
   })

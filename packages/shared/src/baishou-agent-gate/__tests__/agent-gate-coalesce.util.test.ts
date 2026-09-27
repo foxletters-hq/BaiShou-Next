@@ -176,9 +176,9 @@ describe('collapseAgentGatePendingRequests', () => {
       })
     ])
     expect(collapsed).toHaveLength(1)
-    expect(collapsed[0]?.previews?.map((item) => (item.type === 'file_change' ? item.path : ''))).toEqual(
-      ['a.md', 'b.md']
-    )
+    expect(
+      collapsed[0]?.previews?.map((item) => (item.type === 'file_change' ? item.path : ''))
+    ).toEqual(['a.md', 'b.md'])
   })
 
   it('should keep every file preview when collapsing write cards', () => {
@@ -211,9 +211,9 @@ describe('collapseAgentGatePendingRequests', () => {
       })
     ])
     expect(collapsed).toHaveLength(1)
-    expect(collapsed[0]?.previews?.map((item) => (item.type === 'file_change' ? item.path : ''))).toEqual(
-      ['a.md', 'b.md']
-    )
+    expect(
+      collapsed[0]?.previews?.map((item) => (item.type === 'file_change' ? item.path : ''))
+    ).toEqual(['a.md', 'b.md'])
   })
 
   it('groups by session', () => {

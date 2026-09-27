@@ -277,7 +277,9 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       sourceTitle: '资料',
       text: `${'甲'.repeat(5000)}${'乙'.repeat(5000)}`,
       textHash: 'h-live',
-      onProgress: (info) => progress.push(info)
+      onProgress: (info) => {
+        progress.push(info)
+      }
     })
 
     await vi.waitFor(() => {

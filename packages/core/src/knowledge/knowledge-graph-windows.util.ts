@@ -92,9 +92,7 @@ export function splitKnowledgeGraphWindows(
   return { windows, truncated: offset < body.length }
 }
 
-export function knowledgeGraphPageTotal(
-  pages?: Array<{ page: number }> | null
-): number {
+export function knowledgeGraphPageTotal(pages?: Array<{ page: number }> | null): number {
   if (!pages?.length) return 0
   return pages.reduce((max, page) => Math.max(max, page.page), 0)
 }

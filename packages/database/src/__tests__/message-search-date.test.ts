@@ -301,7 +301,13 @@ describe('listSessionsInDateRange / listMessagesInDateRange', () => {
 
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data, created_at) VALUES (?, ?, ?, 'text', ?, ?)`,
-      args: ['part-in', 'msg-in', 'sess-date', JSON.stringify({ text: '区间内原文 keyword' }), inRange]
+      args: [
+        'part-in',
+        'msg-in',
+        'sess-date',
+        JSON.stringify({ text: '区间内原文 keyword' }),
+        inRange
+      ]
     })
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data, created_at) VALUES (?, ?, ?, 'text', ?, ?)`,
@@ -325,7 +331,13 @@ describe('listSessionsInDateRange / listMessagesInDateRange', () => {
     })
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data, created_at) VALUES (?, ?, ?, 'text', ?, ?)`,
-      args: ['part-later', 'msg-later', 'sess-later', JSON.stringify({ text: '稍后正文' }), laterInRange]
+      args: [
+        'part-later',
+        'msg-later',
+        'sess-later',
+        JSON.stringify({ text: '稍后正文' }),
+        laterInRange
+      ]
     })
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data, created_at) VALUES (?, ?, ?, 'text', ?, ?)`,
@@ -434,7 +446,9 @@ describe('listSessionsInDateRange / listMessagesInDateRange', () => {
       startDate: '2026-09-01',
       endDate: '2026-09-07'
     })
-    const longRow = rows.find((row) => row.sessionTitle === '日期会话' && String(row.content).startsWith('长'))
+    const longRow = rows.find(
+      (row) => row.sessionTitle === '日期会话' && String(row.content).startsWith('长')
+    )
     expect(longRow?.content.length).toBe(DATE_RANGE_SNIPPET_MAX_CHARS + 3)
     expect(longRow?.content.endsWith('...')).toBe(true)
   })
