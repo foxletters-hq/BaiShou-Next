@@ -79,10 +79,7 @@ export function registerDesktopVisionPageRecognizer(): void {
               messages: [
                 {
                   role: 'user',
-                  content: [
-                    { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
-                    imagePart
-                  ]
+                  content: [{ type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` }, imagePart]
                 }
               ],
               ...(builtReasoning.providerOptions

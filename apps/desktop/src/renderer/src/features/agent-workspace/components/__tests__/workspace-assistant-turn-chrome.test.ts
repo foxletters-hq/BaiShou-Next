@@ -18,7 +18,9 @@ describe('workspace assistant turn chrome', () => {
 
   it('should wrap the reply with a citation dialog instead of stacking excerpts below', () => {
     const src = readFileSync(join(here, '../WorkspaceAssistantTurn.tsx'), 'utf8')
-    expect(src).toContain('<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>')
+    expect(src).toContain(
+      '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>'
+    )
     expect(src).not.toContain(
       '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id} />'
     )

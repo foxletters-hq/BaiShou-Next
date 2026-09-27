@@ -226,8 +226,7 @@ export async function updateWorkspacePendingInput(
   }
   if (updated && params.delivery === 'steer') {
     const sessionId = updated.sessionId
-    const isBusy = (id: string) =>
-      isWorkspaceSessionStreaming(id) || isAgentStreamSessionBusy(id)
+    const isBusy = (id: string) => isWorkspaceSessionStreaming(id) || isAgentStreamSessionBusy(id)
     if (isBusy(sessionId)) {
       markDrainAfterAbort(sessionId)
       AgentChatService.stopStream(sessionId)

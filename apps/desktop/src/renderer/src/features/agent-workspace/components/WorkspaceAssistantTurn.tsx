@@ -123,104 +123,106 @@ export function WorkspaceAssistantTurn(props: {
       }`}
     >
       <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>
-      {timelineGroups.length > 0 ? (
-        timelineGroups.map((item) => {
-          if (item.kind === 'text' && editingActive) return null
-          if (item.kind === 'gate') {
-            return <AgentGatePartBubble key={item.key} data={item.data} />
-          }
-          if (item.kind === 'reasoning') {
-            return <AgentThinkSection key={item.key} content={item.text} />
-          }
-          if (item.kind === 'text') {
-            const parsed = parseRedactedThinking(item.text)
-            const cited = citedTextByKey.get(item.key)
-            return (
-              <React.Fragment key={item.key}>
-                {parsed.cleanReasoning ? (
-                  <AgentThinkSection content={parsed.cleanReasoning} />
-                ) : null}
-                {cited ? <AgentMarkdownRenderer content={cited} /> : null}
-              </React.Fragment>
-            )
-          }
-          if (item.kind === 'tools') {
-            return <AgentToolChainSection key={item.key} invocations={item.invocations} />
-          }
-          if (item.kind === 'file_change_failed') {
-            return (
-              <div key={item.key} className={styles.fileChangeError}>
-                {t('file_change.failed', '文件变更失败')}: {item.data.path}
-              </div>
-            )
-          }
-          return (
-            <WorkspaceFileChangeList
-              key={item.key}
-              changes={buildFileOpEntries(
-                msg.id,
-                item.invocations,
-                item.items.map((entry) => entry.data)
-              )}
-              onSelectChange={(change) => onSelectChange?.(change)}
-              onReviewAll={onReviewAll}
-            />
-          )
-        })
-      ) : fallbackParsed ? (
-        <>
-          {fallbackParsed.cleanReasoning ? (
-            <AgentThinkSection content={fallbackParsed.cleanReasoning} />
-          ) : null}
-          {fallbackCited ? <AgentMarkdownRenderer content={fallbackCited} /> : null}
-        </>
-      ) : null}
-      {editingActive ? (
-        <ChatBubbleInlineEditor
-          isUser={false}
-          editedContent={editedContent}
-          onChange={setEditedContent}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              onEditingChange(null)
-              return
+        {timelineGroups.length > 0 ? (
+          timelineGroups.map((item) => {
+            if (item.kind === 'text' && editingActive) return null
+            if (item.kind === 'gate') {
+              return <AgentGatePartBubble key={item.key} data={item.data} />
             }
-            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-              event.preventDefault()
+            if (item.kind === 'reasoning') {
+              return <AgentThinkSection key={item.key} content={item.text} />
+            }
+            if (item.kind === 'text') {
+              const parsed = parseRedactedThinking(item.text)
+              const cited = citedTextByKey.get(item.key)
+              return (
+                <React.Fragment key={item.key}>
+                  {parsed.cleanReasoning ? (
+                    <AgentThinkSection content={parsed.cleanReasoning} />
+                  ) : null}
+                  {cited ? <AgentMarkdownRenderer content={cited} /> : null}
+                </React.Fragment>
+              )
+            }
+            if (item.kind === 'tools') {
+              return <AgentToolChainSection key={item.key} invocations={item.invocations} />
+            }
+            if (item.kind === 'file_change_failed') {
+              return (
+                <div key={item.key} className={styles.fileChangeError}>
+                  {t('file_change.failed', '文件变更失败')}: {item.data.path}
+                </div>
+              )
+            }
+            return (
+              <WorkspaceFileChangeList
+                key={item.key}
+                changes={buildFileOpEntries(
+                  msg.id,
+                  item.invocations,
+                  item.items.map((entry) => entry.data)
+                )}
+                onSelectChange={(change) => onSelectChange?.(change)}
+                onReviewAll={onReviewAll}
+              />
+            )
+          })
+        ) : fallbackParsed ? (
+          <>
+            {fallbackParsed.cleanReasoning ? (
+              <AgentThinkSection content={fallbackParsed.cleanReasoning} />
+            ) : null}
+            {fallbackCited ? <AgentMarkdownRenderer content={fallbackCited} /> : null}
+          </>
+        ) : null}
+        {editingActive ? (
+          <ChatBubbleInlineEditor
+            isUser={false}
+            editedContent={editedContent}
+            onChange={setEditedContent}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                onEditingChange(null)
+                return
+              }
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault()
+                void saveEdit()
+              }
+            }}
+            onCancel={() => onEditingChange(null)}
+            onSave={() => {
               void saveEdit()
-            }
-          }}
-          onCancel={() => onEditingChange(null)}
-          onSave={() => {
-            void saveEdit()
-          }}
-          textareaRef={textareaRef}
-        />
-      ) : null}
-      {!suppressIncompleteBanner &&
-      (msg.streamStatus === 'in_progress' ||
-        readAssistantStreamStatus(msg.parts) === 'in_progress') ? (
-        <p className={styles.streamIncomplete}>
-          {t('workbench.reply_interrupted', '回复尚未完成，已保存到中断处')}
-        </p>
-      ) : null}
-      {!editingActive && showActionBar ? (
-        <div className={styles.turnActions}>
-          <MessageActionBar
-            isAI
-            onCopy={() => copyWorkspaceBubbleText(assistantText)}
-            onEdit={canEdit ? () => onEditingChange(msg.id) : undefined}
-            onRetry={
-              bubbleActions?.onRegenerate ? () => bubbleActions.onRegenerate?.(msg.id) : undefined
-            }
-            onDelete={bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined}
-            onShowContext={
-              bubbleActions?.onShowContext ? () => bubbleActions.onShowContext?.(msg) : undefined
-            }
+            }}
+            textareaRef={textareaRef}
           />
-        </div>
-      ) : null}
+        ) : null}
+        {!suppressIncompleteBanner &&
+        (msg.streamStatus === 'in_progress' ||
+          readAssistantStreamStatus(msg.parts) === 'in_progress') ? (
+          <p className={styles.streamIncomplete}>
+            {t('workbench.reply_interrupted', '回复尚未完成，已保存到中断处')}
+          </p>
+        ) : null}
+        {!editingActive && showActionBar ? (
+          <div className={styles.turnActions}>
+            <MessageActionBar
+              isAI
+              onCopy={() => copyWorkspaceBubbleText(assistantText)}
+              onEdit={canEdit ? () => onEditingChange(msg.id) : undefined}
+              onRetry={
+                bubbleActions?.onRegenerate ? () => bubbleActions.onRegenerate?.(msg.id) : undefined
+              }
+              onDelete={
+                bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined
+              }
+              onShowContext={
+                bubbleActions?.onShowContext ? () => bubbleActions.onShowContext?.(msg) : undefined
+              }
+            />
+          </div>
+        ) : null}
       </KnowledgeCitationBlock>
     </div>
   )
