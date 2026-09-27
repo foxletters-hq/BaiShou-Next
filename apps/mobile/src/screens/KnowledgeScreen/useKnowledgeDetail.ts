@@ -4,10 +4,14 @@ import * as DocumentPicker from 'expo-document-picker'
 import * as ImagePicker from 'expo-image-picker'
 import {
   canConfirmNotebookDataManage,
+  GRAPH_VIEW_MAX_NODES_DEFAULT,
+  GRAPH_VIEW_MAX_NODES_STORAGE_KEY,
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
+  isVisionModel,
   normalizeKnowledgeDefaultExtractEngine,
   notebookDataManageStatusKind,
+  parseGraphViewMaxNodes,
   parseNotebookDataManageResult,
   shouldDeferKnowledgeImportOrganize,
   type GraphSimilarPendingPair,
@@ -15,6 +19,7 @@ import {
   type NotebookDataManageAction
 } from '@baishou/shared'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import {
   mobileCancelExtract,
@@ -40,6 +45,8 @@ import {
   mobileReprocessSource,
   mobileResolveNotebookCoverUri,
   mobileRetrySource,
+  mobileProbeExtractSample,
+  mobileSearchKnowledge,
   mobileSearchNotebookGraphNodes,
   mobileSetKnowledgeConfig,
   resolveMobileActiveVaultId,
@@ -69,7 +76,7 @@ export function useKnowledgeDetail(notebookId: string) {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const dialog = useDialog()
-  const { dbReady } = useBaishou()
+  const { dbReady, services } = useBaishou()
 
   const [name, setName] = useState('')
   const [coverTone, setCoverTone] = useState('')
@@ -101,9 +108,15 @@ export function useKnowledgeDetail(notebookId: string) {
     Record<string, KnowledgeOcrProgressState>
   >({})
   const [vectorQuery, setVectorQuery] = useState('')
+  const [vectorPage, setVectorPage] = useState(1)
+  const [vectorSearchMode, setVectorSearchMode] = useState<'text' | 'semantic'>('text')
+  const [probeSourceId, setProbeSourceId] = useState('')
   const [vectorItems, setVectorItems] = useState<KnowledgeVectorChunkRow[]>([])
   const [vectorTotal, setVectorTotal] = useState(0)
   const [vectorLoading, setVectorLoading] = useState(false)
+  const [extractedPreview, setExtractedPreview] = useState<{ title: string; text: string } | null>(
+    null
+  )
   const [graphSearchQuery, setGraphSearchQuery] = useState('')
   const [graphTab, setGraphTab] = useState<'canvas' | 'pending' | 'similar'>('canvas')
   const [selectedGraphId, setSelectedGraphId] = useState<string | null>(null)
@@ -113,6 +126,7 @@ export function useKnowledgeDetail(notebookId: string) {
   const [similarPairs, setSimilarPairs] = useState<GraphSimilarPendingPair[]>([])
   const [reviewBusy, setReviewBusy] = useState(false)
   const [graphProgress, setGraphProgress] = useState('')
+  const [viewMaxNodes, setViewMaxNodes] = useState(GRAPH_VIEW_MAX_NODES_DEFAULT)
   const [vaultId, setVaultId] = useState('')
 
   const refreshDetail = useCallback(async () => {
@@ -147,7 +161,7 @@ export function useKnowledgeDetail(notebookId: string) {
       setModelMismatch(false)
     }
     try {
-      const view = await mobileGetNotebookGraphView(notebookId, 400)
+      const view = await mobileGetNotebookGraphView(notebookId, viewMaxNodes)
       setGraphNodes(
         (view.nodes || []).map((n) => ({
           id: n.id,
@@ -191,7 +205,23 @@ export function useKnowledgeDetail(notebookId: string) {
     } catch {
       setGraphProgress('')
     }
-  }, [notebookId, t])
+  }, [notebookId, t, viewMaxNodes])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY)
+        if (cancelled) return
+        setViewMaxNodes(parseGraphViewMaxNodes(raw))
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!dbReady || !notebookId) return
@@ -219,15 +249,35 @@ export function useKnowledgeDetail(notebookId: string) {
     })
   }, [])
 
+  const VECTOR_PAGE_SIZE = 20
   const refreshVectors = useCallback(async () => {
     if (!notebookId) return
     setVectorLoading(true)
     try {
+      const q = vectorQuery.trim()
+      if (q && vectorSearchMode === 'semantic') {
+        const hits = await mobileSearchKnowledge({
+          notebookId,
+          query: q,
+          limit: VECTOR_PAGE_SIZE
+        })
+        setVectorItems(
+          (hits || []).map((hit) => ({
+            chunkId: hit.chunkId,
+            sourceTitle: hit.title || hit.sourceId,
+            chunkIndex: hit.chunkIndex,
+            chunkText: hit.chunkText,
+            modelId: null
+          }))
+        )
+        setVectorTotal((hits || []).length)
+        return
+      }
       const page = await mobileListKnowledgeChunks({
         notebookId,
         query: vectorQuery,
-        limit: 20,
-        offset: 0
+        limit: VECTOR_PAGE_SIZE,
+        offset: (vectorPage - 1) * VECTOR_PAGE_SIZE
       })
       setVectorItems(
         (page.items || []).map((item) => ({
@@ -245,7 +295,7 @@ export function useKnowledgeDetail(notebookId: string) {
     } finally {
       setVectorLoading(false)
     }
-  }, [notebookId, vectorQuery])
+  }, [notebookId, vectorPage, vectorQuery, vectorSearchMode])
 
   useEffect(() => {
     if (!dbReady || !notebookId) return
@@ -342,6 +392,33 @@ export function useKnowledgeDetail(notebookId: string) {
       await mobileRetrySource(source.id)
       await refreshDetail()
       toast.showSuccess(t('knowledge.import_queued', '已加入摄入队列'))
+    } catch (e) {
+      setError(knowledgeIngestUserMessage(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const reprocessSourceVector = async (source: KnowledgeSourceRow) => {
+    const ok = await dialog.confirm(
+      t(
+        'knowledge.reembed_vector_confirm',
+        '将按当前嵌入模型重新嵌入「{{title}}」的向量。已有向量会先清掉再重建。可能耗时较长。',
+        { title: source.title }
+      ),
+      {
+        title: t('knowledge.reembed_vector', '重新嵌入'),
+        confirmText: t('knowledge.reembed_vector', '重新嵌入'),
+        cancelText: t('common.cancel', '取消')
+      }
+    )
+    if (!ok) return
+    setBusy(true)
+    setError('')
+    try {
+      await mobileReprocessSource(source.id, 'embed')
+      await refreshDetail()
+      toast.showSuccess(t('knowledge.reembed_vector_queued', '已开始重新嵌入'))
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
@@ -630,6 +707,86 @@ export function useKnowledgeDetail(notebookId: string) {
     }
   }
 
+  const locateGraphNode = (nodeId: string) => {
+    setGraphTab('canvas')
+    setSelectedGraphId(nodeId)
+    setGraphLocateIds([nodeId])
+    setGraphLocateSeq((n) => n + 1)
+  }
+
+  const pickVisionModel = async () => {
+    const providers =
+      (await services?.settingsManager.get<
+        Array<{ id: string; name?: string; type?: string; models?: string[]; enabledModels?: string[] }>
+      >('ai_providers')) || []
+    const options: Array<{ label: string; value: string }> = [
+      { label: t('knowledge.vision_follow_global', '跟随全局对话模型'), value: '' }
+    ]
+    for (const provider of providers) {
+      const models = provider.enabledModels?.length ? provider.enabledModels : provider.models || []
+      for (const model of models) {
+        if (!isVisionModel(model, provider.type || provider.id)) continue
+        options.push({
+          label: `${provider.name || provider.id} / ${model}`,
+          value: `${provider.id}::${model}`
+        })
+      }
+    }
+    const picked = await dialog.choose(t('knowledge.vision_model', '视觉模型'), options)
+    if (picked == null) return
+    setBusy(true)
+    try {
+      if (!picked) {
+        await mobileSetKnowledgeConfig({ visionProviderId: null, visionModelId: null })
+      } else {
+        const splitAt = picked.indexOf('::')
+        await mobileSetKnowledgeConfig({
+          visionProviderId: picked.slice(0, splitAt),
+          visionModelId: picked.slice(splitAt + 2)
+        })
+      }
+      toast.showSuccess(t('common.saved', '已保存'))
+    } catch (e) {
+      setError(knowledgeIngestUserMessage(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const probeExtract = async () => {
+    const source =
+      sources.find((row) => row.id === probeSourceId) ||
+      sources.find((row) => row.status !== 'failed')
+    if (!source) {
+      toast.showError(t('knowledge.probe_need_source', '先导入一份资料，再试抽'))
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const sample = await mobileProbeExtractSample({
+        notebookId,
+        sourceId: source.id,
+        engine,
+        ocrLanguage,
+        ocrConcurrency
+      })
+      const pages = Array.isArray(sample?.pages) ? sample.pages : []
+      const text = pages
+        .map((page) => `${page.page}\n${page.text || ''}`)
+        .join('\n\n')
+        .trim()
+      setExtractedPreview({
+        title: t('knowledge.extract_probe', '试抽'),
+        text: text || t('knowledge.extracted_empty', '还没有抽出正文')
+      })
+    } catch (e) {
+      setError(knowledgeIngestUserMessage(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const embedSource = async (source: KnowledgeSourceRow) => {
     setBusy(true)
     setError('')
@@ -677,8 +834,9 @@ export function useKnowledgeDetail(notebookId: string) {
         notebookId,
         sourceId: source.id
       })
-      await dialog.alert(preview.text?.trim() || t('knowledge.extracted_empty', '还没有抽出正文'), {
-        title: t('knowledge.extracted_preview', '抽出正文')
+      setExtractedPreview({
+        title: t('knowledge.extracted_preview', '抽出正文'),
+        text: preview.text?.trim() || t('knowledge.extracted_empty', '还没有抽出正文')
       })
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
@@ -705,7 +863,10 @@ export function useKnowledgeDetail(notebookId: string) {
   }
 
   const reviewNode = async (nodeId: string, status: 'approved' | 'rejected') => {
-    if (!vaultId) return
+    if (!vaultId) {
+      toast.showError(t('knowledge.vault_required', '还没有打开工作区，无法修改本笔记本图谱'))
+      return
+    }
     setReviewBusy(true)
     try {
       await mobileReviewNotebookGraphNode({ notebookId, nodeId, reviewStatus: status, vaultId })
@@ -718,7 +879,10 @@ export function useKnowledgeDetail(notebookId: string) {
   }
 
   const reviewEdge = async (edgeId: string, status: 'approved' | 'rejected') => {
-    if (!vaultId) return
+    if (!vaultId) {
+      toast.showError(t('knowledge.vault_required', '还没有打开工作区，无法修改本笔记本图谱'))
+      return
+    }
     setReviewBusy(true)
     try {
       await mobileReviewNotebookGraphEdge({ notebookId, edgeId, reviewStatus: status, vaultId })
@@ -731,7 +895,10 @@ export function useKnowledgeDetail(notebookId: string) {
   }
 
   const reviewAllPending = async (status: 'approved' | 'rejected') => {
-    if (!vaultId) return
+    if (!vaultId) {
+      toast.showError(t('knowledge.vault_required', '还没有打开工作区，无法修改本笔记本图谱'))
+      return
+    }
     setReviewBusy(true)
     try {
       await mobileReviewNotebookGraphBatch({
@@ -749,7 +916,10 @@ export function useKnowledgeDetail(notebookId: string) {
   }
 
   const mergeSimilar = async (pair: GraphSimilarPendingPair) => {
-    if (!vaultId) return
+    if (!vaultId) {
+      toast.showError(t('knowledge.vault_required', '还没有打开工作区，无法修改本笔记本图谱'))
+      return
+    }
     const ok = await dialog.confirm(
       t('graph.merge_similar_confirm', '将把「{{loser}}」并入「{{survivor}}」。', {
         survivor: pair.nodeName,
@@ -775,7 +945,10 @@ export function useKnowledgeDetail(notebookId: string) {
   }
 
   const dismissSimilar = async (pair: GraphSimilarPendingPair) => {
-    if (!vaultId) return
+    if (!vaultId) {
+      toast.showError(t('knowledge.vault_required', '还没有打开工作区，无法修改本笔记本图谱'))
+      return
+    }
     setReviewBusy(true)
     try {
       await mobileDismissNotebookSimilarPair({
@@ -834,6 +1007,7 @@ export function useKnowledgeDetail(notebookId: string) {
     rebuildIndex,
     retrySource,
     reprocessSourceGraph,
+    reprocessSourceVector,
     rebuildNotebookGraph,
     startOrganize,
     onImportText,
@@ -852,16 +1026,35 @@ export function useKnowledgeDetail(notebookId: string) {
     setOcrConcurrency,
     saveExtractConfig,
     recoverStale,
+    probeExtract,
+    probeSourceId,
+    setProbeSourceId,
+    pickVisionModel,
+    locateGraphNode,
     ocrProgressBySource,
     embedSource,
     cancelExtract,
     ocrMissing,
     previewExtracted,
     vectorQuery,
-    setVectorQuery,
+    setVectorQuery: (value: string) => {
+      setVectorPage(1)
+      setVectorQuery(value)
+    },
+    vectorSearchMode,
+    setVectorSearchMode: (mode: 'text' | 'semantic') => {
+      setVectorPage(1)
+      setVectorSearchMode(mode)
+    },
+    vectorPage,
+    setVectorPage,
+    vectorPageSize: 20,
     vectorItems,
     vectorTotal,
     vectorLoading,
+    extractedPreview,
+    closeExtractedPreview: () => setExtractedPreview(null),
+    openTextPreview: (title: string, text: string) => setExtractedPreview({ title, text }),
     graphSearchQuery,
     setGraphSearchQuery,
     graphTab,

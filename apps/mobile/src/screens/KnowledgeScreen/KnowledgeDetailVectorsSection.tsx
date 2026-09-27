@@ -1,8 +1,8 @@
 import React from 'react'
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Card, Input, SettingsSection, useNativeTheme } from '@baishou/ui/native'
+import { Button, Card, Input, SegmentedControl, SettingsSection, useNativeTheme } from '@baishou/ui/native'
 
 export type KnowledgeVectorChunkRow = {
   chunkId: string
@@ -15,9 +15,15 @@ export type KnowledgeVectorChunkRow = {
 export function KnowledgeDetailVectorsSection(props: {
   query: string
   onQueryChange: (value: string) => void
+  searchMode: 'text' | 'semantic'
+  onSearchModeChange: (mode: 'text' | 'semantic') => void
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
   items: KnowledgeVectorChunkRow[]
   total: number
   loading: boolean
+  onOpenChunk: (item: KnowledgeVectorChunkRow) => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -25,6 +31,14 @@ export function KnowledgeDetailVectorsSection(props: {
   return (
     <SettingsSection title={t('knowledge.tab_vectors', '向量')}>
       <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
+        <SegmentedControl
+          value={props.searchMode}
+          onChange={(value) => props.onSearchModeChange(value as 'text' | 'semantic')}
+          options={[
+            { value: 'text', label: t('knowledge.vector_search_text', '文本') },
+            { value: 'semantic', label: t('knowledge.vector_search_semantic', '语义') }
+          ]}
+        />
         <Input
           value={props.query}
           onChangeText={props.onQueryChange}
@@ -42,7 +56,8 @@ export function KnowledgeDetailVectorsSection(props: {
             : t('knowledge.vector_count', '{{count}} 个片段', { count: props.total })}
         </Text>
         {props.items.map((item) => (
-          <Card key={item.chunkId}>
+          <Pressable key={item.chunkId} onPress={() => props.onOpenChunk(item)}>
+          <Card>
             <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.xs }}>
               <Text
                 style={{
@@ -74,7 +89,26 @@ export function KnowledgeDetailVectorsSection(props: {
               ) : null}
             </View>
           </Card>
+          </Pressable>
         ))}
+        {props.searchMode === 'text' && props.total > props.pageSize ? (
+          <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
+            <Button
+              variant="outlined"
+              isDisabled={props.loading || props.page <= 1}
+              onPress={() => props.onPageChange(props.page - 1)}
+            >
+              {t('common.prev', '上一页')}
+            </Button>
+            <Button
+              variant="outlined"
+              isDisabled={props.loading || props.page * props.pageSize >= props.total}
+              onPress={() => props.onPageChange(props.page + 1)}
+            >
+              {t('common.next', '下一页')}
+            </Button>
+          </View>
+        ) : null}
       </View>
     </SettingsSection>
   )

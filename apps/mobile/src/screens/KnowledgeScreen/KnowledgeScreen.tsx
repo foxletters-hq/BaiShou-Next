@@ -98,7 +98,12 @@ export function KnowledgeScreen() {
     setBusy(true)
     setError('')
     try {
-      await mobileCreateNotebook({ name: trimmed })
+      const description = await dialog.prompt(
+        t('knowledge.notebook_description', '简介，可以留空'),
+        '',
+        t('knowledge.notebook_description_title', '笔记本简介')
+      )
+      await mobileCreateNotebook({ name: trimmed, description: description?.trim() || undefined })
       await refreshList()
     } catch (e) {
       setError(String((e as Error)?.message || e))
@@ -304,6 +309,33 @@ export function KnowledgeScreen() {
                       marginTop: tokens.spacing.sm
                     }}
                   >
+                    <Button
+                      isDisabled={busy}
+                      onPress={() => {
+                        void (async () => {
+                          const draft = await dialog.prompt(
+                            t('knowledge.notebook_description', '简介，可以留空'),
+                            item.description || '',
+                            t('knowledge.notebook_description_title', '笔记本简介')
+                          )
+                          if (draft == null) return
+                          setBusy(true)
+                          try {
+                            await mobileUpdateNotebook({
+                              notebookId: item.id,
+                              description: draft.trim()
+                            })
+                            await refreshList()
+                          } catch (e) {
+                            setError(String((e as Error)?.message || e))
+                          } finally {
+                            setBusy(false)
+                          }
+                        })()
+                      }}
+                    >
+                      {t('knowledge.edit_description', '简介')}
+                    </Button>
                     <Button isDisabled={busy} onPress={() => void onRename(item)}>
                       {t('knowledge.rename_notebook', '重命名')}
                     </Button>

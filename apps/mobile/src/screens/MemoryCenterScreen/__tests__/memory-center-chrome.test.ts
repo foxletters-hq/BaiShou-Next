@@ -17,6 +17,8 @@ describe('mobile memory center chrome', () => {
     expect(page).toContain('readActiveVaultSafely')
     expect(page).toContain('normalizeMemoryCenterRagConfig')
     expect(page).toContain('loadMemoryOrganizePending')
+    expect(page).toContain('ensureMobileGraphSelfName')
+    expect(page).toContain('MemoryOrganizeModal')
     expect(page).toContain('graph 与 embed-then-graph 都走 batchEmbed')
     expect(page).not.toContain('getActiveVault().catch')
     expect(page).not.toContain('mobileGraphExtractQueue.enqueue')

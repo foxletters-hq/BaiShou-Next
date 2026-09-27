@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
@@ -20,7 +20,8 @@ import {
   type RagBatchEmbedPhaseId,
   type RagConfig
 } from '@baishou/shared'
-import { Button, Card, SegmentedControl, useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { Button, Card, SegmentedControl, useDialog, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -38,6 +39,13 @@ import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from './memory-
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
 import { requestGraphPendingFocus } from '../GraphScreen/graph-pending-focus'
 import { loadMemoryOrganizePending, snapshotMemoryEmbedPhases } from './memory-center-organize.util'
+import { ensureMobileGraphSelfName } from '../DiaryScreen/ensure-graph-self-name'
+import {
+  getCachedMobileRagState,
+  patchCachedMobileRagState,
+  subscribeMobileRagRuntime
+} from '@/src/services/mobile-rag-runtime-cache'
+import { MemoryOrganizeModal } from './MemoryOrganizeModal'
 
 function rowLabel(
   id: MemoryReadinessRow['id'],
@@ -69,10 +77,17 @@ function rowValue(
 
 export function MemoryCenterScreen() {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const toast = useNativeToast()
+  const dialog = useDialog()
+  const ragState = useSyncExternalStore(
+    subscribeMobileRagRuntime,
+    getCachedMobileRagState,
+    getCachedMobileRagState
+  )
+  const [organizeOpen, setOrganizeOpen] = useState(false)
   const chrome = getStackScreenChrome(colors)
   const { dbReady, services } = useBaishou()
   const params = useLocalSearchParams<{ tab?: string }>()
@@ -192,6 +207,16 @@ export function MemoryCenterScreen() {
       router.push('/settings/ai-models')
       return
     }
+    if (pendingGraphCount > 0) {
+      const selfName = await ensureMobileGraphSelfName({
+        settingsManager: services.settingsManager
+      })
+      if (!selfName) {
+        toast.showInfo(t('memory.need_self_name', '先在关系图谱里填写自己的名字，再整理记忆'))
+        router.push('/graph')
+        return
+      }
+    }
     // graph 与 embed-then-graph 都走 batchEmbed；日记为 0 时 fill 仍会抽图与补向量
     const runtime = getAgentDbRuntime()
     if (runtime?.drizzleDb) {
@@ -208,6 +233,7 @@ export function MemoryCenterScreen() {
         settingsManager: services.settingsManager
       })
     }
+    setOrganizeOpen(true)
     setBusy(true)
     try {
       const snapshot = snapshotMemoryEmbedPhases(pendingEmbedParts, pendingGraphCount)
@@ -245,7 +271,7 @@ export function MemoryCenterScreen() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <View style={[styles.head, { paddingBottom: 8 }]}>
+          <View style={[styles.head, { paddingBottom: tokens.spacing.sm, paddingHorizontal: tokens.spacing.md, paddingTop: tokens.spacing.sm }]}>
             <SegmentedControl
               value={tab}
               onChange={selectTab}
@@ -255,9 +281,9 @@ export function MemoryCenterScreen() {
                 { value: 'graph', label: t('memory.tab_graph', '图谱') }
               ]}
             />
-            <View style={styles.rows}>
+            <View style={[styles.rows, { marginTop: tokens.spacing.md, gap: tokens.spacing.sm }]}>
               {rows.map((row) => (
-                <View key={row.id} style={styles.row}>
+                <View key={row.id} style={[styles.row, { gap: tokens.spacing.sm }]}>
                   <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
                     {rowLabel(row.id, t)}
                   </Text>
@@ -279,12 +305,12 @@ export function MemoryCenterScreen() {
               ) : null}
             </View>
             {showOnboarding ? (
-              <Card style={{ marginTop: 8 }}>
+              <Card style={{ marginTop: tokens.spacing.sm }}>
                 <Text style={[styles.onboardingTitle, { color: colors.textPrimary }]}>
                   {t('memory.onboarding_title', '开始整理记忆')}
                 </Text>
                 {onboarding.steps.map((step) => (
-                  <Text key={step.id} style={{ color: colors.textSecondary, marginTop: 4 }}>
+                  <Text key={step.id} style={{ color: colors.textSecondary, marginTop: tokens.spacing.xs }}>
                     {step.id === 'embed'
                       ? t('memory.onboarding_step_embed', '配置嵌入模型')
                       : step.id === 'vector'
@@ -293,7 +319,7 @@ export function MemoryCenterScreen() {
                     {step.count != null ? ` · ${step.count}` : ''}
                   </Text>
                 ))}
-                <View style={styles.onboardingActions}>
+                <View style={[styles.onboardingActions, { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }]}>
                   <Button
                     onPress={() => {
                       if (onboarding.primaryKind === 'configure') router.push('/settings/ai-models')
@@ -317,50 +343,96 @@ export function MemoryCenterScreen() {
             ) : null}
           </View>
           {tab === 'vectors' ? (
-            <View style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + tokens.spacing.lg }}
+              keyboardShouldPersistTaps="handled"
+            >
               <RAGMemorySection />
-            </View>
+            </ScrollView>
           ) : (
-            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}>
-              <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
+            <ScrollView
+              contentContainerStyle={{
+                padding: tokens.spacing.md,
+                paddingBottom: insets.bottom + tokens.spacing.lg,
+                gap: tokens.spacing.sm
+              }}
+            >
+              <Text style={{ color: colors.textSecondary }}>
                 {t('graph.pending_entries_hint', '有 {{count}} 篇日记还没整理', {
                   count: pendingGraphCount
                 })}
               </Text>
-              <Button onPress={() => void startOrganize()} isDisabled={busy}>
-                {t('memory.start_organize', '开始整理记忆')}
-              </Button>
-              <View style={{ height: 12 }} />
-              {suspectCount > 0 ? (
-                <Button
-                  variant="outlined"
-                  onPress={() => {
-                    requestGraphPendingFocus()
-                    router.push('/graph')
-                  }}
-                >
-                  {t('memory.review_suspects', '去检查')}
+              <View style={[styles.onboardingActions, { gap: tokens.spacing.sm }]}>
+                <Button onPress={() => void startOrganize()} isDisabled={busy}>
+                  {t('memory.start_organize', '开始整理记忆')}
                 </Button>
-              ) : null}
-              <View style={{ height: 12 }} />
-              <Button variant="outlined" onPress={() => router.push('/graph')}>
-                {t('nav.graph', '关系图谱')}
-              </Button>
+                {suspectCount > 0 ? (
+                  <Button
+                    variant="outlined"
+                    onPress={() => {
+                      requestGraphPendingFocus()
+                      router.push('/graph')
+                    }}
+                  >
+                    {t('memory.review_suspects', '去检查')}
+                  </Button>
+                ) : null}
+                <Button variant="outlined" onPress={() => router.push('/graph')}>
+                  {t('nav.graph', '关系图谱')}
+                </Button>
+              </View>
             </ScrollView>
           )}
         </View>
       )}
+      <MemoryOrganizeModal
+        visible={organizeOpen}
+        ragState={ragState}
+        onClose={() => setOrganizeOpen(false)}
+        onPause={() => {
+          services?.ragService.requestOperationPause()
+          patchCachedMobileRagState({ paused: true, cancelling: false, isRunning: true })
+        }}
+        onResume={() => {
+          services?.ragService.requestOperationResume()
+          patchCachedMobileRagState({ paused: false, cancelling: false, isRunning: true })
+        }}
+        onCancel={() => {
+          void dialog
+            .confirm(
+              t(
+                'settings.rag_batch_embed_cancel_confirm',
+                '取消后将停止尚未开始的嵌入，已经写入的向量会保留。确定取消？'
+              ),
+              { title: t('common.warning', '警告') }
+            )
+            .then((ok) => {
+              if (!ok) return
+              services?.ragService.requestOperationAbort()
+              patchCachedMobileRagState({ cancelling: true, paused: false })
+            })
+        }}
+      />
     </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  head: { paddingHorizontal: 16, paddingTop: 8 },
-  rows: { marginTop: 12, gap: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontSize: 13 },
-  rowValue: { fontSize: 13, flexShrink: 1, textAlign: 'right' },
-  onboardingTitle: { fontSize: 16, fontWeight: '600' },
-  onboardingActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }
+  head: {},
+  rows: {},
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  rowLabel: { fontSize: settingsTypography.desc.fontSize, fontWeight: settingsTypography.desc.fontWeight },
+  rowValue: {
+    fontSize: settingsTypography.desc.fontSize,
+    fontWeight: settingsTypography.desc.fontWeight,
+    flexShrink: 1,
+    textAlign: 'right'
+  },
+  onboardingTitle: {
+    fontSize: settingsTypography.section.fontSize,
+    fontWeight: settingsTypography.section.fontWeight
+  },
+  onboardingActions: { flexDirection: 'row', flexWrap: 'wrap' }
 })

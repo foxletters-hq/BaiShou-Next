@@ -7,6 +7,7 @@ import {
   knowledgeSourceCanCancelExtract,
   knowledgeSourceCanEmbed,
   knowledgeSourceCanReembedGraph,
+  knowledgeSourceCanReembedVector,
   knowledgeSourceCanRetry,
   knowledgeSourceNeedsOcr,
   knowledgeSourceStatusLabel
@@ -20,6 +21,7 @@ export function KnowledgeDetailSourcesSection(props: {
   ocrProgressBySource: Record<string, KnowledgeOcrProgressState>
   onRetrySource: (source: KnowledgeSourceRow) => void
   onReprocessGraph: (source: KnowledgeSourceRow) => void
+  onReprocessVector: (source: KnowledgeSourceRow) => void
   onEmbedSource: (source: KnowledgeSourceRow) => void
   onCancelExtract: (source: KnowledgeSourceRow) => void
   onOcrMissing: (source: KnowledgeSourceRow) => void
@@ -34,6 +36,7 @@ export function KnowledgeDetailSourcesSection(props: {
     ocrProgressBySource,
     onRetrySource,
     onReprocessGraph,
+    onReprocessVector,
     onEmbedSource,
     onCancelExtract,
     onOcrMissing,
@@ -138,6 +141,11 @@ export function KnowledgeDetailSourcesSection(props: {
                   {knowledgeSourceCanRetry(s.status) ? (
                     <Button isDisabled={busy} onPress={() => void onRetrySource(s)}>
                       {t('knowledge.retry', '重试')}
+                    </Button>
+                  ) : null}
+                  {knowledgeSourceCanReembedVector(s.status) ? (
+                    <Button isDisabled={busy} onPress={() => void onReprocessVector(s)}>
+                      {t('knowledge.reembed_vector', '重新嵌入')}
                     </Button>
                   ) : null}
                   {knowledgeSourceCanReembedGraph(s.status) ? (
