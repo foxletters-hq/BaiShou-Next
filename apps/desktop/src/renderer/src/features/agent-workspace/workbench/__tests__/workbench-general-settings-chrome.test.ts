@@ -16,7 +16,7 @@ describe('WorkbenchGeneralSettingsPane chrome', () => {
   })
 
   it('should use the official small outlined restore button', () => {
-    expect(src).toContain('from \'@baishou/ui\'')
+    expect(src).toContain("from '@baishou/ui'")
     expect(src).toContain('Button')
     expect(src).toContain('size="small"')
     expect(src).toContain('variant="outlined"')

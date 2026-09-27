@@ -32,7 +32,12 @@ const MAX_AGENT_WIDTH = 800
 const MIN_EDITOR_WIDTH = 360
 const SASH_WIDTH = 8
 
-function fitPanelMax(shellWidth: number, reserved: number, hardMin: number, hardMax: number): number {
+function fitPanelMax(
+  shellWidth: number,
+  reserved: number,
+  hardMin: number,
+  hardMax: number
+): number {
   if (shellWidth <= 0) return hardMax
   const available = Math.floor(shellWidth - reserved)
   if (available <= hardMin) return hardMin

@@ -12,7 +12,7 @@ const tabs = [
   { id: 'c', relativePath: '目录结构.md' }
 ]
 
-function labelsOf(tabId: string, source = tabs) {
+function labelsOf(tabId: string, source: Array<{ id: string; relativePath?: string }> = tabs) {
   return buildEditorTabMenuItems({
     tabs: source,
     tabId,
@@ -79,7 +79,12 @@ describe('buildEditorTabMenuItems', () => {
   })
 
   it('should omit path actions when the tab has no file path', () => {
-    expect(labelsOf('draft', [{ id: 'draft' }])).toEqual(['关闭', '关闭其他', '关闭右侧', '全部关闭'])
+    expect(labelsOf('draft', [{ id: 'draft' }])).toEqual([
+      '关闭',
+      '关闭其他',
+      '关闭右侧',
+      '全部关闭'
+    ])
   })
 
   it('should copy the relative path of the clicked tab', () => {

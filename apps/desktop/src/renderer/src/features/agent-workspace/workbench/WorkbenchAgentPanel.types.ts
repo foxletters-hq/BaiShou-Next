@@ -55,6 +55,7 @@ export interface WorkbenchAgentPanelProps {
     pendingAssistantMsg: unknown
     hasMore?: boolean
     loadMore?: () => Promise<void>
+    refresh?: (sessionId?: string) => Promise<void> | void
   }
   stream: {
     text: string
