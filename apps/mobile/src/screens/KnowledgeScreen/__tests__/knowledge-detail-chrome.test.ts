@@ -27,6 +27,8 @@ const page = [
   'KnowledgeHeavyConfirmDialog.tsx',
   'KnowledgeNotebookStatusStrip.tsx',
   'KnowledgeNotebookGraphCanvasTab.tsx',
+  'KnowledgeNotebookGraphAppearance.tsx',
+  'useNotebookGraphAppearance.ts',
   'KnowledgeNotebookGraphPendingTab.tsx'
 ]
   .map((name) => readFileSync(join(dir, '..', name), 'utf8'))
@@ -103,6 +105,17 @@ describe('mobile knowledge detail chrome', () => {
     expect(page).toContain('KnowledgeNotebookStatusStrip')
     expect(page).toContain('extract_probe_empty_page')
     expect(page).toContain('graph.merge_irreversible')
+    expect(page).toContain('import_process_hint_later')
+    expect(page).toContain('vision_model_recommend')
+    expect(page).toContain('knowledge.settings_section_extract_help')
+    expect(page).toContain('ocr_concurrency_option_recommended')
+    expect(page).toContain("t('graph.tab_reextract'")
+    expect(page).toContain('knowledge.graph_ops_hint')
+    expect(page).toContain('loadGraphAppearanceSettings')
+    expect(page).toContain('appearanceSettings')
+    expect(page).toContain('forceSettings')
+    expect(page).toContain('onStartOrganize')
+    expect(page).toContain('graph.start_organize')
   })
 
   it('should use settings sections and require a three-second delete countdown', () => {

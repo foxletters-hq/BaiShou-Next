@@ -24,6 +24,8 @@ import {
 } from '@baishou/ui/native'
 import { GraphForceWebView } from '../GraphScreen/GraphForceWebView'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
+import { KnowledgeNotebookGraphAppearance } from './KnowledgeNotebookGraphAppearance'
+import { useNotebookGraphAppearance } from './useNotebookGraphAppearance'
 import type { KnowledgeGraphEdgeRow, KnowledgeGraphNodeRow } from './knowledge-detail.types'
 
 export type KnowledgeGraphSearchHit = {
@@ -64,6 +66,8 @@ export function KnowledgeNotebookGraphCanvasTab(props: {
   const focusIds = props.selectedId
     ? collectGraphFocusIds(props.selectedId, props.edges, props.focusDepth)
     : null
+  const { appearanceSettings, forceSettings, onAppearanceChange, onForceChange } =
+    useNotebookGraphAppearance()
 
   return (
     <>
@@ -84,8 +88,16 @@ export function KnowledgeNotebookGraphCanvasTab(props: {
           locateSeq={props.locateSeq}
           onSelectNode={(node) => props.onSelectNode(node.id)}
           onClearSelection={props.onClearSelection}
+          appearanceSettings={appearanceSettings}
+          forceSettings={forceSettings}
         />
       </View>
+      <KnowledgeNotebookGraphAppearance
+        appearanceSettings={appearanceSettings}
+        forceSettings={forceSettings}
+        onAppearanceChange={onAppearanceChange}
+        onForceChange={onForceChange}
+      />
       <Text
         style={{
           color: colors.textSecondary,

@@ -42,7 +42,7 @@ export function useKnowledgeDetailGraph(input: {
   const { notebookId, vaultId, nodes, t, toast, dialog, setError, refreshDetail } = input
   const [graphSearchQuery, setGraphSearchQuery] = useState('')
   const [graphSearchMode, setGraphSearchMode] = useState<'text' | 'semantic'>('text')
-  const [graphTab, setGraphTab] = useState<'canvas' | 'pending' | 'similar'>('canvas')
+  const [graphTab, setGraphTab] = useState<'canvas' | 'reextract' | 'pending' | 'similar'>('canvas')
   const [selectedGraphId, setSelectedGraphId] = useState<string | null>(null)
   const [graphHighlightIds, setGraphHighlightIds] = useState<Set<string>>(() => new Set())
   const [graphLocateIds, setGraphLocateIds] = useState<string[] | null>(null)
