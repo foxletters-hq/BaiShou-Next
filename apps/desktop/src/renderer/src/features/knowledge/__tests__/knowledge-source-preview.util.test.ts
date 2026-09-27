@@ -71,18 +71,18 @@ describe('pdf book spread', () => {
       ready: false,
       useSpread: false
     })
-    expect(resolvePdfPreviewLayout({ containerWidth: 900, pageWidth: 400, pageCount: 222 })).toEqual(
-      {
-        ready: true,
-        useSpread: true
-      }
-    )
-    expect(resolvePdfPreviewLayout({ containerWidth: 400, pageWidth: 400, pageCount: 222 })).toEqual(
-      {
-        ready: true,
-        useSpread: false
-      }
-    )
+    expect(
+      resolvePdfPreviewLayout({ containerWidth: 900, pageWidth: 400, pageCount: 222 })
+    ).toEqual({
+      ready: true,
+      useSpread: true
+    })
+    expect(
+      resolvePdfPreviewLayout({ containerWidth: 400, pageWidth: 400, pageCount: 222 })
+    ).toEqual({
+      ready: true,
+      useSpread: false
+    })
   })
 
   it('uses two pages only when the container is wide enough', () => {
@@ -158,14 +158,16 @@ describe('pdf book spread', () => {
     expect(stepPdfPreviewScale(1.1, -1)).toBeCloseTo(1)
     expect(stepPdfPreviewScale(0.25, -1)).toBe(0.25)
     expect(stepPdfPreviewScale(4, 1)).toBe(4)
-    expect(resolvePdfPreviewFitScale({
-      pageWidth: 400,
-      pageHeight: 600,
-      pageCountInView: 1,
-      availableWidth: 400,
-      availableHeight: 600,
-      fit: 'page'
-    })).toBeCloseTo(1)
+    expect(
+      resolvePdfPreviewFitScale({
+        pageWidth: 400,
+        pageHeight: 600,
+        pageCountInView: 1,
+        availableWidth: 400,
+        availableHeight: 600,
+        fit: 'page'
+      })
+    ).toBeCloseTo(1)
   })
 
   it('should size a lone cover like one page of a spread', () => {

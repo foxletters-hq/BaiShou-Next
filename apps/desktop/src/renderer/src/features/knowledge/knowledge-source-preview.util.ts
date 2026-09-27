@@ -129,8 +129,7 @@ export function clampPdfPreviewScale(scale: number): number {
 
 /** 按当前真实比例放大或缩小，不是在「适配后的尺寸」上再乘一档。 */
 export function stepPdfPreviewScale(current: number, direction: -1 | 1): number {
-  const next =
-    direction > 0 ? current * PDF_PREVIEW_SCALE_DELTA : current / PDF_PREVIEW_SCALE_DELTA
+  const next = direction > 0 ? current * PDF_PREVIEW_SCALE_DELTA : current / PDF_PREVIEW_SCALE_DELTA
   return clampPdfPreviewScale(next)
 }
 

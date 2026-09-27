@@ -8,9 +8,9 @@ const t = (key: string, fallback: string, options?: Record<string, number>) =>
 
 describe('knowledgeIngestProgressLabel', () => {
   it('should describe embed chunks instead of pages', () => {
-    expect(
-      knowledgeIngestProgressLabel(t, { page: 12, total: 80, phase: 'embed' })
-    ).toBe('正在建立索引 12/80')
+    expect(knowledgeIngestProgressLabel(t, { page: 12, total: 80, phase: 'embed' })).toBe(
+      '正在建立索引 12/80'
+    )
   })
 
   it('should describe pdf parse progress while the worker is reading pages', () => {
@@ -29,8 +29,8 @@ describe('knowledgeIngestProgressLabel', () => {
   })
 
   it('should keep extract progress as page counts', () => {
-    expect(
-      knowledgeIngestProgressLabel(t, { page: 3, total: 10, phase: 'vision' })
-    ).toBe('OCR 中 3/10')
+    expect(knowledgeIngestProgressLabel(t, { page: 3, total: 10, phase: 'vision' })).toBe(
+      'OCR 中 3/10'
+    )
   })
 })
