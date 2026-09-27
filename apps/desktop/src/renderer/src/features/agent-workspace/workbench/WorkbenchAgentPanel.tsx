@@ -26,6 +26,8 @@ import {
 } from '@baishou/ui'
 import { usePromptShortcutStore } from '@baishou/store'
 import { usePersistedSearchMode } from '../../agent/hooks/usePersistedSearchMode'
+import { useComposerPendingQueue } from '../../agent/hooks/useComposerPendingQueue'
+import { excludePendingQueuedUserMessages } from '../../agent/utils/pending-queue-messages.util'
 import {
   AgentWorkspaceMessageList,
   type AgentWorkspaceMessageListHandle
@@ -112,9 +114,13 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
       )
     }, [gateSlot, onOpenGateFileChange])
     const [notebookMountOpen, setNotebookMountOpen] = useState(false)
-    const [pendingQueue, setPendingQueue] = useState<Array<{ id: string; text: string }>>([])
     const [showShortcutManager, setShowShortcutManager] = useState(false)
     const [workspaceShortcuts, setWorkspaceShortcuts] = useState<PromptShortcut[]>([])
+    const pendingQueueCtl = useComposerPendingQueue({
+      sessionId,
+      scope: 'workspace',
+      refreshTrigger: stream.isStreaming
+    })
     const inputPlaceholder = useWorkbenchInputPlaceholder()
     const resolveDropAttachments = useMemo(
       () => createWorkspaceComposerDropResolver(workspace?.folderRoot ?? null),
@@ -215,34 +221,6 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
     )
 
     useEffect(() => {
-      if (!sessionId) {
-        setPendingQueue([])
-        return
-      }
-      const refreshPending = async () => {
-        try {
-          const list = await window.api.agentWorkspace.listPendingInputs(sessionId)
-          setPendingQueue(
-            list.map((item) => ({
-              id: item.id,
-              text: item.text
-            }))
-          )
-        } catch {
-          setPendingQueue([])
-        }
-      }
-      void refreshPending()
-      const onChanged = (ev: Event) => {
-        const detail = (ev as CustomEvent<{ sessionId?: string }>).detail
-        if (detail?.sessionId && detail.sessionId !== sessionId) return
-        void refreshPending()
-      }
-      window.addEventListener('baishou:workspace-pending-inputs-changed', onChanged)
-      return () => window.removeEventListener('baishou:workspace-pending-inputs-changed', onChanged)
-    }, [sessionId, stream.isStreaming])
-
-    useEffect(() => {
       if (!composerRefill) return
       inputBarRef.current?.restoreDraft({
         text: composerRefill.text,
@@ -250,7 +228,10 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
       })
     }, [composerRefill])
 
-    const workspaceMessages = chat.messages as WorkspaceChatMessage[]
+    const workspaceMessages = excludePendingQueuedUserMessages(
+      chat.messages as WorkspaceChatMessage[],
+      pendingQueueCtl.pendingQueue
+    )
 
     const providerIconUrl = useMemo(() => {
       if (!isConfiguredProviderId(chrome.currentProviderId)) return undefined
@@ -378,7 +359,23 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
               <WorkbenchAgentComposer
                 hasConfiguredModel={hasConfiguredModel}
                 gateSlot={resolvedGateSlot}
-                pendingQueue={pendingQueue}
+                pendingQueue={pendingQueueCtl.pendingQueue}
+                editingInputId={pendingQueueCtl.editingInputId}
+                onQueueSendNow={pendingQueueCtl.sendNow}
+                onQueueEdit={(item) => {
+                  pendingQueueCtl.beginEdit(item)
+                  inputBarRef.current?.restoreDraft({ text: item.text })
+                  inputBarRef.current?.focus()
+                }}
+                onQueueDelete={async (item) => {
+                  await pendingQueueCtl.deleteItem(item)
+                  if (sessionId) void chat.refresh(sessionId)
+                }}
+                onQueueEditDismiss={() => {
+                  pendingQueueCtl.cancelEdit()
+                  inputBarRef.current?.restoreDraft({ text: '' })
+                }}
+                onQueueEditCommit={pendingQueueCtl.commitEdit}
                 sessionId={sessionId}
                 assistantId={chrome.currentAssistant?.id}
                 onOpenNotebookMount={() => setNotebookMountOpen(true)}

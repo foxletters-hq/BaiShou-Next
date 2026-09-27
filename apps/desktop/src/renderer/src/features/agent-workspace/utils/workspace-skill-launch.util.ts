@@ -85,6 +85,14 @@ export function isSkillNameLockedForEdit(source?: AgentSkillSource): boolean {
   return source !== 'user' && source !== 'workspace'
 }
 
+/** 官方技能只可使用，不可编辑 */
+export function isWorkbenchSkillEditable(skill: {
+  source?: AgentSkillSource
+  name?: string
+}): boolean {
+  return resolveWorkbenchSkillSection(skill.source, skill.name) !== 'official'
+}
+
 export function orderSkillLaunchWorkspaces<T extends { id: string }>(
   workspaces: T[],
   preferredId?: string | null

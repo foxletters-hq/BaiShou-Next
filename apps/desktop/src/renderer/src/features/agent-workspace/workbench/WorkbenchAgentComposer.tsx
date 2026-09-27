@@ -9,6 +9,11 @@ import {
   type PromptShortcut
 } from '@baishou/ui'
 import chromeStyles from '../../agent/components/AgentChatChrome.module.css'
+import {
+  ComposerQueueEditTag,
+  ComposerRuntimeQueueBar,
+  type ComposerRuntimeQueueItem
+} from '../../agent/components/ComposerRuntimeQueueBar'
 import type { AgentWorkspaceMessageListHandle } from '../components/AgentWorkspaceMessageList'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { KnowledgeMountHint } from '../../knowledge/KnowledgeMountHint'
@@ -116,6 +121,12 @@ export function WorkbenchAgentComposer({
   hasConfiguredModel,
   gateSlot,
   pendingQueue,
+  editingInputId,
+  onQueueSendNow,
+  onQueueEdit,
+  onQueueDelete,
+  onQueueEditDismiss,
+  onQueueEditCommit,
   sessionId,
   assistantId,
   onOpenNotebookMount,
@@ -135,7 +146,13 @@ export function WorkbenchAgentComposer({
 }: {
   hasConfiguredModel: boolean
   gateSlot?: React.ReactNode
-  pendingQueue: Array<{ id: string; text: string }>
+  pendingQueue: ComposerRuntimeQueueItem[]
+  editingInputId?: string | null
+  onQueueSendNow: (item: ComposerRuntimeQueueItem) => void | Promise<void>
+  onQueueEdit: (item: ComposerRuntimeQueueItem) => void
+  onQueueDelete: (item: ComposerRuntimeQueueItem) => void | Promise<void>
+  onQueueEditDismiss: () => void
+  onQueueEditCommit: (text: string) => Promise<boolean>
   sessionId?: string
   assistantId?: string | null
   onOpenNotebookMount: () => void
@@ -175,40 +192,19 @@ export function WorkbenchAgentComposer({
         </p>
       ) : null}
       {gateSlot}
-      {pendingQueue.length > 0 ? (
-        <div className={styles.runtimeQueueBar} role="status">
-          <ul className={styles.pendingList}>
-            {pendingQueue.map((item) => (
-              <li key={item.id} className={styles.pendingItem}>
-                <span className={styles.pendingText}>
-                  {item.text.trim()
-                    ? item.text.slice(0, 80)
-                    : t('input.upload_attachment', '上传附件')}
-                </span>
-                <button
-                  type="button"
-                  className={styles.pendingCancel}
-                  onClick={async () => {
-                    await window.api.agentWorkspace.cancelPendingInput(item.id)
-                    window.dispatchEvent(
-                      new CustomEvent('baishou:workspace-pending-inputs-changed', {
-                        detail: { sessionId }
-                      })
-                    )
-                    window.dispatchEvent(
-                      new CustomEvent('baishou:workspace-messages-changed', {
-                        detail: { sessionId }
-                      })
-                    )
-                  }}
-                >
-                  {t('common.cancel', '取消')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <ComposerRuntimeQueueBar
+        items={pendingQueue}
+        editingInputId={editingInputId}
+        t={t}
+        onSendNow={onQueueSendNow}
+        onEdit={onQueueEdit}
+        onDelete={onQueueDelete}
+      />
+      <ComposerQueueEditTag
+        visible={Boolean(editingInputId)}
+        t={t}
+        onDismiss={onQueueEditDismiss}
+      />
       <KnowledgeMountHint
         sessionId={sessionId}
         assistantId={assistantId}
@@ -223,7 +219,16 @@ export function WorkbenchAgentComposer({
         resolveDropAttachments={resolveDropAttachments}
         fileMention={fileMention}
         composerBlocked={!hasConfiguredModel || gateBlocksComposer}
+        onEmptySubmit={() => {
+          const head = pendingQueue[0]
+          if (head && !editingInputId) void onQueueSendNow(head)
+        }}
         onSend={async (text, attachments, nextSearchMode, meta) => {
+          if (editingInputId) {
+            const ok = await onQueueEditCommit(text)
+            if (ok) inputBarRef.current?.restoreDraft({ text: '' })
+            return ok
+          }
           messageListRef.current?.beginFollowIfAtBottom()
           const accepted = await onSend(text, attachments, nextSearchMode, {
             ...meta,

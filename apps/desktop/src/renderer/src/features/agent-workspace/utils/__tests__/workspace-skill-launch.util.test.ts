@@ -4,6 +4,7 @@ import {
   buildSkillSendMeta,
   ensureOfficialCreateSkill,
   isSkillNameLockedForEdit,
+  isWorkbenchSkillEditable,
   matchesWorkbenchSkillSearch,
   orderSkillLaunchWorkspaces,
   omitHiddenBundledTemplateSkills,
@@ -84,6 +85,13 @@ describe('workspace-skill-launch.util', () => {
     expect(isSkillNameLockedForEdit(undefined)).toBe(true)
     expect(isSkillNameLockedForEdit('user')).toBe(false)
     expect(isSkillNameLockedForEdit('workspace')).toBe(false)
+  })
+
+  it('should treat official skills as not editable when deciding whether to show the editor', () => {
+    expect(isWorkbenchSkillEditable({ source: 'software', name: 'create-skill' })).toBe(false)
+    expect(isWorkbenchSkillEditable({ source: 'user', name: 'create-skill' })).toBe(false)
+    expect(isWorkbenchSkillEditable({ source: 'user', name: 'daily-digest' })).toBe(true)
+    expect(isWorkbenchSkillEditable({ source: 'workspace', name: 'repo-review' })).toBe(true)
   })
 
   it('shows user skills for the global scope and only workspace skills for a project', () => {

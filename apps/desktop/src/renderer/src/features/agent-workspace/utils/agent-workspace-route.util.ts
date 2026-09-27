@@ -5,6 +5,17 @@ export function isAgentWorkspaceKnowledgeDetailPath(pathname: string): boolean {
 
 const WORKBENCH_DIRECTORY_SEGMENTS = new Set(['knowledge', 'skills', 'templates', 'projects'])
 
+export type WorkbenchDirectoryNavId = 'home' | 'knowledge' | 'skills' | 'projects'
+
+/** 目录页侧栏高亮。编辑页不使用这组导航。 */
+export function resolveWorkbenchDirectoryNav(pathname: string): WorkbenchDirectoryNavId {
+  const segment = pathname.split('/').filter(Boolean)[1]
+  if (segment === 'knowledge') return 'knowledge'
+  if (segment === 'skills' || segment === 'templates') return 'skills'
+  if (segment === 'projects') return 'projects'
+  return 'home'
+}
+
 /** 工作台项目编辑页：已打开文件夹 / 会话，内层各区块已是独立圆角卡 */
 export function isAgentWorkspaceEditorPath(pathname: string): boolean {
   if (!pathname.startsWith('/agent-workspace')) return false

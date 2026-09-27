@@ -1,4 +1,5 @@
 import type {
+  AgentGatePartData,
   AgentPart,
   AgentStreamTimelineItem,
   FileChangePartData,
@@ -9,8 +10,10 @@ import {
   fileChangeFromMutateInvocation,
   isWorkspaceFileMutateTool,
   normalizePartData,
+  pullMatchingAgentGates,
   resolveAgentToolActionLabel,
   sortAgentMessageParts,
+  visibleAgentGateParts,
   type FallbackTranslateFn
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
@@ -46,12 +49,15 @@ export type WorkspaceAssistantTimelineGroup =
       items: Array<{ key: string; data: FileChangePartData }>
     }
   | { kind: 'file_change_failed'; key: string; data: FileChangePartData }
+  | { kind: 'gate'; key: string; data: AgentGatePartData }
 
 /** 相邻只读工具收成一组；写入类工具与成功文件变更收成一组，避免每条都占一行 */
 export function groupWorkspaceAssistantTimeline(
-  items: WorkspaceAssistantTimelineItem[]
+  items: WorkspaceAssistantTimelineItem[],
+  gates: readonly AgentGatePartData[] = []
 ): WorkspaceAssistantTimelineGroup[] {
   const groups: WorkspaceAssistantTimelineGroup[] = []
+  const unused = visibleAgentGateParts(gates)
   let pendingFiles: Array<{ key: string; data: FileChangePartData }> = []
   let pendingMutateTools: Array<{ key: string; invocation: MockToolInvocation }> = []
   let pendingTools: Array<{ key: string; invocation: MockToolInvocation }> = []
@@ -78,19 +84,40 @@ export function groupWorkspaceAssistantTimeline(
     pendingTools = []
   }
 
+  const emitGates = (matched: AgentGatePartData[]) => {
+    for (const gate of matched) {
+      groups.push({ kind: 'gate', key: `gate:${gate.request.id}`, data: gate })
+    }
+  }
+
   for (const item of items) {
     if (item.kind === 'tool' && isWorkspaceFileMutateTool(item.invocation.toolName)) {
+      const matched = pullMatchingAgentGates(unused, [
+        { name: item.invocation.toolName, callId: item.invocation.toolCallId }
+      ])
       flushTools()
+      if (matched.length > 0) flushFilesAndMutations()
+      emitGates(matched)
       pendingMutateTools.push({ key: item.key, invocation: item.invocation })
       continue
     }
     if (item.kind === 'tool') {
+      const matched = pullMatchingAgentGates(unused, [
+        { name: item.invocation.toolName, callId: item.invocation.toolCallId }
+      ])
       flushFilesAndMutations()
+      if (matched.length > 0) flushTools()
+      emitGates(matched)
       pendingTools.push({ key: item.key, invocation: item.invocation })
       continue
     }
     if (item.kind === 'file_change') {
+      const matched = pullMatchingAgentGates(unused, [
+        { name: '', callId: item.data.toolCallId }
+      ])
       flushTools()
+      if (matched.length > 0) flushFilesAndMutations()
+      emitGates(matched)
       if (isFileChangePartFailed(item.data)) {
         flushFilesAndMutations()
         groups.push({ kind: 'file_change_failed', key: item.key, data: item.data })
@@ -105,6 +132,7 @@ export function groupWorkspaceAssistantTimeline(
   }
   flushFilesAndMutations()
   flushTools()
+  emitGates(unused)
   return groups
 }
 
@@ -118,17 +146,22 @@ export type WorkspaceStreamTimelineGroup =
       kind: 'file_ops'
       items: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>>
     }
+  | { kind: 'gate'; data: AgentGatePartData }
 
-/** 流式时间线：只读工具一组，写入类工具另收成文件变更组 */
+/** 流式时间线：只读工具一组，写入类工具另收成文件变更组；权限确认插在匹配工具前面 */
 export function groupStreamTimelineItems(
-  items: AgentStreamTimelineItem[]
+  items: AgentStreamTimelineItem[],
+  gates: readonly AgentGatePartData[] = []
 ): WorkspaceStreamTimelineGroup[] {
   const groups: WorkspaceStreamTimelineGroup[] = []
+  const unused = visibleAgentGateParts(gates)
   for (const item of items) {
     if (item.kind !== 'tool') {
       groups.push(item)
       continue
     }
+    const matched = pullMatchingAgentGates(unused, [{ name: item.name, callId: item.callId }])
+    for (const gate of matched) groups.push({ kind: 'gate', data: gate })
     const kind = isWorkspaceFileMutateTool(item.name) ? 'file_ops' : 'tools'
     const last = groups[groups.length - 1]
     if (last?.kind === kind) {
@@ -137,6 +170,7 @@ export function groupStreamTimelineItems(
       groups.push({ kind, items: [item] })
     }
   }
+  for (const gate of unused) groups.push({ kind: 'gate', data: gate })
   return groups
 }
 
