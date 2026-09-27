@@ -98,23 +98,16 @@ async function getPdfDocument(absolutePath: string): Promise<PdfDocument> {
   return doc
 }
 
-function reportProgress(
-  id: number,
-  step: 'parse' | 'render',
-  page: number,
-  total: number
-): void {
+function reportProgress(id: number, step: 'parse' | 'render', page: number, total: number): void {
   port.postMessage({ id, type: 'progress', step, page, total })
 }
 
-async function renderPages(
-  input: {
-    id: number
-    absolutePath: string
-    pageNumbers?: number[]
-    dpi?: number
-  }
-): Promise<RenderResult[]> {
+async function renderPages(input: {
+  id: number
+  absolutePath: string
+  pageNumbers?: number[]
+  dpi?: number
+}): Promise<RenderResult[]> {
   let canvasMod: CanvasModule
   try {
     canvasMod = nodeRequire('@napi-rs/canvas') as CanvasModule
@@ -158,11 +151,7 @@ async function renderPages(
   return out
 }
 
-async function extractTexts(
-  id: number,
-  filePath: string,
-  maxPages?: number
-): Promise<string[]> {
+async function extractTexts(id: number, filePath: string, maxPages?: number): Promise<string[]> {
   const pdfParse = nodeRequire('pdf-parse') as (
     buffer: Buffer,
     options?: { pagerender?: (pageData: unknown) => Promise<string> }

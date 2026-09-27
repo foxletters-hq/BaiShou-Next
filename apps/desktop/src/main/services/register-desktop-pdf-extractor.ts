@@ -19,8 +19,6 @@ export function registerDesktopPdfPageExtractor(): void {
       if (info.step === 'parse') onProgress?.({ page: info.page, total: info.total })
     })
   )
-  registerPdfPageSampleExtractor((filePath, maxPages) =>
-    extractPdfTextsOffMain(filePath, maxPages)
-  )
+  registerPdfPageSampleExtractor((filePath, maxPages) => extractPdfTextsOffMain(filePath, maxPages))
   registerEpubPageExtractor(async (filePath) => extractEpubPageTexts(await fs.readFile(filePath)))
 }

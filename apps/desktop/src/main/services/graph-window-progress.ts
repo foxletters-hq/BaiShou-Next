@@ -26,11 +26,7 @@ export function rememberGraphWindowProgress(progress: GraphWindowProgress): void
     windowsDone: Math.max(0, progress.windowsDone),
     windowsTotal: progress.windowsTotal
   }
-  if (
-    (progress.pageTotal ?? 0) > 0 &&
-    (progress.pageTo ?? 0) > 0 &&
-    (progress.pageFrom ?? 0) > 0
-  ) {
+  if ((progress.pageTotal ?? 0) > 0 && (progress.pageTo ?? 0) > 0 && (progress.pageFrom ?? 0) > 0) {
     remembered.pageFrom = progress.pageFrom
     remembered.pageTo = progress.pageTo
     remembered.pageTotal = progress.pageTotal

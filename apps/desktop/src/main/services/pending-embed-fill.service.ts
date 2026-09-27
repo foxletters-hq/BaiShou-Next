@@ -47,7 +47,10 @@ export type PendingEmbedFillResult = {
 
 export async function runManualPendingEmbedFill(options?: {
   onProgress?: (progress: PendingEmbedFillProgress) => void
-  counts?: Pick<PendingEmbedCounts, 'diaries' | 'memories' | 'graphNodes' | 'total'> & {
+  counts?: Pick<
+    PendingEmbedCounts,
+    'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'total'
+  > & {
     graphExtract?: number
     graphDisambiguate?: number
   }
@@ -85,6 +88,7 @@ export async function runManualPendingEmbedFill(options?: {
       diaries: options?.counts?.diaries ?? 0,
       memories: options?.counts?.memories ?? 0,
       graphNodes: options?.counts?.graphNodes ?? 0,
+      knowledgeSources: options?.counts?.knowledgeSources ?? 0,
       graphExtract: options?.counts?.graphExtract ?? 0,
       graphDisambiguate: options?.counts?.graphDisambiguate ?? 0
     }),
@@ -100,10 +104,10 @@ export async function runManualPendingEmbedFill(options?: {
         : phase === 'graph_node'
           ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
           : phase === 'graph_extract'
-              ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
-              : phase === 'graph_disambiguate'
-                ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
-                : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
+            ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
+            : phase === 'graph_disambiguate'
+              ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
+              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,
@@ -132,7 +136,7 @@ export async function runManualPendingEmbedFill(options?: {
 
   try {
     await assertBatchEmbedCanContinue()
-    let extractDone = 0
+    const extractDone = 0
     let extractTotal = phases.graphExtract.total
 
     const { GraphExtractQueueService } = await import('./graph-extract-queue.service')

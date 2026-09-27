@@ -32,8 +32,7 @@ export function createDesktopKnowledgeReader(
     }
   })
 
-  const resolveEmbed =
-    embedQuery ?? ((text: string) => getEmbeddingService().embedQuery(text))
+  const resolveEmbed = embedQuery ?? ((text: string) => getEmbeddingService().embedQuery(text))
 
   return new KnowledgeReaderAdapter(async (opts) => {
     const notebookIds = parseMountedNotebookIds(opts.notebookIds)

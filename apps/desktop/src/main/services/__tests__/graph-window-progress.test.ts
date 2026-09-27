@@ -126,8 +126,6 @@ describe('listed graph job status', () => {
     expect(shouldResumeListedGraphJobs([{ status: 'running' }])).toBe(false)
     expect(shouldResumeListedGraphJobs([{ status: 'pending' }])).toBe(true)
     expect(shouldResumeListedGraphJobs([{ status: 'failed' }])).toBe(true)
-    expect(
-      shouldResumeListedGraphJobs([{ status: 'running' }, { status: 'pending' }])
-    ).toBe(true)
+    expect(shouldResumeListedGraphJobs([{ status: 'running' }, { status: 'pending' }])).toBe(true)
   })
 })
