@@ -33,9 +33,7 @@ export async function getActiveProvider(requestedProviderId?: string) {
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
 
-  const explicitId = isConfiguredProviderId(requestedProviderId)
-    ? requestedProviderId!.trim()
-    : ''
+  const explicitId = isConfiguredProviderId(requestedProviderId) ? requestedProviderId!.trim() : ''
   const providerId =
     explicitId ||
     (isConfiguredProviderId(globalModels?.globalDialogueProviderId)
@@ -218,7 +216,7 @@ export async function resolveStreamDialogueSelection(params: {
  */
 export async function buildStreamConfig(
   requestedProviderId?: string,
-  requestedModelId?: string,
+  _requestedModelId?: string,
   searchMode?: boolean,
   assistantContextWindow?: number,
   assistantEmojiPrefs?: AssistantEmojiPrefs

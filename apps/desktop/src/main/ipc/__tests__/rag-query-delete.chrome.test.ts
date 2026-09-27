@@ -5,10 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const ipc = readFileSync(join(dir, '..', 'rag-query.ipc.ts'), 'utf8')
-const counts = readFileSync(
-  join(dir, '../../services/pending-embed-counts.service.ts'),
-  'utf8'
-)
+const counts = readFileSync(join(dir, '../../services/pending-embed-counts.service.ts'), 'utf8')
 
 describe('rag delete entry refreshes pending embed counts', () => {
   it('should notify pending embed counts after every delete path', () => {
