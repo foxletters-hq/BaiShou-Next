@@ -146,64 +146,11 @@ export class SessionCrudOps {
     let matchedSessionIds: string[] = []
 
     if (searchQuery && searchQuery.trim()) {
-      const cleaned = searchQuery.replace(/"/g, ' ').trim()
-      const pattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
-      const sessionIdsSet = new Set<string>()
-
-      const tasks: Promise<void>[] = []
-
-      // 1. 尝试使用 FTS 快速查询匹配的会话 ID
-      if (cleaned) {
-        tasks.push(
-          (async () => {
-            try {
-              const ftsRows = await this.db.all(sql`
-                SELECT DISTINCT session_id as sessionId
-                FROM agent_messages_fts
-                WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
-              `)
-              ftsRows
-                .map((r: any) => r.sessionId)
-                .filter(Boolean)
-                .forEach((id: string) => sessionIdsSet.add(id))
-            } catch (e) {
-              console.warn('[SessionRepo] FTS search failed:', e)
-            }
-          })()
-        )
-      }
-
-      // 2. 无论 FTS 结果如何，都使用 LIKE 模糊查询补充
-      tasks.push(
-        (async () => {
-          try {
-            const likeRows = await this.db
-              .select({ sessionId: partsTbl.sessionId })
-              .from(partsTbl)
-              .where(
-                and(
-                  eq(partsTbl.type, 'text'),
-                  or(
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
-                  ),
-                  sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
-                )
-              )
-            likeRows
-              .map((r: any) => r.sessionId)
-              .filter(Boolean)
-              .forEach((id: string) => sessionIdsSet.add(id))
-          } catch (e) {
-            console.error('[SessionRepo] LIKE message search failed:', e)
-          }
-        })()
+      matchedSessionIds = await this.findSessionIdsMatchingMessageContent(
+        searchQuery,
+        vaultId,
+        assistantId
       )
-
-      await Promise.all(tasks)
-      matchedSessionIds = Array.from(sessionIdsSet)
     }
 
     let q = this.db.select().from(agentSessionsTable)
@@ -269,6 +216,79 @@ export class SessionCrudOps {
       }
     }
     return results
+  }
+
+  /**
+   * 先走消息全文索引，再用正文 LIKE 补漏。
+   * 有工作空间 / 伙伴时先收窄会话范围，避免每次搜索扫全库 parts。
+   */
+  private async findSessionIdsMatchingMessageContent(
+    searchQuery: string,
+    vaultId: string | null,
+    assistantId?: string
+  ): Promise<string[]> {
+    const cleaned = searchQuery.replace(/"/g, ' ').trim()
+    const pattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
+    const sessionIdsSet = new Set<string>()
+    const normalizedAssistantId = assistantId?.trim()
+    const tasks: Promise<void>[] = []
+
+    if (cleaned) {
+      tasks.push(
+        (async () => {
+          try {
+            const ftsRows = await this.db.all(sql`
+              SELECT DISTINCT f.session_id as sessionId
+              FROM agent_messages_fts f
+              INNER JOIN agent_sessions s ON s.id = f.session_id
+              WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
+                ${vaultId ? sql`AND s.vault_id = ${vaultId}` : sql``}
+                ${normalizedAssistantId ? sql`AND s.assistant_id = ${normalizedAssistantId}` : sql``}
+            `)
+            for (const row of ftsRows) {
+              const id = (row as { sessionId?: string }).sessionId
+              if (id) sessionIdsSet.add(id)
+            }
+          } catch (e) {
+            console.warn('[SessionRepo] FTS search failed:', e)
+          }
+        })()
+      )
+    }
+
+    tasks.push(
+      (async () => {
+        try {
+          const scope = [
+            eq(partsTbl.type, 'text'),
+            or(
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
+            ),
+            sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+          ]
+          if (vaultId) scope.push(eq(agentSessionsTable.vaultId, vaultId))
+          if (normalizedAssistantId) {
+            scope.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
+          }
+          const likeRows = await this.db
+            .select({ sessionId: partsTbl.sessionId })
+            .from(partsTbl)
+            .innerJoin(agentSessionsTable, eq(partsTbl.sessionId, agentSessionsTable.id))
+            .where(and(...scope))
+          for (const row of likeRows) {
+            if (row.sessionId) sessionIdsSet.add(row.sessionId)
+          }
+        } catch (e) {
+          console.error('[SessionRepo] LIKE message search failed:', e)
+        }
+      })()
+    )
+
+    await Promise.all(tasks)
+    return Array.from(sessionIdsSet)
   }
 
   async updateSessionVaultId(sessionId: string, vaultId: string): Promise<void> {

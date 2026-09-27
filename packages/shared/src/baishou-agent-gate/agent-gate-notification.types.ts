@@ -26,10 +26,17 @@ export function normalizeAgentGateNotificationPrefs(value: unknown): AgentGateNo
   }
 }
 
-/** 通知正文只含非敏感摘要 */
-export function buildAgentGateNotificationBody(sessionId: string): string {
-  const short = sessionId.length > 10 ? `${sessionId.slice(0, 8)}…` : sessionId
-  return `会话 ${short} 需要确认一项操作`
+/** 通知正文只含非敏感摘要，不带会话 ID */
+export function buildAgentGateNotificationBody(): string {
+  return '需要确认一项操作'
 }
 
 export const AGENT_GATE_NOTIFICATION_TITLE = '白守 · 待确认'
+
+export const AGENT_GATE_NOTIFICATION_PREVIEW_TITLE = '白守 · 系统通知'
+export const AGENT_GATE_NOTIFICATION_PREVIEW_BODY = '已开启。伙伴需要你确认操作时会这样提醒。'
+
+export interface AgentGateNotificationPreviewResult {
+  success: boolean
+  reason?: 'unsupported' | 'failed'
+}
