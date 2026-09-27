@@ -135,7 +135,7 @@ export function GraphScreenPendingTab(props: {
               <Text
                 style={{
                   color: colors.primary,
-                  fontWeight: '700',
+                  fontWeight: '600',
                   opacity: props.busy ? 0.4 : 1
                 }}
               >

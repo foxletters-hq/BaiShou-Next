@@ -353,7 +353,7 @@ export function GraphScreenDetailPane(props: {
         onPress={props.onAddEdge}
         style={{ opacity: props.busy || !props.addEdgeToId ? 0.4 : 1 }}
       >
-        <Text style={{ color: colors.primary, fontWeight: '700' }}>
+        <Text style={{ color: colors.primary, fontWeight: '600' }}>
           {t('graph.add_edge_submit', '添加')}
         </Text>
       </Pressable>

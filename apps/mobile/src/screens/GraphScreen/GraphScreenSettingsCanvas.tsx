@@ -5,7 +5,12 @@ import {
   GRAPH_APPEARANCE_RANGES,
   GRAPH_FORCE_RANGES,
   GRAPH_NODE_TYPE_LABEL_FALLBACKS,
+  GRAPH_VIEW_MAX_NODES_MAX,
+  GRAPH_VIEW_MAX_NODES_MIN,
+  GRAPH_VIEW_MAX_NODES_STEP,
   graphNodeTypeColor,
+  graphViewMaxNodesSliderValue,
+  isGraphViewMaxNodesUnlimited,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
   type GraphForceSettings
@@ -34,6 +39,8 @@ export function GraphScreenSettingsCanvas(props: {
   onFocusDepthChange: (depth: GraphFocusDepth) => void
   appearanceSettings: GraphAppearanceSettings
   onAppearanceChange: (patch: Partial<GraphAppearanceSettings>) => void
+  viewMaxNodes: number
+  onViewMaxNodesChange: (value: number) => void
   forceSettings: GraphForceSettings
   onForceChange: (patch: Partial<GraphForceSettings>) => void
   onReplayLayout: () => void
@@ -191,6 +198,31 @@ export function GraphScreenSettingsCanvas(props: {
               value={props.appearanceSettings.showIsolatedNodes}
               onValueChange={(v) => props.onAppearanceChange({ showIsolatedNodes: v })}
             />
+          </View>
+          <View style={styles.forceRow}>
+            <Text
+              style={[styles.forceLabelWide, { color: colors.textSecondary }]}
+              accessibilityHint={t(
+                'graph.max_nodes_hint',
+                '画布最多取这么多个节点。滑到最右为不限制。这个月份里尚未确认的节点仍会补进来，以免漏看。'
+              )}
+            >
+              {t('graph.max_nodes', '显示节点上限')}
+            </Text>
+            <View style={{ flex: 1 }}>
+              <NativeSlider
+                value={graphViewMaxNodesSliderValue(props.viewMaxNodes)}
+                minValue={GRAPH_VIEW_MAX_NODES_MIN}
+                maxValue={GRAPH_VIEW_MAX_NODES_MAX}
+                step={GRAPH_VIEW_MAX_NODES_STEP}
+                onChange={(v) => props.onViewMaxNodesChange(v)}
+              />
+            </View>
+            <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
+              {isGraphViewMaxNodesUnlimited(props.viewMaxNodes)
+                ? t('graph.max_nodes_unlimited', '无限')
+                : props.viewMaxNodes}
+            </Text>
           </View>
           {(
             [

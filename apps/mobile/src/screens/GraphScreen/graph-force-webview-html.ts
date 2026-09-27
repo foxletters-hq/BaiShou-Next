@@ -14,7 +14,9 @@ import {
 } from '@baishou/shared'
 import { GRAPH_FORCE_RUNTIME_CAMERA } from './graph-force-webview-runtime-camera'
 import { GRAPH_FORCE_RUNTIME_DRAW } from './graph-force-webview-runtime-draw'
+import { GRAPH_FORCE_RUNTIME_GL } from './graph-force-webview-runtime-gl'
 import { GRAPH_FORCE_RUNTIME_INPUT } from './graph-force-webview-runtime-input'
+import { GRAPH_FORCE_RUNTIME_PHYSICS } from './graph-force-webview-runtime-physics'
 import { GRAPH_FORCE_RUNTIME_SETUP } from './graph-force-webview-runtime-setup'
 import type { GraphForceEdge, GraphForceNode } from './graph-force-webview.types'
 
@@ -38,12 +40,17 @@ export function buildGraphForceHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;background:${theme.background};overflow:hidden;font-family:system-ui,sans-serif;touch-action:none}
-  canvas{display:block;width:100%;height:100%;touch-action:none}
+  #stage{position:relative;width:100%;height:100%}
+  canvas{position:absolute;left:0;top:0;display:block;width:100%;height:100%;touch-action:none}
+  #labels{pointer-events:none}
   #hint{position:absolute;left:10px;bottom:10px;color:${theme.hint};font-size:11px;pointer-events:none}
 </style>
 </head>
 <body>
+<div id="stage">
 <canvas id="c"></canvas>
+<canvas id="labels"></canvas>
+</div>
 <div id="hint">虚线=待确认 · 拖动/捏合缩放 · 点节点</div>
 <script>
 const DATA = ${payload};
@@ -65,6 +72,8 @@ const K_MIN = 0.35;
 const K_MAX = 4;
 ${GRAPH_FORCE_RUNTIME_SETUP}
 ${GRAPH_FORCE_RUNTIME_CAMERA}
+${GRAPH_FORCE_RUNTIME_PHYSICS}
+${GRAPH_FORCE_RUNTIME_GL}
 ${GRAPH_FORCE_RUNTIME_DRAW}
 ${GRAPH_FORCE_RUNTIME_INPUT}
 </script>

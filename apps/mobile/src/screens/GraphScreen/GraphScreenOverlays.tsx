@@ -246,7 +246,7 @@ export function GraphScreenOverlays(props: {
               <View />
             )}
             <Pressable onPress={props.onCloseQueue}>
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
                 {props.extractRunning
                   ? t('graph.queue_modal_minimize', '收起，继续整理')
                   : t('common.close', '关闭')}
