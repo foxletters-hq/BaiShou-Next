@@ -31,6 +31,7 @@ import {
   isAgentStreamAbortError
 } from '@baishou/shared'
 import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
+import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
 /** 尚未落库的草稿会话路由（/chat、/chat/new-session、首页临时 new-<ts>） */
 function isDraftChatSessionId(sessionId: string | undefined): boolean {
@@ -116,11 +117,37 @@ export function useAgentChatFlow() {
       lastMessage?.role === 'assistant' &&
       (Boolean(lastMessage.content?.trim()) ||
         Boolean(lastMessage.reasoning?.trim()) ||
-        (lastMessage.toolInvocations?.length ?? 0) > 0)
+        (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+        (lastMessage.attachments?.length ?? 0) > 0)
     ) {
       clearStreamBridgeForSession(sessionId)
     }
   }, [sessionId, stream.isBridgeActive, chat.messages])
+
+  // drain / promote 开流时同步 UI 流式态（排队消耗后的下一轮）
+  useEffect(() => {
+    if (!sessionId || typeof window === 'undefined' || !window.electron?.ipcRenderer?.on) return
+    const beginStreaming = stream.beginStreaming
+    const onRuntimeEvent = (
+      _: unknown,
+      event: { type?: string; sessionId?: string; inputId?: string }
+    ) => {
+      if (event?.type !== 'session.promoted' || event.sessionId !== sessionId) return
+      beginStreaming(sessionId)
+      window.dispatchEvent(
+        new CustomEvent('baishou:companion-pending-inputs-changed', {
+          detail: { sessionId, dropInputId: event.inputId }
+        })
+      )
+    }
+    const unsubscribe = window.electron.ipcRenderer.on(
+      'agent:session-runtime-event',
+      onRuntimeEvent
+    )
+    return () => {
+      unsubscribe?.()
+    }
+  }, [sessionId, stream.beginStreaming])
 
   // ── 2. Store 状态订阅 ──
   const settings = useSettingsStore()
@@ -292,6 +319,9 @@ export function useAgentChatFlow() {
     meta?: {
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      delivery?: 'steer' | 'queue'
+      /** 正在编辑排队条目时提交正文，不新开一轮 */
+      queueEditInputId?: string
     }
   ): Promise<boolean> => {
     let targetSessionId = sessionId
@@ -310,8 +340,23 @@ export function useAgentChatFlow() {
     const displayText = meta?.displayText?.trim() || text
     const skillRefs = meta?.skillRefs
     const needsNewSession = isDraftChatSessionId(sessionId)
+    let localQueueId: string | undefined
 
     try {
+      if (meta?.queueEditInputId) {
+        const updated = await window.api.updatePendingInput({
+          inputId: meta.queueEditInputId,
+          text: text.trim()
+        })
+        if (!updated) return false
+        window.dispatchEvent(
+          new CustomEvent('baishou:companion-pending-inputs-changed', {
+            detail: { sessionId: updated.sessionId }
+          })
+        )
+        return true
+      }
+
       if (needsNewSession) {
         targetSessionId = (await createSession(displayText)) ?? undefined
         if (!targetSessionId) {
@@ -324,6 +369,20 @@ export function useAgentChatFlow() {
         })
       }
 
+      const busy = stream.isStreaming || stream.isBridgeActive
+      const delivery = meta?.delivery ?? (busy ? 'queue' : 'queue')
+      localQueueId = busy && targetSessionId ? `local-${crypto.randomUUID()}` : undefined
+      if (localQueueId && targetSessionId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:companion-pending-inputs-changed', {
+            detail: {
+              sessionId: targetSessionId,
+              optimistic: { id: localQueueId, text }
+            }
+          })
+        )
+      }
+
       const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {
         displayText,
         skillRefs
@@ -333,7 +392,8 @@ export function useAgentChatFlow() {
       }
 
       const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
-      if (saveResult.userMessageId) {
+
+      if (saveResult.userMessageId && !busy) {
         chat.appendSentUserMessage({
           id: saveResult.userMessageId,
           content: displayText,
@@ -361,28 +421,41 @@ export function useAgentChatFlow() {
         })
       }
 
-      void stream
-        .startChat(
-          targetSessionId,
-          text,
-          model.currentProviderId,
-          model.currentModelId,
-          saveResult.attachments,
-          search,
-          saveResult.userMessageId
-        )
-        .catch((streamError: any) => {
-          if (isAgentStreamAbortError(streamError)) return
-          console.error('[AgentScreen] stream failed:', streamError)
-          toast.showError(
-            t('agent.error.send_failed', '发送消息失败: {{msg}}', {
-              msg: streamError?.message || '未知错误'
-            })
-          )
+      // 忙时入队、空闲时 admit 开流：禁止再走 agent:chat 直接 claim 打断当前回合
+      const admitted = await window.api.admit({
+        sessionId: targetSessionId!,
+        text,
+        delivery,
+        userMessageId: saveResult.userMessageId,
+        providerId: model.currentProviderId,
+        modelId: model.currentModelId,
+        reasoningEffort: getSessionReasoningEffortOverride(),
+        searchMode: search,
+        attachments: saveResult.attachments
+      })
+      window.dispatchEvent(
+        new CustomEvent('baishou:companion-pending-inputs-changed', {
+          detail: { sessionId: targetSessionId, dropOptimisticId: localQueueId }
         })
+      )
+
+      if (admitted.queued) {
+        return true
+      }
+
+      if (admitted.started) {
+        stream.beginStreaming(targetSessionId!)
+      }
 
       return true
     } catch (e: any) {
+      if (localQueueId && targetSessionId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:companion-pending-inputs-changed', {
+            detail: { sessionId: targetSessionId, dropOptimisticId: localQueueId }
+          })
+        )
+      }
       if (isAgentStreamAbortError(e)) return false
       console.error('[AgentScreen] send failed:', e)
       toast.showError(

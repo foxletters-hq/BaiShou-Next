@@ -127,4 +127,36 @@ describe('waitForLiveCompanionAskRequest', () => {
 
     expect(found?.id).toBe('bag_1')
   })
+
+  it('should prefer the live main-process card over a stale inbox ghost', async () => {
+    const ghost = {
+      id: 'bag_ghost',
+      sessionId: 'sess_1',
+      vaultName: 'Personal',
+      status: AgentGateRequestStatus.Pending,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '旧问题',
+      options: [],
+      allowCustomInput: true,
+      metadata: {},
+      createdAt: 1
+    } satisfies AgentGateRequest
+    const live = {
+      ...ghost,
+      id: 'bag_live',
+      title: '新问题',
+      createdAt: 2
+    } satisfies AgentGateRequest
+
+    const found = await waitForLiveCompanionAskRequest({
+      sessionId: 'sess_1',
+      attempts: 1,
+      delayMs: 1,
+      readInbox: () => [ghost],
+      listPending: async () => [live]
+    })
+
+    expect(found?.id).toBe('bag_live')
+  })
 })

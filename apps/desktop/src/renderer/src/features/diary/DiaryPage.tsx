@@ -42,6 +42,7 @@ import {
   subscribeRagRuntime
 } from '../settings/rag-runtime-cache'
 import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
+import { prefetchWorkbenchHome } from '../../lib/prefetch-workbench-home'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
@@ -182,11 +183,33 @@ export const DiaryPage: React.FC = () => {
     }
   }, [])
 
-  useEffect(() => {
-    void refreshStatusBar()
-  }, [refreshStatusBar])
+  const diaryQuery = useMemo(
+    () => ({
+      selectedMonth,
+      searchQuery,
+      filterWeathers,
+      filterMoods,
+      filterFavorite,
+      page: currentPage,
+      pageSize
+    }),
+    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
+  )
+  const { entries, totalCount, loading, loadEntries, hasLoadedOnce } = useDiaryData(diaryQuery)
+  const storageIndexing = useStorageIndexing()
 
   useEffect(() => {
+    if (!hasLoadedOnce) return
+    void refreshStatusBar()
+  }, [refreshStatusBar, hasLoadedOnce])
+
+  useEffect(() => {
+    if (!hasLoadedOnce) return
+    prefetchWorkbenchHome()
+  }, [hasLoadedOnce])
+
+  useEffect(() => {
+    if (!hasLoadedOnce) return
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refreshStatusBar()
     }
@@ -197,7 +220,7 @@ export const DiaryPage: React.FC = () => {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onFocus)
     }
-  }, [refreshStatusBar])
+  }, [refreshStatusBar, hasLoadedOnce])
 
   useEffect(() => {
     const api = (window as any).api
@@ -213,6 +236,7 @@ export const DiaryPage: React.FC = () => {
         event?.type === 'embed-failed' ||
         event?.type === 'embed-failure-cleared'
       ) {
+        if (!hasLoadedOnce) return
         void refreshStatusBar()
       }
     })
@@ -220,7 +244,7 @@ export const DiaryPage: React.FC = () => {
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [refreshStatusBar])
+  }, [refreshStatusBar, hasLoadedOnce])
 
   // sessionStorage 同步
   useEffect(() => {
@@ -258,21 +282,6 @@ export const DiaryPage: React.FC = () => {
     gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
   }, [currentPage])
 
-  const diaryQuery = useMemo(
-    () => ({
-      selectedMonth,
-      searchQuery,
-      filterWeathers,
-      filterMoods,
-      filterFavorite,
-      page: currentPage,
-      pageSize
-    }),
-    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
-  )
-  const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
-  const storageIndexing = useStorageIndexing()
-
   // 页码越界时自动修正
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   useEffect(() => {
@@ -281,6 +290,7 @@ export const DiaryPage: React.FC = () => {
 
   // 获取今日日记（用于决定顶部按钮状态）
   useEffect(() => {
+    if (!hasLoadedOnce) return
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     ;(window as any).api?.diary
@@ -299,11 +309,11 @@ export const DiaryPage: React.FC = () => {
         })
       })
       .catch(() => setTodayEntry(null))
-  }, [loadEntries])
+  }, [loadEntries, hasLoadedOnce])
 
   // 获取当前月份的附件目录路径
   useEffect(() => {
-    if (!selectedMonth) return
+    if (!hasLoadedOnce || !selectedMonth) return
     const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`
     ;(window as any).api?.diary
       ?.getAttachmentDir?.(dateStr)
@@ -311,7 +321,7 @@ export const DiaryPage: React.FC = () => {
         if (res?.success && res.path) setAttachmentBasePath(res.path)
       })
       .catch(() => {})
-  }, [selectedMonth])
+  }, [selectedMonth, hasLoadedOnce])
 
   const goToEditor = (dateStr: string) => {
     sessionStorage.setItem('desktop_last_nav', '/diary')

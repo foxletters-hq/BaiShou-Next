@@ -113,10 +113,11 @@ export function resolveCompanionAskDockRequest(input: {
   return buildRunningCompanionAskRequest(input.sessionId, input.timeline)
 }
 
+/** 只信主进程 pending。收件箱可能被落盘 parts 灌回已结束的旧卡。 */
 export async function waitForLiveCompanionAskRequest(input: {
   sessionId: string
   listPending: (sessionId?: string) => Promise<unknown>
-  readInbox: () => readonly AgentGateRequest[]
+  readInbox?: () => readonly AgentGateRequest[]
   attempts?: number
   delayMs?: number
 }): Promise<AgentGateRequest | undefined> {
@@ -126,8 +127,6 @@ export async function waitForLiveCompanionAskRequest(input: {
     if (index > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs * index))
     }
-    const fromInbox = findSessionCompanionAskRequest(input.readInbox(), input.sessionId)
-    if (fromInbox) return fromInbox
     const scoped = await input.listPending(input.sessionId)
     const fromScoped = findSessionCompanionAskRequest(
       Array.isArray(scoped) ? scoped : [],
