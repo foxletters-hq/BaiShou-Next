@@ -5,6 +5,7 @@ import {
   knowledgeSourceCanCancelExtract,
   knowledgeSourceCanEmbed,
   knowledgeSourceCanReembedGraph,
+  knowledgeSourceCanReembedVector,
   knowledgeSourceCanRetry,
   knowledgeSourceNeedsOcr,
   knowledgeSourceStatusLabel,
@@ -48,6 +49,11 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeIngestUserMessage(new Error('knowledge-model-mismatch'), t)).toContain(
       '提问已硬拦截'
     )
+  })
+
+  it('should allow vector reprocess for ready or partial sources', () => {
+    expect(knowledgeSourceCanReembedVector('ready')).toBe(true)
+    expect(knowledgeSourceCanReembedVector('stored')).toBe(false)
   })
 
   it('should allow graph-only reprocess for ready or partial sources', () => {

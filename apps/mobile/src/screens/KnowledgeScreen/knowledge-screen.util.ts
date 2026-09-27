@@ -64,6 +64,10 @@ export function knowledgeSourceCanReembedGraph(status: string): boolean {
   return status === 'ready' || status === 'partial'
 }
 
+export function knowledgeSourceCanReembedVector(status: string): boolean {
+  return status === 'ready' || status === 'partial'
+}
+
 export function knowledgeSourceCanEmbed(status: string): boolean {
   return status === 'stored'
 }

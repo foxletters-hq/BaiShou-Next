@@ -35,6 +35,7 @@ export function KnowledgeNotebookGraphSection(props: {
   onReviewAll: (status: 'approved' | 'rejected') => void
   onMergeSimilar: (pair: GraphSimilarPendingPair) => void
   onDismissSimilar: (pair: GraphSimilarPendingPair) => void
+  onLocateNode: (nodeId: string) => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -102,6 +103,19 @@ export function KnowledgeNotebookGraphSection(props: {
             />
           </View>
         ) : null}
+        {props.selectedId ? (
+          <Card>
+            <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.xs }}>
+              <Text style={{ color: colors.textPrimary, fontSize: settingsTypography.row.fontSize }}>
+                {props.nodes.find((node) => node.id === props.selectedId)?.name || props.selectedId}
+              </Text>
+              <Text style={{ color: colors.textSecondary, fontSize: settingsTypography.desc.fontSize }}>
+                {props.nodes.find((node) => node.id === props.selectedId)?.summary ||
+                  t('graph.node_detail_empty', '点选节点后可以在这里看名称和摘要')}
+              </Text>
+            </View>
+          </Card>
+        ) : null}
         {props.tab === 'pending' ? (
           <View style={{ gap: tokens.spacing.sm }}>
             {pendingCount === 0 ? (
@@ -143,6 +157,13 @@ export function KnowledgeNotebookGraphSection(props: {
                     {t('graph.pending_node', '节点')} · {node.name}
                   </Text>
                   <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
+                    <Button
+                      variant="outlined"
+                      isDisabled={props.reviewBusy}
+                      onPress={() => props.onLocateNode(node.id)}
+                    >
+                      {t('graph.view_on_canvas', '在画布查看')}
+                    </Button>
                     <Button
                       isDisabled={props.reviewBusy}
                       onPress={() => void props.onReviewNode(node.id, 'approved')}
@@ -230,6 +251,11 @@ export function KnowledgeNotebookGraphSection(props: {
                     >
                       {pair.nodeName} · {pair.peerName}
                     </Text>
+                    <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
+                      <Button variant="outlined" onPress={() => props.onLocateNode(pair.nodeId)}>
+                        {t('graph.view_on_canvas', '在画布查看')}
+                      </Button>
+                    </View>
                     <Text
                       style={{
                         color: colors.textSecondary,
