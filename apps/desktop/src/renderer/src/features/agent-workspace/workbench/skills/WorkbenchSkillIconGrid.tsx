@@ -19,8 +19,8 @@ export function WorkbenchSkillIconGrid({
   badgeForSkill?: (skill: AgentSkill) => string | undefined
   launching: boolean
   onLaunch: (skill: AgentSkill) => void
-  onEdit: (skill: AgentSkill) => void
-  editLabel: string
+  onEdit?: (skill: AgentSkill) => void
+  editLabel?: string
 }) {
   if (skills.length === 0) return null
   return (
@@ -46,19 +46,21 @@ export function WorkbenchSkillIconGrid({
                 <span className={styles.cardDesc}>{skill.description || skill.name}</span>
               </span>
             </button>
-            <button
-              type="button"
-              className={styles.editBtn}
-              disabled={launching}
-              title={editLabel}
-              aria-label={editLabel}
-              onClick={(event) => {
-                event.stopPropagation()
-                onEdit(skill)
-              }}
-            >
-              <Pencil size={13} strokeWidth={2} aria-hidden />
-            </button>
+            {onEdit ? (
+              <button
+                type="button"
+                className={styles.editBtn}
+                disabled={launching}
+                title={editLabel}
+                aria-label={editLabel}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit(skill)
+                }}
+              >
+                <Pencil size={13} strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
           </div>
         )
       })}

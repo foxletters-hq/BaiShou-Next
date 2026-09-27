@@ -132,13 +132,17 @@
   gap: 10px;
   flex: 1;
   min-width: 0;
-  padding: 0 24px 0 0;
+  padding: 0;
   border: none;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
   font-family: inherit;
+}
+
+.iconCard:has(.editBtn) .iconCardMain {
+  padding-right: 24px;
 }
 
 .iconCard:hover:not(:disabled) {

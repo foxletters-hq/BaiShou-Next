@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { displayGitBranchName, listCheckoutBranches } from '../workbench-git-branch.util'
+import {
+  displayGitBranchName,
+  isGitCheckoutBlockedByLocalChanges,
+  listCheckoutBranches
+} from '../workbench-git-branch.util'
 
 describe('listCheckoutBranches', () => {
   it('drops HEAD and marks the current branch', () => {
@@ -12,6 +16,18 @@ describe('listCheckoutBranches', () => {
   it('returns an empty list when there are no named branches', () => {
     expect(listCheckoutBranches(undefined, undefined)).toEqual([])
     expect(listCheckoutBranches('HEAD', ['HEAD'])).toEqual([])
+  })
+})
+
+describe('isGitCheckoutBlockedByLocalChanges', () => {
+  it('should detect a checkout blocked by uncommitted edits', () => {
+    expect(
+      isGitCheckoutBlockedByLocalChanges(
+        'Your local changes to the following files would be overwritten by checkout'
+      )
+    ).toBe(true)
+    expect(isGitCheckoutBlockedByLocalChanges('pathspec did not match')).toBe(false)
+    expect(isGitCheckoutBlockedByLocalChanges(undefined)).toBe(false)
   })
 })
 
