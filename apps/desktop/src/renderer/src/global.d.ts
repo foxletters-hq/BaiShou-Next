@@ -142,6 +142,7 @@ interface AgentGateAPI {
     prefs: Partial<import('@baishou/shared').AgentGateNotificationPrefs>
   ): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
   notifyAsked(request: import('@baishou/shared').AgentGateRequest): Promise<{ success: boolean }>
+  previewNotification(): Promise<import('@baishou/shared').AgentGateNotificationPreviewResult>
   getConfig(
     scope?: import('@baishou/shared').AgentGateConfigScope
   ): Promise<import('@baishou/shared').BaishouAgentGateConfig>

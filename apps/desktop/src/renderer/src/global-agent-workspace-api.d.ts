@@ -119,6 +119,11 @@ interface AgentWorkspaceAPI {
   }>
   listPendingInputs(sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]>
   cancelPendingInput(inputId: string): Promise<import('@baishou/shared').SessionInputRecord | null>
+  updatePendingInput(params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null>
   previewRollback(params: {
     sessionId: string
     userMessageId: string

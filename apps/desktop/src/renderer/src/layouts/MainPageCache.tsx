@@ -4,11 +4,9 @@ import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import { isAgentWorkspaceKnowledgeDetailPath } from '../features/agent-workspace/utils/agent-workspace-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
+import { nextMountedCacheKeys } from './route-switch-mask.util'
 
 export { MainPageCacheActiveContext } from './main-page-cache.context'
-
-/** 离开路由后仍保持挂载，便于日记 ↔ 伙伴快速切换 */
-const PERSISTENT_MAIN_PAGE_KEYS = new Set(['/diary', '/chat'])
 
 /**
  * 侧边栏主页面：按路由懒加载，避免硬刷新时一次拉起全部页面模块图。
@@ -125,16 +123,7 @@ export const MainPageCache: React.FC<{
 
   useEffect(() => {
     if (!activeKey) return
-    setMountedKeys((prev) => {
-      const next = new Set<string>()
-      for (const key of prev) {
-        if (PERSISTENT_MAIN_PAGE_KEYS.has(key)) {
-          next.add(key)
-        }
-      }
-      next.add(activeKey)
-      return next
-    })
+    setMountedKeys((prev) => nextMountedCacheKeys(prev, activeKey))
   }, [activeKey])
 
   return (

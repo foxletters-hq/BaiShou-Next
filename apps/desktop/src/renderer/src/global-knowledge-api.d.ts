@@ -18,12 +18,18 @@ interface KnowledgeAPI {
     Array<{
       id: string
       name: string
+      coverTone?: string
+      coverIcon?: string
+      coverImageUrl?: string | null
+      updatedAt?: number
       sources: number
       chunks: number
       dimension: number | null
       dimensions: number[]
       modelIds: string[]
       mixedEmbeddings: boolean
+      graphNodes: number
+      graphEdges: number
     }>
   >
   getNotebook(notebookId: string): Promise<{
@@ -246,6 +252,7 @@ interface KnowledgeAPI {
     notebookId: string
     query: string
     limit?: number
+    mode?: string
   }): Promise<Array<{ id: string; name: string; nodeType: string; summary?: string }>>
   setGraphNodeReview(input: {
     notebookId: string

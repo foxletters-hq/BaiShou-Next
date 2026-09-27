@@ -379,6 +379,12 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                 <span className="settings-list-tile-title">
                   {t('settings.agent_gate_notify_enabled', '系统通知')}
                 </span>
+                <span className="settings-list-tile-subtitle">
+                  {t(
+                    'settings.agent_gate_notifications_hint',
+                    '伙伴需要你确认操作时，用系统通知提醒。'
+                  )}
+                </span>
               </div>
               <Switch
                 checked={notificationPrefs.enabled}
