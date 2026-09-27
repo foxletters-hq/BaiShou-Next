@@ -1,8 +1,9 @@
 export const sharedTokens = {
   /** Noto Sans SC = 思源黑体简体 */
   fontFamily: "'Noto Sans SC', 'Noto Sans', system-ui, sans-serif",
-  /** 等宽；CJK 需在 CSS 栈末追加 var(--font-family) */
-  fontFamilyMono: "'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace",
+  /** 等宽；CJK 必须写在 generic 族名前，否则中文到不了思源 */
+  fontFamilyMono:
+    "'JetBrains Mono', 'Fira Code', 'Consolas', 'Noto Sans SC', 'Noto Sans', system-ui, sans-serif",
   radius: {
     sm: 4,
     md: 12,

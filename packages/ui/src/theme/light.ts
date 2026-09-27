@@ -6,7 +6,7 @@ export const lightColors = {
   primaryTrackMuted: 'rgba(91, 168, 245, 0.24)',
   primaryRgb: '91, 168, 245',
   dashboardCardBorder: 'rgba(0, 0, 0, 0.08)',
-  bgApp: '#F3F3F3',
+  bgApp: '#fafafa',
   bgSurface: '#FFFFFF',
   bgSurfaceRaised: '#FFFFFF',
   bgSurfaceHighest: '#E8EAED',

@@ -85,4 +85,16 @@ textarea.baishou-form-field:disabled {
   box-shadow: none;
   background: transparent;
   padding: 0;
+  /* 圆角会裁选区和插入光标，嵌进外壳的输入框由外壳负责圆角 */
+  border-radius: 0;
+}
+
+::selection {
+  background: var(--text-selection-bg);
+  color: var(--text-selection-fg);
+}
+
+:where(input, textarea)::selection {
+  background: var(--text-selection-bg);
+  color: var(--text-selection-fg);
 }
