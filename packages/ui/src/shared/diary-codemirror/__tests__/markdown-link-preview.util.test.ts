@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  markdownInlineLinkDestination,
   markdownInlineLinkPreviewRanges,
   selectionTouchesLinkRange
 } from '../extensions/markdown-link-preview.util'
@@ -42,14 +43,30 @@ describe('markdownInlineLinkPreviewRanges', () => {
   })
 })
 
+describe('markdownInlineLinkDestination', () => {
+  it('returns the http destination and drops a title', () => {
+    expect(markdownInlineLinkDestination('[文档](https://example.com "来源")')).toBe(
+      'https://example.com'
+    )
+  })
+
+  it('ignores images and non-http destinations', () => {
+    expect(markdownInlineLinkDestination('![图](https://example.com/a.png)')).toBeNull()
+    expect(markdownInlineLinkDestination('[附件](attachment/a.png)')).toBeNull()
+  })
+})
+
 describe('selectionTouchesLinkRange', () => {
   const link = { from: 10, to: 40 }
 
-  it('expands when the caret is inside the link, not after it', () => {
+  it('expands when the caret sits inside the link [from, to)', () => {
     expect(selectionTouchesLinkRange([{ from: 10, to: 10 }], link.from, link.to)).toBe(true)
-    expect(selectionTouchesLinkRange([{ from: 25, to: 25 }], link.from, link.to)).toBe(true)
-    expect(selectionTouchesLinkRange([{ from: 40, to: 40 }], link.from, link.to)).toBe(false)
+    expect(selectionTouchesLinkRange([{ from: 20, to: 20 }], link.from, link.to)).toBe(true)
+    expect(selectionTouchesLinkRange([{ from: 30, to: 30 }], link.from, link.to)).toBe(true)
+    expect(selectionTouchesLinkRange([{ from: 39, to: 39 }], link.from, link.to)).toBe(true)
     expect(selectionTouchesLinkRange([{ from: 9, to: 9 }], link.from, link.to)).toBe(false)
+    expect(selectionTouchesLinkRange([{ from: 40, to: 40 }], link.from, link.to)).toBe(false)
+    expect(selectionTouchesLinkRange([{ from: 41, to: 41 }], link.from, link.to)).toBe(false)
   })
 
   it('expands when a selection overlaps the link', () => {

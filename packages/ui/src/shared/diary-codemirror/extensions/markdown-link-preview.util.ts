@@ -51,6 +51,21 @@ export function markdownInlineLinkPreviewRanges(
   }
 }
 
+/** 取出 `[文字](网址)` 的网址。引用链接、图片没有可打开的地址。 */
+export function markdownInlineLinkDestination(raw: string): string | null {
+  if (!raw.startsWith('[') || raw.startsWith('![')) return null
+  const labelClose = findBalancedLabelClose(raw)
+  if (labelClose == null || raw[labelClose + 1] !== '(') return null
+  const close = raw.lastIndexOf(')')
+  if (close <= labelClose + 1) return null
+  const destination = raw.slice(labelClose + 2, close).trim()
+  const url = destination.startsWith('<')
+    ? destination.slice(1, destination.indexOf('>') > 1 ? destination.indexOf('>') : undefined)
+    : destination.split(/\s+/)[0]
+  if (!url || !/^https?:\/\//i.test(url)) return null
+  return url
+}
+
 /** 光标落在链接区间内（含起点、不含终点）或选区与链接相交时视为正在编辑该链接。 */
 export function selectionTouchesLinkRange(
   ranges: readonly { from: number; to: number }[],

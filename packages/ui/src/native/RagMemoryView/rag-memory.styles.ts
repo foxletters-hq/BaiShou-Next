@@ -146,6 +146,7 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
   entryText: { fontSize: 13, lineHeight: 19, marginBottom: 4 },
+  entryNodeLine: { fontSize: 13, lineHeight: 19, marginBottom: 2 },
   entryViewLink: { fontSize: 12, marginBottom: 8 },
   entryPreviewScroll: { maxHeight: 360 },
   entryPreviewText: { fontSize: 14, lineHeight: 22 },

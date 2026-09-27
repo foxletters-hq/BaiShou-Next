@@ -9,6 +9,7 @@ import { collectLineSyntaxDecorations } from './buildLineSyntax'
 import { collectTableDecorations } from './buildTable'
 import { collectTableBlockRanges } from './buildTableChrome'
 import { collectTreeDecorations, getActiveLinesForDecorations } from './buildTree'
+import { collectInlineLinkLineDecorations } from './buildInlineLinks'
 import {
   collectFencedCodeLineDecorations,
   collectFencedCodeMarkDecorations,
@@ -50,6 +51,13 @@ export function buildMarkerHidingDecorations(
   }
   collectFencedCodeLineDecorations(state, marks)
   collectTreeDecorations(state, activeLines, imageRanges, marks, tableBlocks, hasFocus, platform)
+  collectInlineLinkLineDecorations(
+    state,
+    cursors,
+    marks,
+    skipLineSyntax,
+    platform?.interactionMode === 'touch'
+  )
   collectFencedCodeMarkDecorations(state, marks, activeLines, hasFocus, platform)
   return buildSafeDecorationSet(marks)
 }

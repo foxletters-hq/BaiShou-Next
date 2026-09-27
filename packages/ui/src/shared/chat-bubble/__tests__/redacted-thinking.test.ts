@@ -54,6 +54,18 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanContent).toBe('嗯，我懂。不是什么狂喜或者激动，就是——')
   })
 
+  it('strips unclosed message-time glued to reply body from screenshot regression', () => {
+    const content =
+      '<message-time>2026-09-27 12:38 不客气。以后你就扔现象给我，我短着回。\n剩一件小事记着：那批测试垃圾还在你图谱里躺着。'
+    const result = parseRedactedThinking(content, '规划怎么回')
+
+    expect(result.cleanReasoning).toBe('规划怎么回')
+    expect(result.cleanContent).toBe(
+      '不客气。以后你就扔现象给我，我短着回。\n剩一件小事记着：那批测试垃圾还在你图谱里躺着。'
+    )
+    expect(result.cleanContent).not.toContain('<message-time>')
+  })
+
   it('does not swallow body after unclosed think open tag into reasoning', () => {
     const open = '<' + 'think>'
     const content = `${open}\n半截思考\n正式回答应该在正文`

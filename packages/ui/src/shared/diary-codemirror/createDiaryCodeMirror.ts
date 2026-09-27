@@ -141,8 +141,31 @@ export function createDiaryCodeMirrorExtensions(
         ]
       : []),
     EditorView.domEventHandlers({
-      click: (event) => {
+      mousedown: (event, view) => {
         const target = event.target as HTMLElement
+        const renderedLink = target.closest('.cm-rendered-link')
+        if (!renderedLink?.getAttribute('data-href')) return false
+        const isModifier = event.ctrlKey || event.metaKey
+        const isReadOnly = view.state.readOnly
+        if (isModifier || isReadOnly) {
+          event.preventDefault()
+          return true
+        }
+        return false
+      },
+      click: (event, view) => {
+        const target = event.target as HTMLElement
+        const renderedLink = target.closest('.cm-rendered-link')
+        const href = renderedLink?.getAttribute('data-href')
+        if (renderedLink && href) {
+          const isModifier = event.ctrlKey || event.metaKey
+          const isReadOnly = view.state.readOnly
+          if (isModifier || isReadOnly) {
+            platform.onOpenExternalLink?.(href)
+            event.preventDefault()
+            return true
+          }
+        }
         if (target.closest('.cm-image-container')) {
           return false
         }
