@@ -48,6 +48,32 @@
   opacity: 0.8;
 }
 
+.citationMark {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.citationMark:hover {
+  background: var(--bg-surface-normal);
+}
+
+:global(.x-markdown-light) a.citationMark::after,
+:global(.x-markdown-dark) a.citationMark::after {
+  content: none;
+  margin-left: 0;
+}
+
 .inlineCode {
   background: var(--bg-surface-normal);
   color: var(--text-primary);
