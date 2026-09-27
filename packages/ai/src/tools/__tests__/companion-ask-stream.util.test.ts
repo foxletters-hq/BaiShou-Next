@@ -22,12 +22,12 @@ describe('parseCompanionAskStreamArgs', () => {
   })
 
   it('should return the question once the object has closed', () => {
-    expect(parseCompanionAskStreamArgs('{"question":"你在哪个城市？","options":["北京","上海"]}')).toEqual(
-      {
-        question: '你在哪个城市？',
-        options: ['北京', '上海']
-      }
-    )
+    expect(
+      parseCompanionAskStreamArgs('{"question":"你在哪个城市？","options":["北京","上海"]}')
+    ).toEqual({
+      question: '你在哪个城市？',
+      options: ['北京', '上海']
+    })
   })
 
   it('should return null when options are not a string list', () => {
@@ -145,10 +145,7 @@ describe('waitCompanionAskInflight', () => {
     const held = new Promise<string>((resolve) => {
       release = () => resolve('ok')
     })
-    registerCompanionAskStreamSession(
-      'sess_1',
-      new CompanionAskStreamSession(() => held)
-    )
+    registerCompanionAskStreamSession('sess_1', new CompanionAskStreamSession(() => held))
     startCompanionAskFromStreamInput(
       { companion_ask: {} },
       { toolName: 'companion_ask', toolCallId: 'c1', input: { question: '继续吗？' } },

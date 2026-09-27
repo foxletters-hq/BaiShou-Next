@@ -225,8 +225,7 @@ export class AgentSessionService {
       })
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      const aborted =
-        !isAgentFirstOutputTimeoutError(err) && abortSignal?.aborted === true
+      const aborted = !isAgentFirstOutputTimeoutError(err) && abortSignal?.aborted === true
       if (!aborted) {
         runtimeRecorder.record({
           type: 'session.stream_finished',

@@ -104,6 +104,7 @@ describe('applyFailedIncompleteToolResults', () => {
         kind: 'tool',
         callId: 'ask-1',
         name: 'companion_ask',
+        arguments: '{}',
         result: '已有结果',
         status: 'completed'
       }

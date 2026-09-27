@@ -85,7 +85,10 @@ describe('runWithFirstOutputTimeout', () => {
         abort,
         run: () =>
           new Promise((_, reject) => {
-            setTimeout(() => reject(new DOMException('The operation was aborted', 'AbortError')), 40)
+            setTimeout(
+              () => reject(new DOMException('The operation was aborted', 'AbortError')),
+              40
+            )
           })
       })
     ).rejects.toMatchObject({

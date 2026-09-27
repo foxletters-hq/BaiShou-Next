@@ -41,7 +41,10 @@ export function estimateTokensSinceLastSnapshot(
   allMessages: MessageWithParts[],
   latestSnapshot: CompressionSnapshotRef
 ): number {
-  return estimateMessagesTokens(resolveRetainMessagesAfterSnapshot(allMessages, latestSnapshot), true)
+  return estimateMessagesTokens(
+    resolveRetainMessagesAfterSnapshot(allMessages, latestSnapshot),
+    true
+  )
 }
 
 /** 解析快照之后应保留的消息（优先 tailStartMessageId，其次 coveredUpTo） */

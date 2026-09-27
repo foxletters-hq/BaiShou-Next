@@ -121,13 +121,11 @@ export class SessionInbox {
   /**
    * 改投递方式。立即发送用 steer：只提高本轮结束后的排空优先级，不 abort 当前流。
    */
-  setPendingDelivery(
-    inputId: string,
-    delivery: SessionInputDelivery
-  ): SessionInputRecord | null {
+  setPendingDelivery(inputId: string, delivery: SessionInputDelivery): SessionInputRecord | null {
     const cur = this.store.get(inputId)
     if (!cur || cur.status !== 'pending') return null
-    const next = { ...cur, delivery: delivery === 'steer' ? 'steer' : 'queue' }
+    const nextDelivery: SessionInputDelivery = delivery === 'steer' ? 'steer' : 'queue'
+    const next = { ...cur, delivery: nextDelivery }
     this.store.upsert(next)
     return next
   }

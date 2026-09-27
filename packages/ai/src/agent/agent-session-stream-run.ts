@@ -145,139 +145,158 @@ export async function runAgentSessionStream(input: {
   })
 
   try {
-  const adapter = new StreamChunkAdapter(accumulator, {
-    onChunk: (chunk) => {
-      if (chunk.type === ChunkType.TOOL_CALL) {
-        turnToolCalls += 1
-        doomCallGate.onToolCall(chunk)
-        startCompanionAskFromStreamInput(enabledTools, chunk, sessionId)
-      }
-      if (chunk.type === ChunkType.TOOL_RESULT) {
-        doomCallGate.onToolResult(chunk.toolCallId)
-      }
-      if (chunk.type === ChunkType.STEP_FINISH) {
-        lastFinishReason = chunk.finishReason || lastFinishReason
-      }
-      dispatchChunkToCallbacks(chunk, callbacks)
-      const runtimeEvents = bridgeStreamChunkToRuntimeEvents(sessionId, chunk, runtimeBridgeState)
-      for (const event of runtimeEvents) {
-        if (event.type === 'session.interrupted') {
-          recordRuntimeInterrupted(event.reason)
-        } else {
-          runtimeRecorder.record(event)
+    const adapter = new StreamChunkAdapter(accumulator, {
+      onChunk: (chunk) => {
+        if (chunk.type === ChunkType.TOOL_CALL) {
+          turnToolCalls += 1
+          doomCallGate.onToolCall(chunk)
+          startCompanionAskFromStreamInput(enabledTools, chunk, sessionId)
         }
-      }
-      const flushReason = flushReasonFromStreamChunk(chunk.type)
-      if (flushReason) assistantCheckpoint.schedule(flushReason)
-    }
-  })
-
-  const runOneStream = async (
-    messages: typeof messagesForModel,
-    maxStepsThisTurn: number,
-    systemPromptThisTurn: string
-  ) =>
-    runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () =>
-      streamText({
-        model,
-        messages,
-        system: buildCachedSystemForStream(systemPromptThisTurn, cachingCtx as any),
-        allowSystemInMessages: true,
-        tools: enabledTools,
-        stopWhen: stepCountIs(maxStepsThisTurn),
-        abortSignal,
-        experimental_repairToolCall: buildToolCallRepairHandler(),
-        ...(builtReasoning.providerOptions
-          ? { providerOptions: builtReasoning.providerOptions }
-          : {}),
-        ...(hasSegmenter && cjkSegmenter
-          ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
-          : {})
-      } as any)
-    )
-
-  const consumeTurn = async (
-    messages: typeof messagesForModel,
-    maxStepsThisTurn: number,
-    systemPromptThisTurn: string
-  ) =>
-    runWithFirstOutputTimeout({
-      timeoutMs: AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
-      abort: () => abortAgentStreamSession(sessionId, options.streamClaimGeneration),
-      run: async (markFirstOutput) => {
-        const turnStream = await runOneStream(messages, maxStepsThisTurn, systemPromptThisTurn)
-        const consumed = await adapter.consumeStream(turnStream, { onFirstOutput: markFirstOutput })
-        // HTTP 可能在 SDK 调用 execute 之前就结束；等用户答完再收尾，避免确认门被拆掉
-        await waitCompanionAskInflight(sessionId)
-        return { turnStream, consumed }
+        if (chunk.type === ChunkType.TOOL_RESULT) {
+          doomCallGate.onToolResult(chunk.toolCallId)
+        }
+        if (chunk.type === ChunkType.STEP_FINISH) {
+          lastFinishReason = chunk.finishReason || lastFinishReason
+        }
+        dispatchChunkToCallbacks(chunk, callbacks)
+        const runtimeEvents = bridgeStreamChunkToRuntimeEvents(sessionId, chunk, runtimeBridgeState)
+        for (const event of runtimeEvents) {
+          if (event.type === 'session.interrupted') {
+            recordRuntimeInterrupted(event.reason)
+          } else {
+            runtimeRecorder.record(event)
+          }
+        }
+        const flushReason = flushReasonFromStreamChunk(chunk.type)
+        if (flushReason) assistantCheckpoint.schedule(flushReason)
       }
     })
 
-  let streamResult: Awaited<ReturnType<typeof runOneStream>>
-  let streamError: unknown = null
+    const runOneStream = async (
+      messages: typeof messagesForModel,
+      maxStepsThisTurn: number,
+      systemPromptThisTurn: string
+    ) =>
+      runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () =>
+        streamText({
+          model,
+          messages,
+          system: buildCachedSystemForStream(systemPromptThisTurn, cachingCtx as any),
+          allowSystemInMessages: true,
+          tools: enabledTools,
+          stopWhen: stepCountIs(maxStepsThisTurn),
+          abortSignal,
+          experimental_repairToolCall: buildToolCallRepairHandler(),
+          ...(builtReasoning.providerOptions
+            ? { providerOptions: builtReasoning.providerOptions }
+            : {}),
+          ...(hasSegmenter && cjkSegmenter
+            ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
+            : {})
+        } as any)
+      )
 
-  if (enableRuntimeV2) {
-    let turnMessages = [...messagesForModel] as any[]
-    streamResult = undefined as any
-    for (let turnIndex = 0; turnIndex < effectiveMaxSteps; turnIndex++) {
-      if (abortSignal?.aborted || doomTripped) break
-      const turned = prepareSystemPromptWithEpoch({
-        sessionId,
-        fullSystemPrompt: builtSystemPrompt
-      })
-      systemForModel = turned.systemPrompt
-      emitTurnStarted(sessionId, turnIndex)
-      turnToolCalls = 0
-      lastFinishReason = 'unknown'
-      try {
-        const turnedStream = await consumeTurn(turnMessages, 1, turned.systemPrompt)
-        streamResult = turnedStream.turnStream
-        if (turnedStream.consumed.error && !isNoOutputGeneratedError(turnedStream.consumed.error)) {
-          streamError = turnedStream.consumed.error
+    const consumeTurn = async (
+      messages: typeof messagesForModel,
+      maxStepsThisTurn: number,
+      systemPromptThisTurn: string
+    ) =>
+      runWithFirstOutputTimeout({
+        timeoutMs: AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+        abort: () => abortAgentStreamSession(sessionId, options.streamClaimGeneration),
+        run: async (markFirstOutput) => {
+          const turnStream = await runOneStream(messages, maxStepsThisTurn, systemPromptThisTurn)
+          const consumed = await adapter.consumeStream(turnStream, {
+            onFirstOutput: markFirstOutput
+          })
+          // HTTP 可能在 SDK 调用 execute 之前就结束；等用户答完再收尾，避免确认门被拆掉
+          await waitCompanionAskInflight(sessionId)
+          return { turnStream, consumed }
         }
-      } catch (error) {
-        if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
-          streamError = error
-        } else {
-          throw error
-        }
-      }
-      const continueNeeded = needsProviderTurnContinuation({
-        finishReason: lastFinishReason,
-        hadToolCalls: turnToolCalls > 0,
-        turnIndex,
-        maxSteps: effectiveMaxSteps,
-        aborted: Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError),
-        doomLoopTripped: doomTripped,
-        singleStepTurn: true
       })
-      emitTurnFinished(sessionId, turnIndex, {
-        finishReason: lastFinishReason,
-        needsContinuation: continueNeeded
-      })
-      if (!continueNeeded || doomTripped || abortSignal?.aborted || streamError) break
-      try {
-        const nextMessages = await readProviderTurnMessages(streamResult)
-        if (nextMessages) {
-          turnMessages.push(...(nextMessages as any[]))
-        } else {
-          break
-        }
-      } catch {
-        break
-      }
-    }
-    if (!streamResult && !streamError) {
-      if (!systemForModel) {
-        systemForModel = prepareSystemPromptWithEpoch({
+
+    let streamResult: Awaited<ReturnType<typeof runOneStream>> | undefined
+    let streamError: unknown = null
+
+    if (enableRuntimeV2) {
+      let turnMessages = [...messagesForModel] as any[]
+      streamResult = undefined as any
+      for (let turnIndex = 0; turnIndex < effectiveMaxSteps; turnIndex++) {
+        if (abortSignal?.aborted || doomTripped) break
+        const turned = prepareSystemPromptWithEpoch({
           sessionId,
           fullSystemPrompt: builtSystemPrompt
-        }).systemPrompt
+        })
+        systemForModel = turned.systemPrompt
+        emitTurnStarted(sessionId, turnIndex)
+        turnToolCalls = 0
+        lastFinishReason = 'unknown'
+        try {
+          const turnedStream = await consumeTurn(turnMessages, 1, turned.systemPrompt)
+          streamResult = turnedStream.turnStream
+          if (
+            turnedStream.consumed.error &&
+            !isNoOutputGeneratedError(turnedStream.consumed.error)
+          ) {
+            streamError = turnedStream.consumed.error
+          }
+        } catch (error) {
+          if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
+            streamError = error
+          } else {
+            throw error
+          }
+        }
+        const continueNeeded = needsProviderTurnContinuation({
+          finishReason: lastFinishReason,
+          hadToolCalls: turnToolCalls > 0,
+          turnIndex,
+          maxSteps: effectiveMaxSteps,
+          aborted: Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError),
+          doomLoopTripped: doomTripped,
+          singleStepTurn: true
+        })
+        emitTurnFinished(sessionId, turnIndex, {
+          finishReason: lastFinishReason,
+          needsContinuation: continueNeeded
+        })
+        if (!continueNeeded || doomTripped || abortSignal?.aborted || streamError) break
+        if (!streamResult) break
+        try {
+          const nextMessages = await readProviderTurnMessages(streamResult)
+          if (nextMessages) {
+            turnMessages.push(...(nextMessages as any[]))
+          } else {
+            break
+          }
+        } catch {
+          break
+        }
       }
+      if (!streamResult && !streamError) {
+        if (!systemForModel) {
+          systemForModel = prepareSystemPromptWithEpoch({
+            sessionId,
+            fullSystemPrompt: builtSystemPrompt
+          }).systemPrompt
+        }
+        try {
+          const fallback = await consumeTurn(messagesForModel, 1, systemForModel)
+          streamResult = fallback.turnStream
+          streamError = fallback.consumed.error
+        } catch (error) {
+          if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
+            streamError = error
+          } else {
+            throw error
+          }
+        }
+      }
+    } else {
       try {
-        const fallback = await consumeTurn(messagesForModel, 1, systemForModel)
-        streamResult = fallback.turnStream
-        streamError = fallback.consumed.error
+        const single = await consumeTurn(messagesForModel, effectiveMaxSteps, systemForModel)
+        streamResult = single.turnStream
+        streamError = single.consumed.error
       } catch (error) {
         if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
           streamError = error
@@ -286,26 +305,13 @@ export async function runAgentSessionStream(input: {
         }
       }
     }
-  } else {
-    try {
-      const single = await consumeTurn(messagesForModel, effectiveMaxSteps, systemForModel)
-      streamResult = single.turnStream
-      streamError = single.consumed.error
-    } catch (error) {
-      if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
-        streamError = error
-      } else {
-        throw error
-      }
-    }
-  }
 
-  const metrics = adapter.getMetrics()
-  logger.info(
-    `[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`
-  )
+    const metrics = adapter.getMetrics()
+    logger.info(
+      `[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`
+    )
 
-  return { streamResult, streamError, accumulator, assistantCheckpoint, doomTripped }
+    return { streamResult, streamError, accumulator, assistantCheckpoint, doomTripped }
   } finally {
     unsubGateFlush()
   }

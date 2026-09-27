@@ -18,10 +18,10 @@ import { isAgentStreamAbortError, logger } from '@baishou/shared'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import { isAgentStreamFirstOutputChunk } from './agent-stream-timeout'
 
-function readToolCallIds(part: {
-  id?: unknown
-  toolCallId?: unknown
-}): { canonical: string; aliases: string[] } {
+function readToolCallIds(part: { id?: unknown; toolCallId?: unknown }): {
+  canonical: string
+  aliases: string[]
+} {
   const toolCallId = String(part.toolCallId ?? '').trim()
   const id = String(part.id ?? '').trim()
   const aliases = [...new Set([toolCallId, id].filter((value) => value.length > 0))]
@@ -70,7 +70,9 @@ export class StreamChunkAdapter {
   private resolveCallId(ids: { canonical: string; aliases: string[] }): string {
     return (
       this.canonicalCallIds.get(ids.canonical) ??
-      ids.aliases.map((alias) => this.canonicalCallIds.get(alias)).find((value) => Boolean(value)) ??
+      ids.aliases
+        .map((alias) => this.canonicalCallIds.get(alias))
+        .find((value) => Boolean(value)) ??
       ids.canonical
     )
   }
