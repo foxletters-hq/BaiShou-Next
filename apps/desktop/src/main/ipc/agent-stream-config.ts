@@ -21,7 +21,9 @@ import {
   requireResolvedDialogueModel,
   resolveReasoningEffortForSlot,
   resolveProviderModelSlot,
-  type ResolvedDialogueModel
+  type ResolvedDialogueModel,
+  clampRagSimilarityThreshold,
+  clampRagTopK
 } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 import { getAgentManagers } from './agent-managers'
@@ -145,6 +147,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
 
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
+    rag_top_k: clampRagTopK(ragConfig?.ragTopK),
+    rag_similarity_threshold: clampRagSimilarityThreshold(ragConfig?.ragSimilarityThreshold),
     hasEmbeddingModel,
     disabledToolIds: toolManagementConfig.disabledToolIds,
     customConfigs: toolManagementConfig.customConfigs,

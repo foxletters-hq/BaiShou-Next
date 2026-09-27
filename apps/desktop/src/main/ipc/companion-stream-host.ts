@@ -97,7 +97,7 @@ export async function buildCompanionStreamHost(params: {
     graphNodeLookup,
     graphEdgeLookup,
     knowledgeReader: createDesktopKnowledgeReader(embedQuery),
-    knowledgeGraphReader: createDesktopKnowledgeGraphReader(),
+    knowledgeGraphReader: createDesktopKnowledgeGraphReader(embedQuery),
     skillsWriter: createDesktopSkillsWriter(),
     resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
     skillsCatalog,

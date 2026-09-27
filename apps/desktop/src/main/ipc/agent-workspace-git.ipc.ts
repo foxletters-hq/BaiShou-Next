@@ -148,6 +148,7 @@ export function registerAgentWorkspaceGitIPC(): void {
       withGit(folderRoot, (svc) => svc.rollbackFile(filePath, commitHash))
   )
 
+  // mixed reset 在 @baishou/core-desktop；此文件变更会触发主进程重打包
   ipcMain.handle(
     'agent-workspace:git-rollback-all',
     async (_, folderRoot: string, commitHash: string) =>
