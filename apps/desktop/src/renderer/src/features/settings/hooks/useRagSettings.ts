@@ -148,7 +148,7 @@ export function useRagSettings({
         }
       }
     },
-    []
+    [t, toast]
   )
 
   const fetchRagInfo = async (page?: number, size?: number) => {

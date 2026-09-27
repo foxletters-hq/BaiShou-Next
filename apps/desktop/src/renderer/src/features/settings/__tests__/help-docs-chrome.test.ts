@@ -19,7 +19,7 @@ describe('desktop help docs chrome', () => {
     expect(pane).toContain("t('settings.help_docs_open_browser', '在浏览器中打开')")
     expect(pane).toContain('window.api.shell.openExternal')
     expect(pane).not.toContain('className={styles.openExternalIcon}')
-    expect(pane).not.toContain('aria-label={t(\'settings.help_docs_open_browser\'')
+    expect(pane).not.toContain("aria-label={t('settings.help_docs_open_browser'")
     expect(paneCss).not.toContain('.openExternalIcon')
     expect(paneCss).not.toContain('#fff')
     expect(paneCss).not.toContain('#000')

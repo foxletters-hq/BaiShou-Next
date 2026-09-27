@@ -21,7 +21,7 @@ describe('desktop latte settings chrome', () => {
     expect(pane.indexOf('<LatteProfileIntro')).toBeLessThan(
       pane.indexOf('latte_persona_prompt_title')
     )
-    expect(intro).toContain("@baishou/shared/assets/images/latte-chibi.png")
+    expect(intro).toContain('@baishou/shared/assets/images/latte-chibi.png')
     expect(intro).toContain('latte_display_name')
     expect(intro).toContain('latte_origin_quote')
     expect(intro).toContain('latte_origin_body')

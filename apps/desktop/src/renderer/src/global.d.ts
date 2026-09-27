@@ -264,6 +264,28 @@ interface AppAPI {
   graph: GraphAPI
   knowledge: KnowledgeAPI
   getMessages(sessionId: string): Promise<unknown>
+  admit(params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+    attachments?: unknown[]
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }>
+  listPendingInputs(sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]>
+  cancelPendingInput(inputId: string): Promise<import('@baishou/shared').SessionInputRecord | null>
+  updatePendingInput(params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null>
   [key: string]: unknown
 }
 
