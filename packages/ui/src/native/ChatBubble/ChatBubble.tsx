@@ -8,7 +8,7 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
-import { collectKnowledgeCitationsFromInvocations, type MockChatAttachment } from '@baishou/shared'
+import { collectKnowledgeCitationsFromInvocations, decorateKnowledgeCitedTexts, type MockChatAttachment } from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
@@ -101,6 +101,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     () => collectKnowledgeCitationsFromInvocations(toolInvocations),
     [toolInvocations]
   )
+  const citedContent = useMemo(() => {
+    if (!isAssistant || knowledgeCitations.length === 0) return cleanContent
+    return (
+      decorateKnowledgeCitedTexts([cleanContent], knowledgeCitations.length, message.id || 'turn', {
+        appendWhenMissing: true,
+        citations: knowledgeCitations
+      })[0] ?? cleanContent
+    )
+  }, [cleanContent, isAssistant, knowledgeCitations, message.id])
   const attachments = useMemo(() => {
     const persisted = (message.attachments || []) as MockChatAttachment[]
     if (persisted.length > 0) return persisted
@@ -131,6 +140,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   ]
 
   return (
+    <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={message.id || 'turn'}>
     <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
       {isAssistant && aiProfile ? (
         <ChatBubbleAvatar
@@ -252,7 +262,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               {isAssistant && cleanContent ? (
                 <View style={styles.markdownSlot}>
                   <AgentMarkdownRenderer
-                    content={cleanContent}
+                    content={citedContent}
                     variant="chat"
                     isStreaming={markdownStreaming}
                     onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
@@ -300,9 +310,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </View>
           )}
         </View>
-        {isAssistant && knowledgeCitations.length > 0 ? (
-          <KnowledgeCitationBlock citations={knowledgeCitations} />
-        ) : null}
         {isAssistant && displayError ? (
           <View
             style={{
@@ -365,5 +372,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
       <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
     </View>
+    </KnowledgeCitationBlock>
   )
 }

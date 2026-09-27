@@ -25,9 +25,11 @@ describe('Native chat sticker chrome', () => {
     )
   })
 
-  it('should use contain fit for sticker images instead of the cropped thumb tile', () => {
-    expect(attachSrc).toContain("display === 'sticker'")
-    expect(attachSrc).toContain("resizeMode={isSticker ? 'contain' : 'cover'}")
-    expect(attachSrc).toContain('stickerImage')
+  it('should wrap assistant markdown with the citation dialog instead of stacking excerpts', () => {
+    expect(bubbleSrc).toContain('<KnowledgeCitationBlock citations={knowledgeCitations}')
+    expect(bubbleSrc).toContain('decorateKnowledgeCitedTexts')
+    expect(bubbleSrc).not.toContain(
+      '{isAssistant && knowledgeCitations.length > 0 ? (\n          <KnowledgeCitationBlock citations={knowledgeCitations} />'
+    )
   })
 })

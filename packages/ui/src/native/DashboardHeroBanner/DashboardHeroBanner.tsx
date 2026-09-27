@@ -3,41 +3,83 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
 
-/** 与桌面 DashboardHeroBanner 一致：主色底 + 白字 + 装饰渐变球 */
+/** 与桌面 DashboardHeroBanner 一致：卡片式氛围背景 + 柔和文本 + 装饰微光（避免暗色模式大面积刺眼纯蓝） */
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
 
   return (
-    <View style={[styles.banner, { backgroundColor: colors.primary }]}>
-      <Text style={[styles.title, { color: colors.textOnPrimary }]}>
-        {t('common.app_title')} · {t('summary.collective_memories_title')}
-      </Text>
-      <Text style={styles.subtitle}>{t('summary.algorithm_desc')}</Text>
+    <View
+      style={[
+        styles.banner,
+        {
+          backgroundColor: isDark ? colors.bgSurfaceRaised : colors.primaryLight,
+          borderColor: colors.borderControl,
+          borderWidth: 1
+        }
+      ]}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {t('common.app_title')} · {t('summary.collective_memories_title')}
+        </Text>
+        <View
+          style={[
+            styles.tag,
+            {
+              backgroundColor: isDark ? 'rgba(91, 168, 245, 0.15)' : 'rgba(91, 168, 245, 0.18)',
+              borderColor: isDark ? 'rgba(91, 168, 245, 0.3)' : 'rgba(91, 168, 245, 0.25)'
+            }
+          ]}
+        >
+          <Text style={[styles.tagText, { color: colors.primary }]}>
+            {t('summary.shared_memory', '共同回忆')}
+          </Text>
+        </View>
+      </View>
 
-      <View style={[styles.circle, styles.circlePink]} />
-      <View style={[styles.circle, styles.circleBlue]} />
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        {t('summary.algorithm_desc')}
+      </Text>
+
+      {/* 纯净单一主色微光，避免多色杂糅发脏 */}
+      <View style={[styles.circle, styles.circleAura, { opacity: isDark ? 0.12 : 0.18 }]} />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   banner: {
-    height: 140,
-    borderRadius: 20,
+    minHeight: 120,
+    borderRadius: 16,
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     overflow: 'hidden'
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 1
+  },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
-    zIndex: 1,
-    letterSpacing: -0.5
+    letterSpacing: -0.3
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '600'
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 8,
     zIndex: 1,
     lineHeight: 18
@@ -46,18 +88,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderRadius: 999
   },
-  circlePink: {
-    right: -20,
+  circleAura: {
+    right: -30,
     top: -40,
-    width: 140,
-    height: 140,
-    backgroundColor: 'rgba(255, 154, 158, 0.2)'
-  },
-  circleBlue: {
-    right: 80,
-    bottom: -30,
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(161, 196, 253, 0.3)'
+    width: 180,
+    height: 180,
+    backgroundColor: 'rgba(91, 168, 245, 0.25)'
   }
 })

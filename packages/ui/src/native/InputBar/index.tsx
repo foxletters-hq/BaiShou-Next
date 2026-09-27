@@ -248,12 +248,16 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                     <TouchableOpacity
                       style={[
                         styles.sendBtn,
-                        { backgroundColor: colors.primary },
-                        !bar.text.trim() &&
-                          bar.attachments.length === 0 &&
-                          bar.skillRefs.length === 0 && {
-                            backgroundColor: colors.textTertiary
-                          },
+                        {
+                          backgroundColor: colors.bgSurface,
+                          borderWidth: 1,
+                          borderColor:
+                            !bar.text.trim() &&
+                            bar.attachments.length === 0 &&
+                            bar.skillRefs.length === 0
+                              ? colors.borderSubtle
+                              : colors.borderControl
+                        },
                         bar.isSending && {
                           opacity: 0.72
                         }
@@ -267,7 +271,17 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                       }
                       accessibilityLabel={t('common.send', '发送')}
                     >
-                      <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
+                      <LucideIcon
+                        icon={Send}
+                        size={18}
+                        color={
+                          !bar.text.trim() &&
+                          bar.attachments.length === 0 &&
+                          bar.skillRefs.length === 0
+                            ? colors.textTertiary
+                            : colors.textPrimary
+                        }
+                      />
                     </TouchableOpacity>
                   )}
                 </View>

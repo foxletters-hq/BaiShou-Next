@@ -7,6 +7,7 @@ import {
   stripImageWidthInMarkdown
 } from '../DiaryEditor/diary-image-markdown.util'
 import { NativeMarkdownImage } from './NativeMarkdownImage'
+import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 import type { MarkdownRendererProps } from './MarkdownRenderer'
 
 function buildMarkdownStyles(
@@ -178,6 +179,7 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   onImagePress
 }) => {
   const { colors } = useNativeTheme()
+  const { tryOpenCitation } = useMarkdownLinkPress()
   const markdownStyles = useMemo(() => buildMarkdownStyles(colors, variant), [colors, variant])
   const markdownit = useMemo(
     () =>
@@ -300,7 +302,12 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         style
       ]}
     >
-      <Markdown style={markdownStyles} rules={rules} markdownit={markdownit}>
+      <Markdown
+        style={markdownStyles}
+        rules={rules}
+        markdownit={markdownit}
+        onLinkPress={(url: string) => !tryOpenCitation(url)}
+      >
         {displayContent}
       </Markdown>
     </View>
