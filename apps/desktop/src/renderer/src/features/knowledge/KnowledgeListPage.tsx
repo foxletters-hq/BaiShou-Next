@@ -342,7 +342,7 @@ export const KnowledgeListPage: React.FC = () => {
   const locale = i18n.language || 'zh-CN'
 
   return (
-    <KnowledgeShell setFolderRoot={setFolderRoot}>
+    <KnowledgeShell setFolderRoot={setFolderRoot} showSidebar={false}>
       <motion.div
         className={`${styles.mainInner} ${styles.listMainInner}`}
         initial={{ opacity: 0 }}

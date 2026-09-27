@@ -22,6 +22,8 @@ export interface KnowledgeShellProps {
   setFolderRoot: WorkspaceOutletContext['setFolderRoot']
   /** 详情页需要撑满视口时传入（如 overflow:hidden） */
   mainClassName?: string
+  /** 列表页侧栏由工作台布局持有，详情页仍自带一份 */
+  showSidebar?: boolean
 }
 
 /** 知识库页共用工作台侧栏壳 */
@@ -29,7 +31,8 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
   activeNav = 'knowledge',
   children,
   setFolderRoot,
-  mainClassName
+  mainClassName,
+  showSidebar = true
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -133,25 +136,29 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
 
   return (
     <div className={pageStyles.page}>
-      <WorkbenchHomeSidebar
-        activeNav={activeNav}
-        onNewProject={() => void handleOpenFolder()}
-        onOpenHome={() => navigate('/agent-workspace')}
-        onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenSkills={() => navigate('/agent-workspace/skills')}
-        onOpenProjects={() => navigate('/agent-workspace/projects')}
-        onOpenSettings={() => void handleOpenSettings()}
-        creating={creating}
-        recentWorkspaces={workspaces}
-        lastActiveWorkspaceId={lastActiveWorkspaceId}
-        sessions={sessions}
-        onOpenWorkspace={(id) => void enterWorkspace(id)}
-        onOpenSession={(sessionId, workspaceId) => void handleOpenSession(sessionId, workspaceId)}
-        onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
-        onRemoveWorkspace={removeWorkspace}
-        onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
-        onTogglePinSession={pinSession}
-      />
+      {showSidebar ? (
+        <WorkbenchHomeSidebar
+          activeNav={activeNav}
+          onNewProject={() => void handleOpenFolder()}
+          onOpenHome={() => navigate('/agent-workspace')}
+          onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
+          onOpenSkills={() => navigate('/agent-workspace/skills')}
+          onOpenProjects={() => navigate('/agent-workspace/projects')}
+          onOpenSettings={() => void handleOpenSettings()}
+          creating={creating}
+          recentWorkspaces={workspaces}
+          lastActiveWorkspaceId={lastActiveWorkspaceId}
+          sessions={sessions}
+          onOpenWorkspace={(id) => void enterWorkspace(id)}
+          onOpenSession={(sessionId, workspaceId) =>
+            void handleOpenSession(sessionId, workspaceId)
+          }
+          onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
+          onRemoveWorkspace={removeWorkspace}
+          onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
+          onTogglePinSession={pinSession}
+        />
+      ) : null}
       <main className={[pageStyles.main, mainClassName].filter(Boolean).join(' ')}>{children}</main>
       {settingsWorkspace ? (
         <WorkbenchWorkspaceGateSheet

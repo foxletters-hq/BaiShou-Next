@@ -41,6 +41,7 @@ export function NotebookGraphSidePanel({
   focusDepth,
   appearanceSettings,
   forceSettings,
+  viewMaxNodes,
   tr,
   onSideResizeMouseDown,
   onOpenSide,
@@ -64,6 +65,7 @@ export function NotebookGraphSidePanel({
   onFocusDepthChange,
   onAppearanceChange,
   onForceChange,
+  onViewMaxNodesChange,
   onReplayLayout,
   onResetSettings,
   onPreviewFragments
@@ -88,6 +90,7 @@ export function NotebookGraphSidePanel({
   focusDepth: GraphFocusDepth
   appearanceSettings: GraphAppearanceSettings
   forceSettings: GraphForceSettings
+  viewMaxNodes: number
   tr: (key: string, defaultValue?: string) => string
   onSideResizeMouseDown: (event: React.MouseEvent) => void
   onOpenSide: (mode: NotebookGraphSideMode) => void
@@ -111,6 +114,7 @@ export function NotebookGraphSidePanel({
   onFocusDepthChange: (depth: GraphFocusDepth) => void
   onAppearanceChange: (patch: Partial<GraphAppearanceSettings>) => void
   onForceChange: (patch: Partial<GraphForceSettings>) => void
+  onViewMaxNodesChange: (value: number) => void
   onReplayLayout: () => void
   onResetSettings: () => void
   onPreviewFragments?: (edges: NotebookGraphViewEdge[]) => void
@@ -357,9 +361,11 @@ export function NotebookGraphSidePanel({
                   focusDepth={focusDepth}
                   appearanceSettings={appearanceSettings}
                   forceSettings={forceSettings}
+                  viewMaxNodes={viewMaxNodes}
                   onFocusDepthChange={onFocusDepthChange}
                   onAppearanceChange={onAppearanceChange}
                   onForceChange={onForceChange}
+                  onViewMaxNodesChange={onViewMaxNodesChange}
                   onReplayLayout={onReplayLayout}
                 />
               </div>

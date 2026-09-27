@@ -58,6 +58,11 @@
   min-height: 0;
 }
 
+.notebookCardSortable:has(.coverMenu) {
+  position: relative;
+  z-index: 4;
+}
+
 .notebookCardSortableDragging {
   z-index: 3;
   position: relative;
@@ -250,6 +255,7 @@
 .notebookCardMenuWrap {
   position: relative;
   flex-shrink: 0;
+  z-index: 8;
 }
 
 .notebookCardMenu {
@@ -264,10 +270,10 @@
   z-index: 8;
   width: 268px;
   padding: 10px;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: var(--menu-popup-radius);
+  background: var(--menu-popup-bg);
+  border: 1px solid var(--menu-popup-border);
+  box-shadow: var(--menu-popup-shadow);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -385,7 +391,7 @@
 }
 
 .coverIconTrigger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  background: var(--menu-popup-item-hover-bg);
 }
 
 .coverIconTrigger:disabled {
@@ -526,7 +532,7 @@
 }
 
 .coverImageBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  background: var(--menu-popup-item-hover-bg);
 }
 
 .coverImageBtn:disabled {
@@ -1482,7 +1488,7 @@
   flex: 1;
   min-width: 0;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-family: var(--font-family);
 }
 
@@ -1494,6 +1500,10 @@
   box-shadow: none;
   padding: 0;
   background: transparent;
+  border-radius: 0;
+  align-self: center;
+  height: 26px;
+  line-height: 26px;
 }
 
 .vectorSearchClear {

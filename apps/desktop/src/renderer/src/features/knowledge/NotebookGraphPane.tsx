@@ -1,27 +1,33 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
   GRAPH_FORCE_DEFAULTS,
+  GRAPH_VIEW_MAX_NODES_DEFAULT,
   asGraphTranslateFn,
   clampGraphAppearanceSettings,
   clampGraphFocusDepth,
   clampGraphForceSettings,
+  clampGraphViewMaxNodes,
   collectGraphFocusIds,
   graphPendingItemKey,
   loadGraphAppearanceSettings,
   loadGraphFocusDepth,
   loadGraphForceSettings,
+  loadGraphViewMaxNodes,
   saveGraphAppearanceSettings,
   saveGraphFocusDepth,
   saveGraphForceSettings,
+  saveGraphViewMaxNodes,
   splitGraphReviewSelection,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
-  type GraphForceSettings
+  type GraphForceSettings,
+  type GraphSearchMode
 } from '@baishou/shared'
 import { toast, useDialog } from '@baishou/ui'
 import { GraphForceCanvas } from '../graph/GraphForceCanvas'
+import { graphSearchErrorCopy } from '../graph/graph-page-derive.util'
 import { usePanelResize } from '../agent-workspace/workbench/usePanelResize'
 import { callKnowledgeApi } from './call-knowledge-api'
 import {
@@ -79,6 +85,13 @@ export const NotebookGraphPane: React.FC<{
   const [nodes, setNodes] = useState<NotebookGraphViewNode[]>([])
   const [edges, setEdges] = useState<NotebookGraphViewEdge[]>([])
   const [query, setQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<GraphSearchMode>('semantic')
+  const [searchHits, setSearchHits] = useState<
+    Array<{ id: string; name: string; nodeType: string; summary?: string }>
+  >([])
+  const [searchAttempted, setSearchAttempted] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const searchGroupRef = useRef<HTMLDivElement>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set())
   const [locateIds, setLocateIds] = useState<string[] | null>(null)
@@ -90,6 +103,7 @@ export const NotebookGraphPane: React.FC<{
   const [appearanceSettings, setAppearanceSettings] = useState<GraphAppearanceSettings>(() =>
     clampGraphAppearanceSettings(loadGraphAppearanceSettings())
   )
+  const [viewMaxNodes, setViewMaxNodes] = useState(() => loadGraphViewMaxNodes())
   const [animationTick, setAnimationTick] = useState(0)
   const [dismissGuide, setDismissGuide] = useState(false)
   const [sideMode, setSideMode] = useState<NotebookGraphSideMode>('ops')
@@ -103,7 +117,7 @@ export const NotebookGraphPane: React.FC<{
       const view = await callKnowledgeApi<{
         nodes: NotebookGraphViewNode[]
         edges: NotebookGraphViewEdge[]
-      }>('getGraphView', 'knowledge:get-graph-view', { notebookId, maxNodes: 400 })
+      }>('getGraphView', 'knowledge:get-graph-view', { notebookId, maxNodes: viewMaxNodes })
       const remapped = remapNotebookGraphReviewForDisplay(view?.nodes || [], view?.edges || [])
       setNodes(remapped.nodes)
       setEdges(remapped.edges)
@@ -111,7 +125,7 @@ export const NotebookGraphPane: React.FC<{
       setNodes([])
       setEdges([])
     }
-  }, [notebookId])
+  }, [notebookId, viewMaxNodes])
 
   useEffect(() => {
     void loadView()
@@ -184,6 +198,15 @@ export const NotebookGraphPane: React.FC<{
     saveGraphForceSettings({ ...GRAPH_FORCE_DEFAULTS })
     setAppearanceSettings({ ...GRAPH_APPEARANCE_DEFAULTS })
     saveGraphAppearanceSettings({ ...GRAPH_APPEARANCE_DEFAULTS })
+    const maxNodes = GRAPH_VIEW_MAX_NODES_DEFAULT
+    setViewMaxNodes(maxNodes)
+    saveGraphViewMaxNodes(maxNodes)
+  }
+
+  const updateViewMaxNodes = (value: number) => {
+    const next = clampGraphViewMaxNodes(value)
+    setViewMaxNodes(next)
+    saveGraphViewMaxNodes(next)
   }
 
   const persistCollapsed = (collapsed: boolean) => {
@@ -196,25 +219,63 @@ export const NotebookGraphPane: React.FC<{
     persistCollapsed(false)
   }
 
-  const onSearch = async () => {
+  const dismissSearchPanel = () => {
+    setSearchAttempted(false)
+    setSearching(false)
+  }
+
+  useEffect(() => {
+    if (!searching && !searchAttempted) return
+    const onPointerDown = (event: MouseEvent) => {
+      const root = searchGroupRef.current
+      if (!root || root.contains(event.target as Node)) return
+      dismissSearchPanel()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismissSearchPanel()
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [searchAttempted, searching])
+
+  const onSearch = async (nextMode: GraphSearchMode = searchMode) => {
     const q = query.trim()
-    if (!q) return
+    if (!q) {
+      setSearchAttempted(false)
+      setSearchHits([])
+      return
+    }
+    setSearchAttempted(true)
+    setSearching(true)
     try {
-      const hits = await callKnowledgeApi<NotebookGraphViewNode[]>(
-        'graphSearch',
-        'knowledge:graph-search',
-        { notebookId, query: q, limit: 20 }
-      )
-      const ids = (hits || []).map((hit) => hit.id)
-      if (ids.length === 0) return
+      const hits = await callKnowledgeApi<
+        Array<{ id: string; name: string; nodeType: string; summary?: string }>
+      >('graphSearch', 'knowledge:graph-search', {
+        notebookId,
+        query: q,
+        limit: 20,
+        mode: nextMode
+      })
+      const list = hits || []
+      setSearchHits(list)
+      const ids = list.map((hit) => hit.id)
       setHighlightIds(new Set(ids))
+      if (ids.length === 0) return
       setLocateIds(ids)
       setLocateSeq((n) => n + 1)
       setSelectedId(ids[0] ?? null)
       setTab('detail')
       openSide('content')
-    } catch {
-      /* ignore */
+    } catch (error) {
+      setSearchHits([])
+      const copy = graphSearchErrorCopy(error)
+      toast.showError('key' in copy ? t(copy.key, copy.fallback) : copy.raw)
+    } finally {
+      setSearching(false)
     }
   }
 
@@ -374,8 +435,17 @@ export const NotebookGraphPane: React.FC<{
             query={query}
             extracting={extracting}
             sourceCount={sourceCount}
+            searchMode={searchMode}
+            onSearchModeChange={setSearchMode}
+            searching={searching}
+            searchAttempted={searchAttempted}
+            searchHits={searchHits}
+            searchGroupRef={searchGroupRef}
             onQueryChange={setQuery}
-            onSearch={() => void onSearch()}
+            onSearchAttemptedClear={() => setSearchAttempted(false)}
+            onSearch={(mode) => void onSearch(mode)}
+            onSelectHit={locateNode}
+            dismissSearchPanel={dismissSearchPanel}
             onRebuildGraph={onRebuildGraph}
             onStartExtract={onStartExtract}
           />
@@ -436,6 +506,7 @@ export const NotebookGraphPane: React.FC<{
               focusDepth={focusDepth}
               appearanceSettings={appearanceSettings}
               forceSettings={forceSettings}
+              viewMaxNodes={viewMaxNodes}
               tr={tr}
               onSideResizeMouseDown={sideResize.onMouseDown}
               onOpenSide={(mode) => {
@@ -473,6 +544,7 @@ export const NotebookGraphPane: React.FC<{
               onFocusDepthChange={updateFocusDepth}
               onAppearanceChange={updateAppearance}
               onForceChange={updateForce}
+              onViewMaxNodesChange={updateViewMaxNodes}
               onReplayLayout={() => setAnimationTick((n) => n + 1)}
               onResetSettings={resetGraphSettings}
               onPreviewFragments={onPreviewFragments}
