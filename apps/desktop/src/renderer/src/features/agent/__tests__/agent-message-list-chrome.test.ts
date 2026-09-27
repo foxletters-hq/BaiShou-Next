@@ -19,7 +19,7 @@ describe('AgentMessageList chrome', () => {
 
   it('should surface a stream error on the live bubble instead of the previous assistant turn', () => {
     expect(src).toContain('error={stream.error}')
-    expect(src).toContain('Boolean(stream.error)')
+    expect(src).toContain('error: stream.error')
     expect(src).toContain('resolvePersistedAssistantStreamError')
     expect(src).toContain('liveBubbleVisible: showStreamingBubble')
   })
@@ -29,15 +29,22 @@ describe('AgentMessageList chrome', () => {
     expect(src).toContain('parts: msg.parts')
   })
 
-  it('should restore an unresolved companion_ask into the inbox after persist', () => {
+  it('should keep a live permission confirmation inside the streaming bubble', () => {
+    expect(src).toContain('gateParts={liveGateParts}')
+    expect(src).not.toContain('<AgentGatePartBubble')
+  })
+
+  it('should restore an unresolved companion_ask only while the live gate still has it', () => {
     expect(src).toContain('collectUnresolvedAgentGateRequestsForSurface')
-    expect(src).toContain('upsertAsked')
+    expect(src).toContain('listPending')
+    expect(src).toContain('respectTombstone: true')
+    expect(src).toContain('if (!liveIds.has(request.id)) continue')
   })
 
   it('should hide a persisted in-progress assistant while the live stream is still showing', () => {
-    expect(src).toContain('shouldHidePersistedStreamingAssistant')
-    expect(src).toContain('visibleMessages')
+    expect(src).toContain('resolveCompanionStreamUi')
     expect(src).toContain('hidePersistedLiveTurn')
+    expect(src).toContain('showStreamingBubble')
   })
 
   it('should pin a short thread above the composer instead of stretching the column', () => {

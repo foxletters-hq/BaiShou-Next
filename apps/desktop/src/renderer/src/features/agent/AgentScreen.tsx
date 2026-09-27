@@ -8,7 +8,6 @@ import {
   getProviderIcon,
   toast,
   AgentGateDock,
-  resolveDesktopAssistantAvatarSrc,
   useReasoningCatalogEpoch
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
@@ -38,9 +37,16 @@ import {
   resolveCompanionAskDockRequest,
   waitForLiveCompanionAskRequest
 } from './utils/running-companion-ask-request.util'
+import { resolveCompanionStreamUi } from './utils/companion-stream-ui.util'
+import { excludePendingQueuedUserMessages } from './utils/pending-queue-messages.util'
+import {
+  ComposerQueueEditTag,
+  ComposerRuntimeQueueBar
+} from './components/ComposerRuntimeQueueBar'
+import { useComposerPendingQueue } from './hooks/useComposerPendingQueue'
 import type { AgentOutletContext } from './agent-outlet-context'
 import styles from './AgentScreen.module.css'
-import { Cloud, Sparkles, ChevronDown, History } from 'lucide-react'
+import { Cloud, Sparkles, ChevronUp } from 'lucide-react'
 import {
   getReasoningEffortForModel,
   setReasoningEffortForModel,
@@ -172,71 +178,38 @@ export const AgentScreen: React.FC = () => {
     flow.setShowModelSwitcher(true)
   }
 
-  const assistantAvatar = resolveDesktopAssistantAvatarSrc(flow.currentAssistant?.avatarPath)
-  const displayAssistantName = flow.currentAssistant?.name || flow.t('agent.partner_label', '伙伴')
+  const modelSwitcherButton = (
+    <button
+      ref={modelTriggerRef}
+      type="button"
+      className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInComposer}`}
+      onClick={openModelSwitcher}
+      aria-label={flow.t('models.switch_model', '切换模型')}
+      title={flow.t('models.switch_model', '切换模型')}
+    >
+      <span className={chromeStyles.modelProviderIcon} aria-hidden>
+        {providerIconUrl ? (
+          <img src={providerIconUrl} alt="" />
+        ) : noModelSelected ? (
+          <Sparkles size={14} />
+        ) : (
+          <Cloud size={14} />
+        )}
+      </span>
+      <span className={chromeStyles.modelName}>{displayModelName}</span>
+      {effortSuffix ? <span className={chromeStyles.modelEffort}>{effortSuffix}</span> : null}
+      <ChevronUp size={12} strokeWidth={2.2} className={chromeStyles.chevron} />
+    </button>
+  )
 
-  const composerFooter = (
-    <div className={styles.metaRow}>
-      <div className={styles.metaLeading}>
-        <button
-          type="button"
-          className={styles.metaChip}
-          onClick={() => flow.setShowAssistantPicker(true)}
-          aria-haspopup="dialog"
-          aria-label={flow.t('agent.select_assistant', '选择伙伴')}
-          title={flow.t('agent.select_assistant', '选择伙伴')}
-        >
-          <span className={styles.assistantAvatar} aria-hidden>
-            <img
-              key={flow.currentAssistant?.avatarPath ?? flow.currentAssistant?.id ?? 'default'}
-              src={assistantAvatar}
-              alt=""
-            />
-          </span>
-          <span className={styles.metaChipLabel}>{displayAssistantName}</span>
-          <ChevronDown size={12} strokeWidth={2} aria-hidden />
-        </button>
-        <button
-          type="button"
-          className={styles.metaIconBtn}
-          title={flow.t('agent.sidebar.recent_chats', '最近对话')}
-          aria-label={flow.t('agent.sidebar.recent_chats', '最近对话')}
-          onClick={() => onOpenSessions?.()}
-        >
-          <History size={16} strokeWidth={2} aria-hidden />
-        </button>
-      </div>
-      <div className={styles.metaTrailing}>
-        <button
-          ref={modelTriggerRef}
-          type="button"
-          className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInMeta}`}
-          onClick={openModelSwitcher}
-          aria-label={flow.t('models.switch_model', '切换模型')}
-          title={flow.t('models.switch_model', '切换模型')}
-        >
-          <span className={chromeStyles.modelProviderIcon} aria-hidden>
-            {providerIconUrl ? (
-              <img src={providerIconUrl} alt="" />
-            ) : noModelSelected ? (
-              <Sparkles size={15} />
-            ) : (
-              <Cloud size={15} />
-            )}
-          </span>
-          <span className={chromeStyles.modelName}>{displayModelName}</span>
-          {effortSuffix ? <span className={chromeStyles.modelEffort}>{effortSuffix}</span> : null}
-          <span className={chromeStyles.chevron}>▼</span>
-        </button>
-        <SessionContextUsageRing
-          messages={flow.chat.messages}
-          modelId={flow.model.currentModelId}
-          totals={flow.tokens}
-          pricingLastUpdated={flow.pricingLastUpdated}
-          onRefreshPricing={flow.handleRefreshPricing}
-        />
-      </div>
-    </div>
+  const tokenUsageRing = (
+    <SessionContextUsageRing
+      messages={flow.chat.messages}
+      modelId={flow.model.currentModelId}
+      totals={flow.tokens}
+      pricingLastUpdated={flow.pricingLastUpdated}
+      onRefreshPricing={flow.handleRefreshPricing}
+    />
   )
 
   const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
@@ -277,6 +250,32 @@ export const AgentScreen: React.FC = () => {
     hasPendingGate ||
     !isConfiguredProviderId(flow.model.currentProviderId) ||
     !isConfiguredDialogueModelId(flow.model.currentModelId)
+  const lastChatMessage = flow.chat.messages[flow.chat.messages.length - 1]
+  const companionStreamUi = resolveCompanionStreamUi({
+    isStreaming: flow.stream.isStreaming,
+    isBridgeActive: flow.stream.isBridgeActive,
+    isCompressing: flow.stream.isCompressing,
+    error: flow.stream.error,
+    lastMessage: lastChatMessage,
+    text: flow.stream.text,
+    reasoning: flow.stream.reasoning,
+    timeline: flow.stream.timeline,
+    activeTool: flow.stream.activeTool,
+    completedToolsCount: flow.stream.completedTools.length
+  })
+  const pendingQueueCtl = useComposerPendingQueue({
+    sessionId: flow.sessionId,
+    scope: 'companion',
+    refreshTrigger: flow.stream.isStreaming
+  })
+  const displayChat = useMemo(() => {
+    const messages = excludePendingQueuedUserMessages(
+      flow.chat.messages,
+      pendingQueueCtl.pendingQueue
+    )
+    if (messages === flow.chat.messages) return flow.chat
+    return { ...flow.chat, messages }
+  }, [flow.chat, pendingQueueCtl.pendingQueue])
 
   const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath
   const chatBackgroundBlur = normalizeChatBackgroundBlur(flow.userProfile?.chatBackgroundBlur)
@@ -287,7 +286,7 @@ export const AgentScreen: React.FC = () => {
   /** 未自动加载上次对话 / 新对话草稿：居中展示欢迎区 + 输入框（有真实 sessionId 时不闪空态） */
   const isEmptyIdle =
     isDraftChatSessionId(flow.sessionId) &&
-    flow.chat.messages.length === 0 &&
+    displayChat.messages.length === 0 &&
     !flow.stream.isStreaming &&
     !flow.stream.isBridgeActive &&
     !flow.stream.isCompressing
@@ -314,21 +313,19 @@ export const AgentScreen: React.FC = () => {
           ) : null}
         </>
       ) : null}
-      {!isEmptyIdle ? (
-        <AgentChatChrome
-          variant="floatingActions"
-          currentAssistant={currentAssistant}
-          onShowPicker={onShowAssistantPicker}
-          onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
-          onNewSession={() => onNewSession?.()}
-        />
-      ) : null}
+      <AgentChatChrome
+        currentAssistant={currentAssistant}
+        onShowPicker={onShowAssistantPicker}
+        onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
+        onNewSession={() => onNewSession?.()}
+        onOpenSessions={() => onOpenSessions?.()}
+      />
 
       {!isEmptyIdle ? (
         <AgentMessageList
           t={flow.t}
           sessionId={flow.sessionId}
-          chat={flow.chat}
+          chat={displayChat}
           stream={flow.stream}
           scroll={flow.scroll}
           currentAssistant={flow.currentAssistant}
@@ -419,12 +416,53 @@ export const AgentScreen: React.FC = () => {
             scope="companion"
             onOpen={() => setNotebookMountOpen(true)}
           />
+          <ComposerRuntimeQueueBar
+            items={pendingQueueCtl.pendingQueue}
+            editingInputId={pendingQueueCtl.editingInputId}
+            t={flow.t}
+            onSendNow={pendingQueueCtl.sendNow}
+            onEdit={(item) => {
+              pendingQueueCtl.beginEdit(item)
+              flow.inputBarRef.current?.restoreDraft({ text: item.text })
+              flow.inputBarRef.current?.focus()
+            }}
+            onDelete={async (item) => {
+              await pendingQueueCtl.deleteItem(item)
+              if (flow.sessionId) {
+                void flow.chat.refreshLatestMessages(1, flow.sessionId, { resetPagination: true })
+              }
+            }}
+          />
+          <ComposerQueueEditTag
+            visible={Boolean(pendingQueueCtl.editingInputId)}
+            t={flow.t}
+            onDismiss={() => {
+              pendingQueueCtl.cancelEdit()
+              flow.inputBarRef.current?.restoreDraft({ text: '' })
+            }}
+          />
           <InputBar
             ref={flow.inputBarRef}
-            isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
+            isLoading={companionStreamUi.composerBusy}
+            allowSendWhileLoading
             attachmentIntake="companion"
             onOpenNotebookMount={() => setNotebookMountOpen(true)}
-            onSend={flow.handleSend}
+            onEmptySubmit={() => {
+              const head = pendingQueueCtl.pendingQueue[0]
+              if (head && !pendingQueueCtl.editingInputId) void pendingQueueCtl.sendNow(head)
+            }}
+            onSend={async (text, attachments, search, meta) => {
+              if (pendingQueueCtl.editingInputId) {
+                const ok = await pendingQueueCtl.commitEdit(text)
+                if (ok) flow.inputBarRef.current?.restoreDraft({ text: '' })
+                return ok
+              }
+              return flow.handleSend(text, attachments, search, {
+                ...meta,
+                delivery:
+                  flow.stream.isStreaming || flow.stream.isBridgeActive ? 'queue' : meta?.delivery
+              })
+            }}
             onStop={flow.handleStop}
             composerBlocked={composerBlocked}
             onComposerBlocked={() =>
@@ -444,7 +482,8 @@ export const AgentScreen: React.FC = () => {
             onToggleSearchMode={flow.toggleSearchMode}
             ttsMode={flow.tts.ttsMode}
             onToggleTtsMode={flow.tts.toggleTtsMode}
-            footer={composerFooter}
+            bottomLeading={modelSwitcherButton}
+            bottomTrailing={tokenUsageRing}
           />
         </div>
       </div>

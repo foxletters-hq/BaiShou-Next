@@ -1,15 +1,11 @@
 import { useAgentGateInboxStore } from '@baishou/store'
 import type { AgentGateRequest } from '@baishou/shared'
+import { sessionIdFromDesktopLocationHash } from './agent-gate-session-from-hash.util'
 
 let started = false
 
 function currentSessionIdFromHash(): string | null {
-  const hash = window.location.hash.replace(/^#/, '')
-  const chatMatch = hash.match(/^\/chat\/([^/?#]+)/)
-  if (chatMatch?.[1]) return decodeURIComponent(chatMatch[1])
-  const wsMatch = hash.match(/^\/agent-workspace\/([^/?#]+)/)
-  if (wsMatch?.[1]) return decodeURIComponent(wsMatch[1])
-  return null
+  return sessionIdFromDesktopLocationHash(window.location.hash)
 }
 
 async function refreshInboxFromMain(): Promise<boolean> {
