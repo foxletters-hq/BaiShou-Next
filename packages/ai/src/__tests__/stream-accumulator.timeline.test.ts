@@ -122,9 +122,10 @@ describe('StreamAccumulator interleaved timeline', () => {
       input: {}
     } as any)
 
-    expect(
-      acc.timeline.filter((item) => item.kind === 'tool').map((item) => item.callId)
-    ).toEqual(['t1', 't2'])
+    expect(acc.timeline.filter((item) => item.kind === 'tool').map((item) => item.callId)).toEqual([
+      't1',
+      't2'
+    ])
 
     const parts = buildAssistantPartsFromTimeline({
       accumulator: acc,

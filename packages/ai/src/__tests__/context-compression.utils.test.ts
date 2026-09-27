@@ -357,9 +357,9 @@ describe('context-compression.utils', () => {
 
     expect(increment).toBe(estimateMessagesTokens(afterSnapshot, true))
     expect(increment).toBeLessThan(windowTokens)
-    expect(
-      estimateTokensSinceLastSnapshot(messages, { ...snapshot, summaryText: 'x' })
-    ).toBe(increment)
+    expect(estimateTokensSinceLastSnapshot(messages, { ...snapshot, summaryText: 'x' })).toBe(
+      increment
+    )
   })
 
   it('estimateContextTokensForTrigger ignores stale usage after snapshot', () => {

@@ -40,7 +40,9 @@ describe('SessionListTool', () => {
 
     expect(lister).toHaveBeenCalledWith(deriveLegacyVaultId('/tmp'), '2026-09-01', '2026-09-07', 21)
     expect(output).toContain('找到 1 个在 2026-09-01 ~ 2026-09-07 有发言的会话')
-    expect(output).toContain('会话「旅行计划」（id: sess-travel，2026-09-03 10:00 ~ 2026-09-03 11:00，4 条）')
+    expect(output).toContain(
+      '会话「旅行计划」（id: sess-travel，2026-09-03 10:00 ~ 2026-09-03 11:00，4 条）'
+    )
     expect(output).toContain('下周去哪')
   })
 

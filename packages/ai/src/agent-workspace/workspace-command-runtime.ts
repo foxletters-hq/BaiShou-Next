@@ -158,7 +158,8 @@ export function detectWorkspaceCommandRuntime(
   const fromEnv = resolveNamed(env.SHELL ?? '', input, locate, exists)
   if (fromEnv) return toRuntime(fromEnv, platform)
 
-  const detected = platform === 'win32' ? detectWindows(input, locate, exists) : detectUnix(input, locate, exists)
+  const detected =
+    platform === 'win32' ? detectWindows(input, locate, exists) : detectUnix(input, locate, exists)
   return toRuntime(detected, platform)
 }
 

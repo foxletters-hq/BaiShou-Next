@@ -5,7 +5,10 @@ import {
   planWorkspaceCommandSpawn,
   type WorkspaceCommandRuntime
 } from './workspace-command-runtime'
-import { existsOnCommandPath, locateCommandRuntimeExecutable } from './workspace-command-runtime-locate'
+import {
+  existsOnCommandPath,
+  locateCommandRuntimeExecutable
+} from './workspace-command-runtime-locate'
 
 const DEFAULT_TIMEOUT_MS = 120_000
 const MAX_OUTPUT_BYTES = 50_000

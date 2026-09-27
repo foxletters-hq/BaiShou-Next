@@ -10,11 +10,11 @@
 用户看到 `cmd /c mkdir ...`，容易以为模型「选了 cmd、没选 PowerShell」。  
 实际是三层叠在一起：
 
-| 层 | 谁决定 | 我们现在 | 模型因此怎么写 |
-| --- | --- | --- | --- |
-| 宿主壳 | 本机进程 | Windows 固定 `ComSpec` / `cmd.exe`，Unix 固定 `/bin/sh` | 不知道自己已经在哪个壳里 |
-| 提示 | 系统提示 + 工具说明 | 只写 `Platform: win32`，`workspace_run` 只说 “Shell command” | 按训练集猜测 Windows = `cmd /c` |
-| 匹配 | Agent Gate 白名单 / 黑名单 / 高风险 | 已能解开一层 `cmd /c`，再按 argv 前缀命中 | 包装层曾经把 `mkdir` 判成高风险，白名单也对不上 |
+| 层     | 谁决定                              | 我们现在                                                     | 模型因此怎么写                                  |
+| ------ | ----------------------------------- | ------------------------------------------------------------ | ----------------------------------------------- |
+| 宿主壳 | 本机进程                            | Windows 固定 `ComSpec` / `cmd.exe`，Unix 固定 `/bin/sh`      | 不知道自己已经在哪个壳里                        |
+| 提示   | 系统提示 + 工具说明                 | 只写 `Platform: win32`，`workspace_run` 只说 “Shell command” | 按训练集猜测 Windows = `cmd /c`                 |
+| 匹配   | Agent Gate 白名单 / 黑名单 / 高风险 | 已能解开一层 `cmd /c`，再按 argv 前缀命中                    | 包装层曾经把 `mkdir` 判成高风险，白名单也对不上 |
 
 结论：模型用 `cmd /c`，主要不是因为它更适合，而是宿主已经用 cmd 执行，提示又没写明壳名，模型就再包一层。  
 跨 Windows / Linux / macOS 的正确做法，不是把 `mkdir`、`md`、`New-Item` 收成同一条白名单，而是：**本机先选定一个壳，告诉模型这个壳，按这个壳执行，匹配时先去掉包装再取命令前缀。**
@@ -59,12 +59,12 @@ OS: ${os}, Shell: ${shell}
 
 然后按方言给完整用法，而不是一句 “run a shell command”：
 
-| 壳 | 提示里写什么 |
-| --- | --- |
-| `pwsh` | PowerShell 7+；可以用 `&&` / `\|\|`；优先完整 cmdlet |
-| `powershell` | Windows PowerShell 5.1；**不要用 `&&`**，改写 `cmd1; if ($?) { cmd2 }` |
-| `cmd` | 用双引号、`%VAR%`、`if exist`；链式用 `&&` |
-| bash / zsh / sh | 标准 POSIX：`&&`、引号、不要 `cd &&`，改用 `workdir` |
+| 壳              | 提示里写什么                                                           |
+| --------------- | ---------------------------------------------------------------------- |
+| `pwsh`          | PowerShell 7+；可以用 `&&` / `\|\|`；优先完整 cmdlet                   |
+| `powershell`    | Windows PowerShell 5.1；**不要用 `&&`**，改写 `cmd1; if ($?) { cmd2 }` |
+| `cmd`           | 用双引号、`%VAR%`、`if exist`；链式用 `&&`                             |
+| bash / zsh / sh | 标准 POSIX：`&&`、引号、不要 `cd &&`，改用 `workdir`                   |
 
 所有方言都强调：
 
@@ -78,11 +78,11 @@ OS: ${os}, Shell: ${shell}
 
 选中壳之后，启动方式按族分流：
 
-| 壳族 | 启动方式 |
-| --- | --- |
+| 壳族                  | 启动方式                                                                    |
+| --------------------- | --------------------------------------------------------------------------- |
 | `pwsh` / `powershell` | 直接拉 exe，参数是 `-NoLogo -NoProfile -NonInteractive -Command <用户命令>` |
-| `cmd` | 把整行交给该壳（Node 的 `shell` 选项，等价于 `cmd /c`） |
-| bash / zsh | login + `-c`，并尽量带上用户自己的 rc / 别名 |
+| `cmd`                 | 把整行交给该壳（Node 的 `shell` 选项，等价于 `cmd /c`）                     |
+| bash / zsh            | login + `-c`，并尽量带上用户自己的 rc / 别名                                |
 
 超时杀进程：
 
@@ -122,17 +122,17 @@ Windows 上若当前是 Git bash，且参数以 `/` 开头，会先用 `cygpath 
 
 ## 3. 我们现在对应到哪
 
-| 能力 | 参考项目 | 我们 |
-| --- | --- | --- |
-| 选壳 | 配置 → `SHELL` → 按平台探测 | Windows 固定 cmd，Unix 固定 `/bin/sh` |
-| 设置页改壳 | 有「自动 + 本机列表」 | 无 |
-| 告诉模型当前壳 | 工具说明写 `OS` + `Shell` + 方言用法 | `workspace_env` 只有 `Platform: win32` |
-| 执行 | 按壳族拼参数 | `spawn(command, { shell: cmd.exe 或 /bin/sh })` |
-| 包装 | 要求模型不要包；宿主自己包 | 模型常包 `cmd /c`；我们后补了解包 |
-| 匹配 | 语法树拆子命令 + 大 arity 表 | 轻量分词 + 小 arity 表 + `unwrapWindowsCmdInvocation` |
-| 高风险 | 权限规则 + 外部目录 | `DANGEROUS_SHELL_PATTERNS` + 可编辑黑名单 |
-| 解释器 / 删除类 | 仍可问一次，Always 前缀很克制 | `python` / `cmd` / `powershell` / `rm` 等禁止落可复用 Always |
-| 跨平台同义命令 | 明确不做 | 也不该做 |
+| 能力            | 参考项目                             | 我们                                                         |
+| --------------- | ------------------------------------ | ------------------------------------------------------------ |
+| 选壳            | 配置 → `SHELL` → 按平台探测          | Windows 固定 cmd，Unix 固定 `/bin/sh`                        |
+| 设置页改壳      | 有「自动 + 本机列表」                | 无                                                           |
+| 告诉模型当前壳  | 工具说明写 `OS` + `Shell` + 方言用法 | `workspace_env` 只有 `Platform: win32`                       |
+| 执行            | 按壳族拼参数                         | `spawn(command, { shell: cmd.exe 或 /bin/sh })`              |
+| 包装            | 要求模型不要包；宿主自己包           | 模型常包 `cmd /c`；我们后补了解包                            |
+| 匹配            | 语法树拆子命令 + 大 arity 表         | 轻量分词 + 小 arity 表 + `unwrapWindowsCmdInvocation`        |
+| 高风险          | 权限规则 + 外部目录                  | `DANGEROUS_SHELL_PATTERNS` + 可编辑黑名单                    |
+| 解释器 / 删除类 | 仍可问一次，Always 前缀很克制        | `python` / `cmd` / `powershell` / `rm` 等禁止落可复用 Always |
+| 跨平台同义命令  | 明确不做                             | 也不该做                                                     |
 
 我们已经做对、应保留的部分：
 
@@ -200,11 +200,11 @@ Windows 上若当前是 Git bash，且参数以 `/` 开头，会先用 `cygpath 
 
 在现有 `unwrapWindowsCmdInvocation` 上扩成 `unwrapWorkspaceCommandLine`：
 
-| 包装 | 解开后 |
-| --- | --- |
-| `cmd /c ...`、`cmd.exe /k ...` | 内层 |
-| `powershell -Command ...`、`pwsh -NoProfile -Command ...` | 内层 |
-| `bash -lc ...`、`sh -c ...`、`zsh -c ...` | 内层 |
+| 包装                                                      | 解开后 |
+| --------------------------------------------------------- | ------ |
+| `cmd /c ...`、`cmd.exe /k ...`                            | 内层   |
+| `powershell -Command ...`、`pwsh -NoProfile -Command ...` | 内层   |
+| `bash -lc ...`、`sh -c ...`、`zsh -c ...`                 | 内层   |
 
 然后：
 
