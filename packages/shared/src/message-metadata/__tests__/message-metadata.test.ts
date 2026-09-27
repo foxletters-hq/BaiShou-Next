@@ -1,10 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildContextEncodingSystemPromptLines,
   injectModelMetadata,
   injectModelMetadataIntoAssistantParts,
   shouldWrapRoleForModel,
   wrapMessageBodyForModel
 } from '..'
+
+describe('buildContextEncodingSystemPromptLines', () => {
+  it('should describe per-message time wrappers instead of a sidecar table', () => {
+    const lines = buildContextEncodingSystemPromptLines().join('\n')
+    expect(lines).toContain('<message-time>')
+    expect(lines).toContain('<message-content>')
+    expect(lines).not.toContain('same order as the messages below')
+  })
+})
 
 describe('shouldWrapRoleForModel', () => {
   it('wraps all model context roles', () => {

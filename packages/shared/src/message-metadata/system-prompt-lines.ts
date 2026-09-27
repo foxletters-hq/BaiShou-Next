@@ -1,21 +1,21 @@
 import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from './constants'
 
 /**
- * How historical message metadata appears in model context (read-only).
- * Only inject when the host actually wraps per-message timestamps.
+ * How historical send times appear in model context (read-only).
+ * Times come from stored createdAt and wrap each message body sent to the model.
  */
 export function buildContextEncodingSystemPromptLines(): string[] {
   return [
     '[Historical messages]',
-    'The host may wrap stored messages for context only (not author wording):',
-    `- <${MESSAGE_TIME_TAG}>YYYY-MM-DD HH:mm</${MESSAGE_TIME_TAG}> — when THAT message was sent.`,
-    `- <${MESSAGE_CONTENT_TAG}>…</${MESSAGE_CONTENT_TAG}> — that message's stored body.`,
-    'User, assistant, system, and tool messages may use this wrapper when replayed.',
+    'Each historical message is wrapped by the host as:',
+    `<${MESSAGE_TIME_TAG}>YYYY-MM-DD HH:mm</${MESSAGE_TIME_TAG}>`,
+    `<${MESSAGE_CONTENT_TAG}>`,
+    'stored message body',
+    `</${MESSAGE_CONTENT_TAG}>`,
+    'The time is the persisted send time, not author wording.',
     '',
     '[Rules]',
-    `Use each message's <${MESSAGE_TIME_TAG}> only to interpret when that past message was sent.`,
-    'Do not copy this encoding into your reply.',
-    'Do not add new timestamp tags.'
+    `Do not copy <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, or invent timestamp tags in your reply.`
   ]
 }
 

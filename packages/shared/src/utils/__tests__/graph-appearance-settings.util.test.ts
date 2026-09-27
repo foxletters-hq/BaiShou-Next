@@ -84,14 +84,27 @@ describe('isGraphHubLabelVisible', () => {
     ).toEqual(['a', 'hit', 'picked'])
   })
 
-  it('shows name when mentionCount reaches the threshold', () => {
+  it('should show a connected name when mentionCount reaches the threshold', () => {
     expect(
       isGraphHubLabelVisible({
-        degree: 0,
-        mentionCount: 1,
-        hubLabelMinDegree: 3,
-        hubLabelMinMentions: 1
+        degree: 1,
+        mentionCount: 5,
+        hubLabelMinDegree: 8,
+        hubLabelMinMentions: 5
       })
+    ).toBe(true)
+  })
+
+  it('should keep a connected name when the degree threshold is lowered', () => {
+    const node = { degree: 3, mentionCount: 0, hubLabelMinMentions: 99 }
+    expect(
+      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 5 })
+    ).toBe(false)
+    expect(
+      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 3 })
+    ).toBe(true)
+    expect(
+      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 1 })
     ).toBe(true)
   })
 })

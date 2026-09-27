@@ -33,6 +33,38 @@ describe('stripMarkdownForTts', () => {
     const input = '##### 12:30\n> 引用一句\n- 列表项'
     expect(stripMarkdownForTts(input)).toBe('12:30\n引用一句\n列表项')
   })
+
+  it('strips markdown tables and joins cells naturally', () => {
+    const input = [
+      '| 事项 | 金额 | 状态 |',
+      '| :--- | :---: | ---: |',
+      '| 咖啡 | 25元 | 已完成 |',
+      '| 午餐 | 40元 | 未完成 |'
+    ].join('\n')
+    expect(stripMarkdownForTts(input)).toBe(
+      ['事项，金额，状态', '咖啡，25元，已完成', '午餐，40元，未完成'].join('\n')
+    )
+  })
+
+  it('strips tables without outer pipes and handles empty cells', () => {
+    const input = ['项目 | 备注', '--- | ---', '散步 | ', '看书 | 读完一章'].join('\n')
+    expect(stripMarkdownForTts(input)).toBe(['项目，备注', '散步', '看书，读完一章'].join('\n'))
+  })
+
+  it('strips bare URLs while preserving punctuation', () => {
+    const input = '查看 https://example.com/guide/123。另外请看 https://github.com/foo. 很好！'
+    expect(stripMarkdownForTts(input)).toBe('查看。另外请看. 很好！')
+  })
+
+  it('strips HTML tags, comments and decodes entities', () => {
+    const input = '<div class="card"><strong>重要提示</strong><!-- 隐藏注释 --></div>&nbsp;&amp;&nbsp;测试'
+    expect(stripMarkdownForTts(input)).toBe('重要提示 & 测试')
+  })
+
+  it('strips math blocks and simplifies inline math formulas', () => {
+    const input = '公式：$$\n\\sum x_i\n$$ 以及行内公式 $a \\times b = c$。衣服价格 $100。'
+    expect(stripMarkdownForTts(input)).toBe('公式： 以及行内公式 a × b = c。衣服价格 $100。')
+  })
 })
 
 describe('splitTtsTextIntoChunks', () => {

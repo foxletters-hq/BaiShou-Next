@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AgentGateKind,
+  AgentGateReply,
+  AgentGateRequestStatus,
+  type AgentGatePartData
+} from '../../baishou-agent-gate'
+import {
   appendTimelineReasoning,
   appendTimelineToolStart,
   type AgentStreamTimelineItem
@@ -9,6 +15,30 @@ import {
   buildAssistantDisplayTimelineFromParts,
   groupStreamTimelineForDisplay
 } from '../assistant-display-timeline.util'
+
+function gatePart(
+  partial: Partial<AgentGatePartData['request']> & Pick<AgentGatePartData['request'], 'id' | 'action'>
+): AgentGatePartData {
+  return {
+    request: {
+      sessionId: 's1',
+      vaultName: 'Personal',
+      status: AgentGateRequestStatus.Resolved,
+      kind: AgentGateKind.Tool,
+      title: partial.action,
+      options: [],
+      allowCustomInput: true,
+      metadata: {},
+      createdAt: 1,
+      ...partial
+    },
+    resolution: {
+      requestId: partial.id,
+      reply: AgentGateReply.Always,
+      resolvedAt: 2
+    }
+  }
+}
 
 describe('assistantStreamTimelineSignature', () => {
   it('should change when the same array is appended in place', () => {
@@ -73,6 +103,59 @@ describe('groupStreamTimelineForDisplay', () => {
     if (grouped[0]?.kind !== 'tools') return
     expect(grouped[0].completedTools.map((tool) => tool.name)).toEqual(['diary_search'])
     expect(grouped[0].activeToolName).toBe('web_search')
+  })
+
+  it('should place a permission confirmation immediately before its matching tool', () => {
+    const timeline: AgentStreamTimelineItem[] = [
+      { kind: 'reasoning', text: '先列日记' },
+      {
+        kind: 'tool',
+        callId: 'c1',
+        name: 'diary_list',
+        status: 'completed',
+        result: 'ok',
+        durationMs: 40
+      },
+      { kind: 'reasoning', text: '再想' }
+    ]
+    const items = groupStreamTimelineForDisplay(timeline, [
+      gatePart({ id: 'g1', action: 'diary_list', title: '列出日记', createdAt: 10 })
+    ])
+    expect(items.map((item) => item.kind)).toEqual(['reasoning', 'gate', 'tools', 'reasoning'])
+    expect(items[1]).toMatchObject({ kind: 'gate' })
+    if (items[1]?.kind !== 'gate') return
+    expect(items[1].data.request.title).toBe('列出日记')
+  })
+
+  it('should keep an unanswered permission after thinking until the tool row exists', () => {
+    const timeline: AgentStreamTimelineItem[] = [{ kind: 'reasoning', text: '先想' }]
+    const items = groupStreamTimelineForDisplay(timeline, [
+      gatePart({ id: 'g1', action: 'diary_list', title: '列出日记' })
+    ])
+    expect(items.map((item) => item.kind)).toEqual(['reasoning', 'gate'])
+  })
+
+  it('should split adjacent tools when each tool has its own permission confirmation', () => {
+    const timeline: AgentStreamTimelineItem[] = [
+      { kind: 'tool', callId: 'c1', name: 'diary_list', status: 'completed', result: 'a' },
+      { kind: 'tool', callId: 'c2', name: 'diary_search', status: 'completed', result: 'b' }
+    ]
+    const items = groupStreamTimelineForDisplay(timeline, [
+      gatePart({ id: 'g1', action: 'diary_list', toolCallId: 'c1' }),
+      gatePart({ id: 'g2', action: 'diary_search', toolCallId: 'c2' })
+    ])
+    expect(items.map((item) => item.kind)).toEqual(['gate', 'tools', 'gate', 'tools'])
+  })
+
+  it('should skip companion_ask confirmation cards because the tool row already shows them', () => {
+    const timeline: AgentStreamTimelineItem[] = [
+      { kind: 'reasoning', text: '先想' },
+      { kind: 'tool', callId: 'a1', name: 'companion_ask', status: 'running' }
+    ]
+    const items = groupStreamTimelineForDisplay(timeline, [
+      gatePart({ id: 'g1', action: 'companion_ask', title: '提问' })
+    ])
+    expect(items.map((item) => item.kind)).toEqual(['reasoning', 'tools'])
   })
 })
 
@@ -146,5 +229,23 @@ describe('buildAssistantDisplayTimelineFromParts', () => {
       { id: 't', type: 'text', data: { text: '好', seq: 2 } }
     ])
     expect(items.map((item) => item.kind)).toEqual(['reasoning', 'text'])
+  })
+
+  it('should interleave a trailing agent_gate part before the matching tool', () => {
+    const items = buildAssistantDisplayTimelineFromParts([
+      { id: 'r1', type: 'text', data: { text: '先想', isReasoning: true, seq: 0 } },
+      {
+        id: 'list',
+        type: 'tool',
+        data: { callId: 'c1', name: 'diary_list', status: 'completed', result: 'ok', seq: 1 }
+      },
+      { id: 'r2', type: 'text', data: { text: '再想', isReasoning: true, seq: 2 } },
+      {
+        id: 'g1',
+        type: 'agent_gate',
+        data: gatePart({ id: 'g1', action: 'diary_list', title: '列出日记', createdAt: 10 })
+      }
+    ])
+    expect(items.map((item) => item.kind)).toEqual(['reasoning', 'gate', 'tools', 'reasoning'])
   })
 })
