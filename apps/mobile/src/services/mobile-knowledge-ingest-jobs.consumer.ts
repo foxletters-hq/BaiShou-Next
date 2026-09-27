@@ -133,7 +133,11 @@ async function consumeMobileKnowledgeLane(
       const recoverSvc = await buildMobileKnowledgeIngestService()
       if (recoverSvc) {
         const recovered = await recoverSvc.recoverStaleIngestState()
-        if (recovered.resetSources || recovered.droppedExtractJobs || recovered.reclaimedEmbedJobs) {
+        if (
+          recovered.resetSources ||
+          recovered.droppedExtractJobs ||
+          recovered.reclaimedEmbedJobs
+        ) {
           logger.info('[MobileKnowledgeIngestJobs] recovered stale state', {
             lane,
             reason: options?.reason ?? 'unspecified',
