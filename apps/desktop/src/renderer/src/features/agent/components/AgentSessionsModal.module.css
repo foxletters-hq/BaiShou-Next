@@ -6,6 +6,7 @@
   flex-direction: column !important;
   padding-bottom: 20px !important;
   box-sizing: border-box !important;
+  border-radius: var(--radius-md) !important;
 }
 
 /* Modal 把 children 包在 .body 里，需参与纵向 flex，避免底部操作栏被裁切 */
@@ -39,47 +40,26 @@
   min-width: 0;
 }
 
-.searchInput {
-  height: 36px;
-  border-radius: 10px;
-}
-
 .searchClear {
   border: none;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   padding: 4px;
 }
 
 .multiSelectBtn {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-control);
-  border-radius: 10px;
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  cursor: pointer;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
   flex-shrink: 0;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.multiSelectBtn:hover {
-  background: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
-  color: var(--text-primary);
 }
 
 .multiSelectBtnActive {
-  border-color: rgba(var(--color-error-rgb), 0.35);
-  background: rgba(var(--color-error-rgb), 0.08);
-  color: var(--color-error);
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
 }
 
 .listWrap {
@@ -89,9 +69,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  background: var(--bg-surface);
+  border-top: 1px solid var(--border-muted);
 }
 
 .listWrap > * {
@@ -104,51 +82,11 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding: 4px 2px 2px;
-}
-
-.selectAllBtn {
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.selectAllBtn:hover {
-  background: rgba(var(--text-primary-rgb), 0.05);
-  color: var(--text-primary);
+  padding: 4px 0 0;
 }
 
 .batchDeleteBtn {
-  border: none;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background-color: var(--color-error);
-  color: var(--text-on-primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    opacity 0.15s ease,
-    filter 0.15s ease;
-}
-
-.batchDeleteBtn:hover:not(:disabled) {
-  filter: brightness(0.96);
-}
-
-.batchDeleteBtn:disabled {
-  background-color: rgba(148, 163, 184, 0.22);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-  filter: none;
+  color: var(--color-error);
 }
 
 .spacer {

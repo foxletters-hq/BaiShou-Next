@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListChecks } from 'lucide-react'
-import { Input, Modal, type SessionData } from '@baishou/ui'
+import { Button, Input, Modal, type SessionData } from '@baishou/ui'
 import { AgentSessionList } from './AgentSessionList'
 import styles from './AgentSessionsModal.module.css'
 
@@ -83,15 +83,15 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
       title={title}
       className={styles.modal}
       zIndex={1300}
+      animation="fade"
     >
       <div className={styles.content}>
         <div className={styles.toolbar}>
           <Input
             fieldSize="small"
             className={styles.searchWrap}
-            inputClassName={styles.searchInput}
             type="search"
-            placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
+            placeholder={t('agent.sidebar.search_hint', '搜索标题和对话内容')}
             value={searchQuery}
             onChange={(e) => onSearchQueryChanged(e.target.value)}
             trailing={
@@ -108,7 +108,7 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
             }
           />
           {sessions.length > 0 ? (
-            <button
+            <Button
               type="button"
               className={`${styles.multiSelectBtn} ${isMultiSelect ? styles.multiSelectBtnActive : ''}`}
               title={t('common.multi_select', '多选')}
@@ -119,7 +119,7 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
               }}
             >
               <ListChecks size={16} />
-            </button>
+            </Button>
           ) : null}
         </div>
 
@@ -148,9 +148,8 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
 
         {isMultiSelect && sessions.length > 0 ? (
           <div className={styles.batchBar}>
-            <button
+            <Button
               type="button"
-              className={styles.selectAllBtn}
               onClick={() => {
                 if (selectedIds.size === sessions.length) setSelectedIds(new Set())
                 else setSelectedIds(new Set(sessions.map((s) => s.id)))
@@ -159,16 +158,16 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
               {selectedIds.size === sessions.length
                 ? t('agent.chat.cancel_select_all', '取消全选')
                 : t('agent.chat.select_all', '全选')}
-            </button>
+            </Button>
             <div className={styles.spacer} />
-            <button
+            <Button
               type="button"
               className={styles.batchDeleteBtn}
               disabled={selectedIds.size === 0}
               onClick={handleBatchDelete}
             >
               {t('common.delete', '删除')} ({selectedIds.size})
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

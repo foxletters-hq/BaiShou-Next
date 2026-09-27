@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
-import type {
-  AgentGateQuestionAnswer,
-  AgentGateReply,
-  AgentGateRequest,
-  AgentGateSurface
+import {
+  isAgentGateNotFoundError,
+  type AgentGateQuestionAnswer,
+  type AgentGateReply,
+  type AgentGateRequest,
+  type AgentGateSurface
 } from '@baishou/shared'
 import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
@@ -378,6 +379,7 @@ export function useAgentStream(
             state.isAgentGateReplying = false
           })
         }
+        if (isAgentGateNotFoundError(error)) return
         throw error
       }
     },

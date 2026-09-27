@@ -216,7 +216,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           fieldSize="small"
           type="text"
           inputClassName={styles.searchInput}
-          placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
+          placeholder={t('agent.sidebar.search_hint', '搜索标题和对话内容')}
           value={searchQuery}
           onChange={(e) => onSearchQueryChanged(e.target.value)}
           trailing={
