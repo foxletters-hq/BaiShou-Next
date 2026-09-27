@@ -64,6 +64,28 @@ export function KnowledgeDetailImportSection(props: {
           options={knowledgeImportProcessSelectOptions()}
           onValueChange={(value) => onImportProcessMode(value as KnowledgeImportProcessMode)}
         />
+        {importProcessMode === 'later' ? (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize
+            }}
+          >
+            {t(
+              'knowledge.import_process_hint_later',
+              '只保存文件，显示为待整理。整理之前 AI 无法使用。之后可在资料上选择嵌入。'
+            )}
+          </Text>
+        ) : (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize
+            }}
+          >
+            {t('knowledge.import_process_hint', '会先提取正文，再按选择写入向量、图关系或两者。')}
+          </Text>
+        )}
         {props.embeddingModelLabel || props.graphModelLabel || props.extractEngineLabel ? (
           <Text
             style={{

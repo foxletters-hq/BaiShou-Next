@@ -7,11 +7,13 @@ import {
   listExtractProbeSources,
   listOcrConcurrencyValues,
   normalizeKnowledgeDefaultExtractEngine,
+  RECOMMENDED_OCR_CONCURRENCY,
   type KnowledgeConfig
 } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
 import {
   Button,
+  HelpTooltip,
   Input,
   Select,
   SegmentedControl,
@@ -19,6 +21,7 @@ import {
   useNativeTheme
 } from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
+import { knowledgeExtractSettingsVisibility } from './knowledge-screen.util'
 
 const OCR_LANGUAGE_PRESET_VALUES = [
   'chi_sim+eng',
@@ -59,6 +62,7 @@ export function KnowledgeDetailExtractSection(props: {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const engine = normalizeKnowledgeDefaultExtractEngine(props.engine)
+  const { showOcrSettings, showVisionSettings } = knowledgeExtractSettingsVisibility(engine)
   const pdfSources = listExtractProbeSources(props.sources)
   const probeSource = pdfSources.find((row) => row.id === props.probeSourceId) || pdfSources[0]
   const presetValue = props.ocrUseCustom
@@ -70,7 +74,17 @@ export function KnowledgeDetailExtractSection(props: {
       : '__custom__'
 
   return (
-    <SettingsSection title={t('knowledge.settings_section_extract', '导入提取')}>
+    <SettingsSection
+      title={t('knowledge.settings_section_extract', '导入提取')}
+      titleAddon={
+        <HelpTooltip
+          content={t(
+            'knowledge.settings_section_extract_help',
+            '导入时先抽已有文字。缺页或乱码时，扫描件用本地 OCR，复杂排版可用视觉模型。'
+          )}
+        />
+      }
+    >
       <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
         <Text
           style={{
@@ -109,7 +123,7 @@ export function KnowledgeDetailExtractSection(props: {
             {t('knowledge.engine_vision', '视觉模型')} · {props.visionCapReason}
           </Text>
         ) : null}
-        {engine !== 'vision' ? (
+        {showOcrSettings ? (
           <View style={{ gap: tokens.spacing.sm }}>
             <Select
               value={presetValue}
@@ -150,10 +164,28 @@ export function KnowledgeDetailExtractSection(props: {
               onValueChange={(value) => props.onOcrConcurrencyChange(Number(value))}
               options={listOcrConcurrencyValues().map((value) => ({
                 value: String(value),
-                label: t('knowledge.ocr_concurrency_n', '{{count}} 页并发', { count: value })
+                label:
+                  value === RECOMMENDED_OCR_CONCURRENCY
+                    ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
+                        count: value
+                      })
+                    : t('knowledge.ocr_concurrency_n', '{{count}} 页并发', { count: value })
               }))}
             />
           </View>
+        ) : null}
+        {showVisionSettings ? (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize
+            }}
+          >
+            {t(
+              'knowledge.vision_model_recommend',
+              '推荐选带看图能力的便宜多模态模型，扫描件抽字不必用最贵的。'
+            )}
+          </Text>
         ) : null}
         <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
           <Button isDisabled={props.busy} onPress={() => void props.onSave()}>
