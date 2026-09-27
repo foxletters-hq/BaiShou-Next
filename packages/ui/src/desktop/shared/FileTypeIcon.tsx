@@ -22,7 +22,7 @@ export function getFileTypeIcon(fileName: string, size = 18): React.ReactNode {
     return <FileText size={size} className={`${styles.fileTypeIcon} ${styles.iconPdf}`} />
   }
   if (['md', 'markdown', 'txt'].includes(ext)) {
-    return <FileCode size={size} className={`${styles.fileTypeIcon} ${styles.iconText}`} />
+    return <FileText size={size} className={`${styles.fileTypeIcon} ${styles.iconText}`} />
   }
   if (['json', 'js', 'ts', 'tsx', 'html', 'css', 'yaml', 'yml'].includes(ext)) {
     return <FileCode size={size} className={`${styles.fileTypeIcon} ${styles.iconCode}`} />
