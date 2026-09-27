@@ -13,7 +13,13 @@
   cursor: pointer;
 }
 
-.hint span {
+.icon {
+  flex-shrink: 0;
+  font-size: var(--ui-fs-md);
+  line-height: 1;
+}
+
+.label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

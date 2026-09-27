@@ -2,12 +2,16 @@ import { useState } from 'react'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
   GRAPH_FORCE_DEFAULTS,
+  GRAPH_VIEW_MAX_NODES_DEFAULT,
   clampGraphAppearanceSettings,
   clampGraphForceSettings,
+  clampGraphViewMaxNodes,
   loadGraphAppearanceSettings,
   loadGraphForceSettings,
+  loadGraphViewMaxNodes,
   saveGraphAppearanceSettings,
   saveGraphForceSettings,
+  saveGraphViewMaxNodes,
   type GraphAppearanceSettings,
   type GraphForceSettings
 } from '@baishou/shared'
@@ -25,6 +29,7 @@ export function useGraphPageSettings() {
   const [appearanceSettings, setAppearanceSettings] = useState<GraphAppearanceSettings>(() =>
     loadGraphAppearanceSettings()
   )
+  const [viewMaxNodes, setViewMaxNodes] = useState(() => loadGraphViewMaxNodes())
   const [animationTick, setAnimationTick] = useState(0)
 
   const toggleNodeTypeFilter = (nodeType: string) => {
@@ -47,11 +52,19 @@ export function useGraphPageSettings() {
     })
   }
 
+  const updateViewMaxNodes = (value: number) => {
+    const next = clampGraphViewMaxNodes(value)
+    setViewMaxNodes(next)
+    saveGraphViewMaxNodes(next)
+  }
+
   const resetGraphSettings = () => {
     setForceSettings({ ...GRAPH_FORCE_DEFAULTS })
     saveGraphForceSettings({ ...GRAPH_FORCE_DEFAULTS })
     setAppearanceSettings({ ...GRAPH_APPEARANCE_DEFAULTS })
     saveGraphAppearanceSettings({ ...GRAPH_APPEARANCE_DEFAULTS })
+    setViewMaxNodes(GRAPH_VIEW_MAX_NODES_DEFAULT)
+    saveGraphViewMaxNodes(GRAPH_VIEW_MAX_NODES_DEFAULT)
   }
 
   const resetFilters = () => {
@@ -70,9 +83,11 @@ export function useGraphPageSettings() {
     toggleNodeTypeFilter,
     forceSettings,
     appearanceSettings,
+    viewMaxNodes,
     animationTick,
     updateForce,
     updateAppearance,
+    updateViewMaxNodes,
     resetGraphSettings,
     resetFilters,
     setAnimationTick

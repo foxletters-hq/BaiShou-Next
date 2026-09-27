@@ -192,7 +192,7 @@ export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
           </span>
           <input
             type="text"
-            className={`baishou-form-field baishou-form-field--small ${styles.vectorSearchInput}`}
+            className={`baishou-form-field baishou-form-field--small baishou-form-field--embed ${styles.vectorSearchInput}`}
             value={searchQuery}
             placeholder={
               searchMode === 'semantic'

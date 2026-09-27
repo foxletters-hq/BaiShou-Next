@@ -1,7 +1,14 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search } from 'lucide-react'
+import {
+  asGraphTranslateFn,
+  resolveGraphSearchMode,
+  translateGraphNodeType,
+  type GraphSearchMode
+} from '@baishou/shared'
 import { Button, HelpTooltip, Input } from '@baishou/ui'
+import { SegmentedControl } from '@baishou/ui/desktop/shared/SegmentedControl'
 import graphStyles from '../graph/GraphPage.module.css'
 import styles from './KnowledgePage.module.css'
 
@@ -9,20 +16,39 @@ export function NotebookGraphToolbar({
   query,
   extracting,
   sourceCount,
+  searchMode,
+  onSearchModeChange,
+  searching,
+  searchAttempted,
+  searchHits,
+  searchGroupRef,
   onQueryChange,
+  onSearchAttemptedClear,
   onSearch,
+  onSelectHit,
+  dismissSearchPanel,
   onRebuildGraph,
   onStartExtract
 }: {
   query: string
   extracting: boolean
   sourceCount: number
+  searchMode: GraphSearchMode
+  onSearchModeChange: (mode: GraphSearchMode) => void
+  searching: boolean
+  searchAttempted: boolean
+  searchHits: Array<{ id: string; name: string; nodeType: string; summary?: string }>
+  searchGroupRef: React.RefObject<HTMLDivElement | null>
   onQueryChange: (value: string) => void
-  onSearch: () => void
+  onSearchAttemptedClear: () => void
+  onSearch: (mode?: GraphSearchMode) => void
+  onSelectHit: (id: string) => void
+  dismissSearchPanel: () => void
   onRebuildGraph?: () => void
   onStartExtract: () => void
 }) {
   const { t } = useTranslation()
+  const tr = asGraphTranslateFn(t)
   return (
     <div className={graphStyles.chrome}>
       <div className={`${graphStyles.toolbar} ${styles.notebookGraphToolbar}`}>
@@ -37,15 +63,23 @@ export function NotebookGraphToolbar({
               )}
             />
           </div>
-          <div className={graphStyles.searchGroup}>
+          <div className={graphStyles.searchGroup} ref={searchGroupRef}>
             <div className={graphStyles.searchField}>
               <Input
                 fieldSize="small"
-                placeholder={t('graph.search_placeholder', '搜索实体 / 别名')}
+                placeholder={
+                  searchMode === 'semantic'
+                    ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
+                    : t('graph.search_placeholder_text', '按名称 / 别名搜索')
+                }
                 value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
+                onChange={(event) => {
+                  onQueryChange(event.target.value)
+                  onSearchAttemptedClear()
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void onSearch()
+                  if (event.key === 'Escape') dismissSearchPanel()
                 }}
                 trailing={
                   <button
@@ -60,6 +94,59 @@ export function NotebookGraphToolbar({
                 }
               />
             </div>
+            <SegmentedControl
+              inline
+              value={searchMode}
+              aria-label={t('graph.search_mode', '搜索模式')}
+              onChange={(mode) => {
+                const next = resolveGraphSearchMode(mode)
+                onSearchModeChange(next)
+                if (query.trim()) void onSearch(next)
+              }}
+              options={[
+                { value: 'semantic', label: t('graph.search_semantic', '语义搜索') },
+                { value: 'text', label: t('graph.search_text', '文本搜索') }
+              ]}
+            />
+            {searching || searchAttempted ? (
+              <div
+                className={graphStyles.searchHits}
+                role="listbox"
+                aria-label={t('graph.search_results', '搜索结果')}
+              >
+                <div className={graphStyles.searchHitsHeader}>
+                  {searching
+                    ? t('graph.searching', '正在搜索…')
+                    : searchHits.length > 0
+                      ? t('graph.search_results_count', '{{count}} 个节点', {
+                          count: searchHits.length
+                        })
+                      : searchMode === 'semantic'
+                        ? t(
+                            'graph.search_semantic_empty',
+                            '没有语义相近的节点。没做向量的节点不会出现在语义搜索里。'
+                          )
+                        : t('graph.search_no_hits', '没有找到匹配的节点')}
+                </div>
+                {searchHits.map((hit) => (
+                  <button
+                    key={hit.id}
+                    type="button"
+                    className={graphStyles.searchHit}
+                    onClick={() => {
+                      dismissSearchPanel()
+                      onSelectHit(hit.id)
+                    }}
+                  >
+                    <span className={graphStyles.searchHitName}>{hit.name}</span>
+                    <span className={graphStyles.searchHitMeta}>
+                      {translateGraphNodeType(tr, hit.nodeType)}
+                      {hit.summary ? ` · ${hit.summary}` : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className={graphStyles.toolbarRight}>
