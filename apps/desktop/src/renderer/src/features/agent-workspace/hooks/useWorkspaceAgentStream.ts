@@ -108,12 +108,15 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
   useEffect(() => {
     if (!sessionId || typeof window === 'undefined' || !window.electron?.ipcRenderer?.on) return
 
-    const onRuntimeEvent = (_: unknown, event: { type?: string; sessionId?: string }) => {
+    const onRuntimeEvent = (
+      _: unknown,
+      event: { type?: string; sessionId?: string; inputId?: string }
+    ) => {
       if (event?.type !== 'session.promoted' || event.sessionId !== sessionId) return
       beginStreaming(sessionId)
       window.dispatchEvent(
         new CustomEvent('baishou:workspace-pending-inputs-changed', {
-          detail: { sessionId }
+          detail: { sessionId, dropInputId: event.inputId }
         })
       )
     }
@@ -169,6 +172,8 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
           origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
         }>
         attachments?: unknown[]
+        /** 排队发送时先登记 inbox，再刷新消息列表，避免气泡先冒出来 */
+        deferMessageRefresh?: boolean
       }
     ): Promise<StartWorkspaceChatResult> => {
       let activeSessionId = targetSessionId
@@ -206,11 +211,13 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         throw new Error(saved.error)
       }
 
-      window.dispatchEvent(
-        new CustomEvent('baishou:workspace-messages-changed', {
-          detail: { sessionId: activeSessionId }
-        })
-      )
+      if (!options?.deferMessageRefresh) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:workspace-messages-changed', {
+            detail: { sessionId: activeSessionId }
+          })
+        )
+      }
 
       return {
         sessionId: activeSessionId,

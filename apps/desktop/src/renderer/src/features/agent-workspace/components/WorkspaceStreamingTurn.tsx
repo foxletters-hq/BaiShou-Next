@@ -1,13 +1,18 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  AgentGatePartBubble,
   AgentMarkdownRenderer,
   AgentThinkSection,
   AgentToolChainSection,
+  KnowledgeCitationBlock,
   MessageActionBar,
   parseRedactedThinking
 } from '@baishou/ui'
 import {
+  collectKnowledgeCitationsFromInvocations,
+  decorateKnowledgeCitedTexts,
+  type AgentGatePartData,
   type AgentGateRequest,
   type AgentStreamTimelineItem,
   type MockToolInvocation,
@@ -109,6 +114,7 @@ function renderStreamTimelineItem(
     onSelectChange?: (change: WorkspaceChangeEntry) => void
     onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
     gateChanges?: WorkspaceChangeEntry[]
+    citedTextByIndex?: Map<number, string>
   }
 ) {
   if (item.kind === 'reasoning') {
@@ -125,7 +131,7 @@ function renderStreamTimelineItem(
   }
   if (item.kind === 'text') {
     const parsed = parseRedactedThinking(item.text, '')
-    const content = parsed.cleanContent || item.text
+    const content = options.citedTextByIndex?.get(index) || parsed.cleanContent || item.text
     if (!content.trim()) return null
     return (
       <AgentMarkdownRenderer
@@ -138,6 +144,10 @@ function renderStreamTimelineItem(
 
   if (item.kind === 'file_ops') {
     return renderStreamFileOps(item.items, options)
+  }
+
+  if (item.kind === 'gate') {
+    return <AgentGatePartBubble key={item.data.request.id} data={item.data} />
   }
 
   return renderStreamToolGroup(item.items, options.failedByName)
@@ -164,6 +174,7 @@ export function WorkspaceStreamingTurn(props: {
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   pendingAsk?: AgentGateRequest | null
+  gateParts?: AgentGatePartData[]
 }) {
   const { t } = useTranslation()
   const {
@@ -186,11 +197,38 @@ export function WorkspaceStreamingTurn(props: {
     streamShowWaiting,
     onSelectChange,
     onReviewAll,
-    pendingAsk
+    pendingAsk,
+    gateParts = []
   } = props
   const gateChanges = workspaceChangesFromGateRequest(pendingAsk)
-  const streamGroups = useLiveTimeline ? groupStreamTimelineItems(streamingTimeline) : []
+  const streamGroups = useLiveTimeline
+    ? groupStreamTimelineItems(streamingTimeline, gateParts)
+    : []
   const streamHasFileOps = streamGroups.some((item) => item.kind === 'file_ops')
+  const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
+    streamingTimeline
+      .filter(
+        (item): item is Extract<AgentStreamTimelineItem, { kind: 'tool' }> => item.kind === 'tool'
+      )
+      .map(streamToolToInvocation)
+  )
+  const citedTextByIndex = new Map(
+    (() => {
+      const textGroups = streamGroups.flatMap((item, index) =>
+        item.kind === 'text' ? [{ index, text: item.text }] : []
+      )
+      const decorated = decorateKnowledgeCitedTexts(
+        textGroups.map((item) => {
+          const parsed = parseRedactedThinking(item.text, '')
+          return parsed.cleanContent || item.text
+        }),
+        knowledgeCitations.length,
+        'streaming',
+        { appendWhenMissing: false }
+      )
+      return textGroups.map((item, offset) => [item.index, decorated[offset] ?? ''] as const)
+    })()
+  )
 
   return (
     <div
@@ -203,16 +241,18 @@ export function WorkspaceStreamingTurn(props: {
           {streamError}
         </div>
       ) : null}
+      <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">
       {useLiveTimeline ? (
         <>
           {streamGroups.map((item, index, groups) =>
             renderStreamTimelineItem(item, index, {
               isStreaming: isStreaming && !isBridgeActive,
-              isLast: index === groups.length - 1,
+              isLast: index === groups.length - 1 || groups.slice(index + 1).every((entry) => entry.kind === 'gate'),
               failedByName,
               onSelectChange,
               onReviewAll,
-              gateChanges
+              gateChanges,
+              citedTextByIndex
             })
           )}
           {!streamHasFileOps && gateChanges.length > 0 ? (
@@ -241,7 +281,13 @@ export function WorkspaceStreamingTurn(props: {
           ) : null}
           {streamHasText ? (
             <AgentMarkdownRenderer
-              content={streamingParsed.cleanContent}
+              content={
+                decorateKnowledgeCitedTexts(
+                  [streamingParsed.cleanContent],
+                  knowledgeCitations.length,
+                  'streaming'
+                )[0] ?? streamingParsed.cleanContent
+              }
               isStreaming={isStreaming && !isBridgeActive}
             />
           ) : null}
@@ -268,6 +314,7 @@ export function WorkspaceStreamingTurn(props: {
           ))}
         </ul>
       ) : null}
+      </KnowledgeCitationBlock>
     </div>
   )
 }
