@@ -30,14 +30,13 @@
   animation: context-menu-appear 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* 不用 scale/translate：非整数缩放会改文字的合成层抗锯齿，动画结束时字形会抖一下 */
 @keyframes context-menu-appear {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }
 

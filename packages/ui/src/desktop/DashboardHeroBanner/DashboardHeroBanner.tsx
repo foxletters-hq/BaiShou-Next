@@ -1,77 +1,33 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
-
-// TODO: [Agent1-Dependency] 替换
+import { Sparkles } from 'lucide-react'
+import './DashboardHeroBanner.css'
 
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation()
 
   return (
-    <div
-      style={{
-        width: '100%',
-        height: 140,
-        backgroundColor: 'var(--color-primary)',
-        borderRadius: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '0 28px',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-md)'
-      }}
-    >
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: '600',
-          color: 'var(--text-on-primary)',
-          zIndex: 1,
-          letterSpacing: '-0.5px'
-        }}
-      >
-        {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
+    <div className="dashboard-hero-banner">
+      <div className="dashboard-hero-header">
+        <h2 className="dashboard-hero-title">
+          {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
+        </h2>
+        <span className="dashboard-hero-tag">
+          <Sparkles size={11} style={{ marginRight: 4 }} />
+          {t('summary.shared_memory', '共同回忆')}
+        </span>
       </div>
-      <div
-        style={{
-          fontSize: 13,
-          color: 'color-mix(in srgb, var(--text-on-primary) 80%, transparent)',
-          marginTop: 8,
-          zIndex: 1
-        }}
-      >
+
+      <p className="dashboard-hero-desc">
         {t(
           'summary.algorithm_desc',
           '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。'
         )}
-      </div>
+      </p>
 
-      {/* 装饰性背景球 */}
-      <div
-        style={{
-          position: 'absolute',
-          right: -20,
-          top: -40,
-          width: 140,
-          height: 140,
-          borderRadius: '50%',
-          background:
-            'linear-gradient(135deg, rgba(255,154,158,0.2) 0%, rgba(254,207,239,0.2) 100%)'
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          right: 80,
-          bottom: -30,
-          width: 80,
-          height: 80,
-          borderRadius: '50%',
-          background:
-            'linear-gradient(135deg, rgba(161,196,253,0.3) 0%, rgba(194,233,251,0.3) 100%)'
-        }}
-      />
+      {/* 装饰性背景氛围光 */}
+      <div className="dashboard-hero-orb-1" aria-hidden />
+      <div className="dashboard-hero-orb-2" aria-hidden />
     </div>
   )
 }
