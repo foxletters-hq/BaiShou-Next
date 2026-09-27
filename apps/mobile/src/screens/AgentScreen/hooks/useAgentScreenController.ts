@@ -3,8 +3,12 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import { type WebSearchConfig } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import { Dimensions, Keyboard, ScrollView } from 'react-native'
-import { type InputBarRef } from '@baishou/ui/native'
-import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import {
+  type InputBarRef,
+  type RecallItem,
+  useNativeTheme,
+  useNativeToast
+} from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
@@ -25,6 +29,7 @@ import { useAgentListScrollHandlers } from './useAgentListScroll'
 import { useAgentScreenSession } from './useAgentScreenSession'
 import { useAgentScreenChatProfiles } from './useAgentScreenChatProfiles'
 import { useAgentScreenInteractions } from './useAgentScreenInteractions'
+import { formatRecallInjection } from '../utils/format-recall-injection'
 
 export function useAgentScreenController() {
   const router = useRouter()
@@ -144,6 +149,16 @@ export function useAgentScreenController() {
     recallSearchMode,
     toggleRecallSearchMode
   } = useAgentUI()
+
+  const injectRecallIntoComposer = useCallback(
+    (items: RecallItem[]) => {
+      handleInjectRecall(items)
+      const text = formatRecallInjection(items)
+      if (!text) return
+      inputBarRef.current?.insertText(text)
+    },
+    [handleInjectRecall]
+  )
 
   const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
     useSharedMemoryCopyPreview(recallLookbackMonths, showRecallSheet, {
@@ -483,7 +498,7 @@ export function useAgentScreenController() {
     recallItems,
     isSearchingRecall,
     handleRecallSearch,
-    handleInjectRecall,
+    handleInjectRecall: injectRecallIntoComposer,
     recallSearchMode,
     toggleRecallSearchMode,
     recallLookbackMonths,

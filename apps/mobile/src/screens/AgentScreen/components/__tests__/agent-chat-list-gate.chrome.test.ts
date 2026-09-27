@@ -17,8 +17,10 @@ describe('AgentChatList gate chrome', () => {
     expect(src).not.toContain('!p.currentSessionId ||')
   })
 
-  it('should restore an unresolved companion_ask into the inbox after persist', () => {
+  it('should restore an unresolved companion_ask only while the live gate still has it', () => {
     expect(src).toContain('collectUnresolvedAgentGateRequestsForSurface')
-    expect(src).toContain('upsertAsked')
+    expect(src).toContain('listPendingMobileAgentGate')
+    expect(src).toContain('respectTombstone: true')
+    expect(src).toContain('if (!liveIds.has(request.id)) continue')
   })
 })

@@ -167,8 +167,8 @@ export const styles = StyleSheet.create({
     gap: 12
   },
   guideTitle: {
-    fontSize: 17,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '600'
   },
   guideBody: {
     fontSize: 14,
@@ -315,7 +315,7 @@ export const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 4
   },
   filterSectionHead: {
@@ -363,7 +363,7 @@ export const styles = StyleSheet.create({
   sourceTitle: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   sourceLoading: {
     paddingVertical: 40,
