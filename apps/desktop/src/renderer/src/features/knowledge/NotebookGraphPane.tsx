@@ -19,7 +19,6 @@ import {
   saveGraphFocusDepth,
   saveGraphForceSettings,
   saveGraphViewMaxNodes,
-  splitGraphReviewSelection,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
   type GraphForceSettings,
@@ -29,6 +28,11 @@ import { toast, useDialog } from '@baishou/ui'
 import { GraphForceCanvas } from '../graph/GraphForceCanvas'
 import { graphSearchErrorCopy } from '../graph/graph-page-derive.util'
 import { usePanelResize } from '../agent-workspace/workbench/usePanelResize'
+import {
+  applyNotebookGraphPendingReviews,
+  nextNotebookGraphPendingSelection,
+  toggleNotebookGraphPendingKey
+} from './notebook-graph-pending-reviews'
 import { callKnowledgeApi } from './call-knowledge-api'
 import {
   remapNotebookGraphReviewForDisplay,
@@ -292,27 +296,21 @@ export const NotebookGraphPane: React.FC<{
     nodes,
     selectedId,
     selectedNode,
-    t,
+    t: (key, fallback) => t(key, fallback),
     loadView,
     locateNode
   })
 
   useEffect(() => {
     void merge.loadSimilar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只跟 loadSimilar
   }, [merge.loadSimilar, reloadKey])
 
-  const togglePendingItem = (key: string) => {
-    setPendingSelected((current) => {
-      const next = new Set(current)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  const togglePendingItem = (key: string) =>
+    setPendingSelected((current) => toggleNotebookGraphPendingKey(current, key))
 
-  const toggleSelectAllPending = () => {
-    setPendingSelected(allPendingSelected ? new Set() : new Set(pendingItemKeys))
-  }
+  const toggleSelectAllPending = () =>
+    setPendingSelected(nextNotebookGraphPendingSelection(allPendingSelected, pendingItemKeys))
 
   const reviewNode = async (nodeId: string, reviewStatus: 'approved' | 'rejected') => {
     setReviewBusy(true)
@@ -360,62 +358,22 @@ export const NotebookGraphPane: React.FC<{
     reviewStatus: 'approved' | 'rejected'
     allPending?: boolean
   }) => {
-    const selected = opts.allPending
-      ? {
-          nodeIds: pending.pendingNodes.map((node) => node.id),
-          edgeIds: pending.pendingEdges.map((edge) => edge.id)
-        }
-      : splitGraphReviewSelection(pendingItemKeys.filter((key) => pendingSelected.has(key)))
-    const count = opts.allPending ? pendingCount : pendingSelectedCount
-    if (count === 0) return
-    if (opts.reviewStatus === 'rejected' || opts.allPending) {
-      const ok = await dialog.confirm(
-        opts.allPending
-          ? opts.reviewStatus === 'approved'
-            ? t(
-                'graph.confirm_approve_all',
-                '将通过全部 {{count}} 项待确认内容。通过节点时会同时通过相连的待审关系。',
-                { count }
-              )
-            : t(
-                'graph.confirm_reject_all',
-                '将拒绝全部 {{count}} 项待确认内容。拒绝节点时会同时拒绝与它相连的关系。',
-                { count }
-              )
-          : t(
-              'graph.confirm_reject_selected',
-              '将拒绝已选的 {{count}} 项。拒绝节点时会同时拒绝与它相连的关系。',
-              { count }
-            ),
-        opts.allPending
-          ? opts.reviewStatus === 'approved'
-            ? t('graph.approve_all', '全部通过')
-            : t('graph.reject_all', '全部拒绝')
-          : t('graph.reject_selected', '拒绝所选')
-      )
-      if (!ok) return
-    }
-    setReviewBusy(true)
-    try {
-      await callKnowledgeApi('setGraphReviewsBatch', 'knowledge:set-graph-reviews-batch', {
-        notebookId,
-        reviewStatus: opts.reviewStatus,
-        allPending: opts.allPending,
-        nodeIds: selected.nodeIds,
-        edgeIds: selected.edgeIds
-      })
-      setPendingSelected(new Set())
-      await loadView()
-      toast.showSuccess(
-        opts.reviewStatus === 'approved'
-          ? t('graph.batch_approved', '已通过 {{count}} 项', { count })
-          : t('graph.batch_rejected', '已拒绝 {{count}} 项', { count })
-      )
-    } catch (error) {
-      toast.showError(String((error as Error)?.message || error))
-    } finally {
-      setReviewBusy(false)
-    }
+    await applyNotebookGraphPendingReviews({
+      notebookId,
+      reviewStatus: opts.reviewStatus,
+      allPending: opts.allPending,
+      pendingCount,
+      pendingSelectedCount,
+      pendingItemKeys,
+      pendingSelected,
+      pendingNodes: pending.pendingNodes,
+      pendingEdges: pending.pendingEdges,
+      t,
+      dialog,
+      loadView,
+      setPendingSelected,
+      setReviewBusy
+    })
   }
 
   const relatedEdges = edges.filter(
