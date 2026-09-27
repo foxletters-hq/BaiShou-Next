@@ -7,9 +7,12 @@ import {
   NotebookGraphRepository,
   knowledgeConnectionManager
 } from '@baishou/database-desktop'
+import { getEmbeddingConfig, getEmbeddingService } from '../ipc/rag.ipc'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
 
-export function createDesktopKnowledgeGraphReader(): ToolKnowledgeGraphReader | undefined {
+export function createDesktopKnowledgeGraphReader(
+  embedQuery?: (text: string) => Promise<number[] | null>
+): ToolKnowledgeGraphReader | undefined {
   if (!knowledgeConnectionManager.isConnected()) return undefined
   const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
   const knowledgeRepo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
@@ -25,13 +28,23 @@ export function createDesktopKnowledgeGraphReader(): ToolKnowledgeGraphReader | 
       if (!nameById.has(notebook.id)) nameById.set(notebook.id, notebook.name)
     }
 
+    const embeddingConfig = getEmbeddingConfig()
+    await embeddingConfig.load()
+    const modelId = embeddingConfig.getGlobalEmbeddingModelId() || undefined
+    const embeddingService = getEmbeddingService()
+    const resolveEmbed =
+      embedQuery ??
+      (embeddingService.isConfigured ? (text) => embeddingService.embedQuery(text) : undefined)
+
     const groups: ToolKnowledgeGraphSearchResult[] = []
     for (const notebookId of notebookIds) {
       const result = await searchNotebookGraphForTool(repo, {
         vaultId,
         notebookId,
         query: opts.query,
-        limit: opts.limit
+        limit: opts.limit,
+        embedQuery: resolveEmbed,
+        modelId
       })
       groups.push({
         notebookId,

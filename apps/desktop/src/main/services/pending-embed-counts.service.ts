@@ -74,33 +74,13 @@ async function countPendingGraphExtract(): Promise<number> {
   }
 }
 
-async function countPendingGraphDisambiguate(vaultId: string): Promise<number> {
-  if (!connectionManager.isConnected()) return 0
-  try {
-    const { collectSuspectSignals, readSuspectReason, toSuspectScanEdge, toSuspectScanNode } =
-      await import('@baishou/core-desktop')
-    const repo = new GraphRepository(connectionManager.getDb())
-    const scan = await repo.listLiveScanGraph(vaultId)
-    const nodes = scan.nodes.map(toSuspectScanNode)
-    const edges = scan.edges.map(toSuspectScanEdge)
-    const nodeById = new Map(nodes.map((node) => [node.id, node]))
-    return collectSuspectSignals(nodes, edges).filter((hit) => {
-      const node = nodeById.get(hit.nodeId)
-      return Boolean(node && !readSuspectReason(node.props))
-    }).length
-  } catch {
-    return 0
-  }
-}
-
 export async function getOrganizePendingSnapshot(): Promise<
   PendingEmbedCounts & { graphExtract: number; graphDisambiguate: number }
 > {
   const embed = await getPendingEmbedCountsForActiveVault()
   const vaultId = resolveActiveVaultId()
   const graphExtract = vaultId ? await countPendingGraphExtract() : 0
-  const graphDisambiguate = vaultId ? await countPendingGraphDisambiguate(vaultId) : 0
-  return { ...embed, graphExtract, graphDisambiguate }
+  return { ...embed, graphExtract, graphDisambiguate: 0 }
 }
 
 export async function getPendingEmbedCountsForActiveVault(): Promise<PendingEmbedCounts> {

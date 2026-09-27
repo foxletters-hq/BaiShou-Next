@@ -38,7 +38,8 @@ export function createDesktopGraphReader(
         edgeType: e.edgeType,
         sourceRef: e.sourceRef,
         sourceExcerpt: e.sourceExcerpt,
-        validFrom: e.validFrom
+        validFrom: e.validFrom,
+        isCurrent: e.isCurrent
       })),
       timeline: result.timeline?.map((e) => ({
         id: e.id,
@@ -47,7 +48,8 @@ export function createDesktopGraphReader(
         edgeType: e.edgeType,
         sourceRef: e.sourceRef,
         sourceExcerpt: e.sourceExcerpt,
-        validFrom: e.validFrom
+        validFrom: e.validFrom,
+        isCurrent: e.isCurrent
       })),
       nodes: result.nodes.map((n) => ({
         id: n.id,
@@ -64,7 +66,8 @@ export function createDesktopGraphReader(
           toId: e.toId,
           edgeType: e.edgeType,
           sourceRef: e.sourceRef,
-          sourceExcerpt: e.sourceExcerpt
+          sourceExcerpt: e.sourceExcerpt,
+          validFrom: e.validFrom
         })),
         edgeDirections: p.edgeDirections
       }))

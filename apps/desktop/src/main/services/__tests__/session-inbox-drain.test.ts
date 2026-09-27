@@ -10,6 +10,7 @@ import {
 import {
   drainSessionInbox,
   resetSessionInboxDrainForTests,
+  scheduleDrainWhenIdle,
   waitForSessionInboxDrainLock
 } from '../session-inbox-drain'
 
@@ -164,6 +165,92 @@ describe('drainSessionInbox', () => {
     off()
 
     expect(types).toEqual(['session.idle'])
+  })
+
+  it('should consume a message admitted while a drain lock is held', async () => {
+    const inbox = getSharedSessionInbox()
+    inbox.admit({ sessionId: 's1', text: 'one', delivery: 'queue' })
+
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const ran: string[] = []
+
+    const first = drainSessionInbox({
+      sessionId: 's1',
+      isBusy: () => false,
+      runPromoted: async (input) => {
+        ran.push(input.text)
+        if (input.text === 'one') {
+          inbox.admit({ sessionId: 's1', text: 'late', delivery: 'queue' })
+          await drainSessionInbox({
+            sessionId: 's1',
+            isBusy: () => false,
+            runPromoted: async () => 'ok'
+          })
+          await gate
+        }
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(ran).toEqual(['one'])
+    })
+    release()
+    await first
+    expect(ran).toEqual(['one', 'late'])
+  })
+
+  it('should keep only one idle drain waiter for the same session', async () => {
+    const inbox = getSharedSessionInbox()
+    inbox.admit({ sessionId: 's1', text: 'only', delivery: 'steer' })
+
+    let busy = true
+    const ran: string[] = []
+    const run = () =>
+      drainSessionInbox({
+        sessionId: 's1',
+        isBusy: () => busy,
+        runPromoted: async (input) => {
+          ran.push(input.text)
+        }
+      })
+    scheduleDrainWhenIdle({ sessionId: 's1', isBusy: () => busy, pollMs: 10, run })
+    scheduleDrainWhenIdle({ sessionId: 's1', isBusy: () => busy, pollMs: 10, run })
+    busy = false
+    await vi.waitFor(() => {
+      expect(ran).toEqual(['only'])
+    })
+  })
+
+  it('should drain after the session becomes idle when scheduleDrainWhenIdle waits out a busy claim', async () => {
+    const inbox = getSharedSessionInbox()
+    inbox.admit({ sessionId: 's1', text: 'next', delivery: 'steer' })
+
+    let busy = true
+    const ran: string[] = []
+    scheduleDrainWhenIdle({
+      sessionId: 's1',
+      isBusy: () => busy,
+      pollMs: 10,
+      run: () =>
+        drainSessionInbox({
+          sessionId: 's1',
+          isBusy: () => busy,
+          runPromoted: async (input) => {
+            ran.push(input.text)
+          }
+        })
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(ran).toEqual([])
+
+    busy = false
+    await vi.waitFor(() => {
+      expect(ran).toEqual(['next'])
+    })
   })
 
   it('waitForSessionInboxDrainLock resolves after the drain lock is released', async () => {
