@@ -177,7 +177,9 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
             </span>
             {showLabel ? <span className={styles.chipLabel}>{rowLabel(row.id, t)}</span> : null}
             <span className={styles.chipValue}>{value}</span>
-            {onAction && actionLabel ? <span className={styles.chipHint}>{actionLabel}</span> : null}
+            {onAction && actionLabel ? (
+              <span className={styles.chipHint}>{actionLabel}</span>
+            ) : null}
           </>
         )
 

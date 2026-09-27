@@ -317,12 +317,13 @@ export const GraphForceCanvas: React.FC<{
     drawRef.current()
   }, [paused])
 
-  // Live-update forces without rebuilding the whole simulation.
+  // 只订阅具体力参数，避免 forceSettings 对象引用抖动
   useEffect(() => {
     const sim = simRef.current
     if (!sim || pausedRef.current) return
     applyGraphForceStrengths(sim, forceSettings, degreeByIdRef.current)
     sim.alpha(0.35).restart()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 按字段订阅
   }, [
     forceSettings.centerStrength,
     forceSettings.linkStrength,

@@ -113,7 +113,7 @@ describe('memory center chrome', () => {
     expect(src).toContain("mountedTabs.has('vectors')")
     expect(src).toContain("mountedTabs.has('graph')")
     expect(src).toContain('tabPanelHidden')
-    expect(src).toContain('active={tab === \'graph\'}')
+    expect(src).toContain("active={tab === 'graph'}")
     expect(css).toContain('.tabPanelHidden')
     expect(css).toMatch(/\.tabPanelHidden \{[^}]*visibility: hidden/)
     expect(css).toMatch(/\.tabPanelHidden \{[^}]*position: absolute/)
@@ -274,7 +274,9 @@ describe('memory center chrome', () => {
     expect(page).toContain('MemoryOrganizePanelHost')
     expect(page).toContain('onOpenOrganize={() => setOrganizeOpen(true)}')
     expect(bar).toContain('onOpenOrganize')
-    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain('RagMemoryOrganizeModal')
+    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
+      'RagMemoryOrganizeModal'
+    )
     expect(readRagSrc('RagMemoryView.tsx')).toContain('hideOrganizeProgress')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain("surface !== 'organize'")
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('surface="organize"')
@@ -355,7 +357,9 @@ describe('memory center chrome', () => {
     expect(readSrc('features/memory/MemoryCenterPage.tsx')).toContain('consumeMemoryGraphTab')
     expect(readSrc('features/graph/useGraphPageModel.ts')).toContain('subscribeGraphPendingFocus')
     expect(readSrc('features/graph/GraphPagePendingPane.tsx')).toContain('graph.suspect_badge')
-    expect(readSrc('features/graph/GraphPagePendingPane.tsx')).toContain('graph.suspect_pending_hint')
+    expect(readSrc('features/graph/GraphPagePendingPane.tsx')).toContain(
+      'graph.suspect_pending_hint'
+    )
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('memory.readiness_organizing')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain('life_graph')
     const ragCss = readRagSrc('RagMemoryView.module.css')

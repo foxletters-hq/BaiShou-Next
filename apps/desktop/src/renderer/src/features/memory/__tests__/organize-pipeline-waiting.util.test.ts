@@ -3,9 +3,7 @@ import { shouldWaitForGraphExtract } from '../organize-pipeline-waiting.util'
 
 describe('shouldWaitForGraphExtract', () => {
   it('should hide the graph waiting card when embed finished but pipeline stayed embed', () => {
-    expect(
-      shouldWaitForGraphExtract({ organizePipeline: 'embed', indexing: false })
-    ).toBe(false)
+    expect(shouldWaitForGraphExtract({ organizePipeline: 'embed', indexing: false })).toBe(false)
   })
 
   it('should keep waiting while batch embed is still running', () => {

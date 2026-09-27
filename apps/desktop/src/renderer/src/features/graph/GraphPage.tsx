@@ -87,35 +87,33 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             <div className={styles.chrome}>
               {embedded && m.showEmptyGuide ? null : (
                 <GraphPageToolbar
-                embedded={embedded}
-                showEmptyGuide={m.showEmptyGuide}
-                searchGroupRef={search.searchGroupRef}
-                searchMode={search.searchMode}
-                onSearchModeChange={search.setSearchMode}
-                query={search.query}
-                onQueryChange={search.setQuery}
-                onSearchAttemptedClear={() => search.setSearchAttempted(false)}
-                onSearch={search.onSearch}
-                dismissSearchPanel={search.dismissSearchPanel}
-                searching={search.searching}
-                searchAttempted={search.searchAttempted}
-                searchHits={search.searchHits}
-                onSelectNode={selection.onSelectNode}
-                monthRange={m.month.monthRange}
-                onMonthRangeChange={m.updateMonthRange}
-                onClearToGlobal={m.clearToGlobal}
-                pinNeighborhood={selection.pinNeighborhood}
-                sideCollapsed={side.sideCollapsed}
-                highlightStartOrganize={highlightStartOrganize}
-                pendingReextractCount={data.pendingReextract.length}
-                onRunExtract={() => void extract.runExtract()}
+                  embedded={embedded}
+                  showEmptyGuide={m.showEmptyGuide}
+                  searchGroupRef={search.searchGroupRef}
+                  searchMode={search.searchMode}
+                  onSearchModeChange={search.setSearchMode}
+                  query={search.query}
+                  onQueryChange={search.setQuery}
+                  onSearchAttemptedClear={() => search.setSearchAttempted(false)}
+                  onSearch={search.onSearch}
+                  dismissSearchPanel={search.dismissSearchPanel}
+                  searching={search.searching}
+                  searchAttempted={search.searchAttempted}
+                  searchHits={search.searchHits}
+                  onSelectNode={selection.onSelectNode}
+                  monthRange={m.month.monthRange}
+                  onMonthRangeChange={m.updateMonthRange}
+                  onClearToGlobal={m.clearToGlobal}
+                  pinNeighborhood={selection.pinNeighborhood}
+                  sideCollapsed={side.sideCollapsed}
+                  highlightStartOrganize={highlightStartOrganize}
+                  pendingReextractCount={data.pendingReextract.length}
+                  onRunExtract={() => void extract.runExtract()}
                 />
               )}
               {m.status && !extract.extractRunning ? (
                 <div className={styles.statusRow}>
-                  <p
-                    className={`${styles.statusBar} ${m.busy ? styles.statusBarBusy : ''}`}
-                  >
+                  <p className={`${styles.statusBar} ${m.busy ? styles.statusBarBusy : ''}`}>
                     {m.status}
                   </p>
                 </div>
