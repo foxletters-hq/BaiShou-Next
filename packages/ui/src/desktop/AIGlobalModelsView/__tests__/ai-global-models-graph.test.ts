@@ -31,10 +31,7 @@ describe('AIGlobalModelsView graph slot', () => {
   })
 
   it('should use two columns by default and three only when the page scroll container is wide enough', () => {
-    const chromeCss = readFileSync(
-      join(here, '../../shared/SettingsPageChrome.module.css'),
-      'utf8'
-    )
+    const chromeCss = readFileSync(join(here, '../../shared/SettingsPageChrome.module.css'), 'utf8')
     expect(chromeCss).toContain('container-name: settings-page-scroll')
     expect(css).toContain('width: 100%')
     expect(css.indexOf('repeat(2, minmax(0, 1fr))')).toBeLessThan(

@@ -109,9 +109,7 @@ export function CompanionAskFields({
               type="button"
               className={styles.queueNavBtn}
               disabled={onLast || isReplying}
-              onClick={() =>
-                setIndex((current) => Math.min(questions.length - 1, current + 1))
-              }
+              onClick={() => setIndex((current) => Math.min(questions.length - 1, current + 1))}
               aria-label={t('agent_gate.queue_next', '下一题')}
             >
               <ChevronRight size={16} strokeWidth={2} aria-hidden />
@@ -132,9 +130,7 @@ export function CompanionAskFields({
                 onSubmit()
               }}
             >
-              {onLast
-                ? t('agent_gate.confirm', '确认')
-                : t('agent_gate.ask_next', '下一题')}
+              {onLast ? t('agent_gate.confirm', '确认') : t('agent_gate.ask_next', '下一题')}
             </Button>
           </div>
         </div>

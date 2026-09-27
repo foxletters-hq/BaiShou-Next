@@ -1,7 +1,11 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { CompanionAskItemView, CompanionAskOptionView, CompanionAskPresentation } from '../../shared/tool-result.util'
+import type {
+  CompanionAskItemView,
+  CompanionAskOptionView,
+  CompanionAskPresentation
+} from '../../shared/tool-result.util'
 import styles from './CompanionAskResultCard.module.css'
 
 function CompanionAskResultItem({

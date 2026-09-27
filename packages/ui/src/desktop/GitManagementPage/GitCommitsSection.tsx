@@ -182,7 +182,10 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({
                                   +{change.additions} -{change.deletions}
                                 </span>
                               </div>
-                              {inlineDiff && expandedFile === change.path && selectedFileDiff && !compact ? (
+                              {inlineDiff &&
+                              expandedFile === change.path &&
+                              selectedFileDiff &&
+                              !compact ? (
                                 <GitDiffViewer diff={selectedFileDiff} />
                               ) : null}
                             </div>

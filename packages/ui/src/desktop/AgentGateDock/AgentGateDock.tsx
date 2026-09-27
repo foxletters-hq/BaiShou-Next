@@ -339,23 +339,23 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         </div>
       ) : proactiveOptions ? (
         pagedAsk ? null : (
-        <div className={styles.actions}>
-          <Button
-            type="button"
-            className={styles.btnReject}
-            disabled={isReplying}
-            onClick={handleReject}
-          >
-            {t('agent_gate.reject', '拒绝')}
-          </Button>
-          <Button
-            type="button"
-            disabled={isReplying || !askDrafts.complete}
-            onClick={submitProactiveConfirm}
-          >
-            {t('agent_gate.confirm', '确认')}
-          </Button>
-        </div>
+          <div className={styles.actions}>
+            <Button
+              type="button"
+              className={styles.btnReject}
+              disabled={isReplying}
+              onClick={handleReject}
+            >
+              {t('agent_gate.reject', '拒绝')}
+            </Button>
+            <Button
+              type="button"
+              disabled={isReplying || !askDrafts.complete}
+              onClick={submitProactiveConfirm}
+            >
+              {t('agent_gate.confirm', '确认')}
+            </Button>
+          </div>
         )
       ) : (
         <div className={styles.actions}>

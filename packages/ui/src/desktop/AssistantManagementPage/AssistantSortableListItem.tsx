@@ -54,11 +54,7 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
             </span>
             <AssistantKindBadge kind={assistant.assistantKind} compact />
             {isPinned ? (
-              <Pin
-                size={14}
-                color="var(--color-primary)"
-                style={{ marginLeft: 6, opacity: 0.8 }}
-              />
+              <Pin size={14} color="var(--color-primary)" style={{ marginLeft: 6, opacity: 0.8 }} />
             ) : null}
           </div>
           <div className={styles.cardDesc}>{assistant.description || assistant.systemPrompt}</div>

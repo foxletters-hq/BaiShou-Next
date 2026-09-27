@@ -59,8 +59,7 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
     !request.description.startsWith(`${request.title}:`)
       ? request.description
       : null
-  const preview =
-    previewSummary && previewSummary !== request.title ? previewSummary : null
+  const preview = previewSummary && previewSummary !== request.title ? previewSummary : null
   const extra = [optionLabel, resolution?.message].filter(Boolean).join(' · ')
   const detail = [preview, description, extra].filter(Boolean).join('\n')
   const canExpand = detail.length > 0
