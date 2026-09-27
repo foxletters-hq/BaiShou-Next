@@ -64,7 +64,7 @@ export interface AgentGateHydrateOptions {
 }
 
 export interface AgentGateInboxActions {
-  upsertAsked: (request: AgentGateRequest) => void
+  upsertAsked: (request: AgentGateRequest, options?: { respectTombstone?: boolean }) => void
   removeReplied: (requestId: string, resolution?: AgentGateResolution) => void
   removeCancelled: (requestIds: string[]) => void
   hydrate: (requests: AgentGateRequest[], options?: AgentGateHydrateOptions) => void
@@ -88,8 +88,9 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
   (set) => ({
     ...initialState,
 
-    upsertAsked: (request) => {
+    upsertAsked: (request, options) => {
       if (!request?.id) return
+      if (options?.respectTombstone && isRepliedTombstone(request.id)) return
       repliedTombstones.delete(request.id)
       set((state: AgentGateInboxState) => {
         const without = state.pending.filter((item) => item.id !== request.id)

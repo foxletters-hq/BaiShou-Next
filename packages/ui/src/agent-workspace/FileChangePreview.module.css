@@ -20,5 +20,5 @@
 
 .empty {
   color: var(--text-secondary);
-  font-style: italic;
+  font-family: var(--font-family);
 }

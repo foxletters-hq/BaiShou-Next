@@ -1,7 +1,26 @@
 /** Shared graph UI / query caps (desktop + mobile). */
 
-/** Global force-view node cap — same on desktop and mobile. */
-export const GRAPH_GLOBAL_MAX_NODES = 200
+/** Default canvas query cap; the user can raise or lower it in graph settings. */
+export const GRAPH_VIEW_MAX_NODES_DEFAULT = 500
+export const GRAPH_VIEW_MAX_NODES_MIN = 50
+/** Last finite slider tick; one more step is unlimited. */
+export const GRAPH_VIEW_MAX_NODES_FINITE_MAX = 2000
+export const GRAPH_VIEW_MAX_NODES_STEP = 50
+/** Slider far-right tick. Stored as GRAPH_VIEW_MAX_NODES_UNLIMITED. */
+export const GRAPH_VIEW_MAX_NODES_SLIDER_MAX =
+  GRAPH_VIEW_MAX_NODES_FINITE_MAX + GRAPH_VIEW_MAX_NODES_STEP
+/** Stored sentinel: canvas query is not capped to a slider value. */
+export const GRAPH_VIEW_MAX_NODES_UNLIMITED = -1
+/**
+ * SQL `.limit()` 占位：滑条选无限时也必须带 limit。
+ * 桌面知识库驱动在没有 `.limit()` 时只会返回 1 行。
+ */
+export const GRAPH_VIEW_SQL_UNLIMITED_LIMIT = 1_000_000
+/** Slider `max` including the unlimited tick. */
+export const GRAPH_VIEW_MAX_NODES_MAX = GRAPH_VIEW_MAX_NODES_SLIDER_MAX
+
+/** Alias kept for query callers that still import this name. */
+export const GRAPH_GLOBAL_MAX_NODES = GRAPH_VIEW_MAX_NODES_DEFAULT
 
 /** Chunk size for SQLite IN (...) to stay under variable limits (from+to doubles). */
 export const GRAPH_SQL_IN_CHUNK = 400

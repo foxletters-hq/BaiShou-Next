@@ -16,8 +16,7 @@ export const MEMORY_ORGANIZE_PHASE_IDS = [
   'diary',
   'memory',
   'graph_extract',
-  'graph_node',
-  'graph_disambiguate'
+  'graph_node'
 ] as const satisfies readonly RagBatchEmbedPhaseId[]
 
 export type RagBatchEmbedPhaseKind = RagBatchEmbedPhaseId | 'starting' | 'finishing'
@@ -153,7 +152,6 @@ export function firstActivePhase(counts: OrganizePhaseCountInput): RagBatchEmbed
   if (counts.memories > 0) return 'memory'
   if ((counts.graphExtract ?? 0) > 0) return 'graph_extract'
   if (counts.graphNodes > 0) return 'graph_node'
-  if ((counts.graphDisambiguate ?? 0) > 0) return 'graph_disambiguate'
   return 'finishing'
 }
 

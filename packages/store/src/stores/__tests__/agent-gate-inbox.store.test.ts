@@ -83,6 +83,34 @@ describe('agent-gate-inbox.store', () => {
     expect(selectResolvedLiveForSession(next, 's1')).toEqual([])
   })
 
+  it('should ignore persisted asks that were already cancelled', () => {
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(
+        req({
+          id: 'ask',
+          sessionId: 's1',
+          createdAt: 1,
+          action: 'companion_ask',
+          kind: AgentGateKind.Proactive
+        })
+      )
+    useAgentGateInboxStore.getState().removeCancelled(['ask'])
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(
+        req({
+          id: 'ask',
+          sessionId: 's1',
+          createdAt: 1,
+          action: 'companion_ask',
+          kind: AgentGateKind.Proactive
+        }),
+        { respectTombstone: true }
+      )
+    expect(useAgentGateInboxStore.getState().pending.map((item) => item.id)).toEqual([])
+  })
+
   it('hydrates authoritatively and prunes ghost pending', () => {
     useAgentGateInboxStore
       .getState()
@@ -237,12 +265,12 @@ describe('agent-gate-inbox.store', () => {
       resolvedAt: 11
     })
     const resolved = useAgentGateInboxStore.getState()
-    expect(selectResolvedLiveForSession(resolved, 's1', 'companion').map((item) => item.request.id)).toEqual([
-      'companion'
-    ])
-    expect(selectResolvedLiveForSession(resolved, 's1', 'workspace').map((item) => item.request.id)).toEqual([
-      'workspace'
-    ])
+    expect(
+      selectResolvedLiveForSession(resolved, 's1', 'companion').map((item) => item.request.id)
+    ).toEqual(['companion'])
+    expect(
+      selectResolvedLiveForSession(resolved, 's1', 'workspace').map((item) => item.request.id)
+    ).toEqual(['workspace'])
   })
 
   it('should return the previous and next pending ids for queue paging', () => {
