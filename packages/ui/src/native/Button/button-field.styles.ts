@@ -17,19 +17,20 @@ export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVaria
     gap: 8
   }
 
+  const surfaceOutline: ViewStyle = {
+    ...base,
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderControl
+  }
+
   switch (variant) {
     case 'primary':
-      return { ...base, backgroundColor: colors.primary }
+    case 'outline':
+      return surfaceOutline
     case 'secondary':
     case 'tertiary':
       return { ...base, backgroundColor: colors.bgSurfaceHighest }
-    case 'outline':
-      return {
-        ...base,
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: colors.borderControl
-      }
     case 'ghost':
       return { ...base, backgroundColor: 'transparent' }
     case 'danger':
@@ -37,7 +38,7 @@ export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVaria
     case 'danger-soft':
       return { ...base, backgroundColor: colors.errorContainer }
     default:
-      return { ...base, backgroundColor: colors.primary }
+      return surfaceOutline
   }
 }
 
@@ -57,18 +58,18 @@ export function getHeroButtonLabelStyle(
 
   switch (variant) {
     case 'primary':
-      return { ...base, color: colors.textOnPrimary }
+    case 'outline':
+      return { ...base, color: colors.textPrimary }
     case 'danger':
       return { ...base, color: colors.onError ?? colors.textOnPrimary }
     case 'danger-soft':
       return { ...base, color: colors.onErrorContainer ?? colors.error }
-    case 'outline':
     case 'ghost':
     case 'tertiary':
       return { ...base, color: colors.textPrimary }
     case 'secondary':
       return { ...base, color: colors.textPrimary }
     default:
-      return { ...base, color: colors.textOnPrimary }
+      return { ...base, color: colors.textPrimary }
   }
 }

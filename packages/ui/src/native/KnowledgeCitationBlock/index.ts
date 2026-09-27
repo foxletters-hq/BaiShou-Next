@@ -1,1 +1,1 @@
-export { KnowledgeCitationBlock } from './KnowledgeCitationBlock'
+export { KnowledgeCitationBlock, useKnowledgeCitationOpener } from './KnowledgeCitationBlock'

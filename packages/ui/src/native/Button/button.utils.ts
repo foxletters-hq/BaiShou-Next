@@ -27,6 +27,10 @@ export function resolveNativeButtonVariant(
   if (variant === 'elevated' || variant === 'text' || variant === 'outlined') {
     return mapLegacyButtonVariant(variant, destructive)
   }
+  // 主 CTA 与桌面一致：描边表面，不用品牌实心
+  if (variant === 'primary' && !destructive) {
+    return { variant: 'outline' }
+  }
   if (destructive && (variant === 'primary' || variant === 'secondary')) {
     return { variant: 'danger' }
   }
