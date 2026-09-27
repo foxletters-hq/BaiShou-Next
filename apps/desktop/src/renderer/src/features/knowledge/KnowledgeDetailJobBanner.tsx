@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal } from '@baishou/ui'
 import { parseKnowledgeGraphStepError } from '@baishou/shared'
@@ -75,7 +75,8 @@ function organizeItemValue(
         ? t('knowledge.organize_phase_page', '第 {{completed}} 页', { completed: item.completed })
         : t('knowledge.organize_phase_running', '进行中')
   if (item.activity === 'parse') return `${t('knowledge.organize_item_parse', '读取 PDF')} ${count}`
-  if (item.activity === 'render') return `${t('knowledge.organize_item_render', '渲染页面')} ${count}`
+  if (item.activity === 'render')
+    return `${t('knowledge.organize_item_render', '渲染页面')} ${count}`
   if (item.activity === 'recognize' || item.activity === 'vision') {
     return `${t('knowledge.organize_item_recognize', '识图')} ${count}`
   }
@@ -88,11 +89,7 @@ function phasePercent(row: KnowledgeOrganizePhaseRow): number {
   return Math.min(100, Math.max(0, Math.round((row.completed / row.total) * 100)))
 }
 
-function KnowledgeOrganizePhaseList({
-  phases
-}: {
-  phases: KnowledgeOrganizePhaseRow[]
-}) {
+function KnowledgeOrganizePhaseList({ phases }: { phases: KnowledgeOrganizePhaseRow[] }) {
   const { t } = useTranslation()
   return (
     <ul className={styles.organizePhaseList}>
@@ -157,7 +154,7 @@ export function KnowledgeDetailJobBanner({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
-  const sourceRows = jobProgress.sourceRows ?? []
+  const sourceRows = useMemo(() => jobProgress.sourceRows ?? [], [jobProgress.sourceRows])
   const [openSourceId, setOpenSourceId] = useState<string | null>(
     knowledgeOrganizeDefaultSourceId(sourceRows)
   )
@@ -210,9 +207,7 @@ export function KnowledgeDetailJobBanner({
             title: jobProgress.currentTitle
           })
         : compactLabel
-  const jobError = jobProgress.error
-    ? knowledgeIngestUserMessage(jobProgress.error, t)
-    : ''
+  const jobError = jobProgress.error ? knowledgeIngestUserMessage(jobProgress.error, t) : ''
 
   return (
     <>
@@ -276,9 +271,7 @@ export function KnowledgeDetailJobBanner({
             {jobProgress.items.map((item) => (
               <li key={item.sourceId} className={styles.organizeItem}>
                 <span className={styles.organizeItemTitle}>{item.title}</span>
-                <span className={styles.organizeItemValue}>
-                  {organizeItemValue(t, item)}
-                </span>
+                <span className={styles.organizeItemValue}>{organizeItemValue(t, item)}</span>
               </li>
             ))}
           </ul>

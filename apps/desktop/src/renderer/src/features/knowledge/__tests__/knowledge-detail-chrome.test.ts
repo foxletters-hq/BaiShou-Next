@@ -22,6 +22,8 @@ function readKnowledgeDetailChrome(): string {
     'KnowledgeSourceFragmentDialog.tsx',
     'knowledge-detail-labels.util.ts',
     'useKnowledgeDetailRefresh.ts',
+    'useKnowledgeDetailJobWatch.ts',
+    'knowledge-vision-display.util.ts',
     'useKnowledgeDetailImport.ts',
     'useKnowledgeDetailActions.ts',
     'useKnowledgeDetailPreview.ts',
@@ -38,7 +40,8 @@ function readNotebookGraphChrome(): string {
     'NotebookGraphDetailTab.tsx',
     'NotebookGraphSidePanel.tsx',
     'NotebookGraphOverlays.tsx',
-    'useNotebookGraphMerge.ts'
+    'useNotebookGraphMerge.ts',
+    'notebook-graph-pending-reviews.ts'
   ]
     .map(readKnowledge)
     .join('\n')
@@ -184,7 +187,9 @@ describe('knowledge detail chrome', () => {
     const pane = readNotebookGraphChrome()
     const page = readKnowledgeDetailChrome()
     expect(pane.indexOf("onOpenSide('ops')")).toBeLessThan(pane.indexOf("onOpenSide('settings')"))
-    expect(pane.indexOf("onOpenSide('settings')")).toBeLessThan(pane.indexOf("onOpenSide('content')"))
+    expect(pane.indexOf("onOpenSide('settings')")).toBeLessThan(
+      pane.indexOf("onOpenSide('content')")
+    )
     expect(pane.indexOf("t('graph.tab_reextract'")).toBeLessThan(
       pane.indexOf("t('graph.tab_pending_count'")
     )
@@ -213,7 +218,7 @@ describe('knowledge detail chrome', () => {
     expect(pane).toContain('listGraphSimilarPairs')
     expect(pane).toContain('mergeGraphNodes')
     expect(pane).toContain('forbiddenAnchorTypes={[' + "'source'" + ']}')
-    expect(pane).toContain("searchNodes={props.searchMergeNodes}")
+    expect(pane).toContain('searchNodes={props.searchMergeNodes}')
     expect(pane).toContain("t('graph.search_semantic'")
     expect(pane).toContain("useState<GraphSearchMode>('semantic'")
   })

@@ -1,6 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { GraphIrreversibleConfirm, type GraphMergeConfirmTarget } from '../graph/GraphIrreversibleConfirm'
+import {
+  GraphIrreversibleConfirm,
+  type GraphMergeConfirmTarget
+} from '../graph/GraphIrreversibleConfirm'
 import { GraphMergeSearchModal, type GraphMergeSearchHit } from '../graph/GraphMergeSearchModal'
 import { graphMergeSearchSeed } from '../graph/graph-page-view.util'
 import type { NotebookGraphViewNode } from './notebook-graph-view.util'

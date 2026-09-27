@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
-import { getProviderIcon, useTheme } from '@baishou/ui'
+import { useTheme } from '@baishou/ui'
 import {
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
@@ -12,6 +12,7 @@ import {
 import { useSettingsStore } from '@baishou/store'
 import { callKnowledgeApi } from './call-knowledge-api'
 import { knowledgeExtractSettingsVisibility } from './knowledge-extract-settings-visibility.util'
+import { resolveKnowledgeVisionDisplay } from './knowledge-vision-display.util'
 import { OCR_LANGUAGE_PRESETS } from './knowledge-detail-labels.util'
 import type {
   KnowledgeEngineCaps,
@@ -21,6 +22,7 @@ import type {
 import { buildNotebookOpenGuideRows } from './notebook-open-guide.util'
 import { resolveNotebookProviderIconSrc } from './notebook-status-icon.util'
 import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
+import { useKnowledgeDetailJobWatch } from './useKnowledgeDetailJobWatch'
 import {
   formatNotebookGraphProgress,
   graphPageSpan,
@@ -165,8 +167,8 @@ export function useKnowledgeDetailRefresh(
           const done = Math.min(total, Math.max(prev?.done ?? 0, snap.windowsDone ?? 0))
           const pages =
             (snap.windowsDone ?? 0) >= (prev?.done ?? 0)
-              ? graphPageSpan(snap) ?? graphPageSpan(prev)
-              : graphPageSpan(prev) ?? graphPageSpan(snap)
+              ? (graphPageSpan(snap) ?? graphPageSpan(prev))
+              : (graphPageSpan(prev) ?? graphPageSpan(snap))
           return {
             done,
             total,
@@ -193,14 +195,14 @@ export function useKnowledgeDetailRefresh(
           failed: graphJobs.failed,
           currentSourceTitle: graphJobs.currentSourceTitle,
           knownTotal: graphKnownTotal,
-        windowsDone: graphWindowProgress?.done,
-        windowsTotal: graphWindowProgress?.total,
-        pageFrom: graphWindowProgress?.pageFrom,
-        pageTo: graphWindowProgress?.pageTo,
-        pageTotal: graphWindowProgress?.pageTotal,
-        lastError: graphJobs.lastError
-          ? knowledgeIngestUserMessage(graphJobs.lastError, t)
-          : null,
+          windowsDone: graphWindowProgress?.done,
+          windowsTotal: graphWindowProgress?.total,
+          pageFrom: graphWindowProgress?.pageFrom,
+          pageTo: graphWindowProgress?.pageTo,
+          pageTotal: graphWindowProgress?.pageTotal,
+          lastError: graphJobs.lastError
+            ? knowledgeIngestUserMessage(graphJobs.lastError, t)
+            : null,
           failedSourceTitle: graphJobs.failedSourceTitle
         }),
         (key, params) => t(key, params)
@@ -293,33 +295,21 @@ export function useKnowledgeDetailRefresh(
     })
   }, [engine, globalModels, isDark, providers, sources.length, visionModelId, visionProviderId])
 
-  const visionDisplay = useMemo(() => {
-    const visionHit = resolveProviderModelSlot(
-      providers,
-      buildVisionLanguageSlots({
+  const visionDisplay = useMemo(
+    () =>
+      resolveKnowledgeVisionDisplay({
+        providers,
         visionProviderId,
-        visionModelId
-      })
-    )
-    const providerId = visionHit?.providerId || ''
-    const modelId = visionHit?.modelId || ''
-    const provider = providers.find((p) => p.id === providerId)
-    const iconSrc =
-      (providerId ? getProviderIcon(providerId, isDark) : undefined) ||
-      (provider?.type ? getProviderIcon(provider.type, isDark) : undefined)
-    return {
-      isCustom: Boolean(visionProviderId && visionModelId),
-      providerId,
-      modelId,
-      iconSrc
-    }
-  }, [visionProviderId, visionModelId, globalModels, providers, isDark])
+        visionModelId,
+        isDark
+      }),
+    [visionProviderId, visionModelId, providers, isDark]
+  )
 
-  const ocrPresetValue = ocrUseCustom
-    ? '__custom__'
-    : OCR_LANGUAGE_PRESETS.some((p) => p.value === ocrLanguage)
-      ? ocrLanguage
-      : '__custom__'
+  const ocrPresetValue =
+    ocrUseCustom || !OCR_LANGUAGE_PRESETS.some((p) => p.value === ocrLanguage)
+      ? '__custom__'
+      : ocrLanguage
   const { showOcrSettings, showVisionSettings } = knowledgeExtractSettingsVisibility(engine)
 
   const refresh = useCallback(async () => {
@@ -339,7 +329,7 @@ export function useKnowledgeDetailRefresh(
         const row = byId.get(id)
         return Boolean(
           row &&
-            (row.status === 'pending' || row.status === 'extracting' || row.status === 'embedding')
+          (row.status === 'pending' || row.status === 'extracting' || row.status === 'embedding')
         )
       })
       return next.length === prev.length && next.every((id, index) => id === prev[index])
@@ -449,108 +439,25 @@ export function useKnowledgeDetailRefresh(
   }, [hasActiveIngest, refresh, reprocessWatching])
 
   useEffect(() => {
-    const unsubscribe = window.api.knowledge.onOcrProgress?.((progress) => {
-      if (progress.total <= 0) {
-        setOcrProgressBySource((prev) => {
-          if (!prev[progress.sourceId]) return prev
-          const next = { ...prev }
-          delete next[progress.sourceId]
-          return next
-        })
-        void refresh().catch(() => undefined)
-        return
-      }
-      setOcrProgressBySource((prev) => ({
-        ...prev,
-        [progress.sourceId]: {
-          page: progress.page,
-          total: progress.total,
-          phase: progress.phase
-        }
-      }))
-      if (progress.page >= progress.total && progress.total > 0) {
-        void refresh().catch(() => undefined)
-      }
-    })
-    return () => {
-      unsubscribe?.()
-    }
-  }, [refresh])
-
-  useEffect(() => {
     void useSettingsStore.getState().ensureConfigKeys(['globalModels', 'providers'])
   }, [])
 
-  useEffect(() => {
-    const onProgress = (progress?: {
-      windowsDone?: number
-      windowsTotal?: number
-      pageFrom?: number
-      pageTo?: number
-      pageTotal?: number
-    }) => {
-      if (typeof progress?.windowsTotal === 'number' && progress.windowsTotal > 0) {
-        const pages = graphPageSpan(progress)
-        setGraphWindowProgress({
-          done: Number(progress.windowsDone ?? 0),
-          total: progress.windowsTotal,
-          pageFrom: pages?.pageFrom,
-          pageTo: pages?.pageTo,
-          pageTotal: pages?.pageTotal
-        })
-      }
-      void refreshGraphJobs()
-      void refresh().catch(() => undefined)
-    }
-    const unsubscribe = window.api.knowledge.onGraphProgress?.(onProgress)
-    let fallback: (() => void) | undefined
-    if (!unsubscribe && typeof window.electron?.ipcRenderer?.on === 'function') {
-      const handler = (
-        _event: unknown,
-        progress?: {
-          windowsDone?: number
-          windowsTotal?: number
-          pageFrom?: number
-          pageTo?: number
-          pageTotal?: number
-        }
-      ) => onProgress(progress)
-      const off = window.electron.ipcRenderer.on('knowledge:graph-progress', handler)
-      fallback = typeof off === 'function' ? off : undefined
-    }
-    return () => {
-      unsubscribe?.()
-      fallback?.()
-    }
-  }, [refresh, refreshGraphJobs])
-
-  useEffect(() => {
-    if (graphJobs.pending <= 0 && graphJobs.running <= 0 && !graphBusy && !reprocessWatching) return
-    const timer = window.setInterval(() => {
-      void refreshGraphJobs()
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [graphBusy, graphJobs.pending, graphJobs.running, refreshGraphJobs, reprocessWatching])
-
-  useEffect(() => {
-    if (!reprocessWatching) return
-    const active = hasActiveIngest || graphJobs.pending > 0 || graphJobs.running > 0
-    if (active) {
-      reprocessSawWorkRef.current = true
-      return
-    }
-    if (!reprocessSawWorkRef.current) return
-    setReprocessWatching(false)
-    setStatus(t('knowledge.data_manage_reprocess_done', '重新整理已完成'))
-  }, [graphJobs.pending, graphJobs.running, hasActiveIngest, reprocessWatching, setStatus, t])
-
-  useEffect(() => {
-    if (vectorPending > 0) {
-      setVectorKnownTotal((prev) => Math.max(prev, vectorPending))
-      return
-    }
-    if (!reprocessWatching && !hasActiveIngest) setVectorKnownTotal(0)
-  }, [hasActiveIngest, reprocessWatching, vectorPending])
+  useKnowledgeDetailJobWatch({
+    refresh,
+    refreshGraphJobs,
+    setOcrProgressBySource,
+    setGraphWindowProgress,
+    graphBusy,
+    graphJobs,
+    reprocessWatching,
+    setReprocessWatching,
+    reprocessSawWorkRef,
+    hasActiveIngest,
+    vectorPending,
+    setVectorKnownTotal,
+    setStatus,
+    t
+  })
 
   return {
     notebookName,

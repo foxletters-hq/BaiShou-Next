@@ -178,9 +178,12 @@ export function useKnowledgeDetailActions(input: {
     [refresh, setError, setOcrProgressBySource, setStatus, t]
   )
 
-  const queueSource = useCallback((sourceId: string) => {
-    setQueuedSourceIds((prev) => (prev.includes(sourceId) ? prev : [...prev, sourceId]))
-  }, [setQueuedSourceIds])
+  const queueSource = useCallback(
+    (sourceId: string) => {
+      setQueuedSourceIds((prev) => (prev.includes(sourceId) ? prev : [...prev, sourceId]))
+    },
+    [setQueuedSourceIds]
+  )
 
   const onRetry = useCallback(
     async (sourceId: string) => {
