@@ -1,24 +1,10 @@
 import {
-  deriveLegacyVaultId,
-  EMBEDDING_NOT_CONFIGURED,
-  KNOWLEDGE_MODEL_MISMATCH,
   normalizeKnowledgeImportProcessMode,
   parseMountedNotebookIds,
   shouldDeferKnowledgeImportOrganize,
-  type KnowledgeImportProcessMode,
-  type ToolKnowledgeGraphSearchResult
+  type KnowledgeImportProcessMode
 } from '@baishou/shared'
-import {
-  expoKnowledgeConnectionManager,
-  KnowledgeRepository,
-  type ExpoSqliteDatabase
-} from '@baishou/database/expo'
-import {
-  KnowledgeSearchService,
-  searchMountedKnowledgeNotebooks,
-  searchNotebookGraphForTool,
-  type KnowledgeSqlExecutor
-} from '@baishou/core-mobile'
+import { expoKnowledgeConnectionManager } from '@baishou/database/expo'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import {
   ensureMobileRawDataRuntime,
@@ -26,83 +12,16 @@ import {
   resolveMobileEmbeddingForHydration
 } from './mobile-raw-data-source.runtime'
 import { createMobileFileSystem } from './create-mobile-file-system'
+import {
+  requireMobileKnowledgeRepo as requireRepo,
+  resolveMobileActiveVaultId
+} from './mobile-knowledge-repo'
 
-function requireRepo(): KnowledgeRepository {
-  if (!expoKnowledgeConnectionManager.isConnected()) {
-    throw new Error('knowledge db not connected')
-  }
-  return new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
-}
-
-export async function resolveMobileActiveVaultId(): Promise<string> {
-  const runtime = agentDbRuntimeRef.current
-  if (runtime?.pathService) {
-    try {
-      const stored = await runtime.pathService.getLocalActiveVaultId()
-      if (stored?.trim()) return stored.trim()
-      const name = await runtime.pathService.getActiveVaultNameForContext()
-      if (name?.trim()) return deriveLegacyVaultId(name.trim())
-    } catch {
-      /* fall through */
-    }
-  }
-  return deriveLegacyVaultId('Personal')
-}
-
-function createKnowledgeSqlExecutor(expoDb: ExpoSqliteDatabase): KnowledgeSqlExecutor {
-  const db = expoDb as ExpoSqliteDatabase & {
-    getAllSync?: (sql: string, params?: unknown[]) => unknown[]
-  }
-  return {
-    all(sql, params = []) {
-      if (typeof db.getAllSync !== 'function') {
-        throw new Error('expo-sqlite getAllSync unavailable for knowledge search')
-      }
-      return db.getAllSync(sql, params) as Array<Record<string, unknown>>
-    }
-  }
-}
+export { resolveMobileActiveVaultId } from './mobile-knowledge-repo'
+export { mobileListMountSummaries } from './mobile-knowledge-mount.service'
 
 export async function mobileListNotebooks() {
   return requireRepo().listNotebooks({ vaultId: await resolveMobileActiveVaultId() })
-}
-
-export async function mobileListMountSummaries() {
-  const repo = requireRepo()
-  const vaultId = await resolveMobileActiveVaultId()
-  const notebooks = await repo.listNotebooks({ vaultId })
-  const stats = await repo.listNotebookStats(vaultId)
-  const statsById = new Map(stats.map((row) => [row.notebookId, row]))
-  const profiles = await repo.listNotebookEmbeddingProfiles({
-    vaultId,
-    notebookIds: notebooks.map((row) => row.id)
-  })
-  const graphCounts = await repo.listNotebookGraphCounts(vaultId)
-  const graphById = new Map(graphCounts.map((row) => [row.notebookId, row]))
-  const profilesById = new Map<string, typeof profiles>()
-  for (const profile of profiles) {
-    const list = profilesById.get(profile.notebookId) ?? []
-    list.push(profile)
-    profilesById.set(profile.notebookId, list)
-  }
-  return notebooks.map((notebook) => {
-    const stat = statsById.get(notebook.id)
-    const notebookProfiles = profilesById.get(notebook.id) ?? []
-    const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
-    const graph = graphById.get(notebook.id)
-    return {
-      id: notebook.id,
-      name: notebook.name,
-      coverTone: notebook.coverTone,
-      coverIcon: notebook.coverIcon,
-      sources: stat?.sources ?? 0,
-      chunks: stat?.chunks ?? 0,
-      dimension: dimensions.length === 1 ? dimensions[0]! : null,
-      mixedEmbeddings: dimensions.length > 1,
-      graphNodes: graph?.nodes ?? 0,
-      graphEdges: graph?.edges ?? 0
-    }
-  })
 }
 
 export async function mobileListSources(notebookId: string) {
@@ -122,75 +41,6 @@ export async function mobileGetKnowledgeStats(notebookId?: string) {
 
 export async function mobileListNotebookStats() {
   return requireRepo().listNotebookStats(await resolveMobileActiveVaultId())
-}
-
-export async function mobileGetNotebookGraphView(notebookId: string, maxNodes = 80) {
-  const id = notebookId.trim()
-  if (!id) throw new Error('notebookId required')
-  const { NotebookGraphRepository } = await import('@baishou/database/expo')
-  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-  return repo.getView({
-    vaultId: await resolveMobileActiveVaultId(),
-    notebookId: id,
-    maxNodes
-  })
-}
-
-export async function mobileSearchNotebookGraph(opts: {
-  query: string
-  notebookId?: string
-  notebookIds?: string[]
-  limit?: number
-}) {
-  const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
-  if (notebookIds.length === 0) throw new Error('notebookId required')
-  const { NotebookGraphRepository } = await import('@baishou/database/expo')
-  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-  const knowledgeRepo = requireRepo()
-  const vaultId = await resolveMobileActiveVaultId()
-  const notebooks = await knowledgeRepo.listNotebooks({ vaultId })
-  const nameById = new Map(notebooks.map((row) => [row.id, row.name]))
-  const { embedQuery, modelId } = await resolveMobileNotebookGraphEmbed()
-  const groups: ToolKnowledgeGraphSearchResult[] = []
-  for (const notebookId of notebookIds) {
-    const result = await searchNotebookGraphForTool(repo, {
-      vaultId,
-      notebookId,
-      query: opts.query,
-      limit: opts.limit,
-      embedQuery,
-      modelId
-    })
-    groups.push({
-      notebookId,
-      notebookName: nameById.get(notebookId) || notebookId,
-      nodes: result.nodes.map((node) => ({ ...node, notebookId })),
-      edges: result.edges.map((edge) => ({ ...edge, notebookId })),
-      paths: result.paths
-    })
-  }
-  return groups
-}
-
-async function resolveMobileNotebookGraphEmbed(): Promise<{
-  embedQuery?: (text: string) => Promise<number[] | null>
-  modelId?: string
-}> {
-  const runtime = agentDbRuntimeRef.current
-  if (!runtime?.settingsManager) return {}
-  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
-  if (!emb.embeddingProvider || !emb.embeddingModelId) return {}
-  const provider = emb.embeddingProvider
-  const modelId = emb.embeddingModelId
-  return {
-    modelId,
-    embedQuery: async (text) => {
-      const { embed } = await import('ai')
-      const model = provider.getEmbeddingModel(modelId) as never
-      const { embedding } = await embed({ model, value: text })
-      return Array.from(embedding)
-    }
-  }
 }
 
 export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): Promise<boolean> {
@@ -308,9 +158,8 @@ async function buildMobileIngestService() {
     deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
     deleteNotebookGraphSource: ({ notebookId, sourceId }) =>
       graphRaw.deleteSourceShards(notebookId, sourceId),
-    getExtractConfig: (
-      await import('./mobile-knowledge-extract-config')
-    ).resolveMobileKnowledgeExtractConfig,
+    getExtractConfig: (await import('./mobile-knowledge-extract-config'))
+      .resolveMobileKnowledgeExtractConfig,
     onExtractProgress: (await import('./mobile-knowledge-extract-config'))
       .emitMobileKnowledgeExtractProgress
   })
@@ -411,6 +260,7 @@ export async function mobileImportSource(input: {
   absolutePath?: string
   fileName?: string
   importProcessMode?: KnowledgeImportProcessMode | string
+  extractEngine?: 'ocr' | 'vision'
 }): Promise<{ sourceId: string }> {
   const { fetchUrlAsMarkdown } = await import('@baishou/ai')
   let payload = { ...input }
@@ -443,7 +293,8 @@ export async function mobileImportSource(input: {
     originUrl: payload.originUrl,
     absolutePath: payload.absolutePath,
     fileName: payload.fileName,
-    importProcessMode
+    importProcessMode,
+    extractEngine: input.extractEngine
   })
 
   if (!shouldDeferKnowledgeImportOrganize(importProcessMode)) {
@@ -460,6 +311,8 @@ export async function resolveMobileKnowledgeFilePath(
   const { cacheDirectory } = await import('./mobile-sandbox-fs')
   const { importUriToPath } = await import('./mobile-uri-import')
   const fileSystem = createMobileFileSystem()
+  // 去掉路径非法字符和控制字符，避免落到缓存名里
+  // eslint-disable-next-line no-control-regex -- 文件名消毒需要匹配 ASCII 控制字符
   const safeName = fileName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_') || 'import.bin'
   const destUri = `${String(cacheDirectory || '').replace(/\/$/, '')}/kb-import-${Date.now()}-${safeName}`
   const destPath = destUri.replace(/^file:\/\//, '')
@@ -467,67 +320,14 @@ export async function resolveMobileKnowledgeFilePath(
   return destPath
 }
 
-/** 供 Agent knowledge_search 工具注入 */
-export async function mobileSearchKnowledge(opts: {
-  query: string
-  notebookId?: string
-  notebookIds?: string[]
-  limit?: number
-  limitPerNotebook?: number
-}): Promise<
-  Array<{
-    chunkId: string
-    sourceId: string
-    notebookId: string
-    notebookName?: string
-    chunkIndex: number
-    chunkText: string
-    score: number
-    title?: string
-    offset?: number
-    len?: number
-  }>
-> {
-  const runtime = agentDbRuntimeRef.current
-  if (!runtime?.settingsManager) throw new Error('runtime not ready')
-  if (!expoKnowledgeConnectionManager.isConnected()) {
-    throw new Error('knowledge db not connected')
-  }
-  const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
-  if (notebookIds.length === 0) throw new Error('notebookId required')
-  const mismatch = await mobileHasKnowledgeModelMismatch(notebookIds)
-  if (mismatch) {
-    throw new Error(KNOWLEDGE_MODEL_MISMATCH)
-  }
-  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
-  if (!emb.embeddingProvider || !emb.embeddingModelId) {
-    throw new Error(EMBEDDING_NOT_CONFIGURED)
-  }
-  const repo = requireRepo()
-  const expoDb = expoKnowledgeConnectionManager.getExpoDb()
-  const search = new KnowledgeSearchService({
-    sql: createKnowledgeSqlExecutor(expoDb),
-    getSourceTitle: async (sourceId) => {
-      const row = await repo.getSource(sourceId)
-      return row?.title ?? null
-    }
-  })
-  const vaultId = await resolveMobileActiveVaultId()
-  const profiles = await repo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })
-  const { embed } = await import('ai')
-  const model = emb.embeddingProvider.getEmbeddingModel(emb.embeddingModelId) as never
-  const { embedding } = await embed({ model, value: opts.query })
-  return searchMountedKnowledgeNotebooks({
-    query: opts.query,
-    notebookIds,
-    queryVector: Array.from(embedding),
-    currentModelId: emb.embeddingModelId,
-    profiles,
-    search,
-    limit: opts.limit,
-    limitPerNotebook: opts.limitPerNotebook
-  })
-}
+export {
+  mobileSearchKnowledge,
+  mobileListKnowledgeChunks,
+  mobileSearchNotebookGraphNodes,
+  mobileListNotebookGraphJobs,
+  mobileGetNotebookGraphView,
+  mobileSearchNotebookGraph
+} from './mobile-knowledge-search.service'
 
 export {
   mobileGetKnowledgeConfig,
@@ -537,7 +337,9 @@ export {
 
 export async function mobileGetKnowledgeCapabilities() {
   const { probeExtractEngineCapabilities } = await import('@baishou/core-mobile')
-  const cfg = await (await import('./mobile-knowledge-extract-config')).resolveMobileKnowledgeExtractConfig()
+  const cfg = await (
+    await import('./mobile-knowledge-extract-config')
+  ).resolveMobileKnowledgeExtractConfig()
   return probeExtractEngineCapabilities({
     visionModelConfigured: cfg.visionModelConfigured,
     visionModelId: cfg.visionModelId,
@@ -618,76 +420,20 @@ export async function mobileProbeExtractSample(input: {
   if (!manager) throw new Error('notebook manager unavailable')
   const abs = await manager.absolutePath(source.relativePath)
   const { probeKnowledgeExtractSample } = await import('@baishou/core-mobile')
-  const {
-    clampOcrConcurrency,
-    normalizeKnowledgeDefaultExtractEngine
-  } = await import('@baishou/shared')
+  const { clampOcrConcurrency, normalizeKnowledgeDefaultExtractEngine } =
+    await import('@baishou/shared')
   const cfg = await (await import('./mobile-knowledge-extract-config')).mobileGetKnowledgeConfig()
+  const extractCfg = await (
+    await import('./mobile-knowledge-extract-config')
+  ).resolveMobileKnowledgeExtractConfig()
   return probeKnowledgeExtractSample({
     source,
     absolutePath: abs,
     engine: normalizeKnowledgeDefaultExtractEngine(input.engine),
     language: input.ocrLanguage ?? cfg.ocrLanguage,
     dpi: cfg.ocrDpi,
-    concurrency: clampOcrConcurrency(input.ocrConcurrency ?? cfg.ocrConcurrency)
+    concurrency: clampOcrConcurrency(input.ocrConcurrency ?? cfg.ocrConcurrency),
+    visionProviderId: extractCfg.visionProviderId,
+    visionModelId: extractCfg.visionModelId
   })
-}
-
-export async function mobileListKnowledgeChunks(input: {
-  notebookId: string
-  limit?: number
-  offset?: number
-  query?: string
-}) {
-  const notebookId = input.notebookId.trim()
-  if (!notebookId) throw new Error('notebookId required')
-  return requireRepo().listChunksByNotebook({
-    notebookId,
-    limit: input.limit,
-    offset: input.offset,
-    query: input.query
-  })
-}
-
-export async function mobileSearchNotebookGraphNodes(input: {
-  notebookId: string
-  query: string
-  limit?: number
-}) {
-  const notebookId = input.notebookId.trim()
-  if (!notebookId) throw new Error('notebookId required')
-  const { NotebookGraphRepository } = await import('@baishou/database/expo')
-  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-  return repo.searchNodes({
-    vaultId: await resolveMobileActiveVaultId(),
-    notebookId,
-    query: input.query,
-    limit: input.limit
-  })
-}
-
-export async function mobileListNotebookGraphJobs(notebookId: string) {
-  const id = notebookId.trim()
-  if (!id) throw new Error('notebookId required')
-  const repo = requireRepo()
-  const { listLiveGraphSourceIds } = await import('@baishou/core-mobile')
-  const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
-  const live = new Set(listLiveGraphSourceIds())
-  const sources = await repo.listSources(id)
-  const titleById = new Map(sources.map((row) => [row.id, row.title]))
-  const items = jobs.map((job) => ({
-    sourceId: job.sourceId,
-    title: titleById.get(job.sourceId) || job.sourceId,
-    status: live.has(job.sourceId) ? 'running' : job.status,
-    lastError: job.lastError
-  }))
-  const running = items.find((item) => item.status === 'running')
-  return {
-    pending: items.filter((item) => item.status === 'pending' || item.status === 'running').length,
-    running: items.filter((item) => item.status === 'running').length,
-    failed: items.filter((item) => item.status === 'failed').length,
-    currentSourceId: running?.sourceId ?? null,
-    currentSourceTitle: running?.title ?? null,
-    items
-  }
 }

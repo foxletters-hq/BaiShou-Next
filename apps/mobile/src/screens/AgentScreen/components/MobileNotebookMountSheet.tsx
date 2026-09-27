@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import { Image, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   canToggleMountedNotebook,
@@ -139,6 +139,26 @@ export function MobileNotebookMountSheet({
                   void persist(result.next)
                 }}
               />
+              <View
+                style={{
+                  width: tokens.spacing.xl,
+                  height: tokens.spacing.xl,
+                  borderRadius: tokens.radius.sm,
+                  overflow: 'hidden',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.bgSurface
+                }}
+              >
+                {row.coverImageUrl ? (
+                  <Image
+                    source={{ uri: row.coverImageUrl }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                ) : (
+                  <Text>{appearance.icon}</Text>
+                )}
+              </View>
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
@@ -147,7 +167,7 @@ export function MobileNotebookMountSheet({
                     fontWeight: settingsTypography.row.fontWeight
                   }}
                 >
-                  {appearance.icon} {row.name}
+                  {row.name}
                 </Text>
                 <Text
                   style={{
@@ -178,7 +198,17 @@ export function MobileNotebookMountSheet({
           )
         })}
       </ScrollView>
-      <View style={{ marginTop: tokens.spacing.md }}>
+      <View style={{ marginTop: tokens.spacing.md, gap: tokens.spacing.sm }}>
+        {selectedIds.length > 0 ? (
+          <Button
+            variant="outlined"
+            onPress={() => {
+              void persist([])
+            }}
+          >
+            {t('knowledge.notebook_mount_clear', '取消全部挂载')}
+          </Button>
+        ) : null}
         <Button onPress={onClose}>{t('common.close')}</Button>
       </View>
     </Modal>
