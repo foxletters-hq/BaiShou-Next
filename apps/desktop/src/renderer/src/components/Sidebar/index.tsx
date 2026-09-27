@@ -6,7 +6,7 @@ import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useUserProfileStore } from '@baishou/store'
-import { useToast } from '@baishou/ui/desktop/Toast/useToast'
+import { ImagePreview, useToast } from '@baishou/ui'
 import { isCustomUserAvatar, resolveCompanionReturnPath } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
 import {
@@ -169,7 +169,13 @@ export const Sidebar: React.FC = () => {
       >
         <div className={styles.brandRow}>
           <div className={styles.logoBox}>
-            <img src={appIcon} alt="Logo" className={styles.brandLogo} />
+            <ImagePreview
+              src={appIcon}
+              alt={t('common.app_title', 'BaiShou')}
+              title={t('sidebar.view_brand_icon', '查看图标')}
+              className={styles.brandLogo}
+              downloadFileName="白守.png"
+            />
           </div>
           <div className={styles.brandText}>
             <div className={styles.brandName}>{t('common.app_title', 'BaiShou')}</div>

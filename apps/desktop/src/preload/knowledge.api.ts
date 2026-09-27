@@ -152,7 +152,7 @@ export const knowledgeApi = {
       ipcRenderer.invoke('knowledge:get-source-file', input) as Promise<KnowledgeSourceFilePreview>,
     getGraphView: (input: { notebookId: string; maxNodes?: number }) =>
       ipcRenderer.invoke('knowledge:get-graph-view', input),
-    graphSearch: (input: { notebookId: string; query: string; limit?: number }) =>
+    graphSearch: (input: { notebookId: string; query: string; limit?: number; mode?: string }) =>
       ipcRenderer.invoke('knowledge:graph-search', input),
     setGraphNodeReview: (input: {
       notebookId: string

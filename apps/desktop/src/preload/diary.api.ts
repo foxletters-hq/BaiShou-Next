@@ -42,6 +42,9 @@ export const diaryApi = {
     listDiaryAttachments: () => ipcRenderer.invoke('attachment:listDiaryAttachments'),
     deleteDiaryAttachment: (filePath: string) =>
       ipcRenderer.invoke('attachment:deleteDiaryAttachment', filePath),
+    listEmojiAttachments: () => ipcRenderer.invoke('attachment:listEmojiAttachments'),
+    deleteEmojiAttachments: (relativePaths: string[]) =>
+      ipcRenderer.invoke('attachment:deleteEmojiAttachments', relativePaths),
     getThumbnail: (filePath: string, maxSize?: number) =>
       ipcRenderer.invoke('attachment:getThumbnail', filePath, maxSize),
     getFullImage: (filePath: string) => ipcRenderer.invoke('attachment:getFullImage', filePath)

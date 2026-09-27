@@ -177,6 +177,12 @@ export const agentWorkspaceApi = {
     inputId: string
   ): Promise<import('@baishou/shared').SessionInputRecord | null> =>
     ipcRenderer.invoke('agent-workspace:cancel-pending-input', inputId),
+  updatePendingInput: (params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent-workspace:update-pending-input', params),
   previewRollback: (params: {
     sessionId: string
     userMessageId: string
