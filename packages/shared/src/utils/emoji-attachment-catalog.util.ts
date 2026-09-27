@@ -15,7 +15,10 @@ export interface EmojiAttachmentCatalogItem extends EmojiAttachmentFileRecord {
 }
 
 function emojiFileKey(relativePath: string): string {
-  const normalized = relativePath.trim().replace(/\\/g, '/').replace(/^local:\/\/+\//i, '')
+  const normalized = relativePath
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^local:\/\/+\//i, '')
   const idx = normalized.toLowerCase().lastIndexOf('emojis/')
   if (idx >= 0) return normalized.slice(idx)
   const name = normalized.split('/').pop()

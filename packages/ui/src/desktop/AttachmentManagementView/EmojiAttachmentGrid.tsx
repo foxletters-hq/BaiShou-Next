@@ -3,7 +3,6 @@ import { FolderMinus, Trash2, FolderSearch, Maximize2 } from 'lucide-react'
 import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './AttachmentManagementView.module.css'
 import { Pagination } from '../Pagination'
-import { Button } from '../Button/Button'
 import { PageSizeSelector } from '../PageSizeSelector'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 

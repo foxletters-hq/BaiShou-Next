@@ -3,7 +3,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../ImagePreview.tsx'), 'utf8')
+const src = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../ImagePreview.tsx'),
+  'utf8'
+)
 
 describe('ImagePreview chrome', () => {
   it('should offer save in the toolbar and context menu', () => {

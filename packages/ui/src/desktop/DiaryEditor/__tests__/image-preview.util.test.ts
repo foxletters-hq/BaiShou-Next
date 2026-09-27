@@ -38,9 +38,7 @@ describe('savePreviewImage', () => {
     const result = await savePreviewImage('https://example.com/icon.png', { fileName: '白守.png' })
 
     expect(result).toEqual({ success: true })
-    expect(picker).toHaveBeenCalledWith(
-      expect.objectContaining({ suggestedName: '白守.png' })
-    )
+    expect(picker).toHaveBeenCalledWith(expect.objectContaining({ suggestedName: '白守.png' }))
     expect(write).toHaveBeenCalled()
     expect(close).toHaveBeenCalled()
   })

@@ -199,7 +199,9 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         toast.showError(res?.error || t('markdown.copy_image_failed', '复制失败'))
       }
     } catch (err) {
-      toast.showError(err instanceof Error ? err.message : t('markdown.copy_image_failed', '复制失败'))
+      toast.showError(
+        err instanceof Error ? err.message : t('markdown.copy_image_failed', '复制失败')
+      )
     }
   }, [src, copySource, t, toast])
 
@@ -213,7 +215,9 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
         toast.showError(res.error || t('image_preview.save_failed', '保存失败'))
       }
     } catch (err) {
-      toast.showError(err instanceof Error ? err.message : t('image_preview.save_failed', '保存失败'))
+      toast.showError(
+        err instanceof Error ? err.message : t('image_preview.save_failed', '保存失败')
+      )
     }
   }, [src, alt, downloadFileName, t, toast])
 
