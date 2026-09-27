@@ -62,8 +62,8 @@ export const workbenchEditorTheme = EditorView.baseTheme({
       'color-mix(in srgb, var(--text-primary) 7%, var(--bg-surface-low, var(--bg-surface))) !important'
   },
   '&.workbench-cm-editor ::selection, &.workbench-cm-editor .cm-content ::selection': {
-    backgroundColor: 'color-mix(in srgb, var(--color-primary) 22%, transparent) !important',
-    color: 'var(--text-primary) !important'
+    backgroundColor: 'var(--text-selection-bg) !important',
+    color: 'var(--text-selection-fg) !important'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-h1': {
     fontSize: 'inherit',

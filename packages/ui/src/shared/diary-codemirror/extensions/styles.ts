@@ -103,6 +103,18 @@ export const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' })
 export const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' })
 export const linkMark = Decoration.mark({ class: 'cm-rendered-link' })
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+
+export function renderedLinkMark(href: string): Decoration {
+  return Decoration.mark({
+    class: 'cm-rendered-link',
+    attributes: {
+      'data-href': href,
+      title: isMac ? `${href} (⌘ + 单击打开)` : `${href} (Ctrl + 单击打开)`
+    }
+  })
+}
+
 export const tableSeparatorLineStyle = Decoration.line({ class: 'cm-table-separator-line' })
 
 class HorizontalRuleWidget extends WidgetType {

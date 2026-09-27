@@ -79,9 +79,9 @@
   /* Typography — UI 统一 Noto Sans SC（= 思源黑体简体）；按 html[lang] 切换 CJK 区域字形 */
   --font-family: 'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-family-main: var(--font-family);
-  /* 等宽优先；CJK 回退到 --font-family，避免 Diff/代码中文落到系统雅黑 */
+  /* 等宽优先；CJK 必须写在 generic 族名前，否则中文会走系统宋体/雅黑而到不了思源 */
   --font-family-mono:
-    'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, var(--font-family);
+    'JetBrains Mono', 'Fira Code', 'Consolas', var(--font-family), ui-monospace, monospace;
   /* 用户可调阅读字号（常规设置「字体大小」）；勿用于设置页 chrome token */
   --ui-font-scale: 1;
   --content-font-size: calc(14px * var(--ui-font-scale));
@@ -144,6 +144,10 @@
     box-shadow var(--duration-normal) var(--ease-out-cubic),
     background-color var(--duration-normal) var(--ease-out-cubic);
 
+  /* 文本选区：品牌蓝半透明洗底，字色保持正文色；勿用系统深蓝+反白 */
+  --text-selection-bg: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  --text-selection-fg: var(--text-primary);
+
   /*
    * 锚定菜单 / 下拉弹层（SSOT，对齐 ContextMenu / 工作台选择工作空间菜单）
    * 居中 Modal / Dialog 不走这套，见 Modal 组件。
@@ -193,6 +197,20 @@
   --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
   --shadow-glow: 0 0 12px rgba(0, 0, 0, 0.06);
+
+  /* Code Diff (Git 对比高亮 SSOT) */
+  --diff-add-bg: rgba(34, 197, 94, 0.12);
+  --diff-add-border: rgba(34, 197, 94, 0.35);
+  --diff-add-inline-bg: rgba(34, 197, 94, 0.28);
+  --diff-add-gutter: var(--color-success);
+  --diff-remove-bg: rgba(239, 68, 68, 0.10);
+  --diff-remove-border: rgba(239, 68, 68, 0.35);
+  --diff-remove-inline-bg: rgba(239, 68, 68, 0.24);
+  --diff-remove-gutter: var(--color-error);
+  --diff-hunk-bg: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface-normal));
+  --diff-hunk-fg: var(--color-primary-dark);
+  --diff-hunk-border: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  --diff-empty-bg: color-mix(in srgb, var(--text-primary) 3%, transparent);
 
   /* Motion */
   --duration-fast: 150ms;
@@ -271,6 +289,21 @@
   /* 表单聚焦：深色浅灰加深（约 0.24），勿再用 0.42 级重描边 */
   --form-field-border-focus: rgba(255, 255, 255, 0.24);
   --form-field-focus-ring: none;
+  --text-selection-bg: color-mix(in srgb, var(--color-primary) 28%, transparent);
+
+  /* Code Diff (深色模式专业对比增强，对齐 VS Code / GitHub Dark) */
+  --diff-add-bg: rgba(34, 197, 94, 0.18);
+  --diff-add-border: rgba(34, 197, 94, 0.50);
+  --diff-add-inline-bg: rgba(34, 197, 94, 0.38);
+  --diff-add-gutter: var(--color-success);
+  --diff-remove-bg: rgba(239, 68, 68, 0.18);
+  --diff-remove-border: rgba(239, 68, 68, 0.50);
+  --diff-remove-inline-bg: rgba(239, 68, 68, 0.34);
+  --diff-remove-gutter: var(--color-error);
+  --diff-hunk-bg: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface-normal));
+  --diff-hunk-fg: var(--color-primary);
+  --diff-hunk-border: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  --diff-empty-bg: rgba(255, 255, 255, 0.03);
 }
 
 /* 语言字形：与 i18n 写入的 html[lang] 对齐 */

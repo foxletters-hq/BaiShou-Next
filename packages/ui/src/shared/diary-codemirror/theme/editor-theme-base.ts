@@ -33,10 +33,12 @@ export const editorThemeBase = {
     backgroundColor: 'transparent !important'
   },
   '::selection': {
-    backgroundColor: 'var(--color-primary-light, rgba(99, 102, 241, 0.35)) !important'
+    backgroundColor: 'var(--text-selection-bg) !important',
+    color: 'var(--text-selection-fg) !important'
   },
   '.cm-content ::selection': {
-    backgroundColor: 'var(--color-primary-light, rgba(99, 102, 241, 0.35)) !important'
+    backgroundColor: 'var(--text-selection-bg) !important',
+    color: 'var(--text-selection-fg) !important'
   },
   '.cm-cursor': {
     borderLeftColor: 'var(--text-primary)'

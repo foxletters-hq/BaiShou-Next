@@ -26,6 +26,7 @@ import type {
 } from './tool-result.types'
 
 export type {
+  CompanionAskItemView,
   CompanionAskOptionView,
   CompanionAskPresentation,
   ToolCopyTranslate,

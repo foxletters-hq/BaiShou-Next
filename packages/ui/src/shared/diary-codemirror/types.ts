@@ -11,6 +11,8 @@ export interface DiaryCmPlatform {
     payload: { from: number; to: number; src: string; srcRaw: string }
   ): void
   onExternalImagePreview?(resolvedSrc: string): void
+  /** 点击已渲染的 http(s) 链接时，在系统浏览器打开 */
+  onOpenExternalLink?(url: string): void
   /** mobile: 点击图片后将光标移到 Markdown 行之后 */
   onImageTap?(payload: { from: number; to: number }): void
   /** mobile: touch 宽度调整; desktop: mouse */
