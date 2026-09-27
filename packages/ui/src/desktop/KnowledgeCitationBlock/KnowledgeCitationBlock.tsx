@@ -55,7 +55,9 @@ export function KnowledgeCitationBlock({
       <Modal
         isOpen={citation != null}
         onClose={() => setOpenIndex(null)}
-        title={citation && openIndex != null ? formatKnowledgeCitationHeading(citation, openIndex) : ''}
+        title={
+          citation && openIndex != null ? formatKnowledgeCitationHeading(citation, openIndex) : ''
+        }
         closeOnOverlayClick
         animation="fade"
         className={styles.dialog}

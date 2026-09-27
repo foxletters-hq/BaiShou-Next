@@ -13,7 +13,10 @@ describe('Pagination chrome', () => {
     const paginationRule = css.slice(css.indexOf('.pagination {'), css.indexOf('.pageBtn {'))
     expect(paginationRule).toContain('flex-wrap: nowrap')
     expect(paginationRule).toContain('align-items: center')
-    const jumperInputRule = css.slice(css.indexOf('.jumperInput {'), css.indexOf('.jumperInput::placeholder'))
+    const jumperInputRule = css.slice(
+      css.indexOf('.jumperInput {'),
+      css.indexOf('.jumperInput::placeholder')
+    )
     expect(jumperInputRule).toContain('height: 32px')
     expect(jumperInputRule).toContain('max-height: 32px')
     expect(jumperInputRule).toContain('width: 44px')
