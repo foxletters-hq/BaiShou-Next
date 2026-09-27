@@ -3,10 +3,13 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const src = readFileSync(
+const src = [
   join(dirname(fileURLToPath(import.meta.url)), '..', 'MobileNotebookMountSheet.tsx'),
-  'utf8'
-)
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'KnowledgeMountHintBar.tsx'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'AgentChatList.tsx')
+]
+  .map((file) => readFileSync(file, 'utf8'))
+  .join('\n')
 
 describe('mobile notebook mount sheet chrome', () => {
   it('should use the official modal and checkbox with theme tokens', () => {
@@ -19,5 +22,9 @@ describe('mobile notebook mount sheet chrome', () => {
     expect(src).not.toContain('#666')
     expect(src).toContain('setPendingMountedNotebookIds')
     expect(src).not.toContain('notebook_mount_need_session')
+    expect(src).toContain('coverImageUrl')
+    expect(src).toContain('knowledge.notebook_mount_clear')
+    expect(src).toContain('KnowledgeMountHintBar')
+    expect(src).toContain('agent.mounted_notebooks')
   })
 })

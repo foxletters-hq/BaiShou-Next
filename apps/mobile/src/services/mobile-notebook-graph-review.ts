@@ -10,6 +10,7 @@ import {
   type NotebookGraphEdgeRawRecord,
   type NotebookGraphNodeRawRecord
 } from '@baishou/shared'
+import i18n from 'i18next'
 import {
   NotebookGraphIndexService,
   NotebookGraphRawManager,
@@ -322,12 +323,9 @@ export async function mobileDismissNotebookSimilarPair(input: {
   if (!peerId) return { ok: true }
   const repo = requireRepo()
   const node = await repo.getNodeById(input.nodeId, vaultId, notebookId)
-  if (!node) throw new Error('节点不存在')
+  if (!node) throw new Error(i18n.t('graph.node_not_found', '节点不存在'))
   const now = Date.now()
-  const props = removeSimilarPendingPeerFromProps(
-    parseGraphNodePropsRecord(node.propsJson),
-    peerId
-  )
+  const props = removeSimilarPendingPeerFromProps(parseGraphNodePropsRecord(node.propsJson), peerId)
   const record: NotebookGraphNodeRawRecord = {
     id: node.id,
     schemaVersion: 1,
@@ -371,7 +369,7 @@ export async function mobileMergeNotebookGraphNodes(input: {
     repo.getNodeById(survivorId, vaultId, notebookId),
     repo.getNodeById(loserId, vaultId, notebookId)
   ])
-  if (!survivor || !loser) throw new Error('节点不存在')
+  if (!survivor || !loser) throw new Error(i18n.t('graph.node_not_found', '节点不存在'))
   const now = Date.now()
   const vaultName = await resolveVaultName(vaultId)
   const neighborhood = await repo.getNeighborhood({
@@ -441,7 +439,9 @@ export async function mobileMergeNotebookGraphNodes(input: {
   }
   const aliases = [
     ...new Set(
-      [...parseAliases(survivor.aliases), ...parseAliases(loser.aliases), loser.name].filter(Boolean)
+      [...parseAliases(survivor.aliases), ...parseAliases(loser.aliases), loser.name].filter(
+        Boolean
+      )
     )
   ]
   await raw.writeNode({
