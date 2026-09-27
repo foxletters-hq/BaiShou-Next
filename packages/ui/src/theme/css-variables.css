@@ -203,7 +203,7 @@
   --diff-add-border: rgba(34, 197, 94, 0.35);
   --diff-add-inline-bg: rgba(34, 197, 94, 0.28);
   --diff-add-gutter: var(--color-success);
-  --diff-remove-bg: rgba(239, 68, 68, 0.10);
+  --diff-remove-bg: rgba(239, 68, 68, 0.1);
   --diff-remove-border: rgba(239, 68, 68, 0.35);
   --diff-remove-inline-bg: rgba(239, 68, 68, 0.24);
   --diff-remove-gutter: var(--color-error);
@@ -293,11 +293,11 @@
 
   /* Code Diff (深色模式专业对比增强，对齐 VS Code / GitHub Dark) */
   --diff-add-bg: rgba(34, 197, 94, 0.18);
-  --diff-add-border: rgba(34, 197, 94, 0.50);
+  --diff-add-border: rgba(34, 197, 94, 0.5);
   --diff-add-inline-bg: rgba(34, 197, 94, 0.38);
   --diff-add-gutter: var(--color-success);
   --diff-remove-bg: rgba(239, 68, 68, 0.18);
-  --diff-remove-border: rgba(239, 68, 68, 0.50);
+  --diff-remove-border: rgba(239, 68, 68, 0.5);
   --diff-remove-inline-bg: rgba(239, 68, 68, 0.34);
   --diff-remove-gutter: var(--color-error);
   --diff-hunk-bg: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface-normal));

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { CompanionAskPresentation } from '../tool-result.util'
-import { companionAskWaitingSubtitle, isCompanionAskAwaitingAnswer } from '../companion-ask-list.util'
+import {
+  companionAskWaitingSubtitle,
+  isCompanionAskAwaitingAnswer
+} from '../companion-ask-list.util'
 
 function ask(partial: Partial<CompanionAskPresentation> = {}): CompanionAskPresentation {
   return {
@@ -41,4 +44,3 @@ describe('isCompanionAskAwaitingAnswer', () => {
     expect(isCompanionAskAwaitingAnswer(ask(), { hasResult: true })).toBe(false)
   })
 })
-
