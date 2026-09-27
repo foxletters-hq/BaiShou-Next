@@ -7,137 +7,28 @@ import {
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
-import { eq, desc, like, sql, and, or } from 'drizzle-orm'
+import { eq, desc, like, sql, and } from 'drizzle-orm'
 import {
   buildMemoryMetadataJson,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
-  parseMemoryMetadataJson,
   timestampToMillis,
   type MemoryRawRecord,
   type RagVectorKindFilter,
-  GRAPH_NODE_SOURCE_TYPE,
-  graphNodeEmbeddingId,
   parseGraphNodeEmbeddingId,
   toSerializableAiError
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { vaultService, resolveActiveVaultId } from './vault.ipc'
-
-function memorySourceKindFilter(sourceKind?: RagVectorKindFilter) {
-  if (!sourceKind || sourceKind === 'all' || sourceKind === 'graph_node') return undefined
-  if (sourceKind === 'diary') return eq(memoryEmbeddingsTable.sourceType, 'diary')
-  if (sourceKind === 'manual') {
-    return or(
-      eq(memoryEmbeddingsTable.sourceType, 'manual'),
-      and(
-        eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
-        sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NULL`
-      )
-    )
-  }
-  return and(
-    eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
-    sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NOT NULL`
-  )
-}
-
-function graphNodeToEntry(row: {
-  id: string
-  name: string
-  summary: string
-  modelId: string
-  updatedAt: number
-  similarity?: number
-}) {
-  return {
-    embeddingId: graphNodeEmbeddingId(row.id),
-    text: `${row.name}\n${row.summary || ''}`.trim(),
-    modelId: row.modelId || 'unknown',
-    createdAt: row.updatedAt,
-    sourceType: GRAPH_NODE_SOURCE_TYPE,
-    sourceId: row.id,
-    tags: [] as string[],
-    sourceSessionId: undefined,
-    memoryCreatedAt: undefined,
-    memoryUpdatedAt: undefined,
-    isManual: false,
-    similarity: row.similarity
-  }
-}
-
-function embeddingInstantMs(value: unknown): number | undefined {
-  if (value instanceof Date) return value.getTime()
-  if (typeof value === 'number') return timestampToMillis(value)
-  return undefined
-}
-
-function enrichEntryFromMetadata(base: {
-  embeddingId: string
-  text: string
-  modelId: string
-  createdAt: number
-  sourceType?: string
-  similarity?: number
-  sourceId?: string | null
-  metadataJson?: string | null
-}) {
-  const meta = parseMemoryMetadataJson(base.metadataJson)
-  const isMemoryLike = base.sourceType === MEMORY_SOURCE_TYPE || base.sourceType === 'manual'
-  const sourceSessionId = isMemoryLike
-    ? meta.sourceSessionId !== undefined
-      ? meta.sourceSessionId
-      : base.sourceType === 'manual'
-        ? null
-        : undefined
-    : undefined
-  const isManual =
-    base.sourceType === 'manual' ||
-    (base.sourceType === MEMORY_SOURCE_TYPE && meta.sourceSessionId === null)
-  return {
-    embeddingId: base.embeddingId,
-    text: base.text,
-    modelId: base.modelId,
-    createdAt: meta.createdAt ?? base.createdAt,
-    sourceType: base.sourceType,
-    similarity: base.similarity,
-    sourceId: base.sourceId ?? undefined,
-    tags: meta.tags ?? [],
-    sourceSessionId,
-    memoryCreatedAt: meta.createdAt,
-    memoryUpdatedAt: meta.updatedAt,
-    isManual
-  }
-}
-
-async function loadMetadataByEmbeddingIds(
-  embeddingIds: string[]
-): Promise<Map<string, { sourceId: string; metadataJson: string | null }>> {
-  const map = new Map<string, { sourceId: string; metadataJson: string | null }>()
-  if (embeddingIds.length === 0) return map
-  const db = getAppDb()
-  for (const embeddingId of embeddingIds) {
-    const rows = await db
-      .select({
-        embeddingId: memoryEmbeddingsTable.embeddingId,
-        sourceId: memoryEmbeddingsTable.sourceId,
-        metadataJson: memoryEmbeddingsTable.metadataJson
-      })
-      .from(memoryEmbeddingsTable)
-      .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
-      .limit(1)
-    const row = rows[0]
-    if (row) {
-      map.set(row.embeddingId, {
-        sourceId: row.sourceId,
-        metadataJson: row.metadataJson
-      })
-    }
-  }
-  return map
-}
+import {
+  embeddingInstantMs,
+  enrichEntryFromMetadata,
+  graphNodeToEntry,
+  loadMetadataByEmbeddingIds,
+  memorySourceKindFilter
+} from './rag-query-entries.util'
 
 /** 分页列表：优先 source_created_at（日记 date），兼容秒/毫秒混用 */
 const embeddingSortMillis = sql.raw(EMBEDDING_SOURCE_SORT_MILLIS_SQL)
@@ -266,9 +157,7 @@ export function registerRagQueryIPC() {
                             summary: row.summary ?? '',
                             modelId: row.modelId ?? '',
                             updatedAt: row.updatedAt,
-                            similarity: Number.isFinite(row.distance)
-                              ? 1 - row.distance
-                              : undefined
+                            similarity: Number.isFinite(row.distance) ? 1 - row.distance : undefined
                           })
                         )
                       } catch (err) {
@@ -296,7 +185,12 @@ export function registerRagQueryIPC() {
           console.error('[rag.ipc] Semantic search failed:', err)
           throw toSerializableAiError(err)
         }
-        throw new Error('语义搜索未能完成：嵌入服务未就绪或未返回向量。')
+        throw new Error(
+          i18n.t(
+            'settings.rag_semantic_incomplete',
+            '语义搜索未能完成：嵌入服务未就绪或未返回向量。'
+          )
+        )
       }
 
       // ── 传统文本检索分支（仅 mode === 'text'，或未带关键词的浏览列表） ──

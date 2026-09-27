@@ -1,4 +1,5 @@
 import { EMBEDDING_NOT_CONFIGURED } from '@baishou/shared'
+import i18n from 'i18next'
 import { getEmbeddingService } from './rag.ipc'
 import {
   assertKnowledgeModelMatch,
@@ -62,7 +63,7 @@ export function registerKnowledgeSearchIpc(): void {
       }
       const queryVector = await embeddingService.embedQuery(input.query)
       if (!queryVector?.length) {
-        throw new Error('查询嵌入失败：未得到向量')
+        throw new Error(i18n.t('knowledge.query_embed_failed', '查询嵌入失败：未得到向量'))
       }
       const search = buildSearchService()
       return search.search({

@@ -311,6 +311,7 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
           )}
         </label>
         <Select
+          size="small"
           value={String(
             config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
               ? 100
