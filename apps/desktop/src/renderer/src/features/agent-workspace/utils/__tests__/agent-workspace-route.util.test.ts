@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { getMainPageCacheKey } from '../../../../layouts/MainPageCache'
 import {
   isAgentWorkspaceEditorPath,
-  isAgentWorkspaceKnowledgeDetailPath
+  isAgentWorkspaceKnowledgeDetailPath,
+  resolveWorkbenchDirectoryNav
 } from '../agent-workspace-route.util'
 
 describe('isAgentWorkspaceKnowledgeDetailPath', () => {
@@ -29,6 +30,16 @@ describe('isAgentWorkspaceEditorPath', () => {
     expect(isAgentWorkspaceEditorPath('/agent-workspace/skills')).toBe(false)
     expect(isAgentWorkspaceEditorPath('/agent-workspace/projects')).toBe(false)
     expect(isAgentWorkspaceEditorPath('/chat')).toBe(false)
+  })
+})
+
+describe('resolveWorkbenchDirectoryNav', () => {
+  it('should highlight the directory section when the path is home, knowledge, skills or projects', () => {
+    expect(resolveWorkbenchDirectoryNav('/agent-workspace')).toBe('home')
+    expect(resolveWorkbenchDirectoryNav('/agent-workspace/knowledge')).toBe('knowledge')
+    expect(resolveWorkbenchDirectoryNav('/agent-workspace/skills')).toBe('skills')
+    expect(resolveWorkbenchDirectoryNav('/agent-workspace/templates')).toBe('skills')
+    expect(resolveWorkbenchDirectoryNav('/agent-workspace/projects')).toBe('projects')
   })
 })
 

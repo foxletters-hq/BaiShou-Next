@@ -10,10 +10,16 @@ const src = readFileSync(
 
 describe('workspace gate cards chrome', () => {
   it('should render workspace-scoped gate cards on the workbench message list', () => {
-    expect(src).toContain('AgentGatePartBubble')
     expect(src).toContain("selectResolvedLiveForSession(state, sessionId, 'workspace')")
     expect(src).toContain("collectAgentGatePartDataForSurface(msg.parts, 'workspace')")
+    expect(src).toContain('gateParts={liveGateParts}')
     expect(src).not.toContain("'companion'")
+    const assistant = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'WorkspaceAssistantTurn.tsx'),
+      'utf8'
+    )
+    expect(assistant).toContain('AgentGatePartBubble')
+    expect(assistant).toContain("collectAgentGatePartDataForSurface(msg.parts, 'workspace')")
   })
 
   it('should open the clicked write preview in the workbench editor', () => {
@@ -40,5 +46,9 @@ describe('workspace gate cards chrome', () => {
     expect(stream).toContain('workspaceChangesFromGateRequest')
     expect(stream).toContain('mergeWorkspaceChangeEntries')
     expect(stream).toContain('pendingAsk')
+    expect(stream).toContain('groupStreamTimelineItems(streamingTimeline, gateParts)')
+    expect(stream.indexOf("item.kind === 'gate'")).toBeGreaterThan(
+      stream.indexOf('function renderStreamTimelineItem')
+    )
   })
 })

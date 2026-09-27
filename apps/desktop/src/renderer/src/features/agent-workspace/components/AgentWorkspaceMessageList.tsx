@@ -11,7 +11,6 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import {
-  AgentGatePartBubble,
   CompanionAskInteractionProvider,
   parseRedactedThinking,
   type AgentGateReplyPayload
@@ -34,6 +33,7 @@ import {
   shouldShowStreamWaitingDots,
   streamTimelineHasRunningTool
 } from '../utils/workspace-stream-waiting.util'
+import { visibleWorkspaceMessages } from '../utils/workspace-visible-messages.util'
 import { useChatScroll } from '../../agent/hooks/useChatScroll'
 import { WorkspaceAssistantTurn } from './WorkspaceAssistantTurn'
 import { WorkspaceUserTurn } from './WorkspaceUserTurn'
@@ -196,11 +196,6 @@ export const AgentWorkspaceMessageList = forwardRef<
     syncLoadMoreVisibility()
   }, [syncLoadMoreVisibility, messages.length, isStreaming, isBridgeActive])
 
-  const editingIndex = useMemo(() => {
-    if (!editingMessageId) return -1
-    return messages.findIndex((msg) => msg.id === editingMessageId)
-  }, [editingMessageId, messages])
-
   const failedByName = useMemo(() => {
     const map = new Map<string, string>()
     for (const tool of failedTools) {
@@ -230,6 +225,15 @@ export const AgentWorkspaceMessageList = forwardRef<
   )
 
   const lastMessage = messages[messages.length - 1]
+  const hideTailInProgress = isStreaming || isBridgeActive
+  const renderedMessages = useMemo(
+    () => visibleWorkspaceMessages(messages, { hideTailInProgress }),
+    [hideTailInProgress, messages]
+  )
+  const editingIndex = useMemo(() => {
+    if (!editingMessageId) return -1
+    return renderedMessages.findIndex((msg) => msg.id === editingMessageId)
+  }, [editingMessageId, renderedMessages])
   const assistantPersistedDuringBridge =
     isBridgeActive &&
     lastMessage?.role === 'assistant' &&
@@ -237,7 +241,8 @@ export const AgentWorkspaceMessageList = forwardRef<
       lastMessage.content?.trim() ||
       lastMessage.reasoning?.trim() ||
       (lastMessage.parts?.length ?? 0) > 0
-    )
+    ) &&
+    renderedMessages.some((msg) => msg.id === lastMessage.id)
   const showStreamingBubble = (isStreaming || isBridgeActive) && !assistantPersistedDuringBridge
   const showPendingAssistant =
     !isStreaming &&
@@ -348,13 +353,9 @@ export const AgentWorkspaceMessageList = forwardRef<
                 {t('workbench.chat_empty', '在下方输入，开始这一轮协作')}
               </p>
             ) : null}
-            {messages.map((msg, index) => {
-              const gateParts = collectAgentGatePartDataForSurface(msg.parts, 'workspace')
+            {renderedMessages.map((msg, index) => {
               return (
                 <React.Fragment key={msg.id}>
-                  {gateParts.map((data) => (
-                    <AgentGatePartBubble key={data.request.id} data={data} />
-                  ))}
                   {msg.role === 'user' ? (
                     <WorkspaceUserTurn
                       msg={msg}
@@ -380,12 +381,9 @@ export const AgentWorkspaceMessageList = forwardRef<
                 </React.Fragment>
               )
             })}
-            {liveGateParts.map((data) => (
-              <AgentGatePartBubble key={data.request.id} data={data} />
-            ))}
-
-            {showStreamingBubble ? (
+            {showStreamingBubble || liveGateParts.length > 0 ? (
               <WorkspaceStreamingTurn
+                gateParts={liveGateParts}
                 dimmed={isEditingTurn}
                 streamError={streamError}
                 useLiveTimeline={useLiveTimeline}

@@ -97,6 +97,18 @@ export function useAgentWorkspaceComposerSend({
 
       const displayText = meta?.displayText?.trim() || trimmed
       const skillRefs = meta?.skillRefs?.length ? meta.skillRefs : undefined
+      const willQueue = stream.isStreaming && Boolean(sessionId)
+      const localQueueId = willQueue ? `local-${crypto.randomUUID()}` : undefined
+      if (localQueueId && sessionId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:workspace-pending-inputs-changed', {
+            detail: {
+              sessionId,
+              optimistic: { id: localQueueId, text: trimmed }
+            }
+          })
+        )
+      }
       const effectiveSearchMode = searchMode ?? searchModeEnabled
       const delivery = meta?.delivery ?? 'queue'
       const attachments = normalizeWorkspaceSendAttachments(
@@ -113,12 +125,12 @@ export function useAgentWorkspaceComposerSend({
           displayText,
           skillRefs,
           fileRefs: meta?.fileRefs,
-          attachments
+          attachments,
+          deferMessageRefresh: true
         })
 
         setBoundStreamSessionId(prepared.sessionId)
         chat.setStreamSessionId(prepared.sessionId)
-        void chat.refresh(prepared.sessionId)
 
         if (prepared.createdNew && prepared.sessionId !== sessionId) {
           navigate(`/agent-workspace/${prepared.sessionId}`)
@@ -138,12 +150,26 @@ export function useAgentWorkspaceComposerSend({
         })
         window.dispatchEvent(
           new CustomEvent('baishou:workspace-pending-inputs-changed', {
+            detail: {
+              sessionId: prepared.sessionId,
+              dropOptimisticId: localQueueId,
+            optimistic: admitted.queued
+                ? {
+                    id: admitted.input.id,
+                    text: admitted.input.text,
+                    userMessageId: admitted.input.userMessageId
+                  }
+                : undefined
+            }
+          })
+        )
+        window.dispatchEvent(
+          new CustomEvent('baishou:workspace-messages-changed', {
             detail: { sessionId: prepared.sessionId }
           })
         )
 
         if (admitted.queued) {
-          toast.showInfo(t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续'))
           return true
         }
 
@@ -154,6 +180,13 @@ export function useAgentWorkspaceComposerSend({
         return true
       } catch (error) {
         console.error('[AgentWorkspaceScreen] send failed:', error)
+        if (localQueueId && sessionId) {
+          window.dispatchEvent(
+            new CustomEvent('baishou:workspace-pending-inputs-changed', {
+              detail: { sessionId, dropOptimisticId: localQueueId }
+            })
+          )
+        }
         return false
       }
     },

@@ -16,6 +16,18 @@ describe('workspace assistant turn chrome', () => {
     expect(src).toContain('onReviewAll')
   })
 
+  it('should wrap the reply with a citation dialog instead of stacking excerpts below', () => {
+    const src = readFileSync(join(here, '../WorkspaceAssistantTurn.tsx'), 'utf8')
+    expect(src).toContain('<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>')
+    expect(src).not.toContain(
+      '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id} />'
+    )
+    const stream = readFileSync(join(here, '../WorkspaceStreamingTurn.tsx'), 'utf8')
+    expect(stream).toContain(
+      '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">'
+    )
+  })
+
   it('should list every file change and open all diffs from the header', () => {
     const src = readFileSync(join(here, '../WorkspaceFileChangeList.tsx'), 'utf8')
     expect(src).toContain('formatFileChangeListPath')

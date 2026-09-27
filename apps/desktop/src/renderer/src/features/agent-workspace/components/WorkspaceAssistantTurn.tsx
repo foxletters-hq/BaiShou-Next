@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  AgentGatePartBubble,
   AgentMarkdownRenderer,
   AgentThinkSection,
   AgentToolChainSection,
@@ -10,7 +11,9 @@ import {
   parseRedactedThinking
 } from '@baishou/ui'
 import {
+  collectAgentGatePartDataForSurface,
   collectKnowledgeCitationsFromInvocations,
+  decorateKnowledgeCitedTexts,
   readAssistantStreamStatus,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
@@ -48,8 +51,9 @@ export function WorkspaceAssistantTurn(props: {
     bubbleActions,
     suppressIncompleteBanner = false
   } = props
+  const gateParts = collectAgentGatePartDataForSurface(msg.parts, 'workspace')
   const timeline = buildWorkspaceAssistantTimeline(msg.parts)
-  const timelineGroups = groupWorkspaceAssistantTimeline(timeline)
+  const timelineGroups = groupWorkspaceAssistantTimeline(timeline, gateParts)
   const assistantText =
     timeline
       .filter((item) => item.kind === 'text')
@@ -60,6 +64,21 @@ export function WorkspaceAssistantTurn(props: {
     timeline
       .filter((item): item is Extract<typeof item, { kind: 'tool' }> => item.kind === 'tool')
       .map((item) => item.invocation)
+  )
+  const citedTextByKey = new Map(
+    (() => {
+      const textGroups = timelineGroups.filter((item) => item.kind === 'text')
+      const decorated = decorateKnowledgeCitedTexts(
+        textGroups.map((item) => {
+          const parsed = parseRedactedThinking(item.text)
+          return parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
+        }),
+        knowledgeCitations.length,
+        msg.id,
+        { appendWhenMissing: true, citations: knowledgeCitations }
+      )
+      return textGroups.map((item, index) => [item.key, decorated[index] ?? ''] as const)
+    })()
   )
   const [editedContent, setEditedContent] = useState(assistantText)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -85,6 +104,17 @@ export function WorkspaceAssistantTurn(props: {
 
   const fallbackParsed =
     timelineGroups.length === 0 ? parseRedactedThinking(assistantText, msg.reasoning ?? '') : null
+  const fallbackCited = fallbackParsed?.cleanContent
+    ? (decorateKnowledgeCitedTexts(
+        [fallbackParsed.cleanContent],
+        knowledgeCitations.length,
+        msg.id,
+        {
+          appendWhenMissing: true,
+          citations: knowledgeCitations
+        }
+      )[0] ?? fallbackParsed.cleanContent)
+    : ''
 
   return (
     <div
@@ -92,24 +122,25 @@ export function WorkspaceAssistantTurn(props: {
         dimmed ? ` ${styles.turnDimmed}` : ''
       }`}
     >
+      <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>
       {timelineGroups.length > 0 ? (
         timelineGroups.map((item) => {
           if (item.kind === 'text' && editingActive) return null
+          if (item.kind === 'gate') {
+            return <AgentGatePartBubble key={item.key} data={item.data} />
+          }
           if (item.kind === 'reasoning') {
             return <AgentThinkSection key={item.key} content={item.text} />
           }
           if (item.kind === 'text') {
             const parsed = parseRedactedThinking(item.text)
+            const cited = citedTextByKey.get(item.key)
             return (
               <React.Fragment key={item.key}>
                 {parsed.cleanReasoning ? (
                   <AgentThinkSection content={parsed.cleanReasoning} />
                 ) : null}
-                {parsed.cleanContent ? (
-                  <AgentMarkdownRenderer content={parsed.cleanContent} />
-                ) : !parsed.cleanReasoning ? (
-                  <AgentMarkdownRenderer content={item.text} />
-                ) : null}
+                {cited ? <AgentMarkdownRenderer content={cited} /> : null}
               </React.Fragment>
             )
           }
@@ -141,9 +172,7 @@ export function WorkspaceAssistantTurn(props: {
           {fallbackParsed.cleanReasoning ? (
             <AgentThinkSection content={fallbackParsed.cleanReasoning} />
           ) : null}
-          {fallbackParsed.cleanContent ? (
-            <AgentMarkdownRenderer content={fallbackParsed.cleanContent} />
-          ) : null}
+          {fallbackCited ? <AgentMarkdownRenderer content={fallbackCited} /> : null}
         </>
       ) : null}
       {editingActive ? (
@@ -169,9 +198,6 @@ export function WorkspaceAssistantTurn(props: {
           textareaRef={textareaRef}
         />
       ) : null}
-      {knowledgeCitations.length > 0 ? (
-        <KnowledgeCitationBlock citations={knowledgeCitations} />
-      ) : null}
       {!suppressIncompleteBanner &&
       (msg.streamStatus === 'in_progress' ||
         readAssistantStreamStatus(msg.parts) === 'in_progress') ? (
@@ -195,6 +221,7 @@ export function WorkspaceAssistantTurn(props: {
           />
         </div>
       ) : null}
+      </KnowledgeCitationBlock>
     </div>
   )
 }

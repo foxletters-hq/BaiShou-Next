@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AgentGateDock, useDialog, toast } from '@baishou/ui'
+import { AgentGateDock, useDialog } from '@baishou/ui'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import {
   selectSameActionCountInSession,
@@ -234,7 +234,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
         })
       )
       if (admitted.queued) {
-        toast.showInfo(t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续'))
         return
       }
 
