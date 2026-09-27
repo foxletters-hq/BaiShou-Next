@@ -116,7 +116,10 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
       if (cancelled) return
       const liveIds = new Set((Array.isArray(pending) ? pending : []).map((item) => item.id))
       for (const msg of chat.messages ?? []) {
-        for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
+        for (const request of collectUnresolvedAgentGateRequestsForSurface(
+          msg.parts,
+          'companion'
+        )) {
           if (!liveIds.has(request.id)) continue
           useAgentGateInboxStore.getState().upsertAsked(request, { respectTombstone: true })
         }
@@ -507,24 +510,24 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           })}
 
           {showStreamingBubble || liveGateParts.length > 0 ? (
-              <StreamingBubble
-                text={stream.text}
-                reasoning={stream.reasoning}
-                isReasoning={Boolean(stream.reasoning && !stream.text)}
-                isTextStreaming={stream.isStreaming}
-                activeToolName={activeToolDisplayName}
-                completedTools={stream.completedTools}
-                timeline={stream.timeline}
-                gateParts={liveGateParts}
-                attachments={pendingEmojiAttachments}
-                error={stream.error}
-                aiProfile={{
-                  name: currentAssistant?.name || 'AI',
-                  avatarPath: currentAssistant?.avatarPath,
-                  emoji: currentAssistant?.emoji
-                }}
-              />
-            ) : null}
+            <StreamingBubble
+              text={stream.text}
+              reasoning={stream.reasoning}
+              isReasoning={Boolean(stream.reasoning && !stream.text)}
+              isTextStreaming={stream.isStreaming}
+              activeToolName={activeToolDisplayName}
+              completedTools={stream.completedTools}
+              timeline={stream.timeline}
+              gateParts={liveGateParts}
+              attachments={pendingEmojiAttachments}
+              error={stream.error}
+              aiProfile={{
+                name: currentAssistant?.name || 'AI',
+                avatarPath: currentAssistant?.avatarPath,
+                emoji: currentAssistant?.emoji
+              }}
+            />
+          ) : null}
 
           {chat.messages.length === 0 && !stream.isStreaming && !stream.isBridgeActive && (
             <div style={{ flex: 1 }} />

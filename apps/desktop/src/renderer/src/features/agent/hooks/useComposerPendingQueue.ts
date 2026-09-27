@@ -53,19 +53,24 @@ export function useComposerPendingQueue(params: {
   const optimisticRef = useRef<ComposerRuntimeQueueItem[]>([])
   const steerWhenReadyRef = useRef<string | null>(null)
 
-  const applyQueue = useCallback((serverItems: ComposerRuntimeQueueItem[]) => {
-    optimisticRef.current = reconcileOptimisticAfterServer(serverItems, optimisticRef.current)
-    const merged = mergePendingQueueView(serverItems, optimisticRef.current)
-    setPendingQueue(merged)
-    const steerText = steerWhenReadyRef.current?.trim()
-    if (!steerText) return
-    const match =
-      serverItems.find((item) => item.text.trim() === steerText) ??
-      serverItems.find((item) => item.text.includes(steerText) || steerText.includes(item.text.trim()))
-    if (!match) return
-    steerWhenReadyRef.current = null
-    void api.update({ inputId: match.id, delivery: 'steer' })
-  }, [api])
+  const applyQueue = useCallback(
+    (serverItems: ComposerRuntimeQueueItem[]) => {
+      optimisticRef.current = reconcileOptimisticAfterServer(serverItems, optimisticRef.current)
+      const merged = mergePendingQueueView(serverItems, optimisticRef.current)
+      setPendingQueue(merged)
+      const steerText = steerWhenReadyRef.current?.trim()
+      if (!steerText) return
+      const match =
+        serverItems.find((item) => item.text.trim() === steerText) ??
+        serverItems.find(
+          (item) => item.text.includes(steerText) || steerText.includes(item.text.trim())
+        )
+      if (!match) return
+      steerWhenReadyRef.current = null
+      void api.update({ inputId: match.id, delivery: 'steer' })
+    },
+    [api]
+  )
 
   const refreshPending = useCallback(async () => {
     if (!sessionId) {

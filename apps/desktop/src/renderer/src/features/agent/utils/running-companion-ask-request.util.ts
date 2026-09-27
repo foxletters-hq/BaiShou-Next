@@ -35,9 +35,11 @@ export function buildRunningCompanionAskRequest(
   sessionId: string,
   timeline: readonly AgentStreamTimelineItem[]
 ): AgentGateRequest | null {
-  const running = [...timeline].reverse().find(
-    (item) => item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
-  )
+  const running = [...timeline]
+    .reverse()
+    .find(
+      (item) => item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
+    )
   if (!running || running.kind !== 'tool') return null
   const record = readArgsRecord(running.arguments)
   if (!record) return null

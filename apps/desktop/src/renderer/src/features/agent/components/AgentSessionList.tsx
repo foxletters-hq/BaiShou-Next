@@ -180,11 +180,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           ))}
           {hasMore ? (
             <div className={styles.loadMoreWrap}>
-              <Button
-                type="button"
-                disabled={isLoadingMore}
-                onClick={() => onLoadMore?.()}
-              >
+              <Button type="button" disabled={isLoadingMore} onClick={() => onLoadMore?.()}>
                 {isLoadingMore
                   ? t('common.loading', '加载中...')
                   : t('agent.sidebar.load_more', '加载更多对话')}

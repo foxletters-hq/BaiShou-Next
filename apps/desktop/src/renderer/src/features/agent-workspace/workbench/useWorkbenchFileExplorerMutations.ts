@@ -184,7 +184,7 @@ export function useWorkbenchFileExplorerMutations({
         toast.showError(t('workbench.copy_path_failed', '复制路径失败'))
       }
     },
-    [folderRoot, t, toast]
+    [folderRoot, t]
   )
 
   const handleCopyRelativePath = useCallback(
@@ -198,7 +198,7 @@ export function useWorkbenchFileExplorerMutations({
         toast.showError(t('workbench.copy_path_failed', '复制路径失败'))
       }
     },
-    [t, toast]
+    [t]
   )
 
   const handleRevealInExplorer = useCallback(

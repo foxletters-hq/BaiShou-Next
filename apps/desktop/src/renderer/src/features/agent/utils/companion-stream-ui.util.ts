@@ -39,9 +39,9 @@ function lastAssistantHasPersistedContent(
   if (message?.role !== 'assistant') return false
   return Boolean(
     message.content?.trim() ||
-      message.reasoning?.trim() ||
-      (message.toolInvocations?.length ?? 0) > 0 ||
-      (message.attachments?.length ?? 0) > 0
+    message.reasoning?.trim() ||
+    (message.toolInvocations?.length ?? 0) > 0 ||
+    (message.attachments?.length ?? 0) > 0
   )
 }
 

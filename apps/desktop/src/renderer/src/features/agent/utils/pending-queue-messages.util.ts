@@ -4,19 +4,16 @@ export function excludePendingQueuedUserMessages<T extends { id: string }>(
   pending: ReadonlyArray<{ userMessageId?: string | null }>
 ): T[] {
   const hideIds = new Set(
-    pending
-      .map((item) => item.userMessageId?.trim())
-      .filter((id): id is string => Boolean(id))
+    pending.map((item) => item.userMessageId?.trim()).filter((id): id is string => Boolean(id))
   )
   if (hideIds.size === 0) return messages
   return messages.filter((message) => !hideIds.has(message.id))
 }
 
 /** 服务端快照回来后：已发出或已不在 pending 的占位丢掉，只留尚未落库的本地条。 */
-export function reconcileOptimisticAfterServer<T extends { id: string; text?: string; userMessageId?: string }>(
-  serverItems: T[],
-  optimisticItems: T[]
-): T[] {
+export function reconcileOptimisticAfterServer<
+  T extends { id: string; text?: string; userMessageId?: string }
+>(serverItems: T[], optimisticItems: T[]): T[] {
   return optimisticItems.filter((item) => {
     const onServer = serverItems.some(
       (row) =>
@@ -31,20 +28,15 @@ export function reconcileOptimisticAfterServer<T extends { id: string; text?: st
 }
 
 /** 服务端列表还没回来时，先把本地占位留在队尾；同文案 / 同用户消息不叠两条。 */
-export function mergePendingQueueView<T extends { id: string; text?: string; userMessageId?: string }>(
-  serverItems: T[],
-  optimisticItems: T[]
-): T[] {
+export function mergePendingQueueView<
+  T extends { id: string; text?: string; userMessageId?: string }
+>(serverItems: T[], optimisticItems: T[]): T[] {
   const serverIds = new Set(serverItems.map((item) => item.id))
   const serverUsers = new Set(
-    serverItems
-      .map((item) => item.userMessageId?.trim())
-      .filter((id): id is string => Boolean(id))
+    serverItems.map((item) => item.userMessageId?.trim()).filter((id): id is string => Boolean(id))
   )
   const serverTexts = new Set(
-    serverItems
-      .map((item) => item.text?.trim())
-      .filter((text): text is string => Boolean(text))
+    serverItems.map((item) => item.text?.trim()).filter((text): text is string => Boolean(text))
   )
   const extras = optimisticItems.filter((item) => {
     if (serverIds.has(item.id)) return false

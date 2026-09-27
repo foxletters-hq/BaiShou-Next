@@ -33,9 +33,7 @@ export function ComposerRuntimeQueueBar(props: {
               className={`${styles.queueItem}${editing ? ` ${styles.queueItemEditing}` : ''}`}
             >
               <span className={styles.queueText}>
-                {item.text.trim()
-                  ? item.text
-                  : t('input.upload_attachment', '上传附件')}
+                {item.text.trim() ? item.text : t('input.upload_attachment', '上传附件')}
               </span>
               {editing ? (
                 <span className={styles.editingLabel}>{t('agent.queue_editing', '编辑中')}</span>
