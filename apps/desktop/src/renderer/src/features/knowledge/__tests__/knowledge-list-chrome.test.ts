@@ -32,11 +32,7 @@ describe('knowledge list chrome', () => {
     expect(card).toContain('baishou-menu-popup')
     expect(css).toContain('--menu-popup-bg')
     expect(css).toContain('--menu-popup-item-hover-bg')
-    expect(css).not.toMatch(
-      /\.coverIconTrigger:hover:not\(:disabled\) \{[^}]*transparent/
-    )
-    expect(css).not.toMatch(
-      /\.coverImageBtn:hover:not\(:disabled\) \{[^}]*transparent/
-    )
+    expect(css).not.toMatch(/\.coverIconTrigger:hover:not\(:disabled\) \{[^}]*transparent/)
+    expect(css).not.toMatch(/\.coverImageBtn:hover:not\(:disabled\) \{[^}]*transparent/)
   })
 })

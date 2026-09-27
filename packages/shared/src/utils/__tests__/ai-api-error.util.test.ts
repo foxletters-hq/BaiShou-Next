@@ -31,7 +31,7 @@ describe('formatAiApiCallError', () => {
 })
 
 describe('localizeAiApiErrorMessage', () => {
-  const t = (key: string, fallback: string) => fallback
+  const t = (_key: string, fallback: string) => fallback
 
   it('should localize a SiliconFlow balance error instead of calling it unconfigured', () => {
     const err = {

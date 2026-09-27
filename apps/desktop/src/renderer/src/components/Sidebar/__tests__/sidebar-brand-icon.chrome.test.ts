@@ -15,7 +15,7 @@ describe('diary sidebar brand icon', () => {
     expect(sidebar).toContain("import appIcon from '@baishou/shared/assets/images/icon.png'")
     expect(sidebar).toContain('ImagePreview')
     expect(sidebar).toContain('styles.brandLogo')
-    expect(sidebar).toContain('downloadFileName="白守.png"')
+    expect(sidebar).toContain("downloadFileName={t('sidebar.brand_icon_filename'")
     expect(sidebar).toContain("t('sidebar.view_brand_icon'")
   })
 

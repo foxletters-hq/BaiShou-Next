@@ -150,9 +150,7 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
           lastActiveWorkspaceId={lastActiveWorkspaceId}
           sessions={sessions}
           onOpenWorkspace={(id) => void enterWorkspace(id)}
-          onOpenSession={(sessionId, workspaceId) =>
-            void handleOpenSession(sessionId, workspaceId)
-          }
+          onOpenSession={(sessionId, workspaceId) => void handleOpenSession(sessionId, workspaceId)}
           onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
           onRemoveWorkspace={removeWorkspace}
           onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}

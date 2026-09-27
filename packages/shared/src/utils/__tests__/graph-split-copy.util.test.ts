@@ -16,9 +16,9 @@ describe('graphSplitNewDisplayName', () => {
   })
 
   it('should combine name and discriminator when label is empty', () => {
-    expect(
-      graphSplitNewDisplayName({ nodeName: '张三', discriminator: '同事', label: '  ' })
-    ).toBe('张三（同事）')
+    expect(graphSplitNewDisplayName({ nodeName: '张三', discriminator: '同事', label: '  ' })).toBe(
+      '张三（同事）'
+    )
   })
 })
 

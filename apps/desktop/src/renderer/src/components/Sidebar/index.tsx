@@ -174,7 +174,7 @@ export const Sidebar: React.FC = () => {
               alt={t('common.app_title', 'BaiShou')}
               title={t('sidebar.view_brand_icon', '查看图标')}
               className={styles.brandLogo}
-              downloadFileName="白守.png"
+              downloadFileName={t('sidebar.brand_icon_filename', '白守.png')}
             />
           </div>
           <div className={styles.brandText}>

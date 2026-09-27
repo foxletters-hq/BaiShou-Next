@@ -55,9 +55,7 @@ describe('meetsGraphSimilarPendingThreshold', () => {
 
 describe('applySimilarPendingToProps / removeSimilarPendingPeerFromProps', () => {
   it('should skip writing when similarity is 70% or lower', () => {
-    expect(
-      applySimilarPendingToProps({}, { ...PENDING, similarity: 0.7 })
-    ).toEqual({})
+    expect(applySimilarPendingToProps({}, { ...PENDING, similarity: 0.7 })).toEqual({})
   })
 
   it('should write a single pair as similarPending', () => {
@@ -181,7 +179,9 @@ describe('collectSimilarPendingPairs', () => {
       )
     ).toEqual([])
     expect(
-      nodePropsHaveSimilarPending(JSON.stringify({ similarPending: { ...PENDING, similarity: 0.7 } }))
+      nodePropsHaveSimilarPending(
+        JSON.stringify({ similarPending: { ...PENDING, similarity: 0.7 } })
+      )
     ).toBe(false)
   })
 
