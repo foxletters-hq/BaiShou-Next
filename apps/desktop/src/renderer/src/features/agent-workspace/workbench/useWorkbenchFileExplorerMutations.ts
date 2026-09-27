@@ -184,7 +184,21 @@ export function useWorkbenchFileExplorerMutations({
         toast.showError(t('workbench.copy_path_failed', '复制路径失败'))
       }
     },
-    [folderRoot, t]
+    [folderRoot, t, toast]
+  )
+
+  const handleCopyRelativePath = useCallback(
+    async (node: FileTreeNode | null) => {
+      const relativePath = node?.relativePath?.replace(/\\/g, '/') ?? ''
+      if (!relativePath) return
+      try {
+        await navigator.clipboard.writeText(relativePath)
+        toast.showSuccess(t('workbench.path_copied', '路径已复制'))
+      } catch {
+        toast.showError(t('workbench.copy_path_failed', '复制路径失败'))
+      }
+    },
+    [t, toast]
   )
 
   const handleRevealInExplorer = useCallback(
@@ -210,6 +224,7 @@ export function useWorkbenchFileExplorerMutations({
     handleRename,
     handleDelete,
     handleCopyPath,
+    handleCopyRelativePath,
     handleRevealInExplorer
   }
 }

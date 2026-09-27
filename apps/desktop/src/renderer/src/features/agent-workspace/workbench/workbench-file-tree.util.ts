@@ -19,7 +19,7 @@ export function explorerHasCollapsibleFolders(expandedPaths: Iterable<string>): 
   return false
 }
 
-/** 折叠前记下已展开的文件夹，再次点击时按这份列表恢复。 */
+/** 记下当前已展开的文件夹。展开全部会重新遍历整棵树，不按这份列表恢复。 */
 export function snapshotExplorerExpandedPaths(expandedPaths: Iterable<string>): string[] {
   return [...expandedPaths].filter((path) => path !== '')
 }

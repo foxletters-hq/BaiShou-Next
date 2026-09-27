@@ -34,7 +34,7 @@ export interface WorkbenchOpenFileOptions {
   column?: number
 }
 
-function isMarkdownPath(path: string): boolean {
+export function isMarkdownPath(path: string): boolean {
   const lower = path.toLowerCase()
   return (
     lower.endsWith('.md') ||
@@ -74,7 +74,10 @@ export function useWorkbenchTabs(folderRoot: string | null) {
   const openFile = useCallback(
     async (relativePath: string, options?: WorkbenchOpenFileOptions) => {
       if (!folderRoot) return
-      const existing = tabs.find((tab) => tab.relativePath === relativePath && tab.kind !== 'diff')
+      const existing = tabs.find(
+        (tab) =>
+          tab.relativePath === relativePath && (tab.kind === 'markdown' || tab.kind === 'text')
+      )
       if (existing) {
         setActiveTabId(existing.id)
         try {
@@ -179,7 +182,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
               ...existing,
               change,
               relativePath: change.path,
-              title: `Δ ${formatFileChangeListPath(change.path)}`
+              title: formatFileChangeListPath(change.path)
             }
           }
           continue
@@ -191,7 +194,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         next.push({
           id,
           kind: 'diff',
-          title: `Δ ${formatFileChangeListPath(change.path)}`,
+          title: formatFileChangeListPath(change.path),
           change,
           relativePath: change.path
         })
@@ -222,7 +225,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
           return
         }
 
-        const title = `Δ ${basenameFromPath(filePath)}`
+        const title = basenameFromPath(filePath)
         const placeholder: WorkbenchTab = {
           id,
           kind: 'git-diff',
@@ -432,6 +435,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     openDiffs,
     openGitDiff,
     closeTab,
+    closeTabs: closeTabsByIds,
     closeTabsForDeletedPath,
     reorderTabs,
     updateTabContent,

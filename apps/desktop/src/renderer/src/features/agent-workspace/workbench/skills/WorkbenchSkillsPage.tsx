@@ -11,22 +11,19 @@ import {
 import { SegmentedControl, useDialog, useToast } from '@baishou/ui'
 import { useSettingsPaneApi, useSettingsStore } from '@baishou/store'
 import { McpSettingsPane } from '../../../settings/components/McpSettingsPane'
-import { SETTINGS_HUB_PREFIX } from '../../../settings/settings-route.util'
 import { useAgentWorkspaces } from '../../hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from '../../hooks/useAgentWorkspaceChrome'
-import { useWorkspaceSessions } from '../../hooks/useWorkspaceSessions'
 import { sortAgentWorkspaces } from '../../utils/workspace-display.util'
 import { stashWorkspaceInitMeta } from '../../utils/workspace-init-meta.util'
 import {
   buildSkillSendMeta,
+  isWorkbenchSkillEditable,
   matchesWorkbenchSkillSearch,
   resolveSkillEditScope,
   resolveWorkbenchSkillsPageTab
 } from '../../utils/workspace-skill-launch.util'
-import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
 import { WorkbenchSkillEditorDialog } from './WorkbenchSkillEditorDialog'
 import { WorkbenchSkillLaunchDialog } from './WorkbenchSkillLaunchDialog'
-import { WorkbenchHomeSidebar } from '../home/WorkbenchHomeSidebar'
 import pageStyles from '../home/WorkbenchHomePage.module.css'
 import { WORKBENCH_SKILL_CARDS } from './workbench-skill-catalog'
 import { getSkillsApi, useWorkbenchSkillsCatalog } from './useWorkbenchSkillsCatalog'
@@ -51,27 +48,16 @@ export const WorkbenchSkillsPage: React.FC = () => {
   const projectParam = searchParams.get('project')
   const [query, setQuery] = useState('')
   const [launching, setLaunching] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [launchSkillTarget, setLaunchSkillTarget] = useState<AgentSkill | null>(null)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
   const [savingSkill, setSavingSkill] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsWorkspace, setSettingsWorkspace] = useState<{
-    id: string
-    displayName: string
-  } | null>(null)
   const {
     workspaces,
     lastActiveWorkspaceId,
     loading: loadingWorkspaces,
     addWorkspaceFromPicker,
-    ensureScratchWorkspace,
-    refresh,
-    selectWorkspace,
-    removeWorkspace,
-    setWorkspacePinned
+    selectWorkspace
   } = useAgentWorkspaces()
-  const { sessions, reloadSessions, pinSession } = useWorkspaceSessions()
   const chrome = useAgentWorkspaceChrome()
   const settings = useSettingsPaneApi()
   const ensureConfigForSegment = useSettingsStore((s) => s.ensureConfigForSegment)
@@ -153,85 +139,6 @@ export const WorkbenchSkillsPage: React.FC = () => {
       ),
     [query, t]
   )
-
-  const handleOpenFolder = useCallback(async () => {
-    setCreating(true)
-    try {
-      const entry = await addWorkspaceFromPicker()
-      if (!entry) return
-      setFolderRoot(entry.folderRoot)
-      navigate(`/agent-workspace/open/${entry.id}`)
-    } catch (error) {
-      console.error('[WorkbenchSkillsPage] add workspace failed:', error)
-      await dialog.alert(
-        error instanceof Error
-          ? error.message
-          : t('agent_workspace.add_workspace_failed', '添加工作区失败，请重启应用后重试'),
-        t('workbench.home_new_project', '新建项目')
-      )
-    } finally {
-      setCreating(false)
-    }
-  }, [addWorkspaceFromPicker, dialog, navigate, setFolderRoot, t])
-
-  const enterWorkspace = useCallback(
-    async (workspaceId: string) => {
-      const target = workspaces.find((entry) => entry.id === workspaceId)
-      if (!target) return
-      await selectWorkspace(workspaceId)
-      setFolderRoot(target.folderRoot)
-      navigate(`/agent-workspace/open/${workspaceId}`)
-    },
-    [navigate, selectWorkspace, setFolderRoot, workspaces]
-  )
-
-  const handleOpenSession = useCallback(
-    async (sessionId: string, workspaceId: string) => {
-      const target = workspaces.find((entry) => entry.id === workspaceId)
-      if (!target) return
-      await selectWorkspace(workspaceId)
-      setFolderRoot(target.folderRoot)
-      navigate(`/agent-workspace/${sessionId}`)
-    },
-    [navigate, selectWorkspace, setFolderRoot, workspaces]
-  )
-
-  const handleDeleteSession = useCallback(
-    async (sessionId: string) => {
-      const confirmed = await dialog.confirm(
-        t(
-          'agent_workspace.delete_session_confirm',
-          '确定删除此工作区会话？相关对话记录也会被移除。'
-        ),
-        t('agent_workspace.delete_session', '删除会话')
-      )
-      if (!confirmed) return
-      try {
-        await window.api.agentWorkspace.deleteSession(sessionId)
-        window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
-        await reloadSessions()
-      } catch (error) {
-        console.error('[WorkbenchSkillsPage] delete session failed:', error)
-        await dialog.alert(
-          t('common.error', '操作失败'),
-          t('agent_workspace.delete_session', '删除会话')
-        )
-      }
-    },
-    [dialog, reloadSessions, t]
-  )
-
-  const handleOpenSettings = useCallback(async () => {
-    try {
-      const scratch = await ensureScratchWorkspace()
-      await refresh()
-      setSettingsWorkspace({ id: scratch.id, displayName: scratch.displayName })
-      setSettingsOpen(true)
-    } catch (error) {
-      console.error('[WorkbenchSkillsPage] ensure scratch for settings failed:', error)
-      navigate(`${SETTINGS_HUB_PREFIX}/general`)
-    }
-  }, [ensureScratchWorkspace, navigate, refresh])
 
   const launchSkill = useCallback(
     async (skill: AgentSkill, folderRoot?: string) => {
@@ -333,6 +240,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
   const handleSaveSkill = useCallback(
     async (input: { name: string; description: string; content: string }) => {
       if (!editingSkill || savingSkill) return
+      if (!isWorkbenchSkillEditable(editingSkill)) return
       const scope = resolveSkillEditScope(editingSkill.source)
       const workspaceFolder = selectedWorkspace?.folderRoot
       if (scope === 'workspace' && !workspaceFolder) {
@@ -376,30 +284,15 @@ export const WorkbenchSkillsPage: React.FC = () => {
     [dialog, editingSkill, savingSkill, selectedWorkspace, t, toast]
   )
 
+  const handleEditSkill = useCallback((skill: AgentSkill) => {
+    if (!isWorkbenchSkillEditable(skill)) return
+    setEditingSkill(skill)
+  }, [])
+
   const editLabel = t('workbench.skills_edit', '编辑')
 
   return (
     <div className={pageStyles.page}>
-      <WorkbenchHomeSidebar
-        activeNav="skills"
-        onNewProject={() => void handleOpenFolder()}
-        onOpenHome={() => navigate('/agent-workspace')}
-        onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenSkills={() => navigate('/agent-workspace/skills')}
-        onOpenProjects={() => navigate('/agent-workspace/projects')}
-        onOpenSettings={() => void handleOpenSettings()}
-        creating={creating || launching}
-        recentWorkspaces={workspaces}
-        lastActiveWorkspaceId={lastActiveWorkspaceId}
-        sessions={sessions}
-        onOpenWorkspace={(id) => void enterWorkspace(id)}
-        onOpenSession={(sessionId, workspaceId) => void handleOpenSession(sessionId, workspaceId)}
-        onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
-        onRemoveWorkspace={removeWorkspace}
-        onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
-        onTogglePinSession={pinSession}
-      />
-
       <main className={pageStyles.main}>
         <div className={styles.inner}>
           <div className={styles.tabBar}>
@@ -438,7 +331,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
               loadingProjectSkills={catalog.loadingProjectSkills}
               scopedSkills={catalog.scopedSkills}
               onLaunch={beginUseSkill}
-              onEdit={setEditingSkill}
+              onEdit={handleEditSkill}
               onScopeChange={setScope}
             />
           ) : (
@@ -477,14 +370,6 @@ export const WorkbenchSkillsPage: React.FC = () => {
         }}
         onSave={(input) => void handleSaveSkill(input)}
       />
-      {settingsWorkspace ? (
-        <WorkbenchWorkspaceGateSheet
-          open={settingsOpen}
-          workspaceId={settingsWorkspace.id}
-          workspaceName={settingsWorkspace.displayName}
-          onClose={() => setSettingsOpen(false)}
-        />
-      ) : null}
     </div>
   )
 }

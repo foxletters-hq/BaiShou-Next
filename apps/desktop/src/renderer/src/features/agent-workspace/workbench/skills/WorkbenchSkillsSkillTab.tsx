@@ -77,9 +77,7 @@ export function WorkbenchSkillsSkillTab({
             skills={officialIconSkills}
             icon={<Sparkles size={14} strokeWidth={2} />}
             launching={launching}
-            editLabel={editLabel}
             onLaunch={onLaunch}
-            onEdit={onEdit}
           />
         )}
       </section>

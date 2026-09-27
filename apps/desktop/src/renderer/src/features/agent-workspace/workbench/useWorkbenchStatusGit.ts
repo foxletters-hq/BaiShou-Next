@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@baishou/ui'
 import { useTranslation } from 'react-i18next'
-import { displayGitBranchName } from './workbench-git-branch.util'
+import {
+  displayGitBranchName,
+  isGitCheckoutBlockedByLocalChanges
+} from './workbench-git-branch.util'
 
 export interface WorkbenchStatusGitMeta {
   branch?: string
@@ -86,15 +89,44 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
     [t, toast]
   )
 
+  const reportFailure = useCallback(
+    (error: unknown) => {
+      const message = error instanceof Error ? error.message : ''
+      toast.showError(message || t('common.error', '操作失败'))
+    },
+    [t, toast]
+  )
+
+  const refreshWorkspaceAfterBranchChange = useCallback(async () => {
+    await refresh()
+    window.dispatchEvent(new CustomEvent('baishou:workspace-tree-refresh'))
+  }, [refresh])
+
   const checkout = useCallback(
     async (branch: string) => {
       if (!folderRoot) return
-      const result = await window.api.agentWorkspace.git.checkoutBranch(folderRoot, branch)
-      if (notify(result, 'workbench.git_checkout_success')) {
-        await refresh()
+      try {
+        const result = await window.api.agentWorkspace.git.checkoutBranch(folderRoot, branch)
+        if (result.success) {
+          toast.showSuccess(t('workbench.git_checkout_success'))
+          await refreshWorkspaceAfterBranchChange()
+          return
+        }
+        if (isGitCheckoutBlockedByLocalChanges(result.message)) {
+          toast.showError(
+            t(
+              'workbench.git_checkout_blocked',
+              '当前有未提交的修改，无法切换分支。请先提交或贮藏这些修改。'
+            )
+          )
+          return
+        }
+        notify(result, 'workbench.git_checkout_success')
+      } catch (error) {
+        reportFailure(error)
       }
     },
-    [folderRoot, notify, refresh]
+    [folderRoot, notify, refreshWorkspaceAfterBranchChange, reportFailure, t, toast]
   )
 
   const createBranch = useCallback(
@@ -104,10 +136,10 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
       if (!name) return
       const result = await window.api.agentWorkspace.git.createBranch(folderRoot, name)
       if (notify(result, 'workbench.git_create_branch_success')) {
-        await refresh()
+        await refreshWorkspaceAfterBranchChange()
       }
     },
-    [folderRoot, notify, refresh]
+    [folderRoot, notify, refreshWorkspaceAfterBranchChange]
   )
 
   const applyViewMeta = useCallback((next: { branch?: string; ahead: number; behind: number }) => {

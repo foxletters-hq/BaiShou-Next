@@ -7,9 +7,7 @@ import {
 } from './workbench-path.util'
 import {
   collapsedExplorerExpandedPaths,
-  explorerHasCollapsibleFolders,
-  restoreExplorerExpandedPaths,
-  snapshotExplorerExpandedPaths
+  explorerHasCollapsibleFolders
 } from './workbench-file-tree.util'
 
 export interface FileTreeNode {
@@ -54,10 +52,8 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
   const [loadingRoot, setLoadingRoot] = useState(false)
   const [rootError, setRootError] = useState<string | null>(null)
   const hasLoadedOnceRef = useRef(false)
-  const collapseSnapshotRef = useRef<string[] | null>(null)
 
   useEffect(() => {
-    collapseSnapshotRef.current = null
     if (!folderRoot) {
       setChildrenByPath({})
       setSelectedPath(null)
@@ -212,7 +208,6 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
   const collapseAllFolders = useCallback(() => {
     setExpandedPaths((prev) => {
       if (!explorerHasCollapsibleFolders(prev)) return prev
-      collapseSnapshotRef.current = snapshotExplorerExpandedPaths(prev)
       const next = collapsedExplorerExpandedPaths()
       if (folderRoot) persistExpandedPaths(folderRoot, next)
       return next
@@ -222,19 +217,30 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
   const rootChildren = childrenByPath[''] ?? EMPTY_ROOT_CHILDREN
 
   const expandCollapsedFolders = useCallback(() => {
-    const snapshot = collapseSnapshotRef.current
-    const fallback = rootChildren
-      .filter((node) => node.isDirectory)
-      .map((node) => node.relativePath)
-    const paths = snapshot && snapshot.length > 0 ? snapshot : fallback
-    if (paths.length === 0) return
-    const next = restoreExplorerExpandedPaths(paths)
-    setExpandedPaths(next)
-    if (folderRoot) persistExpandedPaths(folderRoot, next)
-    void Promise.all(paths.map((path) => loadPath(path))).catch(() => {
-      /* 展开失败时保留已写入的展开状态 */
+    if (!folderRoot) return
+    void (async () => {
+      const nextExpanded = collapsedExplorerExpandedPaths()
+      const loaded: Record<string, FileTreeNode[]> = {}
+      const queue = ['']
+      while (queue.length > 0) {
+        const current = queue.shift()
+        if (current == null) break
+        const nodes = await listDirectory(current)
+        loaded[current] = nodes
+        for (const node of nodes) {
+          if (!node.isDirectory) continue
+          nextExpanded.add(node.relativePath)
+          queue.push(node.relativePath)
+        }
+      }
+      if (nextExpanded.size <= 1) return
+      setChildrenByPath((prev) => ({ ...prev, ...loaded }))
+      setExpandedPaths(nextExpanded)
+      persistExpandedPaths(folderRoot, nextExpanded)
+    })().catch(() => {
+      /* 展开失败时保留当前树 */
     })
-  }, [folderRoot, loadPath, rootChildren])
+  }, [folderRoot, listDirectory])
 
   const toggleAllFolders = useCallback(() => {
     if (explorerHasCollapsibleFolders(expandedPaths)) {
