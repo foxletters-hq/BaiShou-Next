@@ -96,7 +96,11 @@ export async function writeDismissSimilarPair(nodeId: string, peerId: string): P
   await syncGraphPendingIndex()
 }
 
-export async function writeNodeSuspectReason(nodeId: string, reason: string): Promise<void> {
+export async function writeNodeSuspectReason(
+  nodeId: string,
+  reason: string,
+  signals: string[] = []
+): Promise<void> {
   const trimmed = reason.trim()
   if (!trimmed) return
   const repo = requireGraphRepo()
@@ -114,7 +118,7 @@ export async function writeNodeSuspectReason(nodeId: string, reason: string): Pr
     discriminator: node.discriminator ?? '',
     aliases: node.aliases,
     summary: node.summary,
-    props: applySuspectReasonToProps(parseProps(node.propsJson), trimmed),
+    props: applySuspectReasonToProps(parseProps(node.propsJson), trimmed, signals),
     mentionCount: node.mentionCount,
     firstSeenAt: node.firstSeenAt ?? now,
     lastSeenAt: node.lastSeenAt ?? now,

@@ -147,7 +147,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     ),
     knowledgeGraphReader: (
       await import('../services/desktop-knowledge-graph-reader')
-    ).createDesktopKnowledgeGraphReader()
+    ).createDesktopKnowledgeGraphReader(
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+    )
   })
 
   if (activeWorkspace) {

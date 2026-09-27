@@ -5,6 +5,14 @@ import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import path from 'node:path'
 import { existsSync } from 'node:fs'
 import {
+  DEFAULT_TOOL_MANAGEMENT_CONFIG,
+  mergeEmojiAttachmentCatalog,
+  normalizeToolManagementConfig,
+  removeEmojisByRelativePaths,
+  type ToolManagementConfig
+} from '@baishou/shared'
+import { settingsManager } from './settings.ipc'
+import {
   getAttachmentAllowedRoots,
   isPathUnderAllowedRoots,
   refreshDesktopAttachmentPathRemapper,
@@ -115,6 +123,31 @@ export function registerAttachmentIPC() {
       console.error('[AttachmentIPC] Error in deleteDiaryAttachment:', e)
       throw e
     }
+  })
+
+  ipcMain.handle('attachment:listEmojiAttachments', async () => {
+    const files = await attachmentManager.listEmojiAttachmentFiles()
+    const stored =
+      (await settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
+      DEFAULT_TOOL_MANAGEMENT_CONFIG
+    const tool = normalizeToolManagementConfig(stored)
+    return mergeEmojiAttachmentCatalog(files, tool.emojiConfig)
+  })
+
+  ipcMain.handle('attachment:deleteEmojiAttachments', async (_, relativePaths: string[]) => {
+    const paths = Array.isArray(relativePaths)
+      ? relativePaths.filter((item) => typeof item === 'string' && item.length > 0)
+      : []
+    for (const relativePath of paths) {
+      await attachmentManager.deleteEmoji(relativePath)
+    }
+    const stored =
+      (await settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
+      DEFAULT_TOOL_MANAGEMENT_CONFIG
+    const tool = normalizeToolManagementConfig(stored)
+    const emojiConfig = removeEmojisByRelativePaths(tool.emojiConfig, paths)
+    await settingsManager.set('tool_management_config', { ...tool, emojiConfig })
+    return emojiConfig
   })
 
   ipcMain.handle('attachment:getThumbnail', async (_, filePath: string, maxSize: number = 200) => {

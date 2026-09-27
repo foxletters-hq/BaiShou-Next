@@ -34,27 +34,39 @@ export function registerKnowledgeNotebookIpc(): void {
       vaultId,
       notebookIds: notebooks.map((row) => row.id)
     })
+    const graphCounts = await repo.listNotebookGraphCounts(vaultId)
+    const graphById = new Map(graphCounts.map((row) => [row.notebookId, row]))
     const profilesById = new Map<string, typeof profiles>()
     for (const profile of profiles) {
       const list = profilesById.get(profile.notebookId) ?? []
       list.push(profile)
       profilesById.set(profile.notebookId, list)
     }
-    return notebooks.map((notebook) => {
-      const stat = statsById.get(notebook.id)
-      const notebookProfiles = profilesById.get(notebook.id) ?? []
-      const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
-      return {
-        id: notebook.id,
-        name: notebook.name,
-        sources: stat?.sources ?? 0,
-        chunks: stat?.chunks ?? 0,
-        dimension: dimensions.length === 1 ? dimensions[0] : null,
-        dimensions,
-        modelIds: [...new Set(notebookProfiles.map((row) => row.modelId).filter(Boolean))],
-        mixedEmbeddings: dimensions.length > 1
-      }
-    })
+    return Promise.all(
+      notebooks.map(async (notebook) => {
+        const stat = statsById.get(notebook.id)
+        const notebookProfiles = profilesById.get(notebook.id) ?? []
+        const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
+        const graph = graphById.get(notebook.id)
+        const withCover = await withCoverImageUrl(notebook)
+        return {
+          id: notebook.id,
+          name: notebook.name,
+          coverTone: notebook.coverTone,
+          coverIcon: notebook.coverIcon,
+          coverImageUrl: withCover.coverImageUrl,
+          updatedAt: notebook.updatedAt,
+          sources: stat?.sources ?? 0,
+          chunks: stat?.chunks ?? 0,
+          dimension: dimensions.length === 1 ? dimensions[0] : null,
+          dimensions,
+          modelIds: [...new Set(notebookProfiles.map((row) => row.modelId).filter(Boolean))],
+          mixedEmbeddings: dimensions.length > 1,
+          graphNodes: graph?.nodes ?? 0,
+          graphEdges: graph?.edges ?? 0
+        }
+      })
+    )
   })
 
   handleKnowledgeIpc(

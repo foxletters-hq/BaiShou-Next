@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { listLiveGraphSourceIds, NotebookGraphRawManager } from '@baishou/core-desktop'
-import { logger } from '@baishou/shared'
+import { logger, runGraphModeSearch } from '@baishou/shared'
 import { fileSystem } from '../services/node-file-system'
 import {
   reviewNotebookGraphBatch,
@@ -24,6 +24,7 @@ import {
   requireActiveVaultId,
   requireKnowledgeRepo
 } from './knowledge-ipc.context'
+import { getEmbeddingConfig, getEmbeddingService } from './rag.ipc'
 import { pathService } from './vault.ipc'
 import {
   readGraphWindowProgress,
@@ -31,6 +32,63 @@ import {
   resolveListedGraphWindowProgress,
   shouldResumeListedGraphJobs
 } from '../services/graph-window-progress'
+
+function mapNotebookGraphViewForIpc(view: {
+  nodes: Array<{
+    id: string
+    name: string
+    nodeType: string
+    mentionCount?: number
+    reviewStatus?: string
+    summary?: string
+  }>
+  edges: Array<{
+    id: string
+    fromId: string
+    toId: string
+    edgeType: string
+    reviewStatus?: string
+    confidence?: number
+    sourceRef?: string | null
+    sourceExcerpt?: string
+  }>
+}) {
+  return {
+    nodes: view.nodes.map((n) => ({
+      id: n.id,
+      name: n.name,
+      nodeType: n.nodeType,
+      mentionCount: n.mentionCount,
+      reviewStatus: n.reviewStatus,
+      summary: n.summary
+    })),
+    edges: view.edges.map((e) => ({
+      id: e.id,
+      fromId: e.fromId,
+      toId: e.toId,
+      edgeType: e.edgeType,
+      reviewStatus: e.reviewStatus,
+      confidence: e.confidence,
+      sourceRef: e.sourceRef,
+      sourceExcerpt: e.reviewStatus === 'pending' ? e.sourceExcerpt : undefined
+    }))
+  }
+}
+
+function mapNotebookGraphSearchHit(row: {
+  id: string
+  name: string
+  nodeType: string
+  summary?: string
+  reviewStatus?: string
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    nodeType: row.nodeType,
+    summary: row.summary
+  }
+}
 
 export function registerKnowledgeGraphIpc(): void {
   handleKnowledgeIpc('knowledge:list-graph-jobs', async (_e, notebookId: string) => {
@@ -112,28 +170,52 @@ export function registerKnowledgeGraphIpc(): void {
       requireKnowledgeRepo()
       const { NotebookGraphRepository } = await import('@baishou/database-desktop')
       const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-      return repo.getView({
+      const view = await repo.getView({
         vaultId: requireActiveVaultId(),
         notebookId,
         maxNodes: input.maxNodes
       })
+      return mapNotebookGraphViewForIpc(view)
     }
   )
 
   handleKnowledgeIpc(
     'knowledge:graph-search',
-    async (_e, input: { notebookId: string; query: string; limit?: number }) => {
+    async (
+      _e,
+      input: { notebookId: string; query: string; limit?: number; mode?: string }
+    ) => {
       const notebookId = String(input?.notebookId || '').trim()
       if (!notebookId) throw new Error('notebookId required')
       requireKnowledgeRepo()
       const { NotebookGraphRepository } = await import('@baishou/database-desktop')
       const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-      return repo.searchNodes({
-        vaultId: requireActiveVaultId(),
-        notebookId,
-        query: String(input.query || ''),
-        limit: input.limit
+      const vaultId = requireActiveVaultId()
+      const query = String(input.query || '')
+      const limit = input.limit
+      const embeddingService = getEmbeddingService()
+      const embeddingConfig = getEmbeddingConfig()
+      await embeddingConfig.load()
+      const rows = await runGraphModeSearch({
+        mode: input.mode,
+        query,
+        embedQuery: embeddingService.isConfigured
+          ? (text) => embeddingService.embedQuery(text)
+          : null,
+        modelId: embeddingConfig.getGlobalEmbeddingModelId() || undefined,
+        searchName: () =>
+          repo.searchNodes({
+            vaultId,
+            notebookId,
+            query,
+            limit
+          }),
+        searchVector: (vector, modelId) =>
+          repo.searchNodesByVector(vaultId, notebookId, vector, limit ?? 20, { modelId })
       })
+      return rows
+        .filter((row) => row.reviewStatus !== 'rejected')
+        .map(mapNotebookGraphSearchHit)
     }
   )
 

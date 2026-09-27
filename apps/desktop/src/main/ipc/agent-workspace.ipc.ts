@@ -11,7 +11,8 @@ import {
   previewWorkspaceRollback,
   removeWorkspaceSessionWithCheckpoints,
   rollbackWorkspaceRound,
-  runWorkspaceStreamChat
+  runWorkspaceStreamChat,
+  updateWorkspacePendingInput
 } from '../services/agent-workspace-chat.service'
 import {
   attachWorkspaceNotebook,
@@ -318,6 +319,12 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle('agent-workspace:cancel-pending-input', async (_, inputId: string) =>
     cancelWorkspacePendingInput(inputId)
+  )
+
+  ipcMain.handle(
+    'agent-workspace:update-pending-input',
+    async (event, params: { inputId: string; text?: string; delivery?: 'steer' | 'queue' }) =>
+      updateWorkspacePendingInput(event, params)
   )
 
   ipcMain.handle(
