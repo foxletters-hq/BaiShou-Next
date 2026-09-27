@@ -52,6 +52,21 @@ export class AgentGateNotFoundError extends Error {
   }
 }
 
+export function isAgentGateNotFoundError(error: unknown): boolean {
+  if (error instanceof AgentGateNotFoundError) return true
+  if (typeof error !== 'object' || error === null) {
+    return typeof error === 'string' && error.includes('门控请求不存在')
+  }
+  const record = error as { name?: unknown; code?: unknown; message?: unknown; cause?: unknown }
+  if (record.code === 'agent_gate.not_found' || record.name === 'AgentGateNotFoundError') {
+    return true
+  }
+  if (typeof record.message === 'string' && record.message.includes('门控请求不存在')) {
+    return true
+  }
+  return record.cause !== undefined && isAgentGateNotFoundError(record.cause)
+}
+
 export class AgentGateCancelledError extends Error {
   readonly code = 'agent_gate.cancelled' as const
 

@@ -29,10 +29,11 @@ describe('compression-prompt.defaults', () => {
     )
   })
 
-  it('getDefaultCompressionSystemPrompt omits message-time metadata when wrapMessageTime is false', () => {
+  it('getDefaultCompressionSystemPrompt omits per-message time metadata when wrapMessageTime is false', () => {
     const withMeta = getDefaultCompressionSystemPrompt('zh')
     const plain = getDefaultCompressionSystemPrompt('zh', { wrapMessageTime: false })
     expect(withMeta).toContain('<message-time>')
+    expect(withMeta).toContain('<message-content>')
     expect(plain).not.toContain('<message-time>')
     expect(plain).toContain('纯文本')
   })
