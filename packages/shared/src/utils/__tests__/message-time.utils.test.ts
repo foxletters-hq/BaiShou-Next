@@ -101,8 +101,7 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
   })
 
   it('strips a leaked conversation_time table from assistant text', () => {
-    const raw =
-      '<conversation_time>\n1. user 2026-09-27 12:38\n</conversation_time>\n不客气。'
+    const raw = '<conversation_time>\n1. user 2026-09-27 12:38\n</conversation_time>\n不客气。'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('不客气。')
   })
 })

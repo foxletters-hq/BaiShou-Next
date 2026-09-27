@@ -69,7 +69,9 @@ export function resolveAlwaysDisabledReason(request: AgentGateRequest): string |
         '预览已截断，仅可本次允许'
       )
     }
-    if (collectAgentGatePreviews(request).some((item) => item.type === 'command' && item.dangerous)) {
+    if (
+      collectAgentGatePreviews(request).some((item) => item.type === 'command' && item.dangerous)
+    ) {
       return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L62', '危险命令不可始终允许')
     }
     return i18n.t(
