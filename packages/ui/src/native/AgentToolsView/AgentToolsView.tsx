@@ -1,9 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
-import { AGENT_TOOL_CATEGORY_ORDER, normalizeToolManagementConfig } from '@baishou/shared'
+import {
+  AGENT_TOOL_CATEGORY_ORDER,
+  AgentGateEffect,
+  isEnablingAutoInjectTime,
+  normalizeToolManagementConfig
+} from '@baishou/shared'
 import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { Smile } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { useDialog } from '../Dialog'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import { AgentToolCategoryIcon } from '../icons/agent-tools-icons'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -28,13 +34,25 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
   const usePermissionMatrix = Boolean(resolveToolEffect && onToolEffectChange)
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
   const categoryMeta = useMemo(() => getCategoryMeta(t), [t])
 
-  const toggleTool = (toolId: string) => {
+  const confirmEnableAutoInjectTime = async (toolId: string, currentlyEnabled: boolean) => {
+    if (!isEnablingAutoInjectTime(toolId, currentlyEnabled)) return true
+    return dialog.confirm(
+      t(
+        'agent.tools.auto_inject_time_enable_confirm',
+        '开启后，发送给伙伴的每条历史消息都会带上发送时间标签。部分模型可能把这些标签抄进回复，聊天气泡里会出现类似 <message-time> 的文字。确定开启？'
+      ),
+      t('agent.tools.auto_inject_time_enable_confirm_title', '开启当前时间？')
+    )
+  }
+
+  const toggleTool = async (toolId: string) => {
     const disabledList = Array.isArray(normalizedConfig.disabledToolIds)
       ? [...normalizedConfig.disabledToolIds]
       : []
@@ -43,10 +61,24 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     if (isCurrentlyEnabled) {
       disabledList.push(toolId)
     } else {
+      if (!(await confirmEnableAutoInjectTime(toolId, false))) return
       const idx = disabledList.indexOf(toolId)
       if (idx > -1) disabledList.splice(idx, 1)
     }
     onChange({ ...normalizedConfig, disabledToolIds: disabledList })
+  }
+
+  const handleToolEffectChange = async (toolId: string, effect: AgentGateEffect) => {
+    const currentlyEnabled = resolveToolEffect
+      ? resolveToolEffect(toolId) !== AgentGateEffect.Deny
+      : !(normalizedConfig.disabledToolIds || []).includes(toolId)
+    if (
+      effect !== AgentGateEffect.Deny &&
+      !(await confirmEnableAutoInjectTime(toolId, currentlyEnabled))
+    ) {
+      return
+    }
+    onToolEffectChange?.(toolId, effect)
   }
 
   const setToolParam = (toolId: string, key: string, value: unknown) => {
@@ -141,7 +173,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                   config={normalizedConfig}
                   usePermissionMatrix={usePermissionMatrix}
                   resolveToolEffect={resolveToolEffect}
-                  onToolEffectChange={onToolEffectChange}
+                  onToolEffectChange={handleToolEffectChange}
                   onToggleTool={toggleTool}
                   onSetToolParam={setToolParam}
                   getToolParam={getToolParam}

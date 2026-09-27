@@ -4,6 +4,7 @@ import type { AttachmentManagementViewProps } from './attachment-management.type
 import { formatSize, defaultToDisplayUri, isImageFile } from './attachment-management.utils'
 import { useAttachmentSessionState } from './useAttachmentSessionState'
 import { useAttachmentDiaryState } from './useAttachmentDiaryState'
+import { useAttachmentEmojiState } from './useAttachmentEmojiState'
 
 export function useAttachmentManagementView(props: AttachmentManagementViewProps) {
   const {
@@ -13,6 +14,8 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     onOpenFileLocation,
     diaryAttachments = [],
     onDeleteDiaryAttachment,
+    emojiAttachments = [],
+    onDeleteEmojiAttachments,
     toDisplayUri = defaultToDisplayUri,
     loadImageUri,
     onImageCacheScopeChange
@@ -21,7 +24,7 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
   const { t } = useTranslation()
   const confirmKeyword = t('settings.attachment_confirm_keyword', '确定')
 
-  const [activePane, setActivePane] = useState<'session' | 'diary'>('diary')
+  const [activePane, setActivePane] = useState<'session' | 'diary' | 'emoji'>('diary')
   const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null)
 
   const session = useAttachmentSessionState(attachments, {
@@ -36,9 +39,13 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     imagePreview,
     setImagePreview
   })
+  const emoji = useAttachmentEmojiState(emojiAttachments, activePane, {
+    onDeleteEmojiAttachments,
+    confirmKeyword
+  })
 
   const handleOpenImagePreview = (filePath: string, fileName: string) => {
-    if (!isImageFile(fileName)) return
+    if (!filePath || !isImageFile(fileName)) return
     void (async () => {
       if (loadImageUri) {
         const src = await loadImageUri(filePath, 'preview')
@@ -63,7 +70,9 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     diary.diaryPageSize,
     diary.diaryYear,
     diary.diaryMonth,
-    diary.diaryOrphanOnly
+    diary.diaryOrphanOnly,
+    emoji.currentEmojiPage,
+    emoji.emojiPageSize
   ])
 
   return {
@@ -83,6 +92,7 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     formatSize,
     ...session,
     ...diary,
+    ...emoji,
     imagePreview,
     handleOpenImagePreview
   }

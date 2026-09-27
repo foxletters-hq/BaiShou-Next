@@ -1,7 +1,8 @@
-import React from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import React, { useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type {
+  CompanionAskItemView,
   CompanionAskOptionView,
   CompanionAskPresentation
 } from '../../shared/tool-result.util'
@@ -82,6 +83,59 @@ function CompanionAskResultItem({
   )
 }
 
+function PagedCompanionAskResults({
+  items,
+  declined
+}: {
+  items: CompanionAskItemView[]
+  declined: boolean
+}) {
+  const { t } = useTranslation()
+  const { colors } = useNativeTheme()
+  const [index, setIndex] = useState(0)
+  const safeIndex = Math.min(index, Math.max(items.length - 1, 0))
+  const item = items[safeIndex]
+  if (!item) return null
+
+  return (
+    <View style={{ gap: 8 }}>
+      <CompanionAskResultItem
+        question={item.question}
+        answer={item.answer}
+        declined={declined}
+        options={item.options}
+        selectedOptionIds={item.selectedOptionIds}
+      />
+      <View style={styles.pager}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('agent_gate.queue_prev', '上一题')}
+          disabled={safeIndex <= 0}
+          onPress={() => setIndex((current) => Math.max(0, current - 1))}
+          style={[styles.pagerBtn, { borderColor: colors.borderSubtle }]}
+        >
+          <Text style={{ color: colors.textSecondary }}>{'<'}</Text>
+        </Pressable>
+        <Text style={[styles.pagerProgress, { color: colors.textTertiary }]}>
+          {t('agent_gate.ask_progress', '{{current}} / {{total}}', {
+            current: safeIndex + 1,
+            total: items.length
+          })}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('agent_gate.queue_next', '下一题')}
+          disabled={safeIndex >= items.length - 1}
+          onPress={() => setIndex((current) => Math.min(items.length - 1, current + 1))}
+          style={[styles.pagerBtn, { borderColor: colors.borderSubtle }]}
+        >
+          <Text style={{ color: colors.textSecondary }}>{'>'}</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -95,26 +149,17 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
       <Text style={[styles.label, { color: colors.textTertiary }]}>
         {t('agent.tools.companion_ask_card_label', '提问')}
       </Text>
-      {items
-        ? items.map((item, index) => (
-            <CompanionAskResultItem
-              key={`${item.question}-${index}`}
-              question={item.question}
-              answer={item.answer}
-              declined={data.declined}
-              options={item.options}
-              selectedOptionIds={item.selectedOptionIds}
-            />
-          ))
-        : (
-            <CompanionAskResultItem
-              question={data.question}
-              answer={data.answer}
-              declined={data.declined}
-              options={data.options}
-              selectedOptionIds={data.selectedOptionIds}
-            />
-          )}
+      {items ? (
+        <PagedCompanionAskResults items={items} declined={data.declined} />
+      ) : (
+        <CompanionAskResultItem
+          question={data.question}
+          answer={data.answer}
+          declined={data.declined}
+          options={data.options}
+          selectedOptionIds={data.selectedOptionIds}
+        />
+      )}
     </View>
   )
 }
@@ -154,5 +199,25 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 13,
     lineHeight: 20
+  },
+  pager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4
+  },
+  pagerProgress: {
+    minWidth: 48,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center'
+  },
+  pagerBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 8
   }
 })

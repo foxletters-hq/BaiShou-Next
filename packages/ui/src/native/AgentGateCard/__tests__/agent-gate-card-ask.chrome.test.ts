@@ -15,4 +15,13 @@ describe('AgentGateCard companion ask', () => {
     expect(cardSource).toContain('questionAnswers')
     expect(cardSource).toContain('buildCompanionAskQuestionAnswers')
   })
+
+  it('should keep question paging and custom answers above the keyboard', () => {
+    expect(cardSource).toContain('part="footer"')
+    expect(cardSource).toContain('onQueuePrev')
+    expect(cardSource).toContain('onQueueNext')
+    expect(cardSource).toContain('keyboardDidShow')
+    expect(cardSource).toContain('onCustomFocus')
+    expect(cardSource).toContain('scrollToEnd')
+  })
 })
