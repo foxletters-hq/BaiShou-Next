@@ -10,8 +10,10 @@ import {
   AgentChatCoreService,
   emitAgentSessionRuntime,
   getSharedSessionInbox,
-  isAgentStreamSessionBusy
+  isAgentStreamSessionBusy,
+  reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
+import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
   getAgentManagers,
@@ -26,7 +28,12 @@ import {
 import { buildCompanionStreamHost } from './companion-stream-host'
 import { searchService } from '../services/search.service'
 import { cancelAllAgentGateSessions, cancelAgentGateSession } from '../services/agent-gate.service'
-import { drainSessionInbox } from '../services/session-inbox-drain'
+import {
+  drainSessionInbox,
+  markDrainAfterAbort,
+  scheduleDrainWhenIdle,
+  takeDrainAfterAbort
+} from '../services/session-inbox-drain'
 import { initDesktopSessionInboxStore } from '../services/session-inbox.store'
 
 async function drainCompanionInbox(
@@ -245,8 +252,12 @@ export class AgentChatService {
       return false
     } finally {
       AgentChatCoreService.resetAbortController()
-      if (shouldDrainInbox) {
-        void drainCompanionInbox(event, args.sessionId)
+      if (shouldDrainInbox || takeDrainAfterAbort(args.sessionId)) {
+        scheduleDrainWhenIdle({
+          sessionId: args.sessionId,
+          isBusy: (id) => isAgentStreamSessionBusy(id),
+          run: () => drainCompanionInbox(event, args.sessionId)
+        })
       }
     }
   }
@@ -302,4 +313,82 @@ export class AgentChatService {
     await initDesktopSessionInboxStore()
     return getSharedSessionInbox().listPending(sessionId)
   }
+
+  public static async cancelPendingInput(inputId: string): Promise<SessionInputRecord | null> {
+    await initDesktopSessionInboxStore()
+    const cancelled = getSharedSessionInbox().cancelInput(inputId)
+    if (!cancelled) return null
+    const userMessageId = cancelled.userMessageId?.trim()
+    if (userMessageId) {
+      try {
+        await deleteCompanionQueuedUserMessage(cancelled.sessionId, userMessageId)
+      } catch (error) {
+        logger.warn(
+          `[CompanionChat] cancel pending failed session=${cancelled.sessionId} userMessage=${userMessageId}:`,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+    }
+    return cancelled
+  }
+
+  public static async updatePendingInput(
+    event: Electron.IpcMainInvokeEvent,
+    params: {
+      inputId: string
+      text?: string
+      delivery?: SessionInputDelivery
+    }
+  ): Promise<SessionInputRecord | null> {
+    await initDesktopSessionInboxStore()
+    const inbox = getSharedSessionInbox()
+    let updated: SessionInputRecord | null = null
+    if (typeof params.text === 'string') {
+      updated = inbox.updatePendingText(params.inputId, params.text)
+      if (!updated) return null
+      const userMessageId = updated.userMessageId?.trim()
+      if (userMessageId) {
+        try {
+          const { realSessionRepo, sessionManager } = getAgentManagers()
+          await realSessionRepo.updateMessageTextPart(userMessageId, params.text)
+          await sessionManager.flushSessionToDisk(updated.sessionId)
+        } catch (error) {
+          logger.warn(
+            `[CompanionChat] update pending text failed session=${updated.sessionId}:`,
+            error instanceof Error ? error.message : String(error)
+          )
+        }
+      }
+    }
+    if (params.delivery) {
+      updated = inbox.setPendingDelivery(params.inputId, params.delivery) ?? updated
+    }
+    if (updated && params.delivery === 'steer') {
+      const sessionId = updated.sessionId
+      if (isAgentStreamSessionBusy(sessionId)) {
+        markDrainAfterAbort(sessionId)
+        this.stopStream(sessionId)
+      }
+      scheduleDrainWhenIdle({
+        sessionId,
+        isBusy: (id) => isAgentStreamSessionBusy(id),
+        run: () => drainCompanionInbox(event, sessionId)
+      })
+    }
+    return updated
+  }
+}
+
+async function deleteCompanionQueuedUserMessage(
+  sessionId: string,
+  userMessageId: string
+): Promise<void> {
+  const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
+    getAgentManagers()
+  const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, userMessageId)
+  const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []
+  await realSessionRepo.deleteMessageAndFollowing(sessionId, userMessageId)
+  await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
+  await cleanupAttachmentsForParts(attachmentManager, sessionId, parts)
+  await sessionManager.flushSessionToDisk(sessionId)
 }

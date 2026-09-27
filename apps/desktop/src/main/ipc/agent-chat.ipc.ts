@@ -54,6 +54,20 @@ export function registerChatIPC() {
     return AgentChatService.listPendingInputs(sessionId)
   })
 
+  ipcMain.handle('agent:cancel-pending-input', async (_event, inputId: string) => {
+    return AgentChatService.cancelPendingInput(inputId)
+  })
+
+  ipcMain.handle(
+    'agent:update-pending-input',
+    async (
+      event,
+      params: { inputId: string; text?: string; delivery?: 'steer' | 'queue' }
+    ) => {
+      return AgentChatService.updatePendingInput(event, params)
+    }
+  )
+
   // ==========================================
   // API: 重新生成回复
   // ==========================================

@@ -61,6 +61,10 @@ import {
 } from '@baishou/shared'
 import { markStartup, traceStartupStep } from './startup-trace.util'
 import {
+  runDesktopPostWindowInit,
+  scheduleDesktopPostWindowInit
+} from './services/desktop-post-window-init'
+import {
   installHelpDocsWebviewNavigation,
   isHelpDocsInAppUrl
 } from './help-docs-webview-navigation.util'
@@ -202,6 +206,7 @@ function createWindow(needsOnboarding: boolean): void {
     markStartup('window.ready-to-show')
     mainWindow!.show()
     markStartup('window.show')
+    scheduleDesktopPostWindowInit(() => runDesktopPostWindowInit())
   })
 
   mainWindow.webContents.on('did-start-loading', () => {
@@ -276,6 +281,14 @@ function createWindow(needsOnboarding: boolean): void {
     return { action: 'deny' }
   })
 
+  mainWindow.on('app-command', (event, command) => {
+    if (command !== 'browser-backward' && command !== 'browser-forward') return
+    event.preventDefault()
+    mainWindow?.webContents.send('workbench:editor-mouse-nav', {
+      direction: command === 'browser-backward' ? 'back' : 'forward'
+    })
+  })
+
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   const baseUrl =
@@ -343,9 +356,6 @@ async function completeFullBootstrap() {
         hotkeyService.start()
         setHotkeyService(hotkeyService)
 
-        const { bootstrapMcpServer } = await import('./services/mcp-runtime')
-        await traceStartupStep('bootstrapMcpServer', () => bootstrapMcpServer())
-
         // 通知渲染进程引导已就绪，可以跳转了
         mainWindow.webContents.send('onboarding:ready')
         markStartup('onboarding:ready sent')
@@ -401,6 +411,11 @@ app.whenReady().then(async () => {
 
   // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
   electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
+  const { setWindowsToastIconPath, ensureWindowsToastShortcut } = await import(
+    './services/windows-toast-identity'
+  )
+  setWindowsToastIconPath(icon)
+  ensureWindowsToastShortcut()
 
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {
@@ -536,21 +551,6 @@ app.whenReady().then(async () => {
     registerShellIPC()
     registerSkillIPC()
   })
-
-  // 注册桌面 PDF 按页抽取器（知识库摄入）
-  try {
-    const { registerDesktopPdfPageExtractor } =
-      await import('./services/register-desktop-pdf-extractor')
-    registerDesktopPdfPageExtractor()
-    const { registerDesktopPdfPageBitmapRenderer } =
-      await import('./services/register-desktop-pdf-bitmap-renderer')
-    registerDesktopPdfPageBitmapRenderer()
-    const { registerDesktopVisionPageRecognizer } =
-      await import('./services/register-desktop-vision-ocr')
-    registerDesktopVisionPageRecognizer()
-  } catch (e) {
-    logger.warn('[Startup] registerDesktopPdfPageExtractor failed:', e as Error)
-  }
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   markStartup('createWindow.call', { needsOnboarding })

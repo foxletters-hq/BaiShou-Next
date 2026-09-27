@@ -22,6 +22,15 @@ describe('knowledge graph jobs ipc chrome', () => {
     expect(ipc).toContain('readGraphWindowProgress')
   })
 
+  it('should send a slim graph view over ipc without node embeddings', () => {
+    const ipc = readFileSync(join(here, '..', 'knowledge-graph.ipc.ts'), 'utf8')
+    expect(ipc).toContain('mapNotebookGraphViewForIpc')
+    expect(ipc).toContain("sourceExcerpt: e.reviewStatus === 'pending' ? e.sourceExcerpt")
+    expect(ipc).not.toContain('embedding:')
+    expect(ipc).toContain('runGraphModeSearch')
+    expect(ipc).toContain('searchNodesByVector')
+  })
+
   it('should send the graph provider into generateContent instead of the summary slot', () => {
     const extract = readFileSync(
       join(here, '../../services/desktop-knowledge-graph-extract.ts'),

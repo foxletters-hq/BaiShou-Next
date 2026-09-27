@@ -85,9 +85,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\win-unpacked\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{cm:AppName}"; Filename: "{app}\BaiShou.exe"
+Name: "{group}\{cm:AppName}"; Filename: "{app}\BaiShou.exe"; AppUserModelID: "com.baishou.baishou"
 Name: "{group}\{cm:UninstallApp}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{cm:AppName}"; Filename: "{app}\BaiShou.exe"; Tasks: desktopicon
+Name: "{autodesktop}\{cm:AppName}"; Filename: "{app}\BaiShou.exe"; Tasks: desktopicon; AppUserModelID: "com.baishou.baishou"
 
 [Run]
 Filename: "{app}\BaiShou.exe"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent

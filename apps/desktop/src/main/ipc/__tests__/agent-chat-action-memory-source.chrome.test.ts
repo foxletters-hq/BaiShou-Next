@@ -18,6 +18,7 @@ describe('companion stream host', () => {
 
   it('should inject the life graph reader and memory source when building the host', () => {
     expect(hostSrc).toContain('graphReader: createDesktopGraphReader(embedQuery)')
+    expect(hostSrc).toContain('knowledgeGraphReader: createDesktopKnowledgeGraphReader(embedQuery)')
     expect(hostSrc).toContain('rawDataSourceManager: getRawDataSourceManager()')
     expect(hostSrc).toContain('syncGraphPendingIndex,')
     expect(hostSrc).toContain('readSessionMountedNotebookIds(params.sessionId)')
@@ -26,5 +27,7 @@ describe('companion stream host', () => {
   it('should inject the life graph reader into external MCP calls', () => {
     const mcpSrc = readFileSync(join(here, '../agent-mcp-context.ts'), 'utf8')
     expect(mcpSrc).toContain('createDesktopGraphReader(')
+    expect(mcpSrc).toContain('createDesktopKnowledgeGraphReader(')
+    expect(mcpSrc).toContain('embAdapter.embedQuery(text)')
   })
 })
