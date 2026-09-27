@@ -17,7 +17,8 @@ import {
 } from '../assistant-display-timeline.util'
 
 function gatePart(
-  partial: Partial<AgentGatePartData['request']> & Pick<AgentGatePartData['request'], 'id' | 'action'>
+  partial: Partial<AgentGatePartData['request']> &
+    Pick<AgentGatePartData['request'], 'id' | 'action'>
 ): AgentGatePartData {
   return {
     request: {

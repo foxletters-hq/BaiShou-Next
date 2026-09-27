@@ -37,15 +37,15 @@ function part(scope?: AgentGateRequest['scope']): { type: string; data: AgentGat
 
 describe('isAgentGateScopeOnSurface', () => {
   it('should hide workspace-scoped gates on the companion surface', () => {
-    expect(
-      isAgentGateScopeOnSurface('companion', { kind: 'workspace', workspaceId: 'ws-1' })
-    ).toBe(false)
+    expect(isAgentGateScopeOnSurface('companion', { kind: 'workspace', workspaceId: 'ws-1' })).toBe(
+      false
+    )
   })
 
   it('should show workspace-scoped gates on the workspace surface', () => {
-    expect(
-      isAgentGateScopeOnSurface('workspace', { kind: 'workspace', workspaceId: 'ws-1' })
-    ).toBe(true)
+    expect(isAgentGateScopeOnSurface('workspace', { kind: 'workspace', workspaceId: 'ws-1' })).toBe(
+      true
+    )
   })
 
   it('should hide companion-scoped gates on the workspace surface', () => {
@@ -118,4 +118,3 @@ describe('shouldRenderAgentGateHistoryCard', () => {
     ).toBe(true)
   })
 })
-

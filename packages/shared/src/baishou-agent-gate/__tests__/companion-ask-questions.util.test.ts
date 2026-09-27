@@ -44,9 +44,9 @@ describe('companionAskAnswersComplete', () => {
   })
 
   it('should wait until every question has an option or custom answer', () => {
-    expect(companionAskAnswersComplete(questions, [{ questionId: '0', selectedOptionId: '0' }])).toBe(
-      false
-    )
+    expect(
+      companionAskAnswersComplete(questions, [{ questionId: '0', selectedOptionId: '0' }])
+    ).toBe(false)
     expect(
       companionAskAnswersComplete(questions, [
         { questionId: '0', selectedOptionId: '0' },
@@ -100,9 +100,7 @@ describe('readQuestionAnswer', () => {
       question: '选哪个？',
       options: ['A', 'B']
     })
-    expect(
-      readQuestionAnswer(question!, { selectedOptionIds: ['1'] }, true)
-    ).toEqual({
+    expect(readQuestionAnswer(question!, { selectedOptionIds: ['1'] }, true)).toEqual({
       answer: 'B',
       selectedOptionIds: ['1']
     })

@@ -27,7 +27,11 @@ describe('agent-stream-timeline.util', () => {
   it('should keep the first call position when the same tool-start is emitted again', () => {
     const timeline: AgentStreamTimelineItem[] = []
     appendTimelineToolStart(timeline, { callId: 't1', name: 'current_time', args: {} })
-    appendTimelineToolStart(timeline, { callId: 't2', name: 'knowledge_search', args: { q: '天气' } })
+    appendTimelineToolStart(timeline, {
+      callId: 't2',
+      name: 'knowledge_search',
+      args: { q: '天气' }
+    })
     appendTimelineToolStart(timeline, {
       callId: 't1',
       name: 'current_time',

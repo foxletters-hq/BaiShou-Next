@@ -15,9 +15,9 @@ describe('isAutoInjectCurrentTimeEnabled', () => {
   })
 
   it('defaults auto inject time to off in DEFAULT_TOOL_MANAGEMENT_CONFIG', () => {
-    expect(
-      isAutoInjectCurrentTimeEnabled(DEFAULT_TOOL_MANAGEMENT_CONFIG.disabledToolIds)
-    ).toBe(false)
+    expect(isAutoInjectCurrentTimeEnabled(DEFAULT_TOOL_MANAGEMENT_CONFIG.disabledToolIds)).toBe(
+      false
+    )
   })
 
   it('returns false when auto inject tool id is disabled', () => {
