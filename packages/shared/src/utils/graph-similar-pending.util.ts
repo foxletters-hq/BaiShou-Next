@@ -17,9 +17,7 @@ export function normalizeGraphSimilarPendingSimilarity(value: number): number {
 }
 
 export function meetsGraphSimilarPendingThreshold(similarity: number): boolean {
-  return (
-    normalizeGraphSimilarPendingSimilarity(similarity) > GRAPH_SIMILAR_PENDING_MIN_SIMILARITY
-  )
+  return normalizeGraphSimilarPendingSimilarity(similarity) > GRAPH_SIMILAR_PENDING_MIN_SIMILARITY
 }
 
 export type GraphSimilarPending = {

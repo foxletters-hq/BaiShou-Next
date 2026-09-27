@@ -90,8 +90,7 @@ type LocalizeFn = (key: string, fallback: string) => string
 
 /** 把服务商 HTTP 错误收成界面文案；余额不足不再说成「没配置模型」。 */
 export function localizeAiApiErrorMessage(error: unknown, t: LocalizeFn): string {
-  const classified =
-    typeof error === 'string' ? { message: error, responseBody: error } : error
+  const classified = typeof error === 'string' ? { message: error, responseBody: error } : error
   const kind = classifyAiApiCallError(classified)
   switch (kind) {
     case 'balance':

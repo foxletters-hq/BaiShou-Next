@@ -13,22 +13,27 @@ export function graphSplitNewDisplayName(input: {
   return name || discriminator
 }
 
-export function sliceGraphSplitEdges<T>(edges: readonly T[], page: number, pageSize = GRAPH_SPLIT_EDGE_PAGE_SIZE): T[] {
+export function sliceGraphSplitEdges<T>(
+  edges: readonly T[],
+  page: number,
+  pageSize = GRAPH_SPLIT_EDGE_PAGE_SIZE
+): T[] {
   const totalPages = Math.max(1, Math.ceil(edges.length / pageSize))
   const safePage = Math.min(Math.max(1, page), totalPages)
   const start = (safePage - 1) * pageSize
   return edges.slice(start, start + pageSize)
 }
 
-export function graphSplitEdgePageCount(edgeCount: number, pageSize = GRAPH_SPLIT_EDGE_PAGE_SIZE): number {
+export function graphSplitEdgePageCount(
+  edgeCount: number,
+  pageSize = GRAPH_SPLIT_EDGE_PAGE_SIZE
+): number {
   if (edgeCount <= 0) return 1
   return Math.ceil(edgeCount / pageSize)
 }
 
 /** 只要新实体已经写出，确认拆分就该收尾；先不管的关系下次再分。 */
-export function shouldCloseGraphSplitAfterSave(result: {
-  splitNodeId?: string | null
-}): boolean {
+export function shouldCloseGraphSplitAfterSave(result: { splitNodeId?: string | null }): boolean {
   return Boolean(result.splitNodeId?.trim())
 }
 
@@ -36,8 +41,9 @@ export function shouldCloseGraphSplitAfterSave(result: {
 export function formatGraphSplitPartnerName(name: string): string {
   const raw = name.trim()
   const matched = raw.match(/(\d{4}-\d{2}-\d{2})/)
-  if (!matched) return raw
-  const rest = raw.replace(matched[1], '').replace(/[/\\._-]+/g, '')
-  if (rest.length === 0) return matched[1]
+  const date = matched?.[1]
+  if (!date) return raw
+  const rest = raw.replace(date, '').replace(/[/\\._-]+/g, '')
+  if (rest.length === 0) return date
   return raw
 }
