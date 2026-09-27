@@ -21,7 +21,7 @@ const DEFAULT_LAYOUT: WorkbenchLayoutState = {
 const MIN_SIDE_WIDTH = 200
 const MAX_SIDE_WIDTH = 480
 const MIN_AGENT_WIDTH = 380
-const MAX_AGENT_WIDTH = 560
+const MAX_AGENT_WIDTH = 800
 
 function storageKey(scopeKey: string): string {
   return `baishou:workbench-layout:${scopeKey}`

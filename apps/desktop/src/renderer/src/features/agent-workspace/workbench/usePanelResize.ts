@@ -8,6 +8,8 @@ interface UsePanelResizeOptions {
   max: number
   /** 向左拖增宽（右侧 Agent 面板） */
   invertDelta?: boolean
+  /** 拖拽过程中的鼠标，到顶或到底时改成单向 */
+  cursor?: string
 }
 
 export function usePanelResize({
@@ -16,7 +18,8 @@ export function usePanelResize({
   getWidth,
   min,
   max,
-  invertDelta = false
+  invertDelta = false,
+  cursor = 'col-resize'
 }: UsePanelResizeOptions) {
   const startWidthRef = useRef(0)
 
@@ -26,7 +29,7 @@ export function usePanelResize({
       event.preventDefault()
       const startX = event.clientX
       startWidthRef.current = getWidth()
-      document.body.style.cursor = 'col-resize'
+      document.body.style.cursor = cursor
       document.body.style.userSelect = 'none'
 
       const onMove = (moveEvent: MouseEvent) => {
@@ -47,7 +50,7 @@ export function usePanelResize({
       window.addEventListener('mousemove', onMove)
       window.addEventListener('mouseup', onUp)
     },
-    [getWidth, invertDelta, max, min, onCommit, onResize]
+    [cursor, getWidth, invertDelta, max, min, onCommit, onResize]
   )
 
   return { onMouseDown }
