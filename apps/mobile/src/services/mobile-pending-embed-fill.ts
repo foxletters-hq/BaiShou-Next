@@ -39,7 +39,10 @@ export type MobilePendingEmbedFillResult = {
   skippedReason?: 'no-vault' | 'adapter-unavailable' | 'nothing-to-embed'
 }
 
-type OrganizeFillCounts = Pick<PendingEmbedCounts, 'diaries' | 'memories' | 'graphNodes' | 'total'> & {
+type OrganizeFillCounts = Pick<
+  PendingEmbedCounts,
+  'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'total'
+> & {
   graphExtract?: number
   graphDisambiguate?: number
 }
@@ -91,6 +94,7 @@ export async function runMobileManualPendingEmbedFill(
       diaries: counts?.diaries ?? 0,
       memories: counts?.memories ?? 0,
       graphNodes: counts?.graphNodes ?? 0,
+      knowledgeSources: counts?.knowledgeSources ?? 0,
       graphExtract: counts?.graphExtract ?? 0,
       graphDisambiguate: counts?.graphDisambiguate ?? 0
     }),
@@ -104,12 +108,12 @@ export async function runMobileManualPendingEmbedFill(
       phase === 'memory'
         ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
         : phase === 'graph_extract'
-            ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
-            : phase === 'graph_node'
-              ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
-              : phase === 'graph_disambiguate'
-                ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
-                : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
+          ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
+          : phase === 'graph_node'
+            ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
+            : phase === 'graph_disambiguate'
+              ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
+              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,
@@ -139,7 +143,7 @@ export async function runMobileManualPendingEmbedFill(
   }
   phases = markPhaseDone(phases, 'memory')
 
-  let extractDone = 0
+  const extractDone = 0
   try {
     await assertMobileRagCanContinue()
     let extractTotal = phases.graphExtract.total

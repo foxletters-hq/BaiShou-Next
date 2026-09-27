@@ -352,7 +352,8 @@ export async function clearMobileRagByKinds(
     })
   }
   const left = await client.execute({
-    sql: `SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`
+    sql: `SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`,
+    args: []
   })
   const count = Number((left.rows?.[0] as { c?: number } | undefined)?.c ?? 0)
   if (count === 0) {
