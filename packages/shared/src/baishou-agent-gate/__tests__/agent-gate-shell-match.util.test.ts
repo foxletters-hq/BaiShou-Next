@@ -75,6 +75,8 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
     expect(isDangerousShellCommand('rm -r dist')).toBe(true)
     expect(isDangerousShellCommand('python -c "print(1)"')).toBe(true)
     expect(isDangerousShellCommand('git status')).toBe(false)
+    expect(isDangerousShellCommand('rm -rf .sandbox-rm-test')).toBe(true)
+    expect(isDangerousShellCommand('Remove-Item -Recurse -Force .sandbox-rm-test')).toBe(true)
   })
 
   it('should not treat Windows cmd /c mkdir as dangerous', () => {
@@ -98,11 +100,25 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
     expect(canPermanentlyAllowShellCommand('cmd /c rm -rf dist')).toBe(false)
   })
 
-  it('blocks Always for interpreters and operators', () => {
+  it('blocks Always for interpreters and dangerous operators', () => {
     expect(canPermanentlyAllowShellCommand('git status')).toBe(true)
     expect(canPermanentlyAllowShellCommand('python x.py')).toBe(false)
     expect(canPermanentlyAllowShellCommand('git status && rm -rf /')).toBe(false)
     expect(canPermanentlyAllowShellCommand('rm foo')).toBe(false)
+  })
+
+  it('should remember a piped command by its command head', () => {
+    const command =
+      'Get-ChildItem -LiteralPath . -Filter "*简报*" | Select-Object Name, Length'
+    expect(canPermanentlyAllowShellCommand(command)).toBe(true)
+    expect(resolveCommandPrefixPatternFromCommand(command)).toBe('get-childitem *')
+    expect(matchShellCommandPattern(command, 'get-childitem *')).toBe(true)
+    expect(
+      matchShellCommandPattern('Get-ChildItem -Path .agents -Recurse', 'get-childitem *')
+    ).toBe(true)
+    expect(matchShellCommandPattern('Select-Object Name', 'get-childitem *')).toBe(false)
+    expect(canPermanentlyAllowShellCommand('git status && rm -rf dist')).toBe(false)
+    expect(matchShellCommandPattern('git status && rm -rf dist', 'git status *')).toBe(false)
   })
 })
 

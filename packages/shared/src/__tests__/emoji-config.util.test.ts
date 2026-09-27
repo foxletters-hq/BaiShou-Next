@@ -3,6 +3,7 @@ import {
   DEFAULT_EMOJI_GROUP_ID,
   emojiGroupMatchesQuery,
   normalizeEmojiToolConfig,
+  removeEmojisByRelativePaths,
   resolveAssistantEmojiConfig
 } from '../utils/emoji-config.util'
 
@@ -74,5 +75,25 @@ describe('emoji-config.util', () => {
     })
     expect(resolved.enabled).toBe(false)
     expect(resolved.emojis).toHaveLength(0)
+  })
+
+  it('should drop sticker entries from every group when files are deleted', () => {
+    const next = removeEmojisByRelativePaths(
+      {
+        enabled: true,
+        groups: [
+          {
+            id: 'life',
+            name: '日常',
+            emojis: [
+              { id: 'cat.png', name: 'cat', relativePath: 'emojis/cat.png' },
+              { id: 'dog.png', name: 'dog', relativePath: 'emojis/dog.png' }
+            ]
+          }
+        ]
+      },
+      ['emojis/cat.png']
+    )
+    expect(next.groups[0]?.emojis.map((item) => item.id)).toEqual(['dog.png'])
   })
 })
