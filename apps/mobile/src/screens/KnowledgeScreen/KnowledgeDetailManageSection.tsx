@@ -49,7 +49,7 @@ export function KnowledgeDetailManageSection(props: {
 
   return (
     <>
-      <SettingsSection title={t('knowledge.graph_panel', '本笔记本图谱')}>
+      <SettingsSection title={t('knowledge.data_manage', '数据管理')}>
         <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
           {graphNodes.length === 0 ? (
             <View style={{ gap: tokens.spacing.sm }}>
@@ -80,14 +80,18 @@ export function KnowledgeDetailManageSection(props: {
                       '先导入资料，再开始整理这本笔记本里的关系。人生关系图是另一份数据，不会混进来。'
                     )}
               </Text>
-              <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onStartOrganize()}>
-                {t('graph.start_organize', '开始整理')}
-              </Button>
+              <View style={styles.rowGap}>
+                <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onStartOrganize()}>
+                  {t('graph.start_organize', '开始整理')}
+                </Button>
+              </View>
             </View>
           ) : null}
-          <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onRebuildGraph()}>
-            {t('knowledge.rebuild_graph', '重新抽取图谱')}
-          </Button>
+          <View style={styles.rowGap}>
+            <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onRebuildGraph()}>
+              {t('knowledge.rebuild_graph', '重新抽取图谱')}
+            </Button>
+          </View>
         </View>
       </SettingsSection>
 
@@ -144,6 +148,7 @@ export function KnowledgeDetailManageSection(props: {
               placeholder={phrase}
             />
           ) : null}
+          <View style={styles.rowGap}>
           <Button
             isDisabled={!canConfirm || busy}
             destructive={manageAction === 'clear'}
@@ -153,6 +158,7 @@ export function KnowledgeDetailManageSection(props: {
               ? t('knowledge.data_manage_clear', '清除')
               : t('knowledge.data_manage_reprocess', '重整理')}
           </Button>
+          </View>
         </View>
       </SettingsSection>
     </>

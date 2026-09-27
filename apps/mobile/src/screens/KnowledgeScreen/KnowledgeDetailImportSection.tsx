@@ -87,9 +87,11 @@ export function KnowledgeDetailImportSection(props: {
               textarea
               multiline
             />
-            <Button isDisabled={busy || !pasteText.trim()} onPress={() => void onImportText()}>
-              {t('knowledge.import_submit', '导入')}
-            </Button>
+            <View style={styles.rowGap}>
+              <Button isDisabled={busy || !pasteText.trim()} onPress={() => void onImportText()}>
+                {t('knowledge.import_submit', '导入')}
+              </Button>
+            </View>
           </View>
         ) : null}
 
@@ -101,9 +103,11 @@ export function KnowledgeDetailImportSection(props: {
               placeholder="https://"
               autoCapitalize="none"
             />
-            <Button isDisabled={busy || !urlValue.trim()} onPress={() => void onImportUrl()}>
-              {t('knowledge.import_submit', '导入')}
-            </Button>
+            <View style={styles.rowGap}>
+              <Button isDisabled={busy || !urlValue.trim()} onPress={() => void onImportUrl()}>
+                {t('knowledge.import_submit', '导入')}
+              </Button>
+            </View>
           </View>
         ) : null}
       </View>

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getNotebookCardAppearance } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { useNativeTheme } from '@baishou/ui/native'
+import { Button, Modal, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { KnowledgeDetailCoverSection } from './KnowledgeDetailCoverSection'
@@ -93,6 +93,11 @@ export function KnowledgeDetailScreen() {
             onOcrConcurrencyChange={detail.setOcrConcurrency}
             onSave={detail.saveExtractConfig}
             onRecoverStale={detail.recoverStale}
+            onProbe={detail.probeExtract}
+            sources={detail.sources.map((source) => ({ id: source.id, title: source.title }))}
+            probeSourceId={detail.probeSourceId}
+            onProbeSourceChange={detail.setProbeSourceId}
+            onPickVision={detail.pickVisionModel}
           />
           <KnowledgeDetailSourcesSection
             sources={detail.sources}
@@ -100,6 +105,7 @@ export function KnowledgeDetailScreen() {
             ocrProgressBySource={detail.ocrProgressBySource}
             onRetrySource={detail.retrySource}
             onReprocessGraph={detail.reprocessSourceGraph}
+            onReprocessVector={detail.reprocessSourceVector}
             onEmbedSource={detail.embedSource}
             onCancelExtract={detail.cancelExtract}
             onOcrMissing={detail.ocrMissing}
@@ -109,9 +115,20 @@ export function KnowledgeDetailScreen() {
           <KnowledgeDetailVectorsSection
             query={detail.vectorQuery}
             onQueryChange={detail.setVectorQuery}
+            searchMode={detail.vectorSearchMode}
+            onSearchModeChange={detail.setVectorSearchMode}
+            page={detail.vectorPage}
+            pageSize={detail.vectorPageSize}
+            onPageChange={detail.setVectorPage}
             items={detail.vectorItems}
             total={detail.vectorTotal}
             loading={detail.vectorLoading}
+            onOpenChunk={(item) =>
+              detail.openTextPreview(
+                item.sourceTitle || t('knowledge.fragment_preview_title', '原文片段'),
+                item.chunkText
+              )
+            }
           />
           <KnowledgeNotebookGraphSection
             nodes={detail.graphNodes}
@@ -138,6 +155,7 @@ export function KnowledgeDetailScreen() {
             onReviewAll={detail.reviewAllPending}
             onMergeSimilar={detail.mergeSimilar}
             onDismissSimilar={detail.dismissSimilar}
+            onLocateNode={detail.locateGraphNode}
           />
           <KnowledgeDetailManageSection
             graphNodes={detail.graphNodes}
@@ -183,6 +201,18 @@ export function KnowledgeDetailScreen() {
           ) : null}
         </ScrollView>
       )}
+      <Modal
+        visible={Boolean(detail.extractedPreview)}
+        title={detail.extractedPreview?.title || t('knowledge.extracted_preview', '抽出正文')}
+        onClose={detail.closeExtractedPreview}
+      >
+        <ScrollView style={{ maxHeight: tokens.spacing.xl * 10 }}>
+          <Text style={{ color: colors.textPrimary }}>{detail.extractedPreview?.text}</Text>
+        </ScrollView>
+        <View style={{ flexDirection: 'row', marginTop: tokens.spacing.md }}>
+          <Button onPress={detail.closeExtractedPreview}>{t('common.got_it', '知道了')}</Button>
+        </View>
+      </Modal>
       <KnowledgeNotebookDeleteDialog
         visible={deleteOpen}
         notebookName={detail.name}

@@ -5,13 +5,18 @@ import {
   GRAPH_FORCE_DEFAULTS,
   GRAPH_FORCE_STORAGE_KEY,
   GRAPH_MONTH_RANGE_STORAGE_KEY,
+  GRAPH_VIEW_MAX_NODES_DEFAULT,
+  GRAPH_VIEW_MAX_NODES_STORAGE_KEY,
   clampGraphAppearanceSettings,
   clampGraphForceSettings,
   clampGraphMonthRange,
+  clampGraphViewMaxNodes,
   defaultGraphMonthRange,
   loadGraphForceSettings,
+  parseGraphViewMaxNodes,
   saveGraphAppearanceSettings,
   saveGraphForceSettings,
+  saveGraphViewMaxNodes,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
   type GraphForceSettings,
@@ -87,6 +92,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     clampGraphAppearanceSettings(GRAPH_APPEARANCE_DEFAULTS)
   )
   const [monthRange, setMonthRange] = useState<GraphMonthRange>(() => defaultGraphMonthRange())
+  const [viewMaxNodes, setViewMaxNodes] = useState(GRAPH_VIEW_MAX_NODES_DEFAULT)
   const [selfNameReady, setSelfNameReady] = useState<boolean | null>(null)
   const [awakenProfile, setAwakenProfile] = useState<UserProfile | null>(null)
   const [awakenBusy, setAwakenBusy] = useState(false)
@@ -153,6 +159,22 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY)
+        if (cancelled) return
+        setViewMaxNodes(parseGraphViewMaxNodes(raw))
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     if (!deps.services || !deps.dbReady) return
     let cancelled = false
     void (async () => {
@@ -193,15 +215,26 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     })
   }, [])
 
+  const updateViewMaxNodes = useCallback((value: number) => {
+    const next = clampGraphViewMaxNodes(value)
+    setViewMaxNodes(next)
+    saveGraphViewMaxNodes(next)
+    void AsyncStorage.setItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY, JSON.stringify(next))
+  }, [])
+
   const resetGraphSettings = useCallback(() => {
     const force = { ...GRAPH_FORCE_DEFAULTS }
     const appearance = clampGraphAppearanceSettings(GRAPH_APPEARANCE_DEFAULTS)
+    const maxNodes = GRAPH_VIEW_MAX_NODES_DEFAULT
     setForceSettings(force)
     saveGraphForceSettings(force)
     void AsyncStorage.setItem(GRAPH_FORCE_STORAGE_KEY, JSON.stringify(force))
     setAppearanceSettings(appearance)
     saveGraphAppearanceSettings(appearance)
     void AsyncStorage.setItem(GRAPH_APPEARANCE_STORAGE_KEY, JSON.stringify(appearance))
+    setViewMaxNodes(maxNodes)
+    saveGraphViewMaxNodes(maxNodes)
+    void AsyncStorage.setItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY, JSON.stringify(maxNodes))
   }, [])
 
   const persistMonthRange = (next: GraphMonthRange) => {
@@ -352,6 +385,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     setApprovedOnly,
     forceSettings,
     appearanceSettings,
+    viewMaxNodes,
     monthRange,
     persistMonthRange,
     selfNameReady,
@@ -364,6 +398,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     profileErrors,
     updateForce,
     updateAppearance,
+    updateViewMaxNodes,
     resetGraphSettings,
     toggleNodeTypeFilter,
     resetFilters,
