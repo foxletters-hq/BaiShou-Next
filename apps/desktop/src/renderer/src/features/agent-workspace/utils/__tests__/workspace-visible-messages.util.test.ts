@@ -21,18 +21,16 @@ describe('visibleWorkspaceMessages', () => {
   })
 
   it('should hide the tail in-progress turn while a new stream is showing', () => {
-    const visible = visibleWorkspaceMessages(
-      [{ id: 'u1', role: 'user' }, inProgress],
-      { hideTailInProgress: true }
-    )
+    const visible = visibleWorkspaceMessages([{ id: 'u1', role: 'user' }, inProgress], {
+      hideTailInProgress: true
+    })
     expect(visible.map((message) => message.id)).toEqual(['u1'])
   })
 
   it('should keep a real stopped turn when nothing is streaming after it', () => {
-    const visible = visibleWorkspaceMessages(
-      [{ id: 'u1', role: 'user' }, inProgress],
-      { hideTailInProgress: false }
-    )
+    const visible = visibleWorkspaceMessages([{ id: 'u1', role: 'user' }, inProgress], {
+      hideTailInProgress: false
+    })
     expect(visible.map((message) => message.id)).toEqual(['u1', 'a1'])
   })
 })

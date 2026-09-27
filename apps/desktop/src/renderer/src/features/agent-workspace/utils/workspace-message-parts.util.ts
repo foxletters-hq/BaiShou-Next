@@ -112,9 +112,7 @@ export function groupWorkspaceAssistantTimeline(
       continue
     }
     if (item.kind === 'file_change') {
-      const matched = pullMatchingAgentGates(unused, [
-        { name: '', callId: item.data.toolCallId }
-      ])
+      const matched = pullMatchingAgentGates(unused, [{ name: '', callId: item.data.toolCallId }])
       flushTools()
       if (matched.length > 0) flushFilesAndMutations()
       emitGates(matched)

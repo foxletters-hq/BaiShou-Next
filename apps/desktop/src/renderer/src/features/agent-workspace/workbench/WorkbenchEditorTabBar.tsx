@@ -66,14 +66,11 @@ export const WorkbenchEditorTabBar: React.FC<WorkbenchEditorTabBarProps> = ({
   const { t } = useTranslation()
   const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tabId: string } | null>(null)
   const closeTabMenu = useCallback(() => setTabMenu(null), [])
-  const openTabMenu = useCallback(
-    (event: React.MouseEvent, tabId: string) => {
-      event.preventDefault()
-      event.stopPropagation()
-      setTabMenu({ x: event.clientX, y: event.clientY, tabId })
-    },
-    []
-  )
+  const openTabMenu = useCallback((event: React.MouseEvent, tabId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setTabMenu({ x: event.clientX, y: event.clientY, tabId })
+  }, [])
   const tabMenuItems = useMemo(() => {
     if (!tabMenu) return []
     return buildEditorTabMenuItems({

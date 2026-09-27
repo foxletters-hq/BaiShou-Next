@@ -1,10 +1,6 @@
 import type { FileChangeKind } from '@baishou/shared'
 
-type FileOpTranslate = (
-  key: string,
-  fallback: string,
-  options?: { count: number }
-) => string
+type FileOpTranslate = (key: string, fallback: string, options?: { count: number }) => string
 
 /** 确认前不要写成「正在写入」，避免看起来已经落盘 */
 export function formatWorkspaceFileOpListTitle(
