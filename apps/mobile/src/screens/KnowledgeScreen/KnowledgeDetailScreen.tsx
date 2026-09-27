@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getNotebookCardAppearance } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Modal, useNativeTheme } from '@baishou/ui/native'
+import { Button, Modal, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
+import { shareLocalFile } from '@/src/utils/share-local-file.util'
+import { createMobileFileSystem } from '@/src/services/create-mobile-file-system'
 import { KnowledgeDetailCoverSection } from './KnowledgeDetailCoverSection'
 import { KnowledgeDetailExtractSection } from './KnowledgeDetailExtractSection'
 import { KnowledgeDetailImportSection } from './KnowledgeDetailImportSection'
@@ -16,6 +18,11 @@ import { KnowledgeDetailSourcesSection } from './KnowledgeDetailSourcesSection'
 import { KnowledgeDetailVectorsSection } from './KnowledgeDetailVectorsSection'
 import { KnowledgeNotebookGraphSection } from './KnowledgeNotebookGraphSection'
 import { KnowledgeNotebookDeleteDialog } from './KnowledgeNotebookDeleteDialog'
+import { KnowledgeExtractHintDialog } from './KnowledgeExtractHintDialog'
+import { KnowledgeSourcePreviewModal } from './KnowledgeSourcePreviewModal'
+import { KnowledgeDetailJobBanner } from './KnowledgeDetailJobBanner'
+import { KnowledgeNotebookStatusStrip } from './KnowledgeNotebookStatusStrip'
+import { KnowledgeHeavyConfirmDialog } from './KnowledgeHeavyConfirmDialog'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
 import { useKnowledgeDetail } from './useKnowledgeDetail'
 
@@ -25,6 +32,7 @@ export function KnowledgeDetailScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const chrome = getStackScreenChrome(colors)
+  const toast = useNativeToast()
   const params = useLocalSearchParams<{ notebookId?: string }>()
   const notebookId = decodeURIComponent(String(params.notebookId ?? '').trim())
   const detail = useKnowledgeDetail(notebookId)
@@ -50,6 +58,26 @@ export function KnowledgeDetailScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + tokens.spacing.lg }}
           keyboardShouldPersistTaps="handled"
         >
+          <KnowledgeDetailJobBanner
+            pendingJobs={detail.stats?.pendingJobs ?? 0}
+            graphProgress={detail.graphProgress}
+            ingestingCount={detail.ingestingCount}
+            graphJobItems={detail.graphJobItems}
+            ocrProgressBySource={detail.ocrProgressBySource}
+          />
+          <KnowledgeNotebookStatusStrip
+            embeddingLabel={detail.embeddingModelLabel}
+            graphLabel={detail.graphModelLabel}
+            visionLabel={detail.visionModelId}
+            extractEngineLabel={detail.extractEngineLabel}
+            sourceCount={detail.sources.length}
+            embeddingConfigured={Boolean(detail.embeddingModelLabel)}
+            graphConfigured={Boolean(detail.graphModelLabel)}
+            visionConfigured={Boolean(detail.visionModelId)}
+            onPickEmbedding={detail.pickEmbeddingModel}
+            onPickGraph={detail.pickGraphModel}
+            onPickVision={detail.pickVisionModel}
+          />
           <KnowledgeDetailCoverSection
             name={detail.name}
             coverTone={detail.coverTone}
@@ -58,10 +86,13 @@ export function KnowledgeDetailScreen() {
             coverUri={detail.coverUri}
             appearance={appearance}
             stats={detail.stats}
+            description={detail.description}
             busy={detail.busy}
             modelMismatch={detail.modelMismatch}
             onSaveCover={(patch) => void detail.saveCover(patch)}
             onPickCoverImage={() => void detail.pickCoverImage()}
+            onRename={() => void detail.renameNotebook()}
+            onEditDescription={() => void detail.editDescription()}
             onRebuildIndex={() => void detail.rebuildIndex()}
             onDelete={() => setDeleteOpen(true)}
           />
@@ -77,6 +108,9 @@ export function KnowledgeDetailScreen() {
             onUrlValue={detail.setUrlValue}
             importProcessMode={detail.importProcessMode}
             onImportProcessMode={detail.setImportProcessMode}
+            embeddingModelLabel={detail.embeddingModelLabel}
+            graphModelLabel={detail.graphModelLabel}
+            extractEngineLabel={detail.extractEngineLabel}
             onImportText={detail.onImportText}
             onImportUrl={detail.onImportUrl}
             onImportFile={detail.onImportFile}
@@ -94,15 +128,24 @@ export function KnowledgeDetailScreen() {
             onSave={detail.saveExtractConfig}
             onRecoverStale={detail.recoverStale}
             onProbe={detail.probeExtract}
-            sources={detail.sources.map((source) => ({ id: source.id, title: source.title }))}
+            sources={detail.sources}
             probeSourceId={detail.probeSourceId}
             onProbeSourceChange={detail.setProbeSourceId}
             onPickVision={detail.pickVisionModel}
+            onPickEmbedding={detail.pickEmbeddingModel}
+            onPickGraphModel={detail.pickGraphModel}
+            ocrCapReason={detail.ocrCapReason}
+            visionCapReason={detail.visionCapReason}
           />
           <KnowledgeDetailSourcesSection
             sources={detail.sources}
             busy={detail.busy}
             ocrProgressBySource={detail.ocrProgressBySource}
+            graphJobStatusBySource={Object.fromEntries(
+              (detail.graphJobItems || []).map((item) => [item.sourceId, item.status])
+            )}
+            uploadingSources={detail.uploadingSources}
+            onDismissUploading={detail.dismissUploading}
             onRetrySource={detail.retrySource}
             onReprocessGraph={detail.reprocessSourceGraph}
             onReprocessVector={detail.reprocessSourceVector}
@@ -110,6 +153,7 @@ export function KnowledgeDetailScreen() {
             onCancelExtract={detail.cancelExtract}
             onOcrMissing={detail.ocrMissing}
             onPreviewExtracted={detail.previewExtracted}
+            onPreviewOriginal={detail.previewOriginal}
             onDeleteSource={detail.onDeleteSource}
           />
           <KnowledgeDetailVectorsSection
@@ -120,9 +164,12 @@ export function KnowledgeDetailScreen() {
             page={detail.vectorPage}
             pageSize={detail.vectorPageSize}
             onPageChange={detail.setVectorPage}
+            onPageSizeChange={detail.setVectorPageSize}
             items={detail.vectorItems}
             total={detail.vectorTotal}
             loading={detail.vectorLoading}
+            sourceCount={detail.vectorSourceCount}
+            modelId={detail.vectorModelId || detail.embeddingModelLabel || null}
             onOpenChunk={(item) =>
               detail.openTextPreview(
                 item.sourceTitle || t('knowledge.fragment_preview_title', '原文片段'),
@@ -139,6 +186,11 @@ export function KnowledgeDetailScreen() {
             searchQuery={detail.graphSearchQuery}
             onSearchQueryChange={detail.setGraphSearchQuery}
             onSearch={detail.searchGraph}
+            searchMode={detail.graphSearchMode}
+            onSearchModeChange={detail.setGraphSearchMode}
+            searchHits={detail.graphSearchHits}
+            focusDepth={detail.graphFocusDepth}
+            onFocusDepthChange={detail.setGraphFocusDepth}
             selectedId={detail.selectedGraphId}
             highlightIds={detail.graphHighlightIds}
             locateIds={detail.graphLocateIds}
@@ -156,6 +208,22 @@ export function KnowledgeDetailScreen() {
             onMergeSimilar={detail.mergeSimilar}
             onDismissSimilar={detail.dismissSimilar}
             onLocateNode={detail.locateGraphNode}
+            onPreviewFragments={detail.previewGraphFragments}
+            viewMaxNodes={detail.viewMaxNodes}
+            onViewMaxNodesChange={detail.persistViewMaxNodes}
+            mergeSearchQuery={detail.mergeSearchQuery}
+            onMergeSearchQueryChange={detail.setMergeSearchQuery}
+            onSearchMerge={detail.searchMergeNodes}
+            mergeHits={detail.mergeHits}
+            mergeLoserIds={detail.mergeLoserIds}
+            onToggleMergeLoser={detail.toggleMergeLoser}
+            onMergeSearched={detail.mergeSearchedNodes}
+            pendingSelection={detail.pendingSelection}
+            onTogglePending={detail.togglePendingSelection}
+            onToggleSelectAllPending={() =>
+              detail.toggleSelectAllPending(detail.pendingNodes, detail.pendingEdges)
+            }
+            onReviewSelected={detail.reviewSelectedPending}
           />
           <KnowledgeDetailManageSection
             graphNodes={detail.graphNodes}
@@ -207,12 +275,65 @@ export function KnowledgeDetailScreen() {
         onClose={detail.closeExtractedPreview}
       >
         <ScrollView style={{ maxHeight: tokens.spacing.xl * 10 }}>
-          <Text style={{ color: colors.textPrimary }}>{detail.extractedPreview?.text}</Text>
+          {detail.extractedPreview?.pages && detail.extractedPreview.pages.length > 0 ? (
+            detail.extractedPreview.pages.map((page) => (
+              <View key={page.page} style={{ marginBottom: tokens.spacing.md }}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: settingsTypography.row.fontSize,
+                    marginBottom: tokens.spacing.xs
+                  }}
+                >
+                  {t('knowledge.extract_probe_page', '第 {{page}} 页', { page: page.page })}
+                </Text>
+                <Text style={{ color: colors.textSecondary }}>
+                  {page.text.trim() ||
+                    t('knowledge.extract_probe_empty_page', '几乎没有识别出文字')}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: colors.textPrimary }}>{detail.extractedPreview?.text}</Text>
+          )}
         </ScrollView>
         <View style={{ flexDirection: 'row', marginTop: tokens.spacing.md }}>
           <Button onPress={detail.closeExtractedPreview}>{t('common.got_it', '知道了')}</Button>
         </View>
       </Modal>
+      <KnowledgeSourcePreviewModal
+        visible={Boolean(detail.sourcePreview)}
+        title={detail.sourcePreview?.title || t('knowledge.source_preview', '原文预览')}
+        loading={Boolean(detail.sourcePreview?.loading)}
+        error={detail.sourcePreview?.error || null}
+        payload={detail.sourcePreview?.payload || null}
+        fragments={detail.graphFragments}
+        onClose={detail.closeSourcePreview}
+        onOpenFile={() => {
+          const localUrl = detail.sourcePreview?.payload?.localUrl
+          if (!localUrl) return
+          void shareLocalFile(createMobileFileSystem(), localUrl).catch((e) => {
+            toast.showError(String((e as Error)?.message || e))
+          })
+        }}
+      />
+      <KnowledgeHeavyConfirmDialog
+        prompt={detail.heavyPrompt}
+        busy={detail.busy}
+        onCancel={() => detail.settleHeavyConfirm(false)}
+        onConfirm={() => detail.settleHeavyConfirm(true)}
+      />
+      <KnowledgeExtractHintDialog
+        visible={Boolean(detail.extractHintPrompt)}
+        fileNames={detail.extractHintPrompt?.fileNames || []}
+        reason={detail.extractHintPrompt?.reason || null}
+        visionConfigured={Boolean(detail.extractHintPrompt?.visionConfigured)}
+        visionModelId={detail.extractHintPrompt?.visionModelId}
+        busy={detail.busy}
+        onCancel={() => detail.settleExtractHint('cancel')}
+        onChoose={(choice) => detail.settleExtractHint(choice)}
+        onOpenVisionSettings={() => void detail.pickVisionModel()}
+      />
       <KnowledgeNotebookDeleteDialog
         visible={deleteOpen}
         notebookName={detail.name}
