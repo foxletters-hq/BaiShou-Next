@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { collectSessionAttachmentFileNames } from '@baishou/shared'
+import { collectSessionAttachmentFileNames, isAttachmentPoolFolderName } from '@baishou/shared'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { AttachmentItem, SessionAttachmentGroup } from './attachment-manager.types'
 import { getDirectoryFiles, getDirectorySize } from './attachment-manager.utils'
@@ -25,7 +25,7 @@ export class AttachmentSessionOps {
       const folders = await fs.readdir(attachBase, { withFileTypes: true })
 
       for (const folder of folders) {
-        if (!folder.isDirectory() || folder.name === 'avatars') {
+        if (!folder.isDirectory() || isAttachmentPoolFolderName(folder.name)) {
           continue
         }
 
@@ -62,7 +62,7 @@ export class AttachmentSessionOps {
     const attachBase = await this.pathProvider.getAttachmentsBaseDirectory()
     for (const id of ids) {
       const safeId = id.replace(/[/\\]/g, '')
-      if (safeId === 'avatars' || safeId.trim() === '') continue
+      if (isAttachmentPoolFolderName(safeId) || safeId.trim() === '') continue
 
       const targetDir = path.join(attachBase, safeId)
       try {
@@ -91,7 +91,7 @@ export class AttachmentSessionOps {
       const folders = await fs.readdir(attachBase, { withFileTypes: true })
 
       for (const folder of folders) {
-        if (!folder.isDirectory() || folder.name === 'avatars') {
+        if (!folder.isDirectory() || isAttachmentPoolFolderName(folder.name)) {
           continue
         }
 
@@ -129,7 +129,7 @@ export class AttachmentSessionOps {
     const safeFileName = fileName.replace(/[/\\]/g, '')
 
     if (
-      safeSessionId === 'avatars' ||
+      isAttachmentPoolFolderName(safeSessionId) ||
       safeSessionId.trim() === '' ||
       safeFileName.trim() === '' ||
       safeFileName === '.' ||

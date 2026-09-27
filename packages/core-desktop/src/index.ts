@@ -11,4 +11,5 @@ export {
   toGitShowSpec,
   toWorkspaceHistoryEntries
 } from './workspace-folder-git.util'
+export { rollbackWorkspaceAll } from './workspace-folder-git-sync'
 export { searchWorkspaceFiles, replaceInWorkspaceFiles } from './workspace-search.service'
