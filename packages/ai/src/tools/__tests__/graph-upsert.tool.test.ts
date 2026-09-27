@@ -62,6 +62,8 @@ describe('GraphUpsertTool write semantics', () => {
     expect(nodes[0]!.record.mentionCount).toBe(4)
     expect(edges).toHaveLength(0)
     expect(text).toContain('跳过 2')
+    expect(text).toContain('reason=missing_node')
+    expect(text).toContain('更新节点 1')
   })
 
   it('writes a content-addressable edge when both ends resolve', async () => {
@@ -602,5 +604,171 @@ describe('GraphUpsertTool write semantics', () => {
 
     const nodes = writes.filter((w) => w.collection === 'nodes')
     expect(nodes[0]!.record.id).toBe(bareId)
+  })
+
+  it('should not count a missing edge id as deleted', async () => {
+    const deleted: Array<{ kind: string; id: string }> = []
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      deleteGraphRecord: vi.fn(async (input: { kind: 'node' | 'edge'; id: string }) => {
+        deleted.push(input)
+      }),
+      rawDataSourceManager: {
+        writeRecord: vi.fn(),
+        tombstone: vi.fn()
+      },
+      graphEdgeLookup: {
+        findEdgeById: vi.fn(async () => null)
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '删不存在的边',
+        edges: [{ id: 'edge_test_nonexistent_000', action: 'delete' }]
+      } as never,
+      context
+    )
+
+    expect(deleted).toEqual([])
+    expect(text).not.toContain('删边')
+    expect(text).not.toContain('文件层')
+    expect(text).toContain('reason=not_found')
+    expect(text).toContain('id=edge_test_nonexistent_000')
+  })
+
+  it('should skip update and delete when edge id is missing', async () => {
+    const writes: Array<{ collection?: string }> = []
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(
+          async (_kind: string, _record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection })
+          }
+        ),
+        tombstone: vi.fn()
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async (opts: { name: string }) => {
+          if (opts.name === '测试人物A') return { id: 'n1', name: '测试人物A', nodeType: 'person' }
+          if (opts.name === '测试地点B') return { id: 'n2', name: '测试地点B', nodeType: 'place' }
+          return null
+        })
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '无 id 改删',
+        edges: [
+          { from: '测试人物A', to: '测试地点B', type: '工作于', action: 'update' },
+          { from: '测试人物A', to: '测试地点B', type: '工作于', action: 'delete' }
+        ]
+      } as never,
+      context
+    )
+
+    expect(writes.filter((w) => w.collection === 'edges')).toHaveLength(0)
+    expect(text).toContain('reason=missing_id')
+    expect(text).not.toContain('改边')
+    expect(text).not.toContain('删边')
+  })
+
+  it('should reject an invalid source_ref date before writing', async () => {
+    const writeRecord = vi.fn()
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: { writeRecord, tombstone: vi.fn() }
+    } as unknown as ToolContext
+
+    const invalidDate = await tool.execute(
+      {
+        summary: '伪日期',
+        entities: [{ name: '测试人物A', type: 'person' }],
+        source_ref: '1999-02-31'
+      } as never,
+      context
+    )
+    const notADate = await tool.execute(
+      {
+        summary: '非日期',
+        entities: [{ name: '测试人物A', type: 'person' }],
+        source_ref: 'not-a-date'
+      } as never,
+      context
+    )
+
+    expect(writeRecord).not.toHaveBeenCalled()
+    expect(invalidDate).toContain('source_ref 不是有效日期')
+    expect(notADate).toContain('source_ref 不是有效日期')
+  })
+
+  it('should collapse newlines in a new node name', async () => {
+    const writes: Array<{ collection?: string; record: { name?: string } }> = []
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async () => null)
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '换行名',
+        entities: [{ name: '测试节点\n带换行', type: 'person' }]
+      } as never,
+      context
+    )
+
+    const nodes = writes.filter((w) => w.collection === 'nodes')
+    expect(nodes[0]!.record.name).toBe('测试节点 带换行')
+    expect(text).toContain('新建节点 1')
+    expect(text).toContain('更新节点 0')
+  })
+
+  it('should count a same-name node write as updated not created', async () => {
+    const existingId = graphNodeIdForEntity(VAULT, 'person', '测试人物A')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn()
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async () => ({
+          id: existingId,
+          name: '测试人物A',
+          nodeType: 'person'
+        }))
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '同名更新',
+        entities: [{ name: '测试人物A', type: 'person', summary: '新摘要' }]
+      } as never,
+      context
+    )
+
+    expect(text).toContain('新建节点 0')
+    expect(text).toContain('更新节点 1')
   })
 })

@@ -152,4 +152,108 @@ describe('RecallRelationsTool path rendering', () => {
     expect(text).not.toContain('邻3')
     expect(text).not.toContain('邻7')
   })
+
+  it('includes node and edge ids with source and validFrom', async () => {
+    const tool = new RecallRelationsTool()
+    const validFrom = new Date(2025, 5, 20).getTime()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [{ id: 'lib', name: '图书馆', nodeType: 'place' }],
+      subgraph: [
+        {
+          id: 'e-in',
+          fromId: 'atlas',
+          toId: 'lib',
+          edgeType: 'located_at',
+          sourceRef: '2025-06-20',
+          sourceExcerpt: '去过图书馆',
+          validFrom,
+          isCurrent: true
+        }
+      ],
+      nodes: [
+        { id: 'lib', name: '图书馆', nodeType: 'place' },
+        { id: 'atlas', name: '地图册', nodeType: 'work' }
+      ]
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const search = await tool.execute({ entity: '图书馆', mode: 'search' }, context)
+    expect(search).toContain('id=lib')
+
+    const neighbors = await tool.execute({ entity: '图书馆', mode: 'neighbors' }, context)
+    expect(neighbors).toContain('id=e-in')
+    expect(neighbors).toContain('[来源:2025-06-20]')
+    expect(neighbors).toContain('[validFrom:2025-06-20]')
+  })
+
+  it('marks superseded timeline edges as 已失效', async () => {
+    const tool = new RecallRelationsTool()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [{ id: 'a', name: '测试人物A', nodeType: 'person' }],
+      subgraph: [],
+      timeline: [
+        {
+          id: 'e-old',
+          fromId: 'a',
+          toId: 'b',
+          edgeType: '位于',
+          isCurrent: false,
+          sourceRef: '2025-06-20'
+        },
+        {
+          id: 'e-new',
+          fromId: 'a',
+          toId: 'b',
+          edgeType: '工作于',
+          isCurrent: true,
+          sourceRef: '2025-06-21'
+        }
+      ],
+      nodes: [
+        { id: 'a', name: '测试人物A', nodeType: 'person' },
+        { id: 'b', name: '测试地点B', nodeType: 'place' }
+      ]
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const text = await tool.execute({ entity: '测试人物A', mode: 'timeline' }, context)
+    expect(text).toContain('id=e-old')
+    expect(text).toContain('（已失效）')
+    expect(text).toContain('id=e-new')
+  })
+
+  it('explains current-edge disconnect when network finds no path', async () => {
+    const tool = new RecallRelationsTool()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [
+        { id: 'atlas', name: '地图册', nodeType: 'work' },
+        { id: 'lib', name: '图书馆', nodeType: 'place' }
+      ],
+      subgraph: [],
+      nodes: [
+        { id: 'atlas', name: '地图册', nodeType: 'work' },
+        { id: 'lib', name: '图书馆', nodeType: 'place' }
+      ],
+      paths: []
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const text = await tool.execute({ entity: '地图册 图书馆', mode: 'network' }, context)
+    expect(text).toContain('未找到连接路径')
+    expect(text).toContain('「地图册」')
+    expect(text).toContain('「图书馆」')
+    expect(text).toContain('当前边未连通')
+  })
+
+  it('tells the model it may retry after a later write', async () => {
+    const tool = new RecallRelationsTool()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [],
+      subgraph: [],
+      nodes: []
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const text = await tool.execute({ entity: '不存在的人', mode: 'search' }, context)
+    expect(text).toContain('未找到「不存在的人」')
+    expect(text).toContain('本次不要用同一名字空转')
+    expect(text).toContain('用户刚写入或再次追问后可以再查')
+    expect(text).not.toContain('Do not retry this tool')
+  })
 })

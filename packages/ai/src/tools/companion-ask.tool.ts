@@ -46,7 +46,7 @@ const companionAskParams = z.object({
     .array(companionAskQuestionParams)
     .optional()
     .describe(
-      'Ask several independent questions in one call. The user answers them together on one card. Related choices that share one decision stay in a single question with options.'
+      'Ask several independent questions in one call. The user answers them one at a time on the same card. Related choices that share one decision stay in a single question with options.'
     )
 })
 

@@ -39,7 +39,8 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
     'Do not call this for greetings or small talk.\n' +
     'If notebooks are mounted, omit notebookId to search all of them. ' +
     'A notebookId argument is only accepted when that id is already mounted. ' +
-    'Read-only; does not modify notebooks or sources.'
+    'Read-only; does not modify notebooks or sources. ' +
+    'When you use a returned passage, put its bracket number in the answer body, for example [1]. Do not paste the excerpts.'
 
   readonly parameters = params
 

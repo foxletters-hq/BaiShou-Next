@@ -86,18 +86,29 @@ function stringifyAskInput(input: unknown): string {
   }
 }
 
+function fingerprintAsk(args: CompanionAskStreamArgs): string {
+  const fromList = (args.questions ?? []).map((item) => item.question.trim()).filter(Boolean)
+  const single = args.question?.trim()
+  return JSON.stringify(single ? [single, ...fromList] : fromList)
+}
+
 /**
- * 同一 callId 只开一次门。流式片段先攒着，解析成功才执行；
- * 之后模型侧的 execute 复用同一次等待，避免再弹一张卡。
+ * 同一道题只开一次门。流式片段先攒着，解析成功才执行；
+ * 模型侧稍后的 execute 若还是这道未答完的题，复用同一次等待。
+ * 已经答完、或换了一道题，必须重新开门，不能把上一张卡的答案交回去。
  */
 export class CompanionAskStreamSession {
   private readonly buffers = new Map<string, string>()
   private readonly inflight = new Map<string, Promise<string>>()
+  private readonly fingerprints = new Map<string, string>()
+  private readonly settled = new Set<string>()
 
   constructor(private readonly run: (args: CompanionAskStreamArgs) => Promise<string>) {}
 
   peekInflight(): Promise<string> | undefined {
-    for (const pending of this.inflight.values()) return pending
+    for (const [id, pending] of this.inflight) {
+      if (!this.settled.has(id)) return pending
+    }
     return undefined
   }
 
@@ -111,15 +122,22 @@ export class CompanionAskStreamSession {
   }
 
   claim(toolCallId: string, args: CompanionAskStreamArgs): Promise<string> {
-    if (!toolCallId) {
-      const existing = this.peekInflight()
-      if (existing) return existing
-      toolCallId = 'pending'
+    const key = toolCallId || 'pending'
+    const sameCall = this.inflight.get(key)
+    if (sameCall) return sameCall
+
+    const fingerprint = fingerprintAsk(args)
+    for (const [id, pending] of this.inflight) {
+      if (this.settled.has(id)) continue
+      if (this.fingerprints.get(id) === fingerprint) return pending
     }
-    const existing = this.inflight.get(toolCallId) ?? this.peekInflight()
-    if (existing) return existing
+
     const pending = this.run(args)
-    this.inflight.set(toolCallId, pending)
+    this.inflight.set(key, pending)
+    this.fingerprints.set(key, fingerprint)
+    void pending.finally(() => {
+      this.settled.add(key)
+    })
     return pending
   }
 }

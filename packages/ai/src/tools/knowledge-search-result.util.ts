@@ -68,6 +68,7 @@ export function formatKnowledgeSearchHits(query: string, hits: ToolKnowledgeSear
       index += 1
     }
   }
+  blocks.push('回答正文使用与上面片段相同的方括号编号，不要整段粘贴原文。')
   return blocks.join('\n\n')
 }
 

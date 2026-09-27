@@ -140,4 +140,37 @@ describe('VectorSearchTool', () => {
     expect(searchSimilar).toHaveBeenCalledWith([0.5, 0.5], 20, expectedFilter)
     expect(searchFts).toHaveBeenCalledWith('旅行', 20, expectedFilter)
   })
+
+  it('should use rag_top_k from userConfig and clamp above 200', async () => {
+    const searchSimilar = vi.fn().mockResolvedValue([])
+
+    await tool.execute(
+      { query: '主题', mode: 'vector' },
+      createContext({
+        userConfig: { rag_top_k: 200 },
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: { searchSimilar, deleteBySource: vi.fn() }
+      })
+    )
+    expect(searchSimilar).toHaveBeenCalledWith([0.1], 200, expect.any(Object))
+
+    searchSimilar.mockClear()
+    await tool.execute(
+      { query: '主题', mode: 'vector' },
+      createContext({
+        userConfig: { rag_top_k: 500 },
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: { searchSimilar, deleteBySource: vi.fn() }
+      })
+    )
+    expect(searchSimilar).toHaveBeenCalledWith([0.1], 200, expect.any(Object))
+  })
 })
