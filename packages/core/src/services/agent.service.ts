@@ -73,7 +73,7 @@ export class AgentService {
       allowSystemInMessages: true,
       messages,
       tools: Object.keys(vercelTools).length > 0 ? vercelTools : undefined,
-      stopWhen: stepCountIs(input.maxSteps ?? 10), // 自动代理工具的递归调用次数限制
+      stopWhen: stepCountIs(input.maxSteps ?? Number.POSITIVE_INFINITY),
       onFinish: async (event) => {
         // [完成] 当所有步骤（包含工具调用）完成后，同步回写 DB
 

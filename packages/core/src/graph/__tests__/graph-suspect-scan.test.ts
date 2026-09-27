@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   applySuspectReasonToProps,
+  buildSuspectReasonPrompt,
+  collectSuspectPromptFacts,
   collectSuspectSignals,
+  GRAPH_SUSPECT_ESTABLISHED_EDGE_MIN,
+  GRAPH_SUSPECT_SIGNALS,
   parseSourceRefYearMonth,
   parseSuspectReasonDecision,
   removeSuspectReasonFromProps,
@@ -9,14 +13,28 @@ import {
   sourceRefSpanMonths
 } from '../graph-suspect-scan'
 
-function person(id: string, extras?: { discriminator?: string; props?: Record<string, unknown> }) {
+function person(
+  id: string,
+  extras?: {
+    discriminator?: string
+    props?: Record<string, unknown>
+    origin?: string
+    reviewStatus?: string
+  }
+) {
   return {
     id,
     name: '张三',
     nodeType: 'person',
     discriminator: extras?.discriminator,
-    props: extras?.props ?? {}
+    props: extras?.props ?? {},
+    origin: extras?.origin,
+    reviewStatus: extras?.reviewStatus
   }
+}
+
+function mention(fromId: string, toId: string, sourceRef: string) {
+  return { fromId, toId, edgeType: 'mentions', isCurrent: true, sourceRef }
 }
 
 describe('collectSuspectSignals', () => {
@@ -221,8 +239,22 @@ describe('sourceRef date helpers', () => {
 
 describe('removeSuspectReasonFromProps', () => {
   it('should drop suspectReason when the user reviews the node', () => {
-    const marked = applySuspectReasonToProps({ aliases: ['阿三'] }, '同时挂了两家公司')
-    expect(removeSuspectReasonFromProps(marked)).toEqual({ aliases: ['阿三'] })
+    const marked = applySuspectReasonToProps(
+      { aliases: ['阿三'] },
+      '同时挂了两家公司',
+      ['multiple_located_at']
+    )
+    expect(removeSuspectReasonFromProps(marked)).toEqual({
+      aliases: ['阿三'],
+      suspectClearedSignals: ['multiple_located_at']
+    })
+  })
+
+  it('should remember all known signals when a legacy node had no suspectSignals', () => {
+    expect(removeSuspectReasonFromProps({ aliases: ['阿三'], suspectReason: '旧理由' })).toEqual({
+      aliases: ['阿三'],
+      suspectClearedSignals: [...GRAPH_SUSPECT_SIGNALS]
+    })
     expect(removeSuspectReasonFromProps({ aliases: ['阿三'] })).toEqual({ aliases: ['阿三'] })
   })
 })
@@ -250,7 +282,9 @@ describe('runGraphSuspectScan', () => {
       persist
     })
     expect(result).toEqual({ collected: 1, persisted: 1 })
-    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), '裸名出处冲突')
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), '裸名出处冲突', [
+      'ambiguous'
+    ])
   })
 
   it('should not persist when the model says not-suspect or throws', async () => {
@@ -300,5 +334,145 @@ describe('runGraphSuspectScan', () => {
       persist: async () => undefined
     })
     expect(llm).toHaveBeenCalledTimes(40)
+  })
+
+  it('should skip a node whose current signals were already cleared', async () => {
+    const persist = vi.fn()
+    const llm = vi.fn(async () => JSON.stringify({ suspect: true, reason: '不该再写' }))
+    const result = await runGraphSuspectScan({
+      nodes: [
+        person('p1', {
+          props: {
+            ambiguousSourceRefs: ['a'],
+            suspectClearedSignals: ['ambiguous']
+          }
+        })
+      ],
+      edges: [],
+      llm,
+      persist
+    })
+    expect(result).toEqual({ collected: 1, persisted: 0 })
+    expect(llm).not.toHaveBeenCalled()
+    expect(persist).not.toHaveBeenCalled()
+  })
+
+  it('should persist again when a new signal appears beyond the cleared set', async () => {
+    const persist = vi.fn()
+    const result = await runGraphSuspectScan({
+      nodes: [
+        person('p1', {
+          props: {
+            ambiguousSourceRefs: ['a'],
+            suspectClearedSignals: ['ambiguous']
+          }
+        }),
+        { id: 'pl1', name: '北京', nodeType: 'place', props: {} },
+        { id: 'pl2', name: '上海', nodeType: 'place', props: {} }
+      ],
+      edges: [
+        {
+          fromId: 'p1',
+          toId: 'pl1',
+          edgeType: 'located_at',
+          isCurrent: true,
+          sourceRef: '2024-01'
+        },
+        {
+          fromId: 'p1',
+          toId: 'pl2',
+          edgeType: 'located_at',
+          isCurrent: true,
+          sourceRef: '2024-02'
+        }
+      ],
+      llm: async () => JSON.stringify({ suspect: true, reason: '同时挂着北京和上海' }),
+      persist
+    })
+    expect(result.persisted).toBe(1)
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1' }),
+      '同时挂着北京和上海',
+      ['multiple_located_at', 'ambiguous']
+    )
+  })
+
+  it('should skip a user-edited node even when it is still pending', async () => {
+    const persist = vi.fn()
+    const llm = vi.fn(async () => JSON.stringify({ suspect: true, reason: '不该再写' }))
+    const result = await runGraphSuspectScan({
+      nodes: [
+        person('p1', {
+          origin: 'user',
+          reviewStatus: 'pending',
+          props: { ambiguousSourceRefs: ['a'] }
+        })
+      ],
+      edges: [],
+      llm,
+      persist
+    })
+    expect(result).toEqual({ collected: 1, persisted: 0 })
+    expect(llm).not.toHaveBeenCalled()
+    expect(persist).not.toHaveBeenCalled()
+  })
+
+  it('should skip an approved node that already has many live edges', async () => {
+    const persist = vi.fn()
+    const llm = vi.fn(async () => JSON.stringify({ suspect: true, reason: '不该再写' }))
+    const edges = Array.from({ length: GRAPH_SUSPECT_ESTABLISHED_EDGE_MIN }, (_, i) =>
+      mention('p1', `e${i}`, `2024-01-0${(i % 9) + 1}`)
+    )
+    const result = await runGraphSuspectScan({
+      nodes: [
+        person('p1', {
+          reviewStatus: 'approved',
+          props: { ambiguousSourceRefs: ['a'] }
+        })
+      ],
+      edges,
+      llm,
+      persist
+    })
+    expect(result.collected).toBe(1)
+    expect(result.persisted).toBe(0)
+    expect(llm).not.toHaveBeenCalled()
+    expect(persist).not.toHaveBeenCalled()
+  })
+})
+
+describe('buildSuspectReasonPrompt', () => {
+  it('should give the model neighbor names and forbid inventing from the display name', () => {
+    const nodes = [
+      person('p1'),
+      { id: 'pl1', name: '北京', nodeType: 'place', props: {} },
+      { id: 'pl2', name: '上海', nodeType: 'place', props: {} }
+    ]
+    const edges = [
+      {
+        fromId: 'p1',
+        toId: 'pl1',
+        edgeType: 'located_at',
+        isCurrent: true,
+        sourceRef: '2024-01'
+      },
+      {
+        fromId: 'p1',
+        toId: 'pl2',
+        edgeType: 'located_at',
+        isCurrent: true,
+        sourceRef: '2024-02'
+      }
+    ]
+    const facts = collectSuspectPromptFacts(nodes[0]!, nodes, edges)
+    expect(facts.currentPlaces).toEqual(['北京', '上海'])
+    const prompt = buildSuspectReasonPrompt({
+      node: nodes[0]!,
+      signals: ['multiple_located_at'],
+      facts
+    })
+    expect(prompt.system).toContain('禁止根据名字联想')
+    expect(prompt.user).toContain('北京')
+    expect(prompt.user).toContain('上海')
   })
 })

@@ -5,7 +5,7 @@ import {
   entryNodeIdForFilePath,
   legacyEntryNodeIdForFilePath
 } from '../graph-llm-extraction.service'
-import { splitEntityQuery } from '../graph-rag.service'
+import { spaceSeparatedNamePair, splitEntityQuery } from '../graph-rag.service'
 
 describe('estimateExtractionCost', () => {
   it('returns zeros for empty pending list', () => {
@@ -59,5 +59,11 @@ describe('splitEntityQuery', () => {
     expect(splitEntityQuery('小明和杭州')).toEqual(['小明', '杭州'])
     expect(splitEntityQuery('Alice and Bob')).toEqual(['Alice', 'Bob'])
     expect(splitEntityQuery('A、B、C')).toEqual(['A', 'B', 'C'])
+  })
+
+  it('detects a two-name space pair without treating it as a conjunction', () => {
+    expect(splitEntityQuery('地图册 图书馆')).toEqual(['地图册 图书馆'])
+    expect(spaceSeparatedNamePair('地图册 图书馆')).toEqual(['地图册', '图书馆'])
+    expect(spaceSeparatedNamePair('图书馆')).toBeNull()
   })
 })

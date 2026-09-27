@@ -1,4 +1,8 @@
-import { GRAPH_MAX_NEIGHBORS_PER_HOP, type GraphRecallMode } from '@baishou/shared'
+import {
+  GRAPH_MAX_NEIGHBORS_PER_HOP,
+  normalizeGraphName,
+  type GraphRecallMode
+} from '@baishou/shared'
 import type { GraphEdgeRow, GraphNodeRow, GraphPath, GraphQuery } from '@baishou/database/shared'
 
 export interface GraphRagPath {
@@ -149,15 +153,21 @@ export class GraphRagService {
     nodeType: string | undefined,
     limit: number
   ): Promise<GraphRagResult> {
+    const parts = await this.resolveQueryParts(vaultId, entity, nodeType)
     const seen = new Map<string, GraphNodeRow>()
-    for (const part of splitEntityQuery(entity)) {
-      const rows = await this.repo.searchNodesByName(vaultId, part, {
-        nodeTypes: nodeType ? [nodeType] : undefined,
-        limit
-      })
-      for (const n of this.filterApprovedNodes(rows)) seen.set(n.id, n)
+    for (const part of parts) {
+      const rows = preferExactName(
+        this.filterApprovedNodes(
+          await this.repo.searchNodesByName(vaultId, part, {
+            nodeTypes: nodeType ? [nodeType] : undefined,
+            limit
+          })
+        ),
+        part
+      )
+      for (const n of rows) seen.set(n.id, n)
     }
-    const nodes = [...seen.values()].slice(0, limit)
+    const nodes = rankAnchorsByExact([...seen.values()], parts).slice(0, limit)
     return { anchors: nodes, subgraph: [], nodes, paths: [] }
   }
 
@@ -227,27 +237,55 @@ export class GraphRagService {
     return nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
   }
 
+  private async resolveQueryParts(
+    vaultId: string,
+    entity: string,
+    nodeType?: string
+  ): Promise<string[]> {
+    const conjunction = splitEntityQuery(entity)
+    if (conjunction.length >= 2) return conjunction
+    const pair = spaceSeparatedNamePair(entity)
+    if (!pair) return [entity.trim()]
+    const [left, right] = pair
+    const leftHits = this.filterApprovedNodes(
+      await this.repo.searchNodesByName(vaultId, left, {
+        limit: 8,
+        nodeTypes: nodeType ? [nodeType] : undefined
+      })
+    )
+    const rightHits = this.filterApprovedNodes(
+      await this.repo.searchNodesByName(vaultId, right, {
+        limit: 8,
+        nodeTypes: nodeType ? [nodeType] : undefined
+      })
+    )
+    if (leftHits.length > 0 && rightHits.length > 0) return pair
+    return [entity.trim()]
+  }
+
   private async resolveAnchors(
     vaultId: string,
     entity: string,
     resolveQueryVector?: () => Promise<number[] | null>,
     nodeType?: string
   ): Promise<GraphNodeRow[]> {
-    // Split "A 和 B" / "A and B" / "A与B" into multiple search terms when useful
-    const parts = splitEntityQuery(entity)
+    const parts = await this.resolveQueryParts(vaultId, entity, nodeType)
     const seen = new Map<string, GraphNodeRow>()
 
     for (const part of parts) {
-      const byName = (
-        await this.repo.searchNodesByName(vaultId, part, {
-          limit: 8,
-          nodeTypes: nodeType ? [nodeType] : undefined
-        })
-      ).filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
+      const byName = preferExactName(
+        this.filterApprovedNodes(
+          await this.repo.searchNodesByName(vaultId, part, {
+            limit: 8,
+            nodeTypes: nodeType ? [nodeType] : undefined
+          })
+        ),
+        part
+      )
       for (const n of byName) seen.set(n.id, n)
     }
 
-    if (seen.size > 0) return [...seen.values()]
+    if (seen.size > 0) return rankAnchorsByExact([...seen.values()], parts)
 
     if (resolveQueryVector) {
       try {
@@ -296,4 +334,37 @@ export function splitEntityQuery(entity: string): string[] {
     .filter((p) => p.length >= 1)
   if (parts.length >= 2) return parts.slice(0, 4)
   return [trimmed]
+}
+
+export function spaceSeparatedNamePair(entity: string): [string, string] | null {
+  const parts = entity
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part.length >= 1)
+  if (parts.length === 2) return [parts[0]!, parts[1]!]
+  return null
+}
+
+function nameMatchesQuery(node: GraphNodeRow, query: string): boolean {
+  const key = normalizeGraphName(query)
+  if (normalizeGraphName(node.name) === key) return true
+  return (node.aliases ?? []).some((alias) => normalizeGraphName(alias) === key)
+}
+
+function preferExactName(rows: GraphNodeRow[], query: string): GraphNodeRow[] {
+  return [...rows].sort((a, b) => {
+    const left = nameMatchesQuery(a, query) ? 0 : 1
+    const right = nameMatchesQuery(b, query) ? 0 : 1
+    return left - right
+  })
+}
+
+function rankAnchorsByExact(nodes: GraphNodeRow[], queries: string[]): GraphNodeRow[] {
+  const exact: GraphNodeRow[] = []
+  const rest: GraphNodeRow[] = []
+  for (const node of nodes) {
+    if (queries.some((query) => nameMatchesQuery(node, query))) exact.push(node)
+    else rest.push(node)
+  }
+  return [...exact, ...rest]
 }
