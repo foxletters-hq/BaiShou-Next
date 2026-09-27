@@ -1,4 +1,5 @@
 import { readGraphNameRegistry } from '@baishou/shared'
+import i18n from 'i18next'
 
 export function pickBareGraphNameHit<T>(hits: readonly T[]): {
   hit: T | null
@@ -32,7 +33,9 @@ export function canApproveGraphNode(
   return node.reviewStatus === 'pending' || Boolean(readGraphNodeSuspectReason(node))
 }
 
-export function graphSuspectReviewCopy(node: { propsJson?: string | null } | null): {
+export function graphSuspectReviewCopy(
+  node: { reviewStatus?: string; propsJson?: string | null } | null
+): {
   actionKey: string
   actionDefault: string
   doneKey: string
@@ -41,16 +44,16 @@ export function graphSuspectReviewCopy(node: { propsJson?: string | null } | nul
   if (readGraphNodeSuspectReason(node)) {
     return {
       actionKey: 'graph.clear_suspect',
-      actionDefault: '解除怀疑',
+      actionDefault: i18n.t('graph.clear_suspect', '解除怀疑'),
       doneKey: 'graph.clear_suspect_done',
-      doneDefault: '已解除怀疑'
+      doneDefault: i18n.t('graph.clear_suspect_done', '已解除怀疑')
     }
   }
   return {
     actionKey: 'graph.approve',
-    actionDefault: '通过',
+    actionDefault: i18n.t('graph.approve', '通过'),
     doneKey: 'graph.approve_done',
-    doneDefault: '通过成功'
+    doneDefault: i18n.t('graph.approve_done', '通过成功')
   }
 }
 

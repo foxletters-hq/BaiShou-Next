@@ -31,7 +31,10 @@ describe('mobile pending embed counts stay on the memory system', () => {
   it('should notify subscribers after pending counts are invalidated on purpose', () => {
     expect(src).toContain('export function notifyMobilePendingEmbedCountsChanged')
     expect(src).toContain('export function subscribeMobilePendingEmbedCountsChanged')
-    const write = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-rag-memory-write.helpers.ts'), 'utf8')
+    const write = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-rag-memory-write.helpers.ts'),
+      'utf8'
+    )
     expect(write).toContain('notifyMobilePendingEmbedCountsChanged')
     expect(write).toContain('finally')
   })
