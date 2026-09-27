@@ -33,7 +33,7 @@ describe('snapshotMemoryEmbedPhases', () => {
     expect(snapshot.total).toBe(1)
   })
 
-  it('should keep graph extract and disambiguate on the snapshot for progress', () => {
+  it('should keep graph extract on the snapshot and ignore disambiguate leftovers as active work', () => {
     const snapshot = snapshotMemoryEmbedPhases({
       diaries: 0,
       memories: 0,
@@ -46,8 +46,6 @@ describe('snapshotMemoryEmbedPhases', () => {
     })
     expect(snapshot.phase).toBe('graph_extract')
     expect(snapshot.phases.graphExtract.total).toBe(4)
-    expect(snapshot.phases.graphDisambiguate.total).toBe(2)
-    expect(snapshot.total).toBe(6)
   })
 })
 

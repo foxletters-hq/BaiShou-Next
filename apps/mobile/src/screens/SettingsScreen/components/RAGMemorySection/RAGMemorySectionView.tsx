@@ -2,14 +2,15 @@ import React from 'react'
 import { ActivityIndicator, Platform, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { RagMemoryView, ModelSwitcher } from '@baishou/ui/native'
-import { TextPromptModal } from '../TextPromptModal'
+import { RagMemoryView, ModelSwitcher, useNativeTheme } from '@baishou/ui/native'
+import { MemoryClearKindsModal } from './MemoryClearKindsModal'
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
 import { requestGraphPendingFocus } from '../../../GraphScreen/graph-pending-focus'
 import { useRagMemorySection } from './useRagMemorySection'
 
 export function RAGMemorySectionView() {
   const { t } = useTranslation()
+  const { tokens } = useNativeTheme()
   const router = useRouter()
   const vm = useRagMemorySection()
   const { suspectCount } = useMobileSuspectCount()
@@ -39,6 +40,7 @@ export function RAGMemorySectionView() {
     ragCancelBusy,
     handleAddManualMemory,
     handleClearAll,
+    confirmClearKinds,
     handleSearch,
     handleSourceKindChange,
     handleDeleteEntry,
@@ -53,16 +55,13 @@ export function RAGMemorySectionView() {
     embeddingProviderId,
     handleSelectEmbeddingModel,
     promptMode,
-    setPromptMode,
-    promptDefault,
-    onPromptConfirm,
-    editEntryRef
+    setPromptMode
   } = vm
 
   return (
     <>
       {Platform.OS === 'android' && (androidRenderStage < 1 || storageIndexing) ? (
-        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+        <View style={{ paddingVertical: tokens.spacing.lg, alignItems: 'center' }}>
           <ActivityIndicator size="small" />
         </View>
       ) : (
@@ -117,41 +116,12 @@ export function RAGMemorySectionView() {
         onManageProviders={() => router.push('/settings/ai-services')}
       />
 
-      <TextPromptModal
-        visible={promptMode === 'manual'}
-        title={t('settings.rag_add_manual')}
-        placeholder={t('settings.rag_edit_manual')}
-        multiline
-        confirmLabel={t('common.confirm')}
-        cancelLabel={t('common.cancel')}
-        onCancel={() => setPromptMode(null)}
-        onConfirm={onPromptConfirm}
-      />
-
-      <TextPromptModal
-        visible={promptMode === 'edit'}
-        title={t('settings.rag_edit_manual')}
-        defaultValue={promptDefault}
-        multiline
-        confirmLabel={t('common.save')}
-        cancelLabel={t('common.cancel')}
-        onCancel={() => {
-          setPromptMode(null)
-          editEntryRef.current = null
-        }}
-        onConfirm={onPromptConfirm}
-      />
-
-      <TextPromptModal
+      <MemoryClearKindsModal
         visible={promptMode === 'clear'}
-        title={t('settings.rag_clear_all')}
-        message={t('settings.rag_clear_all_confirm')}
-        placeholder={t('settings.rag_clear_all_confirm_phrase')}
-        defaultValue={promptDefault}
-        confirmLabel={t('common.confirm')}
-        cancelLabel={t('common.cancel')}
         onCancel={() => setPromptMode(null)}
-        onConfirm={onPromptConfirm}
+        onConfirm={(kinds, phrase) => {
+          void confirmClearKinds(kinds, phrase)
+        }}
       />
     </>
   )

@@ -21,6 +21,20 @@ describe('mobile rag memory searching', () => {
     expect(data).toContain('setIsSearching(false)')
   })
 
+  it('should clear memory by selected kinds instead of wiping everything', () => {
+    const view = readSection('RAGMemorySectionView.tsx')
+    const actions = readSection('useRagMemoryActions.ts')
+    const helper = readFileSync(
+      join(here, '../../../../../services/mobile-rag-memory-write.helpers.ts'),
+      'utf8'
+    )
+    expect(view).toContain('MemoryClearKindsModal')
+    expect(actions).toContain('clearKinds')
+    expect(actions).toContain('mobileClearLifeGraph')
+    expect(helper).toContain('clearMobileRagByKinds')
+    expect(helper).toContain('shouldTombstoneMemoryRecord')
+  })
+
   it('should send suspect review to the graph pending tab', () => {
     const view = readSection('RAGMemorySectionView.tsx')
     expect(view).toContain('useMobileSuspectCount')

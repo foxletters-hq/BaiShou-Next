@@ -18,11 +18,8 @@ describe('mobile graph suspect', () => {
     expect(reviewSrc).toContain('removeSuspectReasonFromProps')
   })
 
-  it('should run the suspect scan after graph extract in pending fill', () => {
-    expect(fillSrc).toContain('runMobileGraphSuspectScan')
-    expect(fillSrc.indexOf('mobile graph extract phase failed')).toBeLessThan(
-      fillSrc.indexOf('runMobileGraphSuspectScan')
-    )
+  it('should not run the structural suspect scan in pending fill', () => {
+    expect(fillSrc).not.toContain('runMobileGraphSuspectScan')
   })
 
   it('should fill memory then diary extract then diary graph nodes', () => {
@@ -35,10 +32,14 @@ describe('mobile graph suspect', () => {
     expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
       fillSrc.indexOf('await backfillUnembeddedGraphNodes')
     )
-    expect(fillSrc.indexOf('await backfillUnembeddedGraphNodes')).toBeLessThan(
-      fillSrc.indexOf('runMobileGraphSuspectScan({ vaultId })')
-    )
     expect(fillSrc).toContain('const report = (phase: RagBatchEmbedPhaseKind')
+  })
+
+  it('should not count structural-disambiguate leftovers as organize pending work', () => {
+    const counts = readFileSync(join(dir, '../mobile-pending-embed-counts.ts'), 'utf8')
+    expect(counts).not.toContain('isOpenSuspectHit')
+    expect(counts).not.toContain('collectSuspectSignals')
+    expect(counts).toContain('graphDisambiguate: 0')
   })
 
   it('should send the graph provider into generateContent instead of the summary slot', () => {

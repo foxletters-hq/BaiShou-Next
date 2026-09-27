@@ -6,9 +6,11 @@ import {
   applyCapabilityToConfig,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   capabilityStateFromConfig,
+  foldCompanionAllowlistIntoCapabilities,
   isCompanionGateCapabilityId,
   nextDisabledToolIdsForEffect,
   resolveCompanionToolEffect,
+  stripCompanionAllowlistActions,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
@@ -26,13 +28,15 @@ export const AgentToolsSection: React.FC = () => {
     const saved =
       (await services.settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
       DEFAULT_BAISHOU_AGENT_GATE_CONFIG
-    setGateConfig({
-      ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-      ...saved,
-      exclusionList: [...(saved.exclusionList ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList)],
-      allowlist: [...(saved.allowlist ?? [])],
-      permissionRules: [...(saved.permissionRules ?? [])]
-    })
+    setGateConfig(
+      foldCompanionAllowlistIntoCapabilities({
+        ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+        ...saved,
+        exclusionList: [...(saved.exclusionList ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList)],
+        allowlist: [...(saved.allowlist ?? [])],
+        permissionRules: [...(saved.permissionRules ?? [])]
+      })
+    )
   }, [services, dbReady])
 
   useEffect(() => {
@@ -60,10 +64,15 @@ export const AgentToolsSection: React.FC = () => {
       if (!isCompanionGateCapabilityId(toolId) || !gateConfig || !services || !dbReady) return
 
       const prev = gateConfig
-      const nextConfig = applyCapabilityToConfig(gateConfig, 'companion', {
-        capabilityId: toolId,
-        effect
-      })
+      const nextConfig = foldCompanionAllowlistIntoCapabilities(
+        stripCompanionAllowlistActions(
+          applyCapabilityToConfig(gateConfig, 'companion', {
+            capabilityId: toolId,
+            effect
+          }),
+          [toolId]
+        )
+      )
       setGateConfig(nextConfig)
       try {
         await services.settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, nextConfig)
