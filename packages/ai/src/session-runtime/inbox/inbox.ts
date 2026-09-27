@@ -109,6 +109,29 @@ export class SessionInbox {
     return next
   }
 
+  /** 编辑排队正文；仅 pending 可改 */
+  updatePendingText(inputId: string, text: string): SessionInputRecord | null {
+    const cur = this.store.get(inputId)
+    if (!cur || cur.status !== 'pending') return null
+    const next = { ...cur, text }
+    this.store.upsert(next)
+    return next
+  }
+
+  /**
+   * 改投递方式。立即发送用 steer：只提高本轮结束后的排空优先级，不 abort 当前流。
+   */
+  setPendingDelivery(
+    inputId: string,
+    delivery: SessionInputDelivery
+  ): SessionInputRecord | null {
+    const cur = this.store.get(inputId)
+    if (!cur || cur.status !== 'pending') return null
+    const next = { ...cur, delivery: delivery === 'steer' ? 'steer' : 'queue' }
+    this.store.upsert(next)
+    return next
+  }
+
   cancelAllPending(sessionId: string): SessionInputRecord[] {
     const cancelled: SessionInputRecord[] = []
     for (const input of this.listPending(sessionId)) {

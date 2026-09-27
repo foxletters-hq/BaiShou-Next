@@ -1,4 +1,4 @@
-import { clampMaxSteps, createDoomLoopTracker } from './guards'
+import { clampMaxSteps, createDoomLoopTracker, DEFAULT_SESSION_MAX_STEPS } from './guards'
 import {
   emitTurnFinished,
   emitTurnStarted,
@@ -31,7 +31,7 @@ export async function runSessionTurnLoop(params: {
   hooks: SessionRunnerTurnHooks
   abortSignal?: AbortSignal
 }): Promise<{ turns: number; stoppedReason: string }> {
-  const maxSteps = clampMaxSteps(params.maxSteps, 10)
+  const maxSteps = clampMaxSteps(params.maxSteps, DEFAULT_SESSION_MAX_STEPS)
   const doom = createDoomLoopTracker(params.doomLoopThreshold ?? 3)
   let turns = 0
   let stoppedReason = 'completed'
