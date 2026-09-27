@@ -3,9 +3,12 @@
  * 重复工具调用只记事件，不掐断本轮。
  */
 
-export function clampMaxSteps(value: unknown, fallback = 10): number {
+/** 未单独配置时不限制模型回合。只有显式传入正整数才封顶。 */
+export const DEFAULT_SESSION_MAX_STEPS = Number.POSITIVE_INFINITY
+
+export function clampMaxSteps(value: unknown, fallback = DEFAULT_SESSION_MAX_STEPS): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) return fallback
-  return Math.max(1, Math.min(50, Math.trunc(value)))
+  return Math.max(1, Math.trunc(value))
 }
 
 /** 参数尚未拼完或还是空对象时不能计入死循环。 */

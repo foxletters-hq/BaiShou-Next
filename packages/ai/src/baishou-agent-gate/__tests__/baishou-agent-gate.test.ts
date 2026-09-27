@@ -456,7 +456,7 @@ describe('BaishouAgentGateService', () => {
     expect(settled).toBe(true)
   })
 
-  it('reply always 写入 allowlist 后同动作自动放行', async () => {
+  it('reply always 把伙伴工具写成允许后同动作自动放行', async () => {
     const persist = vi.fn()
     const { gate, getConfig } = createBaishouAgentGate({
       config: {
@@ -471,7 +471,12 @@ describe('BaishouAgentGateService', () => {
     await gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
     await first
 
-    expect(getConfig().allowlist.some((e) => e.action === 'diary_edit')).toBe(true)
+    expect(getConfig().allowlist.some((e) => e.action === 'diary_edit')).toBe(false)
+    expect(
+      getConfig().permissionRules?.some(
+        (rule) => rule.action === 'diary_edit' && rule.effect === AgentGateEffect.Allow
+      )
+    ).toBe(true)
     expect(persist).toHaveBeenCalledTimes(1)
 
     await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()

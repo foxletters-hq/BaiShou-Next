@@ -7,11 +7,14 @@ import {
   AgentGateReply,
   AgentGateRequestStatus,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
+  applyCompanionAlwaysAllow,
+  assignBaishouAgentGateConfig,
   buildAgentGateAssertFingerprint,
   canPermanentlyAllowAgentGateAction,
   createAgentGateRequestId,
   extractAgentGateResourcesFromMetadata,
   mergeAgentGateResources,
+  matchesCommandBlacklist,
   canPermanentlyAllowShellCommand,
   resolveAgentGateToolCoalesceKey,
   resolveCommandPrefixPatternFromCommand,
@@ -42,6 +45,19 @@ import {
   applyAutoReviewClassifierFailed,
   shouldApplyAutoReview
 } from './baishou-agent-gate-auto-review'
+
+function shellCommandsForBlacklist(input: AgentGateAssertInput): string[] {
+  const commands: string[] = []
+  for (const resource of input.resources ?? []) {
+    if (resource.kind === 'shell_command' && resource.value.trim()) commands.push(resource.value)
+  }
+  const fromMeta = input.metadata?.shellCommand
+  if (typeof fromMeta === 'string' && fromMeta.trim()) commands.push(fromMeta)
+  if (input.preview?.type === 'command' && input.preview.command.trim()) {
+    commands.push(input.preview.command)
+  }
+  return commands
+}
 
 export type { IBaishouAgentGate, CreateBaishouAgentGateOptions } from './baishou-agent-gate.types'
 
@@ -166,8 +182,22 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
-    if (turnAllowed && assertInput.kind === AgentGateKind.Tool && effect === AgentGateEffect.Ask) {
+    const blacklistedCommand =
+      assertInput.action === 'workspace_run' &&
+      shellCommandsForBlacklist(assertInput).some((command) =>
+        matchesCommandBlacklist(command, this.policy.getConfig().commandBlacklist)
+      )
+    // 本轮「本次允许」不能把黑名单命令带回放行
+    if (
+      turnAllowed &&
+      assertInput.kind === AgentGateKind.Tool &&
+      effect === AgentGateEffect.Ask &&
+      !blacklistedCommand
+    ) {
       effect = AgentGateEffect.Allow
+    }
+    if (blacklistedCommand && effect === AgentGateEffect.Allow) {
+      effect = AgentGateEffect.Ask
     }
 
     const coalesceKey = resolveAgentGateToolCoalesceKey({
@@ -305,30 +335,36 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
 
     if (input.reply === AgentGateReply.Always) {
-      const pathResource = replyResources.find(
-        (r) => r.kind === 'workspace_path' || r.kind === 'file_path'
-      )
-      const externalResource = replyResources.find((r) => r.kind === 'external_path')
-      const pathPattern = pathResource ? pathResource.value.replace(/\\/g, '/') : null
-      const externalPattern =
-        alwaysPatternsFromMeta?.[0] ??
-        (externalResource ? externalResource.value.replace(/\\/g, '/') : null)
-      const workspaceFileAction = request.action.startsWith('workspace_')
-      this.allowlistStore.add({
-        action: request.action,
-        sourceSessionId: request.sessionId,
-        sourceRequestId: request.id,
-        ...(alwaysShellPattern
-          ? { pattern: alwaysShellPattern, resourceKind: 'shell_command' as const }
-          : request.action === 'external_directory' && externalPattern
-            ? { pattern: externalPattern, resourceKind: 'external_path' as const }
-            : workspaceFileAction && pathPattern && pathResource
-              ? { pattern: pathPattern, resourceKind: pathResource.kind }
-              : alwaysPatternsFromMeta?.[0]
-                ? { pattern: alwaysPatternsFromMeta[0] }
-                : {})
-      })
-      // 先放行工具，白名单落盘放到后台，避免伙伴页卡住等写入
+      const liveConfig = this.policy.getConfig()
+      const companionNext = applyCompanionAlwaysAllow(liveConfig, request.action)
+      if (companionNext) {
+        assignBaishouAgentGateConfig(liveConfig as BaishouAgentGateConfig, companionNext)
+      } else {
+        const pathResource = replyResources.find(
+          (r) => r.kind === 'workspace_path' || r.kind === 'file_path'
+        )
+        const externalResource = replyResources.find((r) => r.kind === 'external_path')
+        const pathPattern = pathResource ? pathResource.value.replace(/\\/g, '/') : null
+        const externalPattern =
+          alwaysPatternsFromMeta?.[0] ??
+          (externalResource ? externalResource.value.replace(/\\/g, '/') : null)
+        const workspaceFileAction = request.action.startsWith('workspace_')
+        this.allowlistStore.add({
+          action: request.action,
+          sourceSessionId: request.sessionId,
+          sourceRequestId: request.id,
+          ...(alwaysShellPattern
+            ? { pattern: alwaysShellPattern, resourceKind: 'shell_command' as const }
+            : request.action === 'external_directory' && externalPattern
+              ? { pattern: externalPattern, resourceKind: 'external_path' as const }
+              : workspaceFileAction && pathPattern && pathResource
+                ? { pattern: pathPattern, resourceKind: pathResource.kind }
+                : alwaysPatternsFromMeta?.[0]
+                  ? { pattern: alwaysPatternsFromMeta[0] }
+                  : {})
+        })
+      }
+      // 先放行工具，落盘放到后台，避免伙伴页卡住等写入
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
       this.pending.resolveEntry(entry, resolution)
       this.pending.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
@@ -338,7 +374,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         ...(this.configScope ? { scope: this.configScope } : {})
       })
       void this.allowlistStore.persist().catch(() => {
-        // 内存白名单已生效；落盘失败不挡本轮继续
+        // 内存配置已生效；落盘失败不挡本轮继续
       })
       return
     }

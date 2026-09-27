@@ -24,6 +24,7 @@ function stripVolatileSections(full: string): string {
     .replace(/<runtime_context>[\s\S]*?<\/runtime_context>\s*/g, '')
     .replace(/<workspace_env>[\s\S]*?<\/workspace_env>\s*/g, '')
     .replace(/<skills_catalog>[\s\S]*?<\/skills_catalog>\s*/g, '')
+    .replace(/<conversation_time>[\s\S]*?<\/conversation_time>\s*/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

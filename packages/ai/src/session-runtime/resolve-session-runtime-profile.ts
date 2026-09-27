@@ -1,5 +1,5 @@
 import type { AgentSessionKind, SessionRuntimeProfile } from '@baishou/shared'
-import { clampMaxSteps } from './guards'
+import { clampMaxSteps, DEFAULT_SESSION_MAX_STEPS } from './guards'
 
 export interface ResolveSessionRuntimeProfileOptions {
   sessionRuntimeV2?: boolean
@@ -59,7 +59,7 @@ function resolveMaxSteps(userConfig: unknown, optionOverride: number | undefined
       ? (userConfig as Record<string, unknown>)['maxSteps']
       : undefined
   )
-  return clampMaxSteps(optionOverride ?? fromConfig, 10)
+  return clampMaxSteps(optionOverride ?? fromConfig, DEFAULT_SESSION_MAX_STEPS)
 }
 
 function resolveDoomLoopThreshold(userConfig: unknown, optionOverride: number | undefined): number {

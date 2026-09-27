@@ -295,7 +295,7 @@ describe('resolveSessionRuntimeProfile', () => {
         options: { maxSteps: 12, doomLoopThreshold: 9 }
       })
     ).toMatchObject({ maxSteps: 12, doomLoopThreshold: 9 })
-    expect(resolveSessionRuntimeProfile({}).maxSteps).toBe(10)
+    expect(resolveSessionRuntimeProfile({}).maxSteps).toBe(Number.POSITIVE_INFINITY)
     expect(resolveSessionRuntimeProfile({}).doomLoopThreshold).toBe(3)
   })
 })
@@ -317,12 +317,28 @@ describe('session-runtime inbox', () => {
     expect(second?.text).toBe('q1')
     expect(inbox.listPending('s')).toHaveLength(1)
   })
+
+  it('should update pending text when editing a queued input', () => {
+    const inbox = new SessionInbox()
+    const admitted = inbox.admit({ sessionId: 's', text: 'old', delivery: 'queue' })
+    const updated = inbox.updatePendingText(admitted.id, 'new follow-up')
+    expect(updated?.text).toBe('new follow-up')
+    expect(inbox.listPending('s')[0]?.text).toBe('new follow-up')
+  })
+
+  it('should promote edited item first when delivery is switched to steer', () => {
+    const inbox = new SessionInbox()
+    const first = inbox.admit({ sessionId: 's', text: 'later', delivery: 'queue' })
+    inbox.admit({ sessionId: 's', text: 'earlier-queue', delivery: 'queue' })
+    inbox.setPendingDelivery(first.id, 'steer')
+    expect(inbox.promoteNext('s')?.text).toBe('later')
+  })
 })
 
 describe('session-runtime guards', () => {
   it('clamps maxSteps', () => {
-    expect(clampMaxSteps(0)).toBe(10)
-    expect(clampMaxSteps(100)).toBe(50)
+    expect(clampMaxSteps(0)).toBe(Number.POSITIVE_INFINITY)
+    expect(clampMaxSteps(100)).toBe(100)
     expect(clampMaxSteps(7)).toBe(7)
   })
 
