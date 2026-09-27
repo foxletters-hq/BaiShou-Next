@@ -134,11 +134,11 @@ pnpm ci:check   # PR / 发版前必跑（无须在每次小改动后跑）
 
 ### 6.1 ESLint 策略
 
-| 级别      | 规则示例                                                   | 行为                                    |
-| --------- | ---------------------------------------------------------- | --------------------------------------- |
+| 级别      | 规则示例                                                                                                                | 行为                                    |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | **error** | `no-unused-vars`、Hooks、`no-restricted-imports`（mobile）、`ui-theme/portal-must-clip-to-content-card`（desktop / ui） | 必须修复，否则 `pnpm lint` / CI 失败    |
-| **warn**  | `i18n-chinese/no-hardcoded-chinese`、`max-lines`           | 显示但不单独挡 CI；**总数不得超过基线** |
-| **off**   | `no-explicit-any`（暂）                                    | 由 TypeScript strict 与审查兜底         |
+| **warn**  | `i18n-chinese/no-hardcoded-chinese`、`max-lines`                                                                        | 显示但不单独挡 CI；**总数不得超过基线** |
+| **off**   | `no-explicit-any`（暂）                                                                                                 | 由 TypeScript strict 与审查兜底         |
 
 - **warning 预算**：`scripts/lint-warning-baseline.json` 记录 desktop / mobile 当前上限；`pnpm lint` 使用 `--max-warnings`，**禁止净增 warning**。
 - 修掉一批 warning 后执行 `pnpm lint:baseline -- --write` 下调基线并提交。

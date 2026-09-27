@@ -4,7 +4,8 @@
     "strict": true,
     "resolveJsonModule": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@baishou/ui/theme/*": ["../../packages/ui/src/theme/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "env.d.ts", "expo-env.d.ts"],

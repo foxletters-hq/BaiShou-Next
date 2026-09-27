@@ -7,9 +7,7 @@ import { extractPdfText } from '../utils/mobile-pdf.util'
 import { createMobileFileSystem } from './create-mobile-file-system'
 
 function splitPdfPages(text: string): string[] {
-  const pages = text
-    .split('\f')
-    .map((page) => page.replace(/[ \t]+/g, ' ').trim())
+  const pages = text.split('\f').map((page) => page.replace(/[ \t]+/g, ' ').trim())
   return pages.length > 0 ? pages : [text.trim()]
 }
 

@@ -17,6 +17,7 @@ import {
   type KnowledgeConfig
 } from '@baishou/shared'
 import { registerVisionPageRecognizer } from '@baishou/core-mobile'
+import i18n from 'i18next'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
 const OCR_PROMPT = `请识别这张 PDF 页面图片中的全部文字，按原文顺序输出纯文本。
@@ -28,7 +29,8 @@ export function registerMobileVisionPageRecognizer(): void {
       const settings = agentDbRuntimeRef.current?.settingsManager
       if (!settings) throw new Error('runtime not ready')
       const knowledgeConfig = (await settings.get<KnowledgeConfig>('knowledge_config')) || {}
-      const globalModels = (await settings.get<GlobalModelsConfig>('global_models')) || {}
+      const globalModels =
+        (await settings.get<GlobalModelsConfig>('global_models')) ?? ({} as GlobalModelsConfig)
       const providers = (await settings.get<AIProviderConfig[]>('ai_providers')) || []
       const hit = resolveProviderModelSlot(
         providers,
@@ -42,7 +44,9 @@ export function registerMobileVisionPageRecognizer(): void {
       const modelId = hit?.modelId
       const providerConfig = hit?.provider
       if (!modelId || !providerConfig) {
-        throw new Error('还没配置视觉模型。请先在设置里选好视觉模型。')
+        throw new Error(
+          i18n.t('knowledge.vision_model_missing', '还没配置视觉模型。请先在设置里选好视觉模型。')
+        )
       }
       if (!isVisionModel(modelId, providerConfig.type || providerConfig.id)) {
         throw new Error(`当前模型不是多模态视觉模型：${modelId}`)
@@ -66,10 +70,7 @@ export function registerMobileVisionPageRecognizer(): void {
             messages: [
               {
                 role: 'user',
-                content: [
-                  { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
-                  imagePart
-                ]
+                content: [{ type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` }, imagePart]
               }
             ]
           })
