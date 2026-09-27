@@ -3,10 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagConfig, type RagEntry } from '@baishou/ui/native'
 import {
   GlobalModelsConfig,
+  deriveLegacyVaultId,
+  memoryClearVectorKindsOf,
   parseGraphNodeEmbeddingId,
+  type MemoryClearKind,
   type RagVectorKindFilter
 } from '@baishou/shared'
 import { MobileRagAbortError } from '../../../../services/mobile-rag.service'
+import { getAgentDbRuntime } from '../../../../services/mobile-agent-db-runtime-ref'
 import { clampMobileRagConfig } from './rag-memory-section.constants'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
 
@@ -331,15 +335,46 @@ export function useRagMemoryActions(
     setPromptDefault('')
   }
 
-  const confirmClearAll = async (phrase: string) => {
+  const confirmClearKinds = async (kinds: MemoryClearKind[], phrase: string) => {
     if (!services?.ragService) return
-    const expected = t('settings.rag_clear_all_confirm_phrase')
+    const expected = t('settings.rag_clear_all_confirm_phrase', '确认清除')
     if (phrase.trim() !== expected) {
       toast.showError(t('settings.rag_clear_all_mismatch'))
       return
     }
+    if (kinds.length === 0) return
+    setPromptMode(null)
     try {
-      await services.ragService.clearAll()
+      const vectorKinds = memoryClearVectorKindsOf(kinds)
+      if (vectorKinds.length > 0) {
+        await services.ragService.clearKinds(kinds)
+      }
+      if (kinds.includes('life_graph')) {
+        const runtime = getAgentDbRuntime()
+        if (runtime?.drizzleDb && services.vaultService && services.pathService && services.fileSystem) {
+          const { mobileClearLifeGraph } = await import('../../../../services/mobile-graph-mutate')
+          const { mobileGraphExtractQueue } = await import(
+            '../../../../services/mobile-graph-extract-queue.service'
+          )
+          const { ShadowIndexRepository, shadowConnectionManager } = await import('@baishou/database')
+          const { readActiveVaultSafely } = await import(
+            '../../../MemoryCenterScreen/memory-center-data.util'
+          )
+          const activeVault = readActiveVaultSafely(services.vaultService)
+          const vaultName = activeVault?.name || 'Personal'
+          const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+          mobileGraphExtractQueue.stop()
+          await mobileClearLifeGraph({
+            vaultId,
+            vaultName,
+            drizzleDb: runtime.drizzleDb,
+            shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
+            pathService: services.pathService,
+            fileSystem: services.fileSystem,
+            stopExtract: () => mobileGraphExtractQueue.stop()
+          })
+        }
+      }
       setCurrentPage(1)
       await loadRagData('', 'text', 1, pageSize)
       toast.showSuccess(t('settings.rag_clear_all'))
@@ -349,14 +384,37 @@ export function useRagMemoryActions(
   }
 
   const handleAddManualMemory = async () => {
-    setPromptMode('manual')
-    setPromptDefault('')
+    const text = await dialog.prompt(
+      t('settings.rag_edit_manual'),
+      '',
+      t('settings.rag_add_manual'),
+      true
+    )
+    if (!text?.trim() || !services?.ragService) return
+    try {
+      await services.ragService.addManualMemory(text.trim())
+      toast.showSuccess(t('settings.rag_add_manual_success'))
+      await loadRagData()
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_add_manual_failed'))
+    }
   }
 
   const handleEditEntry = async (entry: RagEntry) => {
-    editEntryRef.current = entry
-    setPromptMode('edit')
-    setPromptDefault(entry.text)
+    const text = await dialog.prompt(
+      t('settings.rag_edit_manual'),
+      entry.text,
+      t('settings.rag_edit_manual'),
+      true
+    )
+    if (!text?.trim() || !services?.ragService) return
+    try {
+      await services.ragService.editEntry(entry.embeddingId, text.trim())
+      toast.showSuccess(t('common.save_success'))
+      await loadRagData()
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+    }
   }
 
   const handleDeleteEntry = async (id: string) => {
@@ -441,7 +499,7 @@ export function useRagMemoryActions(
     }
 
     if (mode === 'clear') {
-      await confirmClearAll(value)
+      return
     }
   }
 
@@ -467,6 +525,7 @@ export function useRagMemoryActions(
     handleResumeBatchEmbed,
     handleCancelRagOperation,
     handleClearAll,
+    confirmClearKinds,
     handleAddManualMemory,
     handleEditEntry,
     handleDeleteEntry,
