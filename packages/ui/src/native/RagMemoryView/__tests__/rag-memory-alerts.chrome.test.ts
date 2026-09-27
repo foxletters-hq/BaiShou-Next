@@ -43,6 +43,6 @@ describe('native RagMemoryActionsSection suspect chrome', () => {
     expect(actions).toContain('memory.review_suspects_toolbar')
     expect(actions).toContain('检查待确认节点')
     expect(actions).not.toContain('检查可疑节点')
-    expect(actions).toContain('from \'../Button\'')
+    expect(actions).toContain("from '../Button'")
   })
 })

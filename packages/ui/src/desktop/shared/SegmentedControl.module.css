@@ -37,7 +37,9 @@
   height: 26px;
   border-radius: 7px;
   background: var(--bg-surface);
-  box-shadow: var(--shadow-sm), 0 0 0 1px var(--border-subtle);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px var(--border-subtle);
   pointer-events: none;
   will-change: transform, width;
 }

@@ -58,9 +58,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   const menuOpen = activeMenuId === item.embeddingId
   const keyword = searchQuery.trim()
   const { preview } = buildRagEntryListPreview(item.text, keyword || undefined)
-  const nodeCard = isGraphNodeRagEntry(item.sourceType)
-    ? splitGraphNodeCardText(item.text)
-    : null
+  const nodeCard = isGraphNodeRagEntry(item.sourceType) ? splitGraphNodeCardText(item.text) : null
 
   const openPreview = () => {
     setActiveMenuId(null)
@@ -183,17 +181,17 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           ) : (
             <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
               {splitTextByKeyword(preview, keyword || undefined).map((part, index) => (
-              <Text
-                key={`${part.kind}-${index}`}
-                style={
-                  part.kind === 'mark'
-                    ? { backgroundColor: 'rgba(91, 168, 245, 0.22)', color: colors.textPrimary }
-                    : undefined
-                }
-              >
-                {part.value}
-              </Text>
-            ))}
+                <Text
+                  key={`${part.kind}-${index}`}
+                  style={
+                    part.kind === 'mark'
+                      ? { backgroundColor: 'rgba(91, 168, 245, 0.22)', color: colors.textPrimary }
+                      : undefined
+                  }
+                >
+                  {part.value}
+                </Text>
+              ))}
             </Text>
           )}
         </TouchableOpacity>

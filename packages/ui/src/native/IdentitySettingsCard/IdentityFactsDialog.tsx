@@ -47,7 +47,7 @@ export const IdentityFactsDialog: React.FC<IdentityFactsDialogProps> = ({
 
   const saveEdit = () => {
     const result = applyIdentityFactEdit(facts, editingKey, editKeyInput, editValInput)
-    if (!result.ok) {
+    if (result.ok === false) {
       toast.showToast(
         result.error === 'empty'
           ? t('settings.empty_identity_entry_error', '标签和内容不能为空')
