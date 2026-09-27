@@ -136,7 +136,12 @@ describe('DatabaseAdapter.searchMessages', () => {
       ])
     }
     const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
-    const rows = await adapter.listSessionsInDateRange('vlt_explicit', '2026-09-01', '2026-09-07', 20)
+    const rows = await adapter.listSessionsInDateRange(
+      'vlt_explicit',
+      '2026-09-01',
+      '2026-09-07',
+      20
+    )
     expect(messageRepo.listSessionsInDateRange).toHaveBeenCalledWith(
       'vlt_explicit',
       '2026-09-01',
@@ -152,7 +157,10 @@ describe('DatabaseAdapter.searchMessages', () => {
     const messageRepo = { listMessagesInDateRange: vi.fn() }
     const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
     expect(
-      await adapter.listMessagesInDateRange('', 20, { startDate: '2026-09-01', endDate: '2026-09-07' })
+      await adapter.listMessagesInDateRange('', 20, {
+        startDate: '2026-09-01',
+        endDate: '2026-09-07'
+      })
     ).toEqual([])
     expect(messageRepo.listMessagesInDateRange).not.toHaveBeenCalled()
   })

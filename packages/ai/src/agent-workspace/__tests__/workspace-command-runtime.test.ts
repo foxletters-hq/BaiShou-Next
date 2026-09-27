@@ -73,7 +73,11 @@ describe('detectWorkspaceCommandRuntime', () => {
       locate: (name) => (name === 'bash' ? '/usr/bin/bash' : undefined),
       exists: (file) => file === '/usr/bin/fish' || file === '/usr/bin/bash'
     })
-    expect(runtime).toMatchObject({ executable: '/usr/bin/bash', family: 'unix_shell', binary: 'bash' })
+    expect(runtime).toMatchObject({
+      executable: '/usr/bin/bash',
+      family: 'unix_shell',
+      binary: 'bash'
+    })
   })
 
   it('should use /bin/zsh on darwin when present', () => {
@@ -99,7 +103,13 @@ describe('planWorkspaceCommandSpawn / buildWorkspaceRunToolDescription', () => {
     )
     expect(spawn.attachRuntimeAsShell).toBe(false)
     expect(spawn.file).toBe('C:\\pwsh\\pwsh.exe')
-    expect(spawn.args).toEqual(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', 'mkdir foo'])
+    expect(spawn.args).toEqual([
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'mkdir foo'
+    ])
   })
 
   it('should name the command environment and ask for the inner command only', () => {
