@@ -9,12 +9,12 @@ describe('resolveNotebookOrganizeStage', () => {
   })
 
   it('should queue embed and keep graph follow when extracted text exists', () => {
-    expect(
-      resolveNotebookOrganizeStage({ status: 'ready', extractedTextHash: 'abc' })
-    ).toBe('embed')
-    expect(
-      resolveNotebookOrganizeStage({ status: 'stored', extractedTextHash: 'abc' })
-    ).toBe('embed')
+    expect(resolveNotebookOrganizeStage({ status: 'ready', extractedTextHash: 'abc' })).toBe(
+      'embed'
+    )
+    expect(resolveNotebookOrganizeStage({ status: 'stored', extractedTextHash: 'abc' })).toBe(
+      'embed'
+    )
   })
 
   it('should skip sources already extracting or embedding', () => {
