@@ -272,7 +272,7 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
               </Text>
             </Pressable>
             <Pressable onPress={applyDraft} hitSlop={8}>
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
                 {t('graph.month_range_apply', '应用')}
               </Text>
             </Pressable>
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   modalSubtitle: {
     fontSize: 12,

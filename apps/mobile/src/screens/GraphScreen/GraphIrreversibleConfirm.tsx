@@ -50,7 +50,7 @@ export function GraphIrreversibleConfirm(props: {
       closeOnBackdropPress={!props.busy}
     >
       <View style={{ padding: 20, gap: 12 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
           {props.title}
         </Text>
         <Text style={{ color: colors.error, fontSize: 14, fontWeight: '600', lineHeight: 20 }}>
@@ -73,7 +73,7 @@ export function GraphIrreversibleConfirm(props: {
             </Text>
           </Pressable>
           <Pressable disabled={!ready} onPress={props.onConfirm}>
-            <Text style={{ color: ready ? colors.error : colors.textSecondary, fontWeight: '700' }}>
+            <Text style={{ color: ready ? colors.error : colors.textSecondary, fontWeight: '600' }}>
               {ready
                 ? t('graph.merge_confirm', '确认合并')
                 : t('graph.merge_confirm_wait', '请等待 {{sec}} 秒', { sec: remainSec })}

@@ -66,7 +66,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _siz
             </Text>
           </View>
           <Pressable onPress={() => setOpen(false)} style={styles.close}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
               {t('common.close', '关闭')}
             </Text>
           </Pressable>
@@ -84,8 +84,8 @@ const styles = StyleSheet.create({
     gap: 16
   },
   title: {
-    fontSize: 17,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '600'
   },
   section: {
     gap: 6

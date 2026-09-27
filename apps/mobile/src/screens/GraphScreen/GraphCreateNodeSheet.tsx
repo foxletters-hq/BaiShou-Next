@@ -153,7 +153,7 @@ export function GraphCreateNodeSheet(props: {
   return (
     <FloatingModal visible={props.visible} onClose={props.onClose} closeOnBackdropPress={!saving}>
       <View style={{ padding: 20, gap: 10 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
           {t('graph.create_node', '新建节点')}
         </Text>
         <Input label={t('graph.label_name', '名称')} value={name} onChangeText={setName} />

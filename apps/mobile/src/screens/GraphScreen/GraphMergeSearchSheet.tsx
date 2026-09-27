@@ -320,7 +320,7 @@ const sheet = StyleSheet.create({
     gap: 8
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600'
   },
   lead: {

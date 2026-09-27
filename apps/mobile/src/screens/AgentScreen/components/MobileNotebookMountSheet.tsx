@@ -3,6 +3,7 @@ import { ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   canToggleMountedNotebook,
+  getNotebookCardAppearance,
   getPendingMountedNotebookIds,
   isDraftNotebookMountSessionId,
   notebookMountPendingKey,
@@ -48,7 +49,8 @@ export function MobileNotebookMountSheet({
         return
       }
       const runtime = agentDbRuntimeRef.current
-      const session = runtime && sessionId ? await runtime.sessionRepo.getSessionById(sessionId) : null
+      const session =
+        runtime && sessionId ? await runtime.sessionRepo.getSessionById(sessionId) : null
       setSelectedIds(parseMountedNotebookIds(session?.mountedNotebookIds))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
@@ -107,10 +109,10 @@ export function MobileNotebookMountSheet({
             candidate: row,
             candidates
           })
-          const dim =
-            row.dimension != null
-              ? t('knowledge.notebook_mount_dimension', { count: row.dimension })
-              : t('knowledge.notebook_mount_not_embedded')
+          const appearance = getNotebookCardAppearance(row.id, {
+            coverTone: row.coverTone,
+            coverIcon: row.coverIcon
+          })
           return (
             <View
               key={row.id}
@@ -145,7 +147,7 @@ export function MobileNotebookMountSheet({
                     fontWeight: settingsTypography.row.fontWeight
                   }}
                 >
-                  {row.name}
+                  {appearance.icon} {row.name}
                 </Text>
                 <Text
                   style={{
@@ -155,7 +157,10 @@ export function MobileNotebookMountSheet({
                     marginTop: tokens.spacing.xs
                   }}
                 >
-                  {t('knowledge.notebook_mount_meta', { count: row.sources, dim })}
+                  {t('knowledge.notebook_mount_counts', '向量 {{vectors}} · 图谱 {{graphs}}', {
+                    vectors: row.chunks,
+                    graphs: row.graphNodes ?? 0
+                  })}
                 </Text>
                 {!selected && gate.reason ? (
                   <Text

@@ -301,6 +301,8 @@ export function GraphScreen() {
           onFocusDepthChange: search.updateFocusDepth,
           appearanceSettings: settings.appearanceSettings,
           onAppearanceChange: settings.updateAppearance,
+          viewMaxNodes: settings.viewMaxNodes,
+          onViewMaxNodesChange: settings.updateViewMaxNodes,
           forceSettings: settings.forceSettings,
           onForceChange: settings.updateForce,
           onReplayLayout: () => m.setAnimationTick((n) => n + 1),
