@@ -1,9 +1,14 @@
 import { readAssistantStreamStatus } from '@baishou/shared'
 
-export function isPersistedAssistantStreamInProgress(message: {
-  role?: string
-  parts?: ReadonlyArray<{ type?: string; data?: unknown }>
-} | null | undefined): boolean {
+export function isPersistedAssistantStreamInProgress(
+  message:
+    | {
+        role?: string
+        parts?: ReadonlyArray<{ type?: string; data?: unknown }>
+      }
+    | null
+    | undefined
+): boolean {
   if (message?.role !== 'assistant') return false
   return readAssistantStreamStatus(message.parts) === 'in_progress'
 }

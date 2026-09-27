@@ -27,7 +27,9 @@ describe('excludePendingQueuedUserMessages', () => {
       { id: 'u1', role: 'user', content: '123123' },
       { id: 'a1', role: 'assistant', content: 'ok' }
     ]
-    expect(excludePendingQueuedUserMessages(messages, [{ text: '123123' }])).toBe(messages)
+    expect(excludePendingQueuedUserMessages(messages, [{ userMessageId: undefined }])).toBe(
+      messages
+    )
   })
 
   it('should return original list when pending has no userMessageId', () => {
@@ -47,9 +49,9 @@ describe('mergePendingQueueView', () => {
   })
 
   it('should keep a not-yet-saved placeholder when the server list is still empty', () => {
-    expect(
-      reconcileOptimisticAfterServer([], [{ id: 'local-1', text: '下一条' }])
-    ).toEqual([{ id: 'local-1', text: '下一条' }])
+    expect(reconcileOptimisticAfterServer([], [{ id: 'local-1', text: '下一条' }])).toEqual([
+      { id: 'local-1', text: '下一条' }
+    ])
   })
 
   it('should drop a confirmed local placeholder after the server list no longer has that turn', () => {
@@ -74,10 +76,9 @@ describe('mergePendingQueueView', () => {
 describe('resolvePendingInputId', () => {
   it('should map a local placeholder to the server input when the text matches', () => {
     expect(
-      resolvePendingInputId(
-        { id: 'local-1', text: '123123' },
-        [{ id: 'server-9', text: '123123', userMessageId: 'u1' }]
-      )
+      resolvePendingInputId({ id: 'local-1', text: '123123' }, [
+        { id: 'server-9', text: '123123', userMessageId: 'u1' }
+      ])
     ).toBe('server-9')
   })
 })
