@@ -66,7 +66,7 @@ export function resolveCompressionPromptLocale(locale?: string): CompressionProm
   return 'zh'
 }
 
-/** 关闭 auto inject time 时，压缩输入为纯文本 transcript（无 <message-time> 元数据） */
+/** 关闭 auto inject time 时，压缩输入为纯文本 transcript（无 per-message 时间标签） */
 const PLAIN_TRANSCRIPT_INPUT_LINES: Record<CompressionPromptLocale, string> = {
   zh: '输入为带【用户】【助手】【工具】标记的多轮对话原文（纯文本，不含 per-message 时间标签）；若含 <previous-summary>…</previous-summary>，表示上一轮滚动摘要，请与新对话合并。',
   en: 'The input is multi-turn dialogue marked with [User], [Assistant], and [Tool] as plain text without per-message timestamp tags. If it contains <previous-summary>…</previous-summary>, that is the prior rolling summary—merge it with the new dialogue.',
@@ -83,8 +83,17 @@ const METADATA_TRANSCRIPT_INPUT_LINES: Record<CompressionPromptLocale, string> =
   ja: '入力は【ユーザー】【アシスタント】【ツール】ラベル付きの多ターン会話原文です。各ロールのメッセージに <message-time> と <message-content> のメタデータブロックがある場合があります。<previous-summary>…</previous-summary> がある場合は前回のローリング要約なので、新しい会話と統合してください。'
 }
 
+/** 旧 sidecar 时刻表文案，读取自定义压缩 prompt 时迁回 per-message 包装 */
+const SIDECAR_CONVERSATION_TIME_INPUT_LINES: Record<CompressionPromptLocale, string> = {
+  zh: '输入为带【用户】【助手】【工具】标记的多轮对话原文；正文前可能有 <conversation_time> 时刻表（与对话顺序对应的落盘发送时刻，非正文）；若含 <previous-summary>…</previous-summary>，表示上一轮滚动摘要，请与新对话合并。',
+  en: 'The input is multi-turn dialogue marked with [User], [Assistant], and [Tool]. A <conversation_time> table may precede the transcript (persisted send times in the same order, not message bodies). If it contains <previous-summary>…</previous-summary>, that is the prior rolling summary—merge it with the new dialogue.',
+  'zh-TW':
+    '輸入為帶【用戶】【助手】【工具】標記的多輪對話原文；正文前可能有 <conversation_time> 時刻表（與對話順序對應的落盤發送時刻，非正文）；若含 <previous-summary>…</previous-summary>，表示上一輪滾動摘要，請與新對話合併。',
+  ja: '入力は【ユーザー】【アシスタント】【ツール】ラベル付きの多ターン会話原文です。本文の前に <conversation_time> 時刻表（会話と同じ順の保存済み送信時刻。本文ではない）がある場合があります。<previous-summary>…</previous-summary> がある場合は前回のローリング要約なので、新しい会話と統合してください。'
+}
+
 export interface CompressionSystemPromptOptions {
-  /** 是否与对话上下文一致地包含 <message-time> 元数据描述，默认 true */
+  /** 是否在压缩输入中包裹 per-message 时间标签，默认 true */
   wrapMessageTime?: boolean
 }
 
@@ -93,10 +102,16 @@ function applyCompressionTranscriptInputLine(
   locale: CompressionPromptLocale,
   wrapMessageTime: boolean
 ): string {
-  if (wrapMessageTime) return prompt
-  const from = METADATA_TRANSCRIPT_INPUT_LINES[locale]
-  const to = PLAIN_TRANSCRIPT_INPUT_LINES[locale]
-  return prompt.includes(from) ? prompt.replace(from, to) : prompt
+  const metadata = METADATA_TRANSCRIPT_INPUT_LINES[locale]
+  const sidecar = SIDECAR_CONVERSATION_TIME_INPUT_LINES[locale]
+  const plain = PLAIN_TRANSCRIPT_INPUT_LINES[locale]
+  if (wrapMessageTime) {
+    if (prompt.includes(sidecar)) return prompt.replace(sidecar, metadata)
+    return prompt
+  }
+  if (prompt.includes(metadata)) return prompt.replace(metadata, plain)
+  if (prompt.includes(sidecar)) return prompt.replace(sidecar, plain)
+  return prompt
 }
 
 export function getDefaultCompressionSystemPrompt(

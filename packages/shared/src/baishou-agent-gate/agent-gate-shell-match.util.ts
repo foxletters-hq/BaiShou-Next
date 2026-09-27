@@ -77,8 +77,8 @@ const DANGEROUS_SHELL_PATTERNS: RegExp[] = [
   /\bformat\s+[a-z]:/i,
   /\bmkfs(\.|$|\s)/i,
   /\bdd\s+.*\bif=/i,
-  /\b(Remove-Item|ri)\b.*\b-Recurse\b/i,
-  /\b(Remove-Item|ri)\b.*\b-Force\b.*\b-Recurse\b/i,
+  /\b(Remove-Item|ri)\b.*-Recurse\b/i,
+  /\b(Remove-Item|ri)\b.*-Force\b.*-Recurse\b/i,
   /\bcipher\s+\/w\b/i,
   /\bdiskpart\b/i,
   /\breg\s+delete\b/i,
@@ -157,7 +157,7 @@ export function resolveCommandPrefixPattern(tokens: string[]): string | null {
   if (tokens.length === 0) return null
   const binary = normalizeBinary(tokens[0]!)
   if (ALWAYS_FORBIDDEN_BINARIES.has(binary)) return null
-  const arity = COMMAND_PREFIX_ARITY[binary] ?? 2
+  const arity = COMMAND_PREFIX_ARITY[binary] ?? 1
   if (tokens.length < arity) return null
   const take = Math.min(arity, tokens.length)
   const prefix = tokens
@@ -222,33 +222,66 @@ export function unwrapWindowsCmdInvocation(command: string): string {
   return unwrapWorkspaceCommandLine(command)
 }
 
+/** 管道或分号前面的第一段命令，用来取命令头。 */
+function firstShellSegment(command: string): string {
+  let quote: '"' | "'" | null = null
+  let segment = ''
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!
+    if (quote) {
+      segment += ch
+      if (ch === quote && command[i - 1] !== '\\') quote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      segment += ch
+      continue
+    }
+    if (command.startsWith('&&', i) || command.startsWith('||', i)) break
+    if (ch === '|' || ch === ';' || ch === '`') break
+    if (ch === '$' && command[i + 1] === '(') break
+    segment += ch
+  }
+  return segment.trim()
+}
+
 export function resolveCommandPrefixPatternFromCommand(command: string): string | null {
-  const unwrapped = unwrapWorkspaceCommandLine(command)
-  if (commandHasShellOperators(unwrapped)) return null
+  const unwrapped = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
+  if (!unwrapped) return null
   if (isDangerousShellCommand(unwrapped)) return null
-  return resolveCommandPrefixPattern(tokenizeCommand(unwrapped))
+  const headSource = commandHasShellOperators(unwrapped) ? firstShellSegment(unwrapped) : unwrapped
+  if (!headSource) return null
+  return resolveCommandPrefixPattern(tokenizeCommand(headSource))
 }
 
 /**
  * Whether this shell command may be permanently allowlisted at all.
  */
 export function canPermanentlyAllowShellCommand(command: string): boolean {
-  const unwrapped = unwrapWorkspaceCommandLine(command)
-  if (!unwrapped) return false
-  if (commandHasShellOperators(unwrapped)) return false
-  if (isDangerousShellCommand(unwrapped)) return false
-  return resolveCommandPrefixPatternFromCommand(unwrapped) != null
+  return resolveCommandPrefixPatternFromCommand(command) != null
 }
 
 /**
  * Match a live command against an allowlist/permission pattern.
- * - Pattern ending with ` *` matches that exact prefix then anything **without shell operators**
+ * - Pattern ending with ` *` matches that command head, including a later pipeline that starts with it
  * - Pattern without `*` requires exact token-prefix equality (same arity length)
+ * - A pattern that itself contains pipes or separators matches only that exact command line
  * - Never matches by raw substring of the full command string
  */
 export function matchShellCommandPattern(command: string, pattern: string): boolean {
-  const live = unwrapWorkspaceCommandLine(command)
-  if (commandHasShellOperators(live)) return false
+  const live = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
+  const trimmedPattern = unwrapWorkspaceCommandLine(pattern).replace(/\s+/g, ' ').trim()
+  if (commandHasShellOperators(trimmedPattern)) {
+    if (isDangerousShellCommand(live) || isDangerousShellCommand(trimmedPattern)) return false
+    return live === trimmedPattern
+  }
+  if (commandHasShellOperators(live)) {
+    if (isDangerousShellCommand(live)) return false
+    const head = firstShellSegment(live)
+    if (!head) return false
+    return matchShellCommandPattern(head, pattern)
+  }
 
   const cmdTokens = tokenizeCommand(live)
   if (cmdTokens.length === 0) return false

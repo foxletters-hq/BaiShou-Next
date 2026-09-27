@@ -146,6 +146,27 @@ export function cloneBaishouAgentGateConfig(
   )
 }
 
+/** 把 source 的字段写回运行时持有的同一份配置对象。 */
+export function assignBaishouAgentGateConfig(
+  target: BaishouAgentGateConfig,
+  source: BaishouAgentGateConfig
+): void {
+  target.exclusionList = [...source.exclusionList]
+  target.allowlist = source.allowlist.map((entry) => ({ ...entry }))
+  target.actionRules = source.actionRules ? { ...source.actionRules } : undefined
+  target.permissionRules = source.permissionRules?.map((rule) => ({ ...rule }))
+  target.repeatAssertAskThreshold = source.repeatAssertAskThreshold
+  target.hideDeniedTools = source.hideDeniedTools
+  target.scopePreset = source.scopePreset
+  target.approvalPreset = source.approvalPreset
+  target.securityMode = source.securityMode
+  if (source.commandBlacklist) {
+    target.commandBlacklist = [...source.commandBlacklist]
+  } else {
+    delete target.commandBlacklist
+  }
+}
+
 export function toWorkspaceGatePolicyV2(config: BaishouAgentGateConfig): WorkspaceGatePolicyV2 {
   return {
     version: 2,
