@@ -2,14 +2,11 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const flowSrc = readFileSync(
-  path.resolve(__dirname, '../useAgentChatFlow.ts'),
-  'utf8'
-)
-const screenSrc = readFileSync(
-  path.resolve(__dirname, '../../AgentScreen.tsx'),
-  'utf8'
-)
+const flowSrc = [
+  readFileSync(path.resolve(__dirname, '../useAgentChatFlow.ts'), 'utf8'),
+  readFileSync(path.resolve(__dirname, '../commit-companion-queue-edit.ts'), 'utf8')
+].join('\n')
+const screenSrc = readFileSync(path.resolve(__dirname, '../../AgentScreen.tsx'), 'utf8')
 
 describe('companion busy send uses admit queue', () => {
   it('should admit through inbox when sending instead of starting chat directly', () => {

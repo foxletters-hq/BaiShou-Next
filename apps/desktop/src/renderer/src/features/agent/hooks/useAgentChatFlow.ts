@@ -32,13 +32,9 @@ import {
 } from '@baishou/shared'
 import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
 import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
-
-/** 尚未落库的草稿会话路由（/chat、/chat/new-session、首页临时 new-<ts>） */
-function isDraftChatSessionId(sessionId: string | undefined): boolean {
-  if (!sessionId) return true
-  if (sessionId === 'new-session') return true
-  return /^new-\d+$/.test(sessionId)
-}
+import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
+import { applyCompanionContextRecompressResult } from './companion-context-recompress.util'
+import { commitCompanionQueueEdit } from './commit-companion-queue-edit'
 
 type SendMeta = {
   displayText?: string
@@ -344,17 +340,7 @@ export function useAgentChatFlow() {
 
     try {
       if (meta?.queueEditInputId) {
-        const updated = await window.api.updatePendingInput({
-          inputId: meta.queueEditInputId,
-          text: text.trim()
-        })
-        if (!updated) return false
-        window.dispatchEvent(
-          new CustomEvent('baishou:companion-pending-inputs-changed', {
-            detail: { sessionId: updated.sessionId }
-          })
-        )
-        return true
+        return commitCompanionQueueEdit({ inputId: meta.queueEditInputId, text })
       }
 
       if (needsNewSession) {
@@ -506,30 +492,21 @@ export function useAgentChatFlow() {
     toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
   }
 
+  const dismissContextRecompressError = useCallback(() => {
+    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
+  }, [activeContextSessionId, storeClearRecompressError])
+
   const runContextRecompress = useCallback(
     async (targetSessionId: string) => {
       if (!targetSessionId) return
       const result = await storeRunRecompress(targetSessionId)
-      if (result?.ok && result.summaryText) {
-        // 面板仍挂载时即时刷新摘要；若已切走（组件卸载）此更新为 no-op，
-        // 重新进入会话重新拉取调用链时会从数据库读到最新快照。
-        setContextDialogState((prev) => ({
-          ...prev,
-          compressedContent: result.summaryText,
-          flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
-            entry.kind === 'compression-summary'
-              ? { ...entry, summaryText: result.summaryText }
-              : entry
-          )
-        }))
-      }
+      if (!(result?.ok && result.summaryText)) return
+      setContextDialogState((prev) =>
+        applyCompanionContextRecompressResult(prev, result.summaryText)
+      )
     },
     [storeRunRecompress]
   )
-
-  const dismissContextRecompressError = useCallback(() => {
-    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
-  }, [activeContextSessionId, storeClearRecompressError])
 
   return {
     t,
