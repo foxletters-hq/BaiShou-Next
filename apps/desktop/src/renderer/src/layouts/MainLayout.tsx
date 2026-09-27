@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useSyncExternalStore } from 'react'
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from '../components/Sidebar'
@@ -10,6 +10,12 @@ import {
   getDesktopVaultScopeRevision,
   subscribeDesktopVaultScope
 } from '../cache/desktop-vault-scope'
+import {
+  ROUTE_SWITCH_MASK_SECONDS,
+  nextMountedCacheKeys,
+  shouldShowRouteSwitchMask
+} from './route-switch-mask.util'
+import { consumeWorkbenchEditorMouseNav } from '../features/agent-workspace/workbench/workbench-editor-mouse-nav'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
@@ -28,6 +34,36 @@ export const MainLayout: React.FC = () => {
       location.pathname.startsWith('/summary/') ||
       isAgentWorkspaceKnowledgeDetailPath(location.pathname))
 
+  useEffect(() => {
+    const onMouseNav = (direction: 'back' | 'forward') => {
+      if (consumeWorkbenchEditorMouseNav(direction)) return
+      if (direction === 'back') window.history.back()
+      else window.history.forward()
+    }
+    const onMouseUp = (event: MouseEvent) => {
+      if (event.button !== 3 && event.button !== 4) return
+      event.preventDefault()
+      event.stopPropagation()
+      onMouseNav(event.button === 3 ? 'back' : 'forward')
+    }
+    const onAppCommand = (
+      _event: unknown,
+      payload: { direction?: 'back' | 'forward' }
+    ) => {
+      if (payload?.direction !== 'back' && payload?.direction !== 'forward') return
+      onMouseNav(payload.direction)
+    }
+    window.addEventListener('mouseup', onMouseUp, true)
+    const unsubscribe = window.electron?.ipcRenderer?.on?.(
+      'workbench:editor-mouse-nav',
+      onAppCommand
+    )
+    return () => {
+      window.removeEventListener('mouseup', onMouseUp, true)
+      unsubscribe?.()
+    }
+  }, [])
+
   // 当处于日记编辑或总结详情等二级子页面时，保持对应底座页面挂载，但隐藏以免与 Outlet 叠层闪烁
   let activeCacheKey = cacheKey
   if (location.pathname.startsWith('/chat')) {
@@ -43,6 +79,20 @@ export const MainLayout: React.FC = () => {
   }
 
   const prevVaultScopeRevisionRef = useRef(vaultScopeRevision)
+  const prevCacheKeyRef = useRef<string | null>(null)
+  const [mountedKeys, setMountedKeys] = useState(() =>
+    nextMountedCacheKeys(new Set(), activeCacheKey)
+  )
+  const showRouteMask = shouldShowRouteSwitchMask({
+    previousKey: prevCacheKeyRef.current,
+    nextKey: activeCacheKey,
+    mountedKeys
+  })
+
+  useEffect(() => {
+    setMountedKeys((prev) => nextMountedCacheKeys(prev, activeCacheKey))
+    prevCacheKeyRef.current = activeCacheKey
+  }, [activeCacheKey])
 
   useEffect(() => {
     if (prevVaultScopeRevisionRef.current === vaultScopeRevision) return
@@ -88,20 +138,21 @@ export const MainLayout: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* 切换底座根路由时淡出遮罩；颜色与页面画布一致，避免闪白 */}
-          <motion.div
-            key={location.pathname.split('/')[1] || 'home'}
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'var(--bg-app)',
-              pointerEvents: 'none',
-              zIndex: 50
-            }}
-          />
+          {showRouteMask ? (
+            <motion.div
+              key={`${prevCacheKeyRef.current ?? 'none'}->${activeCacheKey ?? 'none'}`}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 0 }}
+              transition={{ duration: ROUTE_SWITCH_MASK_SECONDS, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: 'var(--bg-app)',
+                pointerEvents: 'none',
+                zIndex: 50
+              }}
+            />
+          ) : null}
         </div>
       </div>
     </div>
