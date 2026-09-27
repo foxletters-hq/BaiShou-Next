@@ -173,4 +173,13 @@ describe('NotebookGraphRepository embeddings (libsql)', () => {
     const pending = await repo.listUnembeddedLiveNodes(VAULT, NB_A)
     expect(pending.map((r) => r.id)).toEqual(['n-a'])
   })
+
+  it('should omit embedding blobs from getView even after a vector is stored', async () => {
+    await seedNode('n-a', NB_A, '甲')
+    await repo.updateNodeEmbedding('n-a', VAULT, NB_A, [1, 0, 0, 0], 'mock-embed')
+    const view = await repo.getView({ vaultId: VAULT, notebookId: NB_A })
+    expect(view.nodes).toHaveLength(1)
+    expect(view.nodes[0]).not.toHaveProperty('embedding')
+    expect(view.nodes[0]?.name).toBe('甲')
+  })
 })

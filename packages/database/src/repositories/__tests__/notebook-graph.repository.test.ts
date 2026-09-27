@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createClient, type Client } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { notebookGraphNodeIdForEntity } from '@baishou/shared'
@@ -29,6 +31,22 @@ describe('NotebookGraphRepository fail-closed', () => {
     const a = notebookGraphNodeIdForEntity('v1', 'nb1', 'person', '小明')
     const b = notebookGraphNodeIdForEntity('v1', 'nb2', 'person', '小明')
     expect(a).not.toBe(b)
+  })
+
+  it('should always pass a SQL LIMIT to getView so unlimited is not one row', () => {
+    const queryFile = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../notebook-graph.repository.query.ts'
+    )
+    const src = readFileSync(queryFile, 'utf8')
+    expect(src).toContain('graphViewSqlLimit')
+    expect(src).toContain('await nodeQuery.limit(queryLimit)')
+    expect(src).not.toContain('queryLimit == null ? nodeQuery')
+    expect(src).toContain('NOTEBOOK_GRAPH_VIEW_NODE_COLUMNS')
+    expect(src).toContain('NOTEBOOK_GRAPH_VIEW_EDGE_COLUMNS')
+    const getViewSrc = src.slice(src.indexOf('async getView'), src.indexOf('async searchNodes'))
+    expect(getViewSrc).not.toContain('embedding')
+    expect(getViewSrc).not.toContain('inArray(notebookGraphEdgesTable.fromId')
   })
 })
 
@@ -89,6 +107,24 @@ describe('NotebookGraphRepository applyRawNode (libsql)', () => {
     expect(view.nodes.map((n) => n.id)).toEqual([stable])
     expect(view.edges[0]?.fromId).toBe(stable)
     expect(view.edges[0]?.toId).toBe(stable)
+  })
+
+  it('getView returns every node when maxNodes is unlimited', async () => {
+    const now = Date.now()
+    for (let i = 0; i < 6; i++) {
+      await repo.applyRawNode({
+        id: `unlim-${i}`,
+        vaultId: 'v1',
+        notebookId: 'nb1',
+        nodeType: 'person',
+        name: `人${i}`,
+        createdAt: now,
+        updatedAt: now,
+        shardMonth: '2026-08'
+      })
+    }
+    const unlimited = await repo.getView({ vaultId: 'v1', notebookId: 'nb1', maxNodes: -1 })
+    expect(unlimited.nodes).toHaveLength(6)
   })
 
   it('已有内容寻址 id 时不把随机 id 翻过来', async () => {
@@ -375,6 +411,25 @@ describeGraph('NotebookGraphRepository supersede', () => {
     dbManager?.disconnect()
   })
 
+  it('should return every node when maxNodes is unlimited on the desktop knowledge driver', async () => {
+    const repo = new NotebookGraphRepository(dbManager.getDb() as never)
+    const now = Date.now()
+    for (let i = 0; i < 6; i++) {
+      await repo.applyRawNode({
+        id: `desk-unlim-${i}`,
+        vaultId: 'v1',
+        notebookId: 'nb1',
+        nodeType: 'person',
+        name: `人${i}`,
+        createdAt: now,
+        updatedAt: now,
+        shardMonth: '2026-08'
+      })
+    }
+    const unlimited = await repo.getView({ vaultId: 'v1', notebookId: 'nb1', maxNodes: -1 })
+    expect(unlimited.nodes).toHaveLength(6)
+  })
+
   it('同资料重抽按 sourceRef 前缀退役旧 AI 边', async () => {
     const repo = new NotebookGraphRepository(dbManager.getDb() as never)
     const now = Date.now()
@@ -511,6 +566,13 @@ describeGraph('NotebookGraphRepository supersede', () => {
     })
     expect(view.nodes.map((n) => n.id).sort()).toEqual(['a', 'b'])
     expect(view.edges.map((e) => e.id)).toEqual(['e-ab'])
+    const unlimited = await repo.getNeighborhood({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeId: 'a',
+      maxNodes: -1
+    })
+    expect(unlimited.nodes.map((n) => n.id).sort()).toEqual(['a', 'b'])
     const touching = await repo.listEdgesTouching('v1', 'nb1', 'a')
     expect(touching.map((e) => e.id)).toEqual(['e-ab'])
   })

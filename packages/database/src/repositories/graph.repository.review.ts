@@ -110,6 +110,8 @@ export class GraphReviewOps {
       nodeType: string
       discriminator: string
       propsJson: string
+      origin: string
+      reviewStatus: string
     }>
     edges: Array<{
       fromId: string
@@ -126,7 +128,9 @@ export class GraphReviewOps {
           name: graphNodesTable.name,
           nodeType: graphNodesTable.nodeType,
           discriminator: graphNodesTable.discriminator,
-          propsJson: graphNodesTable.propsJson
+          propsJson: graphNodesTable.propsJson,
+          origin: graphNodesTable.origin,
+          reviewStatus: graphNodesTable.reviewStatus
         })
         .from(graphNodesTable)
         .where(and(eq(graphNodesTable.vaultId, vaultId), isNull(graphNodesTable.deletedAt))),
@@ -147,7 +151,9 @@ export class GraphReviewOps {
         name: row.name,
         nodeType: row.nodeType,
         discriminator: row.discriminator ?? '',
-        propsJson: row.propsJson ?? '{}'
+        propsJson: row.propsJson ?? '{}',
+        origin: row.origin ?? 'ai',
+        reviewStatus: row.reviewStatus ?? 'approved'
       })),
       edges: edges.map((row) => ({
         fromId: row.fromId,

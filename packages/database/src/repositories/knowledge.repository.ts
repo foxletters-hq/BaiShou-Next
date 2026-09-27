@@ -212,6 +212,10 @@ export class KnowledgeRepository {
     return this.stats.listNotebookStats(...args)
   }
 
+  listNotebookGraphCounts(...args: Parameters<KnowledgeStatsOps['listNotebookGraphCounts']>) {
+    return this.stats.listNotebookGraphCounts(...args)
+  }
+
   getEmbedLedger(...args: Parameters<KnowledgeEmbedOps['getEmbedLedger']>) {
     return this.embed.getEmbedLedger(...args)
   }

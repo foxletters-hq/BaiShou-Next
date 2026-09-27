@@ -195,6 +195,41 @@ describe('GraphRepository keyed queries', () => {
     expect(graph.nodes.some((n) => n.id === 'n-pending')).toBe(true)
   })
 
+  it('getGlobalGraph returns every month-window node when maxNodes is unlimited', async () => {
+    for (let i = 0; i < 6; i++) {
+      await seedNode(`unlim-${i}`, { name: `点${i}`, shardMonth: '2026-03', mentionCount: 10 })
+    }
+    const graph = await repo.getGlobalGraph({
+      vaultId: VAULT,
+      monthRange: { startMonth: '2026-03', endMonth: '2026-03' },
+      maxNodes: -1
+    })
+    expect(graph.nodes).toHaveLength(6)
+  })
+
+  it('getGlobalGraph returns every connected month-window node when maxNodes is unlimited', async () => {
+    for (let i = 0; i < 6; i++) {
+      await seedNode(`unlim-a-${i}`, { name: `甲${i}`, shardMonth: '2026-03', mentionCount: 10 })
+      await seedNode(`unlim-b-${i}`, { name: `乙${i}`, shardMonth: '2026-03', mentionCount: 10 })
+      await seedEdge(`unlim-e-${i}`, `unlim-a-${i}`, `unlim-b-${i}`, { shardMonth: '2026-03' })
+    }
+    const graph = await repo.getGlobalGraph({
+      vaultId: VAULT,
+      monthRange: { startMonth: '2026-03', endMonth: '2026-03' },
+      maxNodes: -1
+    })
+    expect(graph.nodes).toHaveLength(12)
+    expect(graph.edges).toHaveLength(6)
+  })
+
+  it('getGlobalGraph returns every node without a month range when maxNodes is unlimited', async () => {
+    for (let i = 0; i < 6; i++) {
+      await seedNode(`unlim-g-${i}`, { name: `全${i}`, mentionCount: 10 })
+    }
+    const graph = await repo.getGlobalGraph({ vaultId: VAULT, maxNodes: -1 })
+    expect(graph.nodes).toHaveLength(6)
+  })
+
   it('findShortestPath expands by frontier IN, not a full-edge load', async () => {
     await seedNode('p-a', { name: '路A' })
     await seedNode('p-b', { name: '路B' })
@@ -566,6 +601,7 @@ describe('GraphRepository keyed queries', () => {
     expect(suspects.map((row) => row.id)).toEqual(['n-suspect'])
     const scan = await repo.listLiveScanGraph(VAULT)
     expect(scan.nodes.map((row) => row.id).sort()).toEqual(['n-approved', 'n-pending', 'n-suspect'])
+    expect(scan.nodes.every((row) => row.origin && row.reviewStatus)).toBe(true)
   })
 
   it('should persist an empty-string discriminator when upsert omits it', async () => {
