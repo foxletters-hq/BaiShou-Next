@@ -148,8 +148,10 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     )
 
     expect(result.systemPrompt).toBe('test prompt')
-    expect(result.viewModel.systemPrompt).toBe('test prompt')
+    expect(result.viewModel.systemPrompt).toContain('test prompt')
     expect(result.viewModel.flatEntries.some((e) => e.kind === 'system-prompt')).toBe(true)
     expect(result.messages.map((m) => m.role)).toContain('user')
+    expect(result.messages.some((m) => m.content.includes('<message-time>'))).toBe(true)
+    expect(result.systemPrompt).not.toContain('<conversation_time>')
   })
 })

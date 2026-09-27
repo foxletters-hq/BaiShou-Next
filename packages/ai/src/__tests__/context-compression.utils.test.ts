@@ -242,19 +242,21 @@ describe('context-compression.utils', () => {
     expect(content).toContain('旧摘要：讨论了 Legacy Mode')
     expect(content).toContain('<message-time>2026-06-15 10:00</message-time>')
     expect(content).toContain('<message-content>')
+    expect(content).not.toContain('<conversation_time>')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content).toContain('【用户】')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content!.indexOf('<previous-summary>')).toBeLessThan(content!.indexOf('【用户】'))
   })
 
-  it('buildCompressionUserMessageContent omits message-time when wrapMessageTime is false', () => {
+  it('buildCompressionUserMessageContent omits message-time wrappers when wrapMessageTime is false', () => {
     const sentAt = new Date(2026, 5, 15, 10, 0)
     const messages = [
       msg('1', 'user', 1, '但是感觉会很慢喵', sentAt),
       msg('2', 'assistant', 2, '确实会慢', sentAt)
     ]
     const content = buildCompressionUserMessageContent(messages, null, { wrapMessageTime: false })
+    expect(content).not.toContain('<conversation_time>')
     expect(content).not.toContain('<message-time>')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content).toContain('【用户】')
