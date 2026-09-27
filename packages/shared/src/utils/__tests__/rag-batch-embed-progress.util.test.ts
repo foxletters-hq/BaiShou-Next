@@ -24,8 +24,7 @@ describe('rag-batch-embed-progress', () => {
       'diary',
       'memory',
       'graph_extract',
-      'graph_node',
-      'graph_disambiguate'
+      'graph_node'
     ])
   })
 
@@ -88,7 +87,7 @@ describe('rag-batch-embed-progress', () => {
     ).toBe('finishing')
   })
 
-  it('should return graph_disambiguate when only disambiguate remains', () => {
+  it('should finish when only structural-disambiguate leftovers remain', () => {
     expect(
       firstActivePhase({
         diaries: 0,
@@ -97,7 +96,7 @@ describe('rag-batch-embed-progress', () => {
         knowledgeSources: 0,
         graphDisambiguate: 2
       })
-    ).toBe('graph_disambiguate')
+    ).toBe('finishing')
   })
 
   it('should return finishing when every count is zero', () => {

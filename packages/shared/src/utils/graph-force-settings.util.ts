@@ -28,6 +28,16 @@ export const GRAPH_FORCE_ISOLATED_SEED = {
 } as const
 export const GRAPH_FORCE_CHARGE_DISTANCE_MAX_MIN = 160
 export const GRAPH_FORCE_CHARGE_DISTANCE_MAX_LINK_SCALE = 2.2
+/** 独立节点少于等于这个数才两两互斥；再多改走网格邻居。 */
+export const GRAPH_FORCE_ISOLATED_PAIRWISE_MAX = 64
+export const GRAPH_FORCE_ISOLATED_GRID_CELL = 80
+/** 节点超过这个数就关掉 overlap collide，避免大图每 tick 再扫一遍。 */
+export const GRAPH_FORCE_COLLIDE_NODE_MAX = 600
+export const GRAPH_FORCE_ALPHA_DECAY_DEFAULT = 1 - Math.pow(0.001, 1 / 300)
+export const GRAPH_FORCE_ALPHA_DECAY_LARGE = 0.045
+export const GRAPH_FORCE_ALPHA_DECAY_HUGE = 0.07
+export const GRAPH_FORCE_ALPHA_DECAY_LARGE_MIN = 400
+export const GRAPH_FORCE_ALPHA_DECAY_HUGE_MIN = 1200
 
 /** 一对节点的排斥比例。独立-独立要铺开；独立-连通几乎不推，避免挤出隔离带。 */
 export function graphForcePairChargeScale(degreeA: number, degreeB: number): number {
@@ -101,6 +111,21 @@ export function countIsolatedGraphForceNodes(
     if ((degreeById.get(id) ?? 0) <= 0) n += 1
   }
   return n
+}
+
+export function graphForceShouldUseIsolatedChargeGrid(isolatedCount: number): boolean {
+  return isolatedCount > GRAPH_FORCE_ISOLATED_PAIRWISE_MAX
+}
+
+export function graphForceShouldCollide(nodeCount: number): boolean {
+  return nodeCount <= GRAPH_FORCE_COLLIDE_NODE_MAX
+}
+
+/** 大图加快冷却，少跑几百轮 tick。 */
+export function graphForceAlphaDecay(nodeCount: number): number {
+  if (nodeCount > GRAPH_FORCE_ALPHA_DECAY_HUGE_MIN) return GRAPH_FORCE_ALPHA_DECAY_HUGE
+  if (nodeCount > GRAPH_FORCE_ALPHA_DECAY_LARGE_MIN) return GRAPH_FORCE_ALPHA_DECAY_LARGE
+  return GRAPH_FORCE_ALPHA_DECAY_DEFAULT
 }
 
 export const GRAPH_FORCE_RANGES = {

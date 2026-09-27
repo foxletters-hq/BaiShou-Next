@@ -81,4 +81,28 @@ describe('stripLeakedMessageTimeFromAssistantText', () => {
     const raw = '<message-time>2026-07-01 12:00</message-time>\n<message-content>\n你好，今天怎么样'
     expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('你好，今天怎么样')
   })
+
+  it('strips unclosed message-time prefix glued to reply body', () => {
+    const raw =
+      '<message-time>2026-09-27 12:38 不客气。以后你就扔现象给我，我短着回。\n剩一件小事记着：那批测试垃圾还在你图谱里躺着。'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe(
+      '不客气。以后你就扔现象给我，我短着回。\n剩一件小事记着：那批测试垃圾还在你图谱里躺着。'
+    )
+  })
+
+  it('strips unclosed message-time when it is the only leftover metadata', () => {
+    expect(stripLeakedMessageTimeFromAssistantText('<message-time>2026-09-27 12:38')).toBe('')
+  })
+
+  it('keeps a plain timestamp that is not wrapped in message-time tags', () => {
+    expect(stripLeakedMessageTimeFromAssistantText('会议改到 2026-09-27 12:38')).toBe(
+      '会议改到 2026-09-27 12:38'
+    )
+  })
+
+  it('strips a leaked conversation_time table from assistant text', () => {
+    const raw =
+      '<conversation_time>\n1. user 2026-09-27 12:38\n</conversation_time>\n不客气。'
+    expect(stripLeakedMessageTimeFromAssistantText(raw)).toBe('不客气。')
+  })
 })

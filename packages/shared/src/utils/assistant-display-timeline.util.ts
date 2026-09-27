@@ -1,3 +1,9 @@
+import {
+  collectAgentGatePartDataForSurface,
+  shouldRenderAgentGateHistoryCard,
+  type AgentGatePartData,
+  type AgentGateSurface
+} from '../baishou-agent-gate'
 import type { MockToolInvocation } from '../mock/agent.mock'
 import { unwrapMessageMetadataForDisplay } from '../message-metadata'
 import type { AgentStreamTimelineItem } from './agent-stream-timeline.util'
@@ -7,6 +13,7 @@ import { normalizePartData } from './message-attachment.util'
 export type AssistantDisplayTimelineItem =
   | { kind: 'reasoning'; key: string; text: string }
   | { kind: 'text'; key: string; text: string }
+  | { kind: 'gate'; key: string; data: AgentGatePartData }
   | {
       kind: 'tools'
       key: string
@@ -15,6 +22,11 @@ export type AssistantDisplayTimelineItem =
       activeToolName?: string | null
       activeToolArgs?: unknown
     }
+
+export type AgentGateToolMatchTarget = {
+  name: string
+  callId?: string | null
+}
 
 export type AssistantDisplayCompletedTool = {
   name: string
@@ -119,11 +131,61 @@ export function assistantStreamTimelineSignature(
     .join('|')
 }
 
-/** 相邻工具收成一组，思考和正文按发生顺序单独成段 */
+export function agentGateMatchesToolCall(
+  gate: AgentGatePartData,
+  tool: AgentGateToolMatchTarget
+): boolean {
+  const toolCallId = gate.request.toolCallId
+  if (toolCallId && tool.callId && toolCallId === tool.callId) return true
+  const metaName =
+    typeof gate.request.metadata?.toolName === 'string' ? gate.request.metadata.toolName.trim() : ''
+  const action = gate.request.action.trim()
+  if (!tool.name) return false
+  return action === tool.name || (metaName !== '' && metaName === tool.name)
+}
+
+/** 消息流里要展示的确认卡；companion_ask 已有工具行，不单独占位 */
+export function visibleAgentGateParts(
+  gates: readonly AgentGatePartData[] | undefined
+): AgentGatePartData[] {
+  return (gates ?? []).filter(shouldRenderAgentGateHistoryCard)
+}
+
+export function toAssistantGateDisplayItem(
+  gate: AgentGatePartData
+): Extract<AssistantDisplayTimelineItem, { kind: 'gate' }> {
+  return { kind: 'gate', key: `gate:${gate.request.id}`, data: gate }
+}
+
+/** 从剩余确认卡里抽出匹配这批工具的项，按原顺序返回 */
+export function pullMatchingAgentGates(
+  unused: AgentGatePartData[],
+  tools: ReadonlyArray<AgentGateToolMatchTarget>
+): AgentGatePartData[] {
+  const matched: AgentGatePartData[] = []
+  const next: AgentGatePartData[] = []
+  for (const gate of unused) {
+    if (tools.some((tool) => agentGateMatchesToolCall(gate, tool))) matched.push(gate)
+    else next.push(gate)
+  }
+  unused.splice(0, unused.length, ...next)
+  return matched
+}
+
+function pushGateItems(
+  items: AssistantDisplayTimelineItem[],
+  gates: readonly AgentGatePartData[]
+): void {
+  for (const gate of gates) items.push(toAssistantGateDisplayItem(gate))
+}
+
+/** 相邻工具收成一组；匹配到的权限确认插在对应工具前面 */
 export function groupStreamTimelineForDisplay(
-  items: AgentStreamTimelineItem[]
+  items: AgentStreamTimelineItem[],
+  gates: readonly AgentGatePartData[] = []
 ): AssistantDisplayTimelineItem[] {
   const groups: AssistantDisplayTimelineItem[] = []
+  const unused = visibleAgentGateParts(gates)
   let pendingTools: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>> = []
 
   const flushTools = () => {
@@ -135,6 +197,11 @@ export function groupStreamTimelineForDisplay(
   for (const [index, item] of items.entries()) {
     if (item.kind === 'tool') {
       if (item.name === 'emoji_send') continue
+      const matched = pullMatchingAgentGates(unused, [{ name: item.name, callId: item.callId }])
+      if (matched.length > 0) {
+        flushTools()
+        pushGateItems(groups, matched)
+      }
       pendingTools.push(item)
       continue
     }
@@ -147,14 +214,21 @@ export function groupStreamTimelineForDisplay(
     })
   }
   flushTools()
+  pushGateItems(groups, unused)
   return groups
 }
 
-/** 按 seq 展开落库 parts，再把相邻工具收成一组 */
+/** 按 seq 展开落库 parts；agent_gate 即使排在末尾也插回匹配工具前面 */
 export function buildAssistantDisplayTimelineFromParts(
-  parts: AgentPartOrderLike[] | undefined
+  parts: AgentPartOrderLike[] | undefined,
+  options?: { gateSurface?: AgentGateSurface }
 ): AssistantDisplayTimelineItem[] {
   const items: AssistantDisplayTimelineItem[] = []
+  const unused = visibleAgentGateParts(
+    options?.gateSurface
+      ? collectAgentGatePartDataForSurface(parts, options.gateSurface)
+      : collectAgentGatePartsWithoutSurface(parts)
+  )
   let pendingTools: Array<{
     invocation: MockToolInvocation
     durationMs: number
@@ -180,6 +254,7 @@ export function buildAssistantDisplayTimelineFromParts(
   }
 
   for (const part of sortAgentMessageParts(parts)) {
+    if (part.type === 'agent_gate') continue
     if (part.type === 'text') {
       const data = normalizePartData(part.data)
       const text = readPartDisplayText(part.data)
@@ -196,11 +271,33 @@ export function buildAssistantDisplayTimelineFromParts(
     const data = normalizePartData(part.data)
     const invocation = persistToolToInvocation(part, data)
     if (!invocation) continue
+    const matched = pullMatchingAgentGates(unused, [
+      { name: invocation.toolName, callId: invocation.toolCallId }
+    ])
+    if (matched.length > 0) {
+      flushTools()
+      pushGateItems(items, matched)
+    }
     pendingTools.push({
       invocation,
       durationMs: readPersistedToolDurationMs(data)
     })
   }
   flushTools()
+  pushGateItems(items, unused)
   return items
+}
+
+function collectAgentGatePartsWithoutSurface(
+  parts: AgentPartOrderLike[] | undefined
+): AgentGatePartData[] {
+  if (!parts?.length) return []
+  const result: AgentGatePartData[] = []
+  for (const part of parts) {
+    if (part.type !== 'agent_gate') continue
+    const data = part.data as AgentGatePartData | undefined
+    if (!data?.request) continue
+    result.push(data)
+  }
+  return result
 }
