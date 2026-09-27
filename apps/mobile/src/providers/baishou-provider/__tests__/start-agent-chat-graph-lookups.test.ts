@@ -22,4 +22,11 @@ describe('start-agent-chat companion graph lookups', () => {
     expect(src).toContain('pickBareGraphNameHit')
     expect(src).not.toContain('repo.findNodeByNameOrAlias(vaultId, name, nodeType)')
   })
+
+  it('should pass edge id, source, validFrom and isCurrent to recall_relations', () => {
+    expect(src).toContain('id: e.id')
+    expect(src).toContain('sourceRef: e.sourceRef')
+    expect(src).toContain('validFrom: e.validFrom')
+    expect(src).toContain('isCurrent: e.isCurrent')
+  })
 })

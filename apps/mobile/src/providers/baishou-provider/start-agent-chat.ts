@@ -247,7 +247,8 @@ export function createStartAgentChat(deps: {
                 edgeType: e.edgeType,
                 sourceRef: e.sourceRef,
                 sourceExcerpt: e.sourceExcerpt,
-                validFrom: e.validFrom
+                validFrom: e.validFrom,
+                isCurrent: e.isCurrent
               })),
               timeline: result.timeline?.map((e) => ({
                 id: e.id,
@@ -256,7 +257,8 @@ export function createStartAgentChat(deps: {
                 edgeType: e.edgeType,
                 sourceRef: e.sourceRef,
                 sourceExcerpt: e.sourceExcerpt,
-                validFrom: e.validFrom
+                validFrom: e.validFrom,
+                isCurrent: e.isCurrent
               })),
               nodes: result.nodes.map((n) => ({
                 id: n.id,
@@ -273,7 +275,8 @@ export function createStartAgentChat(deps: {
                   toId: e.toId,
                   edgeType: e.edgeType,
                   sourceRef: e.sourceRef,
-                  sourceExcerpt: e.sourceExcerpt
+                  sourceExcerpt: e.sourceExcerpt,
+                  validFrom: e.validFrom
                 })),
                 edgeDirections: p.edgeDirections
               }))

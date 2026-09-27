@@ -1,4 +1,8 @@
-import { BAISHOU_AGENT_GATE_CONFIG_KEY, type BaishouAgentGateConfig } from '@baishou/shared'
+import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  foldCompanionAllowlistIntoCapabilities,
+  type BaishouAgentGateConfig
+} from '@baishou/shared'
 import {
   bridgeAgentGateEventBus,
   cloneBaishouAgentGateConfig,
@@ -21,21 +25,27 @@ export function createMobileAgentGateRuntime(settingsManager: GateSettingsManage
   const agentGateConfig = cloneBaishouAgentGateConfig(DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
 
   const persistBaishouAgentGateConfig = async (config: BaishouAgentGateConfig) => {
+    const folded = foldCompanionAllowlistIntoCapabilities(config)
     Object.assign(agentGateConfig, {
-      exclusionList: [...(config.exclusionList ?? [])],
-      allowlist: [...(config.allowlist ?? [])],
-      actionRules: config.actionRules ? { ...config.actionRules } : undefined,
-      permissionRules: config.permissionRules?.map((rule) => ({ ...rule })),
-      repeatAssertAskThreshold: config.repeatAssertAskThreshold,
-      hideDeniedTools: config.hideDeniedTools
+      exclusionList: [...(folded.exclusionList ?? [])],
+      allowlist: [...(folded.allowlist ?? [])],
+      actionRules: folded.actionRules ? { ...folded.actionRules } : undefined,
+      permissionRules: folded.permissionRules?.map((rule) => ({ ...rule })),
+      repeatAssertAskThreshold: folded.repeatAssertAskThreshold,
+      hideDeniedTools: folded.hideDeniedTools
     })
     await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, agentGateConfig)
   }
 
   const reloadAgentGateConfig = async () => {
     const saved = await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)
-    const next = cloneBaishouAgentGateConfig(saved ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+    const next = foldCompanionAllowlistIntoCapabilities(
+      cloneBaishouAgentGateConfig(saved ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+    )
     Object.assign(agentGateConfig, next)
+    if ((saved?.allowlist?.length ?? 0) !== next.allowlist.length) {
+      await persistBaishouAgentGateConfig(agentGateConfig)
+    }
   }
 
   const { gate, eventBus } = createBaishouAgentGate({

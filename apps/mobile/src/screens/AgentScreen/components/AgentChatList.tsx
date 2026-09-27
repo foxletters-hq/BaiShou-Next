@@ -15,6 +15,7 @@ import {
   collectUnresolvedAgentGateRequestsForSurface
 } from '@baishou/shared'
 import { selectResolvedLiveForSession, useAgentGateInboxStore } from '@baishou/store'
+import { listPendingMobileAgentGate } from '../../../services/mobile-agent-gate.service'
 
 type ComposerOnSend = (
   text: string,
@@ -148,12 +149,16 @@ export function AgentChatList(props: AgentChatListProps) {
     selectResolvedLiveForSession(state, p.currentSessionId, 'companion')
   )
   useEffect(() => {
+    const liveIds = new Set(
+      listPendingMobileAgentGate(p.currentSessionId ?? undefined).map((item) => item.id)
+    )
     for (const msg of p.messages ?? []) {
       for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
-        useAgentGateInboxStore.getState().upsertAsked(request)
+        if (!liveIds.has(request.id)) continue
+        useAgentGateInboxStore.getState().upsertAsked(request, { respectTombstone: true })
       }
     }
-  }, [p.messages])
+  }, [p.messages, p.currentSessionId])
   const liveGateParts = useMemo(() => {
     const persisted = new Set<string>()
     for (const msg of p.messages ?? []) {
@@ -255,7 +260,7 @@ export function AgentChatList(props: AgentChatListProps) {
                     styles.loadMore,
                     {
                       borderColor: p.colors.borderSubtle,
-                      backgroundColor: p.colors.bgGlassSurface ?? p.colors.bgSurface
+                      backgroundColor: p.colors.bgSurface
                     }
                   ]}
                   onPress={() => void p.handleLoadMore()}
