@@ -82,6 +82,12 @@ export function useCodeMirrorEditorView(
         interactionMode: 'mouse',
         tagLineMode: true,
         onExternalImagePreview: (src) => setPreviewSrc(src),
+        onOpenExternalLink: (url) => {
+          const shell = (
+            window as Window & { api?: { shell?: { openExternal?: (target: string) => void } } }
+          ).api?.shell
+          void shell?.openExternal?.(url)
+        },
         translate: (key, defaultValue) =>
           translateRef.current(key, { defaultValue: defaultValue || key })
       }

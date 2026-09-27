@@ -10,6 +10,8 @@ import { GitDiffViewer } from './GitDiffViewer'
 export interface GitCommitsSectionProps {
   vm: GitManagementViewModel
   compact?: boolean
+  inlineDiff?: boolean
+  activeFilePath?: string | null
 }
 
 function formatGraphTime(date: Date | string): string {
@@ -30,7 +32,12 @@ function formatGraphTime(date: Date | string): string {
   return value.toLocaleDateString()
 }
 
-export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compact = false }) => {
+export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({
+  vm,
+  compact = false,
+  inlineDiff = false,
+  activeFilePath
+}) => {
   const {
     t,
     history,
@@ -97,10 +104,15 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
                       }
                     }}
                   >
-                    <span className="gmp-graph-message" title={entry.commit.message}>
-                      {entry.commit.message || t('workbench.git_empty_commit', '(empty)')}
-                    </span>
-                    <span className="gmp-graph-meta">
+                    <div className="gmp-graph-commit-top">
+                      <span className="gmp-graph-message" title={entry.commit.message}>
+                        {entry.commit.message || t('workbench.git_empty_commit', '(empty)')}
+                      </span>
+                      <span className="gmp-graph-time">{formatGraphTime(entry.commit.date)}</span>
+                    </div>
+
+                    <div className="gmp-graph-commit-meta">
+                      <span className="gmp-graph-hash">{entry.commit.hash.slice(0, 7)}</span>
                       {isHead ? <span className="gmp-graph-head-badge">HEAD</span> : null}
                       {remoteConfigured ? (
                         <span
@@ -111,27 +123,27 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
                               : t('version_control.commit_on_remote', '已在远程')
                           }
                         >
-                          {localOnly ? <CloudOff size={12} /> : <Cloud size={12} />}
+                          {localOnly ? <CloudOff size={11} /> : <Cloud size={11} />}
                         </span>
                       ) : null}
-                      <span className="gmp-graph-time">{formatGraphTime(entry.commit.date)}</span>
-                      <span className="gmp-graph-hash">{entry.commit.hash}</span>
-                      {!isHead ? (
-                        <button
-                          className="gmp-btn-small"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleRollbackAll(entry.commit.hash, entry.commit.message)
-                          }}
-                        >
-                          {t('version_control.rollback', '回滚')}
-                        </button>
-                      ) : (
-                        <span className="gmp-current-badge">
-                          {t('version_control.current_version', '当前版本')}
-                        </span>
-                      )}
-                    </span>
+                      <div className="gmp-graph-commit-actions">
+                        {!isHead ? (
+                          <button
+                            className="gmp-btn-tiny gmp-btn-rollback"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleRollbackAll(entry.commit.hash, entry.commit.message)
+                            }}
+                          >
+                            {t('version_control.rollback', '回滚')}
+                          </button>
+                        ) : (
+                          <span className="gmp-current-badge">
+                            {t('version_control.current_version', '当前版本')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {isExpanded ? (
@@ -143,6 +155,9 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
                       ) : (
                         commitChanges.map((change) => {
                           const canDiff = isTextDiffablePath(change.path)
+                          const isActive =
+                            (expandedFile === change.path && Boolean(selectedFileDiff)) ||
+                            activeFilePath === change.path
                           const status =
                             change.status === 'added'
                               ? 'A'
@@ -152,7 +167,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
                           return (
                             <div key={change.path} className="gmp-tl-file">
                               <div
-                                className={`gmp-tl-file-header ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                                className={`gmp-tl-file-header ${canDiff ? 'gmp-file-row-clickable' : ''} ${isActive ? 'gmp-file-row-active' : ''}`}
                                 onClick={
                                   canDiff ? () => void handleViewDiff(change.path) : undefined
                                 }
@@ -160,12 +175,14 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
                                 <span className={`gmp-tl-file-icon gmp-tl-file-${change.status}`}>
                                   {status}
                                 </span>
-                                <span className="gmp-tl-file-path">{change.path}</span>
+                                <span className="gmp-tl-file-path" title={change.path}>
+                                  {change.path}
+                                </span>
                                 <span className="gmp-tl-file-stats">
                                   +{change.additions} -{change.deletions}
                                 </span>
                               </div>
-                              {expandedFile === change.path && selectedFileDiff && !compact ? (
+                              {inlineDiff && expandedFile === change.path && selectedFileDiff && !compact ? (
                                 <GitDiffViewer diff={selectedFileDiff} />
                               ) : null}
                             </div>
