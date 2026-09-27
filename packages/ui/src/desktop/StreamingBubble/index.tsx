@@ -65,7 +65,9 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
   const timelineKey = assistantStreamTimelineSignature(liveTimeline)
   const timelineItems = useMemo(
     () => groupStreamTimelineForDisplay(liveTimeline, gateParts),
-    [gateParts, liveTimeline, timelineKey]
+    // 用内容签名代替 timeline 引用，避免父组件每次传入新数组打穿分组
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timelineKey 已覆盖内容
+    [gateParts, timelineKey]
   )
   const useTimeline = timelineItems.length > 0
   const knowledgeCitations = collectKnowledgeCitationsFromInvocations(

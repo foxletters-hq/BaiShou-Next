@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import './GitManagementPage.css'
 import type { GitManagementPageProps } from './git-management.types'
@@ -15,28 +16,66 @@ import { Button } from '../Button/Button'
 import { FileText, GitCompare, History, FolderGit2, X } from 'lucide-react'
 
 const INCLUDED_SCOPES = [
-  ['version_control.scope_journals', '日记'],
-  ['version_control.scope_archives', '总结'],
-  ['version_control.scope_sessions', '会话'],
-  ['version_control.scope_graph', '图谱'],
-  ['version_control.scope_memory', '记忆'],
-  ['version_control.scope_assistants', '助手'],
-  ['version_control.scope_attachments', '附件'],
-  ['version_control.scope_notebooks', '知识库原文']
+  [
+    'version_control.scope_journals',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L18', '日记')
+  ],
+  [
+    'version_control.scope_archives',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L19', '总结')
+  ],
+  [
+    'version_control.scope_sessions',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L20', '会话')
+  ],
+  [
+    'version_control.scope_graph',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L21', '图谱')
+  ],
+  [
+    'version_control.scope_memory',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L22', '记忆')
+  ],
+  [
+    'version_control.scope_assistants',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L23', '助手')
+  ],
+  [
+    'version_control.scope_attachments',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L24', '附件')
+  ],
+  [
+    'version_control.scope_notebooks',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L25', '知识库原文')
+  ]
 ] as const
 
 const EXCLUDED_SCOPES = [
-  ['version_control.scope_excluded_app', '应用数据'],
-  ['version_control.scope_excluded_db', '数据库'],
-  ['version_control.scope_excluded_conflict', '冲突备份'],
-  ['version_control.scope_excluded_temp', '快照与临时文件']
+  [
+    'version_control.scope_excluded_app',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L29', '应用数据')
+  ],
+  [
+    'version_control.scope_excluded_db',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L30', '数据库')
+  ],
+  [
+    'version_control.scope_excluded_conflict',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L31', '冲突备份')
+  ],
+  [
+    'version_control.scope_excluded_temp',
+    i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitManagementPage.L32', '快照与临时文件')
+  ]
 ] as const
 
 const GitScopeTooltipContent: React.FC<{ t: any }> = ({ t }) => {
   return (
     <div className="gmp-scope-tooltip-content">
       <div className="gmp-scope-tooltip-header">
-        <h4 className="gmp-scope-tooltip-title">{t('version_control.scope_title', '版本控制管理范围')}</h4>
+        <h4 className="gmp-scope-tooltip-title">
+          {t('version_control.scope_title', '版本控制管理范围')}
+        </h4>
         <p className="gmp-scope-tooltip-lead">
           {t('version_control.scope_lead', '跟踪各工作区的写作与原文。仅桌面端提供。')}
         </p>

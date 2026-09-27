@@ -35,6 +35,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
       <div style={{ gridColumn: 'span 2' }}>
         <label className={styles.fieldLabel}>{t('data_sync.webdav_url', 'Server URL')}</label>
         <Input
+          fieldSize="small"
           type="text"
           value={config.webdavUrl || ''}
           onChange={(e) => onChange({ webdavUrl: e.target.value })}
@@ -43,6 +44,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
         <Input
+          fieldSize="small"
           type="text"
           value={config.webdavPath || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ webdavPath: e.target.value })}
@@ -51,6 +53,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.webdav_user', 'Username')}</label>
         <Input
+          fieldSize="small"
           type={showAccessKey ? 'text' : 'password'}
           value={config.webdavUsername || ''}
           onChange={(e) => onChange({ webdavUsername: e.target.value })}
@@ -70,6 +73,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
           {t('data_sync.webdav_password', 'Password/App Token')}
         </label>
         <Input
+          fieldSize="small"
           type={showSecretKey ? 'text' : 'password'}
           value={config.webdavPassword || ''}
           onChange={(e) => onChange({ webdavPassword: e.target.value })}
@@ -89,6 +93,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
           {t('data_sync.file_concurrency', 'File Concurrency')}
         </label>
         <Select
+          size="small"
           value={String(config.fileConcurrency || 5)}
           onChange={(e) => onChange({ fileConcurrency: parseInt(e.target.value) })}
           options={fileConcurrencyOptions}
@@ -99,6 +104,7 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
           {t('data_sync.chunk_concurrency', 'Chunk Concurrency (large object storage)')}
         </label>
         <Select
+          size="small"
           value={String(config.chunkConcurrency || 5)}
           disabled={true}
           options={chunkConcurrencyOptions}
