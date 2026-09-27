@@ -259,7 +259,7 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
         const git = await this.ensureGit()
         logger.info(`[GitSync] 软回滚仓库到: ${commitHash}（后续提交将保留为未提交变更）`)
         // mixed reset：HEAD 移到目标提交，其后所有改动留在工作区（未暂存）
-        await git.reset(['--mixed', commitHash])
+        await git.raw(['reset', '--mixed', commitHash])
         await this.sanitizeGitIndex(git)
         logger.info(`[GitSync] 仓库已回滚到 ${commitHash}，后续变更已进入工作区`)
       } catch (error) {

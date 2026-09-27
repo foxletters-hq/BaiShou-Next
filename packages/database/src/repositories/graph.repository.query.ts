@@ -1,7 +1,10 @@
 import { and, desc, eq, gte, inArray, isNull, like, lte, ne, or, sql } from 'drizzle-orm'
 import {
+  GRAPH_GLOBAL_MAX_NODES,
   GRAPH_PENDING_LIST_LIMIT,
   GRAPH_SQL_IN_CHUNK,
+  graphViewQueryLimit,
+  graphViewSqlLimit,
   normalizeGraphName,
   uniqueNonEmptyIds
 } from '@baishou/shared'
@@ -15,6 +18,7 @@ import type { AppDatabase } from '../types'
 import {
   chunkIds,
   compareDiscriminatorAsc,
+  GRAPH_NODE_ROW_COLUMNS,
   mapEdge,
   mapNode,
   selectGraphNodesByIds
@@ -148,7 +152,8 @@ export class GraphQueryOps {
     /** Inclusive YYYY-MM range; when set, graph includes edges and nodes in that window. */
     monthRange?: { startMonth: string; endMonth: string }
   }): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
-    const maxNodes = opts.maxNodes ?? 200
+    const maxNodes = opts.maxNodes ?? GRAPH_GLOBAL_MAX_NODES
+    const queryLimit = graphViewQueryLimit(maxNodes)
     const minMention = opts.minMentionCount ?? 0
     const startMonth = opts.monthRange?.startMonth
     const endMonth = opts.monthRange?.endMonth
@@ -206,11 +211,15 @@ export class GraphQueryOps {
       for (const row of monthNodeRows) {
         if (!touch.has(row.id)) touch.set(row.id, 0)
       }
-      const oversample = opts.nodeTypes?.length || minMention > 0 ? maxNodes * 20 : maxNodes * 4
-      const rankedIds = [...touch.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, oversample)
-        .map(([id]) => id)
+      const rankedEntries = [...touch.entries()].sort((a, b) => b[1] - a[1])
+      const rankedIds = (
+        queryLimit == null
+          ? rankedEntries
+          : rankedEntries.slice(
+              0,
+              opts.nodeTypes?.length || minMention > 0 ? queryLimit * 20 : queryLimit * 4
+            )
+      ).map(([id]) => id)
       if (rankedIds.length === 0) return { nodes: [], edges: [] }
       let nodes = await selectGraphNodesByIds(this.database, opts.vaultId, rankedIds)
       const order = new Map(rankedIds.map((id, i) => [id, i]))
@@ -220,7 +229,7 @@ export class GraphQueryOps {
         const allow = new Set(opts.nodeTypes)
         nodes = nodes.filter((n) => allow.has(n.nodeType))
       }
-      nodes = nodes.slice(0, maxNodes)
+      if (queryLimit != null) nodes = nodes.slice(0, queryLimit)
       const pendingMissingIds = monthNodeRows
         .filter((row) => row.reviewStatus === 'pending')
         .map((row) => row.id)
@@ -279,14 +288,12 @@ export class GraphQueryOps {
     if (opts.nodeTypes?.length) {
       globalFilters.push(inArray(graphNodesTable.nodeType, opts.nodeTypes as string[]))
     }
-    const nodes = (
-      await this.database
-        .select()
-        .from(graphNodesTable)
-        .where(and(...globalFilters))
-        .orderBy(desc(graphNodesTable.mentionCount))
-        .limit(maxNodes)
-    ).map(mapNode)
+    const nodeQuery = this.database
+      .select(GRAPH_NODE_ROW_COLUMNS)
+      .from(graphNodesTable)
+      .where(and(...globalFilters))
+      .orderBy(desc(graphNodesTable.mentionCount))
+    const nodes = (await nodeQuery.limit(graphViewSqlLimit(maxNodes))).map(mapNode)
     const idSet = new Set(nodes.map((n) => n.id))
     if (idSet.size === 0) return { nodes: [], edges: [] }
 

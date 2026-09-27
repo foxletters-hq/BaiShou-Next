@@ -1,5 +1,10 @@
 import { and, desc, eq, inArray, isNull, like, or } from 'drizzle-orm'
-import { GRAPH_GLOBAL_MAX_NODES, GRAPH_SQL_IN_CHUNK, normalizeGraphName } from '@baishou/shared'
+import {
+  GRAPH_GLOBAL_MAX_NODES,
+  graphViewQueryLimit,
+  graphViewSqlLimit,
+  normalizeGraphName
+} from '@baishou/shared'
 import {
   notebookGraphAliasesTable,
   notebookGraphEdgesTable,
@@ -10,6 +15,51 @@ import {
 import type { AppDatabase } from '../types'
 import type { NotebookGraphPath } from './notebook-graph.ports'
 import { compareDiscriminatorAsc, requireNotebookId } from './notebook-graph.repository.shared'
+
+/** 画布视图不读 embedding blob，避免打开图时把整库向量拷进 IPC。 */
+const NOTEBOOK_GRAPH_VIEW_NODE_COLUMNS = {
+  id: notebookGraphNodesTable.id,
+  vaultId: notebookGraphNodesTable.vaultId,
+  notebookId: notebookGraphNodesTable.notebookId,
+  nodeType: notebookGraphNodesTable.nodeType,
+  name: notebookGraphNodesTable.name,
+  nameNormalized: notebookGraphNodesTable.nameNormalized,
+  discriminator: notebookGraphNodesTable.discriminator,
+  aliases: notebookGraphNodesTable.aliases,
+  summary: notebookGraphNodesTable.summary,
+  propsJson: notebookGraphNodesTable.propsJson,
+  mentionCount: notebookGraphNodesTable.mentionCount,
+  firstSeenAt: notebookGraphNodesTable.firstSeenAt,
+  lastSeenAt: notebookGraphNodesTable.lastSeenAt,
+  origin: notebookGraphNodesTable.origin,
+  shardMonth: notebookGraphNodesTable.shardMonth,
+  reviewStatus: notebookGraphNodesTable.reviewStatus,
+  createdAt: notebookGraphNodesTable.createdAt,
+  updatedAt: notebookGraphNodesTable.updatedAt,
+  deletedAt: notebookGraphNodesTable.deletedAt
+} as const
+
+const NOTEBOOK_GRAPH_VIEW_EDGE_COLUMNS = {
+  id: notebookGraphEdgesTable.id,
+  vaultId: notebookGraphEdgesTable.vaultId,
+  notebookId: notebookGraphEdgesTable.notebookId,
+  fromId: notebookGraphEdgesTable.fromId,
+  toId: notebookGraphEdgesTable.toId,
+  edgeType: notebookGraphEdgesTable.edgeType,
+  validFrom: notebookGraphEdgesTable.validFrom,
+  validTo: notebookGraphEdgesTable.validTo,
+  isCurrent: notebookGraphEdgesTable.isCurrent,
+  sourceKind: notebookGraphEdgesTable.sourceKind,
+  sourceRef: notebookGraphEdgesTable.sourceRef,
+  sourceExcerpt: notebookGraphEdgesTable.sourceExcerpt,
+  confidence: notebookGraphEdgesTable.confidence,
+  origin: notebookGraphEdgesTable.origin,
+  reviewStatus: notebookGraphEdgesTable.reviewStatus,
+  shardMonth: notebookGraphEdgesTable.shardMonth,
+  createdAt: notebookGraphEdgesTable.createdAt,
+  updatedAt: notebookGraphEdgesTable.updatedAt,
+  deletedAt: notebookGraphEdgesTable.deletedAt
+} as const
 
 export class NotebookGraphQueryOps {
   constructor(private readonly db: AppDatabase) {}
@@ -22,9 +72,9 @@ export class NotebookGraphQueryOps {
     const notebookId = requireNotebookId(opts.notebookId)
     const vaultId = opts.vaultId.trim()
     if (!vaultId) throw new Error('getView: vaultId required')
-    const maxNodes = Math.max(1, opts.maxNodes ?? GRAPH_GLOBAL_MAX_NODES)
-    const nodes = await this.db
-      .select()
+    const queryLimit = graphViewSqlLimit(opts.maxNodes ?? GRAPH_GLOBAL_MAX_NODES)
+    const nodeQuery = this.db
+      .select(NOTEBOOK_GRAPH_VIEW_NODE_COLUMNS)
       .from(notebookGraphNodesTable)
       .where(
         and(
@@ -34,32 +84,23 @@ export class NotebookGraphQueryOps {
         )
       )
       .orderBy(desc(notebookGraphNodesTable.mentionCount), notebookGraphNodesTable.id)
-      .limit(maxNodes)
+    const nodes = (await nodeQuery.limit(queryLimit)) as NotebookGraphNodeRow[]
     const idSet = new Set(nodes.map((n) => n.id))
     if (idSet.size === 0) return { nodes, edges: [] }
-    const edges: NotebookGraphEdgeRow[] = []
-    const ids = [...idSet]
-    for (let i = 0; i < ids.length; i += GRAPH_SQL_IN_CHUNK) {
-      const part = ids.slice(i, i + GRAPH_SQL_IN_CHUNK)
-      const rows = await this.db
-        .select()
-        .from(notebookGraphEdgesTable)
-        .where(
-          and(
-            eq(notebookGraphEdgesTable.vaultId, vaultId),
-            eq(notebookGraphEdgesTable.notebookId, notebookId),
-            eq(notebookGraphEdgesTable.isCurrent, 1),
-            isNull(notebookGraphEdgesTable.deletedAt),
-            or(
-              inArray(notebookGraphEdgesTable.fromId, part),
-              inArray(notebookGraphEdgesTable.toId, part)
-            )
-          )
+    const edgeRows = await this.db
+      .select(NOTEBOOK_GRAPH_VIEW_EDGE_COLUMNS)
+      .from(notebookGraphEdgesTable)
+      .where(
+        and(
+          eq(notebookGraphEdgesTable.vaultId, vaultId),
+          eq(notebookGraphEdgesTable.notebookId, notebookId),
+          eq(notebookGraphEdgesTable.isCurrent, 1),
+          isNull(notebookGraphEdgesTable.deletedAt)
         )
-      for (const e of rows) {
-        if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
-      }
-    }
+      )
+    const edges = (edgeRows as NotebookGraphEdgeRow[]).filter(
+      (e) => idSet.has(e.fromId) && idSet.has(e.toId)
+    )
     return { nodes, edges }
   }
 
@@ -305,7 +346,7 @@ export class NotebookGraphQueryOps {
     if (!vaultId) throw new Error('getNeighborhood: vaultId required')
     const nodeId = opts.nodeId.trim()
     if (!nodeId) return { nodes: [], edges: [] }
-    const maxNodes = Math.max(1, opts.maxNodes ?? 80)
+    const queryLimit = graphViewQueryLimit(opts.maxNodes ?? 80)
     const center = await this.db
       .select()
       .from(notebookGraphNodesTable)
@@ -338,7 +379,7 @@ export class NotebookGraphQueryOps {
       neighborIds.add(edge.fromId)
       neighborIds.add(edge.toId)
     }
-    const ids = [...neighborIds].slice(0, maxNodes)
+    const ids = queryLimit == null ? [...neighborIds] : [...neighborIds].slice(0, queryLimit)
     const nodes = await this.db
       .select()
       .from(notebookGraphNodesTable)

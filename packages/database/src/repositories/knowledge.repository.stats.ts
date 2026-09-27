@@ -1,8 +1,10 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import {
   knowledgeChunksTable,
   knowledgeIngestJobsTable,
   knowledgeSourcesTable,
+  notebookGraphEdgesTable,
+  notebookGraphNodesTable,
   notebooksTable
 } from '../schema/knowledge'
 import type { AppDatabase } from '../types'
@@ -208,6 +210,67 @@ export class KnowledgeStatsOps {
     }
     for (const r of jobRows) {
       ensure(r.notebookId).pendingJobs = Number(r.pendingJobs ?? 0)
+    }
+    return [...byId.values()]
+  }
+
+  /** 挂载列表用：按笔记本汇总图谱节点和当前边。来源占位节点不计入。 */
+  async listNotebookGraphCounts(vaultId: string): Promise<
+    Array<{
+      notebookId: string
+      nodes: number
+      edges: number
+    }>
+  > {
+    const vid = vaultId.trim()
+    if (!vid) throw new Error('listNotebookGraphCounts: vaultId is required')
+
+    const nodeRows = await this.db
+      .select({
+        notebookId: notebookGraphNodesTable.notebookId,
+        nodes: sql<number>`count(*)`
+      })
+      .from(notebookGraphNodesTable)
+      .where(
+        and(
+          eq(notebookGraphNodesTable.vaultId, vid),
+          isNull(notebookGraphNodesTable.deletedAt),
+          sql`${notebookGraphNodesTable.nodeType} != 'source'`
+        )
+      )
+      .groupBy(notebookGraphNodesTable.notebookId)
+
+    const edgeRows = await this.db
+      .select({
+        notebookId: notebookGraphEdgesTable.notebookId,
+        edges: sql<number>`count(*)`
+      })
+      .from(notebookGraphEdgesTable)
+      .where(
+        and(
+          eq(notebookGraphEdgesTable.vaultId, vid),
+          eq(notebookGraphEdgesTable.isCurrent, 1),
+          isNull(notebookGraphEdgesTable.deletedAt)
+        )
+      )
+      .groupBy(notebookGraphEdgesTable.notebookId)
+
+    const byId = new Map<string, { notebookId: string; nodes: number; edges: number }>()
+    for (const row of nodeRows) {
+      byId.set(row.notebookId, {
+        notebookId: row.notebookId,
+        nodes: Number(row.nodes ?? 0),
+        edges: 0
+      })
+    }
+    for (const row of edgeRows) {
+      const current = byId.get(row.notebookId) ?? {
+        notebookId: row.notebookId,
+        nodes: 0,
+        edges: 0
+      }
+      current.edges = Number(row.edges ?? 0)
+      byId.set(row.notebookId, current)
     }
     return [...byId.values()]
   }

@@ -110,6 +110,8 @@ export interface GraphReview {
       nodeType: string
       discriminator: string
       propsJson: string
+      origin: string
+      reviewStatus: string
     }>
     edges: Array<{
       fromId: string
