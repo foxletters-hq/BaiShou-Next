@@ -1,6 +1,8 @@
 /** 模型上下文中的消息元数据 XML 标签名 */
 export const MESSAGE_TIME_TAG = 'message-time'
 export const MESSAGE_CONTENT_TAG = 'message-content'
+/** 旧 sidecar 时刻表标签，仅用于清洗模型误抄的残留 */
+export const CONVERSATION_TIME_TAG = 'conversation_time'
 
 /** 送入 LLM 时需包裹元数据的消息角色 */
 export const MODEL_METADATA_ROLES = ['user', 'assistant', 'system', 'tool'] as const

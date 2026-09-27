@@ -10,6 +10,7 @@ export interface ToolGraphPath {
     edgeType: string
     sourceRef?: string | null
     sourceExcerpt?: string
+    validFrom?: number | null
   }>
   /** Parallel to edges: undirected BFS may walk reverse of stored from→to. */
   edgeDirections?: Array<'forward' | 'reverse'>
@@ -30,6 +31,7 @@ export interface ToolGraphRagResult {
     sourceRef?: string | null
     sourceExcerpt?: string
     validFrom?: number | null
+    isCurrent?: boolean
   }>
   timeline?: Array<{
     id: string
@@ -39,6 +41,7 @@ export interface ToolGraphRagResult {
     sourceRef?: string | null
     sourceExcerpt?: string
     validFrom?: number | null
+    isCurrent?: boolean
   }>
   nodes: Array<{
     id: string
