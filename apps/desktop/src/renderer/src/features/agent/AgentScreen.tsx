@@ -2,12 +2,10 @@ import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
 import {
   InputBar,
-  ContextChainPanel,
   SessionContextUsageRing,
   useTheme,
   getProviderIcon,
   toast,
-  AgentGateDock,
   useReasoningCatalogEpoch
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
@@ -24,6 +22,9 @@ import {
 import { selectSameActionCountInSession, useAgentGateInboxStore } from '@baishou/store'
 import { WorkbenchNotebookMountDialog } from '../agent-workspace/workbench/WorkbenchNotebookMountDialog'
 import { KnowledgeMountHint } from '../knowledge/KnowledgeMountHint'
+import { AgentChatEmptyState } from './AgentChatEmptyState'
+import { AgentCompanionGateDock } from './AgentCompanionGateDock'
+import { AgentContextChainHost } from './AgentContextChainHost'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { AgentChatChrome } from './components/AgentChatChrome'
@@ -32,17 +33,10 @@ import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import { useAgentGateQueuePager } from './hooks/useAgentGateQueuePager'
 import { refreshDesktopAgentGateInbox } from './agent-gate-inbox-bridge'
-import {
-  isLocalCompanionAskRequestId,
-  resolveCompanionAskDockRequest,
-  waitForLiveCompanionAskRequest
-} from './utils/running-companion-ask-request.util'
+import { resolveCompanionAskDockRequest } from './utils/running-companion-ask-request.util'
 import { resolveCompanionStreamUi } from './utils/companion-stream-ui.util'
 import { excludePendingQueuedUserMessages } from './utils/pending-queue-messages.util'
-import {
-  ComposerQueueEditTag,
-  ComposerRuntimeQueueBar
-} from './components/ComposerRuntimeQueueBar'
+import { ComposerQueueEditTag, ComposerRuntimeQueueBar } from './components/ComposerRuntimeQueueBar'
 import { useComposerPendingQueue } from './hooks/useComposerPendingQueue'
 import type { AgentOutletContext } from './agent-outlet-context'
 import styles from './AgentScreen.module.css'
@@ -57,20 +51,7 @@ import {
   formatReasoningControlPreview
 } from './format-reasoning-control-preview'
 import { useDialogueSlotEffort } from './use-dialogue-slot-effort'
-import { useAgentIdleGreeting } from './utils/agent-idle-greeting'
-import partnerWelcomeMascot from './assets/partner-welcome.png'
-
-/** 尚未落库的草稿会话（/chat、/chat/new-session、临时 new-<ts>） */
-function isDraftChatSessionId(sessionId: string | undefined): boolean {
-  if (!sessionId) return true
-  if (sessionId === 'new-session') return true
-  return /^new-\d+$/.test(sessionId)
-}
-
-function AgentIdleGreeting() {
-  const idleGreeting = useAgentIdleGreeting()
-  return <p className={styles.emptyGreeting}>{idleGreeting}</p>
-}
+import { isDraftChatSessionId } from './utils/draft-chat-session.util'
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -224,7 +205,10 @@ export const AgentScreen: React.FC = () => {
   const hasPendingGate = Boolean(dockRequest)
   const askingCallIds = flow.stream.timeline
     .filter(
-      (item) => item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
+      (
+        item
+      ): item is Extract<import('@baishou/shared').AgentStreamTimelineItem, { kind: 'tool' }> =>
+        item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
     )
     .map((item) => item.callId)
     .join(',')
@@ -342,19 +326,7 @@ export const AgentScreen: React.FC = () => {
       {/* 空态垂直居中；有消息时粘底。InputBar 始终挂在同一位置，避免切换时失焦/丢草稿 */}
       <div className={isEmptyIdle ? styles.emptyIdle : styles.inputFooter}>
         <div className={isEmptyIdle ? styles.emptyComposer : styles.inputContainer}>
-          {isEmptyIdle ? (
-            <div className={styles.emptyHero}>
-              <div className={styles.emptyMascot} aria-hidden>
-                <img
-                  src={partnerWelcomeMascot}
-                  alt=""
-                  className={styles.emptyMascotImg}
-                  draggable={false}
-                />
-              </div>
-              <AgentIdleGreeting />
-            </div>
-          ) : null}
+          {isEmptyIdle ? <AgentChatEmptyState /> : null}
           {!isEmptyIdle && flow.scroll.showScrollButton ? (
             <button
               type="button"
@@ -379,36 +351,14 @@ export const AgentScreen: React.FC = () => {
               </svg>
             </button>
           ) : null}
-          <AgentGateDock
-            request={dockRequest}
-            isReplying={flow.stream.isAgentGateReplying}
-            onReply={async (payload) => {
-              let requestId = payload.requestId
-              if (isLocalCompanionAskRequestId(requestId)) {
-                const live = flow.sessionId
-                  ? await waitForLiveCompanionAskRequest({
-                      sessionId: flow.sessionId,
-                      listPending: (sessionId) => window.api.agentGate.listPending(sessionId),
-                      readInbox: () => useAgentGateInboxStore.getState().pending
-                    })
-                  : undefined
-                if (!live) {
-                  toast.showError(
-                    flow.t('agent_gate.ask_not_ready', '确认卡还没连上，请再点一次')
-                  )
-                  return
-                }
-                requestId = live.id
-              }
-              await flow.stream.replyAgentGate({ ...payload, requestId })
-              flow.scroll.scrollToBottom()
-            }}
-            queueIndex={gateQueueIndex}
-            queueTotal={gateQueueTotal}
+          <AgentCompanionGateDock
+            flow={flow}
+            dockRequest={dockRequest}
+            gateQueueIndex={gateQueueIndex}
+            gateQueueTotal={gateQueueTotal}
             onQueuePrev={onQueuePrev}
             onQueueNext={onQueueNext}
             sameActionCount={sameActionCount}
-            placement="inline"
           />
           <KnowledgeMountHint
             sessionId={flow.sessionId}
@@ -531,65 +481,7 @@ export const AgentScreen: React.FC = () => {
         modelMenuAnchorRect={modelMenuAnchor}
       />
 
-      {flow.contextDialogState.flatEntries && (
-        <ContextChainPanel
-          key={flow.contextDialogState.message?.id ?? 'context-chain'}
-          isOpen={flow.contextDialogState.isOpen}
-          onClose={() =>
-            flow.setContextDialogState((prev) => ({
-              ...prev,
-              isOpen: false
-            }))
-          }
-          message={
-            flow.contextDialogState.message ?? {
-              id: '',
-              sessionId: flow.sessionId || '',
-              role: 'assistant',
-              content: '',
-              timestamp: new Date()
-            }
-          }
-          flatEntries={flow.contextDialogState.flatEntries}
-          meta={flow.contextDialogState.meta}
-          compressedContent={flow.contextDialogState.compressedContent}
-          systemPrompt={flow.contextDialogState.systemPrompt}
-          sessionId={flow.contextDialogState.sessionId ?? flow.sessionId}
-          onCompressionSummaryUpdated={(summaryText) => {
-            flow.setContextDialogState((prev) => ({
-              ...prev,
-              compressedContent: summaryText,
-              flatEntries: prev.flatEntries?.map((entry) =>
-                entry.kind === 'compression-summary' ? { ...entry, summaryText } : entry
-              )
-            }))
-          }}
-          recompressBusy={flow.contextRecompressJob?.status === 'running'}
-          recompressStartedAt={
-            flow.contextRecompressJob?.status === 'running'
-              ? flow.contextRecompressJob.startedAt
-              : undefined
-          }
-          recompressStreamText={
-            flow.stream.isCompressing && flow.stream.compressionPhase === 'manual'
-              ? flow.stream.compressionText
-              : ''
-          }
-          recompressStreamReasoning={
-            flow.stream.isCompressing && flow.stream.compressionPhase === 'manual'
-              ? flow.stream.compressionReasoning
-              : ''
-          }
-          recompressError={
-            flow.contextRecompressJob?.status === 'error' ? flow.contextRecompressJob.error : null
-          }
-          onRecompress={() => {
-            const sid = flow.contextDialogState.sessionId ?? flow.sessionId
-            if (sid) void flow.runContextRecompress(sid)
-          }}
-          onRecompressDismissError={flow.dismissContextRecompressError}
-        />
-      )}
+      <AgentContextChainHost flow={flow} />
     </div>
   )
 }
