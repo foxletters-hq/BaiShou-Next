@@ -54,10 +54,7 @@ function formatValidFrom(validFrom?: number | null): string {
   return ` [validFrom:${formatLocalDate(new Date(validFrom))}]`
 }
 
-function resolveNodeName(
-  nodes: Array<{ id: string; name: string }>,
-  id: string
-): string {
+function resolveNodeName(nodes: Array<{ id: string; name: string }>, id: string): string {
   return nodes.find((n) => n.id === id)?.name || id.slice(0, 8)
 }
 

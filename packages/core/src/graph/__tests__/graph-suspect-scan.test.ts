@@ -239,11 +239,9 @@ describe('sourceRef date helpers', () => {
 
 describe('removeSuspectReasonFromProps', () => {
   it('should drop suspectReason when the user reviews the node', () => {
-    const marked = applySuspectReasonToProps(
-      { aliases: ['阿三'] },
-      '同时挂了两家公司',
-      ['multiple_located_at']
-    )
+    const marked = applySuspectReasonToProps({ aliases: ['阿三'] }, '同时挂了两家公司', [
+      'multiple_located_at'
+    ])
     expect(removeSuspectReasonFromProps(marked)).toEqual({
       aliases: ['阿三'],
       suspectClearedSignals: ['multiple_located_at']

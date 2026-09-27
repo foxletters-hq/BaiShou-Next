@@ -25,7 +25,12 @@ const messageSearchParams = z.object({
     .describe(
       'Search keyword or phrase. Omit or leave empty to list original messages in a date range.'
     ),
-  limit: z.number().optional().describe('Maximum number of results to return. Defaults to 10 for keyword search, 20 for date listing.'),
+  limit: z
+    .number()
+    .optional()
+    .describe(
+      'Maximum number of results to return. Defaults to 10 for keyword search, 20 for date listing.'
+    ),
   start_date: z
     .string()
     .optional()
@@ -37,7 +42,9 @@ const messageSearchParams = z.object({
   session_id: z
     .string()
     .optional()
-    .describe('Optional session id from session_list. Restricts search or date listing to one conversation.')
+    .describe(
+      'Optional session id from session_list. Restricts search or date listing to one conversation.'
+    )
 })
 
 function formatMessageHits(

@@ -19,10 +19,7 @@ import {
 
 const companionAskQuestionParams = z.object({
   question: z.string().describe('One question to ask the user.'),
-  options: z
-    .array(z.string())
-    .optional()
-    .describe('Optional numbered choices for this question.'),
+  options: z.array(z.string()).optional().describe('Optional numbered choices for this question.'),
   allow_custom_input: z
     .boolean()
     .optional()

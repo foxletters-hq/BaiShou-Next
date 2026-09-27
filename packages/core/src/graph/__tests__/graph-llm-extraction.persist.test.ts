@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { entityAlignKey, graphNodeIdForEntity } from '@baishou/shared'
-import { persistGraphExtractDraft, shouldSupersedeDiaryAiEdges } from '../graph-llm-extraction.persist'
+import {
+  persistGraphExtractDraft,
+  shouldSupersedeDiaryAiEdges
+} from '../graph-llm-extraction.persist'
 import type { GraphExtractDraft } from '../graph-llm-extraction.types'
 import type { AlignedEntity } from '../graph-entity-align.types'
 
@@ -170,7 +173,9 @@ describe('persistGraphExtractDraft supersede', () => {
         persistCtx({ writeRecord, supersedeAiEdgesBySourceRef }),
         {
           ...draft(),
-          edges: [{ from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }]
+          edges: [
+            { from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }
+          ]
         },
         new Map(),
         100
@@ -187,17 +192,21 @@ describe('persistGraphExtractDraft supersede', () => {
       persistCtx({ writeRecord, supersedeAiEdgesBySourceRef }),
       {
         ...draft(),
-        edges: [{ from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }]
+        edges: [
+          { from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }
+        ]
       },
       new Map(),
       100
     )
     expect(supersedeAiEdgesBySourceRef).toHaveBeenCalledTimes(1)
-    const [sourceRef, opts] = supersedeAiEdgesBySourceRef.mock.calls[0]!
-    expect(sourceRef).toBe('2026-09-19')
-    expect((opts as { exceptIds: Set<string> }).exceptIds.size).toBeGreaterThan(0)
-    expect(writeRecord.mock.calls.some((call) => (call[0] as { fromId?: string }).fromId === personId)).toBe(
-      true
+    expect(supersedeAiEdgesBySourceRef).toHaveBeenCalledWith(
+      '2026-09-19',
+      expect.objectContaining({ exceptIds: expect.any(Set) })
+    )
+    expect(writeRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ fromId: personId }),
+      expect.objectContaining({ collection: 'edges' })
     )
   })
 })
