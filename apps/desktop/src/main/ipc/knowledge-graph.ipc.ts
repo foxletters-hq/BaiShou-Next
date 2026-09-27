@@ -86,7 +86,8 @@ function mapNotebookGraphSearchHit(row: {
     id: row.id,
     name: row.name,
     nodeType: row.nodeType,
-    summary: row.summary
+    summary: row.summary,
+    reviewStatus: row.reviewStatus
   }
 }
 
@@ -99,7 +100,17 @@ export function registerKnowledgeGraphIpc(): void {
     const live = new Set(listLiveGraphSourceIds())
     const sources = await repo.listSources(id)
     const titleById = new Map(sources.map((row) => [row.id, row.title]))
-    const items = []
+    const items: Array<{
+      sourceId: string
+      title: string
+      status: 'pending' | 'failed' | 'running'
+      lastError: string | null
+      windowsDone?: number
+      windowsTotal?: number
+      pageFrom?: number
+      pageTo?: number
+      pageTotal?: number
+    }> = []
     for (const job of jobs) {
       const status = resolveListedGraphJobStatus(job.status, live.has(job.sourceId))
       let checkpoint: { windowsDone: number; windowsTotal: number } | null = null
@@ -184,7 +195,7 @@ export function registerKnowledgeGraphIpc(): void {
     async (
       _e,
       input: { notebookId: string; query: string; limit?: number; mode?: string }
-    ) => {
+    ): Promise<Array<{ id: string; name: string; nodeType: string; summary?: string }>> => {
       const notebookId = String(input?.notebookId || '').trim()
       if (!notebookId) throw new Error('notebookId required')
       requireKnowledgeRepo()
@@ -203,19 +214,23 @@ export function registerKnowledgeGraphIpc(): void {
           ? (text) => embeddingService.embedQuery(text)
           : null,
         modelId: embeddingConfig.getGlobalEmbeddingModelId() || undefined,
-        searchName: () =>
-          repo.searchNodes({
+        searchName: async () => {
+          const hits = await repo.searchNodes({
             vaultId,
             notebookId,
             query,
             limit
-          }),
-        searchVector: (vector, modelId) =>
-          repo.searchNodesByVector(vaultId, notebookId, vector, limit ?? 20, { modelId })
+          })
+          return hits.map(mapNotebookGraphSearchHit)
+        },
+        searchVector: async (vector, modelId) => {
+          const hits = await repo.searchNodesByVector(vaultId, notebookId, vector, limit ?? 20, {
+            modelId
+          })
+          return hits.map(mapNotebookGraphSearchHit)
+        }
       })
-      return rows
-        .filter((row) => row.reviewStatus !== 'rejected')
-        .map(mapNotebookGraphSearchHit)
+      return rows.filter((row) => row.reviewStatus !== 'rejected').map(mapNotebookGraphSearchHit)
     }
   )
 
@@ -251,8 +266,10 @@ export function registerKnowledgeGraphIpc(): void {
 
   handleKnowledgeIpc(
     'knowledge:merge-graph-nodes',
-    async (_e, input: { notebookId: string; survivorId: string; loserId: string; reason?: string }) =>
-      mergeDesktopNotebookGraphNodes(input)
+    async (
+      _e,
+      input: { notebookId: string; survivorId: string; loserId: string; reason?: string }
+    ) => mergeDesktopNotebookGraphNodes(input)
   )
 
   handleKnowledgeIpc(

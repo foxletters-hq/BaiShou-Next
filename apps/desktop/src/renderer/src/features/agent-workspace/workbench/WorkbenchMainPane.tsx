@@ -28,10 +28,10 @@ import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
 import { shouldApplyWorkspaceFsChange, toAbsoluteWorkspacePath } from './workbench-path.util'
 import { isWorkbenchTabPathDeleted } from './workbench-tab-close.util'
 import { shouldEnableWorkbenchTabReorder } from './workbench-tab-reorder.util'
-import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
 import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
 import { WorkbenchEditorTabBar } from './WorkbenchEditorTabBar'
 import { WorkbenchEditorContent } from './WorkbenchEditorContent'
+import { WorkbenchGitStatusBar } from './WorkbenchGitStatusBar'
 import {
   EMPTY_EDITOR_NAV,
   recordEditorFileVisit,
@@ -98,8 +98,6 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       useState<WorkbenchSelectionAffordanceState | null>(null)
     const selectionAffordanceRef = useRef<WorkbenchSelectionAffordanceState | null>(null)
     const dismissedSelectionKeyRef = useRef<string | null>(null)
-    const [branchMenuOpen, setBranchMenuOpen] = useState(false)
-    const branchMenuRef = useDismissOnOutsideClick(branchMenuOpen, () => setBranchMenuOpen(false))
     const [commentDraft, setCommentDraft] = useState<WorkbenchCommentDraft | null>(null)
     const closeCommentDraft = useCallback(() => setCommentDraft(null), [])
     const commentPopoverRef = useDismissOnOutsideClick(Boolean(commentDraft), closeCommentDraft)
@@ -368,8 +366,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
     const showEditorFile = useCallback(
       (path: string) => {
         const existing = tabs.find(
-          (tab) =>
-            tab.relativePath === path && (tab.kind === 'markdown' || tab.kind === 'text')
+          (tab) => tab.relativePath === path && (tab.kind === 'markdown' || tab.kind === 'text')
         )
         if (existing) {
           setActiveTabId(existing.id)
@@ -514,51 +511,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
           />
         </div>
 
-        {gitStatusBar ? (
-          <div className={styles.statusBar}>
-            {gitStatusBar.branch ? (
-              <div className={styles.statusBranchWrap} ref={branchMenuRef}>
-                <button
-                  type="button"
-                  className={styles.statusBranch}
-                  onClick={() => {
-                    setBranchMenuOpen((open) => !open)
-                    if (!branchMenuOpen) gitStatusBar.onRefreshBranches?.()
-                  }}
-                  title={t('workbench.git_switch_branch', '切换分支')}
-                >
-                  <span className={styles.statusBranchIcon}>⎇</span>
-                  <span>{gitStatusBar.branch}</span>
-                  {gitStatusBar.behind ? (
-                    <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
-                  ) : null}
-                  {gitStatusBar.ahead ? (
-                    <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
-                  ) : null}
-                </button>
-                <WorkbenchStatusBranchMenu
-                  open={branchMenuOpen}
-                  onClose={() => setBranchMenuOpen(false)}
-                  current={gitStatusBar.branch ?? undefined}
-                  branches={gitStatusBar.branches ?? []}
-                  onCheckout={(branch) => gitStatusBar.onCheckoutBranch?.(branch)}
-                  onCreate={(branch) => gitStatusBar.onCreateBranch?.(branch)}
-                  onPublish={() => gitStatusBar.onPublishBranch?.()}
-                />
-              </div>
-            ) : null}
-            <span className={styles.statusSpacer} />
-            {(gitStatusBar.changesCount ?? 0) > 0 ? (
-              <span className={styles.statusChanges}>
-                {t('workbench.git_changes_count', '{{count}} 项变更', {
-                  count: gitStatusBar.changesCount
-                })}
-              </span>
-            ) : (
-              <span className={styles.statusChanges}>{t('workbench.git_clean', '工作区干净')}</span>
-            )}
-          </div>
-        ) : null}
+        {gitStatusBar ? <WorkbenchGitStatusBar gitStatusBar={gitStatusBar} /> : null}
 
         <WorkbenchSelectionChrome
           selectionAffordance={selectionAffordance}
