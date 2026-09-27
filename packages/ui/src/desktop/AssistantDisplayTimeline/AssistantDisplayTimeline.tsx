@@ -9,10 +9,7 @@ import { AgentGatePartBubble } from '../AgentGatePartBubble'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { AgentToolChainSection } from '../AgentToolChain'
 
-function restIsOnlyGates(
-  items: readonly AssistantDisplayTimelineItem[],
-  index: number
-): boolean {
+function restIsOnlyGates(items: readonly AssistantDisplayTimelineItem[], index: number): boolean {
   return items.slice(index + 1).every((item) => item.kind === 'gate')
 }
 

@@ -56,13 +56,7 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = (props) => {
       }),
     [props.gateSurface, props.message.parts]
   )
-  return (
-    <ChatBubbleAiRowInner
-      {...props}
-      citations={citations}
-      timelineItems={timelineItems}
-    />
-  )
+  return <ChatBubbleAiRowInner {...props} citations={citations} timelineItems={timelineItems} />
 }
 
 const ChatBubbleAiRowInner: React.FC<

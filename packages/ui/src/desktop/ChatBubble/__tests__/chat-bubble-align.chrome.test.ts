@@ -15,7 +15,10 @@ const streamCss = readFileSync(
 describe('ChatBubble column align chrome', () => {
   it('should share one message column so user and AI bubbles end on the same edge', () => {
     expect(css).toContain('grid-template-columns: 36px minmax(0, 1fr) 36px')
-    const messageColRule = css.slice(css.indexOf('.messageCol {'), css.indexOf('.userRow .messageCol'))
+    const messageColRule = css.slice(
+      css.indexOf('.messageCol {'),
+      css.indexOf('.userRow .messageCol')
+    )
     expect(messageColRule).toContain('grid-column: 2')
     expect(messageColRule).toContain('width: 100%')
     expect(css).toMatch(/\.userRow\s+\.avatarWrap[\s\S]*grid-column:\s*3/)
