@@ -33,16 +33,11 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 6px 18px 4px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-tertiary);
-  background: linear-gradient(
-    to bottom,
-    var(--bg-surface) 70%,
-    color-mix(in srgb, var(--bg-surface) 40%, transparent)
-  );
+  padding: 8px 14px 4px;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
 }
 
 .groupItems {
@@ -72,7 +67,7 @@
 }
 
 .emptyText {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
   max-width: 260px;
@@ -82,25 +77,4 @@
   display: flex;
   justify-content: center;
   padding: 12px 0 4px;
-}
-
-.loadMoreBtn {
-  border: none;
-  background: transparent;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.loadMoreBtn:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.08);
-}
-
-.loadMoreBtn:disabled {
-  opacity: 0.5;
-  cursor: wait;
 }

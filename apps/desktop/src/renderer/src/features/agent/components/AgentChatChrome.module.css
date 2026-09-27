@@ -3,16 +3,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 16px;
+  height: 52px;
+  box-sizing: border-box;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
   z-index: 20;
   /* 伙伴选择器 / 计费器 / 右侧按钮统一高度 */
-  --chrome-chip-height: 36px;
+  --chrome-chip-height: 34px;
 }
 
-/* 有对话后：仅右上角浮层按钮，不占整条顶栏 */
+/* 有对话后：仅右上角浮层按钮，不占整条顶栏（兼容保留） */
 .floatingActions {
   position: absolute;
   top: 10px;
@@ -21,7 +23,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  --chrome-chip-height: 36px;
+  --chrome-chip-height: 34px;
   pointer-events: auto;
 }
 
@@ -43,6 +45,12 @@
   gap: 8px;
   flex-shrink: 0;
   height: var(--chrome-chip-height);
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .trailing {
@@ -68,31 +76,74 @@
 }
 
 .iconBtn {
-  width: var(--chrome-chip-height);
   height: var(--chrome-chip-height);
+  min-width: var(--chrome-chip-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   border: 1px solid var(--border-control);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--bg-surface);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* lucide 全局 1em：用 font-size 控制图标，避免被外层字号放大 */
-  font-size: 18px;
-  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  padding: 0 10px;
 }
 
 .iconBtn:hover {
-  background: var(--bg-surface);
-  border-color: var(--border-control);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong, var(--border-control));
   color: var(--text-primary);
+}
+
+.iconBtn:active {
+  transform: scale(0.97);
+}
+
+/* 仅图标按钮（如历史记录）保持正方形 */
+.iconOnlyBtn {
+  padding: 0;
+  width: var(--chrome-chip-height);
+}
+
+/* 新建对话按钮微高亮强调（Subtle CTA） */
+.newChatBtn {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 0 12px;
+}
+
+.newChatBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.newChatText {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+@media (max-width: 580px) {
+  .newChatText {
+    display: none;
+  }
+  .newChatBtn {
+    padding: 0;
+    width: var(--chrome-chip-height);
+  }
 }
 
 .chip {
@@ -175,20 +226,59 @@
   flex-shrink: 0;
 }
 
-/* 输入框底部模型切换：与 32px 加号/发送对齐 */
+/* 输入框底部模型切换：与加号/发送对齐，精致药丸微按钮（对齐现代 Chat 布局） */
 .modelSwitcherInComposer {
-  height: 32px;
-  min-height: 32px;
-  padding: 0 10px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: 8px;
   background-color: transparent;
-  border-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .modelSwitcherInComposer:hover {
   background-color: var(--bg-surface-high);
   border-color: var(--border-control);
+  color: var(--text-primary);
+}
+
+.modelSwitcherInComposer .modelName {
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelSwitcherInComposer .modelEffort {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  padding: 1px 4px;
+  background: var(--bg-surface-normal);
+  border-radius: 4px;
+}
+
+.modelSwitcherInComposer .chevron {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
 }
 
 /* 工作台 meta 行右侧：与伙伴/工作区/权限 chip 同高同风格 */

@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageSquareText } from 'lucide-react'
-import { SessionListItem } from '@baishou/ui'
-import type { SessionData } from '@baishou/ui'
+import { Button, SessionListItem, type SessionData } from '@baishou/ui'
 import styles from './AgentSessionList.module.css'
 
 interface AgentSessionListProps {
@@ -181,16 +180,15 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           ))}
           {hasMore ? (
             <div className={styles.loadMoreWrap}>
-              <button
+              <Button
                 type="button"
-                className={styles.loadMoreBtn}
                 disabled={isLoadingMore}
                 onClick={() => onLoadMore?.()}
               >
                 {isLoadingMore
                   ? t('common.loading', '加载中...')
                   : t('agent.sidebar.load_more', '加载更多对话')}
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>

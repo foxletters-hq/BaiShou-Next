@@ -14,7 +14,6 @@ import {
   StreamingBubble,
   CompressionDivider,
   CompressionActivityBar,
-  AgentGatePartBubble,
   CompanionAskInteractionProvider,
   resolveActiveToolDisplayName
 } from '@baishou/ui'
@@ -24,7 +23,8 @@ import {
   useSettingsStore
 } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
-import { shouldHidePersistedStreamingAssistant, resolvePersistedAssistantStreamError } from '../utils/persisted-streaming-assistant.util'
+import { resolvePersistedAssistantStreamError } from '../utils/persisted-streaming-assistant.util'
+import { resolveCompanionStreamUi } from '../utils/companion-stream-ui.util'
 import styles from '../AgentScreen.module.css'
 
 /**
@@ -109,12 +109,23 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     selectResolvedLiveForSession(state, sessionId, 'companion')
   )
   useEffect(() => {
-    for (const msg of chat.messages ?? []) {
-      for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
-        useAgentGateInboxStore.getState().upsertAsked(request)
+    let cancelled = false
+    const listPending = window.api?.agentGate?.listPending
+    if (!listPending) return
+    void listPending(sessionId || undefined).then((pending) => {
+      if (cancelled) return
+      const liveIds = new Set((Array.isArray(pending) ? pending : []).map((item) => item.id))
+      for (const msg of chat.messages ?? []) {
+        for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
+          if (!liveIds.has(request.id)) continue
+          useAgentGateInboxStore.getState().upsertAsked(request, { respectTombstone: true })
+        }
       }
+    })
+    return () => {
+      cancelled = true
     }
-  }, [chat.messages])
+  }, [chat.messages, sessionId])
 
   const persistedGateIds = useMemo(() => {
     const ids = new Set<string>()
@@ -336,31 +347,21 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   const lastAssistantMessageId = [...chat.messages]
     .reverse()
     .find((message) => message.role === 'assistant')?.id
-  const hidePersistedLiveTurn = shouldHidePersistedStreamingAssistant({
+  const streamUi = resolveCompanionStreamUi({
     isStreaming: stream.isStreaming,
     isBridgeActive: stream.isBridgeActive,
-    lastMessage
+    isCompressing: stream.isCompressing,
+    error: stream.error,
+    lastMessage,
+    text: stream.text,
+    reasoning: stream.reasoning,
+    timeline: stream.timeline,
+    activeTool: stream.activeTool,
+    completedToolsCount: stream.completedTools.length
   })
+  const hidePersistedLiveTurn = streamUi.hidePersistedLiveTurn
   const visibleMessages = hidePersistedLiveTurn ? chat.messages.slice(0, -1) : chat.messages
-  const assistantPersistedDuringBridge =
-    stream.isBridgeActive &&
-    lastMessage?.role === 'assistant' &&
-    Boolean(
-      lastMessage.content?.trim() ||
-      lastMessage.reasoning?.trim() ||
-      (lastMessage.toolInvocations?.length ?? 0) > 0 ||
-      (lastMessage.attachments?.length ?? 0) > 0
-    )
-  const showStreamingBubble =
-    (stream.isStreaming || stream.isBridgeActive || Boolean(stream.error)) &&
-    (!assistantPersistedDuringBridge || hidePersistedLiveTurn) &&
-    (!stream.isCompressing ||
-      Boolean(stream.text?.trim()) ||
-      Boolean(stream.reasoning?.trim()) ||
-      stream.activeTool ||
-      stream.completedTools.length > 0 ||
-      pendingEmojiAttachments.length > 0 ||
-      Boolean(stream.error))
+  const showStreamingBubble = streamUi.showStreamingBubble
 
   return (
     <CompanionAskInteractionProvider
@@ -422,7 +423,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               : (persistedCompaction?.phase ?? 'auto')
 
             const bubbleAttachments = msg.attachments ?? mapAttachmentsFromParts(msg.parts)
-            const agentGateParts = collectAgentGatePartDataForSurface(msg.parts, 'companion')
 
             const bubbleMessage = {
               id: msg.id,
@@ -445,9 +445,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
 
             return (
               <React.Fragment key={msg.id}>
-                {agentGateParts.map((data) => (
-                  <AgentGatePartBubble key={data.request.id} data={data} />
-                ))}
                 <ChatBubble
                   message={bubbleMessage}
                   userProfile={{
@@ -509,11 +506,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             )
           })}
 
-          {liveGateParts.map((data) => (
-            <AgentGatePartBubble key={data.request.id} data={data} />
-          ))}
-
-          {showStreamingBubble ? (
+          {showStreamingBubble || liveGateParts.length > 0 ? (
               <StreamingBubble
                 text={stream.text}
                 reasoning={stream.reasoning}
@@ -522,6 +515,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
                 activeToolName={activeToolDisplayName}
                 completedTools={stream.completedTools}
                 timeline={stream.timeline}
+                gateParts={liveGateParts}
                 attachments={pendingEmojiAttachments}
                 error={stream.error}
                 aiProfile={{

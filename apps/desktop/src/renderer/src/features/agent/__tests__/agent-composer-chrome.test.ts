@@ -10,12 +10,10 @@ function read(rel: string): string {
 }
 
 describe('agent composer chrome', () => {
-  it('should keep the model switcher on the right and hide the usage ring before any messages', () => {
+  it('should render the model switcher in bottomLeading and usage ring in bottomTrailing', () => {
     const screen = read('../AgentScreen.tsx')
-    const css = read('../AgentScreen.module.css')
-    expect(css).toContain('justify-content: space-between')
-    expect(css).toContain('margin-left: auto')
-    expect(screen).toContain('metaTrailing')
+    expect(screen).toContain('bottomLeading={modelSwitcherButton}')
+    expect(screen).toContain('bottomTrailing={tokenUsageRing}')
     expect(screen).toContain('SessionContextUsageRing')
   })
 
@@ -45,5 +43,12 @@ describe('agent composer chrome', () => {
     expect(screen).toContain('resolveCompanionAskDockRequest')
     expect(screen).toContain('waitForLiveCompanionAskRequest')
     expect(screen).not.toContain('[flow.sessionId, flow.stream.timeline, pendingGate]')
+  })
+
+  it('should not keep the composer in stop state after a finished assistant reply', () => {
+    const screen = read('../AgentScreen.tsx')
+    expect(screen).toContain('resolveCompanionStreamUi')
+    expect(screen).toContain('isLoading={companionStreamUi.composerBusy}')
+    expect(screen).not.toContain('isLoading={flow.stream.isStreaming || flow.stream.isCompressing}')
   })
 })
