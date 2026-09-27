@@ -198,7 +198,7 @@ export function GraphSplitNodeSheet(props: {
   return (
     <FloatingModal visible={props.visible} onClose={props.onClose} closeOnBackdropPress={!saving}>
       <View style={{ padding: 20, gap: 10, maxHeight: 560 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '700' }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
           {t('graph.split_node_title', '把同名的拆成两个')}
         </Text>
         <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>

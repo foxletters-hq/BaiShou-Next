@@ -57,6 +57,8 @@ export function GraphScreenSettingsSheet(props: {
     onFocusDepthChange: (depth: GraphFocusDepth) => void
     appearanceSettings: GraphAppearanceSettings
     onAppearanceChange: (patch: Partial<GraphAppearanceSettings>) => void
+    viewMaxNodes: number
+    onViewMaxNodesChange: (value: number) => void
     forceSettings: GraphForceSettings
     onForceChange: (patch: Partial<GraphForceSettings>) => void
     onReplayLayout: () => void
@@ -113,7 +115,7 @@ export function GraphScreenSettingsSheet(props: {
         ) : null}
 
         <Pressable onPress={props.onClose} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
-          <Text style={{ color: colors.primary, fontWeight: '700' }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>
             {t('common.close', '关闭')}
           </Text>
         </Pressable>

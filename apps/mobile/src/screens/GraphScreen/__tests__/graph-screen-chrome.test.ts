@@ -32,6 +32,8 @@ const webviewSrc = [
   readSrc('GraphForceWebView.tsx'),
   readSrc('graph-force-webview-html.ts'),
   readSrc('graph-force-webview-runtime-setup.ts'),
+  readSrc('graph-force-webview-runtime-physics.ts'),
+  readSrc('graph-force-webview-runtime-gl.ts'),
   readSrc('graph-force-webview-runtime-draw.ts'),
   readSrc('graph-force-webview-runtime-camera.ts'),
   readSrc('graph-force-webview-runtime-input.ts')
@@ -124,6 +126,15 @@ describe('GraphScreen chrome', () => {
     expect(webviewSrc).toContain('ISOLATED_SEED')
     expect(webviewSrc).toContain('VELOCITY_DECAY')
     expect(webviewSrc).toContain('CHARGE_DISTANCE_MAX_MIN')
+    expect(webviewSrc).toContain("getContext('webgl'")
+    expect(webviewSrc).toContain('fillChargeGrid')
+    expect(webviewSrc).toContain('GRAPH_FORCE_ISOLATED_PAIRWISE_MAX')
+    expect(webviewSrc).toContain('GRAPH_FORCE_ISOLATED_GRID_CELL')
+    expect(webviewSrc).toContain('gl_PointSize')
+    expect(webviewSrc).toContain('id="labels"')
+    expect(canvasSettingsSrc).toContain("t('graph.max_nodes'")
+    expect(canvasSettingsSrc).toContain("t('graph.max_nodes_unlimited'")
+    expect(canvasSettingsSrc).toContain('graphViewMaxNodesSliderValue')
   })
 
   it('keeps month range out of the canvas settings section', () => {
@@ -376,6 +387,9 @@ describe('GraphScreen chrome', () => {
       'clear_suspect',
       'clear_suspect_done',
       'suspect_pending_hint',
+      'max_nodes',
+      'max_nodes_hint',
+      'max_nodes_unlimited',
       'tab_similar',
       'tab_similar_count',
       'similar_empty',

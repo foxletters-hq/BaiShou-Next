@@ -230,7 +230,7 @@ export function GraphScreenCanvasTab(props: {
           </Text>
           <View style={styles.row}>
             <Pressable onPress={props.onResetMonthRange}>
-              <Text style={{ color: colors.primary, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
                 {t('graph.month_range_recent3', '近3月')}
               </Text>
             </Pressable>

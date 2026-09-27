@@ -117,7 +117,7 @@ export function GraphScreenSettingsOrganize(props: {
             })}
           </View>
           <Pressable disabled={props.profileBusy} onPress={props.onSaveProfile}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
               {t('graph.profile_save', '保存身份资料')}
             </Text>
           </Pressable>
