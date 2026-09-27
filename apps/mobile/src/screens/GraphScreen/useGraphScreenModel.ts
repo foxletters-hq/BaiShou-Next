@@ -85,7 +85,8 @@ export function useGraphScreenModel() {
     dbReady,
     vaultId,
     vaultName,
-    monthRange: settings.monthRange
+    monthRange: settings.monthRange,
+    viewMaxNodes: settings.viewMaxNodes
   })
   const search = useGraphScreenSearch({
     t: translate,

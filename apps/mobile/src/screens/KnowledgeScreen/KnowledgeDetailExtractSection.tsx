@@ -31,6 +31,11 @@ export function KnowledgeDetailExtractSection(props: {
   onOcrConcurrencyChange: (value: number) => void
   onSave: () => void
   onRecoverStale: () => void
+  onProbe: () => void
+  sources: Array<{ id: string; title: string }>
+  probeSourceId: string
+  onProbeSourceChange: (id: string) => void
+  onPickVision: () => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -105,6 +110,17 @@ export function KnowledgeDetailExtractSection(props: {
             onPress={() => void props.onRecoverStale()}
           >
             {t('knowledge.recover_stale', '回收卡住的任务')}
+          </Button>
+          <Button variant="outlined" isDisabled={props.busy} onPress={() => void props.onPickVision()}>
+            {t('knowledge.vision_model', '视觉模型')}
+          </Button>
+          <Select
+            value={props.probeSourceId}
+            onValueChange={props.onProbeSourceChange}
+            options={props.sources.map((source) => ({ value: source.id, label: source.title }))}
+          />
+          <Button variant="outlined" isDisabled={props.busy} onPress={() => void props.onProbe()}>
+            {t('knowledge.extract_probe', '试抽')}
           </Button>
         </View>
       </View>

@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import {
-  GRAPH_GLOBAL_MAX_NODES,
   clampGraphMonthRange,
   omitInFlightGraphDeletes,
   remapGraphViewReviewForDisplay,
@@ -32,6 +31,7 @@ type DataDeps = {
   vaultId: string
   vaultName: string
   monthRange: GraphMonthRange
+  viewMaxNodes: number
 }
 
 export function useGraphScreenData(deps: DataDeps) {
@@ -75,7 +75,7 @@ export function useGraphScreenData(deps: DataDeps) {
     const graph = await mobileLoadGlobalGraph(
       runtime.drizzleDb,
       deps.vaultId,
-      GRAPH_GLOBAL_MAX_NODES,
+      deps.viewMaxNodes,
       clampGraphMonthRange(deps.monthRange)
     )
     const remapped = remapGraphViewReviewForDisplay(graph.nodes, graph.edges)
@@ -110,7 +110,7 @@ export function useGraphScreenData(deps: DataDeps) {
     } catch {
       setEstimate(null)
     }
-  }, [deps.services, deps.dbReady, deps.vaultName, deps.vaultId, deps.monthRange])
+  }, [deps.services, deps.dbReady, deps.vaultName, deps.vaultId, deps.monthRange, deps.viewMaxNodes])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 

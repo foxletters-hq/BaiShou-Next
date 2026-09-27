@@ -206,9 +206,11 @@ export function KnowledgeDetailCoverSection(props: {
                 '提问已硬拦截。请重建索引后再问，否则答案会错得很像样。'
               )}
             </Text>
-            <Button isDisabled={busy} onPress={() => void onRebuildIndex()}>
-              {t('knowledge.rebuild_index', '重建索引')}
-            </Button>
+            <View style={styles.rowGap}>
+              <Button isDisabled={busy} onPress={() => void onRebuildIndex()}>
+                {t('knowledge.rebuild_index', '重建索引')}
+              </Button>
+            </View>
           </View>
         ) : null}
       </View>

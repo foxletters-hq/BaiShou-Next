@@ -2,7 +2,13 @@ export const GRAPH_FORCE_RUNTIME_SETUP = `
 function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+const labelCanvas = document.getElementById('labels');
+let gl = canvas.getContext('webgl', { alpha:false, antialias:true, premultipliedAlpha:false })
+  || canvas.getContext('experimental-webgl', { alpha:false, antialias:true, premultipliedAlpha:false });
+let ctx = null;
+if(!gl) ctx = canvas.getContext('2d');
+const labelCtx = labelCanvas ? labelCanvas.getContext('2d') : null;
+let useGl = false;
 let dpr = window.devicePixelRatio || 1;
 let W = 0, H = 0;
 
@@ -89,9 +95,16 @@ let activeTouches = new Map();
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
   dpr = window.devicePixelRatio || 1;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  function fit(el){
+    if(!el) return;
+    el.width = W*dpr; el.height = H*dpr;
+    el.style.width = W+'px'; el.style.height = H+'px';
+  }
+  fit(canvas);
+  fit(labelCanvas);
+  if(gl) gl.viewport(0,0,canvas.width,canvas.height);
+  if(labelCtx) labelCtx.setTransform(dpr,0,0,dpr,0,0);
+  if(ctx) ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 window.addEventListener('resize', resize);
 resize();
