@@ -181,7 +181,10 @@ export function rebuildGraphForceSimulation(
     .force('charge', createGraphAwareChargeForce())
     .force('x', forceX(cx))
     .force('y', forceY(cy))
-    .on('tick', createGraphForceTickDrawScheduler(() => refs.drawRef.current()))
+    .on(
+      'tick',
+      createGraphForceTickDrawScheduler(() => refs.drawRef.current())
+    )
 
   if (graphForceShouldCollide(simNodes.length)) {
     sim.force(

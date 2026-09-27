@@ -210,6 +210,7 @@ export function useGraphPageModel({
     return () => {
       unsubscribe?.()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只跟 refresh 稳定引用
   }, [awaken.selfNameReady, data.refresh])
 
   const updateMonthRange = (next: Parameters<typeof selection.updateMonthRange>[0]) => {

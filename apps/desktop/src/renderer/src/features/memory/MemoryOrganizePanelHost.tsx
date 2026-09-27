@@ -20,14 +20,16 @@ export function MemoryOrganizePanelHost(props: { open: boolean; onClose: () => v
 
   const onPauseBatchEmbed = useCallback(async () => {
     patchCachedRagActiveState({ paused: true, cancelling: false })
-    await (window as { api?: { rag?: { pauseBatchEmbed?: () => Promise<void> } } }).api?.rag
-      ?.pauseBatchEmbed?.()
+    await (
+      window as { api?: { rag?: { pauseBatchEmbed?: () => Promise<void> } } }
+    ).api?.rag?.pauseBatchEmbed?.()
   }, [])
 
   const onResumeBatchEmbed = useCallback(async () => {
     patchCachedRagActiveState({ paused: false, cancelling: false })
-    await (window as { api?: { rag?: { resumeBatchEmbed?: () => Promise<void> } } }).api?.rag
-      ?.resumeBatchEmbed?.()
+    await (
+      window as { api?: { rag?: { resumeBatchEmbed?: () => Promise<void> } } }
+    ).api?.rag?.resumeBatchEmbed?.()
   }, [])
 
   const onCancelBatchEmbed = useCallback(async () => {
@@ -40,8 +42,9 @@ export function MemoryOrganizePanelHost(props: { open: boolean; onClose: () => v
     )
     if (!ok) return
     patchCachedRagActiveState({ cancelling: true, paused: false })
-    await (window as { api?: { rag?: { cancelBatchEmbed?: () => Promise<void> } } }).api?.rag
-      ?.cancelBatchEmbed?.()
+    await (
+      window as { api?: { rag?: { cancelBatchEmbed?: () => Promise<void> } } }
+    ).api?.rag?.cancelBatchEmbed?.()
   }, [confirm, t])
 
   return (

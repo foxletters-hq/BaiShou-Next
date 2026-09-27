@@ -1,8 +1,5 @@
 import { forceManyBody, type ForceManyBody } from 'd3-force'
-import {
-  applyGraphForceIsolatedPairCharge,
-  graphForceChargeDistanceMax
-} from '@baishou/shared'
+import { applyGraphForceIsolatedPairCharge, graphForceChargeDistanceMax } from '@baishou/shared'
 import type { GraphForceSimNode } from './graph-force-canvas.types'
 
 export type GraphAwareChargeForce = ((alpha: number) => void) & {
