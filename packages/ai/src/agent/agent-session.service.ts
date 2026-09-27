@@ -13,7 +13,7 @@ import { WorkspaceSessionBuffer } from '../agent-workspace/workspace-session-buf
 import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import { onAgentGateLifecycle } from './agent-gate-lifecycle'
 import { AgentSessionRuntimeRecorder } from './session-runtime-event'
-import { resolveSessionRuntimeProfile } from '../session-runtime'
+import { resolveSessionRuntimeProfile, DEFAULT_SESSION_MAX_STEPS } from '../session-runtime'
 import { prepareAgentSessionContext } from './agent-session-context'
 import { buildAgentSessionToolsAndPrompt } from './agent-session-tools'
 import { runAgentSessionStream } from './agent-session-stream-run'
@@ -65,7 +65,7 @@ export class AgentSessionService {
       }
     })
     const enableRuntimeV2 = runtimeProfile.sessionRuntimeV2 === true
-    const effectiveMaxSteps = runtimeProfile.maxSteps ?? 10
+    const effectiveMaxSteps = runtimeProfile.maxSteps ?? DEFAULT_SESSION_MAX_STEPS
     const interruptOnGateReject = runtimeProfile.interruptOnGateReject === true
     const doomLoopThreshold = runtimeProfile.doomLoopThreshold ?? 3
     const unsubGateBuffer = onAgentGateLifecycle((event) => {

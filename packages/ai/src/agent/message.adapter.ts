@@ -27,7 +27,7 @@ export class MessageAdapter {
     activeProviderType?: string,
     options?: { wrapMessageTime?: boolean }
   ): Promise<ModelMessage[]> {
-    const metadataOptions = { wrapMessageTime: options?.wrapMessageTime !== false }
+    const metadataOptions = { wrapMessageTime: options?.wrapMessageTime === true }
     const vercelMessages: ModelMessage[] = []
 
     for (const msg of dbMessages) {

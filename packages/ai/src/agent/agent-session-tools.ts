@@ -16,7 +16,7 @@ import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego
 import type { MessageWithParts } from './message.adapter'
 import type { StreamChatOptions } from './agent-session.types'
 import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
-import type { AssistantKind } from '@baishou/shared'
+import { type AssistantKind } from '@baishou/shared'
 
 export async function buildAgentSessionToolsAndPrompt(input: {
   options: StreamChatOptions

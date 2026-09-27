@@ -75,11 +75,11 @@ export class ContextAtMessageService {
       dbHistory,
       options.modelId,
       options.providerType,
-      { wrapMessageTime: options.wrapMessageTime }
+      { wrapMessageTime: options.wrapMessageTime !== false }
     )
 
     const { chain, compressedContent, systemPrompt } = ContextCallChainBuilder.build({
-      systemPrompt: options.systemPrompt,
+      systemPrompt: options.systemPrompt ?? '',
       modelMessages,
       target: target as any,
       allMessages: allMessages as any

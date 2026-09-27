@@ -45,7 +45,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults[0].toolName).toBe('web_search')
       expect(toolResults[0].output).toEqual({
         type: 'text',
-        value: wrapMessageBodyForModel('搜索结果内容', toolMsgTime)
+        value: '搜索结果内容'
       })
     })
 
@@ -65,7 +65,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults).toHaveLength(1)
       expect(toolResults[0].output).toEqual({
         type: 'text',
-        value: wrapMessageBodyForModel('[工具执行失败: web_search]', toolMsgTime)
+        value: '[工具执行失败: web_search]'
       })
     })
 
@@ -108,7 +108,7 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(toolResults).toHaveLength(2)
       expect(toolResults[0].output).toEqual({
         type: 'text',
-        value: wrapMessageBodyForModel('结果1', toolMsgTime)
+        value: '结果1'
       })
       expect(toolResults[1].output).toEqual({ type: 'text', value: '结果2' })
     })
@@ -126,10 +126,8 @@ describe('MessageAdapter.toVercelMessages', () => {
       expect(result[1]?.role).toBe('assistant')
     })
 
-    it('should wrap user and assistant messages with metadata blocks for model context', async () => {
+    it('should keep stored user and assistant text without timestamp wrappers', async () => {
       const sentAt = new Date(2026, 5, 15, 16, 45)
-      const expectedUser = wrapMessageBodyForModel('我们今天聊了什么', sentAt)
-      const expectedAssistant = wrapMessageBodyForModel('让我整理一下', sentAt)
       const dbMessages: MessageWithParts[] = [
         makeUserMsg('我们今天聊了什么', { createdAt: sentAt }),
         makeAssistantMsg([makeTextPart('让我整理一下')], { createdAt: sentAt, orderIndex: 1 })
@@ -137,11 +135,11 @@ describe('MessageAdapter.toVercelMessages', () => {
 
       const result = await MessageAdapter.toVercelMessages(dbMessages)
 
-      expect(result[0]?.content).toBe(expectedUser)
+      expect(result[0]?.content).toBe('我们今天聊了什么')
       const assistantText = (result[1]?.content as Array<{ type?: string; text?: string }>).find(
         (p) => p.type === 'text'
       )?.text
-      expect(assistantText).toBe(expectedAssistant)
+      expect(assistantText).toBe('让我整理一下')
     })
 
     it('should place tool messages immediately after their corresponding assistant message', async () => {
@@ -252,17 +250,17 @@ describe('MessageAdapter.toVercelMessages', () => {
   })
 
   describe('wrapMessageTime option', () => {
-    it('skips message-time metadata when wrapMessageTime is false', async () => {
+    it('wraps message-time metadata only when wrapMessageTime is true', async () => {
       const at = new Date(2026, 5, 15, 10, 0)
       const dbMessages: MessageWithParts[] = [makeUserMsg('你好', { createdAt: at })]
 
-      const wrapped = await MessageAdapter.toVercelMessages(dbMessages)
-      expect(wrapped[0]?.content).toBe(wrapMessageBodyForModel('你好', at))
-
-      const plain = await MessageAdapter.toVercelMessages(dbMessages, undefined, undefined, {
-        wrapMessageTime: false
-      })
+      const plain = await MessageAdapter.toVercelMessages(dbMessages)
       expect(plain[0]?.content).toBe('你好')
+
+      const wrapped = await MessageAdapter.toVercelMessages(dbMessages, undefined, undefined, {
+        wrapMessageTime: true
+      })
+      expect(wrapped[0]?.content).toBe(wrapMessageBodyForModel('你好', at))
     })
   })
 })

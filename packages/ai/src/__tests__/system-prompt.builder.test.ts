@@ -23,6 +23,7 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain(`[Host timezone]: ${formatHostTimezoneOffset()}`)
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
+    expect(prompt).not.toContain('Host metadata. Same order')
     expect(prompt).toContain('[Forbidden in user-visible text]')
     expect(prompt).toContain('<reply>')
     expect(prompt).toContain('<response>')

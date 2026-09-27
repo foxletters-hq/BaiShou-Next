@@ -1,9 +1,5 @@
 import type { ModelMessage } from 'ai'
-import {
-  buildCompressionPreviousSummaryBlock,
-  shouldWrapRoleForModel,
-  wrapMessageBodyForModel
-} from '@baishou/shared'
+import { buildCompressionPreviousSummaryBlock, wrapMessageBodyForModel } from '@baishou/shared'
 import type { MessageWithParts } from './message.adapter'
 import { TOOL_OUTPUT_MAX_CHARS } from './compression.constants'
 import { estimateTextTokens } from './call-chain-view-model.builder'
@@ -175,11 +171,8 @@ export function formatMessagesAsCompressionTranscript(
     const text = extractMessageText(msg).trim()
     if (!text) continue
     const label = COMPRESSION_ROLE_LABELS[msg.role] ?? msg.role
-    const bodyBlock =
-      wrapMessageTime && shouldWrapRoleForModel(msg.role)
-        ? wrapMessageBodyForModel(text, msg.createdAt)
-        : text
-    blocks.push(`【${label}】\n${bodyBlock}`)
+    const body = wrapMessageTime ? wrapMessageBodyForModel(text, msg.createdAt) : text
+    blocks.push(`【${label}】\n${body}`)
   }
   return blocks.join('\n\n---\n\n')
 }
@@ -192,16 +185,14 @@ export function buildCompressionUserMessageContent(
   priorSummaryText?: string | null,
   options?: { wrapMessageTime?: boolean }
 ): string | null {
-  const transcript = formatMessagesAsCompressionTranscript(
-    cloneMessagesForCompressionModel(messages),
-    options
-  ).trim()
+  const cloned = cloneMessagesForCompressionModel(messages)
+  const transcript = formatMessagesAsCompressionTranscript(cloned, options).trim()
   if (!transcript) return null
 
   const previousSummaryBlock = buildCompressionPreviousSummaryBlock(
     priorSummaryText?.trim() || undefined
   )
-  return previousSummaryBlock ? `${previousSummaryBlock}\n\n${transcript}` : transcript
+  return [previousSummaryBlock, transcript].filter(Boolean).join('\n\n')
 }
 
 export function hasUserContentInCompressionBatch(messages: MessageWithParts[]): boolean {

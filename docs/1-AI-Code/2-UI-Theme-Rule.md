@@ -61,10 +61,14 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 | 主标题 / 正文强调 | `--text-primary`                                                                 |
 | 说明 / 次要       | `--text-secondary`                                                               |
 | 占位 / 禁用       | `--text-tertiary`                                                                |
+| 文本选区底        | `--text-selection-bg`（品牌蓝 22% 透明；深色 28%）                               |
+| 文本选区字        | `--text-selection-fg`（=`--text-primary`）                                       |
 | 主色实心上的字    | `--text-on-primary`                                                              |
 | 品牌主色          | `--color-primary`（`#5BA8F5`）/ `--color-primary-dark` / `--color-primary-light` |
 
 语义状态色：`--color-success` / `--color-warning` / `--color-error`；勿用 `#2563EB` 等深蓝替代原品牌蓝。
+
+**文本选区：** 输入框与正文 `::selection` 走 `--text-selection-*`，禁止沿用系统选区蓝或反白字。编辑器选区也用同一套 token。
 
 **色系约定：** 品牌蓝统一 `#5BA8F5`。选中项文字 / 图标可用 `--color-primary`；侧栏选中底仍用灰底 `--bg-surface-high`，避免大面积洗蓝。  
 **主 CTA：** 描边（`--bg-surface` + `--border-control` + `--text-primary`），悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮同样描边，不要再做透明底。`Button` 默认 `outlined` + `size="small"`，宽度跟内容走，禁止在纵向 flex 里拉成一整行。
