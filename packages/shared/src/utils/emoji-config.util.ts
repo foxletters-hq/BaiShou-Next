@@ -97,6 +97,31 @@ export function removeEmojiGroup(config: EmojiToolConfig, groupId: string): Emoj
   }
 }
 
+function emojiRelativeKey(relativePath: string): string {
+  const normalized = relativePath.trim().replace(/\\/g, '/').replace(/^local:\/\/+\//i, '')
+  const idx = normalized.toLowerCase().lastIndexOf('emojis/')
+  if (idx >= 0) return normalized.slice(idx)
+  const name = normalized.split('/').pop()
+  return name ? `emojis/${name}` : normalized
+}
+
+/** 按相对路径从所有组里拿掉表情包条目（删文件后同步配置） */
+export function removeEmojisByRelativePaths(
+  config: EmojiToolConfig | null | undefined,
+  relativePaths: readonly string[]
+): NormalizedEmojiToolConfig {
+  const keys = new Set(relativePaths.map(emojiRelativeKey).filter(Boolean))
+  const normalized = normalizeEmojiToolConfig(config)
+  if (keys.size === 0) return normalized
+  return {
+    ...normalized,
+    groups: normalized.groups.map((group) => ({
+      ...group,
+      emojis: group.emojis.filter((emoji) => !keys.has(emojiRelativeKey(emoji.relativePath)))
+    }))
+  }
+}
+
 export function emojiGroupMatchesQuery(group: EmojiGroup, query: string): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true

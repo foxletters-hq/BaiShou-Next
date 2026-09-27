@@ -16,13 +16,7 @@ const empty = {
   graphDisambiguate: 0
 }
 
-const MEMORY_PHASE_ORDER = [
-  'diary',
-  'memory',
-  'graph_extract',
-  'graph_node',
-  'graph_disambiguate'
-] as const
+const MEMORY_PHASE_ORDER = ['diary', 'memory', 'graph_extract', 'graph_node'] as const
 
 describe('organize-pipeline', () => {
   it('should list extract then graph_node when listing memory organize phase order', () => {
@@ -33,7 +27,7 @@ describe('organize-pipeline', () => {
     expect(MEMORY_ORGANIZE_PHASE_IDS).toEqual(organizePhaseOrder())
   })
 
-  it('should list leftover phases in shared order when some counts are zero', () => {
+  it('should ignore graphDisambiguate leftovers when listing runnable phases', () => {
     expect(
       listRunnableOrganizePhases({
         ...empty,
@@ -42,7 +36,7 @@ describe('organize-pipeline', () => {
         graphExtract: 4,
         graphDisambiguate: 1
       })
-    ).toEqual(['memory', 'graph_extract', 'graph_disambiguate'])
+    ).toEqual(['memory', 'graph_extract'])
   })
 
   it('should list memory extract then graph_node when every memory phase has leftover work', () => {
@@ -56,7 +50,7 @@ describe('organize-pipeline', () => {
         graphExtract: 1,
         graphDisambiguate: 1
       })
-    ).toEqual(['diary', 'memory', 'graph_extract', 'graph_node', 'graph_disambiguate'])
+    ).toEqual(['diary', 'memory', 'graph_extract', 'graph_node'])
   })
 
   it('should ignore notebook graph nodes when listing memory organize phases', () => {
@@ -70,6 +64,10 @@ describe('organize-pipeline', () => {
 
   it('should return no phases when every count is zero', () => {
     expect(listRunnableOrganizePhases(empty)).toEqual([])
+  })
+
+  it('should return no phases when only graphDisambiguate leftovers remain', () => {
+    expect(listRunnableOrganizePhases({ ...empty, graphDisambiguate: 5 })).toEqual([])
   })
 
   it('should run graph_extract when only extract remains', async () => {
@@ -93,7 +91,7 @@ describe('organize-pipeline', () => {
       },
       runPhase: async () => undefined
     })
-    expect(result.ran).toEqual(['diary', 'memory', 'graph_extract', 'graph_node', 'graph_disambiguate'])
+    expect(result.ran).toEqual(['diary', 'memory', 'graph_extract', 'graph_node'])
   })
 
   it('should abort at graph_extract when stopping after two phases', async () => {
@@ -145,6 +143,6 @@ describe('organize-pipeline', () => {
       },
       runPhase: async () => undefined
     })
-    expect(resumed.ran).toEqual(['graph_extract', 'graph_node', 'graph_disambiguate'])
+    expect(resumed.ran).toEqual(['graph_extract', 'graph_node'])
   })
 })

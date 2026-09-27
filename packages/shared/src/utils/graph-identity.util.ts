@@ -173,6 +173,17 @@ export function graphNodeCardText(name: string, summary?: string | null): string
   return `${name}\n${summary || ''}`.trim()
 }
 
+/** 名片第一行是名称，换行后是摘要。没有换行表示摘要为空。 */
+export function splitGraphNodeCardText(text: string): { name: string; summary: string } {
+  const raw = text ?? ''
+  const newline = raw.indexOf('\n')
+  if (newline < 0) return { name: raw.trim(), summary: '' }
+  return {
+    name: raw.slice(0, newline).trim(),
+    summary: raw.slice(newline + 1).trim()
+  }
+}
+
 export type GraphNodeEmbedCard = {
   name?: string | null
   summary?: string | null

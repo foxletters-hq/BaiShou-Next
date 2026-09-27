@@ -5,6 +5,7 @@ import {
   graphNodeIdForEntity,
   legacyEntryNodeIdForFilePath,
   graphNodeCardText,
+  splitGraphNodeCardText,
   shouldRefreshExistingGraphNodeEmbed,
   shouldReuseGraphNodeEmbed,
   normalizeGraphName,
@@ -30,6 +31,29 @@ describe('graphNodeCardText', () => {
   it('should drop the trailing newline when summary is empty', () => {
     expect(graphNodeCardText('小张', '')).toBe('小张')
     expect(graphNodeCardText('小张')).toBe('小张')
+  })
+})
+
+describe('splitGraphNodeCardText', () => {
+  it('should split the stored card into name and summary', () => {
+    expect(splitGraphNodeCardText('新闻\n与助手聊的新闻。')).toEqual({
+      name: '新闻',
+      summary: '与助手聊的新闻。'
+    })
+  })
+
+  it('should keep a multiline summary after the first line', () => {
+    expect(splitGraphNodeCardText('新闻\n第一行\n第二行')).toEqual({
+      name: '新闻',
+      summary: '第一行\n第二行'
+    })
+  })
+
+  it('should treat a date-only entry card as a name with an empty summary', () => {
+    expect(splitGraphNodeCardText('2025-11-20')).toEqual({
+      name: '2025-11-20',
+      summary: ''
+    })
   })
 })
 
@@ -172,8 +196,8 @@ describe('graphDiaryInstant', () => {
 })
 
 describe('GRAPH_GLOBAL_MAX_NODES', () => {
-  it('is 200', () => {
-    expect(GRAPH_GLOBAL_MAX_NODES).toBe(200)
+  it('is 500', () => {
+    expect(GRAPH_GLOBAL_MAX_NODES).toBe(500)
   })
 })
 

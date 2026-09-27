@@ -6,10 +6,16 @@ import {
   GRAPH_FORCE_DEFAULTS,
   GRAPH_FORCE_ISOLATED_CENTER_SCALE,
   GRAPH_FORCE_ISOLATED_CHARGE_SCALE,
+  GRAPH_FORCE_ALPHA_DECAY_DEFAULT,
+  GRAPH_FORCE_ALPHA_DECAY_HUGE,
+  GRAPH_FORCE_ALPHA_DECAY_LARGE,
+  GRAPH_FORCE_COLLIDE_NODE_MAX,
+  GRAPH_FORCE_ISOLATED_PAIRWISE_MAX,
   GRAPH_FORCE_ISOLATED_SEED,
   GRAPH_FORCE_MIXED_CHARGE_SCALE,
   clampGraphForceSettings,
   countIsolatedGraphForceNodes,
+  graphForceAlphaDecay,
   graphForceCenterNeedsUpdate,
   graphForceChargeDistanceMax,
   graphForcePairChargeScale,
@@ -17,7 +23,9 @@ import {
   graphForceIsolatedSeedOffset,
   graphForceIsolatedSeedSpread,
   graphForceNodeCenterStrength,
-  graphForceNodeChargeStrength
+  graphForceNodeChargeStrength,
+  graphForceShouldCollide,
+  graphForceShouldUseIsolatedChargeGrid
 } from '../graph-force-settings.util'
 
 describe('graphForceNodeChargeStrength', () => {
@@ -117,6 +125,28 @@ describe('countIsolatedGraphForceNodes', () => {
         ])
       )
     ).toBe(2)
+  })
+})
+
+describe('graphForceShouldUseIsolatedChargeGrid', () => {
+  it('should keep pairwise charge at the pairwise max and switch to a grid above it', () => {
+    expect(graphForceShouldUseIsolatedChargeGrid(GRAPH_FORCE_ISOLATED_PAIRWISE_MAX)).toBe(false)
+    expect(graphForceShouldUseIsolatedChargeGrid(GRAPH_FORCE_ISOLATED_PAIRWISE_MAX + 1)).toBe(true)
+  })
+})
+
+describe('graphForceShouldCollide', () => {
+  it('should drop collide after the node budget so large graphs skip overlap resolution', () => {
+    expect(graphForceShouldCollide(GRAPH_FORCE_COLLIDE_NODE_MAX)).toBe(true)
+    expect(graphForceShouldCollide(GRAPH_FORCE_COLLIDE_NODE_MAX + 1)).toBe(false)
+  })
+})
+
+describe('graphForceAlphaDecay', () => {
+  it('should keep the default decay on small graphs and cool large graphs faster', () => {
+    expect(graphForceAlphaDecay(10)).toBe(GRAPH_FORCE_ALPHA_DECAY_DEFAULT)
+    expect(graphForceAlphaDecay(401)).toBe(GRAPH_FORCE_ALPHA_DECAY_LARGE)
+    expect(graphForceAlphaDecay(1201)).toBe(GRAPH_FORCE_ALPHA_DECAY_HUGE)
   })
 })
 
