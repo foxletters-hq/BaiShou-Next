@@ -136,6 +136,7 @@ export interface BuildFileExplorerMenuItemsParams {
   onRename: (node: FileTreeNode) => void
   onDelete: (node: FileTreeNode) => void
   onCopyPath: (node: FileTreeNode | null) => void
+  onCopyRelativePath: (node: FileTreeNode | null) => void
   onRevealInExplorer: (node: FileTreeNode | null) => void
   onRefresh: () => void
 }
@@ -151,6 +152,7 @@ export function buildFileExplorerMenuItems({
   onRename,
   onDelete,
   onCopyPath,
+  onCopyRelativePath,
   onRevealInExplorer,
   onRefresh
 }: BuildFileExplorerMenuItemsParams): ContextMenuItem[] {
@@ -187,11 +189,23 @@ export function buildFileExplorerMenuItems({
   const items: ContextMenuItem[] = []
 
   if (node.isDirectory) {
-    items.push({
-      label: t('workbench.expand_folder', '展开文件夹'),
-      icon: icon(<FolderOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: () => onExpandFolder(node.relativePath)
-    })
+    items.push(
+      {
+        label: t('workbench.new_file', '新建文件'),
+        icon: icon(<FilePlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+        onClick: () => onNewFile(parentDir)
+      },
+      {
+        label: t('workbench.new_folder', '新建文件夹'),
+        icon: icon(<FolderPlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+        onClick: () => onNewFolder(parentDir)
+      },
+      {
+        label: t('workbench.expand_folder', '展开文件夹'),
+        icon: icon(<FolderOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+        onClick: () => onExpandFolder(node.relativePath)
+      }
+    )
   } else {
     items.push({
       label: t('workbench.open_file', '打开'),
@@ -200,23 +214,33 @@ export function buildFileExplorerMenuItems({
     })
   }
 
-  items.push({
-    label: t('workbench.add_to_chat', '加入对话'),
-    icon: icon(<MessageSquarePlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-    onClick: () => onAddToChat(node)
-  })
-
-  items.push({ label: '', onClick: () => {}, divider: true })
   items.push(
     {
-      label: t('workbench.new_file', '新建文件'),
-      icon: icon(<FilePlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: () => onNewFile(parentDir)
+      label: t('workbench.reveal_in_explorer', '在资源管理器中显示'),
+      icon: icon(<ExternalLink size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+      onClick: () => onRevealInExplorer(node)
     },
     {
-      label: t('workbench.new_folder', '新建文件夹'),
-      icon: icon(<FolderPlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: () => onNewFolder(parentDir)
+      label: t('common.refresh', '刷新'),
+      icon: icon(<RefreshCw size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+      onClick: onRefresh
+    },
+    { label: '', onClick: () => {}, divider: true },
+    {
+      label: t('workbench.add_to_chat', '加入对话'),
+      icon: icon(<MessageSquarePlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+      onClick: () => onAddToChat(node)
+    },
+    { label: '', onClick: () => {}, divider: true },
+    {
+      label: t('workbench.copy_path', '复制路径'),
+      icon: icon(<Copy size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+      onClick: () => onCopyPath(node)
+    },
+    {
+      label: t('workbench.copy_relative_path', '复制相对路径'),
+      icon: icon(<Copy size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+      onClick: () => onCopyRelativePath(node)
     },
     { label: '', onClick: () => {}, divider: true },
     {
@@ -228,23 +252,6 @@ export function buildFileExplorerMenuItems({
       label: t('workbench.delete', '删除'),
       icon: icon(<Trash2 size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
       onClick: () => onDelete(node)
-    },
-    { label: '', onClick: () => {}, divider: true },
-    {
-      label: t('workbench.copy_path', '复制路径'),
-      icon: icon(<Copy size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: () => onCopyPath(node)
-    },
-    {
-      label: t('workbench.reveal_in_explorer', '在资源管理器中显示'),
-      icon: icon(<ExternalLink size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: () => onRevealInExplorer(node)
-    },
-    { label: '', onClick: () => {}, divider: true },
-    {
-      label: t('common.refresh', '刷新'),
-      icon: icon(<RefreshCw size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
-      onClick: onRefresh
     }
   )
 

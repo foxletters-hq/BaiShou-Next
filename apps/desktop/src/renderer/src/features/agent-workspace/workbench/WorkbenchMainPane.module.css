@@ -1,6 +1,6 @@
 .pane {
   flex: 1;
-  min-width: 0;
+  min-width: 360px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -235,6 +235,8 @@
 }
 
 .content {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -303,7 +305,7 @@
 .diffHeader {
   padding: 10px 16px;
   font-size: var(--ui-fs-sm);
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family);
   border-bottom: 1px solid var(--border-control);
   color: var(--text-secondary);
   background: var(--bg-app);
@@ -340,6 +342,8 @@
 }
 
 .statusBar {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 10px;

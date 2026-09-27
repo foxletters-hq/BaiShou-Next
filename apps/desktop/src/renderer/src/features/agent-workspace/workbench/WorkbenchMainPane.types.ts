@@ -30,6 +30,7 @@ export interface WorkbenchMainPaneProps {
   agentPanelVisible: boolean
   onToggleSidePane: () => void
   onToggleAgentPanel: () => void
+  onRevealFileInSidebar?: (relativePath: string) => void
   onTabContentChange?: (tabId: string, content: string, relativePath: string) => void
   gitStatusBar?: WorkbenchGitStatusBarProps
   onAddFileContext?: (ref: PromptFileRef) => void

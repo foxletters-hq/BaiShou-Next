@@ -1,8 +1,13 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Unlink } from 'lucide-react'
+import { Unlink } from 'lucide-react'
 import { Button, Checkbox, Modal } from '@baishou/ui'
-import { canToggleMountedNotebook, type NotebookMountScope } from '@baishou/shared'
+import {
+  canToggleMountedNotebook,
+  getNotebookCardAppearance,
+  type NotebookMountCandidate,
+  type NotebookMountScope
+} from '@baishou/shared'
 import { useNotebookMount } from '../../knowledge/useNotebookMount'
 import styles from './WorkbenchNotebookMountDialog.module.css'
 
@@ -12,6 +17,27 @@ export interface WorkbenchNotebookMountDialogProps {
   assistantId?: string | null
   scope?: NotebookMountScope
   onClose: () => void
+}
+
+function NotebookMountMark({ notebook }: { notebook: NotebookMountCandidate }) {
+  const [imageBroken, setImageBroken] = useState(false)
+  useEffect(() => {
+    setImageBroken(false)
+  }, [notebook.coverImageUrl])
+  const appearance = getNotebookCardAppearance(notebook.id, {
+    coverTone: notebook.coverTone,
+    coverIcon: notebook.coverIcon
+  })
+  const imageUrl = !imageBroken ? notebook.coverImageUrl : ''
+  return (
+    <span className={styles.cover} aria-hidden>
+      {imageUrl ? (
+        <img src={imageUrl} alt="" onError={() => setImageBroken(true)} />
+      ) : (
+        appearance.icon
+      )}
+    </span>
+  )
 }
 
 export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialogProps> = ({
@@ -38,14 +64,18 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
     >
       <div className={styles.body}>
         <div className={styles.statusRow}>
-          <BookOpen size={16} strokeWidth={1.75} aria-hidden className={styles.icon} />
           <div className={styles.statusText}>
             <span className={styles.statusLabel}>
               {t('workbench.mounted_notebooks', '当前挂载')}
             </span>
             {mount.selected.length > 0 ? (
-              <span className={styles.mounted}>
-                {mount.selected.map((row) => row.name).join('、')}
+              <span className={styles.mountedList}>
+                {mount.selected.map((row) => (
+                  <span key={row.id} className={styles.mountedChip}>
+                    <NotebookMountMark notebook={row} />
+                    <span className={styles.mountedName}>{row.name}</span>
+                  </span>
+                ))}
               </span>
             ) : (
               <span className={styles.unmounted}>
@@ -85,10 +115,6 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
                 candidate: nb,
                 candidates: mount.candidates
               })
-              const dimLabel =
-                nb.dimension != null
-                  ? t('workbench.notebook_dimension', '{{count}} 维', { count: nb.dimension })
-                  : t('workbench.notebook_no_embed', '尚未嵌入')
               return (
                 <li key={nb.id}>
                   <label
@@ -99,12 +125,18 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
                       disabled={mount.busy || (!selected && !gate.allowed)}
                       onChange={() => void mount.toggle(nb.id)}
                     />
+                    <NotebookMountMark notebook={nb} />
                     <span className={styles.notebookCopy}>
                       <span className={styles.notebookName}>{nb.name}</span>
                       <span className={styles.notebookMeta}>
-                        {t('workbench.notebook_sources', '{{count}} 份资料', { count: nb.sources })}
-                        {' · '}
-                        {dimLabel}
+                        {t(
+                          'knowledge.notebook_mount_counts',
+                          '向量 {{vectors}} · 图谱 {{graphs}}',
+                          {
+                            vectors: nb.chunks,
+                            graphs: nb.graphNodes ?? 0
+                          }
+                        )}
                       </span>
                       {!selected && gate.reason ? (
                         <span className={styles.notebookWarn}>{gate.reason}</span>

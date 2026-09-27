@@ -205,6 +205,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
       onRename: (node) => void mutations.handleRename(node),
       onDelete: (node) => void mutations.handleDelete(node),
       onCopyPath: mutations.handleCopyPath,
+      onCopyRelativePath: mutations.handleCopyRelativePath,
       onRevealInExplorer: mutations.handleRevealInExplorer,
       onRefresh: () => void tree.softRefreshExpanded()
     })

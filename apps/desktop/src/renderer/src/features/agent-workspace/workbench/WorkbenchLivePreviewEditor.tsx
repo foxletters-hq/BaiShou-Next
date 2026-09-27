@@ -111,7 +111,10 @@ export const WorkbenchLivePreviewEditor = forwardRef<
     const platform: DiaryCmPlatform = {
       resolveAttachmentUrl: resolveUrl,
       interactionMode: 'mouse',
-      documentProperties: relativePath ? isSkillMarkdownPath(relativePath) : false
+      documentProperties: relativePath ? isSkillMarkdownPath(relativePath) : false,
+      onOpenExternalLink: (url) => {
+        void window.api.shell.openExternal(url)
+      }
     }
 
     const view = createDiaryCodeMirror(container, {

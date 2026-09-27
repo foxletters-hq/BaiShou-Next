@@ -10,7 +10,7 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import type { DropResult } from '@hello-pangea/dnd'
 import type { PromptFileRef } from '@baishou/shared'
-import { getFileTypeIcon, type WorkbenchSelectionAffordanceState } from '@baishou/ui'
+import { getFileTypeIcon, useToast, type WorkbenchSelectionAffordanceState } from '@baishou/ui'
 import { WorkbenchEmptyState } from './WorkbenchEmptyState'
 import { useWorkbenchTabs } from './useWorkbenchTabs'
 import {
@@ -25,13 +25,21 @@ import {
 } from './workbench-file-context-commands'
 import { commentPopoverAnchorFromSelectionCoords } from './workbench-comment-popover.util'
 import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
-import { shouldApplyWorkspaceFsChange } from './workbench-path.util'
+import { shouldApplyWorkspaceFsChange, toAbsoluteWorkspacePath } from './workbench-path.util'
 import { isWorkbenchTabPathDeleted } from './workbench-tab-close.util'
 import { shouldEnableWorkbenchTabReorder } from './workbench-tab-reorder.util'
 import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
 import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
 import { WorkbenchEditorTabBar } from './WorkbenchEditorTabBar'
 import { WorkbenchEditorContent } from './WorkbenchEditorContent'
+import {
+  EMPTY_EDITOR_NAV,
+  recordEditorFileVisit,
+  stepEditorFileHistory,
+  type EditorNavHistory
+} from './workbench-editor-nav.util'
+import { dispatchWorkbenchRevealPath } from './workbench-explorer-selection.util'
+import { setWorkbenchEditorMouseNavHandler } from './workbench-editor-mouse-nav'
 import { WorkbenchSelectionChrome, type WorkbenchCommentDraft } from './WorkbenchSelectionChrome'
 import {
   commentPopoverPosition,
@@ -56,6 +64,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       agentPanelVisible,
       onToggleSidePane,
       onToggleAgentPanel,
+      onRevealFileInSidebar,
       onTabContentChange,
       gitStatusBar,
       onAddFileContext,
@@ -64,6 +73,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
     ref
   ) {
     const { t } = useTranslation()
+    const toast = useToast()
     const idleCaption = useWorkbenchIdleCaption()
     const tabsState = useWorkbenchTabs(folderRoot)
     const {
@@ -72,6 +82,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       activeTabId,
       setActiveTabId,
       closeTab,
+      closeTabs,
       closeTabsForDeletedPath,
       reorderTabs,
       updateTabContent,
@@ -256,6 +267,59 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       [reorderTabs]
     )
 
+    const copyTabPath = useCallback(
+      async (relativePath: string, text: string) => {
+        try {
+          await navigator.clipboard.writeText(text)
+          toast.showSuccess(t('workbench.path_copied', '路径已复制'))
+        } catch {
+          toast.showError(t('workbench.copy_path_failed', '复制路径失败'))
+        }
+      },
+      [t, toast]
+    )
+
+    const handleCopyTabPath = useCallback(
+      (relativePath: string) => {
+        if (!folderRoot) return
+        void copyTabPath(relativePath, toAbsoluteWorkspacePath(folderRoot, relativePath))
+      },
+      [copyTabPath, folderRoot]
+    )
+
+    const handleCopyTabRelativePath = useCallback(
+      (relativePath: string) => {
+        void copyTabPath(relativePath, relativePath)
+      },
+      [copyTabPath]
+    )
+
+    const handleRevealTabInExplorer = useCallback(
+      (relativePath: string) => {
+        if (!folderRoot) return
+        void window.api.shell
+          .showItemInFolder(toAbsoluteWorkspacePath(folderRoot, relativePath))
+          .catch(() => {
+            toast.showError(t('workbench.reveal_failed', '无法在资源管理器中打开'))
+          })
+      },
+      [folderRoot, t, toast]
+    )
+
+    const handleRevealTabInSidebar = useCallback(
+      (relativePath: string) => {
+        onRevealFileInSidebar?.(relativePath)
+      },
+      [onRevealFileInSidebar]
+    )
+
+    const handleAddTabToChat = useCallback(
+      (relativePath: string) => {
+        onAddFileContext?.({ relativePath, origin: 'explorer-drop' })
+      },
+      [onAddFileContext]
+    )
+
     const breadcrumbSegments = useMemo(() => {
       if (!activeTab?.relativePath) return null
       return splitRelativePath(activeTab.relativePath)
@@ -286,6 +350,49 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       dismissedSelectionKeyRef.current = null
       setSelectionAffordance(null)
     }, [activeTabId])
+
+    const editorNavRef = useRef<EditorNavHistory>(EMPTY_EDITOR_NAV)
+    const skipEditorNavRecordRef = useRef(false)
+    const activeFilePath = activeTab?.relativePath ?? null
+
+    useEffect(() => {
+      if (skipEditorNavRecordRef.current) {
+        skipEditorNavRecordRef.current = false
+        return
+      }
+      if (!activeFilePath) return
+      editorNavRef.current = recordEditorFileVisit(editorNavRef.current, activeFilePath)
+    }, [activeFilePath])
+
+    const openEditorFile = tabsState.openFile
+    const showEditorFile = useCallback(
+      (path: string) => {
+        const existing = tabs.find(
+          (tab) =>
+            tab.relativePath === path && (tab.kind === 'markdown' || tab.kind === 'text')
+        )
+        if (existing) {
+          setActiveTabId(existing.id)
+          return
+        }
+        void openEditorFile(path)
+      },
+      [openEditorFile, setActiveTabId, tabs]
+    )
+
+    useEffect(() => {
+      setWorkbenchEditorMouseNavHandler((direction) => {
+        if (!activeFilePath) return false
+        const stepped = stepEditorFileHistory(editorNavRef.current, direction)
+        if (!stepped.target) return true
+        editorNavRef.current = stepped.history
+        skipEditorNavRecordRef.current = true
+        showEditorFile(stepped.target)
+        dispatchWorkbenchRevealPath(stepped.target)
+        return true
+      })
+      return () => setWorkbenchEditorMouseNavHandler(null)
+    }, [activeFilePath, showEditorFile])
 
     useEffect(() => {
       if (!selectionAffordance) return
@@ -358,6 +465,12 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
           onToggleAgentPanel={onToggleAgentPanel}
           onSelectTab={setActiveTabId}
           onCloseTab={closeTab}
+          onCloseTabs={closeTabs}
+          onCopyPath={handleCopyTabPath}
+          onCopyRelativePath={handleCopyTabRelativePath}
+          onAddToChat={handleAddTabToChat}
+          onRevealInSidebar={handleRevealTabInSidebar}
+          onRevealInExplorer={handleRevealTabInExplorer}
           onTabMouseDown={handleTabMouseDown}
           onTabDragEnd={handleTabDragEnd}
         />
