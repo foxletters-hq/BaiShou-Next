@@ -36,6 +36,7 @@ export function useInputBarSend(params: {
   composerBlocked: boolean
   onComposerBlocked?: () => void
   onSend: InputBarProps['onSend']
+  onEmptySubmit?: () => void
   searchMode: boolean
   clearDraft: () => Promise<void>
   setText: (value: string) => void
@@ -68,6 +69,7 @@ export function useInputBarSend(params: {
     composerBlocked,
     onComposerBlocked,
     onSend,
+    onEmptySubmit,
     searchMode,
     clearDraft,
     setText,
@@ -115,7 +117,11 @@ export function useInputBarSend(params: {
       const hasPayload = Boolean(
         pendingText || attachments.length > 0 || pendingFileRefs.length > 0
       )
-      if (!hasPayload || isSending) return
+      if (!hasPayload || !pendingText.trim()) {
+        onEmptySubmit?.()
+        return
+      }
+      if (isSending) return
       if (isLoading && !allowSendWhileLoading) return
       if (composerBlocked) {
         onComposerBlocked?.()
@@ -187,6 +193,7 @@ export function useInputBarSend(params: {
       isLoading,
       isSending,
       onComposerBlocked,
+      onEmptySubmit,
       onSend,
       searchMode,
       sendTextCache,

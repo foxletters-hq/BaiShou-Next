@@ -1,34 +1,72 @@
-import React from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatKnowledgeCitationLocation, type KnowledgeCitationView } from '@baishou/shared'
+import {
+  formatKnowledgeCitationHeading,
+  knowledgeCitationAnchorKey,
+  parseKnowledgeCitationHref,
+  type KnowledgeCitationView
+} from '@baishou/shared'
+import { Button } from '../Button/Button'
+import { Modal } from '../Modal/Modal'
 import styles from './KnowledgeCitationBlock.module.css'
 
-export function KnowledgeCitationBlock({ citations }: { citations: KnowledgeCitationView[] }) {
+type KnowledgeCitationOpener = {
+  openFromHref: (href: string) => boolean
+}
+
+const KnowledgeCitationContext = createContext<KnowledgeCitationOpener>({
+  openFromHref: () => false
+})
+
+export function useKnowledgeCitationOpener(): KnowledgeCitationOpener {
+  return useContext(KnowledgeCitationContext)
+}
+
+export function KnowledgeCitationBlock({
+  citations,
+  anchorKey = 'turn',
+  children
+}: {
+  citations: KnowledgeCitationView[]
+  anchorKey?: string
+  children: React.ReactNode
+}) {
   const { t } = useTranslation()
-  if (citations.length === 0) return null
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const expectedKey = knowledgeCitationAnchorKey(anchorKey)
+  const openFromHref = useCallback(
+    (href: string) => {
+      const parsed = parseKnowledgeCitationHref(href)
+      if (!parsed || parsed.anchorKey !== expectedKey) return false
+      if (parsed.index < 1 || parsed.index > citations.length) return false
+      setOpenIndex(parsed.index)
+      return true
+    },
+    [citations.length, expectedKey]
+  )
+  const value = useMemo(() => ({ openFromHref }), [openFromHref])
+  const citation = openIndex != null ? (citations[openIndex - 1] ?? null) : null
+
+  if (citations.length === 0) return <>{children}</>
 
   return (
-    <div className={styles.wrap}>
-      <div className={styles.list}>
-        <h3 className={styles.title}>{t('knowledge.citations', '引用')}</h3>
-        {citations.map((citation, index) => {
-          const location = formatKnowledgeCitationLocation(citation)
-          const notebook = citation.notebookName.trim()
-          return (
-            <article
-              key={`${citation.sourceId || citation.title}-${index}`}
-              className={styles.item}
-            >
-              <div className={styles.itemTitle}>
-                [{index + 1}] {notebook ? `${notebook} · ` : ''}
-                {citation.title}
-                {location ? `（${location}）` : ''}
-              </div>
-              {citation.excerpt ? <div className={styles.excerpt}>{citation.excerpt}</div> : null}
-            </article>
-          )
-        })}
-      </div>
-    </div>
+    <KnowledgeCitationContext.Provider value={value}>
+      {children}
+      <Modal
+        isOpen={citation != null}
+        onClose={() => setOpenIndex(null)}
+        title={citation && openIndex != null ? formatKnowledgeCitationHeading(citation, openIndex) : ''}
+        closeOnOverlayClick
+        animation="fade"
+        className={styles.dialog}
+      >
+        {citation?.excerpt ? <div className={styles.excerpt}>{citation.excerpt}</div> : null}
+        <div className={styles.actions}>
+          <Button type="button" onClick={() => setOpenIndex(null)}>
+            {t('common.close', '关闭')}
+          </Button>
+        </div>
+      </Modal>
+    </KnowledgeCitationContext.Provider>
   )
 }
