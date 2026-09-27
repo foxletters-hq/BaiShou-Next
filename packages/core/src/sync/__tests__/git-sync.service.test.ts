@@ -613,7 +613,7 @@ describe('GitSyncService', () => {
 
       const impl = new GitSyncServiceImpl(mockPathService)
       const mockGit = {
-        reset: vi.fn().mockResolvedValue(undefined)
+        raw: vi.fn().mockResolvedValue('')
       } as any
 
       vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
@@ -622,7 +622,7 @@ describe('GitSyncService', () => {
 
       await impl.rollbackAll('abc1234')
 
-      expect(mockGit.reset).toHaveBeenCalledWith(['--mixed', 'abc1234'])
+      expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--mixed', 'abc1234'])
       expect((impl as any)._commitAll).not.toHaveBeenCalled()
     })
   })

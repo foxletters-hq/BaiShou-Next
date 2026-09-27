@@ -213,4 +213,96 @@ describe('GraphRagService extra recall modes', () => {
     expect(embedQuery).toHaveBeenCalledTimes(1)
     expect(embedQuery).toHaveBeenCalledWith('小明')
   })
+
+  it('keeps incoming current edges in neighbors', async () => {
+    const repo = {
+      searchNodesByName: vi.fn(async () => [node({ id: 'lib', name: '图书馆', nodeType: 'place' })]),
+      traverse: vi.fn(async () => ({
+        nodes: [
+          node({ id: 'lib', name: '图书馆', nodeType: 'place' }),
+          node({ id: 'atlas', name: '地图册', nodeType: 'work' })
+        ],
+        edges: [
+          {
+            id: 'e-in',
+            fromId: 'atlas',
+            toId: 'lib',
+            edgeType: 'located_at',
+            isCurrent: true
+          }
+        ]
+      }))
+    }
+    const rag = new GraphRagService(repo as never)
+    const result = await rag.recallRelations({
+      vaultId: 'v1',
+      entity: '图书馆',
+      mode: 'neighbors'
+    })
+    expect(result.subgraph).toEqual([
+      expect.objectContaining({ id: 'e-in', fromId: 'atlas', toId: 'lib' })
+    ])
+  })
+
+  it('prefers the exact name as the first anchor when fuzzy hits come first', async () => {
+    const repo = {
+      searchNodesByName: vi.fn(async () => [
+        node({ id: 'fuzzy', name: '图书管理员' }),
+        node({ id: 'exact', name: '图书馆', nodeType: 'place' })
+      ]),
+      traverse: vi.fn(async () => ({
+        nodes: [node({ id: 'exact', name: '图书馆', nodeType: 'place' })],
+        edges: []
+      }))
+    }
+    const rag = new GraphRagService(repo as never)
+    await rag.recallRelations({
+      vaultId: 'v1',
+      entity: '图书馆',
+      mode: 'neighbors'
+    })
+    expect(repo.traverse).toHaveBeenCalledWith(
+      'v1',
+      'exact',
+      1,
+      expect.objectContaining({ approvedOnly: true })
+    )
+  })
+
+  it('splits a space-separated pair when both names hit', async () => {
+    const repo = {
+      searchNodesByName: vi.fn(async (_vault: string, query: string) => {
+        if (query === '地图册') return [node({ id: 'atlas', name: '地图册', nodeType: 'work' })]
+        if (query === '图书馆') return [node({ id: 'lib', name: '图书馆', nodeType: 'place' })]
+        return []
+      }),
+      findShortestPath: vi.fn(async () => ({
+        nodeIds: ['atlas', 'lib'],
+        edges: [
+          { id: 'e1', fromId: 'atlas', toId: 'lib', edgeType: 'located_at', isCurrent: true }
+        ],
+        edgeDirections: ['forward']
+      })),
+      findPathsFrom: vi.fn(),
+      getNodeById: vi.fn(async (id: string) =>
+        id === 'lib'
+          ? node({ id: 'lib', name: '图书馆', nodeType: 'place' })
+          : node({ id: 'atlas', name: '地图册', nodeType: 'work' })
+      )
+    }
+    const rag = new GraphRagService(repo as never)
+    const result = await rag.recallRelations({
+      vaultId: 'v1',
+      entity: '地图册 图书馆',
+      mode: 'network'
+    })
+    expect(result.anchors.map((a) => a.name)).toEqual(['地图册', '图书馆'])
+    expect(repo.findShortestPath).toHaveBeenCalledWith(
+      'v1',
+      'atlas',
+      'lib',
+      expect.objectContaining({ maxHops: 3, approvedOnly: true })
+    )
+    expect(result.paths?.[0]?.nodeIds).toEqual(['atlas', 'lib'])
+  })
 })

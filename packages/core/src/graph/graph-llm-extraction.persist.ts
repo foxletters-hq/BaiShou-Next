@@ -340,9 +340,16 @@ export async function persistGraphExtractDraft(
     newEdgeIds.add(record.id)
     await ctx.graphManager.writeRecord(record, { collection: 'edges' })
   }
-  await ctx.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {
-    exceptIds: newEdgeIds,
-    shardMonth
-  })
+  if (shouldSupersedeDiaryAiEdges(newEdgeIds)) {
+    await ctx.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {
+      exceptIds: newEdgeIds,
+      shardMonth
+    })
+  }
   return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings }
+}
+
+/** 抽空或端点全解析失败时，不得把该日旧 AI 边标成失效。 */
+export function shouldSupersedeDiaryAiEdges(keptEdgeIds: ReadonlySet<string>): boolean {
+  return keptEdgeIds.size > 0
 }
