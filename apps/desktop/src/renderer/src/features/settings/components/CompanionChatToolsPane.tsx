@@ -2,25 +2,27 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AgentToolsCommunityTab,
-  Button,
   Input,
   SegmentedControl,
   SettingsPageChrome,
-  Switch
+  Switch,
+  useDialog
 } from '@baishou/ui'
 import { getDefaultToolManagementConfig } from '@baishou/store'
 import {
   AGENT_TOOL_CATEGORY_ORDER,
   AGENT_TOOL_UI_DEFS,
   AgentGateEffect,
-  resolveAgentToolActionLabel,
   applyCapabilityToConfig,
   capabilityStateFromConfig,
   companionToolEffectOptions,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
+  foldCompanionAllowlistIntoCapabilities,
+  isEnablingAutoInjectTime,
   isCompanionGateCapabilityId,
   nextDisabledToolIdsForEffect,
   resolveCompanionToolEffect,
+  stripCompanionAllowlistActions,
   type AgentBehaviorConfig,
   type AgentGateCapabilityId,
   type AgentGateNotificationPrefs,
@@ -30,6 +32,7 @@ import {
 import styles from './AgentToolsPane.module.css'
 import gateStyles from './AgentGateSettings.module.css'
 import pane from './GeneralSettingsPane.module.css'
+import { persistDesktopAgentGateNotificationPrefs } from './agent-gate-notification-prefs.client'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 
 interface CompanionChatToolsPaneProps {
@@ -78,6 +81,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
   )
 
+  const dialog = useDialog()
   const companionTools = settings.toolManagementConfig ?? getDefaultToolManagementConfig()
   const behavior: AgentBehaviorConfig = {
     ...FALLBACK_BEHAVIOR,
@@ -93,7 +97,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
   const loadGateConfig = useCallback(async () => {
     try {
       const next = await window.api.settings.getBaishouAgentGateConfig({ kind: 'companion' })
-      setGateConfig(next)
+      setGateConfig(foldCompanionAllowlistIntoCapabilities(next))
     } catch (error) {
       console.error('[CompanionChatTools] load gate failed:', error)
       setGateConfig(null)
@@ -105,10 +109,10 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     void window.api.agentGate?.getNotificationPrefs?.().then((prefs) => {
       if (prefs) setNotificationPrefs(prefs)
     })
-    const unsubscribe = window.api.agentGate?.onAllowlistChanged?.((allowlist, eventScope) => {
+    const unsubscribe = window.api.agentGate?.onAllowlistChanged?.((_allowlist, eventScope) => {
       const effectiveScope = eventScope ?? { kind: 'companion' as const }
       if (!scopesMatch(effectiveScope, { kind: 'companion' })) return
-      setGateConfig((prev) => (prev ? { ...prev, allowlist } : prev))
+      void loadGateConfig()
     })
     return () => unsubscribe?.()
   }, [loadGateConfig])
@@ -120,7 +124,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
 
   const updateNotificationPrefs = async (patch: Partial<AgentGateNotificationPrefs>) => {
     try {
-      const next = await window.api.agentGate.setNotificationPrefs(patch)
+      const next = await persistDesktopAgentGateNotificationPrefs(patch)
       setNotificationPrefs(next)
     } catch (error) {
       console.error('[CompanionChatTools] notification prefs failed:', error)
@@ -134,13 +138,39 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     })
   }
 
+  const confirmEnableAutoInjectTime = async (toolId: string, effect: AgentGateEffect) => {
+    const currentlyEnabled = resolveCompanionToolEffect(
+      toolId,
+      companionTools.disabledToolIds,
+      capabilityState
+    ) !== AgentGateEffect.Deny
+    if (
+      effect !== AgentGateEffect.Deny &&
+      isEnablingAutoInjectTime(toolId, currentlyEnabled)
+    ) {
+      return dialog.confirm(
+        t(
+          'agent.tools.auto_inject_time_enable_confirm',
+          '开启后，发送给伙伴的每条历史消息都会带上发送时间标签。部分模型可能把这些标签抄进回复，聊天气泡里会出现类似 <message-time> 的文字。确定开启？'
+        ),
+        t('agent.tools.auto_inject_time_enable_confirm_title', '开启当前时间？')
+      )
+    }
+    return true
+  }
+
   const saveToolEffect = async (toolId: AgentGateCapabilityId, effect: AgentGateEffect) => {
     if (!gateConfig) return
     const prev = gateConfig
-    const nextConfig = applyCapabilityToConfig(gateConfig, 'companion', {
-      capabilityId: toolId,
-      effect
-    })
+    const nextConfig = foldCompanionAllowlistIntoCapabilities(
+      stripCompanionAllowlistActions(
+        applyCapabilityToConfig(gateConfig, 'companion', {
+          capabilityId: toolId,
+          effect
+        }),
+        [toolId]
+      )
+    )
     setGateConfig(nextConfig)
     setSaving(true)
     try {
@@ -297,7 +327,12 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                                   }))}
                                   onChange={(effect) => {
                                     if (isUiOnly) {
-                                      syncDisabledTool(tool.id, effect)
+                                      void (async () => {
+                                        if (!(await confirmEnableAutoInjectTime(tool.id, effect))) {
+                                          return
+                                        }
+                                        syncDisabledTool(tool.id, effect)
+                                      })()
                                       return
                                     }
                                     if (!isCompanionGateCapabilityId(tool.id)) return
@@ -356,78 +391,6 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                   </div>
                 )
               })}
-
-              {gateConfig && gateConfig.allowlist.length > 0 ? (
-                <div className={pane.stackGroup}>
-                  <div className={pane.sectionLabelRow}>
-                    <h3 className={pane.sectionLabel}>
-                      {t('settings.agent_gate_allowlist_title', '始终允许列表')}
-                    </h3>
-                  </div>
-                  <section className={pane.cardSection}>
-                    <div className={`${pane.cardBody} ${gateStyles.paddedBody}`}>
-                      {gateConfig.allowlist.map((entry, index) => (
-                        <React.Fragment key={entry.id}>
-                          {index > 0 ? <div className={pane.divider} /> : null}
-                          <div className="settings-list-tile settings-list-tile-noclick">
-                            <div className="settings-list-tile-content">
-                              <span className="settings-list-tile-title">
-                                {resolveAgentToolActionLabel(entry.action, t)}
-                              </span>
-                              <span className="settings-list-tile-subtitle">
-                                {entry.pattern
-                                  ? t(
-                                      'settings.agent_gate_allowlist_pattern',
-                                      '模式：{{pattern}}',
-                                      {
-                                        pattern: entry.pattern
-                                      }
-                                    )
-                                  : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
-                              </span>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outlined"
-                              size="small"
-                              disabled={saving}
-                              onClick={() => {
-                                void (async () => {
-                                  setSaving(true)
-                                  try {
-                                    await window.api.agentGate.removeAllowlistEntry(entry.id, {
-                                      kind: 'companion'
-                                    })
-                                    setGateConfig((prev) =>
-                                      prev
-                                        ? {
-                                            ...prev,
-                                            allowlist: prev.allowlist.filter(
-                                              (item) => item.id !== entry.id
-                                            )
-                                          }
-                                        : prev
-                                    )
-                                  } catch (error) {
-                                    console.error(
-                                      '[CompanionChatTools] remove allowlist failed:',
-                                      error
-                                    )
-                                  } finally {
-                                    setSaving(false)
-                                  }
-                                })()
-                              }}
-                            >
-                              {t('common.remove', '移除')}
-                            </Button>
-                          </div>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </section>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>

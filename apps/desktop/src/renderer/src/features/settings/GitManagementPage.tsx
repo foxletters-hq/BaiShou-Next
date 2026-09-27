@@ -51,7 +51,16 @@ export const GitManagementPage: React.FC = () => {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div
+      style={{
+        flex: 1,
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
       <GitPage
         config={config}
         onSaveConfig={handleSaveConfig}

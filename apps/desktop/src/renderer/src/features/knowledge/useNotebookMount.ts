@@ -9,6 +9,7 @@ import {
   type NotebookMountCandidate,
   type NotebookMountScope
 } from '@baishou/shared'
+import { resolveNotebookCoverPreviewUrl } from './notebook-list.util'
 
 export function useNotebookMount(
   sessionId?: string,
@@ -42,7 +43,12 @@ export function useNotebookMount(
           sources: row.sources,
           chunks: row.chunks,
           dimension: row.dimension,
-          mixedEmbeddings: row.mixedEmbeddings
+          mixedEmbeddings: row.mixedEmbeddings,
+          coverTone: row.coverTone,
+          coverIcon: row.coverIcon,
+          coverImageUrl: resolveNotebookCoverPreviewUrl(row.coverImageUrl, row.updatedAt),
+          graphNodes: row.graphNodes,
+          graphEdges: row.graphEdges
         }))
       )
     } catch (e: unknown) {

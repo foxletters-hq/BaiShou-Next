@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { AttachmentManagementView } from '@baishou/ui'
+import { EMOJI_TOOL_CONFIG_UPDATED_EVENT, type EmojiToolConfig } from '@baishou/shared'
 
 export const AttachmentManagementPane: React.FC = () => {
   const [attachments, setAttachments] = useState<any[]>([])
   const [diaryAttachments, setDiaryAttachments] = useState<any[]>([])
+  const [emojiAttachments, setEmojiAttachments] = useState<any[]>([])
 
   const fetchData = async () => {
     try {
@@ -19,8 +21,16 @@ export const AttachmentManagementPane: React.FC = () => {
     } catch (e) {}
   }
 
+  const fetchEmojiData = async () => {
+    try {
+      const att = await (window as any).api?.attachment?.listEmojiAttachments()
+      if (att) setEmojiAttachments(att)
+    } catch (e) {}
+  }
+
   useEffect(() => {
     void fetchDiaryData()
+    void fetchEmojiData()
     // 默认展示日记附件；会话列表较重，延后加载以免阻塞首屏
     let idleId: number | undefined
     let timeoutId: number | undefined
@@ -43,6 +53,7 @@ export const AttachmentManagementPane: React.FC = () => {
       <AttachmentManagementView
         attachments={attachments}
         diaryAttachments={diaryAttachments}
+        emojiAttachments={emojiAttachments}
         onDeleteSelected={async (ids) => {
           await (window as any).api?.attachment?.deleteBatch(ids)
           await fetchData()
@@ -57,6 +68,17 @@ export const AttachmentManagementPane: React.FC = () => {
         onDeleteDiaryAttachment={async (filePath) => {
           await (window as any).api?.attachment?.deleteDiaryAttachment(filePath)
           await fetchDiaryData()
+        }}
+        onDeleteEmojiAttachments={async (relativePaths) => {
+          const emojiConfig = (await (window as any).api?.attachment?.deleteEmojiAttachments(
+            relativePaths
+          )) as EmojiToolConfig | undefined
+          if (emojiConfig) {
+            window.dispatchEvent(
+              new CustomEvent(EMOJI_TOOL_CONFIG_UPDATED_EVENT, { detail: emojiConfig })
+            )
+          }
+          await fetchEmojiData()
         }}
       />
     </div>

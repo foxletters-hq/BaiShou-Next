@@ -214,6 +214,8 @@ describe('knowledge detail chrome', () => {
     expect(pane).toContain('mergeGraphNodes')
     expect(pane).toContain('forbiddenAnchorTypes={[' + "'source'" + ']}')
     expect(pane).toContain("searchNodes={props.searchMergeNodes}")
+    expect(pane).toContain("t('graph.search_semantic'")
+    expect(pane).toContain("useState<GraphSearchMode>('semantic'")
   })
 
   it('should render notebook graph inspector values with chrome classes', () => {
