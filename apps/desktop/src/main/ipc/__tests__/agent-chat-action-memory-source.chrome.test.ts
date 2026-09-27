@@ -10,8 +10,12 @@ const hostSrc = readFileSync(join(here, '../companion-stream-host.ts'), 'utf8')
 
 describe('companion stream host', () => {
   it('should build the same host for regenerate, edit and resend as for a normal send', () => {
-    expect(actionSrc).toContain('streamHost: await buildCompanionStreamHost({ sessionId, systemModels })')
-    expect(actionSrc.match(/await buildActionDeps\(event, sessionId, systemModels\)/g)).toHaveLength(3)
+    expect(actionSrc).toContain(
+      'streamHost: await buildCompanionStreamHost({ sessionId, systemModels })'
+    )
+    expect(
+      actionSrc.match(/await buildActionDeps\(event, sessionId, systemModels\)/g)
+    ).toHaveLength(3)
     expect(chatSrc).toContain('await buildCompanionStreamHost({')
     expect(chatSrc).toContain('...streamHost,')
   })

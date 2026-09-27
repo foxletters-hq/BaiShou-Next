@@ -411,9 +411,8 @@ app.whenReady().then(async () => {
 
   // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
   electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
-  const { setWindowsToastIconPath, ensureWindowsToastShortcut } = await import(
-    './services/windows-toast-identity'
-  )
+  const { setWindowsToastIconPath, ensureWindowsToastShortcut } =
+    await import('./services/windows-toast-identity')
   setWindowsToastIconPath(icon)
   ensureWindowsToastShortcut()
 

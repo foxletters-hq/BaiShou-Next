@@ -60,10 +60,7 @@ export function registerChatIPC() {
 
   ipcMain.handle(
     'agent:update-pending-input',
-    async (
-      event,
-      params: { inputId: string; text?: string; delivery?: 'steer' | 'queue' }
-    ) => {
+    async (event, params: { inputId: string; text?: string; delivery?: 'steer' | 'queue' }) => {
       return AgentChatService.updatePendingInput(event, params)
     }
   )

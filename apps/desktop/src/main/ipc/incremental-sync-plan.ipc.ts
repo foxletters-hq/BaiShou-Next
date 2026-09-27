@@ -143,11 +143,7 @@ export async function afterIncrementalSync(
     await runDerivedIndexHydration('incremental-sync-memory-graph', {
       deletedShardPaths: result.deletedLocal
     })
-  } else if (
-    !needsLayerIndex &&
-    !cls.notebooks &&
-    cls.notebookGraphIds.length === 0
-  ) {
+  } else if (!needsLayerIndex && !cls.notebooks && cls.notebookGraphIds.length === 0) {
     logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
     return
   }
