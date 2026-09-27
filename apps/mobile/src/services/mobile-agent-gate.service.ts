@@ -23,6 +23,10 @@ function applyLifecycleToInbox(event: AgentGateLifecycleEvent): void {
       questionAnswers: event.questionAnswers,
       resolvedAt: Date.now()
     })
+    return
+  }
+  if (event.type === 'agent_gate.cancelled') {
+    useAgentGateInboxStore.getState().removeCancelled(event.requestIds)
   }
 }
 

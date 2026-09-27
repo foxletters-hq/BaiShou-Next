@@ -25,6 +25,8 @@ import {
   resolveReasoningEffortForSlot,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
+  clampRagSimilarityThreshold,
+  clampRagTopK,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -151,6 +153,8 @@ export async function buildMobileStreamUserConfig(
 
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
+    rag_top_k: clampRagTopK(ragConfig?.ragTopK),
+    rag_similarity_threshold: clampRagSimilarityThreshold(ragConfig?.ragSimilarityThreshold),
     hasEmbeddingModel,
     disabledToolIds: [...toolManagementConfig.disabledToolIds, ...DESKTOP_ONLY_WORKSPACE_TOOL_IDS],
     customConfigs: toolManagementConfig.customConfigs,

@@ -1,8 +1,12 @@
 import i18n from 'i18next'
 import {
   buildMemoryMetadataJson,
+  GRAPH_NODE_SOURCE_TYPE,
   MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
+  memoryClearVectorKindsOf,
+  shouldTombstoneMemoryRecord,
+  type MemoryClearKind,
   type MemoryRawRecord
 } from '@baishou/shared'
 import { shardMonthFromInstant } from '@baishou/core-mobile'
@@ -15,7 +19,11 @@ import {
   getMobileMemoryRawManager,
   getMobileRawDataSourceManager
 } from './mobile-raw-data-source.runtime'
-import { clearGraphNodeEmbeddingIfNeeded } from './mobile-rag-vector-kind.helpers'
+import {
+  clearGraphNodeEmbeddingIfNeeded,
+  listEmbeddedGraphEntries,
+  memoryKindSql
+} from './mobile-rag-vector-kind.helpers'
 import { HYBRID_SEARCH_TABLE, newMemoryId, type RawSqlClient } from './mobile-rag-entry.helpers'
 
 export async function tombstoneAllMemoryShards(): Promise<void> {
@@ -283,4 +291,78 @@ export async function clearAllMobileRag(deps: MobileRagServiceDeps): Promise<voi
   const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
   ragConfig.totalEmbeddings = 0
   await deps.settingsManager.set('rag_config', ragConfig)
+}
+
+async function tombstoneMemoryShardsByKinds(kinds: readonly MemoryClearKind[]): Promise<void> {
+  if (!kinds.includes('partner') && !kinds.includes('manual')) return
+  const memoryMgr = getMobileMemoryRawManager()
+  if (!memoryMgr) return
+  const now = Date.now()
+  for (const shard of await memoryMgr.listShards()) {
+    const rows = await memoryMgr.readCollapsedShard(shard.shardMonth)
+    if (rows.length === 0) continue
+    let changed = false
+    const next = rows.map((row) => {
+      if (row.deletedAt != null || !shouldTombstoneMemoryRecord(kinds, row)) return row
+      changed = true
+      return { ...row, updatedAt: now, deletedAt: now }
+    })
+    if (!changed) continue
+    const content = `${next.map((row) => JSON.stringify(row)).join('\n')}\n`
+    await memoryMgr.replaceShardContent(shard.shardMonth, content)
+  }
+}
+
+export async function clearMobileRagByKinds(
+  deps: MobileRagServiceDeps,
+  kinds: readonly MemoryClearKind[]
+): Promise<void> {
+  const vectorKinds = memoryClearVectorKindsOf(kinds)
+  if (vectorKinds.length === 0) return
+  await tombstoneMemoryShardsByKinds(kinds)
+  const client = deps.rawSqlClient as RawSqlClient
+  if (!client?.execute) {
+    throw new Error(
+      i18n.t('auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L301', '数据库不可用')
+    )
+  }
+  const vault = await resolveVaultScope(deps)
+  const vaultId = await vault.resolveActiveVaultId()
+  for (const kind of vectorKinds) {
+    if (kind === 'graph_node') {
+      let guard = 0
+      let page = await listEmbeddedGraphEntries(vaultId, { limit: 80, offset: 0 })
+      while (page.entries.length > 0 && guard < 40) {
+        guard += 1
+        for (const entry of page.entries) {
+          await clearGraphNodeEmbeddingIfNeeded(entry.embeddingId, vaultId)
+        }
+        page = await listEmbeddedGraphEntries(vaultId, { limit: 80, offset: 0 })
+      }
+      await client.execute({
+        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ?`,
+        args: [GRAPH_NODE_SOURCE_TYPE]
+      })
+      continue
+    }
+    const filter = memoryKindSql(kind)
+    await client.execute({
+      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE ${filter.clause}`,
+      args: filter.args
+    })
+  }
+  const left = await client.execute({
+    sql: `SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`
+  })
+  const count = Number((left.rows?.[0] as { c?: number } | undefined)?.c ?? 0)
+  if (count === 0) {
+    const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
+    globalModels.globalEmbeddingDimension = 0
+    await deps.settingsManager.set('global_models', globalModels)
+    const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
+    ragConfig.totalEmbeddings = 0
+    await deps.settingsManager.set('rag_config', ragConfig)
+  }
+  const { notifyMobilePendingEmbedCountsChanged } = await import('./mobile-pending-embed-counts')
+  notifyMobilePendingEmbedCountsChanged()
 }

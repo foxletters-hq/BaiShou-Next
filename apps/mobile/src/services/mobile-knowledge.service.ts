@@ -77,6 +77,8 @@ export async function mobileListMountSummaries() {
     vaultId,
     notebookIds: notebooks.map((row) => row.id)
   })
+  const graphCounts = await repo.listNotebookGraphCounts(vaultId)
+  const graphById = new Map(graphCounts.map((row) => [row.notebookId, row]))
   const profilesById = new Map<string, typeof profiles>()
   for (const profile of profiles) {
     const list = profilesById.get(profile.notebookId) ?? []
@@ -87,13 +89,18 @@ export async function mobileListMountSummaries() {
     const stat = statsById.get(notebook.id)
     const notebookProfiles = profilesById.get(notebook.id) ?? []
     const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
+    const graph = graphById.get(notebook.id)
     return {
       id: notebook.id,
       name: notebook.name,
+      coverTone: notebook.coverTone,
+      coverIcon: notebook.coverIcon,
       sources: stat?.sources ?? 0,
       chunks: stat?.chunks ?? 0,
       dimension: dimensions.length === 1 ? dimensions[0]! : null,
-      mixedEmbeddings: dimensions.length > 1
+      mixedEmbeddings: dimensions.length > 1,
+      graphNodes: graph?.nodes ?? 0,
+      graphEdges: graph?.edges ?? 0
     }
   })
 }
@@ -143,13 +150,16 @@ export async function mobileSearchNotebookGraph(opts: {
   const vaultId = await resolveMobileActiveVaultId()
   const notebooks = await knowledgeRepo.listNotebooks({ vaultId })
   const nameById = new Map(notebooks.map((row) => [row.id, row.name]))
+  const { embedQuery, modelId } = await resolveMobileNotebookGraphEmbed()
   const groups: ToolKnowledgeGraphSearchResult[] = []
   for (const notebookId of notebookIds) {
     const result = await searchNotebookGraphForTool(repo, {
       vaultId,
       notebookId,
       query: opts.query,
-      limit: opts.limit
+      limit: opts.limit,
+      embedQuery,
+      modelId
     })
     groups.push({
       notebookId,
@@ -160,6 +170,27 @@ export async function mobileSearchNotebookGraph(opts: {
     })
   }
   return groups
+}
+
+async function resolveMobileNotebookGraphEmbed(): Promise<{
+  embedQuery?: (text: string) => Promise<number[] | null>
+  modelId?: string
+}> {
+  const runtime = agentDbRuntimeRef.current
+  if (!runtime?.settingsManager) return {}
+  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+  if (!emb.embeddingProvider || !emb.embeddingModelId) return {}
+  const provider = emb.embeddingProvider
+  const modelId = emb.embeddingModelId
+  return {
+    modelId,
+    embedQuery: async (text) => {
+      const { embed } = await import('ai')
+      const model = provider.getEmbeddingModel(modelId) as never
+      const { embedding } = await embed({ model, value: text })
+      return Array.from(embedding)
+    }
+  }
 }
 
 export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): Promise<boolean> {

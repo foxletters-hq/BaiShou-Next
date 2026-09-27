@@ -1,7 +1,7 @@
 import {
   collectSuspectSignals,
   GRAPH_SUSPECT_LLM_CAP,
-  readSuspectReason,
+  isOpenSuspectHit,
   runGraphSuspectScan,
   toSuspectScanEdge,
   toSuspectScanNode
@@ -44,7 +44,7 @@ export async function runMobileGraphSuspectScan(input: {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
   const pendingHits = collectSuspectSignals(nodes, edges).filter((hit) => {
     const node = nodeById.get(hit.nodeId)
-    return Boolean(node && !readSuspectReason(node.props))
+    return Boolean(node && isOpenSuspectHit(node, hit, edges))
   })
   if (pendingHits.length === 0) return { collected: 0, persisted: 0 }
 
@@ -63,13 +63,14 @@ export async function runMobileGraphSuspectScan(input: {
       })
       return text ?? null
     },
-    persist: async (node, reason) => {
+    persist: async (node, reason, signals) => {
       await writeMobileNodeSuspectReason({
         drizzleDb,
         pathService,
         fileSystem,
         nodeId: node.id,
-        reason
+        reason,
+        signals
       })
     }
   })
