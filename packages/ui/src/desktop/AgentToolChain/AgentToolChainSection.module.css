@@ -143,7 +143,11 @@
 .contentInner {
   overflow: hidden;
   min-width: 0;
-  padding: 4px 0 8px 22px;
+  margin: 2px 0 8px 22px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
 }
 
 .spin {

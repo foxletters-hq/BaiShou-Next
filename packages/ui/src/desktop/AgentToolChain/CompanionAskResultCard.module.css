@@ -130,3 +130,39 @@
   line-height: 1.5;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
 }
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.pagerProgress {
+  margin: 0;
+  min-width: 48px;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
+}
+
+.pagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-control, var(--border-subtle));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.pagerBtn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}

@@ -6,6 +6,7 @@ import {
   normalizeAssistantKind,
   type AssistantKind
 } from '@baishou/shared'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import styles from './AssistantKindTabBar.module.css'
 
 export interface AssistantKindTabBarProps {
@@ -63,25 +64,32 @@ export const AssistantKindTabBar: React.FC<AssistantKindTabBarProps> = ({
 
   return (
     <div className={`${styles.section} ${className ?? ''}`}>
-      <div className={styles.tabs} data-active={kind}>
-        <div className={styles.indicator} aria-hidden />
-        <button
-          type="button"
-          className={`${styles.tab} ${kind === 'companion' ? styles.active : ''}`}
-          onClick={() => onKindChange('companion')}
-        >
-          <Heart size={18} />
-          {t('agent.assistant.kind_companion')}
-        </button>
-        <button
-          type="button"
-          className={`${styles.tab} ${kind === 'work' ? styles.active : ''}`}
-          onClick={() => onKindChange('work')}
-        >
-          <Briefcase size={18} />
-          {t('agent.assistant.kind_work')}
-        </button>
-      </div>
+      <SegmentedControl
+        stretch
+        aria-label={t('agent.assistant.kind_label', '类型')}
+        value={kind}
+        options={[
+          {
+            value: 'companion',
+            label: (
+              <>
+                <Heart size={14} />
+                {t('agent.assistant.kind_companion')}
+              </>
+            )
+          },
+          {
+            value: 'work',
+            label: (
+              <>
+                <Briefcase size={14} />
+                {t('agent.assistant.kind_work')}
+              </>
+            )
+          }
+        ]}
+        onChange={onKindChange}
+      />
       {showHint ? <p className={styles.hint}>{t(getAssistantKindHintKey(kind))}</p> : null}
     </div>
   )

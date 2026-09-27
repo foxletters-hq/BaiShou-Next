@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AgentToolScene } from '@baishou/shared'
+import { isEnablingAutoInjectTime, type AgentToolScene } from '@baishou/shared'
+import { useDialog } from '../Dialog'
 import type { AgentToolDef, AgentToolsConfig, ToolConfigParam } from './agent-tools.types'
 import {
   AGENT_TOOL_CATEGORY_ORDER,
@@ -23,6 +24,7 @@ export function useAgentToolsView({
   scene = 'companion'
 }: UseAgentToolsViewOptions) {
   const { t } = useTranslation()
+  const dialog = useDialog()
 
   const allTools = useMemo(
     () => (scene === 'workspace' ? buildWorkspaceTools(t) : buildAgentTools(t)),
@@ -42,6 +44,16 @@ export function useAgentToolsView({
     if (isCurrentlyEnabled) {
       disabledList.push(toolId)
     } else {
+      if (isEnablingAutoInjectTime(toolId, false)) {
+        const confirmed = await dialog.confirm(
+          t(
+            'agent.tools.auto_inject_time_enable_confirm',
+            '开启后，发送给伙伴的每条历史消息都会带上发送时间标签。部分模型可能把这些标签抄进回复，聊天气泡里会出现类似 <message-time> 的文字。确定开启？'
+          ),
+          t('agent.tools.auto_inject_time_enable_confirm_title', '开启当前时间？')
+        )
+        if (!confirmed) return
+      }
       const idx = disabledList.indexOf(toolId)
       if (idx > -1) disabledList.splice(idx, 1)
     }
