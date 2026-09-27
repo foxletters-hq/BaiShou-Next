@@ -145,7 +145,11 @@ export function buildAgentToolChainItems(options: {
     upsertItem({
       key,
       toolName: invToolName,
-      status: isToolError(inv) ? 'error' : isActiveUnanswered || awaitingPersistedAsk ? 'loading' : 'success',
+      status: isToolError(inv)
+        ? 'error'
+        : isActiveUnanswered || awaitingPersistedAsk
+          ? 'loading'
+          : 'success',
       invocation: inv,
       hasContent: hasInvocationContent(inv)
     })

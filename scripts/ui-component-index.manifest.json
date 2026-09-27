@@ -128,7 +128,12 @@
       "McpSettingsCard",
       "HotkeySettingsCard"
     ],
-    "记忆与总结设置": ["RagMemoryView", "RagMemoryOrganizeModal", "SummarySettingsView", "EmojiSettingsView"],
+    "记忆与总结设置": [
+      "RagMemoryView",
+      "RagMemoryOrganizeModal",
+      "SummarySettingsView",
+      "EmojiSettingsView"
+    ],
     "更新": ["UpdateChecker", "VersionManager"]
   },
   "native": {

@@ -75,8 +75,11 @@ function readCompanionAskResultObject(obj: Record<string, unknown>): {
         .filter(
           (
             item
-          ): item is { question?: string; answer: string | null; selectedOptionIds: string[] } =>
-            item != null
+          ): item is {
+            question: string | undefined
+            answer: string | null
+            selectedOptionIds: string[]
+          } => item != null
         )
     : []
   return {
@@ -177,7 +180,13 @@ export function resolveCompanionAskPresentation(
     })
   }
 
-  if (!question && !answer && !declined && displayOptions.length === 0 && questionItems.length === 0) {
+  if (
+    !question &&
+    !answer &&
+    !declined &&
+    displayOptions.length === 0 &&
+    questionItems.length === 0
+  ) {
     return null
   }
 
