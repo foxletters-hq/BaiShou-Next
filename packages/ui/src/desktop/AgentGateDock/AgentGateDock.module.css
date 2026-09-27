@@ -34,11 +34,9 @@
 @keyframes agentGateDockIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -242,7 +240,8 @@
 
 .questionTitle {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
   line-height: 1.55;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -261,35 +260,80 @@
   gap: 10px;
   width: 100%;
   text-align: left;
-  border-radius: 10px;
-  border: 1px solid var(--border-control);
-  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  padding: 6px 8px;
   background: transparent;
   cursor: pointer;
   color: var(--text-primary);
   outline: none;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--bg-surface-high);
 }
 
 .option:focus-visible {
-  border-color: var(--form-field-border-focus);
   box-shadow: var(--form-field-focus-ring);
 }
 
 .optionSelected {
-  border-color: var(--border-strong, var(--form-field-border-focus));
   background: var(--bg-surface-high);
 }
 
-.optionSelected:focus-visible {
-  border-color: var(--border-strong, var(--form-field-border-focus));
+.optionMark {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  font-size: var(--ui-fs-sm);
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.optionSelected .optionMark {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .optionLabel {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.45;
+  padding-top: 2px;
+}
+
+.askFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.askPager {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.askProgress {
+  margin: 0;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.askActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .actions {
