@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { FileChangePartData } from '@baishou/shared'
+import {
+  AgentGateKind,
+  AgentGateReply,
+  AgentGateRequestStatus,
+  type AgentGatePartData,
+  type FileChangePartData
+} from '@baishou/shared'
 import {
   buildFileOpEntries,
   buildWorkspaceAssistantTimeline,
@@ -353,5 +359,43 @@ describe('workspace-message-parts.util', () => {
       '设定/2/规范.md'
     ])
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(3)
+  })
+
+  it('should place a stream permission confirmation immediately before the matching tool', () => {
+    const groups = groupStreamTimelineItems(
+      [
+        { kind: 'reasoning', text: '先列文件' },
+        {
+          kind: 'tool',
+          callId: 'c1',
+          name: 'workspace_read',
+          status: 'completed',
+          result: 'ok'
+        }
+      ],
+      [
+        {
+          request: {
+            id: 'g1',
+            sessionId: 's1',
+            vaultName: 'Personal',
+            status: AgentGateRequestStatus.Resolved,
+            kind: AgentGateKind.Tool,
+            action: 'workspace_read',
+            title: '读取文件',
+            options: [],
+            allowCustomInput: true,
+            metadata: {},
+            createdAt: 1
+          },
+          resolution: {
+            requestId: 'g1',
+            reply: AgentGateReply.Always,
+            resolvedAt: 2
+          }
+        } satisfies AgentGatePartData
+      ]
+    )
+    expect(groups.map((group) => group.kind)).toEqual(['reasoning', 'gate', 'tools'])
   })
 })

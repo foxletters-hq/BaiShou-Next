@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { PanelLeft, PanelRight, X } from 'lucide-react'
-import { getFileTypeIcon } from '@baishou/ui'
+import { GitCompare, PanelLeft, PanelRight, X } from 'lucide-react'
+import { AnchoredContextMenu, getFileTypeIcon } from '@baishou/ui'
 import type { WorkbenchTab } from './useWorkbenchTabs'
+import { buildEditorTabMenuItems } from './workbench-editor-tab-menu.util'
 import { tabIconName } from './workbench-main-pane.util'
 import styles from './WorkbenchMainPane.module.css'
 
@@ -17,15 +18,26 @@ export interface WorkbenchEditorTabBarProps {
   onToggleAgentPanel: () => void
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
+  onCloseTabs: (tabIds: string[]) => void
+  onCopyPath: (relativePath: string) => void
+  onCopyRelativePath: (relativePath: string) => void
+  onAddToChat: (relativePath: string) => void
+  onRevealInSidebar: (relativePath: string) => void
+  onRevealInExplorer: (relativePath: string) => void
   onTabMouseDown: (event: React.MouseEvent, tabId: string, closable: boolean) => void
   onTabDragEnd: (result: DropResult) => void
 }
 
 function TabLabel({ tab }: { tab: WorkbenchTab }) {
+  const isDiffTab = tab.kind === 'diff' || tab.kind === 'git-diff'
   return (
     <>
       <span className={styles.tabIcon} aria-hidden>
-        {getFileTypeIcon(tabIconName(tab), 16)}
+        {isDiffTab ? (
+          <GitCompare size={16} strokeWidth={1.75} />
+        ) : (
+          getFileTypeIcon(tabIconName(tab), 16)
+        )}
       </span>
       <span className={styles.tabLabel}>{tab.title}</span>
     </>
@@ -42,10 +54,50 @@ export const WorkbenchEditorTabBar: React.FC<WorkbenchEditorTabBarProps> = ({
   onToggleAgentPanel,
   onSelectTab,
   onCloseTab,
+  onCloseTabs,
+  onCopyPath,
+  onCopyRelativePath,
+  onAddToChat,
+  onRevealInSidebar,
+  onRevealInExplorer,
   onTabMouseDown,
   onTabDragEnd
 }) => {
   const { t } = useTranslation()
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tabId: string } | null>(null)
+  const closeTabMenu = useCallback(() => setTabMenu(null), [])
+  const openTabMenu = useCallback(
+    (event: React.MouseEvent, tabId: string) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setTabMenu({ x: event.clientX, y: event.clientY, tabId })
+    },
+    []
+  )
+  const tabMenuItems = useMemo(() => {
+    if (!tabMenu) return []
+    return buildEditorTabMenuItems({
+      tabs,
+      tabId: tabMenu.tabId,
+      t,
+      onCloseTabs,
+      onCopyPath,
+      onCopyRelativePath,
+      onAddToChat,
+      onRevealInSidebar,
+      onRevealInExplorer
+    })
+  }, [
+    onCloseTabs,
+    onCopyPath,
+    onCopyRelativePath,
+    onAddToChat,
+    onRevealInExplorer,
+    onRevealInSidebar,
+    t,
+    tabMenu,
+    tabs
+  ])
 
   return (
     <div className={styles.tabBar}>
@@ -83,7 +135,11 @@ export const WorkbenchEditorTabBar: React.FC<WorkbenchEditorTabBarProps> = ({
                         }}
                         className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''} ${snapshot.isDragging ? styles.tabDragging : ''}`}
                         onMouseDown={(event) => onTabMouseDown(event, tab.id, true)}
-                        onClick={() => onSelectTab(tab.id)}
+                        onClick={(event) => {
+                          if (event.button !== 0) return
+                          onSelectTab(tab.id)
+                        }}
+                        onContextMenu={(event) => openTabMenu(event, tab.id)}
                         title={tab.relativePath || tab.title}
                       >
                         <TabLabel tab={tab} />
@@ -115,7 +171,11 @@ export const WorkbenchEditorTabBar: React.FC<WorkbenchEditorTabBarProps> = ({
               key={tab.id}
               className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''}`}
               onMouseDown={(event) => onTabMouseDown(event, tab.id, true)}
-              onClick={() => onSelectTab(tab.id)}
+              onClick={(event) => {
+                if (event.button !== 0) return
+                onSelectTab(tab.id)
+              }}
+              onContextMenu={(event) => openTabMenu(event, tab.id)}
               title={tab.relativePath || tab.title}
             >
               <TabLabel tab={tab} />
@@ -147,6 +207,16 @@ export const WorkbenchEditorTabBar: React.FC<WorkbenchEditorTabBarProps> = ({
           <PanelRight size={18} strokeWidth={1.75} />
         </button>
       </div>
+      {tabMenu && tabMenuItems.length > 0 ? (
+        <AnchoredContextMenu
+          x={tabMenu.x}
+          y={tabMenu.y}
+          items={tabMenuItems}
+          onClose={closeTabMenu}
+          backdropZIndex={9999}
+          menuZIndex={10000}
+        />
+      ) : null}
     </div>
   )
 }

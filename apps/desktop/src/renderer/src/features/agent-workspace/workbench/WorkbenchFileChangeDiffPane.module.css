@@ -44,6 +44,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
   cursor: pointer;
 }
 

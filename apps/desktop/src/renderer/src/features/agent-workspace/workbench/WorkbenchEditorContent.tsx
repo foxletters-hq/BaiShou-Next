@@ -74,6 +74,7 @@ export const WorkbenchEditorContent: React.FC<WorkbenchEditorContentProps> = ({
         <div className={styles.diffBody}>
           <WorkbenchGitEditableDiff
             ref={gitDiffEditorRef}
+            path={activeTab.relativePath}
             originalContent={activeTab.gitDiffOriginal ?? ''}
             content={activeTab.content ?? ''}
             onChange={(content) => {
@@ -96,6 +97,7 @@ export const WorkbenchEditorContent: React.FC<WorkbenchEditorContentProps> = ({
         <div className={styles.diffBody}>
           <WorkbenchGitEditableDiff
             ref={gitDiffEditorRef}
+            path={activeTab.relativePath}
             originalContent={activeTab.gitDiffOriginal ?? ''}
             content={activeTab.content ?? ''}
             readOnly
@@ -118,7 +120,7 @@ export const WorkbenchEditorContent: React.FC<WorkbenchEditorContentProps> = ({
               : ''}
         </div>
         <div className={styles.diffBody}>
-          <GitDiffViewer diff={activeTab.fileDiff} defaultMode="split" showModeToggle fillHeight />
+          <GitDiffViewer diff={activeTab.fileDiff} defaultMode="unified" fillHeight />
         </div>
       </div>
     )
