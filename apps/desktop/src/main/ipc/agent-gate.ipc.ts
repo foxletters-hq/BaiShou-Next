@@ -17,7 +17,10 @@ import {
   getAgentGateNotificationPrefs,
   setAgentGateNotificationPrefs
 } from '../services/agent-gate-notification-prefs.store'
-import { notifyAgentGateAsked } from '../services/agent-gate-notification.service'
+import {
+  notifyAgentGateAsked,
+  previewAgentGateNotification
+} from '../services/agent-gate-notification.service'
 
 function normalizeScope(scope?: AgentGateConfigScope | null): AgentGateConfigScope {
   if (scope?.kind === 'workspace' && typeof scope.workspaceId === 'string' && scope.workspaceId) {
@@ -55,6 +58,10 @@ export function registerAgentGateIPC(): void {
     if (!request?.id || !request.sessionId) return { success: false }
     await notifyAgentGateAsked(request, { force: true })
     return { success: true }
+  })
+
+  ipcMain.handle('agent-gate:preview-notification', async () => {
+    return previewAgentGateNotification()
   })
 
   ipcMain.handle('agent-gate:get-config', async (_, scope?: AgentGateConfigScope) => {

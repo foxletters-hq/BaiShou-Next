@@ -21,6 +21,10 @@ export function configureDesktopAppIdentity(): void {
   // 早启动 / 测试环境下 electron app 可能为部分 mock，缺方法时安全跳过
   if (typeof app?.setName !== 'function') return
 
+  if (process.platform === 'win32' && typeof app.setAppUserModelId === 'function') {
+    app.setAppUserModelId(app.isPackaged ? DESKTOP_APP_ID : DESKTOP_DEV_APP_ID)
+  }
+
   if (app.isPackaged) {
     app.setName(DESKTOP_APP_NAME)
     return

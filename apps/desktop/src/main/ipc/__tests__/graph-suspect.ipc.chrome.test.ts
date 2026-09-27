@@ -19,15 +19,18 @@ describe('graph suspect ipc', () => {
     expect(dtsSrc).toContain('listSuspectNodes()')
   })
 
-  it('should run the suspect scan after graph extract in pending fill', () => {
-    expect(fillSrc).toContain('graph_disambiguate')
-    expect(fillSrc.indexOf("markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
-      fillSrc.indexOf('runDesktopGraphSuspectScan')
-    )
-    expect(fillSrc).toContain('runDesktopGraphSuspectScan')
+  it('should not run the structural suspect scan in pending fill', () => {
+    expect(fillSrc).not.toContain('runDesktopGraphSuspectScan')
   })
 
   it('should clear suspectReason when the user reviews a node', () => {
     expect(reviewWriteSrc).toContain('removeSuspectReasonFromProps')
+  })
+
+  it('should not count structural-disambiguate leftovers as organize pending work', () => {
+    const counts = readFileSync(join(dir, '../../services/pending-embed-counts.service.ts'), 'utf8')
+    expect(counts).not.toContain('isOpenSuspectHit')
+    expect(counts).not.toContain('collectSuspectSignals')
+    expect(counts).toContain('graphDisambiguate: 0')
   })
 })
