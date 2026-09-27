@@ -6,6 +6,12 @@ import { describe, expect, it } from 'vitest'
 const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.tsx'), 'utf8')
 
 describe('StreamingBubble timeline chrome', () => {
+  it('should place a live permission confirmation inside the stream timeline, not above it', () => {
+    expect(src).toContain('gateParts')
+    expect(src).toContain('groupStreamTimelineForDisplay(liveTimeline, gateParts)')
+    expect(src).not.toContain('<AgentGatePartBubble')
+  })
+
   it('should render the live stream from timeline groups instead of flattening think then tools then text', () => {
     expect(src).toContain('timeline')
     expect(src).toContain('groupStreamTimelineForDisplay')
@@ -23,5 +29,12 @@ describe('StreamingBubble timeline chrome', () => {
     )
     expect(src).toContain('display="sticker"')
     expect(src).toContain('placement="after"')
+  })
+
+  it('should wrap the live reply with the citation dialog instead of stacking excerpts', () => {
+    expect(src).toContain('<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">')
+    expect(src).not.toContain(
+      '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming" />'
+    )
   })
 })

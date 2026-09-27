@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background-color: transparent;
   cursor: pointer;
@@ -21,25 +21,25 @@
 }
 
 .container:hover {
-  background-color: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
+  background-color: var(--bg-surface-high);
 }
 
 .selected {
-  background-color: rgba(var(--color-primary-rgb), 0.08);
-  border-color: rgba(var(--color-primary-rgb), 0.28);
+  background-color: var(--bg-surface-high);
+  border-color: transparent;
   box-shadow: none;
 }
 
 .selected:hover {
-  background-color: rgba(var(--color-primary-rgb), 0.1);
+  background-color: var(--bg-surface-high);
 }
 
 .checked {
-  background-color: rgba(var(--color-primary-rgb), 0.06);
+  background-color: var(--bg-surface-high);
 }
 
 .checked:hover {
-  background-color: rgba(var(--color-primary-rgb), 0.09);
+  background-color: var(--bg-surface-high);
 }
 
 /* Header Line (Title & Time / Actions) */
@@ -69,8 +69,8 @@
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--ui-fs-lg);
+  font-weight: 400;
   line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
@@ -93,9 +93,9 @@
 }
 
 .timeLabel {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  font-weight: 500;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  font-weight: 400;
   white-space: nowrap;
   transition: opacity 0.15s ease;
 }
@@ -116,7 +116,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-surface-high, var(--bg-surface-lowest));
+  background-color: var(--bg-surface-high);
   color: var(--text-secondary);
   flex-shrink: 0;
   font-size: 11px;
@@ -130,7 +130,7 @@
 }
 
 .snippet {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
