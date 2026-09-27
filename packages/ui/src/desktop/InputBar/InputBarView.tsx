@@ -21,7 +21,6 @@ import {
   LayoutGrid,
   Paperclip,
   Plus,
-  Send,
   ArrowRight,
   Settings2,
   Sparkles,
@@ -142,8 +141,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     bottomTrailing,
     footer,
     sendIconSize = 16,
-    minRows = 1,
-    isMultiline = false
+    minRows = 1
   } = vm
 
   const textareaMinHeight = getInputBarTextareaMinHeight(minRows)

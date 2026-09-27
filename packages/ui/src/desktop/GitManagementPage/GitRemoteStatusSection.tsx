@@ -61,17 +61,24 @@ export const GitRemoteStatusSection: React.FC<GitRemoteStatusSectionProps> = ({ 
         <div className="gmp-remote-toolbar">
           <div className="gmp-remote-branch-group">
             <GitBranch size={13} className="gmp-remote-branch-icon" />
-            <span className="gmp-remote-branch-name" title={`当前分支: ${branch}`}>
+            <span
+              className="gmp-remote-branch-name"
+              title={t('version_control.current_branch_tip', '当前分支: {{branch}}', { branch })}
+            >
               {branch}
             </span>
             {configured && !unpublished ? (
               ahead > 0 || behind > 0 ? (
                 <span
                   className="gmp-remote-sync-chip gmp-remote-sync-chip-diff"
-                  title={t('version_control.sync_ahead_behind_tip', '领先 {{ahead}}，落后 {{behind}}', {
-                    ahead,
-                    behind
-                  })}
+                  title={t(
+                    'version_control.sync_ahead_behind_tip',
+                    '领先 {{ahead}}，落后 {{behind}}',
+                    {
+                      ahead,
+                      behind
+                    }
+                  )}
                 >
                   {ahead > 0 ? `↑${ahead}` : ''}
                   {behind > 0 ? ` ↓${behind}` : ''}
@@ -167,4 +174,3 @@ export const GitRemoteStatusSection: React.FC<GitRemoteStatusSectionProps> = ({ 
     </div>
   )
 }
-
