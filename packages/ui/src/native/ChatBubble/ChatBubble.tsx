@@ -8,7 +8,11 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
-import { collectKnowledgeCitationsFromInvocations, decorateKnowledgeCitedTexts, type MockChatAttachment } from '@baishou/shared'
+import {
+  collectKnowledgeCitationsFromInvocations,
+  decorateKnowledgeCitedTexts,
+  type MockChatAttachment
+} from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
@@ -141,237 +145,237 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
   return (
     <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={message.id || 'turn'}>
-    <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
-      {isAssistant && aiProfile ? (
-        <ChatBubbleAvatar
-          variant="assistant"
-          emoji={aiProfile.emoji}
-          avatarPath={aiProfile.avatarPath}
-          resolvedAvatarUri={aiProfile.resolvedAvatarUri}
-          style={{ marginRight: 8 }}
-        />
-      ) : null}
-
-      <View
-        style={[
-          styles.bubbleWrapper,
-          isUser ? styles.bubbleWrapperUser : styles.bubbleWrapperAssistant,
-          useFullWidthAssistantBubble ? styles.bubbleWrapperEditing : null
-        ]}
-      >
-        {message.timestamp || displayName ? (
-          <View
-            style={[
-              styles.nameTimeRow,
-              isUser ? styles.nameTimeRowUser : styles.nameTimeRowAssistant
-            ]}
-          >
-            {isUser ? (
-              <>
-                {message.timestamp ? (
-                  <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
-                ) : null}
-                <Text style={nameLabelStyle}>{displayName}</Text>
-              </>
-            ) : (
-              <>
-                <Text style={nameLabelStyle}>{displayName}</Text>
-                {message.timestamp ? (
-                  <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
-                ) : null}
-              </>
-            )}
-          </View>
+      <View style={[styles.container, isUser ? styles.containerUser : styles.containerAssistant]}>
+        {isAssistant && aiProfile ? (
+          <ChatBubbleAvatar
+            variant="assistant"
+            emoji={aiProfile.emoji}
+            avatarPath={aiProfile.avatarPath}
+            resolvedAvatarUri={aiProfile.resolvedAvatarUri}
+            style={{ marginRight: 8 }}
+          />
         ) : null}
 
         <View
-          collapsable={false}
           style={[
-            styles.bubble,
-            edit.isEditing || isAssistant ? styles.bubbleEditing : null,
-            !edit.isEditing && isUser ? styles.bubbleUser : null,
-            edit.isEditing
-              ? isUser
-                ? {
-                    backgroundColor: colors.bgSurface,
-                    borderBottomRightRadius: 4
-                  }
-                : {
-                    backgroundColor: colors.bgSurface,
-                    borderBottomLeftRadius: 4
-                  }
-              : isUser
-                ? {
-                    backgroundColor: colors.bgSurface,
-                    borderBottomRightRadius: 4
-                  }
-                : {
-                    backgroundColor: colors.bgSurface,
-                    borderBottomLeftRadius: 4
-                  }
+            styles.bubbleWrapper,
+            isUser ? styles.bubbleWrapperUser : styles.bubbleWrapperAssistant,
+            useFullWidthAssistantBubble ? styles.bubbleWrapperEditing : null
           ]}
         >
-          {showThinkSection ? (
+          {message.timestamp || displayName ? (
+            <View
+              style={[
+                styles.nameTimeRow,
+                isUser ? styles.nameTimeRowUser : styles.nameTimeRowAssistant
+              ]}
+            >
+              {isUser ? (
+                <>
+                  {message.timestamp ? (
+                    <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+                  ) : null}
+                  <Text style={nameLabelStyle}>{displayName}</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={nameLabelStyle}>{displayName}</Text>
+                  {message.timestamp ? (
+                    <Text style={timeLabelStyle}>{formatRelativeTime(message.timestamp, t)}</Text>
+                  ) : null}
+                </>
+              )}
+            </View>
+          ) : null}
+
+          <View
+            collapsable={false}
+            style={[
+              styles.bubble,
+              edit.isEditing || isAssistant ? styles.bubbleEditing : null,
+              !edit.isEditing && isUser ? styles.bubbleUser : null,
+              edit.isEditing
+                ? isUser
+                  ? {
+                      backgroundColor: colors.bgSurface,
+                      borderBottomRightRadius: 4
+                    }
+                  : {
+                      backgroundColor: colors.bgSurface,
+                      borderBottomLeftRadius: 4
+                    }
+                : isUser
+                  ? {
+                      backgroundColor: colors.bgSurface,
+                      borderBottomRightRadius: 4
+                    }
+                  : {
+                      backgroundColor: colors.bgSurface,
+                      borderBottomLeftRadius: 4
+                    }
+            ]}
+          >
+            {showThinkSection ? (
+              <View
+                style={{
+                  marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
+                  alignSelf: 'stretch',
+                  width: '100%'
+                }}
+              >
+                <AgentThinkSection
+                  content={cleanReasoning}
+                  isLoading={thinkLoading}
+                  isMarkdownStreaming={false}
+                />
+              </View>
+            ) : null}
+
+            {showStreamingTools ? (
+              <View
+                style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
+              >
+                <ToolResultGroupCard
+                  completedTools={streamingCompletedTools}
+                  activeToolName={streamingActiveToolName}
+                />
+              </View>
+            ) : null}
+
+            {showPersistedTools ? (
+              <View
+                style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
+              >
+                <ToolResultGroupCard invocations={toolInvocations} />
+              </View>
+            ) : null}
+
+            {edit.isEditing ? (
+              <View style={styles.editInputWrap}>
+                <NativeChatBubbleInlineEditor
+                  inputRef={edit.editInputRef}
+                  value={edit.editContent}
+                  onChangeText={edit.setEditContent}
+                />
+              </View>
+            ) : (
+              <View style={styles.bubblePressable}>
+                {!isAssistant && attachments.length > 0 ? (
+                  <NativeChatBubbleAttachments attachments={attachments} isUserBubble />
+                ) : null}
+                {isAssistant && cleanContent ? (
+                  <View style={styles.markdownSlot}>
+                    <AgentMarkdownRenderer
+                      content={citedContent}
+                      variant="chat"
+                      isStreaming={markdownStreaming}
+                      onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                    />
+                  </View>
+                ) : !isAssistant &&
+                  (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
+                  <View>
+                    {message.skillRefs?.length ? (
+                      <View
+                        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+                      >
+                        {message.skillRefs.map((ref) => (
+                          <Text key={ref.command} style={{ color: colors.primary }}>
+                            /{ref.command}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {message.fileRefs?.length ? (
+                      <View
+                        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+                      >
+                        {message.fileRefs.map((ref) => (
+                          <Text key={ref.relativePath} style={{ color: colors.textSecondary }}>
+                            @{ref.relativePath}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                    {message.content ? (
+                      <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
+                        {message.content}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
+                {isAssistant && attachments.length > 0 && !markdownStreaming ? (
+                  <NativeChatBubbleAttachments
+                    attachments={attachments}
+                    display="sticker"
+                    placement="after"
+                  />
+                ) : null}
+              </View>
+            )}
+          </View>
+          {isAssistant && displayError ? (
             <View
               style={{
-                marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
-                alignSelf: 'stretch',
-                width: '100%'
+                marginTop: tokens.spacing.sm,
+                paddingHorizontal: tokens.spacing.md,
+                paddingVertical: tokens.spacing.sm,
+                backgroundColor: colors.errorContainer,
+                borderRadius: tokens.radius.md,
+                borderWidth: 1,
+                borderColor: colors.error,
+                alignSelf: 'stretch'
               }}
             >
-              <AgentThinkSection
-                content={cleanReasoning}
-                isLoading={thinkLoading}
-                isMarkdownStreaming={false}
-              />
-            </View>
-          ) : null}
-
-          {showStreamingTools ? (
-            <View
-              style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
-            >
-              <ToolResultGroupCard
-                completedTools={streamingCompletedTools}
-                activeToolName={streamingActiveToolName}
-              />
-            </View>
-          ) : null}
-
-          {showPersistedTools ? (
-            <View
-              style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
-            >
-              <ToolResultGroupCard invocations={toolInvocations} />
+              <Text style={{ color: colors.error }}>⚠ {displayError}</Text>
             </View>
           ) : null}
 
           {edit.isEditing ? (
-            <View style={styles.editInputWrap}>
-              <NativeChatBubbleInlineEditor
-                inputRef={edit.editInputRef}
-                value={edit.editContent}
-                onChangeText={edit.setEditContent}
-              />
-            </View>
+            <NativeChatBubbleEditActions
+              colors={colors}
+              isUser={isUser}
+              isAssistant={isAssistant}
+              onCancel={edit.handleCancelEdit}
+              onResendEdit={onResendEdit ? edit.handleResendEdit : undefined}
+              onSaveEdit={onSaveEdit ? edit.handleSaveEdit : undefined}
+            />
+          ) : isAssistant && deferAssistantChrome ? (
+            <View style={styles.deferredChromeSpacer} />
           ) : (
-            <View style={styles.bubblePressable}>
-              {!isAssistant && attachments.length > 0 ? (
-                <NativeChatBubbleAttachments attachments={attachments} isUserBubble />
-              ) : null}
-              {isAssistant && cleanContent ? (
-                <View style={styles.markdownSlot}>
-                  <AgentMarkdownRenderer
-                    content={citedContent}
-                    variant="chat"
-                    isStreaming={markdownStreaming}
-                    onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
-                  />
-                </View>
-              ) : !isAssistant &&
-                (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
-                <View>
-                  {message.skillRefs?.length ? (
-                    <View
-                      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
-                    >
-                      {message.skillRefs.map((ref) => (
-                        <Text key={ref.command} style={{ color: colors.primary }}>
-                          /{ref.command}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {message.fileRefs?.length ? (
-                    <View
-                      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
-                    >
-                      {message.fileRefs.map((ref) => (
-                        <Text key={ref.relativePath} style={{ color: colors.textSecondary }}>
-                          @{ref.relativePath}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {message.content ? (
-                    <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
-                      {message.content}
-                    </Text>
-                  ) : null}
-                </View>
-              ) : null}
-              {isAssistant && attachments.length > 0 && !markdownStreaming ? (
-                <NativeChatBubbleAttachments
-                  attachments={attachments}
-                  display="sticker"
-                  placement="after"
-                />
-              ) : null}
-            </View>
+            <NativeChatBubbleActionsRow
+              colors={colors}
+              isUser={isUser}
+              isAssistant={isAssistant}
+              message={message}
+              isTtsPlaying={Boolean(isTtsPlaying)}
+              onCopy={onCopy ?? (() => {})}
+              onStartEdit={edit.handleStartEdit}
+              onResend={onResend}
+              onReadAloud={onReadAloud}
+              onShowContext={onShowContext}
+              onRegenerate={onRegenerate}
+              onBranch={onBranch}
+              onSaveEdit={onSaveEdit}
+              onDelete={onDelete}
+              invertMetaOverBackground={invertMetaOverBackground}
+              retryDisabled={retryDisabled}
+            />
           )}
         </View>
-        {isAssistant && displayError ? (
-          <View
-            style={{
-              marginTop: tokens.spacing.sm,
-              paddingHorizontal: tokens.spacing.md,
-              paddingVertical: tokens.spacing.sm,
-              backgroundColor: colors.errorContainer,
-              borderRadius: tokens.radius.md,
-              borderWidth: 1,
-              borderColor: colors.error,
-              alignSelf: 'stretch'
-            }}
-          >
-            <Text style={{ color: colors.error }}>⚠ {displayError}</Text>
-          </View>
+
+        {isUser ? (
+          <ChatBubbleAvatar
+            variant="user"
+            nickname={userProfile?.nickname}
+            avatarPath={userProfile?.avatarPath}
+            resolvedAvatarUri={userProfile?.resolvedAvatarUri}
+            style={{ marginLeft: 8 }}
+          />
         ) : null}
 
-        {edit.isEditing ? (
-          <NativeChatBubbleEditActions
-            colors={colors}
-            isUser={isUser}
-            isAssistant={isAssistant}
-            onCancel={edit.handleCancelEdit}
-            onResendEdit={onResendEdit ? edit.handleResendEdit : undefined}
-            onSaveEdit={onSaveEdit ? edit.handleSaveEdit : undefined}
-          />
-        ) : isAssistant && deferAssistantChrome ? (
-          <View style={styles.deferredChromeSpacer} />
-        ) : (
-          <NativeChatBubbleActionsRow
-            colors={colors}
-            isUser={isUser}
-            isAssistant={isAssistant}
-            message={message}
-            isTtsPlaying={Boolean(isTtsPlaying)}
-            onCopy={onCopy ?? (() => {})}
-            onStartEdit={edit.handleStartEdit}
-            onResend={onResend}
-            onReadAloud={onReadAloud}
-            onShowContext={onShowContext}
-            onRegenerate={onRegenerate}
-            onBranch={onBranch}
-            onSaveEdit={onSaveEdit}
-            onDelete={onDelete}
-            invertMetaOverBackground={invertMetaOverBackground}
-            retryDisabled={retryDisabled}
-          />
-        )}
+        <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
       </View>
-
-      {isUser ? (
-        <ChatBubbleAvatar
-          variant="user"
-          nickname={userProfile?.nickname}
-          avatarPath={userProfile?.avatarPath}
-          resolvedAvatarUri={userProfile?.resolvedAvatarUri}
-          style={{ marginLeft: 8 }}
-        />
-      ) : null}
-
-      <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
-    </View>
     </KnowledgeCitationBlock>
   )
 }

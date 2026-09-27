@@ -5,10 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bubbleSrc = readFileSync(join(here, '../ChatBubble.tsx'), 'utf8')
-const streamSrc = readFileSync(
-  join(here, '../../StreamingBubble/StreamingBubble.tsx'),
-  'utf8'
-)
+const streamSrc = readFileSync(join(here, '../../StreamingBubble/StreamingBubble.tsx'), 'utf8')
 const attachSrc = readFileSync(join(here, '../NativeChatBubbleAttachments.tsx'), 'utf8')
 
 describe('Native chat sticker chrome', () => {
@@ -23,6 +20,8 @@ describe('Native chat sticker chrome', () => {
     expect(streamSrc.indexOf('AgentMarkdownRenderer')).toBeLessThan(
       streamSrc.indexOf('display="sticker"')
     )
+    expect(attachSrc).toContain("display === 'sticker'")
+    expect(attachSrc).toContain('stickerImage')
   })
 
   it('should wrap assistant markdown with the citation dialog instead of stacking excerpts', () => {

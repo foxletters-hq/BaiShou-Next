@@ -5,10 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const desktop = readFileSync(join(here, '../builtin-assistant-avatar.sources.ts'), 'utf8')
-const native = readFileSync(
-  join(here, '../../native/builtin-assistant-avatar.sources.ts'),
-  'utf8'
-)
+const native = readFileSync(join(here, '../../native/builtin-assistant-avatar.sources.ts'), 'utf8')
 
 describe('builtin assistant avatar sources', () => {
   it('should register the blue-sky Latte portrait on desktop and native', () => {

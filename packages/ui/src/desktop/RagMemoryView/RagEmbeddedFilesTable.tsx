@@ -123,9 +123,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                       }
                     >
                       <RagMemoryHighlightedText
-                        text={
-                          nodeCard.summary || t('settings.rag_node_summary_empty', '无')
-                        }
+                        text={nodeCard.summary || t('settings.rag_node_summary_empty', '无')}
                         keyword={keyword || undefined}
                       />
                     </span>

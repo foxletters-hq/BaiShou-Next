@@ -56,7 +56,9 @@ export function KnowledgeCitationBlock({
       {children}
       <Modal
         visible={citation != null}
-        title={citation && openIndex != null ? formatKnowledgeCitationHeading(citation, openIndex) : ''}
+        title={
+          citation && openIndex != null ? formatKnowledgeCitationHeading(citation, openIndex) : ''
+        }
         onClose={() => setOpenIndex(null)}
       >
         {citation?.excerpt ? (

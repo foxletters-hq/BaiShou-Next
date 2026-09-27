@@ -61,7 +61,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
               {batchTitle}
             </Text>
             {(onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed) && (
@@ -131,7 +133,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
               {isAborting
                 ? t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
                 : t('settings.rag_migrating', '知识库正在迁移中...')}
@@ -187,7 +191,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}>
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
               {t('memory.suspects_need_review', '有 {{count}} 个待确认节点', {
                 count: suspectCount
               })}
