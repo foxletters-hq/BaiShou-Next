@@ -55,7 +55,9 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onStashPush,
     onStashApply,
     onStashPop,
-    onStashDrop
+    onStashDrop,
+    onOpenDiffInEditor,
+    onOpenCommitDiffInEditor
   } = props
   const { t } = useTranslation()
 
@@ -322,7 +324,9 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setExpandedWorkingFile,
     setWorkingFileDiff,
     handleRefreshStatus,
-    handleLoadHistory
+    handleLoadHistory,
+    onOpenDiffInEditor,
+    onOpenCommitDiffInEditor
   })
 
   const handleResolveConflict = useCallback(
