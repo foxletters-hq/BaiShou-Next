@@ -122,10 +122,8 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   const preview = request.preview
   const filePreviews = listAgentGateFileChangePreviews(request)
   const coalescedHint = formatCoalescedToolHint(request, t)
-  const questionText =
-    askQuestions.length > 1
-      ? t('agent_gate.multi_ask_desc', '请一并确认以下几项。')
-      : request.title?.trim() || ''
+  const pagedAsk = proactiveOptions && askQuestions.length > 1
+  const questionText = pagedAsk ? '' : request.title?.trim() || ''
   const descriptionText = request.description?.trim() || ''
   const numberedOptionsText =
     proactiveOptions && request.options.length > 0
@@ -153,7 +151,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   }
 
   const submitProactiveConfirm = () => {
-    if (!askDrafts.complete) return
+    if (!pagedAsk && !askDrafts.complete) return
     const questionAnswers = buildCompanionAskQuestionAnswers(askQuestions, askDrafts.drafts)
     const first = questionAnswers[0]
     void onReply({
@@ -213,7 +211,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         questionText ? (
           <p className={styles.description}>{questionText}</p>
         ) : null
-      ) : proactiveOptions ? (
+      ) : pagedAsk ? null : proactiveOptions ? (
         questionText ? (
           <p className={styles.description}>{questionText}</p>
         ) : (
@@ -293,7 +291,13 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       ) : null}
 
       {proactiveOptions && !showFeedback ? (
-        <CompanionAskFields questions={askQuestions} isReplying={isReplying} drafts={askDrafts} />
+        <CompanionAskFields
+          questions={askQuestions}
+          isReplying={isReplying}
+          drafts={askDrafts}
+          onSkip={handleReject}
+          onSubmit={submitProactiveConfirm}
+        />
       ) : null}
 
       {showFeedback ? (
@@ -334,6 +338,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
           </div>
         </div>
       ) : proactiveOptions ? (
+        pagedAsk ? null : (
         <div className={styles.actions}>
           <Button
             type="button"
@@ -351,6 +356,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
             {t('agent_gate.confirm', '确认')}
           </Button>
         </div>
+        )
       ) : (
         <div className={styles.actions}>
           <Button
