@@ -25,4 +25,18 @@ describe('knowledge list chrome', () => {
     expect(dialog).toContain("from '@baishou/ui'")
     expect(dialog).toContain('KnowledgeDialog')
   })
+
+  it('should keep the notebook card menu opaque over the card title', () => {
+    const card = readKnowledge('SortableNotebookCard.tsx')
+    const css = readKnowledge('KnowledgePage.module.css')
+    expect(card).toContain('baishou-menu-popup')
+    expect(css).toContain('--menu-popup-bg')
+    expect(css).toContain('--menu-popup-item-hover-bg')
+    expect(css).not.toMatch(
+      /\.coverIconTrigger:hover:not\(:disabled\) \{[^}]*transparent/
+    )
+    expect(css).not.toMatch(
+      /\.coverImageBtn:hover:not\(:disabled\) \{[^}]*transparent/
+    )
+  })
 })

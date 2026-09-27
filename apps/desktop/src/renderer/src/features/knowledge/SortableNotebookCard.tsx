@@ -126,7 +126,7 @@ export const SortableNotebookCard: React.FC<{
               <MoreHorizontal size={16} strokeWidth={2} />
             </button>
             {menuOpen ? (
-              <div className={styles.coverMenu} role="dialog">
+              <div className={`${styles.coverMenu} baishou-menu-popup`} role="dialog">
                 <label className={styles.coverMenuField}>
                   <span className={styles.coverMenuTitle}>{labels.name}</span>
                   <Input
