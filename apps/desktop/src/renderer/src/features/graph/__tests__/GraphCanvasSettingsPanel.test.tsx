@@ -52,9 +52,11 @@ describe('GraphCanvasSettingsPanel', () => {
         focusDepth={1}
         appearanceSettings={{ ...GRAPH_APPEARANCE_DEFAULTS }}
         forceSettings={{ ...GRAPH_FORCE_DEFAULTS }}
+        viewMaxNodes={500}
         onFocusDepthChange={vi.fn()}
         onAppearanceChange={vi.fn()}
         onForceChange={vi.fn()}
+        onViewMaxNodesChange={vi.fn()}
         onReplayLayout={vi.fn()}
       />
     )
@@ -65,6 +67,7 @@ describe('GraphCanvasSettingsPanel', () => {
     expect(screen.getByText('展开等级')).toBeTruthy()
     expect(screen.getByText('箭头')).toBeTruthy()
     expect(screen.getByText('独立节点')).toBeTruthy()
+    expect(screen.getByText('显示节点上限')).toBeTruthy()
     expect(screen.getByText('文本透明度')).toBeTruthy()
     expect(screen.getByText('节点大小')).toBeTruthy()
     expect(screen.getByText('连线粗细')).toBeTruthy()

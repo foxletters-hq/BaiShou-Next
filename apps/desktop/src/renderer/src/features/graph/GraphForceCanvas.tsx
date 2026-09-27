@@ -300,12 +300,13 @@ export const GraphForceCanvas: React.FC<{
     }
     drawRef.current = draw
 
-    rebuildGraphForceSimulation(refs, canvas, nodes, edges)
+    const rebuilt = rebuildGraphForceSimulation(refs, canvas, nodes, edges)
     if (pausedRef.current) {
       simRef.current?.stop()
       return
     }
     draw()
+    if (rebuilt) simRef.current?.restart()
   }, [nodes, edges, refs])
 
   useEffect(() => {

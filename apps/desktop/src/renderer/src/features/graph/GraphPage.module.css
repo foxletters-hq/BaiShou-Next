@@ -337,19 +337,6 @@
   gap: 6px;
 }
 
-.opsDateInput {
-  height: 32px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-input, var(--bg-surface));
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 13px;
-}
-
 .opsBlock .checkLabel {
   white-space: normal;
 }

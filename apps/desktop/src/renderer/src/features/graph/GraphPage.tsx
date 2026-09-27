@@ -246,9 +246,11 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   focusDepth: selection.focusDepth,
                   appearanceSettings: settings.appearanceSettings,
                   forceSettings: settings.forceSettings,
+                  viewMaxNodes: settings.viewMaxNodes,
                   onFocusDepthChange: selection.updateFocusDepth,
                   onAppearanceChange: settings.updateAppearance,
                   onForceChange: settings.updateForce,
+                  onViewMaxNodesChange: settings.updateViewMaxNodes,
                   onReplayLayout: () => settings.setAnimationTick((n) => n + 1),
                   onResetGraphSettings: settings.resetGraphSettings
                 }}
