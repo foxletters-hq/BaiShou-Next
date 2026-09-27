@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyKnowledgeSourceFile } from '@baishou/shared'
+import { classifyKnowledgeSourceFile, knowledgeSourceFileExt } from '../knowledge-source-file.util'
 
 describe('classifyKnowledgeSourceFile', () => {
   it('should mark missing relative path as unsupported', () => {
@@ -33,5 +33,13 @@ describe('classifyKnowledgeSourceFile', () => {
     expect(
       classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.bin' })
     ).toBe('unsupported')
+  })
+})
+
+describe('knowledgeSourceFileExt', () => {
+  it('should take the last extension from a path', () => {
+    expect(knowledgeSourceFileExt('C:\\docs\\scan.PDF')).toBe('.pdf')
+    expect(knowledgeSourceFileExt('notes.md')).toBe('.md')
+    expect(knowledgeSourceFileExt('noext')).toBe('')
   })
 })
