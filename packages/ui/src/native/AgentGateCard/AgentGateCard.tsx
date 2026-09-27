@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Keyboard,
   Modal,
@@ -21,7 +21,6 @@ import {
   resolveCompanionAskQuestions,
   type AgentGateRequest
 } from '@baishou/shared'
-import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
   formatCoalescedToolHint,
@@ -32,11 +31,10 @@ import {
 } from '../../agent-gate'
 import { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
 import { CompanionAskFields } from './CompanionAskFields'
-import {
-  canFlipGateQueue,
-  formatFileChangeKindLabel,
-  formatGateQueueLabel
-} from '../../agent-gate/agent-gate-preview-copy'
+import { AgentGateCardActions } from './AgentGateCardActions'
+import { AgentGatePreviewBlocks } from './AgentGatePreviewBlocks'
+import { agentGateCardStyles as styles } from './agent-gate-card.styles'
+import { canFlipGateQueue, formatGateQueueLabel } from '../../agent-gate/agent-gate-preview-copy'
 
 export interface AgentGateCardProps {
   request: AgentGateRequest | null
@@ -68,7 +66,10 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [askPage, setAskPage] = useState(0)
   const scrollRef = useRef<ScrollView>(null)
-  const askQuestions = request ? resolveCompanionAskQuestions(request) : []
+  const askQuestions = useMemo(
+    () => (request ? resolveCompanionAskQuestions(request) : []),
+    [request]
+  )
   const askQuestionKey = askQuestions.map((item) => item.id).join(':')
   const askDrafts = useCompanionAskDrafts(askQuestions)
 
@@ -110,6 +111,19 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
     [isReplying, onReply, request]
   )
 
+  const submitAsk = useCallback(() => {
+    if (!request) return
+    const questionAnswers = buildCompanionAskQuestionAnswers(askQuestions, askDrafts.drafts)
+    const first = questionAnswers[0]
+    void handleReply({
+      requestId: request.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: first?.selectedOptionIds,
+      message: first?.message,
+      questionAnswers
+    })
+  }, [askDrafts.drafts, askQuestions, handleReply, request])
+
   if (!request) return null
 
   const proactiveOptions = shouldShowProactiveOptions(request)
@@ -146,7 +160,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       onRequestClose={() => {
         if (showFeedback) {
           setShowFeedback(false)
-          return
         }
         // Android 返回键：仅退出子步骤，不隐式 Reject
       }}
@@ -241,110 +254,18 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 {request.description}
               </Text>
             ) : null}
-            {filePreviews.map((filePreview) => {
-              const expanded = Boolean(expandedDiffs[filePreview.path])
-              return (
-                <View
-                  key={`${filePreview.kind}:${filePreview.path}:${filePreview.previousPath ?? ''}`}
-                  style={[
-                    styles.previewBlock,
-                    { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
-                  ]}
-                >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                    {formatFileChangeKindLabel(filePreview.kind)} · {filePreview.path}
-                    {filePreview.previousPath ? ` ← ${filePreview.previousPath}` : ''}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                    {filePreview.additions > 0 ? (
-                      <Text style={{ color: colors.success, fontWeight: '600' }}>
-                        +{filePreview.additions}
-                      </Text>
-                    ) : null}
-                    {filePreview.additions > 0 && filePreview.deletions > 0 ? '  ' : null}
-                    {filePreview.deletions > 0 ? (
-                      <Text style={{ color: colors.error, fontWeight: '600' }}>
-                        -{filePreview.deletions}
-                      </Text>
-                    ) : null}
-                    {filePreview.truncated
-                      ? `  ${t('agent_gate.diff_truncated', '预览已截断')}`
-                      : ''}
-                  </Text>
-                  {filePreview.diff ? (
-                    <>
-                      <Pressable
-                        onPress={() =>
-                          setExpandedDiffs((current) => ({
-                            ...current,
-                            [filePreview.path]: !current[filePreview.path]
-                          }))
-                        }
-                      >
-                        <Text
-                          style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}
-                        >
-                          {expanded
-                            ? t('agent_gate.collapse_diff', '收起 Diff')
-                            : t('agent_gate.expand_diff', '展开 Diff')}
-                        </Text>
-                      </Pressable>
-                      {expanded ? (
-                        <ScrollView style={styles.diffScroll} nestedScrollEnabled>
-                          <Text style={[styles.diffText, { color: colors.textPrimary }]}>
-                            {filePreview.diff}
-                          </Text>
-                        </ScrollView>
-                      ) : null}
-                    </>
-                  ) : null}
-                </View>
-              )
-            })}
-
-            {preview?.type === 'command' ? (
-              <View
-                style={[
-                  styles.previewBlock,
-                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
-                ]}
-              >
-                <Text style={[styles.commandText, { color: colors.textPrimary }]}>
-                  {preview.command}
-                </Text>
-                {preview.dangerReason ? (
-                  <Text style={[styles.hint, { color: colors.warning }]}>
-                    {preview.dangerReason}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-
-            {preview?.type === 'content' ? (
-              <View
-                style={[
-                  styles.previewBlock,
-                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
-                ]}
-              >
-                {preview.subject && preview.subject !== request.title ? (
-                  <Text style={{ color: colors.textPrimary }}>{preview.subject}</Text>
-                ) : null}
-                {preview.summary &&
-                !preview.detailLines?.some(
-                  (line) => line.includes(preview.summary!) || line.endsWith(preview.summary!)
-                ) ? (
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                    {preview.summary}
-                  </Text>
-                ) : null}
-                {preview.detailLines?.map((line) => (
-                  <Text key={line} style={{ color: colors.textTertiary, fontSize: 12 }}>
-                    {line}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
+            <AgentGatePreviewBlocks
+              filePreviews={filePreviews}
+              expandedDiffs={expandedDiffs}
+              onToggleDiff={(path) =>
+                setExpandedDiffs((current) => ({
+                  ...current,
+                  [path]: !current[path]
+                }))
+              }
+              preview={preview}
+              requestTitle={request.title}
+            />
 
             {proactiveOptions && !showFeedback ? (
               <CompanionAskFields
@@ -358,20 +279,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 onSkip={() =>
                   void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
                 }
-                onSubmit={() => {
-                  const questionAnswers = buildCompanionAskQuestionAnswers(
-                    askQuestions,
-                    askDrafts.drafts
-                  )
-                  const first = questionAnswers[0]
-                  void handleReply({
-                    requestId: request.id,
-                    reply: AgentGateReply.Once,
-                    selectedOptionIds: first?.selectedOptionIds,
-                    message: first?.message,
-                    questionAnswers
-                  })
-                }}
+                onSubmit={submitAsk}
               />
             ) : null}
 
@@ -400,265 +308,28 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             ) : null}
           </ScrollView>
 
-          <View style={[styles.actions, { borderTopColor: colors.borderMuted }]}>
-            {showFeedback ? (
-              <>
-                <Button
-                  variant="outline"
-                  onPress={() => {
-                    setShowFeedback(false)
-                    setFeedback('')
-                  }}
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                >
-                  {t('common.cancel', '取消')}
-                </Button>
-                <Button
-                  variant="outline"
-                  onPress={() =>
-                    void handleReply({
-                      requestId: request.id,
-                      reply: AgentGateReply.Reject,
-                      message: feedback.trim() || undefined
-                    })
-                  }
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                >
-                  {proactiveOptions
-                    ? t('agent_gate.submit_answer', '提交回答')
-                    : t('agent_gate.reject', '拒绝')}
-                </Button>
-              </>
-            ) : proactiveOptions ? (
-              pagedAsk ? (
-                <View style={styles.askFooter}>
-                  <CompanionAskFields
-                    part="footer"
-                    questions={askQuestions}
-                    isReplying={isReplying}
-                    drafts={askDrafts}
-                    pageIndex={askPage}
-                    onPageIndexChange={setAskPage}
-                    onSkip={() =>
-                      void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
-                    }
-                    onSubmit={() => {
-                      const questionAnswers = buildCompanionAskQuestionAnswers(
-                        askQuestions,
-                        askDrafts.drafts
-                      )
-                      const first = questionAnswers[0]
-                      void handleReply({
-                        requestId: request.id,
-                        reply: AgentGateReply.Once,
-                        selectedOptionIds: first?.selectedOptionIds,
-                        message: first?.message,
-                        questionAnswers
-                      })
-                    }}
-                  />
-                </View>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    destructive
-                    onPress={() =>
-                      void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
-                    }
-                    disabled={isReplying}
-                    style={styles.actionButton}
-                    accessibilityLabel={t('agent_gate.reject', '拒绝')}
-                  >
-                    {t('agent_gate.reject', '拒绝')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onPress={() => {
-                      const questionAnswers = buildCompanionAskQuestionAnswers(
-                        askQuestions,
-                        askDrafts.drafts
-                      )
-                      const first = questionAnswers[0]
-                      void handleReply({
-                        requestId: request.id,
-                        reply: AgentGateReply.Once,
-                        selectedOptionIds: first?.selectedOptionIds,
-                        message: first?.message,
-                        questionAnswers
-                      })
-                    }}
-                    disabled={isReplying || !askDrafts.complete}
-                    style={styles.actionButton}
-                  >
-                    {t('agent_gate.confirm', '确认')}
-                  </Button>
-                </>
-              )
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  destructive
-                  onPress={() =>
-                    allowCustomInput
-                      ? setShowFeedback(true)
-                      : void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
-                  }
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                  accessibilityLabel={t('agent_gate.reject', '拒绝')}
-                >
-                  {t('agent_gate.reject', '拒绝')}
-                </Button>
-                {showAlways ? (
-                  <Button
-                    variant="outline"
-                    onPress={() =>
-                      void handleReply({ requestId: request.id, reply: AgentGateReply.Always })
-                    }
-                    disabled={isReplying}
-                    style={styles.actionButton}
-                    accessibilityLabel={t('agent_gate.always', '始终允许')}
-                  >
-                    {t('agent_gate.always', '始终允许')}
-                  </Button>
-                ) : null}
-                <Button
-                  variant="outline"
-                  onPress={() =>
-                    void handleReply({ requestId: request.id, reply: AgentGateReply.Once })
-                  }
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                  accessibilityLabel={t('agent_gate.once', '本次允许')}
-                >
-                  {t('agent_gate.once', '本次允许')}
-                </Button>
-              </>
-            )}
-          </View>
+          <AgentGateCardActions
+            requestId={request.id}
+            isReplying={isReplying}
+            showFeedback={showFeedback}
+            feedback={feedback}
+            onCancelFeedback={() => {
+              setShowFeedback(false)
+              setFeedback('')
+            }}
+            onShowFeedback={() => setShowFeedback(true)}
+            proactiveOptions={proactiveOptions}
+            pagedAsk={pagedAsk}
+            allowCustomInput={allowCustomInput}
+            showAlways={showAlways}
+            askQuestions={askQuestions}
+            askDrafts={askDrafts}
+            askPage={askPage}
+            onAskPageChange={setAskPage}
+            onReply={handleReply}
+          />
         </View>
       </View>
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16
-  },
-  card: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    zIndex: 2,
-    maxHeight: '86%',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8
-  },
-  header: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 14,
-    gap: 8
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8
-  },
-  queueNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  queueNavBtn: {
-    width: 28,
-    height: 28,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  queueLabel: {
-    fontSize: 12
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-    flexShrink: 1
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 21
-  },
-  hint: {
-    fontSize: 12,
-    lineHeight: 18
-  },
-  actionMeta: {
-    fontSize: 12
-  },
-  previewBlock: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6
-  },
-  diffScroll: {
-    maxHeight: 220
-  },
-  diffText: {
-    fontFamily: 'monospace',
-    fontSize: 11,
-    lineHeight: 16
-  },
-  commandText: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    lineHeight: 18
-  },
-  option: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  feedbackInput: {
-    minHeight: 88,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    textAlignVertical: 'top'
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 18,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8
-  },
-  askFooter: {
-    width: '100%',
-    gap: 8
-  },
-  actionButton: {
-    flexGrow: 1,
-    flexBasis: 0,
-    minWidth: 96
-  }
-})

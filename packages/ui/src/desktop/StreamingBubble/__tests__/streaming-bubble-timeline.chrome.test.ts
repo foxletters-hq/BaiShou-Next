@@ -17,7 +17,9 @@ describe('StreamingBubble timeline chrome', () => {
     expect(src).toContain('groupStreamTimelineForDisplay')
     expect(src).toContain('assistantStreamTimelineSignature')
     expect(src).toContain('AssistantDisplayTimeline')
-    expect(src.indexOf('groupStreamTimelineForDisplay')).toBeLessThan(src.indexOf('hasReasoning &&'))
+    expect(src.indexOf('groupStreamTimelineForDisplay')).toBeLessThan(
+      src.indexOf('hasReasoning &&')
+    )
     expect(src).not.toMatch(/groupStreamTimelineForDisplay\([^)]+\),\s*\[timeline\]/)
   })
 
@@ -32,7 +34,9 @@ describe('StreamingBubble timeline chrome', () => {
   })
 
   it('should wrap the live reply with the citation dialog instead of stacking excerpts', () => {
-    expect(src).toContain('<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">')
+    expect(src).toContain(
+      '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">'
+    )
     expect(src).not.toContain(
       '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming" />'
     )

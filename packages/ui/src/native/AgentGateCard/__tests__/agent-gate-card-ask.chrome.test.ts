@@ -3,10 +3,15 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const cardSource = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', 'AgentGateCard.tsx'),
-  'utf8'
-)
+const here = dirname(fileURLToPath(import.meta.url))
+const cardSource = [
+  'AgentGateCard.tsx',
+  'AgentGateCardActions.tsx',
+  'AgentGatePreviewBlocks.tsx',
+  'CompanionAskFields.tsx'
+]
+  .map((name) => readFileSync(join(here, '..', name), 'utf8'))
+  .join('\n')
 
 describe('AgentGateCard companion ask', () => {
   it('should collect questionAnswers on one card', () => {
