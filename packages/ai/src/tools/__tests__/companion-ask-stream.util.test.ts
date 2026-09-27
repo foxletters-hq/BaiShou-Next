@@ -75,6 +75,17 @@ describe('CompanionAskStreamSession', () => {
     expect(run).toHaveBeenCalledTimes(1)
     await expect(again).resolves.toBe('ok')
   })
+
+  it('should open a new ask when a later call carries a different question', async () => {
+    const run = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second')
+    const session = new CompanionAskStreamSession(run)
+
+    await session.claim('c1', { question: '第一题？' })
+    const second = session.claim('c2', { question: '第二题？' })
+
+    expect(run).toHaveBeenCalledTimes(2)
+    await expect(second).resolves.toBe('second')
+  })
 })
 
 describe('startCompanionAskFromStreamInput', () => {

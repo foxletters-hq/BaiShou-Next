@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod'
+import { formatLocalDate } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 
@@ -37,6 +38,47 @@ const params = z.object({
     .describe('Max nodes or paths to return (default 12).')
 })
 
+type RecallEdge = {
+  id: string
+  fromId: string
+  toId: string
+  edgeType: string
+  sourceRef?: string | null
+  sourceExcerpt?: string
+  validFrom?: number | null
+  isCurrent?: boolean
+}
+
+function formatValidFrom(validFrom?: number | null): string {
+  if (validFrom == null || !Number.isFinite(validFrom)) return ''
+  return ` [validFrom:${formatLocalDate(new Date(validFrom))}]`
+}
+
+function resolveNodeName(
+  nodes: Array<{ id: string; name: string }>,
+  id: string
+): string {
+  return nodes.find((n) => n.id === id)?.name || id.slice(0, 8)
+}
+
+function formatRelationEdge(
+  edge: RecallEdge,
+  nodes: Array<{ id: string; name: string }>,
+  opts?: { includeExcerpt?: boolean }
+): string {
+  const from = resolveNodeName(nodes, edge.fromId)
+  const to = resolveNodeName(nodes, edge.toId)
+  const id = edge.id ? ` id=${edge.id}` : ''
+  const src = edge.sourceRef ? ` [来源:${edge.sourceRef}]` : ''
+  const validFrom = formatValidFrom(edge.validFrom)
+  const excerpt =
+    opts?.includeExcerpt !== false && edge.sourceExcerpt
+      ? ` 「${edge.sourceExcerpt.slice(0, 80)}」`
+      : ''
+  const stale = edge.isCurrent === false ? ' （已失效）' : ''
+  return `- ${from} —${edge.edgeType}→ ${to}${id}${src}${validFrom}${excerpt}${stale}`
+}
+
 export class RecallRelationsTool extends AgentTool<typeof params> {
   readonly name = 'recall_relations'
 
@@ -45,9 +87,10 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
     'This is not the notebook graph — use knowledge_graph_search for relations inside a knowledge notebook.\n\n' +
     'Modes:\n' +
     '- search: list matching entities when you only have a name or type\n' +
-    '- neighbors: who/what sits next to an entity (1 hop by default)\n' +
-    '- network: shortest relation paths with diary excerpts (default)\n' +
-    "- timeline: the same entity's relations ordered by time\n\n" +
+    '- neighbors: current inbound and outbound edges around an entity (1 hop by default)\n' +
+    '- network: shortest current-edge paths with diary excerpts (default)\n' +
+    "- timeline: the same entity's relations ordered by time, including superseded edges marked 已失效\n\n" +
+    'Returns node and edge ids so graph_upsert can update or delete a specific edge. ' +
     'Call this when the user refers to someone or somewhere as if you already know them, ' +
     'asks how two things relate, or you need to check who is already in the graph before writing. ' +
     'Read-only; approved relations only. Do not invent connections that are not returned.'
@@ -88,21 +131,20 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
       })
       if (!result.anchors.length) {
         return (
-          `No graph entity found for「${entity}」. Do not retry this tool for the same entity in this conversation. ` +
-          'If relations are needed, the user can organize people and events from diary entries ' +
-          '(save hint or diary list "尚未整理"); continue the chat without inventing connections.'
+          `未找到「${entity}」。本次不要用同一名字空转；用户刚写入或再次追问后可以再查。` +
+          '需要关系时，用户可以从日记条目整理人物与事件。'
         )
       }
 
       const anchorLines = result.anchors
         .slice(0, 8)
-        .map((a) => `- ${a.name} (${a.nodeType})${a.summary ? `: ${a.summary}` : ''}`)
+        .map((a) => `- ${a.name} (${a.nodeType}) id=${a.id}${a.summary ? `: ${a.summary}` : ''}`)
         .join('\n')
 
       if (mode === 'search') {
         const nodeLines = result.nodes
           .slice(0, args.limit ?? 12)
-          .map((n) => `- ${n.name} (${n.nodeType})${n.summary ? `: ${n.summary}` : ''}`)
+          .map((n) => `- ${n.name} (${n.nodeType}) id=${n.id}${n.summary ? `: ${n.summary}` : ''}`)
           .join('\n')
         return [`## 匹配实体`, nodeLines || anchorLines, `共 ${result.nodes.length} 个`].join('\n')
       }
@@ -112,16 +154,11 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
         const limit = args.limit ?? 12
         const edgeLines = result.subgraph
           .slice(0, limit)
-          .map((e) => {
-            const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
-            const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
-            const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 80)}」` : ''
-            return `- ${from} —${e.edgeType}→ ${to}${excerpt}`
-          })
+          .map((e) => formatRelationEdge(e, result.nodes))
           .join('\n')
         return [
           `## 中心`,
-          center ? `- ${center.name} (${center.nodeType})` : anchorLines,
+          center ? `- ${center.name} (${center.nodeType}) id=${center.id}` : anchorLines,
           `## 邻居关系`,
           edgeLines || '(无邻居)',
           `节点 ${result.nodes.length} · 边 ${result.subgraph.length}`
@@ -132,13 +169,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
         const edgeSource = result.timeline || result.subgraph
         const edgeLines = edgeSource
           .slice(0, args.limit ?? 12)
-          .map((e) => {
-            const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
-            const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
-            const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
-            const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 80)}」` : ''
-            return `- ${from} —${e.edgeType}→ ${to}${src}${excerpt}`
-          })
+          .map((e) => formatRelationEdge(e, result.nodes))
           .join('\n')
 
         return [
@@ -160,26 +191,30 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
                 const excerpts = p.edges
                   .map((e, ei) => {
                     const dir = p.edgeDirections?.[ei] ?? 'forward'
-                    const fromName =
-                      result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
-                    const toName =
-                      result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
+                    const fromName = resolveNodeName(result.nodes, e.fromId)
+                    const toName = resolveNodeName(result.nodes, e.toId)
                     const label =
                       dir === 'reverse'
                         ? `${toName} ←${e.edgeType}— ${fromName}`
                         : `${fromName} —${e.edgeType}→ ${toName}`
+                    const id = e.id ? ` id=${e.id}` : ''
+                    const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
+                    const validFrom = formatValidFrom(e.validFrom)
                     const ex = e.sourceExcerpt
                       ? `「${e.sourceExcerpt.slice(0, 80)}」`
                       : e.sourceRef
                         ? `[${e.sourceRef}]`
                         : ''
-                    return `  · ${label}${ex ? ` ${ex}` : ''}`
+                    return `  · ${label}${id}${src}${validFrom}${ex ? ` ${ex}` : ''}`
                   })
                   .join('\n')
                 return `${i + 1}. ${chain}\n${excerpts || '  · (无摘录)'}`
               })
               .join('\n')
-          : '(未找到连接路径)'
+          : [
+              '(未找到连接路径)',
+              `锚点${result.anchors.map((a) => `「${a.name}」`).join('')}之间当前边未连通（历史边只在 timeline 里）。`
+            ].join('\n')
 
       return [
         `## 锚点`,

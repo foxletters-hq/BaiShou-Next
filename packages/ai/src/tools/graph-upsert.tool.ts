@@ -21,6 +21,12 @@ import {
 } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import {
+  collapseGraphDisplayName,
+  formatGraphUpsertCounts,
+  graphUpsertSourceRefError,
+  type GraphUpsertSkip
+} from './graph-upsert.helpers'
 
 const entityItem = z
   .object({
@@ -188,9 +194,12 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
     'If the name and type match an existing node exactly, update that node (summary/aliases). ' +
     'Never merge two existing nodes, even when names look similar — tell the user to merge them on the graph page. ' +
     'If you pass an entity id, update that id only; do not switch it to another node. ' +
+    'Names collapse newlines and repeated spaces into a single space before matching. ' +
     'To change a relation, pass the edge id from recall_relations with action=update (type/excerpt/from/to) or action=delete. ' +
+    'update and delete require that edge id; without it the row is skipped with missing_id. ' +
     'Call this when the user asks you to remember or correct a relationship. Requires Gate confirmation. ' +
     'Do not invent sources: include source_ref when the write comes from a diary or memory. ' +
+    'source_ref must be a real YYYY-MM-DD or a memory id. ' +
     'Use recall_relations first if you are unsure who or which edge already exists.'
 
   readonly parameters = graphUpsertParams
@@ -224,6 +233,20 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
       return '未写入：entities 与 edges 均为空。请提供至少一个节点或边提案（JSON 数组）。'
     }
 
+    const sourceRefsToCheck = [
+      args.source_ref,
+      ...edgeItems.flatMap((item) => {
+        if (!item || typeof item !== 'object') return []
+        const ref = (item as Record<string, unknown>).source_ref
+        return typeof ref === 'string' ? [ref] : []
+      })
+    ]
+    for (const rawRef of sourceRefsToCheck) {
+      if (typeof rawRef !== 'string') continue
+      const sourceError = graphUpsertSourceRefError(rawRef)
+      if (sourceError) return sourceError
+    }
+
     const now = Date.now()
     const sourceRef = args.source_ref?.trim() || null
     const diary = graphDiaryInstant(sourceRef ?? undefined, now)
@@ -235,17 +258,18 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
     const vaultName = context.vaultName
     const reviewStatus = 'approved' as const
 
-    let nodesWritten = 0
+    let nodesCreated = 0
+    let nodesUpdated = 0
     let edgesWritten = 0
     let edgesUpdated = 0
     let edgesDeleted = 0
-    let edgesSkipped = 0
+    const skips: GraphUpsertSkip[] = []
 
     try {
       for (const item of entityItems) {
         if (!item || typeof item !== 'object') continue
         const obj = item as Record<string, unknown>
-        const name = String(obj.name ?? obj.label ?? '').trim()
+        const name = collapseGraphDisplayName(String(obj.name ?? obj.label ?? ''))
         if (!name) continue
         const nodeType = String(obj.type ?? obj.nodeType ?? 'topic')
           .trim()
@@ -284,7 +308,10 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         }
 
         const incomingAliases = Array.isArray(obj.aliases)
-          ? obj.aliases.filter((a): a is string => typeof a === 'string')
+          ? obj.aliases
+              .filter((a): a is string => typeof a === 'string')
+              .map((a) => collapseGraphDisplayName(a))
+              .filter(Boolean)
           : []
         const aliases = [...new Set([...(reused?.aliases ?? []), name, ...incomingAliases])]
         const record: GraphNodeRawRecord = {
@@ -319,7 +346,8 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         await rawManager.writeRecord('graph', record, { collection: 'nodes' })
         nameToId.set(normalizeGraphName(name), id)
         if (obj.id && typeof obj.id === 'string') nameToId.set(normalizeGraphName(obj.id), id)
-        nodesWritten += 1
+        if (reused) nodesUpdated += 1
+        else nodesCreated += 1
       }
 
       const resolveEnd = async (raw: string): Promise<string | null> => {
@@ -352,18 +380,31 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
 
         if (action === 'delete') {
           if (!existingId) {
-            edgesSkipped += 1
+            skips.push({ reason: 'missing_id' })
             continue
           }
           const existing = context.graphEdgeLookup
             ? await context.graphEdgeLookup.findEdgeById(existingId)
             : null
+          if (!existing) {
+            skips.push({ reason: 'not_found', id: existingId })
+            continue
+          }
           try {
-            await deleteGraphEdgeTogether(context, rawManager, existingId, existing?.shardMonth)
+            await deleteGraphEdgeTogether(context, rawManager, existingId, existing.shardMonth)
             edgesDeleted += 1
           } catch {
-            edgesSkipped += 1
+            skips.push({ reason: 'not_found', id: existingId })
           }
+          continue
+        }
+
+        if (action === 'update' && !existingId) {
+          skips.push({
+            reason: 'missing_id',
+            from: collapseGraphDisplayName(String(obj.from ?? obj.fromId ?? '')),
+            to: collapseGraphDisplayName(String(obj.to ?? obj.toId ?? ''))
+          })
           continue
         }
 
@@ -372,16 +413,18 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
             ? await context.graphEdgeLookup.findEdgeById(existingId)
             : null
         if (action === 'update' && existingId && !existing) {
-          edgesSkipped += 1
+          skips.push({ reason: 'not_found', id: existingId })
           continue
         }
 
-        const fromRaw = String(obj.from ?? obj.fromId ?? existing?.fromId ?? '').trim()
-        const toRaw = String(obj.to ?? obj.toId ?? existing?.toId ?? '').trim()
+        const fromRaw = collapseGraphDisplayName(
+          String(obj.from ?? obj.fromId ?? existing?.fromId ?? '')
+        )
+        const toRaw = collapseGraphDisplayName(String(obj.to ?? obj.toId ?? existing?.toId ?? ''))
         const fromId = await resolveEnd(fromRaw)
         const toId = await resolveEnd(toRaw)
         if (!fromId || !toId) {
-          edgesSkipped += 1
+          skips.push({ reason: 'missing_node', from: fromRaw, to: toRaw })
           continue
         }
 
@@ -424,7 +467,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           try {
             await deleteGraphEdgeTogether(context, rawManager, existingId, existing?.shardMonth)
           } catch {
-            edgesSkipped += 1
+            skips.push({ reason: 'not_found', id: existingId })
             continue
           }
         }
@@ -434,7 +477,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         else edgesWritten += 1
       }
 
-      const wroteLiveRecords = nodesWritten + edgesWritten + edgesUpdated > 0
+      const wroteLiveRecords = nodesCreated + nodesUpdated + edgesWritten + edgesUpdated > 0
       const shouldHydratePending =
         wroteLiveRecords || (edgesDeleted > 0 && !context.deleteGraphRecord)
       if (shouldHydratePending && context.syncGraphPendingIndex) {
@@ -458,11 +501,14 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           : null
 
       return [
-        `已写入人生关系图：节点 ${nodesWritten}，边 ${edgesWritten}` +
-          (edgesUpdated ? `，改边 ${edgesUpdated}` : '') +
-          (edgesDeleted ? `，删边 ${edgesDeleted}` : '') +
-          (edgesSkipped ? `（跳过 ${edgesSkipped}）` : '') +
-          '（已生效，可被回忆检索）。',
+        formatGraphUpsertCounts({
+          nodesCreated,
+          nodesUpdated,
+          edgesWritten,
+          edgesUpdated,
+          edgesDeleted,
+          skips
+        }),
         `摘要: ${summary}`,
         sourceRef ? `来源: ${sourceRef}` : null,
         persistLine
