@@ -97,14 +97,8 @@ describe('isGraphHubLabelVisible', () => {
 
   it('should keep a connected name when the degree threshold is lowered', () => {
     const node = { degree: 3, mentionCount: 0, hubLabelMinMentions: 99 }
-    expect(
-      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 5 })
-    ).toBe(false)
-    expect(
-      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 3 })
-    ).toBe(true)
-    expect(
-      isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 1 })
-    ).toBe(true)
+    expect(isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 5 })).toBe(false)
+    expect(isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 3 })).toBe(true)
+    expect(isGraphHubLabelVisible({ ...node, hubLabelMinDegree: 1 })).toBe(true)
   })
 })

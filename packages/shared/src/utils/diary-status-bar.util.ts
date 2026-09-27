@@ -1,9 +1,6 @@
 import { DEFAULT_USER_PROFILE } from '../constants/user-profile.constants'
 import type { GlobalModelsConfig, RagConfig } from '../types/settings.types'
-import {
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId
-} from './agent-dialogue-model.util'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from './agent-dialogue-model.util'
 import { isRagMemoryEnabled } from './rag-embed-failure.util'
 
 /** 默认昵称不算已配置自称 */

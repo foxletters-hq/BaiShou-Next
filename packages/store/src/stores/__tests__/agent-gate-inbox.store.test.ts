@@ -84,30 +84,26 @@ describe('agent-gate-inbox.store', () => {
   })
 
   it('should ignore persisted asks that were already cancelled', () => {
-    useAgentGateInboxStore
-      .getState()
-      .upsertAsked(
-        req({
-          id: 'ask',
-          sessionId: 's1',
-          createdAt: 1,
-          action: 'companion_ask',
-          kind: AgentGateKind.Proactive
-        })
-      )
+    useAgentGateInboxStore.getState().upsertAsked(
+      req({
+        id: 'ask',
+        sessionId: 's1',
+        createdAt: 1,
+        action: 'companion_ask',
+        kind: AgentGateKind.Proactive
+      })
+    )
     useAgentGateInboxStore.getState().removeCancelled(['ask'])
-    useAgentGateInboxStore
-      .getState()
-      .upsertAsked(
-        req({
-          id: 'ask',
-          sessionId: 's1',
-          createdAt: 1,
-          action: 'companion_ask',
-          kind: AgentGateKind.Proactive
-        }),
-        { respectTombstone: true }
-      )
+    useAgentGateInboxStore.getState().upsertAsked(
+      req({
+        id: 'ask',
+        sessionId: 's1',
+        createdAt: 1,
+        action: 'companion_ask',
+        kind: AgentGateKind.Proactive
+      }),
+      { respectTombstone: true }
+    )
     expect(useAgentGateInboxStore.getState().pending.map((item) => item.id)).toEqual([])
   })
 

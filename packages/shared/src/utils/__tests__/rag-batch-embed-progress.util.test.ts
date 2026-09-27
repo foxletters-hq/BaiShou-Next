@@ -20,12 +20,7 @@ describe('rag-batch-embed-progress', () => {
       'graph_node',
       'graph_disambiguate'
     ])
-    expect(MEMORY_ORGANIZE_PHASE_IDS).toEqual([
-      'diary',
-      'memory',
-      'graph_extract',
-      'graph_node'
-    ])
+    expect(MEMORY_ORGANIZE_PHASE_IDS).toEqual(['diary', 'memory', 'graph_extract', 'graph_node'])
   })
 
   it('should return memory when memories remain even if graph nodes remain', () => {
