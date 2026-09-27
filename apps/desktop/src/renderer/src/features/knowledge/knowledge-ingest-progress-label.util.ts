@@ -20,7 +20,8 @@ export function knowledgeIngestProgressLabel(
         total
       })
     }
-    if (page > 0) return t('knowledge.status_pdf_parse_page', '正在读取 PDF 第 {{page}} 页', { page })
+    if (page > 0)
+      return t('knowledge.status_pdf_parse_page', '正在读取 PDF 第 {{page}} 页', { page })
     return t('knowledge.status_pdf_parse', '正在读取 PDF')
   }
   if (progress.phase === 'render') {
@@ -34,7 +35,10 @@ export function knowledgeIngestProgressLabel(
   }
   if (progress.phase === 'recognize') {
     if (total > 0) {
-      return t('knowledge.status_recognize_progress', '正在识图 {{page}}/{{total}}', { page, total })
+      return t('knowledge.status_recognize_progress', '正在识图 {{page}}/{{total}}', {
+        page,
+        total
+      })
     }
     return t('knowledge.status_recognize', '正在识图')
   }

@@ -3,7 +3,7 @@ import { knowledgeIngestUserMessage } from '../knowledge-ingest-user-error.util'
 
 describe('knowledgeIngestUserMessage', () => {
   it('should translate known ingest error codes and keep unknown text', () => {
-    const t = vi.fn((key: string, fallback: string) => key)
+    const t = vi.fn((key: string, _fallback?: string) => key)
 
     expect(knowledgeIngestUserMessage('source-not-embedded', t as never)).toBe(
       'knowledge.source_not_embedded'
@@ -34,9 +34,9 @@ describe('knowledgeIngestUserMessage', () => {
   })
 
   it('should localize a graph node-embed payment error', () => {
-    const t = vi.fn((key: string, fallback: string) => key)
-    expect(
-      knowledgeIngestUserMessage('graph-step:node-embed:Payment Required', t as never)
-    ).toBe('agent.error.quota')
+    const t = vi.fn((key: string, _fallback?: string) => key)
+    expect(knowledgeIngestUserMessage('graph-step:node-embed:Payment Required', t as never)).toBe(
+      'agent.error.quota'
+    )
   })
 })

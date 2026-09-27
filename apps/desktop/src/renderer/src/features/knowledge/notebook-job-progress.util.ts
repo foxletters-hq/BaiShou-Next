@@ -1,8 +1,5 @@
 import { parseKnowledgeGraphStepError } from '@baishou/shared'
-import {
-  graphPageSpan,
-  type NotebookGraphJobSnapshot
-} from './notebook-graph-progress.util'
+import { graphPageSpan, type NotebookGraphJobSnapshot } from './notebook-graph-progress.util'
 import {
   isKnowledgeGraphJobOpen,
   notebookOrganizeSourceRow,
@@ -227,11 +224,7 @@ export function notebookOrganizeProgressCopy(input: {
       ? {
           id: 'graph',
           status: 'running',
-          completed: graphPages
-            ? graphPages.pageTo
-            : graphWindows > 0
-              ? graphWindowsDone
-              : 0,
+          completed: graphPages ? graphPages.pageTo : graphWindows > 0 ? graphWindowsDone : 0,
           total: graphPages
             ? graphPages.pageTotal
             : graphWindows > 0
@@ -245,7 +238,8 @@ export function notebookOrganizeProgressCopy(input: {
         ? { id: 'graph', status: graphExtractDone ? 'done' : 'pending', completed: 0, total: 0 }
         : { id: 'graph', status: 'skipped', completed: 0, total: 0 }
 
-  const graphNodesFailed = graphFailedOnly && (failedStep === 'align' || failedStep === 'node-embed')
+  const graphNodesFailed =
+    graphFailedOnly && (failedStep === 'align' || failedStep === 'node-embed')
   const graphNodes: KnowledgeOrganizePhaseRow = graphNodesFailed
     ? {
         id: 'graphNodes',
@@ -288,4 +282,3 @@ export function knowledgeOrganizeCompactKind(
   if (failed) return 'failed'
   return phases.find((row) => row.status === 'running')?.id ?? 'generic'
 }
-

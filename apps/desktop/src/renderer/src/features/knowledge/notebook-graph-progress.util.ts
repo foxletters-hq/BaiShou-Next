@@ -53,11 +53,13 @@ export type NotebookGraphProgressView = NotebookGraphProgressCopy & {
 
 type TranslateFn = (key: string, options?: Record<string, string | number>) => string
 
-export function graphPageSpan(input?: {
-  pageFrom?: number
-  pageTo?: number
-  pageTotal?: number
-} | null): { pageFrom: number; pageTo: number; pageTotal: number } | null {
+export function graphPageSpan(
+  input?: {
+    pageFrom?: number
+    pageTo?: number
+    pageTotal?: number
+  } | null
+): { pageFrom: number; pageTo: number; pageTotal: number } | null {
   const pageTotal = Math.max(0, input?.pageTotal ?? 0)
   const pageTo = Math.min(pageTotal, Math.max(0, input?.pageTo ?? 0))
   if (pageTotal <= 0 || pageTo <= 0) return null
