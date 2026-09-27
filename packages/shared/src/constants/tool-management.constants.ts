@@ -46,11 +46,19 @@ function isAutoInjectTimeDisabled(disabledToolIds: string[]): boolean {
 
 /**
  * 是否为消息加发送时刻壳，并在 system 的 runtime_context 写入稳定时区。
- * 空 disabledToolIds 视为开启（兼容旧配置）；显式列入 ID 则关闭。
+ * 默认关闭：空或未配置视为关闭；显式列入 ID 也关闭；列表里没有该 ID 则开启。
  */
 export function isAutoInjectCurrentTimeEnabled(disabledToolIds: string[] | undefined): boolean {
   if (!disabledToolIds || disabledToolIds.length === 0) {
-    return true
+    return false
   }
   return !isAutoInjectTimeDisabled(disabledToolIds)
+}
+
+/** 正在把「当前时间」从关改为开（用于设置页确认提示） */
+export function isEnablingAutoInjectTime(toolId: string, currentlyEnabled: boolean): boolean {
+  return (
+    (toolId === AUTO_INJECT_TIME_TOOL_ID || toolId === LEGACY_AUTO_INJECT_TIME_TOOL_ID) &&
+    currentlyEnabled === false
+  )
 }

@@ -150,7 +150,7 @@ export function buildKnowledgeMountPromptLines(opts: {
   return [
     `Mounted knowledge notebooks (${ids.length}/${MAX_MOUNTED_NOTEBOOKS}): ${labels.join(', ')}.`,
     'When the user asks about these notebooks, call knowledge_search / knowledge_graph_search first.',
-    'Prefer answering from retrieved sources and cite notebook name + source title + location. If sources are insufficient, say so explicitly. Do not invent content.',
+    'Prefer answering from retrieved sources. In the answer body, cite a passage with the same bracket number returned by knowledge_search, for example [1]. Do not paste the retrieved excerpts. If sources are insufficient, say so explicitly. Do not invent content.',
     'If the user did not specify a notebook, search all mounted notebooks. Never pass a notebookId that is not in the mounted set.'
   ]
 }

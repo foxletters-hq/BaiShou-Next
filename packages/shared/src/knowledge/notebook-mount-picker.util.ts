@@ -7,6 +7,12 @@ export type NotebookMountCandidate = {
   chunks: number
   dimension: number | null
   mixedEmbeddings?: boolean
+  coverTone?: string
+  coverIcon?: string
+  coverImageUrl?: string | null
+  /** 图谱节点数，不含资料来源占位节点 */
+  graphNodes?: number
+  graphEdges?: number
 }
 
 export function selectedMountDimension(opts: {
