@@ -1,5 +1,5 @@
 import i18n from 'i18next'
-import { logger, type RagVectorKindFilter } from '@baishou/shared'
+import { logger, type MemoryClearKind, type RagVectorKindFilter } from '@baishou/shared'
 import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
 import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
 import {
@@ -20,6 +20,7 @@ import { queryMobileRagEntries } from './mobile-rag-query.helpers'
 import {
   addMobileManualMemory,
   clearAllMobileRag,
+  clearMobileRagByKinds,
   deleteMobileRagEntry,
   editMobileRagEntry
 } from './mobile-rag-memory-write.helpers'
@@ -234,6 +235,10 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
     async clearAll(): Promise<void> {
       await clearAllMobileRag(deps)
+    },
+
+    async clearKinds(kinds: MemoryClearKind[]): Promise<void> {
+      await clearMobileRagByKinds(deps, kinds)
     },
 
     async getUnindexedDiaryCount(): Promise<number> {

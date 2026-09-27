@@ -234,32 +234,9 @@ export async function runMobileManualPendingEmbedFill(
     'graph_node'
   )
 
-  let scanCollected = 0
-  try {
-    await assertMobileRagCanContinue()
-    const { runMobileGraphSuspectScan } = await import('./mobile-graph-suspect-scan')
-    report(
-      'graph_disambiguate',
-      patchPhaseCounts(phases, 'graph_disambiguate', { completed: 0, total: 1 })
-    )
-    const scanResult = await runMobileGraphSuspectScan({ vaultId })
-    scanCollected = scanResult.collected
-    phases = markPhaseDone(
-      patchPhaseCounts(phases, 'graph_disambiguate', {
-        completed: scanResult.persisted,
-        total: Math.max(scanResult.collected, scanResult.persisted, 1)
-      }),
-      'graph_disambiguate'
-    )
-  } catch (error) {
-    if (error instanceof MobileRagAbortError) throw error
-    logger.warn('[PendingEmbedFill] mobile graph disambiguate phase failed', error as Error)
-    phases = markPhaseDone(phases, 'graph_disambiguate')
-  }
-
   invalidateMobilePendingEmbedCountsCache()
   report('finishing', phases)
-  const discovered = graphResult.total + extractDone + scanCollected
+  const discovered = graphResult.total + extractDone
   if (asideDiary === 0 && discovered === 0) {
     return { ...empty, skippedReason: 'nothing-to-embed' }
   }

@@ -106,7 +106,7 @@ async function presentAsked(request: AgentGateRequest): Promise<void> {
   const id = await mod.scheduleNotificationAsync({
     content: {
       title: AGENT_GATE_NOTIFICATION_TITLE,
-      body: buildAgentGateNotificationBody(request.sessionId),
+      body: buildAgentGateNotificationBody(),
       data: { requestId: request.id, sessionId: request.sessionId },
       sound: prefs.soundEnabled
     },

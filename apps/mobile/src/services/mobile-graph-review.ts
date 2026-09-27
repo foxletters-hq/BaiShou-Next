@@ -137,6 +137,7 @@ export async function writeMobileNodeSuspectReason(options: {
   fileSystem: IFileSystem
   nodeId: string
   reason: string
+  signals?: readonly string[]
   vaultDisplayName?: string
 }): Promise<void> {
   const trimmed = options.reason.trim()
@@ -160,7 +161,7 @@ export async function writeMobileNodeSuspectReason(options: {
       discriminator: node.discriminator ?? '',
       aliases: node.aliases,
       summary: node.summary,
-      props: applySuspectReasonToProps(props, trimmed),
+      props: applySuspectReasonToProps(props, trimmed, options.signals ?? []),
       mentionCount: node.mentionCount,
       firstSeenAt: node.firstSeenAt ?? now,
       lastSeenAt: node.lastSeenAt ?? now,
