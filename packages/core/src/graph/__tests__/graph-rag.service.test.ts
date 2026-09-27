@@ -216,7 +216,9 @@ describe('GraphRagService extra recall modes', () => {
 
   it('keeps incoming current edges in neighbors', async () => {
     const repo = {
-      searchNodesByName: vi.fn(async () => [node({ id: 'lib', name: '图书馆', nodeType: 'place' })]),
+      searchNodesByName: vi.fn(async () => [
+        node({ id: 'lib', name: '图书馆', nodeType: 'place' })
+      ]),
       traverse: vi.fn(async () => ({
         nodes: [
           node({ id: 'lib', name: '图书馆', nodeType: 'place' }),

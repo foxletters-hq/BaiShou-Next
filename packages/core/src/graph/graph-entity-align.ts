@@ -329,9 +329,7 @@ async function alignWithLlm(
             (row) => row.incomingRef === item.ref && existingByRef.has(row.existingRef)
           )
       const peer = uncertain ? existingByRef.get(uncertain.existingRef) : undefined
-      const similarity = peer
-        ? (similarityByIncomingExisting.get(item.key)?.get(peer.id) ?? 0)
-        : 0
+      const similarity = peer ? (similarityByIncomingExisting.get(item.key)?.get(peer.id) ?? 0) : 0
       const similarPending =
         peer && uncertain && meetsGraphSimilarPendingThreshold(similarity)
           ? {

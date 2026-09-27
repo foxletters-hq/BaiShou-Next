@@ -74,9 +74,7 @@ export class SessionListTool extends AgentTool<typeof sessionListParams> {
       for (let i = 0; i < shown.length; i++) {
         const row = shown[i]!
         const timeLabel =
-          row.firstDate === row.lastDate
-            ? row.firstDate
-            : `${row.firstDate} ~ ${row.lastDate}`
+          row.firstDate === row.lastDate ? row.firstDate : `${row.firstDate} ~ ${row.lastDate}`
         lines.push(
           `${i + 1}. 会话「${row.sessionTitle}」（id: ${row.sessionId}，${timeLabel}，${row.messageCount} 条）`
         )

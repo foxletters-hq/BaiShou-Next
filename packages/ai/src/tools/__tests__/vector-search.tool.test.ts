@@ -104,9 +104,9 @@ describe('VectorSearchTool', () => {
       createContext({
         embeddingService: {
           isConfigured: true,
-          embedQuery: vi.fn().mockRejectedValue(
-            new Error('Sorry, your account balance is insufficient')
-          ),
+          embedQuery: vi
+            .fn()
+            .mockRejectedValue(new Error('Sorry, your account balance is insufficient')),
           embedText: vi.fn()
         },
         vectorStore: { searchSimilar: vi.fn(), deleteBySource: vi.fn() }

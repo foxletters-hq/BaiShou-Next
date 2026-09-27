@@ -7,10 +7,7 @@ export function stripCredentialsFromUrl(url: string): string {
 }
 
 /** mixed reset：HEAD 移到目标提交，其后改动留在工作区，变更面板才能列出新增/删除文件 */
-export async function rollbackWorkspaceAll(
-  git: SimpleGit,
-  commitHash: string
-): Promise<void> {
+export async function rollbackWorkspaceAll(git: SimpleGit, commitHash: string): Promise<void> {
   await git.reset(['--mixed', commitHash])
 }
 
