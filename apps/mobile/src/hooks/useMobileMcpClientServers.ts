@@ -13,9 +13,7 @@ import {
   type McpClientServerStatus
 } from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
-import {
-  getMobileMcpClientRuntime
-} from '../services/mobile-mcp-client-runtime'
+import { getMobileMcpClientRuntime } from '../services/mobile-mcp-client-runtime'
 import {
   MCP_CLIENT_STATUS_FETCH_TIMEOUT_MS,
   defaultMcpClientNameFromUrl,

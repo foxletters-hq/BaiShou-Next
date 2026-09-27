@@ -88,7 +88,8 @@ export function createStartAgentChat(deps: {
         ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)
         : undefined
 
-      if (!config) throw new Error(`No active provider configured (provider: ${providerId || 'unset'})`)
+      if (!config)
+        throw new Error(`No active provider configured (provider: ${providerId || 'unset'})`)
 
       const provider = registry.getOrUpdateProvider(config)
 

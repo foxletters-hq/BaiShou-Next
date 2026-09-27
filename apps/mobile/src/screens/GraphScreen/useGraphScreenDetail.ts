@@ -3,7 +3,6 @@ import { GRAPH_EDGE_TYPES } from '@baishou/database'
 import { isGraphNodeSameNameConflict, type GraphSameNameExisting } from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
-  parseGraphNodePropsJson,
   graphBareNodeIdForRevert,
   graphRevertSplitStayId,
   type GraphRegisteredSameNameEntity
@@ -16,7 +15,10 @@ import {
   mobileUpsertEdge,
   mobileUpsertNode
 } from '@/src/services/mobile-graph.service'
-import { mobileListNameCandidates, mobileRevertGraphNodeSplit } from '@/src/services/mobile-graph-split'
+import {
+  mobileListNameCandidates,
+  mobileRevertGraphNodeSplit
+} from '@/src/services/mobile-graph-split'
 import { parseGraphAliasInput, viewDepthFor } from './graph-screen-view.util'
 import type { GraphScreenTranslateFn } from './graph-screen.types'
 import type { GraphFocusDepth } from '@baishou/shared'

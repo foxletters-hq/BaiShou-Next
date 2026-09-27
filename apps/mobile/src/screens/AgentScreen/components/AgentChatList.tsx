@@ -39,6 +39,7 @@ import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
 import { LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
 import { MobileNotebookMountSheet } from './MobileNotebookMountSheet'
+import { KnowledgeMountHintBar } from './KnowledgeMountHintBar'
 
 export type AgentChatListProps = {
   colors: any
@@ -437,6 +438,12 @@ export function AgentChatList(props: AgentChatListProps) {
           style={[styles.inputDock, p.inputDockAnimatedStyle]}
           pointerEvents={p.isBubbleEditing ? 'none' : 'auto'}
         >
+          <KnowledgeMountHintBar
+            sessionId={p.currentSessionId}
+            assistantId={p.assistantId}
+            refreshToken={notebookMountOpen}
+            onOpen={() => setNotebookMountOpen(true)}
+          />
           <InputBar
             ref={p.inputBarRef}
             onSend={p.handleSendWithScroll}

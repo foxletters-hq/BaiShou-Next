@@ -320,7 +320,12 @@ export function useGraphScreenModel() {
     const { date } = parseGraphSourceDate(dateOrRef)
     const excerpt = String(fallbackExcerpt || '').trim()
     if (!date && !excerpt) return
-    setSourcePreview({ date, content: excerpt || '', excerpt: excerpt || null, loading: Boolean(date) })
+    setSourcePreview({
+      date,
+      content: excerpt || '',
+      excerpt: excerpt || null,
+      loading: Boolean(date)
+    })
     if (!date) {
       setSourcePreview({ date: null, content: excerpt, excerpt: excerpt || null, loading: false })
       return
