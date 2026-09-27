@@ -3,7 +3,14 @@ import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { NotebookDataManageAction } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Checkbox, Input, SegmentedControl, SettingsSection, useNativeTheme } from '@baishou/ui/native'
+import {
+  Button,
+  Checkbox,
+  Input,
+  SegmentedControl,
+  SettingsSection,
+  useNativeTheme
+} from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
 import type { KnowledgeGraphEdgeRow, KnowledgeGraphNodeRow } from './knowledge-detail.types'
 
@@ -81,7 +88,10 @@ export function KnowledgeDetailManageSection(props: {
                     )}
               </Text>
               <View style={styles.rowGap}>
-                <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onStartOrganize()}>
+                <Button
+                  isDisabled={sourceCount === 0 || busy}
+                  onPress={() => void onStartOrganize()}
+                >
                   {t('graph.start_organize', '开始整理')}
                 </Button>
               </View>
@@ -142,22 +152,18 @@ export function KnowledgeDetailManageSection(props: {
             </View>
           </View>
           {manageAction === 'clear' ? (
-            <Input
-              value={clearPhrase}
-              onChangeText={onClearPhrase}
-              placeholder={phrase}
-            />
+            <Input value={clearPhrase} onChangeText={onClearPhrase} placeholder={phrase} />
           ) : null}
           <View style={styles.rowGap}>
-          <Button
-            isDisabled={!canConfirm || busy}
-            destructive={manageAction === 'clear'}
-            onPress={() => void onConfirmManage()}
-          >
-            {manageAction === 'clear'
-              ? t('knowledge.data_manage_clear', '清除')
-              : t('knowledge.data_manage_reprocess', '重整理')}
-          </Button>
+            <Button
+              isDisabled={!canConfirm || busy}
+              destructive={manageAction === 'clear'}
+              onPress={() => void onConfirmManage()}
+            >
+              {manageAction === 'clear'
+                ? t('knowledge.data_manage_clear', '清除')
+                : t('knowledge.data_manage_reprocess', '重整理')}
+            </Button>
           </View>
         </View>
       </SettingsSection>

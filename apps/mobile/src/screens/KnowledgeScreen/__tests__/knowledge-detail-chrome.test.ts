@@ -7,6 +7,10 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const page = [
   'KnowledgeDetailScreen.tsx',
   'useKnowledgeDetail.ts',
+  'useKnowledgeDetailImport.ts',
+  'useKnowledgeDetailSources.ts',
+  'useKnowledgeDetailGraph.ts',
+  'useKnowledgeDetailNotebook.ts',
   'KnowledgeDetailCoverSection.tsx',
   'KnowledgeDetailImportSection.tsx',
   'KnowledgeDetailSourcesSection.tsx',
@@ -14,7 +18,16 @@ const page = [
   'KnowledgeDetailExtractSection.tsx',
   'KnowledgeNotebookGraphSection.tsx',
   'KnowledgeDetailVectorsSection.tsx',
-  'KnowledgeNotebookDeleteDialog.tsx'
+  'KnowledgeNotebookDeleteDialog.tsx',
+  'KnowledgeExtractHintDialog.tsx',
+  'KnowledgeSourcePreviewModal.tsx',
+  'KnowledgeDetailJobBanner.tsx',
+  'KnowledgeCoverEmojiPicker.tsx',
+  'useKnowledgeDetailVectors.ts',
+  'KnowledgeHeavyConfirmDialog.tsx',
+  'KnowledgeNotebookStatusStrip.tsx',
+  'KnowledgeNotebookGraphCanvasTab.tsx',
+  'KnowledgeNotebookGraphPendingTab.tsx'
 ]
   .map((name) => readFileSync(join(dir, '..', name), 'utf8'))
   .join('\n')
@@ -68,6 +81,28 @@ describe('mobile knowledge detail chrome', () => {
     expect(page).toContain('mobileGetExtractedPreview')
     expect(page).toContain('mobileSetKnowledgeConfig')
     expect(page).toContain('mobileListKnowledgeChunks')
+    expect(page).toContain('mobileGetSourceFile')
+    expect(page).toContain('mobileProbeExtractHint')
+    expect(page).toContain('PageSizeSelector')
+    expect(page).toContain('KnowledgeExtractHintDialog')
+    expect(page).toContain('KnowledgeSourcePreviewModal')
+    expect(page).toContain('KnowledgeDetailJobBanner')
+    expect(page).toContain('listExtractProbeSources')
+    expect(page).toContain('mobileGetKnowledgeCapabilities')
+    expect(page).toContain('mobileSearchNotebookGraph')
+    expect(page).toContain('graphPendingItemKey')
+    expect(page).toContain('MarkdownRenderer')
+    expect(page).toContain('assessFetchedWebPage')
+    expect(page).toContain('listNotebookCoverEmojis')
+    expect(page).toContain('NativeSlider')
+    expect(page).toContain('knowledgeSourceDisplayStatus')
+    expect(page).toContain('knowledgeIngestProgressLabel')
+    expect(page).toContain('collectGraphFocusIds')
+    expect(page).toContain('graph.select_all')
+    expect(page).toContain('KnowledgeHeavyConfirmDialog')
+    expect(page).toContain('KnowledgeNotebookStatusStrip')
+    expect(page).toContain('extract_probe_empty_page')
+    expect(page).toContain('graph.merge_irreversible')
   })
 
   it('should use settings sections and require a three-second delete countdown', () => {

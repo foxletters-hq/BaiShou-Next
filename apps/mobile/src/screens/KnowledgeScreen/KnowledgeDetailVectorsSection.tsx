@@ -2,7 +2,15 @@ import React from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Card, Input, SegmentedControl, SettingsSection, useNativeTheme } from '@baishou/ui/native'
+import {
+  Card,
+  Input,
+  PageSizeSelector,
+  Pagination,
+  SegmentedControl,
+  SettingsSection,
+  useNativeTheme
+} from '@baishou/ui/native'
 
 export type KnowledgeVectorChunkRow = {
   chunkId: string
@@ -10,6 +18,7 @@ export type KnowledgeVectorChunkRow = {
   chunkIndex: number
   chunkText: string
   modelId?: string | null
+  score?: number
 }
 
 export function KnowledgeDetailVectorsSection(props: {
@@ -23,7 +32,10 @@ export function KnowledgeDetailVectorsSection(props: {
   items: KnowledgeVectorChunkRow[]
   total: number
   loading: boolean
+  onPageSizeChange: (size: number) => void
   onOpenChunk: (item: KnowledgeVectorChunkRow) => void
+  sourceCount?: number
+  modelId?: string | null
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -53,61 +65,77 @@ export function KnowledgeDetailVectorsSection(props: {
         >
           {props.loading
             ? t('common.loading', '加载中…')
-            : t('knowledge.vector_count', '{{count}} 个片段', { count: props.total })}
+            : t('knowledge.vector_stats', '{{count}} 个片段 · {{sources}} 个来源{{model}}', {
+                count: props.total,
+                sources: props.sourceCount ?? 0,
+                model: props.modelId ? ` · ${props.modelId}` : ''
+              })}
         </Text>
         {props.items.map((item) => (
           <Pressable key={item.chunkId} onPress={() => props.onOpenChunk(item)}>
-          <Card>
-            <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.xs }}>
-              <Text
-                style={{
-                  color: colors.textPrimary,
-                  fontSize: settingsTypography.row.fontSize,
-                  fontWeight: settingsTypography.row.fontWeight
-                }}
-              >
-                {item.sourceTitle || item.chunkId} · #{item.chunkIndex + 1}
-              </Text>
-              <Text
-                style={{
-                  color: colors.textSecondary,
-                  fontSize: settingsTypography.desc.fontSize
-                }}
-                numberOfLines={4}
-              >
-                {item.chunkText}
-              </Text>
-              {item.modelId ? (
+            <Card>
+              <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.xs }}>
                 <Text
                   style={{
-                    color: colors.textTertiary,
-                    fontSize: settingsTypography.desc.fontSize
+                    color: colors.textPrimary,
+                    fontSize: settingsTypography.row.fontSize,
+                    fontWeight: settingsTypography.row.fontWeight
                   }}
                 >
-                  {item.modelId}
+                  {item.sourceTitle || item.chunkId} · #{item.chunkIndex + 1}
                 </Text>
-              ) : null}
-            </View>
-          </Card>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: settingsTypography.desc.fontSize
+                  }}
+                  numberOfLines={4}
+                >
+                  {item.chunkText}
+                </Text>
+                {item.score != null ? (
+                  <Text
+                    style={{
+                      color: colors.textTertiary,
+                      fontSize: settingsTypography.desc.fontSize
+                    }}
+                  >
+                    {t('knowledge.vector_score', '相关度 {{score}}', {
+                      score: item.score.toFixed(3)
+                    })}
+                  </Text>
+                ) : null}
+                {item.modelId ? (
+                  <Text
+                    style={{
+                      color: colors.textTertiary,
+                      fontSize: settingsTypography.desc.fontSize
+                    }}
+                  >
+                    {item.modelId}
+                  </Text>
+                ) : null}
+              </View>
+            </Card>
           </Pressable>
         ))}
-        {props.searchMode === 'text' && props.total > props.pageSize ? (
-          <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-            <Button
-              variant="outlined"
-              isDisabled={props.loading || props.page <= 1}
-              onPress={() => props.onPageChange(props.page - 1)}
-            >
-              {t('common.prev', '上一页')}
-            </Button>
-            <Button
-              variant="outlined"
-              isDisabled={props.loading || props.page * props.pageSize >= props.total}
-              onPress={() => props.onPageChange(props.page + 1)}
-            >
-              {t('common.next', '下一页')}
-            </Button>
-          </View>
+        {props.searchMode === 'text' ? (
+          <>
+            <PageSizeSelector
+              value={props.pageSize}
+              options={[10, 20, 50]}
+              onChange={props.onPageSizeChange}
+              label={t('knowledge.chunks_per_page', '条/页')}
+            />
+            {props.total > props.pageSize ? (
+              <Pagination
+                current={props.page}
+                total={Math.max(1, Math.ceil(props.total / props.pageSize))}
+                onChange={props.onPageChange}
+                disabled={props.loading}
+              />
+            ) : null}
+          </>
         ) : null}
       </View>
     </SettingsSection>
