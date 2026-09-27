@@ -27,7 +27,8 @@ export function parseKnowledgeGraphStepError(
 
 export function wrapKnowledgeGraphStepError(step: KnowledgeGraphStep, error: unknown): Error {
   const parsed = parseKnowledgeGraphStepError(error)
-  if (parsed) return error instanceof Error ? error : new Error(`${PREFIX}${parsed.step}:${parsed.detail}`)
+  if (parsed)
+    return error instanceof Error ? error : new Error(`${PREFIX}${parsed.step}:${parsed.detail}`)
   const detail = readErrorMessage(error)
   return new Error(`${PREFIX}${step}:${detail}`)
 }

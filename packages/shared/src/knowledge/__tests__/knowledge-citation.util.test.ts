@@ -76,10 +76,7 @@ describe('knowledge-citation.util', () => {
 
   it('should format the citation dialog heading with notebook and location', () => {
     expect(
-      formatKnowledgeCitationHeading(
-        { notebookName: '手册', title: '深度关系', page: 12 },
-        3
-      )
+      formatKnowledgeCitationHeading({ notebookName: '手册', title: '深度关系', page: 12 }, 3)
     ).toBe('「3」 手册 · 深度关系（第 12 页）')
   })
 
@@ -109,9 +106,7 @@ describe('knowledge-citation.util', () => {
 
   it('should ignore the model [1] when the excerpt belongs to another sentence', () => {
     const [text] = decorateKnowledgeCitedTexts(
-      [
-        '清崎有两个爸爸，一个博士学历却一辈子为账单发愁。[1] 另一句讲别的事情。'
-      ],
+      ['清崎有两个爸爸，一个博士学历却一辈子为账单发愁。[1] 另一句讲别的事情。'],
       1,
       'msg-1',
       {
