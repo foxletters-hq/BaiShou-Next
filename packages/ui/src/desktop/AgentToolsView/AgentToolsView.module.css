@@ -69,21 +69,34 @@
 /* ── Dialog presentation (desktop modal) ── */
 
 .toolManagerOverlay {
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 80px 24px 40px;
+  padding: var(--spacing-lg);
   box-sizing: border-box;
+  min-height: 0;
 }
 
 .toolManagerModal {
   padding: 0 !important;
-  width: min(720px, 88vw) !important;
-  min-width: min(520px, 88vw) !important;
-  max-height: calc(100vh - 120px) !important;
+  width: min(720px, 100%) !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  max-height: 100% !important;
+  min-height: 0 !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  border-radius: 14px !important;
+  border-radius: var(--radius-md) !important;
+  box-sizing: border-box;
+}
+
+/* Modal.body 是 flex 子项，不收紧时工具列表会撑破遮罩 */
+.toolManagerModal > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .toolManagerModalBody {
@@ -95,11 +108,12 @@
 }
 
 .containerDialog {
-  height: min(600px, calc(100vh - 120px));
-  min-height: 440px;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   flex: 1;
   background-color: var(--bg-surface);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 .headerDialog {
