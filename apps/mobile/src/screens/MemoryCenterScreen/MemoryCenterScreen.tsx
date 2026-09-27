@@ -21,7 +21,14 @@ import {
   type RagConfig
 } from '@baishou/shared'
 import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Card, SegmentedControl, useDialog, useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import {
+  Button,
+  Card,
+  SegmentedControl,
+  useDialog,
+  useNativeTheme,
+  useNativeToast
+} from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -271,7 +278,16 @@ export function MemoryCenterScreen() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <View style={[styles.head, { paddingBottom: tokens.spacing.sm, paddingHorizontal: tokens.spacing.md, paddingTop: tokens.spacing.sm }]}>
+          <View
+            style={[
+              styles.head,
+              {
+                paddingBottom: tokens.spacing.sm,
+                paddingHorizontal: tokens.spacing.md,
+                paddingTop: tokens.spacing.sm
+              }
+            ]}
+          >
             <SegmentedControl
               value={tab}
               onChange={selectTab}
@@ -310,7 +326,10 @@ export function MemoryCenterScreen() {
                   {t('memory.onboarding_title', '开始整理记忆')}
                 </Text>
                 {onboarding.steps.map((step) => (
-                  <Text key={step.id} style={{ color: colors.textSecondary, marginTop: tokens.spacing.xs }}>
+                  <Text
+                    key={step.id}
+                    style={{ color: colors.textSecondary, marginTop: tokens.spacing.xs }}
+                  >
                     {step.id === 'embed'
                       ? t('memory.onboarding_step_embed', '配置嵌入模型')
                       : step.id === 'vector'
@@ -319,7 +338,12 @@ export function MemoryCenterScreen() {
                     {step.count != null ? ` · ${step.count}` : ''}
                   </Text>
                 ))}
-                <View style={[styles.onboardingActions, { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }]}>
+                <View
+                  style={[
+                    styles.onboardingActions,
+                    { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }
+                  ]}
+                >
                   <Button
                     onPress={() => {
                       if (onboarding.primaryKind === 'configure') router.push('/settings/ai-models')
@@ -345,7 +369,10 @@ export function MemoryCenterScreen() {
           {tab === 'vectors' ? (
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + tokens.spacing.lg }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: insets.bottom + tokens.spacing.lg
+              }}
               keyboardShouldPersistTaps="handled"
             >
               <RAGMemorySection />
@@ -423,7 +450,10 @@ const styles = StyleSheet.create({
   head: {},
   rows: {},
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  rowLabel: { fontSize: settingsTypography.desc.fontSize, fontWeight: settingsTypography.desc.fontWeight },
+  rowLabel: {
+    fontSize: settingsTypography.desc.fontSize,
+    fontWeight: settingsTypography.desc.fontWeight
+  },
   rowValue: {
     fontSize: settingsTypography.desc.fontSize,
     fontWeight: settingsTypography.desc.fontWeight,

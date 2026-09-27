@@ -40,9 +40,7 @@ export function McpClientAddServerForm({
   return (
     <SettingsGroupCard>
       <Button variant="outlined" onPress={onToggleAdding}>
-        {adding
-          ? t('common.cancel', '取消')
-          : t('settings.mcp_custom_new_title', '新建 MCP 服务')}
+        {adding ? t('common.cancel', '取消') : t('settings.mcp_custom_new_title', '新建 MCP 服务')}
       </Button>
       {adding ? (
         <View style={{ marginTop: tokens.spacing.md, gap: tokens.spacing.md }}>

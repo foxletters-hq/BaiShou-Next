@@ -266,7 +266,11 @@ export const LatteSettingsSection: React.FC = () => {
           </SettingsGroupCard>
 
           <View style={styles.actions}>
-            <Button variant="outlined" onPress={() => void handleSave()} isDisabled={saving || !dirty}>
+            <Button
+              variant="outlined"
+              onPress={() => void handleSave()}
+              isDisabled={saving || !dirty}
+            >
               {t('common.save', '保存')}
             </Button>
           </View>

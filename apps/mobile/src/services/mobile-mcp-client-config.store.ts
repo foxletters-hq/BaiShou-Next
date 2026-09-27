@@ -22,9 +22,7 @@ const defaultIo: MobileMcpClientConfigIo = {
   write: (uri, contents) => writeAsStringAsync(uri, contents)
 }
 
-export function resolveMobileMcpClientConfigPath(
-  io: MobileMcpClientConfigIo = defaultIo
-): string {
+export function resolveMobileMcpClientConfigPath(io: MobileMcpClientConfigIo = defaultIo): string {
   return io.resolvePath()
 }
 

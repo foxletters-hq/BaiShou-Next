@@ -10,17 +10,14 @@ describe('mobile settings latte chrome', () => {
   it('should mount LatteSettingsSection from the companion hub', () => {
     const hub = readFileSync(join(dir, '..', 'settingsHubItems.ts'), 'utf8')
     const detail = readFileSync(join(dir, '..', 'SettingsDetailScreen.tsx'), 'utf8')
-    const section = readFileSync(
-      join(dir, '..', 'components', 'LatteSettingsSection.tsx'),
-      'utf8'
-    )
+    const section = readFileSync(join(dir, '..', 'components', 'LatteSettingsSection.tsx'), 'utf8')
 
     expect(hub).toContain("id: 'latte'")
     expect(hub).toContain("section: 'latte'")
     expect(hub).toContain("icon: 'latte'")
     expect(detail).toContain('LatteSettingsSection')
     expect(detail).toContain("case 'latte'")
-    expect(section).toContain("@baishou/shared/assets/images/latte-chibi.png")
+    expect(section).toContain('@baishou/shared/assets/images/latte-chibi.png')
     expect(section).toContain('latte_display_name')
     expect(section).toContain('latte_origin_quote')
     expect(section).toContain('latte_origin_body')

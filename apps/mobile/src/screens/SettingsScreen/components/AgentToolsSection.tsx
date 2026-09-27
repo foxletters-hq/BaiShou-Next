@@ -32,7 +32,9 @@ export const AgentToolsSection: React.FC = () => {
       foldCompanionAllowlistIntoCapabilities({
         ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
         ...saved,
-        exclusionList: [...(saved.exclusionList ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList)],
+        exclusionList: [
+          ...(saved.exclusionList ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList)
+        ],
         allowlist: [...(saved.allowlist ?? [])],
         permissionRules: [...(saved.permissionRules ?? [])]
       })

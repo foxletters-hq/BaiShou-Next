@@ -31,7 +31,10 @@ export function MemoryOrganizeModal(props: {
             {props.ragState.statusText || t('memory.readiness_organizing', '正在整理记忆…')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-            <Button variant="outlined" onPress={props.ragState.paused ? props.onResume : props.onPause}>
+            <Button
+              variant="outlined"
+              onPress={props.ragState.paused ? props.onResume : props.onPause}
+            >
               {props.ragState.paused
                 ? t('settings.rag_batch_embed_resume', '继续')
                 : t('settings.rag_batch_embed_pause', '暂停')}

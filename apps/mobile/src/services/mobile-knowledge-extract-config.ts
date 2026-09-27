@@ -24,7 +24,7 @@ export type MobileKnowledgeExtractProgress = {
   sourceId: string
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render' | 'embed'
+  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
 }
 
 type ProgressListener = (info: MobileKnowledgeExtractProgress) => void
@@ -72,6 +72,7 @@ export async function resolveMobileKnowledgeExtractConfig(): Promise<{
   ocrDpi: number
   ocrConcurrency: number
   visionModelConfigured: boolean
+  visionProviderId: string | null
   visionModelId: string | null
 }> {
   const settings = agentDbRuntimeRef.current?.settingsManager
@@ -92,6 +93,7 @@ export async function resolveMobileKnowledgeExtractConfig(): Promise<{
     visionModelConfigured: Boolean(
       hit && isVisionModel(hit.modelId, hit.provider.type || hit.provider.id)
     ),
+    visionProviderId: hit?.provider.id ?? null,
     visionModelId: hit?.modelId ?? null
   }
 }
