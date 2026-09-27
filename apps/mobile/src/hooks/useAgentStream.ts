@@ -310,6 +310,15 @@ export function useAgentStream(
     }
   }, [currentSessionId])
 
+  useEffect(() => {
+    if (activeTool?.name !== 'companion_ask' || pendingAgentGate) return
+    void hydrateMobileAgentGateInbox()
+    const timer = setInterval(() => {
+      void hydrateMobileAgentGateInbox()
+    }, 500)
+    return () => clearInterval(timer)
+  }, [activeTool?.name, pendingAgentGate])
+
   const replyAgentGate = useCallback(
     async (
       requestId: string,
@@ -324,6 +333,9 @@ export function useAgentStream(
         toast.showError(t('agent_gate.unavailable', '操作确认服务未就绪'))
         return
       }
+      const existing = useAgentGateInboxStore
+        .getState()
+        .pending.find((item) => item.id === requestId)
       setIsAgentGateReplying(true)
       try {
         useAgentGateInboxStore.getState().removeReplied(requestId, {
@@ -336,6 +348,7 @@ export function useAgentStream(
         })
         await agentGate.reply({ requestId, reply, ...extras })
       } catch (e) {
+        if (existing) useAgentGateInboxStore.getState().upsertAsked(existing)
         const msg = e instanceof Error ? e.message : String(e)
         toast.showError(msg || t('agent_gate.reply_failed', '确认操作失败'))
         throw e

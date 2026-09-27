@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react'
 import { AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
+  selectQueueNeighborId,
   selectQueuePosition,
   selectSameActionCountInSession,
   useAgentGateInboxStore
@@ -23,13 +24,30 @@ export const AgentGateCardHost: React.FC<AgentGateCardHostProps> = ({
   onReply
 }) => {
   const gateQueueIndex = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, request?.sessionId, request?.id).index
+    (state) => selectQueuePosition(state, request?.sessionId, request?.id, 'companion').index
   )
   const gateQueueTotal = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, request?.sessionId, request?.id).total
+    (state) => selectQueuePosition(state, request?.sessionId, request?.id, 'companion').total
   )
   const sameActionCount = useAgentGateInboxStore((state) =>
-    selectSameActionCountInSession(state, request?.sessionId, request?.action)
+    selectSameActionCountInSession(state, request?.sessionId, request?.action, 'companion')
+  )
+
+  const flipQueue = useCallback(
+    (delta: -1 | 1) => {
+      if (!request) return
+      const nextId = selectQueueNeighborId(
+        useAgentGateInboxStore.getState(),
+        request.sessionId,
+        request.id,
+        delta,
+        'companion'
+      )
+      if (nextId) {
+        useAgentGateInboxStore.getState().setFocusedRequest(request.sessionId, nextId)
+      }
+    },
+    [request]
   )
 
   const handleReply = useCallback(
@@ -48,6 +66,8 @@ export const AgentGateCardHost: React.FC<AgentGateCardHostProps> = ({
       queueIndex={gateQueueIndex}
       queueTotal={gateQueueTotal}
       sameActionCount={sameActionCount}
+      onQueuePrev={() => flipQueue(-1)}
+      onQueueNext={() => flipQueue(1)}
     />
   )
 }

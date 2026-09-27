@@ -46,12 +46,18 @@ export const AgentGatePendingList: React.FC<AgentGatePendingListProps> = ({
                 style={[
                   styles.chip,
                   {
-                    borderColor: active ? colors.primary : colors.borderSubtle,
-                    backgroundColor: active ? colors.primaryLight : colors.bgApp
+                    borderColor: active ? colors.borderStrong : colors.borderMuted,
+                    backgroundColor: active ? colors.bgSurfaceHigh : colors.bgSurface
                   }
                 ]}
               >
-                <Text style={[styles.chipTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.chipTitle,
+                    { color: active ? colors.primary : colors.textPrimary }
+                  ]}
+                  numberOfLines={1}
+                >
                   {request.title}
                 </Text>
                 <Text style={[styles.chipMeta, { color: colors.textTertiary }]} numberOfLines={1}>

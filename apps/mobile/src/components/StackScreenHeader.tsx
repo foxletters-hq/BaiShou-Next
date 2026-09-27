@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-
 import { ChevronLeft } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeaderAction } from './StackScreenHeaderAction'
 import type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
@@ -32,7 +32,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
   transparent = false
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const router = useRouter()
 
   const handleBack = onBack ?? (() => router.back())
@@ -48,19 +48,11 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
     : {
         backgroundColor: colors.bgSurface,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: colors.borderSubtle
+        borderBottomColor: colors.borderMuted
       }
 
   return (
-    <View
-      style={[
-        styles.header,
-        barStyle,
-        !transparent && styles.headerElevated,
-        !transparent && getNativeElevationStyle(isDark, 'subtle'),
-        style
-      ]}
-    >
+    <View style={[styles.header, barStyle, style]}>
       <View style={styles.sideStart}>
         {showBack ? (
           <TouchableOpacity
@@ -102,12 +94,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     minHeight: 44
-  },
-  headerElevated: {
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2
   },
   sideStart: {
     width: 88,
