@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { entityAlignKey, graphNodeIdForEntity } from '@baishou/shared'
-import { persistGraphExtractDraft } from '../graph-llm-extraction.persist'
+import { persistGraphExtractDraft, shouldSupersedeDiaryAiEdges } from '../graph-llm-extraction.persist'
 import type { GraphExtractDraft } from '../graph-llm-extraction.types'
 import type { AlignedEntity } from '../graph-entity-align.types'
 
@@ -120,5 +120,84 @@ describe('persistGraphExtractDraft similarPending', () => {
     expect(
       (person?.props as { similarPending?: unknown } | undefined)?.similarPending
     ).toBeUndefined()
+  })
+})
+
+describe('persistGraphExtractDraft supersede', () => {
+  it('should keep old AI edges when the extract kept none', () => {
+    expect(shouldSupersedeDiaryAiEdges(new Set())).toBe(false)
+  })
+
+  it('should retire leftover AI edges when at least one new edge is kept', () => {
+    expect(shouldSupersedeDiaryAiEdges(new Set(['e1']))).toBe(true)
+  })
+
+  function persistCtx(graphManager: {
+    writeRecord: ReturnType<typeof vi.fn>
+    supersedeAiEdgesBySourceRef: ReturnType<typeof vi.fn>
+  }) {
+    return {
+      repo: {
+        getNodeById: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
+        listEdgesTouching: vi.fn(async () => [])
+      } as never,
+      graphManager: graphManager as never
+    }
+  }
+
+  it('should not retire old AI edges when the extract kept none', async () => {
+    const supersedeAiEdgesBySourceRef = vi.fn(async () => 0)
+    await persistGraphExtractDraft(
+      persistCtx({
+        writeRecord: vi.fn(async () => undefined),
+        supersedeAiEdgesBySourceRef
+      }),
+      draft(),
+      new Map(),
+      100
+    )
+    expect(supersedeAiEdgesBySourceRef).not.toHaveBeenCalled()
+  })
+
+  it('should not retire old AI edges when writing new edges throws', async () => {
+    const supersedeAiEdgesBySourceRef = vi.fn(async () => 0)
+    const writeRecord = vi.fn(async (record: { fromId?: string }) => {
+      if (record.fromId) throw new Error('edge-write-failed')
+    })
+    await expect(
+      persistGraphExtractDraft(
+        persistCtx({ writeRecord, supersedeAiEdgesBySourceRef }),
+        {
+          ...draft(),
+          edges: [{ from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }]
+        },
+        new Map(),
+        100
+      )
+    ).rejects.toThrow('edge-write-failed')
+    expect(supersedeAiEdgesBySourceRef).not.toHaveBeenCalled()
+  })
+
+  it('should retire leftover AI edges after at least one new edge is written', async () => {
+    const supersedeAiEdgesBySourceRef = vi.fn(async () => 1)
+    const writeRecord = vi.fn(async () => undefined)
+    const personId = graphNodeIdForEntity(VAULT, 'person', '小张')
+    await persistGraphExtractDraft(
+      persistCtx({ writeRecord, supersedeAiEdgesBySourceRef }),
+      {
+        ...draft(),
+        edges: [{ from: '小张', to: '2026-09-19', type: 'mentions', excerpt: '见面', confidence: 80 }]
+      },
+      new Map(),
+      100
+    )
+    expect(supersedeAiEdgesBySourceRef).toHaveBeenCalledTimes(1)
+    const [sourceRef, opts] = supersedeAiEdgesBySourceRef.mock.calls[0]!
+    expect(sourceRef).toBe('2026-09-19')
+    expect((opts as { exceptIds: Set<string> }).exceptIds.size).toBeGreaterThan(0)
+    expect(writeRecord.mock.calls.some((call) => (call[0] as { fromId?: string }).fromId === personId)).toBe(
+      true
+    )
   })
 })

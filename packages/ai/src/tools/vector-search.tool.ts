@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchTimeFilter } from './agent.tool'
-import { formatAiApiCallError, formatStoredTimestamp } from '@baishou/shared'
+import { clampRagTopK, formatAiApiCallError, formatStoredTimestamp } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
 import {
@@ -106,9 +106,10 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       args.min_score ??
       (context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_THRESHOLD_KEY] as number | undefined) ??
       VECTOR_SEARCH_DEFAULT_MIN_SCORE
-    const maxResults =
-      (context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_TOP_K_KEY] as number | undefined) ??
+    const maxResults = clampRagTopK(
+      context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_TOP_K_KEY],
       VECTOR_SEARCH_DEFAULT_TOP_K
+    )
 
     try {
       const queryEmbedding = await embeddingService.embedQuery(args.query)

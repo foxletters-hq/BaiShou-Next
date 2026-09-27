@@ -38,6 +38,7 @@ import {
   getWorkspaceBranchInfo,
   getWorkspaceRollbackAllContext,
   listWorkspaceStash,
+  rollbackWorkspaceAll,
   stashWorkspaceApply,
   stashWorkspaceDrop,
   stashWorkspacePop,
@@ -374,7 +375,7 @@ export class WorkspaceFolderGitService {
   async rollbackAll(commitHash: string): Promise<{ success: boolean }> {
     const { git } = await this.ensureGit()
     try {
-      await git.reset(['--hard', commitHash])
+      await rollbackWorkspaceAll(git, commitHash)
       return { success: true }
     } catch {
       return { success: false }

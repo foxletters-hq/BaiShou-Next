@@ -8,6 +8,14 @@ export interface AttachmentFileItem {
 /**
  * 单个表情包导入的结果
  */
+export interface EmojiAttachmentFileItem {
+  name: string
+  path: string
+  relativePath: string
+  sizeMB: number
+  birthtime: string
+}
+
 export interface EmojiImportResult {
   /** 导入成功时的相对路径，如 'emojis/猫猫头.png'；失败时为空字符串 */
   relativePath: string
@@ -155,6 +163,9 @@ export interface IAttachmentManager {
    * @returns Array of relative paths like 'emojis/emoji_123.jpg'
    */
   listEmojis(): Promise<string[]>
+
+  /** 扫描表情包目录，返回带体积的文件列表（不含组配置） */
+  listEmojiAttachmentFiles(): Promise<EmojiAttachmentFileItem[]>
 
   /**
    * Deletes an emoji file by its relative path.

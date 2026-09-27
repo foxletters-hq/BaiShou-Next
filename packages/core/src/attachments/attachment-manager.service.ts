@@ -83,6 +83,10 @@ export class AttachmentManagerService implements IAttachmentManager {
     return this.emojiOps.listEmojis(...args)
   }
 
+  listEmojiAttachmentFiles(...args: Parameters<AttachmentEmojiOps['listEmojiAttachmentFiles']>) {
+    return this.emojiOps.listEmojiAttachmentFiles(...args)
+  }
+
   deleteEmoji(...args: Parameters<AttachmentEmojiOps['deleteEmoji']>) {
     return this.emojiOps.deleteEmoji(...args)
   }
