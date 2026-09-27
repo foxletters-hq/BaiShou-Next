@@ -2,7 +2,9 @@ import {
   clearPendingAgentStreamStop,
   emitAgentSessionRuntime,
   getSharedSessionInbox,
-  reconcileCompressionStateAfterTruncate
+  isAgentStreamSessionBusy,
+  reconcileCompressionStateAfterTruncate,
+  resolveAdmitStartDecision
 } from '@baishou/ai'
 import { logger, type SessionInputDelivery, type SessionInputRecord } from '@baishou/shared'
 import type { IpcMainInvokeEvent } from 'electron'
@@ -13,7 +15,13 @@ import {
   isWorkspaceSessionStreaming,
   removeActiveWorkspaceStreamSessionId
 } from './agent-workspace-tool-context'
-import { drainSessionInbox, waitForSessionInboxDrainLock } from './session-inbox-drain'
+import {
+  drainSessionInbox,
+  markDrainAfterAbort,
+  scheduleDrainWhenIdle,
+  waitForSessionInboxDrainLock
+} from './session-inbox-drain'
+import { AgentChatService } from '../ipc/AgentChatService'
 import { initDesktopSessionInboxStore } from './session-inbox.store'
 
 async function deleteWorkspaceQueuedUserMessage(
@@ -27,6 +35,17 @@ async function deleteWorkspaceQueuedUserMessage(
   await realSessionRepo.deleteMessageAndFollowing(sessionId, userMessageId)
   await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
   await cleanupAttachmentsForParts(attachmentManager, sessionId, parts)
+  await sessionManager.flushSessionToDisk(sessionId)
+  await touchWorkspaceSession(sessionId)
+}
+
+async function updateQueuedUserMessageText(
+  sessionId: string,
+  userMessageId: string,
+  text: string
+): Promise<void> {
+  const { realSessionRepo, sessionManager } = getAgentManagers()
+  await realSessionRepo.updateMessageTextPart(userMessageId, text)
   await sessionManager.flushSessionToDisk(sessionId)
   await touchWorkspaceSession(sessionId)
 }
@@ -55,7 +74,7 @@ export async function drainWorkspaceInbox(
   const { runWorkspaceStreamChat } = await import('./agent-workspace-chat.service')
   await drainSessionInbox({
     sessionId,
-    isBusy: isWorkspaceSessionStreaming,
+    isBusy: (id) => isWorkspaceSessionStreaming(id) || isAgentStreamSessionBusy(id),
     logLabel: 'WorkspaceChat',
     runPromoted: async (promoted) => {
       const payload = (promoted.payload ?? {}) as {
@@ -122,15 +141,25 @@ export async function admitWorkspaceInput(params: {
   })
 
   if (params.forceStart) {
-    if (isWorkspaceSessionStreaming(params.sessionId)) {
-      removeActiveWorkspaceStreamSessionId(params.sessionId)
-    }
     clearPendingAgentStreamStop(params.sessionId)
+  }
+
+  const decision = resolveAdmitStartDecision({
+    forceStart: params.forceStart,
+    hostMarkedBusy: isWorkspaceSessionStreaming(params.sessionId),
+    streamClaimBusy: isAgentStreamSessionBusy(params.sessionId)
+  })
+  if (decision.clearHostBusyMark) {
+    removeActiveWorkspaceStreamSessionId(params.sessionId)
   }
 
   await waitForSessionInboxDrainLock(params.sessionId)
 
-  if (isWorkspaceSessionStreaming(params.sessionId)) {
+  if (
+    decision.action === 'queue' ||
+    isWorkspaceSessionStreaming(params.sessionId) ||
+    isAgentStreamSessionBusy(params.sessionId)
+  ) {
     return { input, started: false, queued: true }
   }
 
@@ -164,4 +193,51 @@ export async function cancelWorkspacePendingInput(
     }
   }
   return cancelled
+}
+
+export async function updateWorkspacePendingInput(
+  event: IpcMainInvokeEvent,
+  params: {
+    inputId: string
+    text?: string
+    delivery?: SessionInputDelivery
+  }
+): Promise<SessionInputRecord | null> {
+  await initDesktopSessionInboxStore()
+  const inbox = getSharedSessionInbox()
+  let updated: SessionInputRecord | null = null
+  if (typeof params.text === 'string') {
+    updated = inbox.updatePendingText(params.inputId, params.text)
+    if (!updated) return null
+    const userMessageId = updated.userMessageId?.trim()
+    if (userMessageId) {
+      try {
+        await updateQueuedUserMessageText(updated.sessionId, userMessageId, params.text)
+      } catch (error) {
+        logger.warn(
+          `[WorkspaceChat] update pending text failed session=${updated.sessionId} userMessage=${userMessageId}:`,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+    }
+  }
+  if (params.delivery) {
+    updated = inbox.setPendingDelivery(params.inputId, params.delivery) ?? updated
+  }
+  if (updated && params.delivery === 'steer') {
+    const sessionId = updated.sessionId
+    const isBusy = (id: string) =>
+      isWorkspaceSessionStreaming(id) || isAgentStreamSessionBusy(id)
+    if (isBusy(sessionId)) {
+      markDrainAfterAbort(sessionId)
+      AgentChatService.stopStream(sessionId)
+    }
+    // 不能只等当前流 finally：流可能已经收尾，mark 来不及；stop 也可能留下 pending-stop
+    scheduleDrainWhenIdle({
+      sessionId,
+      isBusy,
+      run: () => drainWorkspaceInbox(event, sessionId)
+    })
+  }
+  return updated
 }

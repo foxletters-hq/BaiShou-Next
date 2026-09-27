@@ -14,6 +14,33 @@ export type TtsSynthesizeSpeechResult =
 export const agentApi = {
   agentChat: (params: { sessionId: string; text: string }) =>
     ipcRenderer.invoke('agent:chat', params),
+  admit: (params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+    attachments?: unknown[]
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }> => ipcRenderer.invoke('agent:admit', params),
+  listPendingInputs: (sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]> =>
+    ipcRenderer.invoke('agent:list-pending-inputs', sessionId),
+  cancelPendingInput: (
+    inputId: string
+  ): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent:cancel-pending-input', inputId),
+  updatePendingInput: (params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent:update-pending-input', params),
   saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) =>
     ipcRenderer.invoke('agent:save-user-message', params),
   getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
@@ -144,6 +171,10 @@ export const agentApi = {
       >,
     notifyAsked: (request: import('@baishou/shared').AgentGateRequest) =>
       ipcRenderer.invoke('agent-gate:notify-asked', request),
+    previewNotification: () =>
+      ipcRenderer.invoke('agent-gate:preview-notification') as Promise<
+        import('@baishou/shared').AgentGateNotificationPreviewResult
+      >,
     getConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
       ipcRenderer.invoke('agent-gate:get-config', scope),
     removeAllowlistEntry: (

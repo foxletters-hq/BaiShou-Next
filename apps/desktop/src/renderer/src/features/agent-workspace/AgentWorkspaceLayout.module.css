@@ -9,3 +9,29 @@
   /* 字体 / 字号走全局 SSOT：--font-family + --ui-fs-* */
   font-family: var(--font-family-main, var(--font-family));
 }
+
+.directorySidebar {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.directorySidebarHidden {
+  display: none;
+}
+
+.outlet {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+}
+
+@media (max-width: 720px) {
+  .layoutContainer {
+    flex-direction: column;
+    overflow: auto;
+  }
+}

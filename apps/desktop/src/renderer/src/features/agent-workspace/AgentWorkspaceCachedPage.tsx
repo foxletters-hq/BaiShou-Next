@@ -1,12 +1,19 @@
-import React, { useContext, useMemo, useRef } from 'react'
+import React, { Suspense, lazy, useContext, useMemo, useRef } from 'react'
 import { Routes, Route, Navigate, useLocation, type Location } from 'react-router-dom'
 import { AgentWorkspaceLayout } from './AgentWorkspaceLayout'
-import { AgentWorkspaceScreen } from './AgentWorkspaceScreen'
 import { WorkbenchHomePage } from './workbench/WorkbenchHomePage'
 import { WorkbenchPlaceholderPage } from './workbench/home/WorkbenchPlaceholderPage'
-import { WorkbenchSkillsPage } from './workbench/skills/WorkbenchSkillsPage'
-import { KnowledgeListPage } from '../knowledge'
 import { MainPageCacheActiveContext } from '../../layouts/MainPageCache'
+
+const AgentWorkspaceScreen = lazy(() =>
+  import('./AgentWorkspaceScreen').then((m) => ({ default: m.AgentWorkspaceScreen }))
+)
+const KnowledgeListPage = lazy(() =>
+  import('../knowledge/KnowledgeListPage').then((m) => ({ default: m.KnowledgeListPage }))
+)
+const WorkbenchSkillsPage = lazy(() =>
+  import('./workbench/skills/WorkbenchSkillsPage').then((m) => ({ default: m.WorkbenchSkillsPage }))
+)
 
 function parseFrozenLocation(pathWithSearch: string): Pick<Location, 'pathname' | 'search'> {
   const qIndex = pathWithSearch.indexOf('?')
@@ -46,12 +53,40 @@ export const AgentWorkspaceCachedPage: React.FC = () => {
     <Routes location={routesLocation}>
       <Route path="/agent-workspace" element={<AgentWorkspaceLayout />}>
         <Route index element={<WorkbenchHomePage />} />
-        <Route path="knowledge" element={<KnowledgeListPage />} />
-        <Route path="skills" element={<WorkbenchSkillsPage />} />
+        <Route
+          path="knowledge"
+          element={
+            <Suspense fallback={null}>
+              <KnowledgeListPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="skills"
+          element={
+            <Suspense fallback={null}>
+              <WorkbenchSkillsPage />
+            </Suspense>
+          }
+        />
         <Route path="templates" element={<Navigate to="/agent-workspace/skills" replace />} />
         <Route path="projects" element={<WorkbenchPlaceholderPage section="projects" />} />
-        <Route path="open/:workspaceId" element={<AgentWorkspaceScreen />} />
-        <Route path=":sessionId" element={<AgentWorkspaceScreen />} />
+        <Route
+          path="open/:workspaceId"
+          element={
+            <Suspense fallback={null}>
+              <AgentWorkspaceScreen />
+            </Suspense>
+          }
+        />
+        <Route
+          path=":sessionId"
+          element={
+            <Suspense fallback={null}>
+              <AgentWorkspaceScreen />
+            </Suspense>
+          }
+        />
       </Route>
     </Routes>
   )
