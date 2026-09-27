@@ -49,6 +49,58 @@ describe('RagEmbeddedFilesTable empty copy', () => {
   })
 })
 
+describe('RagEmbeddedFilesTable graph node card', () => {
+  it('should label the node name and summary', () => {
+    render(
+      <RagEmbeddedFilesTable
+        entries={[
+          {
+            embeddingId: 'node-news',
+            text: '新闻\n与助手聊的新闻。',
+            modelId: 'Qwen/Qwen3-Embedding-4B',
+            createdAt: Date.parse('2026-09-21T00:06:00'),
+            sourceType: 'graph_node'
+          }
+        ]}
+        searchQuery=""
+        activeMenuId={null}
+        setActiveMenuId={vi.fn()}
+        formatDate={() => '09/21 00:06'}
+      />
+    )
+
+    expect(screen.getByText('节点名称')).toBeInTheDocument()
+    expect(screen.getByText('新闻')).toBeInTheDocument()
+    expect(screen.getByText('摘要')).toBeInTheDocument()
+    expect(screen.getByText('与助手聊的新闻。')).toBeInTheDocument()
+  })
+
+  it('should show an empty summary when a same-day entry anchor has only a date name', () => {
+    render(
+      <RagEmbeddedFilesTable
+        entries={[
+          {
+            embeddingId: 'node-date',
+            text: '2025-11-20',
+            modelId: 'Qwen/Qwen3-Embedding-4B',
+            createdAt: Date.parse('2026-09-20T23:59:00'),
+            sourceType: 'graph_node'
+          }
+        ]}
+        searchQuery=""
+        activeMenuId={null}
+        setActiveMenuId={vi.fn()}
+        formatDate={() => '09/20 23:59'}
+      />
+    )
+
+    expect(screen.getByText('节点名称')).toBeInTheDocument()
+    expect(screen.getByText('2025-11-20')).toBeInTheDocument()
+    expect(screen.getByText('摘要')).toBeInTheDocument()
+    expect(screen.getByText('无')).toBeInTheDocument()
+  })
+})
+
 describe('RagEmbeddedFilesTable fragment preview', () => {
   it('shows the matching diary body instead of only the date heading', () => {
     render(

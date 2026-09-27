@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   buildRagEntryListPreview,
   isGraphNodeRagEntry,
+  splitGraphNodeCardText,
   isRagEntryEditable,
   ragVectorKindLabelKey,
   resolveRagMemoryEmptyCopy,
@@ -81,6 +82,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
         const kind = resolveRagVectorKind(e)
         const isGraphNode = isGraphNodeRagEntry(e.sourceType)
         const { preview } = buildRagEntryListPreview(e.text, keyword || undefined)
+        const nodeCard = isGraphNode ? splitGraphNodeCardText(e.text) : null
         return (
           <div key={e.embeddingId} className={styles.memoryEntryCard}>
             <div className={styles.memoryEntryContentBlock}>
@@ -91,16 +93,56 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                   </span>
                 </div>
               ) : null}
-              <button
-                type="button"
-                className={styles.memoryEntryText}
-                aria-label={t('settings.rag_view_entry', '查看完整片段')}
-                onClick={() => setPreviewEntry(e)}
-              >
-                <span className={styles.memoryEntryTextInner}>
-                  <RagMemoryHighlightedText text={preview} keyword={keyword || undefined} />
-                </span>
-              </button>
+              {nodeCard ? (
+                <button
+                  type="button"
+                  className={styles.memoryEntryNodeFields}
+                  aria-label={t('settings.rag_view_entry', '查看完整片段')}
+                  onClick={() => setPreviewEntry(e)}
+                >
+                  <span className={styles.memoryEntryNodeRow}>
+                    <span className={styles.memoryEntryNodeLabel}>
+                      {t('settings.rag_node_name', '节点名称')}
+                    </span>
+                    <span className={styles.memoryEntryNodeValue}>
+                      <RagMemoryHighlightedText
+                        text={nodeCard.name}
+                        keyword={keyword || undefined}
+                      />
+                    </span>
+                  </span>
+                  <span className={styles.memoryEntryNodeRow}>
+                    <span className={styles.memoryEntryNodeLabel}>
+                      {t('settings.rag_node_summary', '摘要')}
+                    </span>
+                    <span
+                      className={
+                        nodeCard.summary
+                          ? styles.memoryEntryNodeValue
+                          : `${styles.memoryEntryNodeValue} ${styles.memoryEntryNodeValueMuted}`
+                      }
+                    >
+                      <RagMemoryHighlightedText
+                        text={
+                          nodeCard.summary || t('settings.rag_node_summary_empty', '无')
+                        }
+                        keyword={keyword || undefined}
+                      />
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.memoryEntryText}
+                  aria-label={t('settings.rag_view_entry', '查看完整片段')}
+                  onClick={() => setPreviewEntry(e)}
+                >
+                  <span className={styles.memoryEntryTextInner}>
+                    <RagMemoryHighlightedText text={preview} keyword={keyword || undefined} />
+                  </span>
+                </button>
+              )}
               <Button
                 type="button"
                 variant="outlined"

@@ -554,6 +554,54 @@
   background: color-mix(in srgb, var(--color-accent-purple) 12%, transparent);
 }
 
+.memoryEntryNodeFields {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memoryEntryNodeRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.memoryEntryNodeLabel {
+  flex: none;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.memoryEntryNodeValue {
+  min-width: 0;
+  font-size: var(--ui-fs-md);
+  line-height: 1.5;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.memoryEntryNodeValueMuted {
+  color: var(--text-tertiary);
+}
+
 .memoryEntryText {
   width: 100%;
   margin: 0;
