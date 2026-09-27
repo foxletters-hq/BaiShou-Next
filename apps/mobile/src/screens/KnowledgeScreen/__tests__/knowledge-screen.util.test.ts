@@ -13,7 +13,8 @@ import {
   knowledgeSourceStatusLabel,
   moveNotebookByOffset,
   resolveNotebookRename,
-  sortNotebooksForMobileList
+  sortNotebooksForMobileList,
+  knowledgeExtractSettingsVisibility
 } from '../knowledge-screen.util'
 
 describe('knowledge-screen.util', () => {
@@ -105,6 +106,17 @@ describe('knowledge-screen.util', () => {
     expect(resolveNotebookRename('旧名', ' 新名 ')).toBe('新名')
     expect(resolveNotebookRename('旧名', '旧名')).toBeNull()
     expect(resolveNotebookRename('旧名', '   ')).toBeNull()
+  })
+
+  it('should hide OCR settings when the extract engine is vision', () => {
+    expect(knowledgeExtractSettingsVisibility('ocr')).toEqual({
+      showOcrSettings: true,
+      showVisionSettings: false
+    })
+    expect(knowledgeExtractSettingsVisibility('vision')).toEqual({
+      showOcrSettings: false,
+      showVisionSettings: true
+    })
   })
 
   it('should move a notebook by offset and stop at the edges', () => {

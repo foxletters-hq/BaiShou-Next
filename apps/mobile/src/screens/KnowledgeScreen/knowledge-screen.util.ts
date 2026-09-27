@@ -214,3 +214,13 @@ export const NOTEBOOK_TONE_COLORS: Record<string, string> = {
   lilac: '#d8b4fe',
   sand: '#d6d3d1'
 }
+
+export function knowledgeExtractSettingsVisibility(engine: 'simple' | 'ocr' | 'vision'): {
+  showOcrSettings: boolean
+  showVisionSettings: boolean
+} {
+  return {
+    showOcrSettings: engine !== 'vision',
+    showVisionSettings: engine === 'vision'
+  }
+}
