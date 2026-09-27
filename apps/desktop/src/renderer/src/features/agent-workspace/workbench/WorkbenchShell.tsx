@@ -22,12 +22,31 @@ import { WorkbenchResizeSash } from './WorkbenchResizeSash'
 import { useWorkbenchLayoutState } from './useWorkbenchLayoutState'
 import { usePanelResize } from './usePanelResize'
 import { useWorkbenchStatusGit } from './useWorkbenchStatusGit'
+import { isMarkdownPath } from './useWorkbenchTabs'
 import styles from './WorkbenchShell.module.css'
 
 const MIN_SIDE_WIDTH = 200
 const MAX_SIDE_WIDTH = 480
 const MIN_AGENT_WIDTH = 380
-const MAX_AGENT_WIDTH = 560
+const MAX_AGENT_WIDTH = 800
+const MIN_EDITOR_WIDTH = 360
+const SASH_WIDTH = 8
+
+function fitPanelMax(shellWidth: number, reserved: number, hardMin: number, hardMax: number): number {
+  if (shellWidth <= 0) return hardMax
+  const available = Math.floor(shellWidth - reserved)
+  if (available <= hardMin) return hardMin
+  return Math.min(hardMax, available)
+}
+
+function sashLimit(width: number, min: number, max: number): 'free' | 'min' | 'max' | 'locked' {
+  const atMin = width <= min + 1
+  const atMax = max - width <= 1
+  if (atMin && atMax) return 'locked'
+  if (atMax) return 'max'
+  if (atMin) return 'min'
+  return 'free'
+}
 
 export interface WorkbenchShellProps {
   folderRoot: string | null
@@ -160,12 +179,50 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   const [dragAgentWidth, setDragAgentWidth] = useState<number | null>(null)
   const statusGit = useWorkbenchStatusGit(folderRoot)
 
+  const shellRef = useRef<HTMLDivElement>(null)
+  const [shellWidth, setShellWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = shellRef.current
+    if (!el) return
+    const update = () => setShellWidth(el.clientWidth)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const liveSideWidth = dragSideWidth ?? layout.sidePaneWidth
   const liveAgentWidth = dragAgentWidth ?? layout.agentPanelWidth
+  const sideVisible = Boolean(folderRoot && layout.sidePaneVisible)
+  const agentVisible = !layout.agentPanelCollapsed
+  const sideMax = fitPanelMax(
+    shellWidth,
+    MIN_EDITOR_WIDTH + (agentVisible ? liveAgentWidth + SASH_WIDTH * 2 : SASH_WIDTH),
+    MIN_SIDE_WIDTH,
+    MAX_SIDE_WIDTH
+  )
+  const agentMax = fitPanelMax(
+    shellWidth,
+    MIN_EDITOR_WIDTH + (sideVisible ? liveSideWidth + SASH_WIDTH * 2 : SASH_WIDTH),
+    MIN_AGENT_WIDTH,
+    MAX_AGENT_WIDTH
+  )
+  const sideLimit = sashLimit(liveSideWidth, MIN_SIDE_WIDTH, sideMax)
+  const agentLimit = sashLimit(liveAgentWidth, MIN_AGENT_WIDTH, agentMax)
   const sideWidthRef = useRef(liveSideWidth)
   const agentWidthRef = useRef(liveAgentWidth)
   sideWidthRef.current = liveSideWidth
   agentWidthRef.current = liveAgentWidth
+
+  const revealFileInSidebar = useCallback(
+    (relativePath: string) => {
+      setActiveSideView('files')
+      window.setTimeout(() => {
+        dispatchWorkbenchRevealPath(relativePath)
+      }, 0)
+    },
+    [setActiveSideView]
+  )
 
   const handleOpenFile = (
     relativePath: string,
@@ -209,6 +266,10 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     filePath: string,
     options?: { staged?: boolean; commitHash?: string }
   ) => {
+    if (!options?.commitHash && isMarkdownPath(filePath)) {
+      mainPaneRef.current?.openFile(filePath)
+      return
+    }
     mainPaneRef.current?.openGitDiff(filePath, options)
   }
 
@@ -220,6 +281,28 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     [setSidePaneWidth]
   )
 
+  useLayoutEffect(() => {
+    if (shellWidth <= 0) return
+    if (sideVisible && dragSideWidth == null && layout.sidePaneWidth > sideMax) {
+      setSidePaneWidth(sideMax)
+    }
+    if (agentVisible && dragAgentWidth == null && layout.agentPanelWidth > agentMax) {
+      setAgentPanelWidth(agentMax)
+    }
+  }, [
+    agentMax,
+    agentVisible,
+    dragAgentWidth,
+    dragSideWidth,
+    layout.agentPanelWidth,
+    layout.sidePaneWidth,
+    setAgentPanelWidth,
+    setSidePaneWidth,
+    shellWidth,
+    sideMax,
+    sideVisible
+  ])
+
   const commitAgentWidth = useCallback(
     (width: number) => {
       setAgentPanelWidth(width)
@@ -230,7 +313,8 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
 
   const leftSash = usePanelResize({
     min: MIN_SIDE_WIDTH,
-    max: MAX_SIDE_WIDTH,
+    max: sideMax,
+    cursor: sideLimit === 'max' ? 'w-resize' : sideLimit === 'min' ? 'e-resize' : 'col-resize',
     getWidth: () => sideWidthRef.current,
     onResize: (width) => {
       setDragSideWidth(width)
@@ -241,7 +325,8 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
 
   const rightSash = usePanelResize({
     min: MIN_AGENT_WIDTH,
-    max: MAX_AGENT_WIDTH,
+    max: agentMax,
+    cursor: agentLimit === 'max' ? 'e-resize' : agentLimit === 'min' ? 'w-resize' : 'col-resize',
     invertDelta: true,
     getWidth: () => agentWidthRef.current,
     onResize: (width) => {
@@ -272,7 +357,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   }, [onNewSession])
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} ref={shellRef}>
       <div className={styles.editorLayout}>
         {showSidePane ? (
           <>
@@ -295,6 +380,8 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
             <WorkbenchResizeSash
               ariaLabel={t('workbench.resize_side_pane', '调整左侧边栏宽度')}
               onMouseDown={leftSash.onMouseDown}
+              growDirection="right"
+              limit={sideLimit}
             />
           </>
         ) : null}
@@ -309,6 +396,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
           agentPanelVisible={showAgentPanel}
           onToggleSidePane={toggleSidePane}
           onToggleAgentPanel={toggleAgentPanel}
+          onRevealFileInSidebar={revealFileInSidebar}
           gitStatusBar={{
             branch: statusGit.meta.branch,
             branches: statusGit.meta.branches,
@@ -327,6 +415,8 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
             <WorkbenchResizeSash
               ariaLabel={t('workbench.resize_agent_panel', '调整右侧 Agent 面板宽度')}
               onMouseDown={rightSash.onMouseDown}
+              growDirection="left"
+              limit={agentLimit}
             />
             <WorkbenchAgentPanel
               ref={agentPanelRef}

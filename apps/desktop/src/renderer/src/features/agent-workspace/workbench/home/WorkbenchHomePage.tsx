@@ -37,7 +37,6 @@ import { useDialogueSlotEffort } from '../../../agent/use-dialogue-slot-effort'
 import chromeStyles from '../../../agent/components/AgentChatChrome.module.css'
 import { AssistantCreateModal } from '../../../agent/components/AssistantCreateModal'
 import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
-import { WorkbenchHomeSidebar } from './WorkbenchHomeSidebar'
 import { WorkbenchHomeComposer } from './WorkbenchHomeComposer'
 import { useWorkbenchHomeWorkspace } from './useWorkbenchHomeWorkspace'
 import styles from './WorkbenchHomePage.module.css'
@@ -156,28 +155,6 @@ export const WorkbenchHomePage: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      <WorkbenchHomeSidebar
-        activeNav="home"
-        onNewProject={() => void home.handleOpenFolder()}
-        onOpenHome={() => navigate('/agent-workspace')}
-        onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenSkills={() => navigate('/agent-workspace/skills')}
-        onOpenProjects={() => navigate('/agent-workspace/projects')}
-        onOpenSettings={() => void home.handleOpenSettings()}
-        creating={home.creating}
-        recentWorkspaces={home.sortedWorkspaces}
-        lastActiveWorkspaceId={home.lastActiveWorkspaceId}
-        sessions={home.sessions}
-        onOpenWorkspace={(id) => void home.enterWorkspace(id)}
-        onOpenSession={(sessionId, workspaceId) =>
-          void home.handleOpenSession(sessionId, workspaceId)
-        }
-        onDeleteSession={(sessionId) => void home.handleDeleteSession(sessionId)}
-        onRemoveWorkspace={home.handleRemoveWorkspace}
-        onTogglePinWorkspace={home.handleTogglePinWorkspace}
-        onTogglePinSession={home.pinSession}
-      />
-
       <main className={styles.main}>
         <div className={styles.mainInner}>
           <WorkbenchHomeComposer

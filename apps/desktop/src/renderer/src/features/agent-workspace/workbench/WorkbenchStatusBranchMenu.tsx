@@ -41,7 +41,11 @@ export const WorkbenchStatusBranchMenu: React.FC<WorkbenchStatusBranchMenuProps>
   }
 
   return (
-    <div className={styles.branchMenu} role="menu">
+    <div
+      className={styles.branchMenu}
+      role="menu"
+      onMouseDown={(event) => event.stopPropagation()}
+    >
       {creating ? (
         <div className={styles.branchCreateRow}>
           <Input

@@ -52,3 +52,18 @@
 .sashHorizontal:active::after {
   background: var(--color-primary);
 }
+
+.sashAtMaxRight,
+.sashAtMinLeft {
+  cursor: w-resize;
+}
+
+.sashAtMaxLeft,
+.sashAtMinRight {
+  cursor: e-resize;
+}
+
+.sashLocked {
+  cursor: default;
+  pointer-events: none;
+}
