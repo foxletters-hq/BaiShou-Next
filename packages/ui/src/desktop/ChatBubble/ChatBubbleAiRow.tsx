@@ -2,6 +2,8 @@ import React, { useMemo } from 'react'
 import {
   buildAssistantDisplayTimelineFromParts,
   collectKnowledgeCitationsFromInvocations,
+  decorateKnowledgeCitedTexts,
+  type AgentGateSurface,
   type MockChatMessage
 } from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
@@ -38,6 +40,7 @@ interface ChatBubbleAiRowProps {
   onReadAloud?: (content: string) => void
   isTtsPlaying: boolean
   error?: string | null
+  gateSurface?: AgentGateSurface
   t: (key: string, fallback: string) => string
 }
 
@@ -47,10 +50,19 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = (props) => {
     [props.message.toolInvocations]
   )
   const timelineItems = useMemo(
-    () => buildAssistantDisplayTimelineFromParts(props.message.parts),
-    [props.message.parts]
+    () =>
+      buildAssistantDisplayTimelineFromParts(props.message.parts, {
+        gateSurface: props.gateSurface ?? 'companion'
+      }),
+    [props.gateSurface, props.message.parts]
   )
-  return <ChatBubbleAiRowInner {...props} citations={citations} timelineItems={timelineItems} />
+  return (
+    <ChatBubbleAiRowInner
+      {...props}
+      citations={citations}
+      timelineItems={timelineItems}
+    />
+  )
 }
 
 const ChatBubbleAiRowInner: React.FC<
@@ -115,17 +127,31 @@ const ChatBubbleAiRowInner: React.FC<
           />
         </div>
       ) : (
-        <>
+        <KnowledgeCitationBlock citations={citations} anchorKey={message.id}>
           <div className={styles.aiBubbleCard}>
             {timelineItems.length > 0 ? (
-              <AssistantDisplayTimeline items={timelineItems} />
+              <AssistantDisplayTimeline
+                items={timelineItems}
+                knowledgeCitations={citations}
+                citationAnchorKey={message.id}
+                appendCitationMarkers
+              />
             ) : (
               <>
                 {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
                 {message.toolInvocations && message.toolInvocations.length > 0 && (
                   <ToolResultGroup invocations={message.toolInvocations} />
                 )}
-                {cleanContent && <AgentMarkdownRenderer content={cleanContent} />}
+                {cleanContent && (
+                  <AgentMarkdownRenderer
+                    content={
+                      decorateKnowledgeCitedTexts([cleanContent], citations.length, message.id, {
+                        appendWhenMissing: true,
+                        citations
+                      })[0] ?? cleanContent
+                    }
+                  />
+                )}
               </>
             )}
             {message.attachments && message.attachments.length > 0 && (
@@ -136,7 +162,6 @@ const ChatBubbleAiRowInner: React.FC<
               />
             )}
           </div>
-          {citations.length > 0 ? <KnowledgeCitationBlock citations={citations} /> : null}
           {error ? (
             <div className={styles.errorBox} role="alert">
               <span className={styles.errorText}>⚠ {error}</span>
@@ -165,7 +190,7 @@ const ChatBubbleAiRowInner: React.FC<
               }}
             />
           </div>
-        </>
+        </KnowledgeCitationBlock>
       )}
     </div>
   </div>
