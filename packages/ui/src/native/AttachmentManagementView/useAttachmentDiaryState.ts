@@ -15,7 +15,7 @@ export interface UseAttachmentDiaryStateOptions {
 
 export function useAttachmentDiaryState(
   diaryAttachments: DiaryAttachmentFileItem[],
-  activePane: 'session' | 'diary',
+  activePane: 'session' | 'diary' | 'emoji',
   {
     onDeleteDiaryAttachment,
     confirmKeyword,

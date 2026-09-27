@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { mapLegacyButtonVariant } from '../button.utils'
+import { lightColors } from '../../../theme/light'
+import { getHeroButtonLabelStyle, getHeroButtonRootStyle } from '../button-field.styles'
+import { mapLegacyButtonVariant, resolveNativeButtonVariant } from '../button.utils'
 
 describe('mapLegacyButtonVariant', () => {
   it('maps every legacy variant to outline so native buttons stay bordered', () => {
@@ -13,5 +15,15 @@ describe('mapLegacyButtonVariant', () => {
       variant: 'outline',
       labelClassName: 'text-danger'
     })
+  })
+})
+
+describe('resolveNativeButtonVariant', () => {
+  it('should render primary as an outline when it is the main action', () => {
+    expect(resolveNativeButtonVariant('primary', false)).toEqual({ variant: 'outline' })
+    const root = getHeroButtonRootStyle(lightColors, 'outline')
+    expect(root.backgroundColor).toBe(lightColors.bgSurface)
+    expect(root.borderColor).toBe(lightColors.borderControl)
+    expect(getHeroButtonLabelStyle(lightColors, 'outline').color).toBe(lightColors.textPrimary)
   })
 })

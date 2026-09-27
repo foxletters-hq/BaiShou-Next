@@ -91,7 +91,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
       <View style={styles.searchBar}>
         <Input
-          placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
+          placeholder={t('agent.sidebar.search_title_hint', '搜索对话标题...')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           className="rounded-full min-h-10"

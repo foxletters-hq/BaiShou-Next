@@ -1,24 +1,20 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView
-} from 'react-native'
+import { View, ActivityIndicator, RefreshControl, ScrollView } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
+import { SegmentedControl } from '../SegmentedControl'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
 import { SessionAttachmentPane } from './SessionAttachmentPane'
 import { DiaryAttachmentPane } from './DiaryAttachmentPane'
+import { EmojiAttachmentPane } from './EmojiAttachmentPane'
 
 export type {
   AttachmentFileItem,
   SessionAttachmentGroup,
   DiaryAttachmentFileItem,
+  EmojiAttachmentListItem,
   AttachmentManagementViewProps
 } from './attachment-management.types'
 
@@ -27,16 +23,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   const { isLoading = false, onRefresh, style, ...rest } = props
   const vm = useAttachmentManagementView(props)
   const [refreshing, setRefreshing] = React.useState(false)
-  const activeTabStyle = {
-    backgroundColor: colors.primary,
-    shadowColor: '#0ea5e9',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 } as const,
-    elevation: 2
-  }
-  const activeTabTextStyle = { color: colors.textOnPrimary, fontWeight: '600' as const }
-  const idleTabTextStyle = { color: colors.textSecondary, fontWeight: '400' as const }
 
   const handleRefresh = async () => {
     if (!onRefresh) return
@@ -51,34 +37,15 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   return (
     <View style={[styles.container, style]} {...rest}>
       <View style={styles.mainTabNav}>
-        <View style={[styles.mainTabs, { backgroundColor: colors.bgApp }]}>
-          <TouchableOpacity
-            style={[styles.mainTabItem, vm.activePane === 'diary' && activeTabStyle]}
-            onPress={() => vm.setActivePane('diary')}
-          >
-            <Text
-              style={[
-                styles.mainTabText,
-                vm.activePane === 'diary' ? activeTabTextStyle : idleTabTextStyle
-              ]}
-            >
-              {vm.t('settings.attachment_pane_diary', '日记附件')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mainTabItem, vm.activePane === 'session' && activeTabStyle]}
-            onPress={() => vm.setActivePane('session')}
-          >
-            <Text
-              style={[
-                styles.mainTabText,
-                vm.activePane === 'session' ? activeTabTextStyle : idleTabTextStyle
-              ]}
-            >
-              {vm.t('settings.attachment_pane_session', 'AI 会话附件')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <SegmentedControl
+          value={vm.activePane}
+          options={[
+            { value: 'diary', label: vm.t('settings.attachment_pane_diary', '日记附件') },
+            { value: 'session', label: vm.t('settings.attachment_pane_session', 'AI 会话附件') },
+            { value: 'emoji', label: vm.t('settings.attachment_pane_emoji', '表情包附件') }
+          ]}
+          onChange={vm.setActivePane}
+        />
       </View>
 
       {isLoading ? (
@@ -96,8 +63,10 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
         >
           {vm.activePane === 'diary' ? (
             <DiaryAttachmentPane vm={vm} />
-          ) : (
+          ) : vm.activePane === 'session' ? (
             <SessionAttachmentPane vm={vm} />
+          ) : (
+            <EmojiAttachmentPane vm={vm} />
           )}
         </ScrollView>
       )}

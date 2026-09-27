@@ -26,6 +26,18 @@ export interface DiaryAttachmentFileItem {
   isOrphan: boolean
 }
 
+export type AttachmentManagementPane = 'diary' | 'session' | 'emoji'
+
+export interface EmojiAttachmentListItem {
+  name: string
+  path: string
+  relativePath: string
+  sizeMB: number
+  birthtime: string
+  groupNames: string[]
+  isMissing: boolean
+}
+
 export interface AttachmentManagementViewProps extends ViewProps {
   attachments: SessionAttachmentGroup[]
   onDeleteSelected: (ids: string[]) => Promise<void>
@@ -33,6 +45,8 @@ export interface AttachmentManagementViewProps extends ViewProps {
   onOpenFileLocation?: (path: string) => Promise<void>
   diaryAttachments?: DiaryAttachmentFileItem[]
   onDeleteDiaryAttachment?: (filePath: string) => Promise<void>
+  emojiAttachments?: EmojiAttachmentListItem[]
+  onDeleteEmojiAttachments?: (relativePaths: string[]) => Promise<void>
   /** 将磁盘绝对路径转为可展示的 file:// URI */
   toDisplayUri?: (path: string) => string
   /** 移动端：从 vault 读取图片为 data URI；purpose=thumbnail 用于列表缩略图，preview 用于全屏 */

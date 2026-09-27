@@ -9,8 +9,11 @@ const cardSource = readFileSync(
 )
 
 describe('CompanionAskResultCard', () => {
-  it('should stack multi-question answers from items', () => {
+  it('should page multi-question answers instead of stacking them', () => {
     expect(cardSource).toContain('data.items')
     expect(cardSource).toContain('CompanionAskResultItem')
+    expect(cardSource).toContain('queue_prev')
+    expect(cardSource).toContain('queue_next')
+    expect(cardSource).toContain('ask_progress')
   })
 })
