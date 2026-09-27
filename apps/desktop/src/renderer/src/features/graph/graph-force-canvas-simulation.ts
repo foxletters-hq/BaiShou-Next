@@ -12,8 +12,10 @@ import {
 import {
   GRAPH_FORCE_VELOCITY_DECAY,
   countIsolatedGraphForceNodes,
+  graphForceAlphaDecay,
   graphForceCenterNeedsUpdate,
   graphForceNodeCenterStrength,
+  graphForceShouldCollide,
   type GraphForceSettings
 } from '@baishou/shared'
 import {
@@ -39,6 +41,21 @@ const lastForceCenter = new WeakMap<
   { x: number; y: number }
 >()
 
+export function createGraphForceTickDrawScheduler(
+  draw: () => void,
+  schedule: (cb: () => void) => unknown = (cb) => requestAnimationFrame(cb)
+): () => void {
+  let queued = false
+  return () => {
+    if (queued) return
+    queued = true
+    schedule(() => {
+      queued = false
+      draw()
+    })
+  }
+}
+
 export function applyGraphForceCenter(
   sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
   x: number,
@@ -63,7 +80,7 @@ export function applyGraphForceStrengths(
   const fx = sim.force('x') as ForceX<GraphForceSimNode> | undefined
   const fy = sim.force('y') as ForceY<GraphForceSimNode> | undefined
   link?.distance(forces.linkDistance).strength(forces.linkStrength)
-  charge?.configure(forces.chargeStrength, degreeById)
+  charge?.configure(forces.chargeStrength, degreeById, forces.linkDistance)
   fx?.strength((d) =>
     graphForceNodeCenterStrength(forces.centerStrength, degreeById.get(d.id) ?? 0)
   )
@@ -153,6 +170,7 @@ export function rebuildGraphForceSimulation(
   refs.simRef.current?.stop()
   const sim = forceSimulation(simNodes)
     .velocityDecay(GRAPH_FORCE_VELOCITY_DECAY)
+    .alphaDecay(graphForceAlphaDecay(simNodes.length))
     .force(
       'link',
       forceLink<GraphForceSimNode, GraphForceSimLink>(simLinks)
@@ -163,16 +181,20 @@ export function rebuildGraphForceSimulation(
     .force('charge', createGraphAwareChargeForce())
     .force('x', forceX(cx))
     .force('y', forceY(cy))
-    .force(
+    .on('tick', createGraphForceTickDrawScheduler(() => refs.drawRef.current()))
+
+  if (graphForceShouldCollide(simNodes.length)) {
+    sim.force(
       'collide',
       forceCollide<GraphForceSimNode>().radius(
         (d) =>
           (10 + Math.min(12, (d.mentionCount ?? 1) * 1.5)) * refs.appearanceRef.current.nodeSize
       )
     )
-    .on('tick', () => refs.drawRef.current())
+  }
 
   applyGraphForceStrengths(sim, forces, refs.degreeByIdRef.current)
+  sim.stop()
   refs.simRef.current = sim
   return true
 }

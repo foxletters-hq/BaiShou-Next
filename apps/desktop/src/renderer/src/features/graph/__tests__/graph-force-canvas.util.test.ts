@@ -8,8 +8,12 @@ import {
   graphCanvasCameraFitIds,
   graphCanvasHitRadius,
   graphCanvasNodeRadius,
+  graphCanvasShouldDrawLinks,
   graphCanvasTopologyFingerprint,
+  graphCanvasVisibleWorldRect,
   graphCanvasWorldPoint,
+  graphCanvasWorldRectContains,
+  graphCanvasWorldSegmentMayShow,
   graphForceCameraTargetForPoints,
   isGraphCanvasPending,
   isGraphCanvasRejected,
@@ -127,8 +131,11 @@ describe('topology helpers', () => {
     expect(links[0]).toMatchObject({ source: 'a', target: 'c' })
   })
 
-  it('should fingerprint topology in sorted id order and count undirected degree', () => {
-    expect(graphCanvasTopologyFingerprint(['b', 'a'], ['2', '1'])).toBe('a,b|1,2')
+  it('should fingerprint topology by length and content hash and count undirected degree', () => {
+    const fp = graphCanvasTopologyFingerprint(['b', 'a'], ['2', '1'])
+    expect(fp).toBe(graphCanvasTopologyFingerprint(['b', 'a'], ['2', '1']))
+    expect(fp).not.toBe(graphCanvasTopologyFingerprint(['a', 'b'], ['2', '1']))
+    expect(fp.startsWith('2:')).toBe(true)
     const degree = buildGraphCanvasDegreeMap([
       { source: 'a', target: 'b' },
       { source: { id: 'b' }, target: { id: 'c' } }
@@ -136,6 +143,31 @@ describe('topology helpers', () => {
     expect(degree.get('a')).toBe(1)
     expect(degree.get('b')).toBe(2)
     expect(degree.get('c')).toBe(1)
+  })
+})
+
+describe('graph canvas view culling', () => {
+  it('should map the screen into a padded world rectangle', () => {
+    const rect = graphCanvasVisibleWorldRect(200, 100, { x: 0, y: 0, k: 1 }, 10)
+    expect(rect).toEqual({ minX: -10, minY: -10, maxX: 210, maxY: 110 })
+    expect(graphCanvasWorldRectContains(0, 0, rect)).toBe(true)
+    expect(graphCanvasWorldRectContains(400, 0, rect)).toBe(false)
+  })
+
+  it('should reject a segment only when both ends sit outside the same side', () => {
+    const rect = { minX: 0, minY: 0, maxX: 100, maxY: 100 }
+    expect(graphCanvasWorldSegmentMayShow(-10, 50, 50, 50, rect)).toBe(true)
+    expect(graphCanvasWorldSegmentMayShow(-20, -20, -5, -5, rect)).toBe(false)
+    expect(graphCanvasWorldSegmentMayShow(-10, -10, 110, 110, rect)).toBe(true)
+  })
+})
+
+describe('graph canvas draw lod', () => {
+  it('should skip drawing links on a large open graph until the camera zooms in', () => {
+    expect(graphCanvasShouldDrawLinks({ linkCount: 10, nodeCount: 10, zoomK: 1 })).toBe(true)
+    expect(graphCanvasShouldDrawLinks({ linkCount: 100, nodeCount: 1800, zoomK: 1 })).toBe(false)
+    expect(graphCanvasShouldDrawLinks({ linkCount: 100, nodeCount: 1800, zoomK: 1.2 })).toBe(true)
+    expect(graphCanvasShouldDrawLinks({ linkCount: 6000, nodeCount: 100, zoomK: 1 })).toBe(false)
   })
 })
 
@@ -163,6 +195,38 @@ describe('shouldShowGraphCanvasLabel', () => {
     expect(shouldShowGraphCanvasLabel({ ...base, focusing: true, inFocus: true })).toBe(true)
     expect(shouldShowGraphCanvasLabel({ ...base, isHub: true })).toBe(true)
     expect(shouldShowGraphCanvasLabel(base)).toBe(false)
+  })
+
+  it('should hide extra names only when zoomed out', () => {
+    expect(shouldShowGraphCanvasLabel({ ...base, isHub: true, zoomK: 0.4 })).toBe(false)
+    expect(
+      shouldShowGraphCanvasLabel({
+        ...base,
+        isHub: true,
+        isolated: true,
+        zoomK: 0.8
+      })
+    ).toBe(false)
+    expect(shouldShowGraphCanvasLabel({ ...base, selectedId: 'n', zoomK: 0.3 })).toBe(true)
+  })
+
+  it('should show every hub name that already passed the user thresholds', () => {
+    expect(
+      shouldShowGraphCanvasLabel({
+        ...base,
+        isHub: true,
+        isolated: false,
+        zoomK: 1
+      })
+    ).toBe(true)
+    expect(
+      shouldShowGraphCanvasLabel({
+        ...base,
+        isHub: true,
+        isolated: true,
+        zoomK: 1.2
+      })
+    ).toBe(true)
   })
 })
 

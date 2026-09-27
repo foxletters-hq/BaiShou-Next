@@ -86,8 +86,21 @@ export function filterGraphCanvasTopology(
   return { nodes: nextNodes, links: nextLinks }
 }
 
+function hashGraphIdList(ids: string[]): string {
+  let h = 2166136261
+  for (const id of ids) {
+    for (let i = 0; i < id.length; i++) {
+      h ^= id.charCodeAt(i)
+      h = Math.imul(h, 16777619)
+    }
+    h ^= 10
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(36)
+}
+
 export function graphCanvasTopologyFingerprint(nodeIds: string[], linkIds: string[]): string {
-  return `${[...nodeIds].sort().join(',')}|${[...linkIds].sort().join(',')}`
+  return `${nodeIds.length}:${hashGraphIdList(nodeIds)}|${linkIds.length}:${hashGraphIdList(linkIds)}`
 }
 
 export function buildGraphCanvasDegreeMap(
@@ -103,6 +116,56 @@ export function buildGraphCanvasDegreeMap(
   return nextDegree
 }
 
+export function graphCanvasVisibleWorldRect(
+  width: number,
+  height: number,
+  transform: { x: number; y: number; k: number },
+  padPx = 48
+): { minX: number; minY: number; maxX: number; maxY: number } {
+  const k = transform.k || 1
+  const pad = padPx / k
+  return {
+    minX: (0 - transform.x) / k - pad,
+    minY: (0 - transform.y) / k - pad,
+    maxX: (width - transform.x) / k + pad,
+    maxY: (height - transform.y) / k + pad
+  }
+}
+
+export function graphCanvasWorldRectContains(
+  x: number,
+  y: number,
+  rect: { minX: number; minY: number; maxX: number; maxY: number }
+): boolean {
+  return x >= rect.minX && x <= rect.maxX && y >= rect.minY && y <= rect.maxY
+}
+
+/** Cheap reject: both endpoints outside the same side of the view. */
+export function graphCanvasWorldSegmentMayShow(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  rect: { minX: number; minY: number; maxX: number; maxY: number }
+): boolean {
+  if (x1 < rect.minX && x2 < rect.minX) return false
+  if (x1 > rect.maxX && x2 > rect.maxX) return false
+  if (y1 < rect.minY && y2 < rect.minY) return false
+  if (y1 > rect.maxY && y2 > rect.maxY) return false
+  return true
+}
+
+export function graphCanvasShouldDrawLinks(opts: {
+  linkCount: number
+  nodeCount: number
+  zoomK: number
+}): boolean {
+  if (opts.linkCount <= 0) return false
+  if (opts.nodeCount >= 1800 && opts.zoomK < 1.15) return false
+  if (opts.linkCount >= 6000) return false
+  return true
+}
+
 export function shouldShowGraphCanvasLabel(opts: {
   textAlpha: number
   dim: boolean
@@ -113,16 +176,21 @@ export function shouldShowGraphCanvasLabel(opts: {
   focusing: boolean
   inFocus: boolean
   isHub: boolean
+  isolated?: boolean
+  zoomK?: number
 }): boolean {
-  return (
-    opts.textAlpha > 0.01 &&
-    !opts.dim &&
-    (opts.nodeId === opts.selectedId ||
-      opts.multiSelected ||
-      opts.highlighted ||
-      (opts.focusing && opts.inFocus) ||
-      opts.isHub)
-  )
+  if (opts.textAlpha <= 0.01 || opts.dim) return false
+  const important =
+    opts.nodeId === opts.selectedId ||
+    opts.multiSelected ||
+    opts.highlighted ||
+    (opts.focusing && opts.inFocus)
+  if (important) return true
+  if (!opts.isHub) return false
+  const zoomK = opts.zoomK
+  if (zoomK != null && zoomK < 0.6) return false
+  if (opts.isolated === true && zoomK != null && zoomK < 1) return false
+  return true
 }
 
 export function findGraphCanvasNodeAtPoint<

@@ -73,7 +73,7 @@ describe('stripGraphNodeSuspectReason', () => {
     expect(
       stripGraphNodeSuspectReason({
         id: 'n1',
-        propsJson: '{"aliases":["阿三"],"suspectReason":"同人异职"}'
+        propsJson: '{"aliases":["阿三"],"suspectReason":"同人异职","suspectSignals":["ambiguous"]}'
       })
     ).toEqual({ id: 'n1', propsJson: '{"aliases":["阿三"]}' })
     expect(stripGraphNodeSuspectReason({ id: 'n2', propsJson: '{}' })).toEqual({

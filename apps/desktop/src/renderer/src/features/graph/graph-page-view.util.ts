@@ -58,9 +58,10 @@ export function graphSuspectReviewCopy(node: { propsJson?: string | null } | nul
 
 export function stripGraphNodeSuspectReason<T extends { propsJson?: string | null }>(node: T): T {
   const props = parseGraphNodeProps(node)
-  if (!('suspectReason' in props)) return node
+  if (!('suspectReason' in props) && !('suspectSignals' in props)) return node
   const next = { ...props }
   delete next.suspectReason
+  delete next.suspectSignals
   return { ...node, propsJson: JSON.stringify(next) }
 }
 

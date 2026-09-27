@@ -8,6 +8,10 @@ import {
 import type { GraphForceSimLink, GraphForceSimNode } from './graph-force-canvas.types'
 import {
   graphCanvasNodeRadius,
+  graphCanvasShouldDrawLinks,
+  graphCanvasVisibleWorldRect,
+  graphCanvasWorldRectContains,
+  graphCanvasWorldSegmentMayShow,
   isGraphCanvasPending,
   shouldShowGraphCanvasLabel
 } from './graph-force-canvas.util'
@@ -61,70 +65,126 @@ export function drawGraphForceFrame(opts: {
   const lineScale = appearance.lineThickness
   const textAlpha = appearance.textOpacity
   const focusing = Boolean(selected && focus && focus.size > 0)
+  const view = graphCanvasVisibleWorldRect(w, h, transform)
+  const drawLinks = graphCanvasShouldDrawLinks({
+    linkCount: links.length,
+    nodeCount: nodes.length,
+    zoomK: k
+  })
+  const drawArrows = appearance.showArrows && drawLinks
 
   ctx.save()
   ctx.translate(tx, ty)
   ctx.scale(k, k)
 
   ctx.lineWidth = (1 * lineScale) / k
-  for (const link of links) {
-    const s = link.source as GraphForceSimNode
-    const t = link.target as GraphForceSimNode
-    if (s.x == null || t.x == null || s.y == null || t.y == null) continue
-    const pending = isGraphCanvasPending(link.reviewStatus)
-    const edgeHighlighted = opts.highlightEdgeIds?.has(link.id) === true
-    const incident =
-      !focusing ||
-      s.id === selected ||
-      t.id === selected ||
-      edgeHighlighted ||
-      (focus?.has(s.id) === true && focus?.has(t.id) === true)
-    if (focusing && !incident) continue
-    const stroke = edgeHighlighted
-      ? EDGE_HIGHLIGHT
-      : pending
-        ? focusing
-          ? 'rgba(100,116,139,0.28)'
-          : 'rgba(100,116,139,0.22)'
+  if (drawLinks || opts.highlightEdgeIds?.size) {
+    ctx.beginPath()
+    let pendingCount = 0
+    for (const link of links) {
+      const s = link.source as GraphForceSimNode
+      const t = link.target as GraphForceSimNode
+      if (s.x == null || t.x == null || s.y == null || t.y == null) continue
+      if (!graphCanvasWorldSegmentMayShow(s.x, s.y, t.x, t.y, view)) continue
+      const pending = isGraphCanvasPending(link.reviewStatus)
+      const edgeHighlighted = opts.highlightEdgeIds?.has(link.id) === true
+      if (!drawLinks && !edgeHighlighted) continue
+      const incident =
+        !focusing ||
+        s.id === selected ||
+        t.id === selected ||
+        edgeHighlighted ||
+        (focus?.has(s.id) === true && focus?.has(t.id) === true)
+      if (focusing && !incident) continue
+      if (pending && !edgeHighlighted) {
+        pendingCount += 1
+        continue
+      }
+      const stroke = edgeHighlighted
+        ? EDGE_HIGHLIGHT
         : focusing
           ? 'rgba(100,116,139,0.55)'
           : 'rgba(100,116,139,0.45)'
-    ctx.globalAlpha = 1
-    ctx.strokeStyle = stroke
-    ctx.fillStyle = stroke
-    ctx.lineWidth = ((edgeHighlighted ? 2.6 : 1) * lineScale) / k
-    ctx.setLineDash(pending ? [4 / k, 4 / k] : [])
-    ctx.beginPath()
-    ctx.moveTo(s.x, s.y)
-    ctx.lineTo(t.x, t.y)
+      if (edgeHighlighted) {
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.strokeStyle = stroke
+        ctx.lineWidth = (2.6 * lineScale) / k
+        ctx.moveTo(s.x, s.y)
+        ctx.lineTo(t.x, t.y)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.lineWidth = (1 * lineScale) / k
+        continue
+      }
+      ctx.strokeStyle = stroke
+      ctx.moveTo(s.x, s.y)
+      ctx.lineTo(t.x, t.y)
+    }
+    ctx.strokeStyle = focusing ? 'rgba(100,116,139,0.55)' : 'rgba(100,116,139,0.45)'
     ctx.stroke()
-    if (appearance.showArrows && !pending) {
-      drawGraphArrowHead(ctx, s.x, s.y, t.x, t.y, (6 * lineScale) / k)
+    if (drawLinks && pendingCount > 0) {
+      ctx.setLineDash([4 / k, 4 / k])
+      ctx.beginPath()
+      for (const link of links) {
+        if (!isGraphCanvasPending(link.reviewStatus)) continue
+        if (opts.highlightEdgeIds?.has(link.id) === true) continue
+        const s = link.source as GraphForceSimNode
+        const t = link.target as GraphForceSimNode
+        if (s.x == null || t.x == null || s.y == null || t.y == null) continue
+        if (!graphCanvasWorldSegmentMayShow(s.x, s.y, t.x, t.y, view)) continue
+        const incident =
+          !focusing ||
+          s.id === selected ||
+          t.id === selected ||
+          (focus?.has(s.id) === true && focus?.has(t.id) === true)
+        if (focusing && !incident) continue
+        ctx.strokeStyle = focusing ? 'rgba(100,116,139,0.28)' : 'rgba(100,116,139,0.22)'
+        ctx.moveTo(s.x, s.y)
+        ctx.lineTo(t.x, t.y)
+      }
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+    if (drawArrows && drawLinks) {
+      ctx.fillStyle = focusing ? 'rgba(100,116,139,0.55)' : 'rgba(100,116,139,0.45)'
+      for (const link of links) {
+        if (isGraphCanvasPending(link.reviewStatus)) continue
+        const s = link.source as GraphForceSimNode
+        const t = link.target as GraphForceSimNode
+        if (s.x == null || t.x == null || s.y == null || t.y == null) continue
+        if (!graphCanvasWorldSegmentMayShow(s.x, s.y, t.x, t.y, view)) continue
+        drawGraphArrowHead(ctx, s.x, s.y, t.x, t.y, (6 * lineScale) / k)
+      }
     }
   }
   ctx.setLineDash([])
   ctx.lineWidth = (1 * lineScale) / k
+  ctx.font = `${12 / k}px sans-serif`
 
   const degreeById = opts.degreeById
 
   for (const n of nodes) {
     if (n.x == null || n.y == null) continue
+    if (!graphCanvasWorldRectContains(n.x, n.y, view)) continue
     const r = graphCanvasNodeRadius(n.mentionCount, nodeScale)
     const multiSelected = opts.selectedIds?.has(n.id) === true
     const highlighted = highlights?.has(n.id) || n.id === selected || multiSelected
     const pending = isGraphCanvasPending(n.reviewStatus)
     const inFocus = !focusing || focus?.has(n.id) === true
     const dim = focusing && !inFocus
+    const degree = degreeById.get(n.id) ?? 0
+    const isolated = degree <= 0
     const isHub = isGraphHubLabelVisible({
-      degree: degreeById.get(n.id) ?? 0,
+      degree,
       mentionCount: n.mentionCount ?? 0,
       hubLabelMinDegree: appearance.hubLabelMinDegree,
       hubLabelMinMentions: appearance.hubLabelMinMentions,
       showIsolatedLabels: appearance.showIsolatedNodes
     })
     ctx.globalAlpha = dim ? 0.1 : pending && !highlighted ? 0.45 : 1
-    ctx.beginPath()
     ctx.fillStyle = TYPE_COLORS[n.nodeType] || TYPE_COLOR_FALLBACK
+    ctx.beginPath()
     ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
     ctx.fill()
     if (multiSelected) {
@@ -153,12 +213,13 @@ export function drawGraphForceFrame(opts: {
       highlighted: highlights?.has(n.id) === true,
       focusing,
       inFocus,
-      isHub
+      isHub,
+      isolated,
+      zoomK: k
     })
     if (showLabel) {
       ctx.globalAlpha = (pending ? 0.45 : 1) * textAlpha
       ctx.fillStyle = '#0f172a'
-      ctx.font = `${12 / k}px sans-serif`
       ctx.fillText(n.name.slice(0, 16), n.x + r + 2, n.y + 4)
     }
     ctx.globalAlpha = 1

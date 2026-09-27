@@ -63,7 +63,7 @@ export function useGraphPageModel({
     applyPendingFocus()
     return subscribeGraphPendingFocus(applyPendingFocus)
   }, [side])
-  const data = useGraphPageData(month.monthRange)
+  const data = useGraphPageData(month.monthRange, settings.viewMaxNodes)
   const selection = useGraphPageSelection({
     nodes: data.nodes,
     edges: data.edges,
