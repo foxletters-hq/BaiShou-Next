@@ -62,7 +62,10 @@ export function useRagRuntimeBridge(active: boolean): void {
         : state.statusText || ''
       const errorText =
         typeof state.error === 'string' && state.error.trim()
-          ? localizeAiApiErrorMessage(extractIpcErrorMessage(new Error(state.error.trim())), translate)
+          ? localizeAiApiErrorMessage(
+              extractIpcErrorMessage(new Error(state.error.trim())),
+              translate
+            )
           : undefined
 
       const previous = getCachedRagActiveState()

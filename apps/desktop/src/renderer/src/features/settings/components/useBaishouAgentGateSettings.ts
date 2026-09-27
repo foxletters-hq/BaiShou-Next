@@ -26,18 +26,21 @@ export function useBaishouAgentGateSettings(scope: AgentGateConfigScope, scene: 
   )
   const [saving, setSaving] = useState(false)
 
-  const loadConfig = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true)
-    try {
-      const next = await window.api.settings.getBaishouAgentGateConfig(scope)
-      setConfig(scene === 'companion' ? foldCompanionAllowlistIntoCapabilities(next) : next)
-    } catch (error) {
-      console.error('[BaishouAgentGateSettings] load failed:', error)
-      setConfig(null)
-    } finally {
-      if (!opts?.silent) setLoading(false)
-    }
-  }, [scope, scene])
+  const loadConfig = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true)
+      try {
+        const next = await window.api.settings.getBaishouAgentGateConfig(scope)
+        setConfig(scene === 'companion' ? foldCompanionAllowlistIntoCapabilities(next) : next)
+      } catch (error) {
+        console.error('[BaishouAgentGateSettings] load failed:', error)
+        setConfig(null)
+      } finally {
+        if (!opts?.silent) setLoading(false)
+      }
+    },
+    [scope, scene]
+  )
 
   useEffect(() => {
     void loadConfig()
@@ -125,9 +128,7 @@ export function useBaishouAgentGateSettings(scope: AgentGateConfigScope, scene: 
     setSaving(true)
     try {
       const saved = await window.api.settings.setBaishouAgentGateConfig(persisted, scope)
-      setConfig(
-        scene === 'companion' ? foldCompanionAllowlistIntoCapabilities(saved) : saved
-      )
+      setConfig(scene === 'companion' ? foldCompanionAllowlistIntoCapabilities(saved) : saved)
     } catch (error) {
       console.error('[BaishouAgentGateSettings] save capability failed:', error)
       setConfig(prevConfig)

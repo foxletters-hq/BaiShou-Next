@@ -81,7 +81,9 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
       setBlacklistDraft('')
       return
     }
-    void Promise.resolve(onPatchConfig({ commandBlacklist: next })).then(() => setBlacklistDraft(''))
+    void Promise.resolve(onPatchConfig({ commandBlacklist: next })).then(() =>
+      setBlacklistDraft('')
+    )
   }
 
   const goHome = () => navigate('home')

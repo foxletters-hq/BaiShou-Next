@@ -6,7 +6,6 @@ export function shouldWaitForGraphExtract(input: {
   indexing: boolean
 }): boolean {
   return (
-    input.organizePipeline === 'graph' ||
-    (input.organizePipeline === 'embed' && input.indexing)
+    input.organizePipeline === 'graph' || (input.organizePipeline === 'embed' && input.indexing)
   )
 }

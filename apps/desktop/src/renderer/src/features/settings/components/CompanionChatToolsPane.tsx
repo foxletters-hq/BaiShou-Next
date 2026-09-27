@@ -139,15 +139,10 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
   }
 
   const confirmEnableAutoInjectTime = async (toolId: string, effect: AgentGateEffect) => {
-    const currentlyEnabled = resolveCompanionToolEffect(
-      toolId,
-      companionTools.disabledToolIds,
-      capabilityState
-    ) !== AgentGateEffect.Deny
-    if (
-      effect !== AgentGateEffect.Deny &&
-      isEnablingAutoInjectTime(toolId, currentlyEnabled)
-    ) {
+    const currentlyEnabled =
+      resolveCompanionToolEffect(toolId, companionTools.disabledToolIds, capabilityState) !==
+      AgentGateEffect.Deny
+    if (effect !== AgentGateEffect.Deny && isEnablingAutoInjectTime(toolId, currentlyEnabled)) {
       return dialog.confirm(
         t(
           'agent.tools.auto_inject_time_enable_confirm',
