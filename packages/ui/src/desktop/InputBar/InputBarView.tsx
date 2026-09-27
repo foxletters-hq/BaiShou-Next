@@ -22,6 +22,7 @@ import {
   Paperclip,
   Plus,
   Send,
+  ArrowRight,
   Settings2,
   Sparkles,
   Volume2,
@@ -137,9 +138,10 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     ttsMode,
     onToggleTtsMode,
     onOpenNotebookMount,
+    bottomLeading,
     bottomTrailing,
     footer,
-    sendIconSize = 15,
+    sendIconSize = 16,
     minRows = 1,
     isMultiline = false
   } = vm
@@ -426,20 +428,8 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           className={`${styles.composerShell}${footer ? ` ${styles.composerShellWithFooter}` : ''}${dropActive ? ` ${styles.composerShellDropActive}` : ''}`}
         >
           <div className={styles.inputCard}>
-            <div
-              className={`${styles.composerRow}${isMultiline ? ` ${styles.composerRowStacked}` : ''}`}
-            >
-              <button
-                className={`${styles.appMenuBtn} ${plusMenuOpen ? styles.appMenuBtnActive : ''}`}
-                onClick={openPlusMenu}
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={plusMenuOpen}
-                title={t('input.open_actions', '更多操作')}
-              >
-                <Plus size={16} strokeWidth={2} />
-              </button>
-
+            {/* 上部：文本输入区，独占整行并随输入自增高 */}
+            <div className={styles.topRow}>
               <div className={styles.inputWrapper} ref={inputWrapperRef}>
                 <InputBarSkillEditor
                   editorRef={editorRef}
@@ -453,6 +443,23 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   onPaste={handlePaste}
                   onOpenFileRef={onOpenFileRef}
                 />
+              </div>
+            </div>
+
+            {/* 下部：操作与发送工具栏（左侧加号+模型选择，右侧状态环+发送） */}
+            <div className={styles.bottomRow}>
+              <div className={styles.bottomLeading}>
+                <button
+                  className={`${styles.appMenuBtn} ${plusMenuOpen ? styles.appMenuBtnActive : ''}`}
+                  onClick={openPlusMenu}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={plusMenuOpen}
+                  title={t('input.open_actions', '更多操作')}
+                >
+                  <Plus size={16} strokeWidth={2} />
+                </button>
+                {bottomLeading}
               </div>
 
               <div className={styles.bottomRight}>
@@ -481,7 +488,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                       aria-label={t('common.send', '发送')}
                       title={t('common.send', '发送')}
                     >
-                      <Send size={sendIconSize} />
+                      <ArrowRight size={sendIconSize} strokeWidth={2.4} />
                     </motion.button>
                   )}
                 </div>

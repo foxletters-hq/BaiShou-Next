@@ -11,6 +11,8 @@ export interface InputBarProps {
   /** 流式中仍允许发送（工作台 steer/queue） */
   allowSendWhileLoading?: boolean
   onSend: ComposerOnSend
+  /** 输入框为空时回车。排队中用来立刻发送队首。 */
+  onEmptySubmit?: () => void
   onStop?: () => void
   composerBlocked?: boolean
   onComposerBlocked?: () => void
@@ -37,7 +39,9 @@ export interface InputBarProps {
   placeholder?: string
   /** 技能选择器关闭后，Escape 的额外处理（如取消编辑此前消息） */
   onEscape?: () => void
-  /** 底部右侧发送按钮左侧的附加控件（如模型选择） */
+  /** 底部左侧加号按钮右侧的附加控件（如模型选择器） */
+  bottomLeading?: ReactNode
+  /** 底部右侧发送按钮左侧的附加控件（如模型选择、上下文环） */
   bottomTrailing?: ReactNode
   /** 输入外壳底部延伸区 */
   footer?: ReactNode

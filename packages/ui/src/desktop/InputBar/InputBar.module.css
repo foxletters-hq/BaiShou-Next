@@ -301,51 +301,21 @@
   transform: scale(1.1);
 }
 
-/* Input Card — 外框由 .composerShell 承担，此处只负责内边距与布局 */
+/* Input Card — 外框由 .composerShell 承担，此处负责内边距与垂直两层结构 */
 .inputCard {
   position: relative;
   background-color: transparent;
   border-radius: 0;
   border: none;
-  padding: 8px 10px;
+  padding: 10px 14px 8px 14px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  gap: 6px;
 }
 
 .inputCard:focus-within {
   background-color: transparent;
-}
-
-/* 单行：加号 / 输入 / 发送同一排；多行：输入在上、按钮整行在下 */
-.composerRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  flex-wrap: nowrap;
-}
-
-.composerRowStacked {
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.composerRowStacked .inputWrapper {
-  order: -1;
-  flex: 1 1 100%;
-  width: 100%;
-  align-self: stretch;
-}
-
-.composerRowStacked .appMenuBtn,
-.composerRowStacked .bottomRight {
-  margin-top: 8px;
-}
-
-.composerRowStacked .bottomRight {
-  margin-left: auto;
 }
 
 .topRow {
@@ -356,6 +326,7 @@
   flex: 1;
   min-height: 36px;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .bottomRow {
@@ -363,22 +334,30 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-top: 8px;
+  min-height: 32px;
   flex-shrink: 0;
-  height: 32px;
+  box-sizing: border-box;
+}
+
+.bottomLeading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .appMenuBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   margin: 0;
-  border-radius: 50%;
+  border-radius: 8px;
   background: transparent;
-  border: 1px solid var(--border-control);
+  border: 1px solid transparent;
   box-sizing: border-box;
   cursor: pointer;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -401,7 +380,7 @@
 
 .appMenuBtn:hover {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-strong);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 
@@ -414,7 +393,7 @@
 
 .appMenuBtnActive {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-strong);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 
@@ -423,7 +402,7 @@
   min-width: 0;
   min-height: 32px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   align-self: stretch;
 }
 
@@ -656,41 +635,60 @@
 }
 
 .sendBtn {
-  background-color: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-control);
-  box-shadow: none;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border: none;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-primary) 32%, transparent);
   font-size: 14px;
+  transition:
+    background-color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .sendBtn:hover:not(:disabled) {
-  background-color: var(--bg-surface-high);
-  border-color: var(--border-strong);
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 42%, transparent);
+  transform: scale(1.05);
+}
+
+.sendBtn:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .sendBtnDisabled {
-  background-color: transparent;
-  color: var(--text-tertiary);
-  border-color: var(--border-subtle);
+  background-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  color: color-mix(in srgb, var(--text-on-primary) 40%, transparent);
+  border: none;
   cursor: not-allowed;
   box-shadow: none;
+  transform: none !important;
 }
 
 .stopBtn {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   background-color: var(--text-primary);
   color: var(--bg-surface);
   box-shadow: var(--shadow-sm);
+  border: none;
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
 }
 
 .stopBtn:hover {
   box-shadow: var(--shadow-md);
+  transform: scale(1.05);
+}
+
+.stopBtn:active {
+  transform: scale(0.94);
 }
 
 .stopSquare {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background-color: var(--bg-surface);
   border-radius: 2px;
 }

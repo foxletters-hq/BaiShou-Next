@@ -57,43 +57,65 @@ const EXCLUDED = [
   ]
 ] as const
 
-export const GitScopeSection: React.FC = () => {
+export interface GitScopeSectionProps {
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+}
+
+export const GitScopeSection: React.FC<GitScopeSectionProps> = ({
+  collapsible = false,
+  defaultCollapsed = true
+}) => {
   const { t } = useTranslation()
+  const [isCollapsed, setIsCollapsed] = React.useState(collapsible ? defaultCollapsed : false)
 
   return (
     <div className={stack.stackGroup}>
-      <div className={stack.sectionLabelRow}>
-        <h3 className={stack.sectionLabel}>{t('version_control.scope_title', '管理范围')}</h3>
-      </div>
-      <section className={stack.cardSection}>
-        <div className="gmp-section-body">
-          <p className="gmp-scope-lead">
-            {t('version_control.scope_lead', '跟踪各工作区的写作与原文。仅桌面端提供。')}
-          </p>
-          <div className="gmp-scope-row">
-            <span className="gmp-scope-heading">{t('version_control.scope_included', '纳入')}</span>
-            <div className="gmp-scope-chips">
-              {INCLUDED.map(([key, fallback]) => (
-                <span key={key} className="gmp-scope-chip">
-                  {t(key, fallback)}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="gmp-scope-row">
-            <span className="gmp-scope-heading">
-              {t('version_control.scope_excluded', '不纳入')}
+      <div
+        className={stack.sectionLabelRow}
+        onClick={collapsible ? () => setIsCollapsed(!isCollapsed) : undefined}
+        style={collapsible ? { cursor: 'pointer', userSelect: 'none' } : undefined}
+      >
+        <h3 className={stack.sectionLabel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{t('version_control.scope_title', '管理范围')}</span>
+          {collapsible && (
+            <span style={{ fontSize: 11, opacity: 0.6, fontWeight: 'normal' }}>
+              {isCollapsed ? '▸' : '▾'}
             </span>
-            <div className="gmp-scope-chips">
-              {EXCLUDED.map(([key, fallback]) => (
-                <span key={key} className="gmp-scope-chip gmp-scope-chip-muted">
-                  {t(key, fallback)}
-                </span>
-              ))}
+          )}
+        </h3>
+      </div>
+      {!isCollapsed && (
+        <section className={stack.cardSection}>
+          <div className="gmp-section-body">
+            <p className="gmp-scope-lead">
+              {t('version_control.scope_lead', '跟踪各工作区的写作与原文。仅桌面端提供。')}
+            </p>
+            <div className="gmp-scope-row">
+              <span className="gmp-scope-heading">{t('version_control.scope_included', '纳入')}</span>
+              <div className="gmp-scope-chips">
+                {INCLUDED.map(([key, fallback]) => (
+                  <span key={key} className="gmp-scope-chip">
+                    {t(key, fallback)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="gmp-scope-row">
+              <span className="gmp-scope-heading">
+                {t('version_control.scope_excluded', '不纳入')}
+              </span>
+              <div className="gmp-scope-chips">
+                {EXCLUDED.map(([key, fallback]) => (
+                  <span key={key} className="gmp-scope-chip gmp-scope-chip-muted">
+                    {t(key, fallback)}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   )
 }
