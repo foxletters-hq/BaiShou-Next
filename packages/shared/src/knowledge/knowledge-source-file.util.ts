@@ -2,6 +2,12 @@ const TEXT_LIKE_EXTS = ['.md', '.txt', '.markdown']
 
 export type KnowledgeSourceFileKind = 'pdf' | 'epub' | 'url' | 'text' | 'unsupported'
 
+export function knowledgeSourceFileExt(fileName: string): string {
+  const base = fileName.split(/[/\\]/).pop() || ''
+  const dot = base.lastIndexOf('.')
+  return dot >= 0 ? base.slice(dot).toLowerCase() : ''
+}
+
 export function classifyKnowledgeSourceFile(params: {
   hasRelativePath: boolean
   sourceKind: string

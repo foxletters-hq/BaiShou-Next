@@ -1,4 +1,5 @@
 import path from 'path'
+import i18n from 'i18next'
 import { fetchUrlAsMarkdown } from '@baishou/ai'
 import {
   normalizeKnowledgeDefaultExtractEngine,
@@ -10,7 +11,7 @@ import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest
 import { getNotebookRawManager } from '../services/raw-data-source.runtime'
 import { fileSystem } from '../services/node-file-system'
 import { resolveKnowledgeImportDefer } from './knowledge-import.util'
-import { classifyKnowledgeSourceFile } from './knowledge-source-file.util'
+import { classifyKnowledgeSourceFile } from '@baishou/shared'
 import {
   getKnowledgeIngestService,
   handleKnowledgeIpc,
@@ -185,7 +186,7 @@ export function registerKnowledgeSourceIpc(): void {
       try {
         pages = extractEpubPageTexts(Buffer.from(encoded, 'base64'))
       } catch {
-        throw new Error('这份 EPUB 暂时无法预览')
+        throw new Error(i18n.t('knowledge.epub_preview_failed', '这份 EPUB 暂时无法预览'))
       }
       return {
         kind: 'epub' as const,

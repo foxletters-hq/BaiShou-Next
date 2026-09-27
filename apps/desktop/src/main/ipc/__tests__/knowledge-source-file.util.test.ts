@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyKnowledgeSourceFile } from '../knowledge-source-file.util'
+import { classifyKnowledgeSourceFile } from '@baishou/shared'
 
 describe('classifyKnowledgeSourceFile', () => {
   it('should mark missing relative path as unsupported', () => {
