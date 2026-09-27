@@ -201,9 +201,7 @@ export function WorkspaceStreamingTurn(props: {
     gateParts = []
   } = props
   const gateChanges = workspaceChangesFromGateRequest(pendingAsk)
-  const streamGroups = useLiveTimeline
-    ? groupStreamTimelineItems(streamingTimeline, gateParts)
-    : []
+  const streamGroups = useLiveTimeline ? groupStreamTimelineItems(streamingTimeline, gateParts) : []
   const streamHasFileOps = streamGroups.some((item) => item.kind === 'file_ops')
   const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
     streamingTimeline
@@ -242,78 +240,80 @@ export function WorkspaceStreamingTurn(props: {
         </div>
       ) : null}
       <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">
-      {useLiveTimeline ? (
-        <>
-          {streamGroups.map((item, index, groups) =>
-            renderStreamTimelineItem(item, index, {
-              isStreaming: isStreaming && !isBridgeActive,
-              isLast: index === groups.length - 1 || groups.slice(index + 1).every((entry) => entry.kind === 'gate'),
-              failedByName,
-              onSelectChange,
-              onReviewAll,
-              gateChanges,
-              citedTextByIndex
-            })
-          )}
-          {!streamHasFileOps && gateChanges.length > 0 ? (
-            <WorkspaceFileChangeList
-              changes={gateChanges}
-              running
-              onSelectChange={onSelectChange ?? (() => undefined)}
-              onReviewAll={onReviewAll}
-            />
-          ) : null}
-        </>
-      ) : (
-        <>
-          {streamHasReasoning ? (
-            <AgentThinkSection
-              content={streamingParsed.cleanReasoning}
-              isStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
-            />
-          ) : null}
-          {streamHasTools ? (
-            <AgentToolChainSection
-              completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
-              activeToolName={activeToolName}
-              isStreaming
-            />
-          ) : null}
-          {streamHasText ? (
-            <AgentMarkdownRenderer
-              content={
-                decorateKnowledgeCitedTexts(
-                  [streamingParsed.cleanContent],
-                  knowledgeCitations.length,
-                  'streaming'
-                )[0] ?? streamingParsed.cleanContent
-              }
-              isStreaming={isStreaming && !isBridgeActive}
-            />
-          ) : null}
-        </>
-      )}
-      {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
-      {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
-        <ul className={styles.streamToolErrors}>
-          {[
-            ...failedTools.map((tool) => ({
-              name: formatWorkspaceToolDisplayName(tool.name, t),
-              error: tool.error
-            })),
-            ...streamingCompletedTools
-              .filter((tool) => tool.error)
-              .map((tool) => ({
+        {useLiveTimeline ? (
+          <>
+            {streamGroups.map((item, index, groups) =>
+              renderStreamTimelineItem(item, index, {
+                isStreaming: isStreaming && !isBridgeActive,
+                isLast:
+                  index === groups.length - 1 ||
+                  groups.slice(index + 1).every((entry) => entry.kind === 'gate'),
+                failedByName,
+                onSelectChange,
+                onReviewAll,
+                gateChanges,
+                citedTextByIndex
+              })
+            )}
+            {!streamHasFileOps && gateChanges.length > 0 ? (
+              <WorkspaceFileChangeList
+                changes={gateChanges}
+                running
+                onSelectChange={onSelectChange ?? (() => undefined)}
+                onReviewAll={onReviewAll}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            {streamHasReasoning ? (
+              <AgentThinkSection
+                content={streamingParsed.cleanReasoning}
+                isStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
+              />
+            ) : null}
+            {streamHasTools ? (
+              <AgentToolChainSection
+                completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
+                activeToolName={activeToolName}
+                isStreaming
+              />
+            ) : null}
+            {streamHasText ? (
+              <AgentMarkdownRenderer
+                content={
+                  decorateKnowledgeCitedTexts(
+                    [streamingParsed.cleanContent],
+                    knowledgeCitations.length,
+                    'streaming'
+                  )[0] ?? streamingParsed.cleanContent
+                }
+                isStreaming={isStreaming && !isBridgeActive}
+              />
+            ) : null}
+          </>
+        )}
+        {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
+        {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
+          <ul className={styles.streamToolErrors}>
+            {[
+              ...failedTools.map((tool) => ({
                 name: formatWorkspaceToolDisplayName(tool.name, t),
-                error: tool.error!
-              }))
-          ].map((tool, index) => (
-            <li key={`${tool.name}-stream-err-${index}`}>
-              {tool.name}: {tool.error}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+                error: tool.error
+              })),
+              ...streamingCompletedTools
+                .filter((tool) => tool.error)
+                .map((tool) => ({
+                  name: formatWorkspaceToolDisplayName(tool.name, t),
+                  error: tool.error!
+                }))
+            ].map((tool, index) => (
+              <li key={`${tool.name}-stream-err-${index}`}>
+                {tool.name}: {tool.error}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </KnowledgeCitationBlock>
     </div>
   )

@@ -153,7 +153,7 @@ export function useAgentWorkspaceComposerSend({
             detail: {
               sessionId: prepared.sessionId,
               dropOptimisticId: localQueueId,
-            optimistic: admitted.queued
+              optimistic: admitted.queued
                 ? {
                     id: admitted.input.id,
                     text: admitted.input.text,

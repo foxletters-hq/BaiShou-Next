@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   buildSharedContextText,
   computeLookbackCutoffDate,
@@ -114,7 +115,10 @@ export async function resolveDesktopSummaryGenerateOptions(
     }
     if (resolution.reason === 'no_model') {
       throw new Error(
-        'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+        i18n.t(
+          'settings.summary_model_missing',
+          'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+        )
       )
     }
     throw new Error('No active AI provider configured for summary generation')

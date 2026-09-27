@@ -24,13 +24,7 @@ describe('workspace gate cards chrome', () => {
 
   it('should open the clicked write preview in the workbench editor', () => {
     const shell = readFileSync(
-      join(
-        dirname(fileURLToPath(import.meta.url)),
-        '..',
-        '..',
-        'workbench',
-        'WorkbenchShell.tsx'
-      ),
+      join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'workbench', 'WorkbenchShell.tsx'),
       'utf8'
     )
     expect(shell).toContain('workspaceChangeFromGatePreview')

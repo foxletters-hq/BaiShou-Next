@@ -37,6 +37,7 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
         origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
       }>
       attachments?: unknown[]
+      deferMessageRefresh?: boolean
     }
   ) => Promise<StartWorkspaceChatResult>
   runWorkspaceChatStream: (
