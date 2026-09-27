@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import {
-  GRAPH_GLOBAL_MAX_NODES,
   clampGraphMonthRange,
   omitInFlightGraphDeletes,
   remapGraphViewReviewForDisplay,
@@ -9,7 +8,7 @@ import {
 import type { GraphSimilarPendingPair } from '@baishou/shared'
 import type { GraphCostEstimate } from './graph-page.types'
 
-export function useGraphPageData(monthRange: GraphMonthRange) {
+export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: number) {
   const [nodes, setNodes] = useState<any[]>([])
   const [edges, setEdges] = useState<any[]>([])
   const [pendingReextract, setPendingReextract] = useState<any[]>([])
@@ -31,7 +30,7 @@ export function useGraphPageData(monthRange: GraphMonthRange) {
 
   const refresh = useCallback(async () => {
     const graph = await window.api.graph.getGlobalGraph({
-      maxNodes: GRAPH_GLOBAL_MAX_NODES,
+      maxNodes: viewMaxNodes,
       monthRange: clampGraphMonthRange(monthRange)
     })
     const remapped = remapGraphViewReviewForDisplay(graph.nodes || [], graph.edges || [])
@@ -63,7 +62,7 @@ export function useGraphPageData(monthRange: GraphMonthRange) {
       setEstimate(null)
     }
     setGraphHydrated(true)
-  }, [monthRange])
+  }, [monthRange, viewMaxNodes])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
