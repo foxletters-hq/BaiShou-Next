@@ -1,7 +1,6 @@
 import React from 'react'
 import { ActivityIndicator, Platform, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useTranslation } from 'react-i18next'
 import { RagMemoryView, ModelSwitcher, useNativeTheme } from '@baishou/ui/native'
 import { MemoryClearKindsModal } from './MemoryClearKindsModal'
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
@@ -9,7 +8,6 @@ import { requestGraphPendingFocus } from '../../../GraphScreen/graph-pending-foc
 import { useRagMemorySection } from './useRagMemorySection'
 
 export function RAGMemorySectionView() {
-  const { t } = useTranslation()
   const { tokens } = useNativeTheme()
   const router = useRouter()
   const vm = useRagMemorySection()

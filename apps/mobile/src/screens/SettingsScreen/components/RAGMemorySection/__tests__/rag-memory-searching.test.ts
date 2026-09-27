@@ -12,7 +12,10 @@ function readSection(fileName: string): string {
 describe('mobile rag memory searching', () => {
   it('shows a searching flag when switching category or query', () => {
     const view = readSection('RAGMemorySectionView.tsx')
-    const actions = readSection('useRagMemoryActions.ts')
+    const actions = [
+      readSection('useRagMemoryActions.ts'),
+      readSection('rag-memory-clear.util.ts')
+    ].join('\n')
     const data = readSection('useRagMemoryData.ts')
     expect(view).toContain('isSearching={isSearching}')
     expect(actions).toContain('invalidateInFlightQuery()')
@@ -23,7 +26,10 @@ describe('mobile rag memory searching', () => {
 
   it('should clear memory by selected kinds instead of wiping everything', () => {
     const view = readSection('RAGMemorySectionView.tsx')
-    const actions = readSection('useRagMemoryActions.ts')
+    const actions = [
+      readSection('useRagMemoryActions.ts'),
+      readSection('rag-memory-clear.util.ts')
+    ].join('\n')
     const helper = readFileSync(
       join(here, '../../../../../services/mobile-rag-memory-write.helpers.ts'),
       'utf8'

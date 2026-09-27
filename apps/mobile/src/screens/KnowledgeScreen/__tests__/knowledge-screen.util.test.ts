@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatKnowledgeBytesMb,
+  knowledgeIngestProgressLabel,
   knowledgeIngestUserMessage,
   knowledgeSourceCanCancelExtract,
   knowledgeSourceCanEmbed,
   knowledgeSourceCanReembedGraph,
   knowledgeSourceCanReembedVector,
   knowledgeSourceCanRetry,
+  knowledgeSourceDisplayStatus,
   knowledgeSourceNeedsOcr,
   knowledgeSourceStatusLabel,
   moveNotebookByOffset,
@@ -20,8 +22,23 @@ describe('knowledge-screen.util', () => {
     expect(formatKnowledgeBytesMb(2 * 1024 * 1024)).toBe('2.00')
   })
 
-  it('should localize ready status', () => {
-    expect(knowledgeSourceStatusLabel('ready', (_key, fallback) => fallback)).toBe('就绪')
+  it('should overlay graph job status on ready sources', () => {
+    expect(knowledgeSourceDisplayStatus('ready', 'running')).toBe('graph_organizing')
+    expect(knowledgeSourceDisplayStatus('ready', 'pending')).toBe('graph_queued')
+    expect(knowledgeSourceDisplayStatus('embedding', 'running')).toBe('embedding')
+    expect(knowledgeSourceStatusLabel('graph_organizing', (_key, fallback) => fallback)).toBe(
+      '正在整理图谱'
+    )
+  })
+
+  it('should label ingest phases with page progress', () => {
+    const t = (key: string, fallback: string) => fallback
+    expect(knowledgeIngestProgressLabel(t, { page: 2, total: 40, phase: 'render' })).toBe(
+      '正在渲染页面 {{page}}/{{total}}'
+    )
+    expect(knowledgeIngestProgressLabel(t, { page: 12, total: 80, phase: 'embed' })).toBe(
+      '正在建立索引 {{page}}/{{total}}'
+    )
   })
 
   it('should localize stored status as pending organize', () => {
