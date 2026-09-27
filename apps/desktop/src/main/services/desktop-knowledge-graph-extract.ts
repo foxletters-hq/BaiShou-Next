@@ -17,10 +17,7 @@ import { pathService, vaultService } from '../ipc/vault.ipc'
 import { buildSummaryAiClient } from '../ipc/summary-ai-client'
 import { settingsManager } from '../ipc/settings.ipc'
 import { resolveDesktopGraphExtractAlignDeps } from './graph-extract-embed-gate'
-import {
-  clearGraphWindowProgress,
-  rememberGraphWindowProgress
-} from './graph-window-progress'
+import { clearGraphWindowProgress, rememberGraphWindowProgress } from './graph-window-progress'
 
 function broadcastGraphExtractProgress(progress: {
   notebookId: string

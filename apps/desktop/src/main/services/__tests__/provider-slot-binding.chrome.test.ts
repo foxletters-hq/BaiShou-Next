@@ -32,6 +32,8 @@ describe('provider slot binding', () => {
     const mcp = read('../../ipc/agent-mcp-context.ts')
     expect(mcp).toContain('globalDialogueProviderId')
     expect(mcp).toContain('getActiveProvider(globalModels?.globalDialogueProviderId)')
-    expect(mcp).not.toMatch(/new MemoryDeduplicationServiceImpl\(\s*embAdapter,\s*dbAdapter,\s*embeddingProvider/)
+    expect(mcp).not.toMatch(
+      /new MemoryDeduplicationServiceImpl\(\s*embAdapter,\s*dbAdapter,\s*embeddingProvider/
+    )
   })
 })

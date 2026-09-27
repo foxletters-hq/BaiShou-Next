@@ -114,7 +114,9 @@ export function renderPdfPagesOffMain(input: {
   dpi?: number
   onProgress?: (info: PdfWorkerProgress) => void
 }): Promise<Array<{ page: number; pngBase64: string; width: number; height: number }>> {
-  return request<{ pages: Array<{ page: number; pngBase64: string; width: number; height: number }> }>(
+  return request<{
+    pages: Array<{ page: number; pngBase64: string; width: number; height: number }>
+  }>(
     {
       op: 'render',
       absolutePath: input.absolutePath,
