@@ -6,6 +6,7 @@ import type { AttachmentManagementViewProps } from './attachment-management.type
 import { formatSize, isImageFile, getFileIcon } from './attachment-management.utils'
 import { useAttachmentSessionState } from './useAttachmentSessionState'
 import { useAttachmentDiaryState } from './useAttachmentDiaryState'
+import { useAttachmentEmojiState } from './useAttachmentEmojiState'
 
 export type AttachmentFilterPicker = 'year' | 'month' | 'orphan' | null
 
@@ -16,7 +17,9 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     onDeleteFile,
     onOpenFileLocation,
     diaryAttachments = [],
-    onDeleteDiaryAttachment
+    onDeleteDiaryAttachment,
+    emojiAttachments = [],
+    onDeleteEmojiAttachments
   } = props
 
   const { t } = useTranslation()
@@ -24,7 +27,7 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
   const toast = useToast()
   const confirmKeyword = t('settings.attachment_confirm_keyword', '确定')
 
-  const [activePane, setActivePane] = useState<'session' | 'diary'>('diary')
+  const [activePane, setActivePane] = useState<'session' | 'diary' | 'emoji'>('diary')
   const [thumbnailCache, setThumbnailCache] = useState<Map<string, string>>(new Map())
   const thumbnailLoadingRef = React.useRef<Set<string>>(new Set())
   const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null)
@@ -64,6 +67,10 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
   const session = useAttachmentSessionState(attachments, {
     onDeleteSelected,
     onDeleteFile
+  })
+  const emoji = useAttachmentEmojiState(emojiAttachments, activePane, {
+    onDeleteEmojiAttachments,
+    confirmKeyword
   })
   const diary = useAttachmentDiaryState(
     diaryAttachments,
@@ -148,6 +155,25 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在页/展开变化时补齐缺失缩略图
   }, [activePane, pagedSessionList, expandedIds])
 
+  React.useEffect(() => {
+    if (activePane !== 'emoji') return
+    const pendingPaths = emoji.pagedEmojiAttachments
+      .filter((item) => item.path && isImageFile(item.name) && !thumbnailCache.has(item.path))
+      .map((item) => item.path)
+    if (pendingPaths.length === 0) return
+    let cancelled = false
+    void Promise.all(
+      pendingPaths.map(async (filePath) => {
+        if (cancelled) return
+        await getThumbnail(filePath)
+      })
+    )
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在表情包分页变化时补齐缩略图
+  }, [activePane, emoji.pagedEmojiAttachments])
+
   return {
     t,
     dialog,
@@ -179,7 +205,8 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     isImageFile,
     fullImageCacheRef,
     ...session,
-    ...diary
+    ...diary,
+    ...emoji
   }
 }
 

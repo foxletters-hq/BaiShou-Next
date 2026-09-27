@@ -7,6 +7,7 @@ import type { AttachmentManagementViewProps } from './attachment-management.type
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { DiaryAttachmentPane } from './DiaryAttachmentPane'
 import { SessionAttachmentPane } from './SessionAttachmentPane'
+import { EmojiAttachmentPane } from './EmojiAttachmentPane'
 import { SegmentedControl } from '../shared/SegmentedControl'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
 
@@ -18,6 +19,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
       <div className={styles.container}>
         <div className={styles.mainTabNav}>
           <SegmentedControl
+            stretch
             value={vm.activePane}
             options={[
               {
@@ -27,6 +29,10 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
               {
                 value: 'session',
                 label: vm.t('settings.attachment_pane_session', 'AI 会话附件')
+              },
+              {
+                value: 'emoji',
+                label: vm.t('settings.attachment_pane_emoji', '表情包附件')
               }
             ]}
             onChange={vm.setActivePane}
@@ -37,8 +43,10 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
           <AnimatePresence mode="wait">
             {vm.activePane === 'diary' ? (
               <DiaryAttachmentPane key="diary" vm={vm} />
-            ) : (
+            ) : vm.activePane === 'session' ? (
               <SessionAttachmentPane key="session" vm={vm} />
+            ) : (
+              <EmojiAttachmentPane key="emoji" vm={vm} />
             )}
           </AnimatePresence>
         </div>

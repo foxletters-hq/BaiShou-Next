@@ -41,7 +41,7 @@ export interface UseAttachmentDiaryStateOptions {
 
 export function useAttachmentDiaryState(
   diaryAttachments: DiaryAttachmentFileItem[],
-  activePane: 'session' | 'diary',
+  activePane: 'session' | 'diary' | 'emoji',
   thumbnailCache: Map<string, string>,
   setThumbnailCache: React.Dispatch<React.SetStateAction<Map<string, string>>>,
   thumbnailLoadingRef: React.MutableRefObject<Set<string>>,

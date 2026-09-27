@@ -24,6 +24,18 @@ export interface DiaryAttachmentFileItem {
   isOrphan: boolean // 是否是孤立附件 (在同年月的所有日记中都没有被引用)
 }
 
+export type AttachmentManagementPane = 'diary' | 'session' | 'emoji'
+
+export interface EmojiAttachmentListItem {
+  name: string
+  path: string
+  relativePath: string
+  sizeMB: number
+  birthtime: string
+  groupNames: string[]
+  isMissing: boolean
+}
+
 export interface AttachmentManagementViewProps {
   attachments: SessionAttachmentGroup[]
   onDeleteSelected: (ids: string[]) => Promise<void>
@@ -33,4 +45,6 @@ export interface AttachmentManagementViewProps {
   // ======= 日记附件相关的扩展属性 =======
   diaryAttachments?: DiaryAttachmentFileItem[]
   onDeleteDiaryAttachment?: (filePath: string) => Promise<void>
+  emojiAttachments?: EmojiAttachmentListItem[]
+  onDeleteEmojiAttachments?: (relativePaths: string[]) => Promise<void>
 }
