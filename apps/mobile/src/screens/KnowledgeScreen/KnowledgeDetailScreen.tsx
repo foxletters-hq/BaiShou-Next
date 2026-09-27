@@ -224,6 +224,8 @@ export function KnowledgeDetailScreen() {
               detail.toggleSelectAllPending(detail.pendingNodes, detail.pendingEdges)
             }
             onReviewSelected={detail.reviewSelectedPending}
+            onRebuildGraph={detail.rebuildNotebookGraph}
+            onStartOrganize={detail.startOrganize}
           />
           <KnowledgeDetailManageSection
             graphNodes={detail.graphNodes}

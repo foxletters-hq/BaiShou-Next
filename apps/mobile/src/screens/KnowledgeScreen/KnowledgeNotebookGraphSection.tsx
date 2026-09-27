@@ -6,6 +6,7 @@ import { settingsTypography } from '@baishou/ui/theme/tokens'
 import {
   Button,
   Card,
+  HelpTooltip,
   Input,
   SegmentedControl,
   SettingsSection,
@@ -19,7 +20,7 @@ import {
 import { KnowledgeNotebookGraphPendingTab } from './KnowledgeNotebookGraphPendingTab'
 import type { KnowledgeGraphEdgeRow, KnowledgeGraphNodeRow } from './knowledge-detail.types'
 
-type GraphTab = 'canvas' | 'pending' | 'similar'
+type GraphTab = 'canvas' | 'reextract' | 'pending' | 'similar'
 
 export function KnowledgeNotebookGraphSection(props: {
   nodes: KnowledgeGraphNodeRow[]
@@ -66,6 +67,8 @@ export function KnowledgeNotebookGraphSection(props: {
   onTogglePending: (kind: 'node' | 'edge', id: string) => void
   onToggleSelectAllPending: () => void
   onReviewSelected: (status: 'approved' | 'rejected') => void
+  onRebuildGraph: () => void
+  onStartOrganize: () => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -76,7 +79,17 @@ export function KnowledgeNotebookGraphSection(props: {
   )
 
   return (
-    <SettingsSection title={t('knowledge.graph_panel', '本笔记本图谱')}>
+    <SettingsSection
+      title={t('knowledge.graph_panel', '本笔记本图谱')}
+      titleAddon={
+        <HelpTooltip
+          content={t(
+            'knowledge.graph_title_help',
+            '这是从这本笔记本资料里整理出的人物、地点和事件关系。人生关系图是另一套库，不会混在这里。'
+          )}
+        />
+      }
+    >
       <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
         {props.graphProgress ? (
           <Text
@@ -106,12 +119,33 @@ export function KnowledgeNotebookGraphSection(props: {
           <Button isDisabled={props.busy} onPress={() => void props.onSearch()}>
             {t('common.search', '搜索')}
           </Button>
+          <Button
+            variant="outlined"
+            isDisabled={props.busy || props.nodes.length === 0}
+            onPress={() => void props.onRebuildGraph()}
+          >
+            {t('knowledge.rebuild_graph', '重新抽取图谱')}
+          </Button>
+          {props.nodes.length === 0 ? (
+            <Button isDisabled={props.busy} onPress={() => void props.onStartOrganize()}>
+              {t('graph.start_organize', '开始整理')}
+            </Button>
+          ) : null}
         </View>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: settingsTypography.desc.fontSize
+          }}
+        >
+          {t('knowledge.graph_ops_hint', '重新抽取只会整理这本笔记本。人生关系图不会被改动。')}
+        </Text>
         <SegmentedControl
           value={props.tab}
           onChange={(value) => props.onTabChange(value as GraphTab)}
           options={[
             { value: 'canvas', label: t('graph.tab_canvas', '画布') },
+            { value: 'reextract', label: t('graph.tab_reextract', '待重抽') },
             {
               value: 'pending',
               label: t('graph.tab_pending_count', '待确认 ({{count}})', { count: pendingCount })
@@ -150,6 +184,16 @@ export function KnowledgeNotebookGraphSection(props: {
             onToggleMergeLoser={props.onToggleMergeLoser}
             onMergeSearched={props.onMergeSearched}
           />
+        ) : null}
+        {props.tab === 'reextract' ? (
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: settingsTypography.desc.fontSize
+            }}
+          >
+            {props.graphProgress || t('knowledge.graph_reextract_empty', '暂无待重抽资料')}
+          </Text>
         ) : null}
         {props.selectedId ? (
           <Card>
