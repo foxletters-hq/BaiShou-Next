@@ -29,12 +29,10 @@ describe('desktop pending embed fill stays on the memory system', () => {
     )
   })
 
-  it('should scan suspects after graph node fill when running desktop pending fill', () => {
+  it('should not scan structural suspects after graph node fill', () => {
+    expect(src).not.toContain('runDesktopGraphSuspectScan')
     expect(indexOfCall('[PendingEmbedFill] graph node fill failed')).toBeLessThan(
-      indexOfCall('runDesktopGraphSuspectScan')
-    )
-    expect(indexOfCall('runDesktopGraphSuspectScan')).toBeLessThan(
-      indexOfCall('notifyPendingEmbedCountsChanged()')
+      indexOfCall("report('finishing', phases)")
     )
   })
 })

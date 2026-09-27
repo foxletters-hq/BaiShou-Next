@@ -1,7 +1,7 @@
 import {
   collectSuspectSignals,
   GRAPH_SUSPECT_LLM_CAP,
-  readSuspectReason,
+  isOpenSuspectHit,
   runGraphSuspectScan,
   toSuspectScanEdge,
   toSuspectScanNode
@@ -35,7 +35,7 @@ export async function runDesktopGraphSuspectScan(input: {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
   const pendingHits = collectSuspectSignals(nodes, edges).filter((hit) => {
     const node = nodeById.get(hit.nodeId)
-    return Boolean(node && !readSuspectReason(node.props))
+    return Boolean(node && isOpenSuspectHit(node, hit, edges))
   })
   const total = Math.min(GRAPH_SUSPECT_LLM_CAP, pendingHits.length)
   input.onProgress?.({ completed: 0, total })
@@ -57,8 +57,8 @@ export async function runDesktopGraphSuspectScan(input: {
       input.onProgress?.({ completed: llmDone, total })
       return text ?? null
     },
-    persist: async (node, reason) => {
-      await writeNodeSuspectReason(node.id, reason)
+    persist: async (node, reason, signals) => {
+      await writeNodeSuspectReason(node.id, reason, signals)
     }
   })
   if (result.persisted > 0) {

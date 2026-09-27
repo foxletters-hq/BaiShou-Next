@@ -27,10 +27,7 @@ import {
   isBatchEmbedAbortedError
 } from './batch-embed-control.service'
 import { syncMemoryPendingIndex } from './raw-data-source.runtime'
-import {
-  invalidatePendingEmbedCountsCache,
-  notifyPendingEmbedCountsChanged
-} from './pending-embed-counts.service'
+import { invalidatePendingEmbedCountsCache } from './pending-embed-counts.service'
 import { probeEmbeddingApi } from './embed-api-probe.util'
 
 export type PendingEmbedFillProgress = {
@@ -234,43 +231,6 @@ export async function runManualPendingEmbedFill(options?: {
     }),
     'graph_node'
   )
-
-  try {
-    await assertBatchEmbedCanContinue()
-    const { runDesktopGraphSuspectScan } = await import('./graph-suspect-scan.service')
-    const graphRepo = new GraphRepository(drizzleDb)
-    report(
-      'graph_disambiguate',
-      patchPhaseCounts(phases, 'graph_disambiguate', { completed: 0, total: 1 })
-    )
-    const scanResult = await runDesktopGraphSuspectScan({
-      vaultId,
-      repo: graphRepo,
-      onProgress: ({ completed, total }) => {
-        report(
-          'graph_disambiguate',
-          patchPhaseCounts(phases, 'graph_disambiguate', {
-            completed,
-            total: Math.max(total, 1)
-          })
-        )
-      }
-    })
-    phases = markPhaseDone(
-      patchPhaseCounts(phases, 'graph_disambiguate', {
-        completed: scanResult.persisted,
-        total: Math.max(scanResult.collected, scanResult.persisted, 1)
-      }),
-      'graph_disambiguate'
-    )
-    if (scanResult.persisted > 0) {
-      notifyPendingEmbedCountsChanged()
-    }
-  } catch (error) {
-    if (isBatchEmbedAbortedError(error)) throw error
-    logger.warn('[PendingEmbedFill] graph disambiguate phase failed', error as Error)
-    phases = markPhaseDone(phases, 'graph_disambiguate')
-  }
 
   invalidatePendingEmbedCountsCache()
   report('finishing', phases)

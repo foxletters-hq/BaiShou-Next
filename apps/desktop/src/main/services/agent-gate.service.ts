@@ -7,14 +7,16 @@ import {
   BaishouAgentGateEventBus
 } from '@baishou/ai'
 import {
-  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  assignBaishouAgentGateConfig,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   cloneBaishouAgentGateConfig,
-  type BaishouAgentGateConfig,
-  type AgentGateConfigScope,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  foldCompanionAllowlistIntoCapabilities,
   type AgentGateAllowlistEntry,
-  type AgentGateReplyInput
+  type AgentGateConfigScope,
+  type AgentGateReplyInput,
+  type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
@@ -53,10 +55,23 @@ function parseScopeKey(key: ScopeKey): AgentGateConfigScope {
 
 async function loadCompanionConfig(): Promise<BaishouAgentGateConfig> {
   const saved = await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)
-  return cloneBaishouAgentGateConfig(saved, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+  const cloned = cloneBaishouAgentGateConfig(saved, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+  const folded = foldCompanionAllowlistIntoCapabilities(cloned)
+  if (folded.allowlist.length !== cloned.allowlist.length) {
+    try {
+      await persistCompanionConfig(folded)
+    } catch {
+      // 内存已折进能力矩阵；落盘失败下次启动再试
+    }
+  }
+  return folded
 }
 
 async function persistCompanionConfig(config: BaishouAgentGateConfig): Promise<void> {
+  const folded = foldCompanionAllowlistIntoCapabilities(config)
+  if (folded !== config) {
+    assignBaishouAgentGateConfig(config, folded)
+  }
   await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
 }
 
@@ -378,82 +393,84 @@ export function resetAgentGateRuntimes(reason = 'vault-switch'): void {
   requestScopeIndex.clear()
 }
 
+async function subscribeAgentGateNotificationEvents(): Promise<void> {
+  const { closeAgentGateNotification, isAnyAgentGateWindowFocused, notifyAgentGateAsked } =
+    await import('./agent-gate-notification.service')
+
+  sharedEventBus.subscribe((event) => {
+    if (event.type === 'agent_gate.asked') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:asked', event.request)
+        }
+      }
+      if (!isAnyAgentGateWindowFocused()) {
+        void notifyAgentGateAsked(event.request)
+      } else {
+        // 聚焦时由渲染进程判断是否目标会话，非目标则 force 通知
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('agent-gate:focus-check', event.request)
+          }
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.replied') {
+      closeAgentGateNotification(event.requestId)
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:replied', {
+            sessionId: event.sessionId,
+            requestId: event.requestId,
+            reply: event.reply,
+            message: event.message,
+            selectedOptionIds: event.selectedOptionIds,
+            questionAnswers: event.questionAnswers
+          })
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.cancelled') {
+      for (const requestId of event.requestIds) {
+        closeAgentGateNotification(requestId)
+      }
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:cancelled', {
+            sessionId: event.sessionId,
+            requestIds: event.requestIds,
+            reason: event.reason
+          })
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.allowlist_changed') {
+      const payload: {
+        allowlist: AgentGateAllowlistEntry[]
+        scope?: AgentGateConfigScope
+      } = {
+        allowlist: event.allowlist,
+        scope: event.scope
+      }
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:allowlist-changed', payload)
+        }
+      }
+    }
+  })
+}
+
 /** 将门控 asked / allowlist 事件广播到所有渲染进程窗口 */
 export function registerAgentGateEventBridge(): void {
   if (bridgeRegistered) return
   bridgeRegistered = true
-
-  void ensureCompanionGateRuntime().then(async () => {
-    const { closeAgentGateNotification, isAnyAgentGateWindowFocused, notifyAgentGateAsked } =
-      await import('./agent-gate-notification.service')
-
-    sharedEventBus.subscribe((event) => {
-      if (event.type === 'agent_gate.asked') {
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('agent-gate:asked', event.request)
-          }
-        }
-        if (!isAnyAgentGateWindowFocused()) {
-          void notifyAgentGateAsked(event.request)
-        } else {
-          // 聚焦时由渲染进程判断是否目标会话，非目标则 force 通知
-          for (const win of BrowserWindow.getAllWindows()) {
-            if (!win.isDestroyed()) {
-              win.webContents.send('agent-gate:focus-check', event.request)
-            }
-          }
-        }
-        return
-      }
-
-      if (event.type === 'agent_gate.replied') {
-        closeAgentGateNotification(event.requestId)
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('agent-gate:replied', {
-              sessionId: event.sessionId,
-              requestId: event.requestId,
-              reply: event.reply,
-              message: event.message,
-              selectedOptionIds: event.selectedOptionIds,
-              questionAnswers: event.questionAnswers
-            })
-          }
-        }
-        return
-      }
-
-      if (event.type === 'agent_gate.cancelled') {
-        for (const requestId of event.requestIds) {
-          closeAgentGateNotification(requestId)
-        }
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('agent-gate:cancelled', {
-              sessionId: event.sessionId,
-              requestIds: event.requestIds,
-              reason: event.reason
-            })
-          }
-        }
-        return
-      }
-
-      if (event.type === 'agent_gate.allowlist_changed') {
-        const payload: {
-          allowlist: AgentGateAllowlistEntry[]
-          scope?: AgentGateConfigScope
-        } = {
-          allowlist: event.allowlist,
-          scope: event.scope
-        }
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('agent-gate:allowlist-changed', payload)
-          }
-        }
-      }
-    })
-  })
+  void subscribeAgentGateNotificationEvents()
+  void ensureCompanionGateRuntime()
 }

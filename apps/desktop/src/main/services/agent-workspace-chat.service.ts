@@ -1,4 +1,9 @@
-import { AgentChatCoreService, createNodeWorkspaceFs, emitAgentSessionRuntime } from '@baishou/ai'
+import {
+  AgentChatCoreService,
+  createNodeWorkspaceFs,
+  emitAgentSessionRuntime,
+  isAgentStreamSessionBusy
+} from '@baishou/ai'
 import {
   logger,
   type BaishouAgentGateConfig,
@@ -43,6 +48,7 @@ import {
   setWorkspaceGateConfig
 } from './agent-workspace-policy.store'
 import {
+  isWorkspaceSessionStreaming,
   pushActiveWorkspaceStreamSessionId,
   removeActiveWorkspaceStreamSessionId
 } from './agent-workspace-tool-context'
@@ -52,13 +58,15 @@ import { resolveActiveVaultId } from '../ipc/vault.ipc'
 import { broadcastWorkspaceFsChanged } from './workspace-folder-watcher.service'
 import { resolveWorkspaceGitMetaLight } from './workspace-chat-git-meta'
 import { drainWorkspaceInbox } from './workspace-chat-inbox'
+import { scheduleDrainWhenIdle, takeDrainAfterAbort } from './session-inbox-drain'
 import { checkpointService, finalizeRoundCheckpoint } from './workspace-chat-runtime'
 
 export { getWorkspaceCheckpointService } from './workspace-chat-runtime'
 export {
   admitWorkspaceInput,
   cancelWorkspacePendingInput,
-  listWorkspacePendingInputs
+  listWorkspacePendingInputs,
+  updateWorkspacePendingInput
 } from './workspace-chat-inbox'
 export {
   previewWorkspaceRollback,
@@ -321,9 +329,14 @@ export async function runWorkspaceStreamChat(params: {
     }
     removeActiveWorkspaceStreamSessionId(params.sessionId)
     invalidateMcpToolContextCache()
-    // 仅正常结束 / 非用户 abort 时排空 inbox；Stop 后保留 pending 供稍后继续
-    if (shouldDrainInbox) {
-      void drainWorkspaceInbox(params.event, params.sessionId)
+    // 正常结束排空；用户点「立即发送」打断时也排空，普通 Stop 仍保留排队。
+    // claim 在外层 finally 才释放，这里等空闲再排，避免第一次点击被忙检查丢掉。
+    if (shouldDrainInbox || takeDrainAfterAbort(params.sessionId)) {
+      scheduleDrainWhenIdle({
+        sessionId: params.sessionId,
+        isBusy: (id) => isWorkspaceSessionStreaming(id) || isAgentStreamSessionBusy(id),
+        run: () => drainWorkspaceInbox(params.event, params.sessionId)
+      })
     }
   }
 }
