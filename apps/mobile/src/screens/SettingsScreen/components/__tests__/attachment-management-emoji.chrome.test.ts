@@ -14,5 +14,15 @@ describe('mobile attachment management emoji wiring', () => {
     expect(src).toContain('removeEmojisByRelativePaths')
     expect(src).toContain('publishEmojiToolConfig')
     expect(src).not.toContain('deleteBatch(relativePaths)')
+    const service = readFileSync(
+      join(here, '../../../../services/mobile-attachment-manager.service.ts'),
+      'utf8'
+    )
+    const emoji = readFileSync(
+      join(here, '../../../../services/mobile-attachment-manager.emoji.ts'),
+      'utf8'
+    )
+    expect(service).toContain('listMobileEmojiAttachmentFiles')
+    expect(emoji).toContain('listMobileEmojiAttachmentFiles')
   })
 })

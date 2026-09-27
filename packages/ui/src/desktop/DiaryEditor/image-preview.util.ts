@@ -56,7 +56,10 @@ async function copyDataUrlAsImage(dataUrl: string): Promise<CopyAttachmentResult
  * 优先用本地文件路径走主进程 writeImage；
  * 仅预览 data URL 时在渲染进程写图片，绝不把 base64 文本写入剪贴板。
  */
-export async function copyPreviewImage(src: string, copySource?: string): Promise<CopyAttachmentResult> {
+export async function copyPreviewImage(
+  src: string,
+  copySource?: string
+): Promise<CopyAttachmentResult> {
   const diary = getDiaryCopyApi()
   const fileCandidates = [copySource, src]
     .map((s) => (s ? resolveCopyFilePath(s) : null))
@@ -99,7 +102,10 @@ export function inferImagePreviewDownloadName(
 }
 
 type SaveFilePickerHandle = {
-  createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }>
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>
+    close: () => Promise<void>
+  }>
 }
 
 function getSaveFilePicker():
