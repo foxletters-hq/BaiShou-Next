@@ -13,7 +13,9 @@ describe('latte shared assets', () => {
     )
     expect(existsSync(file)).toBe(true)
     const bytes = readFileSync(file)
-    expect(bytes.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    expect(bytes.subarray(0, 8)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    )
     // IHDR 颜色类型 6 = RGBA，避免再被存成不带透明通道的 JPEG
     expect(bytes[25]).toBe(6)
   })

@@ -9,7 +9,10 @@ import {
   stripCompanionAllowlistActions
 } from '../companion-tool-permission.util'
 import { capabilityStateFromConfig } from '../agent-gate-capability.util'
-import { cloneBaishouAgentGateConfig, DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '../agent-gate.defaults'
+import {
+  cloneBaishouAgentGateConfig,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+} from '../agent-gate.defaults'
 
 describe('companion-tool-permission.util', () => {
   it('adds and removes disabled ids from Deny', () => {

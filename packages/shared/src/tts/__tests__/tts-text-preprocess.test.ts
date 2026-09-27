@@ -57,7 +57,8 @@ describe('stripMarkdownForTts', () => {
   })
 
   it('strips HTML tags, comments and decodes entities', () => {
-    const input = '<div class="card"><strong>重要提示</strong><!-- 隐藏注释 --></div>&nbsp;&amp;&nbsp;测试'
+    const input =
+      '<div class="card"><strong>重要提示</strong><!-- 隐藏注释 --></div>&nbsp;&amp;&nbsp;测试'
     expect(stripMarkdownForTts(input)).toBe('重要提示 & 测试')
   })
 

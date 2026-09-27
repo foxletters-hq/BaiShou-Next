@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  RAG_TOP_K_MAX,
-  clampRagSimilarityThreshold,
-  clampRagTopK
-} from '../rag-config.constants'
+import { RAG_TOP_K_MAX, clampRagSimilarityThreshold, clampRagTopK } from '../rag-config.constants'
 
 describe('rag-config.constants', () => {
   it('should allow Top-K up to 200', () => {
