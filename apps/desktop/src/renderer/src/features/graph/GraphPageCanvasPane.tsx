@@ -26,9 +26,11 @@ export function GraphPageCanvasPane(props: {
   focusDepth: GraphFocusDepth
   appearanceSettings: GraphAppearanceSettings
   forceSettings: GraphForceSettings
+  viewMaxNodes: number
   onFocusDepthChange: (depth: GraphFocusDepth) => void
   onAppearanceChange: (patch: Partial<GraphAppearanceSettings>) => void
   onForceChange: (patch: Partial<GraphForceSettings>) => void
+  onViewMaxNodesChange: (value: number) => void
   onReplayLayout: () => void
   onResetGraphSettings: () => void
 }): React.ReactElement {
@@ -122,9 +124,11 @@ export function GraphPageCanvasPane(props: {
           focusDepth={props.focusDepth}
           appearanceSettings={props.appearanceSettings}
           forceSettings={props.forceSettings}
+          viewMaxNodes={props.viewMaxNodes}
           onFocusDepthChange={props.onFocusDepthChange}
           onAppearanceChange={props.onAppearanceChange}
           onForceChange={props.onForceChange}
+          onViewMaxNodesChange={props.onViewMaxNodesChange}
           onReplayLayout={props.onReplayLayout}
         />
       </div>

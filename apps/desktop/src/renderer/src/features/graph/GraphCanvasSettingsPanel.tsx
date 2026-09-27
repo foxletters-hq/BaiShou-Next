@@ -4,6 +4,11 @@ import {
   GRAPH_APPEARANCE_RANGES,
   GRAPH_FOCUS_DEPTH_OPTIONS,
   GRAPH_FORCE_RANGES,
+  GRAPH_VIEW_MAX_NODES_MAX,
+  GRAPH_VIEW_MAX_NODES_MIN,
+  GRAPH_VIEW_MAX_NODES_STEP,
+  graphViewMaxNodesSliderValue,
+  isGraphViewMaxNodesUnlimited,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
   type GraphForceSettings
@@ -17,9 +22,11 @@ export interface GraphCanvasSettingsPanelProps {
   focusDepth: GraphFocusDepth
   appearanceSettings: GraphAppearanceSettings
   forceSettings: GraphForceSettings
+  viewMaxNodes: number
   onFocusDepthChange: (depth: GraphFocusDepth) => void
   onAppearanceChange: (patch: Partial<GraphAppearanceSettings>) => void
   onForceChange: (patch: Partial<GraphForceSettings>) => void
+  onViewMaxNodesChange: (value: number) => void
   onReplayLayout: () => void
 }
 
@@ -27,9 +34,11 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
   focusDepth,
   appearanceSettings,
   forceSettings,
+  viewMaxNodes,
   onFocusDepthChange,
   onAppearanceChange,
   onForceChange,
+  onViewMaxNodesChange,
   onReplayLayout
 }) => {
   const { t } = useTranslation()
@@ -104,6 +113,30 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 onChange={(event) =>
                   onAppearanceChange({ showIsolatedNodes: event.target.checked })
                 }
+              />
+            </label>
+            <label
+              className={styles.settingsSliderRow}
+              title={t(
+                'graph.max_nodes_hint',
+                '画布最多取这么多个节点。滑到最右为不限制。这个月份里尚未确认的节点仍会补进来，以免漏看。'
+              )}
+            >
+              <span className={styles.settingsSliderLabel}>
+                {t('graph.max_nodes', '显示节点上限')}
+              </span>
+              <span className={styles.forceValue}>
+                {isGraphViewMaxNodesUnlimited(viewMaxNodes)
+                  ? t('graph.max_nodes_unlimited', '无限')
+                  : viewMaxNodes}
+              </span>
+              <input
+                type="range"
+                min={GRAPH_VIEW_MAX_NODES_MIN}
+                max={GRAPH_VIEW_MAX_NODES_MAX}
+                step={GRAPH_VIEW_MAX_NODES_STEP}
+                value={graphViewMaxNodesSliderValue(viewMaxNodes)}
+                onChange={(event) => onViewMaxNodesChange(Number(event.target.value))}
               />
             </label>
             <label className={styles.settingsSliderRow}>

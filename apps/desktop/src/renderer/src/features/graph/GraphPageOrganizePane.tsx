@@ -6,7 +6,7 @@ import {
   USER_GENDER_OPTIONS,
   type UserGender
 } from '@baishou/shared'
-import { Button, HelpTooltip, Input, Select } from '@baishou/ui'
+import { Button, DatePicker, HelpTooltip, Input, Select } from '@baishou/ui'
 import { GraphAwakenBirthdayField } from './GraphAwakenBirthdayField'
 import { GraphExtractHelpButton } from './GraphExtractHelpButton'
 import styles from './GraphPage.module.css'
@@ -190,11 +190,12 @@ export function GraphPageOrganizePane(props: {
               )}
             />
           </div>
-          <input
-            type="date"
-            className={styles.opsDateInput}
+          <DatePicker
             value={props.extractDate}
-            onChange={(event) => props.onExtractDateChange(event.target.value)}
+            onChange={(_, ymd) => props.onExtractDateChange(ymd)}
+            size="small"
+            placeholder={t('graph.select_diary_date', '选择日记日期')}
+            disabled={props.busy}
           />
           <Button type="button" disabled={props.busy} onClick={() => void props.onRunExtractOne()}>
             {t('graph.extract_one_action', '重新梳理这篇')}
