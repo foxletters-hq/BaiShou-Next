@@ -155,7 +155,8 @@ export function getDefaultToolManagementConfig(): ToolManagementConfig {
 function getDefaultMcpServerConfig(): McpServerConfig {
   return {
     mcpEnabled: false,
-    mcpPort: 31004
+    mcpPort: 31004,
+    mcpAuthEnabled: false
   }
 }
 

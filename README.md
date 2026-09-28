@@ -180,7 +180,8 @@ pnpm ci:check
 - 客户端代码完全开源，鼓励社区参与改进。
 - 请遵守 AGPLv3 协议：若您修改了本项目的代码并在网络上提供服务，您的修改版本也必须开源。
 - 向本项目提交**代码 PR** 须签署 [组织级 CLA](./legal/CLA-organization.md)（CLA Assistant，多仓通用）。
-- 版权与商业化策略详见 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
+- **美术与角色资产**：官方立绘、三视图及看板娘 Latte 相关资产不属于 AGPL 代码开源范畴，社区非商用二次创作与商用授权指引详见 [legal/LICENSE-ASSETS.md](./legal/LICENSE-ASSETS.md)。
+- 版权、商标与商业化策略详见 [legal/COPYRIGHT](./legal/COPYRIGHT)、[legal/TRADEMARK.md](./legal/TRADEMARK.md) 及 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
 
 完整条文见 [LICENSE](./LICENSE)。
 

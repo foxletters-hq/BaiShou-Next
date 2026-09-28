@@ -156,5 +156,8 @@ pnpm ci:check
 
 - 客戶端程式碼完全開源，鼓勵社群參與改進。
 - 請遵守 AGPLv3 協議：若您修改了本專案的程式碼並在網路上提供服務，您的修改版本也必須開源。
+- 提交**程式碼 PR** 須簽署 [組織級 CLA](../../legal/CLA-organization.md)。
+- **美術與角色資產**：官方美術與看板娘 Latte **不在** AGPL 範圍內，歡迎非商業二創，詳見 [legal/LICENSE-ASSETS.md](../../legal/LICENSE-ASSETS.md)。
+- 商標使用見 [legal/TRADEMARK.md](../../legal/TRADEMARK.md)。
 
 完整條文見 [LICENSE](../../LICENSE)。

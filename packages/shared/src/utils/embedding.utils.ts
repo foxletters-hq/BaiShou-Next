@@ -6,6 +6,31 @@
  * Embedding 选择器只显示 Embedding 模型。
  */
 
+/**
+ * 智谱官方 embedding 模型 ID。
+ * 其 GET /models 通常只返回对话模型，需在拉取结果中并入这些种子。
+ */
+export const ZHIPU_KNOWN_EMBEDDING_MODELS = ['embedding-2', 'embedding-3'] as const
+
+/**
+ * 将智谱已知 embedding 模型并入远端列表：保持远端顺序，缺口补在末尾，去重。
+ */
+export function mergeZhipuKnownEmbeddingModels(remote: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const id of remote) {
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    result.push(id)
+  }
+  for (const id of ZHIPU_KNOWN_EMBEDDING_MODELS) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    result.push(id)
+  }
+  return result
+}
+
 // 匹配常见的 Embedding 模型名称模式
 const embeddingRegex =
   /(?:text-embedding|embed|bge-|e5-|retrieval|uae-|gte-|jina-embeddings|voyage-|nomic-embed)/i

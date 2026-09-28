@@ -174,6 +174,9 @@ This project is licensed under **AGPLv3** (GNU Affero General Public License v3.
 
 - Client code is fully open source; community contributions are encouraged.
 - If you modify this project and offer it as a network service, your modified version must also be open source under AGPLv3.
+- Code PRs require signing the [Organization CLA](../../legal/CLA-organization.md).
+- **Artwork and characters**: Official artwork and the Latte character are **not** covered by the AGPL. Non-commercial fan works are welcome; see [legal/LICENSE-ASSETS.md](../../legal/LICENSE-ASSETS.md) (Chinese).
+- Trademarks: see [legal/TRADEMARK.md](../../legal/TRADEMARK.md).
 
 Full text: [LICENSE](../../LICENSE).
 

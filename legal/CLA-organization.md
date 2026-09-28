@@ -2,10 +2,12 @@
 
 **Organization Individual Contributor License Agreement**
 
-**版本**：1.0  
-**生效日期**：2026-07-05  
+**版本**：1.1  
+**生效日期**：2026-09-24（v1.0 生效日期：2026-07-05）  
 **组织**：[foxletters-hq](https://github.com/foxletters-hq)（GitHub）  
-**项目托管方（Project Steward）**：Anson-Trio / foxletters-hq（白守项目当前托管组织）
+**项目托管方（Project Steward）**：郑州市金水区狐信网络科技工作室（个体工商户，统一社会信用代码 92410105MAKMWQ1PX9）及其经营者
+
+> **v1.1 修订说明**：本版本仅明确托管方的法律主体。v1.0 中的「Anson-Trio / foxletters-hq」，是上述主体在 GitHub 上使用的维护者账号与组织名称，二者指向同一权利人。授权范围与其他条款均未改变；依第八节第 3、4 款，已签署 v1.0 的贡献者，其授权由上述主体承继。
 
 ---
 
@@ -26,7 +28,7 @@
    **不以本协议正文是否逐条列出仓库名为准**；未关联本协议的 foxletters-hq 仓库不在覆盖范围内。
 
 4. **「贡献（Contribution）」**：您向任一覆盖仓库提交的原创作品，包括源代码、测试、构建脚本、配置，以及与上述代码变更一并提交的文档部分。
-5. **「托管方」**：Anson-Trio / foxletters-hq（白守项目当前托管组织），作为覆盖仓库的版权管理与再许可方。
+5. **「托管方」**：郑州市金水区狐信网络科技工作室（个体工商户）及其经营者，GitHub 账号为 Anson-Trio、组织为 foxletters-hq，作为覆盖仓库的版权管理与再许可方。
 
 ---
 
@@ -100,10 +102,12 @@
 
 # Organization Individual Contributor License Agreement (English)
 
-**Version**: 1.0  
-**Effective date**: 2026-07-05  
+**Version**: 1.1  
+**Effective date**: 2026-09-24 (v1.0 effective: 2026-07-05)  
 **Organization**: [foxletters-hq](https://github.com/foxletters-hq) on GitHub  
-**Project Steward**: Anson-Trio / foxletters-hq (current BaiShou project steward organization)
+**Project Steward**: Zhengzhou Jinshui District Huxin Network Technology Studio (郑州市金水区狐信网络科技工作室, an individual business; Unified Social Credit Code 92410105MAKMWQ1PX9) and its operator
+
+> **v1.1 note**: This version only clarifies the Steward's legal entity. "Anson-Trio / foxletters-hq" in v1.0 are the GitHub maintainer account and organization used by that entity and refer to the same rights holder. The scope of grants and all other terms are unchanged; under Section 8 (3) and (4), grants made by v1.0 signatories are held by that entity.
 
 Thank you for contributing to Foxletters / BaiShou open-source repositories. This agreement applies to **code Contributions** to all **Covered Repositories** under foxletters-hq. **One signature covers all linked repositories** (via [CLA Assistant](https://cla-assistant.io/) on pull requests).
 
@@ -115,7 +119,7 @@ Thank you for contributing to Foxletters / BaiShou open-source repositories. Thi
 - **"Organization"**: The [foxletters-hq](https://github.com/foxletters-hq) GitHub organization.
 - **"Covered Repository"**: A GitHub repository that (a) belongs to [foxletters-hq](https://github.com/foxletters-hq), and (b) the Steward has associated with this agreement—e.g. by linking it in [CLA Assistant](https://cla-assistant.io/) and/or stating so in the repo's `README`, `CONTRIBUTING`, or `.github/CLA.md`. Repositories not associated with this agreement are not covered, regardless of whether they are named in this document.
 - **"Contribution"**: Original work you submit to any Covered Repository (source, tests, build scripts, config, and docs submitted with code changes).
-- **"Steward"**: Anson-Trio / foxletters-hq, copyright administrator and sublicensor.
+- **"Steward"**: Zhengzhou Jinshui District Huxin Network Technology Studio and its operator (GitHub account Anson-Trio, organization foxletters-hq), copyright administrator and sublicensor.
 
 ---
 

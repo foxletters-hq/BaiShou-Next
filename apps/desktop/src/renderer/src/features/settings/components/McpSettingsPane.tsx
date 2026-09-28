@@ -37,7 +37,13 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
             <McpSettingsCard
               standalone
               lanHost={lanHost}
-              config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
+              config={
+                settings.mcpServerConfig || {
+                  mcpEnabled: false,
+                  mcpPort: 31004,
+                  mcpAuthEnabled: false
+                }
+              }
               onChange={settings.setMcpServerConfig}
               onRefreshToken={settings.refreshMcpAuthToken}
             />

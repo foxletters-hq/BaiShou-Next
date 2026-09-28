@@ -8,7 +8,7 @@
 
 ---
 
-[Back to README](../docs/README_EN.md)
+[Back to README](../docs/3-Project/README_EN.md)
 
 ##### Character Design (Visual Canon)
 
@@ -33,9 +33,11 @@
 - **Accessories**: **Vintage brown belt** with a **metallic antique gold pocket watch** and **layered gold chains**.
 - **Legwear & shoes**: Loose, stacked **white bubble socks** with **brown lace-up Martin boots**.
 
-###### 4. Character Rights
+###### 4. Character Rights & Fan Creation Guidelines
 
-- The community may freely create fan works—bring your love and creativity.
+- **Non-Commercial Fan Creations**: Non-commercial fan works (illustrations, stickers, fan fiction, cosplay, personal 3D prints, and non-profit fan exchanges of up to 50 copies per design) are warmly welcomed. Please credit the original character when posting publicly.
+- **Commercial Use Strictly Prohibited**: All official turnaround sheets and illustration copyrights belong to the project stewards. Unauthorized mass manufacturing and commercial sale of physical merchandise (pillows, acrylic stands, figures, apparel, etc.) on e-commerce platforms, as well as impersonating official products, are strictly forbidden.
+- **Detailed Licensing Terms**: For full asset licensing rules, commercial red lines, and business cooperation, see [legal/LICENSE-ASSETS.md](../legal/LICENSE-ASSETS.md).
 
 ---
 

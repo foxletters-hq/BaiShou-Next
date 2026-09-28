@@ -1,11 +1,24 @@
 BaiShou-Next（白守 Next）
-Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
 
-本仓库源代码（不含下文「第三方组件」）在 GNU Affero General Public License
-v3.0 或更高版本（AGPL-3.0-or-later）下发布。完整许可条文见仓库根目录 LICENSE。
+本仓库源代码（不含下文「第三方组件」与「项目自有美术与角色资产」）在
+GNU Affero General Public License v3.0 或更高版本（AGPL-3.0-or-later）下发布。
+完整许可条文见仓库根目录 LICENSE。
 
-项目托管方（Project Steward）：Anson-Trio / foxletters-hq（白守项目当前托管组织）
-仓库地址：https://github.com/foxletters-hq/BaiShou-Next
+---
+
+## 项目托管方（Project Steward）
+
+| 项目             | 内容                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| 法律主体         | 郑州市金水区狐信网络科技工作室（个体工商户）及其经营者                   |
+| 统一社会信用代码 | 92410105MAKMWQ1PX9                                                       |
+| GitHub           | 组织 [foxletters-hq](https://github.com/foxletters-hq)；维护者账号 [Anson-Trio](https://github.com/Anson-Trio) |
+| 联系邮箱         | foxletters@163.com                                                       |
+| 仓库地址         | https://github.com/foxletters-hq/BaiShou-Next                            |
+
+本目录各文件中的「托管方」「项目方」「权利人」，均指上表中的法律主体。
+「Foxletters」是托管方使用的品牌名称；`Anson-Trio`、`foxletters-hq` 是托管方在 GitHub 上使用的账号与组织名称。三者都不是独立的法律主体。
 
 ---
 
@@ -14,7 +27,7 @@ v3.0 或更高版本（AGPL-3.0-or-later）下发布。完整许可条文见仓�
 新增或大幅改写的源文件，建议在文件顶部添加如下注释（按文件类型调整注释语法）：
 
 ```
-Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 ```
@@ -23,7 +36,7 @@ TypeScript / JavaScript 示例：
 
 ```typescript
 /**
- * Copyright (C) 2024-2026 Anson-Trio / foxletters-hq and contributors.
+ * Copyright (C) 2026 郑州市金水区狐信网络科技工作室 (Foxletters) and contributors.
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -44,14 +57,31 @@ TypeScript / JavaScript 示例：
 
 ---
 
+## 项目自有美术与角色资产
+
+以下路径中的官方美术资产，著作权归托管方所有，**不在 AGPL 许可范围内**：
+
+| 路径 | 内容 |
+|------|------|
+| `Latte/assets/` | 看板娘 Latte 三视图、立绘、头像、横幅 |
+| `packages/shared/assets/images/assistant-presets/` | Latte 预设头像 |
+| `packages/shared/assets/images/`（其余图片） | 应用图标、品牌图、版本横幅 |
+
+使用范围、二创规则、Fork 时的处理方式与商业授权，见 [LICENSE-ASSETS.md](./LICENSE-ASSETS.md)。
+
+`docs/3-Project/assets/fan-creations/` 中的社区二创作品，著作权归各自作者，见 [LICENSE-ASSETS.md](./LICENSE-ASSETS.md) 第 7 节。
+
+---
+
 ## 商标
 
-「白守」「BaiShou」及相关图形标识为项目方的商标或待注册商标。
-AGPL 许可仅授予源代码使用权，不授予商标使用权。详见 legal/TRADEMARK.md。
+「白守」「狐信」已由托管方向国家知识产权局提交商标注册申请，目前处于审查阶段；
+「BaiShou」及项目图标为托管方在先使用的未注册商标。
+AGPL 许可仅授予源代码使用权，不授予商标使用权。详见 [TRADEMARK.md](./TRADEMARK.md)。
 
 ---
 
 ## 商业授权
 
 若您希望在 AGPL 义务范围之外使用本软件（例如闭源集成、专有 SaaS 部署等），
-请联系项目托管方洽谈商业许可。详见 legal/LICENSE-STRATEGY.md。
+请联系托管方洽谈商业许可。详见 [LICENSE-STRATEGY.md](./LICENSE-STRATEGY.md)。

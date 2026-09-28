@@ -10,6 +10,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { markRendererStartup } from './startup-trace'
+import { installRendererDiagnosticLogCapture } from './lib/install-renderer-diagnostic-log'
 
 markRendererStartup('app-bootstrap.imports-evaluated')
 
@@ -20,6 +21,8 @@ window.onerror = (message, _s, _l, _c, error) => {
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[renderer] unhandled promise rejection:', event.reason)
 })
+
+installRendererDiagnosticLogCapture()
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {

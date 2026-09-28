@@ -292,7 +292,7 @@ export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: true
+  mcpAuthEnabled: false
 }
 
 export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {

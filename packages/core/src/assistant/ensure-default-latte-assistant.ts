@@ -28,23 +28,6 @@ function shouldTreatAsFactoryLatteAssistant(input: {
   )
 }
 
-function factoryLatteSeedMatchesAssistant(
-  seed: ReturnType<typeof getSystemLatteAssistantSeed>,
-  assistant: {
-    name: string
-    description?: string | null
-    systemPrompt?: string | null
-    avatarPath?: string | null
-  }
-): boolean {
-  return (
-    assistant.name === seed.name &&
-    (assistant.description ?? '') === (seed.description ?? '') &&
-    (assistant.systemPrompt ?? '') === (seed.systemPrompt ?? '') &&
-    (hasCustomAssistantAvatar(assistant.avatarPath) || assistant.avatarPath === seed.avatarPath)
-  )
-}
-
 /**
  * 工作区伙伴 bootstrap：仅确保系统 Latte（id=latte）存在。
  * 不创建、不改写旧的 id=default 或其他已有伙伴。
@@ -57,8 +40,8 @@ export async function ensureDefaultLatteAssistant(
 }
 
 /**
- * 用户切换 UI 语言时，若系统 Latte 仍为出厂人设，则同步名称/描述/人设提示词。
- * 不改写 customSystemPrompt，也不碰旧 id=default。
+ * 用户切换 UI 语言时：仅同步出厂 Latte 的名称 / 描述 / 默认头像。
+ * 不修改 systemPrompt（已有提示词一律保留），也不碰旧 id=default。
  */
 export async function syncDefaultLatteAssistantLocale(
   assistantManager: AssistantManagerService,
@@ -77,13 +60,21 @@ export async function syncDefaultLatteAssistantLocale(
   }
 
   const seed = getSystemLatteAssistantSeed(locale)
-  if (factoryLatteSeedMatchesAssistant(seed, assistant)) {
+  const nextName = seed.name
+  const nextDescription = seed.description
+  const nextAvatar = hasCustomAssistantAvatar(assistant.avatarPath) ? undefined : seed.avatarPath
+
+  if (
+    assistant.name === nextName &&
+    (assistant.description ?? '') === (nextDescription ?? '') &&
+    (nextAvatar === undefined || assistant.avatarPath === nextAvatar)
+  ) {
     return
   }
+
   await assistantManager.update(SYSTEM_LATTE_ASSISTANT_ID, {
-    name: seed.name,
-    description: seed.description,
-    ...(hasCustomAssistantAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
-    systemPrompt: seed.systemPrompt
+    name: nextName,
+    description: nextDescription,
+    ...(nextAvatar !== undefined ? { avatarPath: nextAvatar } : {})
   })
 }

@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { useAgentStore } from '@baishou/store'
 import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
@@ -11,6 +11,7 @@ import {
   type RefreshSessionMessagesFn,
   type TokenUsage
 } from './useAgentStream-types'
+import { applyTokenUsage } from './useAgentStream.util'
 
 interface UseAgentStreamFinishOptions {
   refs: AgentStreamRefs
@@ -56,13 +57,15 @@ export function useAgentStreamFinish({
       const session = await services.sessionRepo.getSessionById(sessionId)
       if (!session) return
       if (!isActiveSession(sessionId)) return
-      setTokenUsage({
-        inputTokens: session.totalInputTokens ?? 0,
-        outputTokens: session.totalOutputTokens ?? 0,
-        cacheReadInputTokens: session.totalCacheReadInputTokens ?? 0,
-        cacheWriteInputTokens: session.totalCacheWriteInputTokens ?? 0,
-        totalCostMicros: session.totalCostMicros ?? 0
-      })
+      setTokenUsage((prev) =>
+        applyTokenUsage(prev, {
+          inputTokens: session.totalInputTokens ?? 0,
+          outputTokens: session.totalOutputTokens ?? 0,
+          cacheReadInputTokens: session.totalCacheReadInputTokens ?? 0,
+          cacheWriteInputTokens: session.totalCacheWriteInputTokens ?? 0,
+          totalCostMicros: session.totalCostMicros ?? 0
+        })
+      )
     },
     [services, isActiveSession, setTokenUsage]
   )
@@ -272,10 +275,13 @@ export function useAgentStreamFinish({
     ]
   )
 
-  return {
-    syncTokenUsageFromSession,
-    reloadMessagesFromDb,
-    truncateSessionAndSyncUi,
-    finishStream
-  }
+  return useMemo(
+    () => ({
+      syncTokenUsageFromSession,
+      reloadMessagesFromDb,
+      truncateSessionAndSyncUi,
+      finishStream
+    }),
+    [syncTokenUsageFromSession, reloadMessagesFromDb, truncateSessionAndSyncUi, finishStream]
+  )
 }

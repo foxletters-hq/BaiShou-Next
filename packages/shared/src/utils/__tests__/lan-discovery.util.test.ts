@@ -4,6 +4,8 @@ import {
   formatLanReceivedBackupContent,
   buildLanServiceName,
   getLanDeviceDedupKey,
+  isVirtualLanInterfaceName,
+  normalizeLanDeviceType,
   pickBestLanIpv4,
   removeDiscoveredLanDevice,
   resolveDiscoveredLanIpv4,
@@ -74,10 +76,32 @@ describe('lan-discovery.util', () => {
     expect(pickBestLanIpv4(['127.0.0.1', '192.168.1.8', '8.8.8.8'])).toBe('192.168.1.8')
   })
 
+  it('prefers 192.168 over docker-like 172.x private ranges', () => {
+    expect(pickBestLanIpv4(['172.19.0.1', '192.168.31.42', '10.0.0.5'])).toBe('192.168.31.42')
+    expect(pickBestLanIpv4(['172.19.0.1', '10.0.0.5'])).toBe('10.0.0.5')
+  })
+
+  it('detects virtual lan interface names', () => {
+    expect(isVirtualLanInterfaceName('vEthernet (WSL)')).toBe(true)
+    expect(isVirtualLanInterfaceName('docker0')).toBe(true)
+    expect(isVirtualLanInterfaceName('WLAN')).toBe(false)
+    expect(isVirtualLanInterfaceName('以太网')).toBe(false)
+  })
+
   it('formats received backup content size placeholder', () => {
     expect(formatLanBackupSizeMb(2 * 1024 * 1024)).toBe('2.00')
     expect(
       formatLanReceivedBackupContent('来自局域网设备的数据 ($size MB)。', 2.5 * 1024 * 1024)
     ).toBe('来自局域网设备的数据 (2.50 MB)。')
+  })
+
+  it('normalizes lan device type from txt, id prefix, and nickname', () => {
+    expect(normalizeLanDeviceType({ txt: { device_type: 'mobile' } })).toBe('mobile')
+    expect(normalizeLanDeviceType({ txt: { dtype: 'desktop' } })).toBe('desktop')
+    expect(normalizeLanDeviceType({ deviceId: 'mobile-abc' })).toBe('mobile')
+    expect(normalizeLanDeviceType({ deviceId: 'desktop-xyz' })).toBe('desktop')
+    expect(normalizeLanDeviceType({ nickname: 'BaishouMob' })).toBe('mobile')
+    expect(normalizeLanDeviceType({ nickname: 'AnsonPC' })).toBe('desktop')
+    expect(normalizeLanDeviceType({ deviceType: 'other', nickname: '客厅平板' })).toBe('other')
   })
 })

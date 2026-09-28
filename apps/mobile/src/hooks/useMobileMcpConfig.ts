@@ -10,7 +10,7 @@ import { useBaishou } from '../providers/BaishouProvider'
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: true
+  mcpAuthEnabled: false
 }
 
 async function persistMcpConfig(

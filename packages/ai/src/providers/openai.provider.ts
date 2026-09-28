@@ -5,6 +5,7 @@ import {
   AiProviderModel,
   isChatModelForConnectionTest,
   isOpenAiStyleReasoningModel,
+  mergeZhipuKnownEmbeddingModels,
   resolveProviderBaseUrl
 } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
@@ -248,7 +249,11 @@ export class OpenAIAdaptedProvider implements IAIProvider {
       }
       const data = await response.json()
       if (data && data.data && Array.isArray(data.data)) {
-        return data.data.map((m: any) => m.id)
+        const remoteIds = data.data.map((m: any) => m.id as string)
+        if (this.config.type.toLowerCase() === 'zhipu') {
+          return mergeZhipuKnownEmbeddingModels(remoteIds)
+        }
+        return remoteIds
       }
       throw new Error(`Invalid response format from API. Expected data array.`)
     } catch (e: any) {

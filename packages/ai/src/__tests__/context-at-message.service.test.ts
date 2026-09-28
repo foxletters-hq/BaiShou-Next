@@ -153,5 +153,7 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     expect(result.messages.map((m) => m.role)).toContain('user')
     expect(result.messages.some((m) => m.content.includes('<message-time>'))).toBe(true)
     expect(result.systemPrompt).not.toContain('<conversation_time>')
+    const lastUser = [...result.messages].reverse().find((m) => m.role === 'user')
+    expect(String(lastUser?.content)).not.toContain('[System Current Date / Time]')
   })
 })

@@ -166,6 +166,12 @@
   margin: 2px 0;
 }
 
+.authToggleRow {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  min-height: auto;
+}
+
 .copyBtn {
   flex-shrink: 0;
   display: flex;

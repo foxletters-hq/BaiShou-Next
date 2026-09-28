@@ -1,6 +1,7 @@
 {
   "name": "baishou-next",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "description": "白守 Next — 以纯白誓约，守护彼此一生。",
   "scripts": {
     "commands": "node scripts/commands-help.mjs",
