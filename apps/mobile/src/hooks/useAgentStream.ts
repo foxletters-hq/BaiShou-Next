@@ -230,7 +230,6 @@ export function useAgentStream(
 
   const syncTokenUsageFromSession = finish.syncTokenUsageFromSession
   const reloadMessagesFromDb = finish.reloadMessagesFromDb
-  const interruptActiveStream = bridge.interruptActiveStream
   const resetCompressionBuffers = bridge.resetCompressionBuffers
   const appendCompressionReasoningDelta = bridge.appendCompressionReasoningDelta
   const appendCompressionTextDelta = bridge.appendCompressionTextDelta
