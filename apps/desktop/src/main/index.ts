@@ -44,7 +44,6 @@ import { registerKnowledgeIPC } from './ipc/knowledge.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
 import { registerSkillIPC } from './ipc/skill.ipc'
-import { registerShortcutIPC } from './ipc/shortcut.ipc'
 import { registerDiagnosticLogIPC } from './ipc/diagnostic-log.ipc'
 import {
   bootstrapDiagnosticLogFromDisk,
@@ -559,7 +558,6 @@ app.whenReady().then(async () => {
     registerUpdaterIPC()
     registerShellIPC()
     registerSkillIPC()
-    registerShortcutIPC()
     registerDiagnosticLogIPC()
   })
 
