@@ -224,6 +224,26 @@ function sameFolder(a: string, b: string): boolean {
   return a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase()
 }
 
+export async function retargetWorkspaceSessionFolders(
+  fromFolderRoot: string,
+  toFolderRoot: string
+): Promise<number> {
+  const store = await loadStore()
+  const nextRoot = path.resolve(toFolderRoot)
+  const folderDisplayName =
+    nextRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? nextRoot
+  let count = 0
+  for (const binding of Object.values(store.bindings)) {
+    if (!sameFolder(binding.folderRoot, fromFolderRoot)) continue
+    binding.folderRoot = nextRoot
+    binding.folderDisplayName = folderDisplayName
+    binding.updatedAt = new Date().toISOString()
+    count += 1
+  }
+  if (count > 0) await saveStore()
+  return count
+}
+
 /** 还有多少会话绑定着这个文件夹——影子仓库按文件夹共享，清理前必须先问这个 */
 export async function countWorkspaceSessionsForFolder(folderRoot: string): Promise<number> {
   const store = await loadStore()
