@@ -96,4 +96,5 @@ export interface AgentWorkspaceEntryUpdate {
   kind?: AgentWorkspaceKind
   /** 传 null 取消置顶 */
   pinnedAt?: string | null
+  folderRoot?: string
 }

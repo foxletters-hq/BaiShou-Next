@@ -149,6 +149,17 @@ export async function updateAgentWorkspace(
   if (patch.kind !== undefined) {
     entry.kind = patch.kind
   }
+  if (patch.folderRoot !== undefined) {
+    const previousKey = normalizeWorkspaceFolderKey(entry.folderRoot)
+    const nextRoot = path.resolve(patch.folderRoot)
+    const nextKey = normalizeWorkspaceFolderKey(nextRoot)
+    entry.folderRoot = nextRoot
+    if (previousKey !== nextKey) {
+      registry.removedFolderKeys = [
+        ...new Set([...(registry.removedFolderKeys ?? []), previousKey])
+      ].filter((key) => key !== nextKey)
+    }
+  }
   if (patch.pinnedAt !== undefined) {
     entry.pinnedAt = patch.pinnedAt
   }
@@ -156,7 +167,8 @@ export async function updateAgentWorkspace(
   if (
     patch.displayName !== undefined ||
     patch.avatarPath !== undefined ||
-    patch.kind !== undefined
+    patch.kind !== undefined ||
+    patch.folderRoot !== undefined
   ) {
     entry.updatedAt = new Date().toISOString()
   }

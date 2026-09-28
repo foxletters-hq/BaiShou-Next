@@ -29,17 +29,31 @@ export function resolveAppInstallRoot(params: {
 
 /**
  * 解析「稿纸」目录路径。
- * 优先 installRoot/稿纸；installRoot 不可用时回退 userDataRoot/稿纸。
+ * 优先用户文档目录；文档目录不可用时回退 userDataRoot/稿纸。
  */
 export function resolveScratchWorkspaceFolderRoot(params: {
-  installRoot: string | null | undefined
+  documentsRoot: string | null | undefined
   userDataRoot: string
 }): string {
   const base =
-    typeof params.installRoot === 'string' && params.installRoot.trim()
-      ? params.installRoot.trim()
+    typeof params.documentsRoot === 'string' && params.documentsRoot.trim()
+      ? params.documentsRoot.trim()
       : params.userDataRoot
   return path.join(base, SCRATCH_WORKSPACE_DISPLAY_NAME)
+}
+
+/** 旧版曾把稿纸放在安装目录或 userData，迁移时按这个名单查找。 */
+export function listLegacyScratchFolderCandidates(params: {
+  installRoot: string | null | undefined
+  userDataRoot: string
+}): string[] {
+  const names = [SCRATCH_WORKSPACE_DISPLAY_NAME, ...LEGACY_SCRATCH_WORKSPACE_DISPLAY_NAMES]
+  const bases: string[] = []
+  if (typeof params.installRoot === 'string' && params.installRoot.trim()) {
+    bases.push(params.installRoot.trim())
+  }
+  if (params.userDataRoot.trim()) bases.push(params.userDataRoot.trim())
+  return bases.flatMap((base) => names.map((name) => path.join(base, name)))
 }
 
 export function isScratchWorkspaceEntry(entry: {

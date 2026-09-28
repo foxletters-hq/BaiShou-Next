@@ -3,38 +3,53 @@ import { describe, expect, it } from 'vitest'
 import {
   isScratchWorkspaceEntry,
   LEGACY_SCRATCH_WORKSPACE_DISPLAY_NAMES,
+  listLegacyScratchFolderCandidates,
   resolveAppInstallRoot,
   resolveScratchWorkspaceFolderRoot,
   SCRATCH_WORKSPACE_DISPLAY_NAME
 } from '../agent-workspace-scratch.util'
 
 describe('agent-workspace-scratch.util', () => {
-  it('resolves scratch folder under install root when available', () => {
+  it('should put the scratch folder under the user documents directory when present', () => {
     const folder = resolveScratchWorkspaceFolderRoot({
-      installRoot: 'D:/Apps/BaiShou',
-      userDataRoot: 'D:/Users/demo/AppData/BaiShou'
+      documentsRoot: 'C:/Users/demo/Documents',
+      userDataRoot: 'C:/Users/demo/AppData/BaiShou'
     })
 
-    expect(folder).toBe(path.join('D:/Apps/BaiShou', SCRATCH_WORKSPACE_DISPLAY_NAME))
+    expect(folder).toBe(path.join('C:/Users/demo/Documents', SCRATCH_WORKSPACE_DISPLAY_NAME))
     expect(folder.endsWith(SCRATCH_WORKSPACE_DISPLAY_NAME)).toBe(true)
   })
 
-  it('falls back to userData when install root is missing', () => {
+  it('should fall back to userData when documents root is missing', () => {
     const folder = resolveScratchWorkspaceFolderRoot({
-      installRoot: null,
+      documentsRoot: null,
       userDataRoot: 'D:/Users/demo/AppData/BaiShou'
     })
 
     expect(folder).toBe(path.join('D:/Users/demo/AppData/BaiShou', SCRATCH_WORKSPACE_DISPLAY_NAME))
   })
 
-  it('falls back to userData when install root is blank', () => {
+  it('should fall back to userData when documents root is blank', () => {
     const folder = resolveScratchWorkspaceFolderRoot({
-      installRoot: '   ',
+      documentsRoot: '   ',
       userDataRoot: 'C:/userdata'
     })
 
     expect(folder).toBe(path.join('C:/userdata', SCRATCH_WORKSPACE_DISPLAY_NAME))
+  })
+
+  it('should list install-root and userData scratch folders as legacy locations', () => {
+    const folders = listLegacyScratchFolderCandidates({
+      installRoot: 'D:/Apps/BaiShou',
+      userDataRoot: 'C:/Users/demo/AppData/BaiShou'
+    })
+
+    expect(folders).toEqual([
+      path.join('D:/Apps/BaiShou', SCRATCH_WORKSPACE_DISPLAY_NAME),
+      path.join('D:/Apps/BaiShou', LEGACY_SCRATCH_WORKSPACE_DISPLAY_NAMES[0]),
+      path.join('C:/Users/demo/AppData/BaiShou', SCRATCH_WORKSPACE_DISPLAY_NAME),
+      path.join('C:/Users/demo/AppData/BaiShou', LEGACY_SCRATCH_WORKSPACE_DISPLAY_NAMES[0])
+    ])
   })
 
   it('resolves packaged install root from exe dirname', () => {
