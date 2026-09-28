@@ -4,7 +4,6 @@ import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
-import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { logger, type RagConfig } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
@@ -29,7 +28,6 @@ import { DiaryDeleteConfirmModal } from './DiaryDeleteConfirmModal'
 import { diaryScreenStyles as styles } from './diary-screen.styles'
 
 export const DiaryScreen: React.FC = () => {
-  const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const {
     services,
