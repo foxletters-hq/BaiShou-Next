@@ -44,6 +44,12 @@ import { registerKnowledgeIPC } from './ipc/knowledge.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
 import { registerSkillIPC } from './ipc/skill.ipc'
+import { registerShortcutIPC } from './ipc/shortcut.ipc'
+import { registerDiagnosticLogIPC } from './ipc/diagnostic-log.ipc'
+import {
+  bootstrapDiagnosticLogFromDisk,
+  installDesktopDiagnosticLogCapture
+} from './services/desktop-diagnostic-log.service'
 import {
   installDatabaseSchema,
   SettingsRepository,
@@ -409,6 +415,10 @@ app.whenReady().then(async () => {
   // like model-pricing.service that may be proxy-sensitive
   ;(global as any).customNetFetch = net.fetch
 
+  // 尽早安装主进程日志采集，覆盖后续 bootstrap / 同步日志
+  installDesktopDiagnosticLogCapture()
+  void bootstrapDiagnosticLogFromDisk()
+
   // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
   electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
   const { setWindowsToastIconPath, ensureWindowsToastShortcut } =
@@ -549,6 +559,8 @@ app.whenReady().then(async () => {
     registerUpdaterIPC()
     registerShellIPC()
     registerSkillIPC()
+    registerShortcutIPC()
+    registerDiagnosticLogIPC()
   })
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构

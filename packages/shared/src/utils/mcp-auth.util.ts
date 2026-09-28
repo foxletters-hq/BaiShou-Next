@@ -7,15 +7,14 @@ function createMcpAuthToken(): string {
   return `mcp_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`
 }
 
-/** 未显式关闭时视为开启鉴权（兼容旧配置） */
+/** 是否启用 MCP 访问令牌鉴权（默认关闭） */
 export function isMcpAuthEnabled(config: Pick<McpServerConfig, 'mcpAuthEnabled'>): boolean {
-  return config.mcpAuthEnabled !== false
+  return config.mcpAuthEnabled === true
 }
 
-/** 启用 MCP 且开启鉴权时确保存在访问令牌（用于 LAN / 本地鉴权） */
+/** 鉴权开启且 MCP 启用时确保存在访问令牌 */
 export function ensureMcpAuthToken(config: McpServerConfig): McpServerConfig {
-  if (!config.mcpEnabled) return config
-  if (!isMcpAuthEnabled(config)) return config
+  if (!config.mcpEnabled || !isMcpAuthEnabled(config)) return config
   if (config.mcpAuthToken?.trim()) return config
   return { ...config, mcpAuthToken: createMcpAuthToken() }
 }

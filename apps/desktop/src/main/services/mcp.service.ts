@@ -109,7 +109,8 @@ export class McpService {
         return
       }
 
-      await session.transport.handlePostMessage(req, res)
+      // express.json() 已消费 body 流；必须把 parsed body 传给 SDK，否则会 400 stream is not readable
+      await session.transport.handlePostMessage(req, res, req.body)
     })
   }
 

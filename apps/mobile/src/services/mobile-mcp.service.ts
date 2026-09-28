@@ -6,11 +6,12 @@ import * as BaishouServer from 'expo-baishou-server'
 import { APP_VERSION } from '../app-version'
 import { MOBILE_MCP_ENABLED } from '../config/mobile-features'
 import { MobileMcpSdkBridge } from './mobile-mcp-sdk.bridge'
+import { isMcpMessagePath, isMcpSsePath, MobileMcpSseBridge } from './mobile-mcp-sse.bridge'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: true
+  mcpAuthEnabled: false
 }
 
 export class MobileMcpService {
@@ -18,6 +19,7 @@ export class MobileMcpService {
   private isRunning = false
   private activePort = 0
   private readonly sdkBridge: MobileMcpSdkBridge
+  private readonly sseBridge: MobileMcpSseBridge
 
   constructor(
     private readonly settingsManager: SettingsManagerService,
@@ -31,6 +33,7 @@ export class MobileMcpService {
       resolveToolContext,
       resolveToolListContext
     )
+    this.sseBridge = new MobileMcpSseBridge(APP_VERSION, toolRegistry, resolveToolContext)
   }
 
   async getConfig(): Promise<McpServerConfig> {
@@ -62,6 +65,7 @@ export class MobileMcpService {
     if (!this.isRunning) return
     this.teardownListener()
     await this.sdkBridge.closeAllSessions()
+    await this.sseBridge.closeAllSessions()
     BaishouServer.stopServer()
     this.isRunning = false
     this.activePort = 0
@@ -92,10 +96,11 @@ export class MobileMcpService {
 
     this.teardownListener()
     await this.sdkBridge.closeAllSessions()
+    await this.sseBridge.closeAllSessions()
 
     const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
     const authToken =
-      config.mcpAuthEnabled === false ? undefined : config.mcpAuthToken?.trim() || undefined
+      config.mcpAuthEnabled === true ? config.mcpAuthToken?.trim() || undefined : undefined
     const boundPort = BaishouServer.startMcpServer(port, authToken)
     if (boundPort <= 0) {
       throw new Error(`Failed to start MCP HTTP server on port ${port}`)
@@ -107,9 +112,9 @@ export class MobileMcpService {
       void this.handleMcpHttpRequest(
         event.requestId,
         event.method,
+        event.path || '/mcp',
         event.headers,
-        event.body,
-        event.path
+        event.body
       )
     })
 
@@ -128,9 +133,9 @@ export class MobileMcpService {
   private async handleMcpHttpRequest(
     requestId: string,
     method: string,
+    path: string,
     headers: Record<string, string>,
-    body: string,
-    path?: string
+    body: string
   ): Promise<void> {
     try {
       const config = await this.getConfig()
@@ -144,6 +149,11 @@ export class MobileMcpService {
             error: { code: -32001, message: 'Unauthorized: invalid or missing MCP auth token' }
           })
         })
+        return
+      }
+
+      if (isMcpSsePath(path) || isMcpMessagePath(path)) {
+        await this.sseBridge.handleRequest(requestId, method, path, headers, body)
         return
       }
 

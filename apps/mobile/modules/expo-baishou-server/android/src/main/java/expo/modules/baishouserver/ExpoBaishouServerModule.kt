@@ -286,11 +286,12 @@ internal class BaishouHttpServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
-        if (isMcpRoute(session.uri)) {
+        val uri = session.uri ?: ""
+        if (isMcpRoute(uri)) {
             return handleMcp(session)
         }
 
-        if (session.method == Method.GET && session.uri == "/info") {
+        if (session.method == Method.GET && uri == "/info") {
             return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}")
         }
 

@@ -4,6 +4,8 @@ export const LAN_DISCOVERY_RESCAN_MS = 30_000
 /** 桌面端 bonjour browser.update() 主动 re-query 间隔（Windows 被动发现 Android 很慢） */
 export const LAN_DISCOVERY_REQUERY_MS = 5_000
 
+export type LanDeviceType = 'mobile' | 'desktop' | 'other'
+
 export interface LanDiscoveredDeviceLike {
   deviceId?: string
   nickname: string
@@ -11,6 +13,65 @@ export interface LanDiscoveredDeviceLike {
   port: number
   deviceType?: string
   rawServiceId: string
+}
+
+function readLanTxtValue(
+  records: Record<string, unknown> | null | undefined,
+  ...keys: string[]
+): string {
+  if (!records) return ''
+  for (const key of keys) {
+    const raw = records[key]
+    if (raw == null) continue
+    // bonjour-service 偶发给出 Buffer；String(buffer) 可用，需排除空对象
+    const value = typeof raw === 'string' ? raw : String(raw)
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== '[object Object]') return trimmed
+  }
+  return ''
+}
+
+/**
+ * 从 TXT / deviceId 前缀 / 昵称推断设备类型。
+ * TXT 未解析完或跨栈丢失时，避免把手机误判成桌面。
+ */
+export function normalizeLanDeviceType(options: {
+  txt?: Record<string, unknown> | null
+  deviceId?: string
+  nickname?: string
+  deviceType?: string
+}): LanDeviceType {
+  const candidates = [
+    String(options.deviceType ?? '').trim(),
+    readLanTxtValue(options.txt, 'device_type', 'deviceType', 'dtype')
+  ]
+  for (const raw of candidates) {
+    const value = raw.toLowerCase()
+    if (value === 'mobile' || value === 'desktop') return value
+  }
+
+  const deviceId = String(options.deviceId ?? readLanTxtValue(options.txt, 'device_id', 'deviceId'))
+    .trim()
+    .toLowerCase()
+  if (deviceId.startsWith('mobile-')) return 'mobile'
+  if (deviceId.startsWith('desktop-')) return 'desktop'
+
+  const nickname = String(
+    options.nickname ?? readLanTxtValue(options.txt, 'nickname')
+  ).toLowerCase()
+  if (
+    nickname.includes('baishoumob') ||
+    nickname.includes('iphone') ||
+    nickname.includes('android') ||
+    /\bphone\b/.test(nickname)
+  ) {
+    return 'mobile'
+  }
+  if (nickname.includes('macbook') || nickname.includes('desktop') || nickname.includes('pc')) {
+    return 'desktop'
+  }
+
+  return 'other'
 }
 
 function isIpv4(ip: string): boolean {
@@ -45,18 +106,51 @@ export function isExcludedLanIpv4(ip: string): boolean {
   return false
 }
 
+/** Docker / WSL / Hyper-V / VPN 等虚拟网卡，不宜作为对外 MCP / 局域网展示地址 */
+export function isVirtualLanInterfaceName(name: string): boolean {
+  const lower = name.toLowerCase()
+  return [
+    'docker',
+    'veth',
+    'br-',
+    'wsl',
+    'hyper-v',
+    'vethernet',
+    'vmware',
+    'virtualbox',
+    'vbox',
+    'clash',
+    'meta',
+    'tun',
+    'wintun',
+    'wireguard',
+    'tailscale',
+    'vpn',
+    'virtual',
+    'npcap',
+    'loopback'
+  ].some((keyword) => lower.includes(keyword))
+}
+
 export function pickBestLanIpv4(candidates: string[]): string | null {
   const unique = Array.from(new Set(candidates.map((ip) => ip.trim()).filter(Boolean)))
   if (unique.length === 0) return null
 
   const score = (ip: string) => {
     if (isExcludedLanIpv4(ip)) return -100
+    if (!isIpv4(ip)) return -50
+    const octets = ip.split('.').map(Number)
+    const a = octets[0]
+    const b = octets[1]
+    // 家用/常见 Wi-Fi 优先；172.16/12 常被 Docker、WSL、Hyper-V 占用
+    if (a === 192 && b === 168) return 130
+    if (a === 10) return 120
+    if (a === 172 && b !== undefined && b >= 16 && b <= 31) return 90
     if (isPrivateLanIpv4(ip)) return 100
-    if (isIpv4(ip)) return 10
-    return -50
+    return 10
   }
 
-  const sorted = [...unique].sort((a, b) => score(b) - score(a))
+  const sorted = [...unique].sort((a, b) => score(b) - score(a) || a.localeCompare(b))
   return sorted.find((ip) => score(ip) > -50) ?? sorted[0] ?? null
 }
 

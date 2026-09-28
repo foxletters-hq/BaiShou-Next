@@ -176,7 +176,7 @@ CI 会校验：tag 指向 main 上的 commit，且与对应 `version.json` 一�
 **CI 发布的 Release 说明自动包含**：
 
 - 各平台**当前最新版本**与直链（即使两端版本号不同）
-- [官网下载](https://baishou.foxletters.com) 入口
+- [官网下载](https://foxletters.com) 入口
 - `releases/notes/` 中本端中文更新说明
 - **GitHub 自动生成**：合并的 PR 列表、New Contributors（见 `.github/release.yml`）
 - 本端安装包附件

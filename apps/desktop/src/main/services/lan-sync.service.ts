@@ -161,6 +161,7 @@ export class DesktopLanSyncService implements ILanSyncService {
       nickname: safeNickname,
       ip: orderedIps.slice(0, 4).join(','),
       device_type: 'desktop',
+      dtype: 'desktop',
       device_id: deviceId
     })
 

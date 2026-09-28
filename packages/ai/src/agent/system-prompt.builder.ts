@@ -24,6 +24,7 @@ export interface SystemPromptBuilderOptions {
   /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
   assistantKind?: AssistantKind
   /** 是否为历史消息加发送时刻壳，并在 runtime_context 写入稳定时区（不含墙上时钟「现在」） */
+
   injectCurrentTime?: boolean
 
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
@@ -58,8 +59,10 @@ function resolveLocale(locale?: string): string | undefined {
  * user_identity → assistant_capabilities → available_tools →
  * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
  *
- * 「现在几点」不再写入 system。历史发送时刻来自落盘 createdAt，按条包在消息正文外。
+ * 「现在几点」只写在各条消息的 <message-time> 上，不再写入 system。
+ * 历史发送时刻来自落盘 createdAt，按条包在消息正文外。
  * system 前缀只保留稳定时区，避免分钟跳动破坏前缀缓存。
+
  */
 export class SystemPromptBuilder {
   public static build(options: SystemPromptBuilderOptions): string {

@@ -4,6 +4,7 @@ import {
   getLanDeviceDedupKey,
   lanDevicesEquivalent,
   LAN_DISCOVERY_REQUERY_MS,
+  normalizeLanDeviceType,
   pickBestLanIpv4,
   resolveDiscoveredLanIpv4
 } from '@baishou/shared'
@@ -88,7 +89,11 @@ export class LanDiscovery {
       nickname: String(records.nickname ?? service.name),
       ip: deviceIp,
       port: service.port,
-      deviceType: (records.device_type as DiscoveredDevice['deviceType']) || 'other',
+      deviceType: normalizeLanDeviceType({
+        txt: records,
+        deviceId: String(records.device_id ?? records.deviceId ?? '').trim(),
+        nickname: String(records.nickname ?? service.name)
+      }),
       rawServiceId: service.name
     }
   }

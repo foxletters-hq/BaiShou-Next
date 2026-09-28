@@ -19,7 +19,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   size = 16,
   className = '',
   mcpPort = 31004,
-  mcpAuthEnabled = true,
+  mcpAuthEnabled = false,
   mcpAuthToken,
   lanHost = null
 }) => {
@@ -29,8 +29,8 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   const mcpUrl = buildMcpUrl(mcpPort, endpointHost)
   const mcpSseUrl = buildMcpSseUrl(mcpPort, endpointHost)
   const effectiveToken = mcpAuthEnabled ? mcpAuthToken : undefined
-  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, effectiveToken)
-  const mcpSseJsonExample = buildMcpClientJsonExample(mcpSseUrl, effectiveToken)
+  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, effectiveToken, 'streamableHttp')
+  const mcpSseJsonExample = buildMcpClientJsonExample(mcpSseUrl, effectiveToken, 'sse')
 
   return (
     <>
@@ -56,12 +56,14 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             )}
           </p>
           <div className={styles.urlLine}>
-            <span className={styles.urlLabel}>{t('settings.mcp_url_label', '连接地址')}</span>
+            <span className={styles.urlLabel}>
+              {t('settings.mcp_url_label', '连接地址（推荐）')}
+            </span>
             <code className={styles.urlCode}>{mcpUrl}</code>
           </div>
           <div className={styles.urlLine}>
             <span className={styles.urlLabel}>
-              {t('settings.mcp_sse_label', '连接地址（SSE）')}
+              {t('settings.mcp_sse_url_label', 'SSE 地址（兼容）')}
             </span>
             <code className={styles.urlCode}>{mcpSseUrl}</code>
           </div>
@@ -94,7 +96,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             <p className={styles.note}>
               {t(
                 'settings.mcp_help_auth_note',
-                '若已生成访问令牌，请在 headers.Authorization 中填写 Bearer <令牌>，否则无法获取工具列表。'
+                '若已开启鉴权并生成访问令牌，请在 headers.Authorization 中填写 Bearer <令牌>，否则无法获取工具列表。'
               )}
             </p>
           ) : (

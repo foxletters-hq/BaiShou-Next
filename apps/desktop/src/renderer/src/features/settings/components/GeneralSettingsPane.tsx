@@ -296,6 +296,13 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                     onDemoVaultCreated={async (vaultName) => {
                       await switchActiveVault(vaultName)
                     }}
+                    onExportDiagnosticLog={async () => {
+                      const result = await window.api.diagnosticLog.exportToDesktop()
+                      return { fileName: result.fileName }
+                    }}
+                    onCopyDiagnosticLog={async () => {
+                      await window.api.diagnosticLog.copyToClipboard()
+                    }}
                   />
                 </div>
               </section>

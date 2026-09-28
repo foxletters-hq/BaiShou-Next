@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
+  applyDiaryFilterPatch,
+  createDefaultDiaryFilterState,
   formatSavedMonth,
   parseSavedMonth,
   loadDiaryFilterState,
@@ -64,5 +66,25 @@ describe('diary filter month persistence', () => {
     const state = await loadDiaryFilterState()
     expect(state.selectedMonth).toBeNull()
     expect(state.currentPage).toBe(2)
+  })
+})
+
+describe('applyDiaryFilterPatch', () => {
+  it('returns the same state object when values are unchanged', () => {
+    const prev = createDefaultDiaryFilterState(true)
+    const next = applyDiaryFilterPatch(prev, {
+      currentPage: 1,
+      filterWeathers: [],
+      searchQuery: ''
+    })
+    expect(next).toBe(prev)
+  })
+
+  it('returns a new state object when a value changes', () => {
+    const prev = createDefaultDiaryFilterState(true)
+    const next = applyDiaryFilterPatch(prev, { currentPage: 2 })
+    expect(next).not.toBe(prev)
+    expect(next.currentPage).toBe(2)
+    expect(prev.currentPage).toBe(1)
   })
 })

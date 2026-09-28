@@ -235,12 +235,10 @@ export interface EmojiItem {
 export interface McpServerConfig {
   mcpEnabled: boolean // MCP Server 是否启用（默认关闭）
   mcpPort: number // MCP Server 端口（默认 31004）
-  /**
-   * 是否启用 Bearer 鉴权（默认 true）。
-   * 关闭后不强制生成令牌，请求无需 Authorization。
-   */
+  /** 是否启用访问令牌鉴权（默认关闭）；开启后外部客户端需在 Authorization 头携带 Bearer 令牌 */
   mcpAuthEnabled?: boolean
-  /** 可选访问令牌；鉴权开启且为空时会自动生成，外部客户端需在 Authorization 头携带 */
+  /** 可选访问令牌；鉴权开启且为空时自动生成 */
+
   mcpAuthToken?: string
 }
 

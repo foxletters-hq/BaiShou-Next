@@ -7,11 +7,12 @@
 
 ## 1. 当前状态
 
-| 项目       | 说明                                                                                                       |
-| ---------- | ---------------------------------------------------------------------------------------------------------- |
-| 开源许可   | **AGPL-3.0-or-later**（见根目录 [LICENSE](../LICENSE)）                                                    |
-| 版权归属   | **Anson-Trio / foxletters-hq**（白守项目当前托管组织）及经 CLA 授权的贡献者（见 [COPYRIGHT](./COPYRIGHT)） |
-| 贡献者协议 | 代码类 PR 须签署 [组织级 CLA](./CLA-organization.md) 或 [企业 CLA](./CLA-corporate.md)                     |
+| 项目       | 说明                                                                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 开源许可   | **AGPL-3.0-or-later**（见根目录 [LICENSE](../LICENSE)）                                                                             |
+| 版权归属   | 托管方 **郑州市金水区狐信网络科技工作室**（GitHub：Anson-Trio / foxletters-hq）及经 CLA 授权的贡献者（见 [COPYRIGHT](./COPYRIGHT)） |
+| 美术资产   | 不在 AGPL 范围内，单独许可（见 [LICENSE-ASSETS.md](./LICENSE-ASSETS.md)）                                                           |
+| 贡献者协议 | 代码类 PR 须签署 [组织级 CLA](./CLA-organization.md) 或 [企业 CLA](./CLA-corporate.md)                                              |
 
 ### 为什么选择 AGPLv3？
 
@@ -137,12 +138,12 @@ CLA 解决以下问题：
 
 ---
 
-## 6. 托管方变更公司实体时
+## 6. 托管方主体变更时
 
-若 Anson-Trio / foxletters-hq 将来注册为公司实体（如「白守科技有限公司」），须：
+托管方目前是个体工商户「郑州市金水区狐信网络科技工作室」。若将来转为公司（如办理「个转企」），须：
 
-1. 更新 `legal/COPYRIGHT`、`CLA-organization.md`、`CLA-corporate.md` 中的 Project Steward 名称；
-2. 签署权利转让协议（Assignment）或让新公司作为 CLA 中的新托管方；
+1. 更新 `legal/COPYRIGHT`、`CLA-organization.md`、`CLA-corporate.md`、`LICENSE-ASSETS.md`、`TRADEMARK.md` 中的托管方名称；
+2. 由原经营者与新公司签署权利转让协议（Assignment），将著作权、CLA 项下权利及商标申请或注册一并转让；商标转让须另向国家知识产权局办理；
 3. 在 README 与 Release Note 中公告；
 4. **无需**更改已有贡献的 AGPL 许可状态。
 
@@ -167,6 +168,7 @@ A：可以，但必须遵守 AGPL——包括向用户提供其修改版的源�
 ## 8. 相关文件
 
 - [COPYRIGHT](./COPYRIGHT) — 版权声明与文件头规范
+- [LICENSE-ASSETS.md](./LICENSE-ASSETS.md) — 美术资产许可与看板娘二创指引
 - [CLA-organization.md](./CLA-organization.md) — 组织级个人贡献者协议
 - [CLA-corporate.md](./CLA-corporate.md) — 企业贡献者协议
 - [TRADEMARK.md](./TRADEMARK.md) — 商标使用指引

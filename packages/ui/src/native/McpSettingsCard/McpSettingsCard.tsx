@@ -42,10 +42,10 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
 
-  // 本地状态乐观更新，Switch 按钮交互无延迟响应
   const [localEnabled, setLocalEnabled] = React.useState(config.mcpEnabled)
   const [localApplying, setLocalApplying] = React.useState(applying)
   const authEnabled = isMcpAuthEnabled(config)
+  const authTokenForUi = authEnabled ? config.mcpAuthToken : undefined
 
   React.useEffect(() => {
     setLocalEnabled(config.mcpEnabled)
@@ -62,8 +62,11 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     } else {
       setLocalApplying(false)
     }
-    // 立即响应外部，使父级 applying 立刻变成 true 触发渐进式两阶段渲染
     onChange({ ...config, mcpEnabled: value })
+  }
+
+  const handleToggleAuth = (value: boolean) => {
+    onChange({ ...config, mcpAuthEnabled: value })
   }
 
   const handleRefreshToken = () => {
@@ -129,7 +132,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}
         >
           <Text style={[styles.label, { color: colors.textSecondary }]}>
-            {t('settings.mcp_endpoint', '连接地址')}
+            {t('settings.mcp_url_label', '连接地址（推荐）')}
           </Text>
           <Text style={[styles.mono, { color: colors.primary }]} selectable>
             {mcpEndpointUrl}
@@ -181,19 +184,13 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
               {t('settings.mcp_auth_enable', '启用鉴权')}
             </Text>
             <Text style={[styles.sub, { color: colors.textSecondary }]}>
-              {t(
-                'settings.mcp_auth_enable_desc',
-                '关闭后无需访问令牌即可连接（仅建议在受信局域网使用）'
-              )}
+              {t('settings.mcp_auth_enable_desc', '开启后外部客户端需携带访问令牌')}
             </Text>
           </View>
-          <Switch
-            value={authEnabled}
-            onValueChange={(value) => onChange({ ...config, mcpAuthEnabled: value })}
-          />
+          <Switch value={authEnabled} onValueChange={handleToggleAuth} />
         </View>
 
-        {authEnabled && config.mcpAuthToken ? (
+        {authEnabled && authTokenForUi ? (
           <View
             style={[
               styles.row,
@@ -206,7 +203,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
               {t('settings.mcp_auth_token', '访问令牌')}
             </Text>
             <Text style={[styles.mono, { color: colors.primary }]} selectable>
-              {config.mcpAuthToken}
+              {authTokenForUi}
             </Text>
             <View style={styles.tokenActions}>
               {onRefreshToken ? (
@@ -282,11 +279,10 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             padding: 8,
             borderRadius: 6,
             color: colors.primary,
-            lineHeight: 15,
-            marginTop: 4
+            lineHeight: 15
           }}
         >
-          {buildMcpClientJsonExample(mcpEndpointUrl, effectiveToken)}
+          {buildMcpClientJsonExample(mcpEndpointUrl, authTokenForUi, 'streamableHttp')}
         </Text>
         {mcpSseEndpointUrl ? (
           <>

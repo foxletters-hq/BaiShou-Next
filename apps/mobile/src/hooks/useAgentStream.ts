@@ -26,6 +26,7 @@ import {
   type TokenUsage,
   type ToolCallInfo
 } from './useAgentStream-types'
+import { applyTokenUsage } from './useAgentStream.util'
 
 export type { PendingEmoji } from './useAgentStream-types'
 
@@ -44,6 +45,9 @@ export function useAgentStream(
   const { t } = useTranslation()
   const toast = useNativeToast()
   const releaseRetryActionRef = useRef<() => void>(() => {})
+  const releaseRetryAction = useCallback(() => {
+    releaseRetryActionRef.current()
+  }, [])
 
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
@@ -173,7 +177,7 @@ export function useAgentStream(
     isActiveSession: bridge.isActiveSession,
     flushStreamingDisplayBuffers: bridge.flushStreamingDisplayBuffers,
     beginStreamBridgeHandoff: bridge.beginStreamBridgeHandoff,
-    releaseRetryAction: () => releaseRetryActionRef.current()
+    releaseRetryAction
   })
 
   const chat = useAgentStreamChat({
@@ -199,7 +203,7 @@ export function useAgentStream(
     resetStreamingBuffers: bridge.resetStreamingBuffers,
     resetCompressionBuffers: bridge.resetCompressionBuffers,
     finishStream: finish.finishStream,
-    releaseRetryAction: () => releaseRetryActionRef.current()
+    releaseRetryAction
   })
 
   const actions = useAgentStreamActions({
@@ -224,22 +228,30 @@ export function useAgentStream(
 
   releaseRetryActionRef.current = actions.releaseRetryAction
 
+  const syncTokenUsageFromSession = finish.syncTokenUsageFromSession
+  const reloadMessagesFromDb = finish.reloadMessagesFromDb
+  const interruptActiveStream = bridge.interruptActiveStream
+  const resetCompressionBuffers = bridge.resetCompressionBuffers
+  const appendCompressionReasoningDelta = bridge.appendCompressionReasoningDelta
+  const appendCompressionTextDelta = bridge.appendCompressionTextDelta
+  const flushCompressionDisplayBuffers = bridge.flushCompressionDisplayBuffers
+
   useEffect(() => {
     if (!currentSessionId) {
-      setTokenUsage(EMPTY_TOKEN_USAGE)
+      setTokenUsage((prev) => applyTokenUsage(prev, EMPTY_TOKEN_USAGE))
       return
     }
     if (!isStreaming) {
-      void finish.syncTokenUsageFromSession(currentSessionId)
+      void syncTokenUsageFromSession(currentSessionId)
     }
-  }, [currentSessionId, isStreaming, finish])
+  }, [currentSessionId, isStreaming, syncTokenUsageFromSession])
 
   useEffect(() => {
     return subscribeMobileCompressionEvents((event) => {
       if (event.sessionId !== currentSessionIdRef.current) return
 
       if (event.type === 'start') {
-        bridge.resetCompressionBuffers()
+        resetCompressionBuffers()
         setIsCompressing(true)
         setCompressionPhase(event.phase === 'manual' ? 'manual' : 'auto')
         setCompressionText('')
@@ -251,20 +263,20 @@ export function useAgentStream(
       }
 
       if (event.type === 'reasoning-delta') {
-        bridge.appendCompressionReasoningDelta(event.chunk ?? '')
+        appendCompressionReasoningDelta(event.chunk ?? '')
         return
       }
 
       if (event.type === 'delta') {
-        bridge.appendCompressionTextDelta(event.chunk ?? '')
+        appendCompressionTextDelta(event.chunk ?? '')
         return
       }
 
       if (event.type === 'finish') {
-        bridge.flushCompressionDisplayBuffers()
+        flushCompressionDisplayBuffers()
         setIsCompressing(false)
         if (!event.ok) {
-          bridge.resetCompressionBuffers()
+          resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
           setCompressionTriggerMessageId(null)
@@ -272,7 +284,7 @@ export function useAgentStream(
         }
 
         if (isStreamingRef.current) {
-          bridge.resetCompressionBuffers()
+          resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
           setCompressionTriggerMessageId(null)
@@ -286,19 +298,26 @@ export function useAgentStream(
           } catch {
             /* ignore */
           }
-          await finish.reloadMessagesFromDb(sessionId, {
+          await reloadMessagesFromDb(sessionId, {
             preserveWindow: false,
             retryCount: 5,
             waitForLatestUsage: true
           })
-          bridge.resetCompressionBuffers()
+          resetCompressionBuffers()
           setCompressionText('')
           setCompressionReasoning('')
           setCompressionTriggerMessageId(null)
         })()
       }
     })
-  }, [bridge, finish, services])
+  }, [
+    appendCompressionReasoningDelta,
+    appendCompressionTextDelta,
+    flushCompressionDisplayBuffers,
+    reloadMessagesFromDb,
+    resetCompressionBuffers,
+    services
+  ])
 
   useEffect(() => {
     setMobileAgentGateFocusedSessionId(currentSessionId)
@@ -360,13 +379,12 @@ export function useAgentStream(
   )
 
   useEffect(() => {
-    if (vaultSwitching) {
-      bridge.interruptActiveStream()
-    }
+    if (!vaultSwitching) return
+    bridge.interruptActiveStream()
   }, [vaultSwitching, bridge])
 
   const updateTokenUsage = useCallback((usage: Partial<TokenUsage>) => {
-    setTokenUsage((prev) => ({ ...prev, ...usage }))
+    setTokenUsage((prev) => applyTokenUsage(prev, { ...prev, ...usage }))
   }, [])
 
   return {
