@@ -7,11 +7,12 @@ import {
   Modal,
   Animated,
   StyleSheet,
-  TouchableOpacity
+  TouchableOpacity,
+  useWindowDimensions
 } from 'react-native'
-import { Check, Search, Store, X } from 'lucide-react-native'
+import { Check, Settings, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '../theme'
+import { getNativeElevationStyle, useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
   formatReasoningEffortLabel,
@@ -20,10 +21,9 @@ import {
   subscribeReasoningCatalog,
   type ReasoningEffortSetting
 } from '@baishou/shared'
-import { Input } from '../Input/Input'
-import { Button } from '../Button'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
+import { styles } from './model-switcher.styles'
 
 export interface MockAiProviderModel {
   id: string
@@ -59,46 +59,77 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
   onReasoningEffortChange
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
-  // 只订阅以便目录更新后重渲染，档位选项直接按当前目录算，不再缓存
+  const { colors, maxModalWidth, isDark } = useNativeTheme()
+  const { height: windowHeight } = useWindowDimensions()
+
   useSyncExternalStore(
     subscribeReasoningCatalog,
     getReasoningCatalogEpoch,
     getReasoningCatalogEpoch
   )
-  const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const scaleAnim = useRef(new Animated.Value(0.85)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
 
-  const { filteredProviders, filteredModels } = useMemo(() => {
-    const pList: MockAiProviderModel[] = []
-    const mDict: Record<string, string[]> = {}
-    const query = searchQuery.toLowerCase()
+  // 内部维护暂存状态，点击底部保存按钮统一生效
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
+    currentProviderId ?? null
+  )
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(currentModelId ?? null)
+  const [selectedEffort, setSelectedEffort] = useState<ReasoningEffortSetting>(
+    reasoningEffort ?? 'auto'
+  )
 
-    for (const provider of providers) {
-      const modelList = provider.enabledModels ?? provider.models ?? []
-      const matched = query
-        ? modelList.filter((m) => m && m.toLowerCase().includes(query))
-        : modelList
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedProviderId(currentProviderId ?? null)
+      setSelectedModelId(currentModelId ?? null)
+      setSelectedEffort(reasoningEffort ?? 'auto')
+    }
+  }, [isOpen, currentProviderId, currentModelId, reasoningEffort])
 
-      if (matched.length > 0) {
-        pList.push(provider)
-        mDict[provider.id] = matched
+  // 过滤有模型的可用供应商
+  const activeProviders = useMemo(() => {
+    return providers.filter((p) => {
+      const list = p.enabledModels ?? p.models ?? []
+      return list.length > 0
+    })
+  }, [providers])
+
+  // 计算当前暂存选中的模型所支持的思考强度档位
+  const activeProvider = providers.find((provider) => provider.id === selectedProviderId)
+  const effortOptions =
+    showReasoningPanel && selectedModelId
+      ? listSessionReasoningEffortSettings(
+          selectedModelId,
+          activeProvider?.type || selectedProviderId || undefined
+        )
+      : []
+  const hasEffortOptions = effortOptions.length > 0
+
+  const handleSelectModel = (providerId: string, modelId: string) => {
+    setSelectedProviderId(providerId)
+    setSelectedModelId(modelId)
+    const provider = providers.find((p) => p.id === providerId)
+    const modelOpts = showReasoningPanel
+      ? listSessionReasoningEffortSettings(modelId, provider?.type || providerId || undefined)
+      : []
+    if (modelOpts.length > 0) {
+      if (!modelOpts.includes(selectedEffort)) {
+        setSelectedEffort('auto')
       }
     }
+  }
 
-    return { filteredProviders: pList, filteredModels: mDict }
-  }, [providers, searchQuery])
-
-  const currentProvider = providers.find((provider) => provider.id === currentProviderId)
-  const effortOptions = listSessionReasoningEffortSettings(
-    currentModelId || '',
-    currentProvider?.type || currentProviderId || undefined
-  )
-  const selectedEffort = effortOptions.includes(reasoningEffort ?? 'auto')
-    ? (reasoningEffort ?? 'auto')
-    : 'auto'
+  const handleSave = () => {
+    if (selectedProviderId && selectedModelId) {
+      onSelect(selectedProviderId, selectedModelId)
+      if (showReasoningPanel && onReasoningEffortChange) {
+        onReasoningEffortChange(selectedEffort)
+      }
+    }
+    onClose()
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -135,7 +166,6 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     ]).start(({ finished }) => {
       if (finished) {
         setMounted(false)
-        setSearchQuery('')
       }
     })
   }, [isOpen, mounted, scaleAnim, fadeAnim])
@@ -154,81 +184,102 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             styles.dialog,
             {
               backgroundColor: colors.bgSurface,
-              borderRadius: tokens.radius.xl,
+              borderColor: colors.borderMuted,
               width: '90%',
-              maxWidth: maxModalWidth,
-              height: '72%',
-              maxHeight: 560,
-              minHeight: 480,
-              padding: tokens.spacing.lg,
+              maxWidth: Math.min(380, maxModalWidth),
+              maxHeight: Math.min(560, windowHeight * 0.82),
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }]
+              transform: [{ scale: scaleAnim }],
+              ...getNativeElevationStyle(isDark, 'raised')
             }
           ]}
         >
+          {/* 弹窗头部 */}
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
               {t('models.switch_model', '切换模型')}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close', '关闭')}
+            >
+              <X size={20} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchInputWrap}>
-            <Input
-              placeholder={t('common.search_model', '搜索模型...')}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={styles.searchInput}
-              autoCorrect={false}
-              autoCapitalize="none"
-              leftSlot={
-                <View style={styles.searchIconWrap}>
-                  <Search
-                    size={18}
-                    color={colors.textTertiary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
-                  />
-                </View>
-              }
-              rightSlot={
-                searchQuery.length > 0 ? (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                  </TouchableOpacity>
-                ) : undefined
-              }
-            />
+          {/* 思考强度区域：对齐伙伴页面ModelReasoningControl风格 */}
+          {hasEffortOptions ? (
+            <View style={styles.sectionWrap}>
+              <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
+                {t('agent.reasoning.effort_section', '思考强度')}
+              </Text>
+              <View style={styles.effortRow}>
+                {effortOptions.map((opt) => {
+                  const isSelected = opt === selectedEffort
+                  return (
+                    <TouchableOpacity
+                      key={opt}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedEffort(opt)}
+                      style={[
+                        styles.effortChip,
+                        isSelected
+                          ? {
+                              backgroundColor: colors.primary,
+                              borderColor: colors.primary
+                            }
+                          : {
+                              backgroundColor: colors.bgSurfaceHigh,
+                              borderColor: colors.borderSubtle
+                            }
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.effortChipLabel,
+                          {
+                            color: isSelected ? colors.textOnPrimary : colors.textSecondary,
+                            fontWeight: isSelected ? '600' : '400'
+                          }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {formatReasoningEffortLabel(opt)}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+              <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+            </View>
+          ) : null}
+
+          {/* 选择模型小节标题 */}
+          <View style={styles.sectionWrap}>
+            <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>
+              {t('models.select_model', '选择模型')}
+            </Text>
           </View>
 
+          {/* 模型列表 */}
           <ScrollView
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
+            style={styles.modelListScroll}
+            contentContainerStyle={styles.modelListContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            {filteredProviders.length === 0 ? (
+            {activeProviders.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  {t('common.no_match_model', '没有匹配的可用模型')}
+                <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                  {t('models.no_available_models', '暂无可用模型')}
                 </Text>
-                {onManageProviders && (
-                  <Button
-                    variant="ghost"
-                    onPress={() => {
-                      onManageProviders()
-                      onClose()
-                    }}
-                  >
-                    <Store size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                    <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
-                  </Button>
-                )}
               </View>
             ) : (
-              filteredProviders.map((provider) => {
-                const models = filteredModels[provider.id] || []
-                const isCurrentProvider = provider.id === currentProviderId
+              activeProviders.map((provider) => {
+                const models = provider.enabledModels ?? provider.models ?? []
+                const isCurrentProvider = provider.id === selectedProviderId
 
                 return (
                   <View key={provider.id} style={styles.providerGroup}>
@@ -236,10 +287,13 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                       <ProviderBrandIcon
                         providerId={provider.id}
                         providerType={provider.type}
-                        size={18}
+                        size={13}
                       />
-                      <Text style={[styles.providerName, { color: colors.textPrimary }]}>
-                        {provider.name}
+                      <Text
+                        style={[styles.providerName, { color: colors.textTertiary }]}
+                        numberOfLines={1}
+                      >
+                        {provider.name || provider.id}
                       </Text>
                       <View
                         style={[styles.countBadge, { backgroundColor: colors.bgSurfaceNormal }]}
@@ -251,34 +305,29 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                     </View>
 
                     {models.map((modelId) => {
-                      const isSelected = isCurrentProvider && modelId === currentModelId
+                      const isSelected = isCurrentProvider && modelId === selectedModelId
+
                       return (
-                        <Pressable
+                        <TouchableOpacity
                           key={modelId}
-                          onPress={() => {
-                            onSelect(provider.id, modelId)
-                            onClose()
-                          }}
+                          activeOpacity={0.7}
+                          onPress={() => handleSelectModel(provider.id, modelId)}
                           style={[
                             styles.modelRow,
-                            {
-                              backgroundColor: isSelected ? colors.primaryContainer : 'transparent'
-                            }
+                            isSelected ? { backgroundColor: colors.bgSurfaceHigh } : null
                           ]}
                         >
-                          <ProviderBrandIcon
-                            providerId={provider.id}
-                            providerType={provider.type}
-                            size={16}
-                          />
-                          <View style={styles.modelNameRow}>
+                          <View style={styles.modelInfo}>
+                            <ProviderBrandIcon
+                              providerId={provider.id}
+                              providerType={provider.type}
+                              size={14}
+                            />
                             <Text
                               style={[
                                 styles.modelName,
                                 {
-                                  color: isSelected
-                                    ? colors.onPrimaryContainer
-                                    : colors.textPrimary,
+                                  color: isSelected ? colors.primary : colors.textPrimary,
                                   fontWeight: isSelected ? '600' : '400'
                                 }
                               ]}
@@ -289,17 +338,13 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
                             <ModelVisionBadge
                               modelId={modelId}
                               providerKey={provider.id}
-                              size={14}
+                              size={13}
                             />
                           </View>
-                          {isSelected && (
-                            <Check
-                              size={18}
-                              color={colors.primary}
-                              strokeWidth={DEFAULT_STROKE_WIDTH}
-                            />
-                          )}
-                        </Pressable>
+                          {isSelected ? (
+                            <Check size={15} color={colors.primary} strokeWidth={2.2} />
+                          ) : null}
+                        </TouchableOpacity>
                       )
                     })}
                   </View>
@@ -308,153 +353,48 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
             )}
           </ScrollView>
 
-          {showReasoningPanel ? (
-            <View style={[styles.effortWrap, { borderTopColor: colors.borderSubtle }]}>
-              <Text style={[styles.effortLabel, { color: colors.textSecondary }]}>
-                {t('agent.reasoning.effort_label', '思考强度')}
-              </Text>
-              <View style={styles.effortRow}>
-                {effortOptions.map((opt) => (
-                  <Button
-                    key={opt}
-                    variant={opt === selectedEffort ? 'primary' : 'secondary'}
-                    onPress={() => onReasoningEffortChange?.(opt)}
-                    style={styles.effortChip}
-                  >
-                    {formatReasoningEffortLabel(opt)}
-                  </Button>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
-          {onManageProviders && filteredProviders.length > 0 && (
-            <Button
-              variant="ghost"
-              className="w-full border-t border-border mt-1 pt-3.5"
-              style={{ borderTopColor: colors.borderSubtle }}
-              onPress={() => {
-                onManageProviders()
-                onClose()
-              }}
+          {/* 底部保存按钮与管理供应商 */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleSave}
+              disabled={!selectedModelId}
+              style={[
+                styles.saveBtn,
+                {
+                  backgroundColor: selectedModelId ? colors.primary : colors.bgSurfaceNormal,
+                  opacity: selectedModelId ? 1 : 0.6
+                }
+              ]}
             >
-              <Store size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-              <Button.Label>{t('settings.manage_providers', '管理供应商')}</Button.Label>
-            </Button>
-          )}
+              <Text
+                style={[
+                  styles.saveBtnText,
+                  { color: selectedModelId ? colors.textOnPrimary : colors.textTertiary }
+                ]}
+              >
+                {t('common.save', '保存')}
+              </Text>
+            </TouchableOpacity>
+
+            {onManageProviders ? (
+              <TouchableOpacity
+                style={styles.manageBtn}
+                activeOpacity={0.7}
+                onPress={() => {
+                  onClose()
+                  onManageProviders()
+                }}
+              >
+                <Settings size={13} color={colors.textSecondary} />
+                <Text style={[styles.manageBtnText, { color: colors.textSecondary }]}>
+                  {t('settings.manage_providers', '管理供应商')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </Animated.View>
       </View>
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)'
-  },
-  dialog: {
-    flexDirection: 'column'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 12
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600'
-  },
-  searchInputWrap: {
-    marginBottom: 12
-  },
-  searchInput: {
-    fontSize: 15
-  },
-  searchIconWrap: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  list: {
-    flex: 1
-  },
-  listContent: {
-    paddingBottom: 8
-  },
-  emptyWrap: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 16
-  },
-  emptyText: {
-    fontSize: 15,
-    textAlign: 'center'
-  },
-  providerGroup: {
-    marginBottom: 14
-  },
-  providerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6
-  },
-  providerName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  countBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2
-  },
-  countText: {
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  modelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8
-  },
-  modelNameRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0
-  },
-  modelName: {
-    flexShrink: 1,
-    fontSize: 14
-  },
-  effortWrap: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 12,
-    marginTop: 4,
-    gap: 8
-  },
-  effortLabel: {
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  effortRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  effortChip: {
-    marginBottom: 4
-  }
-})

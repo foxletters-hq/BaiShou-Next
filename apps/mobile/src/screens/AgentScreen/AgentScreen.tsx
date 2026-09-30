@@ -31,6 +31,11 @@ export const AgentScreen = () => {
           currentSessionId={c.currentSessionId}
           assistantId={c.currentAssistant?.id}
           currentProviderType={c.currentProviderType}
+          dialogueProviders={c.dialogueProviders}
+          handleSelectModel={c.handleSelectModel}
+          assistantAvatarUri={c.resolvedCurrentAvatarUri}
+          assistantAvatarPath={c.currentAssistant?.avatarPath}
+          assistantEmoji={c.currentAssistant?.emoji}
           totalCostMicros={c.totalCostMicros}
           setDrawerOpen={c.setDrawerOpen}
           setShowModelSwitcher={c.setShowModelSwitcher}

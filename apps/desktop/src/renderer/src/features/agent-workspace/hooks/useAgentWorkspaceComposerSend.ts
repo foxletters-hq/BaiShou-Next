@@ -83,7 +83,7 @@ export function useAgentWorkspaceComposerSend({
         !isConfiguredDialogueModelId(currentModelId)
       ) {
         openModelSwitcher(null)
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return false
       }
 

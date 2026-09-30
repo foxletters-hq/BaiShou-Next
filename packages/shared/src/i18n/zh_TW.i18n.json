@@ -1678,6 +1678,7 @@
     "per_page": "條/頁",
     "status_pending_extract": "待抽取：{{count}}個",
     "status_pending_embed": "待嵌入：{{count}}個",
+    "status_pending_organize": "待整理：{{count}} 項",
     "status_indexing": "正在索引 {{progress}}/{{total}}",
     "status_indexing_kind": "正在嵌入{{kind}} {{progress}}/{{total}}",
     "status_indexing_paused_kind": "已暫停 · 正在嵌入{{kind}} {{progress}}/{{total}}"
@@ -2598,7 +2599,8 @@
       "quota": "模型服務商提示帳號額度不足。",
       "unknown": "出錯了：{{msg}}",
       "create_session": "由於系統原因創建會話失敗: {{msg}}",
-      "vision_not_supported": "當前模型不支持圖片識別哦，可以換成視覺模型再試試呢~"
+      "vision_not_supported": "當前模型不支持圖片識別哦，可以換成視覺模型再試試呢~",
+      "no_model": "請先在輸入欄選擇一個模型"
     },
     "generation_failed": "回覆生成失敗",
     "stream_cancelled": "取消成功",

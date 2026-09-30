@@ -1690,6 +1690,7 @@
     "per_page": "条/页",
     "status_pending_extract": "待抽取：{{count}}个",
     "status_pending_embed": "待嵌入：{{count}}个",
+    "status_pending_organize": "待整理：{{count}} 项",
     "status_indexing": "正在索引 {{progress}}/{{total}}",
     "status_indexing_kind": "正在嵌入{{kind}} {{progress}}/{{total}}",
     "status_indexing_paused_kind": "已暂停 · 正在嵌入{{kind}} {{progress}}/{{total}}"
@@ -2626,7 +2627,8 @@
       "quota": "模型服务商提示账号额度不足。",
       "unknown": "出错了：{{msg}}",
       "create_session": "由于系统原因创建会话失败: {{msg}}",
-      "vision_not_supported": "当前模型不支持图片识别哦，可以换成视觉模型再试试呢~"
+      "vision_not_supported": "当前模型不支持图片识别哦，可以换成视觉模型再试试呢~",
+      "no_model": "请先在输入栏选择一个模型"
     },
     "generation_failed": "回复生成失败",
     "stream_cancelled": "取消成功",

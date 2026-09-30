@@ -7,6 +7,7 @@ import React, {
   useState
 } from 'react'
 import {
+  Platform,
   useWindowDimensions,
   type NativeSyntheticEvent,
   type TextInputContentSizeChangeEventData,
@@ -35,6 +36,8 @@ import {
   EXPAND_ANIM_MS,
   INPUT_MAX_HEIGHT_COLLAPSED,
   INPUT_MIN_HEIGHT,
+  composerContentWidth,
+  estimateComposerContentHeight,
   resolveComposerHeight,
   resolveExpandedInputMaxHeight,
   TOOLBAR_ANIM_MS
@@ -71,9 +74,16 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
   const dialog = useDialog()
   const toast = useNativeToast()
   const { colors, isDark } = useNativeTheme()
-  const { height: windowHeight } = useWindowDimensions()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const inputRef = useRef<any>(null)
   const contentHeightRef = useRef(INPUT_MIN_HEIGHT)
+  const textRef = useRef('')
+  const contentWidth = composerContentWidth(windowWidth)
+  const contentWidthRef = useRef(contentWidth)
+  contentWidthRef.current = contentWidth
+  const verticalPadding = Platform.OS === 'ios' ? 16 : 12
+  const verticalPaddingRef = useRef(verticalPadding)
+  verticalPaddingRef.current = verticalPadding
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
   const [skillRefs, setSkillRefs] = useState<ComposerSendSkillRef[]>([])
@@ -149,19 +159,45 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     },
     [animateInputHeight, inputMaxHeight, isExpanded]
   )
+  const applyContentHeightRef = useRef(applyContentHeight)
+  applyContentHeightRef.current = applyContentHeight
 
   const isExpandedRef = useRef(isExpanded)
+  const wasExpandedRef = useRef(isExpanded)
+  isExpandedRef.current = isExpanded
+  const ignoreContentSizeUntilRef = useRef(0)
+
   useEffect(() => {
-    const expandedChanged = isExpandedRef.current !== isExpanded
-    isExpandedRef.current = isExpanded
+    textRef.current = text
+    ignoreContentSizeUntilRef.current = Date.now() + 48
+    applyContentHeightRef.current(
+      estimateComposerContentHeight(text, contentWidth, verticalPadding),
+      isExpandedRef.current,
+      false
+    )
+  }, [text, contentWidth, verticalPadding])
+
+  useEffect(() => {
+    const expandedChanged = wasExpandedRef.current !== isExpanded
+    wasExpandedRef.current = isExpanded
     applyContentHeight(contentHeightRef.current, isExpanded, expandedChanged)
   }, [applyContentHeight, isExpanded])
 
   const handleContentSizeChange = useCallback(
     (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
-      applyContentHeight(event.nativeEvent.contentSize.height, isExpanded, false)
+      if (Date.now() < ignoreContentSizeUntilRef.current) return
+      const estimated = estimateComposerContentHeight(
+        textRef.current,
+        contentWidthRef.current,
+        verticalPaddingRef.current
+      )
+      applyContentHeight(
+        Math.max(event.nativeEvent.contentSize.height, estimated),
+        isExpandedRef.current,
+        false
+      )
     },
-    [applyContentHeight, isExpanded]
+    [applyContentHeight]
   )
 
   const toggleExpand = useCallback(() => {

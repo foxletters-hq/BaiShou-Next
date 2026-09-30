@@ -105,6 +105,11 @@ export const nativeInputBarStyles = StyleSheet.create({
     height: INPUT_CARD_BOTTOM_ROW,
     flexShrink: 0
   },
+  bottomActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
   sendBtn: {
     width: 32,
     height: 32,

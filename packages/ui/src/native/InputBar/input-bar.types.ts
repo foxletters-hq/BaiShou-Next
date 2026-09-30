@@ -1,5 +1,26 @@
-import type { PromptShortcut } from '@baishou/shared'
+import type { PromptShortcut, ReasoningEffortSetting } from '@baishou/shared'
 import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
+
+export interface InputBarModelSelector {
+  currentProviderId?: string | null
+  currentModelId?: string | null
+  currentProviderType?: string | null
+  displayModelName?: string | null
+  providers?: Array<{
+    id: string
+    name: string
+    type?: string
+    models?: string[]
+    enabledModels?: string[]
+  }>
+  onSelectModel: (providerId: string, modelId: string) => void
+  onManageProviders?: () => void
+  reasoningEffort?: {
+    value: ReasoningEffortSetting
+    options: ReasoningEffortSetting[]
+    onChange: (value: ReasoningEffortSetting) => void
+  }
+}
 
 export interface InputBarProps {
   isLoading: boolean
@@ -30,6 +51,14 @@ export interface InputBarProps {
   onHeightChange?: (height: number) => void
   /** 为 false 时禁用底部主输入框（气泡内联编辑时避免双键盘/抢焦点） */
   composerEnabled?: boolean
+  /** 模型与思考强度联合选择配置，显示在发送按钮左侧 */
+  modelSelector?: InputBarModelSelector
+  /** 会话思考强度，显示在发送按钮左侧（未配置 modelSelector 时的后向兼容） */
+  reasoningEffort?: {
+    value: ReasoningEffortSetting
+    options: ReasoningEffortSetting[]
+    onChange: (value: ReasoningEffortSetting) => void
+  }
 }
 
 export interface InputBarRef {

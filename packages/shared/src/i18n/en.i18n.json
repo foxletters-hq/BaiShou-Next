@@ -1652,6 +1652,7 @@
     "per_page": "/ page",
     "status_pending_extract": "Pending extract: {{count}}",
     "status_pending_embed": "Pending embed: {{count}}",
+    "status_pending_organize": "Pending organize: {{count}}",
     "status_indexing": "Indexing {{progress}}/{{total}}",
     "status_indexing_kind": "Embedding {{kind}} {{progress}}/{{total}}",
     "status_indexing_paused_kind": "Paused · Embedding {{kind}} {{progress}}/{{total}}"
@@ -2581,7 +2582,8 @@
       "quota": "Insufficient account quota or balance reported by the provider.",
       "unknown": "An error occurred: {{msg}}",
       "create_session": "Failed to create session due to system error: {{msg}}",
-      "vision_not_supported": "This model doesn't support image recognition — try switching to a vision model~"
+      "vision_not_supported": "This model doesn't support image recognition — try switching to a vision model~",
+      "no_model": "Please select a model in the input bar first"
     },
     "generation_failed": "Reply generation failed",
     "stream_cancelled": "Generation cancelled",
