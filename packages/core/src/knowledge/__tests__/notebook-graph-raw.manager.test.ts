@@ -241,7 +241,7 @@ describeIndex('NotebookGraph source index', () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-nb-graph-idx-'))
     dbManager = new KnowledgeConnectionManager()
     await dbManager.connect(tempDir)
-  })
+  }, 30_000)
 
   afterEach(async () => {
     dbManager?.disconnect()

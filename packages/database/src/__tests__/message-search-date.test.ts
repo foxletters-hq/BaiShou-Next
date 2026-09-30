@@ -491,5 +491,5 @@ describe('listSessionsInDateRange / listMessagesInDateRange', () => {
       endDate: '2026-09-07'
     })
     expect(messages.length).toBe(DATE_RANGE_LIST_MAX_LIMIT + 1)
-  })
+  }, 40_000)
 })

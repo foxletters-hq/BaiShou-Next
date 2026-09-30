@@ -182,7 +182,7 @@ export async function extractMarkdownOrText(content: string): Promise<ExtractRes
   const pages = buildPageBoundaryTable([text])
   // 修正单页 end
   if (pages.pages[0]) pages.pages[0].end = text.length
-  const hasText = text.trim().length >= MIN_TEXT_LAYER_CHARS
+  const hasText = text.trim().length > 0
   return {
     text,
     pages,

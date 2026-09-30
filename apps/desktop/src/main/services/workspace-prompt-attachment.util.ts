@@ -26,10 +26,12 @@ export function workspaceRelativeFromFolder(
   folderRoot: string,
   absolutePath: string
 ): string | undefined {
-  const root = path.resolve(folderRoot)
-  const target = path.resolve(absolutePath)
-  const rel = path.relative(root, target)
-  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return undefined
+  const isWin = /^[a-zA-Z]:[\\/]/.test(folderRoot) || /^[a-zA-Z]:[\\/]/.test(absolutePath)
+  const pathModule = isWin ? path.win32 : path
+  const root = pathModule.resolve(folderRoot)
+  const target = pathModule.resolve(absolutePath)
+  const rel = pathModule.relative(root, target)
+  if (!rel || rel.startsWith('..') || pathModule.isAbsolute(rel)) return undefined
   return rel.replace(/\\/g, '/')
 }
 
