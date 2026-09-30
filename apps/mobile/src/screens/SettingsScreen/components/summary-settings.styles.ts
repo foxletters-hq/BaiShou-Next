@@ -5,16 +5,18 @@ export const summarySettingsStyles = StyleSheet.create({
   subsectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 8, lineHeight: 20 },
   sourceGroup: {
     flexDirection: 'row',
-    gap: 4,
-    padding: 4,
-    borderRadius: 8,
+    gap: 0,
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1,
     marginBottom: 4
   },
   sourceBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
-    borderRadius: 6
+    borderRadius: 7,
+    borderWidth: 1
   },
   desc: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
   fieldLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8, lineHeight: 20 },
@@ -83,9 +85,10 @@ export const summarySettingsStyles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
-    padding: 4,
-    borderRadius: 8,
+    gap: 0,
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1,
     marginBottom: 12
   },
   tabBtn: {
@@ -97,7 +100,8 @@ export const summarySettingsStyles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 6,
     paddingVertical: 8,
-    borderRadius: 6
+    borderRadius: 7,
+    borderWidth: 1
   },
   tabIcon: { fontSize: 16 },
   actions: { flexDirection: 'row', gap: 10, marginBottom: 24 },

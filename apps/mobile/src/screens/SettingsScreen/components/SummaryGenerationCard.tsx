@@ -73,7 +73,12 @@ export function SummaryGenerationCard(props: {
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
           {t('settings.summary_generation_mode_desc')}
         </Text>
-        <View style={[styles.sourceGroup, { backgroundColor: colors.bgApp }]}>
+        <View
+          style={[
+            styles.sourceGroup,
+            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
+          ]}
+        >
           {(['prompt', 'assistant'] as const).map((mode) => {
             const active = generationMode === mode
             const labelKey =
@@ -83,7 +88,13 @@ export function SummaryGenerationCard(props: {
             return (
               <TouchableOpacity
                 key={mode}
-                style={[styles.sourceBtn, active && { backgroundColor: colors.primary }]}
+                style={[
+                  styles.sourceBtn,
+                  {
+                    backgroundColor: active ? colors.bgSurface : 'transparent',
+                    borderColor: active ? colors.borderSubtle : 'transparent'
+                  }
+                ]}
                 onPress={() => {
                   if (mode === 'assistant') {
                     if (assistants.length === 0) {
@@ -106,9 +117,9 @@ export function SummaryGenerationCard(props: {
               >
                 <Text
                   style={{
-                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    color: active ? colors.primary : colors.textSecondary,
                     fontSize: 13,
-                    fontWeight: active ? '600' : '400',
+                    fontWeight: active ? '600' : '500',
                     textAlign: 'center'
                   }}
                 >

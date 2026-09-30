@@ -1,10 +1,11 @@
-import { Tabs } from 'expo-router'
+import { Tabs, usePathname } from 'expo-router'
 import React, { useMemo } from 'react'
 import { Platform, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
 import { selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
+import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
+import { uiTypography } from '@baishou/ui/theme/tokens'
 import { HapticTab } from '../../components/haptic-tab'
 import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
@@ -13,9 +14,11 @@ const TAB_BAR_CONTENT_HEIGHT = 56
 
 export default function TabLayout() {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const insets = useSafeAreaInsets()
+  const pathname = usePathname()
   const pendingGateCount = useAgentGateInboxStore(selectPendingCount)
+  const agentTabActive = pathname === '/agent' || pathname.startsWith('/agent/')
 
   const tabBarBottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
@@ -55,6 +58,21 @@ export default function TabLayout() {
     []
   )
 
+  const companionTabBadgeStyle = useMemo(
+    () => ({
+      backgroundColor: colors.warning,
+      color: colors.textPrimary,
+      fontSize: uiTypography.sm,
+      fontWeight: '600' as const,
+      minWidth: tokens.spacing.md,
+      height: tokens.spacing.md,
+      lineHeight: tokens.spacing.md,
+      borderRadius: tokens.radius.full,
+      top: 2
+    }),
+    [colors.textPrimary, colors.warning, tokens.radius.full, tokens.spacing.md]
+  )
+
   return (
     <Tabs
       detachInactiveScreens
@@ -89,7 +107,12 @@ export default function TabLayout() {
           title: t('nav.agent'),
           tabBarHideOnKeyboard: false,
           tabBarBadge:
-            pendingGateCount > 0 ? (pendingGateCount > 99 ? '99+' : pendingGateCount) : undefined,
+            !agentTabActive && pendingGateCount > 0
+              ? pendingGateCount > 99
+                ? '99+'
+                : pendingGateCount
+              : undefined,
+          tabBarBadgeStyle: companionTabBadgeStyle,
           tabBarIcon: ({ color }) => <AppTabIcon id="agent" color={color} />
         }}
       />

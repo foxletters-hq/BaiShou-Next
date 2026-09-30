@@ -3,15 +3,18 @@ import type { LucideProps } from 'lucide-react-native'
 import {
   Archive,
   ArrowLeftRight,
+  BookMarked,
   Cable,
   Cloud,
   Database,
   FolderOpen,
   Globe,
   GraduationCap,
+  History,
   Coffee,
   NotebookPen,
   Paperclip,
+  PawPrint,
   Puzzle,
   RefreshCw,
   Settings,
@@ -30,6 +33,8 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIconId, React.ComponentType<LucidePr
   assistants: GraduationCap,
   latte: Coffee,
   rag: Database,
+  memory: PawPrint,
+  knowledge: BookMarked,
   'web-search': Globe,
   mcp: Cable,
   'agent-tools': Puzzle,
@@ -44,6 +49,7 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIconId, React.ComponentType<LucidePr
   'lan-transfer': Wifi,
   storage: FolderOpen,
   'version-migration': ArrowLeftRight,
+  git: History,
   general: Settings
 }
 

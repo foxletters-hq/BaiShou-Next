@@ -1,7 +1,8 @@
 import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { getLanIp, hasAdbDevice } from './mobile-dev-host.mjs'
+import { getLanIp, hasAdbDevice, resolveAdbSerial } from './mobile-dev-host.mjs'
+import { formatAdbShellCommand } from './adb-device.util.mjs'
 
 export const ANDROID_RELEASE_PACKAGE_ID = 'com.baishou.baishou'
 export const ANDROID_DEV_PACKAGE_ID = 'com.baishou.baishou.dev'
@@ -15,7 +16,8 @@ const REMOTE_RELEASE_APK_PATH = '/data/local/tmp/baishou-app-release.apk'
 const HTTP_INSTALL_PORT = 18765
 
 function adbExec(cmd, opts = {}) {
-  return execSync(cmd, {
+  const rest = cmd.startsWith('adb ') ? cmd.slice(4) : cmd
+  return execSync(formatAdbShellCommand(resolveAdbSerial(), rest), {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
     ...opts

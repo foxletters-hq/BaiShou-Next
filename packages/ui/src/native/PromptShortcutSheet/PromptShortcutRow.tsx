@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react-native'
+import { GripVertical, Pencil, Trash2 } from 'lucide-react-native'
 import {
   localizePromptShortcut,
   type LocalizedShortcutLabels,
@@ -14,10 +14,9 @@ const ROW_MIN_HEIGHT = 60
 
 export function PromptShortcutRow(props: {
   item: PromptShortcut
-  index: number
-  pageLength: number
   canManage: boolean
   canDrag: boolean
+  isDragging?: boolean
   colors: {
     bgSurfaceHigh: string
     borderSubtle: string
@@ -32,11 +31,10 @@ export function PromptShortcutRow(props: {
   onSelect: (shortcut: PromptShortcut) => void
   onEdit: (item: PromptShortcut) => void
   onDelete: (id: string) => void
-  onMove: (index: number, direction: -1 | 1) => void
-  onReorder?: (shortcuts: PromptShortcut[]) => Promise<void>
+  onDrag?: () => void
 }) {
   const { t } = useTranslation()
-  const { item, index, colors } = props
+  const { item, colors } = props
   const localized = localizePromptShortcut(item, props.defaultShortcutLabels)
 
   return (
@@ -46,36 +44,25 @@ export function PromptShortcutRow(props: {
         {
           backgroundColor: colors.bgSurfaceHigh,
           borderColor: colors.borderSubtle,
-          minHeight: ROW_MIN_HEIGHT
+          minHeight: ROW_MIN_HEIGHT,
+          opacity: props.isDragging ? 0.92 : 1
         }
       ]}
     >
       {props.canManage ? (
-        props.canDrag && props.onReorder ? (
-          <View style={styles.reorderBtns}>
-            <Pressable
-              style={[styles.reorderBtn, { opacity: index <= 0 ? 0.3 : 1 }]}
-              disabled={index <= 0}
-              onPress={() => props.onMove(index, -1)}
-              hitSlop={6}
-              accessibilityLabel={t('shortcut.move_up', '上移')}
-            >
-              <ChevronUp size={22} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            </Pressable>
-            <Pressable
-              style={[styles.reorderBtn, { opacity: index >= props.pageLength - 1 ? 0.3 : 1 }]}
-              disabled={index >= props.pageLength - 1}
-              onPress={() => props.onMove(index, 1)}
-              hitSlop={6}
-              accessibilityLabel={t('shortcut.move_down', '下移')}
-            >
-              <ChevronDown
-                size={22}
-                color={colors.textTertiary}
-                strokeWidth={DEFAULT_STROKE_WIDTH}
-              />
-            </Pressable>
-          </View>
+        props.canDrag && props.onDrag ? (
+          <Pressable
+            style={styles.reorderBtns}
+            onPressIn={props.onDrag}
+            hitSlop={6}
+            accessibilityLabel={t('shortcut.drag_handle', '拖动排序')}
+          >
+            <GripVertical
+              size={22}
+              color={colors.textTertiary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
+          </Pressable>
         ) : (
           <View style={styles.reorderSpacer} />
         )

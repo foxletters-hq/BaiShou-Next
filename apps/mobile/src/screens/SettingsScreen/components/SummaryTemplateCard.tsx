@@ -73,7 +73,12 @@ export function SummaryTemplateCard(props: {
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
           {t('settings.monthly_summary_data_source_desc')}
         </Text>
-        <View style={[styles.sourceGroup, { backgroundColor: colors.bgApp }]}>
+        <View
+          style={[
+            styles.sourceGroup,
+            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
+          ]}
+        >
           {(['weeklies', 'diaries'] as const).map((source) => {
             const active = monthlySummarySource === source
             const labelKey =
@@ -81,14 +86,20 @@ export function SummaryTemplateCard(props: {
             return (
               <TouchableOpacity
                 key={source}
-                style={[styles.sourceBtn, active && { backgroundColor: colors.primary }]}
+                style={[
+                  styles.sourceBtn,
+                  {
+                    backgroundColor: active ? colors.bgSurface : 'transparent',
+                    borderColor: active ? colors.borderSubtle : 'transparent'
+                  }
+                ]}
                 onPress={() => persistAutoSettings({ monthlySummarySource: source })}
               >
                 <Text
                   style={{
-                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    color: active ? colors.primary : colors.textSecondary,
                     fontSize: 13,
-                    fontWeight: active ? '600' : '400',
+                    fontWeight: active ? '600' : '500',
                     textAlign: 'center'
                   }}
                 >
@@ -119,21 +130,32 @@ export function SummaryTemplateCard(props: {
           onChange={onPromptLocaleChange}
         />
 
-        <View style={[styles.tabBar, { backgroundColor: colors.bgApp }]}>
+        <View
+          style={[
+            styles.tabBar,
+            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
+          ]}
+        >
           {tabs.map((tab) => {
             const active = activeTab === tab.id
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={[styles.tabBtn, active && { backgroundColor: colors.primary }]}
+                style={[
+                  styles.tabBtn,
+                  {
+                    backgroundColor: active ? colors.bgSurface : 'transparent',
+                    borderColor: active ? colors.borderSubtle : 'transparent'
+                  }
+                ]}
                 onPress={() => onTabChange(tab.id)}
               >
                 <Text style={styles.tabIcon}>{tab.icon}</Text>
                 <Text
                   style={{
-                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    color: active ? colors.primary : colors.textSecondary,
                     fontSize: 12,
-                    fontWeight: active ? '600' : '400'
+                    fontWeight: active ? '600' : '500'
                   }}
                   numberOfLines={1}
                 >

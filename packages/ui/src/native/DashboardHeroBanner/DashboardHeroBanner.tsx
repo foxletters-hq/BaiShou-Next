@@ -3,96 +3,74 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
 
-/** 与桌面 DashboardHeroBanner 一致：卡片式氛围背景 + 柔和文本 + 装饰微光（避免暗色模式大面积刺眼纯蓝） */
+/** 移动端回忆页顶卡：实色表面 + 左侧主色条，不用整块浅底和光晕 */
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   return (
     <View
       style={[
         styles.banner,
         {
-          backgroundColor: isDark ? colors.bgSurfaceRaised : colors.primaryLight,
-          borderColor: colors.borderControl,
-          borderWidth: 1
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderMuted
         }
       ]}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t('common.app_title')} · {t('summary.collective_memories_title')}
+      <View style={[styles.accent, { backgroundColor: colors.primary }]} />
+      <View style={styles.copy}>
+        <Text style={[styles.eyebrow, { color: colors.textTertiary }]}>
+          {t('common.app_title', '白守')}
         </Text>
-        <View
-          style={[
-            styles.tag,
-            {
-              backgroundColor: isDark ? 'rgba(91, 168, 245, 0.15)' : 'rgba(91, 168, 245, 0.18)',
-              borderColor: isDark ? 'rgba(91, 168, 245, 0.3)' : 'rgba(91, 168, 245, 0.25)'
-            }
-          ]}
-        >
-          <Text style={[styles.tagText, { color: colors.primary }]}>
-            {t('summary.shared_memory', '共同回忆')}
-          </Text>
-        </View>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {t('summary.collective_memories_title', '回忆')}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {t(
+            'summary.algorithm_desc',
+            '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。'
+          )}
+        </Text>
       </View>
-
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        {t('summary.algorithm_desc')}
-      </Text>
-
-      {/* 纯净单一主色微光，避免多色杂糅发脏 */}
-      <View style={[styles.circle, styles.circleAura, { opacity: isDark ? 0.12 : 0.18 }]} />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   banner: {
-    minHeight: 120,
+    minHeight: 112,
     borderRadius: 16,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    overflow: 'hidden'
-  },
-  header: {
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    zIndex: 1
+    overflow: 'hidden'
+  },
+  accent: {
+    width: 3,
+    alignSelf: 'stretch'
+  },
+  copy: {
+    flex: 1,
+    paddingVertical: 18,
+    paddingLeft: 16,
+    paddingRight: 18
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.4
   },
   title: {
-    fontSize: 20,
+    marginTop: 2,
+    fontSize: 22,
     fontWeight: '600',
-    letterSpacing: -0.3
-  },
-  tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600'
+    letterSpacing: -0.3,
+    lineHeight: 28
   },
   subtitle: {
+    marginTop: 6,
     fontSize: 13,
-    marginTop: 8,
-    zIndex: 1,
-    lineHeight: 18
-  },
-  circle: {
-    position: 'absolute',
-    borderRadius: 999
-  },
-  circleAura: {
-    right: -30,
-    top: -40,
-    width: 180,
-    height: 180,
-    backgroundColor: 'rgba(91, 168, 245, 0.25)'
+    lineHeight: 19
   }
 })

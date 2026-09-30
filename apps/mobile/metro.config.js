@@ -77,8 +77,17 @@ config.resolver.blockList = [
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/fs/create-node-file-system.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),
+  // index.shared 会导出少量 sync 文件；其余 Git / Node 同步实现留在桌面端。
+  // 新增共享导出时，把文件名加进 mobileSyncModules，否则 Metro 会当成缺失模块。
   new RegExp(
-    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}[/\\\\](?!incremental-sync-external-mounts\\.ts$).+`
+    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}[/\\\\](?!(?:${[
+      'incremental-sync-external-mounts',
+      'version-manager.interface',
+      'version-manager.fs.service',
+      'sync.errors'
+    ]
+      .map((name) => `${name}\\.ts`)
+      .join('|')})$).+`
   ),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/import/legacy-import.service.ts').replace(/[/\\]/g, '[/\\\\]')}`
@@ -103,7 +112,7 @@ const workspacePackageEntries = {
   '@baishou/ui/native': path.resolve(workspaceRoot, 'packages/ui/src/native/index.ts'),
   '@baishou/ui': path.resolve(workspaceRoot, 'packages/ui/src/index.ts'),
   '@baishou/shared': path.resolve(workspaceRoot, 'packages/shared/src/index.ts'),
-  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.ts'),
+  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.native.ts'),
   '@baishou/core-mobile': path.resolve(workspaceRoot, 'packages/core-mobile/src/index.ts'),
   '@baishou/database': databaseNativeEntry,
   '@baishou/store': path.resolve(workspaceRoot, 'packages/store/src/index.ts')

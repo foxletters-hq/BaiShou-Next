@@ -82,6 +82,12 @@ export const AgentBehaviorSection: React.FC = () => {
 
   return (
     <View style={styles.section}>
+      <Text style={[styles.heading, { color: colors.textPrimary }]}>
+        {t('settings.agent_behavior', 'Agent 行为')}
+      </Text>
+      <Text style={[styles.headingHint, { color: colors.textTertiary }]}>
+        {t('settings.agent_behavior_desc', '配置全局 Agent 上下文、压缩阈值与人格设定')}
+      </Text>
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.context_window_size')}
@@ -204,7 +210,18 @@ export const AgentBehaviorSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
+    marginTop: 20,
     marginBottom: 24
+  },
+  heading: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4
+  },
+  headingHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12
   },
   card: {
     borderRadius: 12,

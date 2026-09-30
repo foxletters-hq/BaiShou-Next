@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { TouchableOpacity, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'expo-router'
 import {
   shouldShowPendingEmbed,
   shouldShowPendingExtract,
@@ -14,49 +15,55 @@ export function DiaryPendingStatusBar(props: {
   ragConfigured: boolean
   pendingGraphCount: number
   pendingEmbedCount: number
-  pendingEmbedParts: PendingEmbedCounts
+  pendingEmbedParts?: PendingEmbedCounts
+  onPress?: () => void
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const {
+  const router = useRouter()
+  const { graphConfigured, ragConfigured, pendingGraphCount, pendingEmbedCount, onPress } = props
+
+  const showExtract = shouldShowPendingExtract({
     graphConfigured,
+    count: pendingGraphCount
+  })
+  const showEmbed = shouldShowPendingEmbed({
     ragConfigured,
-    pendingGraphCount,
-    pendingEmbedCount,
-    pendingEmbedParts
-  } = props
+    count: pendingEmbedCount
+  })
+
+  if (!showExtract && !showEmbed) {
+    return null
+  }
+
+  const totalPending = (showExtract ? pendingGraphCount : 0) + (showEmbed ? pendingEmbedCount : 0)
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress()
+      return
+    }
+    router.push({ pathname: '/memory', params: { tab: 'vectors' } })
+  }
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={t('diary.status_pending_organize', '待整理：{{count}} 项', {
+        count: totalPending
+      })}
       style={[
         styles.statusBar,
         { borderTopColor: colors.borderMuted, backgroundColor: colors.bgApp }
       ]}
     >
-      {shouldShowPendingExtract({
-        graphConfigured,
-        count: pendingGraphCount
-      }) ? (
-        <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
-          {t('diary.status_pending_extract', '待抽取：{{count}}个', {
-            count: pendingGraphCount
-          })}
-        </Text>
-      ) : null}
-      {shouldShowPendingEmbed({ ragConfigured, count: pendingEmbedCount }) ? (
-        <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
-          {t('diary.status_pending_embed', '待嵌入：{{count}}个', {
-            count: pendingEmbedCount
-          })}
-          {`（${t('memory.pending_embed_part_diaries', '日记 {{count}} 篇', {
-            count: pendingEmbedParts.diaries
-          })} · ${t('memory.pending_embed_part_memories', '伙伴记忆 {{count}} 条', {
-            count: pendingEmbedParts.memories
-          })} · ${t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
-            count: pendingEmbedParts.graphNodes
-          })}）`}
-        </Text>
-      ) : null}
-    </View>
+      <Text style={[styles.statusItem, { color: colors.textSecondary }]} numberOfLines={1}>
+        {t('diary.status_pending_organize', '待整理：{{count}} 项', {
+          count: totalPending
+        })}
+      </Text>
+    </TouchableOpacity>
   )
 }

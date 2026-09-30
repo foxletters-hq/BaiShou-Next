@@ -50,12 +50,25 @@ export function SegmentedControl<T extends string>({
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      style={[styles.track, { backgroundColor: colors.bgSurfaceNormal }]}
+      style={[
+        styles.track,
+        {
+          backgroundColor: colors.bgSurfaceNormal,
+          borderColor: colors.borderControl
+        }
+      ]}
       onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
     >
       {thumbWidth > 0 ? (
         <Animated.View
-          style={[styles.thumb, { backgroundColor: colors.bgSurface }, indicatorStyle]}
+          style={[
+            styles.thumb,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle
+            },
+            indicatorStyle
+          ]}
         />
       ) : null}
       {options.map((option) => {
@@ -89,7 +102,8 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     alignSelf: 'stretch',
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
     padding: TRACK_PADDING,
     overflow: 'hidden'
   },
@@ -98,7 +112,8 @@ const styles = StyleSheet.create({
     top: TRACK_PADDING,
     bottom: TRACK_PADDING,
     left: TRACK_PADDING,
-    borderRadius: 8
+    borderRadius: 7,
+    borderWidth: StyleSheet.hairlineWidth
   },
   item: {
     flex: 1,

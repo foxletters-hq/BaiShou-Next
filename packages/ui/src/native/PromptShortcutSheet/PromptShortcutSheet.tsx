@@ -11,6 +11,11 @@ import {
   TextInput,
   type LayoutChangeEvent
 } from 'react-native'
+import DraggableFlatList, {
+  ScaleDecorator,
+  type RenderItemParams
+} from 'react-native-draggable-flatlist'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
@@ -214,29 +219,61 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     toast
   ])
 
-  const handleMoveItem = useCallback(
-    (index: number, direction: -1 | 1) => {
+  const handleDragEnd = useCallback(
+    ({ data }: { data: PromptShortcut[] }) => {
       if (!onReorder || isSearchActive) return
-      const targetIndex = index + direction
-      if (targetIndex < 0 || targetIndex >= paginatedShortcuts.length) return
-
-      const pageItems = paginatedShortcuts.slice()
-      const [moved] = pageItems.splice(index, 1)
-      pageItems.splice(targetIndex, 0, moved)
-      const next = mergePageReorder(shortcuts, pageStartIndex, pageSize, pageItems)
+      const next = mergePageReorder(shortcuts, pageStartIndex, pageSize, data)
       void onReorder(next).catch((error) => {
         console.warn('[PromptShortcutSheet] reorder failed', error)
         toast.showError(t('common.errors.save_failed', '保存失败'))
       })
     },
-    [isSearchActive, onReorder, pageSize, pageStartIndex, paginatedShortcuts, shortcuts, t, toast]
+    [isSearchActive, onReorder, pageSize, pageStartIndex, shortcuts, t, toast]
+  )
+
+  const renderShortcutRow = useCallback(
+    (item: PromptShortcut, drag?: () => void, isDragging?: boolean) => (
+      <PromptShortcutRow
+        item={item}
+        canManage={canManage}
+        canDrag={canDrag && Boolean(onReorder)}
+        isDragging={isDragging}
+        colors={colors}
+        defaultShortcutLabels={defaultShortcutLabels}
+        onSelect={(shortcut) => {
+          onSelect(shortcut)
+          handleClose()
+        }}
+        onEdit={handleEdit}
+        onDelete={(id) => void handleDeletePress(id)}
+        onDrag={drag}
+      />
+    ),
+    [
+      canDrag,
+      canManage,
+      colors,
+      defaultShortcutLabels,
+      handleClose,
+      handleDeletePress,
+      handleEdit,
+      onReorder,
+      onSelect
+    ]
+  )
+
+  const renderDraggableItem = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<PromptShortcut>) => (
+      <ScaleDecorator>{renderShortcutRow(item, drag, isActive)}</ScaleDecorator>
+    ),
+    [renderShortcutRow]
   )
 
   if (!visible) return null
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={styles.gestureRoot}>
+      <GestureHandlerRootView style={styles.gestureRoot}>
         <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <Pressable
             style={StyleSheet.absoluteFill}
@@ -348,7 +385,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
                   {canManage && canDrag ? (
                     <Text style={[styles.dragHint, { color: colors.textTertiary }]}>
-                      {t('shortcut.drag_sort_hint', '长按左侧把手拖动排序')}
+                      {t('shortcut.drag_sort_hint', '按住左侧把手拖动排序')}
                     </Text>
                   ) : null}
 
@@ -371,31 +408,28 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           </Pressable>
                         ) : null}
                       </View>
+                    ) : canDrag && onReorder ? (
+                      <DraggableFlatList
+                        style={listAreaHeight != null ? { height: listAreaHeight } : styles.list}
+                        containerStyle={
+                          listAreaHeight != null ? { height: listAreaHeight } : styles.list
+                        }
+                        contentContainerStyle={styles.listContent}
+                        data={paginatedShortcuts}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderDraggableItem}
+                        onDragEnd={handleDragEnd}
+                        activationDistance={12}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                      />
                     ) : (
                       <FlatList
                         style={listAreaHeight != null ? { height: listAreaHeight } : styles.list}
                         contentContainerStyle={styles.listContent}
                         data={paginatedShortcuts}
                         keyExtractor={(item) => item.id}
-                        renderItem={({ item, index }) => (
-                          <PromptShortcutRow
-                            item={item}
-                            index={index}
-                            pageLength={paginatedShortcuts.length}
-                            canManage={canManage}
-                            canDrag={canDrag}
-                            colors={colors}
-                            defaultShortcutLabels={defaultShortcutLabels}
-                            onSelect={(shortcut) => {
-                              onSelect(shortcut)
-                              handleClose()
-                            }}
-                            onEdit={handleEdit}
-                            onDelete={(id) => void handleDeletePress(id)}
-                            onMove={handleMoveItem}
-                            onReorder={onReorder}
-                          />
-                        )}
+                        renderItem={({ item }) => renderShortcutRow(item)}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                       />
@@ -453,7 +487,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             </View>
           </SafeAreaView>
         </View>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   )
 }

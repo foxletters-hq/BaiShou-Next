@@ -167,7 +167,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
           style={[
             styles.segmented,
             compact && styles.segmentedCompact,
-            { backgroundColor: colors.bgApp }
+            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
           ]}
         >
           {(['semantic', 'text'] as const).map((mode) => {
@@ -180,12 +180,8 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
                   styles.segmentBtn,
                   compact && styles.segmentBtnCompact,
                   active && {
-                    backgroundColor: colors.primary,
-                    shadowColor: '#0ea5e9',
-                    shadowOpacity: 0.25,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 2 },
-                    elevation: 2
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle
                   }
                 ]}
                 onPress={() => handleModeChange(mode)}
@@ -195,8 +191,8 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
                     styles.segmentText,
                     compact && styles.segmentTextCompact,
                     {
-                      color: active ? colors.textOnPrimary : colors.textSecondary,
-                      fontWeight: active ? '600' : '400'
+                      color: active ? colors.primary : colors.textSecondary,
+                      fontWeight: active ? '600' : '500'
                     }
                   ]}
                   numberOfLines={1}
@@ -322,9 +318,10 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: 'row',
     flexShrink: 0,
-    padding: 4,
-    borderRadius: 8,
-    gap: 8
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 0
   },
   segmentedCompact: {
     padding: 3,
@@ -334,9 +331,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center'
   },
   segmentBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 6
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'transparent'
   },
   segmentBtnCompact: {
     paddingHorizontal: 10,

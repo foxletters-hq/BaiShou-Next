@@ -16,7 +16,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { Plus, Settings } from 'lucide-react-native'
+import { ChevronRight, Plus, Settings } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -236,7 +236,13 @@ function AgentDrawerComponent({
             ]}
           >
             <TouchableOpacity
-              style={[styles.currentCard, { backgroundColor: colors.bgSurfaceHighest }]}
+              style={[
+                styles.currentCard,
+                {
+                  backgroundColor: colors.bgSurfaceRaised,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
               onPress={() => {
                 onShowAssistantPicker()
                 onClose()
@@ -245,7 +251,7 @@ function AgentDrawerComponent({
             >
               {currentAssistant ? (
                 <>
-                  <DrawerAssistantAvatar assistant={currentAssistant} size={36} />
+                  <DrawerAssistantAvatar assistant={currentAssistant} size={38} />
                   <View style={styles.currentMeta}>
                     <View style={styles.currentNameRow}>
                       <Text
@@ -265,6 +271,7 @@ function AgentDrawerComponent({
                       </Text>
                     ) : null}
                   </View>
+                  <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
                 </>
               ) : (
                 <>
@@ -401,8 +408,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 10,
     padding: 12,
-    borderRadius: 12,
-    gap: 10
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2
   },
   currentMeta: {
     flex: 1

@@ -28,8 +28,21 @@ export const dataSyncScreenStyles = StyleSheet.create({
   statInfo: { flex: 1 },
   statLabel: { fontSize: 12, marginBottom: 3 },
   statValue: { fontSize: 17, fontWeight: '600' },
-  backupTabBar: { flexDirection: 'row', borderRadius: 10, padding: 4, marginBottom: 12 },
-  backupTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  backupTabBar: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+    marginBottom: 12
+  },
+  backupTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'transparent'
+  },
   headerTitleRow: { marginBottom: 10 },
   headerTitleBlock: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   headerTitleLabel: { fontSize: 16, fontWeight: '600' },
