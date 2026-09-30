@@ -102,7 +102,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                   <AgentThinkSection
                     content={cleanReasoning}
                     isLoading={isReasoning || isThinkStreaming}
-                    isMarkdownStreaming={false}
+                    isMarkdownStreaming={isThinkStreaming || isReasoning}
                   />
                 </View>
               )}

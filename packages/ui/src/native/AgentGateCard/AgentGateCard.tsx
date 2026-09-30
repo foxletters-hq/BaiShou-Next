@@ -57,7 +57,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   onQueueNext
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const { height } = useWindowDimensions()
   const [showFeedback, setShowFeedback] = useState(false)
@@ -169,7 +169,10 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           styles.overlay,
           {
             backgroundColor: colors.bgOverlay,
-            paddingBottom: keyboardHeight > 0 ? keyboardHeight + 12 : 16 + insets.bottom
+            paddingBottom:
+              keyboardHeight > 0
+                ? keyboardHeight + tokens.spacing.sm
+                : tokens.spacing.xl + tokens.spacing.md + insets.bottom
           }
         ]}
       >

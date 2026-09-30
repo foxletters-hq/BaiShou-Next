@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
+import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import type { AgentGateQuestion } from '@baishou/shared'
+import { companionAskQuestionAnswered, type AgentGateQuestion } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import type { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
+import { agentGateCardStyles as cardStyles } from './agent-gate-card.styles'
 
 function optionMark(index: number): string {
   return index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
@@ -52,6 +54,17 @@ export function CompanionAskFields({
   const safeIndex = Math.min(index, Math.max(questions.length - 1, 0))
   const visible = paged ? questions.slice(safeIndex, safeIndex + 1) : questions
   const onLast = safeIndex >= questions.length - 1
+  const currentQuestion = questions[safeIndex]
+  const currentAnswered = Boolean(
+    currentQuestion &&
+    companionAskQuestionAnswered(
+      currentQuestion,
+      drafts.drafts.find((item) => item.questionId === currentQuestion.id)
+    )
+  )
+  const canAdvance = onLast ? drafts.complete : currentAnswered
+  const pagerDisabledPrev = safeIndex <= 0 || isReplying
+  const pagerDisabledNext = onLast || isReplying
   const footer =
     paged && onSkip && onSubmit ? (
       <View style={{ gap: 8 }}>
@@ -59,34 +72,48 @@ export function CompanionAskFields({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'center',
             gap: 8
           }}
         >
-          <Button
-            variant="outline"
-            disabled={safeIndex <= 0 || isReplying}
+          <Pressable
+            disabled={pagerDisabledPrev}
             onPress={() => setIndex(Math.max(0, safeIndex - 1))}
+            accessibilityRole="button"
             accessibilityLabel={t('agent_gate.queue_prev', '上一题')}
-            style={pagerButtonStyle}
+            style={[
+              cardStyles.queueNavBtn,
+              {
+                borderColor: colors.borderControl,
+                backgroundColor: colors.bgSurface,
+                opacity: pagerDisabledPrev ? 0.4 : 1
+              }
+            ]}
           >
-            {t('agent_gate.queue_prev', '上一题')}
-          </Button>
+            <ChevronLeft size={16} color={colors.textSecondary} strokeWidth={2} />
+          </Pressable>
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
             {t('agent_gate.ask_progress', '{{current}} / {{total}}', {
               current: safeIndex + 1,
               total: questions.length
             })}
           </Text>
-          <Button
-            variant="outline"
-            disabled={onLast || isReplying}
+          <Pressable
+            disabled={pagerDisabledNext}
             onPress={() => setIndex(Math.min(questions.length - 1, safeIndex + 1))}
+            accessibilityRole="button"
             accessibilityLabel={t('agent_gate.queue_next', '下一题')}
-            style={pagerButtonStyle}
+            style={[
+              cardStyles.queueNavBtn,
+              {
+                borderColor: colors.borderControl,
+                backgroundColor: colors.bgSurface,
+                opacity: pagerDisabledNext ? 0.4 : 1
+              }
+            ]}
           >
-            {t('agent_gate.queue_next', '下一题')}
-          </Button>
+            <ChevronRight size={16} color={colors.textSecondary} strokeWidth={2} />
+          </Pressable>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Button variant="outline" disabled={isReplying} onPress={onSkip} style={pagerButtonStyle}>
@@ -94,7 +121,7 @@ export function CompanionAskFields({
           </Button>
           <Button
             variant="outline"
-            disabled={isReplying}
+            disabled={isReplying || !canAdvance}
             onPress={() => {
               if (!onLast) {
                 setIndex(Math.min(questions.length - 1, safeIndex + 1))

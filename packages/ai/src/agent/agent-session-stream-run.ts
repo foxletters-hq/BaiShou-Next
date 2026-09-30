@@ -30,6 +30,7 @@ import {
   startCompanionAskFromStreamInput,
   waitCompanionAskInflight
 } from '../tools/companion-ask-stream.util'
+import { extractLeakedCompanionAsk } from '../tools/leaked-companion-ask.util'
 import {
   AgentSessionRuntimeRecorder,
   bridgeStreamChunkToRuntimeEvents,
@@ -147,6 +148,20 @@ export async function runAgentSessionStream(input: {
   try {
     const adapter = new StreamChunkAdapter(accumulator, {
       onChunk: (chunk) => {
+        if (chunk.type === ChunkType.TEXT_DELTA) {
+          const leaked = extractLeakedCompanionAsk(accumulator.text)
+          if (leaked) {
+            startCompanionAskFromStreamInput(
+              enabledTools,
+              {
+                toolName: 'companion_ask',
+                toolCallId: 'leaked-companion-ask',
+                input: leaked
+              },
+              sessionId
+            )
+          }
+        }
         if (chunk.type === ChunkType.TOOL_CALL) {
           turnToolCalls += 1
           doomCallGate.onToolCall(chunk)
@@ -209,6 +224,18 @@ export async function runAgentSessionStream(input: {
           const consumed = await adapter.consumeStream(turnStream, {
             onFirstOutput: markFirstOutput
           })
+          const leaked = extractLeakedCompanionAsk(accumulator.text)
+          if (leaked) {
+            startCompanionAskFromStreamInput(
+              enabledTools,
+              {
+                toolName: 'companion_ask',
+                toolCallId: 'leaked-companion-ask',
+                input: leaked
+              },
+              sessionId
+            )
+          }
           // HTTP 可能在 SDK 调用 execute 之前就结束；等用户答完再收尾，避免确认门被拆掉
           await waitCompanionAskInflight(sessionId)
           return { turnStream, consumed }

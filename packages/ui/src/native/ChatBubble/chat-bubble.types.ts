@@ -50,8 +50,9 @@ export interface ChatBubbleProps {
     content?: string
     reasoning?: string
     isTextStreaming?: boolean
-    /** 思考进行中：仅控制标题左侧转圈，不触发 Markdown 渐显 */
+    /** 思考进行中：仅控制标题左侧转圈 */
     isThinkLoading?: boolean
+    /** 思考正文走 Streamdown 渐显，对齐桌面 Think isStreaming */
     isThinkStreaming?: boolean
     /** 进行中的工具展示名（已本地化） */
     activeToolName?: string | null

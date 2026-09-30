@@ -232,7 +232,7 @@ export function useAgentStreamingPresentation(deps: {
       reasoning: streamingReasoning,
       isTextStreaming: bubbleTextStreaming,
       isThinkLoading: streamingThinkLoading,
-      isThinkStreaming: false,
+      isThinkStreaming: markdownPresentationActive && Boolean(streamingReasoning.trim()),
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools,
       attachments: pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined,
@@ -243,6 +243,7 @@ export function useAgentStreamingPresentation(deps: {
       streamingReasoning,
       bubbleTextStreaming,
       streamingThinkLoading,
+      markdownPresentationActive,
       activeToolDisplayName,
       streamingCompletedTools,
       pendingEmojiAttachments,
@@ -258,7 +259,7 @@ export function useAgentStreamingPresentation(deps: {
           text=""
           reasoning=""
           isReasoning={streamingThinkLoading}
-          isThinkStreaming={false}
+          isThinkStreaming={markdownPresentationActive && Boolean(streamingReasoning.trim())}
           isTextStreaming={bubbleTextStreaming}
           activeToolName={activeToolDisplayName}
           completedTools={streamingCompletedTools}
@@ -271,6 +272,8 @@ export function useAgentStreamingPresentation(deps: {
     ),
     [
       bubbleTextStreaming,
+      markdownPresentationActive,
+      streamingReasoning,
       streamingThinkLoading,
       activeToolDisplayName,
       streamingCompletedTools,

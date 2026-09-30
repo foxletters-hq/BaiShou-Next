@@ -70,17 +70,26 @@ export function resolveCompanionAskQuestions(
   ]
 }
 
+export function companionAskQuestionAnswered(
+  question: AgentGateQuestion,
+  draft: CompanionAskDraftAnswer | undefined
+): boolean {
+  if (!draft) return false
+  if (draft.selectedOptionId) return true
+  return Boolean(question.allowCustomInput && draft.message?.trim())
+}
+
 export function companionAskAnswersComplete(
   questions: AgentGateQuestion[],
   drafts: CompanionAskDraftAnswer[]
 ): boolean {
   if (questions.length === 0) return false
-  return questions.every((question) => {
-    const draft = drafts.find((item) => item.questionId === question.id)
-    if (!draft) return false
-    if (draft.selectedOptionId) return true
-    return Boolean(question.allowCustomInput && draft.message?.trim())
-  })
+  return questions.every((question) =>
+    companionAskQuestionAnswered(
+      question,
+      drafts.find((item) => item.questionId === question.id)
+    )
+  )
 }
 
 export function buildCompanionAskQuestionAnswers(

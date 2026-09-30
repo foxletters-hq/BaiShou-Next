@@ -11,6 +11,9 @@ const ORPHAN_REDACTED_THINKING_TAG = /<\/?redacted_thinking>/gi
 const ORPHAN_THINK_TAG = /<\/?think>/gi
 const TAG_CONVERSATION_TIME_BLOCK = /<conversation_time>\s*[\s\S]*?<\/conversation_time>\s*/gi
 const ORPHAN_CONVERSATION_TIME_TAG = /<\/?conversation_time>/gi
+const CLOSED_FUNCTION_CALLS_BLOCK = /<function_calls>[\s\S]*?<\/function_calls>/gi
+const CLOSED_INVOKE_BLOCK = /<invoke\s+name=["'][^"']+["'][^>]*>[\s\S]*?<\/invoke>/gi
+const UNCLOSED_TOOL_MARKUP = /<function_calls>|<invoke\s+name=/i
 
 function stripOrphanMetadataTags(text: string): string {
   return text
@@ -24,6 +27,14 @@ function stripOrphanMetadataTags(text: string): string {
     .replace(ORPHAN_THINKING_TAG, '')
     .replace(ORPHAN_REDACTED_THINKING_TAG, '')
     .replace(ORPHAN_THINK_TAG, '')
+}
+
+/** 模型把工具调用写成 XML 正文时，展示和落盘都要拿掉，避免半截标签卡在气泡里。 */
+function stripLeakedToolCallMarkup(text: string): string {
+  let rest = text.replace(CLOSED_FUNCTION_CALLS_BLOCK, '').replace(CLOSED_INVOKE_BLOCK, '')
+  const unclosed = rest.search(UNCLOSED_TOOL_MARKUP)
+  if (unclosed >= 0) rest = rest.slice(0, unclosed)
+  return rest.replace(/\n{3,}/g, '\n\n')
 }
 
 function unwrapMessageContentBlocks(text: string): string {
@@ -52,6 +63,7 @@ function unwrapMessageContentBlocks(text: string): string {
  */
 export function sanitizeAssistantGeneratedText(text: string): string {
   let rest = unwrapMessageContentBlocks(text ?? '')
+  rest = stripLeakedToolCallMarkup(rest)
   rest = stripOrphanMetadataTags(rest)
 
   let changed = true
