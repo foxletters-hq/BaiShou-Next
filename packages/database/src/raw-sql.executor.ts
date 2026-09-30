@@ -23,6 +23,12 @@ export function isRawSqlReadStatement(statement: string): boolean {
   return false
 }
 
+/** ATTACH/DETACH 必须走 exec，不能走 run；run 会在已加载扩展的连接上闪退。 */
+export function isRawSqlExecStatement(statement: string): boolean {
+  const trimmed = statement.trim().toUpperCase()
+  return trimmed.startsWith('ATTACH') || trimmed.startsWith('DETACH')
+}
+
 /**
  * 在 LibSQL Client 与 Better-SQLite3 Database 上执行原始 SQL。
  * Desktop 使用 better-sqlite3；移动端/部分测试使用 libsql。
@@ -38,9 +44,14 @@ export async function executeRawSql(
 
   const rawClient = client?.session?.client ?? client
   const isReadQuery = isRawSqlReadStatement(statement)
+  const isExecOnly = isRawSqlExecStatement(statement)
 
   // Expo SQLite (React Native)
   if (typeof rawClient.getAllAsync === 'function' && typeof rawClient.runAsync === 'function') {
+    if (isExecOnly && typeof rawClient.execAsync === 'function') {
+      await rawClient.execAsync(statement)
+      return { rows: [] }
+    }
     if (args.length > 0) {
       if (isReadQuery) {
         const rows = await rawClient.getAllAsync(statement, args)

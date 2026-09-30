@@ -245,5 +245,23 @@ export class ExpoKnowledgeConnectionManager {
   }
 }
 
+const EXPO_KNOWLEDGE_SINGLETON_KEY = '__baishouExpoKnowledgeConnectionManager'
+
+type ExpoKnowledgeGlobal = typeof globalThis & {
+  [EXPO_KNOWLEDGE_SINGLETON_KEY]?: ExpoKnowledgeConnectionManager
+}
+
+/**
+ * Metro 有时会把这份模块打进两份。启动日志里的连接和知识库页面拿到的不是同一个对象，
+ * 页面就会报「知识库尚未连接」。挂到 globalThis 上，两份模块共用同一次连接。
+ */
+function getExpoKnowledgeConnectionManager(): ExpoKnowledgeConnectionManager {
+  const g = globalThis as ExpoKnowledgeGlobal
+  if (!g[EXPO_KNOWLEDGE_SINGLETON_KEY]) {
+    g[EXPO_KNOWLEDGE_SINGLETON_KEY] = new ExpoKnowledgeConnectionManager()
+  }
+  return g[EXPO_KNOWLEDGE_SINGLETON_KEY]
+}
+
 /** 全局知识库连接单例（移动端） */
-export const expoKnowledgeConnectionManager = new ExpoKnowledgeConnectionManager()
+export const expoKnowledgeConnectionManager = getExpoKnowledgeConnectionManager()

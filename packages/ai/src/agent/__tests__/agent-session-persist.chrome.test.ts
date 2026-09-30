@@ -19,5 +19,7 @@ describe('agent session persist chrome', () => {
     expect(native).toContain('shouldWarnLimitedPersist')
     expect(native).toContain('shouldReadStreamUsageAfterInterrupt')
     expect(native).toContain('userAborted')
+    expect(native).toContain('existingAssistantMessageId')
+    expect(native).toContain('replaceMessageParts')
   })
 })

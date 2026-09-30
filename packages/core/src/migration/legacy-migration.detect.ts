@@ -4,6 +4,7 @@ import { isFilesystemRootPath } from '../storage/workspace-root.util'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
 import {
   LEGACY_MIGRATION_STATUS_FILE,
+  LEGACY_SQLITE_SCAN_SKIP_DIRS,
   MIN_AGENT_SQLITE_BYTES_FOR_IMPORT
 } from './legacy-migration.constants'
 import { normalizeSqliteAttachPath } from './legacy-migration.status'
@@ -102,6 +103,7 @@ export async function scanLegacyDatabases(
         continue
       }
       if (isDirectory) {
+        if (LEGACY_SQLITE_SCAN_SKIP_DIRS.has(name)) continue
         await scan(fullPath)
       }
     }

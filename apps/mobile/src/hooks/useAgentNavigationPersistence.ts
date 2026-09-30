@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAgentNavigationStore } from '@baishou/store'
-import { deriveLegacyVaultId, sessionBelongsToActiveVaultId } from '@baishou/shared'
 import type { MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { loadMobileSessionInActiveVault } from '../utils/mobile-session-vault.util'
 import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
@@ -19,6 +19,10 @@ type Services = {
   pathService: { getActiveVaultNameForContext: () => Promise<string> }
   sessionManager: {
     getSessionById: (sessionId: string) => Promise<SessionRow | null>
+    notifySessionMutated?: (sessionId: string) => void
+  }
+  sessionRepo?: {
+    updateSessionVaultId?: (sessionId: string, vaultId: string) => Promise<void>
   }
   vaultService?: { getActiveVault?: () => { id?: string; name?: string } | null }
 }
@@ -42,12 +46,13 @@ type UseAgentNavigationPersistenceOptions = {
 const RECONCILE_THROTTLE_MS = 2000
 
 async function lookupSession(services: Services, sessionId: string): Promise<SessionRow | null> {
-  const session = await services.sessionManager.getSessionById(sessionId)
+  const session = await loadMobileSessionInActiveVault(services, sessionId)
   if (!session) return null
-  const active = services.vaultService?.getActiveVault?.()
-  const activeVaultId = active?.id || deriveLegacyVaultId(active?.name || 'Personal')
-  if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) return null
-  return { id: session.id, assistantId: session.assistantId ?? null, vaultId: session.vaultId }
+  return {
+    id: sessionId,
+    assistantId: (session as SessionRow).assistantId ?? null,
+    vaultId: session.vaultId
+  }
 }
 
 export function useAgentNavigationPersistence({

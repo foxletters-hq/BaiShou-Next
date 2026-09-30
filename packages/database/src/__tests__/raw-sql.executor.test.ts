@@ -19,6 +19,34 @@ describe('isRawSqlReadStatement', () => {
   })
 })
 
+describe('isRawSqlExecStatement', () => {
+  it('should recognize ATTACH and DETACH as exec-only statements', async () => {
+    const { isRawSqlExecStatement } = await import('../raw-sql.executor')
+    expect(isRawSqlExecStatement("ATTACH DATABASE '/tmp/a.db' AS legacy_scan_0")).toBe(true)
+    expect(isRawSqlExecStatement('DETACH DATABASE legacy_scan_0')).toBe(true)
+    expect(isRawSqlExecStatement('SELECT 1')).toBe(false)
+  })
+})
+
+describe('executeRawSql (expo-sqlite)', () => {
+  it('should use execAsync for ATTACH instead of runAsync', async () => {
+    const execAsync = async () => undefined
+    const calls: string[] = []
+    const client = {
+      execAsync: async (sql: string) => {
+        calls.push(sql)
+        return execAsync()
+      },
+      runAsync: async () => {
+        throw new Error('runAsync should not be used for ATTACH')
+      },
+      getAllAsync: async () => []
+    }
+    await executeRawSql(client, "ATTACH DATABASE '/tmp/a.db' AS legacy_scan_0")
+    expect(calls).toEqual(["ATTACH DATABASE '/tmp/a.db' AS legacy_scan_0"])
+  })
+})
+
 describe('executeRawSql (libsql client)', () => {
   it('runs PRAGMA table_info and parameterized UPDATE', async () => {
     const client = createClient({ url: ':memory:' })

@@ -31,6 +31,19 @@ export const LEGACY_AGENT_MERGE_TABLES = [
 
 export const LEGACY_BAISHOUL_MERGE_TABLES = ['diaries', 'summaries'] as const
 
+/** 扫描旧版 sqlite 时跳过的内容目录，避免把 Journals 整树 stat 一遍导致移动端闪退 */
+export const LEGACY_SQLITE_SCAN_SKIP_DIRS = new Set([
+  'Journals',
+  'Sessions',
+  'Archives',
+  'snapshots',
+  'AI',
+  'attachments',
+  'Memory',
+  'Notebooks',
+  'node_modules'
+])
+
 /** 低于此体积的 agent.sqlite 视为空壳工作区 */
 export const MIN_AGENT_SQLITE_BYTES_FOR_IMPORT = 49_152
 

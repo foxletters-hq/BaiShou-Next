@@ -36,6 +36,12 @@ export async function stageLegacySqliteForAttach(
   const stagedPath = path.join(stagingDir, `legacy_${Math.abs(hash)}_${safeName}`)
 
   await fileSystem.copyFile(rawSource, stagedPath)
+  for (const suffix of ['-wal', '-shm'] as const) {
+    const sidecar = `${rawSource}${suffix}`
+    if (await fileSystem.exists(sidecar)) {
+      await fileSystem.copyFile(sidecar, `${stagedPath}${suffix}`)
+    }
+  }
   return normalizeSqliteAttachPath(stagedPath)
 }
 
