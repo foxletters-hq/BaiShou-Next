@@ -14,6 +14,7 @@ import {
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { MobileStoragePathService } from './path.service'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
 
 export function createMobileKnowledgeGraphExtractFn() {
@@ -28,7 +29,11 @@ export function createMobileKnowledgeGraphExtractFn() {
     force?: boolean
   }): Promise<void> => {
     if (!expoKnowledgeConnectionManager.isConnected()) {
-      throw new Error('graph-extract-not-configured')
+      try {
+        await ensureMobileKnowledgeConnected()
+      } catch {
+        throw new Error('graph-extract-not-configured')
+      }
     }
     const runtime = agentDbRuntimeRef.current
     if (!runtime?.settingsManager || !runtime.pathService) {

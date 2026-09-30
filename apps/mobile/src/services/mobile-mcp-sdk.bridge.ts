@@ -1,11 +1,7 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import {
-  createBaishouMcpServer,
-  listBaishouMcpToolsForUi,
-  type ToolRegistry,
-  type ToolContext
-} from '@baishou/ai'
+import { createBaishouMcpServer } from '@baishou/ai/mcp/baishou-mcp-server'
+import { listBaishouMcpToolsForUi, type ToolRegistry, type ToolContext } from '@baishou/ai'
 import { logger } from '@baishou/shared'
 import * as ExpoCrypto from 'expo-crypto'
 import * as BaishouServer from 'expo-baishou-server'

@@ -4,7 +4,6 @@ import {
   shouldDeferKnowledgeImportOrganize,
   type KnowledgeImportProcessMode
 } from '@baishou/shared'
-import { expoKnowledgeConnectionManager } from '@baishou/database/expo'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import {
   ensureMobileRawDataRuntime,
@@ -13,7 +12,8 @@ import {
 } from './mobile-raw-data-source.runtime'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import {
-  requireMobileKnowledgeRepo as requireRepo,
+  ensureMobileKnowledgeConnected,
+  ensureMobileKnowledgeRepo as requireRepo,
   resolveMobileActiveVaultId
 } from './mobile-knowledge-repo'
 
@@ -21,11 +21,11 @@ export { resolveMobileActiveVaultId } from './mobile-knowledge-repo'
 export { mobileListMountSummaries } from './mobile-knowledge-mount.service'
 
 export async function mobileListNotebooks() {
-  return requireRepo().listNotebooks({ vaultId: await resolveMobileActiveVaultId() })
+  return (await requireRepo()).listNotebooks({ vaultId: await resolveMobileActiveVaultId() })
 }
 
 export async function mobileListSources(notebookId: string) {
-  return requireRepo().listSources(notebookId)
+  return (await requireRepo()).listSources(notebookId)
 }
 
 export async function mobileDeleteSource(sourceId: string): Promise<void> {
@@ -36,11 +36,11 @@ export async function mobileDeleteSource(sourceId: string): Promise<void> {
 }
 
 export async function mobileGetKnowledgeStats(notebookId?: string) {
-  return requireRepo().getStats(notebookId, await resolveMobileActiveVaultId())
+  return (await requireRepo()).getStats(notebookId, await resolveMobileActiveVaultId())
 }
 
 export async function mobileListNotebookStats() {
-  return requireRepo().listNotebookStats(await resolveMobileActiveVaultId())
+  return (await requireRepo()).listNotebookStats(await resolveMobileActiveVaultId())
 }
 
 export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): Promise<boolean> {
@@ -49,7 +49,9 @@ export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): P
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingModelId) return false
   const ids = parseMountedNotebookIds(notebookIds)
-  const count = await requireRepo().countHeterogeneousEmbeddings(emb.embeddingModelId, {
+  const count = await (
+    await requireRepo()
+  ).countHeterogeneousEmbeddings(emb.embeddingModelId, {
     vaultId: await resolveMobileActiveVaultId(),
     ...(ids.length > 0 ? { notebookIds: ids } : {})
   })
@@ -106,9 +108,7 @@ async function buildMobileIngestService() {
   if (!runtime?.settingsManager || !runtime.pathService) {
     throw new Error('runtime not ready')
   }
-  if (!expoKnowledgeConnectionManager.isConnected()) {
-    throw new Error('knowledge db not connected')
-  }
+  await ensureMobileKnowledgeConnected()
 
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   const fileSystem = createMobileFileSystem()
@@ -119,7 +119,7 @@ async function buildMobileIngestService() {
   const notebookManager = getMobileNotebookRawManager()
   if (!notebookManager) throw new Error('notebook manager unavailable')
 
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const { KnowledgeEmbeddingStorage } = await import('@baishou/ai')
   const { KnowledgeIngestService } = await import('@baishou/core-mobile')
   const storage = new KnowledgeEmbeddingStorage(() => repo)
@@ -168,7 +168,7 @@ async function buildMobileIngestService() {
 export async function mobileGetNotebook(notebookId: string) {
   const id = notebookId.trim()
   if (!id) throw new Error('notebookId required')
-  return requireRepo().getNotebook(id)
+  return (await requireRepo()).getNotebook(id)
 }
 
 export async function mobileCreateNotebook(input: {
@@ -408,7 +408,7 @@ export async function mobileProbeExtractSample(input: {
 }) {
   const sourceId = input.sourceId.trim()
   if (!sourceId) throw new Error('sourceId required')
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const source = await repo.getSource(sourceId)
   if (!source) throw new Error(`source not found: ${sourceId}`)
   const notebookId = String(input.notebookId || '').trim()

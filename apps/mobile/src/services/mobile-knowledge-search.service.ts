@@ -14,7 +14,8 @@ import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { resolveMobileEmbeddingForHydration } from './mobile-raw-data-source.runtime'
 import {
   createKnowledgeSqlExecutor,
-  requireMobileKnowledgeRepo,
+  ensureMobileKnowledgeConnected,
+  ensureMobileKnowledgeRepo,
   resolveMobileActiveVaultId
 } from './mobile-knowledge-repo'
 
@@ -23,13 +24,12 @@ async function hasKnowledgeModelMismatch(notebookIds: string[]): Promise<boolean
   if (!runtime?.settingsManager) return false
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingModelId) return false
-  const count = await requireMobileKnowledgeRepo().countHeterogeneousEmbeddings(
-    emb.embeddingModelId,
-    {
-      vaultId: await resolveMobileActiveVaultId(),
-      notebookIds
-    }
-  )
+  const count = await (
+    await ensureMobileKnowledgeRepo()
+  ).countHeterogeneousEmbeddings(emb.embeddingModelId, {
+    vaultId: await resolveMobileActiveVaultId(),
+    notebookIds
+  })
   return count > 0
 }
 
@@ -55,9 +55,7 @@ export async function mobileSearchKnowledge(opts: {
 > {
   const runtime = agentDbRuntimeRef.current
   if (!runtime?.settingsManager) throw new Error('runtime not ready')
-  if (!expoKnowledgeConnectionManager.isConnected()) {
-    throw new Error('knowledge db not connected')
-  }
+  await ensureMobileKnowledgeConnected()
   const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
   if (notebookIds.length === 0) throw new Error('notebookId required')
   if (await hasKnowledgeModelMismatch(notebookIds)) {
@@ -67,7 +65,7 @@ export async function mobileSearchKnowledge(opts: {
   if (!emb.embeddingProvider || !emb.embeddingModelId) {
     throw new Error(EMBEDDING_NOT_CONFIGURED)
   }
-  const repo = requireMobileKnowledgeRepo()
+  const repo = await ensureMobileKnowledgeRepo()
   const expoDb = expoKnowledgeConnectionManager.getExpoDb()
   const search = new KnowledgeSearchService({
     sql: createKnowledgeSqlExecutor(expoDb),
@@ -101,7 +99,7 @@ export async function mobileListKnowledgeChunks(input: {
 }) {
   const notebookId = input.notebookId.trim()
   if (!notebookId) throw new Error('notebookId required')
-  return requireMobileKnowledgeRepo().listChunksByNotebook({
+  return (await ensureMobileKnowledgeRepo()).listChunksByNotebook({
     notebookId,
     limit: input.limit,
     offset: input.offset,
@@ -116,6 +114,7 @@ export async function mobileSearchNotebookGraphNodes(input: {
 }) {
   const notebookId = input.notebookId.trim()
   if (!notebookId) throw new Error('notebookId required')
+  await ensureMobileKnowledgeConnected()
   const { NotebookGraphRepository } = await import('@baishou/database/expo')
   const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
   return repo.searchNodes({
@@ -129,7 +128,7 @@ export async function mobileSearchNotebookGraphNodes(input: {
 export async function mobileListNotebookGraphJobs(notebookId: string) {
   const id = notebookId.trim()
   if (!id) throw new Error('notebookId required')
-  const repo = requireMobileKnowledgeRepo()
+  const repo = await ensureMobileKnowledgeRepo()
   const { listLiveGraphSourceIds } = await import('@baishou/core-mobile')
   const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
   const live = new Set(listLiveGraphSourceIds())
@@ -155,6 +154,7 @@ export async function mobileListNotebookGraphJobs(notebookId: string) {
 export async function mobileGetNotebookGraphView(notebookId: string, maxNodes = 80) {
   const id = notebookId.trim()
   if (!id) throw new Error('notebookId required')
+  await ensureMobileKnowledgeConnected()
   const { NotebookGraphRepository } = await import('@baishou/database/expo')
   const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
   return repo.getView({
@@ -172,9 +172,10 @@ export async function mobileSearchNotebookGraph(opts: {
 }) {
   const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
   if (notebookIds.length === 0) throw new Error('notebookId required')
+  await ensureMobileKnowledgeConnected()
   const { NotebookGraphRepository } = await import('@baishou/database/expo')
   const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-  const knowledgeRepo = requireMobileKnowledgeRepo()
+  const knowledgeRepo = await ensureMobileKnowledgeRepo()
   const vaultId = await resolveMobileActiveVaultId()
   const notebooks = await knowledgeRepo.listNotebooks({ vaultId })
   const nameById = new Map(notebooks.map((row) => [row.id, row.name]))

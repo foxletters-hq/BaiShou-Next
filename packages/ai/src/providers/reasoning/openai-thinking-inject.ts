@@ -1,5 +1,3 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
-
 /** OpenAI 兼容请求体里注入的思考开关 / 预算 / 强度（fetch 拦截读取） */
 export type OpenAiThinkingBodyInject = {
   enableThinking?: boolean
@@ -20,7 +18,52 @@ export type OpenAiThinkingBodyInject = {
   extraBody?: Record<string, unknown>
 }
 
-const als = new AsyncLocalStorage<OpenAiThinkingBodyInject>()
+type InjectStore = {
+  run<T>(value: OpenAiThinkingBodyInject, fn: () => T): T
+  getStore(): OpenAiThinkingBodyInject | undefined
+}
+
+function createInjectStore(): InjectStore {
+  try {
+    const hooks = require('node:async_hooks') as {
+      AsyncLocalStorage?: new <T>() => {
+        run<R>(value: T, fn: () => R): R
+        getStore(): T | undefined
+      }
+    }
+    if (typeof hooks?.AsyncLocalStorage === 'function') {
+      return new hooks.AsyncLocalStorage<OpenAiThinkingBodyInject>()
+    }
+  } catch {
+    // 移动端没有 node:async_hooks，退回单线程栈
+  }
+
+  let current: OpenAiThinkingBodyInject | undefined
+  return {
+    run(value, fn) {
+      const previous = current
+      current = value
+      try {
+        const result = fn()
+        if (result && typeof (result as unknown as Promise<unknown>).then === 'function') {
+          return (result as unknown as Promise<unknown>).finally(() => {
+            current = previous
+          }) as ReturnType<typeof fn>
+        }
+        current = previous
+        return result
+      } catch (error) {
+        current = previous
+        throw error
+      }
+    },
+    getStore() {
+      return current
+    }
+  }
+}
+
+const als = createInjectStore()
 
 function hasInjectPayload(inject: OpenAiThinkingBodyInject | undefined): boolean {
   if (!inject) return false

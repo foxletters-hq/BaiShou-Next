@@ -14,7 +14,7 @@ import { toFileUri } from './android-external-fs'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { getMobileNotebookRawManager } from './mobile-raw-data-source.runtime'
 import { resolveMobileKnowledgeExtractConfig } from './mobile-knowledge-extract-config'
-import { requireMobileKnowledgeRepo } from './mobile-knowledge-repo'
+import { ensureMobileKnowledgeRepo } from './mobile-knowledge-repo'
 
 export type MobileKnowledgeSourceFilePreview = {
   kind: KnowledgeSourceFileKind
@@ -25,8 +25,8 @@ export type MobileKnowledgeSourceFilePreview = {
   originUrl: string | null
 }
 
-function requireRepo() {
-  return requireMobileKnowledgeRepo()
+async function requireRepo() {
+  return ensureMobileKnowledgeRepo()
 }
 
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -58,7 +58,7 @@ export async function mobileGetSourceFile(input: {
 }): Promise<MobileKnowledgeSourceFilePreview> {
   const sourceId = input.sourceId.trim()
   if (!sourceId) throw new Error('sourceId required')
-  const source = await requireRepo().getSource(sourceId)
+  const source = await (await requireRepo()).getSource(sourceId)
   if (!source) throw new Error(`source not found: ${sourceId}`)
 
   const fileNameFromPath = source.relativePath
@@ -133,7 +133,7 @@ export async function mobileGetExtractedWindows(input: {
 }) {
   const notebookId = input.notebookId.trim()
   if (!notebookId) throw new Error('notebookId required')
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const manager = getMobileNotebookRawManager()
   if (!manager) throw new Error('notebook manager unavailable')
   const items = await loadExtractedKnowledgeWindows({
@@ -153,7 +153,7 @@ export async function mobileProbeExtractHint(input: { absolutePath?: string; sou
   let filePath = String(input.absolutePath || '').trim()
   let fileName = filePath ? filePath.split(/[/\\]/).pop() || '' : ''
   if (!filePath && input?.sourceId) {
-    const source = await requireRepo().getSource(String(input.sourceId))
+    const source = await (await requireRepo()).getSource(String(input.sourceId))
     if (!source?.relativePath) throw new Error('source file not found')
     const manager = getMobileNotebookRawManager()
     if (!manager) throw new Error('notebook manager unavailable')

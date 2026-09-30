@@ -8,7 +8,8 @@
     ".": {
       "react-native": "./src/index.native.ts",
       "default": "./src/index.ts"
-    }
+    },
+    "./mcp/baishou-mcp-server": "./src/mcp/baishou-mcp-server.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

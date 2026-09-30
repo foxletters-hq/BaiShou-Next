@@ -18,6 +18,7 @@ import {
   resolveMobileEmbeddingForHydration
 } from './mobile-raw-data-source.runtime'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
 import {
   emitMobileKnowledgeExtractProgress,
   resolveMobileKnowledgeExtractConfig
@@ -34,7 +35,11 @@ let ingestInFlight: Promise<ConsumeResult> | null = null
 let graphInFlight: Promise<ConsumeResult> | null = null
 
 async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestService | null> {
-  if (!expoKnowledgeConnectionManager.isConnected()) return null
+  try {
+    await ensureMobileKnowledgeConnected()
+  } catch {
+    return null
+  }
 
   const runtime = agentDbRuntimeRef.current
   if (!runtime?.settingsManager || !runtime.pathService) return null
@@ -123,7 +128,9 @@ async function consumeMobileKnowledgeLane(
 
   const stages = lane === 'index' ? [...INDEX_STAGES] : [...GRAPH_STAGES]
   const run = (async () => {
-    if (!expoKnowledgeConnectionManager.isConnected()) {
+    try {
+      await ensureMobileKnowledgeConnected()
+    } catch {
       return { processed: 0, failed: 0, skipped: 'db-not-connected' }
     }
 

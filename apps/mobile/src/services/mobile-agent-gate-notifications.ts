@@ -1,4 +1,5 @@
 import { AppState } from 'react-native'
+import { requireOptionalNativeModule } from 'expo-modules-core'
 import {
   AGENT_GATE_NOTIFICATION_TITLE,
   buildAgentGateNotificationBody,
@@ -59,8 +60,19 @@ async function markNotificationResponseHandled(key: string): Promise<void> {
   }
 }
 
+function hasNotificationsNativeModule(): boolean {
+  try {
+    return Boolean(requireOptionalNativeModule('ExpoPushTokenManager'))
+  } catch {
+    return false
+  }
+}
+
 async function loadNotifications(): Promise<NotificationsModule | null> {
   if (Notifications) return Notifications
+  if (!hasNotificationsNativeModule()) {
+    return null
+  }
   try {
     Notifications = await import('expo-notifications')
     return Notifications

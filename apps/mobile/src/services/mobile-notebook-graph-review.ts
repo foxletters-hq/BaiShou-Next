@@ -17,6 +17,7 @@ import {
   notebookGraphSourceIdFromSourceRef
 } from '@baishou/core-mobile'
 import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
+import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { resolveMobileEmbeddingForHydration } from './mobile-raw-data-source.runtime'
@@ -48,10 +49,8 @@ function parseAliases(raw: string | string[] | undefined): string[] {
   return []
 }
 
-function requireRepo(): NotebookGraphRepository {
-  if (!expoKnowledgeConnectionManager.isConnected()) {
-    throw new Error('knowledge db not connected')
-  }
+async function requireRepo(): Promise<NotebookGraphRepository> {
+  await ensureMobileKnowledgeConnected()
   return new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
 }
 
@@ -70,7 +69,7 @@ async function resolveVaultName(vaultId: string): Promise<string> {
 async function syncNotebookGraphIndex(notebookId: string, vaultId: string): Promise<void> {
   const runtime = agentDbRuntimeRef.current
   const raw = createRaw()
-  const repo = requireRepo()
+  const repo = await requireRepo()
   let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
   let modelId: string | undefined
   if (runtime?.settingsManager) {
@@ -102,7 +101,7 @@ async function writeNodeReview(
   reviewStatus: 'approved' | 'rejected',
   vaultId: string
 ): Promise<void> {
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const node = await repo.getNodeById(nodeId, vaultId, notebookId)
   if (!node) throw new Error(`Node not found: ${nodeId}`)
   const now = Date.now()
@@ -179,7 +178,7 @@ async function writeEdgeReview(
   vaultId: string,
   opts?: { approvePendingEndpoints?: boolean }
 ): Promise<void> {
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const edge = await repo.getEdgeById(edgeId, vaultId, notebookId)
   if (!edge) throw new Error(`Edge not found: ${edgeId}`)
   const now = Date.now()
@@ -231,7 +230,7 @@ export async function mobileReviewNotebookGraphNode(input: {
   if (!isGraphReviewStatus(input.reviewStatus)) throw new Error('Invalid review status')
   await writeNodeReview(notebookId, input.nodeId, input.reviewStatus, vaultId)
   if (input.reviewStatus === 'approved') {
-    const pendingEdges = await requireRepo().listPendingEdges(vaultId, notebookId)
+    const pendingEdges = await (await requireRepo()).listPendingEdges(vaultId, notebookId)
     for (const edge of pendingEdges) {
       if (edge.fromId === input.nodeId || edge.toId === input.nodeId) {
         await writeEdgeReview(notebookId, edge.id, 'approved', vaultId, {
@@ -266,7 +265,7 @@ export async function mobileReviewNotebookGraphBatch(
   const notebookId = requireNotebookId(input.notebookId)
   const vaultId = requireVaultId(input.vaultId)
   if (!isGraphReviewStatus(input.reviewStatus)) throw new Error('Invalid review status')
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const [pendingNodes, pendingEdges] = await Promise.all([
     repo.listPendingNodes(vaultId, notebookId),
     repo.listPendingEdges(vaultId, notebookId)
@@ -306,7 +305,7 @@ export async function mobileListNotebookSimilarPendingPairs(input: {
 }): Promise<GraphSimilarPendingPair[]> {
   const notebookId = requireNotebookId(input.notebookId)
   const vaultId = requireVaultId(input.vaultId)
-  const view = await requireRepo().getView({ vaultId, notebookId, maxNodes: 400 })
+  const view = await (await requireRepo()).getView({ vaultId, notebookId, maxNodes: 400 })
   const peerNameById = new Map(view.nodes.map((node) => [node.id, node.name]))
   return collectSimilarPendingPairs(view.nodes, peerNameById)
 }
@@ -321,7 +320,7 @@ export async function mobileDismissNotebookSimilarPair(input: {
   const vaultId = requireVaultId(input.vaultId)
   const peerId = input.peerId.trim()
   if (!peerId) return { ok: true }
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const node = await repo.getNodeById(input.nodeId, vaultId, notebookId)
   if (!node) throw new Error(i18n.t('graph.node_not_found', '节点不存在'))
   const now = Date.now()
@@ -364,7 +363,7 @@ export async function mobileMergeNotebookGraphNodes(input: {
   const survivorId = input.survivorId.trim()
   const loserId = input.loserId.trim()
   if (!survivorId || !loserId || survivorId === loserId) throw new Error('invalid merge pair')
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const [survivor, loser] = await Promise.all([
     repo.getNodeById(survivorId, vaultId, notebookId),
     repo.getNodeById(loserId, vaultId, notebookId)
