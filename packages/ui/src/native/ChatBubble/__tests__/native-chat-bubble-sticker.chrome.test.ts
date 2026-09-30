@@ -24,6 +24,12 @@ describe('Native chat sticker chrome', () => {
     expect(attachSrc).toContain('stickerImage')
   })
 
+  it('should stream think markdown while live reasoning is arriving', () => {
+    expect(bubbleSrc).toContain('liveStream.isThinkStreaming')
+    expect(bubbleSrc).toContain('isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}')
+    expect(streamSrc).toContain('isMarkdownStreaming={isThinkStreaming || isReasoning}')
+  })
+
   it('should wrap assistant markdown with the citation dialog instead of stacking excerpts', () => {
     expect(bubbleSrc).toContain('<KnowledgeCitationBlock citations={knowledgeCitations}')
     expect(bubbleSrc).toContain('decorateKnowledgeCitedTexts')

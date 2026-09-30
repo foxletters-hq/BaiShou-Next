@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCompanionAskQuestionAnswers,
   companionAskAnswersComplete,
+  companionAskQuestionAnswered,
   normalizeCompanionAskQuestions,
   readQuestionAnswer,
   resolveCompanionAskQuestions
@@ -41,6 +42,15 @@ describe('companionAskAnswersComplete', () => {
       { question: '放在哪？', options: ['A', 'B'], allowCustomInput: false },
       { question: '叫什么？', options: ['写作'], allowCustomInput: true }
     ]
+  })
+
+  it('should treat a question as unanswered when no option or custom text is set', () => {
+    expect(
+      companionAskQuestionAnswered(questions[0]!, { questionId: '0', selectedOptionId: null })
+    ).toBe(false)
+    expect(
+      companionAskQuestionAnswered(questions[0]!, { questionId: '0', selectedOptionId: '0' })
+    ).toBe(true)
   })
 
   it('should wait until every question has an option or custom answer', () => {

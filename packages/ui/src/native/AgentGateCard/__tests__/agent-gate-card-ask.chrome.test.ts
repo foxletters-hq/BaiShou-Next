@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const here = dirname(fileURLToPath(import.meta.url))
+const askFieldsSource = readFileSync(join(here, '..', 'CompanionAskFields.tsx'), 'utf8')
 const cardSource = [
   'AgentGateCard.tsx',
   'AgentGateCardActions.tsx',
@@ -28,5 +29,24 @@ describe('AgentGateCard companion ask', () => {
     expect(cardSource).toContain('keyboardDidShow')
     expect(cardSource).toContain('onCustomFocus')
     expect(cardSource).toContain('scrollToEnd')
+  })
+
+  it('should page with chevrons so the primary action is the only 下一题', () => {
+    expect(askFieldsSource).toContain('<ChevronLeft')
+    expect(askFieldsSource).toContain('<ChevronRight')
+    expect(askFieldsSource).toContain("accessibilityLabel={t('agent_gate.queue_next'")
+    expect(askFieldsSource).not.toMatch(/<Button[\s\S]*?\{t\('agent_gate.queue_next'/)
+    expect(askFieldsSource).toContain("t('agent_gate.ask_next', '下一题')")
+  })
+
+  it('should disable confirm until the current question is answered and keep skip enabled', () => {
+    expect(askFieldsSource).toContain('companionAskQuestionAnswered')
+    expect(askFieldsSource).toContain('disabled={isReplying || !canAdvance}')
+    expect(askFieldsSource).toMatch(/disabled=\{isReplying\}\s+onPress=\{onSkip\}/)
+  })
+
+  it('should lift the card above the bottom edge with theme spacing', () => {
+    expect(cardSource).toContain('tokens.spacing.xl')
+    expect(cardSource).toContain('tokens.spacing.md + insets.bottom')
   })
 })

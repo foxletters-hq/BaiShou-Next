@@ -62,6 +62,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const liveStreamOverlay = Boolean(
     liveStream &&
     (liveStream.isThinkLoading ||
+      liveStream.isThinkStreaming ||
       liveStream.isTextStreaming ||
       liveStream.activeToolName ||
       (liveStream.completedTools?.length ?? 0) > 0)
@@ -226,7 +227,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <AgentThinkSection
                   content={cleanReasoning}
                   isLoading={thinkLoading}
-                  isMarkdownStreaming={false}
+                  isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}
                 />
               </View>
             ) : null}
