@@ -36,7 +36,7 @@ export * from './tools/agent.tool'
 export * from './tools/tool-registry'
 export * from './tools/tool-context.util'
 export * from './tools/mcp-tool.util'
-export * from './mcp/baishou-mcp-server'
+export * from './mcp/baishou-mcp-tools'
 export * from './mcp/external-mcp-tools'
 export * from './tools/current-time.tool'
 export * from './tools/diary-read.tool'
@@ -58,6 +58,9 @@ export * from './tools/search/web-search-config.util'
 
 // Middleware
 export * from './middleware/message-middleware'
+
+// Workspace
+export { DESKTOP_ONLY_WORKSPACE_TOOL_IDS } from './agent-workspace/workspace.tools'
 export * from './middleware/gemini-thought-signature'
 export * from './middleware/deepseek-reasoning'
 export * from './middleware/middleware-factory'
@@ -139,5 +142,4 @@ export {
 export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
 export type { ActionDeps, ActionStreamHost, StreamRunConfig } from './agent/actions/base.action'
 export * from './baishou-agent-gate'
-export * from './agent-workspace'
 export * from './session-runtime'

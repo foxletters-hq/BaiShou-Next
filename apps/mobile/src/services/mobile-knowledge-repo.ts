@@ -14,6 +14,28 @@ export function requireMobileKnowledgeRepo(): KnowledgeRepository {
   return new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
 }
 
+/** 启动时若尚未拿到存储根，连接会失败；进入知识库时再连一次。 */
+export async function ensureMobileKnowledgeConnected(): Promise<void> {
+  if (expoKnowledgeConnectionManager.isConnected()) return
+  const pathService = agentDbRuntimeRef.current?.pathService
+  if (!pathService) {
+    throw new Error('knowledge db not connected')
+  }
+  const { createMobileFileSystem } = await import('./create-mobile-file-system')
+  const fileSystem = createMobileFileSystem()
+  const root = await pathService.getRootDirectory()
+  await fileSystem.mkdir(root, { recursive: true })
+  await expoKnowledgeConnectionManager.connect(root)
+  if (!expoKnowledgeConnectionManager.isConnected()) {
+    throw new Error('knowledge db not connected')
+  }
+}
+
+export async function ensureMobileKnowledgeRepo(): Promise<KnowledgeRepository> {
+  await ensureMobileKnowledgeConnected()
+  return requireMobileKnowledgeRepo()
+}
+
 export async function resolveMobileActiveVaultId(): Promise<string> {
   const runtime = agentDbRuntimeRef.current
   if (runtime?.pathService) {

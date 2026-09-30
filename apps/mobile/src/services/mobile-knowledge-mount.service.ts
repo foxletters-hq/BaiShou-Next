@@ -1,6 +1,6 @@
 import { getMobileNotebookRawManager } from './mobile-raw-data-source.runtime'
 import {
-  requireMobileKnowledgeRepo as requireRepo,
+  ensureMobileKnowledgeRepo as requireRepo,
   resolveMobileActiveVaultId
 } from './mobile-knowledge-repo'
 
@@ -23,7 +23,7 @@ async function resolveCoverUri(relativePath?: string | null): Promise<string | n
 }
 
 export async function mobileListMountSummaries() {
-  const repo = requireRepo()
+  const repo = await requireRepo()
   const vaultId = await resolveMobileActiveVaultId()
   const notebooks = await repo.listNotebooks({ vaultId })
   const stats = await repo.listNotebookStats(vaultId)
