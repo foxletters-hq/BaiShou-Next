@@ -3,9 +3,12 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
-import { deriveLegacyVaultId, sessionBelongsToActiveVaultId } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
+import {
+  assertMobileSessionInActiveVault,
+  resolveMobileActiveVaultId
+} from '../utils/mobile-session-vault.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
@@ -51,20 +54,6 @@ function resetPaginationRefs(refs: {
   refs.roundWindowStartRef.current = 0
   refs.loadedFromEndRef.current = 0
   refs.fetchHasMoreRef.current = false
-}
-
-async function assertMobileSessionInActiveVault(
-  services: {
-    sessionManager: { getSessionById: (id: string) => Promise<{ vaultId?: string | null } | null> }
-    vaultService?: { getActiveVault?: () => { id?: string; name?: string } | null }
-  },
-  sessionId: string
-): Promise<boolean> {
-  const session = await services.sessionManager.getSessionById(sessionId)
-  if (!session) return false
-  const active = services.vaultService?.getActiveVault?.()
-  const activeVaultId = active?.id || deriveLegacyVaultId(active?.name || 'Personal')
-  return sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)
 }
 
 export function useAgentSession(_options: UseAgentSessionOptions = {}) {
@@ -408,7 +397,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       if (!dbReady || !services) return null
       try {
         const newId = Date.now().toString()
-        const vaultName = await services.pathService.getActiveVaultNameForContext()
+        const vaultId = resolveMobileActiveVaultId(services)
         await services.sessionManager.upsertSession(
           buildInsertSessionInput(
             {
@@ -418,7 +407,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
               providerId: options?.providerId,
               modelId: options?.modelId
             },
-            vaultName
+            vaultId
           )
         )
         resetPaginationRefs(paginationRefs)

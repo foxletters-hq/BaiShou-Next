@@ -36,6 +36,7 @@ import {
 import { stageLegacySqliteForAttach } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { FLUTTER_LEGACY_MIGRATED_SOURCE_KEY } from '../constants/storage'
+import { withMobileMigrationSqlite } from './mobile-legacy-version-migration.sqlite'
 import {
   getCustomLegacySourceRoot,
   getStoredAssistantIdMap,
@@ -125,7 +126,8 @@ async function prepareMobileSqliteAttachPath(
 
 export interface MobileVersionMigrationRuntime {
   fileSystem: IFileSystem
-  sqliteClient: unknown
+  /** 仅导入写入目标 Agent 库；扫描 ATTACH 走独立连接，避免 sqlite-vec 主库闪退 */
+  targetSqliteClient: unknown
   settingsRepo: SettingsRepository
   profileRepo: UserProfileRepository
   diaryService: DiaryService
@@ -155,17 +157,25 @@ export async function scanMobileVersionMigration(
     readMobileFlutterSharedPreferencesRaw(runtime.fileSystem)
   ])
 
-  return scanLegacyVersionMigration({
+  const scanDeps = {
     fileSystem: runtime.fileSystem,
     sourceRoot: source.sourceRoot,
     sourceDisplayPath: source.sourceDisplayPath,
     flutterPrefsConfig,
     flutterRawSp,
     flutterDocumentsAvatarsDir: resolveMobileFlutterAvatarsDirectory(),
-    sqliteClient: runtime.sqliteClient,
     executeRawSql,
-    prepareSqliteAttachPath: (dbPath) => prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
-  })
+    prepareSqliteAttachPath: (dbPath: string) =>
+      prepareMobileSqliteAttachPath(runtime.fileSystem, dbPath)
+  }
+
+  try {
+    return await withMobileMigrationSqlite((sqliteClient) =>
+      scanLegacyVersionMigration({ ...scanDeps, sqliteClient })
+    )
+  } catch {
+    return scanLegacyVersionMigration(scanDeps)
+  }
 }
 
 async function collectAllSessionIds(sessionManager: SessionManagerService): Promise<Set<string>> {
@@ -298,7 +308,7 @@ function buildImporterDeps(
   deps.flutterPrefsConfig = null
   deps.flutterRawSp = null
   deps.flutterDocumentsAvatarsDir = resolveMobileFlutterAvatarsDirectory()
-  deps.sqliteClient = runtime.sqliteClient
+  deps.sqliteClient = runtime.targetSqliteClient
   deps.executeRawSql = executeRawSql
   deps.settingsRepo = runtime.settingsRepo
   deps.profileRepo = runtime.profileRepo
@@ -394,6 +404,11 @@ export async function importMobileVersionMigrationSection(
     }
   }
 
+  const [flutterPrefsConfig, flutterRawSp] = await Promise.all([
+    readMobileFlutterSharedPreferencesConfig(runtime.fileSystem),
+    readMobileFlutterSharedPreferencesRaw(runtime.fileSystem)
+  ])
+  const assistantIdMap = await getStoredAssistantIdMap()
   const deps = buildImporterDeps(
     runtime,
     source.sourceRoot,
@@ -401,15 +416,8 @@ export async function importMobileVersionMigrationSection(
     options?.onProgress,
     pinVaultTargets
   )
-  const [flutterPrefsConfig, flutterRawSp] = await Promise.all([
-    readMobileFlutterSharedPreferencesConfig(runtime.fileSystem),
-    readMobileFlutterSharedPreferencesRaw(runtime.fileSystem)
-  ])
   deps.flutterPrefsConfig = flutterPrefsConfig
   deps.flutterRawSp = flutterRawSp
-
-  const assistantIdMap = await getStoredAssistantIdMap()
-
   const result = await importLegacyVersionMigrationSection(sectionId, deps, { assistantIdMap })
 
   const legacyVaultName = parseWorkspaceSectionId(sectionId)

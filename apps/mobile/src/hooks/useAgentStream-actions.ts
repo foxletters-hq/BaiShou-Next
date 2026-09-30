@@ -204,7 +204,7 @@ export function useAgentStreamActions({
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return
       }
 

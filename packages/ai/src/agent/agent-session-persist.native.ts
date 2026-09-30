@@ -44,6 +44,8 @@ export interface PersistResultParams {
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
   agentGateParts?: import('@baishou/shared').AgentGatePartData[]
+  /** 流式中途已写入的助手消息：收尾时覆盖同一行，不要再插一条 */
+  existingAssistantMessageId?: string
   /** 用户主动停止时不把 Abort 当成落盘失败 */
   userAborted?: boolean
 }
@@ -81,7 +83,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
   })
 
   // ======== 构建 assistant 消息 Parts（按时间线，表情包排在正文之后）========
-  const assistantMsgId = generateUUID()
+  const assistantMsgId = params.existingAssistantMessageId || generateUUID()
   const partsToInsert: any[] = assembleAssistantPersistParts({
     accumulator,
     assistantMsgId,
@@ -184,22 +186,29 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
 
   if (partsToInsert.length > 0) {
-    await sessionRepo.insertMessageWithParts(
-      {
-        id: assistantMsgId,
-        sessionId,
-        role: 'assistant',
-        orderIndex: userOrderIndex + 1,
-        inputTokens: finalUsage.inputTokens,
-        outputTokens: finalUsage.outputTokens,
-        cacheReadInputTokens: streamUsage.cacheReadInputTokens,
-        cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
-        costMicros: costMicros,
-        providerId: provider?.config?.id ?? 'unknown',
-        modelId: modelId
-      },
-      partsToInsert
-    )
+    const billing = {
+      inputTokens: finalUsage.inputTokens,
+      outputTokens: finalUsage.outputTokens,
+      cacheReadInputTokens: streamUsage.cacheReadInputTokens,
+      cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
+      costMicros: costMicros,
+      providerId: provider?.config?.id ?? 'unknown',
+      modelId: modelId
+    }
+    if (params.existingAssistantMessageId) {
+      await sessionRepo.replaceMessageParts(assistantMsgId, sessionId, partsToInsert, billing)
+    } else {
+      await sessionRepo.insertMessageWithParts(
+        {
+          id: assistantMsgId,
+          sessionId,
+          role: 'assistant',
+          orderIndex: userOrderIndex + 1,
+          ...billing
+        },
+        partsToInsert
+      )
+    }
   }
 
   await sessionRepo.updateTokenUsage(

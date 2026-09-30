@@ -125,7 +125,7 @@ export function useVersionMigration() {
     }
     return {
       fileSystem: services.fileSystem,
-      sqliteClient: services.expoDb,
+      targetSqliteClient: services.expoDb,
       settingsRepo: services.settingsRepo,
       profileRepo: services.profileRepo,
       diaryService: services.diaryService,

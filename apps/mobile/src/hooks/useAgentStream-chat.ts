@@ -16,6 +16,7 @@ import { isTransientNetworkError } from '../utils/transient-network-error.util'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
 import { buildInsertSessionInput } from '../utils/session-input.util'
+import { resolveMobileActiveVaultId } from '../utils/mobile-session-vault.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import {
   STREAM_ZERO_OUTPUT_NETWORK_RETRIES,
@@ -186,7 +187,7 @@ export function useAgentStreamChat({
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         if (options?.retryReleaseEpoch !== undefined) {
           releaseRetryAction()
         }
@@ -297,7 +298,7 @@ export function useAgentStreamChat({
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return false
       }
 
@@ -314,9 +315,7 @@ export function useAgentStreamChat({
             firstAtt?.fileName ||
             firstAtt?.name ||
             t('agent.sessions.default_title', '新对话')
-          const vaultName = await services.pathService
-            .getActiveVaultNameForContext()
-            .catch(() => 'Personal')
+          const vaultId = resolveMobileActiveVaultId(services)
           await runMobileAgentDbWrite('upsertSession', async (runtime) => {
             await runtime.sessionManager.upsertSession(
               buildInsertSessionInput(
@@ -329,7 +328,7 @@ export function useAgentStreamChat({
                   providerId: currentProviderId || undefined,
                   modelId: currentModelId || undefined
                 },
-                vaultName
+                vaultId
               )
             )
           })
