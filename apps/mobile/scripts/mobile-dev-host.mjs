@@ -3,6 +3,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  formatAdbShellCommand,
+  parseAdbDevices,
+  pickAdbSerial,
+  listOfflineTcpSerials
+} from './adb-device.util.mjs'
 
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -123,20 +129,57 @@ function adbQuick(cmd, timeoutMs = 5000) {
   })
 }
 
-export function hasAdbDevice() {
+let selectedAdbSerial = null
+let selectedAdbSerialLogged = false
+
+/** 多设备时选定一台，并写入 ANDROID_SERIAL，避免 adb 报 more than one device */
+export function resolveAdbSerial() {
   try {
-    const out = adbQuick('adb devices')
-    return out.split('\n').some((line) => line.trim().endsWith('\tdevice'))
+    const devices = parseAdbDevices(adbQuick('adb devices'))
+    for (const stale of listOfflineTcpSerials(devices)) {
+      try {
+        execSync(`adb disconnect ${stale}`, { stdio: 'pipe' })
+        console.warn(`🧹 已断开离线无线 adb：${stale}`)
+      } catch {
+        /* ignore */
+      }
+    }
+    const serial = pickAdbSerial(devices, process.env.ANDROID_SERIAL)
+    if (serial !== selectedAdbSerial) {
+      selectedAdbSerialLogged = false
+    }
+    selectedAdbSerial = serial
+    if (serial) {
+      process.env.ANDROID_SERIAL = serial
+      if (!selectedAdbSerialLogged) {
+        const extra = devices.filter((d) => d.state === 'device' && d.serial !== serial)
+        if (extra.length > 0) {
+          console.log(
+            `📱 已选定 adb 设备 ${serial}（另有 ${extra.length} 台在线，可用 ANDROID_SERIAL 指定）`
+          )
+        }
+        selectedAdbSerialLogged = true
+      }
+    }
+    return serial
   } catch {
-    return false
+    return selectedAdbSerial
   }
+}
+
+export function hasAdbDevice() {
+  return Boolean(resolveAdbSerial())
+}
+
+function adbForSelected(rest) {
+  return formatAdbShellCommand(resolveAdbSerial(), rest)
 }
 
 /** USB 调试：把电脑 Metro 映射到手机 localhost */
 export function setupAdbReverse(port = METRO_PORT) {
   if (!hasAdbDevice()) return false
   try {
-    execSync(`adb reverse tcp:${port} tcp:${port}`, { stdio: 'pipe' })
+    execSync(adbForSelected(`reverse tcp:${port} tcp:${port}`), { stdio: 'pipe' })
     return true
   } catch {
     return false
@@ -152,7 +195,7 @@ export function hasAdbReverse(port = METRO_PORT) {
     return false
   }
   try {
-    const out = adbQuick('adb reverse --list')
+    const out = adbQuick(adbForSelected('reverse --list'))
     const ok = out.includes(`tcp:${port} tcp:${port}`)
     lastKnownReverseOk = ok
     return ok

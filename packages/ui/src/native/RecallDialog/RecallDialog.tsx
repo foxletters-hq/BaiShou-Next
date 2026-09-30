@@ -9,7 +9,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Platform,
   useWindowDimensions
 } from 'react-native'
 import { ArrowUpCircle, Search, X } from 'lucide-react-native'
@@ -22,6 +21,7 @@ import type { NativeRecallDialogProps } from './recall-dialog.types'
 import { useRecallDialog, RECALL_MEMORY_PAGE_SIZE } from './useRecallDialog'
 import { RecallDialogItem } from './RecallDialogItem'
 import { RecallDialogDiaryItem } from './RecallDialogDiaryItem'
+import { styles } from './recall-dialog.styles'
 
 export type { RecallItem, NativeRecallDialogProps } from './recall-dialog.types'
 
@@ -88,7 +88,15 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
             ]}
           >
             <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-              <View style={[styles.tabs, { backgroundColor: colors.bgApp }]}>
+              <View
+                style={[
+                  styles.tabs,
+                  {
+                    backgroundColor: colors.bgSurfaceNormal,
+                    borderColor: colors.borderControl
+                  }
+                ]}
+              >
                 {(['diary', 'memory'] as const).map((tab) => {
                   const active = dialog.activeTab === tab
                   return (
@@ -98,12 +106,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                       style={[
                         styles.tab,
                         active && {
-                          backgroundColor: colors.primary,
-                          shadowColor: '#0ea5e9',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.25,
-                          shadowRadius: 8,
-                          elevation: 2
+                          backgroundColor: colors.bgSurface,
+                          borderColor: colors.borderSubtle
                         }
                       ]}
                     >
@@ -111,8 +115,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                         style={{
                           fontSize: 13.6,
                           lineHeight: 18.4,
-                          fontWeight: active ? '600' : '400',
-                          color: active ? colors.textOnPrimary : colors.textSecondary
+                          fontWeight: active ? '600' : '500',
+                          color: active ? colors.primary : colors.textSecondary
                         }}
                       >
                         {t(
@@ -181,7 +185,15 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 </View>
 
                 {onToggleSearchMode && (
-                  <View style={[styles.segmented, { backgroundColor: colors.bgApp }]}>
+                  <View
+                    style={[
+                      styles.segmented,
+                      {
+                        backgroundColor: colors.bgSurfaceNormal,
+                        borderColor: colors.borderControl
+                      }
+                    ]}
+                  >
                     {(['semantic', 'text'] as const).map((mode) => {
                       const active = searchMode === mode
                       return (
@@ -191,12 +203,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                           style={[
                             styles.segmentBtn,
                             active && {
-                              backgroundColor: colors.primary,
-                              shadowColor: '#0ea5e9',
-                              shadowOpacity: 0.25,
-                              shadowRadius: 8,
-                              shadowOffset: { width: 0, height: 2 },
-                              elevation: 2
+                              backgroundColor: colors.bgSurface,
+                              borderColor: colors.borderSubtle
                             }
                           ]}
                           onPress={() => {
@@ -207,8 +215,8 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                             style={[
                               styles.segmentText,
                               {
-                                color: active ? colors.textOnPrimary : colors.textSecondary,
-                                fontWeight: active ? '600' : '400'
+                                color: active ? colors.primary : colors.textSecondary,
+                                fontWeight: active ? '600' : '500'
                               }
                             ]}
                             numberOfLines={1}
@@ -352,155 +360,3 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  dialogWrap: {
-    width: '100%',
-    alignItems: 'center',
-    zIndex: 2
-  },
-  dialog: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    flexDirection: 'column'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 4,
-    borderRadius: 8
-  },
-  tab: {
-    height: Math.round(12 + 13.6 * 1.35),
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12
-  },
-  searchSection: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 12
-  },
-  searchBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 44,
-    justifyContent: 'center'
-  },
-  searchInputInner: {
-    position: 'relative',
-    minHeight: 44,
-    justifyContent: 'center'
-  },
-  searchIconInside: {
-    position: 'absolute',
-    left: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
-    paddingLeft: 38,
-    paddingRight: 36,
-    minHeight: 44,
-    ...(Platform.OS === 'android'
-      ? { includeFontPadding: false, textAlignVertical: 'center' }
-      : null)
-  },
-  searchClearBtn: {
-    position: 'absolute',
-    right: 10,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    zIndex: 1
-  },
-  segmented: {
-    flexDirection: 'row',
-    width: '100%',
-    padding: 4,
-    borderRadius: 8,
-    gap: 8
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignItems: 'center'
-  },
-  segmentText: {
-    fontSize: 14,
-    lineHeight: 18.9,
-    fontWeight: '400'
-  },
-  listArea: {
-    flex: 1
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    gap: 12
-  },
-  diaryWrap: {
-    gap: 12
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 8
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth
-  },
-  selectionCount: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  paginationArea: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    borderTopWidth: StyleSheet.hairlineWidth
-  }
-})

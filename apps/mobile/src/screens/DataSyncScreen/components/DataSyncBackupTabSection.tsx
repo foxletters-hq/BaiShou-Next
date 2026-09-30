@@ -35,17 +35,31 @@ export function DataSyncBackupTabSection({
 }: Props) {
   return (
     <View style={[styles.section, { backgroundColor: colors.bgSurface, paddingVertical: 12 }]}>
-      <View style={[styles.backupTabBar, { backgroundColor: colors.bgSurfaceHighest }]}>
+      <View
+        style={[
+          styles.backupTabBar,
+          {
+            backgroundColor: colors.bgSurfaceNormal,
+            borderColor: colors.borderControl
+          }
+        ]}
+      >
         {(['cloud', 'snapshot', 'local'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.backupTab, backupTab === tab && { backgroundColor: colors.bgSurface }]}
+            style={[
+              styles.backupTab,
+              backupTab === tab && {
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle
+              }
+            ]}
             onPress={() => setBackupTab(tab)}
           >
             <Text
               style={{
                 color: backupTab === tab ? colors.primary : colors.textSecondary,
-                fontWeight: backupTab === tab ? '600' : '400',
+                fontWeight: backupTab === tab ? '600' : '500',
                 fontSize: tab === 'cloud' ? undefined : 13
               }}
             >

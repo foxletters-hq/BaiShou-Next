@@ -38,6 +38,7 @@
   --color-separator-tertiary: rgba(0, 0, 0, 0.14);
   --color-field-hover: #f8f9fa;
   --color-field-focus: #ffffff;
+  --color-field-placeholder: #a0aec0;
   --color-field-border-hover: rgba(0, 0, 0, 0.16);
   --color-field-border-focus: rgba(var(--color-primary-rgb), 0.45);
   --color-surface-hover: #f8f9fa;
@@ -98,6 +99,7 @@
       --field-background: #ffffff;
       --field-foreground: #1a1c23;
       --field-placeholder: #a0aec0;
+      --color-field-placeholder: #a0aec0;
       --field-border: rgba(0, 0, 0, 0.12);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(0, 0, 0, 0.12);
@@ -188,6 +190,7 @@
       --field-background: #2d2d31;
       --field-foreground: #f8fafc;
       --field-placeholder: #71717a;
+      --color-field-placeholder: #71717a;
       --field-border: rgba(255, 255, 255, 0.16);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(255, 255, 255, 0.16);

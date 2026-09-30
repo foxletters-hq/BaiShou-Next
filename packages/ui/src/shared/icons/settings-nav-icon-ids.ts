@@ -5,6 +5,8 @@ export const SETTINGS_NAV_ICON_IDS = [
   'assistants',
   'latte',
   'rag',
+  'memory',
+  'knowledge',
   'web-search',
   'mcp',
   'agent-tools',
@@ -19,6 +21,7 @@ export const SETTINGS_NAV_ICON_IDS = [
   'lan-transfer',
   'storage',
   'version-migration',
+  'git',
   'general'
 ] as const
 

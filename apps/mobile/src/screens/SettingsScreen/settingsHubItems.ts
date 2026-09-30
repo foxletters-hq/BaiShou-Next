@@ -88,24 +88,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'settings.companion_chat_tools_title',
         icon: 'agent-tools',
         route: { type: 'stack', pathname: '/settings/agent-tools' }
-      },
-      {
-        id: 'agent-behavior',
-        titleKey: 'settings.agent_behavior',
-        icon: 'agent-tools',
-        route: { type: 'section', section: 'agent-behavior' }
-      },
-      {
-        id: 'rag',
-        titleKey: 'agent.rag.title',
-        icon: 'rag',
-        route: { type: 'section', section: 'rag' }
-      },
-      {
-        id: 'agent-gate',
-        titleKey: 'agent.gate.settings_title',
-        icon: 'agent-gate',
-        route: { type: 'section', section: 'agent-gate' }
       }
     ]
   },
@@ -127,19 +109,13 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'memory',
         titleKey: 'memory.title',
-        icon: 'rag',
+        icon: 'memory',
         route: { type: 'stack', pathname: '/memory' }
-      },
-      {
-        id: 'graph',
-        titleKey: 'nav.graph',
-        icon: 'rag',
-        route: { type: 'stack', pathname: '/graph' }
       },
       {
         id: 'knowledge',
         titleKey: 'knowledge.title',
-        icon: 'rag',
+        icon: 'knowledge',
         route: { type: 'stack', pathname: '/knowledge' }
       }
     ]
@@ -186,7 +162,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'git',
         titleKey: 'version_control.version_control',
-        icon: 'incremental-sync',
+        icon: 'git',
         route: { type: 'stack', pathname: '/settings/git' }
       },
       {

@@ -168,21 +168,28 @@ export function useSettingsAccount() {
         return
       }
 
-      if (nextThemeMode) setThemeMode(nextThemeMode)
-      if (nextSeedColor) setSeedColor(nextSeedColor)
-      setFontSizeLevel(nextFontSizeLevel)
+      if (nextThemeMode) {
+        setThemeMode((prev) => (prev === nextThemeMode ? prev : nextThemeMode))
+      }
+      if (nextSeedColor) {
+        setSeedColor((prev) => (prev === nextSeedColor ? prev : nextSeedColor))
+      }
+      setFontSizeLevel((prev) => (prev === nextFontSizeLevel ? prev : nextFontSizeLevel))
       if (nextLanguage) {
         console.log('[AppearanceLang] load:apply-language', {
           loadGen,
           diskLanguage: nextLanguage
         })
-        setLanguage(nextLanguage)
+        setLanguage((prev) => (prev === nextLanguage ? prev : nextLanguage))
       }
 
-      setProfile({
-        nickname: userProfile.nickname || '',
-        avatarPath: userProfile.avatarPath
-      })
+      const nextNickname = userProfile.nickname || ''
+      const nextAvatarPath = userProfile.avatarPath
+      setProfile((prev) =>
+        prev.nickname === nextNickname && prev.avatarPath === nextAvatarPath
+          ? prev
+          : { nickname: nextNickname, avatarPath: nextAvatarPath }
+      )
       setChatBackgroundPath(userProfile.chatBackgroundPath ?? null)
       setChatBackgroundBlur(normalizeChatBackgroundBlur(userProfile.chatBackgroundBlur))
       setChatBackgroundOverlayOpacity(

@@ -39,7 +39,13 @@ export const AssistantKindTabBar: React.FC<AssistantKindTabBarProps> = ({
   return (
     <View style={styles.section}>
       <View
-        style={[styles.wrap, { backgroundColor: colors.bgSurfaceNormal }]}
+        style={[
+          styles.wrap,
+          {
+            backgroundColor: colors.bgSurfaceNormal,
+            borderColor: colors.borderControl
+          }
+        ]}
         onLayout={(e) => setLayoutWidth(e.nativeEvent.layout.width)}
       >
         {tabWidth > 0 ? (
@@ -106,7 +112,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: TAB_GAP,
     padding: TAB_PADDING,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
     alignSelf: 'stretch',
     width: '100%',
     overflow: 'hidden'

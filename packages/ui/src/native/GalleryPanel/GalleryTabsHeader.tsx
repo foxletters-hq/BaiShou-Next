@@ -35,13 +35,9 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
         key={tab}
         style={[
           styles.tabBtn,
-          active && {
-            backgroundColor: colors.primary,
-            shadowColor: colors.primary,
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 4
+          {
+            borderColor: active ? colors.borderSubtle : 'transparent',
+            backgroundColor: active ? colors.bgSurface : 'transparent'
           }
         ]}
         onPress={() => onTabChange(tab)}
@@ -50,7 +46,7 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
           style={[
             styles.tabText,
             {
-              color: active ? colors.textOnPrimary : colors.textSecondary,
+              color: active ? colors.primary : colors.textSecondary,
               fontWeight: active ? '600' : '500'
             }
           ]}
@@ -72,7 +68,15 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
           }
         ]}
       >
-        <View style={[styles.compactTabsRow, { backgroundColor: colors.bgSurface }]}>
+        <View
+          style={[
+            styles.compactTabsRow,
+            {
+              backgroundColor: colors.bgSurfaceNormal,
+              borderColor: colors.borderControl
+            }
+          ]}
+        >
           {tabButtons}
         </View>
         {availableYears.length > 0 ? (
@@ -116,8 +120,8 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
         style={[
           styles.tabsContainer,
           {
-            backgroundColor: colors.bgSurface,
-            borderColor: colors.borderSubtle
+            backgroundColor: colors.bgSurfaceNormal,
+            borderColor: colors.borderControl
           }
         ]}
       >
@@ -164,10 +168,13 @@ const styles = StyleSheet.create({
   },
   compactTabsRow: {
     flexDirection: 'row',
-    width: '100%',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8
+    alignSelf: 'stretch',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    gap: 0,
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1
   },
   compactYearRow: {
     flexDirection: 'row',
@@ -181,7 +188,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     width: '100%',
     marginBottom: 0,
     gap: 8
@@ -189,19 +196,18 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flex: 1,
     flexDirection: 'row',
-    gap: 6,
-    padding: 6,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    gap: 0,
+    padding: 3,
+    borderRadius: 10,
     borderWidth: 1,
-    borderBottomWidth: 0,
     minWidth: 0
   },
   tabBtn: {
     flex: 1,
     paddingHorizontal: 8,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 7,
+    borderWidth: 1,
     alignItems: 'center'
   },
   tabText: {

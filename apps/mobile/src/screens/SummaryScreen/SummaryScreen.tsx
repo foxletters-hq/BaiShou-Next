@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
@@ -10,6 +10,7 @@ import {
   ActivityHeatmap,
   useNativeTheme,
   useNativeToast,
+  useDialog,
   scrollIndicatorStyle
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
@@ -33,6 +34,8 @@ export const SummaryScreen: React.FC = () => {
   const { width } = useWindowDimensions()
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
+  const dialog = useDialog()
+  const router = useRouter()
   const { services, storageIndexing, vaultRevision } = useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const slideOffset = useSharedValue(0)
@@ -124,12 +127,38 @@ export const SummaryScreen: React.FC = () => {
     try {
       const resolution = await resolveSummaryConfig(services.settingsManager)
       if (!resolution.ok) {
-        toast.showError(t('summary.model_not_configured'))
+        const confirmed = await dialog.confirm(
+          t(
+            'summary.model_not_configured_desc',
+            '你还没有配置 AI 模型，无法生成总结。\n是否跳转到设置页面进行配置？'
+          ),
+          {
+            title: t('summary.model_not_configured', '模型未配置'),
+            confirmText: t('vision_model_goto_global', '去配置全局默认模型'),
+            cancelText: t('common.cancel', '取消')
+          }
+        )
+        if (confirmed) {
+          router.push('/settings/ai-models' as any)
+        }
         return false
       }
       return true
     } catch (e) {
-      toast.showError(t('summary.model_not_configured'))
+      const confirmed = await dialog.confirm(
+        t(
+          'summary.model_not_configured_desc',
+          '你还没有配置 AI 模型，无法生成总结。\n是否跳转到设置页面进行配置？'
+        ),
+        {
+          title: t('summary.model_not_configured', '模型未配置'),
+          confirmText: t('vision_model_goto_global', '去配置全局默认模型'),
+          cancelText: t('common.cancel', '取消')
+        }
+      )
+      if (confirmed) {
+        router.push('/settings/ai-models' as any)
+      }
       return false
     }
   }

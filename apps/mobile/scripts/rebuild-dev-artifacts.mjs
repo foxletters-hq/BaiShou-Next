@@ -4,8 +4,10 @@
  * predev / predev:clear 与 run-android（直接 node 调用时）共用。
  */
 import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -30,4 +32,9 @@ if (buildEditor.status !== 0) {
   process.exit(buildEditor.status ?? 1)
 }
 
-console.log('\n✓ 开发用生成物已更新（sync + diary-editor）\n')
+const androidDir = path.join(mobileRoot, 'android')
+if (fs.existsSync(androidDir)) {
+  applyAndroidPlainSplashPatch(androidDir)
+}
+
+console.log('\n✓ 开发用生成物已更新（sync + diary-editor + plain-splash）\n')

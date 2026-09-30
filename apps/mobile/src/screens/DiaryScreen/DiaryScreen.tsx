@@ -5,7 +5,12 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { logger, type RagConfig } from '@baishou/shared'
+import {
+  logger,
+  shouldShowPendingEmbed,
+  shouldShowPendingExtract,
+  type RagConfig
+} from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -411,7 +416,15 @@ export const DiaryScreen: React.FC = () => {
             pendingEmbedParts={pendingEmbedParts}
           />
 
-          <DiaryFab todayEntry={todayEntry} onEditToday={handleEditToday} onAddNew={handleAddNew} />
+          <DiaryFab
+            todayEntry={todayEntry}
+            onEditToday={handleEditToday}
+            onAddNew={handleAddNew}
+            hasPendingStatus={
+              shouldShowPendingExtract({ graphConfigured, count: pendingGraphCount }) ||
+              shouldShowPendingEmbed({ ragConfigured, count: pendingEmbedCount })
+            }
+          />
         </View>
       </ScreenSafeArea>
 

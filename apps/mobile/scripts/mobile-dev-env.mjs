@@ -19,10 +19,12 @@ import {
   hasAdbReverse,
   isUsableDevHost,
   isWsl,
+  resolveAdbSerial,
   setupAdbReverse,
   startReverseKeeper,
   waitForMetro
 } from './mobile-dev-host.mjs'
+import { formatAdbShellCommand } from './adb-device.util.mjs'
 
 export {
   ANDROID_DEV_PACKAGE_ID,
@@ -40,6 +42,7 @@ export {
   prepareAndroidInstall,
   printAndroidInstallFailureHelp,
   printReleaseInstallFailureHelp,
+  resolveAdbSerial,
   setupAdbReverse,
   startReverseKeeper,
   uninstallConflictingPackages,
@@ -48,11 +51,15 @@ export {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+function adbCommand(rest) {
+  return formatAdbShellCommand(resolveAdbSerial(), rest)
+}
+
 /** 结束旧进程，避免 DevLauncher 在 React 上下文未销毁时重启 MainActivity 崩溃 */
 export function stopDevClientApp(packageId = ANDROID_DEV_PACKAGE_ID) {
   if (!hasAdbDevice()) return false
   try {
-    execSync(`adb shell am force-stop ${packageId}`, {
+    execSync(adbCommand(`shell am force-stop ${packageId}`), {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     })
@@ -85,7 +92,9 @@ export async function openDevClientOnDevice(
   const bundleUrl = `http://${devHost}:${port}`
   const deepLink = `mobile://expo-development-client/?url=${encodeURIComponent(bundleUrl)}`
   execSync(
-    `adb shell am start -p ${ANDROID_DEV_PACKAGE_ID} -a android.intent.action.VIEW -d "${deepLink}"`,
+    adbCommand(
+      `shell am start -p ${ANDROID_DEV_PACKAGE_ID} -a android.intent.action.VIEW -d "${deepLink}"`
+    ),
     {
       stdio: 'inherit'
     }

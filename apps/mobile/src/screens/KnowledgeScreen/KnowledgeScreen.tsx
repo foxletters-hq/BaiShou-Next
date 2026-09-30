@@ -88,13 +88,17 @@ export function KnowledgeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!dbReady) return
-      void refreshList().catch((e) => setError(String((e as Error)?.message || e)))
+      void refreshList()
+        .then(() => setError(''))
+        .catch((e) => setError(String((e as Error)?.message || e)))
     }, [dbReady, refreshList])
   )
 
   useEffect(() => {
     if (!dbReady) return
-    void refreshList().catch((e) => setError(String((e as Error)?.message || e)))
+    void refreshList()
+      .then(() => setError(''))
+      .catch((e) => setError(String((e as Error)?.message || e)))
   }, [dbReady, refreshList])
 
   const resetCreateDraft = () => {

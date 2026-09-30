@@ -6,6 +6,27 @@ if (typeof global.__filename === 'undefined') {
   global.__filename = '/index.js'
 }
 
+// Zustand devtools / 部分 Web 库会在 RN 启动时调用 window.addEventListener。
+// 新架构 Hermes 上 window 可能存在但没有 EventTarget 方法，导致 store 初始化失败。
+;(() => {
+  const w =
+    typeof globalThis.window === 'object' && globalThis.window != null
+      ? globalThis.window
+      : globalThis
+  if (globalThis.window == null) {
+    globalThis.window = w
+  }
+  if (typeof w.addEventListener !== 'function') {
+    w.addEventListener = () => {}
+  }
+  if (typeof w.removeEventListener !== 'function') {
+    w.removeEventListener = () => {}
+  }
+  if (typeof w.dispatchEvent !== 'function') {
+    w.dispatchEvent = () => false
+  }
+})()
+
 // Hermes release bundle can execute polyfills before RN installs `console`.
 const noop = () => {}
 const consoleRef = globalThis.console

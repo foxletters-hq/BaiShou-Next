@@ -11,11 +11,11 @@ export const diaryScreenStyles = StyleSheet.create({
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 14,
-    minHeight: 32,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
+    justifyContent: 'flex-start',
+    minHeight: 34,
+    paddingLeft: 18,
+    paddingRight: 96,
+    paddingVertical: 7,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   statusItem: {

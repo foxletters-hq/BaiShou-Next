@@ -8,7 +8,7 @@ interface SummaryTabBarProps {
   onTabChange: (tab: 'panel' | 'gallery') => void
 }
 
-/** 回忆页顶部标签 — 与桌面「生成模式」分段滑块同款（主色实心选中） */
+/** 回忆页顶部标签 — 与桌面分段滑块同款：描边轨道 + 表面选中块 */
 export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabChange }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -23,17 +23,21 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
         }
       ]}
     >
-      <View style={[styles.group, { backgroundColor: colors.bgApp }]}>
+      <View
+        style={[
+          styles.group,
+          {
+            backgroundColor: colors.bgSurfaceNormal,
+            borderColor: colors.borderControl
+          }
+        ]}
+      >
         <Pressable
           style={[
             styles.btn,
             activeTab === 'panel' && {
-              backgroundColor: colors.primary,
-              shadowColor: '#0ea5e9',
-              shadowOpacity: 0.25,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle
             }
           ]}
           onPress={() => onTabChange('panel')}
@@ -42,8 +46,8 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
             style={[
               styles.btnText,
               {
-                color: activeTab === 'panel' ? colors.textOnPrimary : colors.textSecondary,
-                fontWeight: activeTab === 'panel' ? '600' : '400'
+                color: activeTab === 'panel' ? colors.primary : colors.textSecondary,
+                fontWeight: activeTab === 'panel' ? '600' : '500'
               }
             ]}
           >
@@ -54,12 +58,8 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
           style={[
             styles.btn,
             activeTab === 'gallery' && {
-              backgroundColor: colors.primary,
-              shadowColor: '#0ea5e9',
-              shadowOpacity: 0.25,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle
             }
           ]}
           onPress={() => onTabChange('gallery')}
@@ -68,8 +68,8 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
             style={[
               styles.btnText,
               {
-                color: activeTab === 'gallery' ? colors.textOnPrimary : colors.textSecondary,
-                fontWeight: activeTab === 'gallery' ? '600' : '400'
+                color: activeTab === 'gallery' ? colors.primary : colors.textSecondary,
+                fontWeight: activeTab === 'gallery' ? '600' : '500'
               }
             ]}
           >
@@ -90,14 +90,17 @@ const styles = StyleSheet.create({
   group: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
-    gap: 8,
-    padding: 4,
-    borderRadius: 8
+    gap: 0,
+    padding: 3,
+    borderRadius: 10,
+    borderWidth: 1
   },
   btn: {
-    height: Math.round(12 + 13 * 1.35),
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    height: 28,
+    paddingHorizontal: 14,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center'
   },

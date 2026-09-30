@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Platform,
   PanResponder,
-  InteractionManager,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type StyleProp,
@@ -114,6 +113,7 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
   const platformScale = Platform.OS === 'android' ? getAndroidSliderIntegerScale(step) : 1
   const useCustomAndroidTrack = Platform.OS === 'android' && platformScale > 1
   const [androidReady, setAndroidReady] = useState(!useCustomAndroidTrack)
+  const gestureActiveRef = useRef(false)
 
   useEffect(() => {
     if (!useCustomAndroidTrack) {
@@ -121,13 +121,6 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
       return
     }
     setAndroidReady(false)
-  }, [useCustomAndroidTrack])
-
-  useEffect(() => {
-    if (useCustomAndroidTrack) return
-    if (Platform.OS !== 'android') return
-    const task = InteractionManager.runAfterInteractions(() => setAndroidReady(true))
-    return () => task.cancel()
   }, [useCustomAndroidTrack])
 
   const nativeProps = useMemo(
@@ -243,13 +236,20 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
           minimumTrackTintColor={minTrack}
           maximumTrackTintColor={maxTrack}
           thumbTintColor={thumb}
+          onSlidingStart={() => {
+            gestureActiveRef.current = true
+            isSlidingRef.current = true
+          }}
           onValueChange={(raw) => {
+            if (!gestureActiveRef.current) return
             isSlidingRef.current = true
             setNativeValue(raw)
             nativeValueRef.current = raw
             emit(raw, 'change')
           }}
           onSlidingComplete={(raw) => {
+            if (!gestureActiveRef.current) return
+            gestureActiveRef.current = false
             isSlidingRef.current = false
             setNativeValue(raw)
             nativeValueRef.current = raw
