@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createGitShadowSnapshotStore,
@@ -8,8 +8,8 @@ import {
 import type { GitShadowFs } from '../git-shadow-fs'
 import type { WorkspaceSnapshotStore } from '../workspace-snapshot-store'
 
-const FOLDER_ROOT = join('D:', 'notes')
-const GIT_DIR = join('D:', 'appdata', 'shadow', 'notes')
+const FOLDER_ROOT = resolve(join('D:', 'notes'))
+const GIT_DIR = resolve(join('D:', 'appdata', 'shadow', 'notes'))
 const TREE_OID = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 function ok(stdout = ''): WorkspaceGitCommandResult {
