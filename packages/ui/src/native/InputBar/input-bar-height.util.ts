@@ -12,6 +12,40 @@ export const INPUT_MAX_HEIGHT_EXPANDED_RATIO = 0.42
 export const INPUT_MAX_HEIGHT_EXPANDED_CAP = 320
 /** 卡片内底栏（菜单 + 发送） */
 export const INPUT_CARD_BOTTOM_ROW = 36
+/** 与输入框样式里的 lineHeight 一致 */
+export const COMPOSER_LINE_HEIGHT = 20
+/** 中文在 15px 字号下的近似字宽，用来估算换行 */
+export const COMPOSER_TEXT_CHAR_WIDTH = 15
+
+/**
+ * 输入框可用宽度：外层左右 14、卡片左右 10、文字左右 4，再减去展开按钮。
+ */
+export function composerContentWidth(windowWidth: number): number {
+  const inset = 14 * 2 + 10 * 2 + 4 * 2 + 30
+  return Math.max(COMPOSER_TEXT_CHAR_WIDTH, windowWidth - inset)
+}
+
+/**
+ * 按换行和可用宽度估算正文高度。
+ * 程序写入 Skill 正文时，系统常常不回报内容高度，输入框会停在一行。
+ */
+export function estimateComposerContentHeight(
+  text: string,
+  contentWidth: number,
+  verticalPadding = 12
+): number {
+  const charsPerLine = Math.max(
+    1,
+    Math.floor(Math.max(contentWidth, COMPOSER_TEXT_CHAR_WIDTH) / COMPOSER_TEXT_CHAR_WIDTH)
+  )
+  const paragraphs = text.length === 0 ? [''] : text.split('\n')
+  let lines = 0
+  for (const paragraph of paragraphs) {
+    const length = Array.from(paragraph).length
+    lines += Math.max(1, Math.ceil(length / charsPerLine))
+  }
+  return lines * COMPOSER_LINE_HEIGHT + verticalPadding
+}
 
 export function clampInputFrameHeight(contentHeight: number, maxHeight: number) {
   return Math.min(Math.max(Math.ceil(contentHeight), INPUT_MIN_HEIGHT), maxHeight)

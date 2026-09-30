@@ -9,10 +9,13 @@ import { LucideIcon } from '../icons/LucideIcon'
 import { INPUT_MIN_HEIGHT } from './input-bar-height.util'
 import { nativeInputBarStyles as styles } from './native-input-bar.styles'
 import { InputBarToolbar } from './InputBarToolbar'
+import { ReasoningEffortControl } from './ReasoningEffortControl'
+import { ModelReasoningControl } from './ModelReasoningControl'
 import { useNativeInputBar } from './useNativeInputBar'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 
-export type { InputBarProps, InputBarRef } from './input-bar.types'
+export type { InputBarProps, InputBarRef, InputBarModelSelector } from './input-bar.types'
+export { ModelReasoningControl } from './ModelReasoningControl'
 
 export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
   const bar = useNativeInputBar(props, ref)
@@ -232,58 +235,80 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                     />
                   </TouchableOpacity>
 
-                  {resolveInputBarPrimaryAction({
-                    isLoading: bar.isLoading,
-                    canSend: Boolean(bar.text.trim() || bar.attachments.length > 0),
-                    hasStopHandler: Boolean(bar.onStop)
-                  }) === 'stop' ? (
-                    <TouchableOpacity
-                      style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-                      onPress={bar.onStop}
-                      accessibilityLabel={t('common.stop', '停止')}
-                    >
-                      <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[
-                        styles.sendBtn,
-                        {
-                          backgroundColor: colors.bgSurface,
-                          borderWidth: 1,
-                          borderColor:
+                  <View style={styles.bottomActions}>
+                    {props.modelSelector ? (
+                      <ModelReasoningControl
+                        currentProviderId={props.modelSelector.currentProviderId}
+                        currentModelId={props.modelSelector.currentModelId}
+                        currentProviderType={props.modelSelector.currentProviderType}
+                        displayModelName={props.modelSelector.displayModelName}
+                        providers={props.modelSelector.providers}
+                        onSelectModel={props.modelSelector.onSelectModel}
+                        onManageProviders={props.modelSelector.onManageProviders}
+                        reasoningEffort={
+                          props.modelSelector.reasoningEffort || props.reasoningEffort
+                        }
+                      />
+                    ) : props.reasoningEffort && props.reasoningEffort.options.length > 0 ? (
+                      <ReasoningEffortControl
+                        value={props.reasoningEffort.value}
+                        options={props.reasoningEffort.options}
+                        onChange={props.reasoningEffort.onChange}
+                      />
+                    ) : null}
+                    {resolveInputBarPrimaryAction({
+                      isLoading: bar.isLoading,
+                      canSend: Boolean(bar.text.trim() || bar.attachments.length > 0),
+                      hasStopHandler: Boolean(bar.onStop)
+                    }) === 'stop' ? (
+                      <TouchableOpacity
+                        style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                        onPress={bar.onStop}
+                        accessibilityLabel={t('common.stop', '停止')}
+                      >
+                        <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.sendBtn,
+                          {
+                            backgroundColor: colors.bgSurface,
+                            borderWidth: 1,
+                            borderColor:
+                              !bar.text.trim() &&
+                              bar.attachments.length === 0 &&
+                              bar.skillRefs.length === 0
+                                ? colors.borderSubtle
+                                : colors.borderControl
+                          },
+                          bar.isSending && {
+                            opacity: 0.72
+                          }
+                        ]}
+                        onPress={() => void bar.handleSend()}
+                        disabled={
+                          bar.isSending ||
+                          (!bar.text.trim() &&
+                            bar.attachments.length === 0 &&
+                            bar.skillRefs.length === 0)
+                        }
+                        accessibilityLabel={t('common.send', '发送')}
+                      >
+                        <LucideIcon
+                          icon={Send}
+                          size={18}
+                          color={
                             !bar.text.trim() &&
                             bar.attachments.length === 0 &&
                             bar.skillRefs.length === 0
-                              ? colors.borderSubtle
-                              : colors.borderControl
-                        },
-                        bar.isSending && {
-                          opacity: 0.72
-                        }
-                      ]}
-                      onPress={() => void bar.handleSend()}
-                      disabled={
-                        bar.isSending ||
-                        (!bar.text.trim() &&
-                          bar.attachments.length === 0 &&
-                          bar.skillRefs.length === 0)
-                      }
-                      accessibilityLabel={t('common.send', '发送')}
-                    >
-                      <LucideIcon
-                        icon={Send}
-                        size={18}
-                        color={
-                          !bar.text.trim() &&
-                          bar.attachments.length === 0 &&
-                          bar.skillRefs.length === 0
-                            ? colors.textTertiary
-                            : colors.textPrimary
-                        }
-                      />
-                    </TouchableOpacity>
-                  )}
+                              ? colors.textTertiary
+                              : colors.textPrimary
+                          }
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>

@@ -2,36 +2,39 @@ import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { PanelLeftOpen } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { ProviderBrandIcon, useNativeTheme } from '@baishou/ui/native'
-import { isConfiguredProviderId } from '@baishou/shared'
+import { AssistantAvatar, useNativeTheme } from '@baishou/ui/native'
 
 interface AgentChatAppBarProps {
-  modelName: string
-  providerId?: string | null
-  providerType?: string
+  title?: string
+  avatarUri?: string | null
+  avatarPath?: string | null
+  avatarEmoji?: string | null
   costMicros: number
   onMenuPress: () => void
-  onModelPress: () => void
   onCostPress: () => void
+  /** @deprecated 顶部不再作为模型选择器 */
+  modelName?: string
+  providerId?: string | null
+  providerType?: string
+  onModelPress?: () => void
 }
 
 const LEFT_SIDE_WIDTH = 48
 const RIGHT_SIDE_WIDTH = 76
 
 export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
-  modelName,
-  providerId,
-  providerType,
+  title,
+  avatarUri,
+  avatarPath,
+  avatarEmoji,
   costMicros,
   onMenuPress,
-  onModelPress,
   onCostPress
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const costLabel = `$${(costMicros / 1_000_000).toFixed(4)}`
-  const displayModel = modelName || t('agent.no_model_selected', '暂未选择模型')
-  const showProviderIcon = isConfiguredProviderId(providerId)
+  const displayTitle = title || t('nav.agent', '伙伴')
 
   return (
     <View
@@ -43,6 +46,20 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
         }
       ]}
     >
+      <View style={styles.titleWrap} pointerEvents="box-none">
+        <View style={styles.partnerCluster}>
+          <AssistantAvatar
+            emoji={avatarEmoji}
+            avatarPath={avatarPath}
+            resolvedAvatarUri={avatarUri}
+            size={24}
+          />
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+            {displayTitle}
+          </Text>
+        </View>
+      </View>
+
       <View style={[styles.side, styles.sideLeft]}>
         <TouchableOpacity
           style={styles.menuBtn}
@@ -52,17 +69,6 @@ export const AgentChatAppBar: React.FC<AgentChatAppBarProps> = ({
           <PanelLeftOpen size={24} color={colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.titleWrap} onPress={onModelPress} activeOpacity={0.7}>
-        <View style={styles.modelCluster}>
-          {showProviderIcon ? (
-            <ProviderBrandIcon providerId={providerId!} providerType={providerType} size={18} />
-          ) : null}
-          <Text style={[styles.modelName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {displayModel}
-          </Text>
-        </View>
-      </TouchableOpacity>
 
       <View style={[styles.side, styles.sideRight]}>
         <TouchableOpacity
@@ -90,12 +96,15 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     minHeight: 48,
     paddingHorizontal: 4,
-    borderBottomWidth: 1
+    borderBottomWidth: 1,
+    position: 'relative'
   },
   side: {
-    justifyContent: 'center'
+    justifyContent: 'center',
+    zIndex: 1
   },
   sideLeft: {
     width: LEFT_SIDE_WIDTH,
@@ -113,25 +122,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   titleWrap: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 2,
-    minWidth: 0
+    paddingHorizontal: 80,
+    zIndex: 0
   },
-  modelCluster: {
+  partnerCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexShrink: 1,
+    justifyContent: 'center',
+    gap: 8,
     maxWidth: '100%'
   },
-  modelName: {
+  title: {
     fontSize: 16,
-    fontWeight: '500',
-    flexShrink: 1,
-    textAlign: 'left'
+    fontWeight: '600',
+    textAlign: 'center',
+    flexShrink: 1
   },
   costBadge: {
     flexShrink: 1,

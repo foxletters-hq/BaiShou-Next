@@ -1566,6 +1566,7 @@
     "per_page": "件/ページ",
     "status_pending_extract": "抽出待ち：{{count}}件",
     "status_pending_embed": "埋め込み待ち：{{count}}件",
+    "status_pending_organize": "整理待ち：{{count}}件",
     "status_indexing": "インデックス中 {{progress}}/{{total}}",
     "status_indexing_kind": "{{kind}}を埋め込み中 {{progress}}/{{total}}",
     "status_indexing_paused_kind": "一時停止 · {{kind}}を埋め込み中 {{progress}}/{{total}}"
@@ -2451,7 +2452,8 @@
       "quota": "プロバイダーからアカウントのクォータまたは残高不足が報告されました。",
       "unknown": "エラーが発生しました：{{msg}}",
       "create_session": "システムエラーによりセッションの作成に失敗しました: {{msg}}",
-      "vision_not_supported": "このモデルは画像認識に対応していません。ビジョンモデルに切り替えて試してみてくださいね〜"
+      "vision_not_supported": "このモデルは画像認識に対応していません。ビジョンモデルに切り替えて試してみてくださいね〜",
+      "no_model": "先に入力欄でモデルを選択してください"
     },
     "generation_failed": "返信の生成に失敗しました",
     "stream_cancelled": "生成をキャンセルしました",

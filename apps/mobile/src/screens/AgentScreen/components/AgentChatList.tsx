@@ -32,7 +32,6 @@ import Animated from 'react-native-reanimated'
 import { ChevronDown } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { AgentChatAppBar } from '../../../components/AgentChatAppBar'
-import { SessionReasoningSelect } from './SessionReasoningSelect'
 import { AgentMessageRow } from '../../../components/AgentMessageRow'
 import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
@@ -40,6 +39,7 @@ import { LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
 import { MobileNotebookMountSheet } from './MobileNotebookMountSheet'
 import { KnowledgeMountHintBar } from './KnowledgeMountHintBar'
+import { useSessionReasoningEffort } from './useSessionReasoningEffort'
 
 export type AgentChatListProps = {
   colors: any
@@ -53,6 +53,8 @@ export type AgentChatListProps = {
   currentProviderId: string | null
   currentModelId?: string | null
   currentProviderType: string | undefined
+  dialogueProviders?: any[]
+  handleSelectModel?: (providerId: string, modelId: string) => void
   totalCostMicros: number
   setDrawerOpen: (open: boolean) => void
   setShowModelSwitcher: (v: boolean) => void
@@ -141,11 +143,20 @@ export type AgentChatListProps = {
   toggleTtsMode: () => void
   currentSessionId?: string | null
   assistantId?: string | null
+  assistantAvatarUri?: string | null
+  assistantAvatarPath?: string | null
+  assistantEmoji?: string | null
 }
 
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
+  const reasoningEffort = useSessionReasoningEffort({
+    sessionId: p.currentSessionId ?? null,
+    providerId: p.currentProviderId,
+    providerType: p.currentProviderType,
+    modelId: p.currentModelId ?? null
+  })
   const resolvedLive = useAgentGateInboxStore((state) =>
     selectResolvedLiveForSession(state, p.currentSessionId, 'companion')
   )
@@ -198,19 +209,13 @@ export function AgentChatList(props: AgentChatListProps) {
       ) : null}
       <View style={styles.container}>
         <AgentChatAppBar
-          modelName={p.displayModelName || ''}
-          providerId={p.currentProviderId}
-          providerType={p.currentProviderType}
+          title={p.assistantDisplayName || p.t('nav.agent', '伙伴')}
+          avatarUri={p.assistantAvatarUri ?? p.chatAiProfile?.resolvedAvatarUri}
+          avatarPath={p.assistantAvatarPath}
+          avatarEmoji={p.assistantEmoji}
           costMicros={p.totalCostMicros}
           onMenuPress={() => p.setDrawerOpen(true)}
-          onModelPress={() => p.setShowModelSwitcher(true)}
           onCostPress={() => p.setShowCostDialog(true)}
-        />
-        <SessionReasoningSelect
-          sessionId={p.currentSessionId ?? null}
-          providerId={p.currentProviderId}
-          providerType={p.currentProviderType}
-          modelId={p.currentModelId ?? null}
         />
 
         <AgentDrawerSwipeZone enabled={p.drawerSwipeEnabled} onOpen={() => p.setDrawerOpen(true)}>
@@ -345,7 +350,8 @@ export function AgentChatList(props: AgentChatListProps) {
                         : item.reasoning || '',
                       isTextStreaming: p.markdownPresentationActive && p.bubbleTextStreaming,
                       isThinkLoading: p.markdownPresentationActive && p.streamingThinkLoading,
-                      isThinkStreaming: false,
+                      isThinkStreaming:
+                        p.markdownPresentationActive && Boolean(p.streamingReasoning.trim()),
                       activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
                       completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
                       attachments: p.liveStreamProps.attachments,
@@ -451,11 +457,26 @@ export function AgentChatList(props: AgentChatListProps) {
             onStop={p.handleStop}
             composerBlocked={!p.hasConfiguredDialogueModel}
             onComposerBlocked={() =>
-              p.toast.showInfo(p.t('agent.error.no_model', '请先在顶部选择一个模型'))
+              p.toast.showInfo(p.t('agent.error.no_model', '请先在输入栏选择一个模型'))
             }
             composerDraftKey={p.composerDraftKey}
             composerDraftStorage={mobileComposerDraftStorage}
             composerEnabled={!p.isBubbleEditing}
+            reasoningEffort={reasoningEffort}
+            modelSelector={
+              p.handleSelectModel
+                ? {
+                    currentProviderId: p.currentProviderId,
+                    currentModelId: p.currentModelId,
+                    currentProviderType: p.currentProviderType,
+                    displayModelName: p.displayModelName,
+                    providers: p.dialogueProviders || [],
+                    onSelectModel: p.handleSelectModel,
+                    onManageProviders: () => (p.router as any).push('/settings/ai-services'),
+                    reasoningEffort
+                  }
+                : undefined
+            }
             onInputFocus={p.handleInputBarFocus}
             onHeightChange={(height) => {
               if (height > 0 && height !== p.inputDockHeight) p.setInputDockHeight(height)

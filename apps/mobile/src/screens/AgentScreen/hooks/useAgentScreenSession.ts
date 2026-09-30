@@ -5,7 +5,8 @@ import {
   type AIProviderConfig,
   type AgentBehaviorConfig,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  filterProvidersForModelSwitcher
 } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR, DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
 import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
@@ -112,6 +113,11 @@ export function useAgentScreenSession(deps: {
   const currentProviderType = useMemo(
     () => aiProviders.find((provider) => provider.id === currentProviderId)?.type,
     [aiProviders, currentProviderId]
+  )
+
+  const dialogueProviders = useMemo(
+    () => filterProvidersForModelSwitcher(aiProviders, 'dialogue'),
+    [aiProviders]
   )
 
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
@@ -284,6 +290,7 @@ export function useAgentScreenSession(deps: {
     handleSelectModel,
     hasConfiguredDialogueModel,
     currentProviderType,
+    dialogueProviders,
     sessions,
     hasMoreSessions,
     isLoadingMoreSessions,
