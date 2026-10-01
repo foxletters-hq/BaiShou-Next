@@ -1,4 +1,5 @@
 import type { StreamTextResult } from 'ai'
+import { createAgentStreamAbortError } from '@baishou/shared'
 import { emitCompressionLifecycle } from './compression-lifecycle'
 
 export type CompressionStreamConsumeResult = {
@@ -57,7 +58,7 @@ function createCompressionEmitBatcher(sessionId: string) {
 
 function throwIfAborted(abortSignal?: AbortSignal): void {
   if (abortSignal?.aborted) {
-    throw new DOMException('The operation was aborted', 'AbortError')
+    throw createAgentStreamAbortError()
   }
 }
 

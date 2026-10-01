@@ -11,10 +11,13 @@ import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import {
   collectKnowledgeCitationsFromInvocations,
   decorateKnowledgeCitedTexts,
+  type AgentStreamTimelineItem,
   type MockChatAttachment
 } from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
+import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
 import type { ChatBubbleProps } from './chat-bubble.types'
+import { useNativeAssistantTimeline } from './useNativeAssistantTimeline'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
@@ -58,6 +61,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const sourceContent = liveStream?.content ?? message.content ?? ''
   const sourceReasoning = liveStream?.reasoning ?? message.reasoning ?? ''
 
+  const liveTimeline = useMemo(() => liveStream?.timeline ?? [], [liveStream?.timeline])
+  const liveGateParts = useMemo(() => liveStream?.gateParts ?? [], [liveStream?.gateParts])
   /** live 行流式覆盖：重生成时消息已落库，仍须走 stream 态（转圈 / 工具 / 正文） */
   const liveStreamOverlay = Boolean(
     liveStream &&
@@ -65,7 +70,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       liveStream.isThinkStreaming ||
       liveStream.isTextStreaming ||
       liveStream.activeToolName ||
-      (liveStream.completedTools?.length ?? 0) > 0)
+      (liveStream.completedTools?.length ?? 0) > 0 ||
+      liveTimeline.length > 0)
   )
   const parseContent = liveStreamOverlay ? sourceContent : (message.content ?? '')
   const parseReasoning = liveStreamOverlay ? sourceReasoning : (message.reasoning ?? '')
@@ -102,10 +108,26 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       }>,
     [message.toolInvocations]
   )
-  const knowledgeCitations = useMemo(
-    () => collectKnowledgeCitationsFromInvocations(toolInvocations),
-    [toolInvocations]
-  )
+  const knowledgeCitations = useMemo(() => {
+    if (liveStreamOverlay && liveTimeline.length > 0) {
+      return collectKnowledgeCitationsFromInvocations(
+        liveTimeline
+          .filter(
+            (item): item is Extract<AgentStreamTimelineItem, { kind: 'tool' }> =>
+              item.kind === 'tool'
+          )
+          .map((item) => ({ toolName: item.name, result: item.result }))
+      )
+    }
+    return collectKnowledgeCitationsFromInvocations(toolInvocations)
+  }, [liveStreamOverlay, liveTimeline, toolInvocations])
+  const { items: timelineItems, useTimeline: hasTimelineItems } = useNativeAssistantTimeline({
+    liveTimeline,
+    gateParts: liveGateParts,
+    parts: message.parts,
+    preferLive: liveStreamOverlay
+  })
+  const useTimeline = isAssistant && hasTimelineItems && !edit.isEditing
   const citedContent = useMemo(() => {
     if (!isAssistant || knowledgeCitations.length === 0) return cleanContent
     return (
@@ -216,40 +238,67 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     }
             ]}
           >
-            {showThinkSection ? (
-              <View
-                style={{
-                  marginBottom: cleanContent || showStreamingTools || showPersistedTools ? 8 : 0,
-                  alignSelf: 'stretch',
-                  width: '100%'
-                }}
-              >
-                <AgentThinkSection
-                  content={cleanReasoning}
-                  isLoading={thinkLoading}
-                  isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}
-                />
-              </View>
-            ) : null}
+            {useTimeline ? (
+              <AssistantDisplayTimeline
+                items={timelineItems}
+                isStreaming={liveStreamOverlay && !displayError}
+                isThinkStreaming={Boolean(liveStream?.isThinkStreaming) && !displayError}
+                isTextStreaming={markdownStreaming && !displayError}
+                error={displayError}
+                knowledgeCitations={knowledgeCitations}
+                citationAnchorKey={message.id || 'turn'}
+                appendCitationMarkers={!liveStreamOverlay}
+                onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+              />
+            ) : (
+              <>
+                {showThinkSection ? (
+                  <View
+                    style={{
+                      marginBottom:
+                        cleanContent || showStreamingTools || showPersistedTools
+                          ? tokens.spacing.sm
+                          : 0,
+                      alignSelf: 'stretch',
+                      width: '100%'
+                    }}
+                  >
+                    <AgentThinkSection
+                      content={cleanReasoning}
+                      isLoading={thinkLoading}
+                      isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}
+                    />
+                  </View>
+                ) : null}
 
-            {showStreamingTools ? (
-              <View
-                style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
-              >
-                <ToolResultGroupCard
-                  completedTools={streamingCompletedTools}
-                  activeToolName={streamingActiveToolName}
-                />
-              </View>
-            ) : null}
+                {showStreamingTools ? (
+                  <View
+                    style={{
+                      marginBottom: cleanContent ? tokens.spacing.sm : 0,
+                      alignSelf: 'stretch',
+                      width: '100%'
+                    }}
+                  >
+                    <ToolResultGroupCard
+                      completedTools={streamingCompletedTools}
+                      activeToolName={streamingActiveToolName}
+                    />
+                  </View>
+                ) : null}
 
-            {showPersistedTools ? (
-              <View
-                style={{ marginBottom: cleanContent ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
-              >
-                <ToolResultGroupCard invocations={toolInvocations} />
-              </View>
-            ) : null}
+                {showPersistedTools ? (
+                  <View
+                    style={{
+                      marginBottom: cleanContent ? tokens.spacing.sm : 0,
+                      alignSelf: 'stretch',
+                      width: '100%'
+                    }}
+                  >
+                    <ToolResultGroupCard invocations={toolInvocations} />
+                  </View>
+                ) : null}
+              </>
+            )}
 
             {edit.isEditing ? (
               <View style={styles.editInputWrap}>
@@ -264,7 +313,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 {!isAssistant && attachments.length > 0 ? (
                   <NativeChatBubbleAttachments attachments={attachments} isUserBubble />
                 ) : null}
-                {isAssistant && cleanContent ? (
+                {isAssistant && cleanContent && !useTimeline ? (
                   <View style={styles.markdownSlot}>
                     <AgentMarkdownRenderer
                       content={citedContent}

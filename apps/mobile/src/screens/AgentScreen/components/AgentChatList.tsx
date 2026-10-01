@@ -9,7 +9,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
-import { AgentGatePartCard, InputBar } from '@baishou/ui/native'
+import { InputBar } from '@baishou/ui/native'
 import {
   collectAgentGatePartDataForSurface,
   collectUnresolvedAgentGateRequestsForSurface
@@ -305,7 +305,7 @@ export function AgentChatList(props: AgentChatListProps) {
                         chatAiProfile={p.chatAiProfile}
                         isLiveCompressionAnchor={false}
                         liveCompression={p.IDLE_LIVE_COMPRESSION}
-                        liveStream={p.liveStreamProps}
+                        liveStream={{ ...p.liveStreamProps, gateParts: liveGateParts }}
                         deferAssistantChrome
                         onRegenerate={() => {}}
                         onCopy={() => {}}
@@ -352,6 +352,10 @@ export function AgentChatList(props: AgentChatListProps) {
                       isThinkLoading: p.markdownPresentationActive && p.streamingThinkLoading,
                       isThinkStreaming:
                         p.markdownPresentationActive && Boolean(p.streamingReasoning.trim()),
+                      timeline: p.markdownPresentationActive
+                        ? p.liveStreamProps.timeline
+                        : undefined,
+                      gateParts: liveGateParts,
                       activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
                       completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
                       attachments: p.liveStreamProps.attachments,
@@ -413,9 +417,6 @@ export function AgentChatList(props: AgentChatListProps) {
                 )
               })}
 
-              {liveGateParts.map((data) => (
-                <AgentGatePartCard key={data.request.id} data={data} />
-              ))}
               {p.listFooter}
             </View>
           </ScrollView>

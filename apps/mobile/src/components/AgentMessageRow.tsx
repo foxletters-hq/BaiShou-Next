@@ -4,11 +4,9 @@ import {
   ChatBubble,
   CompressionActivityBar,
   CompressionDivider,
-  AgentGatePartCard
+  type NativeChatLiveStream
 } from '@baishou/ui/native'
-import { collectAgentGatePartDataForSurface } from '@baishou/shared'
 import type { CompactionMarkerData } from '@baishou/ai'
-import type { MockChatAttachment } from '@baishou/shared'
 
 type ChatMessage = {
   id: string
@@ -62,23 +60,7 @@ export interface AgentMessageRowProps {
   onBubbleEditingChange?: (editing: boolean, messageId?: string) => void
   invertMetaOverBackground?: boolean
   retryDisabled?: boolean
-  liveStream?: {
-    content?: string
-    reasoning?: string
-    isTextStreaming?: boolean
-    isThinkLoading?: boolean
-    isThinkStreaming?: boolean
-    activeToolName?: string | null
-    completedTools?: Array<{
-      name: string
-      durationMs: number
-      toolCallId?: string
-      result?: unknown
-      args?: unknown
-    }>
-    attachments?: MockChatAttachment[]
-    error?: string | null
-  }
+  liveStream?: NativeChatLiveStream
   error?: string | null
   deferAssistantChrome?: boolean
 }
@@ -133,13 +115,8 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
 
   const showDivider = showPersistedCompression && persistedCompaction?.status !== 'failed'
 
-  const agentGateParts = collectAgentGatePartDataForSurface(item.parts, 'companion')
-
   return (
     <View style={styles.row}>
-      {agentGateParts.map((data) => (
-        <AgentGatePartCard key={data.request.id} data={data} />
-      ))}
       <ChatBubble
         message={{
           id: item.id,
@@ -155,7 +132,8 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
           outputTokens: item.outputTokens,
           cacheReadInputTokens: item.cacheReadInputTokens,
           cacheWriteInputTokens: item.cacheWriteInputTokens,
-          costMicros: item.costMicros
+          costMicros: item.costMicros,
+          parts: item.parts
         }}
         userProfile={chatUserProfile}
         aiProfile={chatAiProfile}

@@ -1,2 +1,2 @@
 export { ChatBubble } from './ChatBubble'
-export type { ChatBubbleMessage, ChatBubbleProps } from './chat-bubble.types'
+export type { ChatBubbleMessage, ChatBubbleProps, NativeChatLiveStream } from './chat-bubble.types'

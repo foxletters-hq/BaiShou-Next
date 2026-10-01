@@ -1,4 +1,5 @@
 import { streamText, type LanguageModel } from 'ai'
+import { createAgentStreamAbortError } from '@baishou/shared'
 
 export const SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME = 'TimeoutError'
 
@@ -86,7 +87,7 @@ export async function collectSummaryStreamText(options: {
 }): Promise<string> {
   const { abortController, firstOutputTimeoutMs, idleTimeoutMs, onFirstOutput } = options
   if (abortController.signal.aborted) {
-    throw new DOMException('The operation was aborted', 'AbortError')
+    throw createAgentStreamAbortError()
   }
 
   let firstOutputSeen = false
@@ -129,7 +130,7 @@ export async function collectSummaryStreamText(options: {
 
   const onAbort = () => {
     if (timedOut || idleTimedOut) return
-    fail(new DOMException('The operation was aborted', 'AbortError'))
+    fail(createAgentStreamAbortError())
   }
   abortController.signal.addEventListener('abort', onAbort, { once: true })
 
@@ -147,7 +148,7 @@ export async function collectSummaryStreamText(options: {
 
   const awaitRead = async <T>(operation: Promise<T>): Promise<T> => {
     if (abortController.signal.aborted && !timedOut && !idleTimedOut) {
-      throw new DOMException('The operation was aborted', 'AbortError')
+      throw createAgentStreamAbortError()
     }
     return Promise.race([operation, pendingAbort])
   }
@@ -213,7 +214,7 @@ async function collectFromFullStream(
           : new Error(String(part.error ?? 'Summary stream error'))
       }
       if (part.type === 'abort') {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
       if (!isSummaryModelOutputPart(part)) continue
 

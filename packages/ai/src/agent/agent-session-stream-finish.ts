@@ -1,4 +1,9 @@
-import { isAgentStreamAbortError, isAgentGateRejectedError, logger } from '@baishou/shared'
+import {
+  createAgentStreamAbortError,
+  isAgentStreamAbortError,
+  isAgentGateRejectedError,
+  logger
+} from '@baishou/shared'
 import { isAgentFirstOutputTimeoutError, isAgentStreamUserAborted } from './agent-stream-timeout'
 import {
   UNEXPECTED_AGENT_STREAM_ABORT_MESSAGE,
@@ -83,9 +88,7 @@ export async function finishAgentSessionStream(input: {
     workspaceSessionBuffer.buildPartDataList().length > 0
 
   if (userAborted) {
-    streamError = isAgentStreamAbortError(streamError)
-      ? streamError
-      : new DOMException('The operation was aborted', 'AbortError')
+    streamError = isAgentStreamAbortError(streamError) ? streamError : createAgentStreamAbortError()
   } else if (!streamError && !hasModelOutput) {
     streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
   }

@@ -40,8 +40,8 @@ interface UseAgentStreamChatOptions {
   setCompressionTriggerMessageId: (value: string | null) => void
   appendStreamingTextDelta: (chunk: string) => void
   appendStreamingReasoningDelta: (chunk: string) => void
-  handleToolCallStart: (toolName: string, args?: unknown) => void
-  handleToolCallResult: (toolName: string, result: unknown) => void
+  handleToolCallStart: (toolName: string, args?: unknown, toolCallId?: string) => void
+  handleToolCallResult: (toolName: string, result: unknown, toolCallId?: string) => void
   hasStreamOutput: () => boolean
   interruptActiveStream: (options?: { keepStreamingFlag?: boolean }) => void
   resetStreamingBuffers: () => void
@@ -133,8 +133,14 @@ export function useAgentStreamChat({
                 if (userStoppedStreamRef.current) return
                 appendStreamingReasoningDelta(chunk)
               },
-              onToolCallStart: handleToolCallStart,
-              onToolCallResult: handleToolCallResult,
+              onToolCallStart: (toolName, args, toolCallId) => {
+                if (userStoppedStreamRef.current) return
+                handleToolCallStart(toolName, args, toolCallId)
+              },
+              onToolCallResult: (toolName, result, toolCallId) => {
+                if (userStoppedStreamRef.current) return
+                handleToolCallResult(toolName, result, toolCallId)
+              },
               onFinish: () => {},
               onError: (err) => {
                 if (userStoppedStreamRef.current) return

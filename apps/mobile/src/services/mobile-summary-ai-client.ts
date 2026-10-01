@@ -6,6 +6,7 @@ import {
 } from '@baishou/core-mobile'
 import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
 import {
+  createAgentStreamAbortError,
   logger,
   normalizeReasoningEffortSetting,
   prepareProviderConfigForRuntime,
@@ -79,7 +80,7 @@ export function buildMobileSummaryAiClient(
       const onUserAbort = () => abortController.abort()
       if (userSignal) {
         if (userSignal.aborted) {
-          throw new DOMException('The operation was aborted', 'AbortError')
+          throw createAgentStreamAbortError()
         }
         userSignal.addEventListener('abort', onUserAbort, { once: true })
       }
