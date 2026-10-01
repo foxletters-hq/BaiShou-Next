@@ -1,7 +1,7 @@
-import { logger } from '@baishou/shared'
+import { createAgentStreamAbortError, logger } from '@baishou/shared'
 
-export function graphExtractAbortError(): DOMException {
-  return new DOMException('The operation was aborted', 'AbortError')
+export function graphExtractAbortError(): Error {
+  return createAgentStreamAbortError()
 }
 
 export function throwIfGraphExtractAborted(signal?: AbortSignal): void {

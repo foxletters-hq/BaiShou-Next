@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   collectGraphFocusIds,
@@ -19,7 +19,6 @@ import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/databas
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
 import {
-  GRAPH_FILTER_NODE_TYPES,
   buildGraphScreenDetailEdges,
   buildGraphScreenDisplayEdges,
   buildGraphScreenDisplayNodes,
@@ -42,6 +41,7 @@ import { useGraphScreenExtract } from './useGraphScreenExtract'
 import { useGraphScreenReview } from './useGraphScreenReview'
 import { useGraphScreenSearch } from './useGraphScreenSearch'
 import { consumeGraphPendingFocus, subscribeGraphPendingFocus } from './graph-pending-focus'
+import { consumeGraphOpsNodeFocus, subscribeGraphOpsNodeFocus } from './graph-cross-page-focus'
 import { useGraphScreenSettings } from './useGraphScreenSettings'
 
 export function useGraphScreenModel() {
@@ -52,7 +52,7 @@ export function useGraphScreenModel() {
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
-  const [tab, setTab] = useState<GraphScreenTab>('graph')
+  const [tab, setTab] = useState<GraphScreenTab>('search')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [dismissGuide, setDismissGuide] = useState(false)
@@ -95,9 +95,19 @@ export function useGraphScreenModel() {
     services,
     graphNodes: data.graphNodes,
     pendingNodes: data.pendingNodes,
-    setTab,
     setStatus
   })
+  const onSelectNodeRef = useRef(search.onSelectNode)
+  onSelectNodeRef.current = search.onSelectNode
+
+  useEffect(() => {
+    const applyOpsNodeFocus = () => {
+      const id = consumeGraphOpsNodeFocus()
+      if (id) void onSelectNodeRef.current(id)
+    }
+    applyOpsNodeFocus()
+    return subscribeGraphOpsNodeFocus(applyOpsNodeFocus)
+  }, [])
   const refreshVisibleAfterReview = (opts?: { stripSuspectOnNodeId?: string }) =>
     data.refreshVisibleAfterReview({
       selectedId: search.selectedId,
@@ -304,11 +314,10 @@ export function useGraphScreenModel() {
   const tabItems = useMemo(
     () =>
       [
-        ['graph', t('graph.tab_graph', '图谱')],
-        ['reextract', `${t('graph.tab_reextract', '待重抽')}(${data.pending.length})`],
+        ['search', t('graph.tab_search', '搜索')],
         ['pending', `${t('graph.tab_pending', '待确认')}(${review.pendingItems.length})`],
         ['similar', `${t('graph.tab_similar', '相似待合并')}(${data.similarPairs.length})`],
-        ['search', t('graph.tab_search', '搜索')]
+        ['reextract', `${t('graph.tab_reextract', '待重抽')}(${data.pending.length})`]
       ] as const,
     [t, data.pending.length, review.pendingItems.length, data.similarPairs.length]
   )
@@ -480,7 +489,6 @@ export function useGraphScreenModel() {
     saveProfileFromSettings,
     setDismissGuide,
     startOrganize,
-    phaseKey: graphScreenPhaseKey({ awakenPending, showAwakenGate }),
-    GRAPH_FILTER_NODE_TYPES
+    phaseKey: graphScreenPhaseKey({ awakenPending, showAwakenGate })
   }
 }

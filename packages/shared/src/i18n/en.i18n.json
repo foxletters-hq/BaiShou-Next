@@ -3826,6 +3826,8 @@
     "similar_merged": "Merged",
     "tab_detail": "Detail",
     "tab_search": "Search",
+    "open_canvas": "Open graph",
+    "open_in_ops": "Open in workspace",
     "no_pending_reextract": "No diaries pending extraction",
     "reextract_empty": "No diaries pending extraction",
     "no_pending_edges": "No pending edges",

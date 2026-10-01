@@ -3824,6 +3824,8 @@
     "similar_merged": "已合併",
     "tab_detail": "詳情",
     "tab_search": "搜尋",
+    "open_canvas": "打開圖譜",
+    "open_in_ops": "在操作台打開",
     "no_pending_reextract": "暫無待重抽日記",
     "reextract_empty": "暫無待重抽日記",
     "no_pending_edges": "沒有待確認的邊",

@@ -16,9 +16,10 @@ import type { GraphScreenSettingsSection } from './graph-screen.types'
 export function GraphScreenSettingsSheet(props: {
   visible: boolean
   onClose: () => void
+  mode: 'organize' | 'canvas'
   settingsSection: GraphScreenSettingsSection
   onToggleSection: (key: keyof GraphScreenSettingsSection) => void
-  organize: {
+  organize?: {
     profileForm: { nickname: string; birthday: string; gender: UserGender | '' }
     onProfileFormChange: (
       patch: Partial<{ nickname: string; birthday: string; gender: UserGender | '' }>
@@ -41,7 +42,7 @@ export function GraphScreenSettingsSheet(props: {
     onOpenMerge: () => void
     onClearLifeGraph: () => void
   }
-  canvas: {
+  canvas?: {
     filterActive: boolean
     typeFilterActive: boolean
     hideEntry: boolean
@@ -81,31 +82,30 @@ export function GraphScreenSettingsSheet(props: {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-          {t('graph.settings', '设置')}
+          {props.mode === 'canvas' ? t('graph.side_canvas', '画布') : t('graph.settings', '设置')}
         </Text>
 
-        <Pressable onPress={() => props.onToggleSection('organize')} style={styles.settingsHead}>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-            {props.settingsSection.organize ? '▾ ' : '▸ '}
-            {t('graph.side_organize', '整理')}
-          </Text>
-        </Pressable>
-        {props.settingsSection.organize ? (
-          <GraphScreenSettingsOrganize
-            settingsSection={props.settingsSection}
-            onToggleProfile={() => props.onToggleSection('profile')}
-            onToggleData={() => props.onToggleSection('data')}
-            {...props.organize}
-          />
-        ) : null}
-
-        <Pressable onPress={() => props.onToggleSection('canvas')} style={styles.settingsHead}>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-            {props.settingsSection.canvas ? '▾ ' : '▸ '}
-            {t('graph.side_canvas', '画布')}
-          </Text>
-        </Pressable>
-        {props.settingsSection.canvas ? (
+        {props.mode === 'organize' ? (
+          <>
+            <Pressable
+              onPress={() => props.onToggleSection('organize')}
+              style={styles.settingsHead}
+            >
+              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                {props.settingsSection.organize ? '▾ ' : '▸ '}
+                {t('graph.side_organize', '整理')}
+              </Text>
+            </Pressable>
+            {props.settingsSection.organize && props.organize ? (
+              <GraphScreenSettingsOrganize
+                settingsSection={props.settingsSection}
+                onToggleProfile={() => props.onToggleSection('profile')}
+                onToggleData={() => props.onToggleSection('data')}
+                {...props.organize}
+              />
+            ) : null}
+          </>
+        ) : props.canvas ? (
           <GraphScreenSettingsCanvas
             settingsSection={props.settingsSection}
             onToggleAppearance={() => props.onToggleSection('appearance')}

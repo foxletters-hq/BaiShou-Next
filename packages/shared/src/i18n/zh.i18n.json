@@ -3871,6 +3871,8 @@
     "similar_merged": "已合并",
     "tab_detail": "详情",
     "tab_search": "搜索",
+    "open_canvas": "打开图谱",
+    "open_in_ops": "在操作台打开",
     "no_pending_reextract": "暂无待重抽日记",
     "reextract_empty": "暂无待重抽日记",
     "no_pending_edges": "没有待确认的边",
