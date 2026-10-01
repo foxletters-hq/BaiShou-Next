@@ -8,6 +8,7 @@
 @theme {
   --color-primary: #5ba8f5;
   --color-accent: #5ba8f5;
+  --font-sans: 'Noto Sans SC';
 
   /* 覆盖 HeroUI theme.css 中的 color-mix / oklab 计算色 */
   --color-accent-hover: #3a88d5;

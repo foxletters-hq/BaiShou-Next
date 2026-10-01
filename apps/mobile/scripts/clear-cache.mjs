@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -21,6 +22,21 @@ function rm(target) {
   if (!fs.existsSync(target)) return
   fs.rmSync(target, { recursive: true, force: true })
   console.log(`  ✓ 已删除 ${path.relative(workspaceRoot, target)}`)
+}
+
+/** 先停 daemon，避免删掉 android 的 build 目录后增量打包还握着旧 zip-cache，触发 packageDebug IncrementalSplitter 失败 */
+function stopGradleDaemon() {
+  const androidDir = path.join(mobileRoot, 'android')
+  const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
+  if (!fs.existsSync(gradlew)) return
+  const result = spawnSync(gradlew, ['--stop'], {
+    cwd: androidDir,
+    encoding: 'utf8',
+    timeout: 60_000
+  })
+  if (result.status === 0) {
+    console.log('  ✓ 已停止 Gradle daemon')
+  }
 }
 
 /** worklets 编译缓存与 Metro 不同步时会 ENOENT；清空后需保留空目录供 Metro 重建 */
@@ -70,6 +86,7 @@ function rmMetroTmpCaches() {
 
 function clearAllMobileCaches() {
   console.log('\n🧹 清理移动端构建缓存…\n')
+  stopGradleDaemon()
   for (const target of targets) {
     rm(target)
   }

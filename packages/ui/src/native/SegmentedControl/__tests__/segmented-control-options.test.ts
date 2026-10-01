@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 function nextSegment<T extends string>(
@@ -19,5 +22,16 @@ describe('SegmentedControl option switch', () => {
     expect(nextSegment([{ value: 'vectors' }, { value: 'graph' }], 'vectors', 'graph')).toBe(
       'graph'
     )
+  })
+})
+
+const src = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'SegmentedControl.tsx'),
+  'utf8'
+)
+
+describe('SegmentedControl layout updates', () => {
+  it('should not set track width when the measured width is unchanged', () => {
+    expect(src).toContain('prev === next ? prev : next')
   })
 })

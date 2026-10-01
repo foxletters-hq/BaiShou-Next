@@ -51,11 +51,16 @@ export function getNativeElevationStyle(isDark: boolean, level: 'subtle' | 'rais
 }
 
 export function useNativeTheme() {
-  const { themeMode, seedColor, contentFontScale } = useNativeThemeContext()
+  const { themeMode, seedColor, contentFontScale, uiFontFamily } = useNativeThemeContext()
   const rawScheme = useColorScheme()
   const systemScheme = resolveSystemColorScheme(rawScheme)
   const { width, height } = useWindowDimensions()
-  const { colors, tokens, isDark } = buildNativeThemePalette(themeMode, seedColor, systemScheme)
+  const { colors, tokens, isDark } = buildNativeThemePalette(
+    themeMode,
+    seedColor,
+    systemScheme,
+    uiFontFamily
+  )
 
   const isTablet = width >= 768
   const fontScale = PixelRatio.getFontScale()

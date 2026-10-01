@@ -1,6 +1,19 @@
 import { TextEncoderStream, TextDecoderStream } from '@stardazed/streams-text-encoding'
 import { fetch as expoFetch } from 'expo/fetch'
 import * as ExpoCrypto from 'expo-crypto'
+
+/** Hermes 没有浏览器 DOMException；必须写在其它业务代码之前。 */
+function ensureDomExceptionPolyfill(): void {
+  if (typeof (globalThis as { DOMException?: unknown }).DOMException === 'function') return
+  ;(globalThis as any).DOMException = class DOMException extends Error {
+    constructor(message?: string, name?: string) {
+      super(message ?? '')
+      this.name = name || 'Error'
+    }
+  }
+}
+
+ensureDomExceptionPolyfill()
 ;(globalThis as any).TextEncoderStream = TextEncoderStream
 ;(globalThis as any).TextDecoderStream = TextDecoderStream
 

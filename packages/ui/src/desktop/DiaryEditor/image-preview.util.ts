@@ -5,7 +5,12 @@ export type ImagePreviewFileResult = { success: boolean; canceled?: boolean; err
 type CopyAttachmentResult = ImagePreviewFileResult
 
 function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === 'AbortError'
+  return Boolean(
+    err &&
+    typeof err === 'object' &&
+    'name' in err &&
+    (err as { name: unknown }).name === 'AbortError'
+  )
 }
 
 /** 解析为可供复制的本地路径；data URL 不含在此（避免 IPC 写文本） */

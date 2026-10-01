@@ -57,7 +57,10 @@ export function SegmentedControl<T extends string>({
           borderColor: colors.borderControl
         }
       ]}
-      onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout.width
+        setTrackWidth((prev) => (prev === next ? prev : next))
+      }}
     >
       {thumbWidth > 0 ? (
         <Animated.View

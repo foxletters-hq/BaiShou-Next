@@ -56,7 +56,8 @@ export const SettingsItem: React.FC<NativeSettingsItemProps> = ({
           style={{
             fontSize: 16,
             color: colors.textPrimary,
-            fontWeight: '500'
+            fontWeight: '500',
+            fontFamily: tokens.fontFamily
           }}
         >
           {title}
@@ -66,7 +67,8 @@ export const SettingsItem: React.FC<NativeSettingsItemProps> = ({
             style={{
               fontSize: 14,
               color: colors.textSecondary,
-              marginTop: 2
+              marginTop: 2,
+              fontFamily: tokens.fontFamily
             }}
           >
             {subtitle}

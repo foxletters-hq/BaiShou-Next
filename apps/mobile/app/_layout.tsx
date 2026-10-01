@@ -4,6 +4,7 @@ import '../global.css'
 import { ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import * as SplashScreen from 'expo-splash-screen'
 import 'react-native-reanimated'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useEffect, useMemo } from 'react'
@@ -39,6 +40,8 @@ export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
   initialRouteName: '(tabs)'
 }
+
+void SplashScreen.preventAutoHideAsync()
 
 function AppContent() {
   const { isDark, colors } = useNativeTheme()
@@ -143,6 +146,10 @@ function AppContent() {
 export default function RootLayout() {
   useEffect(() => {
     installMobileDiagnosticLog()
+  }, [])
+
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => undefined)
   }, [])
 
   return (

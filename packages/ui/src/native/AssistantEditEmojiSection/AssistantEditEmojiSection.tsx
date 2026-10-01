@@ -8,7 +8,7 @@ import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { SettingsGroupCard } from '../settings/SettingsGroupCard'
-import { settingsCardStyles } from '../settings/settings-card.styles'
+import { useSettingsCardStyles } from '../settings/settings-card.styles'
 import { AssistantEmojiGroupPickerModal } from './AssistantEmojiGroupPickerModal'
 
 export interface AssistantEditEmojiSectionProps {
@@ -42,6 +42,7 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const cardStyles = useSettingsCardStyles()
   const [pickerOpen, setPickerOpen] = useState(false)
   const groups = useMemo(() => normalizeEmojiToolConfig(emojiConfig).groups, [emojiConfig])
   const selectedGroups = groups.filter((group) => selectedGroupIds.includes(group.id))
@@ -57,10 +58,10 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
     <SettingsGroupCard>
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+          <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
             {t('agent.assistant.emoji_enabled_label', '表情组')}
           </Text>
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 4 }]}>
+          <Text style={[cardStyles.hint, { color: colors.textSecondary, marginTop: 4 }]}>
             {t(
               'agent.assistant.emoji_enabled_desc',
               '开启后，该伙伴可在对话中使用你为其选择的表情包组'
