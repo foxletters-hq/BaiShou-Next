@@ -24,4 +24,11 @@ describe('mobile settings agent behavior chrome', () => {
     expect(section).not.toContain("Switch } from 'react-native'")
     expect(persist).toContain('restoreLastSessionOnReturn')
   })
+
+  it('should open the embedding selector and toast when memory center asked for focus', () => {
+    const models = readFileSync(join(dir, '..', 'components', 'AIModelsSection.tsx'), 'utf8')
+    expect(models).toContain('consumeAiModelsEmbeddingFocus')
+    expect(models).toContain('memory.readiness_need_embedding')
+    expect(models).toContain("setActiveSelector('globalEmbedding')")
+  })
 })

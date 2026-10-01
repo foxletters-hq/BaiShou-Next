@@ -3746,6 +3746,7 @@
     "readiness_indexing": "正在索引 {{progress}}/{{total}}",
     "start_organize": "开始整理记忆",
     "readiness": "记忆就绪状态",
+    "view_current_config": "查看当前配置",
     "readiness_embedding": "嵌入模型",
     "readiness_extract": "关系抽取",
     "readiness_vector": "向量片段",

@@ -48,4 +48,16 @@ describe('mobile rag memory searching', () => {
     expect(view).toContain('suspectCount={suspectCount}')
     expect(view).toContain("router.push('/graph')")
   })
+
+  it('should hide vector stats chips when the memory center asks for it', () => {
+    const view = readSection('RAGMemorySectionView.tsx')
+    expect(view).toContain('hideStats')
+    expect(view).toContain('hideStats={hideStats}')
+  })
+
+  it('should pass a card lead into the rag settings group card', () => {
+    const view = readSection('RAGMemorySectionView.tsx')
+    expect(view).toContain('cardLead')
+    expect(view).toContain('cardLead={cardLead}')
+  })
 })

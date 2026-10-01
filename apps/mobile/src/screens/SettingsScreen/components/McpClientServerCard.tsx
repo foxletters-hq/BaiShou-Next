@@ -15,7 +15,7 @@ import {
   SettingsGroupCard,
   SettingsItem,
   Switch,
-  settingsCardStyles,
+  useSettingsCardStyles,
   useNativeTheme
 } from '@baishou/ui/native'
 import { parseMcpClientUrl } from '../../../services/mobile-mcp-client-servers.util'
@@ -55,6 +55,7 @@ export function McpClientServerCard({
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const cardStyles = useSettingsCardStyles()
   const tools = status?.tools ?? []
   const connected = Boolean(status?.connected)
   const timedOut = status?.reason === 'timeout' || isMcpClientTimeoutMessage(status?.error)
@@ -147,7 +148,7 @@ export function McpClientServerCard({
             autoCorrect={false}
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}>
-            <Text style={[settingsCardStyles.label, { color: colors.textPrimary, flex: 1 }]}>
+            <Text style={[cardStyles.label, { color: colors.textPrimary, flex: 1 }]}>
               {t('settings.mcp_custom_enable', '启用')}
             </Text>
             <Switch value={server.enabled} onValueChange={onToggleEnabled} />

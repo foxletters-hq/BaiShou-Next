@@ -10,12 +10,11 @@ import {
   deriveLegacyVaultId,
   EMPTY_PENDING_EMBED_COUNTS,
   isEmbeddingConfiguredForMemory,
-  isMemoryCenterTab,
   ragBatchEmbedPhaseLabelKey,
   resolveMemoryOrganizeAction,
   shouldShowMemoryOnboarding,
+  type AIProviderConfig,
   type MemoryCenterTab,
-  type MemoryReadinessRow,
   type PendingEmbedCounts,
   type RagBatchEmbedPhaseId,
   type RagConfig
@@ -25,6 +24,8 @@ import {
   Button,
   Card,
   SegmentedControl,
+  SettingsCardDivider,
+  SettingsGroupCard,
   useDialog,
   useNativeTheme,
   useNativeToast
@@ -42,9 +43,14 @@ import {
   readMemoryOnboardingDismissed,
   writeMemoryOnboardingDismissed
 } from './memory-center-onboarding.storage'
-import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from './memory-center-data.util'
+import {
+  normalizeMemoryCenterRagConfig,
+  readActiveVaultSafely,
+  resolveMemoryCenterTabParam
+} from './memory-center-data.util'
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
 import { requestGraphPendingFocus } from '../GraphScreen/graph-pending-focus'
+import { requestAiModelsEmbeddingFocus } from '../SettingsScreen/ai-models-embedding-focus'
 import { loadMemoryOrganizePending, snapshotMemoryEmbedPhases } from './memory-center-organize.util'
 import { ensureMobileGraphSelfName } from '../DiaryScreen/ensure-graph-self-name'
 import {
@@ -53,34 +59,8 @@ import {
   subscribeMobileRagRuntime
 } from '@/src/services/mobile-rag-runtime-cache'
 import { MemoryOrganizeModal } from './MemoryOrganizeModal'
-
-function rowLabel(
-  id: MemoryReadinessRow['id'],
-  t: (key: string, fallback: string) => string
-): string {
-  switch (id) {
-    case 'embedding':
-      return t('memory.readiness_embedding', '嵌入模型')
-    case 'extract':
-      return t('memory.readiness_extract', '关系抽取')
-    case 'vector':
-      return t('memory.readiness_vector', '向量片段')
-    case 'graph':
-      return t('memory.readiness_graph', '关系图谱')
-  }
-}
-
-function rowValue(
-  row: MemoryReadinessRow,
-  t: (key: string, fallback: string, options?: Record<string, unknown>) => string
-): string {
-  if (row.state === 'missing') return t('memory.readiness_not_configured', '未配置')
-  if (row.state === 'blocked') return t('memory.readiness_need_embedding', '需要先配置嵌入模型')
-  if (row.state === 'pending') {
-    return t('memory.readiness_vector_pending', '未整理 {{count}} 篇', { count: row.count ?? 0 })
-  }
-  return row.modelId || t('memory.readiness_ready', '已就绪')
-}
+import { MemoryReadinessConfigModal } from './MemoryReadinessConfigModal'
+import { MemoryReadinessStatusCard } from './MemoryReadinessStatusCard'
 
 export function MemoryCenterScreen() {
   const { t } = useTranslation()
@@ -97,11 +77,13 @@ export function MemoryCenterScreen() {
   const [organizeOpen, setOrganizeOpen] = useState(false)
   const chrome = getStackScreenChrome(colors)
   const { dbReady, services } = useBaishou()
-  const params = useLocalSearchParams<{ tab?: string }>()
-  const initialTab = isMemoryCenterTab(String(params.tab ?? ''))
-    ? (params.tab as MemoryCenterTab)
-    : 'vectors'
-  const [tab, setTab] = useState<MemoryCenterTab>(initialTab)
+  const params = useLocalSearchParams<{ tab?: string | string[] }>()
+  const tabParam = resolveMemoryCenterTabParam(params.tab)
+  const [tab, setTab] = useState<MemoryCenterTab>(tabParam ?? 'vectors')
+  const [configOpen, setConfigOpen] = useState(false)
+  const [detectBusy, setDetectBusy] = useState(false)
+  const [vectorMeta, setVectorMeta] = useState({ count: 0, dimension: 0 })
+  const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [pendingEmbedParts, setPendingEmbedParts] = useState<
     PendingEmbedCounts & { graphExtract?: number; graphDisambiguate?: number }
   >(EMPTY_PENDING_EMBED_COUNTS)
@@ -113,23 +95,33 @@ export function MemoryCenterScreen() {
   const { suspectCount } = useMobileSuspectCount()
 
   useEffect(() => {
-    if (isMemoryCenterTab(String(params.tab ?? ''))) {
-      setTab(params.tab as MemoryCenterTab)
-    }
-  }, [params.tab])
+    if (!tabParam) return
+    setTab((prev) => (prev === tabParam ? prev : tabParam))
+  }, [tabParam])
 
   const refresh = useCallback(async () => {
     if (!dbReady || !services) return
-    const [models, rag, dismissed, embedCounts] = await Promise.all([
+    const [models, rag, dismissed, embedCounts, providerList] = await Promise.all([
       services.settingsManager.get<Record<string, unknown>>('global_models'),
       services.settingsManager.get<{ ragEnabled?: boolean }>('rag_config'),
       readMemoryOnboardingDismissed(),
-      loadMemoryOrganizePending(services.ragService)
+      loadMemoryOrganizePending(services.ragService),
+      services.settingsManager.get<AIProviderConfig[]>('ai_providers')
     ])
     setGlobalModels(models ?? null)
     setRagConfig(normalizeMemoryCenterRagConfig(rag))
     setOnboardingDismissed(dismissed)
     setPendingEmbedParts(embedCounts ?? EMPTY_PENDING_EMBED_COUNTS)
+    setProviders(Array.isArray(providerList) ? providerList : [])
+    try {
+      const ragStats = await services.ragService.getStats()
+      setVectorMeta({
+        count: ragStats.diaryCountForVault ?? ragStats.totalCount,
+        dimension: ragStats.currentDimension
+      })
+    } catch {
+      setVectorMeta({ count: 0, dimension: 0 })
+    }
 
     const snapshotExtract =
       embedCounts && 'graphExtract' in embedCounts ? embedCounts.graphExtract : undefined
@@ -200,8 +192,42 @@ export function MemoryCenterScreen() {
   )
 
   const selectTab = (next: MemoryCenterTab) => {
+    if (next === tab) return
     setTab(next)
     router.setParams({ tab: next })
+  }
+
+  const openGlobalModels = (promptEmbedding: boolean) => {
+    setConfigOpen(false)
+    if (promptEmbedding) requestAiModelsEmbeddingFocus()
+    router.push('/settings/ai-models')
+  }
+
+  const handleDetectDimension = async () => {
+    if (!services?.ragService) return
+    if (!embeddingConfigured) {
+      openGlobalModels(true)
+      return
+    }
+    setDetectBusy(true)
+    try {
+      const dimension = await services.ragService.detectDimension()
+      toast.showSuccess(
+        t('settings.rag.detect_success', '检测成功：${dimension}维').replace(
+          '${dimension}',
+          String(dimension)
+        )
+      )
+      await refresh()
+    } catch (error) {
+      toast.showError(
+        error instanceof Error
+          ? error.message
+          : t('settings.rag.detect_failed', '检测失败，请检查模型配置')
+      )
+    } finally {
+      setDetectBusy(false)
+    }
   }
 
   const startOrganize = async () => {
@@ -211,7 +237,7 @@ export function MemoryCenterScreen() {
       pendingEmbedCount
     })
     if (action === 'configure') {
-      router.push('/settings/ai-models')
+      openGlobalModels(true)
       return
     }
     if (pendingGraphCount > 0) {
@@ -266,6 +292,66 @@ export function MemoryCenterScreen() {
     }
   }
 
+  const readinessStatus = (
+    <MemoryReadinessStatusCard
+      rows={rows}
+      providers={providers}
+      vectorCount={vectorMeta.count}
+      dimension={vectorMeta.dimension}
+      organizingLine={
+        pendingEmbedCount > 0
+          ? `${t(
+              embedSnapshot.phase === 'starting' || embedSnapshot.phase === 'finishing'
+                ? 'memory.readiness_organizing'
+                : ragBatchEmbedPhaseLabelKey(embedSnapshot.phase as RagBatchEmbedPhaseId),
+              t('memory.readiness_organizing', '正在整理记忆…')
+            )} · ${embedSnapshot.total}`
+          : undefined
+      }
+      onPress={() => setConfigOpen(true)}
+    />
+  )
+
+  const onboardingCard = showOnboarding ? (
+    <Card style={{ marginBottom: tokens.spacing.sm }}>
+      <Text style={[styles.onboardingTitle, { color: colors.textPrimary }]}>
+        {t('memory.onboarding_title', '开始整理记忆')}
+      </Text>
+      {onboarding.steps.map((step) => (
+        <Text key={step.id} style={{ color: colors.textSecondary, marginTop: tokens.spacing.xs }}>
+          {step.id === 'embed'
+            ? t('memory.onboarding_step_embed', '配置嵌入模型')
+            : step.id === 'vector'
+              ? t('memory.onboarding_step_vector', '索引向量片段')
+              : t('memory.onboarding_step_graph', '整理关系图谱')}
+          {step.count != null ? ` · ${step.count}` : ''}
+        </Text>
+      ))}
+      <View
+        style={[styles.onboardingActions, { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }]}
+      >
+        <Button
+          onPress={() => {
+            if (onboarding.primaryKind === 'configure') openGlobalModels(true)
+            else void startOrganize()
+          }}
+        >
+          {onboarding.primaryKind === 'configure'
+            ? t('memory.go_configure', '去配置')
+            : t('memory.onboarding_start', '开始整理记忆')}
+        </Button>
+        <Button
+          variant="outlined"
+          onPress={() => {
+            void writeMemoryOnboardingDismissed().then(() => setOnboardingDismissed(true))
+          }}
+        >
+          {t('memory.onboarding_dismiss', '以后再说')}
+        </Button>
+      </View>
+    </Card>
+  ) : null
+
   return (
     <StackScreenLayout
       title={t('memory.title', '全局 AI 记忆')}
@@ -297,122 +383,77 @@ export function MemoryCenterScreen() {
                 { value: 'graph', label: t('memory.tab_graph', '图谱') }
               ]}
             />
-            <View style={[styles.rows, { marginTop: tokens.spacing.md, gap: tokens.spacing.sm }]}>
-              {rows.map((row) => (
-                <View key={row.id} style={[styles.row, { gap: tokens.spacing.sm }]}>
-                  <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
-                    {rowLabel(row.id, t)}
-                  </Text>
-                  <Text style={[styles.rowValue, { color: colors.textPrimary }]}>
-                    {rowValue(row, t)}
-                  </Text>
-                </View>
-              ))}
-              {pendingEmbedCount > 0 ? (
-                <Text style={[styles.rowLabel, { color: colors.textTertiary }]}>
-                  {t(
-                    embedSnapshot.phase === 'starting' || embedSnapshot.phase === 'finishing'
-                      ? 'memory.readiness_organizing'
-                      : ragBatchEmbedPhaseLabelKey(embedSnapshot.phase as RagBatchEmbedPhaseId),
-                    t('memory.readiness_organizing', '正在整理记忆…')
-                  )}
-                  {` · ${embedSnapshot.total}`}
-                </Text>
-              ) : null}
-            </View>
-            {showOnboarding ? (
-              <Card style={{ marginTop: tokens.spacing.sm }}>
-                <Text style={[styles.onboardingTitle, { color: colors.textPrimary }]}>
-                  {t('memory.onboarding_title', '开始整理记忆')}
-                </Text>
-                {onboarding.steps.map((step) => (
-                  <Text
-                    key={step.id}
-                    style={{ color: colors.textSecondary, marginTop: tokens.spacing.xs }}
-                  >
-                    {step.id === 'embed'
-                      ? t('memory.onboarding_step_embed', '配置嵌入模型')
-                      : step.id === 'vector'
-                        ? t('memory.onboarding_step_vector', '索引向量片段')
-                        : t('memory.onboarding_step_graph', '整理关系图谱')}
-                    {step.count != null ? ` · ${step.count}` : ''}
-                  </Text>
-                ))}
-                <View
-                  style={[
-                    styles.onboardingActions,
-                    { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }
-                  ]}
-                >
-                  <Button
-                    onPress={() => {
-                      if (onboarding.primaryKind === 'configure') router.push('/settings/ai-models')
-                      else void startOrganize()
-                    }}
-                  >
-                    {onboarding.primaryKind === 'configure'
-                      ? t('memory.go_configure', '去配置')
-                      : t('memory.onboarding_start', '开始整理记忆')}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onPress={() => {
-                      void writeMemoryOnboardingDismissed().then(() => setOnboardingDismissed(true))
-                    }}
-                  >
-                    {t('memory.onboarding_dismiss', '以后再说')}
-                  </Button>
-                </View>
-              </Card>
-            ) : null}
           </View>
           {tab === 'vectors' ? (
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{
                 flexGrow: 1,
+                paddingHorizontal: tokens.spacing.md,
                 paddingBottom: insets.bottom + tokens.spacing.lg
               }}
               keyboardShouldPersistTaps="handled"
             >
-              <RAGMemorySection />
+              {onboardingCard}
+              <RAGMemorySection hideStats cardLead={readinessStatus} />
             </ScrollView>
           ) : (
             <ScrollView
               contentContainerStyle={{
-                padding: tokens.spacing.md,
-                paddingBottom: insets.bottom + tokens.spacing.lg,
-                gap: tokens.spacing.sm
+                paddingHorizontal: tokens.spacing.md,
+                paddingBottom: insets.bottom + tokens.spacing.lg
               }}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={{ color: colors.textSecondary }}>
-                {t('graph.pending_entries_hint', '有 {{count}} 篇日记还没整理', {
-                  count: pendingGraphCount
-                })}
-              </Text>
-              <View style={[styles.onboardingActions, { gap: tokens.spacing.sm }]}>
-                <Button onPress={() => void startOrganize()} isDisabled={busy}>
-                  {t('memory.start_organize', '开始整理记忆')}
-                </Button>
-                {suspectCount > 0 ? (
-                  <Button
-                    variant="outlined"
-                    onPress={() => {
-                      requestGraphPendingFocus()
-                      router.push('/graph')
-                    }}
-                  >
-                    {t('memory.review_suspects', '去检查')}
+              {onboardingCard}
+              <SettingsGroupCard>
+                {readinessStatus}
+                <SettingsCardDivider />
+                <Text style={{ color: colors.textSecondary }}>
+                  {t('graph.pending_entries_hint', '有 {{count}} 篇日记还没整理', {
+                    count: pendingGraphCount
+                  })}
+                </Text>
+                <View
+                  style={[
+                    styles.onboardingActions,
+                    { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }
+                  ]}
+                >
+                  <Button onPress={() => void startOrganize()} isDisabled={busy}>
+                    {t('memory.start_organize', '开始整理记忆')}
                   </Button>
-                ) : null}
-                <Button variant="outlined" onPress={() => router.push('/graph')}>
-                  {t('nav.graph', '关系图谱')}
-                </Button>
-              </View>
+                  {suspectCount > 0 ? (
+                    <Button
+                      variant="outlined"
+                      onPress={() => {
+                        requestGraphPendingFocus()
+                        router.push('/graph')
+                      }}
+                    >
+                      {t('memory.review_suspects', '去检查')}
+                    </Button>
+                  ) : null}
+                  <Button variant="outlined" onPress={() => router.push('/graph')}>
+                    {t('nav.graph', '关系图谱')}
+                  </Button>
+                </View>
+              </SettingsGroupCard>
             </ScrollView>
           )}
         </View>
       )}
+      <MemoryReadinessConfigModal
+        visible={configOpen}
+        rows={rows}
+        providers={providers}
+        vectorCount={vectorMeta.count}
+        dimension={vectorMeta.dimension}
+        detectBusy={detectBusy}
+        onClose={() => setConfigOpen(false)}
+        onConfigureModels={() => openGlobalModels(false)}
+        onDetectDimension={() => void handleDetectDimension()}
+      />
       <MemoryOrganizeModal
         visible={organizeOpen}
         ragState={ragState}
@@ -448,18 +489,6 @@ export function MemoryCenterScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   head: {},
-  rows: {},
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  rowLabel: {
-    fontSize: settingsTypography.desc.fontSize,
-    fontWeight: settingsTypography.desc.fontWeight
-  },
-  rowValue: {
-    fontSize: settingsTypography.desc.fontSize,
-    fontWeight: settingsTypography.desc.fontWeight,
-    flexShrink: 1,
-    textAlign: 'right'
-  },
   onboardingTitle: {
     fontSize: settingsTypography.section.fontSize,
     fontWeight: settingsTypography.section.fontWeight

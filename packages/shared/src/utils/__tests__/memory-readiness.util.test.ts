@@ -18,6 +18,10 @@ describe('buildMemoryReadinessRows', () => {
       pendingGraphCount: 0
     })
     expect(rows.map((row) => row.id)).toEqual(['embedding', 'extract', 'vector', 'graph'])
+    expect(rows[0]).toMatchObject({
+      providerId: 'openai',
+      modelId: 'text-embedding-3-small'
+    })
   })
 
   it('blocks vector and graph when the embedding model is missing', () => {
@@ -80,6 +84,7 @@ describe('buildMemoryReadinessRows', () => {
     expect(rows[1]?.state).toBe('ready')
     expect(rows[1]?.modelId).toBe(resolveGlobalGraphModelIds(models).modelId)
     expect(rows[1]?.modelId).toBe('deepseek-chat')
+    expect(rows[1]?.providerId).toBe('deepseek')
   })
 
   it('marks extract missing when only the dialogue model is configured', () => {

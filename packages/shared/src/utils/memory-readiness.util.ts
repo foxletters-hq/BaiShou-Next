@@ -21,6 +21,8 @@ export type MemoryReadinessRow = {
   /** 就绪时为模型名或空字符串；待办时为数量 */
   count?: number
   modelId?: string
+  /** 嵌入 / 抽取就绪时带上供应商，给界面画品牌图标 */
+  providerId?: string
 }
 
 function isEmbeddingModelConfigured(
@@ -44,13 +46,24 @@ export function buildMemoryReadinessRows(input: MemoryReadinessInput): MemoryRea
   const unindexed = nonNegativeCount(input.pendingEmbedCount ?? input.unindexedDiaryCount ?? 0)
   const pendingGraph = nonNegativeCount(input.pendingGraphCount)
   const embeddingModelId = input.globalModels?.globalEmbeddingModelId?.trim() || undefined
+  const embeddingProviderId = input.globalModels?.globalEmbeddingProviderId?.trim() || undefined
 
   const embedding: MemoryReadinessRow = embeddingConfigured
-    ? { id: 'embedding', state: 'ready', modelId: embeddingModelId }
+    ? {
+        id: 'embedding',
+        state: 'ready',
+        modelId: embeddingModelId,
+        providerId: embeddingProviderId
+      }
     : { id: 'embedding', state: 'missing' }
 
   const extract: MemoryReadinessRow = extractConfigured
-    ? { id: 'extract', state: 'ready', modelId: extractIds.modelId }
+    ? {
+        id: 'extract',
+        state: 'ready',
+        modelId: extractIds.modelId,
+        providerId: extractIds.providerId
+      }
     : { id: 'extract', state: 'missing', modelId: extractIds.modelId }
 
   const vector: MemoryReadinessRow =

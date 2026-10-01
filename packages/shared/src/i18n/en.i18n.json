@@ -3701,6 +3701,7 @@
     "readiness_indexing": "Indexing {{progress}}/{{total}}",
     "start_organize": "Start organizing memory",
     "readiness": "Memory readiness",
+    "view_current_config": "View current configuration",
     "readiness_embedding": "Embedding model",
     "readiness_extract": "Relation extract",
     "readiness_vector": "Vector passages",

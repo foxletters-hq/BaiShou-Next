@@ -305,6 +305,13 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     ]
   )
 
+  const loadRagDataRef = useRef(loadRagData)
+  loadRagDataRef.current = loadRagData
+  const toastRef = useRef(toast)
+  toastRef.current = toast
+  const tRef = useRef(t)
+  tRef.current = t
+
   useEffect(() => {
     if (!dbReady || !services) return
     if (storageIndexing) {
@@ -338,11 +345,13 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         }
         if (cancelled) return
         appendDiagnosticBreadcrumb('RAG init config loaded')
-        await loadRagData('', 'text', 1, 10)
+        await loadRagDataRef.current('', 'text', 1, 10)
         appendDiagnosticBreadcrumb('RAG init loadRagData finished')
       } catch (e: unknown) {
         if (!cancelled) {
-          toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+          toastRef.current.showError(
+            e instanceof Error ? e.message : tRef.current('settings.rag_operation_failed')
+          )
         }
       }
     }
@@ -361,17 +370,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     return () => {
       cancelled = true
     }
-  }, [
-    dbReady,
-    services,
-    storageIndexing,
-    ecosystemResyncEpoch,
-    loadRagData,
-    setConfig,
-    setProviders,
-    t,
-    toast
-  ])
+  }, [dbReady, services, storageIndexing, ecosystemResyncEpoch, setConfig, setProviders])
 
   const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
 

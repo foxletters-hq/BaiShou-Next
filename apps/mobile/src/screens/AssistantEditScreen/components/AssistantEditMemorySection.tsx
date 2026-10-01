@@ -5,7 +5,7 @@ import {
   Input,
   SettingsSliderRow,
   SettingsGroupCard,
-  settingsCardStyles
+  useSettingsCardStyles
 } from '@baishou/ui/native'
 import {
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
@@ -48,15 +48,16 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
     setCompressSystemPrompt,
     persistMemoryConfig
   } = props
+  const cardStyles = useSettingsCardStyles()
 
   return (
     <SettingsGroupCard>
-      <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+      <Text style={[cardStyles.cardTitle, { color: colors.textPrimary }]}>
         {t('agent.assistant.memory_label', '记忆')}
       </Text>
 
       <View style={styles.row}>
-        <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+        <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
           {t('agent.assistant.context_window_label', '上下文轮数')}
         </Text>
         <View style={styles.rowSpacer} />
@@ -65,7 +66,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
             {Math.round(contextWindow)}
           </Text>
         ) : null}
-        <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}>
+        <Text style={[cardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}>
           {isUnlimitedContext
             ? t('agent.assistant.context_unlimited', '∞ 无限')
             : t('agent.assistant.context_limited', '有限')}
@@ -95,7 +96,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
         />
       ) : null}
 
-      <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+      <Text style={[cardStyles.hint, { color: colors.textSecondary }]}>
         {isUnlimitedContext
           ? t(
               'agent.assistant.context_unlimited_desc',
@@ -110,7 +111,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
       <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
 
       <View style={styles.row}>
-        <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+        <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
           {t('agent.assistant.compress_label', '自动压缩')}
         </Text>
         <View style={styles.rowSpacer} />
@@ -134,7 +135,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
         />
       </View>
 
-      <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+      <Text style={[cardStyles.hint, { color: colors.textSecondary }]}>
         {isCompressDisabled
           ? t('agent.assistant.compress_disabled_desc', '对话不会自动压缩，所有消息将完整保留')
           : t('agent.assistant.compress_enabled_desc', '对话超过阈值时自动将旧消息压缩为摘要')}
@@ -176,7 +177,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
           <View style={[styles.sectionDivider, { backgroundColor: colors.borderSubtle }]} />
 
           <View style={styles.row}>
-            <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+            <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
               {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
             </Text>
             <View style={styles.rowSpacer} />
@@ -190,7 +191,7 @@ export function AssistantEditMemorySection(props: AssistantEditMemorySectionProp
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+          <Text style={[cardStyles.hint, { color: colors.textSecondary }]}>
             {t(
               'agent.assistant.compress_system_prompt_desc',
               '生成对话压缩摘要时发给模型的系统指令。可自定义压缩时的思考方式与摘要规则。'
