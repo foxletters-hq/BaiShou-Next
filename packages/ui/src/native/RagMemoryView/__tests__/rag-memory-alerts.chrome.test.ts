@@ -46,3 +46,21 @@ describe('native RagMemoryActionsSection suspect chrome', () => {
     expect(actions).toContain("from '../Button'")
   })
 })
+
+const view = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'RagMemoryView.tsx'),
+  'utf8'
+)
+
+describe('native RagMemoryView stats chrome', () => {
+  it('should allow the memory center to hide vector count and dimension chips', () => {
+    expect(view).toContain('hideStats')
+    expect(view).toContain('RagMemoryStatsSection')
+    expect(view).toContain('hideStats ? null')
+  })
+
+  it('should render a card lead inside the first settings group card', () => {
+    expect(view).toContain('cardLead')
+    expect(view).toContain('SettingsCardDivider')
+  })
+})

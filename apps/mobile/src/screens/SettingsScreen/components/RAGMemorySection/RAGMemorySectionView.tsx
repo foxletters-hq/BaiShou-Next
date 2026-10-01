@@ -1,13 +1,25 @@
 import React from 'react'
 import { ActivityIndicator, Platform, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { RagMemoryView, ModelSwitcher, useNativeTheme } from '@baishou/ui/native'
+import {
+  RagMemoryView,
+  ModelSwitcher,
+  SettingsCardDivider,
+  SettingsGroupCard,
+  useNativeTheme
+} from '@baishou/ui/native'
 import { MemoryClearKindsModal } from './MemoryClearKindsModal'
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
 import { requestGraphPendingFocus } from '../../../GraphScreen/graph-pending-focus'
 import { useRagMemorySection } from './useRagMemorySection'
 
-export function RAGMemorySectionView() {
+export function RAGMemorySectionView({
+  hideStats = false,
+  cardLead
+}: {
+  hideStats?: boolean
+  cardLead?: React.ReactNode
+}) {
   const { tokens } = useNativeTheme()
   const router = useRouter()
   const vm = useRagMemorySection()
@@ -59,11 +71,23 @@ export function RAGMemorySectionView() {
   return (
     <>
       {Platform.OS === 'android' && (androidRenderStage < 1 || storageIndexing) ? (
-        <View style={{ paddingVertical: tokens.spacing.lg, alignItems: 'center' }}>
-          <ActivityIndicator size="small" />
-        </View>
+        cardLead ? (
+          <SettingsGroupCard>
+            {cardLead}
+            <SettingsCardDivider />
+            <View style={{ paddingVertical: tokens.spacing.lg, alignItems: 'center' }}>
+              <ActivityIndicator size="small" />
+            </View>
+          </SettingsGroupCard>
+        ) : (
+          <View style={{ paddingVertical: tokens.spacing.lg, alignItems: 'center' }}>
+            <ActivityIndicator size="small" />
+          </View>
+        )
       ) : (
         <RagMemoryView
+          hideStats={hideStats}
+          cardLead={cardLead}
           config={config}
           stats={stats}
           ragState={ragState}

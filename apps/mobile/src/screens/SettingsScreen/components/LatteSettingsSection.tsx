@@ -13,7 +13,7 @@ import {
   Button,
   Input,
   SettingsGroupCard,
-  settingsCardStyles,
+  useSettingsCardStyles,
   useDialog,
   useNativeTheme,
   useNativeToast
@@ -26,6 +26,7 @@ const LATTE_CHIBI = require('@baishou/shared/assets/images/latte-chibi.png')
 export const LatteSettingsSection: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const cardStyles = useSettingsCardStyles()
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
@@ -121,7 +122,7 @@ export const LatteSettingsSection: React.FC = () => {
             </Text>
             <Text
               style={[
-                settingsCardStyles.cardDesc,
+                cardStyles.cardDesc,
                 styles.subtitle,
                 { color: colors.textSecondary, marginBottom: 0 }
               ]}
@@ -144,7 +145,7 @@ export const LatteSettingsSection: React.FC = () => {
         </Text>
         <Text
           style={[
-            settingsCardStyles.cardDesc,
+            cardStyles.cardDesc,
             styles.originBody,
             { color: colors.textSecondary, marginBottom: 0 }
           ]}
@@ -167,7 +168,7 @@ export const LatteSettingsSection: React.FC = () => {
       {loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}>
+          <Text style={[cardStyles.hint, { color: colors.textSecondary, marginTop: 0 }]}>
             {t('settings.latte_ensure_loading', '正在准备系统伙伴 Latte…')}
           </Text>
         </View>
@@ -175,7 +176,7 @@ export const LatteSettingsSection: React.FC = () => {
 
       {loadError ? (
         <SettingsGroupCard>
-          <Text style={[settingsCardStyles.cardDesc, { color: colors.textSecondary }]}>
+          <Text style={[cardStyles.cardDesc, { color: colors.textSecondary }]}>
             {t('settings.latte_ensure_failed', '无法创建或读取系统伙伴 Latte')}
           </Text>
           <Button variant="outlined" onPress={() => void loadLatte()}>
@@ -200,10 +201,10 @@ export const LatteSettingsSection: React.FC = () => {
           </Text>
 
           <SettingsGroupCard>
-            <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+            <Text style={[cardStyles.cardTitle, { color: colors.textPrimary }]}>
               {t('settings.latte_persona_prompt_title', '人设提示词')}
             </Text>
-            <Text style={[settingsCardStyles.cardDesc, { color: colors.textSecondary }]}>
+            <Text style={[cardStyles.cardDesc, { color: colors.textSecondary }]}>
               {t(
                 'settings.latte_persona_prompt_desc',
                 '系统伙伴 Latte 的官方人设。可手动编辑，或获取最新官方文案（不会改动下方自定义段）。'
@@ -241,10 +242,10 @@ export const LatteSettingsSection: React.FC = () => {
           </SettingsGroupCard>
 
           <SettingsGroupCard>
-            <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+            <Text style={[cardStyles.cardTitle, { color: colors.textPrimary }]}>
               {t('settings.latte_custom_prompt_title', '自定义提示词')}
             </Text>
-            <Text style={[settingsCardStyles.cardDesc, { color: colors.textSecondary }]}>
+            <Text style={[cardStyles.cardDesc, { color: colors.textSecondary }]}>
               {t(
                 'settings.latte_custom_prompt_desc',
                 '会接在人设提示词之后一并注入对话。留空则仅使用人设。'

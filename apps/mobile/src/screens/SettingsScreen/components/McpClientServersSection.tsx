@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Modal, settingsCardStyles, useNativeTheme } from '@baishou/ui/native'
+import { Modal, useSettingsCardStyles, useNativeTheme } from '@baishou/ui/native'
 import { useMobileMcpClientServers } from '../../../hooks/useMobileMcpClientServers'
 import { McpClientAddServerForm } from './McpClientAddServerForm'
 import { McpClientServerCard } from './McpClientServerCard'
@@ -9,6 +9,7 @@ import { McpClientServerCard } from './McpClientServerCard'
 export function McpClientServersSection() {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const cardStyles = useSettingsCardStyles()
   const model = useMobileMcpClientServers()
 
   if (model.loading) {
@@ -21,18 +22,18 @@ export function McpClientServersSection() {
 
   return (
     <View style={{ gap: tokens.spacing.sm }}>
-      <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+      <Text style={[cardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
         {t('settings.mcp_custom_connected', '已连接')}
         {` ${model.config.servers.length}`}
       </Text>
-      <Text style={[settingsCardStyles.cardDesc, { color: colors.textSecondary }]}>
+      <Text style={[cardStyles.cardDesc, { color: colors.textSecondary }]}>
         {t(
           'settings.mcp_custom_desc',
           '填写外部服务的 Streamable HTTP /mcp 地址，启用后供本机 Agent 调用。不支持 /sse。'
         )}
       </Text>
       {model.config.servers.length === 0 ? (
-        <Text style={[settingsCardStyles.hint, { color: colors.textTertiary }]}>
+        <Text style={[cardStyles.hint, { color: colors.textTertiary }]}>
           {t('settings.mcp_custom_empty', '尚未添加外部 MCP')}
         </Text>
       ) : (
@@ -106,11 +107,11 @@ export function McpClientServersSection() {
           <ScrollView>
             {model.toolsDialog.tools.map((tool) => (
               <View key={tool.name} style={{ marginBottom: tokens.spacing.md }}>
-                <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+                <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
                   {tool.name}
                 </Text>
                 {tool.description ? (
-                  <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+                  <Text style={[cardStyles.hint, { color: colors.textSecondary }]}>
                     {tool.description}
                   </Text>
                 ) : null}
@@ -118,7 +119,7 @@ export function McpClientServersSection() {
             ))}
           </ScrollView>
         ) : (
-          <Text style={[settingsCardStyles.hint, { color: colors.textTertiary }]}>
+          <Text style={[cardStyles.hint, { color: colors.textTertiary }]}>
             {t('settings.mcp_custom_tools_empty', '没有可用工具')}
           </Text>
         )}

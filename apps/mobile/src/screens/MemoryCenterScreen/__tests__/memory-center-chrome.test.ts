@@ -34,4 +34,37 @@ describe('mobile memory center chrome', () => {
     expect(page).toContain('requestGraphPendingFocus')
     expect(page).toContain('memory.review_suspects')
   })
+
+  it('should collapse readiness into a config viewer and send missing embedding to global models', () => {
+    expect(page).toContain('MemoryReadinessStatusCard')
+    expect(page).toContain('MemoryReadinessConfigModal')
+    expect(page).toContain('requestAiModelsEmbeddingFocus')
+    expect(page).toContain('hideStats')
+    expect(page).toContain('cardLead={readinessStatus}')
+    expect(page).toContain('SettingsGroupCard')
+    expect(page).toContain('SettingsCardDivider')
+    expect(page).toContain('Array.isArray(providerList)')
+    expect(page).not.toContain('rowLabel(')
+    expect(page).not.toContain('params.tab as MemoryCenterTab')
+    const card = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'MemoryReadinessStatusCard.tsx'),
+      'utf8'
+    )
+    expect(card).toContain('ProviderBrandIcon')
+    expect(card).toContain('Pressable')
+    expect(card).not.toContain('<Card')
+    expect(card).toContain('settingsCardStyles.label')
+    expect(card).toContain('settingsCardStyles.hint')
+    expect(card).not.toContain('settingsTypography.section')
+    expect(card).toContain('memoryReadinessRowById')
+    expect(card).toContain('Array.isArray(props.providers)')
+    const modal = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'MemoryReadinessConfigModal.tsx'),
+      'utf8'
+    )
+    expect(modal).toContain('ProviderBrandIcon')
+    expect(modal).toContain('settings.rag_detect_dimension')
+    expect(modal).toContain('memoryVectorMetaLine')
+    expect(modal).toContain('Array.isArray(props.rows)')
+  })
 })

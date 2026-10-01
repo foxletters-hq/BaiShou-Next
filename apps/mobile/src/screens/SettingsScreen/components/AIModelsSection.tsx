@@ -26,6 +26,7 @@ import {
 import { getDefaultGlobalModels } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
+import { consumeAiModelsEmbeddingFocus } from '../ai-models-embedding-focus'
 
 type ModelSelectorKey =
   | 'globalDialogue'
@@ -114,24 +115,39 @@ export const AIModelsSection: React.FC = () => {
 
   useEffect(() => {
     if (!dbReady || !services) return
+    let cancelled = false
     const loadConfig = async () => {
       try {
         const providerList =
           (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+        if (cancelled) return
         setProviders(providerList)
         const globalModelsConfig =
           (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
           ({} as GlobalModelsConfig)
+        if (cancelled) return
         setGlobalModels({
           ...getDefaultGlobalModels(),
           ...globalModelsConfig
         })
+        if (cancelled) return
+        if (!consumeAiModelsEmbeddingFocus()) return
+        toast.showInfo(t('memory.readiness_need_embedding', '需要先配置嵌入模型'))
+        const filtered = buildFilteredProviders(providerList, true)
+        if (filtered.length === 0) {
+          toast.showWarning(t('settings.no_models_available'))
+          return
+        }
+        setActiveSelector('globalEmbedding')
       } catch (e) {
         console.warn('Load models config failed', e)
       }
     }
-    loadConfig()
-  }, [dbReady, services])
+    void loadConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [dbReady, services, t, toast])
 
   const handleSaveGlobalModels = async (config: GlobalModelsConfig) => {
     if (!services || !dbReady) return

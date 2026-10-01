@@ -57,7 +57,9 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   migrationCancelBusy,
   onPageChange,
   suspectCount = 0,
-  onReviewSuspects
+  onReviewSuspects,
+  hideStats = false,
+  cardLead
 }) => {
   const ragOn = config.ragEnabled
   const [showRetrievalSection, setShowRetrievalSection] = useState(Platform.OS !== 'android')
@@ -83,6 +85,12 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   return (
     <View style={styles.root}>
       <SettingsGroupCard>
+        {cardLead ? (
+          <>
+            {cardLead}
+            <SettingsCardDivider />
+          </>
+        ) : null}
         <RagMemoryHeaderSection
           config={config}
           stats={stats}
@@ -98,13 +106,15 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
         >
           <SettingsCardDivider />
 
-          <RagMemoryStatsSection
-            stats={stats}
-            embeddingModelId={embeddingModelId}
-            isBusy={ragState.isRunning}
-            onConfigureModel={onConfigureModel ?? onNavigateToConfig}
-            onDetectDimension={onDetectDimension}
-          />
+          {hideStats ? null : (
+            <RagMemoryStatsSection
+              stats={stats}
+              embeddingModelId={embeddingModelId}
+              isBusy={ragState.isRunning}
+              onConfigureModel={onConfigureModel ?? onNavigateToConfig}
+              onDetectDimension={onDetectDimension}
+            />
+          )}
 
           <RagMemoryAlerts
             ragState={ragState}

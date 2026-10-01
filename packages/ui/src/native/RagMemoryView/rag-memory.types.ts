@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { EmbeddingMigrationStateView, RagVectorKindFilter } from '@baishou/shared'
 
 export interface RagConfig {
@@ -90,4 +91,8 @@ export interface RagMemoryViewProps {
   migrationCancelBusy?: boolean
   suspectCount?: number
   onReviewSuspects?: () => void
+  /** 记忆中心把统计收到「查看当前配置」里，向量页不再重复展示 */
+  hideStats?: boolean
+  /** 插入第一张设置卡顶部，与检索参数同卡滚动 */
+  cardLead?: ReactNode
 }

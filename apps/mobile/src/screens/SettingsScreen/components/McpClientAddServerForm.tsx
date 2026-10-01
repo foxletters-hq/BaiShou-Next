@@ -5,7 +5,7 @@ import {
   Button,
   Input,
   SettingsGroupCard,
-  settingsCardStyles,
+  useSettingsCardStyles,
   useNativeTheme
 } from '@baishou/ui/native'
 
@@ -36,6 +36,7 @@ export function McpClientAddServerForm({
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const cardStyles = useSettingsCardStyles()
 
   return (
     <SettingsGroupCard>
@@ -44,7 +45,7 @@ export function McpClientAddServerForm({
       </Button>
       {adding ? (
         <View style={{ marginTop: tokens.spacing.md, gap: tokens.spacing.md }}>
-          <Text style={[settingsCardStyles.cardDesc, { color: colors.textSecondary }]}>
+          <Text style={[cardStyles.cardDesc, { color: colors.textSecondary }]}>
             {t('settings.mcp_custom_new_desc', '添加自定义 MCP 服务')}
           </Text>
           <Input

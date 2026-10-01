@@ -3485,6 +3485,7 @@
     "readiness_indexing": "インデックス中 {{progress}}/{{total}}",
     "start_organize": "記憶の整理を始める",
     "readiness": "記憶の準備状態",
+    "view_current_config": "現在の設定を表示",
     "readiness_embedding": "埋め込みモデル",
     "readiness_extract": "関係抽出",
     "readiness_vector": "ベクトル断片",

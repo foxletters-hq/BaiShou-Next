@@ -4,7 +4,7 @@ import { ChevronRight, Plus } from 'lucide-react-native'
 import {
   Input,
   SettingsGroupCard,
-  settingsCardStyles,
+  useSettingsCardStyles,
   ProviderBrandIcon,
   AssistantAvatarPicker,
   AssistantKindTabBar,
@@ -83,6 +83,7 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
     handleResolveEmojiPath,
     handleDeleteEmoji
   } = props
+  const cardStyles = useSettingsCardStyles()
 
   return (
     <>
@@ -100,14 +101,14 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
 
         <View style={styles.fieldGap} />
 
-        <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary }]}>
+        <Text style={[cardStyles.cardTitle, { color: colors.textPrimary }]}>
           {t('agent.assistant.name_label', '伙伴名称')}
         </Text>
         <Input value={name} onChangeText={setName} placeholder={t('agent.assistant.name_hint')} />
 
         <View style={styles.fieldGap} />
 
-        <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+        <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
           {t('agent.assistant.description_label', '简介')}
         </Text>
         <Input
@@ -120,7 +121,7 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
 
         <View style={styles.fieldGap} />
 
-        <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+        <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
           {t('agent.assistant.prompt_label', '系统提示词')}
         </Text>
         <Input
@@ -136,7 +137,7 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
 
       <SettingsGroupCard>
         <View style={styles.row}>
-          <Text style={[settingsCardStyles.label, { color: colors.textPrimary }]}>
+          <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
             {t('agent.assistant.bind_model_label', '绑定模型')}
           </Text>
           {providerId ? (
@@ -177,7 +178,7 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
           </TouchableOpacity>
         )}
 
-        <Text style={[settingsCardStyles.hint, { color: colors.textSecondary }]}>
+        <Text style={[cardStyles.hint, { color: colors.textSecondary }]}>
           {t(
             'agent.assistant.bind_model_desc',
             '绑定后，和伙伴创建对话时，会默认优先使用选择的模型'
