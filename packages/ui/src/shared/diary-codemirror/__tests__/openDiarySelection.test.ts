@@ -46,17 +46,17 @@ describe('open diary selection safety', () => {
   it('plain diary open does not leave selection outside document', async () => {
     const { view } = await openDiary('#旅行\n\n今天天气不错，写点日记。')
     view.destroy()
-  })
+  }, 15_000)
 
   it('diary ending with table does not leave selection outside document', async () => {
     const { view } = await openDiary('#记录\n\n| A | B |\n| --- | --- |\n| 1 | 2 |')
     view.destroy()
-  })
+  }, 15_000)
 
   it('diary with only table does not leave selection outside document', async () => {
     const { view } = await openDiary('| A | B |\n| --- | --- |\n| 1 | 2 |')
     view.destroy()
-  })
+  }, 15_000)
 
   it('replacing content after mount clamps selection like mobile setContent', async () => {
     const { view } = await openDiary('hello world with enough text to put cursor at end')

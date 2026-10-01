@@ -135,7 +135,7 @@ export * from './settings/SettingsGroupDivider'
 export * from './settings/SettingsGroupCard'
 export * from './settings/SettingsSliderRow'
 export * from './settings/SettingsCardDivider'
-export { settingsCardStyles } from './settings/settings-card.styles'
+export { settingsCardStyles, useSettingsCardStyles } from './settings/settings-card.styles'
 export * from './AttachmentManagementView'
 export * from './AssistantManagementView'
 export * from './AssistantMatrixCard'
@@ -153,6 +153,12 @@ export {
   useNativeThemeContext,
   type ThemeModePreference
 } from './theme'
+export {
+  nativeUiFontFamilyFromLanguage,
+  nativeUiFontFamilyName,
+  resolveNativeUiFontRole,
+  type NativeUiFontRole
+} from '../theme/native-ui-font'
 
 export {
   NATIVE_APP_BRAND_ICON,

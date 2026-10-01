@@ -45,11 +45,13 @@ export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVaria
 export function getHeroButtonLabelStyle(
   colors: ThemeColors,
   variant: ButtonVariant,
-  labelClassName?: string
+  labelClassName?: string,
+  fontFamily?: string
 ): TextStyle {
   const base: TextStyle = {
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '600',
+    ...(fontFamily ? { fontFamily } : {})
   }
 
   if (labelClassName?.includes('text-danger')) {

@@ -56,14 +56,19 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
     },
     ref
   ) => {
-    const { colors } = useNativeTheme()
+    const { colors, tokens } = useNativeTheme()
     const { variant: heroVariant, labelClassName } = resolveNativeButtonVariant(
       variant,
       destructive
     )
     const mergedDisabled = Boolean(disabled || isDisabled || isLoading)
     const rootFallback = getHeroButtonRootStyle(colors, heroVariant)
-    const labelFallback = getHeroButtonLabelStyle(colors, heroVariant, labelClassName)
+    const labelFallback = getHeroButtonLabelStyle(
+      colors,
+      heroVariant,
+      labelClassName,
+      tokens.fontFamily
+    )
     const mergedStyle: StyleProp<ViewStyle> = [
       rootFallback,
       typeof style === 'function' ? undefined : style

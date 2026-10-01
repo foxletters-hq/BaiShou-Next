@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
-import { NativeThemeProvider, useNativeTheme, type ThemeModePreference } from '@baishou/ui/native'
+import i18n from 'i18next'
+import {
+  NativeThemeProvider,
+  nativeUiFontFamilyFromLanguage,
+  useNativeTheme,
+  type ThemeModePreference
+} from '@baishou/ui/native'
 import {
   normalizeUiFontSizeLevel,
   uiFontSizeScaleFromLevel,
@@ -23,6 +29,9 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
   const [themeMode, setThemeMode] = useState<ThemeModePreference>('system')
   const [seedColor, setSeedColor] = useState<string | undefined>()
   const [contentFontScale, setContentFontScale] = useState(1)
+  const [uiFontFamily, setUiFontFamily] = useState(() =>
+    nativeUiFontFamilyFromLanguage(i18n.language)
+  )
 
   const loadThemeFromSettings = useCallback(async () => {
     if (!services) return
@@ -58,11 +67,23 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
     })
   }, [dbReady, services, loadThemeFromSettings])
 
+  useEffect(() => {
+    const apply = (language: string) => {
+      setUiFontFamily(nativeUiFontFamilyFromLanguage(language))
+    }
+    apply(i18n.language)
+    i18n.on('languageChanged', apply)
+    return () => {
+      i18n.off('languageChanged', apply)
+    }
+  }, [])
+
   return (
     <NativeThemeProvider
       themeMode={themeMode}
       seedColor={seedColor}
       contentFontScale={contentFontScale}
+      uiFontFamily={uiFontFamily}
     >
       <ThemedRootShell>{children}</ThemedRootShell>
     </NativeThemeProvider>

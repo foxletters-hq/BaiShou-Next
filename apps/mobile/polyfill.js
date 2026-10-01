@@ -6,6 +6,16 @@ if (typeof global.__filename === 'undefined') {
   global.__filename = '/index.js'
 }
 
+// Hermes 没有浏览器 DOMException；Agent 流中止与部分 Web 库会构造它。
+if (typeof globalThis.DOMException !== 'function') {
+  globalThis.DOMException = class DOMException extends Error {
+    constructor(message, name) {
+      super(message || '')
+      this.name = name || 'Error'
+    }
+  }
+}
+
 // Zustand devtools / 部分 Web 库会在 RN 启动时调用 window.addEventListener。
 // 新架构 Hermes 上 window 可能存在但没有 EventTarget 方法，导致 store 初始化失败。
 ;(() => {

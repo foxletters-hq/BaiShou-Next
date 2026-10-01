@@ -44,6 +44,7 @@
     },
     "plugins": [
       "./plugins/withAndroidAdjustNothing.js",
+      "./plugins/withNativeUiFonts.js",
       "./plugins/withAndroidLanPermissions.js",
       "./plugins/withAndroidStoragePermissions.js",
       "./plugins/withAndroidReleaseSigning.js",
