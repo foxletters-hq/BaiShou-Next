@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { WebView } from 'react-native-webview'
 import * as Linking from 'expo-linking'
+import { ExternalLink } from 'lucide-react-native'
 import {
   decideHelpDocsNavigation,
   HELP_DOCS_QUICK_START_URL,
@@ -12,6 +13,15 @@ import {
 import { Button, useNativeTheme } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
+
+const HIDE_DOCS_WEB_HEADER_JS = `
+  (function() {
+    var style = document.createElement('style');
+    style.innerHTML = '.site-header { display: none !important; } .docs-shell { padding-top: 0 !important; } .docs-main { padding-top: 0 !important; } html, body { padding-top: 0 !important; }';
+    document.head.appendChild(style);
+  })();
+  true;
+`
 
 export function HelpDocsScreen() {
   const { t } = useTranslation()
@@ -27,7 +37,8 @@ export function HelpDocsScreen() {
       {...chrome}
       onBack={() => router.back()}
       headerRight={{
-        label: t('settings.help_docs_open_browser', '在浏览器中打开'),
+        icon: ExternalLink,
+        accessibilityLabel: t('settings.help_docs_open_browser', '在浏览器中打开'),
         onPress: () => {
           void Linking.openURL(HELP_DOCS_QUICK_START_URL)
         }
@@ -53,6 +64,10 @@ export function HelpDocsScreen() {
           key={reloadKey}
           source={{ uri: HELP_DOCS_QUICK_START_URL }}
           startInLoadingState
+          automaticallyAdjustContentInsets={false}
+          contentInsetAdjustmentBehavior="never"
+          injectedJavaScriptBeforeContentLoaded={HIDE_DOCS_WEB_HEADER_JS}
+          style={{ flex: 1, backgroundColor: colors.bgApp }}
           renderLoading={() => (
             <View style={styles.center}>
               <ActivityIndicator color={colors.primary} />
