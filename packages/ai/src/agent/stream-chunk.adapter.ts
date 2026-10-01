@@ -14,7 +14,7 @@ import type { StreamTextResult } from 'ai'
 import { parseCompanionAskStreamArgs } from '../tools/companion-ask-stream.util'
 import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types'
 import { StreamAccumulator } from './stream-accumulator'
-import { isAgentStreamAbortError, logger } from '@baishou/shared'
+import { createAgentStreamAbortError, isAgentStreamAbortError, logger } from '@baishou/shared'
 import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import { isAgentStreamFirstOutputChunk } from './agent-stream-timeout'
 
@@ -110,7 +110,7 @@ export class StreamChunkAdapter {
 
         // 用户主动取消：SDK 可能以 abort 事件结束，而非抛 AbortError
         if ((value as { type?: string }).type === 'abort') {
-          fatalError = new DOMException('The operation was aborted', 'AbortError')
+          fatalError = createAgentStreamAbortError()
         }
 
         // 交给累积器保存进度
@@ -137,8 +137,7 @@ export class StreamChunkAdapter {
       // AI_NoOutputGeneratedError 在 agent tool-call 场景中是正常的
       // 模型只返回工具调用而没有文本时会触发此错误，不应阻止后续计费和持久化
       if (isAgentStreamAbortError(e)) {
-        fatalError =
-          e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
+        fatalError = e instanceof Error ? e : createAgentStreamAbortError()
       } else if (isNoOutputGeneratedError(e)) {
         logger.info(
           '[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal'

@@ -1,4 +1,5 @@
 import {
+  createAgentStreamAbortError,
   resolveSessionDisabledToolIds,
   normalizeAssistantKind,
   buildEffectiveAssistantSystemPrompt,
@@ -156,7 +157,7 @@ export async function prepareAgentSessionContext(input: {
   })
   {
     if (abortSignal?.aborted) {
-      throw new DOMException('The operation was aborted', 'AbortError')
+      throw createAgentStreamAbortError()
     }
 
     const usableWindow = usableContextTokens(
@@ -206,7 +207,7 @@ export async function prepareAgentSessionContext(input: {
           }
         )
         if (abortSignal?.aborted) {
-          throw new DOMException('The operation was aborted', 'AbortError')
+          throw createAgentStreamAbortError()
         }
         if (compressed) {
           sessionMessages = await loadSessionMessages()

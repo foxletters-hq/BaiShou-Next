@@ -3,6 +3,7 @@ import {
   createStreamingTextDisplayBuffer,
   AgentGateReply,
   type AgentGateQuestionAnswer,
+  type AgentStreamTimelineItem,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
@@ -55,6 +56,7 @@ export function useAgentStream(
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>(EMPTY_TOKEN_USAGE)
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
   const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
+  const [timeline, setTimeline] = useState<AgentStreamTimelineItem[]>([])
   const [pendingEmojis, setPendingEmojis] = useState<PendingEmoji[]>([])
   const [streamError, setStreamError] = useState<string | null>(null)
   const [isCompressing, setIsCompressing] = useState(false)
@@ -78,6 +80,7 @@ export function useAgentStream(
   currentSessionIdRef.current = currentSessionId
   const streamingTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamingReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+  const timelineRef = useRef<AgentStreamTimelineItem[]>([])
   const compressionTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const compressionReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamFinalizeLockRef = useRef<string | null>(null)
@@ -104,6 +107,7 @@ export function useAgentStream(
     currentSessionIdRef,
     streamingTextDisplayRef,
     streamingReasoningDisplayRef,
+    timelineRef,
     compressionTextDisplayRef,
     compressionReasoningDisplayRef,
     streamFinalizeLockRef,
@@ -166,7 +170,8 @@ export function useAgentStream(
     setCompressionTriggerMessageId,
     setActiveTool,
     setCompletedTools,
-    setPendingEmojis
+    setPendingEmojis,
+    setTimeline
   })
 
   const finish = useAgentStreamFinish({
@@ -399,6 +404,7 @@ export function useAgentStream(
     streamError,
     streamingText,
     streamingReasoning,
+    timeline,
     tokenUsage,
     activeTool,
     completedTools,

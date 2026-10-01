@@ -40,6 +40,7 @@ export function useAgentStreamingPresentation(deps: {
   compressionTriggerMessageId: Stream['compressionTriggerMessageId']
   streamingText: Stream['streamingText']
   streamingReasoning: Stream['streamingReasoning']
+  timeline: Stream['timeline']
   activeTool: Stream['activeTool']
   completedTools: Stream['completedTools']
   activeToolDisplayName: string | null
@@ -76,6 +77,7 @@ export function useAgentStreamingPresentation(deps: {
     isCompressing,
     streamingText,
     streamingReasoning,
+    timeline,
     activeTool,
     completedTools,
     activeToolDisplayName,
@@ -117,6 +119,7 @@ export function useAgentStreamingPresentation(deps: {
       isCompressing &&
       !streamingText.trim() &&
       !streamingReasoning.trim() &&
+      timeline.length === 0 &&
       !activeTool &&
       completedTools.length === 0
     ) {
@@ -129,6 +132,7 @@ export function useAgentStreamingPresentation(deps: {
     isCompressing,
     streamingText,
     streamingReasoning,
+    timeline.length,
     activeTool,
     completedTools.length
   ])
@@ -189,8 +193,10 @@ export function useAgentStreamingPresentation(deps: {
   /** 思考区左侧转圈：仅真实思考内容阶段；连接等待不要冒充「深度思考中」 */
   const streamingThinkLoading = useMemo(() => {
     if (!markdownPresentationActive) return false
+    const last = timeline[timeline.length - 1]
+    if (last) return last.kind === 'reasoning'
     return Boolean(streamingReasoning.trim() && !streamingText.trim())
-  }, [streamingReasoning, streamingText, markdownPresentationActive])
+  }, [streamingReasoning, streamingText, markdownPresentationActive, timeline])
 
   const streamingCompletedTools = useMemo(
     () =>
@@ -209,6 +215,7 @@ export function useAgentStreamingPresentation(deps: {
   const hasStreamingBody = Boolean(
     streamingText.trim() ||
     streamingReasoning.trim() ||
+    timeline.length > 0 ||
     activeTool ||
     completedTools.length > 0 ||
     pendingEmojiAttachments.length > 0
@@ -233,6 +240,7 @@ export function useAgentStreamingPresentation(deps: {
       isTextStreaming: bubbleTextStreaming,
       isThinkLoading: streamingThinkLoading,
       isThinkStreaming: markdownPresentationActive && Boolean(streamingReasoning.trim()),
+      timeline,
       activeToolName: activeToolDisplayName,
       completedTools: streamingCompletedTools,
       attachments: pendingEmojiAttachments.length > 0 ? pendingEmojiAttachments : undefined,
@@ -244,6 +252,7 @@ export function useAgentStreamingPresentation(deps: {
       bubbleTextStreaming,
       streamingThinkLoading,
       markdownPresentationActive,
+      timeline,
       activeToolDisplayName,
       streamingCompletedTools,
       pendingEmojiAttachments,
@@ -261,6 +270,7 @@ export function useAgentStreamingPresentation(deps: {
           isReasoning={streamingThinkLoading}
           isThinkStreaming={markdownPresentationActive && Boolean(streamingReasoning.trim())}
           isTextStreaming={bubbleTextStreaming}
+          timeline={timeline}
           activeToolName={activeToolDisplayName}
           completedTools={streamingCompletedTools}
           attachments={pendingEmojiAttachments}
@@ -274,6 +284,7 @@ export function useAgentStreamingPresentation(deps: {
       bubbleTextStreaming,
       markdownPresentationActive,
       streamingReasoning,
+      timeline,
       streamingThinkLoading,
       activeToolDisplayName,
       streamingCompletedTools,

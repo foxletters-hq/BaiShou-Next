@@ -10,14 +10,14 @@ const attachSrc = readFileSync(join(here, '../NativeChatBubbleAttachments.tsx'),
 
 describe('Native chat sticker chrome', () => {
   it('should render assistant stickers after markdown and wait until the text stream ends', () => {
-    expect(bubbleSrc.indexOf('AgentMarkdownRenderer')).toBeLessThan(
+    expect(bubbleSrc.indexOf('AssistantDisplayTimeline')).toBeLessThan(
       bubbleSrc.lastIndexOf('NativeChatBubbleAttachments')
     )
     expect(bubbleSrc).toContain('!markdownStreaming')
     expect(bubbleSrc).toContain('display="sticker"')
     expect(streamSrc).toContain('showStickerAttachments')
     expect(streamSrc).toContain('hasAttachments && !isTextStreaming')
-    expect(streamSrc.indexOf('AgentMarkdownRenderer')).toBeLessThan(
+    expect(streamSrc.indexOf('<AssistantDisplayTimeline')).toBeLessThan(
       streamSrc.indexOf('display="sticker"')
     )
     expect(attachSrc).toContain("display === 'sticker'")
@@ -26,8 +26,8 @@ describe('Native chat sticker chrome', () => {
 
   it('should stream think markdown while live reasoning is arriving', () => {
     expect(bubbleSrc).toContain('liveStream.isThinkStreaming')
-    expect(bubbleSrc).toContain('isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}')
-    expect(streamSrc).toContain('isMarkdownStreaming={isThinkStreaming || isReasoning}')
+    expect(bubbleSrc).toContain('isThinkStreaming={Boolean(liveStream?.isThinkStreaming)')
+    expect(streamSrc).toContain('isThinkStreaming={(isThinkStreaming || isReasoning) && !error}')
   })
 
   it('should wrap assistant markdown with the citation dialog instead of stacking excerpts', () => {

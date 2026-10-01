@@ -1,6 +1,7 @@
 import { settingsManager } from './settings.ipc'
 import i18n from 'i18next'
 import {
+  createAgentStreamAbortError,
   GlobalModelsConfig,
   canUseProviderModel,
   logger,
@@ -96,7 +97,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
       const onUserAbort = () => abortController.abort()
       if (userSignal) {
         if (userSignal.aborted) {
-          const err = new DOMException('The operation was aborted', 'AbortError')
+          const err = createAgentStreamAbortError()
           throw err
         }
         userSignal.addEventListener('abort', onUserAbort, { once: true })

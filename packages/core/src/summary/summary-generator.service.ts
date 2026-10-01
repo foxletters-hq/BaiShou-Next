@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import {
+  createAgentStreamAbortError,
   MissingSummary,
   SummaryType,
   logger,
@@ -170,7 +171,7 @@ export class SummaryGeneratorService {
         promptLocale
       })
       if (options.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       logger.info(
@@ -183,7 +184,7 @@ export class SummaryGeneratorService {
       })
 
       if (options.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       logger.info(
@@ -192,7 +193,7 @@ export class SummaryGeneratorService {
       yield generatedResult
     } catch (e: any) {
       if (isSummaryUserAbortError(e, options.abortSignal)) {
-        throw e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
+        throw e instanceof Error ? e : createAgentStreamAbortError()
       }
       logger.error(
         `[SummaryGeneratorService] Failed to generate summary for target ${target.type}:`,

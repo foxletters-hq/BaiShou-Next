@@ -1,4 +1,5 @@
 import {
+  createAgentStreamAbortError,
   isVisionModel,
   logger,
   normalizeReasoningEffortSetting,
@@ -264,7 +265,7 @@ export class AgentSessionService {
       if (!aborted) {
         callbacks?.onError?.(err)
       }
-      throw aborted ? new DOMException('The operation was aborted', 'AbortError') : err
+      throw aborted ? createAgentStreamAbortError() : err
     } finally {
       unsubGateBuffer()
       abortSignal?.removeEventListener('abort', onAbortCancelGate)

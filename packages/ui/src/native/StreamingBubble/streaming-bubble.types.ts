@@ -1,4 +1,8 @@
-import type { MockChatAttachment } from '@baishou/shared'
+import type {
+  AgentGatePartData,
+  AgentStreamTimelineItem,
+  MockChatAttachment
+} from '@baishou/shared'
 
 export interface ToolExecution {
   name: string
@@ -18,6 +22,10 @@ export interface NativeStreamingBubbleProps {
   isTextStreaming?: boolean
   activeToolName?: string | null
   completedTools?: ToolExecution[]
+  /** 按发生顺序展开思考 / 工具 / 正文；有值时优先于压扁字段 */
+  timeline?: AgentStreamTimelineItem[]
+  /** 本轮已确认的权限，收在流式气泡里 */
+  gateParts?: AgentGatePartData[]
   aiProfile?: {
     name: string
     avatarPath?: string | null

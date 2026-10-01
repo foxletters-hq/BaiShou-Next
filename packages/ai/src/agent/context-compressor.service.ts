@@ -8,9 +8,11 @@ import {
   CompressionErrorCode,
   compressionError,
   getDefaultCompressionSystemPrompt,
-  adaptCompressionSystemPrompt
+  adaptCompressionSystemPrompt,
+  createAgentStreamAbortError,
+  isAgentStreamAbortError,
+  logger
 } from '@baishou/shared'
-import { logger } from '@baishou/shared'
 import { buildSmallTaskReasoningOptions } from '../providers/reasoning'
 import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
 import { MessageWithParts } from './message.adapter'
@@ -152,7 +154,7 @@ export class ContextCompressorService {
         config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
 
       if (runOptions?.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       const usableWindow = usableContextTokens(
@@ -310,7 +312,7 @@ export class ContextCompressorService {
       return true
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      const aborted = e instanceof DOMException && e.name === 'AbortError'
+      const aborted = isAgentStreamAbortError(e)
       if (!aborted) {
         logger.error('[ContextCompressor] Compression failed:', message)
       }
@@ -536,7 +538,7 @@ export class ContextCompressorService {
         }
       })
     } catch (streamErr: unknown) {
-      const aborted = streamErr instanceof DOMException && streamErr.name === 'AbortError'
+      const aborted = isAgentStreamAbortError(streamErr)
       if (!aborted && !isAgentFirstOutputTimeoutError(streamErr)) {
         const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
         logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
