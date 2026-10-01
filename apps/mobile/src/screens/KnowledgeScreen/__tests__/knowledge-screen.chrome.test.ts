@@ -23,6 +23,8 @@ describe('mobile knowledge list chrome', () => {
     expect(src).toContain('mobileSetCoverImage')
     expect(src).toContain('KnowledgeCoverEmojiPicker')
     expect(src).toContain('listNotebookCoverEmojis')
+    expect(src).toContain("t('knowledge.pick_cover_icon'")
+    expect(src).toContain('visible={open}')
     expect(src).toContain('headerRight')
     expect(src).not.toContain('TextInput')
     expect(src).not.toContain('Alert.alert')
