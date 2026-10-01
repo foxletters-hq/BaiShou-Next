@@ -87,6 +87,7 @@ export function KnowledgeCreateNotebookSheet(props: {
             {t('knowledge.cover_icon', '图标')}
           </Text>
           <KnowledgeCoverEmojiPicker
+            key={String(props.visible)}
             selected={props.icon}
             disabled={props.busy}
             onSelect={props.onIconChange}

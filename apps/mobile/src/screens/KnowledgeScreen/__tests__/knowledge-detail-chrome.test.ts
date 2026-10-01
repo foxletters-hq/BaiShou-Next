@@ -96,6 +96,8 @@ describe('mobile knowledge detail chrome', () => {
     expect(page).toContain('MarkdownRenderer')
     expect(page).toContain('assessFetchedWebPage')
     expect(page).toContain('listNotebookCoverEmojis')
+    expect(page).toContain("t('knowledge.pick_cover_icon'")
+    expect(page).toContain('visible={open}')
     expect(page).toContain('NativeSlider')
     expect(page).toContain('knowledgeSourceDisplayStatus')
     expect(page).toContain('knowledgeIngestProgressLabel')

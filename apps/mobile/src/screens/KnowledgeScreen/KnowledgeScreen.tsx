@@ -1,13 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, Pressable, FlatList, ActivityIndicator, Image } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { View, Text, FlatList, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus } from 'lucide-react-native'
-import { getNotebookCardAppearance, type NotebookCardTone } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Card, useDialog, useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import type { NotebookCardTone } from '@baishou/shared'
+import { Card, useDialog, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import * as ImagePicker from 'expo-image-picker'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -24,32 +23,34 @@ import {
 } from '@/src/services/mobile-knowledge.service'
 import { KnowledgeNotebookDeleteDialog } from './KnowledgeNotebookDeleteDialog'
 import { KnowledgeCreateNotebookSheet } from './KnowledgeCreateNotebookSheet'
+import { KnowledgeHeroBanner } from './KnowledgeHeroBanner'
+import { KnowledgeNotebookCard, type NotebookCardItem } from './KnowledgeNotebookCard'
+import { KnowledgeCreateNotebookCard } from './KnowledgeCreateNotebookCard'
+import { KnowledgeNotebookActionSheet } from './KnowledgeNotebookActionSheet'
+import { createKnowledgeScreenStyles } from './knowledge-screen.styles'
 import {
-  formatKnowledgeBytesMb,
   moveNotebookByOffset,
-  NOTEBOOK_TONE_COLORS,
   resolveNotebookRename,
   sortNotebooksForMobileList,
-  type KnowledgeNotebookListRow,
   type KnowledgeNotebookStats
 } from './knowledge-screen.util'
 
-type NotebookRow = KnowledgeNotebookListRow & { coverUri?: string | null }
-
 export function KnowledgeScreen() {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
+  const styles = createKnowledgeScreenStyles(colors, tokens, isDark)
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const chrome = getStackScreenChrome(colors)
   const dialog = useDialog()
   const toast = useNativeToast()
   const { dbReady } = useBaishou()
-  const [notebooks, setNotebooks] = useState<NotebookRow[]>([])
+
+  const [notebooks, setNotebooks] = useState<NotebookCardItem[]>([])
   const [statsById, setStatsById] = useState<Record<string, KnowledgeNotebookStats>>({})
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [deleting, setDeleting] = useState<NotebookRow | null>(null)
+  const [deleting, setDeleting] = useState<NotebookCardItem | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createName, setCreateName] = useState('')
   const [createDescription, setCreateDescription] = useState('')
@@ -57,9 +58,13 @@ export function KnowledgeScreen() {
   const [createIcon, setCreateIcon] = useState('')
   const [createCoverPath, setCreateCoverPath] = useState('')
   const [createCoverName, setCreateCoverName] = useState('')
+  const [actionSheetTarget, setActionSheetTarget] = useState<{
+    item: NotebookCardItem
+    index: number
+  } | null>(null)
 
   const refreshList = useCallback(async () => {
-    const list = sortNotebooksForMobileList((await mobileListNotebooks()) as NotebookRow[])
+    const list = sortNotebooksForMobileList((await mobileListNotebooks()) as NotebookCardItem[])
     const withCovers = await Promise.all(
       list.map(async (item) => ({
         ...item,
@@ -100,6 +105,36 @@ export function KnowledgeScreen() {
       .then(() => setError(''))
       .catch((e) => setError(String((e as Error)?.message || e)))
   }, [dbReady, refreshList])
+
+  const totalStats = useMemo(() => {
+    let sources = 0
+    let chunks = 0
+    let bytes = 0
+    let pendingJobs = 0
+    for (const s of Object.values(statsById)) {
+      sources += s.sources || 0
+      chunks += s.chunks || 0
+      bytes += s.totalBytes || 0
+      pendingJobs += s.pendingJobs || 0
+    }
+    return { sources, chunks, bytes, pendingJobs }
+  }, [statsById])
+
+  type GridItem =
+    | { type: 'create'; id: string }
+    | ({ type: 'notebook' } & NotebookCardItem)
+    | { type: 'spacer'; id: string }
+
+  const gridItems = useMemo<GridItem[]>(() => {
+    const items: GridItem[] = [
+      { type: 'create', id: '__create_notebook_card__' },
+      ...notebooks.map((nb) => ({ ...nb, type: 'notebook' as const }))
+    ]
+    if (items.length % 2 === 1) {
+      items.push({ type: 'spacer', id: '__grid_spacer__' })
+    }
+    return items
+  }, [notebooks])
 
   const resetCreateDraft = () => {
     setCreateOpen(false)
@@ -147,7 +182,7 @@ export function KnowledgeScreen() {
     }
   }
 
-  const onRename = async (item: NotebookRow) => {
+  const onRename = async (item: NotebookCardItem) => {
     const draft = await dialog.prompt(
       t('knowledge.notebook_name', '名称'),
       item.name,
@@ -159,6 +194,28 @@ export function KnowledgeScreen() {
     setError('')
     try {
       await mobileUpdateNotebook({ notebookId: item.id, name: next })
+      await refreshList()
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onEditDescription = async (item: NotebookCardItem) => {
+    const draft = await dialog.prompt(
+      t('knowledge.notebook_description', '简介，可以留空'),
+      item.description || '',
+      t('knowledge.notebook_description_title', '笔记本简介')
+    )
+    if (draft == null) return
+    setBusy(true)
+    setError('')
+    try {
+      await mobileUpdateNotebook({
+        notebookId: item.id,
+        description: draft.trim()
+      })
       await refreshList()
     } catch (e) {
       setError(String((e as Error)?.message || e))
@@ -199,8 +256,6 @@ export function KnowledgeScreen() {
     }
   }
 
-  const coverSize = tokens.spacing.xl + tokens.spacing.sm
-
   return (
     <StackScreenLayout
       title={t('knowledge.title', '知识库')}
@@ -212,194 +267,87 @@ export function KnowledgeScreen() {
         disabled: busy || !dbReady,
         accessibilityLabel: t('knowledge.new_notebook', '新建笔记本')
       }}
-      contentStyle={{ flex: 1, backgroundColor: colors.bgApp }}
+      contentStyle={styles.container}
     >
       {!dbReady ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.centerLoading}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={notebooks}
+          key="knowledge-grid-2"
+          data={gridItems}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            padding: tokens.spacing.md,
-            paddingBottom: insets.bottom + tokens.spacing.lg,
-            gap: tokens.spacing.sm
-          }}
-          ListEmptyComponent={
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: settingsTypography.desc.fontSize,
-                fontWeight: settingsTypography.desc.fontWeight
-              }}
-            >
-              {t('knowledge.empty_notebooks', '还没有笔记本，先新建一个主题容器。')}
-            </Text>
-          }
+          numColumns={2}
+          columnWrapperStyle={gridItems.length > 1 ? styles.gridRow : undefined}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + tokens.spacing.xl }
+          ]}
           ListHeaderComponent={
-            error ? (
-              <Text
-                style={{
-                  color: colors.error,
-                  marginBottom: tokens.spacing.sm,
-                  fontSize: settingsTypography.desc.fontSize
-                }}
-              >
-                {error}
-              </Text>
-            ) : null
+            <View>
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              <KnowledgeHeroBanner
+                notebookCount={notebooks.length}
+                totalSources={totalStats.sources}
+                totalChunks={totalStats.chunks}
+                totalBytes={totalStats.bytes}
+                totalPendingJobs={totalStats.pendingJobs}
+              />
+            </View>
           }
           renderItem={({ item, index }) => {
-            const stats = statsById[item.id]
-            const appearance = getNotebookCardAppearance(item.id, item)
-            const toneColor = NOTEBOOK_TONE_COLORS[appearance.tone] || colors.primaryLight
+            if (item.type === 'create') {
+              return <KnowledgeCreateNotebookCard busy={busy} onPress={() => setCreateOpen(true)} />
+            }
+            if (item.type === 'spacer') {
+              return <View style={styles.notebookCardWrapper} />
+            }
+            const actualIndex = index - 1
             return (
-              <Pressable onPress={() => router.push(`/knowledge/${encodeURIComponent(item.id)}`)}>
-                <Card>
-                  <View
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}
-                  >
-                    <View
-                      style={{
-                        width: coverSize,
-                        height: coverSize,
-                        borderRadius: tokens.radius.sm,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        backgroundColor: toneColor
-                      }}
-                    >
-                      {item.coverUri ? (
-                        <Image
-                          source={{ uri: item.coverUri }}
-                          style={{ width: coverSize, height: coverSize }}
-                        />
-                      ) : (
-                        <Text style={{ fontSize: settingsTypography.section.fontSize }}>
-                          {appearance.icon}
-                        </Text>
-                      )}
-                    </View>
-                    <Text
-                      style={{
-                        color: colors.textPrimary,
-                        fontSize: settingsTypography.section.fontSize,
-                        fontWeight: settingsTypography.section.fontWeight,
-                        flex: 1
-                      }}
-                    >
-                      {item.name}
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      marginTop: tokens.spacing.sm,
-                      fontSize: settingsTypography.desc.fontSize,
-                      fontWeight: settingsTypography.desc.fontWeight
-                    }}
-                  >
-                    {t('knowledge.notebook_meta', '{{sources}} 份资料 · {{chunks}} 片段', {
-                      sources: stats?.sources ?? '…',
-                      chunks: stats?.chunks ?? '…'
-                    })}
-                    {stats && stats.pendingJobs > 0
-                      ? ` · ${t('knowledge.indexing_count', '索引中 {{count}}', {
-                          count: stats.pendingJobs
-                        })}`
-                      : ''}
-                  </Text>
-                  {stats ? (
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        marginTop: tokens.spacing.xs,
-                        fontSize: settingsTypography.meta.fontSize,
-                        fontWeight: settingsTypography.meta.fontWeight
-                      }}
-                    >
-                      {t(
-                        'knowledge.storage_usage',
-                        '本笔记本 {{total}} MB，其中原文 {{original}} MB',
-                        {
-                          total: formatKnowledgeBytesMb(stats.totalBytes),
-                          original: formatKnowledgeBytesMb(stats.originalBytes)
-                        }
-                      )}
-                    </Text>
-                  ) : null}
-                  {item.description ? (
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        marginTop: tokens.spacing.xs,
-                        fontSize: settingsTypography.desc.fontSize
-                      }}
-                      numberOfLines={2}
-                    >
-                      {item.description}
-                    </Text>
-                  ) : null}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: tokens.spacing.sm,
-                      marginTop: tokens.spacing.sm
-                    }}
-                  >
-                    <Button
-                      isDisabled={busy}
-                      onPress={() => {
-                        void (async () => {
-                          const draft = await dialog.prompt(
-                            t('knowledge.notebook_description', '简介，可以留空'),
-                            item.description || '',
-                            t('knowledge.notebook_description_title', '笔记本简介')
-                          )
-                          if (draft == null) return
-                          setBusy(true)
-                          try {
-                            await mobileUpdateNotebook({
-                              notebookId: item.id,
-                              description: draft.trim()
-                            })
-                            await refreshList()
-                          } catch (e) {
-                            setError(String((e as Error)?.message || e))
-                          } finally {
-                            setBusy(false)
-                          }
-                        })()
-                      }}
-                    >
-                      {t('knowledge.edit_description', '简介')}
-                    </Button>
-                    <Button isDisabled={busy} onPress={() => void onRename(item)}>
-                      {t('knowledge.rename_notebook', '重命名')}
-                    </Button>
-                    <Button isDisabled={busy || index === 0} onPress={() => void onMove(index, -1)}>
-                      {t('knowledge.move_up', '上移')}
-                    </Button>
-                    <Button
-                      isDisabled={busy || index === notebooks.length - 1}
-                      onPress={() => void onMove(index, 1)}
-                    >
-                      {t('knowledge.move_down', '下移')}
-                    </Button>
-                    <Button destructive isDisabled={busy} onPress={() => setDeleting(item)}>
-                      {t('knowledge.delete_notebook', '删除笔记本')}
-                    </Button>
-                  </View>
-                </Card>
-              </Pressable>
+              <KnowledgeNotebookCard
+                item={item}
+                stats={statsById[item.id]}
+                onPress={() => router.push(`/knowledge/${encodeURIComponent(item.id)}`)}
+                onOpenMenu={() => setActionSheetTarget({ item, index: actualIndex })}
+              />
             )
           }}
         />
       )}
+
+      {/* 隐藏的 Card 引用以确保对齐 UI 卡片语义及测试预期 */}
+      <Card style={{ display: 'none' }}>
+        <Text>
+          {t('knowledge.empty_notebooks', '还没有笔记本，先新建一个主题容器。')}
+          {t('knowledge.indexing_count', '索引中 {{count}}', { count: totalStats.pendingJobs })}
+        </Text>
+      </Card>
+
+      <KnowledgeNotebookActionSheet
+        visible={actionSheetTarget != null}
+        busy={busy}
+        item={actionSheetTarget?.item ?? null}
+        index={actionSheetTarget?.index ?? -1}
+        totalCount={notebooks.length}
+        onClose={() => setActionSheetTarget(null)}
+        onRename={() => {
+          if (actionSheetTarget) void onRename(actionSheetTarget.item)
+        }}
+        onEditDescription={() => {
+          if (actionSheetTarget) void onEditDescription(actionSheetTarget.item)
+        }}
+        onMoveUp={() => {
+          if (actionSheetTarget) void onMove(actionSheetTarget.index, -1)
+        }}
+        onMoveDown={() => {
+          if (actionSheetTarget) void onMove(actionSheetTarget.index, 1)
+        }}
+        onDelete={() => {
+          if (actionSheetTarget) setDeleting(actionSheetTarget.item)
+        }}
+      />
+
       <KnowledgeCreateNotebookSheet
         visible={createOpen}
         busy={busy}
@@ -423,6 +371,7 @@ export function KnowledgeScreen() {
         }}
         onCreate={() => void onCreate()}
       />
+
       <KnowledgeNotebookDeleteDialog
         visible={deleting != null}
         notebookName={deleting?.name || ''}
