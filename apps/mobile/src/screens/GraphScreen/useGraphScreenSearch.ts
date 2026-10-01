@@ -19,7 +19,7 @@ import {
   graphSearchHitViewState
 } from './graph-screen-derive.util'
 import { viewDepthFor } from './graph-screen-view.util'
-import type { GraphScreenTab, GraphScreenTranslateFn } from './graph-screen.types'
+import type { GraphScreenTranslateFn } from './graph-screen.types'
 
 type SearchDeps = {
   t: GraphScreenTranslateFn
@@ -28,7 +28,6 @@ type SearchDeps = {
   services: { settingsManager?: unknown } | null
   graphNodes: any[]
   pendingNodes: any[]
-  setTab: (tab: GraphScreenTab) => void
   setStatus: (status: string) => void
 }
 
@@ -90,7 +89,6 @@ export function useGraphScreenSearch(deps: SearchDeps) {
     setSelectedNode(node)
     setLocalView(view)
     if (opts?.bypassMonth) setPinNeighborhood(true)
-    deps.setTab('graph')
     if (opts?.locate || opts?.bypassMonth) setLocateSeq((n) => n + 1)
   }
 
@@ -160,7 +158,6 @@ export function useGraphScreenSearch(deps: SearchDeps) {
     setLocateIds([from.id, to.id])
     setLocalView({ nodes: [from, to], edges: [edge] })
     setPinNeighborhood(true)
-    deps.setTab('graph')
     setLocateSeq((n) => n + 1)
   }
 
@@ -212,7 +209,6 @@ export function useGraphScreenSearch(deps: SearchDeps) {
   const onSearchHitPress = async (item: any) => {
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
-    deps.setTab('graph')
     setSelectedId(item.id)
     setHighlightedEdgeIds(new Set())
     setLocateIds(null)

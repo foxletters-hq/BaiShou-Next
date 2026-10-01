@@ -67,7 +67,8 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   webWrap: {
-    flex: 1
+    flex: 1,
+    position: 'relative'
   },
   toolbarRow: {
     flexDirection: 'row',
@@ -341,9 +342,45 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6
   },
+  opsBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10
+  },
   opsBtnRow: {
     flexDirection: 'row',
     gap: 8
+  },
+  canvasSettingsFab: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  peekCard: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth
+  },
+  peekName: {
+    fontSize: 14,
+    fontWeight: '600'
   },
   opsPrimaryBtn: {
     alignItems: 'center',

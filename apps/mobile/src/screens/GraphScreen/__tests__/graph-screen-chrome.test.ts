@@ -10,7 +10,10 @@ function readSrc(name: string): string {
 }
 
 const src = readSrc('GraphScreen.tsx')
-const canvasTabSrc = readSrc('GraphScreenCanvasTab.tsx')
+const canvasSrc = readSrc('GraphCanvasScreen.tsx')
+const canvasModelSrc = readSrc('useGraphCanvasModel.ts')
+const emptyGuideSrc = readSrc('GraphScreenEmptyGuide.tsx')
+const peekSrc = readSrc('GraphCanvasNodePeek.tsx')
 const detailSrc = readSrc('GraphScreenDetailPane.tsx')
 const searchTabSrc = readSrc('GraphScreenSearchTab.tsx')
 const reextractTabSrc = readSrc('GraphScreenReextractTab.tsx')
@@ -49,7 +52,10 @@ const splitServiceSrc = readFileSync(join(dir, '../../../services/mobile-graph-s
 
 const pageChrome = [
   src,
-  canvasTabSrc,
+  canvasSrc,
+  canvasModelSrc,
+  emptyGuideSrc,
+  peekSrc,
   detailSrc,
   searchTabSrc,
   reextractTabSrc,
@@ -81,18 +87,13 @@ function embedPane(host: string, tag: string, pane: string): string {
 
 describe('GraphScreen chrome', () => {
   it('should run unified organize from empty graph start button and keep toolbar extract', () => {
-    const emptyGuide = sliceBetween(
-      canvasTabSrc,
-      'props.showEmptyGuide ? (',
-      'props.showMonthEmpty ? ('
-    )
-    expect(emptyGuide).toContain('onStartOrganize')
-    expect(emptyGuide).toContain("t('memory.start_organize'")
-    expect(emptyGuide).toContain('<Button')
-    expect(emptyGuide).not.toContain('estimatedTokens')
-    expect(emptyGuide).not.toContain('formatTokens')
-    expect(emptyGuide).not.toContain('onRunExtract')
-    expect(emptyGuide).not.toContain('runExtract')
+    expect(emptyGuideSrc).toContain('onStartOrganize')
+    expect(emptyGuideSrc).toContain("t('memory.start_organize'")
+    expect(emptyGuideSrc).toContain('<Button')
+    expect(emptyGuideSrc).not.toContain('estimatedTokens')
+    expect(emptyGuideSrc).not.toContain('formatTokens')
+    expect(emptyGuideSrc).not.toContain('onRunExtract')
+    expect(emptyGuideSrc).not.toContain('runExtract')
 
     const header = sliceBetween(src, 'headerRight={', 'contentStyle={styles.layoutContent}')
     expect(header).toContain("t('graph.extract', '梳理')")
@@ -105,14 +106,30 @@ describe('GraphScreen chrome', () => {
     expect(organizeSrc).toContain("t('graph.process_pending_reextract'")
   })
 
-  it('keeps month, global, and settings on the toolbar and leaves create/merge out', () => {
-    const toolbar = sliceBetween(canvasTabSrc, 'styles.toolbarRow', 'renderDepthChips()')
-    expect(toolbar).toContain('GraphMonthRangeSheet')
-    expect(toolbar).toContain("t('graph.global_view'")
-    expect(toolbar).toContain("t('graph.settings'")
-    expect(toolbar).not.toContain("t('graph.create_node'")
-    expect(toolbar).not.toContain("t('graph.merge_nodes'")
-    expect(toolbar).not.toContain("t('graph.extract_concurrency'")
+  it('should keep operations on the hub page and open a dedicated canvas page', () => {
+    expect(src).toContain("t('graph.open_canvas'")
+    expect(src).toContain("router.push('/graph-view')")
+    expect(src).toContain('requestGraphCanvasLocate')
+    expect(src).not.toContain('GraphForceWebView')
+    expect(src).toContain('<GraphScreenDetailPane')
+    expect(src).toContain("mode=\"organize\"")
+    expect(modelSrc).toContain("['search'")
+    expect(modelSrc).not.toContain("['graph', t('graph.tab_graph'")
+    expect(canvasSrc).toContain('GraphForceWebView')
+    expect(canvasSrc).toContain("mode=\"canvas\"")
+    expect(canvasSrc).not.toContain('GraphScreenDetailPane')
+    expect(peekSrc).toContain("t('graph.open_in_ops'")
+    expect(searchSrc).not.toContain("setTab('graph')")
+  })
+
+  it('keeps month, global, and settings on the canvas page and leaves create/merge out', () => {
+    expect(canvasSrc).toContain('GraphMonthRangeSheet')
+    expect(canvasSrc).toContain("t('graph.global_view'")
+    expect(canvasSrc).toContain('canvasSettingsFab')
+    expect(canvasSrc).toContain("t('graph.settings'")
+    expect(canvasSrc).not.toContain("t('graph.create_node'")
+    expect(canvasSrc).not.toContain("t('graph.merge_nodes'")
+    expect(canvasSrc).not.toContain("t('graph.extract_concurrency'")
   })
 
   it('keeps isolated nodes on the canvas and uses the switch only for names', () => {
@@ -143,7 +160,7 @@ describe('GraphScreen chrome', () => {
       "t('graph.side_canvas', '画布')",
       "t('graph.appearance', '外观')"
     )
-    expect(canvas).toContain('renderDepthChips()')
+    expect(canvasSettingsSrc).toContain('renderDepthChips()')
     expect(canvas).toContain("t('graph.filter'")
     expect(canvas).not.toContain('GraphMonthRangeSheet')
     expect(pageChrome).not.toContain("t('graph.view_section'")
@@ -153,7 +170,7 @@ describe('GraphScreen chrome', () => {
     const organize = sliceBetween(
       embedPane(settingsSrc, '<GraphScreenSettingsOrganize', organizeSrc),
       "t('graph.side_organize', '整理')",
-      "t('graph.side_canvas', '画布')"
+      "t('common.close', '关闭')"
     )
     expect(organize).toContain("t('graph.process_pending_reextract'")
     expect(organize).toContain("t('graph.extract_concurrency'")
@@ -195,7 +212,7 @@ describe('GraphScreen chrome', () => {
     const similar = sliceBetween(
       embedPane(src, '<GraphScreenSimilarTab', similarTabSrc),
       "{tab === 'similar' && (",
-      "{tab === 'pending' && ("
+      "{tab === 'reextract' && ("
     )
     expect(modelSrc).toContain("t('graph.tab_similar'")
     expect(similar).toContain("t('graph.similar_empty'")
@@ -215,7 +232,7 @@ describe('GraphScreen chrome', () => {
         overlaysSrc
       ),
       "{tab === 'pending' && (",
-      '<FloatingModal'
+      "{tab === 'similar' && ("
     )
     expect(pending).toContain("t('graph.approve_selected'")
     expect(pending).toContain("t('graph.reject_selected'")
@@ -236,7 +253,7 @@ describe('GraphScreen chrome', () => {
         reextractTabSrc
       ),
       "{tab === 'search' && (",
-      "{tab === 'reextract' && ("
+      "{tab === 'pending' && ("
     )
     expect(search).toContain("t('graph.search_semantic'")
     expect(search).toContain("t('graph.search_text'")
@@ -247,11 +264,13 @@ describe('GraphScreen chrome', () => {
 
   it('locates pending nodes by selection and pending edges by both endpoints', () => {
     const loc = sliceBetween(searchSrc, 'const locatePendingEdge', 'const onSearch')
-    expect(pageChrome).toContain('locatePendingNode')
+    expect(src).toContain('requestGraphCanvasLocate')
+    expect(src).toContain("openCanvas({ type: 'node', id })")
+    expect(canvasModelSrc).toContain('consumeGraphCanvasLocate')
     expect(loc).toContain('setHighlightedEdgeIds(new Set([edge.id]))')
     expect(loc).toContain('setLocateIds([from.id, to.id])')
     expect(loc).toContain('setLocalView({ nodes: [from, to], edges: [edge] })')
-    expect(loc).toContain("setTab('graph')")
+    expect(searchSrc).not.toContain("setTab('graph')")
   })
 
   it('fits the camera to locateIds after WebView reload', () => {
@@ -390,6 +409,8 @@ describe('GraphScreen chrome', () => {
       'max_nodes',
       'max_nodes_hint',
       'max_nodes_unlimited',
+      'open_canvas',
+      'open_in_ops',
       'tab_similar',
       'tab_similar_count',
       'similar_empty',

@@ -1,21 +1,23 @@
 import React from 'react'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { HelpTooltip, useNativeTheme } from '@baishou/ui/native'
+import { Button, HelpTooltip, useNativeTheme } from '@baishou/ui/native'
 import { GraphAwakenWelcome } from './GraphAwakenWelcome'
 import { GraphPhaseFade } from './GraphPhaseFade'
-import { GraphScreenCanvasTab } from './GraphScreenCanvasTab'
+import { GraphScreenEmptyGuide } from './GraphScreenEmptyGuide'
 import { GraphScreenOverlays } from './GraphScreenOverlays'
 import { GraphScreenPendingTab } from './GraphScreenPendingTab'
 import { GraphScreenSimilarTab } from './GraphScreenSimilarTab'
 import { GraphScreenReextractTab } from './GraphScreenReextractTab'
 import { GraphScreenSearchTab } from './GraphScreenSearchTab'
+import { GraphScreenDetailPane } from './GraphScreenDetailPane'
 import { GraphScreenSettingsSheet } from './GraphScreenSettingsSheet'
 import { styles } from './GraphScreen.styles'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useGraphScreenModel } from './useGraphScreenModel'
-import { GRAPH_FILTER_NODE_TYPES } from './graph-screen-display.util'
+import { requestGraphCanvasLocate, type GraphCanvasLocateRequest } from './graph-cross-page-focus'
 import { graphSuspectReviewCopy } from '@/src/services/graph-name-candidates.util'
 
 export function GraphScreen() {
@@ -23,8 +25,15 @@ export function GraphScreen() {
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const chrome = getStackScreenChrome(colors)
+  const router = useRouter()
   const listPad = { padding: 16, paddingBottom: 16 + insets.bottom }
   const { tab, setTab, settings, data, search, review, detail, extract } = m
+
+  const openCanvas = (locate?: GraphCanvasLocateRequest) => {
+    if (locate) requestGraphCanvasLocate(locate)
+    else if (search.selectedId) requestGraphCanvasLocate({ type: 'node', id: search.selectedId })
+    router.push('/graph-view')
+  }
 
   return (
     <StackScreenLayout
@@ -47,7 +56,7 @@ export function GraphScreen() {
                 label: m.t('graph.queue_view_progress', '进度'),
                 onPress: () => extract.setQueueModalOpen(true)
               }
-            : m.showEmptyGuide && tab === 'graph'
+            : m.showEmptyGuide
               ? undefined
               : {
                   label: m.t('graph.extract', '梳理'),
@@ -68,6 +77,13 @@ export function GraphScreen() {
           />
         ) : (
           <>
+            <View style={styles.opsBar}>
+              <Button onPress={() => openCanvas()}>{m.t('graph.open_canvas', '打开图谱')}</Button>
+              <Button variant="outlined" onPress={() => settings.setSettingsOpen(true)}>
+                {m.t('graph.side_organize', '整理')}
+              </Button>
+            </View>
+
             <View style={[styles.tabTrack, { backgroundColor: colors.bgSurfaceNormal }]}>
               {m.tabItems.map(([id, label]) => {
                 const active = tab === id
@@ -113,76 +129,57 @@ export function GraphScreen() {
               <ActivityIndicator color={colors.primary} style={{ marginBottom: 8 }} />
             ) : null}
 
-            {tab === 'graph' && (
-              <GraphScreenCanvasTab
-                showEmptyGuide={m.showEmptyGuide}
-                showMonthEmpty={m.showMonthEmpty}
-                monthRange={settings.monthRange}
-                onMonthRangeChange={m.updateMonthRange}
-                onClearToGlobal={search.clearToGlobal}
-                filterActive={settings.filterActive}
-                mergeSearchOpen={review.mergeSearchOpen}
-                onOpenSettings={() => settings.setSettingsOpen(true)}
-                focusDepth={search.focusDepth}
-                onFocusDepthChange={search.updateFocusDepth}
-                selectedNode={search.selectedNode}
+            {m.showEmptyGuide ? (
+              <GraphScreenEmptyGuide
                 estimate={data.estimate}
                 pendingCount={data.pending.length}
                 onStartOrganize={() => void m.startOrganize()}
                 onDismissGuide={() => m.setDismissGuide(true)}
-                onResetMonthRange={m.resetMonthRange}
-                displayNodes={m.displayNodes}
-                displayEdges={m.displayEdges}
-                forceSettings={settings.forceSettings}
-                appearanceSettings={settings.appearanceSettings}
-                selectedId={search.selectedId}
-                focusIds={m.focusIds}
-                highlightIds={search.highlightIds}
-                highlightedEdgeIds={search.highlightedEdgeIds}
-                locateIds={search.locateIds}
-                locateSeq={search.locateSeq}
-                animationTick={m.animationTick}
-                onSelectNode={(id) => void search.onSelectNode(id)}
-                onClearSelection={search.clearSelectionKeepPin}
-                paddingBottom={insets.bottom}
-                detail={{
-                  editName: detail.editName,
-                  onEditNameChange: detail.setEditName,
-                  editNameConflict: detail.editNameConflict,
-                  sameNameEntities: detail.sameNameEntities,
-                  editSummary: detail.editSummary,
-                  onEditSummaryChange: detail.setEditSummary,
-                  editAliases: detail.editAliases,
-                  onEditAliasesChange: detail.setEditAliases,
-                  busy: m.busy,
-                  onSaveNodeEdit: () => void detail.saveNodeEdit(),
-                  onReviewNode: (nodeId, status) => void review.reviewNode(nodeId, status),
-                  onDeleteSelected: detail.deleteSelected,
-                  onOpenSplit: () => detail.setSplitOpen(true),
-                  onRevertSplit: (discriminator) => void detail.revertSplit(discriminator),
-                  onMergeIntoExisting: (survivorId, survivorName, loserId, loserName) =>
-                    review.setMergeConfirm({
-                      survivorId,
-                      survivorName,
-                      losers: [{ id: loserId, name: loserName }]
-                    }),
-                  detailEdges: m.detailEdges,
-                  onOpenSource: (ref, excerpt) => void m.openSource(ref, excerpt),
-                  onReviewEdge: (edgeId, status, endpoints) =>
-                    void review.reviewEdge(edgeId, status, endpoints),
-                  onDeleteEdge: detail.deleteEdge,
-                  addEdgeQuery: detail.addEdgeQuery,
-                  onAddEdgeQueryChange: detail.setAddEdgeQuery,
-                  onSearchAddEdgeTarget: () => void detail.searchAddEdgeTarget(),
-                  addEdgeType: detail.addEdgeType,
-                  onAddEdgeTypeChange: detail.setAddEdgeType,
-                  addEdgeToId: detail.addEdgeToId,
-                  onAddEdgeToIdChange: detail.setAddEdgeToId,
-                  onAddEdge: () => void detail.addEdge(),
-                  addEdgeHits: detail.addEdgeHits
-                }}
               />
-            )}
+            ) : null}
+
+            {search.selectedNode ? (
+              <GraphScreenDetailPane
+                selectedNode={search.selectedNode}
+                editName={detail.editName}
+                onEditNameChange={detail.setEditName}
+                editNameConflict={detail.editNameConflict}
+                sameNameEntities={detail.sameNameEntities}
+                editSummary={detail.editSummary}
+                onEditSummaryChange={detail.setEditSummary}
+                editAliases={detail.editAliases}
+                onEditAliasesChange={detail.setEditAliases}
+                busy={m.busy}
+                onSaveNodeEdit={() => void detail.saveNodeEdit()}
+                onReviewNode={(nodeId, status) => void review.reviewNode(nodeId, status)}
+                onDeleteSelected={detail.deleteSelected}
+                onOpenSplit={() => detail.setSplitOpen(true)}
+                onRevertSplit={(discriminator) => void detail.revertSplit(discriminator)}
+                onSelectNode={(id) => void search.onSelectNode(id)}
+                onMergeIntoExisting={(survivorId, survivorName, loserId, loserName) =>
+                  review.setMergeConfirm({
+                    survivorId,
+                    survivorName,
+                    losers: [{ id: loserId, name: loserName }]
+                  })
+                }
+                detailEdges={m.detailEdges}
+                onOpenSource={(ref, excerpt) => void m.openSource(ref, excerpt)}
+                onReviewEdge={(edgeId, status, endpoints) =>
+                  void review.reviewEdge(edgeId, status, endpoints)
+                }
+                onDeleteEdge={detail.deleteEdge}
+                addEdgeQuery={detail.addEdgeQuery}
+                onAddEdgeQueryChange={detail.setAddEdgeQuery}
+                onSearchAddEdgeTarget={() => void detail.searchAddEdgeTarget()}
+                addEdgeType={detail.addEdgeType}
+                onAddEdgeTypeChange={detail.setAddEdgeType}
+                addEdgeToId={detail.addEdgeToId}
+                onAddEdgeToIdChange={detail.setAddEdgeToId}
+                onAddEdge={() => void detail.addEdge()}
+                addEdgeHits={detail.addEdgeHits}
+              />
+            ) : null}
 
             {tab === 'search' && (
               <GraphScreenSearchTab
@@ -194,30 +191,6 @@ export function GraphScreen() {
                 searching={search.searching}
                 hits={search.hits}
                 onHitPress={(item) => void search.onSearchHitPress(item)}
-                listPad={listPad}
-              />
-            )}
-
-            {tab === 'reextract' && (
-              <GraphScreenReextractTab
-                pending={data.pending}
-                queueByPath={extract.queueByPath}
-                onRunExtract={(filePaths) => void extract.runExtract(filePaths)}
-                onCancelQueueItem={extract.cancelQueueItem}
-                onOpenSource={(date) => void m.openSource(date)}
-                listPad={listPad}
-              />
-            )}
-
-            {tab === 'similar' && (
-              <GraphScreenSimilarTab
-                pairs={data.similarPairs}
-                busy={m.busy}
-                onMerge={(pair) =>
-                  review.mergeSimilarPair(pair.peerId, pair.nodeId, pair.peerName, pair.nodeName)
-                }
-                onKeepApart={(pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId)}
-                onLocateNode={search.locatePendingNode}
                 listPad={listPad}
               />
             )}
@@ -237,9 +210,33 @@ export function GraphScreen() {
                 onReviewEdge={(edgeId, status, endpoints) =>
                   void review.reviewEdge(edgeId, status, endpoints)
                 }
-                onLocateNode={search.locatePendingNode}
-                onLocateEdge={(edge) => void search.locatePendingEdge(edge)}
+                onLocateNode={(id) => openCanvas({ type: 'node', id })}
+                onLocateEdge={(edge) => openCanvas({ type: 'edge', edge })}
                 onOpenSource={(ref, excerpt) => void m.openSource(ref, excerpt)}
+                listPad={listPad}
+              />
+            )}
+
+            {tab === 'similar' && (
+              <GraphScreenSimilarTab
+                pairs={data.similarPairs}
+                busy={m.busy}
+                onMerge={(pair) =>
+                  review.mergeSimilarPair(pair.peerId, pair.nodeId, pair.peerName, pair.nodeName)
+                }
+                onKeepApart={(pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId)}
+                onLocateNode={(id) => openCanvas({ type: 'node', id })}
+                listPad={listPad}
+              />
+            )}
+
+            {tab === 'reextract' && (
+              <GraphScreenReextractTab
+                pending={data.pending}
+                queueByPath={extract.queueByPath}
+                onRunExtract={(filePaths) => void extract.runExtract(filePaths)}
+                onCancelQueueItem={extract.cancelQueueItem}
+                onOpenSource={(date) => void m.openSource(date)}
                 listPad={listPad}
               />
             )}
@@ -250,6 +247,7 @@ export function GraphScreen() {
       <GraphScreenSettingsSheet
         visible={settings.settingsOpen}
         onClose={() => settings.setSettingsOpen(false)}
+        mode="organize"
         settingsSection={settings.settingsSection}
         onToggleSection={(key) => settings.setSettingsSection((s) => ({ ...s, [key]: !s[key] }))}
         organize={{
@@ -281,32 +279,6 @@ export function GraphScreen() {
             settings.setSettingsOpen(false)
           },
           onClearLifeGraph: () => void m.clearLifeGraph()
-        }}
-        canvas={{
-          filterActive: settings.filterActive,
-          typeFilterActive: settings.typeFilterActive,
-          hideEntry: settings.hideEntry,
-          approvedOnly: settings.approvedOnly,
-          enabledNodeTypes: settings.enabledNodeTypes,
-          filterNodeTypes: GRAPH_FILTER_NODE_TYPES,
-          onHideEntryChange: settings.setHideEntry,
-          onApprovedOnlyChange: settings.setApprovedOnly,
-          onResetFilters: settings.resetFilters,
-          onToggleTypeFilter: settings.toggleNodeTypeFilter,
-          onToggleAllTypes: () =>
-            settings.setEnabledNodeTypes(
-              settings.typeFilterActive ? new Set(GRAPH_FILTER_NODE_TYPES) : new Set()
-            ),
-          focusDepth: search.focusDepth,
-          onFocusDepthChange: search.updateFocusDepth,
-          appearanceSettings: settings.appearanceSettings,
-          onAppearanceChange: settings.updateAppearance,
-          viewMaxNodes: settings.viewMaxNodes,
-          onViewMaxNodesChange: settings.updateViewMaxNodes,
-          forceSettings: settings.forceSettings,
-          onForceChange: settings.updateForce,
-          onReplayLayout: () => m.setAnimationTick((n) => n + 1),
-          onResetGraphSettings: settings.resetGraphSettings
         }}
       />
 

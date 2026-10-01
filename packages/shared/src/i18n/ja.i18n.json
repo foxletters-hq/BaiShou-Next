@@ -3610,6 +3610,8 @@
     "similar_merged": "統合しました",
     "tab_detail": "詳細",
     "tab_search": "検索",
+    "open_canvas": "グラフを開く",
+    "open_in_ops": "操作画面で開く",
     "no_pending_reextract": "再抽出待ちの日記はありません",
     "reextract_empty": "再抽出待ちの日記はありません",
     "no_pending_edges": "確認待ちの辺はありません",

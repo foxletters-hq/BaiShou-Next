@@ -1,7 +1,7 @@
 import type { GraphSameNameExisting } from '@baishou/shared'
 import type { GraphExtractQueueSnapshot } from '@/src/services/mobile-graph-extract-queue.service'
 
-export type GraphScreenTab = 'graph' | 'search' | 'reextract' | 'pending' | 'similar'
+export type GraphScreenTab = 'search' | 'reextract' | 'pending' | 'similar'
 
 export type GraphCostEstimate = {
   entryCount: number
