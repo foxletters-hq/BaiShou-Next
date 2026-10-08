@@ -1,6 +1,13 @@
 /** OpenCode Go API 默认根路径 @see https://opencode.ai/docs/go/ */
 export const OPENCODE_GO_DEFAULT_BASE_URL = 'https://opencode.ai/zen/go/v1'
 
+export {
+  OPENCODE_GO_USER_AGENT,
+  OPENCODE_GO_SESSION_HEADER,
+  OPENCODE_GO_MODELS_SESSION_ID,
+  OPENCODE_GO_CONNECTION_TEST_SESSION_ID
+} from './opencodego.headers'
+
 /**
  * 官方文档标注为 Anthropic Messages API（`/v1/messages`）的模型 ID。
  * 其余模型走 OpenAI Chat Completions（`/v1/chat/completions`）。

@@ -1,9 +1,9 @@
+import { sanitizeApiKeyForHttp } from '../fetch-header.util'
+import { OPENCODE_GO_MODELS_SESSION_ID } from './opencodego.constants'
 import {
-  createSanitizedFetch,
-  sanitizeApiKeyForHttp,
-  sanitizeRequestHeaders
-} from '../fetch-header.util'
-import { resolveOpenCodeGoBaseUrl } from './opencodego.language-model.factory'
+  createOpenCodeGoFetch,
+  resolveOpenCodeGoBaseUrl
+} from './opencodego.language-model.factory'
 import type { AiProviderModel } from '@baishou/shared'
 
 interface OpenCodeGoModelsResponse {
@@ -26,8 +26,8 @@ export async function fetchOpenCodeGoModelIds(
     headers.Authorization = `Bearer ${apiKey}`
   }
 
-  const response = await createSanitizedFetch()(endpoint, {
-    headers: sanitizeRequestHeaders(headers)
+  const response = await createOpenCodeGoFetch(OPENCODE_GO_MODELS_SESSION_ID)(endpoint, {
+    headers
   })
 
   if (!response.ok) {

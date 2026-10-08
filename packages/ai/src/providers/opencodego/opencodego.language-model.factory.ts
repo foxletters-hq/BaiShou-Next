@@ -2,14 +2,11 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { LanguageModel } from 'ai'
 import { type AiProviderModel, ProviderType, resolveProviderBaseUrl } from '@baishou/shared'
-import {
-  createSanitizedFetch,
-  sanitizeApiKeyForHttp,
-  sanitizeRequestInit
-} from '../fetch-header.util'
+import { createSanitizedFetch, sanitizeApiKeyForHttp } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { applyDeepSeekReasoningFields } from '../openai.provider'
 import { OPENCODE_GO_DEFAULT_BASE_URL } from './opencodego.constants'
+import { resolveOpenCodeGoSessionId, withOpenCodeGoHeaders } from './opencodego.headers'
 import { resolveOpenCodeGoWireProtocol } from './opencodego.model-protocol'
 
 export function resolveOpenCodeGoBaseUrl(
@@ -27,15 +24,15 @@ function resolveApiKey(config: AiProviderModel): string {
 
 function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)) {
   return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const safeInit = sanitizeRequestInit(init)
+    const nextInit = { ...init }
     const urlStr = typeof url === 'string' ? url : url.toString()
     if (
       urlStr.includes('/chat/completions') &&
-      safeInit?.body &&
-      typeof safeInit.body === 'string'
+      nextInit.body &&
+      typeof nextInit.body === 'string'
     ) {
       try {
-        const body = JSON.parse(safeInit.body) as Record<string, unknown>
+        const body = JSON.parse(nextInit.body) as Record<string, unknown>
         let mutated = false
         const modelId = typeof body.model === 'string' ? body.model : ''
         if (modelId.toLowerCase().includes('deepseek') && Array.isArray(body.messages)) {
@@ -49,14 +46,24 @@ function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.
           }
         }
         if (mutated) {
-          safeInit.body = JSON.stringify(body)
+          nextInit.body = JSON.stringify(body)
         }
       } catch {
         // ignore
       }
     }
-    return fetchImpl(url, safeInit)
+    return fetchImpl(url, nextInit)
   }
+}
+
+export function createOpenCodeGoFetch(
+  sessionId?: string,
+  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
+): typeof fetch {
+  const resolvedSessionId = resolveOpenCodeGoSessionId(sessionId)
+  const sanitized = createSanitizedFetch(fetchImpl)
+  const withDeepSeek = createOpenCodeGoOpenAiFetch(sanitized)
+  return async (url, init) => withDeepSeek(url, withOpenCodeGoHeaders(init, resolvedSessionId))
 }
 
 /**
@@ -65,22 +72,23 @@ function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.
  */
 export function createOpenCodeGoLanguageModel(
   config: AiProviderModel,
-  modelId: string
+  modelId: string,
+  sessionId?: string
 ): LanguageModel {
   const apiKey = resolveApiKey(config)
   const baseURL = resolveOpenCodeGoBaseUrl(config)
-  const sanitized = createSanitizedFetch()
+  const fetch = createOpenCodeGoFetch(sessionId)
   const protocol = resolveOpenCodeGoWireProtocol(modelId)
 
   if (protocol === 'anthropic') {
-    const sdk = createAnthropic({ apiKey, baseURL, fetch: sanitized })
+    const sdk = createAnthropic({ apiKey, baseURL, fetch })
     return sdk(modelId) as unknown as LanguageModel
   }
 
   const sdk = createOpenAI({
     apiKey,
     baseURL,
-    fetch: createOpenCodeGoOpenAiFetch(sanitized)
+    fetch
   })
   return sdk.chat(modelId) as unknown as LanguageModel
 }

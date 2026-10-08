@@ -4,7 +4,11 @@
  * 返回微美分 (costMicros)。
  */
 
-import { logger } from '@baishou/shared'
+import {
+  applyVisionModelsRuntimeOverlay,
+  extractVisionModelIdsFromModelsDev,
+  logger
+} from '@baishou/shared'
 
 export interface TokenUsage {
   inputTokens: number
@@ -163,6 +167,14 @@ export class ModelPricingService {
       }
 
       const data = await response.json()
+      try {
+        applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
+      } catch (visionError) {
+        logger.warn(
+          '[ModelPricingService] Failed to apply vision overlay from models.dev:',
+          visionError
+        )
+      }
       this.prices.clear()
 
       for (const providerId of Object.keys(data)) {

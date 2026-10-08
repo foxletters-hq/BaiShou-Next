@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { logger } from '@baishou/shared'
+import { getVisionModelsRuntimeOverlay, logger } from '@baishou/shared'
 import { ModelPricingService } from '@baishou/ai'
 
 export function registerPricingIPC() {
@@ -25,8 +25,19 @@ export function registerPricingIPC() {
     return {
       lastUpdated: pricingService.lastFetchTime?.toISOString() || null,
       hasPrices: pricingService.hasCachedPrices,
-      loadFailed: pricingService.lastFetchFailed
+      loadFailed: pricingService.lastFetchFailed,
+      visionModelIds: getVisionModelsRuntimeOverlay()
     }
+  })
+
+  ipcMain.handle('vision:get-overlay', async () => {
+    const pricingService = ModelPricingService.getInstance()
+    try {
+      await pricingService.ensureLoaded()
+    } catch (err: unknown) {
+      logger.warn('[ModelPricingService] ensureLoaded failed in vision:get-overlay:', err)
+    }
+    return getVisionModelsRuntimeOverlay()
   })
 
   // ==========================================

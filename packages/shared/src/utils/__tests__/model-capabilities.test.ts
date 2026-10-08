@@ -1,13 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { isVisionModel } from '../model-capabilities'
 import { isProviderListedVisionModel } from '../provider-vision-models'
 import { isVisionModelInSnapshot, VISION_MODELS_SNAPSHOT } from '../vision-models.snapshot'
+import { resetVisionModelsRuntimeOverlayForTests } from '../vision-models.runtime'
+
+beforeEach(() => {
+  resetVisionModelsRuntimeOverlayForTests()
+})
 
 describe('VISION_MODELS_SNAPSHOT', () => {
   it('includes opencodego kimi vision models from models.dev', () => {
     const opencode = VISION_MODELS_SNAPSHOT.byProvider.opencodego
     expect(opencode).toContain('kimi-k2.7-code')
     expect(opencode).toContain('kimi-k2.6')
+  })
+
+  it('includes current Claude Haiku and GPT Luna vision ids', () => {
+    expect(VISION_MODELS_SNAPSHOT.byProvider.anthropic).toContain('claude-haiku-5-5')
+    expect(VISION_MODELS_SNAPSHOT.byProvider.openai).toContain('gpt-5.6-luna')
+    expect(VISION_MODELS_SNAPSHOT.byProvider.openai).toContain('gpt-6-luna')
   })
 })
 
@@ -48,6 +59,17 @@ describe('isVisionModel', () => {
 
   it('falls back to regex for unmapped providers', () => {
     expect(isVisionModel('qwen-vl-max', 'doubao')).toBe(true)
+  })
+
+  it('treats current Claude and GPT vision families as vision', () => {
+    expect(isVisionModel('claude-haiku-5-5', 'anthropic')).toBe(true)
+    expect(isVisionModel('claude-haiku-5.5', 'openrouter')).toBe(true)
+    expect(isVisionModel('claude-sonnet-5-5', 'anthropic')).toBe(true)
+    expect(isVisionModel('claude-opus-5', 'anthropic')).toBe(true)
+    expect(isVisionModel('claude-fable-5-1', 'anthropic')).toBe(true)
+    expect(isVisionModel('gpt-5.6-luna', 'openai')).toBe(true)
+    expect(isVisionModel('gpt-6-luna', 'openai')).toBe(true)
+    expect(isVisionModel('gpt-6-sol', 'openai')).toBe(true)
   })
 
   it('treats all kimi series as vision by default', () => {

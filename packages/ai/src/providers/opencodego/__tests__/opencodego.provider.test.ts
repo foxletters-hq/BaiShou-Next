@@ -40,7 +40,17 @@ describe('OpenCodeGoAdaptedProvider', () => {
       provider.getLanguageModel('kimi-k2.7-code')
       expect(languageModelFactory.createOpenCodeGoLanguageModel).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'opencodego' }),
-        'kimi-k2.7-code'
+        'kimi-k2.7-code',
+        undefined
+      )
+    })
+
+    it('forwards session id for OpenCode Go conversation headers', () => {
+      provider.getLanguageModel('kimi-k2.7-code', { sessionId: 'conv-42' })
+      expect(languageModelFactory.createOpenCodeGoLanguageModel).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'opencodego' }),
+        'kimi-k2.7-code',
+        'conv-42'
       )
     })
   })

@@ -2,9 +2,10 @@
 /**
  * 统一同步入口：图标、版本号、供应商图标、视觉模型快照。
  *
- *   pnpm sync              全部同步（manifest 未变时各子脚本会快速跳过）
+ *   pnpm sync              全部同步（图标等在 manifest 未变时跳过；视觉快照会拉取 models.dev）
  *   pnpm sync:check        CI 校验生成物是否最新
  *   pnpm sync --only=icons 仅同步应用图标（逗号分隔：icons,version,providers,vision）
+ *   pnpm sync --force      强制重拉（含子脚本 --force）
  */
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
@@ -12,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const check = process.argv.includes('--check')
+const force = process.argv.includes('--force')
 
 const onlyArg = process.argv.find((a) => a.startsWith('--only='))
 const only = onlyArg
@@ -44,6 +46,7 @@ if (only && selected.length === 0) {
 function runStep({ label, script }) {
   const args = [path.join(root, 'scripts', script)]
   if (check) args.push('--check')
+  if (force) args.push('--force')
 
   console.log(`\n── ${label}${check ? '（检查）' : ''} ──`)
   const result = spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' })
