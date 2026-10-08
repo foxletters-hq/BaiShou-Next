@@ -12,13 +12,24 @@ describe('resolveOpenCodeGoWireProtocol', () => {
   })
 
   it('routes documented Anthropic wire models', () => {
+    expect(resolveOpenCodeGoWireProtocol('claude-haiku-5-5')).toBe('anthropic')
     expect(resolveOpenCodeGoWireProtocol('minimax-m3')).toBe('anthropic')
-    expect(resolveOpenCodeGoWireProtocol('qwen3.7-max')).toBe('anthropic')
-    expect(resolveOpenCodeGoWireProtocol('qwen3.6-plus')).toBe('anthropic')
+    expect(resolveOpenCodeGoWireProtocol('minimax-m2.7')).toBe('anthropic')
+    expect(resolveOpenCodeGoWireProtocol('qwen3.8-max')).toBe('anthropic')
+    expect(resolveOpenCodeGoWireProtocol('qwen3.8-flash')).toBe('anthropic')
+    expect(resolveOpenCodeGoWireProtocol('qwen3.7-plus')).toBe('anthropic')
+  })
+
+  it('routes documented Responses wire models', () => {
+    expect(resolveOpenCodeGoWireProtocol('grok-4.7')).toBe('openai-responses')
+    expect(resolveOpenCodeGoWireProtocol('gpt-6-luna')).toBe('openai-responses')
+    expect(resolveOpenCodeGoWireProtocol('gpt-5.6-luna')).toBe('openai-responses')
+    expect(resolveOpenCodeGoWireProtocol('muse-spark-1.3-contributor')).toBe('openai-responses')
   })
 
   it('uses naming heuristic for undocumented models', () => {
     expect(resolveOpenCodeGoWireProtocol('qwen3.5-plus')).toBe('anthropic')
+    expect(resolveOpenCodeGoWireProtocol('minimax-m2.5')).toBe('anthropic')
     expect(resolveOpenCodeGoWireProtocol('mimo-v2.5')).toBe('openai')
   })
 })
@@ -32,6 +43,8 @@ describe('resolveEffectiveProviderType', () => {
   it('resolves opencodego to wire protocol per model', () => {
     expect(resolveEffectiveProviderType('opencodego', 'kimi-k2.7-code')).toBe('openai')
     expect(resolveEffectiveProviderType('opencodego', 'minimax-m2.7')).toBe('anthropic')
+    expect(resolveEffectiveProviderType('opencodego', 'claude-haiku-5-5')).toBe('anthropic')
+    expect(resolveEffectiveProviderType('opencodego', 'gpt-6-luna')).toBe('openai')
     expect(resolveEffectiveProviderType('opencodego', 'deepseek-v4-flash')).toBe('deepseek')
   })
 

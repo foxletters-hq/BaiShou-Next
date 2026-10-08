@@ -90,5 +90,8 @@ export function createOpenCodeGoLanguageModel(
     baseURL,
     fetch
   })
+  if (protocol === 'openai-responses') {
+    return sdk.responses(modelId) as unknown as LanguageModel
+  }
   return sdk.chat(modelId) as unknown as LanguageModel
 }
