@@ -1,12 +1,20 @@
 import { ProviderType } from '@baishou/shared'
-import { OPENCODE_GO_ANTHROPIC_WIRE_MODEL_IDS } from './opencodego.constants'
+import {
+  OPENCODE_GO_ANTHROPIC_WIRE_MODEL_IDS,
+  OPENCODE_GO_RESPONSES_WIRE_MODEL_IDS
+} from './opencodego.constants'
 
-/** OpenCode Go 底层实际使用的 wire 协议 */
-export type OpenCodeGoWireProtocol = 'openai' | 'anthropic'
+/**
+ * OpenCode Go 底层实际使用的 wire 协议
+ * - openai: /v1/chat/completions
+ * - openai-responses: /v1/responses
+ * - anthropic: /v1/messages
+ */
+export type OpenCodeGoWireProtocol = 'openai' | 'openai-responses' | 'anthropic'
 
 /**
  * 根据模型 ID 判定应使用的 wire 协议。
- * 新模型未列入文档时，按 minimax-/qwen 前缀启发式归入 Anthropic。
+ * 文档内的模型按显式集合判定；新模型未列入文档时，按 minimax-/qwen 前缀启发式归入 Anthropic。
  */
 export function resolveOpenCodeGoWireProtocol(modelId: string): OpenCodeGoWireProtocol {
   const normalized = modelId.trim().toLowerCase()
@@ -15,6 +23,9 @@ export function resolveOpenCodeGoWireProtocol(modelId: string): OpenCodeGoWirePr
   }
   if (OPENCODE_GO_ANTHROPIC_WIRE_MODEL_IDS.has(normalized)) {
     return 'anthropic'
+  }
+  if (OPENCODE_GO_RESPONSES_WIRE_MODEL_IDS.has(normalized)) {
+    return 'openai-responses'
   }
   if (/^(minimax-|qwen)/.test(normalized)) {
     return 'anthropic'
@@ -31,7 +42,9 @@ export function resolveEffectiveProviderType(providerType: string, modelId?: str
     const id = modelId.trim().toLowerCase()
     // DeepSeek 需走 reasoning_content 回传中间件（与直连 deepseek 一致）
     if (id.includes('deepseek')) return 'deepseek'
-    return resolveOpenCodeGoWireProtocol(modelId)
+    // Responses 与 Chat Completions 对中间件而言同属 OpenAI 系
+    const protocol = resolveOpenCodeGoWireProtocol(modelId)
+    return protocol === 'openai-responses' ? 'openai' : protocol
   }
   return providerType
 }
