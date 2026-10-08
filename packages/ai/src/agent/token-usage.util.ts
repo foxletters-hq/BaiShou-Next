@@ -1,4 +1,4 @@
-import type { StreamTokenUsage } from '../agent/stream-accumulator'
+import { extractCacheUsage, type StreamTokenUsage } from '../agent/stream-accumulator'
 import type { TokenUsage } from '../pricing/model-pricing.service'
 
 /** 将 API 返回的 usage 拆分为计费用的非缓存 / 缓存读 / 缓存写 token */
@@ -27,27 +27,13 @@ export function mergeStreamUsageFromSdk(
   const outputTokens =
     Number(sdkUsage.outputTokens ?? sdkUsage.completionTokens ?? 0) || accumulatorUsage.outputTokens
 
-  const cacheRead = Number(
-    sdkUsage.cacheReadInputTokens ??
-      sdkUsage.cachedInputTokens ??
-      (sdkUsage.inputTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
-      (metadata?.anthropic as Record<string, unknown> | undefined)?.cacheReadInputTokens ??
-      (metadata?.anthropic as Record<string, unknown> | undefined)?.cache_read_input_tokens ??
-      accumulatorUsage.cacheReadInputTokens
-  )
-
-  const cacheWrite = Number(
-    sdkUsage.cacheWriteInputTokens ??
-      sdkUsage.cacheCreationInputTokens ??
-      (metadata?.anthropic as Record<string, unknown> | undefined)?.cacheCreationInputTokens ??
-      (metadata?.anthropic as Record<string, unknown> | undefined)?.cache_creation_input_tokens ??
-      accumulatorUsage.cacheWriteInputTokens
-  )
+  // SDK 与累加器口径一致（均为整轮总计）；SDK 缺失时回退到累加器
+  const sdkCache = extractCacheUsage(sdkUsage, metadata)
 
   return {
     inputTokens: inputTokens,
     outputTokens: outputTokens,
-    cacheReadInputTokens: Number.isFinite(cacheRead) ? Math.max(0, cacheRead) : 0,
-    cacheWriteInputTokens: Number.isFinite(cacheWrite) ? Math.max(0, cacheWrite) : 0
+    cacheReadInputTokens: sdkCache.cacheReadInputTokens || accumulatorUsage.cacheReadInputTokens,
+    cacheWriteInputTokens: sdkCache.cacheWriteInputTokens || accumulatorUsage.cacheWriteInputTokens
   }
 }

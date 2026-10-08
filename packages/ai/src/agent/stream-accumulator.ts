@@ -24,22 +24,36 @@ function readNumber(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-function extractCacheUsageFromRecord(
-  usage: Record<string, unknown> | undefined,
-  metadata: Record<string, unknown> | undefined
+type UnknownRecord = Record<string, unknown>
+
+function asRecord(value: unknown): UnknownRecord | undefined {
+  return value && typeof value === 'object' ? (value as UnknownRecord) : undefined
+}
+
+/**
+ * 从 AI SDK 的 usage（LanguageModelUsage）与 providerMetadata 中提取缓存读 / 写 token。
+ * 优先读取 SDK 标准字段 inputTokenDetails（SDK 已按 step 或 total 聚合），
+ * 其次兼容各厂商原始字段（raw / providerMetadata）。
+ */
+export function extractCacheUsage(
+  usage: UnknownRecord | undefined,
+  metadata?: UnknownRecord | undefined
 ): Pick<StreamTokenUsage, 'cacheReadInputTokens' | 'cacheWriteInputTokens'> {
-  const anthropic = metadata?.anthropic as Record<string, unknown> | undefined
-  const vertex = metadata?.vertex as Record<string, unknown> | undefined
-  const bedrock = metadata?.bedrock as Record<string, unknown> | undefined
-  const bedrockUsage = bedrock?.usage as Record<string, unknown> | undefined
-  const openai = metadata?.openai as Record<string, unknown> | undefined
-  const google = metadata?.google as Record<string, unknown> | undefined
+  const details = asRecord(usage?.inputTokenDetails)
+  const raw = asRecord(usage?.raw)
+  const anthropic = asRecord(metadata?.anthropic)
+  const vertex = asRecord(metadata?.vertex)
+  const bedrockUsage = asRecord(asRecord(metadata?.bedrock)?.usage)
+  const openai = asRecord(metadata?.openai)
+  const google = asRecord(metadata?.google)
 
   const cacheReadInputTokens = readNumber(
-    usage?.cacheReadInputTokens ??
+    details?.cacheReadTokens ??
       usage?.cachedInputTokens ??
-      (usage?.promptTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
-      (usage?.inputTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
+      usage?.cacheReadInputTokens ??
+      asRecord(usage?.promptTokensDetails)?.cachedTokens ??
+      asRecord(usage?.inputTokensDetails)?.cachedTokens ??
+      raw?.cache_read_input_tokens ??
       anthropic?.cacheReadInputTokens ??
       anthropic?.cache_read_input_tokens ??
       vertex?.cacheReadInputTokens ??
@@ -49,8 +63,10 @@ function extractCacheUsageFromRecord(
   )
 
   const cacheWriteInputTokens = readNumber(
-    usage?.cacheWriteInputTokens ??
+    details?.cacheWriteTokens ??
+      usage?.cacheWriteInputTokens ??
       usage?.cacheCreationInputTokens ??
+      raw?.cache_creation_input_tokens ??
       anthropic?.cacheCreationInputTokens ??
       anthropic?.cache_creation_input_tokens ??
       vertex?.cacheCreationInputTokens ??
@@ -162,7 +178,8 @@ export class StreamAccumulator {
       }
 
       case 'finish': {
-        const usage = (p.usage ?? p.totalUsage) as Record<string, unknown> | undefined
+        // finish 事件的 totalUsage 为全部步骤累计；usage 仅为最后一步，不能用于整轮计费
+        const usage = (p.totalUsage ?? p.usage) as Record<string, unknown> | undefined
         this.ingestUsage(usage, p.providerMetadata as Record<string, unknown> | undefined, false)
         break
       }
@@ -197,7 +214,7 @@ export class StreamAccumulator {
 
     const stepInput = readNumber(usage.inputTokens ?? usage.promptTokens)
     const stepOutput = readNumber(usage.outputTokens ?? usage.completionTokens)
-    const cache = extractCacheUsageFromRecord(usage, metadata)
+    const cache = extractCacheUsage(usage, metadata)
 
     if (accumulate) {
       this._inputTokens += stepInput
