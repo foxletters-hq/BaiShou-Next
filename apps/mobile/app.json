@@ -45,6 +45,7 @@
       "./plugins/withAndroidStoragePermissions.js",
       "./plugins/withAndroidReleaseSigning.js",
       "./plugins/withAndroidReleaseArchitectures.js",
+      "./plugins/withAndroidReleaseJvmArgs.js",
       "./plugins/withAndroidDevVariant.js",
       "expo-dev-client",
       "./plugins/withAndroidMainActivitySplash.js",
