@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it, vi } from 'vitest'
 import {
   applyDiaryTemplateVars,
   resolveDiaryAiWritingPrompt,
@@ -35,13 +35,23 @@ describe('diary-template.util', () => {
   })
 
   it('derives format rules from templates without legacy default prompt', () => {
-    const rules = buildDiaryFormatRulesFromTemplates(
-      { appendBlockTemplate: '## {time}' },
-      fixedDate
-    )
+    const rules = buildDiaryFormatRulesFromTemplates({ appendBlockTemplate: '## {time}' })
     expect(rules).toContain('## {time}')
-    expect(rules).toContain('## 15:30')
+    expect(rules).toContain('<message-time>')
     expect(rules).not.toContain(LEGACY_DEFAULT_DIARY_AI_WRITING_PROMPT)
+  })
+
+  it('system guidelines do not depend on current time', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-06-11T15:30:00'))
+      const first = buildDiaryWritingGuidelinesForSystemPrompt({})
+      vi.setSystemTime(new Date('2026-06-11T16:45:00'))
+      const second = buildDiaryWritingGuidelinesForSystemPrompt({})
+      expect(second).toBe(first)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('migrates legacy aiWritingPrompt to supplement', () => {
@@ -57,13 +67,10 @@ describe('diary-template.util', () => {
   })
 
   it('builds system prompt guidelines with template and optional supplement', () => {
-    const guidelines = buildDiaryWritingGuidelinesForSystemPrompt(
-      {
-        appendBlockTemplate: '###### {time}',
-        writingStyleSupplement: '语气轻松一些'
-      },
-      fixedDate
-    )
+    const guidelines = buildDiaryWritingGuidelinesForSystemPrompt({
+      appendBlockTemplate: '###### {time}',
+      writingStyleSupplement: '语气轻松一些'
+    })
     expect(guidelines).toContain('###### {time}')
     expect(guidelines).toContain('语气轻松一些')
     expect(guidelines).toContain('diary_edit 追加模式')
@@ -79,7 +86,7 @@ describe('diary-template.util', () => {
   })
 
   it('resolveDiaryAiWritingPrompt returns full guidelines', () => {
-    const prompt = resolveDiaryAiWritingPrompt({ appendBlockTemplate: '## {time}' }, fixedDate)
+    const prompt = resolveDiaryAiWritingPrompt({ appendBlockTemplate: '## {time}' })
     expect(prompt).toContain('diary_write 新建日记')
   })
 

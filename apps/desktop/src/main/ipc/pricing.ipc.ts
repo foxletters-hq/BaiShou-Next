@@ -35,7 +35,7 @@ export function registerPricingIPC() {
     try {
       await pricingService.ensureLoaded()
     } catch (err: unknown) {
-      logger.warn('[ModelPricingService] ensureLoaded failed in vision:get-overlay:', err)
+      logger.warn('[ModelPricingService] ensureLoaded failed in vision:get-overlay:', err as Error)
     }
     return getVisionModelsRuntimeOverlay()
   })

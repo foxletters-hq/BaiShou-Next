@@ -172,7 +172,7 @@ export class ModelPricingService {
       } catch (visionError) {
         logger.warn(
           '[ModelPricingService] Failed to apply vision overlay from models.dev:',
-          visionError
+          visionError as Error
         )
       }
       this.prices.clear()

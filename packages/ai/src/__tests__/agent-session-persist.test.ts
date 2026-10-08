@@ -59,7 +59,7 @@ describe('persistResult token estimation', () => {
       }
 
       const streamResult = {
-        usage: Promise.resolve(undefined) // usage missing
+        totalUsage: Promise.resolve(undefined) // usage missing
       }
 
       const dbHistory = [
@@ -136,7 +136,7 @@ describe('persistResult token estimation', () => {
     }
 
     const streamResult = {
-      usage: Promise.resolve({
+      totalUsage: Promise.resolve({
         inputTokens: 1200,
         outputTokens: 80,
         cacheReadInputTokens: 960,
@@ -200,7 +200,7 @@ describe('persistResult token estimation', () => {
     }
 
     const streamResult = {
-      usage: Promise.resolve({ inputTokens: 10, outputTokens: 5 })
+      totalUsage: Promise.resolve({ inputTokens: 10, outputTokens: 5 })
     }
 
     await persistResult({
@@ -222,7 +222,7 @@ describe('persistResult token estimation', () => {
     expect(insertedMessage.orderIndex).toBe(3)
   })
 
-  it('does not crash when streamResult.usage rejects with undefined', async () => {
+  it('does not crash when streamResult.totalUsage rejects with undefined', async () => {
     vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
 
     const sessionRepo = {
@@ -256,7 +256,7 @@ describe('persistResult token estimation', () => {
     }
 
     const streamResult = {
-      usage: Promise.reject(undefined)
+      totalUsage: Promise.reject(undefined)
     }
 
     await persistResult({
