@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-08T03:51:12.497Z',
+  syncedAt: '2026-10-08T13:43:27.556Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -376,6 +376,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'sakana/fugu-ultra-v2',
       'sakana/sakana-namazu',
       'stepfun/step-3.7-flash',
+      'stepfun/step-5-preview',
       'thinkingmachines/inkling',
       'thinkingmachines/inkling-small',
       'thinkingmachines/inkling-small:free',
@@ -557,7 +558,6 @@ export const VISION_MODELS_SNAPSHOT = {
       'bytedance/seedance-2.0-mini',
       'deepseek/deepseek-v4-flash-vision-exp',
       'deepseek/deepseek-v4.1-flash',
-      'deepseek/deepseek-v4.1-flash-fast',
       'fireworks/ember-1',
       'google/gemini-2.5-flash',
       'google/gemini-2.5-flash-lite',
@@ -811,7 +811,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'deepseek-v4.1-flash',
     'deepseek/deepseek-v4-flash-vision-exp',
     'deepseek/deepseek-v4.1-flash',
-    'deepseek/deepseek-v4.1-flash-fast',
     'dots-studio/dots-3-note-preview:free',
     'fireworks/ember-1',
     'gemini-2.5-computer-use-preview-10-2025',
