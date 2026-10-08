@@ -2,14 +2,20 @@
 /**
  * 从 models.dev/api.json 同步「支持图片输入」的模型列表，生成本地快照供 isVisionModel 使用。
  *
+ * models.dev 目录会随新模型更新，因此 `pnpm sync` / `pnpm sync --only=vision` 总会拉取远端。
+ * 桌面 predev/prebuild 为避免每次启动都改快照，仅在 manifest 变更或缺文件时才联网。
+ *
  * 更新供应商映射：scripts/provider-modelsdev.manifest.json → pnpm sync
  */
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const require = createRequire(join(root, 'package.json'))
 const manifestPath = join(root, 'scripts/provider-modelsdev.manifest.json')
 const snapshotPath = join(root, 'packages/shared/src/data/vision-models.snapshot.generated.ts')
 const stampPath = join(root, 'packages/shared/src/data/.vision-models-sync-stamp.json')
@@ -65,13 +71,33 @@ export type VisionModelsSnapshot = typeof VISION_MODELS_SNAPSHOT
 `
 }
 
+function isLifecycleHook() {
+  const lifecycle = process.env.npm_lifecycle_event ?? ''
+  return lifecycle === 'predev' || lifecycle === 'prebuild'
+}
+
+function warnIfSnapshotStale(stamp) {
+  const syncedAt = stamp?.syncedAt
+  if (!syncedAt) return
+  const ageDays = (Date.now() - Date.parse(syncedAt)) / 86_400_000
+  if (Number.isFinite(ageDays) && ageDays >= 14) {
+    console.warn(
+      `[sync-vision-models] Snapshot is ${Math.floor(ageDays)} days old (${syncedAt.slice(0, 10)}). Refresh with: pnpm sync --only=vision`
+    )
+  }
+}
+
 async function syncVisionModels() {
   const manifest = readManifest()
   const manifestHash = md5(readFileSync(manifestPath, 'utf8'))
   const stamp = existsSync(stampPath) ? JSON.parse(readFileSync(stampPath, 'utf8')) : null
+  const snapshotExists = existsSync(snapshotPath)
+  const skipNetworkForHook =
+    !force && isLifecycleHook() && stamp?.manifestMd5 === manifestHash && snapshotExists
 
-  if (!force && stamp?.manifestMd5 === manifestHash && existsSync(snapshotPath)) {
-    console.log('[sync-vision-models] Up to date (manifest unchanged).')
+  if (skipNetworkForHook) {
+    warnIfSnapshotStale(stamp)
+    console.log('[sync-vision-models] Skip network during predev/prebuild (manifest unchanged).')
     return
   }
 
@@ -107,14 +133,24 @@ async function syncVisionModels() {
     byProvider,
     byModelId: [...globalModelIds].sort()
   }
+  const modelSetMd5 = md5(JSON.stringify({ byProvider, byModelId: payload.byModelId }))
+
+  if (!force && stamp?.modelSetMd5 === modelSetMd5 && existsSync(snapshotPath)) {
+    console.log(
+      `[sync-vision-models] Up to date (${globalModelIds.size} unique vision models, models.dev unchanged).`
+    )
+    return
+  }
 
   mkdirSync(dirname(snapshotPath), { recursive: true })
   writeFileSync(snapshotPath, buildSnapshotTs(payload), 'utf8')
+  formatGeneratedSnapshot()
   writeFileSync(
     stampPath,
     `${JSON.stringify(
       {
         manifestMd5: manifestHash,
+        modelSetMd5,
         syncedAt: payload.syncedAt,
         providerEntries: manifest.providers.length,
         uniqueVisionModels: globalModelIds.size,
@@ -129,6 +165,17 @@ async function syncVisionModels() {
   console.log(
     `[sync-vision-models] Wrote snapshot: ${globalModelIds.size} unique models across ${manifest.providers.length} providers.`
   )
+}
+
+function formatGeneratedSnapshot() {
+  const bin = require.resolve('prettier/bin/prettier.cjs')
+  const result = spawnSync(process.execPath, [bin, '--write', snapshotPath], {
+    cwd: root,
+    stdio: 'inherit'
+  })
+  if (result.status !== 0) {
+    throw new Error('Failed to format generated vision snapshot')
+  }
 }
 
 function checkVisionModels() {

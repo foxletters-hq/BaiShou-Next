@@ -1,6 +1,10 @@
 import { AiProviderModel } from '@baishou/shared'
 import { LanguageModel, EmbeddingModel } from 'ai'
 
+export interface LanguageModelRequestContext {
+  sessionId?: string
+}
+
 /**
  * 统一的 AI 提供商适配器接口
  * 将白守的配置领域模型与 Vercel AI SDK 的执行模型桥接
@@ -15,7 +19,7 @@ export interface IAIProvider {
    * 获取一个适配 Vercel AI SDK 的对话推理模型
    * @param modelId 指定的按量模型 ID，为空则回退到默认
    */
-  getLanguageModel(modelId?: string): LanguageModel
+  getLanguageModel(modelId?: string, request?: LanguageModelRequestContext): LanguageModel
 
   /**
    * 获取一个适配 Vercel AI SDK 的文本向量嵌入模型

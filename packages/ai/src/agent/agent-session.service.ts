@@ -79,7 +79,7 @@ export class AgentSessionService {
 
     try {
       // 1. 获取基础模型，然后用 Vercel 原生 middleware 包装
-      const baseModel = provider.getLanguageModel(modelId)
+      const baseModel = provider.getLanguageModel(modelId, { sessionId })
       const effectiveProviderType = resolveEffectiveProviderType(
         provider.config?.type || 'openai',
         modelId

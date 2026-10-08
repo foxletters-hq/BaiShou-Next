@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { isVisionModel } from '@baishou/shared'
 import { Eye } from 'lucide-react'
+import { useIsVisionModel } from './useIsVisionModel'
 
 export interface ModelVisionBadgeProps {
   modelId: string
@@ -20,8 +20,9 @@ export function ModelVisionBadge({
   style
 }: ModelVisionBadgeProps) {
   const { t } = useTranslation()
+  const supported = useIsVisionModel(modelId, providerKey)
 
-  if (!isVisionModel(modelId, providerKey)) {
+  if (!supported) {
     return null
   }
 

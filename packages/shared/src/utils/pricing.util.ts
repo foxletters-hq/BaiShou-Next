@@ -1,3 +1,8 @@
+import {
+  applyVisionModelsRuntimeOverlay,
+  extractVisionModelIdsFromModelsDev
+} from './vision-models.runtime'
+
 export interface ModelPrice {
   input: number // USD per 1M tokens
   output: number // USD per 1M tokens
@@ -35,6 +40,11 @@ export class ModelPricingService {
       })
       if (!res.ok) return
       const data = await res.json()
+      try {
+        applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
+      } catch {
+        // 视觉覆盖失败不影响计费
+      }
 
       this.prices.clear()
       for (const [providerId, provider] of Object.entries<any>(data)) {

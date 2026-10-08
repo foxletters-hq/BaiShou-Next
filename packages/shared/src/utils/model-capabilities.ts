@@ -1,4 +1,5 @@
 import { isProviderListedVisionModel, normalizeModelBaseId } from './provider-vision-models'
+import { isVisionModelInRuntime } from './vision-models.runtime'
 import { isVisionModelInSnapshot } from './vision-models.snapshot'
 
 function getLowerBaseModelName(id: string): string {
@@ -17,13 +18,14 @@ const visionAllowedModels = [
   'gemini-1\\.5',
   'gemini-2\\.0',
   'gemini-2\\.5',
-  'gemini-3(?:\\.\\d)?-(?:flash|pro)(?:-preview)?',
+  'gemini-[3-9](?:\\.\\d)?-(?:flash|pro)(?:-preview)?',
   'gemini-(flash|pro|flash-lite)-latest',
   'gemini-exp',
   'claude-3',
-  'claude-haiku-4',
-  'claude-sonnet-4',
-  'claude-opus-4',
+  'claude-haiku-\\d',
+  'claude-sonnet-\\d',
+  'claude-opus-\\d',
+  'claude-fable-\\d',
   'vision',
   'glm-4(?:\\.\\d+)?v(?:-[\\w-]+)?',
   'qwen-vl',
@@ -36,13 +38,13 @@ const visionAllowedModels = [
   'qvq',
   'internvl2',
   'grok-vision-beta',
-  'grok-4(?:-[\\w-]+)?',
+  'grok-[4-9](?:[.-][\\w-]+)?',
   'pixtral',
   'gpt-4(?:-[\\w-]+)',
   'gpt-4.1(?:-[\\w-]+)?',
   'gpt-4o(?:-[\\w-]+)?',
   'gpt-4.5(?:-[\\w-]+)',
-  'gpt-5(?:-[\\w-]+)?',
+  'gpt-[5-9](?:[.-][\\w-]+)*',
   'chatgpt-4o(?:-[\\w-]+)?',
   'o1(?:-[\\w-]+)?',
   'o3(?:-[\\w-]+)?',
@@ -110,12 +112,14 @@ const IMAGE_ENHANCEMENT_MODELS_REGEX = new RegExp(IMAGE_ENHANCEMENT_MODELS.join(
 /**
  * 判断模型是否支持图片识别（多模态视觉输入）
  *
- * 优先级：手工覆盖 → 模型名（快照 + 正则）；不按供应商否定，避免硅基流动等路径式 id 误判。
+ * 优先级：手工覆盖 → 启动时 models.dev 覆盖 → 打包快照 → 正则兜底。
  */
 export function isVisionModel(modelId: string, providerKey?: string): boolean {
   if (!modelId) return false
 
   if (isProviderListedVisionModel(providerKey, modelId)) return true
+
+  if (isVisionModelInRuntime(modelId)) return true
 
   if (isVisionModelInSnapshot(modelId, providerKey)) return true
 
