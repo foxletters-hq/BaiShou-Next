@@ -36,6 +36,7 @@
     "sync": "node scripts/sync-all.mjs",
     "sync:check": "node scripts/sync-all.mjs --check",
     "sync:contributors": "node scripts/run-with-hint.mjs \"按贡献量更新 README 贡献者墙（过滤 Bot/CI）。\" node scripts/sync-contributors-wall.mjs",
+    "sync:cla": "node scripts/sync-cla-gist.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "ci": "pnpm ci:check",
