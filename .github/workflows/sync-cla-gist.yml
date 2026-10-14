@@ -1,0 +1,25 @@
+name: Sync CLA Document to Gist
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'legal/CLA-organization.md'
+      - 'scripts/sync-cla-gist.mjs'
+      - '.github/workflows/sync-cla-gist.yml'
+
+jobs:
+  sync-gist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sync CLA to Gist
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-cla-gist.mjs
