@@ -48,9 +48,8 @@ PR を出す場合は、**Fork 上の機能ブランチ**で開発し、**ベー
 
 **コード変更を含む** Pull Request を出す前に、[組織 CLA](../../legal/CLA-organization.md)（foxletters-hq 複数リポジトリ共通）に署名してください。
 
-1. PR コメントの **cla-assistant** 案内を確認
-2. **Sign in with GitHub to agree** をクリックし、**I agree** で同意
-3. CLA チェックが ✅ になれば完了
+- **方法 1（推奨、待たずに直接署名）**：**[CLA Assistant 署名ページ](https://cla-assistant.io/foxletters-hq/BaiShou-Next)** にアクセスし、GitHub アカウントでログインして **I agree** をクリックしてください。一度署名すれば、組織内の全リポジトリで有効になります。
+- **方法 2**：PR 作成後、コメント欄の **cla-assistant** 案内から **Sign in with GitHub to agree** をクリックして署名します。
 
 **ドキュメントのみの PR は通常不要です。** 企業からの貢献は [企業 CLA](../../legal/CLA-corporate.md) も必要です。
 

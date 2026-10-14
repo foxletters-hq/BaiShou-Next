@@ -21,7 +21,7 @@
 - [ ] 单次 PR / commit 主题清晰；超大改动已拆成多个可读 commit
 - [ ] Commit 说明符合 **§2 Commit Message**（类型、scope、一句话说清「为什么」）
 - [ ] 若仅改文档或格式化，未混入无关功能代码
-- [ ] 若含代码变更，已在 PR 中通过 [CLA Assistant](https://cla-assistant.io/) 链接完成签署（纯文档 PR 除外）
+- [ ] 若含代码变更，已通过 [CLA Assistant 直签链接](https://cla-assistant.io/foxletters-hq/BaiShou-Next) 完成协议签署（纯文档 PR 除外）
 
 ---
 
