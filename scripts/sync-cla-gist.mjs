@@ -19,10 +19,10 @@ const claContent = fs.readFileSync(claFilePath, 'utf8')
 const token = process.env.GIST_PAT || process.env.GIST_TOKEN || process.env.GITHUB_TOKEN
 
 const payload = {
-  description: 'Foxletters / 白守 组织级个人贡献者许可协议 (CLA)',
+  description: 'Foxletters / 白守 组织级个人贡献者许可协议 (CLA v1.1)',
   files: {
     'CLA-organization.md': { content: claContent },
-    'BaiShou-Next Individual CLA v1.0.txt': { content: claContent }
+    'BaiShou-Next Individual CLA v1.1.txt': { content: claContent }
   }
 }
 
