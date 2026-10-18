@@ -12,6 +12,8 @@ export type KnowledgeGraphExtractInput = {
   textHash: string
   pages?: Array<{ page: number; start: number; end: number }> | null
   force?: boolean
+  /** 同时抽几窗。不传则用图谱抽取默认并发。 */
+  windowConcurrency?: number
   onProgress?: (progress: KnowledgeGraphExtractProgress) => void | Promise<void>
 }
 

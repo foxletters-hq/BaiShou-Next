@@ -1,8 +1,11 @@
 import {
+  GRAPH_EXTRACT_ALIGN_POOL_SIZE,
+  GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
   notebookGraphExtractStateId,
   notebookGraphSourceNodeId,
   rethrowKnowledgeGraphStepError,
   type KnowledgeGraphStep,
+  type NotebookGraphEdgeRawRecord,
   type NotebookGraphExtractStateRawRecord,
   type NotebookGraphExtractedWindowPayload,
   type NotebookGraphNodeRawRecord
@@ -35,6 +38,7 @@ import {
 } from './knowledge-graph-extraction.helpers'
 import { clipNameCandidateSourceContext } from '../graph/graph-entity-align'
 import { commitAlignedWindows, writeAlignedEmbeddings } from './knowledge-graph-extraction.align'
+import { runKnowledgeGraphWindowPool } from './knowledge-graph-window-pool'
 
 async function runKnowledgeGraphStep<T>(
   step: KnowledgeGraphStep,
@@ -125,6 +129,69 @@ export class KnowledgeGraphExtractionService {
         ? existing.extractedWindows.map((win) => ({ ...win }))
         : []
     const skipExtract = shouldRunNotebookGraphAlignOnly(existing, input.textHash)
+    const writtenNodes = new Map<string, NotebookGraphNodeRawRecord>([[sourceNode.id, sourceNode]])
+    const writtenEdges = new Map<string, NotebookGraphEdgeRawRecord>()
+    const exceptIds = new Set<string>()
+
+    const persist = (alignWritten: boolean, windowsDone: number) =>
+      this.deps.raw.replaceSourceGraph({
+        notebookId,
+        sourceId: input.sourceId,
+        nodes: [...writtenNodes.values()],
+        edges: [...writtenEdges.values()],
+        extractState: this.buildExtractState({
+          vaultId,
+          vaultName,
+          notebookId,
+          sourceId: input.sourceId,
+          textHash: input.textHash,
+          windowsDone,
+          windowsTotal: windows.length,
+          truncated,
+          extractedWindows,
+          alignWritten,
+          now
+        })
+      })
+
+    const commitBatch = async (batch: NotebookGraphExtractedWindowPayload[]) => {
+      if (batch.length === 0) return
+      const committed = await runKnowledgeGraphStep('align', () =>
+        commitAlignedWindows(this.deps, {
+          vaultId,
+          vaultName,
+          notebookId,
+          sourceId: input.sourceId,
+          textHash: input.textHash,
+          shardKey,
+          now,
+          sourceNode,
+          extractedWindows: batch
+        })
+      )
+      for (const node of committed.nodes) writtenNodes.set(node.id, node)
+      for (const edge of committed.edges) writtenEdges.set(edge.id, edge)
+      for (const id of committed.exceptIds) exceptIds.add(id)
+      for (const win of batch) win.aligned = true
+      await persist(false, extractedWindows.length)
+      await this.deps.index.syncPendingIndex({ vaultId, notebookId })
+      await runKnowledgeGraphStep('node-embed', () =>
+        writeAlignedEmbeddings(
+          this.deps,
+          vaultId,
+          notebookId,
+          committed.pendingEmbeddings,
+          (nodesDone, nodesTotal) =>
+            input.onProgress?.({
+              windowsDone: extractedWindows.length,
+              windowsTotal: windows.length,
+              pageTotal: pageTotal > 0 ? pageTotal : undefined,
+              nodesDone,
+              nodesTotal
+            })
+        )
+      )
+    }
 
     try {
       if (!skipExtract) {
@@ -133,40 +200,29 @@ export class KnowledgeGraphExtractionService {
             .map((win) => win.index)
             .filter((index) => Number.isInteger(index) && index >= 0)
         )
-        for (let i = 0; i < windows.length; i += 1) {
-          if (doneIndexes.has(i)) continue
-          const win = windows[i]!
-          // 界面按这一窗盖住的页码报进度；检查点 windowsDone 仍只在解析成功后写入
-          await reportProgress(i + 1)
-          const payload = await this.extractWindow(win.text)
-          if (!payload) continue
-          extractedWindows.push({
-            index: i,
-            sourceRef: win.sourceRef,
-            sourceContext: clipNameCandidateSourceContext(win.text),
-            entities: payload.entities,
-            edges: payload.edges
-          })
-          await this.deps.raw.replaceSourceGraph({
-            notebookId,
-            sourceId: input.sourceId,
-            nodes: [sourceNode],
-            edges: [],
-            extractState: this.buildExtractState({
-              vaultId,
-              vaultName,
-              notebookId,
-              sourceId: input.sourceId,
-              textHash: input.textHash,
-              windowsDone: extractedWindows.length,
-              windowsTotal: windows.length,
-              truncated,
-              extractedWindows,
-              alignWritten: false,
-              now
-            })
-          })
-        }
+        await runKnowledgeGraphWindowPool({
+          items: windows.filter((win) => !doneIndexes.has(win.index)),
+          concurrency: input.windowConcurrency ?? GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
+          alignPoolSize: GRAPH_EXTRACT_ALIGN_POOL_SIZE,
+          run: async (win) => {
+            // 界面按这一窗盖住的页码报进度；检查点 windowsDone 仍只在解析成功后写入
+            await reportProgress(win.index + 1)
+            const payload = await this.extractWindow(win.text)
+            if (!payload) return null
+            return {
+              index: win.index,
+              sourceRef: win.sourceRef,
+              sourceContext: clipNameCandidateSourceContext(win.text),
+              entities: payload.entities,
+              edges: payload.edges
+            }
+          },
+          onResult: async (record) => {
+            if (!record) return
+            extractedWindows.push(record)
+          },
+          flush: commitBatch
+        })
       } else {
         await reportProgress(windows.length)
       }
@@ -175,25 +231,7 @@ export class KnowledgeGraphExtractionService {
     }
 
     if (extractedWindows.length === 0 && windows.length > 0) {
-      await this.deps.raw.replaceSourceGraph({
-        notebookId,
-        sourceId: input.sourceId,
-        nodes: [sourceNode],
-        edges: [],
-        extractState: this.buildExtractState({
-          vaultId,
-          vaultName,
-          notebookId,
-          sourceId: input.sourceId,
-          textHash: input.textHash,
-          windowsDone: windows.length,
-          windowsTotal: windows.length,
-          truncated,
-          extractedWindows: [],
-          alignWritten: true,
-          now
-        })
-      })
+      await persist(true, windows.length)
       await reportProgress(windows.length)
       logger.info('[KnowledgeGraphExtract] done', {
         sourceId: input.sourceId,
@@ -203,52 +241,22 @@ export class KnowledgeGraphExtractionService {
       return { windows: 0, truncated }
     }
 
-    const committed = await runKnowledgeGraphStep('align', () =>
-      commitAlignedWindows(this.deps, {
-        vaultId,
-        vaultName,
-        notebookId,
-        sourceId: input.sourceId,
-        textHash: input.textHash,
-        shardKey,
-        now,
-        sourceNode,
-        extractedWindows
-      })
-    )
+    const pendingAlign = extractedWindows.filter((win) => win.aligned !== true)
+    for (let i = 0; i < pendingAlign.length; i += GRAPH_EXTRACT_ALIGN_POOL_SIZE) {
+      await commitBatch(pendingAlign.slice(i, i + GRAPH_EXTRACT_ALIGN_POOL_SIZE))
+    }
 
-    await this.deps.raw.replaceSourceGraph({
-      notebookId,
-      sourceId: input.sourceId,
-      nodes: committed.nodes,
-      edges: committed.edges,
-      extractState: this.buildExtractState({
-        vaultId,
-        vaultName,
-        notebookId,
-        sourceId: input.sourceId,
-        textHash: input.textHash,
-        windowsDone: Math.max(extractedWindows.length, windows.length),
-        windowsTotal: windows.length,
-        truncated,
-        extractedWindows,
-        alignWritten: true,
-        now
-      })
-    })
+    await persist(true, Math.max(extractedWindows.length, windows.length))
     await reportProgress(Math.max(extractedWindows.length, windows.length))
 
-    if (shouldSupersedeNotebookAiEdges(committed.exceptIds)) {
+    if (shouldSupersedeNotebookAiEdges(exceptIds)) {
       await this.deps.repo.supersedeAiEdgesBySourcePrefix({
         notebookId,
         sourceRefPrefix: input.sourceId,
-        exceptIds: committed.exceptIds
+        exceptIds
       })
     }
     await this.deps.index.syncPendingIndex({ vaultId, notebookId })
-    await runKnowledgeGraphStep('node-embed', () =>
-      writeAlignedEmbeddings(this.deps, vaultId, notebookId, committed.pendingEmbeddings)
-    )
     logger.info('[KnowledgeGraphExtract] done', {
       sourceId: input.sourceId,
       windows: extractedWindows.length,

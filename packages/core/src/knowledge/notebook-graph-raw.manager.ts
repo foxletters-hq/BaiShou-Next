@@ -163,6 +163,44 @@ export class NotebookGraphRawManager implements NotebookGraphIndexSource, Notebo
     await store.appendRecord(shardKey, record)
   }
 
+  /**
+   * 批量写入：先校验并按分片分组（校验失败则一条都不写），再每个分片只追加一次。
+   */
+  async writeRecords(
+    notebookId: string,
+    collection: NotebookGraphCollection,
+    records: Array<{
+      id: string
+      shardMonth?: string
+      sourceId?: string
+      sourceRef?: string | null
+      createdAt?: number
+      firstSeenAt?: number
+    }>
+  ): Promise<void> {
+    if (records.length === 0) return
+    await this.migrateLegacyMonthShards(notebookId)
+    const byShard = new Map<string, unknown[]>()
+    for (const record of records) {
+      const shardKey =
+        resolveNotebookGraphShardKey(record) ??
+        (record.shardMonth?.trim() === NOTEBOOK_GRAPH_LEGACY_SHARD_KEY
+          ? NOTEBOOK_GRAPH_LEGACY_SHARD_KEY
+          : null)
+      if (!shardKey || !isValidNotebookGraphShardKey(shardKey)) {
+        throw new Error(`Invalid notebook graph shard key for ${collection}:${record.id}`)
+      }
+      ;(record as { shardMonth?: string }).shardMonth = shardKey
+      const bucket = byShard.get(shardKey)
+      if (bucket) bucket.push(record)
+      else byShard.set(shardKey, [record])
+    }
+    const store = await this.getStore(notebookId, collection)
+    for (const [shardKey, rows] of byShard) {
+      await store.appendRecords(shardKey, rows)
+    }
+  }
+
   async replaceShard(
     notebookId: string,
     collection: NotebookGraphCollection,
@@ -376,17 +414,53 @@ export class NotebookGraphRawManager implements NotebookGraphIndexSource, Notebo
     const prefix = sourceRefPrefix.trim()
     if (!prefix) return 0
     const edges = await this.readCollapsed<NotebookGraphEdgeRawRecord>(notebookId, 'edges')
-    let n = 0
+    const byShard = new Map<string, string[]>()
+    const unhinted: string[] = []
     for (const edge of edges) {
       if (edge.origin !== 'ai') continue
       if (exceptIds.has(edge.id)) continue
       if (!(edge.sourceRef ?? '').startsWith(prefix)) continue
+      const hinted = edge.shardMonth?.trim()
+      if (hinted && isValidNotebookGraphShardKey(hinted)) {
+        let bucket = byShard.get(hinted)
+        if (!bucket) {
+          bucket = []
+          byShard.set(hinted, bucket)
+        }
+        bucket.push(edge.id)
+      } else {
+        unhinted.push(edge.id)
+      }
+    }
+    let n = 0
+    for (const [shardMonth, ids] of byShard) {
       try {
-        await this.tombstone(notebookId, 'edges', edge.id, edge.shardMonth || undefined)
+        const removed = await this.removeRecordsFromShard(notebookId, 'edges', shardMonth, ids)
+        if (removed >= ids.length) {
+          n += ids.length
+        } else {
+          n += removed
+          for (const id of ids) {
+            try {
+              await this.tombstone(notebookId, 'edges', id, shardMonth)
+              n += 1
+            } catch {}
+          }
+        }
+      } catch (error) {
+        logger.warn('[NotebookGraph] tombstone shard skip', {
+          shardMonth,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      }
+    }
+    for (const id of unhinted) {
+      try {
+        await this.tombstone(notebookId, 'edges', id)
         n += 1
       } catch (error) {
         logger.warn('[NotebookGraph] tombstone skip', {
-          id: edge.id,
+          id,
           error: error instanceof Error ? error.message : String(error)
         })
       }

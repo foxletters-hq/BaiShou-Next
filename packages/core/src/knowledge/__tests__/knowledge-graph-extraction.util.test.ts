@@ -241,8 +241,8 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       text: `${'甲'.repeat(5000)}${'乙'.repeat(5000)}`,
       textHash: 'h-mention'
     })
-    expect(writes).toHaveLength(1)
-    expect(writes[0]!.mentionCount).toBeGreaterThanOrEqual(2)
+    expect(new Set(writes.map((row) => row.id)).size).toBe(1)
+    expect(writes.every((row) => row.mentionCount >= 2)).toBe(true)
     expect(writes[writes.length - 1]!.aliases).toEqual(expect.arrayContaining(['小明', '明明']))
   })
 
@@ -590,5 +590,50 @@ describe('KnowledgeGraphExtractionService source shards', () => {
     })
     expect(extractUsers).toHaveLength(1)
     expect(extractUsers[0]?.startsWith('乙')).toBe(true)
+  })
+
+  it('should align and index a full window pool before extracting the next window', async () => {
+    const order: string[] = []
+    const service = new KnowledgeGraphExtractionService({
+      raw: {
+        getExtractState: vi.fn(async () => null),
+        replaceSourceGraph: vi.fn(async () => undefined)
+      } as never,
+      repo: {
+        findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
+        searchNodesByVector: vi.fn(async () => []),
+        supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
+      } as never,
+      index: {
+        syncPendingIndex: vi.fn(async () => {
+          order.push('sync')
+        })
+      } as never,
+      llm: async (input: { system: string; user: string }) => {
+        if (input.system.includes('实体对齐') || input.system.includes('同名候选')) {
+          return JSON.stringify({ merges: [] })
+        }
+        if (input.user.includes('LAST')) {
+          order.push('last')
+          return JSON.stringify({ entities: [{ name: '乙', type: 'person' }], edges: [] })
+        }
+        return JSON.stringify({ entities: [{ name: '甲', type: 'person' }], edges: [] })
+      },
+      getVaultName: () => 'Personal',
+      align: { embedQuery: async () => [1, 0], modelId: 'embed-v1' }
+    })
+
+    await service.extractSource({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      sourceId: 'src1',
+      sourceTitle: '资料',
+      text: `${'甲'.repeat(50000)}LAST${'乙'.repeat(4996)}`,
+      textHash: 'h-pool'
+    })
+
+    expect(order.indexOf('sync')).toBeGreaterThanOrEqual(0)
+    expect(order.indexOf('sync')).toBeLessThan(order.indexOf('last'))
   })
 })

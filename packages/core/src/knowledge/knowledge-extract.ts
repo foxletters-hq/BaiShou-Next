@@ -38,6 +38,25 @@ export function pageTextNeedsOcr(text: string): boolean {
   return isGarbledExtractText(trimmed)
 }
 
+/** 缺页或乱码页需要补 OCR / 视觉识图。显式页码优先。 */
+export function resolvePagesNeedingOcr(
+  existingPageTexts: string[],
+  pageCount: number,
+  explicit?: number[]
+): number[] {
+  if (explicit?.length) {
+    return [...new Set(explicit)].filter((p) => p >= 1 && p <= pageCount).sort((a, b) => a - b)
+  }
+  const missing: number[] = []
+  for (let i = 0; i < pageCount; i++) {
+    if (pageTextNeedsOcr(existingPageTexts[i] ?? '')) missing.push(i + 1)
+  }
+  if (missing.length === 0 && existingPageTexts.every((t) => !t.trim())) {
+    return Array.from({ length: pageCount }, (_, i) => i + 1)
+  }
+  return missing
+}
+
 /** 有文本层页占比阈值 */
 export const OK_TEXT_PAGE_RATIO = 0.9
 export const PARTIAL_TEXT_PAGE_RATIO = 0.1
@@ -206,8 +225,11 @@ export async function extractPdfPageTexts(
   return pdfPageExtractor(filePath, onProgress)
 }
 
-export async function extractPdfFromPath(filePath: string): Promise<ExtractResult> {
-  const pageTexts = await extractPdfPageTexts(filePath)
+export async function extractPdfFromPath(
+  filePath: string,
+  onProgress?: (info: PdfPageExtractProgress) => void
+): Promise<ExtractResult> {
+  const pageTexts = await extractPdfPageTexts(filePath, onProgress)
   if (pageTexts.length === 0) {
     return {
       text: '',

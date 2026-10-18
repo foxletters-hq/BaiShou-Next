@@ -16,6 +16,8 @@ export type KnowledgeGraphExtractProgress = {
   pageFrom?: number
   pageTo?: number
   pageTotal?: number
+  nodesDone?: number
+  nodesTotal?: number
 }
 
 const DEFAULT_WINDOW_CHARS = 5000

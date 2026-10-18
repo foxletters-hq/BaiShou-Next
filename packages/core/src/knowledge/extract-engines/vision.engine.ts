@@ -1,32 +1,22 @@
-import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../knowledge-extract'
+import { analyzePageTexts, resolvePagesNeedingOcr } from '../knowledge-extract'
 import { md5Hex } from '../../fs/md5'
 import { getPdfPageBitmapRenderer, getVisionPageRecognizer, resolvePdfNumPages } from './adapters'
-import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
-import { clampOcrConcurrency, runPool, yieldEventLoop } from './pool.util'
+import { rememberSimplePageTexts } from './simple-page-cache'
+import { chunkItems, clampOcrConcurrency, runPool, yieldEventLoop } from './pool.util'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
-function resolveMissingPageNumbers(
-  existingPageTexts: string[],
-  pageCount: number,
-  explicit?: number[]
-): number[] {
+/** PDF 默认整份交给视觉模型；试抽等场景才用显式页码。 */
+function resolveVisionPageNumbers(pageCount: number, explicit?: number[]): number[] {
   if (explicit?.length) {
-    return [...new Set(explicit)].filter((p) => p >= 1 && p <= pageCount).sort((a, b) => a - b)
+    return resolvePagesNeedingOcr([], pageCount, explicit)
   }
-  const missing: number[] = []
-  for (let i = 0; i < pageCount; i++) {
-    const t = (existingPageTexts[i] ?? '').trim()
-    if (t.length < MIN_TEXT_LAYER_CHARS) missing.push(i + 1)
-  }
-  if (missing.length === 0 && existingPageTexts.every((t) => !t.trim())) {
-    return Array.from({ length: pageCount }, (_, i) => i + 1)
-  }
-  return missing
+  return Array.from({ length: pageCount }, (_, i) => i + 1)
 }
 
 /**
  * vision：复用已配置的多模态模型逐页识别（平台注入 recognizer）。
- * 支持 1–10 页并发；渲染由平台侧串行化。
+ * PDF 不先信文字层，整份渲染后交给视觉模型。
+ * 支持 1–10 页并发：每一批先整批渲染，再并行识图。渲染仍由平台侧串行化。
  */
 export const visionExtractEngine: ExtractEngine = {
   id: 'vision',
@@ -40,16 +30,7 @@ export const visionExtractEngine: ExtractEngine = {
       throw new Error('PDF 位图渲染器未注册（桌面需 pdfjs-dist）')
     }
 
-    let existing =
-      ctx.existingPageTexts ??
-      getRegisteredSimplePageTexts(ctx.absolutePath) ??
-      (await extractPdfPageTexts(ctx.absolutePath, (info) => {
-        ctx.onProgress?.({ page: info.page, total: info.total, phase: 'parse' })
-      }))
-    if (ctx.persistCache !== false) {
-      rememberSimplePageTexts(ctx.absolutePath, existing)
-    }
-
+    let existing = ctx.existingPageTexts ? [...ctx.existingPageTexts] : []
     const pageCount = await resolvePdfNumPages(ctx.absolutePath, existing.length)
     if (pageCount == null || pageCount <= 0) {
       return {
@@ -67,49 +48,57 @@ export const visionExtractEngine: ExtractEngine = {
     while (existing.length < pageCount) existing = [...existing, '']
     if (existing.length > pageCount) existing = existing.slice(0, pageCount)
 
-    const pagesToOcr = resolveMissingPageNumbers(existing, pageCount, ctx.pageNumbers)
+    const pagesToOcr = resolveVisionPageNumbers(pageCount, ctx.pageNumbers)
     if (pagesToOcr.length === 0) {
       return { ...analyzePageTexts(existing), extractEngine: 'vision', processedPages: [] }
     }
 
     const concurrency = clampOcrConcurrency(ctx.concurrency)
-    const merged = [...existing]
+    const batches = chunkItems(pagesToOcr, concurrency)
+    const merged = Array.from({ length: pageCount }, () => '')
     const processed: number[] = []
     let completed = 0
-    ctx.onProgress?.({ page: 0, total: pagesToOcr.length })
+    ctx.onProgress?.({ page: 0, total: pagesToOcr.length, phase: 'recognize' })
 
-    await runPool(
-      pagesToOcr,
-      concurrency,
-      async (pageNum) => {
-        if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
-        ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'render' })
-        const bitmaps = await renderer({
-          absolutePath: ctx.absolutePath,
-          pageNumbers: [pageNum],
-          dpi: ctx.dpi ?? 200
-        })
-        if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
-        const bmp = bitmaps[0]
-        if (!bmp) return
-        ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'recognize' })
-        const text = (
-          await recognizer({
-            pngBase64: bmp.pngBase64,
-            page: bmp.page,
-            providerId: ctx.visionProviderId,
-            modelId: ctx.visionModelId
-          })
-        ).trim()
-        while (merged.length < bmp.page) merged.push('')
-        merged[bmp.page - 1] = text
-        processed.push(bmp.page)
-        completed += 1
-        ctx.onProgress?.({ page: completed, total: pagesToOcr.length })
-        await yieldEventLoop()
-      },
-      ctx.signal
-    )
+    const renderBatch = async (pages: number[]) => {
+      if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+      ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'render' })
+      return renderer({
+        absolutePath: ctx.absolutePath,
+        pageNumbers: pages,
+        dpi: ctx.dpi ?? 200
+      })
+    }
+
+    let pendingRender = batches[0] ? renderBatch(batches[0]) : null
+    for (let i = 0; i < batches.length; i += 1) {
+      const bitmaps = await pendingRender!
+      pendingRender = batches[i + 1] ? renderBatch(batches[i + 1]!) : null
+      if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+      const pages = bitmaps.filter((bmp) => Boolean(bmp?.pngBase64))
+      await runPool(
+        pages,
+        concurrency,
+        async (bmp) => {
+          if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+          ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'recognize' })
+          const text = (
+            await recognizer({
+              pngBase64: bmp.pngBase64,
+              page: bmp.page,
+              providerId: ctx.visionProviderId,
+              modelId: ctx.visionModelId
+            })
+          ).trim()
+          merged[bmp.page - 1] = text
+          processed.push(bmp.page)
+          completed += 1
+          ctx.onProgress?.({ page: completed, total: pagesToOcr.length, phase: 'recognize' })
+          await yieldEventLoop()
+        },
+        ctx.signal
+      )
+    }
 
     if (!processed.length) {
       throw new Error('视觉 OCR：未能渲染任何页')
