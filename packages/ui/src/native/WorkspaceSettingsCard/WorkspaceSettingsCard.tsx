@@ -8,6 +8,7 @@ import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { CardLinkAction } from '../Button'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface VaultInfo {
   /** 稳定身份；旧调用方可能未传 */
@@ -70,35 +71,127 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
 
   const currentVault = activeVault
 
+  const perVaultItems = [
+    t('workspace.help_per_vault_diary', '日记与日记附件'),
+    t('workspace.help_per_vault_summary', '阶段总结与归档'),
+    t('workspace.help_per_vault_agent', '伙伴配置与聊天记录'),
+    t('workspace.help_per_vault_attachments', '附件库与回忆画廊')
+  ]
+
+  const globalItems = [
+    t('workspace.help_global_ui', '主题、语言等界面设置'),
+    t('workspace.help_global_ai', 'AI 服务商、模型与 RAG 等配置'),
+    t('workspace.help_global_profile', '昵称、身份卡与用户头像'),
+    t('workspace.help_global_registry', '工作空间列表与存储位置')
+  ]
+
   const workspaceHelpContent = (
-    <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 20 }}>
+    <View style={{ gap: sharedTokens.spacing.mdTight }}>
+      <Text
+        style={{
+          fontSize: mobileTypography.secondary.fontSize,
+          color: colors.textPrimary,
+          lineHeight: 20
+        }}
+      >
         {t(
           'workspace.help_intro',
           '每个工作空间是独立的本地数据区。切换后会刷新页面，并加载该空间内的内容。'
         )}
       </Text>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+      <View style={{ gap: sharedTokens.spacing.xsPlus }}>
+        <Text
+          style={{
+            fontSize: mobileTypography.secondary.fontSize,
+            fontWeight: '600',
+            color: colors.textPrimary
+          }}
+        >
           {t('workspace.help_per_vault_title', '切换工作空间后会变：')}
         </Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-          • {t('workspace.help_per_vault_diary', '日记与日记附件')}
-          {'\n'}• {t('workspace.help_per_vault_summary', '阶段总结与归档')}
-          {'\n'}• {t('workspace.help_per_vault_agent', '伙伴配置与聊天记录')}
-          {'\n'}• {t('workspace.help_per_vault_attachments', '附件库与回忆画廊')}
-        </Text>
+        <View
+          style={{
+            gap: sharedTokens.spacing.xsPlus,
+            paddingLeft: sharedTokens.spacing.xxs
+          }}
+        >
+          {perVaultItems.map((item) => (
+            <View
+              key={item}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: sharedTokens.spacing.sm
+              }}
+            >
+              <View
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 2.5,
+                  backgroundColor: colors.primary
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: mobileTypography.secondary.fontSize,
+                  color: colors.textSecondary,
+                  lineHeight: 18,
+                  flex: 1
+                }}
+              >
+                {item}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+      <View style={{ gap: sharedTokens.spacing.xsPlus }}>
+        <Text
+          style={{
+            fontSize: mobileTypography.secondary.fontSize,
+            fontWeight: '600',
+            color: colors.textPrimary
+          }}
+        >
           {t('workspace.help_global_title', '切换工作空间后不变：')}
         </Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
-          • {t('workspace.help_global_ui', '主题、语言等界面设置')}
-          {'\n'}• {t('workspace.help_global_ai', 'AI 服务商、模型与 RAG 等配置')}
-          {'\n'}• {t('workspace.help_global_profile', '昵称、身份卡与用户头像')}
-          {'\n'}• {t('workspace.help_global_registry', '工作空间列表与存储位置')}
-        </Text>
+        <View
+          style={{
+            gap: sharedTokens.spacing.xsPlus,
+            paddingLeft: sharedTokens.spacing.xxs
+          }}
+        >
+          {globalItems.map((item) => (
+            <View
+              key={item}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: sharedTokens.spacing.sm
+              }}
+            >
+              <View
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 2.5,
+                  backgroundColor: colors.textTertiary
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: mobileTypography.secondary.fontSize,
+                  color: colors.textSecondary,
+                  lineHeight: 18,
+                  flex: 1
+                }}
+              >
+                {item}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   )
@@ -195,48 +288,50 @@ const styles = StyleSheet.create({
   currentBlock: {
     borderWidth: 1,
     borderStyle: 'solid',
-    borderRadius: 16,
-    padding: 12,
-    gap: 4,
-    marginBottom: 8
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.sm
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     letterSpacing: 0.2
   },
   recentLabel: {
-    marginBottom: 4,
-    marginTop: 4
+    marginBottom: sharedTokens.spacing.xs,
+    marginTop: sharedTokens.spacing.xs
   },
   pathText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontFamily: 'monospace',
     lineHeight: 16
   },
   emptyHint: {
-    fontSize: 13,
-    marginBottom: 8
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.sm
   },
   recentList: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid'
   },
   switchAction: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   manageLink: {
-    marginTop: 12
+    marginTop: sharedTokens.spacing.mdTight,
+    alignSelf: 'stretch',
+    justifyContent: 'center'
   }
 })

@@ -1,10 +1,22 @@
-import React from 'react'
-import { View, Text, Pressable, Image } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, Pressable, Image, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { ImagePlus, LayoutGrid } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
+import { Modal } from '../Modal'
 import { useNativeToast } from '../Toast'
 import { resolveNativeUserAvatarSource } from '../user-avatar.util'
+import { NATIVE_BUILTIN_USER_AVATAR_SOURCES } from '../builtin-user-avatar.sources'
+import {
+  BUILTIN_USER_AVATAR_IDS,
+  type BuiltinUserAvatarId,
+  isCustomUserAvatar,
+  parseBuiltinUserAvatarId,
+  toBuiltinUserAvatarPath
+} from '@baishou/shared'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
   launchAvatarImageLibraryAsync,
   requestAvatarLibraryPermission,
@@ -29,6 +41,14 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
   const { colors, tokens } = useNativeTheme()
   const dialog = useDialog()
   const toast = useNativeToast()
+  const [builtinModalOpen, setBuiltinModalOpen] = useState(false)
+
+  const selectedBuiltinId = parseBuiltinUserAvatarId(profile.avatarPath)
+
+  const handleSelectBuiltin = (id: BuiltinUserAvatarId) => {
+    onSave({ ...profile, avatarPath: toBuiltinUserAvatarPath(id) })
+    setBuiltinModalOpen(false)
+  }
 
   const pickAvatarFromLibrary = async () => {
     try {
@@ -50,12 +70,22 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
     void dialog
       .choose(t('profile.change_avatar', '更换头像'), [
         {
+          label: t('profile.select_builtin_avatar', '选择内置头像'),
+          value: 'builtin',
+          leading: (
+            <LayoutGrid size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          )
+        },
+        {
           label: t('profile.pick_from_library', '从相册选择'),
-          value: 'library'
+          value: 'library',
+          leading: <ImagePlus size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         }
       ])
       .then((choice) => {
-        if (choice === 'library') {
+        if (choice === 'builtin') {
+          runAfterOverlayDismiss(() => setBuiltinModalOpen(true))
+        } else if (choice === 'library') {
           runAfterOverlayDismiss(() => void pickAvatarFromLibrary())
         }
       })
@@ -110,13 +140,13 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
             right: 0,
             width: 32,
             height: 32,
-            borderRadius: 16,
+            borderRadius: sharedTokens.radius.lg,
             backgroundColor: colors.primary,
             alignItems: 'center',
             justifyContent: 'center'
           }}
         >
-          <Text style={{ fontSize: 16 }}>📷</Text>
+          <Text style={{ fontSize: mobileTypography.primary.fontSize }}>📷</Text>
         </View>
       </Pressable>
 
@@ -124,7 +154,7 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
       <View style={{ alignItems: 'center', gap: tokens.spacing.sm }}>
         <Text
           style={{
-            fontSize: 20,
+            fontSize: mobileTypography.title.fontSize,
             fontWeight: '600',
             color: colors.textPrimary
           }}
@@ -144,7 +174,7 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
         >
           <Text
             style={{
-              fontSize: 14,
+              fontSize: mobileTypography.secondary.fontSize,
               color: colors.primary
             }}
           >
@@ -152,6 +182,55 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
           </Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={builtinModalOpen}
+        title={t('profile.builtin_avatars', '内置头像')}
+        onClose={() => setBuiltinModalOpen(false)}
+      >
+        <ScrollView contentContainerStyle={styles.modalGrid} showsVerticalScrollIndicator={false}>
+          {BUILTIN_USER_AVATAR_IDS.map((id) => {
+            const selected = selectedBuiltinId === id && !isCustomUserAvatar(profile.avatarPath)
+            return (
+              <Pressable
+                key={id}
+                onPress={() => handleSelectBuiltin(id)}
+                style={[
+                  styles.presetBtn,
+                  {
+                    borderColor: selected ? colors.primary : colors.borderSubtle,
+                    borderRadius: tokens.radius.md,
+                    backgroundColor: colors.bgSurface
+                  },
+                  selected && { borderWidth: 2 }
+                ]}
+              >
+                <Image source={NATIVE_BUILTIN_USER_AVATAR_SOURCES[id]} style={styles.presetImg} />
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+      </Modal>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  modalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.smPlus,
+    justifyContent: 'center',
+    paddingBottom: sharedTokens.spacing.xs
+  },
+  presetBtn: {
+    width: 72,
+    height: 72,
+    borderWidth: 1,
+    overflow: 'hidden'
+  },
+  presetImg: {
+    width: '100%',
+    height: '100%'
+  }
+})
