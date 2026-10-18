@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
+import { Button } from '../Button'
 import { FloatingModal } from '../FloatingModal'
 import { DateSelect } from '../DateSelect'
 
@@ -12,6 +14,7 @@ export interface DatePickerFloatingModalProps {
   onConfirm: (date: Date) => void
   minDate?: Date
   maxDate?: Date
+  title?: string
 }
 
 export const DatePickerFloatingModal: React.FC<DatePickerFloatingModalProps> = ({
@@ -20,10 +23,11 @@ export const DatePickerFloatingModal: React.FC<DatePickerFloatingModalProps> = (
   onClose,
   onConfirm,
   minDate,
-  maxDate
+  maxDate,
+  title
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const [draft, setDraft] = useState(value)
 
   useEffect(() => {
@@ -38,7 +42,7 @@ export const DatePickerFloatingModal: React.FC<DatePickerFloatingModalProps> = (
     <FloatingModal visible={visible} onClose={onClose} maxWidth={360}>
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {t('diary.edit_date')}
+          {title ?? t('diary.edit_date')}
         </Text>
       </View>
 
@@ -51,23 +55,15 @@ export const DatePickerFloatingModal: React.FC<DatePickerFloatingModalProps> = (
         maxDate={maxDate}
       />
 
-      <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
-        <Pressable
-          style={[styles.footerBtn, { backgroundColor: colors.bgSurfaceHighest }]}
-          onPress={onClose}
-        >
-          <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-            {t('common.cancel')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.footerBtn, { backgroundColor: colors.primary }]}
-          onPress={() => onConfirm(draft)}
-        >
-          <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
-            {t('common.confirm')}
-          </Text>
-        </Pressable>
+      <View
+        style={[styles.footer, { borderTopColor: colors.borderSubtle, gap: tokens.spacing.sm }]}
+      >
+        <Button variant="outlined" size="sm" onPress={onClose}>
+          {t('common.cancel')}
+        </Button>
+        <Button variant="outlined" size="sm" onPress={() => onConfirm(draft)}>
+          {t('common.confirm')}
+        </Button>
       </View>
     </FloatingModal>
   )
@@ -75,26 +71,21 @@ export const DatePickerFloatingModal: React.FC<DatePickerFloatingModalProps> = (
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: 1
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   },
   footer: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 12,
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    padding: sharedTokens.spacing.mdTight,
     borderTopWidth: 1
-  },
-  footerBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center'
   }
 })
 
