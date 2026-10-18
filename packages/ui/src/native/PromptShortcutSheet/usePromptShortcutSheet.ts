@@ -13,6 +13,11 @@ export function mergePageReorder(
   return [...shortcuts.slice(0, pageStart), ...reorderedPage, ...shortcuts.slice(end)]
 }
 
+export function isSameShortcutOrder(left: { id: string }[], right: { id: string }[]): boolean {
+  if (left.length !== right.length) return false
+  return left.every((item, index) => item.id === right[index]?.id)
+}
+
 export function usePromptShortcutSheet(shortcuts: PromptShortcut[]) {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -24,6 +29,8 @@ export function usePromptShortcutSheet(shortcuts: PromptShortcut[]) {
     return shortcuts.filter(
       (item) =>
         (item.name || '').toLowerCase().includes(query) ||
+        (item.description || '').toLowerCase().includes(query) ||
+        (item.command || '').toLowerCase().includes(query) ||
         (item.content || '').toLowerCase().includes(query)
     )
   }, [searchQuery, shortcuts])
