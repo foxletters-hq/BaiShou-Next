@@ -1,28 +1,28 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .sectionHead {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 4px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-xs);
   min-width: 0;
 }
 
 .sectionTitle {
   margin: 0;
   padding: 0;
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-section-weight, 600);
   line-height: 1.4;
   color: var(--text-primary);
 }
 
 .sectionCount {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -30,18 +30,18 @@
 .state,
 .empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
 }
 
 .empty {
-  padding: 16px;
+  padding: var(--spacing-md);
 }
 
 .sheet {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -77,26 +77,26 @@
 .cardMain {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
-  padding: 4px 10px 4px 4px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus) var(--spacing-xs) var(--spacing-xs);
   box-sizing: border-box;
 }
 
 .cardHit {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   flex: 1;
   min-width: 0;
-  padding: 10px 8px;
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
   border: none;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
   font-family: inherit;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
 }
 
 .cardHit:hover {
@@ -106,12 +106,12 @@
 .toolsBtn {
   flex-shrink: 0;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -141,13 +141,13 @@
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   color: var(--text-primary);
   background: var(--bg-surface-high);
 }
 
 .iconMark {
-  font-size: 15px;
+  font-size: var(--settings-font-section-size);
   font-weight: 700;
   line-height: 1;
 }
@@ -158,7 +158,7 @@
   bottom: -1px;
   width: 10px;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 2px solid var(--bg-surface);
   box-sizing: border-box;
 }
@@ -193,19 +193,19 @@
 .cardCopy {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 
 .cardTitleRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
 }
 
 .cardTitle {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -216,9 +216,9 @@
 
 .badge {
   flex-shrink: 0;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
+  font-size: var(--settings-font-micro-size);
   font-weight: 500;
   line-height: 1.4;
   color: var(--text-secondary);
@@ -227,7 +227,7 @@
 }
 
 .cardDesc {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -235,8 +235,8 @@
 .cardDetail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0 16px 16px 58px;
+  gap: var(--spacing-sm-plus);
+  padding: 0 var(--spacing-md) var(--spacing-md) 58px;
 }
 
 .toolList {
@@ -245,7 +245,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-height: min(60vh, 480px);
   overflow: auto;
 }
@@ -253,22 +253,22 @@
 .toolItem {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
 }
 
 .toolName {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--color-primary);
   font-family: var(--font-family);
 }
 
 .toolDesc {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.45;
   color: var(--text-secondary);
   font-family: var(--font-family);
@@ -276,19 +276,19 @@
 
 .detailState {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
 .field span {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
 }
 
@@ -296,16 +296,28 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
+}
+
+.switchGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-right: auto;
 }
 
 .enableRow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   margin-right: auto;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
+}
+
+.switchGroup .enableRow {
+  margin-right: 0;
 }
 
 .textBtn,
@@ -321,9 +333,9 @@
 .textBtn,
 .primaryBtn {
   height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 0 var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
+  font-size: var(--settings-font-desc-size);
 }
 
 .textBtn:hover:not(:disabled) {
@@ -346,7 +358,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 

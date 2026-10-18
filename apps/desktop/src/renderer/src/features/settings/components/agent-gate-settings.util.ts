@@ -48,6 +48,8 @@ export function capabilityTitle(id: AgentGateCapabilityId, t: AgentGateSettingsT
       return t('settings.agent_gate_cap_memory_delete', '删除记忆')
     case 'skill_write':
       return t('settings.agent_gate_cap_skill_write', '保存技能')
+    case 'skill_read':
+      return t('settings.agent_gate_cap_skill_read', '读取技能')
     default:
       return id
   }
@@ -81,6 +83,8 @@ export function capabilityHint(id: AgentGateCapabilityId, t: AgentGateSettingsTr
       return t('settings.agent_gate_cap_memory_delete_hint', '删除记忆始终需要确认')
     case 'skill_write':
       return t('settings.agent_gate_cap_skill_write_hint', '创建或更新软件级技能说明')
+    case 'skill_read':
+      return t('settings.agent_gate_cap_skill_read_hint', '读取技能说明正文')
     default:
       return ''
   }

@@ -58,7 +58,17 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
           </h3>
         </div>
         <section className={styles.cardSection}>
-          <McpToolsListPanel />
+          <McpToolsListPanel
+            config={
+              settings.mcpServerConfig || {
+                mcpEnabled: false,
+                mcpPort: 31004,
+                mcpAuthEnabled: false,
+                disabledToolIds: []
+              }
+            }
+            onChange={settings.setMcpServerConfig}
+          />
         </section>
       </div>
     </>

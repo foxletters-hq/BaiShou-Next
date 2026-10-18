@@ -82,6 +82,15 @@ export function useDesktopStorageExternalPaths(params: ExternalPathsHookParams) 
   )
 
   const handleChangeExternalJournalsDirectory = useCallback(async () => {
+    const noticeConfirmed = await dialog.confirm(
+      t(
+        'storage.external_journals_pick_notice',
+        '自定义日记目录用于将日记单独保存在设备上的指定文件夹中（便于配合 Obsidian 等外部工具管理），应用将直接读写该目录下的 Markdown 日记。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
+      ),
+      t('storage.external_journals_pick', '自定义日记目录')
+    )
+    if (!noticeConfirmed) return
+
     const api = getStorageApi()
     const picked = await api?.pickExternalJournalsDirectory?.()
     if (!picked) return
@@ -91,7 +100,7 @@ export function useDesktopStorageExternalPaths(params: ExternalPathsHookParams) 
         'storage.external_journals_confirm',
         '将把当前工作区的日记读写指向所选文件夹（不会移动或删除原文件）。是否继续？'
       ),
-      t('storage.external_journals_pick', '选择日记目录')
+      t('storage.external_journals_pick', '自定义日记目录')
     )
     if (!confirmed) return
 
@@ -133,6 +142,15 @@ export function useDesktopStorageExternalPaths(params: ExternalPathsHookParams) 
   ])
 
   const handleChangeExternalSummariesDirectory = useCallback(async () => {
+    const noticeConfirmed = await dialog.confirm(
+      t(
+        'storage.external_summaries_pick_notice',
+        '自定义总结目录用于将周记、月记、季报和年记保存在指定的外部文件夹中，应用将直接读写该目录下的总结文件（该目录下需具备 Weekly/Monthly/Quarterly/Yearly 结构）。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
+      ),
+      t('storage.external_summaries_pick', '自定义总结目录')
+    )
+    if (!noticeConfirmed) return
+
     const api = getStorageApi()
     const picked = await api?.pickExternalSummariesDirectory?.()
     if (!picked) return
@@ -142,7 +160,7 @@ export function useDesktopStorageExternalPaths(params: ExternalPathsHookParams) 
         'storage.external_summaries_confirm',
         '将把当前工作区的总结读写指向所选文件夹（不会移动或删除原文件）。是否继续？'
       ),
-      t('storage.external_summaries_pick', '选择总结目录')
+      t('storage.external_summaries_pick', '自定义总结目录')
     )
     if (!confirmed) return
 

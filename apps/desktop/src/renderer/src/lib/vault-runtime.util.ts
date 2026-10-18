@@ -26,6 +26,3 @@ export async function switchActiveVault(vaultName: string): Promise<void> {
   persistActiveVaultScopeKey(scopeKey)
   setDesktopVaultScopeKey(scopeKey)
 }
-
-/** @deprecated 使用 switchActiveVault；保留别名避免遗漏调用点 */
-export const switchActiveVaultAndReload = switchActiveVault

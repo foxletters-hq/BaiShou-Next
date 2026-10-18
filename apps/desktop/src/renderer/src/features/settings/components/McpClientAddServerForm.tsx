@@ -65,7 +65,7 @@ export function McpClientAddServerForm({
             />
           </label>
           <label className={styles.field}>
-            <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
+            <span>{t('settings.mcp_custom_url', 'mcp 地址')}</span>
             <Input
               fieldSize="small"
               value={draftUrl}

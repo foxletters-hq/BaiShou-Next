@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE,
   mcpClientProbeReasonFromError,
+  summarizeMcpToolDescription,
   toMcpClientListedTools,
   upsertMcpClientServerStatus,
   type McpClientConfig,
@@ -340,6 +341,9 @@ export const McpClientServersPanel: React.FC = () => {
                 onToggleEnabled={(enabled) => {
                   void patchServer(server.id, { enabled })
                 }}
+                onToggleAlwaysAllow={(alwaysAllow) => {
+                  void patchServer(server.id, { alwaysAllow })
+                }}
                 onRetry={() => {
                   void (async () => {
                     setTestingId(server.id)
@@ -396,14 +400,25 @@ export const McpClientServersPanel: React.FC = () => {
       >
         {toolsDialog && toolsDialog.tools.length > 0 ? (
           <ul className={styles.toolList}>
-            {toolsDialog.tools.map((tool) => (
-              <li key={tool.name} className={styles.toolItem}>
-                <span className={styles.toolName}>{tool.name}</span>
-                {tool.description ? (
-                  <span className={styles.toolDesc}>{tool.description}</span>
-                ) : null}
-              </li>
-            ))}
+            {toolsDialog.tools.map((tool) => {
+              const rawId = tool.name.replace(/^baishou_/, '')
+              const isBaishouBuiltin = tool.name.startsWith('baishou_')
+              const displayDesc = isBaishouBuiltin
+                ? (t(
+                    `agent.tools.${rawId}_desc`,
+                    t(
+                      `agent.tools.${rawId}_tooltip`,
+                      summarizeMcpToolDescription(tool.description) ?? ''
+                    )
+                  ) as string)
+                : (summarizeMcpToolDescription(tool.description) ?? '')
+              return (
+                <li key={tool.name} className={styles.toolItem}>
+                  <span className={styles.toolName}>{tool.name}</span>
+                  {displayDesc ? <span className={styles.toolDesc}>{displayDesc}</span> : null}
+                </li>
+              )
+            })}
           </ul>
         ) : (
           <p className={styles.detailState}>
