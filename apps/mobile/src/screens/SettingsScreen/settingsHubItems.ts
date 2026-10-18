@@ -12,7 +12,6 @@ export type SettingsStackPathname =
   | '/knowledge'
   | '/memory'
   | '/settings/help-docs'
-  | '/settings/git'
 
 export type SettingsHubRoute =
   | { type: 'section'; section: string }
@@ -158,12 +157,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'version_migration.title',
         icon: 'version-migration',
         route: { type: 'stack', pathname: '/settings/version-migration' }
-      },
-      {
-        id: 'git',
-        titleKey: 'version_control.version_control',
-        icon: 'git',
-        route: { type: 'stack', pathname: '/settings/git' }
       },
       {
         id: 'help-docs',

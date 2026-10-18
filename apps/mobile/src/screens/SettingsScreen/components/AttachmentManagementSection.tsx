@@ -22,6 +22,7 @@ import { useAttachmentImageLoader } from '../../../hooks/useAttachmentImageLoade
 import { toFileUri } from '../../../services/android-external-fs'
 import { shareLocalFile } from '../../../utils/share-local-file.util'
 import { publishEmojiToolConfig } from '../../../lib/emoji-tool-config.store'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const SESSION_FETCH_LIMIT = 5000
 
@@ -178,8 +179,8 @@ const styles = StyleSheet.create({
     minHeight: 400
   },
   sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.md,
     lineHeight: 20
   }
 })

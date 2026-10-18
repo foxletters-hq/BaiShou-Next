@@ -5,6 +5,7 @@ import { scrollIndicatorStyle, useNativeTheme } from '@baishou/ui/native'
 import { AboutSettingsPrivacyContent } from '@baishou/ui/native'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const PrivacySettingsScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   }
 })

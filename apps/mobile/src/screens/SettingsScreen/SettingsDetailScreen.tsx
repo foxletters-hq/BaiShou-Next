@@ -19,6 +19,7 @@ import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
 import { AgentBehaviorSection } from './components/AgentBehaviorSection'
 import { LatteSettingsSection } from './components/LatteSettingsSection'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 export interface SettingsDetailScreenProps {
   section: string
 }
@@ -93,12 +94,12 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   },
   selfScrollHost: {
     flex: 1,
-    paddingBottom: 16,
+    paddingBottom: sharedTokens.spacing.md,
     minHeight: 0
   }
 })

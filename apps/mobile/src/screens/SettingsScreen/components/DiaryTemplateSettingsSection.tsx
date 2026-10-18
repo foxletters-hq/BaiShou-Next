@@ -17,6 +17,7 @@ import {
 import { useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { useDiaryTemplateConfig } from '../../../hooks/useDiaryTemplateConfig'
 import { SettingsGroupCard } from './SettingsGroupCard'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const DiaryTemplateSettingsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -280,30 +281,30 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   fieldBlock: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 6
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   desc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 19,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   injectHint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   fieldShell: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderCurve: 'continuous',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.sm,
     overflow: 'hidden'
   },
   fieldInputTall: {
@@ -316,20 +317,20 @@ const styles = StyleSheet.create({
   },
   previewBox: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderCurve: 'continuous',
     overflow: 'hidden',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   previewScroll: {
     maxHeight: 220
   },
   previewScrollContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus
   },
   previewText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     opacity: 0.85
   },
@@ -339,19 +340,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   varsHint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 16
+    gap: sharedTokens.spacing.smPlus,
+    marginTop: sharedTokens.spacing.md
   },
   btn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   btnPrimary: {

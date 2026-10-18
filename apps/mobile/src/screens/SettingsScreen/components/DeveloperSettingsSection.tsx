@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const DeveloperSettingsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -148,17 +149,17 @@ export const DeveloperSettingsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24
+    marginBottom: sharedTokens.spacing.lg
   },
   sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.md,
     lineHeight: 20
   },
   spinner: {
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   button: {
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   }
 })
