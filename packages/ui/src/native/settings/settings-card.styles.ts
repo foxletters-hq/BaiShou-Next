@@ -1,38 +1,42 @@
-import { StyleSheet, type TextStyle } from 'react-native'
-import { useMemo } from 'react'
-import { settingsTypography } from '../../theme/tokens'
-import { useNativeTheme } from '../theme'
+import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
-/** 移动设置卡片共用字号，对齐 desktop `--settings-font-*` / settingsTypography */
+/** 移动设置卡片共用字号，对齐 `--mobile-fs-*` / mobileTypography */
 export const settingsCardStyles = StyleSheet.create({
   cardTitle: {
-    fontSize: settingsTypography.section.fontSize,
-    fontWeight: settingsTypography.section.fontWeight,
-    marginBottom: 8
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight,
+    marginBottom: sharedTokens.spacing.sm
   },
   cardDesc: {
-    fontSize: settingsTypography.desc.fontSize,
-    fontWeight: settingsTypography.desc.fontWeight,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
     lineHeight: 20,
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   label: {
-    fontSize: settingsTypography.label.fontSize,
-    fontWeight: settingsTypography.label.fontWeight
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
   },
   hint: {
-    fontSize: settingsTypography.meta.fontSize,
-    fontWeight: settingsTypography.meta.fontWeight,
-    marginTop: 2,
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    marginTop: sharedTokens.spacing.xxs,
     lineHeight: 17
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.mdTight },
   rowText: { flex: 1 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
+  },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1,
     flexGrow: 1,
     flexBasis: '30%',
@@ -47,22 +51,7 @@ export const settingsCardStyles = StyleSheet.create({
   }
 })
 
-/** 设置卡文字样式带上当前语言的思源字族；布局类样式仍用 settingsCardStyles。 */
+/** 设置卡文字走系统默认字族，不指定 fontFamily。 */
 export function useSettingsCardStyles() {
-  const { tokens } = useNativeTheme()
-  const font: TextStyle = useMemo(() => ({ fontFamily: tokens.fontFamily }), [tokens.fontFamily])
-  return useMemo(
-    () => ({
-      cardTitle: [settingsCardStyles.cardTitle, font],
-      cardDesc: [settingsCardStyles.cardDesc, font],
-      label: [settingsCardStyles.label, font],
-      hint: [settingsCardStyles.hint, font],
-      row: settingsCardStyles.row,
-      rowText: settingsCardStyles.rowText,
-      chipRow: settingsCardStyles.chipRow,
-      chip: settingsCardStyles.chip,
-      collapsed: settingsCardStyles.collapsed
-    }),
-    [font]
-  )
+  return settingsCardStyles
 }

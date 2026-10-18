@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { NativeSlider } from '../Slider'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 
 /** 持久化/迁移可能把数值存成字符串，统一兜底，避免 toFixed 等数值方法在 render 阶段崩溃 */
@@ -11,6 +12,7 @@ function coerceNumber(value: unknown, fallback: number): number {
 
 export interface SettingsSliderRowProps {
   title: string
+  titleAddon?: React.ReactNode
   description?: string
   value: number
   min: number
@@ -26,6 +28,7 @@ export interface SettingsSliderRowProps {
 
 export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
   title,
+  titleAddon,
   description,
   value,
   min,
@@ -78,7 +81,10 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
     <View style={styles.block}>
       <View style={styles.header}>
         <View style={styles.textGroup}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+            {titleAddon}
+          </View>
           {description ? (
             <Text style={[styles.desc, { color: colors.textSecondary }]}>{description}</Text>
           ) : null}
@@ -105,32 +111,45 @@ export const SettingsSliderRow: React.FC<SettingsSliderRowProps> = ({
 }
 
 const styles = StyleSheet.create({
-  block: { marginBottom: 4 },
-  header: { marginBottom: 8 },
+  block: { marginBottom: sharedTokens.spacing.xs },
+  header: { marginBottom: sharedTokens.spacing.xxs },
   textGroup: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '600' },
-  desc: { fontSize: 12, marginTop: 2, lineHeight: 17 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xs
+  },
+  title: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
+  },
+  desc: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    marginTop: sharedTokens.spacing.xxs,
+    lineHeight: 16
+  },
   controlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.sm
   },
   sliderWrap: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 8
+    paddingVertical: 0
   },
   valueBadge: {
-    minWidth: 48,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    minWidth: 40,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xsPlus,
     alignItems: 'center',
     justifyContent: 'center'
   },
   valueText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
     textAlign: 'center'
   }
 })

@@ -9,9 +9,10 @@ import Animated, {
 import { useNativeTheme } from '../theme'
 import { settingsHubListStyles as hubStyles } from './settings-hub.styles'
 import { SettingsListLeadingIcon } from './SettingsListLeadingIcon'
-import { CollapsibleHeight } from './CollapsibleHeight'
+import { CollapsibleHeight } from '../CollapsibleHeight'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
-const SLIDE_MS = 280
+const SLIDE_MS = sharedTokens.animation.moderate
 
 export type SettingsExpansionFrame = 'primary' | 'subtle' | 'none'
 
@@ -23,6 +24,11 @@ export interface SettingsExpansionTileProps {
   children: React.ReactNode
   embedded?: boolean
   isLast?: boolean
+  /**
+   * 折叠时是否仍挂载 body。折叠区块里的卡片/Markdown 在 Android 上会穿过
+   * overflow 裁剪并盖住标题，导致无法点击；原文片段这类重内容应关掉。
+   */
+  keepMounted?: boolean
   /**
    * 展开时 body 的外框样式：
    * - 'subtle'：灰色细线边框 + 微圆角，无底色（默认）
@@ -40,6 +46,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   children,
   embedded = false,
   isLast = false,
+  keepMounted = true,
   frame = 'subtle'
 }) => {
   const { colors, tokens } = useNativeTheme()
@@ -86,20 +93,27 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
         embedded &&
           showRowDivider && [hubStyles.rowDivider, { borderBottomColor: colors.borderSubtle }],
         !embedded && {
-          paddingHorizontal: 14,
-          paddingVertical: 13
+          paddingHorizontal: sharedTokens.spacing.mdSnug,
+          paddingVertical: sharedTokens.spacing.mdSnug
         }
       ]}
     >
       {icon ? <SettingsListLeadingIcon>{icon}</SettingsListLeadingIcon> : null}
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.xsPlus }}
+        >
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>
           {titleAddon}
         </View>
         {subtitle ? (
           <Text
-            style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '400' }}
+            style={{
+              fontSize: mobileTypography.secondary.fontSize,
+              color: colors.textSecondary,
+              marginTop: sharedTokens.spacing.xxs,
+              fontWeight: '400'
+            }}
           >
             {subtitle}
           </Text>
@@ -137,8 +151,7 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
           {
             borderColor: frame === 'primary' ? colors.primary : colors.borderStrong,
             backgroundColor: frame === 'primary' ? colors.primaryContainer : 'transparent',
-            borderRadius: tokens.radius.md,
-            shadowColor: frame === 'primary' ? colors.primary : 'transparent'
+            borderRadius: tokens.radius.md
           }
         ]}
       >
@@ -149,11 +162,13 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
     <View style={[innerPadding, lastRowDivider]}>{children}</View>
   )
 
+  const mountedBody = keepMounted || open ? bodyInner : null
+
   if (embedded) {
     return (
       <View>
         {header}
-        <CollapsibleHeight expanded={open}>{bodyInner}</CollapsibleHeight>
+        <CollapsibleHeight expanded={open}>{mountedBody}</CollapsibleHeight>
       </View>
     )
   }
@@ -161,45 +176,41 @@ export const SettingsExpansionTile: React.FC<SettingsExpansionTileProps> = ({
   return (
     <View
       style={{
-        marginBottom: 12,
+        marginBottom: sharedTokens.spacing.mdTight,
         backgroundColor: colors.bgSurface,
         borderRadius: tokens.radius.lg,
         overflow: 'hidden'
       }}
     >
       {header}
-      <CollapsibleHeight expanded={open}>{bodyInner}</CollapsibleHeight>
+      <CollapsibleHeight expanded={open}>{mountedBody}</CollapsibleHeight>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   embeddedBody: {
-    paddingHorizontal: 14,
-    paddingBottom: 14
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.mdSnug
   },
   standaloneBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 16
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.md
   },
   // frame 模式：外层带边框、阴影、margin；内层仅 padding
   bodyFramedOuter: {
-    marginHorizontal: 8,
-    marginBottom: 8,
-    marginTop: 4
+    marginHorizontal: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs
   },
   bodyFramedOuterSubtle: {
     borderWidth: 1
   },
   bodyFramedOuterPrimary: {
-    borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 2
+    borderWidth: 1.5
   },
   bodyFramedPadding: {
-    paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus
   }
 })
