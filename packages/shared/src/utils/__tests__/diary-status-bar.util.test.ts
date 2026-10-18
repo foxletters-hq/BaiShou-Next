@@ -6,6 +6,7 @@ import {
   isGraphSelfNameConfigured,
   isGraphStatusBarReady,
   isRagEmbedFeatureConfigured,
+  pendingOrganizeArticleCount,
   resolveGraphExtractSelfName,
   shouldShowPendingEmbed,
   shouldShowPendingExtract
@@ -33,6 +34,28 @@ describe('diary-status-bar.util', () => {
       expect(shouldShowPendingEmbed({ ragConfigured: true, count: 2 })).toBe(true)
       expect(shouldShowPendingEmbed({ ragConfigured: true, count: 0 })).toBe(false)
       expect(shouldShowPendingEmbed({ ragConfigured: false, count: 2 })).toBe(false)
+    })
+  })
+
+  describe('pendingOrganizeArticleCount', () => {
+    it('should count unique diary articles instead of summing extract and embed queues', () => {
+      expect(
+        pendingOrganizeArticleCount({
+          pendingGraphCount: 69,
+          pendingEmbedCount: 69,
+          pendingDiaryCount: 69
+        })
+      ).toBe(69)
+    })
+
+    it('should use diary embed backlog when graph extract is empty', () => {
+      expect(
+        pendingOrganizeArticleCount({
+          pendingGraphCount: 0,
+          pendingEmbedCount: 18,
+          pendingDiaryCount: 3
+        })
+      ).toBe(3)
     })
   })
 

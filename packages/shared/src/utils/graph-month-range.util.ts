@@ -17,6 +17,29 @@ export function formatGraphMonth(date: Date): string {
   return `${y}-${m}`
 }
 
+/** Earliest month the range picker offers, matching the year list. */
+export const GRAPH_MONTH_RANGE_EARLIEST = '2000-01'
+
+export function allGraphMonthRange(now: Date = new Date()): GraphMonthRange {
+  return { startMonth: GRAPH_MONTH_RANGE_EARLIEST, endMonth: formatGraphMonth(now) }
+}
+
+export function isAllGraphMonthRange(range: GraphMonthRange, now: Date = new Date()): boolean {
+  const all = allGraphMonthRange(now)
+  return range.startMonth === all.startMonth && range.endMonth === all.endMonth
+}
+
+export type GraphMonthRangePresetKind = 'recent3' | 'all' | 'custom'
+
+export function graphMonthRangePresetKind(
+  range: GraphMonthRange,
+  now: Date = new Date()
+): GraphMonthRangePresetKind {
+  if (isAllGraphMonthRange(range, now)) return 'all'
+  if (isDefaultGraphMonthRange(range, now)) return 'recent3'
+  return 'custom'
+}
+
 /** Inclusive last N calendar months ending at `now`'s month. Default N=3. */
 export function defaultGraphMonthRange(now: Date = new Date(), months = 3): GraphMonthRange {
   const count = Math.max(1, Math.floor(months))

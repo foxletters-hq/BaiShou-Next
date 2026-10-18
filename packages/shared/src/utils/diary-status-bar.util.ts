@@ -69,6 +69,17 @@ export function shouldShowPendingEmbed(opts: { ragConfigured: boolean; count: nu
   return opts.ragConfigured && opts.count > 0
 }
 
+/** 待整理篇数：抽图日记优先；没有抽图时只算待嵌入日记，节点向量不算篇。 */
+export function pendingOrganizeArticleCount(input: {
+  pendingGraphCount: number
+  pendingEmbedCount: number
+  pendingDiaryCount?: number
+}): number {
+  if (input.pendingGraphCount > 0) return Math.max(0, input.pendingGraphCount)
+  if (typeof input.pendingDiaryCount === 'number') return Math.max(0, input.pendingDiaryCount)
+  return Math.max(0, input.pendingEmbedCount)
+}
+
 /** 已配置时返回可用于抽取的自称，否则 null */
 export function resolveGraphExtractSelfName(
   flag: boolean | null | undefined,

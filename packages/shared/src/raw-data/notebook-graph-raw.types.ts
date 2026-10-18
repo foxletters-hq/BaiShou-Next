@@ -69,6 +69,8 @@ export interface NotebookGraphExtractedWindowPayload {
     excerpt?: string
     confidence?: number
   }>
+  /** 这一窗已经对齐并写入。缺省表示还在池里，恢复时要再对齐。 */
+  aligned?: boolean
 }
 
 export interface NotebookGraphExtractStateRawRecord {

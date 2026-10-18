@@ -87,13 +87,39 @@ export function buildMemoryOnboardingModel(input: {
 
 export type MemoryOrganizeAction = 'configure' | 'embed-then-graph' | 'graph'
 
+export type MemoryOrganizeConfigurePrompt = {
+  toastKey:
+    | 'memory.need_models_to_organize'
+    | 'memory.need_embedding_to_organize'
+    | 'memory.need_extract_to_organize'
+  picker: 'embedding' | 'extract'
+}
+
 export function resolveMemoryOrganizeAction(input: {
   embeddingConfigured: boolean
+  /** 未传时不拦图抽取槽位，兼容旧调用 */
+  extractConfigured?: boolean
   unindexedDiaryCount?: number
   pendingEmbedCount?: number
   indexing?: boolean
 }): MemoryOrganizeAction {
   if (!input.embeddingConfigured) return 'configure'
+  if (input.extractConfigured === false) return 'configure'
   if (input.indexing) return 'embed-then-graph'
   return memoryOnboardingEmbedBacklog(input) > 0 ? 'embed-then-graph' : 'graph'
+}
+
+/** 整理前缺模型时的提示与选择器：两个都缺先配嵌入，只缺一个就打开对应槽位 */
+export function resolveMemoryOrganizeConfigurePrompt(input: {
+  embeddingConfigured: boolean
+  extractConfigured: boolean
+}): MemoryOrganizeConfigurePrompt | null {
+  if (input.embeddingConfigured && input.extractConfigured) return null
+  if (!input.embeddingConfigured && !input.extractConfigured) {
+    return { toastKey: 'memory.need_models_to_organize', picker: 'embedding' }
+  }
+  if (!input.embeddingConfigured) {
+    return { toastKey: 'memory.need_embedding_to_organize', picker: 'embedding' }
+  }
+  return { toastKey: 'memory.need_extract_to_organize', picker: 'extract' }
 }

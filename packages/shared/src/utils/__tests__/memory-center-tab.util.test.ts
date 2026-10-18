@@ -3,6 +3,7 @@ import {
   buildMemoryOnboardingModel,
   memoryCenterTabFromPath,
   resolveMemoryOrganizeAction,
+  resolveMemoryOrganizeConfigurePrompt,
   shouldShowMemoryOnboarding
 } from '../memory-center-tab.util'
 
@@ -57,5 +58,59 @@ describe('resolveMemoryOrganizeAction', () => {
     expect(resolveMemoryOrganizeAction({ embeddingConfigured: false, pendingEmbedCount: 2 })).toBe(
       'configure'
     )
+  })
+
+  it('should send user to configure when graph extract model is missing', () => {
+    expect(
+      resolveMemoryOrganizeAction({
+        embeddingConfigured: true,
+        extractConfigured: false,
+        pendingEmbedCount: 2
+      })
+    ).toBe('configure')
+  })
+
+  it('should keep embedding-then-graph when extractConfigured is omitted', () => {
+    expect(resolveMemoryOrganizeAction({ embeddingConfigured: true, pendingEmbedCount: 2 })).toBe(
+      'embed-then-graph'
+    )
+  })
+})
+
+describe('resolveMemoryOrganizeConfigurePrompt', () => {
+  it('should name both models when neither slot is ready', () => {
+    expect(
+      resolveMemoryOrganizeConfigurePrompt({
+        embeddingConfigured: false,
+        extractConfigured: false
+      })
+    ).toEqual({ toastKey: 'memory.need_models_to_organize', picker: 'embedding' })
+  })
+
+  it('should open the extract picker when only the graph model is missing', () => {
+    expect(
+      resolveMemoryOrganizeConfigurePrompt({
+        embeddingConfigured: true,
+        extractConfigured: false
+      })
+    ).toEqual({ toastKey: 'memory.need_extract_to_organize', picker: 'extract' })
+  })
+
+  it('should open the embedding picker when only the embedding model is missing', () => {
+    expect(
+      resolveMemoryOrganizeConfigurePrompt({
+        embeddingConfigured: false,
+        extractConfigured: true
+      })
+    ).toEqual({ toastKey: 'memory.need_embedding_to_organize', picker: 'embedding' })
+  })
+
+  it('should return null when both models are ready', () => {
+    expect(
+      resolveMemoryOrganizeConfigurePrompt({
+        embeddingConfigured: true,
+        extractConfigured: true
+      })
+    ).toBeNull()
   })
 })

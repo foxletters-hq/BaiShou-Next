@@ -26,4 +26,19 @@ describe('knowledge-graph-step-error.util', () => {
     expect(parseKnowledgeGraphStepError('Payment Required')).toBeNull()
     expect(knowledgeGraphStepDetail('Payment Required')).toBe('Payment Required')
   })
+
+  it('should keep nested provider body when AI_APICallError.message is empty', () => {
+    const err = Object.assign(new Error(''), {
+      name: 'AI_APICallError',
+      statusCode: 402,
+      responseBody:
+        '{"error":{"message":"Insufficient Balance (request_id: abc)","type":"unknown_error","code":"invalid_request_error"}}'
+    })
+    const wrapped = wrapKnowledgeGraphStepError('extract', err)
+    expect(wrapped.message).toBe('graph-step:extract:Insufficient Balance (request_id: abc)')
+    expect(parseKnowledgeGraphStepError(wrapped)).toEqual({
+      step: 'extract',
+      detail: 'Insufficient Balance (request_id: abc)'
+    })
+  })
 })
