@@ -241,7 +241,7 @@ export const GraphSplitNodeModal: React.FC<{
         <Input value={summary} onChange={(e) => setSummary(e.target.value)} />
       </div>
       <div className={styles.detailBlock}>
-        <div className={styles.detailLabel}>
+        <div className={styles.splitEdgesHeading}>
           {t('graph.split_edges_heading', '这些关系分别是谁的')}
         </div>
         <div className={styles.detailValue}>

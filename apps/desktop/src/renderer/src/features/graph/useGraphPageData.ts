@@ -18,6 +18,7 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
   const [pendingEndpointNodes, setPendingEndpointNodes] = useState<any[]>([])
   const [estimate, setEstimate] = useState<GraphCostEstimate | null>(null)
   const [similarPairs, setSimilarPairs] = useState<GraphSimilarPendingPair[]>([])
+  const [revision, setRevision] = useState(0)
   const inFlightDeletedNodeIdsRef = useRef(new Set<string>())
   const inFlightDeletedEdgeIdsRef = useRef(new Set<string>())
   const graphViewRef = useRef({
@@ -62,6 +63,7 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
       setEstimate(null)
     }
     setGraphHydrated(true)
+    setRevision((n) => n + 1)
   }, [monthRange, viewMaxNodes])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
@@ -80,6 +82,7 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
     pendingEndpointNodes,
     similarPairs,
     estimate,
+    revision,
     refresh,
     refreshRef,
     inFlightDeletedNodeIdsRef,

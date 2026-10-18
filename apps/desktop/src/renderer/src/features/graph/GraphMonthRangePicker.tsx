@@ -4,10 +4,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CalendarDays, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
+  allGraphMonthRange,
   clampGraphMonthRange,
   defaultGraphMonthRange,
   formatGraphMonth,
-  isDefaultGraphMonthRange,
+  graphMonthRangePresetKind,
   parseGraphMonthToDate,
   type GraphMonthRange
 } from '@baishou/shared'
@@ -64,7 +65,8 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
 
   const monthNames = t('common.months', { returnObjects: true }) as string[]
   const years = useMemo(() => yearList(), [])
-  const isRecent3 = isDefaultGraphMonthRange(value)
+  const presetKind = graphMonthRangePresetKind(value)
+  const isRecent3 = presetKind === 'recent3'
 
   useEffect(() => {
     setMounted(true)
@@ -114,11 +116,14 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
     setOpen(false)
   }
 
-  const applyPreset = (months: number) => {
-    const next = rangeFromMonthsBack(months)
+  const applyRange = (next: GraphMonthRange) => {
     setDraft(next)
     onChange(next)
     setOpen(false)
+  }
+
+  const applyPreset = (months: number) => {
+    applyRange(rangeFromMonthsBack(months))
   }
 
   const trigger = (
@@ -144,9 +149,11 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
           {monthLabel(monthNames, value.endMonth)}
         </span>
         <span className={styles.triggerBadge}>
-          {isRecent3
+          {presetKind === 'recent3'
             ? t('graph.month_range_recent3', '近3月')
-            : t('graph.month_range_custom', '自定义')}
+            : presetKind === 'all'
+              ? t('graph.month_range_all', '全部')
+              : t('graph.month_range_custom', '自定义')}
         </span>
       </span>
       <ChevronRight size={14} className={styles.triggerChevron} />
@@ -306,6 +313,13 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
                       onClick={() => applyPreset(12)}
                     >
                       {t('graph.month_range_recent12', '近1年')}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.presetBtn}
+                      onClick={() => applyRange(allGraphMonthRange())}
+                    >
+                      {t('graph.month_range_all', '全部')}
                     </button>
                   </div>
 

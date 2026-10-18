@@ -29,7 +29,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 
             <p className={styles.sectionBody}>
               {t(
                 'graph.extract_help_extract',
-                '把日记交给模型，从文字里整理出人物、地点、事件和关系。这里的数字是同时有几篇日记在抽取。数字越大通常越快，也会同时占用更多模型调用。'
+                '由 AI 分析日记正文，提取人物、地点、事件及相互关系。此数值为同时处理的日记篇数：调高可加快整理进度，但会占用更多 API 并发额度。'
               )}
             </p>
           </section>
@@ -38,7 +38,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 
             <p className={styles.sectionBody}>
               {t(
                 'graph.extract_help_pool',
-                '单篇抽完不会立刻写入图谱。草稿先进入抽取池；攒满 {{pool}} 篇，或这一批都抽完了，再召回相似度大于 {{similarity}}% 的已有节点，由模型判断要不要合并，然后一起写入。这样相近的实体不容易拆成多个节点。',
+                '抽取出的关系草稿不会立即写入图谱，而是先暂存抽取池中：\n\n每当池中攒满 {{pool}} 篇或当前批次完成时，系统会自动与已有节点比对，由 AI 智能合并相似的人物或地点，防止同一实体被重复拆分为多个节点。',
                 {
                   pool: GRAPH_EXTRACT_ALIGN_POOL_SIZE,
                   similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT

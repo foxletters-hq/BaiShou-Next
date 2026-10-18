@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GraphSideTab } from './graph-page.types'
 import { GraphPageDetailPane } from './GraphPageDetailPane'
+import { GraphPageNodesPane } from './GraphPageNodesPane'
 import { GraphPagePendingPane } from './GraphPagePendingPane'
 import { GraphPageReextractPane } from './GraphPageReextractPane'
 import { GraphPageSimilarPane } from './GraphPageSimilarPane'
@@ -12,6 +13,7 @@ export function GraphPageContentPane(props: {
   onTabChange: (tab: GraphSideTab) => void
   pendingCount: number
   similarCount: number
+  nodes: React.ComponentProps<typeof GraphPageNodesPane>
   reextract: React.ComponentProps<typeof GraphPageReextractPane>
   pending: React.ComponentProps<typeof GraphPagePendingPane>
   similar: React.ComponentProps<typeof GraphPageSimilarPane>
@@ -22,6 +24,13 @@ export function GraphPageContentPane(props: {
   return (
     <>
       <div className={styles.tabs}>
+        <button
+          type="button"
+          className={`${styles.tab} ${tab === 'nodes' ? styles.tabActive : ''}`}
+          onClick={() => props.onTabChange('nodes')}
+        >
+          {t('graph.tab_nodes', '节点')}
+        </button>
         <button
           type="button"
           className={`${styles.tab} ${tab === 'reextract' ? styles.tabActive : ''}`}
@@ -56,6 +65,8 @@ export function GraphPageContentPane(props: {
         </button>
       </div>
       <div className={styles.panel} data-graph-side-scroll>
+        {tab === 'nodes' && <GraphPageNodesPane {...props.nodes} />}
+
         {tab === 'reextract' && <GraphPageReextractPane {...props.reextract} />}
 
         {tab === 'pending' && <GraphPagePendingPane {...props.pending} />}
