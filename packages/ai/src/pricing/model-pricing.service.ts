@@ -4,7 +4,11 @@
  * 返回微美分 (costMicros)。
  */
 
-import { applyReasoningCatalogFromModelsDevApi, logger } from '@baishou/shared'
+import {
+  applyDeepSeekPeakCost,
+  applyReasoningCatalogFromModelsDevApi,
+  logger
+} from '@baishou/shared'
 
 export interface TokenUsage {
   inputTokens: number
@@ -125,7 +129,7 @@ export class ModelPricingService {
       return 0
     }
 
-    const costInUSD = price.calculateCost(usage)
+    const costInUSD = applyDeepSeekPeakCost(providerId, price.calculateCost(usage))
     logger.info(
       `[ModelPricingService] Calculation for ${providerId}/${modelId}: inputTokens=${usage.inputTokens}, outputTokens=${usage.outputTokens} -> USD=${costInUSD}`
     )

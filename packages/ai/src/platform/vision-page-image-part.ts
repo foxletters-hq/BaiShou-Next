@@ -1,13 +1,14 @@
 import { normalizeImageForModel } from './normalize-image-for-model'
 
+/** AI SDK FilePart：图片用 file + image/*，不再用已弃用的 image part。 */
 export type VisionPageImagePart = {
-  type: 'image'
-  image: string
+  type: 'file'
+  data: string
   mediaType: string
 }
 
 /**
- * 把 PDF 页图编成 AI SDK ImagePart：裸 base64 + mediaType。
+ * 把 PDF 页图编成 AI SDK FilePart：裸 base64 + image/* mediaType。
  * 不能传 data URL，否则兼容网关会再套一层前缀，模型按「不是 png/jpeg」拒掉。
  */
 export async function buildVisionPageImagePart(pngBase64: string): Promise<VisionPageImagePart> {
@@ -24,8 +25,8 @@ export async function buildVisionPageImagePart(pngBase64: string): Promise<Visio
     throw new Error('视觉 OCR：页面图片无法规范化')
   }
   return {
-    type: 'image',
-    image: normalized.base64,
+    type: 'file',
+    data: normalized.base64,
     mediaType: normalized.mimeType
   }
 }

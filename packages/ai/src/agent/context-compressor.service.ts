@@ -527,6 +527,7 @@ export class ContextCompressorService {
                 messages,
                 temperature: 0.1,
                 abortSignal,
+                experimental_telemetry: { isEnabled: false },
                 ...(builtReasoning.providerOptions
                   ? { providerOptions: builtReasoning.providerOptions as never }
                   : {})
