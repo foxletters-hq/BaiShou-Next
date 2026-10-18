@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import React, { useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface IncrementalSyncPanelProps {
   onSync?: () => Promise<{
@@ -33,7 +34,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progressRatio,
-      duration: 300,
+      duration: sharedTokens.animation.moderate,
       useNativeDriver: false
     }).start()
   }, [progressRatio, progressAnim])
@@ -77,7 +78,7 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
           styles.syncButton,
           {
             backgroundColor: isConfigured ? colors.primary : colors.bgSurfaceNormal,
-            borderRadius: tokens.radius.sm
+            borderRadius: tokens.radius.xs
           }
         ]}
         onPress={handleSync}
@@ -132,46 +133,46 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderWidth: 1
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   hint: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   syncButton: {
-    paddingVertical: 12,
+    paddingVertical: sharedTokens.spacing.mdTight,
     alignItems: 'center',
     justifyContent: 'center'
   },
   syncButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   progressSection: {
-    marginTop: 12
+    marginTop: sharedTokens.spacing.mdTight
   },
   progressBarBg: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: sharedTokens.radius.xs,
     overflow: 'hidden'
   },
   progressBarFill: {
     height: 8,
-    borderRadius: 4
+    borderRadius: sharedTokens.radius.xs
   },
   progressText: {
-    fontSize: 12,
-    marginTop: 6,
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xsPlus,
     textAlign: 'center'
   }
 })

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native'
 import type { useNativeTheme } from '../theme'
 import type { DiscoveredDevice } from './lan-sync-card.types'
 import { lanSyncCardStyles as styles } from './lan-sync-card.styles'
+import { sharedTokens } from '../../theme/tokens'
 
 export function LanSyncDeviceRow({
   item,
@@ -27,7 +28,7 @@ export function LanSyncDeviceRow({
         {
           backgroundColor: colors.bgSurfaceNormal,
           borderColor: colors.borderSubtle,
-          borderRadius: tokens.radius.sm
+          borderRadius: tokens.radius.xs
         }
       ]}
     >
@@ -40,7 +41,7 @@ export function LanSyncDeviceRow({
       <TouchableOpacity
         style={[
           styles.sendButton,
-          { backgroundColor: colors.primary, borderRadius: tokens.radius.sm }
+          { backgroundColor: colors.primary, borderRadius: tokens.radius.xs }
         ]}
         onPress={() => onSend(item)}
         disabled={isSending}
@@ -61,7 +62,7 @@ export function LanSyncDeviceRow({
               styles.progressMiniBar,
               {
                 backgroundColor: colors.bgSurfaceNormal,
-                borderRadius: 2
+                borderRadius: sharedTokens.radius.xxs
               }
             ]}
           >
@@ -71,7 +72,7 @@ export function LanSyncDeviceRow({
                 {
                   backgroundColor: colors.primary,
                   width: `${Math.round(progress * 100)}%` as `${number}%`,
-                  borderRadius: 2
+                  borderRadius: sharedTokens.radius.xxs
                 }
               ]}
             />

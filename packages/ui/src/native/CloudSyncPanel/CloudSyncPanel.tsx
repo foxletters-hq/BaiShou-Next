@@ -61,7 +61,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           styles.saveButton,
           {
             backgroundColor: colors.primary,
-            borderRadius: tokens.radius.sm
+            borderRadius: tokens.radius.xs
           }
         ]}
         onPress={panel.handleSave}
@@ -78,7 +78,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           {
             backgroundColor: colors.bgSurfaceNormal,
             borderColor: colors.borderSubtle,
-            borderRadius: tokens.radius.sm
+            borderRadius: tokens.radius.xs
           }
         ]}
         onPress={panel.handleSync}
