@@ -1,5 +1,6 @@
 import { createBaishouEslintConfig } from '../../eslint.baishou.base.mjs'
 import portalClipRule from '../../scripts/eslint-plugin-ui-theme.mjs'
+import noHardcodedFontSizeRule from '../../scripts/eslint-plugin-no-hardcoded-font-size.mjs'
 
 const NO_NATIVE_CHECKBOX =
   '开关与勾选框的唯一实现是本包的 Switch / Checkbox，其他地方不要写原生 checkbox。见 packages/ui/COMPONENTS.md。'
@@ -11,7 +12,8 @@ export default [
     extraPlugins: {
       'ui-theme': {
         rules: {
-          'portal-must-clip-to-content-card': portalClipRule
+          'portal-must-clip-to-content-card': portalClipRule,
+          'no-hardcoded-font-size': noHardcodedFontSizeRule
         }
       }
     },
@@ -46,6 +48,13 @@ export default [
           message: NO_NATIVE_CHECKBOX
         }
       ]
+    }
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/__tests__/**'],
+    rules: {
+      'ui-theme/no-hardcoded-font-size': 'warn'
     }
   },
   {

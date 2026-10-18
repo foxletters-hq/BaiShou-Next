@@ -10,7 +10,7 @@
   left: var(--app-content-inset-inline, 8px) !important;
   right: var(--app-content-inset-inline, 8px) !important;
   bottom: var(--app-content-inset-bottom, 8px) !important;
-  border-radius: var(--app-content-radius, 12px) !important;
+  border-radius: var(--app-content-radius, var(--radius-md)) !important;
   overflow: hidden;
   box-sizing: border-box;
 }

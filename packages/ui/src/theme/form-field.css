@@ -27,7 +27,7 @@ textarea.baishou-form-field {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 10px 14px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
   border: 1px solid var(--form-field-border);
   border-radius: var(--radius-md);
   background-color: var(--form-field-bg);
@@ -61,7 +61,7 @@ textarea.baishou-form-field:disabled {
 }
 
 .baishou-form-field--small {
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   font-size: var(--ui-fs-md);
   border-radius: var(--radius-sm);
 }
@@ -71,11 +71,11 @@ textarea.baishou-form-field:disabled {
 }
 
 .baishou-form-field--with-trailing {
-  padding-right: 36px;
+  padding-right: var(--spacing-xl-plus);
 }
 
 .baishou-form-field--pad-leading {
-  padding-left: 36px;
+  padding-left: var(--spacing-xl-plus);
 }
 
 .baishou-form-field.baishou-form-field--embed,

@@ -20,6 +20,7 @@
   --color-primary-dark: #3a88d5;
   --color-primary-light: #e0f0fe;
   --color-primary-rgb: 91, 168, 245;
+  --color-primary-light-rgb: 224, 240, 254;
 
   /* Backgrounds — 见主题规范 §3.1 */
   --bg-app: #fafafa; /* 壳 / 侧栏下画布 / 页面内容区画布（衬白卡） */
@@ -41,6 +42,7 @@
   --bg-glass-inset: rgba(255, 255, 255, 0.24);
   --blur-overlay: blur(20px) saturate(200%);
   --blur-glass: blur(28px) saturate(200%);
+  --glass-blur: 24px;
   /* 窗口外圈磨砂罩：半透让系统 Acrylic / 桌面隐约透出，勿用纯透明 */
   --bg-window-shell: color-mix(in srgb, var(--bg-app) 62%, transparent);
 
@@ -55,11 +57,13 @@
   --border-muted: rgba(0, 0, 0, 0.08); /* 分割线 / 顶栏底边 */
   --border-card: rgba(0, 0, 0, 0.12); /* 灰底上内容卡片外框 */
   --border-control: rgba(0, 0, 0, 0.08); /* 可见控件 / 次要按钮 / 内容卡描边 */
+  --border-control-rgb: 0, 0, 0;
   --border-strong: rgba(0, 0, 0, 0.16); /* Focus / 强调 */
 
   /* Text */
   --text-primary: #1a1c23;
   --text-secondary: #4a5568;
+  --text-secondary-rgb: 74, 85, 104;
   --text-tertiary: #a0aec0;
   --text-on-primary: #ffffff;
   --text-primary-rgb: 26, 28, 35;
@@ -89,7 +93,7 @@
   --content-font-size-lg: calc(16px * var(--ui-font-scale));
 
   /*
-   * 全局 UI 字号（四档 SSOT）— 工作台 / 伙伴 / chrome 新代码必须用此阶梯
+   * 全局 UI 字号（四档 SSOT）— 桌面端工作台 / 伙伴 / 通用界面新代码必须用此阶梯
    * 设置页继续用 --settings-font-*（§3.6）；详见 2-UI-Theme-Rule.md §3.3a
    */
   --ui-fs-sm: 12px; /* hint、路径、角标、Diff 正文 */
@@ -97,9 +101,27 @@
   --ui-fs-lg: var(--content-font-size); /* 说明、对话、一般正文 */
   --ui-fs-xl: var(--content-font-size-lg); /* 区块 / 页内标题 */
 
+  /*
+   * 移动端字号 SSOT。桌面继续用上面的 --ui-fs-* 与 --settings-font-*。
+   * React Native 引用 tokens.ts 的 mobileTypography，数值必须与这里一致。
+   * 详见 docs/1-AI-Code/2-UI-Theme-Rule.md §3.9
+   */
+  --mobile-fs-display: 32px; /* 展示型大数字，如日记日号 */
+  --mobile-fw-display: 800;
+  --mobile-fs-title: 17px; /* 页面标题、区块标题 */
+  --mobile-fw-title: 600;
+  --mobile-fs-primary: 16px; /* 列表主行 */
+  --mobile-fw-primary: 500;
+  --mobile-fs-body: 15px; /* 阅读正文 */
+  --mobile-lh-body: 24px;
+  --mobile-fs-secondary: 13px; /* 次要说明、元信息 */
+  --mobile-fw-secondary: 500;
+  --mobile-fs-caption: 11px; /* 底栏、角标、标签 */
+  --mobile-fw-caption: 600;
+
   /* Settings page chrome — 页面标题顶栏统一高度；内容区与顶栏间距 */
   --settings-page-header-height: 64px;
-  --settings-page-content-gap: 24px;
+  --settings-page-content-gap: var(--spacing-lg);
   --settings-page-scroll-padding-top: calc(
     var(--settings-page-header-height) + var(--settings-page-content-gap)
   );
@@ -133,6 +155,23 @@
   --settings-icon-trailing-size: 18px; /* 行右侧箭头 / 外链 */
   --settings-icon-leading-slot: 32px; /* 左侧图标占位宽 */
 
+  /*
+   * 图标 / emoji / 空状态图形字号（不是正文）。业务里不要再写 10/20/24/32/48/64px。
+   * 设置行图标继续用 --settings-icon-*。详见 2-UI-Theme-Rule.md §3.3b
+   */
+  --icon-fs-xs: 10px;
+  --icon-fs-sm: 16px;
+  --icon-fs-md: var(--settings-icon-leading-size);
+  --icon-fs-lg: 24px;
+  --icon-fs-xl: var(--settings-icon-leading-slot);
+  --icon-fs-2xl: 48px;
+  --icon-fs-3xl: 64px;
+
+  /* 展示型大标题（空状态、欢迎页、日记日号以外的大数字） */
+  --ui-display-sm: 22px;
+  --ui-display-md: 28px;
+  --ui-display-lg: 36px;
+
   /* 表单输入框 — 白底 + 可见描边（禁止用 --bg-surface-low/normal 作输入底） */
   --form-field-bg: var(--bg-surface);
   --form-field-border: var(--border-control);
@@ -154,37 +193,50 @@
    */
   --menu-popup-bg: var(--bg-surface);
   --menu-popup-border: var(--border-muted);
-  --menu-popup-radius: 8px;
+  --menu-popup-radius: var(--radius-sm);
   --menu-popup-shadow: var(--shadow-md);
-  --menu-popup-padding: 4px;
+  --menu-popup-padding: var(--spacing-xs);
+  /* 菜单项圆角略小于外壳，保留 5px，不并入半径档 */
   --menu-popup-item-radius: 5px;
   --menu-popup-item-hover-bg: var(--bg-surface-high);
   --menu-popup-item-selected-bg: var(--bg-surface-high);
 
-  /* Radii */
+  /* Radii — 业务圆角只引用这些档，见 2-UI-Theme-Rule.md §3.10 */
+  --radius-2xs: 2px;
   --radius-xs: 4px;
+  --radius-xs-plus: 6px;
   --radius-sm: 8px;
+  --radius-control: 10px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-lg-plus: 20px;
   --radius-xl: 24px;
   --radius-full: 9999px;
+
+  /* Spacing — 业务间距只引用这些档，见 2-UI-Theme-Rule.md §3.10 */
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-xs-plus: 6px;
+  --spacing-sm: 8px;
+  --spacing-sm-plus: 10px;
+  --spacing-md-tight: 12px;
+  --spacing-md-snug: 14px;
+  --spacing-md: 16px;
+  --spacing-md-plus: 20px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xl-plus: 40px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
 
   /*
    * 桌面壳层几何（TitleBar + 主内容圆角卡）
    * 全屏 portal 遮罩应裁到内容卡，勿盖住顶栏；见 .baishou-app-content-overlay
    */
   --app-titlebar-height: 52px;
-  --app-content-inset-inline: 8px;
-  --app-content-inset-bottom: 8px;
+  --app-content-inset-inline: var(--spacing-sm);
+  --app-content-inset-bottom: var(--spacing-sm);
   --app-content-radius: var(--radius-md);
-
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
 
   /* Legacy outline aliases（优先用 --border-*） */
   --color-outline-variant: rgba(208, 208, 208, 0.5);
@@ -212,9 +264,12 @@
   --diff-hunk-border: color-mix(in srgb, var(--color-primary) 18%, transparent);
   --diff-empty-bg: color-mix(in srgb, var(--text-primary) 3%, transparent);
 
-  /* Motion */
+  /* Motion — 业务时长只引用这些档，见 2-UI-Theme-Rule.md §3.10 */
+  --duration-instant: 100ms;
   --duration-fast: 150ms;
+  --duration-swift: 200ms;
   --duration-normal: 250ms;
+  --duration-moderate: 300ms;
   --duration-slow: 400ms;
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out-cubic: cubic-bezier(0.16, 1, 0.3, 1);
@@ -229,6 +284,7 @@
   --color-primary-dark: #3a88d5;
   --color-primary-light: rgba(91, 168, 245, 0.2);
   --color-primary-rgb: 91, 168, 245;
+  --color-primary-light-rgb: 91, 168, 245;
 
   --bg-app: #1a1a1e;
   --bg-surface: #262629;
@@ -257,6 +313,7 @@
   --border-muted: rgba(255, 255, 255, 0.12);
   --border-card: rgba(255, 255, 255, 0.16);
   --border-control: rgba(255, 255, 255, 0.12);
+  --border-control-rgb: 255, 255, 255;
   --border-strong: rgba(255, 255, 255, 0.2);
 
   --color-outline-variant: rgba(255, 255, 255, 0.1);
@@ -265,6 +322,7 @@
 
   --text-primary: #f8fafc;
   --text-secondary: #a1a1aa;
+  --text-secondary-rgb: 161, 161, 170;
   --text-tertiary: #71717a;
   --text-on-primary: #ffffff;
   --text-primary-rgb: 248, 250, 252;

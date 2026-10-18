@@ -86,6 +86,7 @@
   "peerDependencies": {
     "@react-native-community/slider": ">=5",
     "expo-asset": ">=11",
+    "expo-haptics": ">=14",
     "lucide-react-native": ">=0.511.0",
     "react": ">=19",
     "react-native": ">=0.83",

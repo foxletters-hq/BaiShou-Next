@@ -39,6 +39,7 @@ export const darkColors = {
   onSecondaryContainer: '#CBD5E1',
   errorContainer: 'rgba(239, 68, 68, 0.2)',
   onErrorContainer: '#FCA5A5',
+  warningContainer: 'rgba(245, 158, 11, 0.18)',
   tertiary: '#A78BFA',
   onPrimary: '#FFFFFF',
   onError: '#FFFFFF',

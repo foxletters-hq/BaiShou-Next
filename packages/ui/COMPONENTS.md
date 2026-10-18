@@ -29,21 +29,22 @@ import { Button, Switch } from '@baishou/ui/native'
 
 ## 官方零件（禁止在页面里再实现一份）
 
-| 组件               | 说明                                                                 |
-| ------------------ | -------------------------------------------------------------------- |
-| `Switch`           | 默认尺寸 sm，轨道 42×24；需要大号时传 `size="md"`（52×32）           |
-| `Checkbox`         | 业务文件里不允许再写 `type="checkbox"`                               |
-| `SegmentedControl` | 分段切换，桌面端在 `src/desktop/shared/SegmentedControl.tsx`         |
-| `Button`           | 变体一律描边；默认 `outlined` + `size="small"`；不要撑满整行         |
-| `Input`            | 单行输入框；表单用默认尺寸，搜索框等紧凑场景才用 `fieldSize="small"` |
-| `Select`           | 下拉选择；表单用默认尺寸，工具栏等紧凑场景才用 `size="small"`        |
+| 组件               | 说明                                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Switch`           | 默认尺寸 sm，轨道 42×24；需要大号时传 `size="md"`（52×32）                                                                   |
+| `Checkbox`         | 业务文件里不允许再写 `type="checkbox"`                                                                                       |
+| `SegmentedControl` | 分段切换，桌面端在 `src/desktop/shared/SegmentedControl.tsx`；顶栏紧凑场景传 `size="small"`                                  |
+| `Button`           | 变体一律描边；默认 `outlined` + `size="small"`；移动端工具栏传 `size="sm"`；不要撑满整行                                     |
+| `Input`            | 单行输入框；表单用默认尺寸，搜索框等紧凑场景才用 `fieldSize="small"`                                                         |
+| `Select`           | 下拉选择；表单用默认尺寸，工具栏等紧凑场景才用 `size="small"`                                                                |
+| `Slider`           | 移动端只用 `NativeSlider`：轨道 4、拇指 16、触控高 44；桌面端用 `theme/range-slider.css`（3px / 14px）。不要在页面里再画一条 |
 
-以下三种做法都不允许：在页面里用 CSS 再画开关、勾选或分段控件；在业务文件里写 `type="checkbox"`；在移动端从 `react-native` 引入 `Switch` 或 `Checkbox`。实现只放在本包对应目录。
+以下做法都不允许：在页面里用 CSS 再画开关、勾选、分段控件或滑动条；在业务文件里写 `type="checkbox"`；在移动端从 `react-native` 引入 `Switch` 或 `Checkbox`。实现只放在本包对应目录。
 
 `pnpm ci:check` 会把两道检查都跑一遍：
 
-- `pnpm lint`：ESLint 查 JSX 里的 `type="checkbox"`，以及移动端从 `react-native` 引入 `Switch` 与 `Checkbox`。
-- `pnpm lint:css`：Stylelint 查样式里的 `:checked` 与 `[type=checkbox]`。只有 ESLint 时，把开关样式写进 `.css`、组件里只留 `className` 的写法能绕过检查。
+- `pnpm lint`（本地与 CI 执行，不是应用运行时）：ESLint 查 JSX 里的 `type="checkbox"`，以及移动端从 `react-native` 引入 `Switch` 与 `Checkbox`。桌面与移动 TS/TSX 另以 warning 查写死的 `fontSize`（须用 `uiTypography` / `settingsTypography` / `mobileTypography` 或 CSS 变量）。存量 warning 计入 `scripts/lint-warning-baseline.json`。
+- `pnpm lint:css`（本地与 CI 执行，不是应用运行时）：Stylelint 查样式里的 `:checked` 与 `[type=checkbox]`，并以 warning 列出写死的 `font-size` 像素。只有 ESLint 时，把开关或字号写进 `.css`、组件里只留 `className` 的写法能绕过检查。Stylelint 字号 warning 目前不阻断 CI。
 
 其余规则见规则入口 [../../docs/1-AI-Code/0-README.md](../../docs/1-AI-Code/0-README.md)。
 
@@ -85,7 +86,7 @@ import { Button, Switch } from '@baishou/ui/native'
 - **日记**：`DiaryCard` `DiaryMetaCard` `DiaryEditor` `DiaryEditorAppBarTitle` `MarkdownRenderer` `MarkdownToolbar` `TimelineNode` `MoodIcon` `WeatherIcon`
 - **总结与统计**：`SummaryCard` `MissingSummaryCard` `SummaryDashboard` `StatisticCard` `ActivityHeatmap` `GalleryPanel`
 - **仪表盘**：`DashboardHeroBanner` `DashboardStatsCard` `DashboardSharedMemoryCard`
-- **聊天消息流**：`ChatAppBar` `ChatBubble` `StreamingBubble` `AgentMarkdown` `ThinkingBlock` `AgentThinkSection` `MessageActionBar` `KnowledgeCitationBlock`
+- **聊天消息流**：`ChatAppBar` `ChatBubble` `StreamingBubble` `AgentMarkdown` `ThinkingBlock` `AgentThinkSection` `AgentProcessSection` `MessageActionBar` `KnowledgeCitationBlock`
 - **工具与压缩**：`AgentToolChain` `ToolResultGroupCard` `CompressionDivider` `CompressionActivityBar`
 - **输入与用量**：`InputBar` `TokenBadge`
 - **会话与弹窗**：`AgentSessionList` `EmojiPicker` `RecallDialog` `ChatCostDialog` `ContextChainDialog`
