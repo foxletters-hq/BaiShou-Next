@@ -1,6 +1,6 @@
 import type { ViewStyle, TextStyle, ImageStyle } from 'react-native'
 import type { useNativeTheme } from '@baishou/ui/native'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { iconSizes, mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
 type ThemeTokens = ReturnType<typeof useNativeTheme>['tokens']
@@ -30,6 +30,7 @@ export interface KnowledgeScreenStyles {
 
   // 笔记本卡片 (Grid Card)
   notebookCardWrapper: ViewStyle
+  notebookCardPressable: ViewStyle
   notebookCardInner: ViewStyle
   coverArea: ViewStyle
   coverImage: ImageStyle
@@ -87,7 +88,7 @@ export function createKnowledgeScreenStyles(
     },
     errorText: {
       color: colors.error,
-      fontSize: settingsTypography.desc.fontSize,
+      fontSize: mobileTypography.secondary.fontSize,
       marginBottom: tokens.spacing.sm
     },
 
@@ -121,32 +122,32 @@ export function createKnowledgeScreenStyles(
       justifyContent: 'center'
     },
     heroTitle: {
-      fontSize: settingsTypography.section.fontSize,
+      fontSize: mobileTypography.title.fontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       letterSpacing: -0.2
     },
     heroSubtitle: {
-      fontSize: settingsTypography.meta.fontSize,
+      fontSize: mobileTypography.caption.fontSize,
       color: colors.textSecondary
     },
     indexingPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
+      gap: sharedTokens.spacing.xs,
       paddingHorizontal: tokens.spacing.sm,
-      paddingVertical: 3,
+      paddingVertical: sharedTokens.spacing.xxs,
       borderRadius: tokens.radius.full,
       backgroundColor: colors.primaryLight
     },
     indexingDot: {
       width: 6,
       height: 6,
-      borderRadius: 3,
+      borderRadius: sharedTokens.radius.xxs,
       backgroundColor: colors.primary
     },
     indexingText: {
-      fontSize: 11,
+      fontSize: mobileTypography.caption.fontSize,
       fontWeight: '600',
       color: colors.primary
     },
@@ -163,14 +164,14 @@ export function createKnowledgeScreenStyles(
       alignItems: 'center'
     },
     statValue: {
-      fontSize: 17,
+      fontSize: mobileTypography.title.fontSize,
       fontWeight: '700',
       color: colors.textPrimary
     },
     statLabel: {
-      fontSize: 11,
+      fontSize: mobileTypography.caption.fontSize,
       color: colors.textSecondary,
-      marginTop: 2
+      marginTop: sharedTokens.spacing.xxs
     },
     statDivider: {
       width: 1,
@@ -183,7 +184,14 @@ export function createKnowledgeScreenStyles(
       flex: 1,
       minWidth: 0
     },
+    notebookCardPressable: {
+      flex: 1,
+      width: '100%'
+    },
     notebookCardInner: {
+      flex: 1,
+      width: '100%',
+      minHeight: 188,
       padding: 0,
       overflow: 'hidden',
       borderRadius: tokens.radius.lg
@@ -212,7 +220,7 @@ export function createKnowledgeScreenStyles(
       backgroundColor: 'rgba(0, 0, 0, 0.35)'
     },
     coverEmoji: {
-      fontSize: 40,
+      fontSize: iconSizes.xxl,
       lineHeight: 46
     },
     coverMenuBtn: {
@@ -232,49 +240,52 @@ export function createKnowledgeScreenStyles(
       left: tokens.spacing.xs,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      gap: sharedTokens.spacing.xs,
+      paddingHorizontal: sharedTokens.spacing.xsPlus,
+      paddingVertical: sharedTokens.spacing.xxs,
       borderRadius: tokens.radius.full,
       backgroundColor: 'rgba(0, 0, 0, 0.6)'
     },
     cardPendingText: {
-      fontSize: 10,
+      fontSize: iconSizes.xs,
       fontWeight: '600',
       color: '#f8fafc'
     },
     cardContent: {
+      flex: 1,
       padding: tokens.spacing.sm,
-      gap: 3
+      gap: sharedTokens.spacing.xxs
     },
     notebookName: {
-      fontSize: settingsTypography.label.fontSize,
+      fontSize: mobileTypography.secondary.fontSize,
       fontWeight: '600',
       color: colors.textPrimary,
       lineHeight: 18
     },
     notebookMeta: {
-      fontSize: 11,
+      fontSize: mobileTypography.caption.fontSize,
       color: colors.textSecondary
     },
     notebookStorage: {
-      fontSize: 10,
+      fontSize: iconSizes.xs,
       color: colors.textSecondary,
       opacity: 0.85
     },
     notebookDesc: {
-      fontSize: 11,
+      fontSize: mobileTypography.caption.fontSize,
       color: colors.textSecondary,
-      marginTop: 2
+      marginTop: sharedTokens.spacing.xxs
     },
 
     // 新增方块卡片 (Create Card)
     createCardInner: {
-      minHeight: 182,
+      flex: 1,
+      width: '100%',
+      minHeight: 188,
       alignItems: 'center',
       justifyContent: 'center',
       padding: tokens.spacing.md,
-      borderWidth: 1.5,
+      borderWidth: 1,
       borderStyle: 'dashed',
       borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.015)',
@@ -290,13 +301,13 @@ export function createKnowledgeScreenStyles(
       marginBottom: tokens.spacing.sm
     },
     createCardTitle: {
-      fontSize: settingsTypography.label.fontSize,
+      fontSize: mobileTypography.secondary.fontSize,
       fontWeight: '700',
       color: colors.textPrimary,
-      marginBottom: 3
+      marginBottom: sharedTokens.spacing.xxs
     },
     createCardDesc: {
-      fontSize: 11,
+      fontSize: mobileTypography.caption.fontSize,
       color: colors.textSecondary
     },
 
@@ -317,14 +328,14 @@ export function createKnowledgeScreenStyles(
       marginBottom: tokens.spacing.md
     },
     emptyTitle: {
-      fontSize: 18,
+      fontSize: mobileTypography.title.fontSize,
       fontWeight: '700',
       color: colors.textPrimary,
       marginBottom: tokens.spacing.xs,
       textAlign: 'center'
     },
     emptyDesc: {
-      fontSize: settingsTypography.desc.fontSize,
+      fontSize: mobileTypography.secondary.fontSize,
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 20,
@@ -341,12 +352,12 @@ export function createKnowledgeScreenStyles(
       gap: tokens.spacing.sm
     },
     actionSheetItemText: {
-      fontSize: settingsTypography.row.fontSize,
+      fontSize: mobileTypography.body.fontSize,
       fontWeight: '500',
       color: colors.textPrimary
     },
     actionSheetDestructiveText: {
-      fontSize: settingsTypography.row.fontSize,
+      fontSize: mobileTypography.body.fontSize,
       fontWeight: '500',
       color: colors.error
     }

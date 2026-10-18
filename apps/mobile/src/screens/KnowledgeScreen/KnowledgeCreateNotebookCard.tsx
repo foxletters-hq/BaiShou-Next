@@ -22,6 +22,7 @@ export function KnowledgeCreateNotebookCard({ busy, onPress }: KnowledgeCreateNo
         disabled={busy}
         accessibilityRole="button"
         accessibilityLabel={t('knowledge.new_notebook', '新建笔记本')}
+        style={styles.notebookCardPressable}
       >
         <Card style={styles.createCardInner}>
           <View style={styles.createCardIcon}>

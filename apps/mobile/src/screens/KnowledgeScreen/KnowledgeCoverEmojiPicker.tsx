@@ -2,13 +2,14 @@ import React, { useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { listNotebookCoverEmojis } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 import { Button, Input, Modal, useNativeTheme } from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
 
 export function KnowledgeCoverEmojiPicker(props: {
   selected: string
   disabled?: boolean
+  size?: 'sm'
   onSelect: (icon: string) => void
 }) {
   const { t } = useTranslation()
@@ -27,6 +28,8 @@ export function KnowledgeCoverEmojiPicker(props: {
   return (
     <>
       <Button
+        size={props.size ?? 'sm'}
+        variant="outlined"
         isDisabled={props.disabled}
         onPress={() => setOpen(true)}
         accessibilityLabel={pickLabel}
@@ -43,6 +46,7 @@ export function KnowledgeCoverEmojiPicker(props: {
           <ScrollView
             keyboardShouldPersistTaps="handled"
             style={{ maxHeight: Math.round(screenHeight * 0.4) }}
+            contentContainerStyle={{ paddingRight: tokens.spacing.mdTight }}
           >
             <View style={[styles.chipWrap, { gap: tokens.spacing.sm }]}>
               {emojis.map((icon) => (
@@ -56,7 +60,7 @@ export function KnowledgeCoverEmojiPicker(props: {
                   style={{
                     width: iconSize,
                     height: iconSize,
-                    borderRadius: tokens.radius.sm,
+                    borderRadius: tokens.radius.xs,
                     borderWidth: 1,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -64,7 +68,7 @@ export function KnowledgeCoverEmojiPicker(props: {
                     backgroundColor: colors.bgSurface
                   }}
                 >
-                  <Text style={{ fontSize: settingsTypography.row.fontSize }}>{icon}</Text>
+                  <Text style={{ fontSize: mobileTypography.primary.fontSize }}>{icon}</Text>
                 </Pressable>
               ))}
             </View>

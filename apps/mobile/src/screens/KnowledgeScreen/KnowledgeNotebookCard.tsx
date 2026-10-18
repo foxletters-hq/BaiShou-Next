@@ -41,18 +41,12 @@ export function KnowledgeNotebookCard({
         onLongPress={onOpenMenu}
         accessibilityRole="button"
         accessibilityLabel={item.name}
+        style={styles.notebookCardPressable}
       >
         <Card style={styles.notebookCardInner}>
           <View style={[styles.coverArea, { backgroundColor: toneColor }]}>
             {item.coverUri ? (
-              <>
-                <Image
-                  source={{ uri: item.coverUri }}
-                  style={styles.coverImage}
-                  resizeMode="cover"
-                />
-                <View style={styles.coverOverlay} />
-              </>
+              <Image source={{ uri: item.coverUri }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <Text style={styles.coverEmoji}>{appearance.icon}</Text>
             )}

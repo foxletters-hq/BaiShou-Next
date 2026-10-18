@@ -7,7 +7,9 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const src = [
   'KnowledgeScreen.tsx',
   'KnowledgeCreateNotebookSheet.tsx',
-  'KnowledgeCoverEmojiPicker.tsx'
+  'KnowledgeCoverEmojiPicker.tsx',
+  'KnowledgeNotebookActionSheet.tsx',
+  'KnowledgeNotebookCard.tsx'
 ]
   .map((name) => readFileSync(join(dir, '..', name), 'utf8'))
   .join('\n')
@@ -29,6 +31,14 @@ describe('mobile knowledge list chrome', () => {
     expect(src).not.toContain('TextInput')
     expect(src).not.toContain('Alert.alert')
     expect(src).toContain('indexing_count')
+    expect(src).toContain('coverActionsRow')
+    expect(src).toContain('submitActionsRow')
+    expect(src).not.toContain('coverOverlay')
+    expect(src).toContain('coverUri')
+    expect(src).toContain("mode === 'edit'")
+    expect(src).toContain("t('knowledge.edit_notebook'")
+    expect(src).not.toContain("t('knowledge.edit_description'")
+    expect(src).not.toContain("t('knowledge.rename_notebook'")
   })
 
   it('should delete a notebook from official cards after a countdown dialog', () => {
@@ -38,5 +48,13 @@ describe('mobile knowledge list chrome', () => {
     expect(src).toContain("from '@baishou/ui/native'")
     expect(src).not.toContain('#fff')
     expect(src).not.toContain('#666')
+  })
+
+  it('should inset scroll indicators in notebook create and cover picker modals like skill cite preview', () => {
+    expect(src).toContain('paddingRight: tokens.spacing.mdTight')
+    const createSheet = readFileSync(join(dir, '..', 'KnowledgeCreateNotebookSheet.tsx'), 'utf8')
+    const coverPicker = readFileSync(join(dir, '..', 'KnowledgeCoverEmojiPicker.tsx'), 'utf8')
+    expect(createSheet).toContain('paddingRight: tokens.spacing.mdTight')
+    expect(coverPicker).toContain('paddingRight: tokens.spacing.mdTight')
   })
 })

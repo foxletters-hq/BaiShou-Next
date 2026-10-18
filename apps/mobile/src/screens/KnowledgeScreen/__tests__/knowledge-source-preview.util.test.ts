@@ -14,9 +14,18 @@ describe('sourceMissingPageCount', () => {
 })
 
 describe('pickSourceCardEvidence', () => {
-  it('should hide scan evidence while OCR is running', () => {
+  it('should hide scan evidence while extract is running', () => {
     expect(pickSourceCardEvidence({ pageCount: 12, missingPages: 8, hideHints: true })).toBeNull()
     expect(pickSourceCardEvidence({ pageCount: 12, missingPages: 8 })).toEqual({
+      type: 'scan',
+      pageCount: 12,
+      missingPages: 8
+    })
+  })
+
+  it('should hide scan evidence when the source is already ready', () => {
+    expect(pickSourceCardEvidence({ pageCount: 12, missingPages: 8, status: 'ready' })).toBeNull()
+    expect(pickSourceCardEvidence({ pageCount: 12, missingPages: 8, status: 'partial' })).toEqual({
       type: 'scan',
       pageCount: 12,
       missingPages: 8
