@@ -1,8 +1,8 @@
 .container {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 36px;
-  column-gap: 10px;
+  column-gap: var(--spacing-sm-plus);
   align-items: start;
   width: 100%;
   box-sizing: border-box;
@@ -32,7 +32,7 @@
   font-family: var(--font-family, sans-serif);
   background-color: var(--color-primary-light);
   color: var(--color-primary);
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .messageCol {
@@ -49,29 +49,32 @@
   display: flex;
   align-items: baseline;
   justify-content: flex-start;
-  padding-bottom: 6px;
-  gap: 8px;
-  padding-left: 4px;
+  padding-bottom: var(--spacing-xs-plus);
+  gap: var(--spacing-sm);
+  padding-left: var(--spacing-xs);
   width: 100%;
   box-sizing: border-box;
 }
 
 .nameLabel {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 :global(.chat-over-background) .nameLabel {
   color: var(--text-on-primary);
-  mix-blend-mode: difference;
+}
+
+:global(.chat-over-background-light) .nameLabel {
+  color: rgb(0, 0, 0);
 }
 
 .bubbleCard {
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px 20px 20px 20px;
+  border-radius: var(--radius-xs) var(--radius-lg-plus) var(--radius-lg-plus) var(--radius-lg-plus);
   box-shadow: none;
   width: 100%;
   max-width: 100%;
@@ -79,21 +82,21 @@
 }
 
 .dotsWrap {
-  padding: 12px;
+  padding: var(--spacing-md-tight);
 }
 
 .toolList {
   display: flex;
   flex-direction: column;
-  padding: 8px 14px 12px;
-  gap: 6px;
+  padding: var(--spacing-sm) var(--spacing-md-snug) var(--spacing-md-tight);
+  gap: var(--spacing-xs-plus);
   border-top: 1px solid var(--border-muted);
 }
 
 .toolItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .toolStatusIcon {
@@ -111,20 +114,20 @@
 }
 
 .toolItemName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .toolItemDuration {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: rgba(var(--text-outline-rgb), 0.6);
 }
 
 .activeToolName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
-  color: var(--color-tertiary);
+  color: var(--color-success);
 }
 
 .pulsing {
@@ -156,18 +159,18 @@
 .dot {
   width: 8px;
   height: 8px;
-  margin: 0 3px;
+  margin: 0 var(--spacing-2xs);
   background-color: rgba(var(--color-primary-rgb), 0.5);
   border-radius: 50%;
   animation: bounce 0.6s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dot:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: var(--duration-fast);
 }
 
 .dot:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: var(--duration-moderate);
 }
 
 @keyframes bounce {
@@ -181,9 +184,9 @@
 
 /* --- Added for B1.2 Streaming Status Effects --- */
 .shimmerBox {
-  margin-top: 4px;
-  padding: 10px 16px;
-  border-radius: 8px;
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-sm-plus) var(--spacing-md);
+  border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
     rgba(128, 128, 128, 0.05) 25%,
@@ -193,10 +196,10 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 @keyframes shimmer {
@@ -209,20 +212,20 @@
 }
 
 .errorBox {
-  margin-top: 8px;
-  padding: 12px 16px;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background-color: rgba(var(--color-error-container-rgb), 0.8);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-error);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
 }
 
 .errorText {
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   word-break: break-word;
 }
 
@@ -231,15 +234,15 @@
   background-color: var(--color-error);
   color: var(--text-on-primary);
   border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
+  border-radius: var(--radius-xs-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
+  font-size: var(--ui-fs-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   font-weight: 500;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .retryBtn:hover {
@@ -247,7 +250,7 @@
 }
 
 .stopBtnWrap {
-  margin-top: 12px;
+  margin-top: var(--spacing-md-tight);
   display: flex;
   justify-content: flex-start;
   width: 100%;
@@ -255,31 +258,31 @@
 
 .stopBtn {
   background: transparent;
-  border: 1px solid rgba(var(--color-outline-rgb), 0.3);
+  border: 1px solid rgba(var(--border-control-rgb), 0.3);
   color: var(--text-secondary);
-  padding: 6px 14px;
-  border-radius: 16px;
-  font-size: 12px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
+  border-radius: var(--radius-lg);
+  font-size: var(--ui-fs-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .stopBtn:hover {
   background-color: rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
-  border-color: rgba(var(--color-outline-rgb), 0.6);
+  border-color: rgba(var(--border-control-rgb), 0.6);
 }
 
 /* Thinking hint when only reasoning is active */
 .thinkingHint {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   color: var(--text-tertiary);
 }
 

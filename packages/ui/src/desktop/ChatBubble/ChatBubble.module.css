@@ -1,5 +1,5 @@
 .chatBubbleContainer {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   width: 100%;
   box-sizing: border-box;
 }
@@ -7,7 +7,7 @@
 .bubbleRow {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 36px;
-  column-gap: 10px;
+  column-gap: var(--spacing-sm-plus);
   align-items: start;
   width: 100%;
 }
@@ -51,7 +51,7 @@
 .aiAvatar {
   background-color: var(--color-primary-light);
   color: var(--color-primary);
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .messageCol {
@@ -82,15 +82,15 @@
 .timeRow {
   display: flex;
   align-items: baseline;
-  padding-bottom: 6px;
-  gap: 8px;
+  padding-bottom: var(--spacing-xs-plus);
+  gap: var(--spacing-sm);
 }
 
 .nameTimeRow {
   display: flex;
   align-items: baseline;
-  padding-bottom: 6px;
-  gap: 8px;
+  padding-bottom: var(--spacing-xs-plus);
+  gap: var(--spacing-sm);
   width: 100%;
   box-sizing: border-box;
 }
@@ -105,27 +105,27 @@
 
 .userRow .timeRow,
 .userRow .nameTimeRow {
-  padding-right: 4px;
+  padding-right: var(--spacing-xs);
 }
 
 .aiRow .timeRow,
 .aiRow .nameTimeRow {
-  padding-left: 4px;
+  padding-left: var(--spacing-xs);
 }
 
 .nameLabel {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .bubbleNameLabel {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   line-height: 1.2;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
   align-self: stretch;
 }
 
@@ -138,24 +138,29 @@
 }
 
 .timeLabel {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--text-tertiary);
 }
 
-/* 自定义聊天背景：名称 / 时间叠在背景图上时自动反色，保证可读性 */
+/* 自定义聊天背景：名称 / 时间叠在背景图上时仅使用纯黑与纯白反色，无阴影勾勒 */
 :global(.chat-over-background) .nameLabel,
 :global(.chat-over-background) .bubbleNameLabel,
 :global(.chat-over-background) .timeLabel {
   color: var(--text-on-primary);
-  mix-blend-mode: difference;
+}
+
+:global(.chat-over-background-light) .nameLabel,
+:global(.chat-over-background-light) .bubbleNameLabel,
+:global(.chat-over-background-light) .timeLabel {
+  color: rgb(0, 0, 0);
 }
 
 .userBubbleCard {
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  border-radius: 20px 4px 20px 20px;
+  border-radius: var(--radius-lg-plus) var(--radius-xs) var(--radius-lg-plus) var(--radius-lg-plus);
   box-shadow: none;
   display: flex;
   flex-direction: column;
@@ -200,11 +205,11 @@
 }
 
 .aiBubbleCard {
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  border-radius: 4px 20px 20px 20px;
+  border-radius: var(--radius-xs) var(--radius-lg-plus) var(--radius-lg-plus) var(--radius-lg-plus);
   box-shadow: none;
   display: flex;
   flex-direction: column;
@@ -237,7 +242,7 @@
 .attImage {
   width: 96px;
   height: 96px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   background-color: var(--bg-surface-normal);
   display: block;
@@ -248,7 +253,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   line-height: 0;
 }
 
@@ -260,7 +265,7 @@
 .attImagePlaceholder {
   width: 96px;
   height: 96px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background-color: var(--bg-surface-normal);
   animation: attImagePulse 1.2s ease-in-out infinite;
 }
@@ -296,24 +301,24 @@
 
 .attDocument {
   width: 220px;
-  padding: 8px;
+  padding: var(--spacing-sm);
   background-color: var(--bg-surface-normal);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .attDocMeta {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .attDocComment {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -323,11 +328,11 @@
 }
 
 .attDocIcon {
-  font-size: 24px;
+  font-size: var(--icon-fs-lg);
 }
 
 .attDocName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -337,20 +342,20 @@
 }
 
 .errorBox {
-  margin-top: 8px;
-  padding: 12px 16px;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background-color: rgba(var(--color-error-container-rgb), 0.8);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-error);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
 }
 
 .errorText {
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   word-break: break-word;
 }
 
@@ -363,8 +368,8 @@
   width: 100%;
   max-width: 100%;
   align-self: stretch;
-  margin-top: 4px;
-  gap: 8px;
+  margin-top: var(--spacing-xs);
+  gap: var(--spacing-sm);
   min-height: 26px;
 }
 
@@ -373,11 +378,11 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
   margin-left: auto;
   flex-shrink: 0;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-swift) ease;
 }
 
 :global(.chat-bubble-container:hover) .tokenRow,
@@ -386,7 +391,7 @@
 }
 
 .tokenStat {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary, rgba(148, 163, 184, 0.85));
   line-height: 1;
   white-space: nowrap;
@@ -396,25 +401,25 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-self: flex-end;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   min-height: 26px;
 }
 
 .footerRight {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .contextBtn {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.6);
+  padding: var(--spacing-2xs);
+  border-radius: var(--radius-xs);
+  color: rgba(var(--border-control-rgb), 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -438,26 +443,26 @@
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-overlay);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  padding: 6px;
+  padding: var(--spacing-xs-plus);
   display: flex;
   flex-direction: column;
   min-width: 120px;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   z-index: 10001;
 }
 .contextMenu button {
   background: none;
   border: none;
-  padding: 6px 12px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
   text-align: left;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-primary);
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-xs-plus);
+  transition: all var(--duration-swift) ease;
 }
 .contextMenu button:hover {
   background: rgba(var(--color-primary-rgb), 0.08);
@@ -466,31 +471,31 @@
 
 /* --- Added for Reasoning --- */
 .reasoningDetails {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
   background: rgba(0, 0, 0, 0.02);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
   border: 1px solid var(--border-muted);
 }
 .reasoningSummary {
   cursor: pointer;
   user-select: none;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   font-weight: 500;
 }
 .reasoningIcon {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
 }
 
 /* --- Refactored Tool Result Group (1:1) --- */
 .toolGroupContainer {
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
   background-color: var(--bg-surface-normal);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   width: 100%;
 }
@@ -504,15 +509,15 @@
 
 .toolGroupSummary {
   cursor: pointer;
-  padding: 8px 14px;
-  font-size: 13px;
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  font-size: var(--ui-fs-md);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   font-weight: 600;
   color: var(--text-primary);
-  border-radius: 16px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-lg);
+  transition: background-color var(--duration-swift);
 }
 
 .toolGroupSummary:hover {
@@ -523,7 +528,7 @@
   width: 28px;
   height: 28px;
   background-color: var(--color-primary-light);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,18 +536,18 @@
 }
 
 .toolCountBadge {
-  padding: 2px 7px;
+  padding: var(--spacing-2xs) var(--spacing-sm);
   background-color: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
-  border-radius: 10px;
-  font-size: 10px;
+  border-radius: var(--radius-control);
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
 }
 
 .toolItemDetails {
-  margin: 4px 8px 8px 8px;
+  margin: var(--spacing-xs) var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
   background-color: var(--bg-surface-high);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 
@@ -552,12 +557,12 @@
 
 .toolItemSummary {
   cursor: pointer;
-  padding: 8px 10px;
-  font-size: 12px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .toolItemSummary.isError {
@@ -565,8 +570,8 @@
 }
 
 .toolItemContent {
-  padding: 0 10px 8px 10px;
-  font-size: 11px;
+  padding: 0 var(--spacing-sm-plus) var(--spacing-sm) var(--spacing-sm-plus);
+  font-size: var(--settings-font-micro-size);
   font-family: var(--font-family-mono);
   color: var(--text-secondary);
   line-height: 1.5;
@@ -576,7 +581,7 @@
 
 /* --- Inline Message Editor --- */
 .editorContainer {
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   width: 100%;
   min-width: 100%;
 }
@@ -585,18 +590,18 @@
   width: 100%;
   min-height: 280px;
   max-height: 60vh;
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   font-size: var(--content-font-size, 14px);
   font-family: inherit;
   line-height: 1.5;
   border: 1.5px solid var(--color-primary);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   resize: none;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-swift);
   overflow-y: auto;
 }
 
@@ -609,20 +614,20 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 .editorBtn {
-  padding: 5px 14px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-md-snug);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   cursor: pointer;
   border: 1px solid var(--border-control);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .editorBtnCancel {
