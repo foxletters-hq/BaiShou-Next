@@ -11,11 +11,13 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { Image as ImageIcon, ImagePlus, Settings, Smile, Trash2, Upload } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Switch } from '../Switch'
 import { Modal } from '../Modal'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiItem {
   id: string
@@ -198,10 +200,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
             { backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal }
           ]}
         >
-          <MaterialIcons
-            name="emoji-emotions"
-            size={20}
+          <Smile
+            size={AGENT_TOOL_ICON_SIZE}
             color={isEnabled ? colors.primary : colors.textSecondary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
           />
         </View>
         <View style={styles.toolInfo}>
@@ -229,7 +231,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
           onPress={() => setShowSettingsPopup(true)}
           accessibilityLabel={t('agent.tools.emoji_settings', '设置')}
         >
-          <MaterialIcons name="settings" size={18} color={colors.textSecondary} />
+          <Settings size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
         </TouchableOpacity>
         <Switch value={isEnabled} onValueChange={handleToggle} />
       </View>
@@ -247,7 +249,12 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
             <Text style={[styles.emojiManageLabel, { color: colors.textSecondary }]}>
               {t('agent.tools.emoji_manage_label', '表情包管理')}
             </Text>
-            <ScrollView style={styles.emojiPopupGrid} nestedScrollEnabled>
+            <ScrollView
+              style={styles.emojiPopupGrid}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+            >
               <View style={styles.emojiGridInner}>
                 {emojiConfig.emojis?.map((emoji) => (
                   <View
@@ -264,7 +271,11 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                           resizeMode="contain"
                         />
                       ) : (
-                        <MaterialIcons name="image" size={24} color={colors.textTertiary} />
+                        <ImageIcon
+                          size={24}
+                          color={colors.textTertiary}
+                          strokeWidth={DEFAULT_STROKE_WIDTH}
+                        />
                       )}
                     </View>
                     <View style={styles.emojiCardFooter}>
@@ -284,10 +295,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                         onPress={() => handleDeleteEmoji(emoji.id)}
                         accessibilityLabel={t('agent.tools.emoji_delete', '删除')}
                       >
-                        <MaterialIcons
-                          name="delete-outline"
+                        <Trash2
                           size={16}
                           color={colors.textSecondary}
+                          strokeWidth={DEFAULT_STROKE_WIDTH}
                         />
                       </TouchableOpacity>
                     </View>
@@ -303,10 +314,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                     {isLoading ? (
                       <ActivityIndicator size="small" color={colors.textTertiary} />
                     ) : (
-                      <MaterialIcons
-                        name="add-photo-alternate"
+                      <ImagePlus
                         size={32}
                         color={colors.textTertiary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
                       />
                     )}
                     <Text style={[styles.emojiEmptyText, { color: colors.textTertiary }]}>
@@ -328,7 +339,11 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
                     {isLoading ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                      <MaterialIcons name="file-upload" size={24} color={colors.textSecondary} />
+                      <Upload
+                        size={24}
+                        color={colors.textSecondary}
+                        strokeWidth={DEFAULT_STROKE_WIDTH}
+                      />
                     )}
                     <Text style={[styles.emojiAddText, { color: colors.textSecondary }]}>
                       {isLoading
@@ -355,19 +370,19 @@ const CARD_SIZE = 90
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     overflow: 'hidden'
   },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   toolIconWrapper: {
-    padding: 6,
-    borderRadius: 8,
+    padding: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm,
     width: 32,
     height: 32,
     alignItems: 'center',
@@ -380,30 +395,30 @@ const styles = StyleSheet.create({
   toolNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   toolName: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   emojiSettingsBtn: {
-    padding: 6,
-    borderRadius: 6
+    padding: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.xsPlus
   },
   popupContent: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   popupRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   emojiManageSection: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   emojiManageLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   emojiPopupGrid: {
@@ -412,13 +427,13 @@ const styles = StyleSheet.create({
   emojiGridInner: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   emojiCard: {
     width: CARD_SIZE,
     height: CARD_SIZE + 26,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     overflow: 'hidden'
   },
   emojiCardImage: {
@@ -430,56 +445,56 @@ const styles = StyleSheet.create({
   emojiImg: {
     width: CARD_SIZE - 8,
     height: CARD_SIZE - 8,
-    borderRadius: 4
+    borderRadius: sharedTokens.radius.xs
   },
   emojiCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    gap: 2,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.xxs,
     flexShrink: 0
   },
   emojiNameInput: {
     flex: 1,
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
+    borderRadius: sharedTokens.radius.xs,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xxs,
     includeFontPadding: false
   },
   emojiDeleteBtn: {
-    padding: 2,
-    borderRadius: 4
+    padding: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   emojiAddCard: {
     width: CARD_SIZE,
     height: CARD_SIZE + 26,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   emojiAddText: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   emojiEmptyHint: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 4,
+    paddingVertical: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.xs,
     width: CARD_SIZE,
     height: CARD_SIZE + 26
   },
   emojiEmptyText: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   emojiPopupAuthor: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'center',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   }
 })

@@ -1,105 +1,110 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const agentGateCardStyles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   },
   card: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     zIndex: 2,
     maxHeight: '86%',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16
+      },
+      default: {}
+    })
   },
   header: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 14,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   queueNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   queueNavBtn: {
     width: 28,
     height: 28,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 6,
+    borderRadius: sharedTokens.radius.xsPlus,
     alignItems: 'center',
     justifyContent: 'center'
   },
   queueLabel: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     lineHeight: 22,
     flexShrink: 1
   },
   description: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 21
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   previewBlock: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6
+    borderRadius: sharedTokens.radius.control,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xsPlus
   },
   diffScroll: {
     maxHeight: 220
   },
   diffText: {
     fontFamily: 'monospace',
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16
   },
   commandText: {
     fontFamily: 'monospace',
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   feedbackInput: {
     minHeight: 88,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: sharedTokens.radius.control,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
     textAlignVertical: 'top'
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 18,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   askFooter: {
     width: '100%',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   actionButton: {
     flexGrow: 1,

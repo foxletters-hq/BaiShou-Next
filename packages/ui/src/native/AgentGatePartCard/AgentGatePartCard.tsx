@@ -1,13 +1,19 @@
-import React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { CircleX, ShieldCheck } from 'lucide-react-native'
 import {
   AgentGateReply,
   shouldRenderAgentGateHistoryCard,
   type AgentGatePartData,
   type AgentGateRequest
 } from '@baishou/shared'
+import { summarizePreviewForHistory } from '../../agent-gate/agent-gate-preview-copy'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { ThinkChevron } from '../AgentThinkSection/ThinkStatusIcon'
+import { CollapsibleHeight } from '../CollapsibleHeight'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface AgentGatePartCardProps {
   data: AgentGatePartData
@@ -38,76 +44,125 @@ function selectedOptionLabel(
 export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const [expanded, setExpanded] = useState(false)
   if (!shouldRenderAgentGateHistoryCard(data)) return null
+
   const { request, resolution } = data
-  const resolved = Boolean(resolution)
+  const isRejected = resolution?.reply === AgentGateReply.Reject
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
-  const description = request.description?.trim() || ''
-  const showDescription =
-    Boolean(description) &&
-    description !== request.title &&
-    !description.startsWith(`${request.title}：`) &&
-    !description.startsWith(`${request.title}:`) &&
-    !(
-      request.options.length > 0 &&
-      description ===
-        request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
-    )
+  const previewSummary = summarizePreviewForHistory(request.preview)
+  const numberedOptionsText =
+    request.options.length > 0
+      ? request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+      : null
+  const descriptionIsOptionsDump =
+    Boolean(request.description) && request.description?.trim() === numberedOptionsText
+  const description =
+    !request.preview &&
+    request.description &&
+    !descriptionIsOptionsDump &&
+    request.description !== request.title &&
+    !request.description.startsWith(`${request.title}：`) &&
+    !request.description.startsWith(`${request.title}:`)
+      ? request.description.trim()
+      : null
+  const preview = previewSummary && previewSummary !== request.title ? previewSummary : null
+  const extra = [optionLabel, resolution?.message].filter(Boolean).join(' · ')
+  const detail = [preview, description, extra].filter(Boolean).join('\n')
+  const canExpand = detail.length > 0
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          borderColor: colors.borderSubtle,
-          backgroundColor: colors.primaryTrackMuted
-        }
-      ]}
-    >
-      <Text style={[styles.badge, { color: colors.primary }]}>
-        {resolved
-          ? t('agent_gate.resolved_badge', '已确认')
-          : t('agent_gate.pending_badge', '待确认')}
-      </Text>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>{request.title}</Text>
-      {showDescription ? (
-        <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
-      ) : null}
-      {resolved ? (
-        <Text style={[styles.meta, { color: colors.textTertiary }]}>
-          {replyLabel(t, resolution?.reply)}
-          {optionLabel ? ` · ${optionLabel}` : ''}
-          {resolution?.message ? ` · ${resolution.message}` : ''}
+    <View style={styles.root}>
+      <Pressable
+        style={styles.statusRow}
+        disabled={!canExpand}
+        onPress={canExpand ? () => setExpanded((prev) => !prev) : undefined}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: canExpand ? expanded : undefined }}
+      >
+        <View style={styles.iconBox}>
+          {isRejected ? (
+            <CircleX size={15} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          ) : (
+            <ShieldCheck
+              size={15}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
+          )}
+        </View>
+        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
+          {request.title}
         </Text>
+        <Text style={[styles.sep, { color: colors.textTertiary }]}>·</Text>
+        <Text style={[styles.subtitle, { color: colors.textTertiary }]} numberOfLines={1}>
+          {replyLabel(t, resolution?.reply)}
+        </Text>
+        {canExpand ? <ThinkChevron expanded={expanded} color={colors.textTertiary} /> : null}
+      </Pressable>
+
+      {canExpand ? (
+        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={250}>
+          <View
+            style={[
+              styles.content,
+              {
+                borderLeftColor: colors.borderMuted
+              }
+            ]}
+          >
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>{detail}</Text>
+          </View>
+        </CollapsibleHeight>
       ) : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginVertical: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth
+  root: {
+    width: '100%'
   },
-  badge: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus,
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 22
   },
-  title: {
-    fontSize: 14,
-    fontWeight: '600'
+  iconBox: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  description: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 19
+  statusText: {
+    flexShrink: 0,
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20,
+    fontWeight: '400'
   },
-  meta: {
-    marginTop: 8,
-    fontSize: 12
+  sep: {
+    flexShrink: 0,
+    fontSize: mobileTypography.caption.fontSize,
+    lineHeight: 20
+  },
+  subtitle: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20
+  },
+  content: {
+    width: '100%',
+    paddingLeft: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.xs,
+    borderLeftWidth: 2
+  },
+  detailText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18
   }
 })

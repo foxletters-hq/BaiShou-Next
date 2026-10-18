@@ -7,6 +7,7 @@ import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import type { useCompanionAskDrafts } from '../../agent-gate/use-companion-ask-drafts'
 import { agentGateCardStyles as cardStyles } from './agent-gate-card.styles'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 function optionMark(index: number): string {
   return index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
@@ -67,13 +68,13 @@ export function CompanionAskFields({
   const pagerDisabledNext = onLast || isReplying
   const footer =
     paged && onSkip && onSubmit ? (
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: sharedTokens.spacing.sm }}>
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8
+            gap: sharedTokens.spacing.sm
           }}
         >
           <Pressable
@@ -92,7 +93,9 @@ export function CompanionAskFields({
           >
             <ChevronLeft size={16} color={colors.textSecondary} strokeWidth={2} />
           </Pressable>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+          <Text
+            style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+          >
             {t('agent_gate.ask_progress', '{{current}} / {{total}}', {
               current: safeIndex + 1,
               total: questions.length
@@ -115,7 +118,7 @@ export function CompanionAskFields({
             <ChevronRight size={16} color={colors.textSecondary} strokeWidth={2} />
           </Pressable>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.sm }}>
           <Button variant="outline" disabled={isReplying} onPress={onSkip} style={pagerButtonStyle}>
             {t('agent_gate.ask_skip', '跳过')}
           </Button>
@@ -140,14 +143,20 @@ export function CompanionAskFields({
   if (part === 'footer') return footer
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: sharedTokens.spacing.mdTight }}>
       {visible.map((question) => {
         const selected = drafts.selectedById[question.id]
         const customOpen = drafts.customOpenId === question.id
         return (
-          <View key={question.id} style={{ gap: 8 }}>
+          <View key={question.id} style={{ gap: sharedTokens.spacing.sm }}>
             {paged ? (
-              <Text style={{ color: colors.textPrimary, fontSize: 14, lineHeight: 22 }}>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontSize: mobileTypography.secondary.fontSize,
+                  lineHeight: 22
+                }}
+              >
                 {question.question}
               </Text>
             ) : null}
@@ -162,10 +171,10 @@ export function CompanionAskFields({
                   style={{
                     flexDirection: 'row',
                     alignItems: 'flex-start',
-                    gap: 10,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    paddingVertical: 6,
+                    gap: sharedTokens.spacing.smPlus,
+                    borderRadius: sharedTokens.radius.sm,
+                    paddingHorizontal: sharedTokens.spacing.sm,
+                    paddingVertical: sharedTokens.spacing.xsPlus,
                     backgroundColor: isSelected ? colors.bgSurfaceHigh : 'transparent'
                   }}
                 >
@@ -176,7 +185,7 @@ export function CompanionAskFields({
                       textAlign: 'center',
                       lineHeight: 20,
                       borderWidth: 1,
-                      borderRadius: 6,
+                      borderRadius: sharedTokens.radius.xsPlus,
                       overflow: 'hidden',
                       borderColor: isSelected ? colors.borderStrong : colors.borderControl,
                       color: colors.textSecondary,
@@ -201,10 +210,10 @@ export function CompanionAskFields({
                 style={{
                   flexDirection: 'row',
                   alignItems: 'flex-start',
-                  gap: 10,
-                  borderRadius: 8,
-                  paddingHorizontal: 8,
-                  paddingVertical: 6,
+                  gap: sharedTokens.spacing.smPlus,
+                  borderRadius: sharedTokens.radius.sm,
+                  paddingHorizontal: sharedTokens.spacing.sm,
+                  paddingVertical: sharedTokens.spacing.xsPlus,
                   backgroundColor: customOpen ? colors.bgSurfaceHigh : 'transparent'
                 }}
               >
@@ -215,7 +224,7 @@ export function CompanionAskFields({
                     textAlign: 'center',
                     lineHeight: 20,
                     borderWidth: 1,
-                    borderRadius: 6,
+                    borderRadius: sharedTokens.radius.xsPlus,
                     overflow: 'hidden',
                     borderColor: customOpen ? colors.borderStrong : colors.borderControl,
                     color: colors.textSecondary,
@@ -241,8 +250,8 @@ export function CompanionAskFields({
                 style={{
                   minHeight: 72,
                   borderWidth: 1,
-                  borderRadius: 10,
-                  padding: 10,
+                  borderRadius: sharedTokens.radius.control,
+                  padding: sharedTokens.spacing.smPlus,
                   color: colors.textPrimary,
                   borderColor: colors.borderControl,
                   backgroundColor: colors.bgSurface,
@@ -258,4 +267,4 @@ export function CompanionAskFields({
   )
 }
 
-const pagerButtonStyle = { flex: 1, minHeight: 40, paddingHorizontal: 10 }
+const pagerButtonStyle = { flex: 1, minHeight: 40, paddingHorizontal: sharedTokens.spacing.smPlus }

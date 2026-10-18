@@ -51,6 +51,7 @@ const TOOL_ICONS: Record<AgentToolIconId, React.ComponentType<LucideProps>> = {
   recall_relations: Share2,
   graph_upsert: Share2,
   skill_write: Sparkles,
+  skill_read: BookOpen,
   web_search: Globe,
   url_read: Link2,
   auto_inject_time: Clock,

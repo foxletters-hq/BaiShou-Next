@@ -13,4 +13,13 @@ describe('AgentGatePartCard chrome', () => {
     expect(src).toContain('shouldRenderAgentGateHistoryCard')
     expect(src).toContain('return null')
   })
+
+  it('should render as a compact collapsible row matching tool items instead of a filled card', () => {
+    expect(src).not.toContain('colors.primaryTrackMuted')
+    expect(src).not.toContain('styles.badgeContainer')
+    expect(src).toContain('useState(false)')
+    expect(src).toContain('styles.statusRow')
+    expect(src).toContain('CollapsibleHeight')
+    expect(src).toContain('ThinkChevron')
+  })
 })

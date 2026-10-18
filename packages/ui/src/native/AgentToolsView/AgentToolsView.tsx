@@ -16,6 +16,7 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AgentToolCard } from './AgentToolCard'
 import { getAgentTools, getCategoryMeta } from './agent-tools.constants'
 import type { AgentToolDef, AgentToolsViewProps, ToolConfigParam } from './agent-tools.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type {
   AgentToolDef,
@@ -206,37 +207,37 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 32
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   },
   nonScrollContainer: {
     width: '100%'
   },
   pageCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden'
   },
   categoryGroup: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   categoryGroupLast: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingBottom: 10
+    gap: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.smPlus
   },
   categoryLabel: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
     letterSpacing: 0
   },

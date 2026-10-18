@@ -49,4 +49,8 @@ describe('AgentGateCard companion ask', () => {
     expect(cardSource).toContain('tokens.spacing.xl')
     expect(cardSource).toContain('tokens.spacing.md + insets.bottom')
   })
+
+  it('should inset expanded diff scroll indicators like SkillCitePreviewDialog', () => {
+    expect(cardSource).toContain('paddingRight: sharedTokens.spacing.mdTight')
+  })
 })
