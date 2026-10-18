@@ -14,8 +14,10 @@ export function pickSourceCardEvidence(input: {
   pageCount?: number | null
   missingPages: number | null
   hideHints?: boolean
+  status?: string
 }): SourceCardEvidence | null {
   if (input.hideHints) return null
+  if (input.status === 'ready') return null
   if (input.missingPages != null && input.missingPages > 0 && input.pageCount != null) {
     return {
       type: 'scan',

@@ -8,13 +8,16 @@ import {
   knowledgeSourceCanReembedGraph,
   knowledgeSourceCanReembedVector,
   knowledgeSourceCanRetry,
+  knowledgeSourceVisibleRetryKind,
   knowledgeSourceDisplayStatus,
   knowledgeSourceNeedsOcr,
   knowledgeSourceStatusLabel,
   moveNotebookByOffset,
   resolveNotebookRename,
   sortNotebooksForMobileList,
-  knowledgeExtractSettingsVisibility
+  extractEngineShortLabel,
+  knowledgeExtractSettingsVisibility,
+  pairStatusRows
 } from '../knowledge-screen.util'
 
 describe('knowledge-screen.util', () => {
@@ -32,6 +35,12 @@ describe('knowledge-screen.util', () => {
     )
   })
 
+  it('should show extracting when organize just started on a queued source', () => {
+    expect(knowledgeSourceDisplayStatus('pending', undefined, true)).toBe('extracting')
+    expect(knowledgeSourceDisplayStatus('stored', undefined, true)).toBe('extracting')
+    expect(knowledgeSourceDisplayStatus('pending')).toBe('pending')
+  })
+
   it('should label ingest phases with page progress', () => {
     const t = (key: string, fallback: string) => fallback
     expect(knowledgeIngestProgressLabel(t, { page: 2, total: 40, phase: 'render' })).toBe(
@@ -40,10 +49,19 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeIngestProgressLabel(t, { page: 12, total: 80, phase: 'embed' })).toBe(
       '正在建立索引 {{page}}/{{total}}'
     )
+    expect(knowledgeIngestProgressLabel(t, { page: 3, total: 10, phase: 'ocr' })).toBe(
+      '正在识图 {{page}}/{{total}}'
+    )
+    expect(knowledgeIngestProgressLabel(t, { page: 3, total: 10 })).toBe(
+      '正在提取文本 {{page}}/{{total}}'
+    )
   })
 
   it('should localize stored status as pending organize', () => {
-    expect(knowledgeSourceStatusLabel('stored', (_key, fallback) => fallback)).toBe('待整理')
+    const t = (_key: string, fallback: string) => fallback
+    expect(knowledgeSourceStatusLabel('stored', t)).toBe('待整理')
+    expect(knowledgeSourceStatusLabel('needs_ocr', t)).toBe('需识图')
+    expect(extractEngineShortLabel('ocr', t)).toBe('视觉模型')
   })
 
   it('should allow retry only for failed or ocr-needed sources', () => {
@@ -51,6 +69,24 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeSourceCanRetry('needs_ocr')).toBe(true)
     expect(knowledgeSourceCanRetry('ready')).toBe(false)
     expect(knowledgeSourceCanRetry('stored')).toBe(false)
+  })
+
+  it('should expose a visible retry on extract failure or graph failure', () => {
+    expect(knowledgeSourceVisibleRetryKind({ status: 'failed' })).toBe('extract')
+    expect(knowledgeSourceVisibleRetryKind({ status: 'needs_ocr' })).toBe('extract')
+    expect(knowledgeSourceVisibleRetryKind({ status: 'ready', graphJobStatus: 'failed' })).toBe(
+      'graph'
+    )
+    expect(knowledgeSourceVisibleRetryKind({ status: 'partial', graphJobStatus: 'failed' })).toBe(
+      'graph'
+    )
+    expect(knowledgeSourceVisibleRetryKind({ status: 'ready' })).toBeNull()
+    expect(
+      knowledgeSourceVisibleRetryKind({
+        status: 'failed',
+        ocrRunning: true
+      })
+    ).toBeNull()
   })
 
   it('should allow stored sources to embed and extracting sources to cancel', () => {
@@ -92,6 +128,15 @@ describe('knowledge-screen.util', () => {
     expect(knowledgeIngestUserMessage(new Error('graph-step:node-embed:Payment Required'), t)).toBe(
       '模型服务商提示账号额度不足。'
     )
+    expect(
+      knowledgeIngestUserMessage(
+        new Error(
+          'graph-step:extract:Insufficient Balance (request_id: e342be5d-d72f-4916-9840-a03538c0a60f)'
+        ),
+        t
+      )
+    ).toBe('模型服务商提示账号额度不足。')
+    expect(knowledgeIngestUserMessage(new Error('invalid url'), t)).toBe('请输入有效的 URL')
   })
 
   it('should sort notebooks by sortOrder then newer createdAt', () => {
@@ -108,15 +153,20 @@ describe('knowledge-screen.util', () => {
     expect(resolveNotebookRename('旧名', '   ')).toBeNull()
   })
 
-  it('should hide OCR settings when the extract engine is vision', () => {
+  it('should hide OCR settings on mobile and always show vision settings', () => {
     expect(knowledgeExtractSettingsVisibility('ocr')).toEqual({
-      showOcrSettings: true,
-      showVisionSettings: false
+      showOcrSettings: false,
+      showVisionSettings: true
     })
     expect(knowledgeExtractSettingsVisibility('vision')).toEqual({
       showOcrSettings: false,
       showVisionSettings: true
     })
+  })
+
+  it('should pair status chips two per row and keep the last odd chip', () => {
+    expect(pairStatusRows(['a', 'b', 'c', 'd', 'e'])).toEqual([['a', 'b'], ['c', 'd'], ['e']])
+    expect(pairStatusRows([])).toEqual([])
   })
 
   it('should move a notebook by offset and stop at the edges', () => {

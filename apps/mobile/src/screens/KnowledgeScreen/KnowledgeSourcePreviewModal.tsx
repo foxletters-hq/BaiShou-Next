@@ -2,8 +2,15 @@ import React, { useState } from 'react'
 import { Linking, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { assessFetchedWebPage, fetchedWebPageIssueMessage } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, MarkdownRenderer, Modal, Select, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
+import {
+  Button,
+  MarkdownRenderer,
+  Modal,
+  Select,
+  modalActionsStyle,
+  useNativeTheme
+} from '@baishou/ui/native'
 import type { MobileKnowledgeSourceFilePreview } from '@/src/services/mobile-knowledge-preview.service'
 import type { KnowledgeSourceFragment } from './knowledge-source-preview.util'
 
@@ -49,6 +56,7 @@ export function KnowledgeSourcePreviewModal(props: {
       {originUrl ? (
         <View style={{ marginBottom: tokens.spacing.sm }}>
           <Button
+            size="sm"
             variant="outlined"
             onPress={() => {
               void Linking.openURL(originUrl)
@@ -73,14 +81,18 @@ export function KnowledgeSourcePreviewModal(props: {
           {qualityMessage}
         </Text>
       ) : null}
-      <ScrollView style={{ maxHeight: tokens.spacing.xl * 10 }}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        style={{ maxHeight: tokens.spacing.xl * 10 }}
+        contentContainerStyle={{ paddingRight: tokens.spacing.mdTight }}
+      >
         {props.fragments.map((item) => (
           <View key={item.id} style={{ marginBottom: tokens.spacing.sm, gap: tokens.spacing.xs }}>
             <Text
               style={{
                 color: colors.textPrimary,
-                fontSize: settingsTypography.row.fontSize,
-                fontWeight: settingsTypography.row.fontWeight
+                fontSize: mobileTypography.primary.fontSize,
+                fontWeight: mobileTypography.primary.fontWeight
               }}
             >
               {item.sourceTitle} · #{item.index + 1}
@@ -104,20 +116,15 @@ export function KnowledgeSourcePreviewModal(props: {
           </Text>
         ) : null}
       </ScrollView>
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: tokens.spacing.sm,
-          marginTop: tokens.spacing.md
-        }}
-      >
+      <View style={modalActionsStyle}>
         {canOpenFile ? (
-          <Button onPress={() => void props.onOpenFile()}>
+          <Button size="sm" variant="outlined" onPress={() => void props.onOpenFile()}>
             {t('knowledge.open_source_file', '用系统应用打开')}
           </Button>
         ) : null}
-        <Button onPress={props.onClose}>{t('common.got_it', '知道了')}</Button>
+        <Button size="sm" onPress={props.onClose}>
+          {t('common.got_it', '知道了')}
+        </Button>
       </View>
     </Modal>
   )

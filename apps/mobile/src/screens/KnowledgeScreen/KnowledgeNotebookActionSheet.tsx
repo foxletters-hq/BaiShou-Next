@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Edit3, FileText, ArrowUp, ArrowDown, Trash2 } from 'lucide-react-native'
+import { Edit3, ArrowUp, ArrowDown, Trash2 } from 'lucide-react-native'
 import { Modal, useNativeTheme } from '@baishou/ui/native'
 import { createKnowledgeScreenStyles } from './knowledge-screen.styles'
 import type { NotebookCardItem } from './KnowledgeNotebookCard'
@@ -13,8 +13,7 @@ export interface KnowledgeNotebookActionSheetProps {
   index: number
   totalCount: number
   onClose: () => void
-  onRename: () => void
-  onEditDescription: () => void
+  onEdit: () => void
   onMoveUp: () => void
   onMoveDown: () => void
   onDelete: () => void
@@ -27,8 +26,7 @@ export function KnowledgeNotebookActionSheet({
   index,
   totalCount,
   onClose,
-  onRename,
-  onEditDescription,
+  onEdit,
   onMoveUp,
   onMoveDown,
   onDelete
@@ -50,26 +48,11 @@ export function KnowledgeNotebookActionSheet({
           disabled={busy}
           onPress={() => {
             onClose()
-            onEditDescription()
-          }}
-        >
-          <FileText size={18} color={colors.textPrimary} />
-          <Text style={styles.actionSheetItemText}>{t('knowledge.edit_description', '简介')}</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.actionSheetItem,
-            { backgroundColor: pressed ? colors.primaryLight : 'transparent' }
-          ]}
-          disabled={busy}
-          onPress={() => {
-            onClose()
-            onRename()
+            onEdit()
           }}
         >
           <Edit3 size={18} color={colors.textPrimary} />
-          <Text style={styles.actionSheetItemText}>{t('knowledge.rename_notebook', '重命名')}</Text>
+          <Text style={styles.actionSheetItemText}>{t('knowledge.edit_notebook', '修改')}</Text>
         </Pressable>
 
         {index > 0 ? (

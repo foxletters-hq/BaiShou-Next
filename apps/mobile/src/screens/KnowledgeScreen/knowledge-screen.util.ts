@@ -60,6 +60,20 @@ export function knowledgeSourceCanRetry(status: string): boolean {
   return status === 'failed' || status === 'needs_ocr'
 }
 
+/** 失败时直接露在卡片上的重试：抽文本失败走 extract，抽图失败走 graph。 */
+export function knowledgeSourceVisibleRetryKind(input: {
+  status: string
+  graphJobStatus?: string | null
+  ocrRunning?: boolean
+}): 'extract' | 'graph' | null {
+  if (input.ocrRunning) return null
+  if (knowledgeSourceCanRetry(input.status)) return 'extract'
+  if (input.graphJobStatus === 'failed' && knowledgeSourceCanReembedGraph(input.status)) {
+    return 'graph'
+  }
+  return null
+}
+
 export function knowledgeSourceCanReembedGraph(status: string): boolean {
   return status === 'ready' || status === 'partial'
 }
@@ -104,14 +118,23 @@ export function knowledgeIngestUserMessage(
       '提问已硬拦截。请重建索引后再问，否则答案会错得很像样。'
     )
   }
+  if (
+    detail === 'invalid url' ||
+    message.trim() === 'invalid url' ||
+    detail === 'only http/https urls are allowed'
+  ) {
+    return t('knowledge.invalid_url', '请输入有效的 URL')
+  }
   return localizeAiApiErrorMessage(detail, t)
 }
 
 /** 资料库状态只覆盖提取/嵌入；图谱任务另算，不能把还在抽图的资料写成就绪。 */
 export function knowledgeSourceDisplayStatus(
   sourceStatus: string,
-  graphJobStatus?: string | null
+  graphJobStatus?: string | null,
+  watching?: boolean
 ): string {
+  if (watching && (sourceStatus === 'pending' || sourceStatus === 'stored')) return 'extracting'
   const graph = graphJobStatus?.trim() || ''
   if (sourceStatus !== 'ready' && sourceStatus !== 'partial') return sourceStatus
   if (graph === 'running') return 'graph_organizing'
@@ -121,11 +144,10 @@ export function knowledgeSourceDisplayStatus(
 }
 
 export function extractEngineShortLabel(
-  engine: 'ocr' | 'vision',
+  _engine: 'ocr' | 'vision',
   t: (key: string, fallback: string) => string
 ): string {
-  if (engine === 'vision') return t('knowledge.engine_vision_short', '视觉模型')
-  return t('knowledge.engine_ocr_short', '本地 OCR')
+  return t('knowledge.engine_vision_short', '视觉模型')
 }
 
 export function knowledgeIngestProgressLabel(
@@ -159,7 +181,7 @@ export function knowledgeIngestProgressLabel(
     }
     return t('knowledge.status_pdf_render', '正在渲染页面')
   }
-  if (progress.phase === 'recognize') {
+  if (progress.phase === 'recognize' || progress.phase === 'vision' || progress.phase === 'ocr') {
     if (total > 0) {
       return t('knowledge.status_recognize_progress', '正在识图 {{page}}/{{total}}', {
         page,
@@ -169,7 +191,7 @@ export function knowledgeIngestProgressLabel(
     return t('knowledge.status_recognize', '正在识图')
   }
   if (total <= 0) return t('knowledge.status_extracting', '正在提取文本')
-  return t('knowledge.status_ocr_progress', 'OCR 中 {{page}}/{{total}}', { page, total })
+  return t('knowledge.status_extract_progress', '正在提取文本 {{page}}/{{total}}', { page, total })
 }
 
 export function knowledgeSourceStatusLabel(
@@ -182,7 +204,7 @@ export function knowledgeSourceStatusLabel(
     case 'extracting':
       return t('knowledge.status_extracting', '提取中')
     case 'needs_ocr':
-      return t('knowledge.status_needs_ocr', '需 OCR')
+      return t('knowledge.status_needs_vision', '需识图')
     case 'partial':
       return t('knowledge.status_partial', '部分文本')
     case 'embedding':
@@ -215,12 +237,20 @@ export const NOTEBOOK_TONE_COLORS: Record<string, string> = {
   sand: '#d6d3d1'
 }
 
-export function knowledgeExtractSettingsVisibility(engine: 'simple' | 'ocr' | 'vision'): {
+export function pairStatusRows<T>(rows: readonly T[]): T[][] {
+  const pairs: T[][] = []
+  for (let i = 0; i < rows.length; i += 2) {
+    pairs.push(rows.slice(i, i + 2))
+  }
+  return pairs
+}
+
+export function knowledgeExtractSettingsVisibility(_engine: 'simple' | 'ocr' | 'vision'): {
   showOcrSettings: boolean
   showVisionSettings: boolean
 } {
   return {
-    showOcrSettings: engine !== 'vision',
-    showVisionSettings: engine === 'vision'
+    showOcrSettings: false,
+    showVisionSettings: true
   }
 }
