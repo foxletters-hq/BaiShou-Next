@@ -1,7 +1,7 @@
 import i18n from 'i18next'
 import { dialog } from 'electron'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
-import { USER_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
+import { USER_DEFAULT_AVATAR_SENTINEL, isBuiltinUserAvatarPath } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
 /**
@@ -68,7 +68,7 @@ export class ProfileService {
       typeof input.avatarPath === 'string' &&
       input.avatarPath.trim() !== ''
     ) {
-      if (!input.avatarPath.startsWith('avatars/')) {
+      if (!input.avatarPath.startsWith('avatars/') && !isBuiltinUserAvatarPath(input.avatarPath)) {
         input.avatarPath = await this.attachmentManager.importAvatar(
           input.avatarPath,
           'user_avatar'

@@ -19,11 +19,16 @@ import { mergeSkillsByName } from './agent-skills-merge.util'
 import { broadcastSkillsChanged, invalidateAgentSkillsCache } from './agent-skills-state'
 
 export async function resolveBundledSkillsRoot(): Promise<string> {
-  const installRoot = resolveAppInstallRoot({
-    isPackaged: app.isPackaged,
-    exePath: app.getPath('exe'),
-    appPath: app.getAppPath()
-  })
+  // 打包运行环境下，严禁尝试向安装目录（Windows Program Files / macOS .app bundle）写入或迁移文件，
+  // 避免 Windows 管理员安装后普通启动目录割裂，以及破坏 macOS 代码签名。
+  // 打包环境下始终统一使用 userDataRoot/AI/skills 作为可写/可迁移目录。
+  const installRoot = app.isPackaged
+    ? null
+    : resolveAppInstallRoot({
+        isPackaged: app.isPackaged,
+        exePath: app.getPath('exe'),
+        appPath: app.getAppPath()
+      })
   const preferred = resolveAiSkillsRoot({
     installRoot,
     userDataRoot: app.getPath('userData')

@@ -112,3 +112,31 @@ export function createDesktopSkillsWriter(options?: { folderRoot?: string }) {
     }
   }
 }
+
+/** 注入 ToolContext.skillsReader：按名读取当前范围的 SKILL.md */
+export function createDesktopSkillsReader(options?: { folderRoot?: string }) {
+  const folderRoot = options?.folderRoot?.trim()
+  return {
+    async readSkill(name: string) {
+      if (folderRoot) {
+        const workspace = await getWorkspaceAgentSkill(folderRoot, name)
+        if (workspace) {
+          return {
+            name: workspace.name,
+            description: workspace.description,
+            content: workspace.content,
+            location: workspace.location
+          }
+        }
+      }
+      const skill = await getAgentSkill(name)
+      if (!skill) return null
+      return {
+        name: skill.name,
+        description: skill.description,
+        content: skill.content,
+        location: skill.location
+      }
+    }
+  }
+}

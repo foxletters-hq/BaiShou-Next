@@ -150,8 +150,9 @@ describe.sequential('McpService', () => {
     expect(listRes.status).toBe(200)
     const listText = await listRes.text()
     const dataLine = listText.split('\n').find((line) => line.startsWith('data: '))
-    expect(dataLine).toBeDefined()
-    const listJson = JSON.parse(dataLine!.slice('data: '.length)) as {
+    const rawJson = dataLine ? dataLine.slice('data: '.length) : listText.trim()
+    expect(rawJson).toBeTruthy()
+    const listJson = JSON.parse(rawJson) as {
       result?: { tools?: unknown[] }
     }
     expect(Array.isArray(listJson.result?.tools)).toBe(true)

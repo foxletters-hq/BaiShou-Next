@@ -12,6 +12,20 @@ import { getDerivedFreshness } from './raw-data-source.runtime'
 import { GraphExtractQueueService } from './graph-extract-queue.service'
 import { resolveDesktopGraphExtractAlignDeps } from './graph-extract-embed-gate'
 
+type CachedDesktopFollowContext = {
+  vaultId: string
+  timestamp: number
+  alignDeps: Awaited<ReturnType<typeof resolveDesktopGraphExtractAlignDeps>>
+  pending: Awaited<ReturnType<ReturnType<typeof getDerivedFreshness>['listPendingReextract']>>
+  justEmbeddedDiaryIds: Set<string>
+}
+
+let cachedDesktopFollowContext: CachedDesktopFollowContext | null = null
+
+export function clearDesktopDiaryGraphFollowPendingCache(): void {
+  cachedDesktopFollowContext = null
+}
+
 /**
  * 日记原文向量完成后自动接抽图。门槛错误码仍由抽取侧抛出；这里只入队，不拆安全网。
  */
@@ -32,26 +46,51 @@ export async function scheduleDiaryGraphAfterEmbed(input: {
     const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
     if (!selfName) return 0
 
-    const alignDeps = await resolveDesktopGraphExtractAlignDeps(vaultId)
-    if (!(await alignDeps.isEmbeddingConfigured?.())) return 0
+    const now = Date.now()
+    let cached = cachedDesktopFollowContext
+    if (!cached || cached.vaultId !== vaultId || now - cached.timestamp >= 5000) {
+      const alignDeps = await resolveDesktopGraphExtractAlignDeps(vaultId)
+      if (!(await alignDeps.isEmbeddingConfigured?.())) return 0
+      const pending = await getDerivedFreshness().listPendingReextract()
+      cached = {
+        vaultId,
+        timestamp: now,
+        alignDeps,
+        pending,
+        justEmbeddedDiaryIds: new Set<string>()
+      }
+      cachedDesktopFollowContext = cached
+    }
+    cached.justEmbeddedDiaryIds.add(diaryId)
 
-    const records = await getActiveVaultShadowRepo().getAllRecords()
-    const record = records.find((row) => String(row.id) === diaryId)
+    const shadowRepo = getActiveVaultShadowRepo()
+    const numericId = Number(diaryId)
+    const record =
+      typeof shadowRepo.findById === 'function'
+        ? !Number.isNaN(numericId)
+          ? await shadowRepo.findById(numericId)
+          : null
+        : (await shadowRepo.getAllRecords()).find((row) => String(row.id) === diaryId)
     const filePath = record?.filePath
     if (!filePath) return 0
-    if (alignDeps.isDiaryEmbedded && !(await alignDeps.isDiaryEmbedded(filePath))) {
+
+    const isDiaryEmbedded = async (path: string) => {
+      if (cached!.justEmbeddedDiaryIds.has(diaryId)) return true
+      return (await cached!.alignDeps.isDiaryEmbedded?.(path)) ?? false
+    }
+
+    if (!(await isDiaryEmbedded(filePath))) {
       return 0
     }
 
-    const pending = await getDerivedFreshness().listPendingReextract()
     const wanted = selectDiaryGraphFollowUpItems({
       wanted: [{ filePath, date: record?.date, contentHash: input.contentHash }],
-      pendingReextract: pending
+      pendingReextract: cached.pending
     })
     const { items } = await buildGraphExtractEnqueueItems({
       wanted: wanted.map((row) => row.filePath),
-      pending,
-      isDiaryEmbedded: alignDeps.isDiaryEmbedded
+      pending: cached.pending,
+      isDiaryEmbedded
     })
     if (items.length === 0) return 0
     return GraphExtractQueueService.getInstance().enqueueAfterEmbed(

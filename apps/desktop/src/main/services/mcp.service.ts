@@ -151,6 +151,7 @@ export class McpService {
 
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        enableJsonResponse: true,
         onsessioninitialized: (sid) => {
           this.streamableTransports.set(sid, transport)
           logger.info(`[McpService] Streamable session initialized: ${sid}`)
