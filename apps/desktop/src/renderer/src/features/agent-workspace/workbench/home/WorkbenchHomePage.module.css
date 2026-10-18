@@ -24,7 +24,7 @@
 .mainInner {
   width: min(980px, 100%);
   margin: 0 auto;
-  padding: 40px 28px;
+  padding: var(--spacing-xl-plus) var(--spacing-lg);
   box-sizing: border-box;
   min-height: 100%;
   display: flex;
@@ -40,6 +40,6 @@
   }
 
   .mainInner {
-    padding: 24px 16px 40px;
+    padding: var(--spacing-lg) var(--spacing-md) var(--spacing-xl-plus);
   }
 }

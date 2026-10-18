@@ -1,14 +1,14 @@
 .root {
   width: 100%;
   min-width: 0;
-  margin: 4px 0 8px;
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
   font-family: var(--font-family);
 }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
   min-width: 0;
 }
@@ -16,11 +16,11 @@
 .headerMain {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
   flex: 1;
   margin: 0;
-  padding: 2px 0;
+  padding: var(--spacing-2xs) 0;
   border: 0;
   background: transparent;
   color: inherit;
@@ -38,7 +38,7 @@
   display: flex;
   align-items: center;
   margin: 0;
-  padding: 2px 0;
+  padding: var(--spacing-2xs) 0;
   border: 0;
   background: transparent;
   color: inherit;
@@ -51,7 +51,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
@@ -60,7 +60,7 @@
 .chevron {
   flex-shrink: 0;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.35));
-  transition: transform 0.15s ease-out;
+  transition: transform var(--duration-fast) ease-out;
 }
 
 .chevronOpen {
@@ -70,7 +70,7 @@
 .list {
   list-style: none;
   margin: 0;
-  padding: 0 0 0 2px;
+  padding: 0 0 0 var(--spacing-2xs);
   display: flex;
   flex-direction: column;
 }
@@ -79,7 +79,7 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
   min-height: 22px;
   margin: 0;
@@ -100,7 +100,7 @@
 
 .action {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
@@ -112,7 +112,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-secondary);

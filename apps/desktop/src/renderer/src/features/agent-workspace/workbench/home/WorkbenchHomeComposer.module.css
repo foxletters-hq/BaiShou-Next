@@ -11,7 +11,7 @@
 
 /* 主页：去掉 InputBar 顶部 padding，吉祥物才能贴住输入框 */
 .composer :global([data-desktop-input-bar]) {
-  padding: 0 0 8px;
+  padding: 0 0 var(--spacing-sm);
 }
 
 .hero {
@@ -47,7 +47,7 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: none;
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.01em;
@@ -57,8 +57,8 @@
 
 @media (max-width: 520px) {
   .greeting {
-    font-size: 18px;
-    margin-bottom: 36px;
+    font-size: var(--settings-font-page-title-size);
+    margin-bottom: var(--spacing-xl-plus);
   }
 
   .mascotImg {
@@ -98,13 +98,13 @@
 .metaChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-width: 100%;
   min-width: 0;
   height: 28px;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--ui-fs-md);
@@ -150,7 +150,7 @@
 .customHint {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   margin: 0;
   font-size: var(--ui-fs-sm);
   color: var(--text-tertiary);

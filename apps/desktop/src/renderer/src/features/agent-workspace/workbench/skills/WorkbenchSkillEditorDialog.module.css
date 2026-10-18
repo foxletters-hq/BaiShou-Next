@@ -5,7 +5,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .hint {
@@ -18,7 +18,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -31,7 +31,7 @@
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  padding: 10px 14px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
   border-radius: var(--radius-md);
   border: 1px solid var(--form-field-border);
   background: var(--form-field-bg);
@@ -59,6 +59,6 @@
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding-top: 4px;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
 }
