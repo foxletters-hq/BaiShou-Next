@@ -147,10 +147,14 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
     setRefreshError(null)
     try {
       const result = await onRefreshPricing()
-      if (!result.success && result.error) setRefreshError(result.error)
+      if (!result.success) {
+        setRefreshError(result.error || t('agent.chat.pricing_refresh_failed', '请检查网络环境'))
+      }
     } catch (error) {
       setRefreshError(
-        error instanceof Error ? error.message : t('agent.chat.pricing_refresh_failed', '刷新失败')
+        error instanceof Error
+          ? error.message
+          : t('agent.chat.pricing_refresh_failed', '请检查网络环境')
       )
     } finally {
       setIsRefreshing(false)

@@ -4,14 +4,14 @@
   justify-content: space-between;
   width: 100%;
   height: 64px;
-  padding: 0 20px;
+  padding: 0 var(--spacing-md-plus);
   box-sizing: border-box;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   position: sticky;
   top: 0;
   z-index: 50;
-  transition: all 0.3s ease;
+  transition: all var(--duration-moderate) ease;
 }
 
 /* Electron Support */
@@ -27,7 +27,7 @@
 .leftSection {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .avatarWrap {
@@ -37,7 +37,7 @@
 .avatarImg {
   width: 42px;
   height: 42px;
-  border-radius: 12px; /* Super ellipse like */
+  border-radius: var(--radius-md); /* Super ellipse like */
   object-fit: cover;
   background-color: var(--color-primary-light);
   box-shadow: none;
@@ -46,18 +46,18 @@
 .avatarFallback {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   background: linear-gradient(
     135deg,
-    rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.8),
+    rgba(var(--color-primary-light-rgb), 0.8),
     rgba(var(--color-secondary-container-rgb, 243, 229, 245), 0.5)
   );
   color: var(--color-primary);
-  font-size: 22px;
+  font-size: var(--ui-display-sm);
   box-shadow: none;
 }
 
@@ -68,7 +68,7 @@
 }
 
 .name {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
@@ -77,15 +77,15 @@
 .badges {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
+  gap: var(--spacing-xs-plus);
+  margin-top: var(--spacing-xs);
 }
 
 .badgeModel {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs-plus);
   background-color: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   display: flex;
@@ -94,11 +94,11 @@
 }
 
 .badgeToken {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background-color: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1);
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs-plus);
+  background-color: rgba(var(--color-success-rgb), 0.1);
   color: var(--color-accent-purple);
   background-clip: padding-box;
 }
@@ -107,7 +107,7 @@
 .rightSection {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .actionBtn {
@@ -121,7 +121,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .actionBtn:hover {
@@ -143,11 +143,11 @@
 .nameWrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .nameInput {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
@@ -157,7 +157,7 @@
   padding: 0;
   margin: 0;
   width: 140px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: var(--form-field-transition);
 }
 
@@ -171,7 +171,7 @@
   opacity: 0;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: none;
   background: transparent;
   color: var(--text-tertiary);
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .nameWrap:hover .inlineEditBtn {
@@ -199,12 +199,12 @@
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-  border-radius: var(--menu-popup-radius, 8px);
-  padding: var(--menu-popup-padding, 4px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
+  padding: var(--menu-popup-padding, var(--spacing-xs));
   min-width: 150px;
   z-index: 100;
   display: flex;
@@ -215,15 +215,15 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   text-align: left;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
 }
 
 .dropdownItem:hover {

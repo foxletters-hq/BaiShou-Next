@@ -1,10 +1,10 @@
 .container {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: var(--font-mono, monospace);
   color: var(--text-primary);
@@ -13,9 +13,9 @@
   cursor: pointer;
   user-select: none;
   transition:
-    background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    border-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    background-color var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: none;
   box-sizing: border-box;
   justify-content: center;
@@ -41,14 +41,14 @@
   height: var(--chrome-chip-height, 36px);
   min-height: var(--chrome-chip-height, 36px);
   max-height: var(--chrome-chip-height, 36px);
-  padding: 0 10px;
-  border-radius: 10px;
-  font-size: 12px;
+  padding: 0 var(--spacing-sm-plus);
+  border-radius: var(--radius-control);
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   font-family: inherit;
   letter-spacing: normal;
   line-height: 1;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   box-shadow: none;
   overflow: hidden;
   transform: none;
@@ -71,7 +71,7 @@
   font-weight: 500;
   line-height: 1;
   min-width: 9ch;
-  padding-inline: 2px;
+  padding-inline: var(--spacing-2xs);
   font-variant-numeric: tabular-nums;
   text-align: center;
   box-sizing: content-box;
