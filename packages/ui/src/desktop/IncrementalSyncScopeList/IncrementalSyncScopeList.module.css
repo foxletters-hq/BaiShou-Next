@@ -9,12 +9,12 @@
 .titleRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
 }
 
 .title {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -22,13 +22,13 @@
 .list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 12px;
+  gap: var(--spacing-xs) var(--spacing-md-tight);
   margin: 0;
-  padding-left: 14px;
+  padding-left: var(--spacing-md-snug);
 }
 
 .item {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   color: var(--text-primary);
 }

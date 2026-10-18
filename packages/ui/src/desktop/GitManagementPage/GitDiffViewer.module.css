@@ -7,8 +7,8 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface-normal);
   flex-shrink: 0;
@@ -16,9 +16,9 @@
 
 .modeBtn {
   height: 26px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
@@ -56,7 +56,7 @@
 
 .unifiedContent {
   margin: 0;
-  padding: 4px 0 16px 0;
+  padding: var(--spacing-xs) 0 var(--spacing-md) 0;
   font-size: var(--ui-fs-sm);
   font-family: var(--font-family-mono);
   font-variant-ligatures: none;
@@ -77,7 +77,7 @@
 .hunkHeader,
 .metaLine {
   display: block;
-  padding: 4px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: var(--font-family-mono);
@@ -113,7 +113,7 @@
 }
 
 .lineNum {
-  padding: 0 6px;
+  padding: 0 var(--spacing-xs-plus);
   text-align: right;
   color: var(--text-tertiary);
   user-select: none;
@@ -146,7 +146,7 @@
 }
 
 .lineText {
-  padding: 0 16px 0 4px;
+  padding: 0 var(--spacing-md) 0 var(--spacing-xs);
   white-space: pre;
   overflow-x: visible;
   font-family: var(--font-family-mono);
@@ -167,8 +167,8 @@
 }
 
 .inlineChanged {
-  border-radius: 3px;
-  padding: 1px 2px;
+  border-radius: var(--radius-2xs);
+  padding: 1px var(--spacing-2xs);
 }
 
 .lineAdd .inlineChanged {
@@ -204,7 +204,7 @@
 }
 
 .splitHeaderCell {
-  padding: 6px 12px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: var(--font-family);
@@ -251,7 +251,7 @@
 }
 
 .splitRow .lineText {
-  padding: 0 16px 0 10px;
+  padding: 0 var(--spacing-md) 0 var(--spacing-sm-plus);
   white-space: pre;
   overflow-x: visible;
 }
@@ -284,7 +284,7 @@
 .splitPane::-webkit-scrollbar-thumb {
   display: block !important;
   background-color: var(--border-strong) !important;
-  border-radius: 6px !important;
+  border-radius: var(--radius-xs-plus) !important;
   border: 2px solid var(--bg-surface-normal) !important;
   min-width: 40px !important;
   min-height: 40px !important;
@@ -316,7 +316,7 @@
 }
 
 .empty {
-  padding: 16px;
+  padding: var(--spacing-md);
   color: var(--text-tertiary);
   font-size: var(--ui-fs-sm);
   font-family: var(--font-family);

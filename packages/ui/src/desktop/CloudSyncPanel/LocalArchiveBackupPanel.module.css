@@ -1,10 +1,10 @@
 .panel {
-  padding: 8px 20px 24px;
+  padding: var(--spacing-sm) var(--spacing-md-plus) var(--spacing-lg);
 }
 
 .desc {
-  margin: 0 0 16px;
-  font-size: 13px;
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--ui-fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
   max-width: 520px;
@@ -13,12 +13,12 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .btn {
-  padding: 10px 16px !important;
-  font-size: 13px !important;
+  padding: var(--spacing-sm-plus) var(--spacing-md) !important;
+  font-size: var(--ui-fs-md) !important;
 }
 
 .spinIcon {

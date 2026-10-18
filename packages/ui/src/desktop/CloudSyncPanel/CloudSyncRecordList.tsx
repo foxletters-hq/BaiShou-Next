@@ -4,6 +4,7 @@ import { DownloadCloud, Edit3, FileText, Loader2, Package, Trash2 } from 'lucide
 import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 
 export interface CloudSyncRecordListProps {
   vm: CloudSyncPanelViewModel
@@ -51,7 +52,9 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
               color: 'var(--color-primary)'
             }}
           />
-          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          <div
+            style={{ color: 'var(--text-secondary)', fontSize: settingsTypography.label.fontSize }}
+          >
             {activeTab === 'snapshot'
               ? t('data_sync.loading_snapshots', '正在载入本地快照...')
               : t('data_sync.loading_records', '正在连线获取云端记录...')}
@@ -78,7 +81,12 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
           {activeTab === 'cloud' && config.target === 'local' ? (
             <div style={{ textAlign: 'center', maxWidth: '380px', lineHeight: '1.5' }}>
               <div>{t('data_sync.local_target_no_cloud_records', '当前备份目标为本地存储。')}</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>
+              <div
+                style={{
+                  fontSize: settingsTypography.meta.fontSize,
+                  marginTop: sharedTokens.spacing.xs
+                }}
+              >
                 {t(
                   'data_sync.local_target_no_cloud_records_desc',
                   '您可切换至「本地快照」标签页管理系统快照，或在「备份设置」中绑定 S3/WebDAV 云端存储。'
@@ -131,7 +139,7 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
                 style={{
                   width: 44,
                   height: 44,
-                  borderRadius: 12,
+                  borderRadius: sharedTokens.radius.md,
                   backgroundColor: 'rgba(14, 165, 233, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
