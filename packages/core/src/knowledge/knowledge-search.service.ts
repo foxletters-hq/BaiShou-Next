@@ -2,6 +2,8 @@ import { HybridSearchUtils } from '@baishou/ai'
 import {
   bytesToFloat32Array,
   embeddingVectorToBytes,
+  hexToBytes,
+  logger,
   type ISearchResult,
   type SearchSource
 } from '@baishou/shared'
@@ -76,19 +78,41 @@ function toSearchResult(row: {
   }
 }
 
-function embeddingFromCell(value: unknown, dimension: number): number[] | null {
-  if (value == null) return null
+function embeddingFromCell(
+  value: unknown,
+  dimension: number,
+  hexFallback?: unknown
+): Float32Array | null {
+  if (value == null && hexFallback == null) return null
   try {
-    if (value instanceof Uint8Array) {
-      return Array.from(bytesToFloat32Array(value, dimension))
+    if (ArrayBuffer.isView(value) || value instanceof Uint8Array) {
+      const view = value as ArrayBufferView
+      if (view.byteLength >= dimension * 4) {
+        const copy = new Uint8Array(view.byteLength)
+        copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength))
+        return bytesToFloat32Array(copy, dimension)
+      }
     }
-    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) {
-      return Array.from(bytesToFloat32Array(new Uint8Array(value), dimension))
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value) && value.length >= dimension * 4) {
+      const copy = new Uint8Array(value.length)
+      copy.set(new Uint8Array(value.buffer, value.byteOffset, value.length))
+      return bytesToFloat32Array(copy, dimension)
     }
-    if (value instanceof ArrayBuffer) {
-      return Array.from(bytesToFloat32Array(new Uint8Array(value), dimension))
+    if (value instanceof ArrayBuffer && value.byteLength >= dimension * 4) {
+      return bytesToFloat32Array(new Uint8Array(value), dimension)
     }
-  } catch {
+    if (typeof hexFallback === 'string' && hexFallback.length >= dimension * 8) {
+      const bytes = hexToBytes(hexFallback)
+      return bytesToFloat32Array(bytes, dimension)
+    }
+    if (typeof value === 'string' && value.length >= dimension * 8) {
+      const bytes = hexToBytes(value)
+      return bytesToFloat32Array(bytes, dimension)
+    }
+  } catch (err) {
+    logger.warn('[KnowledgeSearchService] embeddingFromCell deserialization failed:', {
+      error: err instanceof Error ? err.message : String(err)
+    })
     return null
   }
   return null
@@ -98,7 +122,8 @@ function embeddingFromCell(value: unknown, dimension: number): number[] | null {
  * 知识库混合检索：向量 + 真 FTS5 + RRF。
  * 强制按 notebook_id 过滤，缺省或空 notebookId 时 fail-closed（抛错 / 空结果不跨本）。
  */
-const SEARCHABLE_SOURCE_STATUSES = "('ready', 'partial')"
+const SEARCHABLE_SOURCE_STATUSES =
+  "('ready', 'partial', 'stored', 'pending', 'embedding', 'needs_ocr')"
 const VEC_RETRY_COOLDOWN_MS = 60_000
 
 export class KnowledgeSearchService {
@@ -222,10 +247,10 @@ export class KnowledgeSearchService {
           rank AS ftsRank
         FROM knowledge_chunks_fts
         JOIN knowledge_chunks c ON c.id = knowledge_chunks_fts.rowid
-        JOIN knowledge_sources s ON s.id = c.source_id
+        LEFT JOIN knowledge_sources s ON s.id = c.source_id
         WHERE knowledge_chunks_fts MATCH ?
           AND c.notebook_id = ?
-          AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
+          AND (s.id IS NULL OR s.status IN ${SEARCHABLE_SOURCE_STATUSES})
         ORDER BY rank
         LIMIT ?
         `,
@@ -262,7 +287,11 @@ export class KnowledgeSearchService {
     if (Date.now() >= this.vecDisabledUntil) {
       try {
         return this.queryWithVecDistanceCosine(notebookId, queryVector, limit)
-      } catch {
+      } catch (err) {
+        logger.warn(
+          '[KnowledgeSearchService] vec_distance_cosine failed, falling back to high-fidelity JS cosine:',
+          { error: err instanceof Error ? err.message : String(err) }
+        )
         this.vecDisabledUntil = Date.now() + VEC_RETRY_COOLDOWN_MS
       }
     }
@@ -286,13 +315,13 @@ export class KnowledgeSearchService {
         c.metadata_json AS metadataJson,
         vec_distance_cosine(c.embedding, ?) AS distance
       FROM knowledge_chunks c
-      JOIN knowledge_sources s ON s.id = c.source_id
+      LEFT JOIN knowledge_sources s ON s.id = c.source_id
       WHERE c.notebook_id = ?
-        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
-      ORDER BY vec_distance_cosine(c.embedding, ?) ASC
+        AND (s.id IS NULL OR s.status IN ${SEARCHABLE_SOURCE_STATUSES})
+      ORDER BY distance ASC
       LIMIT ?
       `,
-      [vectorBuffer, notebookId, vectorBuffer, limit]
+      [vectorBuffer, notebookId, limit]
     )
 
     return rows
@@ -324,9 +353,9 @@ export class KnowledgeSearchService {
       `
       SELECT count(*) AS c
       FROM knowledge_chunks c
-      JOIN knowledge_sources s ON s.id = c.source_id
+      LEFT JOIN knowledge_sources s ON s.id = c.source_id
       WHERE c.notebook_id = ?
-        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
+        AND (s.id IS NULL OR s.status IN ${SEARCHABLE_SOURCE_STATUSES})
       `,
       [notebookId]
     )
@@ -342,22 +371,39 @@ export class KnowledgeSearchService {
         c.chunk_text AS chunkText,
         c.metadata_json AS metadataJson,
         c.embedding AS embedding,
+        hex(c.embedding) AS embeddingHex,
         c.dimension AS dimension
       FROM knowledge_chunks c
-      JOIN knowledge_sources s ON s.id = c.source_id
+      LEFT JOIN knowledge_sources s ON s.id = c.source_id
       WHERE c.notebook_id = ?
-        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
+        AND (s.id IS NULL OR s.status IN ${SEARCHABLE_SOURCE_STATUSES})
       `,
       [notebookId]
     )
 
+    const qLen = queryVector.length
+    let normA = 0
+    for (let i = 0; i < qLen; i++) {
+      const v = queryVector[i]!
+      normA += v * v
+    }
+    const sqrtNormA = Math.sqrt(normA)
+    if (sqrtNormA === 0) return []
+
     const scored: KnowledgeSearchHit[] = []
     for (const r of rows) {
       if (String(r.notebookId) !== notebookId) continue
-      const dim = Number(r.dimension ?? queryVector.length)
-      const embedding = embeddingFromCell(r.embedding, dim)
-      if (!embedding || embedding.length !== queryVector.length) continue
-      const score = HybridSearchUtils.cosineSimilarity(queryVector, embedding)
+      const dim = Number(r.dimension ?? qLen)
+      const embedding = embeddingFromCell(r.embedding, dim, r.embeddingHex)
+      if (!embedding || embedding.length !== qLen) continue
+      let dot = 0
+      let normB = 0
+      for (let i = 0; i < qLen; i++) {
+        const b = embedding[i]!
+        dot += queryVector[i]! * b
+        normB += b * b
+      }
+      const score = normB === 0 ? 0 : dot / (sqrtNormA * Math.sqrt(normB))
       const meta = parseMetadata(r.metadataJson)
       scored.push({
         chunkId: String(r.chunkId),

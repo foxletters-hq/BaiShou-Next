@@ -16,7 +16,10 @@ export interface KnowledgeExtractConfig {
   /** OCR / vision 并发页数（1–10） */
   ocrConcurrency?: number
   visionModelConfigured?: boolean
+  visionProviderId?: string | null
   visionModelId?: string | null
+  /** 为 true 时 PDF 只用视觉模型，不抽文字层、不降到 OCR */
+  pdfVisionOnly?: boolean
 }
 
 export interface KnowledgeExtractProgress {

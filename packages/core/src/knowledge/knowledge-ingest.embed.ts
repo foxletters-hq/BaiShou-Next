@@ -1,4 +1,4 @@
-import { splitTextIntoChunks } from '@baishou/ai'
+import { EMBEDDING_CHUNKER_ID, splitTextIntoChunks } from '@baishou/ai'
 import { hashEmbedSourceContent, logger } from '@baishou/shared'
 import type { KnowledgeIngestDeps } from './knowledge-ingest.types'
 import { requireVaultId } from './knowledge-ingest.helpers'
@@ -39,6 +39,22 @@ export async function processGraphJob(deps: KnowledgeIngestDeps, sourceId: strin
       force
     })
     clearGraphExtractForce(sourceId)
+    if (source.status === 'pending' || source.status === 'stored') {
+      const pageCount = source.pageCount
+      const textPageCount = source.textPageCount
+      const stillPartial =
+        pageCount != null &&
+        textPageCount != null &&
+        pageCount > 0 &&
+        textPageCount / pageCount < 0.9
+      await deps.repo.updateSourceStatus(sourceId, stillPartial ? 'partial' : 'ready', {
+        errorMessage: stillPartial ? source.errorMessage : null
+      })
+      logger.info('[KnowledgeIngest] graph done, leftover source marked ready', {
+        sourceId,
+        status: stillPartial ? 'partial' : 'ready'
+      })
+    }
   } catch (error) {
     if (!force) clearGraphExtractForce(sourceId)
     throw error
@@ -111,7 +127,7 @@ export async function processEmbedJob(deps: KnowledgeIngestDeps, sourceId: strin
         metadataJson: JSON.stringify({
           offset: resolvedOffset,
           len: chunk.text.length,
-          chunker: 'tiktoken-1024-128'
+          chunker: EMBEDDING_CHUNKER_ID
         }),
         embedding: vector,
         modelId,
@@ -142,6 +158,13 @@ export async function processEmbedJob(deps: KnowledgeIngestDeps, sourceId: strin
       lastError: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)
     })
     throw error
+  } finally {
+    deps.onExtractProgress?.({
+      sourceId,
+      page: 0,
+      total: 0,
+      phase: 'embed'
+    })
   }
 
   const pageCount = source.pageCount

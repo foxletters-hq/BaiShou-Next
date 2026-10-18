@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { classifyExtractQuality, analyzePageTexts, pageTextNeedsOcr } from '../knowledge-extract'
 import {
   resolveExtractEngine,
+  resolvePdfExtractEngine,
   type ExtractEngineCapabilities
 } from '../extract-engine-capabilities'
 
@@ -24,6 +25,45 @@ describe('K1.5 extract engine resolve', () => {
     const r = resolveExtractEngine('vision', {
       ...caps,
       ocr: { available: true }
+    })
+    expect(r.engine).toBe('ocr')
+    expect(r.degraded).toBe(true)
+  })
+
+  it('should keep PDF on vision when pdfVisionOnly even if OCR exists', () => {
+    const r = resolvePdfExtractEngine({
+      requested: 'simple',
+      caps: {
+        ...caps,
+        ocr: { available: true }
+      },
+      pdfVisionOnly: true
+    })
+    expect(r.engine).toBe('vision')
+    expect(r.degraded).toBe(true)
+    expect(r.message).toContain('no vision model')
+  })
+
+  it('should use vision without degrading when pdfVisionOnly and vision is ready', () => {
+    const r = resolvePdfExtractEngine({
+      requested: 'ocr',
+      caps: {
+        ...caps,
+        vision: { available: true },
+        recommended: 'vision'
+      },
+      pdfVisionOnly: true
+    })
+    expect(r).toEqual({ engine: 'vision', degraded: false })
+  })
+
+  it('should keep desktop PDF degradation when pdfVisionOnly is off', () => {
+    const r = resolvePdfExtractEngine({
+      requested: 'vision',
+      caps: {
+        ...caps,
+        ocr: { available: true }
+      }
     })
     expect(r.engine).toBe('ocr')
     expect(r.degraded).toBe(true)

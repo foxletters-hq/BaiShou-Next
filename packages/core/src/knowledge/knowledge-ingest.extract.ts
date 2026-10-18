@@ -1,6 +1,9 @@
 import type { KnowledgeRepository } from '@baishou/database/shared'
-import { extractSourceContent, type ExtractResult } from './knowledge-extract'
-import { probeExtractEngineCapabilities, resolveExtractEngine } from './extract-engine-capabilities'
+import { extractSourceContent, analyzePageTexts, type ExtractResult } from './knowledge-extract'
+import {
+  probeExtractEngineCapabilities,
+  resolvePdfExtractEngine
+} from './extract-engine-capabilities'
 import { getExtractEngine, type ExtractEngineId } from './extract-engines'
 import type { KnowledgeExtractOverride, KnowledgeIngestDeps } from './knowledge-ingest.types'
 import { extOf, requireVaultId } from './knowledge-ingest.helpers'
@@ -107,21 +110,33 @@ async function runExtract(
     })
   } else if (ext === '.pdf') {
     const cfg = (await deps.getExtractConfig?.()) ?? {}
-    const requested =
-      override?.forceEngine ||
-      (source.extractEngine as ExtractEngineId) ||
-      cfg.defaultEngine ||
-      'simple'
+    const requested: ExtractEngineId = cfg.pdfVisionOnly
+      ? 'vision'
+      : override?.forceEngine ||
+        (source.extractEngine as ExtractEngineId) ||
+        cfg.defaultEngine ||
+        'simple'
 
     const caps = await probeExtractEngineCapabilities({
       visionModelConfigured: cfg.visionModelConfigured,
       visionModelId: cfg.visionModelId,
       ocrLanguage: cfg.ocrLanguage
     })
-    const resolved = resolveExtractEngine(requested, caps)
+    const resolved = resolvePdfExtractEngine({
+      requested,
+      caps,
+      pdfVisionOnly: cfg.pdfVisionOnly
+    })
     degradationMessage = resolved.message
 
-    if (resolved.engine === 'simple') {
+    if (cfg.pdfVisionOnly && resolved.degraded) {
+      result = {
+        ...analyzePageTexts([]),
+        extractEngine: 'vision',
+        evidence: resolved.message,
+        degradationMessage: resolved.message
+      }
+    } else if (resolved.engine === 'simple') {
       result = await extractSourceContent({
         kind: 'file',
         ext: '.pdf',
@@ -132,10 +147,10 @@ async function runExtract(
       const engine = getExtractEngine(resolved.engine)
       let existingPageTexts: string[] | undefined
       const shouldMergeExisting =
-        override?.onlyMissingPages ||
-        Boolean(override?.pageNumbers?.length) ||
-        resolved.engine === 'ocr' ||
-        resolved.engine === 'vision'
+        !cfg.pdfVisionOnly &&
+        (override?.onlyMissingPages ||
+          Boolean(override?.pageNumbers?.length) ||
+          resolved.engine === 'ocr')
       if (shouldMergeExisting) {
         const existing = await deps.notebookManager.readExtractedText(source.notebookId, sourceId)
         if (existing) {
@@ -153,6 +168,8 @@ async function runExtract(
         language: cfg.ocrLanguage,
         dpi: cfg.ocrDpi,
         concurrency: cfg.ocrConcurrency,
+        visionProviderId: cfg.visionProviderId,
+        visionModelId: cfg.visionModelId,
         signal,
         onProgress: (info) => {
           if (signal?.aborted) throw new Error('knowledge-extract-cancelled')

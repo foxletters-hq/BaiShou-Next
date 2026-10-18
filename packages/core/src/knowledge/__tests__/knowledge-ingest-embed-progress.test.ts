@@ -46,17 +46,21 @@ describe('processEmbedJob progress', () => {
     const embedEvents = onExtractProgress.mock.calls
       .map((call) => call[0])
       .filter((info) => info.phase === 'embed')
-    expect(embedEvents.length).toBeGreaterThan(1)
-    expect(embedEvents[0]).toEqual(
+    const liveEvents = embedEvents.filter((info) => info.total > 0)
+    expect(liveEvents.length).toBeGreaterThan(1)
+    expect(liveEvents[0]).toEqual(
       expect.objectContaining({ sourceId: 'src_1', page: 0, phase: 'embed' })
     )
-    expect(embedEvents.at(-1)).toEqual(
+    expect(liveEvents.at(-1)).toEqual(
       expect.objectContaining({
         sourceId: 'src_1',
-        page: embedEvents[0]?.total,
-        total: embedEvents[0]?.total,
+        page: liveEvents[0]?.total,
+        total: liveEvents[0]?.total,
         phase: 'embed'
       })
+    )
+    expect(embedEvents.at(-1)).toEqual(
+      expect.objectContaining({ sourceId: 'src_1', page: 0, total: 0, phase: 'embed' })
     )
   })
 })

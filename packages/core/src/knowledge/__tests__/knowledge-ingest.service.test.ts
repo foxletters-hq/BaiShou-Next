@@ -223,6 +223,28 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     expect(after?.status).toBe('needs_ocr')
   })
 
+  it('should keep a ready source ready when cancelling leftover graph jobs', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '取消图谱本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '已经抽出的资料'
+    })
+    await svc.processExtractJob(sourceId)
+    await svc.processEmbedJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId)
+    await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
+    await svc.reprocessSource(sourceId, 'graph')
+    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('ready')
+    const cancelled = await svc.cancelExtract(sourceId)
+    expect(cancelled.status).toBe('ready')
+    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('ready')
+    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toEqual([])
+  })
+
   it('recoverStale 跳过 live guard 保护的 extract', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const { markExtractJobLive, unmarkExtractJobLive } = await import('../knowledge-ingest.service')
@@ -299,6 +321,23 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
       (j) => j.sourceId === sourceId && j.stage === 'extract'
     )
     expect(extractJob).toBeUndefined()
+  })
+
+  it('should reset leftover embedding sources to pending when recovering stale ingest', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '嵌入残留本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'stale-embed',
+      kind: 'text',
+      textContent: 'x'
+    })
+    await knowledgeRepo.updateSourceStatus(sourceId, 'embedding')
+
+    const recovered = await svc.recoverStaleIngestState()
+    expect(recovered.resetSources).toBe(1)
+    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('pending')
   })
 
   it('claim 可按 stage 只取 embed，不受 running graph 挡住', async () => {
@@ -392,6 +431,34 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     expect(rowA?.pendingJobs).toBe(statsA.pendingJobs)
     expect(rowB?.pendingJobs).toBe(statsB.pendingJobs)
     expect(srcA && srcB).toBeTruthy()
+  })
+
+  it('should not count failed ingest jobs as pendingJobs on notebook stats', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '失败本' })
+    await svc.importSource({
+      notebookId,
+      title: '扫描件',
+      kind: 'text',
+      textContent: 'will fail'
+    })
+    const claimed = await knowledgeRepo.claimIngestJobs(8, { vaultId: 'vault_test' })
+    expect(claimed.length).toBeGreaterThan(0)
+    for (const job of claimed) {
+      await knowledgeRepo.failIngestJob(job.id, 'extract failed', { backoffMs: 60_000 })
+    }
+    const stats = await knowledgeRepo.getStats(notebookId, 'vault_test')
+    const listed = await knowledgeRepo.listNotebookStats('vault_test')
+    const row = listed.find((item) => item.notebookId === notebookId)
+    expect(stats.pendingJobs).toBe(0)
+    expect(row?.pendingJobs).toBe(0)
+    expect(
+      await knowledgeRepo.countIngestJobs({
+        vaultId: 'vault_test',
+        claimableOnly: true
+      })
+    ).toBe(0)
   })
 
   it('创建时可写封面色，并按给定顺序重排', async () => {
@@ -571,8 +638,10 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
 
     await knowledgeRepo.deleteIngestJobsForSource(sourceId)
     await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
-    await expect(svc.reprocessSource(sourceId, 'graph')).rejects.toThrow('source-not-embedded')
-    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
+    await svc.reprocessSource(sourceId, 'graph')
+    expect((await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)).toEqual([
+      'embed'
+    ])
   })
 
   it('should return zero queued jobs when reprocessing an empty notebook', async () => {
@@ -703,7 +772,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     ).toBe(false)
   })
 
-  it('should throw when reprocessing graph before chunks are embedded', async () => {
+  it('should queue embed then graph when reprocessing graph before chunks are embedded', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
     const { id: notebookId } = await svc.createNotebook({ name: '门槛本' })
@@ -716,10 +785,13 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     await svc.processExtractJob(sourceId)
     await knowledgeRepo.deleteIngestJobsForSource(sourceId)
     await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
-    await expect(svc.reprocessSource(sourceId, 'graph')).rejects.toThrow('source-not-embedded')
+    await svc.reprocessSource(sourceId, 'graph')
+    expect((await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)).toEqual([
+      'embed'
+    ])
   })
 
-  it('should skip unembedded sources when rebuilding notebook graph', async () => {
+  it('should queue embed then graph when rebuilding notebook graph for unembedded sources', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
     const { id: notebookId } = await svc.createNotebook({ name: '整本图门槛' })
@@ -727,14 +799,16 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
       notebookId,
       title: 'paste',
       kind: 'text',
-      textContent: '整本重建时跳过未嵌入'
+      textContent: '整本重建时先补向量再抽图'
     })
     await svc.processExtractJob(sourceId)
     await knowledgeRepo.deleteIngestJobsForSource(sourceId)
     await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
     const queued = await svc.rebuildNotebookGraph(notebookId)
-    expect(queued).toBe(0)
-    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
+    expect(queued).toBe(1)
+    expect((await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)).toEqual([
+      'embed'
+    ])
   })
 
   it('should queue graph when reprocessing after embed is done', async () => {

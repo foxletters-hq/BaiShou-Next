@@ -6,13 +6,51 @@ import {
   sourceHasChunkEmbeddings
 } from './knowledge-ingest.jobs'
 
-/** 空图「开始整理」：有抽出正文则入队向量并跟抽图，否则先提取。进行中的任务不重复入队。 */
+/**
+ * 一键整理只补未完成的资料：没正文先抽；有正文没向量先嵌入并跟抽图。
+ * 已嵌入的 ready/partial 视为完成，不在 FAB 路径重排图谱；图谱失败才重试。
+ * 进行中的 extract/embed/graph 不重复入队。单份重整理走来源菜单。
+ */
 export function resolveNotebookOrganizeStage(source: {
   extractedTextHash?: string | null
   status?: string
-}): 'extract' | 'embed' | null {
+  hasChunkEmbeddings?: boolean
+  graphJobStatus?: string | null
+}): 'extract' | 'embed' | 'graph' | null {
   if (source.status === 'extracting' || source.status === 'embedding') return null
-  return source.extractedTextHash ? 'embed' : 'extract'
+  if (source.graphJobStatus === 'pending' || source.graphJobStatus === 'running') return null
+  if (!source.extractedTextHash) return 'extract'
+  if (!source.hasChunkEmbeddings) return 'embed'
+  if (source.graphJobStatus === 'failed') return 'graph'
+  if (source.status === 'ready' || source.status === 'partial') return null
+  return 'graph'
+}
+
+export async function enqueueForcedGraph(
+  deps: KnowledgeIngestDeps,
+  source: { id: string; notebookId: string; vaultId?: string | null },
+  vaultId: string
+): Promise<'embed' | 'graph'> {
+  const chunkVaultId = source.vaultId?.trim() || vaultId
+  markGraphExtractForce(source.id)
+  if (!(await sourceHasChunkEmbeddings(deps.repo, chunkVaultId, source.id))) {
+    markGraphFollowAfterEmbed(source.id)
+    await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+    await deps.repo.enqueueIngestJob({
+      notebookId: source.notebookId,
+      sourceId: source.id,
+      stage: 'embed',
+      vaultId: chunkVaultId
+    })
+    return 'embed'
+  }
+  await deps.repo.enqueueIngestJob({
+    notebookId: source.notebookId,
+    sourceId: source.id,
+    stage: 'graph',
+    vaultId: chunkVaultId
+  })
+  return 'graph'
 }
 
 export async function rebuildNotebookVectors(
@@ -73,17 +111,7 @@ export async function rebuildNotebookGraph(
   let queued = 0
   for (const source of sources) {
     if (!source.extractedTextHash) continue
-    const chunkVaultId = source.vaultId?.trim() || vaultId
-    if (!(await sourceHasChunkEmbeddings(deps.repo, chunkVaultId, source.id))) {
-      continue
-    }
-    markGraphExtractForce(source.id)
-    await deps.repo.enqueueIngestJob({
-      notebookId,
-      sourceId: source.id,
-      stage: 'graph',
-      vaultId: chunkVaultId
-    })
+    await enqueueForcedGraph(deps, source, vaultId)
     queued += 1
   }
   return queued
@@ -138,16 +166,39 @@ export async function organizeNotebook(
   const id = String(notebookId || '').trim()
   if (!id) throw new Error('notebookId required')
   const sources = await deps.repo.listSources(id)
+  const graphJobs = await deps.repo.listIngestJobs({ notebookId: id, stage: 'graph' })
+  const graphBySource = new Map(graphJobs.map((job) => [job.sourceId, job.status]))
   let queued = 0
   for (const source of sources) {
-    const stage = resolveNotebookOrganizeStage(source)
-    if (!stage) continue
-    await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+    const chunkVaultId = source.vaultId?.trim() || vaultId
+    const hasChunkEmbeddings = source.extractedTextHash
+      ? await sourceHasChunkEmbeddings(deps.repo, chunkVaultId, source.id)
+      : false
+    const stage = resolveNotebookOrganizeStage({
+      ...source,
+      hasChunkEmbeddings,
+      graphJobStatus: graphBySource.get(source.id)
+    })
+    if (!stage) {
+      const graphJobStatus = graphBySource.get(source.id)
+      if (
+        graphJobStatus === 'pending' ||
+        graphJobStatus === 'running' ||
+        source.status === 'extracting' ||
+        source.status === 'embedding'
+      ) {
+        queued += 1
+      }
+      continue
+    }
+    if (stage !== 'graph') {
+      await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+    }
     await deps.repo.enqueueIngestJob({
       notebookId: id,
       sourceId: source.id,
       stage,
-      vaultId: source.vaultId?.trim() || vaultId
+      vaultId: chunkVaultId
     })
     if (stage === 'embed') {
       markGraphFollowAfterEmbed(source.id)

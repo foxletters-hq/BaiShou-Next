@@ -13,16 +13,14 @@ import {
   clearGraphExtractForce,
   clearGraphFollowAfterEmbed,
   isExtractProtected,
-  KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR,
   listLiveIngestSourceIds,
-  markGraphExtractForce,
   markGraphFollowAfterEmbed,
   rememberProcessTargets,
   requestExtractAbort,
   resolveStatusAfterCancel,
-  setPendingExtractOverride,
-  sourceHasChunkEmbeddings
+  setPendingExtractOverride
 } from './knowledge-ingest.jobs'
+import { enqueueForcedGraph } from './knowledge-ingest.rebuild'
 
 export async function importSource(
   deps: KnowledgeIngestDeps,
@@ -239,17 +237,7 @@ export async function reprocessSource(
     })
     return
   }
-  const chunkVaultId = source.vaultId?.trim() || vaultId
-  if (!(await sourceHasChunkEmbeddings(deps.repo, chunkVaultId, sourceId))) {
-    throw new Error(KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR)
-  }
-  markGraphExtractForce(sourceId)
-  await deps.repo.enqueueIngestJob({
-    notebookId: source.notebookId,
-    sourceId,
-    stage: 'graph',
-    vaultId: chunkVaultId
-  })
+  await enqueueForcedGraph(deps, source, vaultId)
 }
 
 export async function ocrMissingPages(
@@ -294,6 +282,9 @@ export async function cancelExtract(
   if (!source) throw new Error(`source not found: ${sourceId}`)
 
   await deps.repo.deleteIngestJobsForSource(sourceId)
+  if (source.status === 'ready' || source.status === 'partial') {
+    return { cancelled: true, status: source.status }
+  }
   if (source.status === 'embedding') {
     await deps.repo.updateSourceStatus(sourceId, 'failed', {
       errorMessage: 'cancelled'
@@ -321,25 +312,33 @@ export async function recoverStaleIngestState(
     return { resetSources: 0, reclaimedEmbedJobs: 0, droppedExtractJobs: 0 }
   }
 
+  const liveIds = new Set(listLiveIngestSourceIds())
   const reclaimedEmbedJobs = await deps.repo.reclaimStaleRunningIngestJobs({
     olderThanMs: options?.olderThanMs,
     vaultId,
-    excludeSourceIds: listLiveIngestSourceIds()
+    excludeSourceIds: [...liveIds]
   })
 
   let resetSources = 0
-  const extracting = await deps.repo.listSourcesByStatus('extracting', { vaultId })
-  const extractJobs =
-    extracting.length > 0 ? await deps.repo.listIngestJobs({ vaultId, stage: 'extract' }) : []
-  const runningExtract = new Set(
-    extractJobs.filter((job) => job.status === 'running').map((job) => job.sourceId)
-  )
-  for (const source of extracting) {
-    if (isExtractProtected(source.id)) continue
-    if (runningExtract.has(source.id)) continue
-    await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
-    resetSources += 1
+  const resetOrphanBusy = async (
+    status: 'extracting' | 'embedding',
+    stage: 'extract' | 'embed'
+  ) => {
+    const rows = await deps.repo.listSourcesByStatus(status, { vaultId })
+    const jobs = rows.length > 0 ? await deps.repo.listIngestJobs({ vaultId, stage }) : []
+    const running = new Set(
+      jobs.filter((job) => job.status === 'running').map((job) => job.sourceId)
+    )
+    for (const source of rows) {
+      if (liveIds.has(source.id)) continue
+      if (status === 'extracting' && isExtractProtected(source.id)) continue
+      if (running.has(source.id)) continue
+      await deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+      resetSources += 1
+    }
   }
+  await resetOrphanBusy('extracting', 'extract')
+  await resetOrphanBusy('embedding', 'embed')
 
   return { resetSources, reclaimedEmbedJobs, droppedExtractJobs: 0 }
 }
