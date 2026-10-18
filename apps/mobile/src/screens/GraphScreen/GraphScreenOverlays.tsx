@@ -30,6 +30,7 @@ import { GraphSplitNodeSheet } from './GraphSplitNodeSheet'
 import { graphMergeSearchSeed, graphSplitInitialLabel } from './graph-screen-view.util'
 import type { GraphExtractQueueSnapshot, GraphSourcePreview } from './graph-screen.types'
 import { styles } from './GraphScreen.styles'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function GraphScreenOverlays(props: {
   queueModalOpen: boolean
@@ -53,6 +54,7 @@ export function GraphScreenOverlays(props: {
   selectedId: string | null
   selectedNode: any | null
   sameNameEntities: Array<{ nodeId: string; label: string }>
+  detailEdges?: Array<{ edge: any; partnerName: string }>
   findNode: (id: string) => any | null
   onCloseCreate: () => void
   onCreated: (id: string) => void
@@ -93,7 +95,9 @@ export function GraphScreenOverlays(props: {
           </Text>
           <View style={styles.concurrencyRow}>
             <View style={styles.opsLabelRow}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+              <Text
+                style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+              >
                 {t('graph.extract_concurrency', '同时抽取')}
               </Text>
               <GraphExtractHelpButton size={14} />
@@ -118,7 +122,7 @@ export function GraphScreenOverlays(props: {
                   style={{
                     color:
                       n === props.extractConcurrency ? colors.textOnPrimary : colors.textSecondary,
-                    fontSize: 12,
+                    fontSize: mobileTypography.caption.fontSize,
                     fontWeight: '600'
                   }}
                 >
@@ -135,7 +139,9 @@ export function GraphScreenOverlays(props: {
                   graphExtractOverallProgress(extractQueue?.items ?? [])
               })}
             </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+            >
               {t('graph.queue_modal_progress', '已完成 {{current}} / {{total}} 篇', {
                 current: extractQueue?.completedCount ?? 0,
                 total: extractQueue?.items.length ?? 0
@@ -145,7 +151,11 @@ export function GraphScreenOverlays(props: {
           <View
             style={[
               styles.queueProgress,
-              { backgroundColor: colors.borderSubtle, marginTop: 8, height: 6 }
+              {
+                backgroundColor: colors.borderSubtle,
+                marginTop: sharedTokens.spacing.sm,
+                height: 6
+              }
             ]}
           >
             <View
@@ -161,7 +171,11 @@ export function GraphScreenOverlays(props: {
               ]}
             />
           </View>
-          <ScrollView style={styles.queueModalList} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.queueModalList}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+          >
             {(extractQueue?.items ?? []).map((q) => (
               <View key={q.id} style={styles.queueModalItem}>
                 <View style={styles.queueDockItemRow}>
@@ -179,7 +193,7 @@ export function GraphScreenOverlays(props: {
                           : q.status === 'completed'
                             ? colors.textSecondary
                             : colors.primary,
-                      fontSize: 12,
+                      fontSize: mobileTypography.caption.fontSize,
                       fontWeight: '600'
                     }}
                   >
@@ -195,7 +209,12 @@ export function GraphScreenOverlays(props: {
                   </Text>
                   {q.status === 'pending' || q.status === 'running' || q.status === 'aligning' ? (
                     <Pressable onPress={() => props.onCancelQueueItem(q.filePath)}>
-                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                      <Text
+                        style={{
+                          color: colors.textSecondary,
+                          fontSize: mobileTypography.caption.fontSize
+                        }}
+                      >
                         {t('graph.queue_remove', '取消')}
                       </Text>
                     </Pressable>
@@ -214,7 +233,13 @@ export function GraphScreenOverlays(props: {
                         ]}
                       />
                     </View>
-                    <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: mobileTypography.caption.fontSize,
+                        marginTop: sharedTokens.spacing.xs
+                      }}
+                    >
                       {(() => {
                         const copy = describeGraphExtractPhase(q)
                         return t(copy.key, copy.defaultValue, copy.params)
@@ -224,7 +249,11 @@ export function GraphScreenOverlays(props: {
                 ) : null}
                 {q.status === 'error' && q.error ? (
                   <Text
-                    style={{ color: colors.error, fontSize: 11, marginTop: 4 }}
+                    style={{
+                      color: colors.error,
+                      fontSize: mobileTypography.caption.fontSize,
+                      marginTop: sharedTokens.spacing.xs
+                    }}
                     numberOfLines={2}
                   >
                     {(() => {
@@ -286,8 +315,14 @@ export function GraphScreenOverlays(props: {
           >
             {props.sourcePreview?.excerpt?.trim() &&
             props.sourcePreview.excerpt.trim() !== (props.sourcePreview.content || '').trim() ? (
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>
+              <View style={{ marginBottom: sharedTokens.spacing.mdTight }}>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: mobileTypography.caption.fontSize,
+                    marginBottom: sharedTokens.spacing.xs
+                  }}
+                >
                   {t('graph.source_excerpt_label', '关系摘录')}
                 </Text>
                 <MarkdownRenderer content={props.sourcePreview.excerpt} variant="preview" />
@@ -323,6 +358,17 @@ export function GraphScreenOverlays(props: {
               : ''
           }
           initialLabel={graphSplitInitialLabel(props.selectedNode, props.sameNameEntities)}
+          initialEdges={
+            props.detailEdges && props.detailEdges.length > 0
+              ? props.detailEdges.map(({ edge, partnerName }) => ({
+                  edgeId: edge.id,
+                  edgeType: edge.edgeType,
+                  partnerName: partnerName || '',
+                  sourceRef: edge.sourceRef ?? null,
+                  sourceExcerpt: ''
+                }))
+              : undefined
+          }
           drizzleDb={getAgentDbRuntime()?.drizzleDb ?? null}
           pathService={props.services.pathService as never}
           fileSystem={props.services.fileSystem as never}
@@ -353,7 +399,7 @@ export function GraphScreenOverlays(props: {
         visible={!!props.mergeConfirm}
         title={t('graph.merge_nodes', '合并节点')}
         warning={t(
-          'graph.merge_irreversible',
+          'graph.merge_irreversible_warning',
           '合并不可撤销。被合并节点会并入保留节点，关系改挂到保留节点，对端同步后只保留目标节点。'
         )}
         survivorName={props.mergeConfirm?.survivorName}

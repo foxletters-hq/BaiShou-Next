@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Animated } from 'react-native'
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Animated,
+  useWindowDimensions
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import {
   formatLocalDate,
   isDefaultGraphSelfName,
@@ -9,12 +18,14 @@ import {
   type UserGender,
   type UserProfile
 } from '@baishou/shared'
-import { useNativeTheme, DatePickerFloatingModal } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
+import { Button, DatePickerFloatingModal, Input, Select, useNativeTheme } from '@baishou/ui/native'
 
 export type GraphAwakenSubmitPayload = {
   nickname: string
   birthday: string
   gender: UserGender
+  customGender?: string | null
 }
 
 type Step = 'welcome' | 'profile'
@@ -29,12 +40,12 @@ function FadeSlideIn({ children, animKey }: { children: React.ReactNode; animKey
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 280,
+        duration: sharedTokens.animation.moderate,
         useNativeDriver: true
       }),
       Animated.timing(translateY, {
         toValue: 0,
-        duration: 280,
+        duration: sharedTokens.animation.moderate,
         useNativeDriver: true
       })
     ]).start()
@@ -43,14 +54,36 @@ function FadeSlideIn({ children, animKey }: { children: React.ReactNode; animKey
   return <Animated.View style={{ opacity, transform: [{ translateY }] }}>{children}</Animated.View>
 }
 
+function AwakenAmbientGlow({ primary }: { primary: string }) {
+  const { width, height } = useWindowDimensions()
+  return (
+    <View pointerEvents="none" style={styles.glowLayer}>
+      <Svg width={width} height={height}>
+        <Defs>
+          <RadialGradient id="awakenGlowTop" cx="36%" cy="24%" r="58%">
+            <Stop offset="0" stopColor={primary} stopOpacity="0.22" />
+            <Stop offset="1" stopColor={primary} stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="awakenGlowBottom" cx="82%" cy="88%" r="50%">
+            <Stop offset="0" stopColor={primary} stopOpacity="0.12" />
+            <Stop offset="1" stopColor={primary} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#awakenGlowTop)" />
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#awakenGlowBottom)" />
+      </Svg>
+    </View>
+  )
+}
+
 export function GraphAwakenWelcome(props: {
-  initialProfile?: Pick<UserProfile, 'nickname' | 'birthday' | 'gender'> | null
+  initialProfile?: Pick<UserProfile, 'nickname' | 'birthday' | 'gender' | 'customGender'> | null
   busy?: boolean
   onSubmit: (payload: GraphAwakenSubmitPayload) => void | Promise<void>
 }) {
   const { initialProfile, busy = false, onSubmit } = props
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const [step, setStep] = useState<Step>('welcome')
   const initialNickname = useMemo(() => {
     const n = initialProfile?.nickname?.trim() ?? ''
@@ -61,6 +94,7 @@ export function GraphAwakenWelcome(props: {
   const [gender, setGender] = useState<UserGender | ''>(
     (initialProfile?.gender as UserGender | undefined) || ''
   )
+  const [customGender, setCustomGender] = useState(initialProfile?.customGender?.trim() || '')
   const [errors, setErrors] = useState<{
     nickname?: boolean
     birthday?: boolean
@@ -89,6 +123,10 @@ export function GraphAwakenWelcome(props: {
     })
   }, [birthday, t])
 
+  const fieldChrome = {
+    ...styles.fieldControl,
+    borderRadius: tokens.radius.md
+  }
   const maxBirthday = useMemo(() => new Date(), [])
   const minBirthday = useMemo(() => new Date(1900, 0, 1), [])
 
@@ -99,14 +137,14 @@ export function GraphAwakenWelcome(props: {
       case 'female':
         return t('graph.awaken_gender_female', '女')
       case 'other':
-        return t('graph.awaken_gender_other', '其他')
+        return t('graph.awaken_gender_other', '自定义')
       default:
-        return t('graph.awaken_gender_unspecified', '不愿透露')
+        return t('graph.awaken_gender_unspecified', '暂不设置')
     }
   }
 
   const handleSubmit = async () => {
-    const nextErrors = validateGraphAwakenForm({ nickname, birthday, gender })
+    const nextErrors = validateGraphAwakenForm({ nickname, birthday, gender, customGender })
     setErrors({
       nickname: !!nextErrors.nickname,
       birthday: !!nextErrors.birthday,
@@ -116,12 +154,14 @@ export function GraphAwakenWelcome(props: {
     await onSubmit({
       nickname: nickname.trim(),
       birthday: birthday.trim(),
-      gender: gender as UserGender
+      gender: gender as UserGender,
+      customGender: gender === 'other' ? customGender.trim() || null : null
     })
   }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bgApp }]}>
+      <AwakenAmbientGlow primary={colors.primary} />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <FadeSlideIn animKey={step}>
           {step === 'welcome' ? (
@@ -135,21 +175,16 @@ export function GraphAwakenWelcome(props: {
                   '从日记里整理出人与人的联结。先告诉我们「我」是谁，伙伴才能准确认出你。'
                 )}
               </Text>
-              <Pressable
-                disabled={busy}
-                onPress={() => setStep('profile')}
-                style={[
-                  styles.cta,
-                  {
-                    borderColor: colors.borderSubtle,
-                    opacity: busy ? 0.55 : 1
-                  }
-                ]}
-              >
-                <Text style={[styles.ctaText, { color: colors.textPrimary }]}>
+              <View style={{ alignSelf: 'flex-start', marginTop: tokens.spacing.sm }}>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  isDisabled={busy}
+                  onPress={() => setStep('profile')}
+                >
                   {t('graph.awaken_welcome_cta', '唤醒人生关系图')}
-                </Text>
-              </Pressable>
+                </Button>
+              </View>
             </>
           ) : (
             <>
@@ -166,23 +201,26 @@ export function GraphAwakenWelcome(props: {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t('graph.awaken_nickname_label', '昵称')}
               </Text>
-              <TextInput
-                value={nickname}
-                onChangeText={setNickname}
-                editable={!busy}
-                placeholder={t('graph.awaken_nickname_placeholder', '怎么称呼你？')}
-                placeholderTextColor={colors.textSecondary}
+              <View
                 style={[
-                  styles.input,
+                  fieldChrome,
                   {
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
+                    borderColor: colors.borderControl,
                     backgroundColor: colors.bgSurface
                   }
                 ]}
-              />
+              >
+                <Input
+                  bare
+                  value={nickname}
+                  onChangeText={setNickname}
+                  editable={!busy}
+                  placeholder={t('graph.awaken_nickname_placeholder', '怎么称呼你？')}
+                  style={styles.nicknameInput}
+                />
+              </View>
               {errors.nickname ? (
-                <Text style={styles.error}>
+                <Text style={[styles.error, { color: colors.error }]}>
                   {t('graph.awaken_nickname_required', '请填写昵称')}
                 </Text>
               ) : null}
@@ -194,25 +232,29 @@ export function GraphAwakenWelcome(props: {
                 disabled={busy}
                 onPress={() => setBirthdayPickerOpen(true)}
                 style={[
-                  styles.input,
-                  styles.birthdayTrigger,
+                  fieldChrome,
+                  styles.fieldRow,
                   {
-                    borderColor: errors.birthday ? '#c2410c' : colors.borderSubtle,
+                    borderColor: errors.birthday ? colors.error : colors.borderControl,
                     backgroundColor: colors.bgSurface,
                     opacity: busy ? 0.55 : 1
                   }
                 ]}
               >
                 <Text
-                  style={{
-                    color: /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim())
-                      ? colors.textPrimary
-                      : colors.textSecondary,
-                    fontSize: 15
-                  }}
+                  style={[
+                    styles.fieldText,
+                    {
+                      color: /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim())
+                        ? colors.textPrimary
+                        : colors.textSecondary
+                    }
+                  ]}
+                  numberOfLines={1}
                 >
                   {birthdayLabel}
                 </Text>
+                <Text style={[styles.fieldChevron, { color: colors.textTertiary }]}>▼</Text>
               </Pressable>
               <DatePickerFloatingModal
                 visible={birthdayPickerOpen}
@@ -226,7 +268,7 @@ export function GraphAwakenWelcome(props: {
                 }}
               />
               {errors.birthday ? (
-                <Text style={styles.error}>
+                <Text style={[styles.error, { color: colors.error }]}>
                   {t('graph.awaken_birthday_required', '请选择生日')}
                 </Text>
               ) : null}
@@ -234,65 +276,69 @@ export function GraphAwakenWelcome(props: {
               <Text style={[styles.label, { color: colors.textPrimary }]}>
                 {t('graph.awaken_gender_label', '性别')}
               </Text>
-              <View style={styles.genderRow}>
-                {USER_GENDER_OPTIONS.map((g) => {
-                  const active = gender === g
-                  return (
-                    <Pressable
-                      key={g}
-                      disabled={busy}
-                      onPress={() => setGender(g)}
-                      style={[
-                        styles.chip,
-                        {
-                          borderColor: active ? colors.primary : colors.borderSubtle,
-                          backgroundColor: active ? colors.bgSurfaceNormal : colors.bgSurface
-                        }
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          color: active ? colors.primary : colors.textPrimary,
-                          fontWeight: active ? '700' : '500',
-                          fontSize: 13
-                        }}
-                      >
-                        {genderLabel(g)}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-              {errors.gender ? (
-                <Text style={styles.error}>{t('graph.awaken_gender_required', '请选择性别')}</Text>
-              ) : null}
-
-              <View style={styles.actions}>
-                <Pressable
-                  disabled={busy}
-                  onPress={() => setStep('welcome')}
-                  style={styles.backBtn}
-                >
-                  <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                    {t('graph.awaken_back', '返回')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  disabled={busy}
-                  onPress={() => void handleSubmit()}
+              <Select
+                variant="settings"
+                options={USER_GENDER_OPTIONS.map((g) => ({
+                  value: g,
+                  label: genderLabel(g)
+                }))}
+                value={gender || undefined}
+                onValueChange={(value) => setGender(value as UserGender)}
+                placeholder={t('graph.awaken_gender_placeholder', '选择性别')}
+                triggerStyle={[
+                  fieldChrome,
+                  {
+                    borderColor: errors.gender ? colors.error : colors.borderControl
+                  }
+                ]}
+                chevron="▼"
+                chevronStyle={styles.fieldChevron}
+              />
+              {gender === 'other' ? (
+                <View
                   style={[
-                    styles.cta,
+                    fieldChrome,
                     {
-                      borderColor: colors.borderSubtle,
-                      flex: 1,
-                      opacity: busy ? 0.55 : 1
+                      borderColor: colors.borderControl,
+                      backgroundColor: colors.bgSurface
                     }
                   ]}
                 >
-                  <Text style={[styles.ctaText, { color: colors.textPrimary }]}>
-                    {t('graph.awaken_submit', '开始使用')}
-                  </Text>
-                </Pressable>
+                  <Input
+                    bare
+                    value={customGender}
+                    onChangeText={setCustomGender}
+                    editable={!busy}
+                    placeholder={t('graph.awaken_gender_custom_placeholder', '输入自定义性别')}
+                    style={styles.nicknameInput}
+                  />
+                </View>
+              ) : null}
+              {errors.gender ? (
+                <Text style={[styles.error, { color: colors.error }]}>
+                  {t('graph.awaken_gender_required', '请选择性别')}
+                </Text>
+              ) : null}
+
+              <View
+                style={[styles.actions, { gap: tokens.spacing.sm, marginTop: tokens.spacing.md }]}
+              >
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  isDisabled={busy}
+                  onPress={() => setStep('welcome')}
+                >
+                  {t('graph.awaken_back', '返回')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  isDisabled={busy}
+                  onPress={() => void handleSubmit()}
+                >
+                  {t('graph.awaken_submit', '开始使用')}
+                </Button>
               </View>
             </>
           )}
@@ -307,81 +353,67 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 20
   },
+  glowLayer: {
+    ...StyleSheet.absoluteFillObject
+  },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 40,
-    gap: 10
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: 88,
+    gap: sharedTokens.spacing.smPlus
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    lineHeight: 34,
-    marginBottom: 6
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight,
+    lineHeight: 24,
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   body: {
-    fontSize: 14,
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight,
     lineHeight: 22,
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 8
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight,
+    marginTop: sharedTokens.spacing.sm
   },
-  input: {
-    height: 44,
+  fieldControl: {
+    minHeight: 40,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 15
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: 0,
+    fontSize: mobileTypography.body.fontSize
   },
-  birthdayTrigger: {
-    justifyContent: 'center'
-  },
-  genderRow: {
+  fieldRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4
+    alignItems: 'center'
   },
-  chip: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
+  fieldText: {
+    flex: 1,
+    fontSize: mobileTypography.body.fontSize
+  },
+  fieldChevron: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '400'
+  },
+  nicknameInput: {
+    fontSize: mobileTypography.body.fontSize,
+    minHeight: 40,
+    paddingHorizontal: 0,
+    paddingVertical: 0
   },
   error: {
-    color: '#c2410c',
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 18
-  },
-  backBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 8
-  },
-  cta: {
-    height: undefined,
-    minHeight: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    marginTop: 8,
-    backgroundColor: 'transparent'
-  },
-  ctaText: {
-    fontWeight: '600',
-    fontSize: 14
+    justifyContent: 'space-between'
   }
 })

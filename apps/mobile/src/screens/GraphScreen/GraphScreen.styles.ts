@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const styles = StyleSheet.create({
   layoutContent: {
@@ -8,29 +9,10 @@ export const styles = StyleSheet.create({
   bootShell: {
     flex: 1
   },
-  tabTrack: {
-    flexDirection: 'row',
-    gap: 6,
-    marginHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 8,
-    padding: 4,
-    borderRadius: 12
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent'
-  },
   status: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    fontSize: 13
+    paddingHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.secondary.fontSize
   },
   graphBody: {
     flex: 1
@@ -42,29 +24,61 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   pendingToolbar: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.sm
+  },
+  pendingHintBox: {
+    borderWidth: 1,
+    borderRadius: sharedTokens.radius.sm,
+    padding: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xs
   },
   pendingHintText: {
-    fontSize: 12,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   pendingToolbarRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 12
+    justifyContent: 'space-between',
+    gap: sharedTokens.spacing.sm
+  },
+  pendingSelectAllGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.smPlus,
+    flexShrink: 1
   },
   pendingSelectAll: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs
+  },
+  pendingCheck: {
+    marginTop: sharedTokens.spacing.xxs
   },
   pendingTitleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: sharedTokens.spacing.md,
+    marginTop: sharedTokens.spacing.smPlus
+  },
+  pendingToolbarActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: sharedTokens.spacing.mdTight
   },
   webWrap: {
     flex: 1,
@@ -73,55 +87,55 @@ export const styles = StyleSheet.create({
   toolbarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus
   },
   toolBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth
   },
   depthRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingBottom: 6
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.xsPlus
   },
   depthLabel: {
-    fontSize: 12,
-    marginRight: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginRight: sharedTokens.spacing.xxs
   },
   depthChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6
+    paddingVertical: sharedTokens.spacing.xsPlus
   },
   forceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   forceLabel: {
     width: 44,
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   forceLabelWide: {
     width: 72,
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   forceValue: {
     width: 36,
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'right'
   },
   detailPanel: {
@@ -129,135 +143,172 @@ export const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   detailPanelContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xsPlus
   },
   renameInput: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6
+    borderRadius: sharedTokens.radius.sm,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xsPlus
   },
   multilineInput: {
     minHeight: 56,
     fontWeight: '400',
     textAlignVertical: 'top'
   },
+  detailSummaryInput: {
+    minHeight: sharedTokens.spacing.xxxl * 2
+  },
   detailMeta: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
+  },
+  nodeReviewBanner: {
+    borderWidth: 1,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xsPlus
   },
   incidentBlock: {
-    gap: 6,
-    marginTop: 4
+    gap: sharedTokens.spacing.xsPlus,
+    marginTop: sharedTokens.spacing.xs
+  },
+  detailActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: sharedTokens.spacing.sm
   },
   incidentRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    gap: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8
+    borderRadius: sharedTokens.radius.sm
+  },
+  incidentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm
   },
   guide: {
-    padding: 24,
-    gap: 12
+    padding: sharedTokens.spacing.lg,
+    gap: sharedTokens.spacing.mdTight
   },
   guideTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   guideBody: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.sm
   },
   searchModeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    marginBottom: 10
-  },
-  searchModeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.smPlus
   },
   card: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: StyleSheet.hairlineWidth
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
+    marginBottom: sharedTokens.spacing.smPlus,
+    borderWidth: 1
+  },
+  similarNodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  similarNodeLabel: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500'
+  },
+  similarNodePressable: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1
+  },
+  similarNodeName: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   cardMeta: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs,
     lineHeight: 18
   },
   row: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 10,
+    gap: sharedTokens.spacing.md,
+    marginTop: sharedTokens.spacing.smPlus,
     flexWrap: 'wrap'
   },
   queueModalPad: {
-    padding: 18
+    padding: sharedTokens.spacing.md
   },
   queueModalSubtitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   concurrencyRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 10
+    gap: sharedTokens.spacing.xsPlus,
+    marginTop: sharedTokens.spacing.smPlus
   },
   concurrencyChip: {
     minWidth: 28,
     height: 28,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
   queueModalList: {
     maxHeight: 280,
-    marginTop: 8
+    marginTop: sharedTokens.spacing.sm
   },
   queueOverallRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 12
+    gap: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.mdTight
   },
   queueOverallPct: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   queueModalItem: {
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(127,127,127,0.2)'
   },
@@ -265,94 +316,156 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 14
+    marginTop: sharedTokens.spacing.mdSnug
   },
   queueDockItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   queueDockName: {
     flex: 1,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   queueProgress: {
-    marginTop: 6,
+    marginTop: sharedTokens.spacing.xsPlus,
     height: 3,
-    borderRadius: 999,
+    borderRadius: sharedTokens.radius.full,
     overflow: 'hidden'
   },
   queueProgressBar: {
     height: '100%',
-    borderRadius: 999
+    borderRadius: sharedTokens.radius.full
   },
   addEdgeSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
+  },
+  addEdgeSearchToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  addEdgeSearchBox: {
+    flex: 1,
+    minWidth: 120,
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRadius: sharedTokens.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: sharedTokens.spacing.smPlus
+  },
+  addEdgeSearchInputWrap: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 0,
+    margin: 0
+  },
+  addEdgeSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    height: 32,
+    minHeight: 0,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '400',
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   edgeTypeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6
+    gap: sharedTokens.spacing.sm,
+    justifyContent: 'space-between'
   },
   edgeTypeChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
+  addEdgeTypeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    justifyContent: 'space-between'
+  },
+  addEdgeTypeChip: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 80,
+    height: 38,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  addEdgeTypeChipText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    textAlign: 'center'
+  },
   hitBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   modalPad: {
-    padding: 16,
-    gap: 10
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.smPlus
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight,
+    marginBottom: sharedTokens.spacing.xs
   },
   filterSectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   typeChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   settingsHead: {
-    paddingVertical: 8
+    paddingVertical: sharedTokens.spacing.sm
   },
   settingsBody: {
-    gap: 8,
-    paddingBottom: 8
+    gap: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.sm
   },
   opsLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   opsBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 10
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.smPlus
   },
   opsBtnRow: {
     flexDirection: 'row',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   canvasSettingsFab: {
     position: 'absolute',
@@ -360,7 +473,7 @@ export const styles = StyleSheet.create({
     right: 12,
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center'
@@ -372,38 +485,38 @@ export const styles = StyleSheet.create({
     bottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: StyleSheet.hairlineWidth
   },
   peekName: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   opsPrimaryBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control
   },
   sourceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.smPlus
   },
   sourceTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   sourceLoading: {
-    paddingVertical: 40,
+    paddingVertical: sharedTokens.spacing.xlPlus,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -411,7 +524,7 @@ export const styles = StyleSheet.create({
     maxHeight: 420
   },
   sourceScrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdPlus
   }
 })

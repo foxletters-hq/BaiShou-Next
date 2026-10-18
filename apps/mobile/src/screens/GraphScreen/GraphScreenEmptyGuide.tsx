@@ -28,10 +28,10 @@ export function GraphScreenEmptyGuide(props: {
         )}
       </Text>
       <View style={styles.row}>
-        <Button onPress={props.onStartOrganize}>
+        <Button variant="outlined" size="sm" onPress={props.onStartOrganize}>
           {t('memory.start_organize', '开始整理记忆')}
         </Button>
-        <Button variant="outlined" onPress={props.onDismissGuide}>
+        <Button variant="outlined" size="sm" onPress={props.onDismissGuide}>
           {t('graph.later', '以后再说')}
         </Button>
       </View>

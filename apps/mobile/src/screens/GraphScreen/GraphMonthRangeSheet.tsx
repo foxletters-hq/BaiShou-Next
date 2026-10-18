@@ -1,12 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
+import { graphScreenSectionStyles } from './graph-screen-section.styles'
 import {
+  allGraphMonthRange,
   clampGraphMonthRange,
   defaultGraphMonthRange,
   formatGraphMonth,
-  isDefaultGraphMonthRange,
+  graphMonthRangePresetKind,
   parseGraphMonthToDate,
   type GraphMonthRange
 } from '@baishou/shared'
@@ -54,15 +57,15 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
 
   const monthNames = t('common.months', { returnObjects: true }) as string[]
   const years = useMemo(() => yearList(), [])
-  const isRecent3 = isDefaultGraphMonthRange(value)
+  const presetKind = graphMonthRangePresetKind(value)
   const activeMonth = editTarget === 'start' ? draft.startMonth : draft.endMonth
 
-  useEffect(() => {
-    if (!open) return
+  const openSheet = () => {
     setDraft(value)
     setEditTarget('start')
     setViewYear(parseGraphMonthToDate(value.startMonth).getFullYear())
-  }, [open, value])
+    setOpen(true)
+  }
 
   const selectMonth = (monthIndex: number) => {
     const nextMonth = formatGraphMonth(new Date(viewYear, monthIndex, 1))
@@ -84,22 +87,27 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
     setOpen(false)
   }
 
-  const applyPreset = (months: number) => {
-    const next = rangeFromMonthsBack(months)
+  const applyRange = (next: GraphMonthRange) => {
     setDraft(next)
     onChange(next)
     setOpen(false)
   }
 
+  const applyPreset = (months: number) => {
+    applyRange(rangeFromMonthsBack(months))
+  }
+
   return (
     <>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={openSheet}
+        unstable_pressDelay={0}
         style={[
+          graphScreenSectionStyles.fieldControl,
           styles.trigger,
           {
-            backgroundColor: colors.bgSurfaceNormal,
-            borderColor: isRecent3 ? colors.borderSubtle : colors.primary,
+            backgroundColor: colors.bgSurface,
+            borderColor: presetKind === 'recent3' ? colors.borderSubtle : colors.primary,
             alignSelf: block ? 'stretch' : 'flex-start'
           },
           style
@@ -113,16 +121,23 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
         <Text
           style={[
             styles.triggerBadge,
-            { color: isRecent3 ? colors.textSecondary : colors.primary }
+            { color: presetKind === 'recent3' ? colors.textSecondary : colors.primary }
           ]}
         >
-          {isRecent3
+          {presetKind === 'recent3'
             ? t('graph.month_range_recent3', '近3月')
-            : t('graph.month_range_custom', '自定义')}
+            : presetKind === 'all'
+              ? t('graph.month_range_all', '全部')
+              : t('graph.month_range_custom', '自定义')}
         </Text>
       </Pressable>
 
-      <FloatingModal visible={open} onClose={() => setOpen(false)} maxWidth={420}>
+      <FloatingModal
+        visible={open}
+        onClose={() => setOpen(false)}
+        maxWidth={420}
+        animationType="none"
+      >
         <ScrollView
           style={styles.modalScroll}
           contentContainerStyle={styles.modalContent}
@@ -155,17 +170,27 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
                   style={[
                     styles.targetTab,
                     {
-                      backgroundColor: active ? colors.bgSurfaceNormal : 'transparent',
+                      backgroundColor: active ? colors.primaryLight : 'transparent',
                       borderColor: active ? colors.primary : colors.borderSubtle
                     }
                   ]}
                 >
-                  <Text style={[styles.targetTabLabel, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.targetTabLabel,
+                      { color: active ? colors.primary : colors.textSecondary }
+                    ]}
+                  >
                     {target === 'start'
                       ? t('graph.month_range_start', '起始月')
                       : t('graph.month_range_end', '结束月')}
                   </Text>
-                  <Text style={[styles.targetTabValue, { color: colors.textPrimary }]}>
+                  <Text
+                    style={[
+                      styles.targetTabValue,
+                      { color: active ? colors.primaryDark : colors.textPrimary }
+                    ]}
+                  >
                     {monthLabel(monthNames, month)}
                   </Text>
                 </Pressable>
@@ -173,35 +198,46 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
             })}
           </View>
 
-          <View style={styles.pickerBody}>
-            <ScrollView style={styles.yearPane} nestedScrollEnabled>
-              {years.map((y) => {
-                const active = viewYear === y
-                const selectedYear = parseGraphMonthToDate(activeMonth).getFullYear() === y
-                return (
-                  <Pressable
-                    key={y}
-                    onPress={() => setViewYear(y)}
-                    style={[
-                      styles.yearItem,
-                      active && { backgroundColor: colors.primary },
-                      !active && selectedYear && { backgroundColor: colors.bgSurfaceNormal }
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        color: active ? colors.textOnPrimary : colors.textPrimary,
-                        fontWeight: active || selectedYear ? '700' : '500',
-                        fontSize: 13,
-                        textAlign: 'center'
-                      }}
+          <View style={[styles.pickerBody, { backgroundColor: colors.bgSurface }]}>
+            <View style={styles.yearPane}>
+              <ScrollView
+                style={styles.yearScroll}
+                contentContainerStyle={styles.yearScrollContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {years.map((y) => {
+                  const active = viewYear === y
+                  const selectedYear = parseGraphMonthToDate(activeMonth).getFullYear() === y
+                  return (
+                    <Pressable
+                      key={y}
+                      onPress={() => setViewYear(y)}
+                      style={[
+                        styles.yearItem,
+                        active && { backgroundColor: colors.primary },
+                        !active && selectedYear && { backgroundColor: colors.primaryLight }
+                      ]}
                     >
-                      {y}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
+                      <Text
+                        style={{
+                          color: active
+                            ? colors.textOnPrimary
+                            : selectedYear
+                              ? colors.primary
+                              : colors.textPrimary,
+                          fontWeight: active || selectedYear ? '700' : '500',
+                          fontSize: mobileTypography.secondary.fontSize,
+                          textAlign: 'center'
+                        }}
+                      >
+                        {y}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </ScrollView>
+            </View>
             <View style={styles.monthPane}>
               {Array.from({ length: 12 }, (_, i) => i).map((m) => {
                 const month = formatGraphMonth(new Date(viewYear, m, 1))
@@ -217,17 +253,22 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
                         backgroundColor: selected
                           ? colors.primary
                           : inRange
-                            ? colors.bgSurfaceNormal
+                            ? colors.primaryLight
                             : 'transparent',
-                        borderColor: selected ? colors.primary : colors.borderSubtle
+                        borderColor: selected ? colors.primary : 'transparent'
                       }
                     ]}
                   >
                     <Text
                       style={{
-                        color: selected ? colors.textOnPrimary : colors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: selected ? '700' : '500'
+                        color: selected
+                          ? colors.textOnPrimary
+                          : inRange
+                            ? colors.primary
+                            : colors.textPrimary,
+                        fontSize: mobileTypography.caption.fontSize,
+                        fontWeight: selected ? '700' : inRange ? '600' : '500',
+                        textAlign: 'center'
                       }}
                     >
                       {Array.isArray(monthNames) ? monthNames[m] : m + 1}
@@ -243,7 +284,13 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
               style={[styles.presetBtn, { borderColor: colors.borderSubtle }]}
               onPress={() => applyPreset(3)}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: '600',
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('graph.month_range_recent3', '近3月')}
               </Text>
             </Pressable>
@@ -251,7 +298,13 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
               style={[styles.presetBtn, { borderColor: colors.borderSubtle }]}
               onPress={() => applyPreset(6)}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: '600',
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('graph.month_range_recent6', '近6月')}
               </Text>
             </Pressable>
@@ -259,8 +312,28 @@ export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMon
               style={[styles.presetBtn, { borderColor: colors.borderSubtle }]}
               onPress={() => applyPreset(12)}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: '600',
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('graph.month_range_recent12', '近1年')}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.presetBtn, { borderColor: colors.borderSubtle }]}
+              onPress={() => applyRange(allGraphMonthRange())}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: '600',
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
+                {t('graph.month_range_all', '全部')}
               </Text>
             </Pressable>
           </View>
@@ -287,105 +360,117 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    gap: sharedTokens.spacing.sm,
     maxWidth: '100%'
   },
   triggerRange: {
     flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '600'
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600',
+    textAlign: 'center'
   },
   triggerBadge: {
-    fontSize: 11,
-    fontWeight: '600'
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600',
+    textAlign: 'center'
   },
   modalScroll: {
     maxHeight: 560
   },
   modalContent: {
-    padding: 16,
-    gap: 10
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.smPlus
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   modalSubtitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   preview: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   targetTabs: {
     flexDirection: 'row',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   targetTab: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 2
+    borderRadius: sharedTokens.radius.control,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xxs
   },
   targetTabLabel: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   targetTabValue: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   pickerBody: {
     flexDirection: 'row',
-    gap: 10,
+    gap: sharedTokens.spacing.smPlus,
     minHeight: 180
   },
   yearPane: {
-    width: 72,
-    maxHeight: 200
+    width: sharedTokens.spacing.xxl,
+    maxWidth: sharedTokens.spacing.xxl,
+    maxHeight: 200,
+    flexGrow: 0,
+    flexShrink: 0
+  },
+  yearScroll: {
+    maxHeight: 200,
+    flexGrow: 0,
+    flexShrink: 0
+  },
+  yearScrollContent: {
+    alignItems: 'stretch'
   },
   yearItem: {
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 4
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
+    marginBottom: sharedTokens.spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   monthPane: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     alignContent: 'flex-start'
   },
   monthBtn: {
-    width: '30%',
-    flexGrow: 1,
+    width: '31%',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
+    justifyContent: 'center',
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   presets: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   presetBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 20,
-    paddingTop: 4,
-    paddingBottom: 4
+    gap: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.xs,
+    paddingBottom: sharedTokens.spacing.xs
   }
 })
