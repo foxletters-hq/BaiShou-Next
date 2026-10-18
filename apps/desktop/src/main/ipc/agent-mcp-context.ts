@@ -36,6 +36,7 @@ import {
   resolveEmbeddingSystemModels
 } from './agent-stream-config'
 import { settingsManager } from './settings.ipc'
+import { getDesktopMcpServerConfig } from '../services/desktop-mcp-config.store'
 
 /** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
@@ -63,7 +64,13 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     return mcpToolContextCache.context
   }
 
-  const userConfig = await buildAgentUserConfigFromSettings()
+  const [userConfig, mcpConfig] = await Promise.all([
+    buildAgentUserConfigFromSettings({ searchMode: true }),
+    getDesktopMcpServerConfig().catch(() => null)
+  ])
+  const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
+    ? mcpConfig.disabledToolIds
+    : []
   const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
 
   const drizzleDb = connectionManager.getDb()
@@ -118,6 +125,11 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
       workspaceId,
       personalMemoryReadEnabled
     }
+  }
+
+  scopedUserConfig = {
+    ...scopedUserConfig,
+    mcpDisabledToolIds
   }
 
   const context = syncMcpToolUserConfig({

@@ -315,8 +315,10 @@ export function registerSessionIPC() {
         const newMsgId = crypto.randomUUID()
         oldToNewMessageId.set(msg.id, newMsgId)
 
-        // 获取原始消息的 parts
-        const originalParts = await realMessageRepo.getPartsByMessageId(msg.id)
+        // 获取原始消息的 parts（getMessagesBySession 已携带 parts，缺失时再回退查询）
+        const originalParts = Array.isArray((msg as any).parts)
+          ? (msg as any).parts
+          : await realMessageRepo.getPartsByMessageId(msg.id)
 
         // 插入消息
         await realSessionRepo.insertMessageWithParts(

@@ -25,11 +25,8 @@ export function createDiarySearcher() {
     return {
       async searchFTS(query: string, limit?: number) {
         const results = await shadowRepo.searchFTS(query, limit)
-        // 需要将 rowid 映射为 date 字符串
-        const allRecords = await shadowRepo.getAllRecords()
-        const idToDateMap = new Map(allRecords.map((r) => [r.id, r.date]))
         return results.map((r) => ({
-          date: idToDateMap.get(r.rowid) || '',
+          date: r.indexRow?.date || '',
           contentSnippet: r.contentSnippet,
           tags: r.tags,
           rankScore: r.rankScore

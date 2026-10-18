@@ -65,6 +65,11 @@ export const graphApi = {
       limit?: number
       mode?: 'text' | 'semantic'
     }) => ipcRenderer.invoke('graph:search', opts),
+    listLiveNodes: (opts?: { keyword?: string; limit?: number; offset?: number }) =>
+      ipcRenderer.invoke('graph:list-live-nodes', opts),
+    countLiveNodes: (opts?: { keyword?: string }) =>
+      ipcRenderer.invoke('graph:count-live-nodes', opts) as Promise<number>,
+    countLiveEdges: () => ipcRenderer.invoke('graph:count-live-edges') as Promise<number>,
     findByName: (opts: { query: string; nodeType?: string }) =>
       ipcRenderer.invoke('graph:find-by-name', opts),
     listPendingEdges: () => ipcRenderer.invoke('graph:list-pending-edges'),

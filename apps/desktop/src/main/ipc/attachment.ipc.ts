@@ -3,7 +3,7 @@ import { DesktopAttachmentManagerService } from '../services/desktop-attachment-
 import { DesktopStoragePathService } from '../services/path.service'
 import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import path from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import {
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   mergeEmojiAttachmentCatalog,
@@ -24,6 +24,8 @@ export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
   const attachmentManager = new DesktopAttachmentManagerService(pathService)
   void refreshDesktopAttachmentPathRemapper(pathService)
+  const thumbnailCache = new Map<string, string>()
+  const THUMBNAIL_CACHE_MAX = 300
 
   ipcMain.handle('attachment:listAll', async () => {
     const db = connectionManager.getDb()
@@ -31,13 +33,14 @@ export function registerAttachmentIPC() {
     // 仅活跃仓会话，供标题映射（V1.7 对齐隔离）
     const activeVaultId = resolveActiveVaultId()
     const sessions = await sessionRepo.findAllSessions(5000, 0, undefined, undefined, activeVaultId)
-    const activeSessionIds = new Set<string>(sessions.map((s) => s.id))
+    const sessionById = new Map(sessions.map((s) => [s.id, s]))
+    const activeSessionIds = new Set<string>(sessionById.keys())
 
     const groups = await attachmentManager.listSessionGroups(activeSessionIds)
 
     // 将数据库中的会话标题匹配并写入对应的附件分组
     for (const group of groups) {
-      const matched = sessions.find((s) => s.id === group.sessionId)
+      const matched = sessionById.get(group.sessionId)
       if (matched) {
         group.sessionTitle = matched.title || undefined
       }
@@ -162,6 +165,20 @@ export function registerAttachmentIPC() {
         return null
       }
 
+      let cacheKey = ''
+      try {
+        const st = statSync(resolvedPath)
+        cacheKey = `${resolvedPath}|${st.mtimeMs}|${st.size}|${maxSize}`
+        const hit = thumbnailCache.get(cacheKey)
+        if (hit) {
+          thumbnailCache.delete(cacheKey)
+          thumbnailCache.set(cacheKey, hit)
+          return hit
+        }
+      } catch {
+        // ignore stat error
+      }
+
       // 使用 nativeImage 加载并压缩图片
       const image = nativeImage.createFromPath(resolvedPath)
       if (image.isEmpty()) {
@@ -181,8 +198,15 @@ export function registerAttachmentIPC() {
       // 调整大小并转换为 JPEG 格式的 base64
       const resized = image.resize({ width, height })
       const jpegBuffer = resized.toJPEG(70) // 70% 质量，平衡清晰度和大小
-
-      return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`
+      const dataUrl = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`
+      if (cacheKey) {
+        if (thumbnailCache.size >= THUMBNAIL_CACHE_MAX) {
+          const oldest = thumbnailCache.keys().next().value
+          if (oldest) thumbnailCache.delete(oldest)
+        }
+        thumbnailCache.set(cacheKey, dataUrl)
+      }
+      return dataUrl
     } catch (e) {
       console.error('[AttachmentIPC] Error in getThumbnail:', e)
       return null

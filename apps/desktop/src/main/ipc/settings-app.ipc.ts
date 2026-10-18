@@ -187,6 +187,8 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return nextConfig
   })
 
@@ -200,6 +202,8 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return nextConfig
   })
 
@@ -210,12 +214,12 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
-    const { listBaishouMcpExposedTools } = await import('@baishou/ai')
+    const { listBaishouMcpToolsForUi } = await import('@baishou/ai')
     const { logger } = await import('@baishou/shared')
     if (!toolRegistry) return []
     try {
       const context = await buildMcpToolContext()
-      return listBaishouMcpExposedTools(toolRegistry, context)
+      return listBaishouMcpToolsForUi(toolRegistry, context)
     } catch (e) {
       logger.warn('[settings:get-mcp-tools] Failed to list MCP tools:', e as Error)
       return []

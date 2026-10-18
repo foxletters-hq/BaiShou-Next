@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { listLiveGraphSourceIds, NotebookGraphRawManager } from '@baishou/core-desktop'
-import { logger, runGraphModeSearch } from '@baishou/shared'
+import { runGraphModeSearch } from '@baishou/shared'
 import { fileSystem } from '../services/node-file-system'
 import {
   reviewNotebookGraphBatch,
@@ -13,10 +13,7 @@ import {
   mergeDesktopNotebookGraphNodeGroup,
   mergeDesktopNotebookGraphNodes
 } from '../services/notebook-graph-mutate'
-import {
-  consumeKnowledgeGraphJobs,
-  scheduleConsumeKnowledgeIngestJobs
-} from '../services/knowledge-ingest-jobs.consumer'
+import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
 import { knowledgeConnectionManager } from '@baishou/database-desktop'
 import {
   getKnowledgeIngestService,
@@ -29,8 +26,7 @@ import { pathService } from './vault.ipc'
 import {
   readGraphWindowProgress,
   resolveListedGraphJobStatus,
-  resolveListedGraphWindowProgress,
-  shouldResumeListedGraphJobs
+  resolveListedGraphWindowProgress
 } from '../services/graph-window-progress'
 
 function mapNotebookGraphViewForIpc(view: {
@@ -111,14 +107,12 @@ export function registerKnowledgeGraphIpc(): void {
       pageTo?: number
       pageTotal?: number
     }> = []
+    const rawManager = new NotebookGraphRawManager(pathService, fileSystem)
     for (const job of jobs) {
       const status = resolveListedGraphJobStatus(job.status, live.has(job.sourceId))
       let checkpoint: { windowsDone: number; windowsTotal: number } | null = null
       try {
-        const state = await new NotebookGraphRawManager(pathService, fileSystem).getExtractState(
-          id,
-          job.sourceId
-        )
+        const state = await rawManager.getExtractState(id, job.sourceId)
         if (state && Number(state.windowsTotal) > 0) {
           checkpoint = {
             windowsDone: Number(state.windowsDone) || 0,
@@ -145,13 +139,20 @@ export function registerKnowledgeGraphIpc(): void {
         pageTotal: resolved?.pageTotal
       })
     }
-    if (shouldResumeListedGraphJobs(items)) {
-      void consumeKnowledgeGraphJobs({ reason: 'list-graph-jobs' }).catch((e) => {
-        logger.warn('[KnowledgeGraphJobs] resume leftover graph jobs failed', {
-          error: e instanceof Error ? e.message : String(e)
-        })
-      })
-    }
+    const leftoverIngestJobs = [
+      ...(await repo.listIngestJobs({ notebookId: id, stage: 'extract' })),
+      ...(await repo.listIngestJobs({ notebookId: id, stage: 'embed' }))
+    ]
+    const leftoverIngestSourceIds = [
+      ...new Set(
+        leftoverIngestJobs
+          .filter(
+            (job) => job.status === 'pending' || job.status === 'failed' || job.status === 'running'
+          )
+          .map((job) => job.sourceId)
+          .filter(Boolean)
+      )
+    ]
     const running = items.find((item) => item.status === 'running')
     const failedItem = items.find((item) => item.status === 'failed')
     const focus = running || items.find((item) => item.status === 'pending') || failedItem
@@ -169,6 +170,7 @@ export function registerKnowledgeGraphIpc(): void {
       pageFrom: focus?.pageFrom,
       pageTo: focus?.pageTo,
       pageTotal: focus?.pageTotal,
+      leftoverIngestSourceIds,
       items
     }
   })

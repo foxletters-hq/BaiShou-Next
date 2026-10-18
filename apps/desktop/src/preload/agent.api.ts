@@ -257,6 +257,7 @@ export const agentApi = {
     detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
     clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
+    getBatchEmbedState: () => ipcRenderer.invoke('rag:get-batch-embed-state'),
     pauseBatchEmbed: () => ipcRenderer.invoke('rag:pause-batch-embed'),
     resumeBatchEmbed: () => ipcRenderer.invoke('rag:resume-batch-embed'),
     cancelBatchEmbed: () => ipcRenderer.invoke('rag:cancel-batch-embed'),

@@ -100,6 +100,33 @@ export function registerRagBatchEmbedIpc(): void {
     return { ok: true }
   })
 
+  ipcMain.handle('rag:get-batch-embed-state', async () => {
+    const running = isBatchEmbedSessionActive()
+    const last = lastBatchProgress.current
+    if (!running) {
+      return {
+        isRunning: false,
+        type: 'idle',
+        progress: last?.progress ?? 0,
+        total: last?.total ?? 0,
+        statusText: '',
+        paused: false,
+        cancelling: false
+      }
+    }
+    return {
+      isRunning: true,
+      type: 'batchEmbed',
+      progress: last?.progress ?? 0,
+      total: last?.total ?? 0,
+      statusText: last?.statusText || i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'),
+      phase: last?.extras?.phase ?? 'starting',
+      phases: last?.extras?.phases,
+      paused: isBatchEmbedPaused(),
+      cancelling: isBatchEmbedAbortRequested()
+    }
+  })
+
   ipcMain.handle('rag:trigger-batch-embed', async (_event) => {
     if (isBatchEmbedSessionActive()) {
       return { ok: false, alreadyRunning: true }
@@ -137,10 +164,26 @@ export function registerRagBatchEmbedIpc(): void {
       const diaryResult = await runControlledDiaryBatchEmbed({
         groupId: 'diary_batch',
         onProgress: ({ completed, total, statusText }) => {
-          phases = applyFrozenPhaseProgress(phases, 'diary', {
+          let nextPhases = applyFrozenPhaseProgress(phases, 'diary', {
             completed,
             total
           })
+          try {
+            const { GraphExtractQueueService } = require('../services/graph-extract-queue.service')
+            const queueState = GraphExtractQueueService.getInstance().getQueueState()
+            if (queueState && queueState.items?.length > 0) {
+              const completedExtract = queueState.completedCount + queueState.errorCount
+              if (completedExtract > 0) {
+                nextPhases = applyFrozenPhaseProgress(nextPhases, 'graph_extract', {
+                  completed: completedExtract,
+                  total: Math.max(nextPhases.graphExtract.total, queueState.items.length)
+                })
+              }
+            }
+          } catch {
+            // ignore
+          }
+          phases = nextPhases
           const overall = overallFromPhaseCounts(phases)
           sendProgress(
             overall.completed,
@@ -246,6 +289,14 @@ export function registerRagBatchEmbedIpc(): void {
       }
       throw err
     } finally {
+      try {
+        const {
+          clearDesktopDiaryGraphFollowPendingCache
+        } = require('../services/diary-graph-follow-after-embed.service')
+        clearDesktopDiaryGraphFollowPendingCache()
+      } catch {
+        // ignore
+      }
       endBatchEmbedControl()
     }
   })
