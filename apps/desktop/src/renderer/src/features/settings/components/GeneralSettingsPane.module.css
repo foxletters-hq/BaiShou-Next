@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md-plus);
   padding: 0;
   background: transparent;
   width: 100%;
@@ -13,15 +13,15 @@
 .stackGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .sectionLabelRow {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 4px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-xs);
   min-width: 0;
 }
 
@@ -40,7 +40,7 @@
 .cardSection {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -51,7 +51,7 @@
 .pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: visible;
   display: flex;
   flex-direction: column;
@@ -73,7 +73,7 @@
 }
 
 .cardHeader {
-  padding: 16px 16px 8px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
 }
 
 .cardTitle {
@@ -101,7 +101,7 @@
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   width: 100%;
   box-sizing: border-box;
 }

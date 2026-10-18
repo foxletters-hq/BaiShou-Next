@@ -19,6 +19,7 @@ import { usePersistedSharedMemoryLookback } from '../../hooks/usePersistedShared
 import { usePersistedSharedMemoryCopyPrefix } from '../../hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '../../hooks/useSharedMemoryCopyPreview'
 import './SummaryPage.css'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const SummaryPage: React.FC = () => {
   const { t, i18n } = useTranslation()
@@ -234,7 +235,7 @@ export const SummaryPage: React.FC = () => {
                 />
                 <DashboardStatsCard {...stats} />
               </div>
-              <div style={{ marginTop: 8, minWidth: 0 }}>
+              <div style={{ marginTop: sharedTokens.spacing.sm, minWidth: 0 }}>
                 <ActivityHeatmap
                   data={activityData}
                   year={selectedYear}

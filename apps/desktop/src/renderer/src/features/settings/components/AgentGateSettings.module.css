@@ -8,7 +8,7 @@
 }
 
 .cardDesc {
-  margin: 6px 0 0;
+  margin: var(--spacing-xs-plus) 0 0;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.55;
@@ -29,8 +29,8 @@
 .formRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px 12px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md-tight);
   flex-wrap: wrap;
 }
 
@@ -70,19 +70,19 @@
 }
 
 .profileBlock {
-  padding: 8px 16px 4px;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
 }
 
 .profileTitle {
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .profileList {
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--spacing-md);
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
@@ -90,7 +90,7 @@
 }
 
 .sectionLabel {
-  padding: 10px 16px 2px;
+  padding: var(--spacing-sm-plus) var(--spacing-md) var(--spacing-2xs);
   margin: 0;
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-section-weight);
@@ -101,7 +101,7 @@
 
 .emptyHint {
   margin: 0;
-  padding: 12px 16px 14px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md-snug);
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.5;
@@ -114,8 +114,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
   min-height: 54px;
   box-sizing: border-box;
   flex-wrap: wrap;
@@ -129,7 +129,7 @@
 .matrixTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
   font-size: var(--settings-font-row-size);
   font-weight: var(--settings-font-row-weight);
@@ -139,7 +139,7 @@
 }
 
 .matrixHint {
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.4;
@@ -148,15 +148,15 @@
 }
 
 .subBlock {
-  padding: 0 0 4px;
+  padding: 0 0 var(--spacing-xs);
   margin: 0;
 }
 
 .disclosureStatic {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
   min-height: 54px;
   box-sizing: border-box;
 }
@@ -164,9 +164,9 @@
 .inlineBadge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 11px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-full);
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   line-height: 1.4;
   color: var(--color-primary);
@@ -176,9 +176,9 @@
 .subpageBack {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  padding: 8px 16px;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
   border: none;
   background: transparent;
   color: var(--text-primary);

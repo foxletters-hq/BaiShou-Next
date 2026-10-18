@@ -8,12 +8,12 @@
 
 .introBlock {
   flex-shrink: 0;
-  padding: 4px 32px 0;
+  padding: var(--spacing-xs) var(--spacing-xl) 0;
 }
 
 .introText {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 12px 32px;
+  padding: var(--spacing-md-tight) var(--spacing-xl);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   z-index: 10;
@@ -32,18 +32,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
 }
 
 .backBtn {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   height: 32px;
-  padding: 0 8px 0 4px;
+  padding: 0 var(--spacing-sm) 0 var(--spacing-xs);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--settings-font-label-size);
@@ -60,11 +60,11 @@
 .workspaceList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .listHint {
-  margin: 0 0 8px;
+  margin: 0 0 var(--spacing-sm);
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.55;
@@ -79,8 +79,8 @@
 
 .workspaceMeta {
   display: block;
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--settings-font-meta-size);
   line-height: 1.4;
   color: var(--text-tertiary, var(--text-secondary));
 }
@@ -88,11 +88,11 @@
 .rowChevron {
   flex-shrink: 0;
   color: var(--text-tertiary, var(--text-secondary));
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 .emptyState {
-  margin: 24px 0;
+  margin: var(--spacing-lg) 0;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.6;
@@ -112,10 +112,10 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px 32px 48px;
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   box-sizing: border-box;
 }
 
@@ -125,7 +125,7 @@
 
 .scrollPane::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .toolsPane {
