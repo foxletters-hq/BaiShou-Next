@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
 import {
   deriveLegacyVaultId,
+  isVaultId,
   logger,
   parseDateStr,
   type SharedMemoryCopyPreview
@@ -452,7 +453,8 @@ export async function handleBuildSharedContextPreview(
       return emptySharedMemoryCopyPreview(lookbackMonths)
     }
 
-    const shadowRepo = new ShadowIndexRepository(shadowDb as any, deriveLegacyVaultId(vaultName))
+    const resolvedVaultId = isVaultId(vaultName) ? vaultName : deriveLegacyVaultId(vaultName)
+    const shadowRepo = new ShadowIndexRepository(shadowDb as any, resolvedVaultId)
     const referenceDate = options?.referenceDate ?? new Date()
     const cutoffIso = formatLookbackCutoffIso(lookbackMonths, referenceDate)
     const diaries = await shadowRepo.listContentSinceDate(cutoffIso)

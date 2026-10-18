@@ -218,10 +218,24 @@ export class GraphRagService {
     nodeMap: Map<string, GraphNodeRow>
   ): Promise<GraphRagPath> {
     const missing = path.nodeIds.filter((id) => !nodeMap.has(id))
-    for (const id of missing) {
-      const node = await this.repo.getNodeById(id, vaultId)
-      if (node && node.reviewStatus !== 'pending' && node.reviewStatus !== 'rejected') {
-        nodeMap.set(node.id, node)
+    if (missing.length > 0) {
+      const getNodesByIds = (
+        this.repo as { getNodesByIds?: (vId: string, ids: string[]) => Promise<GraphNodeRow[]> }
+      ).getNodesByIds
+      if (typeof getNodesByIds === 'function') {
+        const nodes = await getNodesByIds.call(this.repo, vaultId, missing)
+        for (const node of nodes) {
+          if (node.reviewStatus !== 'pending' && node.reviewStatus !== 'rejected') {
+            nodeMap.set(node.id, node)
+          }
+        }
+      } else {
+        for (const id of missing) {
+          const node = await this.repo.getNodeById(id, vaultId)
+          if (node && node.reviewStatus !== 'pending' && node.reviewStatus !== 'rejected') {
+            nodeMap.set(node.id, node)
+          }
+        }
       }
     }
     const nodeNames = path.nodeIds.map((id) => nodeMap.get(id)?.name || id.slice(0, 8))

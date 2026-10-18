@@ -1,5 +1,9 @@
 import { streamText, type LanguageModel } from 'ai'
-import { createAgentStreamAbortError } from '@baishou/shared'
+import {
+  createAgentStreamAbortError,
+  isAgentStreamAbortError,
+  toSerializableAiError
+} from '@baishou/shared'
 
 export const SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME = 'TimeoutError'
 
@@ -275,19 +279,31 @@ export async function generateSummaryTextFromModel(options: {
     prompt: options.prompt,
     maxSteps: 1,
     abortSignal: options.abortController.signal,
+    experimental_telemetry: { isEnabled: false },
+    onError: () => {},
     ...(options.providerOptions ? { providerOptions: options.providerOptions } : {})
   } as never)
 
   suppressUnusedSummaryStreamSettlements(streamResult)
 
-  return collectSummaryStreamText({
-    fullStream: streamResult.fullStream,
-    textStream: streamResult.textStream,
-    abortController: options.abortController,
-    firstOutputTimeoutMs: options.firstOutputTimeoutMs,
-    idleTimeoutMs: options.idleTimeoutMs,
-    onFirstOutput: options.onFirstOutput,
-    onTextDelta: options.onTextDelta,
-    onReasoningDelta: options.onReasoningDelta
-  })
+  try {
+    return await collectSummaryStreamText({
+      fullStream: streamResult.fullStream,
+      abortController: options.abortController,
+      firstOutputTimeoutMs: options.firstOutputTimeoutMs,
+      idleTimeoutMs: options.idleTimeoutMs,
+      onFirstOutput: options.onFirstOutput,
+      onTextDelta: options.onTextDelta,
+      onReasoningDelta: options.onReasoningDelta
+    })
+  } catch (error) {
+    if (
+      isSummaryFirstOutputTimeoutError(error) ||
+      isSummaryIdleTimeoutError(error) ||
+      isAgentStreamAbortError(error)
+    ) {
+      throw error
+    }
+    throw toSerializableAiError(error)
+  }
 }

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { clearLifeGraphData } from '../clear-life-graph'
 
 describe('clearLifeGraphData', () => {
-  it('stops extract, deletes vault rows, wipes shards, then clears marks', async () => {
+  it('stops extract, deletes vault rows, wipes shards, drops cache, then clears marks', async () => {
     const order: string[] = []
     const graphRepo = {
       deleteAllForVault: vi.fn(async (vaultId: string) => {
@@ -14,6 +14,9 @@ describe('clearLifeGraphData', () => {
       wipeAllCollections: vi.fn(async () => {
         order.push('jsonl')
         return 3
+      }),
+      resetCache: vi.fn(() => {
+        order.push('cache')
       })
     }
     const freshness = {
@@ -31,7 +34,7 @@ describe('clearLifeGraphData', () => {
       }
     })
     expect(result).toEqual({ shardCount: 3 })
-    expect(order).toEqual(['stop', 'sqlite', 'jsonl', 'marks'])
+    expect(order).toEqual(['stop', 'sqlite', 'jsonl', 'cache', 'marks'])
   })
 
   it('rejects an empty vault id', async () => {

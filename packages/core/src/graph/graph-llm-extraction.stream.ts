@@ -226,7 +226,10 @@ export async function resolveGraphExtractLlmText(opts: {
       }
     } catch (error) {
       if (opts.signal?.aborted || (error as { name?: string }).name === 'AbortError') throw error
-      if (isNoOutputGeneratedError(error)) return ''
+      if (isNoOutputGeneratedError(error)) {
+        if (streamError) throw streamError
+        return ''
+      }
       logger.warn('[GraphExtract] LLM call failed:', error as Error)
       throw error
     }

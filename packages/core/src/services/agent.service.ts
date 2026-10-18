@@ -74,6 +74,7 @@ export class AgentService {
       messages,
       tools: Object.keys(vercelTools).length > 0 ? vercelTools : undefined,
       stopWhen: stepCountIs(input.maxSteps ?? Number.POSITIVE_INFINITY),
+      experimental_telemetry: { isEnabled: false },
       onFinish: async (event) => {
         // [完成] 当所有步骤（包含工具调用）完成后，同步回写 DB
 
