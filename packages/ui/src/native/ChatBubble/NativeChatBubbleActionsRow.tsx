@@ -5,6 +5,10 @@ import { MessageActionBar } from '../MessageActionBar/MessageActionBar'
 import type { ChatBubbleMessage } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { formatCompactTokenCount, hasTokenUsageStats } from '../../shared/token-usage-display'
+import {
+  type ChatOverBackgroundTone,
+  getChatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
 
 interface ThemeColors {
   primary: string
@@ -32,7 +36,7 @@ interface NativeChatBubbleActionsRowProps {
   onBranch?: () => void
   onSaveEdit?: (content: string) => void
   onDelete?: () => void
-  invertMetaOverBackground?: boolean
+  invertMetaOverBackground?: ChatOverBackgroundTone
   retryDisabled?: boolean
 }
 
@@ -57,7 +61,7 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
   const canEdit = isUser || Boolean(onSaveEdit)
 
   return (
-    <View style={[styles.actionsRow, isUser ? styles.actionsRowUser : null]}>
+    <View collapsable={false} style={[styles.actionsRow, isUser ? styles.actionsRowUser : null]}>
       <MessageActionBar
         onCopy={onCopy}
         onEdit={canEdit ? onStartEdit : undefined}
@@ -72,7 +76,13 @@ export const NativeChatBubbleActionsRow: React.FC<NativeChatBubbleActionsRowProp
         comfortableTouch
         retryDisabled={retryDisabled}
       />
-      {isAssistant ? <NativeChatBubbleTokenRow colors={colors} message={message} /> : null}
+      {isAssistant ? (
+        <NativeChatBubbleTokenRow
+          colors={colors}
+          message={message}
+          invertMetaOverBackground={invertMetaOverBackground}
+        />
+      ) : null}
     </View>
   )
 }
@@ -154,7 +164,8 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
 export const NativeChatBubbleTokenRow: React.FC<{
   colors: ThemeColors
   message: ChatBubbleMessage
-}> = ({ colors, message }) => {
+  invertMetaOverBackground?: ChatOverBackgroundTone
+}> = ({ colors, message, invertMetaOverBackground = false }) => {
   const { t } = useTranslation()
   const usage = {
     inputTokens: message.inputTokens,
@@ -166,37 +177,31 @@ export const NativeChatBubbleTokenRow: React.FC<{
 
   if (!hasTokenUsageStats(usage)) return null
 
+  const textStyle = [
+    styles.tokenText,
+    { color: colors.textTertiary },
+    getChatOverBackgroundMetaTextStyle(invertMetaOverBackground)
+  ]
+
   return (
-    <View style={styles.tokenRow}>
+    <View collapsable={false} style={styles.tokenRow}>
       {message.inputTokens ? (
-        <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
-          ↑{formatCompactTokenCount(message.inputTokens)}
-        </Text>
+        <Text style={textStyle}>↑{formatCompactTokenCount(message.inputTokens)}</Text>
       ) : null}
       {message.outputTokens ? (
-        <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
-          ↓{formatCompactTokenCount(message.outputTokens)}
-        </Text>
+        <Text style={textStyle}>↓{formatCompactTokenCount(message.outputTokens)}</Text>
       ) : null}
       {message.costMicros ? (
-        <Text style={[styles.tokenText, { color: colors.textTertiary }]}>
-          ${(message.costMicros / 1_000_000).toFixed(4)}
-        </Text>
+        <Text style={textStyle}>${(message.costMicros / 1_000_000).toFixed(4)}</Text>
       ) : null}
       {(message.cacheReadInputTokens ?? 0) > 0 ? (
-        <Text
-          style={[styles.tokenText, { color: colors.textTertiary }]}
-          accessibilityLabel={t('agent.chat.cache_read', '缓存读取')}
-        >
+        <Text style={textStyle} accessibilityLabel={t('agent.chat.cache_read', '缓存读取')}>
           {t('agent.chat.cache_label', '缓存：')}
           {formatCompactTokenCount(message.cacheReadInputTokens ?? 0)}
         </Text>
       ) : null}
       {(message.cacheWriteInputTokens ?? 0) > 0 ? (
-        <Text
-          style={[styles.tokenText, { color: colors.textTertiary }]}
-          accessibilityLabel={t('agent.chat.cache_write', '缓存写入')}
-        >
+        <Text style={textStyle} accessibilityLabel={t('agent.chat.cache_write', '缓存写入')}>
           {t('agent.chat.cache_label', '缓存：')}
           {formatCompactTokenCount(message.cacheWriteInputTokens ?? 0)}
         </Text>

@@ -30,6 +30,13 @@ describe('Native chat sticker chrome', () => {
     expect(streamSrc).toContain('isThinkStreaming={(isThinkStreaming || isReasoning) && !error}')
   })
 
+  it('should only show the think spinner while reasoning is the live generating phase', () => {
+    expect(bubbleSrc).toContain('isThinkLoading={thinkLoading && !displayError}')
+    expect(streamSrc).toContain('isThinkLoading={isReasoning && !error}')
+    expect(streamSrc).toContain('isLoading={isReasoning}')
+    expect(streamSrc).not.toContain('isLoading={isReasoning || isThinkStreaming}')
+  })
+
   it('should wrap assistant markdown with the citation dialog instead of stacking excerpts', () => {
     expect(bubbleSrc).toContain('<KnowledgeCitationBlock citations={knowledgeCitations}')
     expect(bubbleSrc).toContain('decorateKnowledgeCitedTexts')

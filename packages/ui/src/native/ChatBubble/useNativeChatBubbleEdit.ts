@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { InteractionManager, Keyboard, LayoutAnimation, Platform, UIManager } from 'react-native'
+import { Keyboard, LayoutAnimation, Platform, UIManager } from 'react-native'
+import { runAfterIdle } from '@baishou/shared'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -38,7 +39,7 @@ export function useNativeChatBubbleEdit(
 
   useEffect(() => {
     if (!isEditing) return
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runAfterIdle(() => {
       requestAnimationFrame(() => {
         editInputRef.current?.focus()
       })
