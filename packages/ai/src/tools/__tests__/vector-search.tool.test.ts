@@ -173,4 +173,75 @@ describe('VectorSearchTool', () => {
     )
     expect(searchSimilar).toHaveBeenCalledWith([0.1], 200, expect.any(Object))
   })
+
+  it('prints memory_id in hybrid mode and strips chunk suffix', async () => {
+    const result = await tool.execute(
+      { query: '香菜', mode: 'hybrid' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: {
+          searchSimilar: vi.fn().mockResolvedValue([
+            {
+              sourceType: 'memory',
+              sourceId: 'mem_coriander_123',
+              groupId: 'memory',
+              chunkText: '不喜欢吃香菜',
+              distance: 0.1,
+              createdAt: Date.parse('2026-08-01T12:00:00Z')
+            }
+          ]),
+          searchFts: vi.fn().mockResolvedValue([
+            {
+              messageId: 'mem_coriander_123_chunk_0',
+              sourceId: 'mem_coriander_123',
+              sessionId: 'memory',
+              snippet: '不喜欢吃香菜',
+              createdAt: Date.parse('2026-08-01T12:00:00Z'),
+              sourceType: 'memory'
+            }
+          ]),
+          deleteBySource: vi.fn()
+        }
+      })
+    )
+
+    expect(result).toContain('类型: memory')
+    expect(result).toContain('memory_id: mem_coriander_123')
+    expect(result).not.toContain('memory_id: mem_coriander_123_chunk_0')
+    expect(result).toContain('不喜欢吃香菜')
+  })
+
+  it('formats memory_id for manual source type', async () => {
+    const result = await tool.execute(
+      { query: '咖啡', mode: 'vector' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: {
+          searchSimilar: vi.fn().mockResolvedValue([
+            {
+              sourceType: 'manual',
+              sourceId: 'mem_manual_coffee',
+              groupId: 'memory',
+              chunkText: '每天喝一杯拿铁',
+              distance: 0.1,
+              createdAt: Date.parse('2026-08-01T12:00:00Z')
+            }
+          ]),
+          deleteBySource: vi.fn()
+        }
+      })
+    )
+
+    expect(result).toContain('类型: manual')
+    expect(result).toContain('memory_id: mem_manual_coffee')
+    expect(result).toContain('每天喝一杯拿铁')
+  })
 })

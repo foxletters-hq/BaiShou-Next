@@ -18,11 +18,9 @@ const summaryReadParams = z.object({
   start_date: z
     .string()
     .describe(
-      'Start date of the summary period, in YYYY-MM-DD format. ' +
-        'For weekly: the Monday of that week. ' +
-        'For monthly: the first day of the month (e.g. 2026-03-01). ' +
-        'For quarterly: the first day of the quarter. ' +
-        'For yearly: the first day of the year (e.g. 2026-01-01).'
+      'Start date of the summary period in YYYY-MM-DD format: ' +
+        'Monday of that week for weekly; first day of the month (YYYY-MM-01) for monthly; ' +
+        'first day of the quarter for quarterly; first day of the year (YYYY-01-01) for yearly.'
     )
 })
 

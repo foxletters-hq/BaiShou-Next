@@ -114,4 +114,25 @@ describe('fetchUrlAsMarkdown', () => {
       })
     ).rejects.toThrow(/http\/https/i)
   })
+
+  it('should fetch a host without a scheme as https', async () => {
+    const requested: string[] = []
+    const result = await fetchUrlAsMarkdown('foxletters.com', {
+      allowPrivateNetwork: true,
+      fetchImpl: async (input) => {
+        requested.push(String(input))
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          url: 'https://foxletters.com/',
+          headers: { get: () => 'text/plain' },
+          text: async () => 'hello fox'
+        } as unknown as Response
+      }
+    })
+    expect(requested).toEqual(['https://foxletters.com'])
+    expect(result.markdown).toBe('hello fox')
+    expect(result.finalUrl).toBe('https://foxletters.com/')
+  })
 })

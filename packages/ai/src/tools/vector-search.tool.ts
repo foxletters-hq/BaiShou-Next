@@ -59,15 +59,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
   readonly description =
     'Semantic search over conversation history and stored memories. ' +
-    'You may use this when the user asks about past content, previous decisions, personal preferences, ' +
-    'or earlier topics and the current context (including any rolling compression summary) is insufficient. ' +
-    'REQUIRED when specific names, people, places, events, or dates are not clearly established in the ' +
-    'current conversation: search before answering; do not guess or fabricate. ' +
-    'Combine with diary_search when the answer may live in diary entries. ' +
-    'Optionally set start_date and/or end_date (YYYY-MM-DD, local calendar day) to narrow results to a time window—' +
-    'use this when the user mentions a specific period (e.g. last spring, March 2024, before a trip). ' +
-    'Returns the most semantically relevant snippets with scores. ' +
-    'Memory hits include memory_id; pass that exact id to memory_delete. Do not delete by description.'
+    'Use this when the current context (including any rolling summary) does not cover past discussions, decisions, or preferences. ' +
+    'Optionally pass start_date and/or end_date (YYYY-MM-DD, local calendar day) to filter by time period. ' +
+    'Returns relevant snippets with scores; memory hits include memory_id for exact deletion via memory_delete.'
 
   readonly parameters = vectorSearchParams
 
@@ -194,9 +188,14 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         lines.push(`--- 结果 ${i + 1} [${sourceLabel}] ---`)
         const sourceType = r.sourceType?.trim() || 'unknown'
         lines.push(`类型: ${sourceType}`)
-        const entityId = (r.sourceId || r.messageId || '').trim()
+        const rawEntityId = (r.sourceId || r.messageId || '').trim()
+        const isMemory =
+          sourceType === 'memory' ||
+          sourceType === 'manual' ||
+          (sourceType === 'unknown' && rawEntityId.startsWith('mem_'))
+        const entityId = isMemory ? rawEntityId.replace(/_chunk_\d+$/, '') : rawEntityId
         if (entityId) {
-          lines.push(sourceType === 'memory' ? `memory_id: ${entityId}` : `id: ${entityId}`)
+          lines.push(isMemory ? `memory_id: ${entityId}` : `id: ${entityId}`)
         }
         const timeLabel = resolveResultTimestamp(r.chunkText, r.createdAt)
         if (timeLabel) {
