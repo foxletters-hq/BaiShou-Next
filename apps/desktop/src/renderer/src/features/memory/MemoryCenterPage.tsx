@@ -1,22 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  firstActivePhase,
-  phaseCountsFromPending,
-  type MemoryReadinessRowId
-} from '@baishou/shared'
+import { firstActivePhase, phaseCountsFromPending } from '@baishou/shared'
 import { SegmentedControl } from '@baishou/ui'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { GraphPage } from '../graph/GraphPage'
+import { MemoryCenterOrganizeSlot } from './MemoryCenterOrganizeSlot'
 import { MemoryHelpButton } from './MemoryHelpButton'
-import { MemoryOrganizePanelHost } from './MemoryOrganizePanelHost'
-import { MemoryReadinessBar } from './MemoryReadinessBar'
 import { MemoryVectorTab } from './MemoryVectorTab'
 import { consumeMemoryGraphTab, subscribeMemoryGraphTab } from './memory-graph-tab-focus'
-import { setMemoryOrganizePipeline, useMemoryReadiness } from './useMemoryReadiness'
-import { patchCachedRagActiveState } from '../settings/rag-runtime-cache'
+import {
+  getMemoryReadinessLoading,
+  getMemoryReadinessSnapshot,
+  refreshMemoryReadiness,
+  setMemoryOrganizePipeline
+} from './useMemoryReadiness'
+import { getCachedRagActiveState, patchCachedRagActiveState } from '../settings/rag-runtime-cache'
+import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
 import {
   memoryCenterPathForTab,
   memoryCenterTabFromPath,
@@ -33,8 +34,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   const [localTab, setLocalTab] = useState<MemoryCenterTab>(embedded ? 'vectors' : routeTab)
   const tab = embedded ? localTab : routeTab
   const [mountedTabs, setMountedTabs] = useState<Set<MemoryCenterTab>>(() => new Set([tab]))
-  const [organizeOpen, setOrganizeOpen] = useState(false)
-  const readiness = useMemoryReadiness()
+  const startOrganizeMemoryRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
     setMountedTabs((prev) => {
@@ -75,8 +75,9 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   const startBatchEmbed = useCallback(async (): Promise<
     'ok' | 'cancelled' | 'already-running' | 'failed'
   > => {
-    const parts = readiness.pendingEmbedParts
-    const graphExtract = readiness.pendingGraphCount
+    const snap = getMemoryReadinessSnapshot()
+    const parts = snap.pendingEmbedParts
+    const graphExtract = snap.pendingGraphCount
     patchCachedRagActiveState({
       isRunning: true,
       type: 'batchEmbed',
@@ -103,20 +104,24 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       })
       return 'failed'
     }
-  }, [readiness.pendingEmbedParts, readiness.pendingGraphCount, t])
+  }, [t])
 
   const startOrganizeMemory = useCallback(async () => {
+    if (getMemoryReadinessLoading()) {
+      await refreshMemoryReadiness()
+    }
+    const snap = getMemoryReadinessSnapshot()
     const action = resolveMemoryOrganizeAction({
-      embeddingConfigured: readiness.embeddingConfigured,
-      pendingEmbedCount: readiness.pendingEmbedCount,
-      unindexedDiaryCount: readiness.unindexedDiaryCount,
-      indexing: Boolean(readiness.indexing)
+      embeddingConfigured: snap.embeddingConfigured,
+      pendingEmbedCount: snap.pendingEmbedCount,
+      unindexedDiaryCount: snap.unindexedDiaryCount,
+      indexing: Boolean(ragIndexingSnapshotFromState(getCachedRagActiveState()))
     })
     if (action === 'configure') {
       goConfigure()
       return
     }
-    if (readiness.pendingGraphCount > 0) {
+    if (snap.pendingGraphCount > 0) {
       const selfName = await ensureDesktopGraphSelfName()
       if (!selfName && action === 'graph') return
     }
@@ -126,41 +131,11 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
     if (outcome !== 'ok') {
       setMemoryOrganizePipeline('idle')
     }
-  }, [
-    goConfigure,
-    readiness.embeddingConfigured,
-    readiness.indexing,
-    readiness.pendingEmbedCount,
-    readiness.pendingGraphCount,
-    readiness.unindexedDiaryCount,
-    startBatchEmbed
-  ])
-
-  const topBarOmit = useMemo(() => {
-    const omit: MemoryReadinessRowId[] = ['extract', 'graph']
-    for (const row of readiness.rows) {
-      if (row.id === 'embedding' && row.state === 'ready') omit.push('embedding')
-    }
-    return omit
-  }, [readiness.rows])
-
-  const readinessBar = (
-    <MemoryReadinessBar
-      wrap
-      showLabel={false}
-      omit={topBarOmit}
-      rows={readiness.rows}
-      onConfigureEmbedding={goConfigure}
-      onStartIndex={startOrganizeMemory}
-      onStartOrganize={startOrganizeMemory}
-      onOpenOrganize={() => setOrganizeOpen(true)}
-      pendingEmbedParts={readiness.pendingEmbedParts}
-      pendingGraphCount={readiness.pendingGraphCount}
-      indexing={readiness.indexing}
-      extracting={readiness.graphExtracting}
-      organizePipeline={readiness.organizePipeline}
-    />
-  )
+  }, [goConfigure, startBatchEmbed])
+  startOrganizeMemoryRef.current = startOrganizeMemory
+  const onUnifiedOrganize = useCallback(() => {
+    void startOrganizeMemoryRef.current()
+  }, [])
 
   const tabOptions = useMemo(
     () => [
@@ -186,13 +161,17 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
             <div className={styles.tabs}>
               <SegmentedControl
                 value={tab}
+                size="small"
                 aria-label={t('memory.tabs', '记忆类型')}
                 options={tabOptions}
                 onChange={selectTab}
               />
             </div>
           </div>
-          <div className={styles.readinessSlot}>{readinessBar}</div>
+          <MemoryCenterOrganizeSlot
+            onConfigureEmbedding={goConfigure}
+            onStartOrganize={onUnifiedOrganize}
+          />
         </div>
       </header>
 
@@ -212,11 +191,10 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
             aria-hidden={tab !== 'graph'}
             inert={tab !== 'graph'}
           >
-            <GraphPage embedded active={tab === 'graph'} onUnifiedOrganize={startOrganizeMemory} />
+            <GraphPage embedded active={tab === 'graph'} onUnifiedOrganize={onUnifiedOrganize} />
           </div>
         ) : null}
       </div>
-      <MemoryOrganizePanelHost open={organizeOpen} onClose={() => setOrganizeOpen(false)} />
     </div>
   )
 }

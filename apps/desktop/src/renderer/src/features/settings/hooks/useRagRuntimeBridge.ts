@@ -55,7 +55,7 @@ export function useRagRuntimeBridge(active: boolean): void {
       }, delayMs)
     }
 
-    const cleanup = api.rag.onRagProgress((state: any) => {
+    const applyRagProgress = (state: any, options?: { hydrate?: boolean }) => {
       const translate = (key: string, fallback: string) => tRef.current(key, fallback)
       const statusText = state.statusKey
         ? resolveMigrationStatusText(tRef.current, state.statusKey, state.statusParams)
@@ -70,6 +70,15 @@ export function useRagRuntimeBridge(active: boolean): void {
 
       const previous = getCachedRagActiveState()
       const keepBatchProgress = state.type === 'batchEmbed' || previous.type === 'batchEmbed'
+      // 刚点「开始整理」时本地已标 running，回问若还是 idle 不要盖掉
+      if (
+        options?.hydrate &&
+        previous.isRunning &&
+        previous.type === 'batchEmbed' &&
+        !state.isRunning
+      ) {
+        return
+      }
       setCachedRagActiveState({
         ...previous,
         ...state,
@@ -92,7 +101,13 @@ export function useRagRuntimeBridge(active: boolean): void {
         statsRefreshTimerRef.current = null
       }
       void refreshRagStats()
+    }
+
+    void api.rag.getBatchEmbedState?.().then((state: any) => {
+      if (state) applyRagProgress(state, { hydrate: true })
     })
+
+    const cleanup = api.rag.onRagProgress((state: any) => applyRagProgress(state))
 
     return () => {
       cleanup?.()

@@ -15,7 +15,7 @@
 /* 顶栏：宽度够时整理状态跟在标题右侧同一行，不够再整块换行 */
 .header {
   flex: 0 0 auto;
-  padding: 8px 20px 10px;
+  padding: var(--spacing-sm) var(--spacing-md-plus) var(--spacing-sm-plus);
   background: var(--bg-surface);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-muted);
@@ -25,7 +25,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
   min-height: 34px;
 }
@@ -33,7 +33,7 @@
 .titleLead {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -42,7 +42,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1 1 14rem;
   min-width: min(100%, 14rem);
 }
@@ -53,7 +53,7 @@
   margin: 0;
   padding: 0;
   height: 34px;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 650;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -65,15 +65,14 @@
   display: inline-flex;
   align-items: center;
   margin-top: 0;
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
   min-width: 0;
-  height: 34px;
 }
 
 .onboarding {
-  margin: 8px 20px 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
+  margin: var(--spacing-sm) var(--spacing-md-plus) var(--spacing-md-tight);
+  padding: var(--spacing-md-tight) var(--spacing-md);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-card);
   background: var(--bg-surface-raised);
 }
@@ -82,34 +81,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 10px;
-  margin-bottom: 2px;
+  gap: var(--spacing-md-tight);
+  padding-bottom: var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-2xs);
   border-bottom: 1px solid var(--border-muted);
 }
 
 .onboardingTitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 650;
   color: var(--text-primary);
 }
 
 .onboardingSteps {
-  margin: 10px 0 0;
+  margin: var(--spacing-sm-plus) 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .onboardingSteps li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
+  gap: var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
 }
 
@@ -119,15 +118,15 @@
 
 .stepMeta {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
 .onboardingActions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
-  padding-top: 12px;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md-tight);
   border-top: 1px solid var(--border-muted);
 }
 
@@ -173,7 +172,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 .graphHost {

@@ -28,7 +28,8 @@ describe('memory center chrome', () => {
     expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
       "import { MemoryReadinessBar } from '../../memory/MemoryReadinessBar'"
     )
-    expect(readSrc('features/memory/MemoryCenterPage.tsx')).toContain('<MemoryReadinessBar')
+    expect(readSrc('features/memory/MemoryCenterPage.tsx')).toContain('<MemoryCenterOrganizeSlot')
+    expect(readSrc('features/memory/MemoryCenterOrganizeSlot.tsx')).toContain('<MemoryReadinessBar')
     expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain('extraStatsChips')
     expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
       'hideOrganizeProgress={embedded}'
@@ -93,6 +94,7 @@ describe('memory center chrome', () => {
   it('B7: MemoryCenterPage uses SegmentedControl and does not hand-roll tab buttons', () => {
     const src = readSrc('features/memory/MemoryCenterPage.tsx')
     expect(src).toContain('SegmentedControl')
+    expect(src).toContain('size="small"')
     expect(src).not.toContain('btnActive')
     expect(src).toContain("value: 'vectors' as const")
     expect(src.indexOf("value: 'vectors' as const")).toBeLessThan(
@@ -214,6 +216,7 @@ describe('memory center chrome', () => {
 
   it('keeps the wrapping readiness bar at the top and does not render the onboarding card', () => {
     const page = readSrc('features/memory/MemoryCenterPage.tsx')
+    const slot = readSrc('features/memory/MemoryCenterOrganizeSlot.tsx')
     const css = readSrc('features/memory/MemoryCenterPage.module.css')
     const bar = readSrc('features/memory/MemoryReadinessBar.tsx')
     const barCss = readSrc('features/memory/MemoryReadinessBar.module.css')
@@ -229,9 +232,9 @@ describe('memory center chrome', () => {
     }
     expect(page).not.toContain('MemoryOnboardingCard')
     expect(page).not.toContain('showOnboarding')
-    expect(page).toContain('<MemoryReadinessBar')
+    expect(slot).toContain('<MemoryReadinessBar')
     expect(page).not.toContain('memoryReadinessNeedsBelowTitle')
-    expect(page).toContain("const omit: MemoryReadinessRowId[] = ['extract', 'graph']")
+    expect(slot).toContain("const omit: MemoryReadinessRowId[] = ['extract', 'graph']")
     expect(readSrc('features/memory/pending-embed-part-lines.util.ts')).toContain(
       'pending_embed_part_graph_extract'
     )
@@ -248,40 +251,54 @@ describe('memory center chrome', () => {
     expect(bar).not.toContain(".join(' · ')")
     expect(bar).toContain('pendingGraphCount')
     expect(page).toContain('styles.titleLead')
-    expect(page).toContain('styles.readinessSlot')
+    expect(slot).toContain('styles.readinessSlot')
     expect(page).not.toContain('styles.readinessInline')
     expect(page).not.toContain('styles.readinessBelow')
     expect(page.indexOf('className={styles.title}>')).toBeLessThan(
-      page.indexOf('styles.readinessSlot')
+      page.indexOf('<MemoryCenterOrganizeSlot')
     )
-    expect(page.indexOf('styles.titleLead')).toBeLessThan(page.indexOf('styles.readinessSlot'))
+    expect(page.indexOf('styles.titleLead')).toBeLessThan(page.indexOf('<MemoryCenterOrganizeSlot'))
     expect(page).not.toContain('styles.readinessTop')
     expect(page).toContain('resolveMemoryOrganizeAction')
     expect(page).toContain('startOrganizeMemory')
+    expect(page).toContain('getMemoryReadinessLoading')
+    expect(page).toContain('refreshMemoryReadiness')
+    expect(page).toContain('getMemoryReadinessSnapshot')
     expect(page).toContain('triggerBatchEmbed')
     expect(page).toContain('onUnifiedOrganize')
+    expect(page).not.toContain('useMemoryReadiness()')
+    expect(page).not.toContain('setOrganizeOpen')
     expect(page).not.toContain('finishEmbedThenGraph')
     expect(page).not.toContain('graphQueueExtract')
     const organizeFn = page.slice(
-      page.indexOf('const startOrganizeMemory'),
-      page.indexOf('const topBarOmit')
+      page.indexOf('const startOrganizeMemory = useCallback'),
+      page.indexOf('const tabOptions')
     )
     expect(organizeFn).not.toContain("selectTab('graph')")
     expect(organizeFn).not.toContain("selectTab('vectors')")
     expect(page).toContain('consumeMemoryGraphTab')
     expect(page).toContain("selectTab('graph')")
     expect(page).not.toContain("selectTab('vectors')")
-    expect(page).toContain('MemoryOrganizePanelHost')
-    expect(page).toContain('onOpenOrganize={() => setOrganizeOpen(true)}')
+    expect(slot).toContain('MemoryOrganizePanelHost')
+    expect(slot).toContain('onOpenOrganize={() => setOrganizeOpen(true)}')
+    expect(slot).toContain('onContinue={() => {')
     expect(bar).toContain('onOpenOrganize')
     expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
       'RagMemoryOrganizeModal'
+    )
+    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
+      'incomplete={leftover}'
+    )
+    expect(readSrc('features/memory/MemoryOrganizePanelHost.tsx')).toContain(
+      'pendingOrganizeArticleCount'
     )
     expect(readRagSrc('RagMemoryView.tsx')).toContain('hideOrganizeProgress')
     expect(readRagSrc('RagMemoryAlerts.tsx')).toContain("surface !== 'organize'")
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('surface="organize"')
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('<Modal')
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('memory.organize_done')
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('memory.organize_incomplete')
+    expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('memory.organize_continue')
     expect(readRagSrc('RagMemoryOrganizeModal.tsx')).toContain('common.got_it')
     expect(bar).toContain('memory.readiness_need_embedding')
     expect(bar).toContain('memory.go_configure')
@@ -305,14 +322,15 @@ describe('memory center chrome', () => {
   it('refreshes readiness and the vector list after background organize settles', () => {
     const readiness = readSrc('features/memory/useMemoryReadiness.ts')
     const page = readSrc('features/memory/MemoryCenterPage.tsx')
+    const slot = readSrc('features/memory/MemoryCenterOrganizeSlot.tsx')
     const bar = readSrc('features/memory/MemoryReadinessBar.tsx')
     const rag = readSrc('features/settings/hooks/useRagSettings.ts')
     expect(readiness).toContain('graphOnQueueProgress')
     expect(readiness).toContain('graphGetQueueState')
     expect(readiness).toContain('graphExtracting')
     expect(readiness).toContain('refreshMemoryReadiness()')
-    expect(page).toContain('extracting={readiness.graphExtracting}')
-    expect(page).toContain('onUnifiedOrganize={startOrganizeMemory}')
+    expect(slot).toContain('extracting={readiness.graphExtracting}')
+    expect(page).toContain('onUnifiedOrganize={onUnifiedOrganize}')
     expect(bar).toContain('extracting')
     expect(bar).toContain('graph.extract_progress')
     expect(rag).toContain('embed-pending-changed')
@@ -381,7 +399,7 @@ describe('memory center chrome', () => {
     expect(page).toContain('<MemoryHelpButton')
     expect(help).toContain('<MemoryNotebookNotice')
     const helpIndex = page.indexOf('<MemoryHelpButton')
-    const barIndex = page.indexOf('<MemoryReadinessBar')
+    const barIndex = page.indexOf('<MemoryCenterOrganizeSlot')
     expect(helpIndex).toBeGreaterThanOrEqual(0)
     expect(barIndex).toBeGreaterThanOrEqual(0)
   })
@@ -411,6 +429,24 @@ describe('memory center chrome', () => {
         expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
       }
     }
+  })
+
+  it('should reconnect organize progress after renderer refresh', () => {
+    const bridge = readSrc('features/settings/hooks/useRagRuntimeBridge.ts')
+    const readiness = readSrc('features/memory/useMemoryReadiness.ts')
+    const ipc = readFileSync(
+      join(repoRoot, 'apps/desktop/src/main/ipc/rag-batch-embed.ipc.ts'),
+      'utf8'
+    )
+    const preload = readFileSync(join(repoRoot, 'apps/desktop/src/preload/agent.api.ts'), 'utf8')
+    expect(ipc).toContain("handle('rag:get-batch-embed-state'")
+    expect(ipc).toContain('isBatchEmbedSessionActive')
+    expect(preload).toContain('getBatchEmbedState')
+    expect(bridge).toContain('getBatchEmbedState')
+    expect(bridge).toContain('hydrate: true')
+    expect(bridge).toContain('onRagProgress')
+    expect(readiness).toContain('export function getMemoryReadinessSnapshot')
+    expect(readiness).toContain("setMemoryOrganizePipeline('embed')")
   })
 
   it('C4: Chinese copy states notebook memory is not merged into the center', () => {
