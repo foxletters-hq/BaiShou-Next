@@ -6,13 +6,13 @@
 .helpContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .intro,
 .notice {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }

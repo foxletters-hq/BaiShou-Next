@@ -111,12 +111,16 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
             value = t('memory.readiness_vector_pending', '未整理 {{count}} 篇', {
               count: row.count ?? 0
             })
-            onAction = pendingEmbedParts
-              ? openOrganizeMenu
-              : onStartIndex
-                ? () => onStartIndex()
-                : undefined
-            actionLabel = t('memory.start_organize', '开始整理记忆')
+            onAction = onOpenOrganize
+              ? () => onOpenOrganize()
+              : pendingEmbedParts
+                ? openOrganizeMenu
+                : onStartIndex
+                  ? () => onStartIndex()
+                  : undefined
+            actionLabel = onOpenOrganize
+              ? t('memory.organize_view_details', '查看详情')
+              : t('memory.start_organize', '开始整理记忆')
           } else {
             value = t('memory.readiness_need_embedding', '需要先配置嵌入模型')
             onAction = onConfigureEmbedding ? () => onConfigureEmbedding() : undefined

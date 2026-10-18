@@ -1,6 +1,11 @@
 import React, { useCallback, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RagMemoryOrganizeModal, useDialog } from '@baishou/ui'
+import {
+  firstActivePhase,
+  pendingOrganizeArticleCount,
+  phaseCountsFromPending
+} from '@baishou/shared'
 import { shouldWaitForGraphExtract } from './organize-pipeline-waiting.util'
 import { useMemoryReadiness } from './useMemoryReadiness'
 import {
@@ -9,7 +14,11 @@ import {
   subscribeRagRuntime
 } from '../settings/rag-runtime-cache'
 
-export function MemoryOrganizePanelHost(props: { open: boolean; onClose: () => void }) {
+export function MemoryOrganizePanelHost(props: {
+  open: boolean
+  onClose: () => void
+  onContinue?: () => void
+}) {
   const { t } = useTranslation()
   const { confirm } = useDialog()
   const readiness = useMemoryReadiness()
@@ -47,11 +56,42 @@ export function MemoryOrganizePanelHost(props: { open: boolean; onClose: () => v
     ).api?.rag?.cancelBatchEmbed?.()
   }, [confirm, t])
 
+  const leftoverCount = pendingOrganizeArticleCount({
+    pendingEmbedCount: readiness.pendingEmbedCount,
+    pendingGraphCount: readiness.pendingGraphCount,
+    pendingDiaryCount: readiness.pendingEmbedParts.diaries
+  })
+  const running =
+    (ragState.isRunning && ragState.type === 'batchEmbed') ||
+    Boolean(readiness.graphExtracting && readiness.graphExtracting.total > 0) ||
+    Boolean(readiness.indexing)
+  const leftover = leftoverCount > 0 && !running
+  const leftoverState = leftover
+    ? {
+        ...ragState,
+        isRunning: false,
+        type: 'idle' as const,
+        progress: 0,
+        total: Math.max(leftoverCount, 1),
+        statusText: '',
+        phase: firstActivePhase({
+          ...readiness.pendingEmbedParts,
+          graphExtract: readiness.pendingGraphCount
+        }),
+        phases: phaseCountsFromPending({
+          ...readiness.pendingEmbedParts,
+          graphExtract: readiness.pendingGraphCount
+        }),
+        paused: false,
+        cancelling: false
+      }
+    : ragState
+
   return (
     <RagMemoryOrganizeModal
       open={props.open}
       onClose={props.onClose}
-      ragState={ragState}
+      ragState={leftoverState}
       onPauseBatchEmbed={onPauseBatchEmbed}
       onResumeBatchEmbed={onResumeBatchEmbed}
       onCancelBatchEmbed={onCancelBatchEmbed}
@@ -61,6 +101,8 @@ export function MemoryOrganizePanelHost(props: { open: boolean; onClose: () => v
         indexing: Boolean(readiness.indexing)
       })}
       pendingGraphCount={readiness.pendingGraphCount}
+      incomplete={leftover}
+      onContinue={props.onContinue}
     />
   )
 }

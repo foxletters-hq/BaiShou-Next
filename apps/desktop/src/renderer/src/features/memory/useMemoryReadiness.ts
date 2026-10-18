@@ -85,6 +85,14 @@ export function setMemoryOrganizePipeline(next: MemoryOrganizePipeline) {
   emitReadiness()
 }
 
+export function getMemoryReadinessSnapshot(): ReadinessSnapshot {
+  return cachedSnapshot
+}
+
+export function getMemoryReadinessLoading(): boolean {
+  return cachedLoading
+}
+
 export function armGraphExtracting(total: number) {
   const safeTotal = Math.max(0, Math.floor(total))
   if (safeTotal <= 0) {
@@ -289,6 +297,9 @@ export function useMemoryReadiness() {
     const indexingNow = ragState.isRunning && ragState.type === 'batchEmbed'
     if (indexingNow) {
       wasIndexingRef.current = true
+      if (cachedSnapshot.organizePipeline === 'idle') {
+        setMemoryOrganizePipeline('embed')
+      }
       return
     }
     if (wasIndexingRef.current) {
