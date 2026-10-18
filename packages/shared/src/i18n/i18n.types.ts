@@ -1,11 +1,12 @@
 import 'react-i18next'
-import zh from './zh.i18n.json'
+
+type ZhCatalog = typeof import('./zh.i18n.json')
 
 declare module 'react-i18next' {
   interface CustomTypeOptions {
     defaultNS: 'translation'
     resources: {
-      translation: typeof zh
+      translation: ZhCatalog
     }
   }
 }
@@ -26,7 +27,7 @@ export type Paths<T, D extends number = 10> = [D] extends [never]
       }[keyof T]
     : ''
 
-export type I18nKey = Paths<typeof zh>
+export type I18nKey = Paths<ZhCatalog>
 
 /**
  * 只要求「给 key 和回退文案，返回字符串」。

@@ -37,6 +37,7 @@ describe('Agent 3: RAG i18n 验证', () => {
 
   it('任务14: RAG 搜索相关 i18n key 四语言完整', () => {
     const requiredKeys = [
+      'rag_search_placeholder',
       'rag_search_semantic_hint',
       'rag_search_text_hint',
       'rag_search_semantic',
