@@ -74,10 +74,19 @@ describe('buildToolUsageGuidelines', () => {
     expect(guidelines).toContain('用自然语言询问用户接下来希望怎么做')
   })
 
+  it('should require skill_read before using a catalog skill', () => {
+    const guidelines = buildToolUsageGuidelines(['skill_read', 'skill_write'])
+    expect(guidelines).toContain('选用技能时先读正文')
+    expect(guidelines).toContain('skill_read')
+    expect(guidelines).toContain('/name')
+  })
+
   it('requires unique memory id when memory_delete is available', () => {
     const guidelines = buildToolUsageGuidelines(['memory_delete', 'vector_search'])
     expect(guidelines).toContain('删除记忆必须使用唯一 id')
     expect(guidelines).toContain('memory_id')
     expect(guidelines).toContain('禁止用描述')
+    expect(guidelines).toContain('必须先调用 vector_search')
+    expect(guidelines).toContain('严禁虚构已删除')
   })
 })

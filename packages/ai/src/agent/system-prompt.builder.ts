@@ -122,7 +122,7 @@ export class SystemPromptBuilder {
     // 3c. skills_catalog
     if (skillsCatalog && skillsCatalog.length > 0) {
       const skillLines = [
-        'Available skills (name + description only; load full body via skill tools or user attachment when needed):',
+        'Available skills (name + description only). Call skill_read with the skill name to load the full body when you decide to use one. The user may also attach a skill with /name.',
         ...skillsCatalog.map((s) => {
           const desc = s.description?.trim() || 'No description'
           return `- ${s.name}: ${desc}`
@@ -170,20 +170,14 @@ export class SystemPromptBuilder {
       ])
     }
 
-    // 7. available_tools
+    // 7. available_tools（仅列出已启用工具 ID 与禁用回退规则，不再重复背诵 API tools 里的长描述）
     if (availableToolIds.length > 0) {
       const toolLines: string[] = [
-        'Available Tools:',
-        'Use a tool when it improves accuracy or when the tool usage guidelines below mark it as required. ' +
-          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.',
-        ''
+        `Enabled Tools: ${availableToolIds.join(', ')}`,
+        'Tool schemas and descriptions are provided in the API tools definition. ' +
+          'Use a tool when it improves accuracy or when required by the tool usage guidelines below. ' +
+          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.'
       ]
-      for (const id of availableToolIds) {
-        const toolObj = tools[id]
-        const hint = toolObj?.description || 'No description provided.'
-        toolLines.push(`- **${id}**: ${hint}`)
-      }
-      toolLines.push('')
 
       const hasDiaryOrSummaryTools = availableToolIds.some(
         (id) => id.startsWith('diary_') || id === 'summary_read'
@@ -197,7 +191,6 @@ export class SystemPromptBuilder {
             'For storing and retrieving information, use the diary/summary tools instead. ' +
             'Do NOT attempt to call memory_store or vector_search.'
         )
-        toolLines.push('')
       }
 
       if (!availableToolIds.includes('web_search')) {
@@ -211,7 +204,6 @@ export class SystemPromptBuilder {
             'If the user asks about recent events or current information that requires web search, ' +
             `reply with exactly: "${webSearchNotEnabled}"`
         )
-        toolLines.push('')
       }
 
       pushSection(buffer, 'available_tools', toolLines)

@@ -17,6 +17,7 @@ import {
 export {
   buildBaishouMcpToolSchemas,
   executeBaishouMcpTool,
+  isToolDisabledByMcp,
   listBaishouMcpExposedTools,
   listBaishouMcpToolsForUi,
   negotiateMcpProtocolVersion,

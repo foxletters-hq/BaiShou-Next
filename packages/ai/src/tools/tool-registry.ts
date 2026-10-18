@@ -31,6 +31,7 @@ import { RecallRelationsTool } from './recall-relations.tool'
 import { KnowledgeSearchTool } from './knowledge-search.tool'
 import { KnowledgeGraphSearchTool } from './knowledge-graph-search.tool'
 import { SkillWriteTool } from './skill-write.tool'
+import { SkillReadTool } from './skill-read.tool'
 import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
@@ -39,6 +40,7 @@ const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set([
   'companion_ask',
   'current_time',
   'skill_write',
+  'skill_read',
   'web_search',
   'url_read'
 ])
@@ -149,6 +151,7 @@ export class ToolRegistry {
       new KnowledgeSearchTool(),
       new KnowledgeGraphSearchTool(),
       new SkillWriteTool(),
+      new SkillReadTool(),
       ...createWorkspaceTools()
     ])
   }

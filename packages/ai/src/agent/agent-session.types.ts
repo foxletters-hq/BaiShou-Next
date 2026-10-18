@@ -102,6 +102,7 @@ export interface StreamChatOptions {
   /** Skills 目录（名+描述），注入 system <skills_catalog> */
   skillsCatalog?: Array<{ name: string; description?: string }>
   skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+  skillsReader?: import('../tools/agent.tool').ToolContext['skillsReader']
   /** 额外 Vercel 工具（如外部 /mcp 客户端），在内置工具之后合并 */
   extraVercelToolsFactory?: (
     context: import('../tools/agent.tool').ToolContext
