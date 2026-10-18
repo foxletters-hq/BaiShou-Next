@@ -20,6 +20,7 @@ import { Input } from '../Input'
 import { Pagination } from '../Pagination'
 import { EmojiGroupDetailView } from '../EmojiSettingsView/EmojiGroupDetailView'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 const PAGE_SIZE = 5
 
@@ -317,20 +318,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.sm
   },
   title: {
     flex: 1,
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   toolbar: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.sm
   },
   searchWrap: {
     flex: 1
@@ -339,33 +340,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 4,
-    paddingVertical: 4
+    gap: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xs
   },
   addBtnText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   empty: {
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-    fontSize: 13,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.lg,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   list: {
     maxHeight: 320,
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10
+    gap: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.smPlus
   },
   tile: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center'
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   tileText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   rowMain: {
@@ -383,26 +384,26 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   groupName: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   groupMeta: {
-    fontSize: 13,
-    marginTop: 2
+    fontSize: mobileTypography.secondary.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   },
   manage: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   pager: {
-    paddingVertical: 8
+    paddingVertical: sharedTokens.spacing.sm
   },
   delete: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   detailScroll: {
     maxHeight: 420,
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   }
 })

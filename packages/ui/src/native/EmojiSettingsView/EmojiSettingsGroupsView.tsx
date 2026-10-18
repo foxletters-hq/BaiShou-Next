@@ -14,6 +14,7 @@ import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiSettingsGroupsViewProps {
   config: EmojiToolConfig
@@ -105,7 +106,7 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
 
       {isEnabled ? (
         <>
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: sharedTokens.spacing.smPlus }}>
             <TouchableOpacity style={styles.addGroupRow} onPress={() => void handleAddGroup()}>
               <View
                 style={[
@@ -174,32 +175,32 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 16 },
+  container: { gap: sharedTokens.spacing.md },
   enableCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   enableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
-  enableText: { flex: 1, gap: 4 },
+  enableText: { flex: 1, gap: sharedTokens.spacing.xs },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
-  title: { fontSize: 16, fontWeight: '600' },
-  subtitle: { fontSize: 13, lineHeight: 18 },
+  title: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
+  subtitle: { fontSize: mobileTypography.secondary.fontSize, lineHeight: 18 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3,
     textTransform: 'uppercase'
@@ -207,22 +208,22 @@ const styles = StyleSheet.create({
   addGroupBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 6
+    gap: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.xsPlus
   },
-  addGroupText: { fontSize: 14, fontWeight: '600' },
+  addGroupText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
   addGroupRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   addGroupIcon: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center'
@@ -230,11 +231,11 @@ const styles = StyleSheet.create({
   groupTile: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  groupTileText: { fontSize: 13, fontWeight: '600' },
+  groupTileText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
   groupCard: {
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
@@ -244,14 +245,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
-  groupName: { fontSize: 16, fontWeight: '600' },
-  groupMeta: { fontSize: 13, marginTop: 2 },
+  groupName: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
+  groupMeta: { fontSize: mobileTypography.secondary.fontSize, marginTop: sharedTokens.spacing.xxs },
   deleteGroupBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdSnug
   }
 })

@@ -15,6 +15,7 @@ import { Plus, Trash2 } from 'lucide-react-native'
 import type { EmojiGroup, EmojiItem } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiGroupStickerGridProps {
   group: EmojiGroup
@@ -176,7 +177,14 @@ export const EmojiGroupStickerGrid: React.FC<EmojiGroupStickerGridProps> = ({
                   resizeMode="contain"
                 />
               ) : (
-                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>?</Text>
+                <Text
+                  style={{
+                    color: colors.textTertiary,
+                    fontSize: mobileTypography.caption.fontSize
+                  }}
+                >
+                  ?
+                </Text>
               )}
             </View>
             <TextInput
@@ -205,35 +213,35 @@ export const EmojiGroupStickerGrid: React.FC<EmojiGroupStickerGridProps> = ({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 12 },
+  wrap: { gap: sharedTokens.spacing.mdTight },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderStyle: 'dashed',
-    paddingVertical: 14
+    paddingVertical: sharedTokens.spacing.mdSnug
   },
-  addBtnText: { fontSize: 15, fontWeight: '600' },
+  addBtnText: { fontSize: mobileTypography.body.fontSize, fontWeight: '600' },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    paddingBottom: 8
+    gap: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.sm
   },
   card: {
     width: '30%',
     minWidth: 96,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 8,
-    gap: 6
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xsPlus
   },
   imageBox: {
     aspectRatio: 1,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
@@ -241,13 +249,13 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   nameInput: {
     borderWidth: 1,
-    borderRadius: 8,
-    fontSize: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 4
+    borderRadius: sharedTokens.radius.sm,
+    fontSize: mobileTypography.caption.fontSize,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xs
   },
   deleteBtn: {
     alignSelf: 'flex-end',
-    padding: 2
+    padding: sharedTokens.spacing.xxs
   }
 })
