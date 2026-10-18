@@ -118,7 +118,15 @@ interface GraphAPI {
     toId: string
     maxHops?: 2 | 3
   }): Promise<{ nodeIds: string[]; edges: any[] } | null>
-  search(opts: { query: string; nodeTypes?: string[]; limit?: number }): Promise<any[]>
+  search(opts: {
+    query: string
+    nodeTypes?: string[]
+    limit?: number
+    mode?: 'text' | 'semantic'
+  }): Promise<any[]>
+  listLiveNodes(opts?: { keyword?: string; limit?: number; offset?: number }): Promise<any[]>
+  countLiveNodes(opts?: { keyword?: string }): Promise<number>
+  countLiveEdges(): Promise<number>
   findByName(opts: { query: string; nodeType?: string }): Promise<{
     id: string
     name: string

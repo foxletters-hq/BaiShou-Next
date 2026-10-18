@@ -1,20 +1,20 @@
 .trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   height: 32px;
   max-width: min(340px, 42vw);
-  padding: 0 10px 0 10px;
-  border-radius: 10px;
+  padding: 0 var(--spacing-sm-plus) 0 var(--spacing-sm-plus);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .triggerBlock {
@@ -23,7 +23,7 @@
   max-width: none;
   height: auto;
   min-height: 36px;
-  padding: 8px 10px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
 }
 
 .trigger:hover {
@@ -49,7 +49,7 @@
 .triggerText {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
   flex: 1;
 }
@@ -57,12 +57,12 @@
 .triggerRange {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   letter-spacing: 0.01em;
 }
@@ -76,9 +76,9 @@
 .triggerBadge {
   flex-shrink: 0;
   height: 18px;
-  padding: 0 7px;
-  border-radius: 999px;
-  font-size: 10px;
+  padding: 0 var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--icon-fs-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 18px;
@@ -97,7 +97,7 @@
   align-items: stretch;
   height: 32px;
   max-width: min(420px, 56vw);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   box-sizing: border-box;
@@ -138,13 +138,13 @@
 .clusterTrailing button {
   height: 100%;
   margin: 0;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: none;
   border-radius: 0;
   background: transparent;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -161,7 +161,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--spacing-lg);
   background: var(--bg-overlay);
   backdrop-filter: none;
 }
@@ -170,9 +170,9 @@
   width: min(440px, 100%);
   background: var(--bg-surface);
   border: 1px solid var(--border-muted);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--text-primary) 18%, transparent);
-  padding: 18px 18px 16px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
   overflow: hidden;
 }
 
@@ -180,19 +180,19 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-md-snug);
 }
 
 .modalTitle {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .modalSubtitle {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   max-width: 240px;
@@ -202,10 +202,10 @@
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-radius: var(--radius-full);
+  font-size: var(--ui-fs-sm);
   font-weight: 650;
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
@@ -215,17 +215,17 @@
 .targetTabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .targetTab {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   background: var(--bg-app);
   color: var(--text-secondary);
@@ -233,9 +233,9 @@
   cursor: pointer;
   text-align: left;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .targetTab:hover {
@@ -250,21 +250,21 @@
 }
 
 .targetTabLabel {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   opacity: 0.75;
 }
 
 .targetTabValue {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 700;
 }
 
 .pickerBody {
   display: flex;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   height: 248px;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .yearPane {
@@ -272,9 +272,9 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   overflow-y: auto;
-  padding-right: 6px;
+  padding-right: var(--spacing-xs-plus);
   border-right: 1px solid var(--border-subtle);
 }
 
@@ -284,17 +284,17 @@
 
 .yearPane::-webkit-scrollbar-thumb {
   background: var(--border-muted);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .yearItem {
-  padding: 8px 0;
+  padding: var(--spacing-sm) 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
 }
@@ -319,24 +319,24 @@
   flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-content: start;
 }
 
 .monthBtn {
-  padding: 11px 0;
-  border-radius: 10px;
+  padding: var(--spacing-sm-plus) 0;
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease,
-    border-color 0.12s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .monthBtn:hover {
@@ -364,19 +364,19 @@
 
 .presets {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .presetBtn {
   flex: 1;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-app);
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -389,5 +389,5 @@
 
 .footer {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }

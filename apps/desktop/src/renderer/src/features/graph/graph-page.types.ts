@@ -1,6 +1,6 @@
 import type { GraphSameNameExisting } from '@baishou/shared'
 
-export type GraphSideTab = 'reextract' | 'pending' | 'similar' | 'detail'
+export type GraphSideTab = 'nodes' | 'reextract' | 'pending' | 'similar' | 'detail'
 export type GraphSideMode = 'organize' | 'canvas' | 'content'
 
 export type GraphNameCandidate = {

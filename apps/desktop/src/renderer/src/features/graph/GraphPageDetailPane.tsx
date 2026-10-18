@@ -17,6 +17,7 @@ import {
   readGraphNodeSuspectReason
 } from './graph-page-view.util'
 import styles from './GraphPage.module.css'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function GraphPageDetailPane(props: {
   selectedNode: GraphPageNode | null
@@ -283,7 +284,7 @@ export function GraphPageDetailPane(props: {
         </div>
       ) : null}
 
-      <div className={styles.detailBlock} style={{ marginTop: 16 }}>
+      <div className={styles.detailBlock} style={{ marginTop: sharedTokens.spacing.md }}>
         <div className={styles.detailLabel}>{t('graph.add_edge', '添加关系')}</div>
         <Input
           fieldSize="small"

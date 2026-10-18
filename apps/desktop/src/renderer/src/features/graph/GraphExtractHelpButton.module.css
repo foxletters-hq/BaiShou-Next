@@ -6,7 +6,7 @@
 .helpContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .section {
@@ -14,15 +14,15 @@
 }
 
 .sectionTitle {
-  margin: 0 0 8px;
-  font-size: 15px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--content-font-size-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .sectionBody {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }

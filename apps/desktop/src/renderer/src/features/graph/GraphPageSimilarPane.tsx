@@ -26,22 +26,31 @@ export function GraphPageSimilarPane(props: {
       </p>
       {props.pairs.map((pair) => (
         <div key={`${pair.nodeId}:${pair.peerId}`} className={styles.itemCompact}>
-          <div className={styles.itemTitle}>
-            <button
-              type="button"
-              className={styles.linkBtn}
-              onClick={() => props.onLocateNode(pair.nodeId)}
-            >
-              {pair.nodeName}
-            </button>
-            <span> · </span>
-            <button
-              type="button"
-              className={styles.linkBtn}
-              onClick={() => props.onLocateNode(pair.peerId)}
-            >
-              {pair.peerName}
-            </button>
+          <div className={styles.similarNodesList}>
+            <div className={styles.similarNodeRow}>
+              <span className={styles.similarNodeLabel}>
+                {t('graph.similar_node_1', '节点1：')}
+              </span>
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => props.onLocateNode(pair.nodeId)}
+              >
+                {pair.nodeName}
+              </button>
+            </div>
+            <div className={styles.similarNodeRow}>
+              <span className={styles.similarNodeLabel}>
+                {t('graph.similar_node_2', '节点2：')}
+              </span>
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => props.onLocateNode(pair.peerId)}
+              >
+                {pair.peerName}
+              </button>
+            </div>
           </div>
           <div className={styles.itemMetaCompact}>
             {t('graph.similar_similarity', '相似度 {{percent}}%', {

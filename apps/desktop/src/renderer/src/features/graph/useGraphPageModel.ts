@@ -24,6 +24,7 @@ import { useGraphPageModalEscape } from './useGraphPageModalEscape'
 import { useGraphPageMonthRange } from './useGraphPageMonthRange'
 import { useGraphPageReview } from './useGraphPageReview'
 import { useGraphPageSearch } from './useGraphPageSearch'
+import { useGraphPageInventory } from './useGraphPageInventory'
 import { useGraphPageSelection } from './useGraphPageSelection'
 import { useGraphPageSettings } from './useGraphPageSettings'
 import { useGraphPageSideLayout } from './useGraphPageSideLayout'
@@ -48,7 +49,7 @@ export function useGraphPageModel({
   const toast = useToast()
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
-  const [tab, setTab] = useState<GraphSideTab>('reextract')
+  const [tab, setTab] = useState<GraphSideTab>('nodes')
   const [dismissGuide, setDismissGuide] = useState(false)
 
   const month = useGraphPageMonthRange()
@@ -93,6 +94,11 @@ export function useGraphPageModel({
     setPinNeighborhood: selection.setPinNeighborhood,
     setLocateIds: selection.setLocateIds,
     setLocateSeq: selection.setLocateSeq
+  })
+  const inventory = useGraphPageInventory({
+    revision: data.revision,
+    t: translate,
+    toast
   })
   const review = useGraphPageReview({
     t: translate,
@@ -330,6 +336,7 @@ export function useGraphPageModel({
     data,
     selection,
     search,
+    inventory,
     review,
     detail,
     awaken,

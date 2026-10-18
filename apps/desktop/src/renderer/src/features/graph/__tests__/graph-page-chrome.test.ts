@@ -298,8 +298,12 @@ describe('GraphPage chrome', () => {
     expect(src).toContain('extracting={readiness.graphExtracting}')
     expect(src).toContain('organizePipeline={readiness.organizePipeline}')
     const css = readFileSync(join(dir, '../GraphPage.module.css'), 'utf8')
-    expect(css).toMatch(/\.chipRow \{[^}]*padding: 10px 20px 12px/)
-    expect(css).toMatch(/\.statusRow \{[^}]*padding: 8px 20px 2px/)
+    expect(css).toMatch(
+      /\.chipRow \{[^}]*padding: var\(--spacing-sm-plus\) var\(--spacing-md-plus\) var\(--spacing-md-tight\)/
+    )
+    expect(css).toMatch(
+      /\.statusRow \{[^}]*padding: var\(--spacing-sm\) var\(--spacing-md-plus\) var\(--spacing-2xs\)/
+    )
     expect(css).not.toMatch(/\.statusRow \{[^}]*border-bottom: 1px solid/)
   })
 
@@ -317,6 +321,20 @@ describe('GraphPage chrome', () => {
     expect(css).toMatch(/\.detailValue \{[^}]*font-size: var\(--ui-fs-md\)/)
     expect(css).not.toMatch(/\.detailLabel \{[^}]*text-transform: uppercase/)
     expect(css).not.toMatch(/\.detailLabel \{[^}]*font-size: 11px/)
+  })
+
+  it('should page live nodes in the sidebar inventory and keep a month-range all preset', () => {
+    const nodesSrc = readSrc('GraphPageNodesPane.tsx')
+    const css = readFileSync(join(dir, '../GraphPage.module.css'), 'utf8')
+    expect(contentSrc).toContain("t('graph.tab_nodes'")
+    expect(nodesSrc).toContain('inventorySearch')
+    expect(nodesSrc).toContain('inventoryItem')
+    expect(nodesSrc).toContain('inventoryPagination')
+    expect(css).toContain('.inventorySearch')
+    expect(css).toContain('.inventoryItem')
+    expect(css).toContain('.inventoryPagination')
+    expect(pickerSrc).toContain("t('graph.month_range_all'")
+    expect(pickerSrc).toContain('allGraphMonthRange')
   })
 
   it('should keep a visible scrollbar on the graph sidebar panel', () => {

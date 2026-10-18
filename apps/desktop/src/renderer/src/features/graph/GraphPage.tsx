@@ -257,6 +257,23 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   onTabChange: m.setTab,
                   pendingCount: review.pendingCount,
                   similarCount: data.similarPairs.length,
+                  nodes: {
+                    query: m.inventory.query,
+                    onQueryChange: m.inventory.setQuery,
+                    searchMode: m.inventory.searchMode,
+                    onSearchModeChange: m.inventory.setSearchMode,
+                    listed: m.inventory.listed,
+                    nodeCount: m.inventory.nodeCount,
+                    edgeCount: m.inventory.edgeCount,
+                    loading: m.inventory.loading,
+                    pageSize: m.inventory.pageSize,
+                    onPageChange: m.inventory.setPage,
+                    onPageSizeChange: m.inventory.setPageSize,
+                    onOpenNode: (id) => {
+                      m.setTab('detail')
+                      void selection.onSelectNode(id)
+                    }
+                  },
                   reextract: {
                     pendingReextract: data.pendingReextract,
                     queueByPath: extract.queueByPath,
