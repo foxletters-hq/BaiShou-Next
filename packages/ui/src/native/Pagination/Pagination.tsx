@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { View, Text, Pressable, TextInput } from 'react-native'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { getNativeElevationStyle, useNativeTheme } from '../theme'
+import { useNativeTheme } from '../theme'
 import { paginationStyles as styles } from './pagination.styles'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 
@@ -23,68 +23,21 @@ export interface NativePaginationProps {
   disabled?: boolean
 }
 
-/** 计算页码范围 */
-function getPageRange(
-  current: number,
-  total: number,
-  siblingCount: number
-): (number | 'ellipsis')[] {
-  const pages: (number | 'ellipsis')[] = []
+import { getNativePaginationRange } from './pagination.utils'
 
-  const totalPageNumbers = siblingCount * 2 + 3
-  if (total <= totalPageNumbers) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i)
-    }
-    return pages
-  }
-
-  const leftSiblingIndex = Math.max(current - siblingCount, 1)
-  const rightSiblingIndex = Math.min(current + siblingCount, total)
-
-  const showLeftEllipsis = leftSiblingIndex > 2
-  const showRightEllipsis = rightSiblingIndex < total - 1
-
-  if (!showLeftEllipsis) {
-    for (let i = 1; i <= rightSiblingIndex + 1; i++) {
-      pages.push(i)
-    }
-    pages.push('ellipsis')
-    pages.push(total)
-    return pages
-  }
-
-  if (!showRightEllipsis) {
-    pages.push(1)
-    pages.push('ellipsis')
-    for (let i = leftSiblingIndex - 1; i <= total; i++) {
-      pages.push(i)
-    }
-    return pages
-  }
-
-  pages.push(1)
-  pages.push('ellipsis')
-  for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
-    pages.push(i)
-  }
-  pages.push('ellipsis')
-  pages.push(total)
-
-  return pages
-}
+export { getNativePaginationRange, getNativePaginationRange as getPageRange }
 
 export const Pagination: React.FC<NativePaginationProps> = ({
   current,
   total,
   onChange,
-  siblingCount = 1,
+  siblingCount = 0,
   showFirstLast = false,
-  showJumper = true,
+  showJumper = false,
   disabled = false
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const pageUnitLabel = t('common.pagination_page_unit', 'Page')
 
   const [jumperValue, setJumperValue] = useState(() => String(current))
@@ -114,7 +67,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
     setJumperValue(String(current))
   }, [disabled, jumperValue, total, current, handlePageChange])
 
-  const pageRange = getPageRange(current, total, siblingCount)
+  const pageRange = getNativePaginationRange(current, total, siblingCount)
 
   const navBtnStyle = (isDisabled: boolean) => [
     styles.pageBtn,
@@ -147,10 +100,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
             borderColor: isActive ? colors.primary : colors.borderControl,
             opacity: disabled ? 0.5 : 1
           },
-          isActive && {
-            ...styles.pageBtnActive,
-            ...getNativeElevationStyle(isDark, 'subtle')
-          }
+          isActive ? styles.pageBtnActive : null
         ]}
       >
         <Text

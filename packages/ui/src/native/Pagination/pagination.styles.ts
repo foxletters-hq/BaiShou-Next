@@ -1,29 +1,25 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const paginationStyles = StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   pageBtn: {
     minWidth: 32,
     height: 32,
-    paddingHorizontal: 6,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  pageBtnActive: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3
-  },
+  pageBtnActive: {},
   pageBtnText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   pageBtnTextActive: {
@@ -36,27 +32,27 @@ export const paginationStyles = StyleSheet.create({
     justifyContent: 'center'
   },
   ellipsisText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     letterSpacing: 2
   },
   jumper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 4,
-    gap: 4,
+    marginLeft: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.xs,
     flexShrink: 0
   },
   jumperInput: {
     width: 40,
     height: 32,
-    paddingHorizontal: 4,
+    paddingHorizontal: sharedTokens.spacing.xs,
     paddingVertical: 0,
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     borderWidth: 1,
-    borderRadius: 8
+    borderRadius: sharedTokens.radius.sm
   },
   jumperSuffix: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   }
 })

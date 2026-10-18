@@ -1,4 +1,5 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const pageSizeSelectorStyles = StyleSheet.create({
   wrapper: {
@@ -7,53 +8,57 @@ export const pageSizeSelectorStyles = StyleSheet.create({
   triggerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     height: 32,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   pageSizeValue: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   pageSizeUnit: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '400'
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24
+    paddingHorizontal: sharedTokens.spacing.lg
   },
   dropdownPanel: {
     width: '100%',
     maxWidth: 200,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8
+    padding: sharedTokens.spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16
+      },
+      default: {}
+    })
   },
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   optionBtn: {
     width: '31%',
     minWidth: 44,
     flexGrow: 1,
     height: 36,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
   optionBtnText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   optionBtnTextSelected: {
@@ -61,14 +66,14 @@ export const pageSizeSelectorStyles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 6
+    marginVertical: sharedTokens.spacing.xsPlus
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: 2
+    paddingVertical: sharedTokens.spacing.xxs
   },
   footerText: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   }
 })
