@@ -1,4 +1,4 @@
-import { eq, sql, and, like } from 'drizzle-orm'
+import { eq, sql, and, or, like } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
 import type { UpsertShadowIndexPayload } from './shadow-index.repository.types'
@@ -53,6 +53,34 @@ async function loadIdPathMaps(database: UpsertDb, vaultId: string): Promise<IdPa
     })
     .from(shadowJournalIndexTable)
     .where(eq(shadowJournalIndexTable.vaultId, vaultId))
+
+  return buildMapsFromRows(existing)
+}
+
+async function loadIdPathMapsForSingle(
+  database: UpsertDb,
+  vaultId: string,
+  payload: UpsertShadowIndexPayload
+): Promise<IdPathMaps> {
+  const normalizedPath = normalizeShadowFilePath(payload.filePath)
+  const targetCondition =
+    payload.id !== undefined
+      ? or(
+          eq(shadowJournalIndexTable.filePath, normalizedPath),
+          eq(shadowJournalIndexTable.filePath, payload.filePath),
+          eq(shadowJournalIndexTable.id, payload.id)
+        )
+      : or(
+          eq(shadowJournalIndexTable.filePath, normalizedPath),
+          eq(shadowJournalIndexTable.filePath, payload.filePath)
+        )
+  const existing = await database
+    .select({
+      id: shadowJournalIndexTable.id,
+      filePath: shadowJournalIndexTable.filePath
+    })
+    .from(shadowJournalIndexTable)
+    .where(and(eq(shadowJournalIndexTable.vaultId, vaultId), targetCondition))
 
   return buildMapsFromRows(existing)
 }
@@ -308,7 +336,7 @@ export class ShadowIndexUpsertOps {
 
   async upsert(payload: UpsertShadowIndexPayload): Promise<number> {
     const vaultId = this.resolveVaultId(payload)
-    const maps = await loadIdPathMaps(this.database, vaultId)
+    const maps = await loadIdPathMapsForSingle(this.database, vaultId, payload)
     const rowId = await upsertOne(this.database, payload, vaultId, maps)
 
     await syncFtsRowAsync(
@@ -332,8 +360,8 @@ export class ShadowIndexUpsertOps {
       // 关键：FTS 同步必须在主事务 COMMIT 之后执行。
       // SQLite 在事务内任一语句失败后会把整个事务置为 needs-rollback 状态，
       // 即便用 try/catch 接住异常，事务也已经中毒，后续 COMMIT 必然失败。
-      // 把 FTS 挪到事务外（自带 try/catch 兜底）就能让索引写入与 FTS 同步真正解耦，
-      // FTS 不可用（最常见于 Android 系统 SQLite 未编译 FTS5）也不会影响保存。
+      // 把 FTS 挪到主事务外独立执行（优先单次批量事务，失败时回退逐条容错），
+      // 就能让索引写入与 FTS 同步真正解耦，FTS 不可用也不会影响保存。
       if (driver === 'better-sqlite' || driver === 'expo-sync') {
         // expo-sqlite 的 Drizzle transaction 是同步 API：async 回调会在 await 前 commit，
         // 必须走 upsertOneSync，否则并发写同一连接会导致 Android 原生崩溃。
@@ -349,15 +377,26 @@ export class ShadowIndexUpsertOps {
             rowIds.push(rowId)
           }
         })
-        for (let i = 0; i < payloads.length; i++) {
-          if (driver === 'better-sqlite') {
-            syncFtsRowSync(
-              this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
-              rowIds[i]!,
-              payloads[i]!.rawContent,
-              payloads[i]!.tags
-            )
-          } else {
+        if (driver === 'better-sqlite') {
+          try {
+            await this.database.transaction(async (tx) => {
+              const syncTx = tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void }
+              for (let i = 0; i < payloads.length; i++) {
+                syncFtsRowSync(syncTx, rowIds[i]!, payloads[i]!.rawContent, payloads[i]!.tags)
+              }
+            })
+          } catch {
+            for (let i = 0; i < payloads.length; i++) {
+              syncFtsRowSync(
+                this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
+                rowIds[i]!,
+                payloads[i]!.rawContent,
+                payloads[i]!.tags
+              )
+            }
+          }
+        } else {
+          for (let i = 0; i < payloads.length; i++) {
             await syncFtsRowAsync(
               this.database,
               rowIds[i]!,
@@ -443,12 +482,20 @@ export class ShadowIndexUpsertOps {
       .delete(shadowJournalIndexTable)
       .where(eq(shadowJournalIndexTable.vaultId, targetVault))
 
-    for (const { id } of rows) {
+    const ids = rows.map((r) => r.id)
+    const CHUNK = 400
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK)
       try {
-        await this.database.run(sql`DELETE FROM journals_fts WHERE rowid = ${id}`)
+        await this.database.run(
+          sql`DELETE FROM journals_fts WHERE rowid IN (${sql.join(
+            chunk.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        )
       } catch (e: any) {
         console.warn(
-          `[ShadowIndex] FTS 批量删除失败 (非阻塞) [ID=${id}]:`,
+          `[ShadowIndex] FTS 批量删除失败 (非阻塞):`,
           e?.message,
           e?.cause?.message ?? e?.cause ?? ''
         )

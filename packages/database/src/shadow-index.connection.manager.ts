@@ -105,8 +105,17 @@ export class ShadowIndexConnectionManager {
     let quickCheckMs = 0
 
     try {
-      const header = fs.readFileSync(dbPath)
-      if (header.length < 16 || header.subarray(0, 15).toString('utf8') !== 'SQLite format 3') {
+      const header = Buffer.alloc(16)
+      const fd = fs.openSync(dbPath, 'r')
+      let bytesRead = 0
+      try {
+        bytesRead = fs.readSync(fd, header, 0, 16, 0)
+      } finally {
+        try {
+          fs.closeSync(fd)
+        } catch {}
+      }
+      if (bytesRead < 16 || header.subarray(0, 15).toString('utf8') !== 'SQLite format 3') {
         isCorrupt = true
       }
     } catch {

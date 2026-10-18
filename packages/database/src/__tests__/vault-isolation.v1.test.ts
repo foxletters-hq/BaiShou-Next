@@ -755,4 +755,88 @@ describe('vault isolation V2.2 (vault_id)', () => {
     expect(v2b.valuesRemapped).toBe(0)
     expect(v2b.diarySourceIdsRewritten).toBe(0)
   })
+
+  it('7) direct upgrade from main: table has vault_id directly without vault_name', async () => {
+    await db.execute(`DROP TABLE IF EXISTS agent_sessions`)
+    await db.execute(`DROP TABLE IF EXISTS memory_embeddings`)
+    await db.execute(`
+      CREATE TABLE agent_sessions (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL DEFAULT 't',
+        vault_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL DEFAULT 0
+      )
+    `)
+    // 模拟 main 分支：最初无任何 vault 列，由缺列补丁直接添加了 vault_id TEXT（值全为 NULL）
+    await db.execute(`
+      CREATE TABLE memory_embeddings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        embedding_id TEXT NOT NULL UNIQUE,
+        source_type TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        group_id TEXT NOT NULL,
+        vault_id TEXT,
+        chunk_index INTEGER NOT NULL DEFAULT 0,
+        chunk_text TEXT NOT NULL,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        embedding BLOB NOT NULL,
+        dimension INTEGER NOT NULL,
+        model_id TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        source_created_at INTEGER
+      )
+    `)
+
+    await db.execute({
+      sql: `INSERT INTO agent_sessions (id, title, vault_id) VALUES ('sess_main', 't', 'Work')`
+    })
+    await db.execute({
+      sql: `INSERT INTO memory_embeddings
+        (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
+         embedding, dimension, model_id, created_at)
+       VALUES ('m_main', 'memory', 'id1', 'memory:Personal', NULL, 0, 'mem', ?, 3, 'm', 1)`,
+      args: [new Uint8Array(new Float32Array(vec(0.3)).buffer)]
+    })
+    await db.execute({
+      sql: `INSERT INTO memory_embeddings
+        (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
+         embedding, dimension, model_id, created_at)
+       VALUES ('d_main', 'diary', 'Personal#10', 'diary:Personal', NULL, 0, 'd', ?, 3, 'm', 1)`,
+      args: [new Uint8Array(new Float32Array(vec(0.4)).buffer)]
+    })
+    await db.execute({
+      sql: `INSERT INTO memory_embeddings
+        (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
+         embedding, dimension, model_id, created_at)
+       VALUES ('c_main', 'chat', 'msg1', 'sess_main', NULL, 0, 'chat', ?, 3, 'm', 1)`,
+      args: [new Uint8Array(new Float32Array(vec(0.6)).buffer)]
+    })
+
+    const sqlExec = async (sql: string, args: Array<string | number | null> = []) => {
+      const res = await db.execute({ sql, args })
+      return { rows: res.rows as Array<Record<string, unknown>>, rowsAffected: res.rowsAffected }
+    }
+
+    // 执行回填（目标列是 vault_id）
+    const first = await backfillMemoryEmbeddingsVaultName(sqlExec, 'vault_id')
+    expect(first.memoryFromGroupId).toBe(1)
+    expect(first.diaryFromGroupId).toBe(1)
+    expect(first.chatFromSessionJoin).toBe(1)
+
+    // 执行 ID 映射
+    const v2 = await migrateAgentDbVaultNameToVaultId(sqlExec)
+    expect(v2.valuesRemapped).toBeGreaterThan(0)
+
+    const rows = await db.execute(
+      `SELECT embedding_id, vault_id, source_id FROM memory_embeddings ORDER BY embedding_id`
+    )
+    const byId = Object.fromEntries(
+      rows.rows.map((r) => [String(r.embedding_id), { vaultId: r.vault_id, sourceId: r.source_id }])
+    )
+    expect(byId.m_main?.vaultId).toBe(VAULT_PERSONAL)
+    expect(byId.d_main?.vaultId).toBe(VAULT_PERSONAL)
+    expect(byId.d_main?.sourceId).toBe(`${VAULT_PERSONAL}#10`)
+    expect(byId.c_main?.vaultId).toBe(VAULT_WORK)
+  })
 })

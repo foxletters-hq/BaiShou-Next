@@ -102,8 +102,8 @@ export class HybridSearchEmbeddingStore {
 
   async deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void> {
     await this.db.execute({
-      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND source_id = ?`,
-      args: [sourceType, sourceId]
+      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
+      args: [sourceType, sourceId, sourceId]
     })
     try {
       await this.db.execute({
@@ -157,11 +157,11 @@ export class HybridSearchEmbeddingStore {
       sql: `
         SELECT source_type, source_id, chunk_text, source_created_at
         FROM ${HYBRID_SEARCH_TABLE}
-        WHERE source_type = ? AND source_id = ? AND vault_id = ?
+        WHERE source_type = ? AND (source_id = ? OR embedding_id = ?) AND vault_id = ?
         ORDER BY chunk_index ASC
         LIMIT 1
       `,
-      args: [trimmedType, trimmedId, vaultId]
+      args: [trimmedType, trimmedId, trimmedId, vaultId]
     })
     const row = result.rows[0] as Record<string, unknown> | undefined
     if (!row) return null

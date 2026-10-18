@@ -104,7 +104,6 @@ export class ShadowIndexListOps {
     let queryStr = sql`
       SELECT i.*, i.raw_content as rawContent, i.tags as rawTags
       FROM journals_index i
-      LEFT JOIN journals_fts f ON i.id = f.rowid
       WHERE i.vault_id = ${this.ctx.vaultId}
       ORDER BY i.date ${direction}
     `
