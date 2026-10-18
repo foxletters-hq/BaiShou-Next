@@ -145,13 +145,16 @@ export class KnowledgeHydrationService {
           existing?.extractedTextHash != null &&
           extractedHash != null &&
           existing.extractedTextHash !== extractedHash
-        const expectedChunkCount = await this.resolveExpectedChunkCount(
-          nb.id,
-          src.id,
-          existing?.status,
-          extracted
-        )
         const ledger = await this.deps.repo.getEmbedLedger(vaultId, src.id)
+        const expectedChunkCount =
+          !extracted.text &&
+          !hashChanged &&
+          ledger?.status === 'embedded' &&
+          typeof ledger.chunkCount === 'number' &&
+          ledger.chunkCount > 0 &&
+          chunkCount === ledger.chunkCount
+            ? ledger.chunkCount
+            : await this.resolveExpectedChunkCount(nb.id, src.id, existing?.status, extracted)
         const decision = resolveHydrationSourceDecision({
           existingStatus: existing?.status,
           extractedHash,

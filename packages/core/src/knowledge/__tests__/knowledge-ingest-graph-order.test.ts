@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  KnowledgeIngestService,
-  KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR,
-  markGraphFollowAfterEmbed
-} from '../knowledge-ingest.service'
+import { KnowledgeIngestService, markGraphFollowAfterEmbed } from '../knowledge-ingest.service'
 
 function createRepo() {
   return {
@@ -13,6 +9,7 @@ function createRepo() {
     getEmbedLedger: vi.fn().mockResolvedValue(null),
     countChunksBySource: vi.fn().mockResolvedValue(0),
     listSources: vi.fn().mockResolvedValue([]),
+    listIngestJobs: vi.fn().mockResolvedValue([]),
     deleteChunksByNotebook: vi.fn().mockResolvedValue(undefined),
     rebuildEmbedLedger: vi.fn().mockResolvedValue(undefined),
     recordEmbedded: vi.fn().mockResolvedValue(undefined),
@@ -28,7 +25,8 @@ function createService(
   return new KnowledgeIngestService({
     repo: repo as never,
     notebookManager: {
-      readExtractedText: vi.fn().mockResolvedValue('已经抽出的正文，用于分块向量。')
+      readExtractedText: vi.fn().mockResolvedValue('已经抽出的正文，用于分块向量。'),
+      readPagesJson: vi.fn().mockResolvedValue(null)
     } as never,
     fs: {} as never,
     getVaultId: () => 'vault_test',
@@ -102,18 +100,26 @@ describe('KnowledgeIngestService graph order', () => {
     expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
   })
 
-  it('should throw when reprocessing graph before chunks are embedded', async () => {
-    await expect(svc.reprocessSource('src_order', 'graph')).rejects.toThrow(
-      KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR
-    )
-    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+  it('should queue embed then graph when reprocessing graph before chunks are embedded', async () => {
+    await svc.reprocessSource('src_order', 'graph')
+    expect(repo.enqueueIngestJob.mock.calls.map((call) => call[0].stage)).toEqual(['embed'])
+    repo.enqueueIngestJob.mockClear()
+    await svc.processEmbedJob('src_order')
+    expect(repo.enqueueIngestJob.mock.calls.map((call) => call[0].stage)).toEqual(['graph'])
   })
 
-  it('should skip unembedded sources when rebuilding notebook graph', async () => {
+  it('should queue embed then graph when rebuilding notebook graph for unembedded sources', async () => {
     repo.listSources.mockResolvedValue([extractedSource])
     const queued = await svc.rebuildNotebookGraph('nb1')
-    expect(queued).toBe(0)
-    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+    expect(queued).toBe(1)
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'embed' })
+    )
+    repo.enqueueIngestJob.mockClear()
+    await svc.processEmbedJob('src_order')
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'graph' })
+    )
   })
 
   it('should queue graph when reprocessing after embed ledger is present', async () => {
@@ -153,5 +159,74 @@ describe('KnowledgeIngestService graph order', () => {
     await svc.rebuildIndex('nb1')
     expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
     expect(repo.rebuildEmbedLedger).toHaveBeenCalled()
+  })
+
+  it('should queue embed then graph when organizing without chunk embeddings', async () => {
+    repo.listSources.mockResolvedValue([extractedSource])
+    const result = await svc.organizeNotebook('nb1')
+    expect(result.queued).toBe(1)
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'embed' })
+    )
+    repo.enqueueIngestJob.mockClear()
+    await svc.processEmbedJob('src_order')
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'graph' })
+    )
+  })
+
+  it('should skip organizing a ready source that already has embeddings', async () => {
+    repo.listSources.mockResolvedValue([extractedSource])
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    const result = await svc.organizeNotebook('nb1')
+    expect(result.queued).toBe(0)
+    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+  })
+
+  it('should queue graph when organizing a stored leftover that already has embeddings', async () => {
+    repo.listSources.mockResolvedValue([{ ...extractedSource, status: 'stored' }])
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    const result = await svc.organizeNotebook('nb1')
+    expect(result.queued).toBe(1)
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'graph' })
+    )
+  })
+
+  it('should count leftover pending graph jobs as already queued without enqueuing again', async () => {
+    repo.listSources.mockResolvedValue([extractedSource])
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    repo.listIngestJobs.mockResolvedValue([{ sourceId: 'src_order', status: 'pending' }])
+    const result = await svc.organizeNotebook('nb1')
+    expect(result.queued).toBe(1)
+    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+  })
+
+  it('should retry graph when organizing a ready source with a failed graph job', async () => {
+    repo.listSources.mockResolvedValue([extractedSource])
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    repo.listIngestJobs.mockResolvedValue([{ sourceId: 'src_order', status: 'failed' }])
+    const result = await svc.organizeNotebook('nb1')
+    expect(result.queued).toBe(1)
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_order', stage: 'graph' })
+    )
+  })
+
+  it('should mark a pending leftover ready after graph extract succeeds', async () => {
+    repo.getSource.mockResolvedValue({ ...extractedSource, status: 'pending' })
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    await svc.processGraphJob('src_order')
+    expect(repo.updateSourceStatus).toHaveBeenCalledWith(
+      'src_order',
+      'ready',
+      expect.objectContaining({ errorMessage: null })
+    )
+  })
+
+  it('should not rewrite ready status after graph extract succeeds', async () => {
+    repo.getEmbedLedger.mockResolvedValue({ status: 'embedded', chunkCount: 2 })
+    await svc.processGraphJob('src_order')
+    expect(repo.updateSourceStatus).not.toHaveBeenCalled()
   })
 })

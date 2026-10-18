@@ -38,6 +38,7 @@ export type {
 export {
   KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR,
   listLiveGraphSourceIds,
+  listLiveIngestSourceIds,
   markEmbedJobLive,
   markExtractJobLive,
   markGraphFollowAfterEmbed,
