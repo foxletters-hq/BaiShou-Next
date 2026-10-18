@@ -4,6 +4,7 @@ import { Archive, CheckSquare, CloudUpload, Settings, Trash2 } from 'lucide-reac
 import type { TFunction } from 'i18next'
 import type { SyncRecord } from '@baishou/core-mobile'
 import { dataSyncScreenStyles as styles } from '../data-sync-screen.styles'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 
 export type DataSyncBackupHeaderProps = {
   backupTab: 'cloud' | 'snapshot' | 'local'
@@ -41,7 +42,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
     maxCountLabel,
     handleSyncNow,
     isSyncing,
-    syncConfig
+    syncConfig: _syncConfig
   } = props
 
   if (backupTab === 'local') return null
@@ -59,7 +60,13 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
                   else setSelectedRecords(new Set(cloudRecords.map((r) => r.filename)))
                 }}
               >
-                <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: mobileTypography.caption.fontSize,
+                    fontWeight: '600'
+                  }}
+                >
                   {selectedRecords.size === cloudRecords.length
                     ? t('settings.attachment_deselect_all', '取消全选')
                     : t('settings.attachment_select_all', '全选')}
@@ -71,7 +78,12 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
                   setSelectedRecords(new Set())
                 }}
               >
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: mobileTypography.caption.fontSize
+                  }}
+                >
                   {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
@@ -84,7 +96,13 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
                 disabled={selectedRecords.size === 0}
               >
                 <Trash2 size={14} color={colors.textOnPrimary} strokeWidth={2} />
-                <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    color: colors.textOnPrimary,
+                    fontSize: mobileTypography.caption.fontSize,
+                    fontWeight: '600'
+                  }}
+                >
                   {' '}
                   {t('common.delete')} ({selectedRecords.size})
                 </Text>
@@ -100,7 +118,13 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
               disabled={cloudRecords.length === 0 || recordsLoading}
             >
               <CheckSquare size={14} color={colors.textSecondary} strokeWidth={2} />
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.caption.fontSize,
+                  fontWeight: '600'
+                }}
+              >
                 {' '}
                 {t('data_sync.batch_manage', '批量管理')}
               </Text>
@@ -111,7 +135,13 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
             onPress={openSettings}
           >
             <Settings size={14} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: mobileTypography.caption.fontSize,
+                fontWeight: '600'
+              }}
+            >
               {' '}
               {t('data_sync.sync_settings_button', '备份设置')}
             </Text>
@@ -124,7 +154,13 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
         onPress={openCountModal}
       >
         <Archive size={14} color={colors.textSecondary} strokeWidth={2} />
-        <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: mobileTypography.caption.fontSize,
+            fontWeight: '600'
+          }}
+        >
           {' '}
           {maxCountLabel}
         </Text>
@@ -134,17 +170,24 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
         <TouchableOpacity
           style={[
             styles.headerActionBtn,
-            { backgroundColor: colors.primary, borderColor: colors.primary }
+            { backgroundColor: colors.primary, borderColor: colors.primary },
+            isSyncing && { opacity: 0.7 }
           ]}
           onPress={handleSyncNow}
-          disabled={isSyncing || syncConfig.target === 'local'}
+          disabled={isSyncing}
         >
           {isSyncing ? (
             <ActivityIndicator size="small" color={colors.textOnPrimary} />
           ) : (
             <CloudUpload size={14} color={colors.textOnPrimary} strokeWidth={2} />
           )}
-          <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
+          <Text
+            style={{
+              color: colors.textOnPrimary,
+              fontSize: mobileTypography.caption.fontSize,
+              fontWeight: '600'
+            }}
+          >
             {' '}
             {isSyncing
               ? t('data_sync.syncing_status', '备份中...')

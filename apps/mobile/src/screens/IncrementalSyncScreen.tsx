@@ -24,6 +24,7 @@ import {
   DEFAULT_CONFIG,
   projectIncrementalSyncRuntime
 } from '../services/mobile-incremental-sync-config.util'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   getSyncTrafficSettings,
   saveSyncTrafficSettings,
@@ -44,6 +45,7 @@ const IncrementalSyncScreen: React.FC = () => {
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<S3SyncConfig>(DEFAULT_CONFIG)
   const [trafficSettings, setTrafficSettings] = useState<SyncTrafficSettings>({
     enabled: true,
@@ -170,6 +172,31 @@ const IncrementalSyncScreen: React.FC = () => {
     }
   }, [config, services, t, toast])
 
+  const handleSaveConfig = useCallback(async () => {
+    if (!services?.incrementalSyncService) return
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    setSaving(true)
+    try {
+      await services.incrementalSyncService.saveConfig(projectIncrementalSyncRuntime(config))
+      await refreshConfigured()
+      const n = Number(thresholdText)
+      if (Number.isFinite(n)) {
+        const thresholdMb = Math.max(1, Math.min(10240, Math.floor(n)))
+        await saveSyncTrafficSettings({ enabled: trafficSettings.enabled, thresholdMb }).catch(
+          () => {}
+        )
+      }
+      toast.showSuccess(t('common.save_success', '保存成功'))
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('data_sync.save_failed', '保存失败'))
+    } finally {
+      setSaving(false)
+    }
+  }, [config, services, t, toast, refreshConfigured, thresholdText, trafficSettings.enabled])
+
   return (
     <StackScreenLayout
       title={t('data_sync.incremental_sync')}
@@ -193,10 +220,6 @@ const IncrementalSyncScreen: React.FC = () => {
             }
           ]}
         >
-          <Text style={[styles.intro, { color: colors.textSecondary }]}>
-            {t('data_sync.incremental_sync_tooltip')}
-          </Text>
-
           <IncrementalSyncConfigSheet
             config={config}
             showAccessKey={showAccessKey}
@@ -204,10 +227,12 @@ const IncrementalSyncScreen: React.FC = () => {
             colors={colors}
             tokens={tokens}
             testing={testing}
+            saving={saving}
             onChange={(next, immediate) => void handleConfigChange(next, immediate)}
             onToggleAccessKey={() => setShowAccessKey((v) => !v)}
             onToggleSecretKey={() => setShowSecretKey((v) => !v)}
             onTestConnection={() => void handleTestConnection()}
+            onSave={() => void handleSaveConfig()}
           />
 
           <View style={[styles.actionDivider, { backgroundColor: colors.borderMuted }]} />
@@ -228,11 +253,19 @@ const IncrementalSyncScreen: React.FC = () => {
             </View>
             {trafficSettings.enabled ? (
               <>
-                <Text style={[styles.trafficTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+                <Text
+                  style={[
+                    styles.trafficTitle,
+                    { color: colors.textPrimary, marginTop: sharedTokens.spacing.mdTight }
+                  ]}
+                >
                   {t('settings.sync_traffic_threshold', '流量提示阈值（MB）')}
                 </Text>
                 <Text
-                  style={[styles.trafficHint, { color: colors.textSecondary, marginBottom: 6 }]}
+                  style={[
+                    styles.trafficHint,
+                    { color: colors.textSecondary, marginBottom: sharedTokens.spacing.xsPlus }
+                  ]}
                 >
                   {t(
                     'settings.sync_traffic_threshold_hint',
@@ -243,7 +276,7 @@ const IncrementalSyncScreen: React.FC = () => {
                   value={thresholdText}
                   keyboardType="number-pad"
                   onChangeText={handleThresholdChange}
-                  containerStyle={{ marginTop: 4 }}
+                  containerStyle={{ marginTop: sharedTokens.spacing.xs }}
                 />
               </>
             ) : null}
@@ -278,56 +311,55 @@ const IncrementalSyncScreen: React.FC = () => {
 const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 20 },
+  scrollContent: { padding: sharedTokens.spacing.md, paddingBottom: sharedTokens.spacing.mdPlus },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 4
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.xs
   },
-  intro: { fontSize: 14, lineHeight: 22 },
   actionDivider: {
     height: 1,
-    marginTop: 16,
-    marginBottom: 12
+    marginTop: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   trafficSection: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   trafficRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   trafficText: {
     flex: 1,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   trafficTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   trafficHint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   syncButton: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   progressSection: {
-    marginTop: 12
+    marginTop: sharedTokens.spacing.mdTight
   },
   progressBarBg: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: sharedTokens.radius.xxs,
     overflow: 'hidden'
   },
   progressBarFill: {
     height: 6,
-    borderRadius: 3
+    borderRadius: sharedTokens.radius.xxs
   },
   progressText: {
-    fontSize: 12,
-    marginTop: 6
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xsPlus
   }
 })
 

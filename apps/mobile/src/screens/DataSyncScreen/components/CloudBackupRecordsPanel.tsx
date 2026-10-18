@@ -14,6 +14,7 @@ import type { TFunction } from 'i18next'
 import type { SyncConfig, SyncRecord } from '@baishou/core-mobile'
 import { formatRecordSize } from '../data-sync-cloud.utils'
 import { dataSyncScreenStyles as styles } from '../data-sync-screen.styles'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export type CloudBackupRecordsPanelProps = {
   colors: Record<string, string>
@@ -37,6 +38,7 @@ export type CloudBackupRecordsPanelProps = {
   handleRenameRecord: (oldName: string) => Promise<void>
   handleRestoreRecord: (filename: string) => Promise<void>
   handleDeleteCloudRecord: (filename: string) => Promise<void>
+  embedded?: boolean
 }
 
 export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
@@ -60,15 +62,23 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
     setRenamingRecord,
     handleRenameRecord,
     handleRestoreRecord,
-    handleDeleteCloudRecord
+    handleDeleteCloudRecord,
+    embedded = false
   } = props
 
   return (
-    <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
+    <View
+      style={embedded ? { width: '100%' } : [styles.section, { backgroundColor: colors.bgSurface }]}
+    >
       {recordsLoading && cloudRecords.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}>
+          <Text
+            style={[
+              styles.loadingText,
+              { color: colors.textSecondary, marginTop: sharedTokens.spacing.mdTight }
+            ]}
+          >
             {t('data_sync.loading_records', '正在连线获取云端记录...')}
           </Text>
         </View>
@@ -85,13 +95,25 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
             disabled={recordsLoading}
           >
             <RefreshCw size={16} color={colors.primary} strokeWidth={2} />
-            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: mobileTypography.secondary.fontSize,
+                fontWeight: '600'
+              }}
+            >
               {t('common.retry', '重试')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={openSettings} style={styles.settingsLinkBtn}>
             <Settings size={16} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: mobileTypography.secondary.fontSize,
+                fontWeight: '600'
+              }}
+            >
               {t('data_sync.sync_settings_button', '备份设置')}
             </Text>
           </TouchableOpacity>
@@ -107,6 +129,18 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
               <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>
                 {t('data_sync.local_target_no_cloud_records_desc')}
               </Text>
+              <TouchableOpacity onPress={openSettings} style={styles.settingsLinkBtn}>
+                <Settings size={16} color={colors.primary} strokeWidth={2} />
+                <Text
+                  style={{
+                    color: colors.primary,
+                    fontSize: mobileTypography.secondary.fontSize,
+                    fontWeight: '600'
+                  }}
+                >
+                  {t('data_sync.sync_settings_button', '备份设置')}
+                </Text>
+              </TouchableOpacity>
             </>
           ) : (
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -156,7 +190,7 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
                   <Checkbox
                     selected={selectedRecords.has(record.filename)}
                     onPress={() => toggleRecordSelection(record.filename)}
-                    style={{ marginRight: 10 }}
+                    style={{ marginRight: sharedTokens.spacing.smPlus }}
                   />
                 )}
 
@@ -194,7 +228,7 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
                       size={22}
                       color={colors.primary}
                       strokeWidth={2}
-                      style={{ marginRight: 10, opacity: 0.85 }}
+                      style={{ marginRight: sharedTokens.spacing.smPlus, opacity: 0.85 }}
                     />
                     <View style={styles.recordInfo}>
                       <Text
@@ -203,7 +237,12 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
                       >
                         {record.filename}
                         {!record.managed && (
-                          <Text style={{ color: colors.primary, fontSize: 11 }}>
+                          <Text
+                            style={{
+                              color: colors.primary,
+                              fontSize: mobileTypography.caption.fontSize
+                            }}
+                          >
                             {' '}
                             {t('cloud.unmanaged_label', '手动')}
                           </Text>
