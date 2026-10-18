@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import type { LucideIcon } from 'lucide-react-native'
 import { Database, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react-native'
@@ -9,7 +9,6 @@ import {
   useNativeToast,
   useDialog,
   ModelSwitcher,
-  CardLinkAction,
   HelpTooltip
 } from '@baishou/ui/native'
 import {
@@ -17,16 +16,20 @@ import {
   GlobalModelsConfig,
   filterProvidersForModelSwitcher,
   formatReasoningEffortLabel,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
   resolveReasoningEffortForSlot,
   setReasoningEffortForSlot,
   type ModelReasoningSlot,
   type ModelSwitcherProvider,
-  type ReasoningEffortSetting
+  type ReasoningEffortSetting,
+  type RagConfig
 } from '@baishou/shared'
 import { getDefaultGlobalModels } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import { consumeAiModelsEmbeddingFocus } from '../ai-models-embedding-focus'
+import { iconSizes, mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type ModelSelectorKey =
   | 'globalDialogue'
@@ -113,51 +116,41 @@ export const AIModelsSection: React.FC = () => {
   const [globalModels, setGlobalModels] = useState<GlobalModelsConfig>({} as GlobalModelsConfig)
   const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
 
-  useEffect(() => {
+  const loadConfig = useCallback(async () => {
     if (!dbReady || !services) return
-    let cancelled = false
-    const loadConfig = async () => {
-      try {
-        const providerList =
-          (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-        if (cancelled) return
-        setProviders(providerList)
-        const globalModelsConfig =
-          (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
-          ({} as GlobalModelsConfig)
-        if (cancelled) return
-        setGlobalModels({
-          ...getDefaultGlobalModels(),
-          ...globalModelsConfig
-        })
-        if (cancelled) return
-        if (!consumeAiModelsEmbeddingFocus()) return
-        toast.showInfo(t('memory.readiness_need_embedding', '需要先配置嵌入模型'))
-        const filtered = buildFilteredProviders(providerList, true)
-        if (filtered.length === 0) {
-          toast.showWarning(t('settings.no_models_available'))
-          return
-        }
-        setActiveSelector('globalEmbedding')
-      } catch (e) {
-        console.warn('Load models config failed', e)
+    try {
+      const providerList =
+        (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      setProviders(providerList)
+      const globalModelsConfig =
+        (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
+        ({} as GlobalModelsConfig)
+      setGlobalModels({
+        ...getDefaultGlobalModels(),
+        ...globalModelsConfig
+      })
+      if (!consumeAiModelsEmbeddingFocus()) return
+      toast.showInfo(t('memory.readiness_need_embedding', '需要先配置嵌入模型'))
+      const filtered = buildFilteredProviders(providerList, true)
+      if (filtered.length === 0) {
+        toast.showWarning(t('settings.no_models_available'))
+        return
       }
-    }
-    void loadConfig()
-    return () => {
-      cancelled = true
+      setActiveSelector('globalEmbedding')
+    } catch (e) {
+      console.warn('Load models config failed', e)
     }
   }, [dbReady, services, t, toast])
 
-  const handleSaveGlobalModels = async (config: GlobalModelsConfig) => {
-    if (!services || !dbReady) return
-    try {
-      await services.settingsManager.set('global_models', config)
-      setGlobalModels(config)
-    } catch {
-      toast.showError(t('common.errors.save_failed'))
-    }
-  }
+  useEffect(() => {
+    void loadConfig()
+  }, [loadConfig])
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadConfig()
+    }, [loadConfig])
+  )
 
   const activeFieldMeta = activeSelector
     ? MODEL_FIELD_META.find((f) => f.key === activeSelector)
@@ -177,54 +170,86 @@ export const AIModelsSection: React.FC = () => {
     setActiveSelector(fieldKey)
   }
 
-  const handleSelectModel = async (providerId: string, modelId: string) => {
-    if (!activeSelector) return
+  const handleSelectModel = async (
+    providerId: string,
+    modelId: string,
+    effort?: ReasoningEffortSetting
+  ) => {
+    const selectorKey = activeSelector
+    if (!selectorKey || !services || !dbReady) return
 
-    const providerKey = `${activeSelector}ProviderId` as keyof GlobalModelsConfig
-    const modelKey = `${activeSelector}ModelId` as keyof GlobalModelsConfig
+    const providerKey = `${selectorKey}ProviderId` as keyof GlobalModelsConfig
+    const modelKey = `${selectorKey}ModelId` as keyof GlobalModelsConfig
 
-    if (activeSelector === 'globalEmbedding') {
-      const currentProvider = globalModels.globalEmbeddingProviderId
-      const currentModel = globalModels.globalEmbeddingModelId
+    const latestConfig =
+      (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
+      getDefaultGlobalModels()
+
+    if (selectorKey === 'globalEmbedding') {
+      const currentProvider = latestConfig.globalEmbeddingProviderId
+      const currentModel = latestConfig.globalEmbeddingModelId
       const isSwitching =
-        currentProvider &&
-        currentModel &&
+        isConfiguredProviderId(currentProvider) &&
+        isConfiguredDialogueModelId(currentModel) &&
         (currentProvider !== providerId || currentModel !== modelId)
 
       if (isSwitching) {
         const confirmed = await dialog.confirm(t('agent.rag.migration_switch_warning_content'), {
           title: t('agent.rag.migration_switch_warning_title')
         })
-        if (!confirmed) return
+        if (!confirmed) {
+          setActiveSelector(null)
+          return
+        }
       }
     }
 
-    const newConfig: GlobalModelsConfig = {
-      ...globalModels,
-      [providerKey]: providerId,
-      [modelKey]: modelId
-    }
-    await handleSaveGlobalModels(newConfig)
-    setActiveSelector(null)
-  }
+    const slot = selectorReasoningSlot(selectorKey)
+    const updatedReasoningEffort =
+      slot && effort
+        ? setReasoningEffortForSlot(latestConfig.reasoningEffortBySlot, slot, effort)
+        : latestConfig.reasoningEffortBySlot
 
-  const handleEffortChange = async (value: ReasoningEffortSetting) => {
-    if (!activeSelector) return
-    const slot = selectorReasoningSlot(activeSelector)
-    if (!slot) return
-    await handleSaveGlobalModels({
-      ...globalModels,
-      reasoningEffortBySlot: setReasoningEffortForSlot(
-        globalModels.reasoningEffortBySlot,
-        slot,
-        value
-      )
-    })
+    const newConfig: GlobalModelsConfig = {
+      ...latestConfig,
+      [providerKey]: providerId,
+      [modelKey]: modelId,
+      reasoningEffortBySlot: updatedReasoningEffort
+    }
+
+    try {
+      await services.settingsManager.set('global_models', newConfig)
+      setGlobalModels(newConfig)
+
+      if (selectorKey === 'globalEmbedding') {
+        const rag =
+          (await services.settingsManager.get<RagConfig>('rag_config')) ||
+          ({} as Partial<RagConfig>)
+        if (rag.ragEnabled === false) {
+          await services.settingsManager.set('rag_config', { ...rag, ragEnabled: true })
+        }
+        try {
+          await services.ragService.detectDimension()
+        } catch (error) {
+          toast.showError(
+            error instanceof Error
+              ? error.message
+              : t('settings.rag.detect_failed', '检测失败，请检查模型配置')
+          )
+        }
+      }
+
+      toast.showSuccess(t('settings.global_models_updated', '全局默认模型已更新'))
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
+    } finally {
+      setActiveSelector(null)
+    }
   }
 
   const getModelDisplay = (modelKey: keyof GlobalModelsConfig) => {
     const mid = globalModels[modelKey] as string | undefined
-    return mid || t('settings.not_set')
+    return isConfiguredDialogueModelId(mid) ? mid!.trim() : t('settings.not_set')
   }
 
   const cardStyle = useMemo(
@@ -243,7 +268,10 @@ export const AIModelsSection: React.FC = () => {
         const RouteIcon = field.icon
         const displayProviderKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
         const displayModelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
-        const isSet = Boolean(globalModels[displayProviderKey] && globalModels[displayModelKey])
+        const isSet = Boolean(
+          isConfiguredProviderId(globalModels[displayProviderKey] as string) &&
+          isConfiguredDialogueModelId(globalModels[displayModelKey] as string)
+        )
         const selectedProvider = isSet
           ? providers.find((p) => p.id === globalModels[displayProviderKey])
           : undefined
@@ -294,7 +322,14 @@ export const AIModelsSection: React.FC = () => {
                 openSelector(field.key, field.forEmbedding)
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: sharedTokens.spacing.sm,
+                  flex: 1
+                }}
+              >
                 {isSet && (
                   <ProviderBrandIcon
                     providerId={globalModels[displayProviderKey] as string}
@@ -322,14 +357,6 @@ export const AIModelsSection: React.FC = () => {
         )
       })}
 
-      <CardLinkAction
-        variant="card"
-        style={{ marginTop: 4 }}
-        onPress={() => router.push('/settings/ai-services')}
-      >
-        {t('settings.configure_providers')}
-      </CardLinkAction>
-
       <ModelSwitcher
         isOpen={activeSelector !== null}
         onClose={() => setActiveSelector(null)}
@@ -355,9 +382,6 @@ export const AIModelsSection: React.FC = () => {
               )
             : 'auto'
         }
-        onReasoningEffortChange={(value) => {
-          void handleEffortChange(value)
-        }}
       />
     </View>
   )
@@ -365,21 +389,21 @@ export const AIModelsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   routingCard: {
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   routeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12
+    gap: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   routeIcon: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -387,10 +411,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   routeName: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   selectorBtn: {
@@ -398,18 +422,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8
+    borderRadius: sharedTokens.radius.md,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   selectorValue: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   chevron: {
-    fontSize: 20,
+    fontSize: iconSizes.md,
     fontWeight: '300'
   }
 })

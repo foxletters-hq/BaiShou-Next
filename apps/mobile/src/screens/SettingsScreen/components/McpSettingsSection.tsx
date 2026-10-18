@@ -8,6 +8,7 @@ import {
   useNativeToast,
   McpSettingsCard,
   McpToolsListPanel,
+  SegmentedContent,
   SegmentedControl
 } from '@baishou/ui/native'
 import { useMobileMcpConfig } from '../../../hooks/useMobileMcpConfig'
@@ -75,6 +76,20 @@ export const McpSettingsSection: React.FC = () => {
     void refreshAuthToken()
   }
 
+  const handleToggleTool = (toolId: string) => {
+    const currentDisabled = config.disabledToolIds || []
+    let nextDisabled: string[]
+    if (currentDisabled.includes(toolId)) {
+      nextDisabled = currentDisabled.filter((id) => id !== toolId)
+    } else {
+      nextDisabled = [...currentDisabled, toolId]
+    }
+    void persistConfig({
+      ...config,
+      disabledToolIds: nextDisabled
+    })
+  }
+
   const kindTabs = (
     <SegmentedControl
       value={kind}
@@ -111,7 +126,13 @@ export const McpSettingsSection: React.FC = () => {
           onCopyToken={() => void handleCopyToken()}
           onRefreshToken={handleRefreshToken}
         />
-        <McpToolsListPanel tools={tools} loading={toolsLoading} failed={toolsFailed} />
+        <McpToolsListPanel
+          tools={tools}
+          loading={toolsLoading}
+          failed={toolsFailed}
+          disabledToolIds={config.disabledToolIds}
+          onToggleTool={handleToggleTool}
+        />
       </>
     )
   }
@@ -119,7 +140,7 @@ export const McpSettingsSection: React.FC = () => {
   return (
     <View style={{ gap: tokens.spacing.md }}>
       {kindTabs}
-      {body}
+      <SegmentedContent value={kind}>{body}</SegmentedContent>
     </View>
   )
 }

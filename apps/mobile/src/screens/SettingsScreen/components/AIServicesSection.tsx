@@ -8,13 +8,15 @@ import {
   Input,
   Button,
   CardLinkAction,
-  Select
+  Select,
+  modalActionsStyle
 } from '@baishou/ui/native'
 import { PROVIDER_TYPES, resolveProviderTypeLabel } from '../../../constants/known-ai-providers'
 import { AIProviderConfig, ProviderType } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderSortableList } from './ProviderSortableList'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   applyProviderOrderFromIds,
   buildAndCacheProviderListItems,
@@ -235,11 +237,11 @@ export const AIServicesSection: React.FC = () => {
               placeholder="Base URL (optional)"
               autoCapitalize="none"
             />
-            <View style={styles.modalActions}>
-              <Button variant="ghost" onPress={() => setShowAddModal(false)}>
+            <View style={modalActionsStyle}>
+              <Button size="sm" variant="outlined" onPress={() => setShowAddModal(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button variant="primary" onPress={() => void handleAddCustomProvider()}>
+              <Button size="sm" onPress={() => void handleAddCustomProvider()}>
                 {t('common.confirm')}
               </Button>
             </View>
@@ -258,35 +260,35 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48
+    paddingVertical: sharedTokens.spacing.xxl
   },
   footer: {
-    marginTop: 8,
+    marginTop: sharedTokens.spacing.sm,
     alignSelf: 'stretch',
     width: '100%'
   },
   fieldLabel: {
-    fontSize: 12,
-    marginTop: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   modalCard: {
-    padding: 20,
-    gap: 10
+    padding: sharedTokens.spacing.mdPlus,
+    gap: sharedTokens.spacing.smPlus
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 20,
-    marginTop: 8
+    gap: sharedTokens.spacing.mdPlus,
+    marginTop: sharedTokens.spacing.sm
   }
 })

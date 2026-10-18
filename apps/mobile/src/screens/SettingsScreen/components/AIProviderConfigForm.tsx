@@ -7,11 +7,18 @@ import {
   useDialog,
   Switch,
   Input,
-  ModelVisionBadge
+  ModelVisionBadge,
+  HelpTooltip
 } from '@baishou/ui/native'
-import { AIProviderConfig } from '@baishou/shared'
+import {
+  AIProviderConfig,
+  isDeepSeekOfficialProvider,
+  isEmbeddingModel,
+  isTtsModel
+} from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   buildAndCacheProviderListItems,
   computeSortOrderOnEnable,
@@ -83,7 +90,14 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
       providerMeta?.defaultBase || ''
     )
     try {
-      await persistProvider({ apiKey: localApiKey, baseUrl })
+      const shouldEnable = !activeConfig.isEnabled && localApiKey.trim().length > 0
+      const updates: Partial<AIProviderConfig> = { apiKey: localApiKey, baseUrl }
+      if (shouldEnable) {
+        const items = buildAndCacheProviderListItems(savedProviders, t)
+        updates.isEnabled = true
+        updates.sortOrder = computeSortOrderOnEnable(items)
+      }
+      await persistProvider(updates)
       toast.showSuccess(t('ai_config.save_success', { id: providerId }))
     } catch (e: unknown) {
       toast.showError(e instanceof Error ? e.message : t('ai_config.save_failed'))
@@ -134,14 +148,48 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
         baseUrl
       )
       const prevEnabled = config.enabledModels || []
-      const enabledModels = models.filter((m) => prevEnabled.includes(m))
-      await persistProvider({ models, enabledModels, apiKey: localApiKey, baseUrl })
+      let enabledModels: string[]
+      if (prevEnabled.length > 0) {
+        const matched = models.filter((m) => prevEnabled.includes(m))
+        enabledModels = matched.length > 0 ? matched : models
+      } else {
+        // 首次获取模型：默认启用对话模型（若没有分类则启用全部），避免在切换模型弹窗为空
+        const dialogueModels = models.filter((m) => !isEmbeddingModel(m) && !isTtsModel(m))
+        enabledModels = dialogueModels.length > 0 ? dialogueModels : models
+      }
+      const shouldEnable = !config.isEnabled
+      const items = shouldEnable ? buildAndCacheProviderListItems(savedProviders, t) : []
+      await persistProvider({
+        models,
+        enabledModels,
+        apiKey: localApiKey,
+        baseUrl,
+        ...(shouldEnable ? { isEnabled: true, sortOrder: computeSortOrderOnEnable(items) } : {})
+      })
       toast.showSuccess(t('ai_config.fetch_models_success'))
     } catch (e: unknown) {
       toast.showError(e instanceof Error ? e.message : t('ai_config.fetch_models_failed'))
     } finally {
       setIsFetching(false)
     }
+  }
+
+  const handleEnableDialogueModels = async () => {
+    const currentConfig = getProviderConfig(savedProviders, providerId, providerMeta)
+    const models = currentConfig.models || []
+    const dialogueModels = models.filter((m) => !isEmbeddingModel(m) && !isTtsModel(m))
+    const toEnable = dialogueModels.length > 0 ? dialogueModels : models
+    const shouldEnable = !currentConfig.isEnabled
+    const items = shouldEnable ? buildAndCacheProviderListItems(savedProviders, t) : []
+    await persistProvider({
+      enabledModels: toEnable,
+      ...(shouldEnable ? { isEnabled: true, sortOrder: computeSortOrderOnEnable(items) } : {})
+    })
+    toast.showSuccess(
+      t('ai_config.models_enabled_count', `已启用 ${toEnable.length} 个模型`, {
+        count: toEnable.length
+      })
+    )
   }
 
   const runTestConnection = async (testModelId: string) => {
@@ -258,9 +306,17 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
       <View style={styles.configHeader}>
         <View style={styles.configTitleRow}>
           <ProviderBrandIcon providerId={providerId} size={24} />
-          <Text style={[styles.configTitle, { color: colors.textPrimary }]}>
+          <Text style={[styles.configTitle, { color: colors.textPrimary }]} numberOfLines={1}>
             {activeConfig.name}
           </Text>
+          {isDeepSeekOfficialProvider(providerId) ? (
+            <HelpTooltip
+              content={t(
+                'ai_config.deepseek_peak_pricing_help',
+                '本地费用估算根据 DeepSeek 官方规则按调用时段区分计费：\n\n• 高峰时段（按平时 2 倍估算）：工作日 9:00–12:00、14:00–18:00（北京时间）\n• 空闲时段（正常单价）：工作日其余时段、周末及法定节假日\n\n注：仅用于本地成本估算参考，实际扣费以 DeepSeek 控制台账单为准。'
+              )}
+            />
+          ) : null}
         </View>
         <Switch value={activeConfig.isEnabled} onValueChange={handleToggleEnable} />
       </View>
@@ -345,7 +401,13 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
         </TouchableOpacity>
       </View>
 
-      {(activeConfig.models?.length ?? 0) > 0 && (
+      {(activeConfig.models?.length ?? 0) === 0 ? (
+        <View style={styles.emptyModelsContainer}>
+          <Text style={[styles.emptyModelsText, { color: colors.textTertiary }]}>
+            {t('settings.no_models_hint', '暂无模型，可点击上方「获取模型」')}
+          </Text>
+        </View>
+      ) : (
         <>
           <Input
             value={modelSearchQuery}
@@ -353,9 +415,40 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
             placeholder={t('common.search_model')}
             containerStyle={styles.searchInput}
           />
+          {(activeConfig.enabledModels?.length ?? 0) === 0 && (
+            <View
+              style={[
+                styles.noEnabledBanner,
+                {
+                  backgroundColor: colors.bgSurfaceHigh,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={[styles.noEnabledBannerText, { color: colors.textSecondary }]}>
+                {t(
+                  'ai_config.no_models_enabled_hint',
+                  '当前未开启任何模型，该供应商不会显示在模型切换列表中'
+                )}
+              </Text>
+              <TouchableOpacity
+                style={[styles.enableAllBtn, { backgroundColor: colors.primary }]}
+                onPress={handleEnableDialogueModels}
+              >
+                <Text style={[styles.enableAllBtnText, { color: colors.textOnPrimary }]}>
+                  {t('ai_config.enable_dialogue_models', '启用所有对话模型')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.modelList}>
             {sortedDisplayModels.length === 0 ? (
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('common.no_match_model')}
               </Text>
             ) : (
@@ -420,8 +513,8 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = ({
 
 const styles = StyleSheet.create({
   configCard: {
-    padding: 16,
-    gap: 8
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
   configHeader: {
     flexDirection: 'row',
@@ -431,50 +524,80 @@ const styles = StyleSheet.create({
   configTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: sharedTokens.spacing.smPlus,
     flex: 1
   },
   configTitle: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
-    flex: 1
+    flexShrink: 1
   },
   systemBadge: {
-    fontSize: 12,
-    marginBottom: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.xs
   },
   fieldLabel: {
-    fontSize: 12,
-    marginTop: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs
   },
   searchInput: {
-    marginTop: 8
+    marginTop: sharedTokens.spacing.sm
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs
   },
   actionBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center'
   },
   actionBtnText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
+  },
+  emptyModelsContainer: {
+    paddingVertical: sharedTokens.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  emptyModelsText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    textAlign: 'center'
+  },
+  noEnabledBanner: {
+    marginTop: sharedTokens.spacing.xs,
+    padding: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: sharedTokens.spacing.xs,
+    alignItems: 'center'
+  },
+  noEnabledBannerText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    textAlign: 'center'
+  },
+  enableAllBtn: {
+    paddingVertical: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.sm
+  },
+  enableAllBtnText: {
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   modelList: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   modelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: sharedTokens.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   modelRowLeading: {
     alignItems: 'center',
@@ -488,25 +611,25 @@ const styles = StyleSheet.create({
   },
   modelRowText: {
     flexShrink: 1,
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   loadMoreModelsBtn: {
-    marginTop: 10,
-    paddingVertical: 10,
-    borderRadius: 10,
+    marginTop: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center'
   },
   loadMoreModelsText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   modelCountHint: {
-    marginTop: 10,
+    marginTop: sharedTokens.spacing.smPlus,
     textAlign: 'center',
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   deleteLink: {
-    marginTop: 12,
+    marginTop: sharedTokens.spacing.mdTight,
     alignItems: 'center'
   }
 })

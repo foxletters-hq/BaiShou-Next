@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight } from 'lucide-react-native'
 import {
   isMcpClientTimeoutMessage,
   resolveMcpClientCardStatusKind,
@@ -9,52 +10,37 @@ import {
   type McpClientServerEntry,
   type McpClientServerStatus
 } from '@baishou/shared'
-import {
-  Button,
-  Input,
-  SettingsGroupCard,
-  SettingsItem,
-  Switch,
-  useSettingsCardStyles,
-  useNativeTheme
-} from '@baishou/ui/native'
-import { parseMcpClientUrl } from '../../../services/mobile-mcp-client-servers.util'
+import { Switch, useSettingsCardStyles, useNativeTheme } from '@baishou/ui/native'
+
+export interface McpClientServerCardProps {
+  server: McpClientServerEntry
+  status?: McpClientServerStatus
+  loadingStatuses?: boolean
+  testing?: boolean
+  onPress?: () => void
+  onToggleEnabled: (enabled: boolean) => void
+  expanded?: boolean
+  onToggleExpand?: () => void
+  onViewTools?: (tools: McpClientListedTool[]) => void
+  onDraftUrl?: (url: string) => void
+  onCommitUrl?: (url: string) => void
+  onInvalidUrl?: (reason: McpClientProbeReason) => void
+  onDraftToken?: (authToken: string) => void
+  onCommitToken?: (authToken: string) => void
+  onRetry?: () => void
+  onDelete?: () => void
+}
 
 export function McpClientServerCard({
   server,
   status,
-  expanded,
   loadingStatuses,
-  testing,
+  onPress,
   onToggleExpand,
-  onViewTools,
-  onDraftUrl,
-  onCommitUrl,
-  onInvalidUrl,
-  onDraftToken,
-  onCommitToken,
-  onToggleEnabled,
-  onRetry,
-  onDelete
-}: {
-  server: McpClientServerEntry
-  status?: McpClientServerStatus
-  expanded: boolean
-  loadingStatuses: boolean
-  testing: boolean
-  onToggleExpand: () => void
-  onViewTools: (tools: McpClientListedTool[]) => void
-  onDraftUrl: (url: string) => void
-  onCommitUrl: (url: string) => void
-  onInvalidUrl: (reason: McpClientProbeReason) => void
-  onDraftToken: (authToken: string) => void
-  onCommitToken: (authToken: string) => void
-  onToggleEnabled: (enabled: boolean) => void
-  onRetry: () => void
-  onDelete: () => void
-}) {
+  onToggleEnabled
+}: McpClientServerCardProps) {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
   const cardStyles = useSettingsCardStyles()
   const tools = status?.tools ?? []
   const connected = Boolean(status?.connected)
@@ -62,9 +48,10 @@ export function McpClientServerCard({
   const cardStatus = resolveMcpClientCardStatusKind({
     enabled: server.enabled,
     connected,
-    loading: loadingStatuses && !connected,
+    loading: Boolean(loadingStatuses && !connected),
     timedOut
   })
+
   const subtitle =
     cardStatus === 'disabled'
       ? t('settings.mcp_custom_disabled', '未启用')
@@ -78,6 +65,7 @@ export function McpClientServerCard({
           : cardStatus === 'timeout'
             ? t('settings.mcp_custom_tools_timeout', '获取工具超时')
             : t('settings.mcp_custom_disconnected', '未连接')
+
   const statusColor =
     cardStatus === 'connected'
       ? colors.success
@@ -87,82 +75,76 @@ export function McpClientServerCard({
           ? colors.warning
           : colors.textTertiary
 
+  const handleCardPress = onPress ?? onToggleExpand
+
   return (
-    <SettingsGroupCard>
-      <SettingsItem
-        title={server.name}
-        subtitle={subtitle}
-        onPress={onToggleExpand}
-        style={{ paddingHorizontal: 0, backgroundColor: colors.bgSurface }}
-        rightElement={
+    <Pressable
+      onPress={handleCardPress}
+      accessibilityRole="button"
+      accessibilityLabel={server.name}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: tokens.spacing.md,
+          paddingVertical: tokens.spacing.mdSnug,
+          borderRadius: tokens.radius.lg,
+          borderWidth: 1,
+          borderColor: colors.borderControl,
+          backgroundColor: pressed
+            ? isDark
+              ? 'rgba(255, 255, 255, 0.05)'
+              : 'rgba(0, 0, 0, 0.03)'
+            : colors.bgSurface,
+          gap: tokens.spacing.sm
+        }
+      ]}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: tokens.spacing.xxs }}>
+        <Text
+          style={[cardStyles.label, { color: colors.textPrimary, fontSize: 15, fontWeight: '600' }]}
+          numberOfLines={1}
+        >
+          {server.name}
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.spacing.xs,
+            flexWrap: 'wrap'
+          }}
+        >
           <View
             style={{
-              width: tokens.spacing.sm,
-              height: tokens.spacing.sm,
-              borderRadius: tokens.radius.full,
+              width: 7,
+              height: 7,
+              borderRadius: 3.5,
               backgroundColor: statusColor
             }}
           />
-        }
-      />
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>{subtitle}</Text>
+          <Text
+            style={{ fontSize: 12, color: colors.textTertiary, flexShrink: 1 }}
+            numberOfLines={1}
+          >
+            · {server.url}
+          </Text>
+        </View>
+      </View>
+
       <View
         style={{
           flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: tokens.spacing.sm,
-          marginTop: tokens.spacing.sm
+          alignItems: 'center',
+          gap: tokens.spacing.xs,
+          flexShrink: 0
         }}
       >
-        <Button
-          variant="outlined"
-          disabled={!connected || tools.length === 0}
-          onPress={() => onViewTools(tools)}
-        >
-          {t('settings.mcp_custom_view_tools', '查看工具')}
-        </Button>
+        <Switch value={server.enabled} onValueChange={onToggleEnabled} />
+        <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
       </View>
-      {expanded ? (
-        <View style={{ marginTop: tokens.spacing.md, gap: tokens.spacing.md }}>
-          <Input
-            label={t('settings.mcp_custom_url', '/mcp 地址')}
-            value={server.url}
-            onChangeText={onDraftUrl}
-            onBlur={() => {
-              const parsed = parseMcpClientUrl(server.url)
-              if ('error' in parsed) {
-                onInvalidUrl(parsed.error)
-                return
-              }
-              onCommitUrl(parsed.url)
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Input
-            label={t('settings.mcp_custom_token', '访问令牌（可选）')}
-            value={server.authToken ?? ''}
-            onChangeText={onDraftToken}
-            onBlur={() => onCommitToken((server.authToken ?? '').trim())}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}>
-            <Text style={[cardStyles.label, { color: colors.textPrimary, flex: 1 }]}>
-              {t('settings.mcp_custom_enable', '启用')}
-            </Text>
-            <Switch value={server.enabled} onValueChange={onToggleEnabled} />
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-            <Button variant="outlined" disabled={testing} isLoading={testing} onPress={onRetry}>
-              {t('settings.mcp_custom_retry', '重新连接')}
-            </Button>
-            <Button variant="outlined" destructive onPress={onDelete}>
-              {t('common.delete', '删除')}
-            </Button>
-          </View>
-        </View>
-      ) : null}
-    </SettingsGroupCard>
+    </Pressable>
   )
 }

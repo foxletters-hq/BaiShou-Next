@@ -1,99 +1,100 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const agentGateSettingsStyles = StyleSheet.create({
   cardTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   desc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   divider: {
     height: 1,
-    marginVertical: 14
+    marginVertical: sharedTokens.spacing.mdSnug
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   rowText: {
     flex: 1,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   label: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   empty: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    paddingVertical: 4
+    paddingVertical: sharedTokens.spacing.xs
   },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   listText: {
     flex: 1,
-    gap: 2,
-    paddingRight: 12
+    gap: sharedTokens.spacing.xxs,
+    paddingRight: sharedTokens.spacing.mdTight
   },
   listPrimary: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   listMeta: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   removeText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   addText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 8
+    gap: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.sm
   },
   effectRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.smPlus
   },
   effectChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth
   },
   profileBlock: {
-    marginBottom: 12,
-    gap: 4
+    marginBottom: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.xs
   },
   profileTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 2
+    marginBottom: sharedTokens.spacing.xxs
   },
   profileRule: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   }
 })
