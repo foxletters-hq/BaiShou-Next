@@ -5,11 +5,12 @@ import {
   SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 } from '@baishou/shared'
-import { Button, Switch, useDialog, Select, useToast } from '@baishou/ui'
+import { Button, Switch, useDialog, Select, useToast, settingsTypography } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
 import styles from './SyncForms.module.css'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 type SyncTarget = 's3' | 'webdav'
 
@@ -251,11 +252,11 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 16,
-          gap: 12
+          marginBottom: sharedTokens.spacing.md,
+          gap: sharedTokens.spacing.mdTight
         }}
       >
-        <span style={{ fontSize: '14px', fontWeight: 600 }}>
+        <span style={{ fontSize: settingsTypography.row.fontSize, fontWeight: 600 }}>
           {t('data_sync.file_sync_toggle', '文件同步')}
         </span>
         <Switch
@@ -264,18 +265,18 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: sharedTokens.spacing.md }}>
         <label
           style={{
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-secondary)',
             display: 'block',
-            marginBottom: 6
+            marginBottom: sharedTokens.spacing.xsPlus
           }}
         >
           {t('data_sync.target_type', 'Target Type')}
         </label>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: sharedTokens.spacing.sm }}>
           {(['s3', 'webdav'] as SyncTarget[]).map((item) => (
             <button
               key={item}
@@ -296,13 +297,13 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         <S3SyncForm config={config} onChange={handleConfigChange} />
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: sharedTokens.spacing.md }}>
         <label
           style={{
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-secondary)',
             display: 'block',
-            marginBottom: 6
+            marginBottom: sharedTokens.spacing.xsPlus
           }}
         >
           {t(
@@ -331,7 +332,7 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         <p
           style={{
             margin: '8px 0 0',
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-tertiary)',
             lineHeight: 1.5
           }}
