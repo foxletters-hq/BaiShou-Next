@@ -8,7 +8,7 @@ import {
   getDefaultLatteAssistantSystemPrompt,
   getHelpDocsLatteUrl
 } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   Button,
   Input,
@@ -113,8 +113,8 @@ export const LatteSettingsSection: React.FC = () => {
                 styles.name,
                 {
                   color: colors.textPrimary,
-                  fontSize: settingsTypography.pageTitle.fontSize,
-                  fontWeight: settingsTypography.pageTitle.fontWeight
+                  fontSize: mobileTypography.title.fontSize,
+                  fontWeight: mobileTypography.title.fontWeight
                 }
               ]}
             >
@@ -136,8 +136,8 @@ export const LatteSettingsSection: React.FC = () => {
             styles.quote,
             {
               color: colors.textPrimary,
-              fontSize: settingsTypography.row.fontSize,
-              fontWeight: settingsTypography.row.fontWeight
+              fontSize: mobileTypography.primary.fontSize,
+              fontWeight: mobileTypography.primary.fontWeight
             }
           ]}
         >
@@ -192,8 +192,8 @@ export const LatteSettingsSection: React.FC = () => {
               styles.sectionLabel,
               {
                 color: colors.textPrimary,
-                fontSize: settingsTypography.meta.fontSize,
-                fontWeight: settingsTypography.meta.fontWeight
+                fontSize: mobileTypography.caption.fontSize,
+                fontWeight: mobileTypography.caption.fontWeight
               }
             ]}
           >
@@ -225,6 +225,7 @@ export const LatteSettingsSection: React.FC = () => {
             />
             <View style={styles.actions}>
               <Button
+                size="sm"
                 variant="outlined"
                 onPress={() => void handleFetchLatest()}
                 isDisabled={saving}
@@ -232,6 +233,7 @@ export const LatteSettingsSection: React.FC = () => {
                 {t('settings.latte_fetch_latest', '获取最新')}
               </Button>
               <Button
+                size="sm"
                 variant="outlined"
                 onPress={() => void handleSave()}
                 isDisabled={saving || !dirty}
@@ -264,17 +266,17 @@ export const LatteSettingsSection: React.FC = () => {
               style={styles.fieldInput}
               editable={!saving}
             />
+            <View style={styles.actions}>
+              <Button
+                size="sm"
+                variant="outlined"
+                onPress={() => void handleSave()}
+                isDisabled={saving || !dirty}
+              >
+                {t('common.save', '保存')}
+              </Button>
+            </View>
           </SettingsGroupCard>
-
-          <View style={styles.actions}>
-            <Button
-              variant="outlined"
-              onPress={() => void handleSave()}
-              isDisabled={saving || !dirty}
-            >
-              {t('common.save', '保存')}
-            </Button>
-          </View>
         </>
       ) : null}
     </View>
@@ -283,12 +285,12 @@ export const LatteSettingsSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   portrait: {
     width: 96,
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
   },
   heroMeta: {
     flex: 1,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   name: {
     lineHeight: 24
@@ -307,18 +309,18 @@ const styles = StyleSheet.create({
   },
   quote: {
     lineHeight: 22,
-    marginBottom: 10
+    marginBottom: sharedTokens.spacing.smPlus
   },
   originBody: {
     lineHeight: 21
   },
   docsAction: {
-    marginTop: 12,
+    marginTop: sharedTokens.spacing.mdTight,
     alignItems: 'flex-start'
   },
   sectionLabel: {
-    paddingHorizontal: 4,
-    marginBottom: 8
+    paddingHorizontal: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.sm
   },
   fieldInput: {
     minHeight: 160,
@@ -328,13 +330,13 @@ const styles = StyleSheet.create({
     minHeight: 72,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 12
+    gap: sharedTokens.spacing.smPlus,
+    marginTop: sharedTokens.spacing.mdTight
   }
 })

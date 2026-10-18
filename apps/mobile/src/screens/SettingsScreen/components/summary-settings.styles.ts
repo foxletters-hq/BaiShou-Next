@@ -1,114 +1,114 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const summarySettingsStyles = StyleSheet.create({
-  cardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 8, lineHeight: 22 },
-  subsectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 8, lineHeight: 20 },
-  sourceGroup: {
-    flexDirection: 'row',
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 4
+  cardTitle: {
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm,
+    lineHeight: 22
   },
-  sourceBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 7,
-    borderWidth: 1
+  subsectionTitle: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm,
+    lineHeight: 20
   },
-  desc: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
-  fieldLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8, lineHeight: 20 },
-  systemPromptBlock: { marginTop: 14 },
-  assistantBlock: { marginTop: 14 },
+  desc: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 19,
+    marginBottom: sharedTokens.spacing.mdTight
+  },
+  fieldLabel: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm,
+    lineHeight: 20
+  },
+  systemPromptBlock: { marginTop: sharedTokens.spacing.mdSnug },
+  assistantBlock: { marginTop: sharedTokens.spacing.mdSnug },
   partnerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    gap: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1
   },
   partnerAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sharedTokens.radius.lg,
     alignItems: 'center',
     justifyContent: 'center'
   },
   partnerAvatarImage: {
     width: 36,
     height: 36,
-    borderRadius: 18
+    borderRadius: sharedTokens.radius.lg
   },
   partnerAvatarSmall: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center'
   },
   partnerAvatarImageSmall: {
     width: 28,
     height: 28,
-    borderRadius: 14
+    borderRadius: sharedTokens.radius.md
   },
-  partnerName: { fontWeight: '600', fontSize: 14, lineHeight: 20 },
+  partnerName: { fontWeight: '600', fontSize: mobileTypography.secondary.fontSize, lineHeight: 20 },
   injectRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginTop: 18
+    gap: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.md
   },
   injectText: { flex: 1 },
-  lookbackBlock: { marginTop: 14, gap: 10 },
+  lookbackBlock: { marginTop: sharedTokens.spacing.mdSnug, gap: sharedTokens.spacing.smPlus },
   lookbackLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
-  dataSourceLine: { fontSize: 13, lineHeight: 20, marginBottom: 4 },
-  localeHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
-  langBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  dataSourceLine: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  localeHint: {
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.smPlus,
+    lineHeight: 18
+  },
+  langBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.mdSnug
+  },
   langChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1
   },
   langChipGeneration: {
     borderStyle: 'dashed'
   },
-  tabBar: {
+  actions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 12
+    gap: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.lg
   },
-  tabBtn: {
-    flex: 1,
-    minWidth: '22%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-    borderRadius: 7,
-    borderWidth: 1
-  },
-  tabIcon: { fontSize: 16 },
-  actions: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   btn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     alignItems: 'center'
   },
@@ -117,20 +117,20 @@ export const summarySettingsStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   modalSheet: {
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.md,
     maxHeight: '70%'
   },
   partnerPickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 4
+    gap: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.sm,
+    marginBottom: sharedTokens.spacing.xs
   }
 })

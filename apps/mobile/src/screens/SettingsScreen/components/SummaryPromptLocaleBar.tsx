@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { SUMMARY_PROMPT_LOCALE_OPTIONS, type SummaryPromptLocale } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { summarySettingsStyles as styles } from './summary-settings.styles'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 
 export function SummaryPromptLocaleBar(props: {
   activePromptLocale: SummaryPromptLocale
@@ -32,7 +33,7 @@ export function SummaryPromptLocaleBar(props: {
           <Text
             style={{
               color: activePromptLocale === lang.id ? colors.textOnPrimary : colors.textSecondary,
-              fontSize: 13,
+              fontSize: mobileTypography.secondary.fontSize,
               fontWeight: activePromptLocale === lang.id ? '600' : '400'
             }}
           >
