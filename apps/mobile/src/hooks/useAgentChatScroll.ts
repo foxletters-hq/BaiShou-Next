@@ -6,6 +6,10 @@ import {
   type AgentScrollSnapshot
 } from '../utils/agent-scroll-diagnostics'
 import {
+  resolveMomentumScrollBegin,
+  shouldShowScrollToBottomButton
+} from './agent-chat-scroll.decisions'
+import {
   POST_STREAM_WATCH_MS,
   isNearBottom,
   isNearContentBottom,
@@ -29,7 +33,8 @@ export function useAgentChatScroll({
   messages,
   isStreaming,
   isStreamBridgeActive,
-  activeTool
+  activeTool,
+  viewportHeight = 0
 }: UseAgentChatScrollParams) {
   const followModeRef = useRef<ScrollFollowMode>('following')
   const [followMode, setFollowMode] = useState<ScrollFollowMode>('following')
@@ -62,6 +67,8 @@ export function useAgentChatScroll({
   /** 子内容真实高度（不含 minHeight 托底）；折叠思考后靠它收回空白 */
   const lastIntrinsicContentHeightRef = useRef(0)
   const contentAnchorMinHeightRef = useRef<number | undefined>(undefined)
+  const viewportHeightRef = useRef(viewportHeight)
+  viewportHeightRef.current = viewportHeight
 
   const streamingActiveRef = useRef(isStreaming || isStreamBridgeActive)
   streamingActiveRef.current = isStreaming || isStreamBridgeActive
@@ -88,13 +95,25 @@ export function useAgentChatScroll({
 
   const inPostStreamWatch = useCallback(() => Date.now() < postStreamWatchUntilRef.current, [])
 
-  const setFollowModeState = useCallback((mode: ScrollFollowMode) => {
-    if (followModeRef.current === mode) return
-    followModeRef.current = mode
-    setFollowMode(mode)
-    setShowScrollButton(mode === 'idle')
-    setAgentScrollDebugContext({ followMode: mode })
+  const syncShowScrollButton = useCallback(() => {
+    const metrics = lastScrollMetricsRef.current
+    const next = shouldShowScrollToBottomButton({
+      followMode: followModeRef.current,
+      nearBottom: metrics ? isNearBottom(metrics) : true
+    })
+    setShowScrollButton((prev) => (prev === next ? prev : next))
   }, [])
+
+  const setFollowModeState = useCallback(
+    (mode: ScrollFollowMode) => {
+      if (followModeRef.current === mode) return
+      followModeRef.current = mode
+      setFollowMode(mode)
+      syncShowScrollButton()
+      setAgentScrollDebugContext({ followMode: mode })
+    },
+    [syncShowScrollButton]
+  )
 
   const jumpToBottomInstantRef = useRef<
     (scrollViewRef: RefObject<ScrollView | null>, reason?: string) => void
@@ -111,6 +130,7 @@ export function useAgentChatScroll({
     finalizeContentHandoff,
     handleContentSizeChange,
     handleIntrinsicContentHeightChange,
+    startSmoothFollowLoop,
     settleFollowModeAfterGesture
   } = useAgentChatScrollAnchor({
     userLockedAwayRef,
@@ -126,6 +146,7 @@ export function useAgentChatScroll({
     contentResizeLogThrottleRef,
     streamingFollowRafRef,
     scrollViewRefHolder,
+    viewportHeightRef,
     isStreaming,
     isStreamBridgeActive,
     inPostStreamWatch,
@@ -197,6 +218,19 @@ export function useAgentChatScroll({
         })
         return
       }
+      if (streamingFollowRafRef.current != null) {
+        cancelAnimationFrame(streamingFollowRafRef.current)
+        streamingFollowRafRef.current = null
+      }
+      const viewportH =
+        lastScrollMetricsRef.current?.layoutMeasurement.height || viewportHeightRef.current || 0
+      const effectiveH = Math.max(
+        lastContentHeightRef.current,
+        lastIntrinsicContentHeightRef.current
+      )
+      if (viewportH > 0 && effectiveH > 0) {
+        lastScrollOffsetRef.current = Math.max(lastScrollOffsetRef.current, effectiveH - viewportH)
+      }
       lastProgrammaticScrollAtRef.current = Date.now()
       lastProgrammaticReasonRef.current = reason
       logAgentScrollEvent('programmatic_scroll', {
@@ -235,9 +269,13 @@ export function useAgentChatScroll({
     (scrollViewRef: RefObject<ScrollView | null>, reason = 'follow_scroll') => {
       if (userLockedAwayRef.current) return
       if (followModeRef.current !== 'following') return
+      if (reason.startsWith('active_tool:')) {
+        startSmoothFollowLoop(scrollViewRef)
+        return
+      }
       scheduleFollowBottom(scrollViewRef, reason)
     },
-    [scheduleFollowBottom]
+    [scheduleFollowBottom, startSmoothFollowLoop]
   )
 
   const beginFollowIfAtBottom = useCallback(
@@ -305,8 +343,9 @@ export function useAgentChatScroll({
         inPostStreamWatch,
         exitFollowing
       })
+      syncShowScrollButton()
     },
-    [exitFollowing, inPostStreamWatch]
+    [exitFollowing, inPostStreamWatch, syncShowScrollButton]
   )
 
   useEffect(() => {
@@ -495,7 +534,8 @@ export function useAgentChatScroll({
     isUserDraggingRef.current = true
     cancelPendingProgrammaticScroll()
     exitFollowing()
-  }, [cancelPendingProgrammaticScroll, exitFollowing])
+    syncShowScrollButton()
+  }, [cancelPendingProgrammaticScroll, exitFollowing, syncShowScrollButton])
 
   const handleScrollEndDrag = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -505,22 +545,33 @@ export function useAgentChatScroll({
 
       if (isSmoothScrollingRef.current) return
       settleFollowModeAfterGesture(event.nativeEvent)
+      syncShowScrollButton()
     },
-    [settleFollowModeAfterGesture]
+    [settleFollowModeAfterGesture, syncShowScrollButton]
   )
 
   const handleMomentumScrollBegin = useCallback(() => {
+    const metrics = lastScrollMetricsRef.current
+    const intrinsicH = lastIntrinsicContentHeightRef.current
+    const realH = metrics
+      ? intrinsicH > 0
+        ? Math.min(intrinsicH, metrics.contentSize.height)
+        : metrics.contentSize.height
+      : 0
+    const action = resolveMomentumScrollBegin({
+      isSmoothScrolling: isSmoothScrollingRef.current,
+      hasMetrics: Boolean(metrics),
+      nearContentBottom: metrics
+        ? isNearContentBottom(metrics.contentOffset.y, realH, metrics.layoutMeasurement.height)
+        : false
+    })
+    if (action === 'ignore') return
+
     isMomentumScrollingRef.current = true
     cancelPendingProgrammaticScroll()
-    const metrics = lastScrollMetricsRef.current
-    if (!metrics) return
-    const intrinsicH = lastIntrinsicContentHeightRef.current
-    const realH =
-      intrinsicH > 0 ? Math.min(intrinsicH, metrics.contentSize.height) : metrics.contentSize.height
-    if (!isNearContentBottom(metrics.contentOffset.y, realH, metrics.layoutMeasurement.height)) {
-      exitFollowing()
-    }
-  }, [cancelPendingProgrammaticScroll, exitFollowing])
+    if (action === 'exit_following') exitFollowing()
+    syncShowScrollButton()
+  }, [cancelPendingProgrammaticScroll, exitFollowing, syncShowScrollButton])
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -530,8 +581,9 @@ export function useAgentChatScroll({
 
       if (isSmoothScrollingRef.current) return
       settleFollowModeAfterGesture(event.nativeEvent)
+      syncShowScrollButton()
     },
-    [settleFollowModeAfterGesture]
+    [settleFollowModeAfterGesture, syncShowScrollButton]
   )
 
   return {

@@ -163,7 +163,7 @@ export function useAgentStreamActions({
     }
 
     if (sessionId) {
-      void finishStream(sessionId, { waitForLatestUsage: true })
+      void finishStream(sessionId, { waitForLatestUsage: false })
     }
   }, [
     currentSessionIdRef,

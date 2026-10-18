@@ -3,16 +3,19 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type Dispatch,
   type SetStateAction
 } from 'react'
 import { useAgentStore } from '@baishou/store'
+import { isAnyAgentMarkdownRevealing, stopAllAgentMarkdownRevealing } from '@baishou/ui/native'
 
 import {
   appendTimelineReasoning,
   appendTimelineText,
   appendTimelineToolStart,
   completeTimelineTool,
+  createRafBatchedCallback,
   type AgentStreamTimelineItem
 } from '@baishou/shared'
 import {
@@ -69,6 +72,7 @@ export function useAgentStreamBridge({
     activeToolRef,
     timelineRef,
     finishStreamPassRef,
+    userStoppedStreamRef,
     currentSessionIdRef
   } = refs
 
@@ -101,11 +105,23 @@ export function useAgentStreamBridge({
     [currentSessionIdRef]
   )
 
+  const timelineBatchedPublisherRef = useRef(
+    createRafBatchedCallback((next: AgentStreamTimelineItem[]) => {
+      setTimeline(next)
+    })
+  )
+
   const publishTimeline = useCallback(() => {
+    timelineBatchedPublisherRef.current.schedule(timelineRef.current.slice())
+  }, [timelineRef])
+
+  const flushTimelineNow = useCallback(() => {
+    timelineBatchedPublisherRef.current.flush()
     setTimeline(timelineRef.current.slice())
   }, [setTimeline, timelineRef])
 
   const resetTimeline = useCallback(() => {
+    timelineBatchedPublisherRef.current.flush()
     timelineRef.current = []
     setTimeline([])
   }, [setTimeline, timelineRef])
@@ -119,7 +135,8 @@ export function useAgentStreamBridge({
   const flushStreamingDisplayBuffers = useCallback(() => {
     streamingTextDisplayRef.current?.flush()
     streamingReasoningDisplayRef.current?.flush()
-  }, [streamingTextDisplayRef, streamingReasoningDisplayRef])
+    flushTimelineNow()
+  }, [streamingTextDisplayRef, streamingReasoningDisplayRef, flushTimelineNow])
 
   const appendStreamingTextDelta = useCallback(
     (chunk: string) => {
@@ -189,6 +206,7 @@ export function useAgentStreamBridge({
       streamBufferHoldTimerRef.current = null
     }
     setStreamPresentationLinger(false)
+    stopAllAgentMarkdownRevealing()
     streamAbortRef.current?.()
     streamAbortRef.current = null
     isStreamingRef.current = false
@@ -204,9 +222,6 @@ export function useAgentStreamBridge({
     setCompressionReasoning('')
     setCompressionTriggerMessageId(null)
     clearStreamingDisplayBuffers()
-    activeToolRef.current = null
-    setActiveTool(null)
-    clearCompletedTools()
   }, [
     streamBridgeReleaseTimerRef,
     streamPresentationLingerTimerRef,
@@ -254,14 +269,22 @@ export function useAgentStreamBridge({
       clearTimeout(streamBufferHoldTimerRef.current)
       streamBufferHoldTimerRef.current = null
     }
-    streamPresentationLingerTimerRef.current = setTimeout(() => {
+    const finishLingerWhenRevealDone = () => {
+      if (isAnyAgentMarkdownRevealing()) {
+        streamPresentationLingerTimerRef.current = setTimeout(finishLingerWhenRevealDone, 60)
+        return
+      }
       streamPresentationLingerTimerRef.current = null
       setStreamPresentationLinger(false)
-    }, STREAM_PRESENTATION_LINGER_MS)
-    streamBufferHoldTimerRef.current = setTimeout(() => {
-      streamBufferHoldTimerRef.current = null
-      resetStreamingBuffers()
-    }, STREAM_PRESENTATION_LINGER_MS + STREAM_BUFFER_HOLD_AFTER_LINGER_MS)
+      streamBufferHoldTimerRef.current = setTimeout(() => {
+        streamBufferHoldTimerRef.current = null
+        resetStreamingBuffers()
+      }, STREAM_BUFFER_HOLD_AFTER_LINGER_MS + 260)
+    }
+    streamPresentationLingerTimerRef.current = setTimeout(
+      finishLingerWhenRevealDone,
+      STREAM_PRESENTATION_LINGER_MS
+    )
   }, [
     streamBridgeReleaseTimerRef,
     streamPresentationLingerTimerRef,
@@ -273,12 +296,31 @@ export function useAgentStreamBridge({
     if (streamBridgeReleaseTimerRef.current) {
       clearTimeout(streamBridgeReleaseTimerRef.current)
     }
+    if (userStoppedStreamRef.current) {
+      streamBridgeReleaseTimerRef.current = null
+      setIsStreamBridgeActive(false)
+      setStreamPresentationLinger(false)
+      if (streamBufferHoldTimerRef.current) {
+        clearTimeout(streamBufferHoldTimerRef.current)
+      }
+      streamBufferHoldTimerRef.current = setTimeout(() => {
+        streamBufferHoldTimerRef.current = null
+        resetStreamingBuffers()
+      }, STREAM_BUFFER_HOLD_AFTER_LINGER_MS)
+      return
+    }
     setIsStreamBridgeActive(true)
     streamBridgeReleaseTimerRef.current = setTimeout(() => {
       streamBridgeReleaseTimerRef.current = null
       releaseStreamBridge()
-    }, 300)
-  }, [streamBridgeReleaseTimerRef, releaseStreamBridge])
+    }, 120)
+  }, [
+    streamBridgeReleaseTimerRef,
+    streamBufferHoldTimerRef,
+    userStoppedStreamRef,
+    releaseStreamBridge,
+    resetStreamingBuffers
+  ])
 
   const handleToolCallStart = useCallback(
     (toolName: string, args?: unknown, toolCallId?: string) => {
@@ -313,9 +355,9 @@ export function useAgentStreamBridge({
         args,
         startTime: start
       })
-      publishTimeline()
+      flushTimelineNow()
     },
-    [activeToolRef, setActiveTool, setPendingEmojis, timelineRef, publishTimeline]
+    [activeToolRef, setActiveTool, setPendingEmojis, timelineRef, flushTimelineNow]
   )
 
   const handleToolCallResult = useCallback(
@@ -330,9 +372,9 @@ export function useAgentStreamBridge({
         { name: toolName, startTime, endTime: Date.now(), result, toolCallId: callId }
       ])
       completeTimelineTool(timelineRef.current, { callId, name: toolName, result })
-      publishTimeline()
+      flushTimelineNow()
     },
-    [activeToolRef, setActiveTool, setCompletedTools, timelineRef, publishTimeline]
+    [activeToolRef, setActiveTool, setCompletedTools, timelineRef, flushTimelineNow]
   )
 
   /** 用户点停止：打断流，但留下已经打出来的半段，等落库后由 finishStream 交接 */
@@ -352,6 +394,9 @@ export function useAgentStreamBridge({
     streamAbortRef.current?.()
     streamAbortRef.current = null
     flushStreamingDisplayBuffers()
+    stopAllAgentMarkdownRevealing()
+    activeToolRef.current = null
+    setActiveTool(null)
     isStreamingRef.current = false
     setIsStreaming(false)
     setIsCompressing(false)
@@ -369,6 +414,8 @@ export function useAgentStreamBridge({
     streamBufferHoldTimerRef,
     streamAbortRef,
     flushStreamingDisplayBuffers,
+    activeToolRef,
+    setActiveTool,
     isStreamingRef,
     setIsStreaming,
     setIsCompressing,

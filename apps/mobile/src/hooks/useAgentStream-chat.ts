@@ -241,22 +241,32 @@ export function useAgentStreamChat({
           },
           fail
         )
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
+          setStreamError(null)
+        }
         await finishStream(sessionId, {
-          waitForLatestUsage: true,
+          waitForLatestUsage: !stoppedByUser,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
-      } catch (e) {
-        if (userStoppedStreamRef.current) {
+        if (stoppedByUser) {
           userStoppedStreamRef.current = false
+        }
+      } catch (e) {
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
           setStreamError(null)
         } else {
           const msg = e instanceof Error ? e.message : String(e)
           fail(msg)
         }
         await finishStream(sessionId, {
-          waitForLatestUsage: true,
+          waitForLatestUsage: !stoppedByUser,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
+        if (stoppedByUser) {
+          userStoppedStreamRef.current = false
+        }
       }
     },
     [
@@ -438,16 +448,26 @@ export function useAgentStreamChat({
             },
             failStream
           )
-          await finishStream(streamSessionId, { waitForLatestUsage: true })
-        } catch (e: unknown) {
-          if (userStoppedStreamRef.current) {
+          const stoppedByUser = userStoppedStreamRef.current
+          if (stoppedByUser) {
+            setStreamError(null)
+          }
+          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
+          if (stoppedByUser) {
             userStoppedStreamRef.current = false
+          }
+        } catch (e: unknown) {
+          const stoppedByUser = userStoppedStreamRef.current
+          if (stoppedByUser) {
             setStreamError(null)
           } else {
             const msg = e instanceof Error ? e.message : String(e)
             failStream(msg)
           }
-          await finishStream(streamSessionId, { waitForLatestUsage: true })
+          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
+          if (stoppedByUser) {
+            userStoppedStreamRef.current = false
+          }
         }
       })()
 
