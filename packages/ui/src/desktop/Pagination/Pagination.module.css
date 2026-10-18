@@ -2,7 +2,7 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-height: 32px;
   font-family: var(--font-family-main, sans-serif);
   line-height: 1;
@@ -14,19 +14,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   user-select: none;
   box-sizing: border-box;
 }
@@ -58,7 +58,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   letter-spacing: 1px;
   user-select: none;
 }
@@ -66,8 +66,8 @@
 .jumper {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 4px;
+  gap: var(--spacing-xs-plus);
+  margin-left: var(--spacing-xs);
   height: 32px;
 }
 
@@ -78,8 +78,8 @@
   height: 32px;
   min-height: 32px;
   max-height: 32px;
-  padding: 0 6px;
-  font-size: 13px;
+  padding: 0 var(--spacing-xs-plus);
+  font-size: var(--ui-fs-md);
   line-height: 1;
   text-align: center;
   display: inline-block;
@@ -88,11 +88,11 @@
 }
 
 .jumperInput::placeholder {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .jumperSuffix {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 32px;
   color: var(--text-tertiary);
   white-space: nowrap;

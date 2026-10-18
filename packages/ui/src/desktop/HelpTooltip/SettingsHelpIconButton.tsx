@@ -6,12 +6,14 @@ import styles from './SettingsHelpIcon.module.css'
 
 export interface SettingsHelpIconButtonProps {
   /** Accessible name for the control */
-  'aria-label': string
+  'aria-label'?: string
+  accessibilityLabel?: string
   /** 已废弃：问号统一使用 HELP_ICON_SIZE，传入值不会生效。 */
   size?: number
   className?: string
   /** Click opens help (modal / panel). Isolated from settings list rows. */
-  onActivate: () => void
+  onActivate?: () => void
+  onPress?: () => void
 }
 
 /**
@@ -19,21 +21,28 @@ export interface SettingsHelpIconButtonProps {
  * Visual SSOT with HelpTooltip (tertiary → primary).
  */
 export const SettingsHelpIconButton: React.FC<SettingsHelpIconButtonProps> = ({
-  'aria-label': ariaLabel,
+  'aria-label': ariaLabelProp,
+  accessibilityLabel,
   size: _size,
   className = '',
-  onActivate
-}) => (
-  <span className={`${styles.helpBtnHost} ${className}`.trim()}>
-    <button
-      type="button"
-      className={styles.helpBtn}
-      aria-label={ariaLabel}
-      {...mergeSettingsHelpButtonHandlers(() => {
-        onActivate()
-      })}
-    >
-      <CircleHelp size={HELP_ICON_SIZE} className={styles.helpIcon} aria-hidden />
-    </button>
-  </span>
-)
+  onActivate,
+  onPress
+}) => {
+  const ariaLabel = ariaLabelProp ?? accessibilityLabel ?? ''
+  const handleActivate = onActivate ?? onPress ?? (() => {})
+
+  return (
+    <span className={`${styles.helpBtnHost} ${className}`.trim()}>
+      <button
+        type="button"
+        className={styles.helpBtn}
+        aria-label={ariaLabel}
+        {...mergeSettingsHelpButtonHandlers(() => {
+          handleActivate()
+        })}
+      >
+        <CircleHelp size={HELP_ICON_SIZE} className={styles.helpIcon} aria-hidden />
+      </button>
+    </span>
+  )
+}

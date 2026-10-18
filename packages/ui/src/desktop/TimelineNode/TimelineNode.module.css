@@ -1,6 +1,6 @@
 .nodeContainer {
   display: flex;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-lg);
   font-family: var(--font-family-main);
   position: relative;
 }
@@ -11,20 +11,20 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  padding-right: 16px;
-  padding-top: 4px;
+  padding-right: var(--spacing-md);
+  padding-top: var(--spacing-xs);
 }
 
 .timeText {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--color-text-main);
   line-height: 1;
 }
 
 .dateText {
-  margin-top: 4px;
-  font-size: 10px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--icon-fs-xs);
   color: var(--text-secondary);
 }
 
@@ -69,7 +69,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  margin-top: 6px;
+  margin-top: var(--spacing-xs-plus);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -86,7 +86,7 @@
 
 .contentAxis {
   flex: 1;
-  padding-left: 20px;
+  padding-left: var(--spacing-md-plus);
 }
 
 .cardBox {
@@ -96,9 +96,9 @@
 @media (max-width: 600px) {
   .timeAxis {
     width: 45px;
-    padding-right: 10px;
+    padding-right: var(--spacing-sm-plus);
   }
   .contentAxis {
-    padding-left: 12px;
+    padding-left: var(--spacing-md-tight);
   }
 }

@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: fadeIn var(--duration-moderate) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .container {
@@ -27,11 +27,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: scaleUp var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .header {
-  padding: 20px 24px 16px;
+  padding: var(--spacing-md-plus) var(--spacing-lg) var(--spacing-md);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -44,16 +44,16 @@
 }
 
 .title {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .closeBtn {
@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .closeBtn:hover {
@@ -79,8 +79,8 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-  gap: 12px;
-  padding: 20px 24px 32px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md-plus) var(--spacing-lg) var(--spacing-xl);
   overflow-y: auto;
 }
 
@@ -89,21 +89,21 @@
 }
 .grid::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .emojiBtn {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: transparent;
   border: 1px solid transparent;
-  font-size: 24px;
+  font-size: var(--icon-fs-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .emojiBtn:hover {

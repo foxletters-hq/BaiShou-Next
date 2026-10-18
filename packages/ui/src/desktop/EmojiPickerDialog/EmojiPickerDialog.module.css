@@ -12,25 +12,25 @@
   left: 50%;
   transform: translate(-50%, -50%);
   background: var(--menu-popup-bg, var(--bg-surface));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  padding: 12px;
+  padding: var(--spacing-md-tight);
   z-index: 1001;
   width: 240px;
-  animation: scaleIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  animation: scaleIn var(--duration-swift) cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--spacing-sm);
+  padding: 0 var(--spacing-xs);
 }
 
 .title {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   color: var(--text-secondary);
   font-family: var(--font-family-main);
@@ -40,10 +40,10 @@
 .closeBtn {
   background: transparent;
   border: none;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
+  padding: var(--spacing-xs);
 }
 
 .closeBtn:hover {
@@ -53,15 +53,15 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .emojiBtn {
   background: transparent;
   border: none;
-  font-size: 24px;
-  padding: 8px;
-  border-radius: 8px;
+  font-size: var(--icon-fs-lg);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--animation-micro);
   display: flex;
