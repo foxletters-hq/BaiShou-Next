@@ -69,6 +69,12 @@ export interface GraphQuery extends GraphNodeLookup {
     Array<{ id: string; name: string; summary: string; modelId: string; updatedAt: number }>
   >
   countEmbeddedLiveNodes(vaultId: string, keyword?: string): Promise<number>
+  listLiveNodesPage(
+    vaultId: string,
+    options?: { keyword?: string; limit?: number; offset?: number }
+  ): Promise<GraphNodeRow[]>
+  countLiveNodes(vaultId: string, keyword?: string): Promise<number>
+  countLiveCurrentEdges(vaultId: string): Promise<number>
   getNodesByIds(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
 }
 

@@ -220,6 +220,22 @@ export const NOTEBOOK_GRAPH_INDEXES_SQL = [
     ON notebook_graph_aliases(vault_id, notebook_id, alias_normalized)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_aliases_node ON notebook_graph_aliases(node_id)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_notebook ON notebook_graph_edges(notebook_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_vault_nb
+    ON notebook_graph_edges(vault_id, notebook_id, is_current)
+    WHERE deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_vault_nb_from
+    ON notebook_graph_edges(vault_id, notebook_id, is_current, from_id)
+    WHERE deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_nb_graph_nodes_pending_sort
+    ON notebook_graph_nodes(
+      vault_id,
+      notebook_id,
+      (case when review_status = 'pending' then 0 else 1 end),
+      mention_count DESC,
+      name,
+      id
+    )
+    WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_from ON notebook_graph_edges(from_id)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_to ON notebook_graph_edges(to_id)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_edges_source_ref ON notebook_graph_edges(notebook_id, source_ref)`

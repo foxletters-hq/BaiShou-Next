@@ -222,6 +222,7 @@ export const notebookGraphEdgesTable = sqliteTable(
   },
   (t) => ({
     notebookIdx: index('idx_nb_graph_edges_notebook').on(t.notebookId),
+    vaultNotebookIdx: index('idx_nb_graph_edges_vault_nb').on(t.vaultId, t.notebookId),
     fromIdx: index('idx_nb_graph_edges_from').on(t.fromId),
     toIdx: index('idx_nb_graph_edges_to').on(t.toId),
     sourceRefIdx: index('idx_nb_graph_edges_source_ref').on(t.notebookId, t.sourceRef)

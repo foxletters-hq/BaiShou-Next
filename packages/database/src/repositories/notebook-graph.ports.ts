@@ -51,6 +51,15 @@ export interface NotebookGraphQuery {
   ): Promise<NotebookGraphEdgeRow[]>
   listPendingNodes(vaultId: string, notebookId: string): Promise<NotebookGraphNodeRow[]>
   listPendingEdges(vaultId: string, notebookId: string): Promise<NotebookGraphEdgeRow[]>
+  listNodesPage(opts: {
+    vaultId: string
+    notebookId: string
+    keyword?: string
+    limit?: number
+    offset?: number
+  }): Promise<NotebookGraphNodeRow[]>
+  countNodes(opts: { vaultId: string; notebookId: string; keyword?: string }): Promise<number>
+  countCurrentEdges(opts: { vaultId: string; notebookId: string }): Promise<number>
 }
 
 export interface NotebookGraphSyncApply {

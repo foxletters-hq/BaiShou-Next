@@ -320,8 +320,8 @@ export class GraphTraverseOps {
       for (const edge of edges) {
         degree.set(edge.fromId, (degree.get(edge.fromId) ?? 0) + 1)
         degree.set(edge.toId, (degree.get(edge.toId) ?? 0) + 1)
-        for (const cur of expandable) {
-          if (edge.fromId !== cur && edge.toId !== cur) continue
+        const endpoints = edge.fromId === edge.toId ? [edge.fromId] : [edge.fromId, edge.toId]
+        for (const cur of endpoints) {
           if (!expandSet.has(cur)) continue
           const neighbor = edge.fromId === cur ? edge.toId : edge.fromId
           if (visited.has(neighbor)) continue
@@ -397,8 +397,8 @@ export class GraphTraverseOps {
       for (const edge of edges) {
         degree.set(edge.fromId, (degree.get(edge.fromId) ?? 0) + 1)
         degree.set(edge.toId, (degree.get(edge.toId) ?? 0) + 1)
-        for (const cur of expandable) {
-          if (edge.fromId !== cur && edge.toId !== cur) continue
+        const endpoints = edge.fromId === edge.toId ? [edge.fromId] : [edge.fromId, edge.toId]
+        for (const cur of endpoints) {
           if (!expandSet.has(cur)) continue
           const neighbor = edge.fromId === cur ? edge.toId : edge.fromId
           if (visited.has(neighbor)) continue

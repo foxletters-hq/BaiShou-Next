@@ -1,5 +1,10 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm'
-import { GRAPH_SQL_IN_CHUNK, normalizeGraphName, propsHaveSimilarPending } from '@baishou/shared'
+import {
+  GRAPH_SQL_IN_CHUNK,
+  embeddingVectorToBytes,
+  normalizeGraphName,
+  propsHaveSimilarPending
+} from '@baishou/shared'
 import { graphEdgesTable, graphNodesTable } from '../schema/graph'
 import type { AppDatabase } from '../types'
 import type { GraphEdgeRow, GraphNodeRow } from './graph.repository.types'
@@ -31,8 +36,12 @@ export function nodePropsHaveSuspectReason(propsJson: string | null | undefined)
   }
 }
 
+/**
+ * 手机 JS 运行时没有 Buffer，所以用 Uint8Array 视图；桌面端驱动同样接受。
+ * 返回类型仍标成 Buffer，只是为了对上 drizzle 列类型。
+ */
 export function serializeVector(vector: number[]): Buffer {
-  return Buffer.from(new Float32Array(vector).buffer)
+  return embeddingVectorToBytes(vector) as unknown as Buffer
 }
 
 export function ms(date: Date | null | undefined): number | null {

@@ -821,4 +821,58 @@ describeGraph('NotebookGraphRepository supersede', () => {
     expect(view.edges[0]?.confidence).toBe(100)
     expect(view.edges[0]?.reviewStatus).toBe('approved')
   })
+
+  it('listNodesPage 与 countNodes 分页与关键字过滤正常工作', async () => {
+    const repo = new NotebookGraphRepository(dbManager.getDb() as never)
+    const now = Date.now()
+    for (let i = 1; i <= 5; i++) {
+      await repo.applyRawNode({
+        id: `node-${i}`,
+        vaultId: 'v1',
+        notebookId: 'nb1',
+        nodeType: 'topic',
+        name: `实体_${i}`,
+        summary: i === 3 ? '特别的摘要' : undefined,
+        mentionCount: i * 10,
+        createdAt: now,
+        updatedAt: now,
+        shardMonth: 'src1'
+      })
+    }
+    const total = await repo.countNodes({ vaultId: 'v1', notebookId: 'nb1' })
+    expect(total).toBe(5)
+
+    const page1 = await repo.listNodesPage({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      limit: 2,
+      offset: 0
+    })
+    expect(page1.length).toBe(2)
+    // 降序排列 mentionCount 最大排前面
+    expect(page1[0]!.id).toBe('node-5')
+    expect(page1[1]!.id).toBe('node-4')
+
+    const page2 = await repo.listNodesPage({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      limit: 2,
+      offset: 2
+    })
+    expect(page2.length).toBe(2)
+    expect(page2[0]!.id).toBe('node-3')
+
+    const keywordHits = await repo.listNodesPage({
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      keyword: '特别',
+      limit: 10,
+      offset: 0
+    })
+    expect(keywordHits.length).toBe(1)
+    expect(keywordHits[0]!.id).toBe('node-3')
+
+    const edgeCount = await repo.countCurrentEdges({ vaultId: 'v1', notebookId: 'nb1' })
+    expect(edgeCount).toBe(0)
+  })
 })

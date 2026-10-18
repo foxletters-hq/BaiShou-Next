@@ -622,4 +622,37 @@ describe('GraphRepository keyed queries', () => {
     expect(raw.rows[0]?.discriminator).toBe('')
     expect(raw.rows[0]?.discriminator).not.toBeNull()
   })
+
+  it('should page live nodes across months and hide rejected rows', async () => {
+    await seedNode('n-old', {
+      name: '两年前的人',
+      shardMonth: '2024-01',
+      mentionCount: 9,
+      discriminator: '同事'
+    })
+    await seedNode('n-new', { name: '最近的人', shardMonth: '2026-09', mentionCount: 2 })
+    await seedNode('n-rejected', {
+      name: '已拒绝',
+      shardMonth: '2026-09',
+      reviewStatus: 'rejected',
+      mentionCount: 20
+    })
+    await seedEdge('e-old', 'n-old', 'n-new', { shardMonth: '2024-01' })
+    await seedEdge('e-rej', 'n-old', 'n-rejected', {
+      shardMonth: '2026-09',
+      reviewStatus: 'rejected'
+    })
+
+    const page = await repo.listLiveNodesPage(VAULT, { limit: 1, offset: 0 })
+    expect(page.map((row) => row.id)).toEqual(['n-old'])
+    expect(page[0]?.discriminator).toBe('同事')
+    const second = await repo.listLiveNodesPage(VAULT, { limit: 1, offset: 1 })
+    expect(second.map((row) => row.id)).toEqual(['n-new'])
+    expect(await repo.countLiveNodes(VAULT)).toBe(2)
+    expect(await repo.countLiveCurrentEdges(VAULT)).toBe(1)
+
+    const keyed = await repo.listLiveNodesPage(VAULT, { keyword: '同事', limit: 10, offset: 0 })
+    expect(keyed.map((row) => row.id)).toEqual(['n-old'])
+    expect(await repo.countLiveNodes(VAULT, '同事')).toBe(1)
+  })
 })
