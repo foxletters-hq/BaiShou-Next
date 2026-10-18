@@ -22,7 +22,7 @@ import {
 } from '../../services/mobile-vault-runtime.service'
 import { runMobileLegacyZipMigration } from '../../services/mobile-legacy-migration.service'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import type { MobileArchiveDbBridge } from '../../services/mobile-archive-db.bridge'
 import type { MobileBaishouInitRefs } from './init-context'
 import type { BaishouContextValue } from './types'
@@ -156,7 +156,13 @@ export function createArchiveDbBridge(deps: {
         pathService: ctx.pathService,
         fileSystem: ctx.fileSystem,
         settingsManager: runtime.settingsManager,
-        diaryRepoAdapter: stack.diaryRepoAdapter
+        diaryRepoAdapter: stack.diaryRepoAdapter,
+        resolveVaultId: () => {
+          const active = ctx.vaultService.getActiveVault()
+          if (active?.id) return active.id
+          const name = active?.name?.trim() || 'Personal'
+          return deriveLegacyVaultId(name)
+        }
       })
       ctx.bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
       ctx.watcherDeps.summarySyncService = summaryPipeline.summarySyncService

@@ -29,4 +29,16 @@ describe('start-agent-chat companion graph lookups', () => {
     expect(src).toContain('validFrom: e.validFrom')
     expect(src).toContain('isCurrent: e.isCurrent')
   })
+
+  it('should inject a mobile skillsWriter so companion skill_write can persist', () => {
+    expect(src).toContain('createMobileSkillsWriter')
+    expect(src).toContain('skillsWriter: createMobileSkillsWriter()')
+  })
+
+  it('should inject skillsCatalog and skillsReader for on-demand skill bodies', () => {
+    expect(src).toContain('mobileListSkillsCatalog')
+    expect(src).toContain('skillsCatalog: await mobileListSkillsCatalog()')
+    expect(src).toContain('createMobileSkillsReader')
+    expect(src).toContain('skillsReader: createMobileSkillsReader()')
+  })
 })

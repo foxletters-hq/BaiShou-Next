@@ -265,6 +265,20 @@ export async function bootstrapMobileSyncLayer(
     getDiarySearcher,
     getAgentGate: agentGateRuntime.getAgentGate
   })
+
+  // 静默预热已启用的外部 MCP 服务连接，避免首次发送消息冷启动延迟
+  void (async () => {
+    try {
+      const { getMobileMcpClientRuntime } = await import('../../services/mobile-mcp-client-runtime')
+      const mcpRt = getMobileMcpClientRuntime()
+      const conf = await mcpRt.ensureLoaded()
+      if (conf.servers.some((s) => s.enabled)) {
+        await mcpRt.toVercelTools({} as any)
+      }
+    } catch {
+      // 静默预热失败不影响主流程
+    }
+  })()
   return {
     ...state,
     mobileMcpService,

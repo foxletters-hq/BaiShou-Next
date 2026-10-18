@@ -30,6 +30,11 @@ import { pickBareGraphNameHit } from '../../services/graph-name-candidates.util'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
 import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry, IAIProvider } from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
+import {
+  createMobileSkillsReader,
+  createMobileSkillsWriter,
+  mobileListSkillsCatalog
+} from '../../services/mobile-agent-skills.service'
 import { applyMobileSessionReasoningEffort } from '../../services/mobile-reasoning-effort-session'
 
 export function createStartAgentChat(deps: {
@@ -123,7 +128,7 @@ export function createStartAgentChat(deps: {
       let namingModelId: string | undefined
       if (namingModelConfigured) {
         const namingConfig = providers.find(
-          (p: any) => p.id === globalModels.globalNamingProviderId
+          (p: any) => p.id === globalModels.globalNamingProviderId && p.isEnabled !== false
         )
         if (namingConfig) {
           namingProvider = registry.getOrUpdateProvider(namingConfig)
@@ -318,6 +323,9 @@ export function createStartAgentChat(deps: {
               limit: opts.limit
             })
           }),
+          skillsWriter: createMobileSkillsWriter(),
+          skillsReader: createMobileSkillsReader(),
+          skillsCatalog: await mobileListSkillsCatalog().catch(() => undefined),
           extraVercelToolsFactory: async (toolContext) => {
             const { mobileExtraVercelToolsFactory } =
               await import('../../services/mobile-mcp-client-runtime')
