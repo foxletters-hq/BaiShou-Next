@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme, Button } from '@baishou/ui/native'
 import type { IFileSystem } from '@baishou/core-mobile'
 import { normalizeExternalStoragePath, stripFileScheme } from '../services/android-external-fs'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const ANDROID_ROOT = '/storage/emulated/0'
 
@@ -118,7 +119,9 @@ export const DirectoryPickerModal: React.FC<DirectoryPickerModalProps> = ({
       >
         <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common.cancel')}</Text>
+            <Text style={{ color: colors.primary, fontSize: mobileTypography.primary.fontSize }}>
+              {t('common.cancel')}
+            </Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             {t('storage.pick_directory', '选择目录')}
@@ -198,26 +201,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   pathBar: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    margin: 12,
-    padding: 12,
-    borderRadius: 10,
+    gap: sharedTokens.spacing.smPlus,
+    margin: sharedTokens.spacing.mdTight,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth
   },
   pathText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontFamily: 'monospace',
     lineHeight: 18
   },
@@ -227,28 +230,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   listContent: {
-    paddingBottom: 16
+    paddingBottom: sharedTokens.spacing.md
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   rowTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   empty: {
     textAlign: 'center',
-    padding: 32,
-    fontSize: 14
+    padding: sharedTokens.spacing.xl,
+    fontSize: mobileTypography.secondary.fontSize
   },
   footer: {
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth
   }
 })

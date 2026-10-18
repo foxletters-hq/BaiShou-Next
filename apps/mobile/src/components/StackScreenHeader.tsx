@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeaderAction } from './StackScreenHeaderAction'
 import type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
@@ -91,8 +92,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
     minHeight: 44
   },
   sideStart: {
@@ -113,15 +114,15 @@ const styles = StyleSheet.create({
   backHit: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 8,
-    paddingVertical: 4
+    paddingRight: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs
   },
   backArrow: {
     marginLeft: -4,
     marginRight: -2
   },
   backLabel: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '500'
   },
   titleRow: {
@@ -130,12 +131,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   headerTitle: {
     flexShrink: 1,
     minWidth: 0,
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   }

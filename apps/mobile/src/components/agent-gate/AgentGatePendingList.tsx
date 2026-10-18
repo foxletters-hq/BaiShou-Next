@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { selectGroupedPending, selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface AgentGatePendingListProps {
   currentSessionId?: string | null
@@ -77,31 +78,31 @@ export const AgentGatePendingList: React.FC<AgentGatePendingListProps> = ({
 const styles = StyleSheet.create({
   wrap: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xsPlus
   },
   title: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   row: {
-    gap: 8,
-    paddingRight: 8
+    gap: sharedTokens.spacing.sm,
+    paddingRight: sharedTokens.spacing.sm
   },
   chip: {
     maxWidth: 180,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 2
+    borderRadius: sharedTokens.radius.control,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xxs
   },
   chipTitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   chipMeta: {
-    fontSize: 10
+    fontSize: mobileTypography.caption.fontSize
   }
 })
