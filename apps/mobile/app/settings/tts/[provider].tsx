@@ -5,6 +5,7 @@ import { StackScreenLayout } from '@/src/components/StackScreenLayout'
 import { getStackScreenChrome } from '@/src/components/stackScreenChrome'
 import { useNativeTheme } from '@baishou/ui/native'
 import { TTSSettingsSection } from '@/src/screens/SettingsScreen/components/TTSSettingsSection'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export default function TtsProviderSettingsRoute() {
   const { provider: providerParam } = useLocalSearchParams<{
@@ -23,7 +24,11 @@ export default function TtsProviderSettingsRoute() {
     <StackScreenLayout
       title={t('settings.tts_settings')}
       {...chrome}
-      contentStyle={{ flex: 1, padding: 16, paddingBottom: 32 }}
+      contentStyle={{
+        flex: 1,
+        padding: sharedTokens.spacing.md,
+        paddingBottom: sharedTokens.spacing.xl
+      }}
     >
       <TTSSettingsSection providerId={provider} />
     </StackScreenLayout>

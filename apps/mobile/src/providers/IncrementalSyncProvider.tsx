@@ -8,11 +8,10 @@ import React, {
   useState,
   type ReactNode
 } from 'react'
-import { InteractionManager, View, StyleSheet, BackHandler } from 'react-native'
+import { View, StyleSheet, BackHandler } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { IncrementalSyncConfirmDialog, useDialog, useNativeToast } from '@baishou/ui/native'
 import { useRouter } from 'expo-router'
-import type { IncrementalSyncPlanPreview } from '@baishou/shared'
 import {
   isIncrementalSyncReady,
   logger,
@@ -21,6 +20,8 @@ import {
   runIncrementalSyncWithDivergenceConfirmation,
   shouldWarnCellularSyncTraffic,
   syncTrafficThresholdMbToBytes,
+  waitForIdle,
+  type IncrementalSyncPlanPreview,
   type IncrementalSyncRunOptions
 } from '@baishou/shared'
 import type {
@@ -284,9 +285,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
         return undefined
       }
 
-      await new Promise<void>((resolve) => {
-        InteractionManager.runAfterInteractions(() => resolve())
-      })
+      await waitForIdle()
 
       const planGeneration = ++planGenerationRef.current
       setIsPlanning(true)

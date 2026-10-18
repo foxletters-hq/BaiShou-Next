@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
-import { uiTypography } from '@baishou/ui/theme/tokens'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import { HapticTab } from '../../components/haptic-tab'
 import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
@@ -14,7 +14,7 @@ const TAB_BAR_CONTENT_HEIGHT = 56
 
 export default function TabLayout() {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, contentFontScale } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const pathname = usePathname()
   const pendingGateCount = useAgentGateInboxStore(selectPendingCount)
@@ -22,20 +22,19 @@ export default function TabLayout() {
 
   const tabBarBottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
-  const sharedTabBarStyle = useMemo(
-    () =>
-      ({
-        backgroundColor: colors.bgSurface,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: colors.borderMuted,
-        elevation: 0,
-        shadowOpacity: 0,
-        height: TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset,
-        paddingTop: 0,
-        paddingBottom: tabBarBottomInset
-      }) as const,
-    [colors.bgSurface, colors.borderMuted, tabBarBottomInset]
-  )
+  const sharedTabBarStyle = useMemo(() => {
+    const scaleExtra = contentFontScale > 1 ? Math.round((contentFontScale - 1) * 16) : 0
+    return {
+      backgroundColor: colors.bgSurface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderMuted,
+      elevation: 0,
+      shadowOpacity: 0,
+      height: TAB_BAR_CONTENT_HEIGHT + scaleExtra + tabBarBottomInset,
+      paddingTop: 0,
+      paddingBottom: tabBarBottomInset
+    } as const
+  }, [colors.bgSurface, colors.borderMuted, contentFontScale, tabBarBottomInset])
 
   const sharedTabBarItemStyle = useMemo(
     () =>
@@ -51,9 +50,22 @@ export default function TabLayout() {
   const sharedTabBarLabelStyle = useMemo(
     () =>
       Platform.select({
-        ios: { fontSize: 11, marginTop: 2, marginBottom: 0 },
-        android: { fontSize: 11, marginTop: 2, marginBottom: 0, includeFontPadding: false },
-        default: { fontSize: 11, marginTop: 2, marginBottom: 0 }
+        ios: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0
+        },
+        android: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0,
+          includeFontPadding: false
+        },
+        default: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0
+        }
       }),
     []
   )
@@ -62,7 +74,7 @@ export default function TabLayout() {
     () => ({
       backgroundColor: colors.warning,
       color: colors.textPrimary,
-      fontSize: uiTypography.sm,
+      fontSize: mobileTypography.caption.fontSize,
       fontWeight: '600' as const,
       minWidth: tokens.spacing.md,
       height: tokens.spacing.md,

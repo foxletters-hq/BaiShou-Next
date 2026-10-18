@@ -7,19 +7,21 @@ import { useBaishou } from '@/src/providers/BaishouProvider'
 
 export default function Index() {
   const { dbReady } = useBaishou()
-  const [ready, setReady] = useState(false)
+  const [onboardingLoaded, setOnboardingLoaded] = useState(false)
   const [hasOnboarded, setHasOnboarded] = useState(false)
 
   useEffect(() => {
-    if (!dbReady) return
     AsyncStorage.getItem(ONBOARDING_STORAGE_KEY)
       .then((value) => {
         setHasOnboarded(value === '1')
       })
-      .finally(() => setReady(true))
-  }, [dbReady])
+      .catch(() => {
+        setHasOnboarded(false)
+      })
+      .finally(() => setOnboardingLoaded(true))
+  }, [])
 
-  if (!dbReady || !ready) {
+  if (!dbReady || !onboardingLoaded) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />

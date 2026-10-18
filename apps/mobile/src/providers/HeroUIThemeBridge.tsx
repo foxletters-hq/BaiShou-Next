@@ -5,7 +5,8 @@ import { useNativeTheme } from '@baishou/ui/native'
 
 /**
  * HeroUI Native（Switch、Portal）+ 白守 Uniwind 主题。
- * 业务 ToastProvider 见 app/_layout.tsx（须在 HeroUINativeProvider 内）。
+ * 业务 ToastProvider、DialogProvider 见 app/_layout.tsx（须在 HeroUINativeProvider 内）。
+ * Dialog 用同一套按钮，放在外面会读不到全局动画开关。
  */
 export function HeroUIThemeBridge({ children }: { children: React.ReactNode }) {
   const { themeMode } = useNativeTheme()
