@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import '../shared/SettingsListTile.css'
 import { Switch } from '../Switch/Switch'
 import { ChevronDown, Keyboard, Pencil } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface HotkeyConfig {
   hotkeyEnabled: boolean
@@ -214,7 +215,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
 
         <span
           className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
-          style={{ marginLeft: 12 }}
+          style={{ marginLeft: sharedTokens.spacing.mdTight }}
           aria-hidden="true"
         >
           <ChevronDown className="settings-expansion-arrow" size={16} />
@@ -252,9 +253,9 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
                 color: isConflict && !isRecording ? 'var(--color-error)' : 'inherit',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: sharedTokens.spacing.xsPlus,
                 padding: '6px 12px',
-                borderRadius: 20
+                borderRadius: sharedTokens.radius.lgPlus
               }}
               onClick={() => setIsRecording(!isRecording)}
             >

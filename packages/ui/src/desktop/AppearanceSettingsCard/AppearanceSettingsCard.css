@@ -9,11 +9,11 @@
 .settings-expansion-summary {
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: var(--spacing-md);
   cursor: pointer;
   user-select: none;
   list-style: none; /* Hide default arrow */
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
 }
 
 .settings-expansion-summary::-webkit-details-marker {
@@ -21,7 +21,7 @@
 }
 
 .settings-leading-icon {
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -46,7 +46,7 @@
 }
 
 .settings-subtitle {
-  margin: 4px 0 0 0;
+  margin: var(--spacing-xs) 0 0 0;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
@@ -56,7 +56,7 @@
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  transition: transform 0.3s;
+  transition: transform var(--duration-moderate);
 }
 
 .settings-expansion-tile[open] .settings-trailing-icon {
@@ -65,17 +65,17 @@
 
 /* Scope strictly to avoid bleeding into other SettingsExpansionTile instances */
 .appearance-settings-wrapper .settings-expansion-content {
-  padding: 0 16px 16px 16px;
+  padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .settings-label {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .appearance-row {
@@ -85,16 +85,16 @@
 
 .color-dot-check {
   color: var(--text-on-primary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
 }
 
 .theme-toggle-group {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: rgba(0, 0, 0, 0.04);
-  padding: 6px;
-  border-radius: 10px;
+  padding: var(--spacing-xs-plus);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-muted);
 }
 
@@ -103,12 +103,12 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  padding: 10px 0;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: var(--spacing-sm-plus) 0;
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .theme-btn:hover {
@@ -124,7 +124,7 @@
 .color-palette {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   flex-wrap: wrap;
 }
 
@@ -134,7 +134,7 @@
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -158,8 +158,8 @@
 .color-native-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
-  animation: fadeIn 0.3s;
+  gap: var(--spacing-sm-plus);
+  animation: fadeIn var(--duration-moderate);
 }
 
 .color-native-wrapper input {
@@ -167,31 +167,31 @@
   height: 32px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   cursor: crosshair;
 }
 
 .color-hint {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
 }
 
 .lang-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .lang-chip {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-glass-surface);
   border: 1px solid var(--border-muted);
-  border-radius: 20px;
-  font-size: 13px;
+  border-radius: var(--radius-lg-plus);
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .lang-chip:hover {
@@ -208,12 +208,12 @@
 
 /* 字体大小：离散刻度滑条（对齐常规设置示意） */
 .font-size-row {
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .font-size-slider {
   position: relative;
-  padding: 10px 2px 0;
+  padding: var(--spacing-sm-plus) var(--spacing-2xs) 0;
 }
 
 /* 提高选择器优先级，覆盖 theme/range-slider.css 的主色填充轨 */
@@ -223,7 +223,7 @@ input[type='range'].font-size-range {
   width: 100%;
   height: 2px;
   margin: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   outline: none;
   cursor: pointer;
   background: var(--border-muted);
@@ -233,13 +233,13 @@ input[type='range'].font-size-range {
 
 input[type='range'].font-size-range::-webkit-slider-runnable-track {
   height: 2px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--border-muted);
 }
 
 input[type='range'].font-size-range::-moz-range-track {
   height: 2px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--border-muted);
 }
 
@@ -260,7 +260,7 @@ input[type='range'].font-size-range::-webkit-slider-thumb {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   position: relative;
   z-index: 2;
-  transition: box-shadow 0.2s;
+  transition: box-shadow var(--duration-swift);
 }
 
 input[type='range'].font-size-range::-moz-range-thumb {
@@ -305,9 +305,9 @@ input[type='range'].font-size-range::-webkit-slider-thumb:active {
 .font-size-labels {
   position: relative;
   height: 22px;
-  margin-top: 10px;
-  margin-left: 8px;
-  margin-right: 8px;
+  margin-top: var(--spacing-sm-plus);
+  margin-left: var(--spacing-sm);
+  margin-right: var(--spacing-sm);
 }
 
 .font-size-label {

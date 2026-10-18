@@ -11,6 +11,7 @@ import './AppearanceSettingsCard.css'
 import { useTranslation } from 'react-i18next'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
+import { uiTypography, sharedTokens } from '../../theme/tokens'
 import { MonitorSmartphone, Moon, Palette, Sun } from 'lucide-react'
 
 export interface AppearanceSettingsProps {
@@ -120,7 +121,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       left: `${pct}%`,
       transform,
       textAlign: align,
-      fontSize: `${Math.round(12 * scale)}px`
+      fontSize: `${Math.round(uiTypography.sm * scale)}px`
     }
   }
 
@@ -142,7 +143,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
             >
               <MonitorSmartphone
                 size={16}
-                style={{ marginRight: 6, verticalAlign: 'text-bottom' }}
+                style={{ marginRight: sharedTokens.spacing.xsPlus, verticalAlign: 'text-bottom' }}
               />
               {t('settings.theme_system', '系统跟随')}
             </button>
@@ -150,14 +151,20 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               className={`theme-btn ${themeMode === 'light' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('light')}
             >
-              <Sun size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <Sun
+                size={16}
+                style={{ marginRight: sharedTokens.spacing.xsPlus, verticalAlign: 'text-bottom' }}
+              />
               {t('settings.theme_light', '日间清晰')}
             </button>
             <button
               className={`theme-btn ${themeMode === 'dark' ? 'active' : ''}`}
               onClick={() => onThemeModeChange('dark')}
             >
-              <Moon size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+              <Moon
+                size={16}
+                style={{ marginRight: sharedTokens.spacing.xsPlus, verticalAlign: 'text-bottom' }}
+              />
               {t('settings.theme_dark', '夜宴暗影')}
             </button>
           </div>
