@@ -9,19 +9,13 @@ try {
   pnpm install --frozen-lockfile
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  pnpm format:check
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   pnpm sync:check
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  pnpm typecheck
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
   pnpm audit:cache-invalidation
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  pnpm test
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  pnpm --filter @baishou/mobile run build:diary-editor
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   pnpm lint
@@ -30,7 +24,13 @@ try {
   pnpm lint:css
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-  pnpm format:check
+  pnpm typecheck
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  pnpm test
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  pnpm --filter @baishou/mobile run build:diary-editor
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # 单测可能把 better-sqlite3 编成系统 Node ABI；收尾按 Electron ABI 恢复，减少下次开桌面时的重编。
