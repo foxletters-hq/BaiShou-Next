@@ -101,13 +101,26 @@ export class MonthlyJsonlStore {
     relativePath: string
     contentHash: string
   }> {
+    return this.appendRecords(shardMonth, [record])
+  }
+
+  /** 批量追加：整批只做一次文件追加和一次 manifest 写入。 */
+  async appendRecords(
+    shardMonth: string,
+    records: unknown[]
+  ): Promise<{
+    shardPath: string
+    relativePath: string
+    contentHash: string
+  }> {
     if (!this.isValidKey(shardMonth)) {
       throw new Error(`Invalid shard key: ${shardMonth}`)
     }
+    if (records.length === 0) throw new Error('appendRecords: records must not be empty')
     await this.ensureRoot()
     const abs = this.shardAbsolutePath(shardMonth)
-    const line = `${JSON.stringify(record)}\n`
-    await this.fs.appendFile(abs, line, 'utf8')
+    const text = records.map((record) => `${JSON.stringify(record)}\n`).join('')
+    await this.fs.appendFile(abs, text, 'utf8')
     const manifest = await this.readManifest()
     const rel = this.shardRelativePath(shardMonth)
     const prev = manifest.shards[rel]
@@ -231,7 +244,7 @@ export class MonthlyJsonlStore {
     const abs = this.shardAbsolutePath(shardMonth)
     const text = content.endsWith('\n') || content.length === 0 ? content : `${content}\n`
     await this.fs.writeFile(abs, text, 'utf8')
-    const contentHash = await this.computeShardHash(shardMonth)
+    const contentHash = md5Hex(text)
     const manifest = await this.readManifest()
     const rel = this.shardRelativePath(shardMonth)
     const prev = manifest.shards[rel]

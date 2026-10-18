@@ -106,12 +106,14 @@ export class DerivedFreshnessService {
       })
     }
 
-    for (const [filePath, contentHash] of this.reextractMarks) {
+    const marks = [...this.reextractMarks.entries()]
+    const stale: string[] = []
+    for (const [filePath, contentHash] of marks) {
       const key = normalizeFilePath(filePath)
       const last = extractHashes.get(key) ?? null
       const bits = resolveDiaryExtractBits({ contentHash, extractedHash: last })
       if (!bits.needsReextract) {
-        this.reextractMarks.delete(key)
+        stale.push(key)
         continue
       }
       const existing = byPath.get(key)
@@ -122,6 +124,7 @@ export class DerivedFreshnessService {
         date: existing?.date
       })
     }
+    for (const key of stale) this.reextractMarks.delete(key)
 
     return [...byPath.values()].sort((a, b) =>
       (b.date || b.filePath).localeCompare(a.date || a.filePath)

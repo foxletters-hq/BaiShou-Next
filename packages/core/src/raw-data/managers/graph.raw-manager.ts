@@ -123,6 +123,49 @@ export class GraphRawManager
     }
   }
 
+  async writeRecords(
+    records: unknown[],
+    opts?: { collection?: GraphCollection } & WriteOpts
+  ): Promise<void> {
+    if (records.length === 0) return
+    const collection = this.resolveCollection(opts)
+    const store = await this.getStore(collection)
+    const byShard = new Map<string, unknown[]>()
+    for (const record of records) {
+      let shardMonth: string
+      if (collection === 'nodes') {
+        const row = record as GraphNodeRawRecord
+        if (!row?.id || !row.name) {
+          throw new Error('GraphRawManager.writeRecords(nodes): invalid node record')
+        }
+        shardMonth = shardMonthForNode(row)
+        if (!row.shardMonth) row.shardMonth = shardMonth
+      } else if (collection === 'edges') {
+        const row = record as GraphEdgeRawRecord
+        if (!row?.id || !row.fromId || !row.toId) {
+          throw new Error('GraphRawManager.writeRecords(edges): invalid edge record')
+        }
+        shardMonth = shardMonthForEdge(row)
+        if (!row.shardMonth) row.shardMonth = shardMonth
+      } else {
+        const row = record as GraphExtractStateRawRecord
+        if (!row?.id || !row.filePath || !String(row.vaultId ?? '').trim()) {
+          throw new Error('GraphRawManager.writeRecords(extract-state): vaultId is required')
+        }
+        shardMonth = shardMonthFromInstant(row.extractedAt || row.updatedAt)
+      }
+      let bucket = byShard.get(shardMonth)
+      if (!bucket) {
+        bucket = []
+        byShard.set(shardMonth, bucket)
+      }
+      bucket.push(record)
+    }
+    for (const [shardMonth, bucket] of byShard) {
+      await store.appendRecords(shardMonth, bucket)
+    }
+  }
+
   async tombstone(
     id: string,
     opts: WriteOpts & { collection?: GraphCollection; shardMonth?: string }
@@ -326,26 +369,23 @@ export class GraphRawManager
     const now = Date.now()
     const shardMonth = opts?.shardMonth || graphDiaryInstant(sourceRef).shardMonth
     const edges = await this.readCollapsedEdges(shardMonth)
-    let count = 0
+    const superseded: GraphEdgeRawRecord[] = []
     for (const edge of edges) {
       if (edge.sourceRef !== sourceRef) continue
       if (!edge.isCurrent) continue
       if (edge.origin === 'user') continue
       if (opts?.exceptIds?.has(edge.id)) continue
-      await this.writeRecord(
-        {
-          ...edge,
-          isCurrent: false,
-          validTo: now,
-          updatedAt: now
-        },
-        { collection: 'edges' }
-      )
-      count += 1
+      superseded.push({
+        ...edge,
+        isCurrent: false,
+        validTo: now,
+        updatedAt: now
+      })
     }
-    if (count > 0) {
+    if (superseded.length > 0) {
+      await this.writeRecords(superseded, { collection: 'edges' })
       await this.compactShard('edges', shardMonth)
     }
-    return count
+    return superseded.length
   }
 }

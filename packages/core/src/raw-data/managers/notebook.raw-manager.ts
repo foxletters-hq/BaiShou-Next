@@ -111,8 +111,22 @@ export class NotebookRawManager implements WholeFileKindManager {
 
     if (opts?.copyFrom) {
       await this.fs.copyFile(opts.copyFrom, abs)
-      const b64 = await this.fs.readFile(abs, 'base64')
-      contentHash = md5Hex(bytesToLatin1(base64ToBytes(b64)))
+      if (typeof this.fs.md5Hex === 'function') {
+        contentHash = await this.fs.md5Hex(abs)
+      } else {
+        try {
+          const st = await this.fs.stat(abs)
+          if ((st.size ?? 0) > 8 * 1024 * 1024) {
+            contentHash = md5Hex(`${path.basename(abs)}:${st.size}:${st.mtimeMs ?? 0}`)
+          } else {
+            const b64 = await this.fs.readFile(abs, 'base64')
+            contentHash = md5Hex(bytesToLatin1(base64ToBytes(b64)))
+          }
+        } catch {
+          const b64 = await this.fs.readFile(abs, 'base64')
+          contentHash = md5Hex(bytesToLatin1(base64ToBytes(b64)))
+        }
+      }
     } else if (content instanceof Uint8Array) {
       contentHash = md5Hex(bytesToLatin1(content))
       await this.fs.writeFile(abs, bytesToBase64(content), 'base64')
