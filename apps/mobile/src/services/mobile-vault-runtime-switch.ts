@@ -97,7 +97,7 @@ export async function switchVaultRuntime(
 
     deps.callbacks?.onStackInvalidated?.()
 
-    const diaryStack = createVaultBoundDiaryStack({
+    const diaryStack = await createVaultBoundDiaryStack({
       pathService: deps.pathService,
       vaultService: deps.vaultService,
       fileSystem: deps.fileSystem,

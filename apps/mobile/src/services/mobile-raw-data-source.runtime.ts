@@ -130,9 +130,9 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
-  void import('./mobile-pending-embed-counts').then((m) =>
-    m.invalidateMobilePendingEmbedCountsCache()
-  )
+  void import('./mobile-pending-embed-counts')
+    .then((m) => m.invalidateMobilePendingEmbedCountsCache())
+    .catch(() => {})
 }
 
 export function createMobileMemoryEmbedSink(
@@ -251,8 +251,8 @@ export async function runMobileDerivedIndexHydration(options: {
       vaultId: options.vaultId
     })
     const vaultName = options.vaultName ?? options.vaultId
-    await backfill.backfillFromChunks(chatChunks, vaultName)
-    await backfill.backfillFromChunks(memoryChunks, vaultName)
+    const chatBackfill = await backfill.backfillFromChunks(chatChunks, vaultName)
+    const memoryBackfill = await backfill.backfillFromChunks(memoryChunks, vaultName)
     await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
       normalizeManualToMemory: (params) =>
         hsRepo.normalizeManualToMemory({
@@ -262,7 +262,7 @@ export async function runMobileDerivedIndexHydration(options: {
       updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
         hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
     })
-    if (manualChunks.length === 0) {
+    if (manualChunks.length === 0 && (chatBackfill.written > 0 || memoryBackfill.written > 0)) {
       await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
         hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
       )

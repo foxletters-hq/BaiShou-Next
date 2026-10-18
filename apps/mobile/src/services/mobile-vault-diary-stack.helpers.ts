@@ -15,7 +15,11 @@ import {
   prepareDiarySearcherEdit,
   prepareDiarySearcherWrite
 } from '@baishou/shared'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
+import {
+  ShadowIndexRepository,
+  alignShadowJournalVaultId,
+  shadowConnectionManager
+} from '@baishou/database'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
 import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
 import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
@@ -32,12 +36,12 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
   return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
 }
 
-export function createVaultBoundDiaryStack(deps: {
+export async function createVaultBoundDiaryStack(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
   fileSystem: IFileSystem
   settingsManager?: SettingsManagerService
-}): VaultBoundDiaryStack {
+}): Promise<VaultBoundDiaryStack> {
   const activeVault = deps.vaultService.getActiveVault()
   if (!activeVault) {
     throw new Error(
@@ -47,7 +51,11 @@ export function createVaultBoundDiaryStack(deps: {
       )
     )
   }
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
+  await alignShadowJournalVaultId(shadowConnectionManager.getDb(), {
+    id: activeVault.id,
+    name: activeVault.name
+  })
+  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.id)
   const rawManager = ensureMobileRawDataRuntime({
     pathService: deps.pathService,
     fileSystem: deps.fileSystem

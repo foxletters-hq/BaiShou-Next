@@ -2,6 +2,7 @@ import {
   appendDiagnosticBreadcrumb,
   appendDiagnosticLog,
   bootstrapDiagnosticLogFromDisk,
+  flushDiagnosticLogNow,
   installMobileDiagnosticLogCapture
 } from './mobile-diagnostic-log.service'
 
@@ -54,6 +55,9 @@ function installGlobalErrorHandler(): void {
       `Uncaught ${isFatal ? 'fatal ' : ''}error: ${error?.message ?? String(error)}`,
       error
     )
+    if (isFatal) {
+      void flushDiagnosticLogNow().catch(() => {})
+    }
     defaultHandler?.(error, isFatal)
   })
 }

@@ -178,14 +178,19 @@ export class MobileDataBootstrapper {
       const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
       const locale = await resolveMobileBootstrapUiLocale(settings.language)
       if (locale) {
-        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+        const activeVaultId = deps.getActiveVaultId
+          ? await deps.getActiveVaultId().catch(() => null)
+          : deps.getActiveVaultName
+            ? deriveLegacyVaultId(await deps.getActiveVaultName().catch(() => 'Personal'))
+            : null
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale, activeVaultId ?? undefined)
       }
     }
   }
 
   async runWhenVaultReady(
     deps: MobileBootstrapperDeps,
-    options?: { force?: boolean }
+    options?: { force?: boolean; forceFullRestore?: boolean; resyncMode?: string }
   ): Promise<void> {
     this.registeredDeps = deps
     if (this.running) {
@@ -231,6 +236,7 @@ export class MobileDataBootstrapper {
       ...(activeVaultName ? { activeVaultName } : {}),
       ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+      skipUnchangedByMtime: !options?.forceFullRestore,
       ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
       ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }
@@ -254,8 +260,12 @@ export class MobileDataBootstrapper {
         logger.warn('[MobileBootstrapper] assistant fullResyncFromDisks failed:', e as Error)
       })
 
-      const sessionScan = deps.sessionManager.fullResyncFromDisks(resyncOptions).catch((e) => {
-        logger.warn('[MobileBootstrapper] session fullResyncFromDisks failed:', e as Error)
+      const sessionScan = (
+        !options?.forceFullRestore && typeof deps.sessionManager.reconcileFromDisks === 'function'
+          ? deps.sessionManager.reconcileFromDisks(resyncOptions)
+          : deps.sessionManager.fullResyncFromDisks(resyncOptions)
+      ).catch((e) => {
+        logger.warn('[MobileBootstrapper] session resync failed:', e as Error)
       })
 
       const settingsScan = deps.settingsManager.fullResyncFromDisk().catch((e) => {
@@ -267,7 +277,7 @@ export class MobileDataBootstrapper {
       const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
       const locale = await resolveMobileBootstrapUiLocale(settings.language)
       if (locale) {
-        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale, activeVaultId ?? undefined)
         logger.info('[MobileBootstrapper] Ensured default assistant Latte')
       } else {
         logger.info('[MobileBootstrapper] Skipped Latte until onboarding language is chosen')
