@@ -1,3 +1,5 @@
+export type KnowledgeImportMode = 'chooser' | 'file' | 'text' | 'url' | null
+
 export type KnowledgeSourceRow = {
   id: string
   title: string
@@ -34,5 +36,12 @@ export type KnowledgeGraphEdgeRow = {
 export type KnowledgeOcrProgressState = {
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
+  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize' | 'graph' | 'graphNodes'
+  windowsDone?: number
+  windowsTotal?: number
+  nodesDone?: number
+  nodesTotal?: number
+  pageFrom?: number
+  pageTo?: number
+  pageTotal?: number
 }
