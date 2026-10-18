@@ -1,20 +1,33 @@
 import type { TextStyle, ViewStyle } from 'react-native'
 import type { ButtonVariant } from 'heroui-native'
 import type { lightColors } from '../../theme'
+import { mobileTypography } from '../../theme/tokens'
 
 type ThemeColors = typeof lightColors
 
+export function isCompactButtonSize(size?: string): boolean {
+  return size === 'sm' || size === 'small'
+}
+
 /** HeroUI Button 默认外观兜底，不依赖 Uniwind 是否生效 */
-export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVariant): ViewStyle {
+export function getHeroButtonRootStyle(
+  colors: ThemeColors,
+  variant: ButtonVariant,
+  size?: string
+): ViewStyle {
+  const compact = isCompactButtonSize(size)
   const base: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-    borderRadius: 24,
+    minHeight: compact ? 32 : 48,
+    paddingHorizontal: compact ? 12 : 16,
+    paddingVertical: compact ? 6 : undefined,
+    borderRadius: compact ? 8 : 24,
     borderCurve: 'continuous',
-    gap: 8
+    gap: compact ? 6 : 8,
+    alignSelf: compact ? 'flex-start' : undefined,
+    flexShrink: compact ? 0 : undefined
   }
 
   const surfaceOutline: ViewStyle = {
@@ -46,11 +59,13 @@ export function getHeroButtonLabelStyle(
   colors: ThemeColors,
   variant: ButtonVariant,
   labelClassName?: string,
-  fontFamily?: string
+  fontFamily?: string,
+  size?: string
 ): TextStyle {
+  const compact = isCompactButtonSize(size)
   const base: TextStyle = {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: compact ? mobileTypography.secondary.fontSize : mobileTypography.body.fontSize,
+    fontWeight: compact ? '500' : '600',
     ...(fontFamily ? { fontFamily } : {})
   }
 

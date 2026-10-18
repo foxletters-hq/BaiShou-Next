@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal, SafeAreaView, StyleSheet } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { NativeSlider } from '../Slider'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ColorPickerProps {
   value: string
@@ -159,60 +160,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   headerIcon: {
-    fontSize: 20
+    fontSize: iconSizes.md
   },
   headerText: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   closeIcon: {
-    fontSize: 24
+    fontSize: iconSizes.lg
   },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
-    gap: 12
+    marginBottom: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.mdTight
   },
   previewCircle: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 2
   },
   previewLabel: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontFamily: 'monospace'
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.md
   },
   colorCell: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center'
   },
   checkMark: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   hueSliderWrap: {
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   hueBar: {
     flexDirection: 'row',
     height: 24,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden',
     position: 'absolute',
     left: 0,

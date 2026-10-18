@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, ViewProps } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeBadgeProps extends ViewProps {
   variant?: 'dot' | 'capsule'
@@ -20,7 +21,7 @@ export const Badge: React.FC<NativeBadgeProps> = ({
       return {
         width: 8,
         height: 8,
-        borderRadius: 4,
+        borderRadius: sharedTokens.radius.xs,
         backgroundColor: colors.error
       }
     }
@@ -28,9 +29,9 @@ export const Badge: React.FC<NativeBadgeProps> = ({
     return {
       minWidth: 20,
       height: 20,
-      borderRadius: 10,
+      borderRadius: sharedTokens.radius.control,
       backgroundColor: colors.error,
-      paddingHorizontal: 6,
+      paddingHorizontal: sharedTokens.spacing.xsPlus,
       alignItems: 'center' as const,
       justifyContent: 'center' as const
     }
@@ -42,7 +43,7 @@ export const Badge: React.FC<NativeBadgeProps> = ({
         <Text
           style={{
             color: colors.onError,
-            fontSize: 11,
+            fontSize: mobileTypography.caption.fontSize,
             fontWeight: '600',
             lineHeight: 14
           }}

@@ -21,6 +21,7 @@ import { useNativeTheme } from '../theme'
 import { useKeyboardAwareScroll } from '../KeyboardAwareScrollView/keyboard-aware-scroll.context'
 import { scheduleScrollFocusedInputOnFocus } from '../KeyboardAwareScrollView/schedule-scroll-on-focus.util'
 import { sanitizeHeroInputStyle, splitInputLayoutStyle } from './input-style.utils'
+import { sharedTokens } from '../../theme/tokens'
 import {
   getCompactTextFieldStyle,
   getHeroInputFieldStyle,
@@ -121,12 +122,17 @@ export const Input = forwardRef<any, NativeInputProps>(
         })
     const textFieldLayout = getCompactTextFieldStyle(style)
 
-    const inputClassName = cn(!compact && 'w-full', className)
+    const inputClassName = cn(
+      !compact && 'w-full',
+      !bare && !useTextArea && !multiline && 'min-h-10',
+      bare && 'min-h-0 border-0 bg-transparent px-0 py-0',
+      className
+    )
 
     const inputStyle: StyleProp<TextStyle> = [
       fieldShell,
-      leftSlot ? { paddingLeft: 40 } : null,
-      rightSlot ? { paddingRight: 48 } : null,
+      leftSlot ? { paddingLeft: sharedTokens.spacing.xlPlus } : null,
+      rightSlot ? { paddingRight: sharedTokens.spacing.xxl } : null,
       layoutInputStyle
     ]
 
@@ -140,6 +146,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         placeholderTextColor={resolvedPlaceholderColor}
         selectionColor={resolvedSelectionColor}
         selectionColorClassName="accent-primary"
+        placeholderColorClassName="accent-neutral-400"
         onFocus={handleFocus}
         {...props}
       />
@@ -155,6 +162,7 @@ export const Input = forwardRef<any, NativeInputProps>(
         placeholderTextColor={resolvedPlaceholderColor}
         selectionColor={resolvedSelectionColor}
         selectionColorClassName="accent-primary"
+        placeholderColorClassName="accent-neutral-400"
         onFocus={handleFocus}
         {...props}
       />
@@ -166,7 +174,7 @@ export const Input = forwardRef<any, NativeInputProps>(
       bottom: 0,
       justifyContent: (slotAlignment === 'bottom' ? 'flex-end' : 'center') as 'flex-end' | 'center',
       alignItems: 'center' as const,
-      ...(slotAlignment === 'bottom' ? { paddingBottom: 8 } : null)
+      ...(slotAlignment === 'bottom' ? { paddingBottom: sharedTokens.spacing.sm } : null)
     }
 
     const inputWithSlots = hasSlots ? (
@@ -191,7 +199,11 @@ export const Input = forwardRef<any, NativeInputProps>(
     )
 
     const textFieldNode = (
-      <TextField isInvalid={computedInvalid} className="gap-1.5" style={textFieldLayout}>
+      <TextField
+        isInvalid={computedInvalid}
+        className="gap-1.5"
+        style={[!compact ? { width: '100%', alignSelf: 'stretch' } : null, textFieldLayout]}
+      >
         {label ? <Label>{label}</Label> : null}
         {inputWithSlots}
         {error ? (
