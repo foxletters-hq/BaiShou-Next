@@ -1,9 +1,10 @@
-import type {
-  EmbedLedgerFailureParams,
-  EmbedLedgerReconcileParams,
-  EmbedLedgerReconcileResult,
-  EmbedLedgerRecordParams,
-  IEmbeddingStorage
+import {
+  embeddingVectorToBytes,
+  type EmbedLedgerFailureParams,
+  type EmbedLedgerReconcileParams,
+  type EmbedLedgerReconcileResult,
+  type EmbedLedgerRecordParams,
+  type IEmbeddingStorage
 } from '@baishou/shared'
 import type { KnowledgeRepository } from '@baishou/database/shared'
 
@@ -37,7 +38,8 @@ export class KnowledgeEmbeddingStorage implements IEmbeddingStorage {
   }): Promise<void> {
     const repo = this.getRepo()
     const notebookId = this.resolveNotebookId(params.groupId)
-    const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
+    // 手机 JS 没有 Buffer，用 Uint8Array 视图；类型标成 Buffer 只为对上列类型。
+    const vectorBuffer = embeddingVectorToBytes(params.embedding) as unknown as Buffer
     await repo.insertChunk({
       chunkId: params.id,
       vaultId: params.vaultId,

@@ -123,5 +123,46 @@ describe('HybridSearchUtils (Pure Math)', () => {
       // 我们将根据合并后的分值验证是否排在第一
       expect(merged[0]!.messageId).toBe('B1') // 取决于公式推演，通常它会因拥有完整的两路重叠成为优胜者
     })
+
+    it('should preserve and merge sourceType and sourceId in merged results', () => {
+      const fts: ISearchResult[] = [
+        {
+          messageId: 'M1',
+          sessionId: 'A',
+          chunkText: 'Text 1',
+          score: 10,
+          source: 'fts',
+          sourceType: 'memory',
+          sourceId: 'mem_123'
+        }
+      ]
+      const vec: ISearchResult[] = [
+        {
+          messageId: 'M1',
+          sessionId: 'A',
+          chunkText: 'Text 1',
+          score: 0.9,
+          source: 'vector',
+          sourceType: 'memory',
+          sourceId: 'mem_123'
+        },
+        {
+          messageId: 'M2',
+          sessionId: 'A',
+          chunkText: 'Text 2',
+          score: 0.8,
+          source: 'vector',
+          sourceType: 'manual',
+          sourceId: 'mem_456'
+        }
+      ]
+
+      const merged = HybridSearchUtils.mergeRRF(fts, vec, 5)
+      expect(merged.length).toBe(2)
+      expect(merged[0]!.sourceType).toBe('memory')
+      expect(merged[0]!.sourceId).toBe('mem_123')
+      expect(merged[1]!.sourceType).toBe('manual')
+      expect(merged[1]!.sourceId).toBe('mem_456')
+    })
   })
 })

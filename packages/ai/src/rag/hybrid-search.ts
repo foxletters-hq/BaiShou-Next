@@ -42,7 +42,7 @@ export class HybridSearchUtils {
       const rrfScore = ftsWeight / (i + this.RRF_K)
       if (!scoreMap.has(key)) {
         scoreMap.set(key, {
-          result: r,
+          result: { ...r },
           ftsScore: 0,
           vectorScore: 0,
           rawVectorScore: 0
@@ -57,11 +57,19 @@ export class HybridSearchUtils {
       const key = makeKey(r)
       if (!scoreMap.has(key)) {
         scoreMap.set(key, {
-          result: r,
+          result: { ...r },
           ftsScore: 0,
           vectorScore: 0,
           rawVectorScore: 0
         })
+      } else {
+        const state = scoreMap.get(key)!
+        if (!state.result.sourceType && r.sourceType) {
+          state.result.sourceType = r.sourceType
+        }
+        if (!state.result.sourceId && r.sourceId) {
+          state.result.sourceId = r.sourceId
+        }
       }
       const state = scoreMap.get(key)!
       state.vectorScore = r.score * vectorWeight
@@ -94,7 +102,9 @@ export class HybridSearchUtils {
         // 混合结果与纯向量结果均保留语义相似度原始参考分，纯 FTS 则使用合并总分
         score: m.rawVectorScore > 0 ? m.rawVectorScore : m.ftsScore + m.vectorScore,
         source: finalSource,
-        createdAt: m.result.createdAt
+        createdAt: m.result.createdAt,
+        sourceType: m.result.sourceType,
+        sourceId: m.result.sourceId
       }
     })
   }
@@ -115,6 +125,8 @@ export class HybridSearchUtils {
       chunkText: string
       embedding: number[]
       createdAt?: number
+      sourceType?: string
+      sourceId?: string
     }[],
     topK: number = 20,
     threshold: number = 0.0
@@ -138,7 +150,9 @@ export class HybridSearchUtils {
       chunkText: s.row.chunkText,
       score: s.score,
       source: 'vector',
-      createdAt: s.row.createdAt
+      createdAt: s.row.createdAt,
+      sourceType: s.row.sourceType,
+      sourceId: s.row.sourceId
     }))
   }
 

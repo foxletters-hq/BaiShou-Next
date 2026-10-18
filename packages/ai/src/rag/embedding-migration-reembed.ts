@@ -140,24 +140,35 @@ export async function* reEmbedFromBackup(
         continue
       }
 
+      const vaultId = resolveMigrationVaultId({
+        groupId: chunk.groupId,
+        sourceType: chunk.sourceType,
+        sourceId: chunk.sourceId,
+        vaultName: chunk.vaultName
+      })
+
+      if (!vaultId) {
+        logger.warn(
+          `[EmbeddingMigration] 跳过无法推断仓库归属的历史遗留分块 (id=${chunk.embeddingId}, groupId=${chunk.groupId})`
+        )
+        try {
+          if (await deps.db.hasMigrationBackupTable()) {
+            await deps.db.markBackupChunkMigrated(chunk.embeddingId)
+          }
+        } catch {
+          // best-effort
+        }
+        failed++
+        yield buildProgressState(total, completed, failed)
+        continue
+      }
+
       try {
         await deps.retryEmbed(async () => {
           const { embedding } = await embed({
             model: aiModel,
             value: chunk.chunkText
           })
-
-          const vaultId = resolveMigrationVaultId({
-            groupId: chunk.groupId,
-            sourceType: chunk.sourceType,
-            sourceId: chunk.sourceId,
-            vaultName: chunk.vaultName
-          })
-          if (!vaultId) {
-            throw new Error(
-              `migrate chunk ${chunk.embeddingId}: cannot infer vaultId (groupId=${chunk.groupId})`
-            )
-          }
 
           await deps.db.insertEmbedding({
             id: chunk.embeddingId,
