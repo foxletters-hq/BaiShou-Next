@@ -136,6 +136,13 @@ export * from './desktop/AssistantAvatar'
 export * from './desktop/AssistantKindTabBar'
 export * from './desktop/AssistantKindBadge'
 export { resolveDesktopAssistantAvatarSrc } from './desktop/assistant-avatar.util'
+export {
+  resolveDesktopUserAvatarSrc,
+  WEB_APP_BRAND_ICON_SRC,
+  isCustomUserAvatar,
+  isBuiltinUserAvatarPath
+} from './desktop/user-avatar.util'
+export { DESKTOP_BUILTIN_USER_AVATAR_URLS } from './desktop/builtin-user-avatar.sources'
 export * from './desktop/ChatCostDialog/index'
 export * from './desktop/ContextChainDialog/index'
 export * from './desktop/ContextChainPanel/index'

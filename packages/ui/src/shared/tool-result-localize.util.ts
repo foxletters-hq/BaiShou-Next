@@ -66,6 +66,14 @@ function localizeToolResultLine(
     )
   }
 
+  if (/^Error:\s*Skill reader is not available in this environment\.?$/.test(trimmed)) {
+    return formatToolCopy(
+      t,
+      'agent.tools.skill_reader_unavailable',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L467', '当前环境无法读取技能')
+    )
+  }
+
   if (/^Error:\s*Skill writer is not available in this environment\.?$/.test(trimmed)) {
     return formatToolCopy(
       t,
