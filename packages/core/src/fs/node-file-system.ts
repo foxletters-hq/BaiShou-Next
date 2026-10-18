@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { stripStoragePathScheme } from '@baishou/shared'
 import type { FileEncoding, FileStat, IFileSystem } from './file-system.types'
 
@@ -93,6 +94,16 @@ export class NodeFileSystem implements IFileSystem {
     await fs.rm(targetPath, {
       recursive: options?.recursive,
       force: options?.force
+    })
+  }
+
+  async md5Hex(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const hash = createHash('md5')
+      const stream = createReadStream(filePath)
+      stream.on('data', (chunk) => hash.update(chunk))
+      stream.on('end', () => resolve(hash.digest('hex')))
+      stream.on('error', reject)
     })
   }
 }

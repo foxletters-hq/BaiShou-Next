@@ -95,6 +95,24 @@ describe('pending-reextract + extract-state', () => {
     const hit = pending.find((p) => p.filePath === 'Journals/2026-07-01.md')
     expect(hit?.contentHash).toBe('hash-changed')
   })
+
+  it('should drop stale reextract marks when listing pending diaries', async () => {
+    await freshness.commitReextract('Journals/2026-07-01.md', 'hash-a')
+    await freshness.commitReextract('Journals/2026-07-02.md', 'hash-b')
+    freshness.markPendingReextract('Journals/2026-07-01.md', 'hash-a')
+    freshness.markPendingReextract('Journals/2026-07-02.md', 'hash-b')
+    freshness.markPendingReextract('Journals/2026-07-03.md', 'hash-c')
+    const pending = await freshness.listPendingReextract()
+    expect(pending.map((p) => p.filePath)).toEqual(['Journals/2026-07-03.md'])
+  })
+})
+
+describe('DerivedFreshnessService listPendingReextract source', () => {
+  it('should snapshot reextract marks before merging so stale keys are not deleted while iterating', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../derived-freshness.service.ts'), 'utf8')
+    expect(src).toContain('const marks = [...this.reextractMarks.entries()]')
+    expect(src).not.toContain('for (const [filePath, contentHash] of this.reextractMarks)')
+  })
 })
 
 describe('graph extract helpers', () => {

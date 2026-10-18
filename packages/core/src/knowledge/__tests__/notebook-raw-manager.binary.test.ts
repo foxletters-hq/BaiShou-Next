@@ -82,4 +82,55 @@ describe('NotebookRawManager binary safety', () => {
     expect(await manager.existsRelative('nb1/cover.png')).toBe(true)
     expect(await manager.existsRelative('../outside.png')).toBe(false)
   })
+
+  it('copySourceFile 优先调用 fs.md5Hex 流式计算哈希', async () => {
+    let md5HexCalled = false
+    const baseFs = createNodeFileSystem()
+    const customFs = Object.assign(Object.create(baseFs), {
+      md5Hex: async (_p: string) => {
+        md5HexCalled = true
+        return 'mocked-stream-md5'
+      }
+    })
+    const pathService = {
+      getNotebooksBaseDirectory: async () => notebooksDir,
+      getActiveVaultPath: async () => tempDir
+    } as unknown as IStoragePathService
+    const customManager = new NotebookRawManager(pathService, customFs as any)
+
+    const src = path.join(tempDir, 'sample.pdf')
+    await fs.writeFile(src, 'content')
+    const res = await customManager.copySourceFile('nb1/sources/sample.pdf', src)
+    expect(md5HexCalled).toBe(true)
+    expect(res.contentHash).toBe('mocked-stream-md5')
+  })
+
+  it('超大文件在无 fs.md5Hex 时避免 readFile base64 导致内存爆炸', async () => {
+    let readFileCalled = false
+    const baseFs = createNodeFileSystem()
+    const customFs = Object.assign(Object.create(baseFs), {
+      md5Hex: undefined,
+      stat: async () => ({
+        isFile: true,
+        isDirectory: false,
+        size: 59 * 1024 * 1024,
+        mtimeMs: 123456
+      }),
+      readFile: async () => {
+        readFileCalled = true
+        throw new Error('should not call readFile on oversized file')
+      }
+    })
+    const pathService = {
+      getNotebooksBaseDirectory: async () => notebooksDir,
+      getActiveVaultPath: async () => tempDir
+    } as unknown as IStoragePathService
+    const customManager = new NotebookRawManager(pathService, customFs as any)
+
+    const src = path.join(tempDir, 'big.pdf')
+    await fs.writeFile(src, 'dummy')
+    const res = await customManager.copySourceFile('nb1/sources/big.pdf', src)
+    expect(readFileCalled).toBe(false)
+    expect(res.contentHash).toBeTruthy()
+  })
 })

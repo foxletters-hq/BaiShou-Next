@@ -32,7 +32,7 @@ export class SessionFileService {
     try {
       const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
       // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
-      if (JSON.stringify(JSON.parse(prevRaw)) === JSON.stringify(JSON.parse(next))) {
+      if (prevRaw === next || JSON.stringify(JSON.parse(prevRaw)) === next) {
         return fullPath
       }
     } catch {

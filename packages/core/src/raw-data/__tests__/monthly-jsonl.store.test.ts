@@ -50,6 +50,21 @@ describe('MonthlyJsonlStore', () => {
     expect(pending2[0]?.contentHash).not.toBe(pending[0]?.contentHash)
   })
 
+  it('appendRecords writes a batch with one pending shard and keeps rows readable', async () => {
+    await store.appendRecords('2026-07', [
+      { id: 'a', updatedAt: 1, content: 'one' },
+      { id: 'b', updatedAt: 2, content: 'two' },
+      { id: 'c', updatedAt: 3, content: 'three' }
+    ])
+    const rows = (await store.readRecords('2026-07')) as Array<{ id: string }>
+    expect(rows.map((row) => row.id)).toEqual(['a', 'b', 'c'])
+    expect(await store.listPendingIndex()).toHaveLength(1)
+  })
+
+  it('appendRecords rejects an empty batch', async () => {
+    await expect(store.appendRecords('2026-07', [])).rejects.toThrow('must not be empty')
+  })
+
   it('collapseJsonlById keeps newest updatedAt', () => {
     const rows = collapseJsonlById([
       { id: 'x', updatedAt: 1, content: 'old' },

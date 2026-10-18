@@ -37,12 +37,15 @@ export function bindPendingReextractCollaborators(options: {
       return out
     },
     listJournals: async () => {
-      const rows = await shadowRepo.listAll({ orderBy: 'desc' })
+      const rows =
+        typeof shadowRepo.getAllRecords === 'function'
+          ? await shadowRepo.getAllRecords()
+          : await shadowRepo.listAll({ orderBy: 'desc' })
       return rows
         .filter((r) => r.filePath && r.contentHash)
         .map((r) => ({
           filePath: normalizeFilePath(r.filePath),
-          contentHash: r.contentHash,
+          contentHash: r.contentHash!,
           date: r.date
         }))
     },

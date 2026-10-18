@@ -1,3 +1,5 @@
+import { applyDeepSeekPeakCost } from '@baishou/shared'
+
 /**
  * 模型定价服务
  *
@@ -82,7 +84,7 @@ export class ModelPricingService {
   ): Promise<number | null> {
     const price = await this.getPrice(providerId, modelId)
     if (!price) return null
-    return calculateTokenCost(price, usage)
+    return applyDeepSeekPeakCost(providerId, calculateTokenCost(price, usage))
   }
 
   /**
