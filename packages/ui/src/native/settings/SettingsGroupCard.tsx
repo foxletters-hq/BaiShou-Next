@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, StyleSheet, type ViewStyle } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface SettingsGroupCardProps {
   children: React.ReactNode
@@ -29,6 +30,6 @@ export const SettingsGroupCard: React.FC<SettingsGroupCardProps> = ({ children, 
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   }
 })

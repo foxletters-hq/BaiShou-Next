@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react'
 import { lightColors, darkColors, sharedTokens } from '../theme'
-import { nativeUiFontFamilyName } from '../theme/native-ui-font'
 
 type ThemeColors = typeof lightColors
 
@@ -11,32 +10,27 @@ type NativeThemeContextValue = {
   seedColor?: string
   /** 阅读正文相对默认字号的缩放 */
   contentFontScale: number
-  /** 当前语言对应的单个原生字族名 */
-  uiFontFamily: string
 }
 
 const NativeThemeContext = createContext<NativeThemeContextValue>({
   themeMode: 'system',
-  contentFontScale: 1,
-  uiFontFamily: nativeUiFontFamilyName('sc')
+  contentFontScale: 1
 })
 
 export function NativeThemeProvider({
   themeMode = 'system',
   seedColor,
   contentFontScale = 1,
-  uiFontFamily = nativeUiFontFamilyName('sc'),
   children
 }: {
   themeMode?: ThemeModePreference
   seedColor?: string
   contentFontScale?: number
-  uiFontFamily?: string
   children: React.ReactNode
 }) {
   const value = useMemo(
-    () => ({ themeMode, seedColor, contentFontScale, uiFontFamily }),
-    [themeMode, seedColor, contentFontScale, uiFontFamily]
+    () => ({ themeMode, seedColor, contentFontScale }),
+    [themeMode, seedColor, contentFontScale]
   )
   return <NativeThemeContext.Provider value={value}>{children}</NativeThemeContext.Provider>
 }
@@ -73,15 +67,15 @@ export function useNativeThemeContext() {
 export function buildNativeThemePalette(
   mode: ThemeModePreference,
   seedColor: string | undefined,
-  systemScheme: 'light' | 'dark' | null | undefined,
-  uiFontFamily: string = nativeUiFontFamilyName('sc')
+  systemScheme: 'light' | 'dark' | null | undefined
 ) {
   const isDark = mode === 'dark' ? true : mode === 'light' ? false : systemScheme === 'dark'
   const base = isDark ? darkColors : lightColors
   const colors = applySeedColor(base, seedColor)
   return {
     colors,
-    tokens: { ...sharedTokens, fontFamily: uiFontFamily },
+    /** 不指定 fontFamily，原生 Text 走系统默认字族 */
+    tokens: { ...sharedTokens, fontFamily: undefined },
     isDark
   }
 }

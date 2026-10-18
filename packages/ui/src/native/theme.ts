@@ -3,6 +3,14 @@ import { buildNativeThemePalette, useNativeThemeContext } from './NativeThemePro
 
 export type { ThemeModePreference } from './NativeThemeProvider'
 export { NativeThemeProvider, useNativeThemeContext } from './NativeThemeProvider'
+export {
+  getGlobalFontScale,
+  setGlobalFontScale,
+  scaleFontStyle,
+  installNativeFontScaling,
+  type ScaledTextProps,
+  type ScaledTextInputProps
+} from './native-font-scale'
 
 function resolveSystemColorScheme(
   raw: ReturnType<typeof useColorScheme>
@@ -51,16 +59,11 @@ export function getNativeElevationStyle(isDark: boolean, level: 'subtle' | 'rais
 }
 
 export function useNativeTheme() {
-  const { themeMode, seedColor, contentFontScale, uiFontFamily } = useNativeThemeContext()
+  const { themeMode, seedColor, contentFontScale } = useNativeThemeContext()
   const rawScheme = useColorScheme()
   const systemScheme = resolveSystemColorScheme(rawScheme)
   const { width, height } = useWindowDimensions()
-  const { colors, tokens, isDark } = buildNativeThemePalette(
-    themeMode,
-    seedColor,
-    systemScheme,
-    uiFontFamily
-  )
+  const { colors, tokens, isDark } = buildNativeThemePalette(themeMode, seedColor, systemScheme)
 
   const isTablet = width >= 768
   const fontScale = PixelRatio.getFontScale()

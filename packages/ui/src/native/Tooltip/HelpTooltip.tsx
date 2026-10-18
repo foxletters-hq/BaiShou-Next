@@ -1,4 +1,4 @@
-import React from 'react'
+import type { Insets } from 'react-native'
 import { CircleHelp } from 'lucide-react-native'
 import { Tooltip } from './Tooltip'
 import { useNativeTheme } from '../theme'
@@ -9,24 +9,25 @@ export interface HelpTooltipProps {
   /** 已废弃：问号统一使用 HELP_ICON_SIZE，传入值不会生效。 */
   size?: number
   position?: 'top' | 'bottom' | 'center'
+  hitSlop?: Insets | number
 }
 
 export const HelpTooltip: React.FC<HelpTooltipProps> = ({
   content,
   size: _size,
-  position = 'center'
+  position = 'center',
+  hitSlop
 }) => {
   const { colors } = useNativeTheme()
 
   if (!content) return null
 
   return (
-    <Tooltip content={content} position={position}>
+    <Tooltip content={content} position={position} hitSlop={hitSlop}>
       <CircleHelp
         size={HELP_ICON_SIZE}
         color={colors.textTertiary}
         strokeWidth={DEFAULT_STROKE_WIDTH}
-        style={{ opacity: 0.8 }}
       />
     </Tooltip>
   )
