@@ -3,19 +3,28 @@ import { useRouter } from 'expo-router'
 import { useThrottledFocusRefresh } from '../../../hooks/useThrottledFocusRefresh'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
-import { useNativeToast, type UserProfileConfig, type VaultInfo } from '@baishou/ui/native'
+import {
+  useNativeToast,
+  setGlobalFontScale,
+  type UserProfileConfig,
+  type VaultInfo
+} from '@baishou/ui/native'
 import {
   CHAT_BACKGROUND_BLUR_DEFAULT,
   CHAT_BACKGROUND_OVERLAY_DEFAULT,
   DEFAULT_USER_PROFILE,
+  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   getUserProfileFromSettings,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
+  normalizeGraphAwakenNickname,
   normalizeUiFontSizeLevel,
+  uiFontSizeScaleFromLevel,
   saveUserProfileToSettings,
   UI_FONT_SIZE_LEVEL_DEFAULT,
   withSummaryPromptLocaleFromUi,
   type SummaryConfig,
+  type UserGender,
   type UserProfile
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -45,12 +54,35 @@ export function useSettingsAccount() {
   const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
   const [fontSizeLevel, setFontSizeLevel] = useState(UI_FONT_SIZE_LEVEL_DEFAULT)
-  const [profile, setProfile] = useState<{ nickname: string; avatarPath?: string | null }>(() => {
+  const [profile, setProfile] = useState<{
+    nickname: string
+    birthday?: string | null
+    gender?: UserGender | null
+    customGender?: string | null
+    avatarPath?: string | null
+    showIdentityInProfile?: boolean
+    shareIdentityWithCompanion?: boolean
+  }>(() => {
     const cached = peekAgentUserProfileCache()
-    if (!cached) return { nickname: '', avatarPath: '' }
+    if (!cached) {
+      return {
+        nickname: '',
+        avatarPath: '',
+        birthday: null,
+        gender: null,
+        customGender: null,
+        showIdentityInProfile: true,
+        shareIdentityWithCompanion: true
+      }
+    }
     return {
       nickname: cached.nickname || '',
-      avatarPath: cached.avatarPath ?? ''
+      birthday: cached.birthday ?? null,
+      gender: cached.gender ?? null,
+      customGender: cached.customGender ?? null,
+      avatarPath: cached.avatarPath ?? '',
+      showIdentityInProfile: cached.showIdentityInProfile ?? true,
+      shareIdentityWithCompanion: cached.shareIdentityWithCompanion ?? true
     }
   })
   const [chatBackgroundPath, setChatBackgroundPath] = useState<string | null>(null)
@@ -185,10 +217,29 @@ export function useSettingsAccount() {
 
       const nextNickname = userProfile.nickname || ''
       const nextAvatarPath = userProfile.avatarPath
+      const nextBirthday = userProfile.birthday ?? null
+      const nextGender = userProfile.gender ?? null
+      const nextCustomGender = userProfile.customGender ?? null
+      const nextShowIdentityInProfile = userProfile.showIdentityInProfile ?? true
+      const nextShareIdentityWithCompanion = userProfile.shareIdentityWithCompanion ?? true
       setProfile((prev) =>
-        prev.nickname === nextNickname && prev.avatarPath === nextAvatarPath
+        prev.nickname === nextNickname &&
+        prev.avatarPath === nextAvatarPath &&
+        prev.birthday === nextBirthday &&
+        prev.gender === nextGender &&
+        prev.customGender === nextCustomGender &&
+        prev.showIdentityInProfile === nextShowIdentityInProfile &&
+        prev.shareIdentityWithCompanion === nextShareIdentityWithCompanion
           ? prev
-          : { nickname: nextNickname, avatarPath: nextAvatarPath }
+          : {
+              nickname: nextNickname,
+              avatarPath: nextAvatarPath,
+              birthday: nextBirthday,
+              gender: nextGender,
+              customGender: nextCustomGender,
+              showIdentityInProfile: nextShowIdentityInProfile,
+              shareIdentityWithCompanion: nextShareIdentityWithCompanion
+            }
       )
       setChatBackgroundPath(userProfile.chatBackgroundPath ?? null)
       setChatBackgroundBlur(normalizeChatBackgroundBlur(userProfile.chatBackgroundBlur))
@@ -235,13 +286,45 @@ export function useSettingsAccount() {
         avatarPath = importedPath
       }
 
+      const resolvedGender =
+        newProfile.gender !== undefined ? newProfile.gender : (userProfile.gender ?? null)
+      const resolvedCustomGender =
+        resolvedGender === 'other'
+          ? newProfile.customGender !== undefined
+            ? newProfile.customGender
+            : (userProfile.customGender ?? null)
+          : null
+
       const next: UserProfile = {
         ...userProfile,
         nickname: newProfile.nickname,
+        birthday:
+          newProfile.birthday !== undefined ? newProfile.birthday : (userProfile.birthday ?? null),
+        gender: resolvedGender,
+        customGender: resolvedCustomGender,
+        showIdentityInProfile:
+          newProfile.showIdentityInProfile !== undefined
+            ? newProfile.showIdentityInProfile
+            : (userProfile.showIdentityInProfile ?? true),
+        shareIdentityWithCompanion:
+          newProfile.shareIdentityWithCompanion !== undefined
+            ? newProfile.shareIdentityWithCompanion
+            : (userProfile.shareIdentityWithCompanion ?? true),
         avatarPath
       }
       await saveUserProfileToSettings(services.settingsManager, next)
-      setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })
+      if (normalizeGraphAwakenNickname(next.nickname)) {
+        await services.settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
+      }
+      setProfile({
+        nickname: next.nickname,
+        avatarPath: next.avatarPath,
+        birthday: next.birthday,
+        gender: next.gender,
+        customGender: next.customGender,
+        showIdentityInProfile: next.showIdentityInProfile,
+        shareIdentityWithCompanion: next.shareIdentityWithCompanion
+      })
       setIdentityProfile((prev) => ({
         ...prev,
         nickname: next.nickname,
@@ -268,7 +351,11 @@ export function useSettingsAccount() {
         recentPersonaIds: newProfile.recentPersonaIds
       }
       await saveUserProfileToSettings(services.settingsManager, next)
-      setProfile({ nickname: next.nickname, avatarPath: next.avatarPath })
+      setProfile((prev) => ({
+        ...prev,
+        nickname: next.nickname,
+        avatarPath: next.avatarPath
+      }))
       notifyAgentProfileRefresh()
     } catch (e) {
       console.error('Save identity failed', e)
@@ -303,6 +390,10 @@ export function useSettingsAccount() {
 
   const handleFontSizeLevelChange = async (level: number) => {
     const next = normalizeUiFontSizeLevel(level)
+    const nextScale = uiFontSizeScaleFromLevel(next)
+    setFontSizeLevel(next)
+    setGlobalFontScale(nextScale)
+    notifyThemeRefresh()
     await persistAppearance({ fontSizeLevel: next }, () => setFontSizeLevel(next))
   }
 

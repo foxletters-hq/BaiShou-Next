@@ -18,6 +18,7 @@ import {
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   getUserProfileFromSettings,
   saveUserProfileToSettings,
@@ -298,7 +299,12 @@ export const IdentityCardManagementScreen: React.FC = () => {
 
           {filteredPersonas.length === 0 ? (
             <View style={styles.emptyRow}>
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('settings.search_identity_empty')}
               </Text>
             </View>
@@ -319,7 +325,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
                 ]}
               >
                 <Pressable
-                  style={{ flex: 1, gap: 2 }}
+                  style={{ flex: 1, gap: sharedTokens.spacing.xxs }}
                   onPress={() => {
                     if (isActive) setFactsPersonaId(persona.id)
                   }}
@@ -387,7 +393,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
         <Button
           variant="outline"
           className="w-full"
-          style={{ marginTop: 12 }}
+          style={{ marginTop: sharedTokens.spacing.mdTight }}
           onPress={() => void handleCreate()}
         >
           + {t('settings.create_new_identity')}
@@ -408,68 +414,68 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   },
   card: {
     overflow: 'hidden'
   },
   currentCard: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.mdTight,
     borderWidth: 1,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   currentLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   searchWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   emptyRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.md,
     alignItems: 'center'
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 13
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdSnug
   },
   rowTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   sub: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   badge: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   actions: {
     flexDirection: 'row',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   action: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   paginationWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   pageInfo: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   }
 })

@@ -15,6 +15,7 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { DirectoryPickerModal } from '../../components/DirectoryPickerModal'
 import { useVersionMigration } from '../../hooks/useVersionMigration'
 import { EXTERNAL_STORAGE_ROOT } from '../../services/storage-permission.service'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 function SectionCard({
   title,
@@ -276,7 +277,7 @@ export const VersionMigrationScreen: React.FC = () => {
           <Button
             variant="outline"
             className="w-full"
-            style={{ backgroundColor: colors.bgSurface, marginTop: 4 }}
+            style={{ backgroundColor: colors.bgSurface, marginTop: sharedTokens.spacing.xs }}
             onPress={() => void refreshScan()}
             disabled={!pageReady || scanning}
           >
@@ -302,7 +303,9 @@ export const VersionMigrationScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t('version_migration.db_not_ready', {
                 defaultValue: '数据库尚未就绪，请稍候后重新扫描。'
               })}
@@ -317,7 +320,9 @@ export const VersionMigrationScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t(
                 'version_migration.no_legacy_data',
                 '未检测到可迁移的旧版数据。若您刚升级，请确认旧版目录仍可访问，或手动选择旧版 Flutter 数据目录。'
@@ -420,99 +425,99 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 12,
-    gap: 12,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.xl
   },
   card: {
-    padding: 14,
-    gap: 8
+    padding: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
   desc: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   mono: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontFamily: 'monospace',
     lineHeight: 18
   },
   sourceActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     flexWrap: 'wrap'
   },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 16,
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.md,
     justifyContent: 'center'
   },
   groupTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     marginBottom: -4,
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   workspaceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 4
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs
   },
   sectionCard: {
-    padding: 14,
-    gap: 8
+    padding: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
   sectionHeader: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   sectionMeta: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   previewList: {
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   previewItem: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   failureTitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   warning: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   sectionFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   statusText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     flex: 1,
-    marginRight: 12
+    marginRight: sharedTokens.spacing.mdTight
   },
   importBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm
   },
   importBtnText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   }
 })

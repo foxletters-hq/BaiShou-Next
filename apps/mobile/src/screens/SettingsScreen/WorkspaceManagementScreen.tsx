@@ -14,6 +14,7 @@ import { formatIncrementalSyncPlanBytes } from '@baishou/shared'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const PAGE_SIZE = 10
 
@@ -237,7 +238,9 @@ export const WorkspaceManagementScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t('workspace.search_empty', '没有匹配的工作空间')}
             </Text>
           </View>
@@ -254,7 +257,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
                 { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
               ]}
             >
-              <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flex: 1, gap: sharedTokens.spacing.xxs }}>
                 <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{vault.name}</Text>
                 <Text style={[styles.sub, { color: colors.textSecondary }]}>
                   {t('workspace.last_accessed', '上次访问: {{time}}', {
@@ -336,7 +339,9 @@ export const WorkspaceManagementScreen: React.FC = () => {
           <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
             {t('workspace.create_new', '创建新空间')}
           </Text>
-          <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
+          <Text style={{ color: colors.primary, fontSize: mobileTypography.title.fontSize }}>
+            +
+          </Text>
         </Pressable>
       </ScrollView>
     </StackScreenLayout>
@@ -347,65 +352,65 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 12
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.mdTight
   },
   flatCard: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    paddingHorizontal: 14,
-    paddingVertical: 12
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   emptyRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20
+    paddingVertical: sharedTokens.spacing.mdPlus
   },
   vaultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   createCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   rowTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   sub: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   badge: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: sharedTokens.spacing.mdTight,
     alignItems: 'center',
     justifyContent: 'flex-end'
   },
   action: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   paginationWrap: {
-    paddingVertical: 4,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   paginationScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 4
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   pageInfo: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   }
 })
