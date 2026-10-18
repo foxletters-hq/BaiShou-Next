@@ -36,7 +36,8 @@ export function filterShortcutsByQuery(shortcuts: ShortcutLike[], query: string)
   return shortcuts.filter((shortcut) => {
     const command = getShortcutCommand(shortcut).toLowerCase()
     const name = (shortcut.name || shortcut.tag || '').toLowerCase()
-    return command.includes(q) || name.includes(q)
+    const description = (shortcut.description || '').toLowerCase()
+    return command.includes(q) || name.includes(q) || description.includes(q)
   })
 }
 

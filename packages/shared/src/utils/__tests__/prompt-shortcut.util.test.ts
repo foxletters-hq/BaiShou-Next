@@ -38,6 +38,20 @@ describe('prompt-shortcut.util', () => {
     expect(filterShortcutsByQuery(shortcuts, '')).toHaveLength(2)
   })
 
+  it('filters shortcuts by description when present', () => {
+    const withDesc = [
+      ...shortcuts,
+      {
+        id: 'daily-brief',
+        name: 'daily-brief',
+        command: 'daily-brief',
+        description: '根据昨天日记写早报',
+        content: 'body'
+      }
+    ]
+    expect(filterShortcutsByQuery(withDesc, '早报').map((s) => s.id)).toEqual(['daily-brief'])
+  })
+
   it('appends trailing newline when inserting shortcut content', () => {
     expect(formatShortcutInsertText('hello')).toBe('hello\n')
     expect(formatShortcutInsertText('hello\n')).toBe('hello\n')

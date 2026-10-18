@@ -238,8 +238,9 @@ export interface McpServerConfig {
   /** 是否启用访问令牌鉴权（默认关闭）；开启后外部客户端需在 Authorization 头携带 Bearer 令牌 */
   mcpAuthEnabled?: boolean
   /** 可选访问令牌；鉴权开启且为空时自动生成 */
-
   mcpAuthToken?: string
+  /** 禁用对外暴露的 MCP 工具 ID 列表（如 ['web_search', 'url_read']） */
+  disabledToolIds?: string[]
 }
 
 /** 作为客户端接入的外部 MCP（仅 Streamable HTTP /mcp） */
@@ -249,6 +250,8 @@ export interface McpClientServerEntry {
   url: string
   enabled: boolean
   authToken?: string
+  /** 始终允许此服务的所有工具调用（包括写入操作免弹窗确认） */
+  alwaysAllow?: boolean
 }
 
 export interface McpClientConfig {

@@ -15,6 +15,7 @@ describe('agent-tools-ui.constants', () => {
     expect(ids).toContain('url_read')
     expect(ids).toContain('current_time')
     expect(ids).toContain('skill_write')
+    expect(ids).toContain('skill_read')
     expect(ids).toContain('session_list')
   })
 
@@ -23,6 +24,7 @@ describe('agent-tools-ui.constants', () => {
     expect(AGENT_BUILTIN_TOOL_IDS).not.toContain('auto_inject_time')
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('diary_write')
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('skill_write')
+    expect(AGENT_BUILTIN_TOOL_IDS).toContain('skill_read')
   })
 })
 

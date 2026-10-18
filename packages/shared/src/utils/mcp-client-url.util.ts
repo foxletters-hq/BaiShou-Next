@@ -58,7 +58,12 @@ export function sanitizeMcpNamePart(raw: string, maxLen: number): string {
 }
 
 export function buildExternalMcpToolId(serverId: string, toolName: string): string {
-  return `mcp_${sanitizeMcpNamePart(serverId, 24)}_${sanitizeMcpNamePart(toolName, 48)}`
+  const sanitizedServer = sanitizeMcpNamePart(serverId, 24)
+  // 主流大模型 API（OpenAI / DeepSeek / Claude 等）工具名称限制 64 字符
+  // 前缀 "mcp_" (4) + serverId + "_" (1) + toolName <= 64
+  const maxToolLen = Math.max(16, 64 - 4 - sanitizedServer.length - 1)
+  const sanitizedTool = sanitizeMcpNamePart(toolName, maxToolLen)
+  return `mcp_${sanitizedServer}_${sanitizedTool}`
 }
 
 /** 旧式 Anthropic 前缀：mcp__server__tool */
@@ -132,13 +137,33 @@ export function sanitizeMcpClientServerEntry(raw: unknown): McpClientServerEntry
   if (typeof row.url !== 'string') return null
   const normalized = normalizeMcpStreamableUrl(row.url)
   if (!normalized.ok) return null
-  return {
+  const entry: McpClientServerEntry = {
     id: row.id.trim(),
     name: row.name.trim(),
     url: normalized.url,
-    enabled: row.enabled !== false,
-    authToken: typeof row.authToken === 'string' && row.authToken.trim() ? row.authToken : undefined
+    enabled: row.enabled !== false
   }
+  if (typeof row.authToken === 'string' && row.authToken.trim()) {
+    entry.authToken = row.authToken
+  }
+  if (row.alwaysAllow !== undefined) {
+    entry.alwaysAllow = Boolean(row.alwaysAllow)
+  }
+  return entry
+}
+
+export function summarizeMcpToolDescription(
+  raw: string | undefined,
+  maxLen = 120
+): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const firstLine = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0)
+  if (!firstLine) return undefined
+  if (firstLine.length <= maxLen) return firstLine
+  return `${firstLine.slice(0, maxLen - 1).trimEnd()}…`
 }
 
 export function toMcpClientListedTools(tools: unknown): McpClientListedTool[] {
@@ -156,7 +181,7 @@ export function toMcpClientListedTools(tools: unknown): McpClientListedTool[] {
     listed.push({
       name: name.trim(),
       description:
-        typeof description === 'string' && description.trim() ? description.trim() : undefined
+        typeof description === 'string' ? summarizeMcpToolDescription(description) : undefined
     })
   }
   return listed

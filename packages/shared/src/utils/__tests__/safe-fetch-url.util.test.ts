@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { assertSafeHttpUrl, assertSafePublicHttpUrl } from '../safe-fetch-url.util'
+import {
+  assertSafeHttpUrl,
+  assertSafePublicHttpUrl,
+  normalizeHttpUrl
+} from '../safe-fetch-url.util'
+
+describe('normalizeHttpUrl', () => {
+  it('should prepend https when the host has no scheme', () => {
+    expect(normalizeHttpUrl('foxletters.com')).toBe('https://foxletters.com')
+    expect(normalizeHttpUrl('  foxletters.com/path?q=1  ')).toBe('https://foxletters.com/path?q=1')
+    expect(normalizeHttpUrl('//cdn.example/a')).toBe('https://cdn.example/a')
+  })
+
+  it('should keep an existing http(s) scheme', () => {
+    expect(normalizeHttpUrl('https://foxletters.com')).toBe('https://foxletters.com')
+    expect(normalizeHttpUrl('http://192.168.1.8/wiki')).toBe('http://192.168.1.8/wiki')
+  })
+})
 
 describe('assertSafeHttpUrl', () => {
   it('允许内网与本机 http(s)', () => {
@@ -7,6 +24,7 @@ describe('assertSafeHttpUrl', () => {
     expect(() => assertSafeHttpUrl('http://10.0.0.2/docs')).not.toThrow()
     expect(() => assertSafeHttpUrl('http://localhost:8080/page')).not.toThrow()
     expect(() => assertSafeHttpUrl('https://nas.local/share')).not.toThrow()
+    expect(() => assertSafeHttpUrl('foxletters.com')).not.toThrow()
   })
 
   it('拒绝非 http(s)', () => {

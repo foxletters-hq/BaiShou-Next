@@ -3,8 +3,16 @@
  * 知识库导入允许内网；代理发起的 url_read 仍走公网限制，降低 SSRF。
  */
 
+/** 用户常省略协议；缺省补 https://，已有 scheme 的保持原样。 */
+export function normalizeHttpUrl(url: string): string {
+  const trimmed = url?.trim() ?? ''
+  if (!trimmed) return trimmed
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return trimmed
+  return `https://${trimmed.replace(/^\/\//, '')}`
+}
+
 function assertHttpOrHttpsUrl(url: string): URL {
-  const trimmed = url?.trim()
+  const trimmed = normalizeHttpUrl(url)
   if (!trimmed) throw new Error('url is required')
 
   let parsed: URL
