@@ -9,6 +9,7 @@ export type GraphAwakenProfileFields = {
   nickname: string
   birthday: string
   gender: UserGender
+  customGender?: string | null
 }
 
 async function getDesktopProfile(): Promise<UserProfile> {

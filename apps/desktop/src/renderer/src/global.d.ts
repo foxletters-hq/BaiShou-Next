@@ -242,8 +242,16 @@ interface StorageAPI {
   [key: string]: (...args: unknown[]) => Promise<unknown>
 }
 
+interface ProfileAPI {
+  getProfile(): Promise<any>
+  saveProfile(profile: any): Promise<any>
+  pickAndSaveAvatar?(): Promise<any>
+  pickAndSaveBackground?(): Promise<any>
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI
+  profile?: ProfileAPI
   window: WindowAPI
   shell: ShellAPI
   diagnosticLog: DiagnosticLogAPI

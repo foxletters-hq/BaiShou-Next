@@ -143,13 +143,16 @@ export function graphProfileFormFromAwaken(profile: UserProfile): {
   nickname: string
   birthday: string
   gender: UserGender | ''
+  customGender?: string
 } {
   const nick = profile.nickname?.trim() ?? ''
-  return {
+  const base = {
     nickname: isDefaultGraphSelfName(nick) ? '' : nick,
     birthday: profile.birthday?.trim() || '',
-    gender: (profile.gender as UserGender | undefined) || ''
+    gender: ((profile.gender as UserGender | undefined) || '') as UserGender | ''
   }
+  const custom = profile.customGender?.trim()
+  return custom ? { ...base, customGender: custom } : base
 }
 
 export function findGraphSelfPersonHit<T extends { name?: string; aliases?: unknown }>(

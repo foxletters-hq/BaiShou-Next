@@ -49,7 +49,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 16px 32px;
+  padding: var(--spacing-md) var(--spacing-xl);
   max-width: 480px;
   margin: 0 auto;
   width: 100%;
@@ -64,7 +64,7 @@
 }
 
 .slideTitle {
-  font-size: 22px;
+  font-size: var(--ui-display-sm);
   font-weight: 600;
   letter-spacing: -0.3px;
   line-height: 30px;
@@ -73,7 +73,7 @@
 }
 
 .slideBody {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   line-height: 27px;
   color: #6b7280;
   margin: 0;
@@ -94,19 +94,89 @@
 }
 
 .welcomeTitle {
-  margin: 36px 0 0;
-  font-size: 28px;
+  margin: var(--spacing-xl-plus) 0 0;
+  font-size: var(--ui-display-lg);
   font-weight: 600;
   letter-spacing: -0.5px;
   color: #5ba8cd;
 }
 
 .welcomeTagline {
-  margin: 6px 0 0;
-  font-size: 16px;
+  margin: var(--spacing-sm-plus) 0 0;
+  font-size: var(--ui-display-sm);
   font-weight: 600;
   color: #5ba8cd;
-  opacity: 0.85;
+  opacity: 0.9;
+}
+
+.welcomeDesc {
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--settings-font-page-title-size);
+  line-height: 28px;
+  color: #6b7280;
+}
+
+.profileForm {
+  width: 100%;
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md-tight);
+  text-align: left;
+}
+
+.profileField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+
+.profileLabel {
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.requiredMark {
+  color: #ef4444;
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.genderRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs-plus);
+}
+
+.genderChip {
+  padding: var(--spacing-xs-plus) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid #d1d5db;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1f2937;
+  font-size: var(--ui-fs-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.genderChipActive {
+  padding: var(--spacing-xs-plus) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid #5ba8cd;
+  background: #5ba8cd;
+  color: var(--text-on-primary);
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
 }
 
 .slideSpacerLarge {
@@ -125,7 +195,7 @@
 }
 
 .slogan {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   color: #6b7280;
   letter-spacing: 2px;
   margin: 0;
@@ -134,23 +204,23 @@
 .bottomControls {
   display: flex;
   align-items: center;
-  padding: 12px 20px 24px;
+  padding: var(--spacing-md-tight) var(--spacing-md-plus) var(--spacing-lg);
   flex-shrink: 0;
 }
 
 .indicators {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
 }
 
 .indicator {
   height: 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition:
-    width 0.3s ease,
-    background-color 0.3s ease;
+    width var(--duration-moderate) ease,
+    background-color var(--duration-moderate) ease;
 }
 
 .navActions {
@@ -158,19 +228,19 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .backButton {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 8px 12px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   border: none;
   background: transparent;
   cursor: pointer;
   color: #6b7280;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 .backButton:hover {
@@ -180,15 +250,15 @@
 .nextButton {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 12px 24px;
-  border-radius: 12px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md-tight) var(--spacing-lg);
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
   color: var(--text-on-primary);
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 600;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-swift) ease;
 }
 
 .nextButton:hover:not(:disabled) {
