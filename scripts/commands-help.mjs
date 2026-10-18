@@ -68,7 +68,9 @@ const sections = [
       ['pnpm typecheck', '全仓 TypeScript 检查'],
       ['pnpm test', '全仓单元测试'],
       ['pnpm lint', '全仓 ESLint（与 ci:check 相同；warning 有基线上限）'],
+      ['pnpm lint:css', '全仓 Stylelint 样式检查（ci:check 内含）'],
       ['pnpm lint:baseline', '统计 warning 数；加 -- --write 可更新基线文件'],
+      ['pnpm audit:cache-invalidation', '缓存失效规范审计（ci:check 内含）'],
       ['pnpm format', 'Prettier 格式化'],
       ['pnpm format:check', 'Prettier 检查（ci:check 内含）']
     ]

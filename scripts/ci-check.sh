@@ -29,14 +29,14 @@ if [ "$(node -p "process.versions.node.split('.')[0]")" != "$ci_node_major" ]; t
 fi
 
 pnpm install --frozen-lockfile
+pnpm format:check
 pnpm sync:check
-pnpm typecheck
 pnpm audit:cache-invalidation
-pnpm test
-pnpm --filter @baishou/mobile run build:diary-editor
 pnpm lint
 pnpm lint:css
-pnpm format:check
+pnpm typecheck
+pnpm test
+pnpm --filter @baishou/mobile run build:diary-editor
 
 # 单测可能把 better-sqlite3 编成系统 Node ABI；收尾按 Electron ABI 恢复，减少下次开桌面时的重编。
 # 若桌面端正在运行导致文件占用，仅警告：下次 `pnpm dev:desktop` 的 ensure:native 仍会自动重试。

@@ -1,4 +1,4 @@
-# push 到 main 与所有 PR 上运行；分支保护可单独勾选各 job（建议先 required: typecheck）
+# push 到 main 与所有 PR 上运行
 # 本地等价：pnpm ci:check
 name: CI
 
@@ -6,95 +6,102 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - 'legal/**'
+      - 'Latte/**'
+      - 'releases/notes/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/CLA.md'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'legal/**'
+      - 'Latte/**'
+      - 'releases/notes/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/CLA.md'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  typecheck:
-    name: Typecheck
+  check:
+    name: CI Check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
+          # PR 增量对比需要访问 base 分支历史
+          fetch-depth: 0
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm lint:css
 
-  format:
-    name: Prettier
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
 
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - name: Cache Turborepo & Linter caches
+        uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-      - run: pnpm --filter @baishou/mobile run build:diary-editor
+          path: |
+            .turbo
+            .stylelintcache
+            apps/desktop/.eslintcache
+            apps/mobile/.eslintcache
+            packages/ui/.eslintcache
+          key: ${{ runner.os }}-ci-cache-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.baishou.base.mjs', 'eslint.cache-coordinator.mjs', 'scripts/lint-warning-baseline.json', 'scripts/eslint-plugin-*.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ci-cache-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'tsconfig.base.json', 'eslint.baishou.base.mjs', 'eslint.cache-coordinator.mjs', 'scripts/lint-warning-baseline.json', 'scripts/eslint-plugin-*.mjs') }}-
+            ${{ runner.os }}-ci-cache-
 
-  sync-check:
-    name: Sync artifacts
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm sync:check
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-  audit-cache:
-    name: Cache invalidation audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm audit:cache-invalidation
+      # ── 第一阶段：快速门禁（Fail-Fast），未格式化或生成物过期时立即中止，避免跑重型编译与单测 ──
+      - name: Fast gate (Prettier, Sync & Cache audit)
+        run: |
+          pnpm format:check
+          pnpm sync:check
+          pnpm audit:cache-invalidation
+
+      # ── 第二阶段：静态检查（Lint & Typecheck），支持 Turborepo 缓存与 PR 增量过滤 ──
+      - name: Lint & CSS check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm turbo run lint --filter="...[origin/${{ github.base_ref }}]"
+          else
+            pnpm lint
+          fi
+          pnpm lint:css
+
+      - name: Typecheck
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm turbo run typecheck --filter="...[origin/${{ github.base_ref }}]"
+          else
+            pnpm typecheck
+          fi
+
+      # ── 第三阶段：单元测试与 WebView 产物构建校验 ──
+      - name: Test & Mobile WebView bundle
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm turbo run test --filter="...[origin/${{ github.base_ref }}]"
+          else
+            pnpm test
+          fi
+          pnpm --filter @baishou/mobile run build:diary-editor
