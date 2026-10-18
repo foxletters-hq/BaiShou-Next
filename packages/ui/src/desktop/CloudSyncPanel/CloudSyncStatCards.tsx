@@ -2,6 +2,7 @@ import React from 'react'
 import { Archive, Database, Folder, History } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
+import { settingsTypography } from '../../theme/tokens'
 
 export interface CloudSyncStatCardsProps {
   vm: CloudSyncPanelViewModel
@@ -101,7 +102,7 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
             ) : (
               <>
                 {records.length}{' '}
-                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                <span style={{ fontSize: settingsTypography.label.fontSize, fontWeight: 600 }}>
                   {t('common.copies_unit', '份')}
                 </span>
               </>

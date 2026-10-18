@@ -6,6 +6,7 @@ import { Input } from '../Input/Input'
 import { Button } from '../Button/Button'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 
 export interface CloudSyncCountModalProps {
   vm: CloudSyncPanelViewModel
@@ -99,11 +100,15 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
         <div
           className={styles.countModalBody}
-          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          style={{ display: 'flex', flexDirection: 'column', gap: sharedTokens.spacing.md }}
         >
           <div
             className={styles.countModalDesc}
-            style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}
+            style={{
+              fontSize: settingsTypography.desc.fontSize,
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5
+            }}
           >
             {activeTab === 'snapshot'
               ? t(
@@ -129,7 +134,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
           <div
             className={styles.chipsContainer}
-            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}
+            style={{
+              display: 'flex',
+              gap: sharedTokens.spacing.sm,
+              flexWrap: 'wrap',
+              marginTop: sharedTokens.spacing.sm
+            }}
           >
             {[1, 2, 3, 5, 10, 15, -1].map((val) => (
               <button
@@ -146,8 +156,8 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                       ? '1px solid var(--color-primary)'
                       : '1px solid var(--border-subtle)',
                   padding: '6px 12px',
-                  borderRadius: 12,
-                  fontSize: 12,
+                  borderRadius: sharedTokens.radius.md,
+                  fontSize: settingsTypography.meta.fontSize,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
@@ -163,7 +173,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
         <div
           className={styles.countModalFooter}
-          style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: sharedTokens.spacing.sm,
+            marginTop: sharedTokens.spacing.mdTight
+          }}
         >
           <Button
             type="button"

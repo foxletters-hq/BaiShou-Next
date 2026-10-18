@@ -18,14 +18,14 @@
   border: none;
   cursor: pointer;
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
   border-radius: var(--radius-full);
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
   padding: 0;
 }
 
@@ -163,7 +163,7 @@
 }
 
 .coreIcon {
-  font-size: 24px;
+  font-size: var(--icon-fs-lg);
   color: var(--text-on-primary);
 }
 
@@ -199,14 +199,14 @@
 }
 
 .scanTitle {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .scanSubtitle {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-tertiary);
 }
 
@@ -216,10 +216,10 @@
   background: var(--bg-surface);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-full);
-  padding: 8px 16px 8px 10px;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) var(--spacing-sm-plus);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   cursor: pointer;
   z-index: 20;
   box-shadow: var(--shadow-md);
@@ -269,7 +269,7 @@
 }
 
 .bubbleName {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   max-width: 120px;
@@ -279,10 +279,10 @@
 }
 
 .bubbleIp {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
   font-family: var(--font-family-mono);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 /* 发送覆盖按钮 */
@@ -297,13 +297,13 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   opacity: 0;
   transition:
-    opacity 0.2s,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    opacity var(--duration-swift),
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   cursor: pointer;
   display: flex;
   align-items: center;

@@ -9,6 +9,7 @@ import { labelStyle } from './cloud-sync.styles'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 import type { SyncConfig } from './cloud-sync.types'
 import { CloudSyncPasswordField } from './CloudSyncPasswordField'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface CloudSyncConfigFormProps {
   vm: CloudSyncPanelViewModel
@@ -109,7 +110,12 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
               <div className={stack.cardBodyPadded}>
                 {config.target === 'local' && (
                   <div className={styles.emptyLocalState}>
-                    <div style={{ marginBottom: 12, color: 'var(--text-secondary)', fontSize: 64 }}>
+                    <div
+                      style={{
+                        marginBottom: sharedTokens.spacing.mdTight,
+                        color: 'var(--text-secondary)'
+                      }}
+                    >
                       <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
                     </div>
                     <div>

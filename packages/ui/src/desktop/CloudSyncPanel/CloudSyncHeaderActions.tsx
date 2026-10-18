@@ -46,7 +46,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
     activeTab === 'snapshot'
       ? t(
           'data_sync.snapshot_tooltip',
-          '本地快照是系统在以下两种情况下自动创建的本地状态备份：1. 还原/导入全量备份前；2. 恢复/应用本地快照前。恢复快照将使您的所有数据、设置和数据库还原到该快照触发生成时刻的状态。'
+          '关键操作前自动生成的本地状态快照，相当于你的「安全后悔药」。\n\n• 触发时机：在还原全量备份或应用其他快照前，系统会自动备份当前状态\n• 一键撤销：若还原后数据不符合预期，可随时通过快照一键回退到操作前\n• 仅存本地：快照保存在本机设备上，不消耗云存储空间与流量'
         )
       : activeTab === 'local'
         ? t(
@@ -55,7 +55,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
           )
         : t(
             'data_sync.backup_tooltip',
-            '云端备份为您提供完整的云端历史档案存档。您可以手动或者通过自动策略随时将数据打包上传至指定云存储服务，确保数据绝对防丢。标记为「手动」的存档表示其曾被重命名过，自动清理策略（备份上限设置）不会删除带有「手动」标签的备份记录。'
+            '将所有日记、设置与数据库打包上传至云存储，作为完整历史存档。\n\n• 手动保护：重命名任意备份即可标记为「手动」，永久保留，不受自动清理影响\n• 自动清理：备份超出保留数量时，系统只会自动清理未标记的普通备份'
           )
 
   return (

@@ -8,8 +8,8 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 32px 20px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md-plus);
   background: var(--bg-app);
   min-height: min-content;
   width: 100%;
@@ -19,7 +19,7 @@
 .cardSection {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -28,7 +28,7 @@
 }
 
 .cardHeader {
-  padding: 16px 16px 8px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
 }
 
 .cardTitle {
@@ -39,7 +39,7 @@
 }
 
 .cardDesc {
-  margin: 4px 0 0;
+  margin: var(--spacing-xs) 0 0;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.5;
@@ -49,48 +49,48 @@
 .cardBody {
   display: flex;
   flex-direction: column;
-  padding-bottom: 4px;
+  padding-bottom: var(--spacing-xs);
 }
 
 @media (max-width: 500px) {
   .container {
-    padding: 16px;
+    padding: var(--spacing-md);
   }
 }
 
 /* Stat Cards */
 .statCardsRow {
   display: flex;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
   background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border: 1px solid var(--border-card);
 }
 
 @media (max-width: 500px) {
   .statCardsRow {
     flex-direction: column;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 }
 
 .statCard {
   flex: 1;
   background: transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   border: 1px solid transparent;
 }
 
 .statIconWrapper {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,7 +114,7 @@
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
   color: var(--text-secondary);
-  margin-bottom: 2px;
+  margin-bottom: var(--spacing-2xs);
 }
 
 .statValue {
@@ -130,27 +130,27 @@
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--bg-surface);
-  padding: 12px 16px 10px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-sm-plus);
   border-bottom: 1px solid var(--border-muted);
 }
 
 .titleArea {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .titleBlock {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .titleLabel {
@@ -160,8 +160,8 @@
 }
 
 .targetBadge {
-  padding: 1px 6px;
-  border-radius: 6px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs-plus);
   font-size: var(--settings-font-micro-size);
   font-weight: var(--settings-font-micro-weight);
   background: transparent;
@@ -182,8 +182,8 @@
   padding: 0;
   border-radius: 50%;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 .refreshBtn:hover:not(:disabled) {
   background: var(--bg-surface-high);
@@ -205,24 +205,24 @@
 .actionsGroup {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   align-items: center;
 }
 
 .actionBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
-  border-radius: 8px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
   font-family: inherit;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
   height: 32px;
   box-sizing: border-box;
   white-space: nowrap;
@@ -264,7 +264,7 @@
   background: transparent;
   border: none;
   color: var(--color-primary);
-  padding: 0 8px;
+  padding: 0 var(--spacing-sm);
   height: 32px;
 }
 
@@ -282,14 +282,14 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 
 .configAppBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: var(--spacing-md-tight) var(--spacing-xl);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -309,10 +309,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 .configBackButton:hover {
   background: var(--bg-surface-high);
@@ -328,7 +328,7 @@
 }
 
 .configContent {
-  padding: 24px 32px;
+  padding: var(--spacing-lg) var(--spacing-xl);
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
@@ -338,14 +338,14 @@
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-sm-plus);
 }
 
 .targetCardsLayout {
   display: flex;
   flex-direction: row;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-md-plus);
 }
 @media (max-width: 768px) {
   .targetCardsLayout {
@@ -358,21 +358,21 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   background: var(--bg-surface);
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 .targetCardContent {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 .targetCardCheck {
@@ -396,7 +396,7 @@
 .targetCardIcon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,29 +428,29 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .formDivider {
   height: 1px;
   background: var(--border-muted);
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .btnSave {
   background: transparent;
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   height: 32px;
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
   font-family: inherit;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .btnSave:hover {
@@ -473,7 +473,7 @@
 .formField {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .formField label {
@@ -487,8 +487,8 @@
   align-items: center;
   background: var(--form-field-bg, var(--bg-surface));
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 8px;
-  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--spacing-sm-plus);
   height: 32px;
   transition: var(--form-field-transition);
   color: var(--text-primary);
@@ -507,7 +507,7 @@
   border: none;
   background: transparent;
   outline: none;
-  padding: 0 8px;
+  padding: 0 var(--spacing-sm);
   color: var(--text-primary);
   font-size: var(--settings-font-row-size);
   font-family: inherit;
@@ -522,8 +522,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
-  border-radius: 6px;
+  padding: var(--spacing-2xs);
+  border-radius: var(--radius-xs-plus);
 }
 .eyeBtn:hover {
   color: var(--text-primary);
@@ -531,19 +531,19 @@
 }
 
 .emptyLocalState {
-  padding: 48px 0;
+  padding: var(--spacing-2xl) 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   color: var(--text-secondary);
 }
 
 /* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
 .emptyStateIcon {
   display: block;
-  font-size: 36px;
-  margin-bottom: 4px;
+  font-size: var(--ui-display-lg);
+  margin-bottom: var(--spacing-xs);
   opacity: 0.45;
   flex-shrink: 0;
 }
@@ -553,22 +553,22 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-card);
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 400px;
-  margin: 0 16px 16px;
+  margin: 0 var(--spacing-md) var(--spacing-md);
 }
 
 .recordItem {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
-  gap: 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
+  gap: var(--spacing-md-tight);
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .recordItem:hover {
@@ -586,7 +586,7 @@
 .recordIcon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface-high);
   color: var(--color-primary);
   display: flex;
@@ -599,7 +599,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 
@@ -609,14 +609,14 @@
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .unmanagedBadge {
   font-size: var(--settings-font-micro-size);
   font-weight: var(--settings-font-micro-weight);
-  padding: 1px 6px;
-  border-radius: 6px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs-plus);
   background: var(--bg-surface);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
@@ -630,9 +630,9 @@
 
 .recordActions {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-fast) ease;
 }
 .recordItem:hover .recordActions,
 .itemSelected .recordActions {
@@ -657,8 +657,8 @@
   cursor: pointer;
   color: var(--text-secondary);
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .iconBtn:hover {
@@ -690,32 +690,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 .countModal {
   background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md-plus);
   width: 90%;
   max-width: 400px;
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
-  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: modalPop var(--duration-moderate) cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .configSection {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
 }
 .configGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  row-gap: 16px;
-  column-gap: 20px;
+  row-gap: var(--spacing-md);
+  column-gap: var(--spacing-md-plus);
 }
 @media (max-width: 650px) {
   .configGrid {
@@ -734,8 +734,8 @@
   display: flex;
   justify-content: flex-end;
   border-top: 1px solid var(--border-muted);
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
 }
 
 /* Tabs Container */
@@ -744,15 +744,15 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 12px 16px 4px;
+  gap: var(--spacing-sm-plus);
+  margin: var(--spacing-md-tight) var(--spacing-md) var(--spacing-xs);
 }
 
 .localArchiveToolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   margin-left: auto;
 }
 
@@ -763,7 +763,7 @@
 }
 
 .localArchiveBtn {
-  padding: 0 12px !important;
+  padding: 0 var(--spacing-md-tight) !important;
   height: 32px !important;
   font-size: var(--settings-font-label-size) !important;
 }
@@ -792,7 +792,7 @@
 
 .smSliderContainer {
   width: 100%;
-  padding: 8px 0;
+  padding: var(--spacing-sm) 0;
 }
 
 /* 视觉样式见 theme/range-slider.css */

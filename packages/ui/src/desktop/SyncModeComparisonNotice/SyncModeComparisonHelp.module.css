@@ -6,13 +6,13 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 @media (max-width: 560px) {
@@ -22,8 +22,8 @@
 }
 
 .card {
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
@@ -34,22 +34,22 @@
 }
 
 .cardTitle {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .cardDesc {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 
 .hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   color: var(--text-tertiary);
 }
