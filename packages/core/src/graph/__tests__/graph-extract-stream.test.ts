@@ -75,4 +75,24 @@ describe('resolveGraphExtractLlmText', () => {
     })
     expect(text).toBe('{"nested":true}')
   })
+
+  it('rethrows streamError when fullStream fails and textPromise rejects with AI_NoOutputGeneratedError', async () => {
+    const noOutputErr = Object.assign(new Error('No output generated.'), {
+      name: 'AI_NoOutputGeneratedError'
+    })
+    const textPromise = Promise.reject(noOutputErr)
+    void textPromise.catch(() => undefined)
+
+    await expect(
+      resolveGraphExtractLlmText({
+        fullStream: iterateParts([
+          {
+            type: 'error',
+            error: new Error('Request is missing x-opencode-session')
+          }
+        ]),
+        textPromise
+      })
+    ).rejects.toThrow('Request is missing x-opencode-session')
+  })
 })

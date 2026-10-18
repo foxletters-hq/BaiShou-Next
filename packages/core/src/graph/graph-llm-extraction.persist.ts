@@ -1,4 +1,4 @@
-import type { GraphExtractStore } from '@baishou/database/shared'
+import type { GraphExtractStore, GraphNodeRow } from '@baishou/database/shared'
 import {
   appendAmbiguousSourceRef,
   applyAlignedSimilarPendingToProps,
@@ -134,12 +134,37 @@ export async function writeMentionCountsToJsonl(
   vaultName: string,
   nodeIds: string[]
 ): Promise<void> {
-  for (const id of nodeIds) {
-    const row = await ctx.repo.getNodeById(id, vaultId)
-    if (!row) continue
+  if (nodeIds.length === 0) return
+  const getNodesByIds = (
+    ctx.repo as { getNodesByIds?: (vId: string, ids: string[]) => Promise<GraphNodeRow[]> }
+  ).getNodesByIds
+  let rows: GraphNodeRow[]
+  if (typeof getNodesByIds === 'function') {
+    const fetched = await getNodesByIds.call(ctx.repo, vaultId, nodeIds)
+    const byId = new Map(fetched.map((r) => [r.id, r]))
+    rows = nodeIds.map((id) => byId.get(id)).filter((r): r is GraphNodeRow => Boolean(r))
+  } else {
+    rows = []
+    for (const id of nodeIds) {
+      const row = await ctx.repo.getNodeById(id, vaultId)
+      if (row) rows.push(row)
+    }
+  }
+  const records = rows.map((row) => {
     const writtenAt = Math.max(Date.now(), row.updatedAt ?? 0) + 1
-    const record = graphNodeRowToRawRecord(row, vaultId, vaultName, writtenAt)
-    await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
+    return graphNodeRowToRawRecord(row, vaultId, vaultName, writtenAt)
+  })
+  const writeRecords = (
+    ctx.graphManager as {
+      writeRecords?: (r: unknown[], o: { collection: 'nodes' }) => Promise<void>
+    }
+  ).writeRecords
+  if (typeof writeRecords === 'function') {
+    await writeRecords.call(ctx.graphManager, records, { collection: 'nodes' })
+  } else {
+    for (const record of records) {
+      await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
+    }
   }
 }
 
@@ -272,8 +297,17 @@ export async function persistGraphExtractDraft(
     nodeRecords
   })
 
-  for (const record of nodeRecords) {
-    await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
+  const writeRecords = (
+    ctx.graphManager as {
+      writeRecords?: (r: unknown[], o: { collection: 'nodes' | 'edges' }) => Promise<void>
+    }
+  ).writeRecords
+  if (typeof writeRecords === 'function') {
+    await writeRecords.call(ctx.graphManager, nodeRecords, { collection: 'nodes' })
+  } else {
+    for (const record of nodeRecords) {
+      await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
+    }
   }
   const existingLegacy = await ctx.repo.getNodeById(legacyEntryId, vaultId)
   if (existingLegacy && legacyEntryId !== entryCreated.id) {
@@ -338,7 +372,13 @@ export async function persistGraphExtractDraft(
   const newEdgeIds = new Set<string>()
   for (const record of edgeRecords) {
     newEdgeIds.add(record.id)
-    await ctx.graphManager.writeRecord(record, { collection: 'edges' })
+  }
+  if (typeof writeRecords === 'function') {
+    await writeRecords.call(ctx.graphManager, edgeRecords, { collection: 'edges' })
+  } else {
+    for (const record of edgeRecords) {
+      await ctx.graphManager.writeRecord(record, { collection: 'edges' })
+    }
   }
   if (shouldSupersedeDiaryAiEdges(newEdgeIds)) {
     await ctx.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {

@@ -291,6 +291,15 @@ export class GraphLlmExtractionService {
     onPhase?.('recalling')
     const vaultId = drafts[0]!.vaultId
     const now = Date.now()
+    const stageStartedAt = now
+    const logStage = (stage: string, extra?: Record<string, unknown>) =>
+      logger.info('[GraphExtract] commit stage', {
+        stage,
+        elapsedMs: Date.now() - stageStartedAt,
+        drafts: drafts.length,
+        ...extra
+      })
+    logStage('align-start')
     const aligned = await alignEntityPool(
       drafts.flatMap((draft) =>
         draft.entities.map((ent) => ({
@@ -358,6 +367,7 @@ export class GraphLlmExtractionService {
     )
 
     throwIfGraphExtractAborted(signal)
+    logStage('align-done')
     onPhase?.('writing')
 
     const results: Array<{ filePath: string; error?: string }> = []
@@ -381,10 +391,12 @@ export class GraphLlmExtractionService {
       }
     }
 
+    logStage('persist-done', { failed: results.filter((r) => r.error).length })
     for (const month of shardMonths) {
       await this.graphManager.compactShard('nodes', month)
       await this.graphManager.compactShard('edges', month)
     }
+    logStage('compact-done', { months: shardMonths.size })
 
     const precomputedNodeEmbeddings = new Map<string, { embedding: number[]; text: string }>()
     for (const item of alignedEmbeddings) {
@@ -395,11 +407,13 @@ export class GraphLlmExtractionService {
       absentSweep: 'shard-present',
       precomputedNodeEmbeddings
     })
+    logStage('sync-done')
     if (touchedNodeIds.length > 0) {
       const uniqueIds = [...new Set(touchedNodeIds)]
       await this.repo.recountMentions(vaultId, uniqueIds)
       await writeMentionCountsToJsonl(persistCtx, vaultId, drafts[0]!.vaultName, uniqueIds)
     }
+    logStage('mentions-done')
     const draftByPath = new Map(drafts.map((draft) => [draft.filePath, draft]))
     for (const result of results) {
       if (result.error) continue
@@ -407,6 +421,7 @@ export class GraphLlmExtractionService {
       if (!draft) continue
       await this.freshness.commitReextract(normalizeFilePath(draft.filePath), draft.hash)
     }
+    logStage('extract-state-done')
     return results
   }
 

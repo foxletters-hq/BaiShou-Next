@@ -239,6 +239,8 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
         messages: [{ role: 'user', content: user }],
         temperature: 0.1,
         abortSignal: abortController.signal,
+        experimental_telemetry: { isEnabled: false },
+        onError: () => {},
         ...(builtReasoning.providerOptions
           ? { providerOptions: builtReasoning.providerOptions as never }
           : {})
@@ -250,7 +252,6 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
       try {
         const text = await resolveGraphExtractLlmText({
           fullStream: streamResult.fullStream,
-          textStream: streamResult.textStream,
           textPromise,
           signal: abortController.signal,
           onDelta: (chars) => {

@@ -13,6 +13,7 @@ export async function clearLifeGraphData(input: {
   input.stopExtract?.()
   await input.graphRepo.deleteAllForVault(vaultId)
   const shardCount = await input.graphManager.wipeAllCollections()
+  input.graphManager.resetCache()
   input.freshness?.clearReextractMarks()
   return { shardCount }
 }

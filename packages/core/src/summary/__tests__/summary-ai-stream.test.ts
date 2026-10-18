@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   collectSummaryStreamText,
@@ -352,5 +355,18 @@ describe('suppressUnusedSummaryStreamSettlements', () => {
     suppressUnusedSummaryStreamSettlements({ text, usage })
     await Promise.resolve()
     await Promise.resolve()
+  })
+})
+
+describe('generateSummaryTextFromModel stream wiring', () => {
+  it('should consume only fullStream and serialize provider HTTP errors', () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'summary-ai-stream.ts'),
+      'utf8'
+    )
+    expect(src).toContain('fullStream: streamResult.fullStream')
+    expect(src).not.toContain('textStream: streamResult.textStream')
+    expect(src).toContain('toSerializableAiError')
+    expect(src).toContain('isAgentStreamAbortError')
   })
 })
