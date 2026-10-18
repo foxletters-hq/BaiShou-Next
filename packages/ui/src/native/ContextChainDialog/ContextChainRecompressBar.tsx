@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ContextChainRecompressBarProps {
   busy: boolean
@@ -52,7 +53,9 @@ export const ContextChainRecompressBar: React.FC<ContextChainRecompressBarProps>
               hitSlop={8}
               style={{ marginLeft: tokens.spacing.sm }}
             >
-              <Text style={{ fontSize: 13, color: colors.primary }}>
+              <Text
+                style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.primary }}
+              >
                 {t('common.dismiss', '关闭')}
               </Text>
             </Pressable>
@@ -65,18 +68,18 @@ export const ContextChainRecompressBar: React.FC<ContextChainRecompressBarProps>
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 6,
-    marginBottom: 8
+    gap: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.sm
   },
   trigger: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   triggerText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   errorRow: {
@@ -85,7 +88,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   errorText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
     flex: 1
   }

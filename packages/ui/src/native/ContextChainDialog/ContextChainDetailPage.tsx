@@ -1,14 +1,17 @@
 import React from 'react'
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native'
+import { ChevronLeft, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ThinkingBlock } from '../ThinkingBlock'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
 import { COMPRESSION_SUMMARY_SELECTION_KEY, type useContextChainView } from './useContextChainView'
 import { ContextChainRecompressBar } from './ContextChainRecompressBar'
 import { ContextChainRecompressProgress } from './ContextChainRecompressProgress'
 import { CompressionActivityBar } from '../CompressionActivityBar'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
 
@@ -95,7 +98,12 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
               {view.compressionSummaryText ? (
                 <AgentMarkdownRenderer content={view.compressionSummaryText} variant="ancillary" />
               ) : (
-                <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                <Text
+                  style={{
+                    fontSize: mobileTypography.secondary.fontSize,
+                    color: colors.textSecondary
+                  }}
+                >
                   {t('agent.chat.no_content', '[无内容]')}
                 </Text>
               )}
@@ -107,7 +115,9 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
 
     if (!selected) {
       return (
-        <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+        <Text
+          style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.textSecondary }}
+        >
           {t('agent.chat.no_content', '[无内容]')}
         </Text>
       )
@@ -157,7 +167,7 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
     }
 
     return (
-      <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+      <Text style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.textSecondary }}>
         {t('agent.chat.no_content', '[无内容]')}
       </Text>
     )
@@ -168,8 +178,19 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
       <View style={styles.header}>
         <View style={styles.headerSide}>
           <Pressable onPress={onBack} hitSlop={8} style={styles.headerBack}>
-            <Text style={{ fontSize: 20, color: colors.primary, lineHeight: 22 }}>‹</Text>
-            <Text style={{ fontSize: 15, color: colors.primary, fontWeight: '500' }}>
+            <ChevronLeft
+              size={iconSizes.md}
+              color={colors.primary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
+            <Text
+              style={{
+                fontSize: mobileTypography.body.fontSize,
+                color: colors.primary,
+                fontWeight: '500',
+                lineHeight: 20
+              }}
+            >
               {t('agent.chat.back', '返回')}
             </Text>
           </Pressable>
@@ -177,22 +198,32 @@ export const ContextChainDetailPage: React.FC<ContextChainDetailPageProps> = ({
 
         <View style={styles.headerSideRight}>
           <Pressable onPress={onClose} hitSlop={8} style={styles.headerClose}>
-            <Text style={{ fontSize: 24, color: colors.textSecondary }}>×</Text>
+            <X
+              size={iconSizes.md}
+              color={colors.textSecondary}
+              strokeWidth={DEFAULT_STROKE_WIDTH}
+            />
           </Pressable>
         </View>
 
         <View style={styles.headerCenter} pointerEvents="none">
           <View
             style={{
-              paddingHorizontal: 10,
-              paddingVertical: 4,
+              paddingHorizontal: sharedTokens.spacing.smPlus,
+              paddingVertical: sharedTokens.spacing.xxs,
               borderRadius: tokens.radius.full,
               backgroundColor: badgeColor + '20',
               maxWidth: '100%'
             }}
           >
             <Text
-              style={{ fontSize: 12, fontWeight: '600', color: badgeColor, textAlign: 'center' }}
+              style={{
+                fontSize: mobileTypography.caption.fontSize,
+                fontWeight: '600',
+                lineHeight: 16,
+                color: badgeColor,
+                textAlign: 'center'
+              }}
               numberOfLines={1}
             >
               {label}
@@ -225,8 +256,8 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   header: {
-    height: 44,
-    marginBottom: 8
+    height: 36,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   headerSide: {
     position: 'absolute',
@@ -250,10 +281,14 @@ const styles = StyleSheet.create({
   headerBack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: sharedTokens.spacing.xxs,
     alignSelf: 'flex-start'
   },
   headerClose: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
     alignSelf: 'flex-end'
   },
   headerCenter: {
@@ -263,8 +298,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 72
   },
   divider: {
-    height: 1,
-    marginBottom: 8
+    height: StyleSheet.hairlineWidth,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   scroll: {
     flex: 1,

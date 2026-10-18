@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const CompressionDivider: React.FC = () => {
   const { t } = useTranslation()
@@ -28,10 +29,10 @@ const styles = StyleSheet.create({
   root: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: sharedTokens.spacing.mdTight,
     width: '100%',
-    marginVertical: 8,
-    paddingHorizontal: 4
+    marginVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   line: {
     flex: 1,
@@ -40,11 +41,11 @@ const styles = StyleSheet.create({
   },
   label: {
     flexShrink: 0,
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.full,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden'
   }
