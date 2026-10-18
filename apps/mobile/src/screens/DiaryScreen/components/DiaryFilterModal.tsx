@@ -11,7 +11,14 @@ import {
   type WeatherId,
   type MoodId
 } from '@baishou/shared'
-import { useNativeTheme, WeatherEmoji, MoodEmoji } from '@baishou/ui/native'
+import {
+  useNativeTheme,
+  WeatherEmoji,
+  MoodEmoji,
+  Button,
+  modalActionsStyle
+} from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 import { diaryAppBarStyles as styles } from './DiaryAppBar.styles'
 
 export interface DiaryFilterModalProps {
@@ -170,14 +177,20 @@ export const DiaryFilterModal: React.FC<DiaryFilterModalProps> = ({
             </View>
           </ScrollView>
 
-          <TouchableOpacity
-            style={[styles.filterDoneBtn, { backgroundColor: colors.primary }]}
-            onPress={onClose}
+          <View
+            style={[
+              modalActionsStyle,
+              {
+                paddingHorizontal: sharedTokens.spacing.md,
+                paddingTop: sharedTokens.spacing.sm,
+                paddingBottom: sharedTokens.spacing.mdTight
+              }
+            ]}
           >
-            <Text style={[styles.filterDoneText, { color: colors.textOnPrimary }]}>
+            <Button size="sm" variant="outlined" onPress={onClose}>
               {t('common.done')}
-            </Text>
-          </TouchableOpacity>
+            </Button>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>

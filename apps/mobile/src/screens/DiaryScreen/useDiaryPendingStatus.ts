@@ -1,86 +1,139 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { InteractionManager } from 'react-native'
 import { useFocusEffect } from 'expo-router'
-import {
-  deriveLegacyVaultId,
-  EMPTY_PENDING_EMBED_COUNTS,
-  isStartupEmbedReminderEnabled,
-  shouldShowPendingEmbedReminder,
-  type PendingEmbedCounts
-} from '@baishou/shared'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
-import { mobileListPendingReextract } from '../../services/mobile-graph.service'
-import {
-  isRagEmbedFeatureConfigured,
-  type GlobalModelsConfig,
-  type RagConfig
-} from '@baishou/shared'
+import { type GlobalModelsConfig, type RagConfig } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
+import {
+  hydrateOrganizePendingSnapshot,
+  peekOrganizePendingSnapshot,
+  subscribeMobilePendingEmbedCountsChanged,
+  type OrganizePendingSnapshot
+} from '../../services/mobile-pending-embed-counts'
+import {
+  diaryPendingStatusFromSnapshot,
+  initialDiaryPendingStatusFromSnapshot,
+  loadDiaryPendingStatus,
+  resolveDiaryPendingStatusRefresh,
+  shouldHydrateDiaryPendingSnapshot,
+  type DiaryOrganizePendingSnapshot,
+  type DiaryPendingStatusView
+} from './diary-pending-status.util'
+
+function applyDiaryPendingView(
+  view: DiaryPendingStatusView,
+  setters: {
+    setPendingGraphCount: (value: number) => void
+    setPendingEmbedCount: (value: number) => void
+    setPendingEmbedParts: (value: DiaryPendingStatusView['pendingEmbedParts']) => void
+    setGraphConfigured: (value: boolean) => void
+    setRagConfigured: (value: boolean) => void
+  }
+) {
+  setters.setPendingGraphCount(view.pendingGraphCount)
+  setters.setPendingEmbedCount(view.pendingEmbedCount)
+  setters.setPendingEmbedParts(view.pendingEmbedParts)
+  setters.setGraphConfigured(view.graphConfigured)
+  setters.setRagConfigured(view.ragConfigured)
+}
 
 export function useDiaryPendingStatus() {
   const { services, dbReady } = useBaishou()
-  const [pendingGraphCount, setPendingGraphCount] = useState(0)
-  const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
-  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
-    EMPTY_PENDING_EMBED_COUNTS
-  )
-  const [graphConfigured, setGraphConfigured] = useState(false)
-  const [ragConfigured, setRagConfigured] = useState(false)
-  const [pendingNotice, setPendingNotice] = useState<{ count: number; needModel: boolean } | null>(
-    null
-  )
+  const initial = initialDiaryPendingStatusFromSnapshot(peekOrganizePendingSnapshot())
+  const [pendingGraphCount, setPendingGraphCount] = useState(initial.pendingGraphCount)
+  const [pendingEmbedCount, setPendingEmbedCount] = useState(initial.pendingEmbedCount)
+  const [pendingEmbedParts, setPendingEmbedParts] = useState(initial.pendingEmbedParts)
+  const [graphConfigured, setGraphConfigured] = useState(initial.graphConfigured)
+  const [ragConfigured, setRagConfigured] = useState(initial.ragConfigured)
+  const latestRequestIdRef = useRef(0)
+  const liveAppliedRef = useRef(false)
+  const statusRef = useRef<DiaryPendingStatusView>(initial)
+  statusRef.current = {
+    pendingGraphCount,
+    pendingEmbedCount,
+    pendingEmbedParts,
+    graphConfigured,
+    ragConfigured
+  }
+
+  const applyView = useCallback((view: DiaryPendingStatusView) => {
+    applyDiaryPendingView(view, {
+      setPendingGraphCount,
+      setPendingEmbedCount,
+      setPendingEmbedParts,
+      setGraphConfigured,
+      setRagConfigured
+    })
+  }, [])
 
   const refreshStatusBar = useCallback(async () => {
     if (!services || !dbReady) return
+    const requestId = ++latestRequestIdRef.current
     try {
-      const activeVault = services.vaultService.getActiveVault()
-      const vaultName = activeVault?.name || 'Personal'
-      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-      const [pending, embedCount, globalModels, ragConfig] = await Promise.all([
-        mobileListPendingReextract({
-          vaultName,
-          vaultId,
-          shadowRepo,
-          pathService: services.pathService,
-          fileSystem: services.fileSystem
-        }),
-        (services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> })
-          .getPendingEmbedCounts?.()
-          .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS),
-        services.settingsManager.get<GlobalModelsConfig>('global_models'),
-        services.settingsManager.get<RagConfig>('rag_config')
-      ])
-      const counts =
-        embedCount && typeof embedCount === 'object' && 'total' in embedCount
-          ? embedCount
-          : EMPTY_PENDING_EMBED_COUNTS
-      setPendingGraphCount(pending.length)
-      setPendingEmbedCount(counts.total)
-      setPendingEmbedParts(counts)
-      setGraphConfigured(true)
-      const embeddingReady = isRagEmbedFeatureConfigured({
-        ragConfig,
-        globalModels
+      const { view } = await loadDiaryPendingStatus({
+        getSnapshot: () =>
+          (
+            services.ragService as {
+              getOrganizePendingSnapshot?: () => Promise<OrganizePendingSnapshot>
+            }
+          ).getOrganizePendingSnapshot?.() ?? Promise.resolve(peekOrganizePendingSnapshot()),
+        getRagConfig: () => services.settingsManager.get<RagConfig>('rag_config'),
+        getGlobalModels: () => services.settingsManager.get<GlobalModelsConfig>('global_models'),
+        fallbackSnapshot: peekOrganizePendingSnapshot()
       })
-      setRagConfigured(embeddingReady)
+      const applied = resolveDiaryPendingStatusRefresh({
+        requestId,
+        latestRequestId: latestRequestIdRef.current,
+        previous: statusRef.current,
+        next: view,
+        failed: false
+      })
+      if (!applied) return
+      liveAppliedRef.current = true
+      applyView(applied)
+    } catch {
+      const applied = resolveDiaryPendingStatusRefresh({
+        requestId,
+        latestRequestId: latestRequestIdRef.current,
+        previous: statusRef.current,
+        next: null,
+        failed: true
+      })
+      if (applied) applyView(applied)
+    }
+  }, [applyView, dbReady, services])
+
+  useEffect(() => {
+    void hydrateOrganizePendingSnapshot().then((snap) => {
+      if (!snap) return
       if (
-        shouldShowPendingEmbedReminder(counts.total, {
-          enabled: isStartupEmbedReminderEnabled(ragConfig)
+        !shouldHydrateDiaryPendingSnapshot({
+          liveApplied: liveAppliedRef.current,
+          current: statusRef.current
         })
       ) {
-        setPendingNotice({ count: counts.total, needModel: !embeddingReady })
+        return
       }
-    } catch {
-      setPendingGraphCount(0)
-      setPendingEmbedCount(0)
-      setPendingEmbedParts(EMPTY_PENDING_EMBED_COUNTS)
-      setGraphConfigured(false)
-      setRagConfigured(false)
-    }
-  }, [dbReady, services])
+      const view = diaryPendingStatusFromSnapshot(snap as DiaryOrganizePendingSnapshot, true)
+      if (view) applyView(view)
+    })
+  }, [applyView])
 
+  useEffect(() => {
+    return subscribeMobilePendingEmbedCountsChanged(() => {
+      void refreshStatusBar()
+    })
+  }, [refreshStatusBar])
+
+  const firstFocusRef = useRef(true)
   useFocusEffect(
     useCallback(() => {
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false
+        const handle = InteractionManager.runAfterInteractions(() => {
+          void refreshStatusBar()
+        })
+        return () => handle.cancel()
+      }
       void refreshStatusBar()
     }, [refreshStatusBar])
   )
@@ -90,8 +143,6 @@ export function useDiaryPendingStatus() {
     pendingEmbedCount,
     pendingEmbedParts,
     graphConfigured,
-    ragConfigured,
-    pendingNotice,
-    setPendingNotice
+    ragConfigured
   }
 }

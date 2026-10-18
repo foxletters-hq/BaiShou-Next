@@ -1,22 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StatusBar, Keyboard } from 'react-native'
+import { View, StatusBar, Keyboard, InteractionManager } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  logger,
-  shouldShowPendingEmbed,
-  shouldShowPendingExtract,
-  type RagConfig
-} from '@baishou/shared'
+import { logger } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
-import { PendingEmbedNotice } from './PendingEmbedNotice'
 import { DiaryList, type DiaryListEntry } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 import { useDiaryFilterState } from './hooks/useDiaryFilterState'
@@ -28,6 +22,7 @@ import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebVi
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
 import { formatDiaryDateStr, mapDiaryListEntries } from './diary-list-display.util'
 import { useDiaryPendingStatus } from './useDiaryPendingStatus'
+import { diaryPendingOrganizeCount } from './diary-pending-status.util'
 import { DiaryPendingStatusBar } from './DiaryPendingStatusBar'
 import { DiaryDeleteConfirmModal } from './DiaryDeleteConfirmModal'
 import { diaryScreenStyles as styles } from './diary-screen.styles'
@@ -90,9 +85,7 @@ export const DiaryScreen: React.FC = () => {
     pendingEmbedCount,
     pendingEmbedParts,
     graphConfigured,
-    ragConfigured,
-    pendingNotice,
-    setPendingNotice
+    ragConfigured
   } = useDiaryPendingStatus()
   const {
     isSyncing,
@@ -122,7 +115,9 @@ export const DiaryScreen: React.FC = () => {
       void refreshConfigured()
       if (!editorBundlePreloadedRef.current) {
         editorBundlePreloadedRef.current = true
-        void preloadDiaryEditorWebViewSource()
+        InteractionManager.runAfterInteractions(() => {
+          void preloadDiaryEditorWebViewSource()
+        })
       }
       return () => {
         clearDiarySearch()
@@ -385,29 +380,6 @@ export const DiaryScreen: React.FC = () => {
             onRequestStoragePermission={handleRequestStoragePermission}
           />
 
-          {pendingNotice ? (
-            <PendingEmbedNotice
-              count={pendingNotice.count}
-              needModel={pendingNotice.needModel}
-              onAction={() => {
-                setPendingNotice(null)
-                if (pendingNotice.needModel) router.push('/settings/ai-models')
-                else router.push({ pathname: '/memory', params: { tab: 'vectors' } })
-              }}
-              onDismiss={() => setPendingNotice(null)}
-              onMuteStartupReminder={() => {
-                setPendingNotice(null)
-                if (!services) return
-                void services.settingsManager.get<RagConfig>('rag_config').then((current) =>
-                  services.settingsManager.set('rag_config', {
-                    ...(current ?? {}),
-                    startupEmbedReminder: false
-                  })
-                )
-              }}
-            />
-          ) : null}
-
           <DiaryPendingStatusBar
             graphConfigured={graphConfigured}
             ragConfigured={ragConfigured}
@@ -421,8 +393,13 @@ export const DiaryScreen: React.FC = () => {
             onEditToday={handleEditToday}
             onAddNew={handleAddNew}
             hasPendingStatus={
-              shouldShowPendingExtract({ graphConfigured, count: pendingGraphCount }) ||
-              shouldShowPendingEmbed({ ragConfigured, count: pendingEmbedCount })
+              diaryPendingOrganizeCount({
+                graphConfigured,
+                ragConfigured,
+                pendingGraphCount,
+                pendingEmbedCount,
+                pendingDiaryCount: pendingEmbedParts.diaries
+              }) > 0
             }
           />
         </View>

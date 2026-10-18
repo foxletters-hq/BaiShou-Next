@@ -2,7 +2,7 @@ import {
   applyGraphAwakenToProfile,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   getUserProfileFromSettings,
-  isGraphAwakenProfileComplete,
+  normalizeGraphAwakenNickname,
   saveUserProfileToSettings,
   type UserGender,
   type UserProfile,
@@ -13,6 +13,7 @@ export type GraphAwakenProfileFields = {
   nickname: string
   birthday: string
   gender: UserGender
+  customGender?: string | null
 }
 
 export async function loadMobileGraphAwakenSelfName(
@@ -26,8 +27,12 @@ export async function loadMobileGraphAwakenSelfName(
   const flag =
     (await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)) === true
   const profile = await getUserProfileFromSettings(settingsManager)
-  if (isGraphAwakenProfileComplete(flag, profile)) {
-    return { ready: true, selfName: profile.nickname.trim(), profile, flag }
+  const selfName = normalizeGraphAwakenNickname(profile.nickname)
+  if (selfName) {
+    if (!flag) {
+      await settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
+    }
+    return { ready: true, selfName, profile, flag: true }
   }
   return { ready: false, selfName: null, profile, flag }
 }

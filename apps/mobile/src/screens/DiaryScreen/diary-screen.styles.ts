@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const diaryScreenStyles = StyleSheet.create({
   safeArea: {
@@ -13,52 +14,52 @@ export const diaryScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     minHeight: 34,
-    paddingLeft: 18,
+    paddingLeft: sharedTokens.spacing.md,
     paddingRight: 96,
-    paddingVertical: 7,
+    paddingVertical: sharedTokens.spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   statusItem: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    fontWeight: '500'
+    fontWeight: mobileTypography.secondary.fontWeight
   },
   deleteOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   deleteModal: {
     width: '100%',
     maxWidth: 320,
-    borderRadius: 16,
-    padding: 24
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.lg
   },
   deleteTitle: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   deleteContent: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    marginBottom: 24
+    marginBottom: sharedTokens.spacing.lg
   },
   deleteActions: {
     flexDirection: 'row',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   deleteCancel: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center'
   },
   deleteConfirm: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center'
   }
 })

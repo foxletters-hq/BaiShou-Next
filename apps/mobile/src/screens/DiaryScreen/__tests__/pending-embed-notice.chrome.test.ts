@@ -7,17 +7,18 @@ const diary = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '..', 'DiaryScreen.tsx'),
   'utf8'
 )
-const notice = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', 'PendingEmbedNotice.tsx'),
+const hook = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'useDiaryPendingStatus.ts'),
   'utf8'
 )
 
 describe('mobile diary pending embed notice', () => {
-  it('should open the memory vectors tab instead of a system alert', () => {
-    expect(diary).toContain('PendingEmbedNotice')
-    expect(diary).toContain("pathname: '/memory'")
-    expect(diary).toContain("tab: 'vectors'")
-    expect(notice).not.toContain('Alert.alert')
-    expect(notice).toContain('memory.pending_embed_reminder_mute')
+  it('should keep only the bottom status bar instead of a completion popup', () => {
+    expect(diary).toContain('DiaryPendingStatusBar')
+    expect(diary).not.toContain('PendingEmbedNotice')
+    expect(diary).not.toContain('pendingNotice')
+    expect(hook).not.toContain('pendingNotice')
+    expect(hook).not.toContain('shouldShowPendingEmbedReminder')
+    expect(hook).not.toContain('lastPendingNotice')
   })
 })

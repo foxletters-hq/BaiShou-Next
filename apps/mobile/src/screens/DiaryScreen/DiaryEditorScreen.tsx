@@ -18,7 +18,6 @@ import {
   syncDiaryTagColorRegistry,
   formatLocalDate,
   parseDateStr,
-  deriveLegacyVaultId,
   type DiaryTagColorRegistry,
   type DiaryTemplateConfig
 } from '@baishou/shared'
@@ -36,9 +35,7 @@ import {
 } from '../../services/storage-permission.service'
 import { createDiaryEditorLifecycleHandlers } from './diary-editor-lifecycle.helpers'
 import { useDiaryEditorAttachments, useDiaryEditorExitGuard } from './useDiaryEditorAttachments'
-import { setDiaryGraphExtractHint } from './diary-graph-extract-hint'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
-import { mobileListPendingReextract } from '../../services/mobile-graph.service'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
@@ -276,38 +273,12 @@ export const DiaryEditorScreen: React.FC = () => {
       isDirtyRef.current = false
       dismissEditorKeyboard()
 
-      // G1.a：该篇若尚未整理进图谱，回到列表后显示轻提示
-      try {
-        const dateKey = formatLocalDate(targetDate)
-        const activeVault = services.vaultService.getActiveVault()
-        const vaultName = activeVault?.name || 'Personal'
-        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-        const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-        const pending = await mobileListPendingReextract({
-          vaultName,
-          vaultId,
-          shadowRepo,
-          pathService: services.pathService,
-          fileSystem: services.fileSystem
-        })
-        const hit = pending.find(
-          (p) => p.date === dateKey || String(p.filePath || '').includes(dateKey)
-        )
-        if (hit?.filePath) {
-          setDiaryGraphExtractHint({ filePath: hit.filePath, date: dateKey })
-        } else {
-          setDiaryGraphExtractHint(null)
-        }
-      } catch {
-        setDiaryGraphExtractHint(null)
-      }
-
       toast.showSuccess(t('common.saved', '已保存'))
       setSavePhase('leaving')
       await new Promise<void>((resolve) => {
         Animated.timing(leaveOpacity, {
           toValue: 0,
-          duration: 280,
+          duration: sharedTokens.animation.moderate,
           useNativeDriver: true
         }).start(() => resolve())
       })
@@ -499,31 +470,31 @@ export const DiaryEditorScreen: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  skeletonRoot: { flex: 1, paddingTop: 8 },
+  skeletonRoot: { flex: 1, paddingTop: sharedTokens.spacing.sm },
   skeletonAppBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.mdTight
   },
   skeletonMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 14
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdSnug
   },
   skeletonBody: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 14
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.mdSnug
   },
-  skeletonCircle: { width: 36, height: 36, borderRadius: 18 },
-  skeletonPill: { height: 28, width: 88, borderRadius: 14 },
+  skeletonCircle: { width: 36, height: 36, borderRadius: sharedTokens.radius.lg },
+  skeletonPill: { height: 28, width: 88, borderRadius: sharedTokens.radius.md },
   skeletonTitle: { flex: 1, maxWidth: 160 },
   skeletonAction: { width: 72 },
-  skeletonLine: { height: 14, borderRadius: 8 }
+  skeletonLine: { height: 14, borderRadius: sharedTokens.radius.sm }
 })

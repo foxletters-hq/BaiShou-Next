@@ -1,8 +1,8 @@
 import React from 'react'
-import { Modal, Text, TouchableOpacity, View } from 'react-native'
+import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
-import { diaryScreenStyles as styles } from './diary-screen.styles'
+import { Button, Modal, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 
 export function DiaryDeleteConfirmModal(props: {
   visible: boolean
@@ -10,43 +10,30 @@ export function DiaryDeleteConfirmModal(props: {
   onConfirm: () => void
 }) {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens } = useNativeTheme()
   const { visible, onCancel, onConfirm } = props
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <TouchableOpacity
-        style={[styles.deleteOverlay, { backgroundColor: colors.bgOverlay }]}
-        activeOpacity={1}
-        onPress={onCancel}
+    <Modal visible={visible} title={t('diary.delete_confirm_title')} onClose={onCancel}>
+      <Text
+        style={{
+          color: colors.textSecondary,
+          fontSize: mobileTypography.secondary.fontSize,
+          fontWeight: mobileTypography.secondary.fontWeight,
+          lineHeight: 20,
+          marginBottom: tokens.spacing.md
+        }}
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={[styles.deleteModal, { backgroundColor: colors.bgSurface }]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
-            {t('diary.delete_confirm_title')}
-          </Text>
-          <Text style={[styles.deleteContent, { color: colors.textSecondary }]}>
-            {t('diary.delete_confirm_content')}
-          </Text>
-          <View style={styles.deleteActions}>
-            <TouchableOpacity
-              style={[styles.deleteCancel, { backgroundColor: colors.bgSurfaceHighest }]}
-              onPress={onCancel}
-            >
-              <Text style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.deleteConfirm, { backgroundColor: colors.error }]}
-              onPress={onConfirm}
-            >
-              <Text style={{ color: colors.textOnPrimary }}>{t('common.delete')}</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        {t('diary.delete_confirm_content')}
+      </Text>
+      <View style={modalActionsStyle}>
+        <Button size="sm" variant="outlined" onPress={onCancel}>
+          {t('common.cancel')}
+        </Button>
+        <Button size="sm" destructive onPress={onConfirm}>
+          {t('common.delete')}
+        </Button>
+      </View>
     </Modal>
   )
 }
