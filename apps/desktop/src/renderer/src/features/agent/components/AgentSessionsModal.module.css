@@ -4,7 +4,7 @@
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-bottom: 20px !important;
+  padding-bottom: var(--spacing-md-plus) !important;
   box-sizing: border-box !important;
   border-radius: var(--radius-md) !important;
 }
@@ -24,13 +24,13 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
 }
 
@@ -46,7 +46,7 @@
   color: var(--text-tertiary);
   cursor: pointer;
   font-size: var(--ui-fs-sm);
-  padding: 4px;
+  padding: var(--spacing-xs);
 }
 
 .multiSelectBtn {
@@ -80,9 +80,9 @@
 .batchBar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
-  padding: 4px 0 0;
+  padding: var(--spacing-xs) 0 0;
 }
 
 .batchDeleteBtn {

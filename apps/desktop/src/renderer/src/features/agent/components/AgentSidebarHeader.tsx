@@ -1,7 +1,12 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge, Input } from '@baishou/ui'
+import {
+  resolveDesktopAssistantAvatarSrc,
+  AssistantKindBadge,
+  Input,
+  uiTypography
+} from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import {
@@ -10,6 +15,7 @@ import {
 } from '../../settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../../lib/prefetch-settings-entry'
 import { ChevronsUpDown, ListChecks, Plus, Settings } from 'lucide-react'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface AssistantAvatarProps {
   assistant: AgentAssistant
@@ -97,7 +103,10 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
           <div className={styles.assistantInfo}>
             <div className={styles.skeletonLine} style={{ width: 80 }} />
             {!compact ? (
-              <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
+              <div
+                className={styles.skeletonLine}
+                style={{ width: 60, marginTop: sharedTokens.spacing.xs }}
+              />
             ) : null}
           </div>
           <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
@@ -143,7 +152,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         {pinnedAssistants.length === 0 && (
           <div
             style={{
-              fontSize: 12,
+              fontSize: uiTypography.sm,
               color: 'var(--text-secondary)',
               flex: 1,
               whiteSpace: 'nowrap',

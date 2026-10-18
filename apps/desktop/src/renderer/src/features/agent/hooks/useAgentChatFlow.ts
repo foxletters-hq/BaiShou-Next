@@ -233,12 +233,14 @@ export function useAgentChatFlow() {
           setPricingLastUpdated(new Date(result.lastUpdated))
           toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))
         } else if (!result.success || result.loadFailed || !result.hasPrices) {
-          toast.showError(result.error || t('agent.chat.pricing_refresh_failed', '价格表刷新失败'))
+          const errMsg = result.error || t('agent.chat.pricing_refresh_failed', '请检查网络环境')
+          toast.showError(errMsg)
+          return { ...result, success: false, error: errMsg }
         }
         return result
       } catch (e) {
         const errMsg =
-          e instanceof Error ? e.message : t('agent.chat.pricing_refresh_failed', '价格表刷新失败')
+          e instanceof Error ? e.message : t('agent.chat.pricing_refresh_failed', '请检查网络环境')
         console.error('Failed to refresh pricing:', e)
         toast.showError(errMsg)
         return { success: false, error: errMsg }

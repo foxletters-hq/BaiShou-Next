@@ -1,5 +1,4 @@
 import {
-  CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,
   computeInitialRoundWindowStart,
   flattenRoundSlice,
@@ -35,8 +34,6 @@ export function resolveLatestCompactionAnchor(messages: readonly any[]): Compact
 
   return best
 }
-export const CHAT_INITIAL_ROUND_BATCH = CHAT_ROUNDS_PER_PAGE
-export const CHAT_INITIAL_MESSAGE_BATCH = CHAT_MESSAGE_FETCH_LIMIT
 
 export function resolveHasMore(roundWindowStart: number, fetchHasMore: boolean): boolean {
   return roundWindowStart > 0 || fetchHasMore
