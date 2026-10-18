@@ -1,15 +1,22 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { View, Text } from 'react-native'
 import Animated from 'react-native-reanimated'
-import { Sparkles } from 'lucide-react-native'
+import { splitAgentIdleGreetingLines } from '@baishou/shared'
+import {
+  AssistantAvatar,
+  STREAMING_INITIAL_STOCKPILE_CHARS,
+  StreamingBubble,
+  getChatOverBackgroundMetaTextStyle,
+  useIsAgentMarkdownRevealing
+} from '@baishou/ui/native'
 import { useAgentIdleGreeting } from '../../../hooks/useAgentIdleGreeting'
-import { StreamingBubble } from '@baishou/ui/native'
 import {
   logAgentScrollEvent,
   logAgentUiEvent,
   setAgentScrollDebugContext
 } from '../../../utils/agent-scroll-diagnostics'
 import {
+  EMPTY_CHAT_AVATAR_SIZE,
   HOLD_LIVE_PRESENTATION_MS,
   IDLE_LIVE_COMPRESSION,
   LIVE_ASSISTANT_STREAM_KEY
@@ -96,6 +103,7 @@ export function useAgentStreamingPresentation(deps: {
 
   const [holdLivePresentation, setHoldLivePresentation] = useState(false)
   const [keepLiveRowAfterHold, setKeepLiveRowAfterHold] = useState(false)
+  const isMarkdownRevealing = useIsAgentMarkdownRevealing()
 
   const showStreamingFooter = isStreaming || isStreamBridgeActive || Boolean(streamError)
 
@@ -186,9 +194,13 @@ export function useAgentStreamingPresentation(deps: {
     })
   }, [messages.length])
 
-  /** 与 bubbleTextStreaming 对齐：linger / hold 期间仍视为展示态，避免结束帧切组件 */
+  /** 与 bubbleTextStreaming 对齐：linger / hold / 渐显期间仍视为展示态，避免结束帧切组件 */
   const markdownPresentationActive =
-    isStreaming || isStreamBridgeActive || streamPresentationLinger || holdLivePresentation
+    isStreaming ||
+    isStreamBridgeActive ||
+    streamPresentationLinger ||
+    holdLivePresentation ||
+    isMarkdownRevealing
 
   /** 思考区左侧转圈：仅真实思考内容阶段；连接等待不要冒充「深度思考中」 */
   const streamingThinkLoading = useMemo(() => {
@@ -211,11 +223,18 @@ export function useAgentStreamingPresentation(deps: {
 
   const showStreamingTail = showStreamingBubble
   const liveAssistantActive =
-    showStreamingFooter || streamPresentationLinger || holdLivePresentation
+    showStreamingFooter || streamPresentationLinger || holdLivePresentation || isMarkdownRevealing
+  const hasVisibleStreamingText = isStreaming
+    ? streamingText.trim().length >= STREAMING_INITIAL_STOCKPILE_CHARS
+    : Boolean(streamingText.trim())
+  const hasNonTextTimeline = useMemo(
+    () => timeline.some((item) => item.kind !== 'text'),
+    [timeline]
+  )
   const hasStreamingBody = Boolean(
-    streamingText.trim() ||
+    hasVisibleStreamingText ||
     streamingReasoning.trim() ||
-    timeline.length > 0 ||
+    hasNonTextTimeline ||
     activeTool ||
     completedTools.length > 0 ||
     pendingEmojiAttachments.length > 0
@@ -262,8 +281,8 @@ export function useAgentStreamingPresentation(deps: {
 
   /** 尚无正文时仅用 StreamingBubble 显示等待点；有内容后统一走 ChatBubble */
   const renderStreamingDots = useCallback(
-    () => (
-      <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+    (metaTone?: 'light' | 'dark' | boolean) => (
+      <View key={LIVE_ASSISTANT_STREAM_KEY} collapsable={false} style={styles.bubble}>
         <StreamingBubble
           text=""
           reasoning=""
@@ -275,7 +294,8 @@ export function useAgentStreamingPresentation(deps: {
           completedTools={streamingCompletedTools}
           attachments={pendingEmojiAttachments}
           aiProfile={chatAiProfile}
-          invertMetaOverBackground={hasChatBackground}
+          invertMetaOverBackground={metaTone ?? hasChatBackground}
+          hasChatBackground={hasChatBackground}
           error={streamError ?? null}
         />
       </View>
@@ -303,22 +323,38 @@ export function useAgentStreamingPresentation(deps: {
     logAgentUiEvent('live_assistant_active', { liveAssistantActive, hasStreamingBody })
   }, [liveAssistantActive, hasStreamingBody])
 
+  const hadLingerInTurnRef = useRef(false)
+  if (streamPresentationLinger) {
+    hadLingerInTurnRef.current = true
+  }
+
   useEffect(() => {
     if (isStreaming || isStreamBridgeActive) {
+      hadLingerInTurnRef.current = false
       setHoldLivePresentation(true)
       setKeepLiveRowAfterHold(false)
     }
   }, [isStreaming, isStreamBridgeActive])
 
   useEffect(() => {
-    if (streamPresentationLinger) {
+    if (isStreaming || isStreamBridgeActive || streamPresentationLinger || isMarkdownRevealing) {
       setHoldLivePresentation(true)
       return
     }
     if (!holdLivePresentation) return
+    if (!hadLingerInTurnRef.current) {
+      setHoldLivePresentation(false)
+      return
+    }
     const timer = setTimeout(() => setHoldLivePresentation(false), HOLD_LIVE_PRESENTATION_MS)
     return () => clearTimeout(timer)
-  }, [streamPresentationLinger, holdLivePresentation])
+  }, [
+    isStreaming,
+    isStreamBridgeActive,
+    streamPresentationLinger,
+    isMarkdownRevealing,
+    holdLivePresentation
+  ])
 
   const prevAssistantPersistedRef = useRef(assistantPersistedInList)
   const prevLingerRef = useRef(streamPresentationLinger)
@@ -351,7 +387,6 @@ export function useAgentStreamingPresentation(deps: {
   const prevHoldLiveRef = useRef(holdLivePresentation)
   useLayoutEffect(() => {
     if (prevHoldLiveRef.current && !holdLivePresentation) {
-      setKeepLiveRowAfterHold(true)
       logAgentScrollEvent('hold_live_end_finalize_handoff', {
         offsetY: Math.round(scrollOffsetRef.current),
         messageId: lastMessage?.id,
@@ -359,9 +394,6 @@ export function useAgentStreamingPresentation(deps: {
         contentAnchorMinHeight: contentAnchorMinHeight ?? 0
       })
       finalizeContentHandoff()
-      requestAnimationFrame(() => {
-        setKeepLiveRowAfterHold(false)
-      })
     }
     prevHoldLiveRef.current = holdLivePresentation
   }, [
@@ -411,21 +443,40 @@ export function useAgentStreamingPresentation(deps: {
     !currentSessionId && messages.length === 0 && !isStreaming && !isStreamBridgeActive
   const idleGreeting = useAgentIdleGreeting(showIdleGreeting)
 
-  const renderEmptyState = () => (
-    <View style={[styles.empty, { marginTop: emptyOffsetTop }]}>
-      <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
-        <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
-      </View>
-      <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
-        {showIdleGreeting ? idleGreeting : t('agent.chat.start_chat', '开始和伙伴对话')}
-      </Text>
-      {!showIdleGreeting ? (
-        <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-          {t('agent.chat.empty_hint', '试试问：「我这周写了什么日记？」')}
-        </Text>
-      ) : null}
-    </View>
+  const greetingLines = splitAgentIdleGreetingLines(
+    showIdleGreeting ? idleGreeting : t('agent.chat.start_chat', '开始和伙伴对话')
   )
+
+  const renderEmptyState = (metaTone?: 'light' | 'dark' | boolean) => {
+    const emptyMetaStyle = getChatOverBackgroundMetaTextStyle(metaTone ?? hasChatBackground)
+    return (
+      <View style={[styles.empty, { marginTop: emptyOffsetTop }]}>
+        <View style={styles.emptyAvatar}>
+          <AssistantAvatar
+            avatarPath={chatAiProfile.avatarPath}
+            resolvedAvatarUri={chatAiProfile.resolvedAvatarUri}
+            emoji={chatAiProfile.emoji}
+            size={EMPTY_CHAT_AVATAR_SIZE}
+          />
+        </View>
+        <View style={styles.emptyGreeting}>
+          {greetingLines.map((line, lineIndex) => (
+            <Text
+              key={`${lineIndex}:${line}`}
+              style={[styles.emptyText, { color: colors.textPrimary }, emptyMetaStyle]}
+            >
+              {line}
+            </Text>
+          ))}
+        </View>
+        {!showIdleGreeting ? (
+          <Text style={[styles.emptySub, { color: colors.textSecondary }, emptyMetaStyle]}>
+            {t('agent.chat.empty_hint', '试试问：「我这周写了什么日记？」')}
+          </Text>
+        ) : null}
+      </View>
+    )
+  }
 
   return {
     showStreamingBubble,

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const agentScreenStyles = StyleSheet.create({
   safeArea: { flex: 1 },
@@ -10,49 +11,49 @@ export const agentScreenStyles = StyleSheet.create({
     resizeMode: 'cover'
   },
   loadMore: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    marginHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
     alignItems: 'center',
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 10
+    borderRadius: sharedTokens.radius.control
   },
   loadMoreText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   list: { flex: 1 },
   /** 有消息时不用 flexGrow，避免流式 Footer 移除后 offset 被钳到 0 */
-  listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
-  bubble: { marginBottom: 6 },
+  listContent: { paddingTop: sharedTokens.spacing.lg, paddingBottom: 0, paddingHorizontal: 0 },
+  bubble: { marginBottom: sharedTokens.spacing.xsPlus },
   toolStatusContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 12,
-    gap: 6
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
+    marginBottom: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.xsPlus
   },
   toolItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   toolCheckmark: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   toolSpinner: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   toolName: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   toolNameActive: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   empty: {
@@ -60,24 +61,23 @@ export const agentScreenStyles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24
+    paddingHorizontal: sharedTokens.spacing.lg
   },
-  emptyIconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+  emptyAvatar: {
+    marginBottom: sharedTokens.spacing.mdTight
+  },
+  emptyGreeting: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.smPlus
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
-    marginBottom: 10,
     textAlign: 'center'
   },
   emptySub: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 20,
@@ -85,19 +85,16 @@ export const agentScreenStyles = StyleSheet.create({
   },
   scrollBtnWrap: {
     position: 'absolute',
-    right: 24
+    right: sharedTokens.spacing.lg,
+    zIndex: 15
   },
   scrollBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4
+    borderWidth: 1
   },
   inputDock: {
     position: 'absolute',
@@ -109,42 +106,42 @@ export const agentScreenStyles = StyleSheet.create({
   emojiOnlyRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   emojiOnlyAvatar: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden',
     flexShrink: 0
   },
   emojiOnlyAvatarImg: {
     width: 28,
     height: 28,
-    borderRadius: 14
+    borderRadius: sharedTokens.radius.md
   },
   emojiOnlyAvatarFallback: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.08)'
   },
   emojiOnlyAvatarText: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   },
   emojiOnlyImages: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: sharedTokens.spacing.xs,
     flexShrink: 1
   },
   emojiOnlyImg: {
     width: 120,
     height: 120,
-    borderRadius: 8
+    borderRadius: sharedTokens.radius.sm
   }
 })

@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   type WebSearchConfig,
@@ -57,7 +58,7 @@ export function useAgentScreenSession(deps: {
   const [restoreLastSessionOnReturn, setRestoreLastSessionOnReturn] = useState(true)
   const userProfile = useAgentUserProfile()
 
-  useEffect(() => {
+  const loadRestoreLastSessionPref = useCallback(() => {
     if (!dbReady || !services) return
     void services.settingsManager
       .get<AgentBehaviorConfig>('agent_behavior')
@@ -66,23 +67,32 @@ export function useAgentScreenSession(deps: {
         setRestoreLastSessionOnReturn(merged.restoreLastSessionOnReturn !== false)
       })
       .catch(() => setRestoreLastSessionOnReturn(true))
-  }, [dbReady, services, vaultRevision])
+  }, [dbReady, services])
 
   useEffect(() => {
+    loadRestoreLastSessionPref()
+  }, [loadRestoreLastSessionPref, vaultRevision])
+
+  const reloadAiProviders = useCallback(async () => {
     if (!dbReady || !services) return
-    let cancelled = false
-    void services.settingsManager
-      .get<AIProviderConfig[]>('ai_providers')
-      .then((list) => {
-        if (!cancelled) setAiProviders(list ?? [])
-      })
-      .catch(() => {
-        if (!cancelled) setAiProviders([])
-      })
-    return () => {
-      cancelled = true
+    try {
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      setAiProviders(list)
+    } catch {
+      setAiProviders([])
     }
-  }, [dbReady, services, vaultRevision])
+  }, [dbReady, services])
+
+  useEffect(() => {
+    void reloadAiProviders()
+  }, [reloadAiProviders, vaultRevision])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRestoreLastSessionPref()
+      void reloadAiProviders()
+    }, [loadRestoreLastSessionPref, reloadAiProviders])
+  )
 
   useEffect(() => {
     if (!dbReady || !services) return

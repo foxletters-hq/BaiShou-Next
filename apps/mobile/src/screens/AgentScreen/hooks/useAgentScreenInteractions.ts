@@ -99,9 +99,7 @@ export function useAgentScreenInteractions(deps: {
   const handleShortcutSelect = useCallback(
     (shortcut: PromptShortcut) => {
       setShowShortcutSheet(false)
-      if (shortcut.content.trim()) {
-        inputBarRef.current?.insertShortcutContent(shortcut.content.trim())
-      }
+      inputBarRef.current?.applyShortcut(shortcut)
     },
     [setShowShortcutSheet, inputBarRef]
   )
