@@ -1,16 +1,21 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { useColorScheme, View, StyleSheet } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
-  GRAPH_CANVAS_THEME,
   GRAPH_FORCE_DEFAULTS,
   type GraphAppearanceSettings,
   type GraphForceSettings
 } from '@baishou/shared'
+import { useNativeTheme } from '@baishou/ui/native'
 import { buildGraphForceHtml } from './graph-force-webview-html'
 import type { GraphForceEdge, GraphForceNode } from './graph-force-webview.types'
-import { injectJson, setToArray, topologyFingerprint } from './graph-force-webview.util'
+import {
+  injectJson,
+  setToArray,
+  topologyFingerprint,
+  graphMetaFingerprint
+} from './graph-force-webview.util'
 
 export type { GraphForceEdge, GraphForceNode } from './graph-force-webview.types'
 
@@ -48,9 +53,11 @@ export const GraphForceWebView: React.FC<{
   onSelectNode,
   onClearSelection
 }) => {
-  const colorScheme = useColorScheme() === 'light' ? 'light' : 'dark'
-  const canvasBg = GRAPH_CANVAS_THEME[colorScheme].background
+  const { colors, isDark } = useNativeTheme()
+  const colorScheme = isDark ? 'dark' : 'light'
+  const canvasBg = colors.bgApp
   const fp = useMemo(() => topologyFingerprint(nodes, edges), [nodes, edges])
+  const metaFp = useMemo(() => graphMetaFingerprint(nodes, edges), [nodes, edges])
   const html = useMemo(
     () => buildGraphForceHtml(nodes, edges, forceSettings, appearanceSettings, colorScheme),
     // Rebuild only when graph topology or appearance scheme changes.
@@ -69,6 +76,7 @@ export const GraphForceWebView: React.FC<{
   const locateSeqRef = useRef(locateSeq)
   const animationTickRef = useRef(animationTick)
   const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
   const onSelectRef = useRef(onSelectNode)
   const onClearRef = useRef(onClearSelection)
   const loadedRef = useRef(false)
@@ -85,6 +93,7 @@ export const GraphForceWebView: React.FC<{
   highlightEdgeIdsRef.current = highlightEdgeIds
   locateIdsRef.current = locateIds
   nodesRef.current = nodes
+  edgesRef.current = edges
   onSelectRef.current = onSelectNode
   onClearRef.current = onClearSelection
 
@@ -118,8 +127,11 @@ export const GraphForceWebView: React.FC<{
 
   useEffect(() => {
     if (!loadedRef.current) return
-    injectJson(webRef, 'window.__patchGraphMeta && window.__patchGraphMeta', { nodes, edges })
-  }, [nodes, edges])
+    injectJson(webRef, 'window.__patchGraphMeta && window.__patchGraphMeta', {
+      nodes: nodesRef.current,
+      edges: edgesRef.current
+    })
+  }, [metaFp])
 
   useEffect(() => {
     if (!loadedRef.current) return
@@ -239,7 +251,7 @@ export const GraphForceWebView: React.FC<{
   }
 
   return (
-    <View style={styles.wrap}>
+    <View collapsable={false} style={[styles.wrap, { backgroundColor: canvasBg }]}>
       <WebView
         ref={webRef}
         originWhitelist={['about:blank']}
@@ -259,19 +271,23 @@ export const GraphForceWebView: React.FC<{
           prevSelectedIdRef.current = selectedIdRef.current
         }}
         style={[styles.web, { backgroundColor: canvasBg }]}
+        containerStyle={{ flex: 1, backgroundColor: canvasBg }}
         javaScriptEnabled
         domStorageEnabled
         allowsInlineMediaPlayback
         setSupportMultipleWindows={false}
         scrollEnabled={false}
+        nestedScrollEnabled={true}
+        scalesPageToFit={false}
         bounces={false}
         overScrollMode="never"
+        directionalLockEnabled
       />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, minHeight: 280 },
+  wrap: { flex: 1, minHeight: 280, overflow: 'hidden' },
   web: { flex: 1 }
 })

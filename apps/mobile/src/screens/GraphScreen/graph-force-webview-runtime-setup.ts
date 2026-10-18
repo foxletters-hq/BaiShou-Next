@@ -1,6 +1,4 @@
 export const GRAPH_FORCE_RUNTIME_SETUP = `
-function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
-
 const canvas = document.getElementById('c');
 const labelCanvas = document.getElementById('labels');
 let gl = canvas.getContext('webgl', { alpha:false, antialias:true, premultipliedAlpha:false })
@@ -83,6 +81,7 @@ let followUntil = 0;
 let pendingZoom = false;
 let locateRaf = null;
 let interacting = false;
+let settling = false;
 
 let dragNode = null;
 let pan = null;

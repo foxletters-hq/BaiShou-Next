@@ -1,3 +1,7 @@
+import { mobileTypography } from '@baishou/ui/theme/tokens'
+
+const GRAPH_LABEL_FONT_SIZE = mobileTypography.caption.fontSize
+
 export const GRAPH_FORCE_RUNTIME_DRAW = `
 function drawArrowHead(g,x1,y1,x2,y2,size){
   const angle = Math.atan2(y2-y1, x2-x1);
@@ -10,6 +14,29 @@ function drawArrowHead(g,x1,y1,x2,y2,size){
   g.lineTo(ax - size*Math.cos(angle+0.4), ay - size*Math.sin(angle+0.4));
   g.closePath();
   g.fill();
+}
+
+function nodeRadius(n){
+  const nodeScale = appearance.nodeSize == null ? 1 : appearance.nodeSize;
+  return (NODE_RADIUS_BASE + Math.min(NODE_RADIUS_MENTION_CAP, (n.mentionCount||1)*NODE_RADIUS_MENTION_SCALE))*nodeScale;
+}
+function isHubNode(n, degree){
+  if(degree<=0) return appearance.showIsolatedNodes !== false;
+  return degree >= (appearance.hubLabelMinDegree||3) || (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
+}
+function shouldShowLabel(n, degree, dim, inFocus, focusing, highlighted){
+  const textAlpha = appearance.textOpacity == null ? 1 : appearance.textOpacity;
+  if(textAlpha<=0.01 || dim) return false;
+  const important = n.id===selectedId || highlighted || (focusing && inFocus);
+  if(important) return true;
+  if(!isHubNode(n, degree)) return false;
+  const k = transform.k || 1;
+  if(k < LABEL_ZOOM_HUB) return false;
+  if(degree<=0 && k < LABEL_ZOOM_ISOLATED) return false;
+  const sx = n.x * k + transform.x;
+  const sy = n.y * k + transform.y;
+  if(sx < -48 || sy < -48 || sx > W+48 || sy > H+48) return false;
+  return true;
 }
 
 function drawCanvas2d(g){
@@ -50,17 +77,12 @@ function drawCanvas2d(g){
   g.globalAlpha = 1;
 
   for(const n of nodes){
-    const r=(6+Math.min(10,(n.mentionCount||1)*1.2))*nodeScale;
+    const r=nodeRadius(n);
     const pending = n.reviewStatus==='pending';
     const highlighted = highlightIds.has(n.id) || n.id===selectedId;
     const inFocus = !focusing || focusIds.has(n.id);
     const dim = focusing && !inFocus;
     const degree = degreeById.get(n.id)||0;
-    const isHub =
-      degree <= 0
-        ? appearance.showIsolatedNodes !== false
-        : degree >= (appearance.hubLabelMinDegree||3) ||
-          (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
 
     g.globalAlpha = dim ? 0.1 : (pending && !highlighted) ? 0.45 : 1;
     g.beginPath();
@@ -82,18 +104,15 @@ function drawCanvas2d(g){
       g.setLineDash([]);
     }
 
-    const showLabel =
-      textAlpha > 0.01 &&
-      !dim &&
-      (n.id===selectedId || highlightIds.has(n.id) || (focusing && inFocus) || isHub);
+    const showLabel = shouldShowLabel(n, degree, dim, inFocus, focusing, highlighted);
     if(showLabel){
       g.globalAlpha = (pending ? 0.45 : 1) * textAlpha;
       g.fillStyle=theme.label;
-      g.font=(12/k)+'px system-ui';
+      g.font=(${GRAPH_LABEL_FONT_SIZE}/k)+'px system-ui';
       g.fillText(n.name.slice(0,16), n.x+r+3, n.y+4);
       if(n.discriminator){
-        g.font=(10/k)+'px system-ui';
-        g.fillText(String(n.discriminator).slice(0,16), n.x+r+3, n.y+4+12/k);
+        g.font=(${GRAPH_LABEL_FONT_SIZE}/k)+'px system-ui';
+        g.fillText(String(n.discriminator).slice(0,16), n.x+r+3, n.y+4+${GRAPH_LABEL_FONT_SIZE}/k);
       }
     }
     g.globalAlpha = 1;
@@ -128,17 +147,12 @@ function drawOverlay(){
   }
 
   for(const n of nodes){
-    const r=(6+Math.min(10,(n.mentionCount||1)*1.2))*nodeScale;
+    const r=nodeRadius(n);
     const pending = n.reviewStatus==='pending';
     const highlighted = highlightIds.has(n.id) || n.id===selectedId;
     const inFocus = !focusing || focusIds.has(n.id);
     const dim = focusing && !inFocus;
     const degree = degreeById.get(n.id)||0;
-    const isHub =
-      degree <= 0
-        ? appearance.showIsolatedNodes !== false
-        : degree >= (appearance.hubLabelMinDegree||3) ||
-          (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
 
     if(highlighted || (pending && inFocus)){
       g.beginPath();
@@ -150,18 +164,15 @@ function drawOverlay(){
       g.setLineDash([]);
     }
 
-    const showLabel =
-      textAlpha > 0.01 &&
-      !dim &&
-      (n.id===selectedId || highlightIds.has(n.id) || (focusing && inFocus) || isHub);
+    const showLabel = shouldShowLabel(n, degree, dim, inFocus, focusing, highlighted);
     if(showLabel){
       g.globalAlpha = (pending ? 0.45 : 1) * textAlpha;
       g.fillStyle=theme.label;
-      g.font=(12/k)+'px system-ui';
+      g.font=(${GRAPH_LABEL_FONT_SIZE}/k)+'px system-ui';
       g.fillText(n.name.slice(0,16), n.x+r+3, n.y+4);
       if(n.discriminator){
-        g.font=(10/k)+'px system-ui';
-        g.fillText(String(n.discriminator).slice(0,16), n.x+r+3, n.y+4+12/k);
+        g.font=(${GRAPH_LABEL_FONT_SIZE}/k)+'px system-ui';
+        g.fillText(String(n.discriminator).slice(0,16), n.x+r+3, n.y+4+${GRAPH_LABEL_FONT_SIZE}/k);
       }
       g.globalAlpha = 1;
     }
@@ -170,14 +181,6 @@ function drawOverlay(){
 }
 
 function draw(){
-  if(!interacting && !dragNode && !cameraAnim && followUntil > performance.now() && cameraFitIds().length){
-    easeCameraTowardSelected({
-      k: pendingZoom ? Math.max(transform.k, LOCATE_TARGET_K) : undefined,
-      alpha: CAMERA_FOLLOW_LERP
-    });
-  } else if(pendingZoom && followUntil <= performance.now()){
-    pendingZoom = false;
-  }
   if(useGl){
     glDraw();
     drawOverlay();
@@ -186,32 +189,25 @@ function draw(){
   }
 }
 
-let simRunning = true;
-let rafId = null;
 function kinetic(){
   let e = 0;
   for(const n of nodes) e += (n.vx||0)*(n.vx||0) + (n.vy||0)*(n.vy||0);
   return e;
 }
-function loop(){
-  rafId = requestAnimationFrame(loop);
-  const following = cameraAnim || followUntil > performance.now();
-  if(simRunning){
+function settleLayout(){
+  settling = true;
+  const maxSteps = nodes.length>1200?60:nodes.length>400?120:200;
+  for(let i=0;i<maxSteps;i++){
     step();
-    if(!dragNode && kinetic() < 0.08) simRunning = false;
+    if(kinetic() < 0.08) break;
   }
-  draw();
-  if(!simRunning && !following){
-    cancelAnimationFrame(rafId);
-    rafId = null;
-  }
-}
-function wakeSim(){
-  simRunning = true;
-  if(rafId == null) loop();
+  settling = false;
+  for(const n of nodes){ n.vx=0; n.vy=0; }
+  fitAllNodes();
 }
 function requestDraw(){
-  if(rafId == null) draw();
+  draw();
 }
-loop();
+settleLayout();
+draw();
 `

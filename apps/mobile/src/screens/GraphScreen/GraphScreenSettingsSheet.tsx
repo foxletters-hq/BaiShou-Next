@@ -1,5 +1,5 @@
-import React from 'react'
-import { Pressable, ScrollView, Text, useWindowDimensions } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   type GraphAppearanceSettings,
@@ -7,11 +7,12 @@ import {
   type GraphForceSettings,
   type UserGender
 } from '@baishou/shared'
-import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
+import { FloatingModal, SegmentedControl, useNativeTheme } from '@baishou/ui/native'
 import { GraphScreenSettingsCanvas } from './GraphScreenSettingsCanvas'
 import { GraphScreenSettingsOrganize } from './GraphScreenSettingsOrganize'
 import { styles } from './GraphScreen.styles'
 import type { GraphScreenSettingsSection } from './graph-screen.types'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function GraphScreenSettingsSheet(props: {
   visible: boolean
@@ -20,9 +21,19 @@ export function GraphScreenSettingsSheet(props: {
   settingsSection: GraphScreenSettingsSection
   onToggleSection: (key: keyof GraphScreenSettingsSection) => void
   organize?: {
-    profileForm: { nickname: string; birthday: string; gender: UserGender | '' }
+    profileForm: {
+      nickname: string
+      birthday: string
+      gender: UserGender | ''
+      customGender?: string
+    }
     onProfileFormChange: (
-      patch: Partial<{ nickname: string; birthday: string; gender: UserGender | '' }>
+      patch: Partial<{
+        nickname: string
+        birthday: string
+        gender: UserGender | ''
+        customGender?: string
+      }>
     ) => void
     profileErrors: { nickname?: boolean; birthday?: boolean; gender?: boolean }
     profileBusy: boolean
@@ -69,6 +80,18 @@ export function GraphScreenSettingsSheet(props: {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
+  const [activeTab, setActiveTab] = useState<'canvas' | 'organize'>(
+    props.mode === 'canvas' ? 'canvas' : 'organize'
+  )
+
+  useEffect(() => {
+    if (props.visible) {
+      setActiveTab(props.mode === 'canvas' ? 'canvas' : 'organize')
+    }
+  }, [props.visible, props.mode])
+
+  const showTabs = Boolean(props.canvas && props.organize)
+  const currentTab = showTabs ? activeTab : props.canvas ? 'canvas' : 'organize'
 
   return (
     <FloatingModal
@@ -82,30 +105,24 @@ export function GraphScreenSettingsSheet(props: {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-          {props.mode === 'canvas' ? t('graph.side_canvas', '画布') : t('graph.settings', '设置')}
+          {t('graph.settings', '设置')}
         </Text>
 
-        {props.mode === 'organize' ? (
-          <>
-            <Pressable
-              onPress={() => props.onToggleSection('organize')}
-              style={styles.settingsHead}
-            >
-              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-                {props.settingsSection.organize ? '▾ ' : '▸ '}
-                {t('graph.side_organize', '整理')}
-              </Text>
-            </Pressable>
-            {props.settingsSection.organize && props.organize ? (
-              <GraphScreenSettingsOrganize
-                settingsSection={props.settingsSection}
-                onToggleProfile={() => props.onToggleSection('profile')}
-                onToggleData={() => props.onToggleSection('data')}
-                {...props.organize}
-              />
-            ) : null}
-          </>
-        ) : props.canvas ? (
+        {showTabs ? (
+          <View style={{ marginBottom: sharedTokens.spacing.md }}>
+            <SegmentedControl
+              size="small"
+              value={currentTab}
+              onChange={(tab) => setActiveTab(tab as 'canvas' | 'organize')}
+              options={[
+                { value: 'canvas', label: t('graph.side_canvas', '画布') },
+                { value: 'organize', label: t('graph.side_organize', '整理') }
+              ]}
+            />
+          </View>
+        ) : null}
+
+        {currentTab === 'canvas' && props.canvas ? (
           <GraphScreenSettingsCanvas
             settingsSection={props.settingsSection}
             onToggleAppearance={() => props.onToggleSection('appearance')}
@@ -114,7 +131,19 @@ export function GraphScreenSettingsSheet(props: {
           />
         ) : null}
 
-        <Pressable onPress={props.onClose} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+        {currentTab === 'organize' && props.organize ? (
+          <GraphScreenSettingsOrganize
+            settingsSection={props.settingsSection}
+            onToggleProfile={() => props.onToggleSection('profile')}
+            onToggleData={() => props.onToggleSection('data')}
+            {...props.organize}
+          />
+        ) : null}
+
+        <Pressable
+          onPress={props.onClose}
+          style={{ alignSelf: 'flex-end', marginTop: sharedTokens.spacing.sm }}
+        >
           <Text style={{ color: colors.primary, fontWeight: '600' }}>
             {t('common.close', '关闭')}
           </Text>

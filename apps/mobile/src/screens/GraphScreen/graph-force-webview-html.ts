@@ -1,3 +1,4 @@
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 import {
   GRAPH_CANVAS_THEME,
   GRAPH_FORCE_CHARGE_DISTANCE_MAX_LINK_SCALE,
@@ -18,6 +19,16 @@ import { GRAPH_FORCE_RUNTIME_GL } from './graph-force-webview-runtime-gl'
 import { GRAPH_FORCE_RUNTIME_INPUT } from './graph-force-webview-runtime-input'
 import { GRAPH_FORCE_RUNTIME_PHYSICS } from './graph-force-webview-runtime-physics'
 import { GRAPH_FORCE_RUNTIME_SETUP } from './graph-force-webview-runtime-setup'
+import {
+  GRAPH_MOBILE_CAMERA_FIT_PADDING,
+  GRAPH_MOBILE_HIT_MIN_PX,
+  GRAPH_MOBILE_LABEL_ZOOM_HUB,
+  GRAPH_MOBILE_LABEL_ZOOM_ISOLATED,
+  GRAPH_MOBILE_NODE_RADIUS_BASE,
+  GRAPH_MOBILE_NODE_RADIUS_MENTION_CAP,
+  GRAPH_MOBILE_NODE_RADIUS_MENTION_SCALE,
+  GRAPH_MOBILE_SETTLE_CENTER_SCALE
+} from './graph-force-webview.util'
 import type { GraphForceEdge, GraphForceNode } from './graph-force-webview.types'
 
 export function buildGraphForceHtml(
@@ -38,12 +49,16 @@ export function buildGraphForceHtml(
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<script>
+document.addEventListener('touchstart', function(ev){ ev.preventDefault(); }, {passive:false, capture:true});
+document.addEventListener('touchmove', function(ev){ ev.preventDefault(); }, {passive:false, capture:true});
+</script>
 <style>
   html,body{margin:0;padding:0;width:100%;height:100%;background:${theme.background};overflow:hidden;font-family:system-ui,sans-serif;touch-action:none}
   #stage{position:relative;width:100%;height:100%}
   canvas{position:absolute;left:0;top:0;display:block;width:100%;height:100%;touch-action:none}
   #labels{pointer-events:none}
-  #hint{position:absolute;left:10px;bottom:10px;color:${theme.hint};font-size:11px;pointer-events:none}
+  #hint{position:absolute;left:10px;bottom:10px;color:${theme.hint};font-size:${mobileTypography.caption.fontSize}px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -51,7 +66,7 @@ export function buildGraphForceHtml(
 <canvas id="c"></canvas>
 <canvas id="labels"></canvas>
 </div>
-<div id="hint">虚线=待确认 · 拖动/捏合缩放 · 点节点</div>
+<div id="hint">虚线=待确认 · 拖动/捏合 · 放大后显示名字</div>
 <script>
 const DATA = ${payload};
 const TYPE_COLORS = ${JSON.stringify(GRAPH_NODE_TYPE_COLORS)};
@@ -65,11 +80,16 @@ const CHARGE_DISTANCE_MAX_MIN = ${GRAPH_FORCE_CHARGE_DISTANCE_MAX_MIN};
 const CHARGE_DISTANCE_MAX_LINK_SCALE = ${GRAPH_FORCE_CHARGE_DISTANCE_MAX_LINK_SCALE};
 const DRAG_THRESHOLD_PX = 5;
 const LOCATE_TARGET_K = 1.85;
-const CAMERA_FOLLOW_LERP = 0.2;
-const CAMERA_CENTER_MS = 480;
-const CAMERA_LOCATE_MS = 620;
 const K_MIN = 0.35;
 const K_MAX = 4;
+const NODE_RADIUS_BASE = ${GRAPH_MOBILE_NODE_RADIUS_BASE};
+const NODE_RADIUS_MENTION_SCALE = ${GRAPH_MOBILE_NODE_RADIUS_MENTION_SCALE};
+const NODE_RADIUS_MENTION_CAP = ${GRAPH_MOBILE_NODE_RADIUS_MENTION_CAP};
+const LABEL_ZOOM_HUB = ${GRAPH_MOBILE_LABEL_ZOOM_HUB};
+const LABEL_ZOOM_ISOLATED = ${GRAPH_MOBILE_LABEL_ZOOM_ISOLATED};
+const SETTLE_CENTER_SCALE = ${GRAPH_MOBILE_SETTLE_CENTER_SCALE};
+const HIT_MIN_PX = ${GRAPH_MOBILE_HIT_MIN_PX};
+const CAMERA_FIT_PADDING = ${GRAPH_MOBILE_CAMERA_FIT_PADDING};
 ${GRAPH_FORCE_RUNTIME_SETUP}
 ${GRAPH_FORCE_RUNTIME_CAMERA}
 ${GRAPH_FORCE_RUNTIME_PHYSICS}

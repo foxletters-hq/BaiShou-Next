@@ -50,51 +50,13 @@ function easeCameraTowardSelected(opts){
 
 function locateSelected(opts){
   if(interacting) return;
+  stopCameraFollow();
   const ids = cameraFitIds();
+  if(!ids.length) return;
   const withZoom = !!(opts && opts.zoom);
-  if(!ids.length){
-    pendingZoom = false;
-    followUntil = 0;
-    cameraAnim = false;
-    if(locateRaf != null){ cancelAnimationFrame(locateRaf); locateRaf = null; }
-    return;
-  }
-  pendingZoom = withZoom;
-  const from = { x: transform.x, y: transform.y, k: transform.k };
-  const targetK = withZoom ? Math.max(from.k, LOCATE_TARGET_K) : from.k;
-  const duration = withZoom ? CAMERA_LOCATE_MS : CAMERA_CENTER_MS;
-  if(locateRaf != null){ cancelAnimationFrame(locateRaf); locateRaf = null; }
-  if(withZoom){
-    followUntil = Math.max(followUntil, performance.now() + 1400);
-  }
-  cameraAnim = true;
-  const start = performance.now();
-  function step(now){
-    if(interacting){
-      locateRaf = null;
-      cameraAnim = false;
-      return;
-    }
-    const t = Math.min(1, (now - start) / duration);
-    const ease = easeOutCubic(t);
-    const desired = cameraTargetForIds(ids, targetK);
-    if(!desired){
-      locateRaf = requestAnimationFrame(step);
-      return;
-    }
-    transform.x = from.x + (desired.x - from.x) * ease;
-    transform.y = from.y + (desired.y - from.y) * ease;
-    transform.k = from.k + (desired.k - from.k) * ease;
-    requestDraw();
-    if(t < 1){
-      locateRaf = requestAnimationFrame(step);
-      return;
-    }
-    locateRaf = null;
-    cameraAnim = false;
-    followUntil = Math.max(followUntil, performance.now() + 900);
-  }
-  locateRaf = requestAnimationFrame(step);
+  const targetK = withZoom ? Math.max(transform.k, LOCATE_TARGET_K) : transform.k;
+  easeCameraTowardSelected({ k: targetK, alpha: 1 });
+  requestDraw();
 }
 
 function stopCameraFollow(){
@@ -102,5 +64,23 @@ function stopCameraFollow(){
   followUntil = 0;
   pendingZoom = false;
   if(locateRaf != null){ cancelAnimationFrame(locateRaf); locateRaf = null; }
+}
+
+function fitAllNodes(){
+  if(!nodes.length || W<=0 || H<=0) return;
+  let minX=nodes[0].x, maxX=minX, minY=nodes[0].y, maxY=minY;
+  for(let i=1;i<nodes.length;i++){
+    const n=nodes[i];
+    if(n.x<minX) minX=n.x; if(n.x>maxX) maxX=n.x;
+    if(n.y<minY) minY=n.y; if(n.y>maxY) maxY=n.y;
+  }
+  const pad=CAMERA_FIT_PADDING;
+  const bw=Math.max(maxX-minX, 8)+pad*2;
+  const bh=Math.max(maxY-minY, 8)+pad*2;
+  const k=Math.min(K_MAX, Math.max(K_MIN, Math.min(W/bw, H/bh)));
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  transform.x=W/2-cx*k;
+  transform.y=H/2-cy*k;
+  transform.k=k;
 }
 `

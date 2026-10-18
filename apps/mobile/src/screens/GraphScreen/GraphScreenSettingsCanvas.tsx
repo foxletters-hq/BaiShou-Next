@@ -19,6 +19,7 @@ import { NativeSlider, Switch, useNativeTheme } from '@baishou/ui/native'
 import { GraphScreenDepthChips } from './GraphScreenDepthChips'
 import { styles } from './GraphScreen.styles'
 import type { GraphScreenSettingsSection } from './graph-screen.types'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function GraphScreenSettingsCanvas(props: {
   settingsSection: GraphScreenSettingsSection
@@ -50,7 +51,50 @@ export function GraphScreenSettingsCanvas(props: {
   const { colors } = useNativeTheme()
 
   const renderDepthChips = () => (
-    <GraphScreenDepthChips focusDepth={props.focusDepth} onChange={props.onFocusDepthChange} />
+    <View
+      style={{
+        paddingVertical: sharedTokens.spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderSubtle,
+        marginTop: sharedTokens.spacing.xs
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}
+      >
+        <View style={{ flex: 1, marginRight: sharedTokens.spacing.sm }}>
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontWeight: '600',
+              fontSize: mobileTypography.secondary.fontSize
+            }}
+          >
+            {t('graph.focus_depth_title', '节点探索深度')}
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: mobileTypography.caption.fontSize,
+              lineHeight: 16,
+              marginTop: 2
+            }}
+          >
+            {t('graph.focus_depth_hint_short', '点击实体高亮周围几级关系')}
+          </Text>
+        </View>
+        <GraphScreenDepthChips
+          focusDepth={props.focusDepth}
+          onChange={props.onFocusDepthChange}
+          showLabel={false}
+          style={{ paddingHorizontal: 0, paddingBottom: 0 }}
+        />
+      </View>
+    </View>
   )
 
   const renderForceSliders = () => (
@@ -89,12 +133,24 @@ export function GraphScreenSettingsCanvas(props: {
       })}
       <View style={styles.row}>
         <Pressable onPress={props.onReplayLayout}>
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: mobileTypography.caption.fontSize,
+              fontWeight: '600'
+            }}
+          >
             {t('graph.relayout', '重新布局')}
           </Text>
         </Pressable>
         <Pressable onPress={props.onResetGraphSettings}>
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: mobileTypography.caption.fontSize,
+              fontWeight: '600'
+            }}
+          >
             {t('graph.force_reset', '恢复默认')}
           </Text>
         </Pressable>
@@ -105,170 +161,327 @@ export function GraphScreenSettingsCanvas(props: {
   return (
     <View style={styles.settingsBody}>
       <View style={styles.filterSectionHead}>
-        <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
+        <Text
+          style={{
+            color: colors.textPrimary,
+            fontWeight: '600',
+            fontSize: mobileTypography.secondary.fontSize
+          }}
+        >
           {t('graph.filter', '筛选')}
         </Text>
         {props.filterActive ? (
           <Pressable onPress={props.onResetFilters}>
-            <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: mobileTypography.caption.fontSize,
+                fontWeight: '600'
+              }}
+            >
               {t('graph.filter_reset', '恢复默认')}
             </Text>
           </Pressable>
         ) : null}
       </View>
       <View style={styles.switchRow}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: mobileTypography.secondary.fontSize,
+            flex: 1
+          }}
+        >
           {t('graph.hide_entry_anchors', '隐藏日记锚点')}
         </Text>
         <Switch value={props.hideEntry} onValueChange={props.onHideEntryChange} />
       </View>
       <View style={styles.switchRow}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: mobileTypography.secondary.fontSize,
+            flex: 1
+          }}
+        >
           {t('graph.approved_only', '只看已确认')}
         </Text>
         <Switch value={props.approvedOnly} onValueChange={props.onApprovedOnlyChange} />
       </View>
-      <View style={styles.filterSectionHead}>
-        <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
-          {t('graph.filter_by_type', '按分类')}
-        </Text>
-        <Pressable onPress={props.onToggleAllTypes}>
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-            {props.typeFilterActive
-              ? t('graph.filter_select_all_types', '全选')
-              : t('graph.filter_clear_types', '清空')}
-          </Text>
-        </Pressable>
-      </View>
-      <View style={styles.typeChipRow}>
-        {props.filterNodeTypes.map((nodeType) => {
-          const active = props.enabledNodeTypes.has(nodeType)
-          const typeColor = graphNodeTypeColor(nodeType)
-          return (
-            <Pressable
-              key={nodeType}
-              onPress={() => props.onToggleTypeFilter(nodeType)}
-              style={[
-                styles.edgeTypeChip,
-                {
-                  backgroundColor: active ? typeColor : colors.bgSurfaceNormal,
-                  borderColor: active ? typeColor : colors.borderSubtle
-                }
-              ]}
-            >
-              <Text
-                style={{
-                  color: active ? colors.textOnPrimary : colors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: active ? '700' : '500'
-                }}
-              >
-                {t(
-                  `graph.node_type.${nodeType}`,
-                  GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
-                )}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
+
       {renderDepthChips()}
-      <Pressable onPress={props.onToggleAppearance} style={styles.settingsHead}>
-        <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-          {props.settingsSection.appearance ? '▾ ' : '▸ '}
-          {t('graph.appearance', '外观')}
-        </Text>
-      </Pressable>
-      {props.settingsSection.appearance ? (
-        <View style={styles.settingsBody}>
-          <View style={styles.switchRow}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-              {t('graph.show_arrows', '箭头')}
-            </Text>
-            <Switch
-              value={props.appearanceSettings.showArrows}
-              onValueChange={(v) => props.onAppearanceChange({ showArrows: v })}
-            />
-          </View>
-          <View style={styles.switchRow}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-              {t('graph.show_isolated_nodes', '独立节点')}
-            </Text>
-            <Switch
-              value={props.appearanceSettings.showIsolatedNodes}
-              onValueChange={(v) => props.onAppearanceChange({ showIsolatedNodes: v })}
-            />
-          </View>
-          <View style={styles.forceRow}>
+
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: colors.borderSubtle,
+          paddingTop: sharedTokens.spacing.sm,
+          marginTop: sharedTokens.spacing.xs
+        }}
+      >
+        <View style={styles.filterSectionHead}>
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontWeight: '600',
+              fontSize: mobileTypography.secondary.fontSize
+            }}
+          >
+            {t('graph.filter_by_type', '按分类')}
+          </Text>
+          <Pressable onPress={props.onToggleAllTypes}>
             <Text
-              style={[styles.forceLabelWide, { color: colors.textSecondary }]}
-              accessibilityHint={t(
-                'graph.max_nodes_hint',
-                '画布最多取这么多个节点。滑到最右为不限制。这个月份里尚未确认的节点仍会补进来，以免漏看。'
-              )}
+              style={{
+                color: colors.primary,
+                fontSize: mobileTypography.caption.fontSize,
+                fontWeight: '600'
+              }}
             >
-              {t('graph.max_nodes', '显示节点上限')}
+              {props.typeFilterActive
+                ? t('graph.filter_select_all_types', '全选')
+                : t('graph.filter_clear_types', '清空')}
             </Text>
-            <View style={{ flex: 1 }}>
-              <NativeSlider
-                value={graphViewMaxNodesSliderValue(props.viewMaxNodes)}
-                minValue={GRAPH_VIEW_MAX_NODES_MIN}
-                maxValue={GRAPH_VIEW_MAX_NODES_MAX}
-                step={GRAPH_VIEW_MAX_NODES_STEP}
-                onChange={(v) => props.onViewMaxNodesChange(v)}
-              />
-            </View>
-            <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
-              {isGraphViewMaxNodesUnlimited(props.viewMaxNodes)
-                ? t('graph.max_nodes_unlimited', '无限')
-                : props.viewMaxNodes}
-            </Text>
-          </View>
-          {(
-            [
-              ['textOpacity', 'graph.text_opacity'],
-              ['nodeSize', 'graph.node_size'],
-              ['lineThickness', 'graph.line_thickness'],
-              ['hubLabelMinDegree', 'graph.hub_label_degree'],
-              ['hubLabelMinMentions', 'graph.hub_label_mentions']
-            ] as const
-          ).map(([key, i18nKey]) => {
-            const range = GRAPH_APPEARANCE_RANGES[key]
-            const value = props.appearanceSettings[key]
+          </Pressable>
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            rowGap: sharedTokens.spacing.xsPlus,
+            marginTop: sharedTokens.spacing.xsPlus
+          }}
+        >
+          {props.filterNodeTypes.map((nodeType) => {
+            const active = props.enabledNodeTypes.has(nodeType)
+            const typeColor = graphNodeTypeColor(nodeType)
             return (
-              <View key={key} style={styles.forceRow}>
-                <Text style={[styles.forceLabelWide, { color: colors.textSecondary }]}>
-                  {t(i18nKey)}
+              <Pressable
+                key={nodeType}
+                onPress={() => props.onToggleTypeFilter(nodeType)}
+                style={[
+                  styles.edgeTypeChip,
+                  {
+                    width: '18.5%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 0,
+                    paddingVertical: 5,
+                    backgroundColor: active ? typeColor : 'transparent',
+                    borderColor: active ? typeColor : colors.borderSubtle
+                  }
+                ]}
+              >
+                <Text
+                  style={{
+                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    fontSize: mobileTypography.caption.fontSize,
+                    fontWeight: active ? '700' : '500',
+                    textAlign: 'center'
+                  }}
+                  numberOfLines={1}
+                >
+                  {t(
+                    `graph.node_type.${nodeType}`,
+                    GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
+                  )}
                 </Text>
-                <View style={{ flex: 1 }}>
-                  <NativeSlider
-                    value={value}
-                    minValue={range.min}
-                    maxValue={range.max}
-                    step={range.step}
-                    onChange={(v) => props.onAppearanceChange({ [key]: v })}
-                  />
-                </View>
-                <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
-                  {typeof value === 'number' && !Number.isInteger(range.step)
-                    ? value.toFixed(2)
-                    : value}
-                </Text>
-              </View>
+              </Pressable>
             )
           })}
         </View>
-      ) : null}
+      </View>
 
-      <Pressable onPress={props.onToggleForces} style={styles.settingsHead}>
-        <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-          {props.settingsSection.forces ? '▾ ' : '▸ '}
-          {t('graph.force_layout', '布局力')}
-        </Text>
-      </Pressable>
-      {props.settingsSection.forces ? (
-        <View style={styles.settingsBody}>{renderForceSliders()}</View>
-      ) : null}
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: colors.borderControl,
+          borderRadius: sharedTokens.radius.md,
+          backgroundColor: colors.bgSurface,
+          overflow: 'hidden',
+          marginTop: sharedTokens.spacing.sm
+        }}
+      >
+        <Pressable
+          onPress={props.onToggleAppearance}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: sharedTokens.spacing.md,
+            paddingVertical: sharedTokens.spacing.smPlus,
+            backgroundColor: props.settingsSection.appearance
+              ? (colors.bgSurfaceRaised ?? colors.bgSurface)
+              : colors.bgSurface
+          }}
+        >
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontWeight: '600',
+              fontSize: mobileTypography.secondary.fontSize
+            }}
+          >
+            {t('graph.appearance', '外观')}
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            {props.settingsSection.appearance ? '▲' : '▼'}
+          </Text>
+        </Pressable>
+        {props.settingsSection.appearance ? (
+          <View
+            style={{
+              paddingHorizontal: sharedTokens.spacing.md,
+              paddingTop: sharedTokens.spacing.sm,
+              paddingBottom: sharedTokens.spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.borderSubtle,
+              gap: sharedTokens.spacing.sm
+            }}
+          >
+            <View style={styles.switchRow}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize,
+                  flex: 1
+                }}
+              >
+                {t('graph.show_arrows', '箭头')}
+              </Text>
+              <Switch
+                value={props.appearanceSettings.showArrows}
+                onValueChange={(v) => props.onAppearanceChange({ showArrows: v })}
+              />
+            </View>
+            <View style={styles.switchRow}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize,
+                  flex: 1
+                }}
+              >
+                {t('graph.show_isolated_nodes', '独立节点')}
+              </Text>
+              <Switch
+                value={props.appearanceSettings.showIsolatedNodes}
+                onValueChange={(v) => props.onAppearanceChange({ showIsolatedNodes: v })}
+              />
+            </View>
+            <View style={styles.forceRow}>
+              <Text
+                style={[styles.forceLabelWide, { color: colors.textSecondary }]}
+                accessibilityHint={t(
+                  'graph.max_nodes_hint',
+                  '画布最多取这么多个节点。滑到最右为不限制。这个月份里尚未确认的节点仍会补进来，以免漏看。'
+                )}
+              >
+                {t('graph.max_nodes', '显示节点上限')}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <NativeSlider
+                  value={graphViewMaxNodesSliderValue(props.viewMaxNodes)}
+                  minValue={GRAPH_VIEW_MAX_NODES_MIN}
+                  maxValue={GRAPH_VIEW_MAX_NODES_MAX}
+                  step={GRAPH_VIEW_MAX_NODES_STEP}
+                  onChange={(v) => props.onViewMaxNodesChange(v)}
+                />
+              </View>
+              <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
+                {isGraphViewMaxNodesUnlimited(props.viewMaxNodes)
+                  ? t('graph.max_nodes_unlimited', '无限')
+                  : props.viewMaxNodes}
+              </Text>
+            </View>
+            {(
+              [
+                ['textOpacity', 'graph.text_opacity'],
+                ['nodeSize', 'graph.node_size'],
+                ['lineThickness', 'graph.line_thickness'],
+                ['hubLabelMinDegree', 'graph.hub_label_degree'],
+                ['hubLabelMinMentions', 'graph.hub_label_mentions']
+              ] as const
+            ).map(([key, i18nKey]) => {
+              const range = GRAPH_APPEARANCE_RANGES[key]
+              const value = props.appearanceSettings[key]
+              return (
+                <View key={key} style={styles.forceRow}>
+                  <Text style={[styles.forceLabelWide, { color: colors.textSecondary }]}>
+                    {t(i18nKey)}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <NativeSlider
+                      value={value}
+                      minValue={range.min}
+                      maxValue={range.max}
+                      step={range.step}
+                      onChange={(v) => props.onAppearanceChange({ [key]: v })}
+                    />
+                  </View>
+                  <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
+                    {typeof value === 'number' && !Number.isInteger(range.step)
+                      ? value.toFixed(2)
+                      : value}
+                  </Text>
+                </View>
+              )
+            })}
+          </View>
+        ) : null}
+      </View>
+
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: colors.borderControl,
+          borderRadius: sharedTokens.radius.md,
+          backgroundColor: colors.bgSurface,
+          overflow: 'hidden',
+          marginTop: sharedTokens.spacing.sm
+        }}
+      >
+        <Pressable
+          onPress={props.onToggleForces}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: sharedTokens.spacing.md,
+            paddingVertical: sharedTokens.spacing.smPlus,
+            backgroundColor: props.settingsSection.forces
+              ? (colors.bgSurfaceRaised ?? colors.bgSurface)
+              : colors.bgSurface
+          }}
+        >
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontWeight: '600',
+              fontSize: mobileTypography.secondary.fontSize
+            }}
+          >
+            {t('graph.force_layout', '布局力')}
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            {props.settingsSection.forces ? '▲' : '▼'}
+          </Text>
+        </Pressable>
+        {props.settingsSection.forces ? (
+          <View
+            style={{
+              paddingHorizontal: sharedTokens.spacing.md,
+              paddingTop: sharedTokens.spacing.sm,
+              paddingBottom: sharedTokens.spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.borderSubtle,
+              gap: sharedTokens.spacing.sm
+            }}
+          >
+            {renderForceSliders()}
+          </View>
+        ) : null}
+      </View>
     </View>
   )
 }
