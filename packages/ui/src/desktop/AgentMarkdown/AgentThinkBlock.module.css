@@ -1,6 +1,6 @@
 .root {
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
   color: var(--text-secondary);
 }
 

@@ -9,132 +9,134 @@ import { ChatBubbleAiRow } from './ChatBubbleAiRow'
 import { ChatBubbleContextMenu } from './ChatBubbleContextMenu'
 import styles from './ChatBubble.module.css'
 
-export const ChatBubble: React.FC<ChatBubbleProps> = ({
-  message,
-  userProfile = { nickname: 'U' },
-  aiProfile = { name: 'AI' },
-  onRegenerate,
-  onResend,
-  onCopy,
-  onDelete,
-  onBranch,
-  onSaveEdit,
-  onResendEdit,
-  onShowContext,
-  onReadAloud,
-  isTtsPlaying = false,
-  error = null
-}) => {
-  const { t } = useTranslation()
-  const toast = useToast()
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-  const selectedTextRef = useRef('')
-  const isUser = message.role === 'user'
-  const edit = useChatBubbleEdit(message.content || '', isUser, onSaveEdit, onResendEdit)
+export const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
+  ({
+    message,
+    userProfile = { nickname: 'U' },
+    aiProfile = { name: 'AI' },
+    onRegenerate,
+    onResend,
+    onCopy,
+    onDelete,
+    onBranch,
+    onSaveEdit,
+    onResendEdit,
+    onShowContext,
+    onReadAloud,
+    isTtsPlaying = false,
+    error = null
+  }) => {
+    const { t } = useTranslation()
+    const toast = useToast()
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+    const selectedTextRef = useRef('')
+    const isUser = message.role === 'user'
+    const edit = useChatBubbleEdit(message.content || '', isUser, onSaveEdit, onResendEdit)
 
-  const { cleanContent, cleanReasoning } = useMemo(
-    () => parseRedactedThinking(message.content || '', message.reasoning || ''),
-    [message.content, message.reasoning]
-  )
+    const { cleanContent, cleanReasoning } = useMemo(
+      () => parseRedactedThinking(message.content || '', message.reasoning || ''),
+      [message.content, message.reasoning]
+    )
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (edit.isEditing) return
-    e.preventDefault()
-    const selection = window.getSelection()
-    selectedTextRef.current = selection ? selection.toString().trim() : ''
-    setContextMenu({ x: e.clientX, y: e.clientY })
+    const handleContextMenu = (e: React.MouseEvent) => {
+      if (edit.isEditing) return
+      e.preventDefault()
+      const selection = window.getSelection()
+      selectedTextRef.current = selection ? selection.toString().trim() : ''
+      setContextMenu({ x: e.clientX, y: e.clientY })
+    }
+
+    const handleCopy = useCallback(
+      (e?: React.MouseEvent) => {
+        if (e) e.preventDefault()
+        const selectedText = selectedTextRef.current
+        if (selectedText) {
+          navigator.clipboard.writeText(selectedText)
+          toast.showSuccess(t('common.copied', '已复制到剪贴板'))
+        } else if (onCopy) {
+          onCopy()
+        } else if (message.content) {
+          navigator.clipboard.writeText(message.content)
+          toast.showSuccess(t('common.copied', '已复制到剪贴板'))
+        }
+        setContextMenu(null)
+      },
+      [onCopy, message.content, t, toast]
+    )
+
+    // 工具消息不渲染气泡。这个提前返回必须留在所有 Hook 调用之后，否则 message.role 变化时 Hook 顺序会错位
+    if (message.role === 'tool') {
+      return null
+    }
+
+    const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
+    const canEdit = Boolean(onSaveEdit || onResendEdit)
+    const startEdit = canEdit ? edit.handleStartEdit : undefined
+
+    return (
+      <>
+        <div
+          className={`chat-bubble-container ${styles.chatBubbleContainer}`}
+          onContextMenu={handleContextMenu}
+        >
+          {isUser ? (
+            <ChatBubbleUserRow
+              message={message}
+              userProfile={userProfile}
+              isEditing={edit.isEditing}
+              editedContent={edit.editedContent}
+              setEditedContent={edit.setEditedContent}
+              textareaRef={edit.textareaRef}
+              onEditorKeyDown={edit.handleEditorKeyDown}
+              onCancelEdit={edit.handleCancelEdit}
+              onSaveEdit={edit.handleSaveEdit}
+              onResendEdit={edit.handleResendEdit}
+              hasResendEdit={Boolean(onResendEdit)}
+              onCopy={handleCopy}
+              onStartEdit={startEdit}
+              onResend={onResend}
+              onDelete={onDelete}
+              onShowContext={onShowContext}
+              t={t}
+            />
+          ) : (
+            <ChatBubbleAiRow
+              message={message}
+              aiProfile={aiProfile}
+              aiName={aiName}
+              cleanContent={cleanContent}
+              cleanReasoning={cleanReasoning}
+              isEditing={edit.isEditing}
+              editedContent={edit.editedContent}
+              setEditedContent={edit.setEditedContent}
+              textareaRef={edit.textareaRef}
+              onEditorKeyDown={edit.handleEditorKeyDown}
+              onCancelEdit={edit.handleCancelEdit}
+              onSaveEdit={edit.handleSaveEdit}
+              onCopy={handleCopy}
+              onStartEdit={startEdit}
+              onRegenerate={onRegenerate}
+              onDelete={onDelete}
+              onBranch={onBranch}
+              onShowContext={onShowContext}
+              onReadAloud={onReadAloud}
+              isTtsPlaying={isTtsPlaying}
+              error={error}
+              t={t}
+            />
+          )}
+        </div>
+        <ChatBubbleContextMenu
+          contextMenu={contextMenu}
+          isUser={isUser}
+          onDismiss={() => setContextMenu(null)}
+          onCopy={handleCopy}
+          onStartEdit={startEdit}
+          onResend={onResend}
+          onRegenerate={onRegenerate}
+          onDelete={onDelete}
+        />
+      </>
+    )
   }
-
-  const handleCopy = useCallback(
-    (e?: React.MouseEvent) => {
-      if (e) e.preventDefault()
-      const selectedText = selectedTextRef.current
-      if (selectedText) {
-        navigator.clipboard.writeText(selectedText)
-        toast.showSuccess(t('common.copied', '已复制到剪贴板'))
-      } else if (onCopy) {
-        onCopy()
-      } else if (message.content) {
-        navigator.clipboard.writeText(message.content)
-        toast.showSuccess(t('common.copied', '已复制到剪贴板'))
-      }
-      setContextMenu(null)
-    },
-    [onCopy, message.content, t, toast]
-  )
-
-  // 工具消息不渲染气泡。这个提前返回必须留在所有 Hook 调用之后，否则 message.role 变化时 Hook 顺序会错位
-  if (message.role === 'tool') {
-    return null
-  }
-
-  const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
-  const canEdit = Boolean(onSaveEdit || onResendEdit)
-  const startEdit = canEdit ? edit.handleStartEdit : undefined
-
-  return (
-    <>
-      <div
-        className={`chat-bubble-container ${styles.chatBubbleContainer}`}
-        onContextMenu={handleContextMenu}
-      >
-        {isUser ? (
-          <ChatBubbleUserRow
-            message={message}
-            userProfile={userProfile}
-            isEditing={edit.isEditing}
-            editedContent={edit.editedContent}
-            setEditedContent={edit.setEditedContent}
-            textareaRef={edit.textareaRef}
-            onEditorKeyDown={edit.handleEditorKeyDown}
-            onCancelEdit={edit.handleCancelEdit}
-            onSaveEdit={edit.handleSaveEdit}
-            onResendEdit={edit.handleResendEdit}
-            hasResendEdit={Boolean(onResendEdit)}
-            onCopy={handleCopy}
-            onStartEdit={startEdit}
-            onResend={onResend}
-            onDelete={onDelete}
-            onShowContext={onShowContext}
-            t={t}
-          />
-        ) : (
-          <ChatBubbleAiRow
-            message={message}
-            aiProfile={aiProfile}
-            aiName={aiName}
-            cleanContent={cleanContent}
-            cleanReasoning={cleanReasoning}
-            isEditing={edit.isEditing}
-            editedContent={edit.editedContent}
-            setEditedContent={edit.setEditedContent}
-            textareaRef={edit.textareaRef}
-            onEditorKeyDown={edit.handleEditorKeyDown}
-            onCancelEdit={edit.handleCancelEdit}
-            onSaveEdit={edit.handleSaveEdit}
-            onCopy={handleCopy}
-            onStartEdit={startEdit}
-            onRegenerate={onRegenerate}
-            onDelete={onDelete}
-            onBranch={onBranch}
-            onShowContext={onShowContext}
-            onReadAloud={onReadAloud}
-            isTtsPlaying={isTtsPlaying}
-            error={error}
-            t={t}
-          />
-        )}
-      </div>
-      <ChatBubbleContextMenu
-        contextMenu={contextMenu}
-        isUser={isUser}
-        onDismiss={() => setContextMenu(null)}
-        onCopy={handleCopy}
-        onStartEdit={startEdit}
-        onResend={onResend}
-        onRegenerate={onRegenerate}
-        onDelete={onDelete}
-      />
-    </>
-  )
-}
+)

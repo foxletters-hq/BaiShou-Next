@@ -5,11 +5,13 @@ import {
   type KnowledgeCitationView
 } from '@baishou/shared'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
+import { coalesceTimelineItemsForDisplay } from '../../shared/agent-process'
 import { AgentGatePartBubble } from '../AgentGatePartBubble'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
+import { AgentProcessSection } from '../AgentProcessSection'
 import { AgentToolChainSection } from '../AgentToolChain'
 
-function restIsOnlyGates(items: readonly AssistantDisplayTimelineItem[], index: number): boolean {
+function restIsOnlyGates(items: readonly { kind: string }[], index: number): boolean {
   return items.slice(index + 1).every((item) => item.kind === 'gate')
 }
 
@@ -20,7 +22,7 @@ function visibleAnswerText(text: string): string | null {
   return null
 }
 
-export function AssistantDisplayTimeline(props: {
+function AssistantDisplayTimelineInner(props: {
   items: AssistantDisplayTimelineItem[]
   isStreaming?: boolean
   isTextStreaming?: boolean
@@ -39,6 +41,8 @@ export function AssistantDisplayTimeline(props: {
     citationAnchorKey = 'turn',
     appendCitationMarkers = false
   } = props
+  const coalescedItems = useMemo(() => coalesceTimelineItemsForDisplay(items), [items])
+
   const citedByKey = useMemo(() => {
     const entries = items.flatMap((item) => {
       if (item.kind !== 'text') return []
@@ -53,51 +57,107 @@ export function AssistantDisplayTimeline(props: {
     )
     return new Map(entries.map((entry, index) => [entry.key, decorated[index] ?? entry.body]))
   }, [appendCitationMarkers, citationAnchorKey, items, knowledgeCitations])
+
   return (
     <>
-      {items.map((item, index) => {
-        const streamingHere = restIsOnlyGates(items, index) && !error
-        if (item.kind === 'reasoning') {
-          const parsed = parseRedactedThinking('', item.text)
-          const content = parsed.cleanReasoning || item.text
-          if (!content.trim()) return null
+      {coalescedItems.map((coalesced, index) => {
+        const streamingHere = restIsOnlyGates(coalescedItems, index) && !error
+
+        if (coalesced.kind === 'process') {
+          const reasoningByKey = new Map<string, string>()
+          for (const r of coalesced.reasoningItems) {
+            reasoningByKey.set(r.key, parseRedactedThinking('', r.text).cleanReasoning || r.text)
+          }
+          const cleanReasonings = [
+            ...coalesced.reasoningItems.map((r) => reasoningByKey.get(r.key) ?? r.text),
+            ...coalesced.textItems.map((t) => t.text)
+          ].filter((t) => Boolean(t.trim()))
+          const combinedReasoning = cleanReasonings.join('\n\n')
+          const processStreaming = !coalesced.hasSubsequentText && Boolean(isStreaming && !error)
+
           return (
-            <AgentThinkSection
+            <AgentProcessSection
+              key={coalesced.key}
+              reasoningContent={combinedReasoning}
+              toolsItems={coalesced.toolsItems}
+              isReasoningLoading={processStreaming}
+              isReasoningStreaming={processStreaming}
+              isStreaming={Boolean(isStreaming && !error)}
+              hasAnswerText={coalesced.hasSubsequentText}
+              hasPrecedingText={coalesced.hasPrecedingText}
+            >
+              {coalesced.steps.map((item, stepIdx) => {
+                const isLastStep = stepIdx === coalesced.steps.length - 1
+                const stepStreamingHere = processStreaming && isLastStep && streamingHere
+
+                if (item.kind === 'reasoning') {
+                  const content =
+                    reasoningByKey.get(item.key) ??
+                    (parseRedactedThinking('', item.text).cleanReasoning || item.text)
+                  if (!content.trim()) return null
+                  return (
+                    <AgentThinkSection
+                      key={item.key}
+                      content={content}
+                      isStreaming={isStreaming && stepStreamingHere}
+                    />
+                  )
+                }
+
+                if (item.kind === 'text') {
+                  const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
+                  if (!cited?.trim()) return null
+                  return (
+                    <AgentMarkdownRenderer
+                      key={item.key}
+                      content={cited}
+                      variant="ancillary"
+                      isStreaming={isTextStreaming && stepStreamingHere}
+                    />
+                  )
+                }
+
+                if (item.kind === 'gate') {
+                  return <AgentGatePartBubble key={item.key} data={item.data} />
+                }
+
+                return (
+                  <AgentToolChainSection
+                    key={item.key}
+                    invocations={item.invocations}
+                    completedTools={item.completedTools}
+                    activeToolName={item.activeToolName}
+                    activeToolArgs={item.activeToolArgs}
+                    isStreaming={Boolean(isStreaming && item.activeToolName && !error)}
+                  />
+                )
+              })}
+            </AgentProcessSection>
+          )
+        }
+
+        if (coalesced.kind === 'text') {
+          const item = coalesced
+          const cited = citedByKey.get(item.key) ?? visibleAnswerText(item.text)
+          if (!cited) return null
+          return (
+            <AgentMarkdownRenderer
               key={item.key}
-              content={content}
-              isStreaming={isStreaming && streamingHere}
+              content={cited}
+              isStreaming={isTextStreaming && streamingHere}
             />
           )
         }
-        if (item.kind === 'text') {
-          const parsed = parseRedactedThinking(item.text)
-          const cited = citedByKey.get(item.key)
-          return (
-            <React.Fragment key={item.key}>
-              {parsed.cleanReasoning ? <AgentThinkSection content={parsed.cleanReasoning} /> : null}
-              {cited ? (
-                <AgentMarkdownRenderer
-                  content={cited}
-                  isStreaming={isTextStreaming && streamingHere}
-                />
-              ) : null}
-            </React.Fragment>
-          )
-        }
-        if (item.kind === 'gate') {
+
+        if (coalesced.kind === 'gate') {
+          const item = coalesced
           return <AgentGatePartBubble key={item.key} data={item.data} />
         }
-        return (
-          <AgentToolChainSection
-            key={item.key}
-            invocations={item.invocations}
-            completedTools={item.completedTools}
-            activeToolName={item.activeToolName}
-            activeToolArgs={item.activeToolArgs}
-            isStreaming={Boolean(isStreaming && item.activeToolName && !error)}
-          />
-        )
+
+        return null
       })}
     </>
   )
 }
+
+export const AssistantDisplayTimeline = React.memo(AssistantDisplayTimelineInner)

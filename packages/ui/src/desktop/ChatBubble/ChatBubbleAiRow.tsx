@@ -9,6 +9,7 @@ import {
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import { MessageActionBar } from '../MessageActionBar'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
+import { AgentProcessSection } from '../AgentProcessSection'
 import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
 import { ToolResultGroup } from '../ToolResultGroupCard'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
@@ -132,9 +133,18 @@ const ChatBubbleAiRowInner: React.FC<
               />
             ) : (
               <>
-                {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
-                {message.toolInvocations && message.toolInvocations.length > 0 && (
-                  <ToolResultGroup invocations={message.toolInvocations} />
+                {(cleanReasoning ||
+                  (message.toolInvocations && message.toolInvocations.length > 0)) && (
+                  <AgentProcessSection
+                    reasoningContent={cleanReasoning || undefined}
+                    invocations={message.toolInvocations}
+                    hasAnswerText={Boolean(cleanContent)}
+                  >
+                    {cleanReasoning && <AgentThinkSection content={cleanReasoning} />}
+                    {message.toolInvocations && message.toolInvocations.length > 0 && (
+                      <ToolResultGroup invocations={message.toolInvocations} />
+                    )}
+                  </AgentProcessSection>
                 )}
                 {cleanContent && (
                   <AgentMarkdownRenderer
