@@ -194,12 +194,32 @@ const PHASE_ORDER: RagBatchEmbedPhaseId[] = [...RAG_BATCH_EMBED_PHASE_IDS]
 export function resolvePhaseRowStatus(
   id: RagBatchEmbedPhaseId,
   current: RagBatchEmbedPhaseKind | undefined,
-  item: RagBatchEmbedPhaseCount
+  item: RagBatchEmbedPhaseCount,
+  phases?: RagBatchEmbedPhaseCounts
 ): RagBatchEmbedPhaseStatus {
-  if (item.total <= 0) return 'skipped'
+  if (item.total <= 0) {
+    if (
+      id === 'graph_node' &&
+      phases &&
+      current !== 'finishing' &&
+      phases.graphExtract.total > 0 &&
+      phases.graphExtract.completed < phases.graphExtract.total
+    ) {
+      return 'pending'
+    }
+    return 'skipped'
+  }
   if (current === id) return 'running'
   if (current === 'starting') return 'pending'
   if (current === 'finishing') return 'done'
+
+  if (item.completed > 0 && item.completed < item.total) {
+    return 'running'
+  }
+  if (item.completed >= item.total && item.total > 0) {
+    return 'done'
+  }
+
   const currentIndex = PHASE_ORDER.indexOf(current as RagBatchEmbedPhaseId)
   const rowIndex = PHASE_ORDER.indexOf(id)
   if (currentIndex >= 0 && rowIndex < currentIndex) return 'done'

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allGraphMonthRange,
   clampGraphMonthRange,
   defaultGraphMonthRange,
   formatGraphMonth,
+  graphMonthRangePresetKind,
+  isAllGraphMonthRange,
   isDefaultGraphMonthRange,
   isGraphEdgeInMonthRange,
   parseGraphMonthToDate,
@@ -10,6 +13,18 @@ import {
 } from '../graph-month-range.util'
 
 describe('graph-month-range.util', () => {
+  it('should span from the earliest picker month to the current month when showing all', () => {
+    const now = new Date(2026, 7, 5)
+    expect(allGraphMonthRange(now)).toEqual({ startMonth: '2000-01', endMonth: '2026-08' })
+    expect(isAllGraphMonthRange(allGraphMonthRange(now), now)).toBe(true)
+    expect(isAllGraphMonthRange(defaultGraphMonthRange(now), now)).toBe(false)
+    expect(graphMonthRangePresetKind(allGraphMonthRange(now), now)).toBe('all')
+    expect(graphMonthRangePresetKind(defaultGraphMonthRange(now), now)).toBe('recent3')
+    expect(graphMonthRangePresetKind({ startMonth: '2024-01', endMonth: '2024-06' }, now)).toBe(
+      'custom'
+    )
+  })
+
   it('defaults to inclusive last 3 months', () => {
     const now = new Date(2026, 7, 5) // Aug 2026
     expect(defaultGraphMonthRange(now)).toEqual({

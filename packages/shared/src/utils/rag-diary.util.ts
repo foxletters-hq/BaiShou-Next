@@ -155,7 +155,8 @@ export function filterUnindexedDiaries<
 
     const ledgerHash = embeddedContentHashMap?.get(sId)?.trim() ?? ''
     const diaryHash = (resolveContentHash?.(d) ?? d.contentHash ?? '').trim()
-    if (ledgerHash && diaryHash) {
+    // 长度不同说明账本还是旧摘要算法，不能当成正文已改；改回按 updated_at 判断。
+    if (ledgerHash && diaryHash && ledgerHash.length === diaryHash.length) {
       return ledgerHash !== diaryHash
     }
 

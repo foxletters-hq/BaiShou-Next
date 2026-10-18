@@ -22,7 +22,7 @@ export const GRAPH_NODE_TYPE_LABEL_FALLBACKS: Record<string, string> = {
   entry: '日记锚点'
 }
 
-type TranslateFn = (key: string, defaultValue?: string) => string
+type TranslateFn = (key: string, defaultValue: string) => string
 
 export function asGraphTranslateFn(t: unknown): TranslateFn {
   return (key, defaultValue) => (t as TranslateFn)(key, defaultValue)

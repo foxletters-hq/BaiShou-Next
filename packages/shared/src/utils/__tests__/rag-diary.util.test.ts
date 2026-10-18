@@ -220,6 +220,20 @@ describe('filterUnindexedDiaries', () => {
 
     expect(result).toHaveLength(0)
   })
+
+  it('should not treat a shorter legacy digest as a content change', () => {
+    const stamped = new Date('2026-05-20T00:00:00Z')
+    const diaries = [
+      { id: 1, updatedAt: stamped, contentHash: hashEmbedSourceContent('already embedded') }
+    ]
+    const result = filterUnindexedDiaries(
+      diaries,
+      new Set(['1']),
+      new Map([['1', stamped.getTime()]]),
+      { embeddedContentHashMap: new Map([['1', 'a'.repeat(32)]]) }
+    )
+    expect(result).toHaveLength(0)
+  })
 })
 
 describe('embed ledger metadata helpers', () => {

@@ -211,4 +211,43 @@ describe('rag-batch-embed-progress', () => {
       graphDisambiguate: { completed: 0, total: 0 }
     })
   })
+
+  it('should mark graph_extract as running during diary phase when items are completed in background', () => {
+    const phases = phaseCountsFromPending({
+      diaries: 67,
+      memories: 0,
+      graphNodes: 0,
+      knowledgeSources: 0,
+      graphExtract: 67
+    })
+    phases.graphExtract.completed = 5
+    expect(resolvePhaseRowStatus('graph_extract', 'diary', phases.graphExtract, phases)).toBe(
+      'running'
+    )
+  })
+
+  it('should mark graph_node as pending during diary phase when graph_extract has unfinished work', () => {
+    const phases = phaseCountsFromPending({
+      diaries: 67,
+      memories: 0,
+      graphNodes: 0,
+      knowledgeSources: 0,
+      graphExtract: 67
+    })
+    expect(resolvePhaseRowStatus('graph_node', 'diary', phases.graphNodes, phases)).toBe('pending')
+  })
+
+  it('should mark graph_node as skipped when graph_extract is finished and graph_node count is 0', () => {
+    const phases = phaseCountsFromPending({
+      diaries: 67,
+      memories: 0,
+      graphNodes: 0,
+      knowledgeSources: 0,
+      graphExtract: 67
+    })
+    phases.graphExtract.completed = 67
+    expect(resolvePhaseRowStatus('graph_node', 'finishing', phases.graphNodes, phases)).toBe(
+      'skipped'
+    )
+  })
 })

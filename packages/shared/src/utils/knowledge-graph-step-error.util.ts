@@ -1,3 +1,5 @@
+import { formatAiApiCallError } from './ai-api-error.util'
+
 export const KNOWLEDGE_GRAPH_STEPS = ['extract', 'align', 'node-embed'] as const
 
 export type KnowledgeGraphStep = (typeof KNOWLEDGE_GRAPH_STEPS)[number]
@@ -5,8 +7,7 @@ export type KnowledgeGraphStep = (typeof KNOWLEDGE_GRAPH_STEPS)[number]
 const PREFIX = 'graph-step:'
 
 function readErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return String(error ?? '')
+  return formatAiApiCallError(error)
 }
 
 export function parseKnowledgeGraphStepError(
