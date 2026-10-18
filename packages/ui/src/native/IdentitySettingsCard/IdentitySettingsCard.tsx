@@ -7,6 +7,7 @@ import type { NativeIdentitySettingsCardProps } from './identity-settings.types'
 import { SettingsListLeadingIcon } from '../settings/SettingsListLeadingIcon'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = ({
   profile,
@@ -38,7 +39,13 @@ export const IdentitySettingsCard: React.FC<NativeIdentitySettingsCardProps> = (
         <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
           {t('settings.identity_card')}
         </Text>
-        <Text style={{ color: colors.textSecondary, marginTop: 2, fontSize: 14 }}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            marginTop: sharedTokens.spacing.xxs,
+            fontSize: mobileTypography.secondary.fontSize
+          }}
+        >
           {t('settings.identity_current_named', { name: activeId })}
         </Text>
       </View>

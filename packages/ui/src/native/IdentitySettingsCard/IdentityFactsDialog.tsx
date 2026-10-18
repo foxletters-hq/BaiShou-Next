@@ -5,6 +5,7 @@ import { Modal } from '../Modal/Modal'
 import { useDialog } from '../Dialog'
 import { useNativeToast } from '../Toast'
 import { applyIdentityFactEdit, deleteIdentityFact } from '../../shared/identity-facts.util'
+import { sharedTokens } from '../../theme/tokens'
 import { IdentitySettingsFactsSection } from './IdentitySettingsFactsSection'
 import { IdentitySettingsFactModal } from './IdentitySettingsFactModal'
 
@@ -75,8 +76,12 @@ export const IdentityFactsDialog: React.FC<IdentityFactsDialogProps> = ({
         visible={visible}
         title={t('settings.identity_attributes_title', { name: personaName })}
         onClose={onClose}
+        avoidKeyboard={false}
       >
-        <ScrollView>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+        >
           <IdentitySettingsFactsSection
             currentFacts={facts}
             onAddFact={handleAddFact}

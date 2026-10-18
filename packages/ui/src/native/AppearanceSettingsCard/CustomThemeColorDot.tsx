@@ -2,6 +2,7 @@ import React, { useId } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
 import { useNativeTheme } from '../theme'
+import { mobileTypography } from '../../theme/tokens'
 
 /** 与桌面 custom-color-picker 一致：45° 炫彩渐变 + 白色「+」 */
 const GRADIENT_STOPS = [
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     borderRadius: DOT_SIZE / 2
   },
   plus: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     zIndex: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.25)',

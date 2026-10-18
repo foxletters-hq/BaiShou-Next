@@ -13,4 +13,14 @@ describe('native IdentitySettingsCard chrome', () => {
     expect(src).not.toContain('IdentitySettingsFactsSection')
     expect(src).not.toContain('SettingsExpansionTile')
   })
+
+  it('should disable avoidKeyboard on facts dialog and enable it on fact edit modal', () => {
+    const factsDialogSrc = readFileSync(join(here, '../IdentityFactsDialog.tsx'), 'utf8')
+    const factModalSrc = readFileSync(join(here, '../IdentitySettingsFactModal.tsx'), 'utf8')
+
+    expect(factsDialogSrc).toContain('avoidKeyboard={false}')
+    expect(factModalSrc).toContain("from '../Modal/Modal'")
+    expect(factModalSrc).toContain('avoidKeyboard')
+    expect(factModalSrc).not.toContain("Modal } from 'react-native'")
+  })
 })
