@@ -1,5 +1,6 @@
 import { useState, useCallback, type MutableRefObject, type RefObject } from 'react'
 import type { NativeScrollEvent, ScrollView } from 'react-native'
+import { isAnyAgentMarkdownRevealing } from '@baishou/ui/native'
 import { logAgentScrollEvent, type AgentScrollSnapshot } from '../utils/agent-scroll-diagnostics'
 import {
   BOTTOM_THRESHOLD_PX,
@@ -24,6 +25,7 @@ export interface UseAgentChatScrollAnchorParams {
   contentResizeLogThrottleRef: MutableRefObject<number>
   streamingFollowRafRef: MutableRefObject<number | null>
   scrollViewRefHolder: MutableRefObject<RefObject<ScrollView | null> | null>
+  viewportHeightRef: MutableRefObject<number>
   isStreaming: boolean
   isStreamBridgeActive: boolean
   inPostStreamWatch: () => boolean
@@ -52,6 +54,7 @@ export function useAgentChatScrollAnchor({
   contentResizeLogThrottleRef,
   streamingFollowRafRef,
   scrollViewRefHolder,
+  viewportHeightRef,
   isStreaming,
   isStreamBridgeActive,
   inPostStreamWatch,
@@ -178,14 +181,16 @@ export function useAgentChatScrollAnchor({
     peakContentHeightRef.current = 0
   }, [snapshotScroll, inPostStreamWatch])
 
-  /** 布局交接期用 minHeight 托住列表；用户离开底部时同样托住，防止输出结束回落 */
+  /** 布局交接期用 minHeight 托住列表；仅用户离开底部时启用，避免工具折叠后撑出空白及结束帧闪屏 */
   const beginContentHandoff = useCallback(() => {
-    const liveH = Math.max(lastIntrinsicContentHeightRef.current, lastContentHeightRef.current)
-    const anchor = Math.max(peakContentHeightRef.current, liveH)
-    if (anchor <= 0) return
+    if (!userLockedAwayRef.current && followModeRef.current === 'following') {
+      return
+    }
+    const liveH = lastIntrinsicContentHeightRef.current || lastContentHeightRef.current
+    if (liveH <= 0) return
 
     setContentAnchorMinHeight((prev) => {
-      const next = Math.max(prev ?? 0, anchor)
+      const next = Math.max(prev ?? 0, liveH)
       if ((prev ?? 0) < next - 1) {
         logAgentScrollEvent('content_handoff_begin', {
           anchorH: Math.round(next),
@@ -215,10 +220,85 @@ export function useAgentChatScrollAnchor({
     releaseContentHandoff()
   }, [releaseContentHandoff, holdContentHeightWhileAway, snapshotScroll, inPostStreamWatch])
 
+  /**
+   * 60fps 阻尼平滑贴底循环：
+   * - 流式或渐显期间内容增高时，按帧插值柔和推进 scrollTo，消除阶梯式一顿一顿跳动
+   * - 工具调用完成、工作过程自动收起变矮时，同步平滑贴回新底部，防止气泡悬停在屏幕顶部
+   */
+  const startSmoothFollowLoop = useCallback(
+    (scrollViewRef: RefObject<ScrollView | null>) => {
+      if (userLockedAwayRef.current || followModeRef.current !== 'following') return
+      if (streamingFollowRafRef.current != null) return
+
+      let lastFrameTime = Date.now()
+      let cursorY = lastScrollOffsetRef.current
+
+      const stepFrame = () => {
+        streamingFollowRafRef.current = null
+        if (userLockedAwayRef.current || followModeRef.current !== 'following') return
+        const sv = scrollViewRef.current
+        if (!sv) return
+
+        const viewportH =
+          lastScrollMetricsRef.current?.layoutMeasurement.height || viewportHeightRef.current || 0
+        const anchor = contentAnchorMinHeightRef.current
+        const effectiveH =
+          anchor != null && lastIntrinsicContentHeightRef.current > 0
+            ? lastIntrinsicContentHeightRef.current
+            : Math.max(lastContentHeightRef.current, lastIntrinsicContentHeightRef.current)
+
+        if (viewportH <= 0 || effectiveH <= 0 || typeof sv.scrollTo !== 'function') {
+          jumpToBottomInstantRef.current(scrollViewRef, 'content_size_follow')
+          return
+        }
+
+        const targetY = Math.max(0, effectiveH - viewportH)
+        if (targetY > cursorY && lastScrollOffsetRef.current > cursorY) {
+          cursorY = Math.min(targetY, lastScrollOffsetRef.current)
+        }
+        const diff = targetY - cursorY
+
+        if (Math.abs(diff) <= 0.8) {
+          if (Math.abs(diff) > 0.1) {
+            cursorY = targetY
+            suppressInterruptRef.current = Math.max(suppressInterruptRef.current, 2)
+            lastScrollOffsetRef.current = targetY
+            sv.scrollTo({ y: targetY, animated: false })
+          }
+          return
+        }
+
+        const now = Date.now()
+        const dt = Math.max(8, Math.min(48, now - lastFrameTime))
+        lastFrameTime = now
+
+        const baseFactor = diff > 0 ? 0.2 : 0.28
+        const alpha = 1 - Math.pow(1 - baseFactor, dt / 16.67)
+        const rawStep = diff * alpha
+        const step =
+          diff > 0
+            ? Math.min(diff, Math.max(0.9, rawStep))
+            : Math.max(diff, Math.min(-1.2, rawStep))
+        const nextY = Math.max(0, cursorY + step)
+        cursorY = nextY
+
+        suppressInterruptRef.current = Math.max(suppressInterruptRef.current, 2)
+        lastScrollOffsetRef.current = nextY
+        sv.scrollTo({ y: nextY, animated: false })
+
+        streamingFollowRafRef.current = requestAnimationFrame(stepFrame)
+      }
+
+      streamingFollowRafRef.current = requestAnimationFrame(stepFrame)
+    },
+    [jumpToBottomInstantRef]
+  )
+
   const handleContentSizeChange = useCallback(
     (scrollViewRef: RefObject<ScrollView | null>, contentHeight: number) => {
       const now = Date.now()
       const watching = inPostStreamWatch()
+      const revealing = isAnyAgentMarkdownRevealing()
       const prevHeight = lastContentHeightRef.current
       const anchor = contentAnchorMinHeightRef.current
       // minHeight 托底时 ScrollView 回报高度会被冻在 anchor，不能当真实变矮信号
@@ -241,7 +321,7 @@ export function useAgentChatScrollAnchor({
           prevH: Math.round(prevHeight),
           offsetY: Math.round(lastScrollOffsetRef.current),
           maxOffset: Math.round(maxOffset),
-          streaming: isStreaming || isStreamBridgeActive,
+          streaming: isStreaming || isStreamBridgeActive || revealing,
           anchorMinH: anchor ?? 0,
           intrinsicH: Math.round(lastIntrinsicContentHeightRef.current),
           lockedAway: userLockedAwayRef.current,
@@ -254,11 +334,8 @@ export function useAgentChatScrollAnchor({
         if (!heightDominatedByAnchor) {
           lastContentHeightRef.current = contentHeight
         }
-        if (isStreaming || isStreamBridgeActive) {
-          peakContentHeightRef.current = Math.max(
-            peakContentHeightRef.current,
-            lastIntrinsicContentHeightRef.current || contentHeight
-          )
+        if (isStreaming || isStreamBridgeActive || revealing) {
+          peakContentHeightRef.current = lastIntrinsicContentHeightRef.current || contentHeight
         }
 
         // 离开底部期间：仅在 ScrollView 高度真实变矮时尝试收回（多数折叠靠 intrinsic）
@@ -272,7 +349,7 @@ export function useAgentChatScrollAnchor({
           return
         }
 
-        if (!isStreaming && !isStreamBridgeActive) {
+        if (!isStreaming && !isStreamBridgeActive && !revealing && !watching) {
           // 跟随态不应残留托底，否则滚到底会进空白
           if (anchor != null) {
             releaseContentHandoff()
@@ -282,20 +359,14 @@ export function useAgentChatScrollAnchor({
         if (followModeRef.current !== 'following') return
         if (!scrollViewRef.current) return
         if (Math.abs(contentHeight - prevHeight) < 1) return
-        if (streamingFollowRafRef.current != null) return
 
-        streamingFollowRafRef.current = requestAnimationFrame(() => {
-          streamingFollowRafRef.current = null
-          if (userLockedAwayRef.current) return
-          if (followModeRef.current !== 'following') return
-          jumpToBottomInstantRef.current(scrollViewRef, 'content_size_follow')
-        })
+        startSmoothFollowLoop(scrollViewRef)
       }
     },
     [
       isStreaming,
       isStreamBridgeActive,
-      jumpToBottomInstantRef,
+      startSmoothFollowLoop,
       reconcileAnchorAfterContentShrink,
       inPostStreamWatch,
       releaseContentHandoff
@@ -310,8 +381,9 @@ export function useAgentChatScrollAnchor({
       if (prevIntrinsic > 0 && Math.abs(intrinsicHeight - prevIntrinsic) < 1) return
 
       lastIntrinsicContentHeightRef.current = intrinsicHeight
-      if (isStreaming || isStreamBridgeActive) {
-        peakContentHeightRef.current = Math.max(peakContentHeightRef.current, intrinsicHeight)
+      const revealing = isAnyAgentMarkdownRevealing()
+      if (isStreaming || isStreamBridgeActive || revealing) {
+        peakContentHeightRef.current = intrinsicHeight
       }
 
       const ref = scrollViewRefHolder.current
@@ -321,6 +393,9 @@ export function useAgentChatScrollAnchor({
       if (!away) {
         if (anchor != null && intrinsicHeight + 1 < anchor) {
           releaseContentHandoff()
+        }
+        if (ref && (isStreaming || isStreamBridgeActive || revealing || inPostStreamWatch())) {
+          startSmoothFollowLoop(ref)
         }
         return
       }
@@ -413,6 +488,7 @@ export function useAgentChatScrollAnchor({
     finalizeContentHandoff,
     handleContentSizeChange,
     handleIntrinsicContentHeightChange,
+    startSmoothFollowLoop,
     settleFollowModeAfterGesture
   }
 }

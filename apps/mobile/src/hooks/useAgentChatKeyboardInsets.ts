@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppState, Keyboard, Platform, type KeyboardEvent } from 'react-native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   cancelAnimation,
   useAnimatedKeyboard,
@@ -15,7 +16,9 @@ const BUBBLE_EDIT_KEYBOARD_BUFFER = 72
 /** 编辑态且键盘收起时：保存/token 与底部工具栏之间的额外间距 */
 const BUBBLE_EDIT_DOCK_GAP = 16
 /** 列表底部与输入栏之间的留白（由 footer spacer 承担，勿与 listContent.paddingBottom 重复） */
-const COMPOSER_LIST_GAP = 4
+const COMPOSER_LIST_GAP = sharedTokens.spacing.smPlus
+/** 回到底部按钮与输入栏顶部的间距 */
+const SCROLL_BUTTON_DOCK_GAP = sharedTokens.spacing.smPlus
 
 function readKeyboardHeightFromMetrics(): number {
   const metrics = Keyboard.metrics()
@@ -143,7 +146,7 @@ export function useAgentChatKeyboardInsets({
 
     cancelAnimation(listSpacerHeight)
     listSpacerHeight.value = withTiming(inputDockHeight + keyboardInset + COMPOSER_LIST_GAP, {
-      duration: 200,
+      duration: sharedTokens.animation.swift,
       easing: Easing.out(Easing.cubic)
     })
   }, [inputDockHeight, keyboardInset, isBubbleEditing, inputDockHeightSv, listSpacerHeight])
@@ -204,7 +207,7 @@ export function useAgentChatKeyboardInsets({
     cancelAnimation(listSpacerHeight)
     listSpacerHeight.value = withTiming(
       inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP,
-      { duration: 200, easing: Easing.out(Easing.cubic) }
+      { duration: sharedTokens.animation.swift, easing: Easing.out(Easing.cubic) }
     )
   }, [isBubbleEditing, inputDockHeight, listSpacerHeight])
 
@@ -306,12 +309,16 @@ export function useAgentChatKeyboardInsets({
   }))
 
   const scrollButtonAnimatedStyle = useAnimatedStyle(() => ({
-    bottom: composerBottom.value + inputDockHeightSv.value + COMPOSER_LIST_GAP
+    bottom: composerBottom.value + inputDockHeightSv.value + SCROLL_BUTTON_DOCK_GAP
   }))
 
-  const listSpacerAnimatedStyle = useAnimatedStyle(() => ({
-    height: listSpacerHeight.value
-  }))
+  const listSpacerAnimatedStyle = useAnimatedStyle(() => {
+    if (isBubbleEditingSv.value === 1) {
+      return { height: listSpacerHeight.value }
+    }
+    const minForDock = composerBottom.value + inputDockHeightSv.value + COMPOSER_LIST_GAP
+    return { height: Math.max(listSpacerHeight.value, minForDock) }
+  })
 
   const handleComposerFocus = useCallback(() => {
     if (!enableComposerKeyboardLift || isBubbleEditing) return

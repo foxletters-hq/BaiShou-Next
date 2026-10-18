@@ -171,11 +171,40 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   const ingestFetchedTail = useCallback(
     (fetched: SessionMessage[], preserveWindow: boolean) => {
-      messageCacheRef.current = dedupeMessagesById(fetched)
+      const prevById = new Map<string, SessionMessage>()
+      for (const prev of messageCacheRef.current) {
+        prevById.set(prev.id, prev)
+      }
+      for (const prev of useAgentStore.getState().messages as unknown as SessionMessage[]) {
+        if (prev?.id && !prevById.has(prev.id)) {
+          prevById.set(prev.id, prev)
+        }
+      }
+      const stabilized = fetched.map((next) => {
+        const prev = prevById.get(next.id)
+        if (
+          prev &&
+          prev.role === next.role &&
+          prev.content === next.content &&
+          prev.reasoning === next.reasoning &&
+          prev.inputTokens === next.inputTokens &&
+          prev.outputTokens === next.outputTokens &&
+          prev.cacheReadInputTokens === next.cacheReadInputTokens &&
+          prev.cacheWriteInputTokens === next.cacheWriteInputTokens &&
+          prev.costMicros === next.costMicros &&
+          (prev.parts?.length ?? 0) === (next.parts?.length ?? 0) &&
+          (prev.toolInvocations?.length ?? 0) === (next.toolInvocations?.length ?? 0) &&
+          (prev.attachments?.length ?? 0) === (next.attachments?.length ?? 0)
+        ) {
+          return prev
+        }
+        return next
+      })
+      messageCacheRef.current = dedupeMessagesById(stabilized)
       loadedFromEndRef.current = messageCacheRef.current.length
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
 
-      const rounds = groupMessagesIntoRounds(fetched)
+      const rounds = groupMessagesIntoRounds(messageCacheRef.current)
       let start = roundWindowStartRef.current
 
       if (!preserveWindow || start >= Math.max(0, rounds.length - CHAT_ROUNDS_PER_PAGE)) {

@@ -6,7 +6,7 @@ export const MOBILE_AGENT_STREAM_DISPLAY_OPTIONS = {
   immediate: true
 } as const
 
-export const STREAM_PRESENTATION_LINGER_MS = 520
+export const STREAM_PRESENTATION_LINGER_MS = 180
 export const STREAM_BUFFER_HOLD_AFTER_LINGER_MS = 320
 export const STREAM_ZERO_OUTPUT_NETWORK_RETRIES = 2
 
