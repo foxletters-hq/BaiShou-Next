@@ -8,6 +8,7 @@ import {
 } from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentAssistantsTable } from '../schema/agent-assistants'
+import { agentSessionsTable } from '../schema/agent-sessions'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
 export interface InsertAssistantInput {
@@ -226,6 +227,28 @@ export class AssistantRepository {
       await this.db
         .delete(agentAssistantsTable)
         .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
+    })
+  }
+
+  /**
+   * 将会话绑定的助手 ID 批量迁移（如旧版本 default 升级为官方 latte）
+   */
+  async rebindAssistantSessions(
+    oldAssistantId: string,
+    newAssistantId: string,
+    vaultId?: string | null
+  ): Promise<void> {
+    await this.run(async () => {
+      const scoped = this.requireVaultId(vaultId)
+      await this.db
+        .update(agentSessionsTable)
+        .set({ assistantId: newAssistantId })
+        .where(
+          and(
+            eq(agentSessionsTable.vaultId, scoped),
+            eq(agentSessionsTable.assistantId, oldAssistantId)
+          )
+        )
     })
   }
 }

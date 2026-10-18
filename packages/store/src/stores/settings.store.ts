@@ -359,7 +359,8 @@ export const useSettingsStore = create<SettingsStore>()(
             p.fontSizeLevel !== undefined ? p.fontSizeLevel : current.fontSizeLevel
           )
         }
-      }
+      },
+      migrate: (persistedState) => persistedState as any
     }
   )
 )

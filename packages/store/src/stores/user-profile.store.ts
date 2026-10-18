@@ -13,6 +13,7 @@ export interface UserProfileState {
 export interface UserProfileActions {
   loadProfile: () => Promise<void>
   updateNickname: (nickname: string) => Promise<void>
+  updateAvatar: (avatarPath: string) => Promise<void>
   pickAndSaveAvatar: () => Promise<void>
   pickAndSaveBackground: () => Promise<void>
   clearBackground: () => Promise<void>
@@ -65,6 +66,14 @@ export const useUserProfileStore = createStore<UserProfileState & UserProfileAct
       const { profile } = get() as UserProfileState
       if (!profile) return
       const newProfile = { ...profile, nickname }
+      set({ profile: newProfile })
+      await syncIpc(newProfile)
+    },
+
+    updateAvatar: async (avatarPath: string) => {
+      const { profile } = get() as UserProfileState
+      if (!profile) return
+      const newProfile = { ...profile, avatarPath }
       set({ profile: newProfile })
       await syncIpc(newProfile)
     },
