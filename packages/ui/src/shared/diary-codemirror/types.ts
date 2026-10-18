@@ -39,6 +39,7 @@ export interface DiaryCmTheme {
   primary: string
   /** 标签四色前景，与 DiaryCard 配色槽一致 */
   tagColors: [string, string, string, string]
+  fontScale?: number
 }
 
 export interface DiaryCmInitPayload {

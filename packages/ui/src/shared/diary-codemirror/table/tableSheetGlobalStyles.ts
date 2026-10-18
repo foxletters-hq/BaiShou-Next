@@ -57,7 +57,7 @@ const SHEET_CSS = `
 }
 .cm-table-sheet-title {
   text-align: center;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text-secondary);
@@ -91,7 +91,7 @@ const SHEET_CSS = `
   border-bottom: 1px solid var(--border-subtle);
   background: transparent;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 400;
   line-height: 1.3;
   padding: 14px 16px;
@@ -150,7 +150,7 @@ const CONTEXT_MENU_CSS = `
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;

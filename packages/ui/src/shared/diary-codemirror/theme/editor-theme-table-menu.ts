@@ -34,7 +34,7 @@ export const editorThemeTableMenu = {
     border: 'none',
     background: 'transparent',
     color: 'var(--text-primary)',
-    fontSize: '13px',
+    fontSize: 'var(--ui-fs-md)',
     padding: '8px 10px',
     borderRadius: '6px',
     cursor: 'pointer'
@@ -91,7 +91,7 @@ export const editorThemeTableMenu = {
   },
   '.cm-table-sheet-title': {
     textAlign: 'center',
-    fontSize: '13px',
+    fontSize: 'var(--ui-fs-md)',
     fontWeight: '600',
     letterSpacing: '0.01em',
     color: 'var(--text-secondary)',
@@ -126,7 +126,7 @@ export const editorThemeTableMenu = {
     borderBottom: '1px solid var(--border-subtle)',
     background: 'transparent',
     color: 'var(--text-primary)',
-    fontSize: '16px',
+    fontSize: 'var(--ui-fs-xl)',
     fontWeight: '400',
     lineHeight: '1.3',
     padding: '14px 16px',

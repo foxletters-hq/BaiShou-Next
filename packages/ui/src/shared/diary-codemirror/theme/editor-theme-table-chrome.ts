@@ -232,7 +232,7 @@ export const editorThemeTableChrome = {
     width: '100%',
     borderCollapse: 'collapse',
     tableLayout: 'fixed',
-    fontSize: '14px',
+    fontSize: 'var(--ui-fs-lg)',
     lineHeight: '1.35',
     border: 'none',
     borderRadius: '0'
@@ -403,7 +403,7 @@ export const editorThemeTableChrome = {
     border: '1px solid var(--cm-table-border, var(--border-strong))',
     background: 'transparent',
     color: 'var(--text-tertiary, rgba(0, 0, 0, 0.35))',
-    fontSize: '16px',
+    fontSize: 'var(--ui-fs-xl)',
     lineHeight: '1',
     padding: '0',
     cursor: 'pointer',
