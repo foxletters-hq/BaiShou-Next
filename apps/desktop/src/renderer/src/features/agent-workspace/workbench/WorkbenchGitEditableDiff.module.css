@@ -15,7 +15,7 @@
 }
 
 .hint {
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   font-size: var(--ui-fs-sm);
   font-family: var(--font-family);
   color: var(--text-secondary);

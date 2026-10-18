@@ -4,7 +4,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 8px;
+  padding-top: var(--spacing-sm);
   border-left: 1px solid var(--border-muted);
   background: var(--bg-surface);
 }
@@ -15,8 +15,8 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-xs-plus);
 }
 
 .expandBtn:hover,
@@ -54,10 +54,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
   height: 35px;
   min-height: 35px;
-  padding: 0 8px;
+  padding: 0 var(--spacing-sm);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-app);
@@ -78,7 +78,7 @@
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
   min-width: 0;
 }
@@ -87,7 +87,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -95,8 +95,8 @@
   align-items: center;
   justify-content: center;
   transition:
-    background 0.15s,
-    color 0.15s;
+    background var(--duration-fast),
+    color var(--duration-fast);
 }
 
 .headerIconBtn:hover {
@@ -113,8 +113,8 @@
   flex-shrink: 0;
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-app);
 }
@@ -154,7 +154,7 @@
 
 .hint {
   margin: 0;
-  padding: 16px 14px;
+  padding: var(--spacing-md) var(--spacing-md-snug);
   font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
@@ -162,14 +162,14 @@
 
 .inputArea {
   flex-shrink: 0;
-  padding: 0 10px 8px;
+  padding: 0 var(--spacing-sm-plus) var(--spacing-sm);
   background: var(--bg-app);
 }
 
 .noModelHint {
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  margin: 0 0 var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface-normal);
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
@@ -207,13 +207,13 @@
 .metaChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-width: 100%;
   min-width: 0;
   height: 28px;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--ui-fs-md);
@@ -257,8 +257,8 @@
 .runtimeQueueBar {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px 10px 0;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus) 0;
 }
 
 .pendingList {
@@ -267,13 +267,13 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .pendingItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
@@ -294,7 +294,7 @@
   color: var(--text-tertiary);
   cursor: pointer;
   font-size: var(--ui-fs-sm);
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
 }
 
 .pendingCancel:hover {

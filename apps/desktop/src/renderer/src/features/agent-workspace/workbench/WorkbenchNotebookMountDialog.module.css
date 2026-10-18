@@ -1,7 +1,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-width: min(360px, 80vw);
   max-width: 420px;
 }
@@ -9,7 +9,7 @@
 .statusRow {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .cover {
@@ -38,7 +38,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .statusLabel {
@@ -49,13 +49,13 @@
 .mountedList {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .mountedChip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-width: 100%;
   min-width: 0;
 }
@@ -77,11 +77,11 @@
 .actionBtn {
   flex-shrink: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -115,7 +115,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-height: 280px;
   overflow: auto;
 }
@@ -136,7 +136,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .notebookName {
@@ -164,7 +164,7 @@
 
 .empty {
   margin: 0;
-  padding: 12px 4px;
+  padding: var(--spacing-md-tight) var(--spacing-xs);
   font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
@@ -172,19 +172,19 @@
 .footer {
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  padding-top: var(--spacing-xs);
 }
 
 .closeBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   border: 1px solid var(--border-muted);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   font-size: var(--ui-fs-sm);
 }
 

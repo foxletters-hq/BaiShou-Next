@@ -10,8 +10,8 @@
 .header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px 8px 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md-tight) var(--spacing-sm) var(--spacing-md);
   border-bottom: 1px solid var(--border-control);
   background: var(--bg-app);
   min-height: 40px;
@@ -32,15 +32,15 @@
 .actions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
 }
 
 .modeBtn {
   height: 26px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: 1px solid var(--border-muted);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
@@ -73,7 +73,7 @@
 }
 
 .status {
-  margin: 24px 16px;
+  margin: var(--spacing-lg) var(--spacing-md);
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
 }

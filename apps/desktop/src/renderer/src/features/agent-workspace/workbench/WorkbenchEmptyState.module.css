@@ -8,23 +8,23 @@
 
 .card {
   max-width: 420px;
-  padding: 32px 36px;
+  padding: var(--spacing-xl) var(--spacing-xl-plus);
   text-align: center;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-muted);
   background: var(--bg-surface);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
 .title {
-  margin: 0 0 10px;
+  margin: 0 0 var(--spacing-sm-plus);
   font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .desc {
-  margin: 0 0 20px;
+  margin: 0 0 var(--spacing-md-plus);
   font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -32,16 +32,16 @@
 
 .btn {
   border: 1px solid var(--border-control);
-  border-radius: 10px;
-  padding: 10px 20px;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm-plus) var(--spacing-md-plus);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .btn:hover {

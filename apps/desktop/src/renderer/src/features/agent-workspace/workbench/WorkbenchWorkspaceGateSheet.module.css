@@ -2,7 +2,7 @@
 .overlay {
   align-items: center;
   justify-content: center;
-  padding: 40px 24px;
+  padding: var(--spacing-xl-plus) var(--spacing-lg);
   box-sizing: border-box;
 }
 
@@ -14,7 +14,7 @@
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  border-radius: 14px !important;
+  border-radius: var(--radius-md) !important;
   border: 1px solid var(--border-card) !important;
   background: var(--bg-surface) !important;
   box-shadow: var(--shadow-md, 0 12px 40px rgba(0, 0, 0, 0.12)) !important;
@@ -35,8 +35,8 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 18px 14px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md-snug);
   border-bottom: 1px solid var(--border-muted);
 }
 
@@ -56,7 +56,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -72,7 +72,7 @@
 
 .tabs {
   flex-shrink: 0;
-  padding: 12px 18px 0;
+  padding: var(--spacing-md-tight) var(--spacing-md) 0;
 }
 
 .body {
@@ -80,7 +80,7 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 18px 28px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
 }
 
 .body::-webkit-scrollbar {
@@ -89,7 +89,7 @@
 
 .body::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .toolsBody {
@@ -98,5 +98,5 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 12px 0 0;
+  padding: var(--spacing-md-tight) 0 0;
 }
