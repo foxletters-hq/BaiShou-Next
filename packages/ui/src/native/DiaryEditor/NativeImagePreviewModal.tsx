@@ -4,6 +4,7 @@ import { RotateCcw, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { sharedTokens } from '../../theme/tokens'
 
 interface NativeImagePreviewModalProps {
   uri: string | null
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: sharedTokens.spacing.md,
     paddingTop: Platform.OS === 'ios' ? 56 : 40,
     paddingBottom: 100
   },
@@ -129,22 +130,22 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   toolBtn: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     justifyContent: 'center',
     alignItems: 'center'
   },
   divider: {
     width: 1,
     height: 22,
-    marginHorizontal: 4
+    marginHorizontal: sharedTokens.spacing.xs
   }
 })

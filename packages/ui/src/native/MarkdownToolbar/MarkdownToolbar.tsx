@@ -15,6 +15,7 @@ import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { MarkdownToolbarSettingsSheet } from './MarkdownToolbarSettingsSheet'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   DEFAULT_MARKDOWN_TOOLBAR_ORDER,
   type MarkdownToolbarToolId
@@ -385,34 +386,34 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   btn: {
     minWidth: 44,
     height: 40,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 10
+    paddingHorizontal: sharedTokens.spacing.smPlus
   },
   btnDisabled: {
     opacity: 0.45
   },
   hashText: {
-    fontSize: 20,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     lineHeight: 24
   },
   labelText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3
   },
   markText: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     lineHeight: 22
   },

@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import type { DiaryCmTableSheetSectionPayload } from '../../shared/diary-codemirror/types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface TableChromeBottomSheetProps {
   visible: boolean
@@ -239,43 +241,47 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: sharedTokens.radius.lgPlus,
+    borderTopRightRadius: sharedTokens.radius.lgPlus,
     borderTopWidth: StyleSheet.hairlineWidth,
     maxHeight: '72%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 16
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16
+      },
+      default: {}
+    })
   },
   grabber: {
     width: 36,
     height: 4,
-    borderRadius: 999,
+    borderRadius: sharedTokens.radius.full,
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 2
+    marginTop: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xxs
   },
   title: {
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.13,
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 12
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.xsPlus,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   bodyScroll: {
     flexGrow: 0
   },
   bodyContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
   group: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth
   },
@@ -283,19 +289,19 @@ const styles = StyleSheet.create({
     marginTop: 0
   },
   groupDestructive: {
-    marginTop: 2
+    marginTop: sharedTokens.spacing.xxs
   },
   item: {
     minHeight: 52,
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug
   },
   itemDisabled: {
     opacity: 0.45
   },
   itemLabel: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     lineHeight: 21
   },
   itemLabelDisabled: {

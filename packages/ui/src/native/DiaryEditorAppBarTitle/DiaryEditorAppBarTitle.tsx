@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DatePickerFloatingModal } from '../DatePicker/DatePickerFloatingModal'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface DiaryEditorAppBarTitleProps {
   isSummaryMode: boolean
@@ -84,9 +85,9 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 20,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     backgroundColor: 'transparent',
     maxWidth: '100%'
   },
@@ -94,13 +95,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   titleText: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   titleIcon: {
-    fontSize: 10
+    fontSize: iconSizes.xs
   }
 })

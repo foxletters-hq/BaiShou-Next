@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { WeatherEmoji } from '../WeatherIcon'
 import { MoodEmoji } from '../MoodIcon/MoodEmoji'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface DiaryMetaCardProps {
   weather?: string
@@ -109,9 +110,9 @@ export const DiaryMetaCard: React.FC<DiaryMetaCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    padding: 12
+    padding: sharedTokens.spacing.mdTight
   },
   row: {
     flexDirection: 'row',
@@ -119,18 +120,18 @@ const styles = StyleSheet.create({
   },
   emojiGroup: {
     flexDirection: 'row',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   emoji: {
-    fontSize: 20
+    fontSize: iconSizes.md
   },
   dividerDot: {
-    paddingHorizontal: 8
+    paddingHorizontal: sharedTokens.spacing.sm
   },
   dot: {
     width: 4,
     height: 4,
-    borderRadius: 2
+    borderRadius: sharedTokens.radius.xxs
   },
   dateGroup: {
     flex: 1
@@ -138,34 +139,34 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   dateLabel: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   dateValue: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   wordCount: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   wordUnit: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '400'
   },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 10,
-    gap: 4
+    marginTop: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xs
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.control
   },
   tagText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   }
 })
