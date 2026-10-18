@@ -1,14 +1,21 @@
 import i18n from 'i18next'
 import React, { useState } from 'react'
-import { Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   MEMORY_CLEAR_KINDS,
   MEMORY_CLEAR_VECTOR_KINDS,
   type MemoryClearKind
 } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Checkbox, Input, Modal, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
+import {
+  Button,
+  Checkbox,
+  Input,
+  Modal,
+  modalActionsStyle,
+  useNativeTheme
+} from '@baishou/ui/native'
 
 const KIND_LABEL: Record<MemoryClearKind, { label: string; hint: string }> = {
   diary: { label: 'settings.rag_clear_kind_diary', hint: 'settings.rag_clear_kind_diary_hint' },
@@ -75,47 +82,70 @@ export function MemoryClearKindsModal(props: {
       title={t('settings.rag_clear_all', '清除记忆')}
       onClose={props.onCancel}
     >
-      {MEMORY_CLEAR_KINDS.map((kind) => (
-        <View
-          key={kind}
-          style={{ flexDirection: 'row', gap: tokens.spacing.sm, marginBottom: tokens.spacing.sm }}
-        >
-          <Checkbox
-            selected={selected.has(kind)}
-            onPress={() => toggle(kind)}
-            accessibilityLabel={t(KIND_LABEL[kind].label, KIND_FALLBACK[kind].label)}
-          />
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.textPrimary,
-                fontSize: settingsTypography.row.fontSize,
-                fontWeight: settingsTypography.label.fontWeight
-              }}
+      <ScrollView
+        style={{ flexGrow: 0, flexShrink: 1 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingRight: tokens.spacing.mdTight }}
+      >
+        {MEMORY_CLEAR_KINDS.map((kind) => {
+          const isChecked = selected.has(kind)
+          return (
+            <Pressable
+              key={kind}
+              onPress={() => toggle(kind)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isChecked }}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: tokens.spacing.sm,
+                  marginBottom: tokens.spacing.sm,
+                  paddingVertical: tokens.spacing.xs,
+                  opacity: pressed ? 0.7 : 1
+                }
+              ]}
             >
-              {t(KIND_LABEL[kind].label, KIND_FALLBACK[kind].label)}
-            </Text>
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: settingsTypography.desc.fontSize
-              }}
-            >
-              {t(KIND_LABEL[kind].hint, KIND_FALLBACK[kind].hint)}
-            </Text>
-          </View>
-        </View>
-      ))}
+              <View pointerEvents="none">
+                <Checkbox
+                  selected={isChecked}
+                  accessibilityLabel={t(KIND_LABEL[kind].label, KIND_FALLBACK[kind].label)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: mobileTypography.primary.fontSize,
+                    fontWeight: mobileTypography.secondary.fontWeight
+                  }}
+                >
+                  {t(KIND_LABEL[kind].label, KIND_FALLBACK[kind].label)}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: mobileTypography.secondary.fontSize
+                  }}
+                >
+                  {t(KIND_LABEL[kind].hint, KIND_FALLBACK[kind].hint)}
+                </Text>
+              </View>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
       <Input
         value={phrase}
         onChangeText={setPhrase}
         placeholder={t('settings.rag_clear_all_confirm_phrase', '确认清除')}
       />
-      <View style={{ flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.md }}>
-        <Button variant="outlined" onPress={props.onCancel}>
+      <View style={modalActionsStyle}>
+        <Button size="sm" variant="outlined" onPress={props.onCancel}>
           {t('common.cancel', '取消')}
         </Button>
         <Button
+          size="sm"
           destructive
           isDisabled={selected.size === 0 || phrase.trim() !== expected}
           onPress={() => props.onConfirm([...selected], phrase.trim())}

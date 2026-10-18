@@ -100,7 +100,11 @@ export function useSummarySettings() {
       setGenerationLocale(autoLocale)
       setActivePromptLocale(autoLocale)
       setLocalText(
-        getSummaryTemplateForEdit(saved.instructionsByLocale ?? {}, autoLocale, 'weekly')
+        getSummaryTemplateForEdit(
+          saved.instructionsByLocale ?? {},
+          autoLocale,
+          activeTabRef.current
+        )
       )
       setLocalSystemPrompt(
         saved.customGenerationSystemPromptByLocale?.[autoLocale]?.trim() ||
@@ -132,35 +136,6 @@ export function useSummarySettings() {
       }
     })()
   }, [dbReady, services, i18n.language])
-
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void (async () => {
-      const saved = (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
-      const settings = (await services.settingsManager.get<{ language?: string }>('settings')) || {}
-      const uiLang = resolveAppUiLanguage(settings.language, i18n.language)
-      const autoLocale = resolveSummaryPromptLocale(uiLang)
-      setGenerationLocale(autoLocale)
-      setActivePromptLocale(autoLocale)
-      setLocalText(
-        getSummaryTemplateForEdit(
-          saved.instructionsByLocale ?? {},
-          autoLocale,
-          activeTabRef.current
-        )
-      )
-      setLocalSystemPrompt(
-        saved.customGenerationSystemPromptByLocale?.[autoLocale]?.trim() ||
-          getDefaultCustomGenerationSystemPrompt(autoLocale)
-      )
-      if (saved.promptLocale !== autoLocale) {
-        await services.settingsManager.set('summary_config', {
-          ...saved,
-          promptLocale: autoLocale
-        })
-      }
-    })()
-  }, [dbReady, i18n.language, services])
 
   const persistConfig = useCallback(
     async (next: SummaryConfig, options?: { replaceLocalTemplates?: boolean }) => {

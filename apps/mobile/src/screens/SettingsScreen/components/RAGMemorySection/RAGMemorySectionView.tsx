@@ -15,10 +15,14 @@ import { useRagMemorySection } from './useRagMemorySection'
 
 export function RAGMemorySectionView({
   hideStats = false,
-  cardLead
+  compactChrome = false,
+  cardLead,
+  settingsLead
 }: {
   hideStats?: boolean
+  compactChrome?: boolean
   cardLead?: React.ReactNode
+  settingsLead?: React.ReactNode
 }) {
   const { tokens } = useNativeTheme()
   const router = useRouter()
@@ -71,7 +75,7 @@ export function RAGMemorySectionView({
   return (
     <>
       {Platform.OS === 'android' && (androidRenderStage < 1 || storageIndexing) ? (
-        cardLead ? (
+        cardLead && !compactChrome ? (
           <SettingsGroupCard>
             {cardLead}
             <SettingsCardDivider />
@@ -87,7 +91,9 @@ export function RAGMemorySectionView({
       ) : (
         <RagMemoryView
           hideStats={hideStats}
+          compactChrome={compactChrome}
           cardLead={cardLead}
+          settingsLead={settingsLead}
           config={config}
           stats={stats}
           ragState={ragState}

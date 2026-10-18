@@ -43,6 +43,12 @@ export async function confirmMobileRagClearKinds(input: {
   if (kinds.length === 0) return
   input.onAccepted()
   try {
+    services.ragService.requestOperationAbort()
+    const { mobileGraphExtractQueue } =
+      await import('../../../../services/mobile-graph-extract-queue.service')
+    if (kinds.includes('life_graph')) {
+      await mobileGraphExtractQueue.stopAndDropPersisted()
+    }
     const vectorKinds = memoryClearVectorKindsOf(kinds)
     if (vectorKinds.length > 0) {
       await services.ragService.clearKinds(kinds)
@@ -50,31 +56,31 @@ export async function confirmMobileRagClearKinds(input: {
     if (kinds.includes('life_graph')) {
       const runtime = getAgentDbRuntime()
       if (
-        runtime?.drizzleDb &&
-        services.vaultService &&
-        services.pathService &&
-        services.fileSystem
+        !runtime?.drizzleDb ||
+        !services.vaultService ||
+        !services.pathService ||
+        !services.fileSystem
       ) {
-        const { mobileClearLifeGraph } = await import('../../../../services/mobile-graph-mutate')
-        const { mobileGraphExtractQueue } =
-          await import('../../../../services/mobile-graph-extract-queue.service')
-        const { ShadowIndexRepository, shadowConnectionManager } = await import('@baishou/database')
-        const { readActiveVaultSafely } =
-          await import('../../../MemoryCenterScreen/memory-center-data.util')
-        const activeVault = readActiveVaultSafely(services.vaultService)
-        const vaultName = activeVault?.name || 'Personal'
-        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-        mobileGraphExtractQueue.stop()
-        await mobileClearLifeGraph({
-          vaultId,
-          vaultName,
-          drizzleDb: runtime.drizzleDb,
-          shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
-          pathService: services.pathService,
-          fileSystem: services.fileSystem,
-          stopExtract: () => mobileGraphExtractQueue.stop()
-        })
+        throw new Error(t('graph.clear_life_unavailable', '无法清空关系图谱，请稍后重试'))
       }
+      const { mobileClearLifeGraph } = await import('../../../../services/mobile-graph-mutate')
+      const { ShadowIndexRepository, shadowConnectionManager } = await import('@baishou/database')
+      const { readActiveVaultSafely } =
+        await import('../../../MemoryCenterScreen/memory-center-data.util')
+      const activeVault = readActiveVaultSafely(services.vaultService)
+      const vaultName = activeVault?.name || 'Personal'
+      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+      await mobileClearLifeGraph({
+        vaultId,
+        vaultName,
+        drizzleDb: runtime.drizzleDb,
+        shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
+        pathService: services.pathService,
+        fileSystem: services.fileSystem,
+        stopExtract: () => {
+          void mobileGraphExtractQueue.stopAndDropPersisted()
+        }
+      })
     }
     setCurrentPage(1)
     await loadRagData('', 'text', 1, pageSize)

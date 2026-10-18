@@ -6,10 +6,11 @@ import {
   type SummaryPromptLocale,
   type SummaryTemplateKey
 } from '@baishou/shared'
-import { Input, useNativeTheme } from '@baishou/ui/native'
+import { Input, SegmentedContent, SegmentedControl, useNativeTheme } from '@baishou/ui/native'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { SummaryPromptLocaleBar } from './SummaryPromptLocaleBar'
 import { summarySettingsStyles as styles } from './summary-settings.styles'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function SummaryTemplateCard(props: {
   monthlySummarySource: 'weeklies' | 'diaries'
@@ -67,48 +68,26 @@ export function SummaryTemplateCard(props: {
           {t('settings.summary_data_source_yearly')}
         </Text>
 
-        <Text style={[styles.cardTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+        <Text
+          style={[
+            styles.cardTitle,
+            { color: colors.textPrimary, marginTop: sharedTokens.spacing.mdTight }
+          ]}
+        >
           {t('settings.monthly_summary_data_source')}
         </Text>
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
           {t('settings.monthly_summary_data_source_desc')}
         </Text>
-        <View
-          style={[
-            styles.sourceGroup,
-            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
+        <SegmentedControl
+          size="small"
+          value={monthlySummarySource}
+          onChange={(source) => persistAutoSettings({ monthlySummarySource: source })}
+          options={[
+            { value: 'weeklies', label: t('settings.read_only_weeklies') },
+            { value: 'diaries', label: t('settings.read_all_diaries') }
           ]}
-        >
-          {(['weeklies', 'diaries'] as const).map((source) => {
-            const active = monthlySummarySource === source
-            const labelKey =
-              source === 'weeklies' ? 'settings.read_only_weeklies' : 'settings.read_all_diaries'
-            return (
-              <TouchableOpacity
-                key={source}
-                style={[
-                  styles.sourceBtn,
-                  {
-                    backgroundColor: active ? colors.bgSurface : 'transparent',
-                    borderColor: active ? colors.borderSubtle : 'transparent'
-                  }
-                ]}
-                onPress={() => persistAutoSettings({ monthlySummarySource: source })}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.primary : colors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: active ? '600' : '500',
-                    textAlign: 'center'
-                  }}
-                >
-                  {t(labelKey)}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        />
       </SettingsGroupCard>
 
       <SettingsGroupCard>
@@ -130,52 +109,30 @@ export function SummaryTemplateCard(props: {
           onChange={onPromptLocaleChange}
         />
 
-        <View
-          style={[
-            styles.tabBar,
-            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
-          ]}
-        >
-          {tabs.map((tab) => {
-            const active = activeTab === tab.id
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={[
-                  styles.tabBtn,
-                  {
-                    backgroundColor: active ? colors.bgSurface : 'transparent',
-                    borderColor: active ? colors.borderSubtle : 'transparent'
-                  }
-                ]}
-                onPress={() => onTabChange(tab.id)}
-              >
-                <Text style={styles.tabIcon}>{tab.icon}</Text>
-                <Text
-                  style={{
-                    color: active ? colors.primary : colors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: active ? '600' : '500'
-                  }}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
+        <View style={{ marginBottom: sharedTokens.spacing.mdTight }}>
+          <SegmentedControl
+            size="small"
+            value={activeTab}
+            onChange={onTabChange}
+            options={tabs.map((tab) => ({
+              value: tab.id,
+              label: `${tab.icon} ${tab.label}`
+            }))}
+          />
         </View>
 
-        <Input
-          value={localText}
-          onChangeText={onLocalText}
-          multiline
-          textarea
-          numberOfLines={14}
-          placeholder={t('settings.summary_ai_prompt_hint')}
-          style={{ minHeight: 220, lineHeight: 20 }}
-          containerStyle={{ marginBottom: 16 }}
-        />
+        <SegmentedContent value={activeTab}>
+          <Input
+            value={localText}
+            onChangeText={onLocalText}
+            multiline
+            textarea
+            numberOfLines={14}
+            placeholder={t('settings.summary_ai_prompt_hint')}
+            style={{ minHeight: 220, lineHeight: 20 }}
+            containerStyle={{ marginBottom: sharedTokens.spacing.md }}
+          />
+        </SegmentedContent>
 
         <View style={styles.actions}>
           <TouchableOpacity

@@ -106,6 +106,21 @@ export function useRagMemoryActions(
       setEmbeddingProviderId(providerId)
       setEmbeddingModelId(modelId)
       setShowModelSwitcher(false)
+      const rag = (await services.settingsManager.get<RagConfig>('rag_config')) || config
+      if (rag.ragEnabled === false) {
+        const enabled = clampMobileRagConfig({ ...config, ragEnabled: true })
+        await services.settingsManager.set('rag_config', enabled)
+        setConfig(enabled)
+      }
+      try {
+        await services.ragService.detectDimension()
+      } catch (error) {
+        toast.showError(
+          error instanceof Error
+            ? error.message
+            : t('settings.rag.detect_failed', '检测失败，请检查模型配置')
+        )
+      }
       await checkModelMismatch()
       await loadRagData()
     },
@@ -116,6 +131,9 @@ export function useRagMemoryActions(
       embeddingModelId,
       dialog,
       t,
+      toast,
+      config,
+      setConfig,
       checkModelMismatch,
       loadRagData,
       setEmbeddingProviderId,
@@ -349,12 +367,7 @@ export function useRagMemoryActions(
   }
 
   const handleAddManualMemory = async () => {
-    const text = await dialog.prompt(
-      t('settings.rag_edit_manual'),
-      '',
-      t('settings.rag_add_manual'),
-      true
-    )
+    const text = await dialog.prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true)
     if (!text?.trim() || !services?.ragService) return
     try {
       await services.ragService.addManualMemory(text.trim())
@@ -367,9 +380,9 @@ export function useRagMemoryActions(
 
   const handleEditEntry = async (entry: RagEntry) => {
     const text = await dialog.prompt(
-      t('settings.rag_edit_manual'),
+      '',
       entry.text,
-      t('settings.rag_edit_manual'),
+      t('settings.rag_edit_manual', '编辑记忆内容'),
       true
     )
     if (!text?.trim() || !services?.ragService) return

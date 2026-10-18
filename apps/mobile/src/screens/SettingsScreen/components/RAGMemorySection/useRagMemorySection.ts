@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useBaishou } from '../../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../../hooks/useMobileRagSystem'
 import { appendDiagnosticBreadcrumb } from '../../../../services/mobile-diagnostic-log.service'
 import type { RagConfig, RagEntry, RagStats } from '@baishou/ui/native'
-import type { AIProviderConfig, RagVectorKindFilter } from '@baishou/shared'
+import { runAfterIdle, type AIProviderConfig, type RagVectorKindFilter } from '@baishou/shared'
 import { DEFAULT_RAG_CONFIG, type PromptMode } from './rag-memory-section.constants'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
 import { useRagMemoryData } from './useRagMemoryData'
@@ -58,7 +58,7 @@ export function useRagMemorySection() {
     const frame = requestAnimationFrame(() => {
       appendDiagnosticBreadcrumb('RAG android render stage 1 (view)')
       setAndroidRenderStage(1)
-      interactionTask = InteractionManager.runAfterInteractions(() => {
+      interactionTask = runAfterIdle(() => {
         appendDiagnosticBreadcrumb('RAG android render stage 2 (full)')
         setAndroidRenderStage(2)
       })

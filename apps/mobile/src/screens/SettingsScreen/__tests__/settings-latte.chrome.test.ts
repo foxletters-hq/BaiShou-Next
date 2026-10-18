@@ -49,4 +49,14 @@ describe('mobile settings latte chrome', () => {
       }
     }
   })
+
+  it('should enclose custom prompt save button inside the SettingsGroupCard', () => {
+    const section = readFileSync(join(dir, '..', 'components', 'LatteSettingsSection.tsx'), 'utf8')
+    const customPromptBlock = section.split('latte_custom_prompt_title')[1]
+    expect(customPromptBlock).toBeDefined()
+    const cardEndIdx = customPromptBlock.indexOf('</SettingsGroupCard>')
+    const saveButtonIdx = customPromptBlock.indexOf("t('common.save', '保存')")
+    expect(saveButtonIdx).toBeGreaterThan(-1)
+    expect(saveButtonIdx).toBeLessThan(cardEndIdx)
+  })
 })

@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagEntry } from '@baishou/ui/native'
-import type { AIProviderConfig, RagConfig as SharedRagConfig } from '@baishou/shared'
-import { MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY } from '@baishou/shared'
+import {
+  MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+  runAfterIdle,
+  type AIProviderConfig,
+  type RagConfig as SharedRagConfig
+} from '@baishou/shared'
 import { appendDiagnosticBreadcrumb } from '../../../../services/mobile-diagnostic-log.service'
+import { subscribeMobilePendingEmbedCountsChanged } from '../../../../services/mobile-pending-embed-counts'
 import {
   DEFAULT_RAG_CONFIG,
   buildEmbeddingProviders,
@@ -313,6 +318,12 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
   tRef.current = t
 
   useEffect(() => {
+    return subscribeMobilePendingEmbedCountsChanged(() => {
+      void loadRagDataRef.current()
+    })
+  }, [])
+
+  useEffect(() => {
     if (!dbReady || !services) return
     if (storageIndexing) {
       appendDiagnosticBreadcrumb('RAG init deferred: storage indexing')
@@ -357,7 +368,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     }
 
     if (Platform.OS === 'android') {
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runAfterIdle(() => {
         void runInit()
       })
       return () => {
