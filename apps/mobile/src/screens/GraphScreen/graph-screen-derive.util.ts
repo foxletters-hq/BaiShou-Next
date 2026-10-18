@@ -7,6 +7,7 @@ import {
   isDefaultGraphSelfName,
   isGraphExtractBusyStatus,
   isGraphSearchEmbeddingRequiredError,
+  listAmbiguousSourceRefs,
   normalizeGraphFilePath,
   type GraphMonthRange,
   type UserGender,
@@ -90,7 +91,7 @@ export function graphScreenPhaseKey(opts: {
 }
 
 export function shouldShowGraphEmptyGuide(opts: {
-  selfNameReady: boolean | null
+  selfNameReady?: boolean | null
   dismissGuide: boolean
   canvasNodeCount: number
   estimate: GraphCostEstimate | null
@@ -98,7 +99,6 @@ export function shouldShowGraphEmptyGuide(opts: {
   monthRange: GraphMonthRange
 }): boolean {
   return (
-    opts.selfNameReady === true &&
     !opts.dismissGuide &&
     opts.canvasNodeCount === 0 &&
     (opts.estimate?.entryCount ?? opts.pendingReextractCount) > 0 &&
@@ -107,17 +107,12 @@ export function shouldShowGraphEmptyGuide(opts: {
 }
 
 export function shouldShowGraphMonthEmpty(opts: {
-  selfNameReady: boolean | null
+  selfNameReady?: boolean | null
   showEmptyGuide: boolean
   canvasNodeCount: number
   pinNeighborhood: boolean
 }): boolean {
-  return (
-    opts.selfNameReady === true &&
-    !opts.showEmptyGuide &&
-    opts.canvasNodeCount === 0 &&
-    !opts.pinNeighborhood
-  )
+  return !opts.showEmptyGuide && opts.canvasNodeCount === 0 && !opts.pinNeighborhood
 }
 
 export function graphTokenCountDisplay(n: number): {
@@ -143,13 +138,16 @@ export function graphProfileFormFromAwaken(profile: UserProfile): {
   nickname: string
   birthday: string
   gender: UserGender | ''
+  customGender?: string
 } {
   const nick = profile.nickname?.trim() ?? ''
-  return {
+  const base = {
     nickname: isDefaultGraphSelfName(nick) ? '' : nick,
     birthday: profile.birthday?.trim() || '',
-    gender: (profile.gender as UserGender | undefined) || ''
+    gender: ((profile.gender as UserGender | undefined) || '') as UserGender | ''
   }
+  const custom = profile.customGender?.trim()
+  return custom ? { ...base, customGender: custom } : base
 }
 
 export function findGraphSelfPersonHit<T extends { name?: string; aliases?: unknown }>(
@@ -178,7 +176,7 @@ export function buildGraphSelfPersonAliases(
 
 export function graphExtractErrorCopy(message: string): { key: string; fallback: string } | null {
   if (message === GRAPH_SELF_NAME_REQUIRED_ERROR) {
-    return { key: 'graph.self_name_required', fallback: '请先设置图谱自称后再抽取' }
+    return { key: 'graph.self_name_required', fallback: '请先在个人资料中设置昵称后再整理' }
   }
   if (message === GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR) {
     return {
@@ -213,4 +211,54 @@ export function findGraphScreenNode(
   pendingNodes: GraphScreenNode[]
 ): GraphScreenNode | null {
   return nodes.find((n) => n.id === id) || pendingNodes.find((n) => n.id === id) || null
+}
+
+export function resolveGraphNodeSourcePreview(params: {
+  nodeId: string
+  node?: { propsJson?: string | null } | null
+  edges?: Array<{
+    fromId: string
+    toId: string
+    sourceRef?: string | null
+    sourceExcerpt?: string | null
+  }> | null
+}): { sourceRef: string | null; excerpt: string | null } {
+  const touchingEdges = (params.edges ?? []).filter(
+    (e) => e.fromId === params.nodeId || e.toId === params.nodeId
+  )
+  const edgeWithDate = touchingEdges.find((e) =>
+    Boolean(e.sourceRef && parseGraphSourceDate(e.sourceRef).date)
+  )
+  if (edgeWithDate) {
+    return {
+      sourceRef: edgeWithDate.sourceRef ?? null,
+      excerpt: edgeWithDate.sourceExcerpt ?? null
+    }
+  }
+  const edgeWithExcerpt = touchingEdges.find((e) => Boolean(e.sourceExcerpt))
+  if (edgeWithExcerpt) {
+    return {
+      sourceRef: edgeWithExcerpt.sourceRef ?? null,
+      excerpt: edgeWithExcerpt.sourceExcerpt ?? null
+    }
+  }
+  let parsedProps: Record<string, unknown> | null = null
+  if (params.node?.propsJson) {
+    try {
+      parsedProps = JSON.parse(params.node.propsJson)
+    } catch {
+      parsedProps = null
+    }
+  }
+  const ambiguous = parsedProps ? listAmbiguousSourceRefs(parsedProps) : []
+  if (ambiguous.length > 0) {
+    return {
+      sourceRef: ambiguous[0],
+      excerpt: null
+    }
+  }
+  return {
+    sourceRef: null,
+    excerpt: null
+  }
 }

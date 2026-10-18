@@ -3,6 +3,8 @@ import type { GraphExtractQueueSnapshot } from '@/src/services/mobile-graph-extr
 
 export type GraphScreenTab = 'search' | 'reextract' | 'pending' | 'similar'
 
+export type GraphEmbeddedViewMode = 'list' | 'graph'
+
 export type GraphCostEstimate = {
   entryCount: number
   estimatedTokens: number

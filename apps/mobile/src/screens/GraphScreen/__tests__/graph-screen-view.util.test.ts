@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   graphMergeSearchSeed,
+  graphNodeHref,
   graphSplitInitialLabel,
   isGraphExtractDate,
   parseGraphAliasInput,
@@ -77,5 +78,14 @@ describe('graphMergeSearchSeed', () => {
         findNode: () => ({ id: 'x', name: 'X', nodeType: 'person' })
       })
     ).toBeNull()
+  })
+})
+
+describe('graphNodeHref', () => {
+  it('should return pathname and nodeId params matching route contract', () => {
+    expect(graphNodeHref('node-123')).toEqual({
+      pathname: '/graph-node',
+      params: { nodeId: 'node-123' }
+    })
   })
 })

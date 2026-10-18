@@ -14,9 +14,14 @@ import {
 import { useDialog, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { invalidateMobilePendingEmbedCountsCache } from '@/src/services/mobile-pending-embed-counts'
-import { mobileClearLifeGraph } from '@/src/services/mobile-graph.service'
+import {
+  mobileClearLifeGraph,
+  mobileGetNode,
+  mobileListEdgesTouching
+} from '@/src/services/mobile-graph.service'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { subscribeGraphDataChanged } from '@/src/services/mobile-graph-data-changed'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
 import {
   buildGraphScreenDetailEdges,
@@ -27,6 +32,7 @@ import {
 import {
   graphScreenPhaseKey,
   parseGraphSourceDate,
+  resolveGraphNodeSourcePreview,
   shouldShowGraphEmptyGuide,
   shouldShowGraphMonthEmpty
 } from './graph-screen-derive.util'
@@ -40,15 +46,19 @@ import { useGraphScreenDetail } from './useGraphScreenDetail'
 import { useGraphScreenExtract } from './useGraphScreenExtract'
 import { useGraphScreenReview } from './useGraphScreenReview'
 import { useGraphScreenSearch } from './useGraphScreenSearch'
+import { useGraphScreenInventory } from './useGraphScreenInventory'
 import { consumeGraphPendingFocus, subscribeGraphPendingFocus } from './graph-pending-focus'
 import { consumeGraphOpsNodeFocus, subscribeGraphOpsNodeFocus } from './graph-cross-page-focus'
 import { useGraphScreenSettings } from './useGraphScreenSettings'
 
-export function useGraphScreenModel() {
+export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void | Promise<void> }) {
   const { t } = useTranslation()
   const tr = useCallback((key: string, defaultValue?: string) => t(key, defaultValue ?? ''), [t])
-  const translate: GraphScreenTranslateFn = (key, defaultValue, options) =>
-    options ? t(key, defaultValue ?? '', options) : t(key, defaultValue ?? '')
+  const translate: GraphScreenTranslateFn = useCallback(
+    (key, defaultValue, options) =>
+      options ? t(key, defaultValue ?? '', options) : t(key, defaultValue ?? ''),
+    [t]
+  )
   const toast = useNativeToast()
   const dialog = useDialog()
   const { services, dbReady } = useBaishou()
@@ -97,6 +107,14 @@ export function useGraphScreenModel() {
     pendingNodes: data.pendingNodes,
     setStatus
   })
+  const inventory = useGraphScreenInventory({
+    vaultId,
+    dbReady,
+    query: search.query,
+    searchMode: search.searchMode,
+    searchHits: search.hits,
+    revision: data.revision
+  })
   const onSelectNodeRef = useRef(search.onSelectNode)
   onSelectNodeRef.current = search.onSelectNode
 
@@ -121,12 +139,14 @@ export function useGraphScreenModel() {
   const review = useGraphScreenReview({
     t: translate,
     toast,
+    dialog,
     services,
     vaultId,
     vaultName,
     graphNodes: data.graphNodes,
     pendingNodes: data.pendingNodes,
     pendingEdges: data.pendingEdges,
+    similarPairs: data.similarPairs,
     selectedId: search.selectedId,
     setSelectedId: search.setSelectedId,
     setSelectedNode: search.setSelectedNode,
@@ -197,11 +217,15 @@ export function useGraphScreenModel() {
   }
 
   useEffect(() => {
-    if (settings.selfNameReady !== true) return
-    void data.refresh().catch((e) => setStatus(String(e?.message || e)))
-    // 自称就绪后拉图；data 对象每次渲染都会换引用，只跟 refresh 绑定
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上
-  }, [data.refresh, settings.selfNameReady])
+    if (!dbReady || !vaultId) return
+    void data.refreshRef.current().catch((e) => setStatus(String(e?.message || e)))
+  }, [dbReady, vaultId, settings.monthRange, settings.viewMaxNodes, data.refreshRef])
+
+  useEffect(() => {
+    return subscribeGraphDataChanged(() => {
+      void data.refreshRef.current()
+    })
+  }, [data.refreshRef])
 
   const updateMonthRange = useCallback(
     (next: GraphMonthRange | Partial<GraphMonthRange>) => {
@@ -216,10 +240,10 @@ export function useGraphScreenModel() {
   }, [updateMonthRange])
 
   const canvasNodeCount = countGraphCanvasNodes(data.graphNodes)
-  const showAwakenGate = settings.selfNameReady === false
-  const awakenPending = settings.selfNameReady === null
+  const showAwakenGate = false
+  const awakenPending = false
   const showEmptyGuide = shouldShowGraphEmptyGuide({
-    selfNameReady: settings.selfNameReady,
+    selfNameReady: true,
     dismissGuide,
     canvasNodeCount,
     estimate: data.estimate,
@@ -227,7 +251,7 @@ export function useGraphScreenModel() {
     monthRange: settings.monthRange
   })
   const showMonthEmpty = shouldShowGraphMonthEmpty({
-    selfNameReady: settings.selfNameReady,
+    selfNameReady: true,
     showEmptyGuide,
     canvasNodeCount,
     pinNeighborhood: search.pinNeighborhood
@@ -326,9 +350,12 @@ export function useGraphScreenModel() {
     dateOrRef: string | null | undefined,
     fallbackExcerpt?: string | null
   ) => {
-    const { date } = parseGraphSourceDate(dateOrRef)
+    const { raw, date } = parseGraphSourceDate(dateOrRef)
     const excerpt = String(fallbackExcerpt || '').trim()
-    if (!date && !excerpt) return
+    if (!date && !excerpt && !raw) {
+      toast.showInfo(t('graph.source_unavailable', '没有可预览的原文'))
+      return
+    }
     setSourcePreview({
       date,
       content: excerpt || '',
@@ -336,7 +363,12 @@ export function useGraphScreenModel() {
       loading: Boolean(date)
     })
     if (!date) {
-      setSourcePreview({ date: null, content: excerpt, excerpt: excerpt || null, loading: false })
+      setSourcePreview({
+        date: null,
+        content: excerpt || raw,
+        excerpt: excerpt || null,
+        loading: false
+      })
       return
     }
     if (!services?.diaryService) {
@@ -365,6 +397,41 @@ export function useGraphScreenModel() {
         excerpt: excerpt || null,
         loading: false
       })
+    }
+  }
+
+  const openNodeSource = async (nodeId: string, node?: { propsJson?: string | null } | null) => {
+    const inMemory = resolveGraphNodeSourcePreview({
+      nodeId,
+      node,
+      edges: [...data.pendingEdges, ...data.graphEdges, ...(search.localView?.edges || [])]
+    })
+    if (inMemory.sourceRef || inMemory.excerpt) {
+      await openSource(inMemory.sourceRef, inMemory.excerpt)
+      return
+    }
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) {
+      toast.showInfo(t('graph.source_unavailable', '没有可预览的原文'))
+      return
+    }
+    try {
+      const [freshNode, touching] = await Promise.all([
+        node ? Promise.resolve(node) : mobileGetNode(runtime.drizzleDb, vaultId, nodeId),
+        mobileListEdgesTouching(runtime.drizzleDb, vaultId, nodeId)
+      ])
+      const resolved = resolveGraphNodeSourcePreview({
+        nodeId,
+        node: freshNode,
+        edges: touching
+      })
+      if (!resolved.sourceRef && !resolved.excerpt) {
+        toast.showInfo(t('graph.source_unavailable', '没有可预览的原文'))
+        return
+      }
+      await openSource(resolved.sourceRef, resolved.excerpt)
+    } catch (e: any) {
+      toast.showError(e?.message || t('graph.source_load_failed', '加载原文失败'))
     }
   }
 
@@ -398,7 +465,9 @@ export function useGraphScreenModel() {
         shadowRepo,
         pathService: services.pathService,
         fileSystem: services.fileSystem,
-        stopExtract: () => mobileGraphExtractQueue.stop()
+        stopExtract: () => {
+          void mobileGraphExtractQueue.stopAndDropPersisted()
+        }
       })
       invalidateMobilePendingEmbedCountsCache()
       search.resetViewForMonthChange()
@@ -416,6 +485,10 @@ export function useGraphScreenModel() {
 
   // 空图「开始整理」走记忆中心同一条 batchEmbed，不要只在本页抽已嵌入的待重抽
   const startOrganize = async () => {
+    if (options?.onUnifiedOrganize) {
+      await options.onUnifiedOrganize()
+      return
+    }
     if (!services) return
     const runtime = getAgentDbRuntime()
     if (runtime?.drizzleDb) {
@@ -472,6 +545,7 @@ export function useGraphScreenModel() {
     settings,
     data,
     search,
+    inventory,
     review,
     detail,
     extract,
@@ -485,6 +559,7 @@ export function useGraphScreenModel() {
     graphNodeNameById,
     detailEdges,
     openSource,
+    openNodeSource,
     clearLifeGraph,
     saveProfileFromSettings,
     setDismissGuide,

@@ -43,6 +43,7 @@ export function useGraphScreenData(deps: DataDeps) {
   const [graphEdges, setGraphEdges] = useState<any[]>([])
   const [estimate, setEstimate] = useState<GraphCostEstimate | null>(null)
   const [similarPairs, setSimilarPairs] = useState<GraphSimilarPendingPair[]>([])
+  const [revision, setRevision] = useState(0)
   const inFlightDeletedNodeIdsRef = useRef(new Set<string>())
   const inFlightDeletedEdgeIdsRef = useRef(new Set<string>())
   const graphViewRef = useRef({
@@ -97,6 +98,7 @@ export function useGraphScreenData(deps: DataDeps) {
     )
     setGraphNodes(visible.nodes)
     setGraphEdges(visible.edges)
+    setRevision((n) => n + 1)
     try {
       setEstimate(
         await mobileEstimateExtraction({
@@ -138,16 +140,18 @@ export function useGraphScreenData(deps: DataDeps) {
       opts.setSelectedNode(
         fresh && opts.stripSuspectOnNodeId === fresh.id ? stripGraphNodeSuspectReason(fresh) : fresh
       )
-    }
-    if (!opts.pinNeighborhood || !opts.localView) return
-    if (opts.selectedId) {
-      const view = await mobileGetView(runtime.drizzleDb, deps.vaultId, {
-        centerNodeId: opts.selectedId,
-        depth: viewDepthFor(opts.focusDepth)
-      })
-      opts.setLocalView(view)
+      if (fresh) {
+        const view = await mobileGetView(runtime.drizzleDb, deps.vaultId, {
+          centerNodeId: opts.selectedId,
+          depth: viewDepthFor(opts.focusDepth)
+        })
+        opts.setLocalView(view)
+      } else {
+        opts.setLocalView(null)
+      }
       return
     }
+    if (!opts.pinNeighborhood || !opts.localView) return
     const ids = (opts.localView.nodes || [])
       .map((n: { id?: string }) => n.id)
       .filter(Boolean) as string[]
@@ -183,6 +187,7 @@ export function useGraphScreenData(deps: DataDeps) {
     graphEdges,
     setGraphEdges,
     estimate,
+    revision,
     refresh,
     refreshRef,
     refreshVisibleAfterReview,

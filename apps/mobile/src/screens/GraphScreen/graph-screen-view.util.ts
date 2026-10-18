@@ -38,3 +38,13 @@ export function graphMergeSearchSeed(opts: {
   if (!n || n.nodeType === 'entry') return null
   return { id: n.id, name: String(n.name || n.id), nodeType: String(n.nodeType || '') }
 }
+
+export function graphNodeHref(nodeId: string): {
+  pathname: '/graph-node'
+  params: { nodeId: string }
+} {
+  return {
+    pathname: '/graph-node',
+    params: { nodeId }
+  }
+}

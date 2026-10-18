@@ -6,6 +6,7 @@ import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
 import type { AppDatabase } from '@baishou/database'
 import { mobileSearchGraphNodes } from '@/src/services/mobile-graph.service'
 import type { GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export type GraphMergePick = {
   id: string
@@ -145,12 +146,22 @@ export function GraphMergeSearchSheet(props: {
         <Text style={[sheet.title, { color: colors.textPrimary }]}>
           {t('graph.merge_nodes', '合并节点')}
         </Text>
-        <Text style={[sheet.lead, { color: colors.textSecondary }]}>
-          {t(
-            'graph.merge_search_hint',
-            '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。'
-          )}
-        </Text>
+        <View
+          style={[
+            sheet.leadBox,
+            {
+              backgroundColor: colors.bgSurfaceNormal,
+              borderColor: colors.borderControl
+            }
+          ]}
+        >
+          <Text style={[sheet.lead, { color: colors.textSecondary }]}>
+            {t(
+              'graph.merge_search_hint',
+              '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。'
+            )}
+          </Text>
+        </View>
       </View>
 
       <View
@@ -175,7 +186,13 @@ export function GraphMergeSearchSheet(props: {
           disabled={searching}
           style={[sheet.searchBtn, { borderLeftColor: colors.borderMuted }]}
         >
-          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: mobileTypography.secondary.fontSize,
+              fontWeight: '600'
+            }}
+          >
             {t('graph.search', '搜索')}
           </Text>
         </Pressable>
@@ -193,7 +210,11 @@ export function GraphMergeSearchSheet(props: {
           <Text style={[sheet.sectionTitle, { color: colors.textSecondary }]}>
             {t('graph.merge_search_results', '搜索结果')}
           </Text>
-          <ScrollView style={sheet.list} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={sheet.list}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+          >
             {searching && hits.length === 0 ? (
               <Text style={[sheet.empty, { color: colors.textSecondary }]}>
                 {t('graph.merge_searching', '正在搜索…')}
@@ -231,7 +252,11 @@ export function GraphMergeSearchSheet(props: {
             ? t('graph.merge_picks_empty_title', '已选节点')
             : t('graph.merge_picks_title', '已选 {{count}} 个', { count: picks.length })}
         </Text>
-        <ScrollView style={sheet.list} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={sheet.list}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+        >
           {picks.length === 0 ? (
             <Text style={[sheet.empty, { color: colors.textSecondary }]}>
               {t('graph.merge_picks_empty', '从上方搜索并加入要合并进来的节点')}
@@ -259,14 +284,27 @@ export function GraphMergeSearchSheet(props: {
                     </Text>
                     {kept ? (
                       <View style={sheet.keepBadge}>
-                        <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600' }}>
+                        <Text
+                          style={{
+                            color: colors.primary,
+                            fontSize: mobileTypography.caption.fontSize,
+                            fontWeight: '600'
+                          }}
+                        >
                           {t('graph.merge_keep_short', '保留')}
                         </Text>
                       </View>
                     ) : null}
                   </View>
                   <Pressable onPress={() => removePick(p.id)} hitSlop={8} style={sheet.remove}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 18 }}>×</Text>
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: mobileTypography.title.fontSize
+                      }}
+                    >
+                      ×
+                    </Text>
                   </Pressable>
                 </View>
               )
@@ -314,54 +352,60 @@ export function GraphMergeSearchSheet(props: {
 
 const sheet = StyleSheet.create({
   titleBlock: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 4,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.mdPlus,
+    paddingBottom: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight
+  },
+  leadBox: {
+    borderWidth: 1,
+    borderRadius: sharedTokens.radius.sm,
+    padding: sharedTokens.spacing.smPlus,
+    marginTop: sharedTokens.spacing.xs
   },
   lead: {
-    fontSize: 13,
-    lineHeight: 20
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18
   },
   searchField: {
-    marginHorizontal: 20,
-    marginTop: 14,
+    marginHorizontal: sharedTokens.spacing.mdPlus,
+    marginTop: sharedTokens.spacing.mdSnug,
     flexDirection: 'row',
     alignItems: 'center',
     height: 40,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     overflow: 'hidden'
   },
   searchInput: {
     flex: 1,
     minWidth: 0,
     height: '100%',
-    paddingHorizontal: 12,
-    fontSize: 14
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.secondary.fontSize
   },
   searchBtn: {
     height: '100%',
-    paddingHorizontal: 12,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
     justifyContent: 'center',
     borderLeftWidth: 1
   },
   meta: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    fontSize: 12
+    marginHorizontal: sharedTokens.spacing.mdPlus,
+    marginTop: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.caption.fontSize
   },
   section: {
-    marginTop: 16,
-    paddingHorizontal: 20
+    marginTop: sharedTokens.spacing.md,
+    paddingHorizontal: sharedTokens.spacing.mdPlus
   },
   sectionTitle: {
-    marginBottom: 8,
-    fontSize: 11,
+    marginBottom: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase'
@@ -370,9 +414,9 @@ const sheet = StyleSheet.create({
     maxHeight: 168
   },
   empty: {
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    fontSize: 12,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
     textAlign: 'center'
   },
@@ -380,37 +424,37 @@ const sheet = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 42,
-    paddingHorizontal: 10,
-    marginBottom: 6,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.xsPlus,
     borderWidth: 1,
-    borderRadius: 10,
-    gap: 8
+    borderRadius: sharedTokens.radius.control,
+    gap: sharedTokens.spacing.sm
   },
   pickMain: {
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   name: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   type: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   add: {
     marginLeft: 'auto',
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   keepBadge: {
     marginLeft: 'auto',
     height: 22,
-    paddingHorizontal: 8,
-    borderRadius: 999,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.full,
     justifyContent: 'center'
   },
   remove: {
@@ -420,25 +464,25 @@ const sheet = StyleSheet.create({
     justifyContent: 'center'
   },
   error: {
-    marginHorizontal: 20,
-    marginTop: 10,
-    fontSize: 12,
+    marginHorizontal: sharedTokens.spacing.mdPlus,
+    marginTop: sharedTokens.spacing.smPlus,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 20,
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.md,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.mdPlus,
     borderTopWidth: 1
   },
   footerBtn: {
     height: 36,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
