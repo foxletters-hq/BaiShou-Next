@@ -20,7 +20,7 @@ export const editorThemeMarkdown = {
     borderRadius: '8px',
     border: '1px solid var(--border-subtle)',
     margin: '16px 0',
-    fontSize: '13px',
+    fontSize: 'var(--ui-fs-md)',
     overflowX: 'auto',
     lineHeight: '1.6'
   },
@@ -29,7 +29,7 @@ export const editorThemeMarkdown = {
   '.cm-rendered-codeBlock': {
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     backgroundColor: 'var(--bg-surface-normal)',
-    fontSize: '13px',
+    fontSize: 'var(--ui-fs-md)',
     lineHeight: '1.6'
   },
   '.cm-code-line': {
@@ -156,7 +156,7 @@ export const editorThemeMarkdown = {
   '.cm-placeholder': {
     color: 'var(--text-tertiary)',
     opacity: '0.6',
-    fontSize: '15px',
+    fontSize: 'var(--content-font-size-md)',
     lineHeight: '1.7'
   },
   '.cm-diary-tag-token': {
@@ -164,7 +164,9 @@ export const editorThemeMarkdown = {
     borderRadius: '10px',
     padding: '1px 8px',
     margin: '0 6px 0 0',
-    fontSize: '16px',
+    // WebView 不加载 css-variables；`#标签` 无空格仍会套上标题 1.8em。
+    // 必须带 px 回退，否则 var 无效后 chip 会继承标题字号。
+    fontSize: 'var(--content-font-size-lg, 16px)',
     fontWeight: '500',
     lineHeight: '24px',
     verticalAlign: 'baseline',
