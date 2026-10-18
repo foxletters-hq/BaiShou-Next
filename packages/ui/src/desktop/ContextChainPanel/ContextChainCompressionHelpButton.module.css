@@ -6,21 +6,21 @@
 .compressionHelpContent {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
 }
 
 .compressionHelpLead,
 .compressionHelpSectionBody,
 .compressionHelpRow {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-primary);
 }
 
 .compressionHelpSectionTitle {
-  margin: 0 0 6px;
-  font-size: 14px;
+  margin: 0 0 var(--spacing-xs-plus);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.02em;
@@ -29,5 +29,5 @@
 .compressionHelpRows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }

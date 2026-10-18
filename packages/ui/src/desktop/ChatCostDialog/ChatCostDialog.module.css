@@ -31,7 +31,7 @@
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: slideUp var(--duration-moderate) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes slideUp {
@@ -44,23 +44,23 @@
 }
 
 .title {
-  padding: 24px 28px 16px 28px;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
   margin: 0;
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 28px;
 }
 
 .content {
-  padding: 0 28px;
+  padding: 0 var(--spacing-lg);
   display: flex;
   flex-direction: column;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   line-height: 20px;
@@ -80,17 +80,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: var(--spacing-xs-plus) 0;
 }
 
 .costLabel {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-secondary);
   line-height: 20px;
 }
 
 .costValue {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   color: var(--text-primary);
   line-height: 20px;
@@ -99,18 +99,18 @@
 
 .divider {
   border-bottom: 1px solid var(--border-muted);
-  margin: 16px 0;
+  margin: var(--spacing-md) 0;
 }
 
 .disclaimer {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-tertiary);
   line-height: 18px;
 }
 
 .actions {
-  padding: 16px 28px 24px 28px;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
   display: flex;
   justify-content: flex-end;
 }
@@ -119,13 +119,13 @@
   background: transparent;
   border: none;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   margin-right: -12px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
   text-transform: uppercase;
 }
 
@@ -137,14 +137,14 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 16px;
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .refreshButton:hover:not(:disabled) {
@@ -158,12 +158,12 @@
 }
 
 .errorMessage {
-  margin-top: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-sm);
   color: var(--color-error);
   background-color: rgba(var(--color-error-rgb), 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   line-height: 18px;
 }
 
@@ -174,9 +174,9 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   position: relative;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .sourceLink:hover {
@@ -195,16 +195,16 @@
   background-color: var(--bg-surface-highest);
   color: var(--text-primary);
   text-align: center;
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: var(--radius-xs-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   position: absolute;
   z-index: 10;
   bottom: 125%;
   left: 50%;
   transform: translateX(-50%);
   opacity: 0;
-  transition: opacity 0.2s;
-  font-size: 12px;
+  transition: opacity var(--duration-swift);
+  font-size: var(--ui-fs-sm);
   font-weight: normal;
   pointer-events: none;
   box-shadow:
@@ -232,21 +232,21 @@
 .pricingSourceContainer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .refreshButtonInline {
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 14px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   display: inline-flex;
   align-items: center;
   line-height: 1;

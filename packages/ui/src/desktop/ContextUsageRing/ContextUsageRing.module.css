@@ -3,7 +3,7 @@
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   display: inline-flex;
@@ -29,8 +29,8 @@
 .fill {
   stroke: var(--color-primary);
   transition:
-    stroke-dashoffset 0.2s ease,
-    stroke 0.2s ease;
+    stroke-dashoffset var(--duration-swift) ease,
+    stroke var(--duration-swift) ease;
 }
 
 .trigger.warn .fill,
@@ -59,8 +59,8 @@
   max-width: calc(100vw - 24px);
   max-height: min(580px, calc(100vh - 24px));
   overflow: auto;
-  padding: 18px 18px 22px;
-  border-radius: 12px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md-plus);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-card);
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
@@ -75,7 +75,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .panelTitle {
@@ -92,7 +92,7 @@
 }
 
 .panelSummary {
-  margin: 6px 0 12px;
+  margin: var(--spacing-xs-plus) 0 var(--spacing-md-tight);
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -100,18 +100,18 @@
 
 .barTrack {
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--bg-surface-normal);
   box-shadow: inset 0 0 0 1px var(--border-muted);
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
   display: flex;
   align-items: stretch;
 }
 
 .barFill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--color-primary);
 }
 
@@ -141,22 +141,22 @@
 }
 
 .legendSwatch {
-  width: var(--spacing-sm);
-  height: var(--spacing-sm);
-  border-radius: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-2xs);
   flex-shrink: 0;
 }
 
 .occupancyHint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--spacing-md-tight);
   font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-tertiary);
 }
 
 .sectionTitle {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.02em;
@@ -166,8 +166,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 6px 0;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-xs-plus) 0;
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
@@ -180,25 +180,25 @@
 .emptyHint,
 .disclaimer {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-tertiary);
 }
 
 .disclaimer {
-  margin-top: 12px;
+  margin-top: var(--spacing-md-tight);
 }
 
 .divider {
   height: 1px;
-  margin: 16px 0;
+  margin: var(--spacing-md) 0;
   background: var(--border-muted);
 }
 
 .pricingActions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .sourceLink {
@@ -215,10 +215,10 @@
   background: var(--bg-glass-inset);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -232,7 +232,7 @@
 }
 
 .error {
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--ui-fs-sm);
   color: var(--color-error);
 }

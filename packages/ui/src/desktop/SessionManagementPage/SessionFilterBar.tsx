@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Input } from '../Input/Input'
 import { Search } from 'lucide-react'
 import styles from './SessionManagementPage.module.css'
+import { sharedTokens } from '../../theme/tokens'
 
 interface SessionFilterBarProps {
   searchQuery: string
@@ -22,7 +23,11 @@ export const SessionFilterBar: React.FC<SessionFilterBarProps> = ({
   return (
     <div className={styles.filterBar}>
       <div className={styles.searchBox}>
-        <Search size={16} color="var(--text-secondary)" style={{ marginRight: 8 }} />
+        <Search
+          size={16}
+          color="var(--text-secondary)"
+          style={{ marginRight: sharedTokens.spacing.sm }}
+        />
         <Input
           fieldSize="small"
           className={styles.searchInput}

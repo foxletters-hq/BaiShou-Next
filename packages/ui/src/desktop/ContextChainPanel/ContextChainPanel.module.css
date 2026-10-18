@@ -6,8 +6,8 @@
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 0.34s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity var(--duration-moderate) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--duration-moderate) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .shell {
@@ -40,8 +40,8 @@
   transform: translateX(100%);
   opacity: 0.92;
   transition:
-    transform 0.34s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+    transform var(--duration-moderate) cubic-bezier(0.16, 1, 0.3, 1),
+    opacity var(--duration-moderate) cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
 }
 
@@ -64,10 +64,10 @@
   transform: translate(-50%, -50%);
   width: 3px;
   height: 48px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
   background: var(--border-subtle);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .panel:hover .resizeHandle::after,
@@ -86,14 +86,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .titleRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
 }
 
@@ -113,20 +113,20 @@
   color: var(--color-primary);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 6px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs-plus);
   flex-shrink: 0;
 }
 
 .closeBtn {
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: var(--ui-display-sm);
   color: var(--text-secondary);
   cursor: pointer;
   line-height: 1;
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
@@ -139,15 +139,15 @@
   flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 20px 12px;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md-plus) var(--spacing-md-tight);
 }
 
 .tabsRow {
   flex-shrink: 0;
   display: flex;
-  gap: 4px;
-  padding: 0 16px 8px;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-md) var(--spacing-sm);
   overflow-x: auto;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -155,13 +155,13 @@
 .tabButton {
   background: transparent;
   border: none;
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   white-space: nowrap;
 }
 
@@ -195,7 +195,7 @@
 }
 
 .estimateBar {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-surface-highlight);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -203,8 +203,8 @@
 .estimateTitleRow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--spacing-xs-plus);
+  margin-bottom: var(--spacing-sm);
 }
 
 .estimateTitleRow .estimateTitle {
@@ -216,16 +216,16 @@
   font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
   line-height: 1.4;
 }
 
 .footerStat {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   font-size: var(--ui-fs-sm);
@@ -242,8 +242,8 @@
 
 .metaRow {
   display: flex;
-  gap: 6px;
-  padding: 4px 8px 2px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-2xs);
 }
 
 .metaChip {
@@ -252,14 +252,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
   cursor: pointer;
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   transition:
-    background-color 0.12s ease,
-    border-color 0.12s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .metaChip:hover {
@@ -280,7 +280,7 @@
 
 .compressionListHint {
   margin: 0;
-  padding: 4px 10px 6px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus) var(--spacing-xs-plus);
   font-size: var(--ui-fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
@@ -289,7 +289,7 @@
 
 .messageItemMeta {
   min-height: 0;
-  padding: 9px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   margin-bottom: 0;
   cursor: pointer;
 }
@@ -303,16 +303,16 @@
 }
 
 .chainMetaDivider {
-  margin: 6px 12px 4px;
+  margin: var(--spacing-xs-plus) var(--spacing-md-tight) var(--spacing-xs);
   border: none;
   border-top: 1px solid var(--border-subtle);
   opacity: 0.5;
 }
 
 .recompressProgressEmbedded {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--border-subtle));
   border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--border-subtle));
   background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-surface-highlight));
@@ -321,7 +321,7 @@
 .detailHeaderRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   flex-wrap: wrap;
 }
 
@@ -329,8 +329,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface-highlight));
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -338,25 +338,25 @@
 .recompressProgressHead {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .recompressProgressTitle {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .recompressProgressElapsed {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-variant-numeric: tabular-nums;
   color: var(--color-primary);
   font-weight: 600;
 }
 
 .recompressProgressHint {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -375,7 +375,7 @@
   position: relative;
   width: 100%;
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   overflow: hidden;
   background: color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
@@ -386,7 +386,7 @@
   left: 0;
   height: 100%;
   width: 40%;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--color-primary);
   animation: recompressIndeterminate 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -412,23 +412,23 @@
 }
 
 .recompressDetailOverlay {
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  margin-bottom: var(--spacing-md-tight);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   background: var(--bg-surface-highlight);
   border: 1px dashed var(--border-subtle);
 }
 
 .recompressErrorDismiss {
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
   padding: 0;
   border: none;
   background: none;
   color: var(--color-primary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .recompressBar {
@@ -436,21 +436,21 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .recompressTrigger {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--color-primary);
   background: rgba(var(--color-primary-rgb), 0.08);
   border: 1px solid rgba(var(--color-primary-rgb), 0.28);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    background-color 0.15s,
-    opacity 0.15s;
+    background-color var(--duration-fast),
+    opacity var(--duration-fast);
 }
 
 .recompressTrigger:hover:not(:disabled) {
@@ -464,44 +464,44 @@
 
 .recompressPanel {
   width: min(100%, 360px);
-  padding: 12px;
+  padding: var(--spacing-md-tight);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface-highlight);
   text-align: left;
 }
 
 .recompressHint {
-  margin: 0 0 10px;
-  font-size: 12px;
+  margin: 0 0 var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .recompressRow {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .recompressLabel {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
   font-weight: 500;
 }
 
 .recompressSelect {
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 .recompressPreviewList {
-  margin: 0 0 10px;
+  margin: 0 0 var(--spacing-sm-plus);
   padding: 0;
   list-style: none;
   max-height: 120px;
@@ -510,9 +510,9 @@
 
 .recompressPreviewList li {
   display: flex;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -537,32 +537,32 @@
 .recompressMerge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
   color: var(--text-primary);
   cursor: pointer;
 }
 
 .recompressError {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
   color: var(--color-error);
 }
 
 .recompressSubmit {
   width: 100%;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .recompressSubmit:hover:not(:disabled) {
@@ -584,13 +584,13 @@
 .roundHeaderBtn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
-  margin-top: 4px;
-  padding: 6px 8px;
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
   border: none;
   border-top: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   font-size: var(--ui-fs-md);
   font-weight: 600;
@@ -599,8 +599,8 @@
   cursor: pointer;
   text-align: left;
   transition:
-    background-color 0.15s,
-    color 0.15s;
+    background-color var(--duration-fast),
+    color var(--duration-fast);
 }
 
 .roundHeaderBtn:hover {
@@ -627,7 +627,7 @@
   line-height: 1;
   opacity: 0.7;
   transform: rotate(0deg);
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .roundChevronExpanded {
@@ -647,14 +647,14 @@
 }
 
 .footerBar {
-  padding: 8px 16px 12px;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md-tight);
   background: var(--bg-surface-highlight);
 }
 
 .footerRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .listPane {
@@ -663,10 +663,10 @@
   max-width: 320px;
   border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
-  padding: 4px 8px 12px;
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-md-tight);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .detailPane {
@@ -679,11 +679,11 @@
 
 .detailHeader {
   flex-shrink: 0;
-  padding: 8px 14px;
+  padding: var(--spacing-sm) var(--spacing-md-snug);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .detailIndex {
@@ -697,7 +697,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--spacing-lg);
   text-align: center;
   font-size: var(--ui-fs-md);
   color: var(--text-secondary);
@@ -709,7 +709,7 @@
   overflow-y: auto;
   overflow-anchor: none;
   scroll-behavior: auto;
-  padding: 12px 16px 20px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md-plus);
   font-size: var(--ui-fs-lg);
   line-height: 1.6;
 }
@@ -721,7 +721,7 @@
 .contentArea {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 16px 20px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md-plus);
 }
 
 .contentArea :global(.markdownContainer) {
@@ -731,13 +731,13 @@
 .roundBody {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .roundBodyInner {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .messageItem {
@@ -745,11 +745,11 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 4px;
-  padding: 6px 10px;
-  border-radius: 8px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -767,14 +767,14 @@
   color: var(--text-secondary);
   min-width: 22px;
   opacity: 0.65;
-  margin-top: 3px;
+  margin-top: var(--spacing-2xs);
 }
 
 .msgRole {
   font-size: var(--ui-fs-sm);
   font-weight: 500;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   white-space: nowrap;
   flex-shrink: 0;
   line-height: 1.35;
@@ -793,7 +793,7 @@
 }
 
 .emptyHint {
-  padding: 32px 16px;
+  padding: var(--spacing-xl) var(--spacing-md);
   text-align: center;
   color: var(--text-secondary);
   font-size: var(--ui-fs-md);
@@ -841,15 +841,15 @@
 .chainAttachments {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs-plus);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .chainAttachmentsCompact {
-  gap: 6px;
-  margin-top: 4px;
-  margin-bottom: 2px;
+  gap: var(--spacing-xs-plus);
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-2xs);
 }
 
 .chainAttImageBtn,
@@ -865,12 +865,12 @@
 .chainAttImage {
   width: 120px;
   height: 120px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   background-color: var(--bg-surface-normal);
   border: 1px solid var(--border-subtle);
   display: block;
-  transition: opacity 0.12s ease;
+  transition: opacity var(--duration-fast) ease;
 }
 
 .chainAttImageBtn:hover .chainAttImage {
@@ -880,19 +880,19 @@
 .chainAttachmentsCompact .chainAttImage {
   width: 48px;
   height: 48px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
 }
 
 .chainAttDocBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-width: 200px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   background-color: var(--bg-surface-normal);
   border: 1px solid var(--border-subtle);
-  transition: background-color 0.12s ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .chainAttDocBtn:hover {
@@ -901,17 +901,17 @@
 
 .chainAttachmentsCompact .chainAttDocBtn {
   max-width: 140px;
-  padding: 4px 8px;
-  gap: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  gap: var(--spacing-xs-plus);
 }
 
 .chainAttDocIcon {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   flex-shrink: 0;
 }
 
 .chainAttachmentsCompact .chainAttDocIcon {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
 }
 
 .chainAttDocName {

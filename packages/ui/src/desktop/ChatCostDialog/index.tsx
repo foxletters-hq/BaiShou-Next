@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { withAppContentOverlay } from '../overlay'
-import styles from './ChatCostDialog.module.css'
 import { useTranslation } from 'react-i18next'
+import { withAppContentOverlay } from '../overlay'
+import { formatLocaleTokenCount } from '../../shared/token-usage-display'
+import styles from './ChatCostDialog.module.css'
 
 export interface CostDetails {
   modelName?: string
@@ -50,11 +51,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
     setRefreshError(null)
     try {
       const result = await onRefreshPricing()
-      if (!result.success && result.error) {
-        setRefreshError(result.error)
+      if (!result.success) {
+        setRefreshError(result.error || t('agent.chat.pricing_refresh_failed', '请检查网络环境'))
       }
     } catch (e: any) {
-      setRefreshError(e?.message || t('agent.chat.pricing_refresh_failed', '刷新失败'))
+      setRefreshError(e?.message || t('agent.chat.pricing_refresh_failed', '请检查网络环境'))
     } finally {
       setIsRefreshing(false)
     }
@@ -103,7 +104,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               {t('agent.chat.cost_cumulative_input', '累计输入')}
             </span>
             <span className={styles.costValue}>
-              {details.promptTokens} {t('agent.chat.tokens_unit', 'tokens')}
+              {formatLocaleTokenCount(details.promptTokens)} {t('agent.chat.tokens_unit', 'tokens')}
             </span>
           </div>
           <div className={styles.costRow}>
@@ -111,7 +112,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               {t('agent.chat.cost_cumulative_output', '累计输出')}
             </span>
             <span className={styles.costValue}>
-              {details.completionTokens} {t('agent.chat.tokens_unit', 'tokens')}
+              {formatLocaleTokenCount(details.completionTokens)}{' '}
+              {t('agent.chat.tokens_unit', 'tokens')}
             </span>
           </div>
           {(details.cacheReadTokens ?? 0) > 0 ? (
@@ -120,7 +122,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                 {t('agent.chat.cost_cumulative_cache_read', '缓存读取')}
               </span>
               <span className={styles.costValue}>
-                {details.cacheReadTokens!.toLocaleString()} {t('agent.chat.tokens_unit', 'tokens')}
+                {formatLocaleTokenCount(details.cacheReadTokens!)}{' '}
+                {t('agent.chat.tokens_unit', 'tokens')}
               </span>
             </div>
           ) : null}
@@ -130,7 +133,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                 {t('agent.chat.cost_cumulative_cache_write', '缓存写入')}
               </span>
               <span className={styles.costValue}>
-                {details.cacheWriteTokens!.toLocaleString()} {t('agent.chat.tokens_unit', 'tokens')}
+                {formatLocaleTokenCount(details.cacheWriteTokens!)}{' '}
+                {t('agent.chat.tokens_unit', 'tokens')}
               </span>
             </div>
           ) : null}

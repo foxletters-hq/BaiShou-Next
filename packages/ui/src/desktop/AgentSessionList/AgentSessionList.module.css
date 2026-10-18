@@ -9,10 +9,10 @@
 }
 
 .header {
-  padding: 16px;
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   background-color: transparent;
 }
 
@@ -20,21 +20,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(
-    135deg,
-    var(--color-primary),
-    rgba(var(--color-tertiary-rgb, 173, 136, 212), 1)
-  );
+  padding: var(--spacing-md-tight);
+  background: linear-gradient(135deg, var(--color-primary), rgba(var(--color-success-rgb), 1));
   color: var(--text-on-primary);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: none;
 }
 
@@ -53,9 +49,9 @@
   align-items: center;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
-  padding: 8px 12px;
-  transition: all 0.2s;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  transition: all var(--duration-swift);
 }
 
 .searchBox:focus-within {
@@ -66,7 +62,7 @@
 
 .searchIcon {
   color: var(--text-secondary);
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
   display: flex;
   align-items: center;
 }
@@ -76,12 +72,12 @@
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
 }
 
 .searchInput::placeholder {
-  color: rgba(var(--text-secondary-rgb, 100, 116, 139), 0.6);
+  color: rgba(var(--text-secondary-rgb), 0.6);
 }
 
 /* Scrollable List Container */
@@ -89,7 +85,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 20px;
+  padding-bottom: var(--spacing-md-plus);
 }
 
 .scrollArea::-webkit-scrollbar {
@@ -98,7 +94,7 @@
 
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Group Headers */
@@ -106,24 +102,24 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  padding: 8px 16px;
-  font-size: 11px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .emptyState {
-  padding: 40px 20px;
+  padding: var(--spacing-xl-plus) var(--spacing-md-plus);
   text-align: center;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }

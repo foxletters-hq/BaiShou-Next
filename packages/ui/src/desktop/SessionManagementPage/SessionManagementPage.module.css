@@ -16,33 +16,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
+  padding: var(--spacing-md) var(--spacing-xl);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   z-index: 10;
 }
 
 .appBarTitle {
-  font-size: 24px;
+  font-size: var(--icon-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   letter-spacing: -0.5px;
 }
 
 .appBarActions {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   align-items: center;
 }
 
 /* --- Search & Filter Bar --- */
 .filterBar {
-  padding: 16px 32px;
+  padding: var(--spacing-md) var(--spacing-xl);
   display: flex;
-  gap: 16px;
+  gap: var(--spacing-md);
   align-items: center;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
@@ -54,10 +54,10 @@
   display: flex;
   align-items: center;
   background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm-plus) var(--spacing-md);
   border: 1px solid var(--border-control);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .searchBox:focus-within {
@@ -71,20 +71,20 @@
   background: transparent;
   outline: none;
   flex: 1;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .filterTag {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .filterTag:hover {
@@ -99,10 +99,10 @@
 
 /* --- Dashboard Stats Panel --- */
 .statsPanel {
-  padding: 24px 32px 16px;
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  gap: var(--spacing-md-plus);
 }
 
 .statCard {
@@ -112,13 +112,13 @@
     rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.5)
   );
   border: 1px solid var(--border-control);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md-plus);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .statCard:hover {
@@ -127,7 +127,7 @@
 }
 
 .statLabel {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -135,16 +135,16 @@
 }
 
 .statValue {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .statTrend {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--color-success);
 }
@@ -153,7 +153,7 @@
 .sessionListContainer {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 32px 32px;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
 }
 
 .sessionListContainer::-webkit-scrollbar {
@@ -161,25 +161,25 @@
 }
 .sessionListContainer::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .sessionList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .sessionCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 16px;
-  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-md-plus);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -206,12 +206,12 @@
 .sessionTitleRow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .sessionTitle {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -220,17 +220,17 @@
 }
 
 .sessionPinBadge {
-  font-size: 14px;
-  background: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.15);
-  padding: 4px 8px;
-  border-radius: 12px;
+  font-size: var(--ui-fs-lg);
+  background: rgba(var(--color-success-rgb), 0.15);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
 }
 
 .sessionMeta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
+  gap: var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -244,10 +244,10 @@
 
 .sessionActions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   opacity: 0;
   transform: translateX(10px);
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
 }
 
 .sessionCard:hover .sessionActions {
@@ -258,15 +258,15 @@
 .sessionActionBtn {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: all 0.2s;
+  font-size: var(--ui-fs-xl);
+  transition: all var(--duration-swift);
 }
 
 .sessionActionBtn:hover {
@@ -287,18 +287,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--spacing-md);
   color: var(--text-secondary);
 }
 
 .emptyIcon {
-  font-size: 48px;
+  font-size: var(--icon-fs-2xl);
   opacity: 0.5;
   filter: grayscale(1);
 }
 
 .emptyText {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
 }
 
@@ -315,30 +315,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn var(--duration-moderate) ease;
 }
 
 .dialogBox {
   background: var(--bg-surface);
-  border-radius: 24px;
-  padding: 32px;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
   width: 90%;
   max-width: 440px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  gap: var(--spacing-md);
+  animation: slideUp var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.1);
 }
 
 .dialogTitle {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .dialogText {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -346,8 +346,8 @@
 .dialogActions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--spacing-md-tight);
+  margin-top: var(--spacing-md);
 }
 
 @keyframes fadeIn {
