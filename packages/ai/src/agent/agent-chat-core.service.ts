@@ -60,6 +60,7 @@ export class AgentChatCoreService {
     knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
     knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
     skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+    skillsReader?: import('../tools/agent.tool').ToolContext['skillsReader']
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
     resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
     skillsCatalog?: import('./agent-session.types').StreamChatOptions['skillsCatalog']
@@ -107,6 +108,7 @@ export class AgentChatCoreService {
           knowledgeReader: params.knowledgeReader,
           knowledgeGraphReader: params.knowledgeGraphReader,
           skillsWriter: params.skillsWriter,
+          skillsReader: params.skillsReader,
           workspace: params.workspace,
           resolveVaultDisplayName: params.resolveVaultDisplayName,
           skillsCatalog: params.skillsCatalog,

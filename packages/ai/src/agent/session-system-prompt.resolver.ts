@@ -47,6 +47,11 @@ export interface AgentToolsContextParams {
   webSearchResultFetcher?: unknown
   fetchSearchPage?: unknown
   skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+  skillsReader?: import('../tools/agent.tool').ToolContext['skillsReader']
+  skillsCatalog?: Array<{ name: string; description?: string }>
+  extraVercelToolsFactory?: (
+    context: ToolContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
   /** Optional Gate instance so hideDeniedTools / profile match streamChat filtering */
   agentGate?: IBaishouAgentGate
   gateProfile?: AgentGateProfileId
@@ -120,6 +125,7 @@ async function buildToolExecutionContext(
     webSearchResultFetcher: params.webSearchResultFetcher as any,
     fetchSearchPage: params.fetchSearchPage as any,
     skillsWriter: params.skillsWriter,
+    skillsReader: params.skillsReader,
     agentGate: params.agentGate,
     gateProfile,
     workspace:
@@ -143,7 +149,16 @@ export async function resolveEnabledToolsForSession(
     sessionKind: params.workspace?.sessionKind
   })
   const toolContext = await buildToolExecutionContext(params, mergedUserConfig)
-  return params.toolRegistry.getEnabledToolsAsVercel(toolContext)
+  const enabledTools = params.toolRegistry.getEnabledToolsAsVercel(toolContext)
+  if (params.extraVercelToolsFactory) {
+    try {
+      const extra = await params.extraVercelToolsFactory(toolContext)
+      Object.assign(enabledTools, extra)
+    } catch (error) {
+      console.warn('[SessionSystemPrompt] extra vercel tools failed', error)
+    }
+  }
+  return enabledTools
 }
 
 export async function buildSystemPromptForSession(
@@ -191,6 +206,7 @@ export async function buildSystemPromptForSession(
         : undefined
     ),
     customGuidelines,
-    locale: localeFromMerged ?? localeFromParams
+    locale: localeFromMerged ?? localeFromParams,
+    skillsCatalog: params.skillsCatalog
   })
 }

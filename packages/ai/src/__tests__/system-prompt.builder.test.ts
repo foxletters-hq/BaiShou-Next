@@ -263,5 +263,23 @@ describe('SystemPromptBuilder', () => {
     })
     expect(prompt).toContain('<skills_catalog>')
     expect(prompt).toContain('summarize: Summarize text')
+    expect(prompt).toContain('skill_read')
+  })
+
+  it('lists enabled tool IDs without repeating verbose descriptions and injects concise MCP guidelines for mcp_call', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'companion',
+      tools: {
+        diary_read: { description: 'Very long multi-paragraph diary_read description' },
+        mcp_call: { description: 'Invoke a tool on a connected external MCP server.' }
+      }
+    })
+    expect(prompt).toContain('<available_tools>')
+    expect(prompt).toContain('Enabled Tools: diary_read, mcp_call')
+    expect(prompt).not.toContain('Very long multi-paragraph diary_read description')
+    expect(prompt).toContain('<tool_usage_guidelines>')
+    expect(prompt).toContain('外部扩展工具（MCP）调用规范')
+    expect(prompt).toContain('mcp_call')
   })
 })

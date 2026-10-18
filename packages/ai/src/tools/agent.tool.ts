@@ -271,6 +271,15 @@ export interface ToolContext {
       previousName?: string
     }): Promise<{ name: string; description: string; location: string }>
   }
+  /** 按名读取 SKILL.md 正文 */
+  skillsReader?: {
+    readSkill(name: string): Promise<{
+      name: string
+      description: string
+      content: string
+      location: string
+    } | null>
+  }
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string

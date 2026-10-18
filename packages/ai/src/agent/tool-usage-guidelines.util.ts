@@ -76,9 +76,24 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     if (lines.length > 0) lines.push('')
     lines.push('## 删除记忆必须使用唯一 id')
     lines.push(
+      '- **删除记忆标准工作流**：当用户以自然语言要求删除某条或某些记忆时（如「删除关于xxx的记忆」），**必须先调用 vector_search** 搜索相关内容以获取目标记忆的 `memory_id`，再调用 `memory_delete` 传入该 `memory_id` 执行删除。'
+    )
+    lines.push(
       '- 调用 memory_delete 时必须传入 vector_search 返回的 memory_id，或 memory_store 返回的 id。'
     )
     lines.push('- 禁止用描述、日期、标题或语义查询代替 id；找不到 id 时先检索，不要猜测。')
+    lines.push(
+      '- **严禁虚构已删除**：若 vector_search 未检索到对应记忆，或 memory_delete 返回未找到/删除失败，**绝对禁止**向用户声称已删除；必须如实说明未找到并请用户提供更明确的关键词。'
+    )
+  }
+
+  if (ids.has('skill_read')) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 选用技能时先读正文')
+    lines.push(
+      '- 系统提示里的 skills_catalog 只有名称和描述。决定使用某个技能后，必须先调用 skill_read 读取 SKILL.md 正文，再按正文执行。'
+    )
+    lines.push('- 用户已经用 /name 把技能正文附在消息里时，不要再读一遍。')
   }
 
   if (ids.has('companion_ask')) {
@@ -117,6 +132,15 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     lines.push(
       '- **overwrite（整篇覆盖）** 仅在用户明确要求替换/重写当天整篇日记时使用；' +
         '此时 content 必须是合并保留后的**完整正文**（含所有要保留的段落），修改个别段落、润色、补充一律用 append。'
+    )
+  }
+
+  const hasExternalMcp = availableToolIds.some((id) => id === 'mcp_call' || id.startsWith('mcp_'))
+  if (hasExternalMcp) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 外部扩展工具（MCP）调用规范')
+    lines.push(
+      '- 需要调用外部 MCP 服务，或用户明确要求「走 MCP / 通过 MCP」执行查询或操作时，优先调用 `mcp_call`（传入目录中的 `tool` 名称与 `arguments` 参数）。'
     )
   }
 

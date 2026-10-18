@@ -407,4 +407,69 @@ describe('baishou-mcp-server', () => {
     expect(schemaNames).not.toContain('baishou_graph_upsert')
     expect(exposedNames).not.toContain('baishou_diary_write')
   })
+
+  it('hides web_search and url_read from MCP schemas when disabled via mcpDisabledToolIds', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search', 'url_read']
+      }
+    }
+
+    const schemas = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(schemas).not.toContain('baishou_web_search')
+    expect(schemas).not.toContain('baishou_url_read')
+    expect(schemas).toContain('baishou_diary_list')
+    expect(schemas).toContain('baishou_current_time')
+  })
+
+  it('rejects web_search execution when disabled via mcpDisabledToolIds', async () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search']
+      }
+    }
+
+    await expect(
+      executeBaishouMcpTool(registry, async () => context, {
+        name: 'baishou_web_search',
+        arguments: { query: 'test' }
+      })
+    ).rejects.toThrow('Tool disabled via MCP: web_search')
+  })
+
+  it('listBaishouMcpToolsForUi preserves disabled tools with enabled=false for UI toggling', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search', 'url_read']
+      }
+    }
+
+    const uiTools = listBaishouMcpToolsForUi(registry, context)
+    const webSearch = uiTools.find(
+      (t) => t.toolId === 'web_search' || t.name === 'baishou_web_search'
+    )
+    const urlRead = uiTools.find((t) => t.toolId === 'url_read' || t.name === 'baishou_url_read')
+    const diaryList = uiTools.find(
+      (t) => t.toolId === 'diary_list' || t.name === 'baishou_diary_list'
+    )
+
+    expect(webSearch).toBeDefined()
+    expect(webSearch?.enabled).toBe(false)
+    expect(urlRead).toBeDefined()
+    expect(urlRead?.enabled).toBe(false)
+    expect(diaryList).toBeDefined()
+    expect(diaryList?.enabled).toBe(true)
+  })
 })

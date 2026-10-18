@@ -71,6 +71,7 @@ export async function buildAgentSessionToolsAndPrompt(input: {
     knowledgeGraphReader,
     diarySearcher,
     skillsWriter,
+    skillsReader,
     skillsCatalog,
     extraVercelToolsFactory
   } = options
@@ -177,6 +178,7 @@ export async function buildAgentSessionToolsAndPrompt(input: {
     knowledgeReader,
     knowledgeGraphReader,
     skillsWriter,
+    skillsReader,
     workspace: workspaceOptions,
     interruptOnGateReject
   } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0]
