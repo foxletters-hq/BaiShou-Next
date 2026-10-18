@@ -63,7 +63,7 @@
 .queueActions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   flex-shrink: 0;
 }
 
@@ -76,7 +76,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   font-size: var(--ui-fs-sm);
-  padding: 2px 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
   border-radius: var(--menu-popup-item-radius);
 }
 
@@ -114,7 +114,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: 2px var(--spacing-sm);
+  padding: var(--spacing-2xs) var(--spacing-sm);
   border-radius: var(--menu-popup-item-radius);
   background: var(--bg-surface-normal);
   border: 1px solid var(--border-control);
@@ -130,7 +130,7 @@
   cursor: pointer;
   font-size: var(--ui-fs-sm);
   line-height: 1;
-  padding: 0 0 0 2px;
+  padding: 0 0 0 var(--spacing-2xs);
 }
 
 .editTagClose:hover {

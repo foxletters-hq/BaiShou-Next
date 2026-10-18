@@ -30,8 +30,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  gap: 12px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
   --app-bar-chip-height: 36px;
   background: var(--bg-surface);
@@ -41,14 +41,14 @@
 .appBarLeft {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
 }
 
 .appBarRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-width: 0;
 }
 
@@ -58,15 +58,15 @@
   justify-content: center;
   width: var(--app-bar-chip-height);
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
   color: var(--text-secondary);
   transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    color 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift),
+    color var(--duration-swift);
 }
 
 .sidebarToggleBtn:hover {
@@ -78,20 +78,20 @@
 .appBarChip {
   height: var(--app-bar-chip-height);
   box-sizing: border-box;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
 }
 
 .modelSwitcherTrigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 12px;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift);
   color: var(--text-primary);
 }
 
@@ -117,7 +117,7 @@
 }
 
 .modelName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-primary);
   max-width: 220px;
@@ -127,7 +127,7 @@
 }
 
 .chevron {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--text-tertiary);
   line-height: 1;
   flex-shrink: 0;
@@ -151,7 +151,7 @@
   width: 100%;
   max-width: 1000px;
   /* 顶部统一顶栏已具备固定高度，消息区使用标准间距 */
-  padding: 16px 0 40px;
+  padding: var(--spacing-md) 0 var(--spacing-xl-plus);
   display: flex;
   flex-direction: column;
 }
@@ -159,8 +159,8 @@
 .compressionAnchor {
   width: 100%;
   max-width: min(800px, calc(100% - 60px));
-  margin: 0 auto 8px;
-  padding: 0 16px;
+  margin: 0 auto var(--spacing-sm);
+  padding: 0 var(--spacing-md);
   box-sizing: border-box;
 }
 
@@ -171,13 +171,13 @@
   align-self: center;
   width: auto;
   max-width: 100%;
-  margin: 4px auto 12px;
-  padding: 6px 14px;
+  margin: var(--spacing-xs) auto var(--spacing-md-tight);
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
   border: 1px solid var(--border-control);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -204,8 +204,8 @@
 }
 
 .messageList::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
-  border-radius: 3px;
+  background-color: rgba(var(--border-control-rgb), 0.3);
+  border-radius: var(--radius-2xs);
 }
 
 /* 无消息空态：欢迎图 + 文案 + 输入框垂直居中（对齐工作台首页 composer） */
@@ -217,7 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px 40px;
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-xl-plus);
   box-sizing: border-box;
   overflow: auto;
 }
@@ -234,7 +234,7 @@
 
 /* 空态：去掉 InputBar 顶部 padding，吉祥物贴住输入框 */
 .emptyComposer :global([data-desktop-input-bar]) {
-  padding: 0 0 8px;
+  padding: 0 0 var(--spacing-sm);
 }
 
 .emptyHero {
@@ -269,7 +269,7 @@
   margin: 0 0 52px;
   flex: 0 1 auto;
   min-width: 0;
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.01em;
@@ -278,8 +278,8 @@
 
 @media (max-width: 520px) {
   .emptyGreeting {
-    font-size: 18px;
-    margin-bottom: 36px;
+    font-size: var(--settings-font-page-title-size);
+    margin-bottom: var(--spacing-xl-plus);
   }
 
   .emptyMascotImg {
@@ -293,7 +293,7 @@
   flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 0 16px 12px;
+  padding: 0 var(--spacing-md) var(--spacing-md-tight);
   background-color: transparent;
   box-sizing: border-box;
   width: 100%;
@@ -325,8 +325,8 @@
   cursor: pointer;
   color: var(--text-secondary);
   transition:
-    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: auto;
 }
 
@@ -339,9 +339,9 @@
 .emojiOnlyRow {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 36px;
-  column-gap: 10px;
+  column-gap: var(--spacing-sm-plus);
   align-items: start;
-  padding: 4px 16px;
+  padding: var(--spacing-xs) var(--spacing-md);
   width: 100%;
   box-sizing: border-box;
 }
@@ -364,7 +364,7 @@
 .emojiOnlyImages {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   align-items: flex-start;
   grid-column: 2;
   width: 100%;
@@ -375,7 +375,7 @@
 .emojiOnlyImg {
   width: 120px;
   height: 120px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   object-fit: contain;
   background-color: var(--bg-surface-normal);
 }
@@ -412,16 +412,16 @@
 .metaChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-width: min(220px, 100%);
   min-width: 0;
   height: 28px;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -441,7 +441,7 @@
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;

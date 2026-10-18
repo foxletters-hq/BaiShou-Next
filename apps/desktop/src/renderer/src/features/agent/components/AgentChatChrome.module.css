@@ -2,8 +2,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
   height: 52px;
   box-sizing: border-box;
   flex-shrink: 0;
@@ -22,7 +22,7 @@
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   --chrome-chip-height: 34px;
   pointer-events: auto;
 }
@@ -42,7 +42,7 @@
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
   height: var(--chrome-chip-height);
 }
@@ -50,14 +50,14 @@
 .actionGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .trailing {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 4px;
+  gap: var(--spacing-sm);
+  margin-right: var(--spacing-xs);
   height: 100%;
 }
 
@@ -81,23 +81,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   border: 1px solid var(--border-control);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.1s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-instant) ease;
   box-sizing: border-box;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   user-select: none;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
 }
 
 .iconBtn:hover {
@@ -120,7 +120,7 @@
 .newChatBtn {
   background: var(--bg-surface);
   color: var(--text-primary);
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
 }
 
 .newChatBtn:hover {
@@ -130,7 +130,7 @@
 }
 
 .newChatText {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -151,7 +151,7 @@
   min-height: var(--chrome-chip-height);
   max-height: var(--chrome-chip-height);
   box-sizing: border-box;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -160,14 +160,14 @@
 .modelSwitcherTrigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 10px;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-control);
   cursor: pointer;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift);
   color: var(--text-primary);
   height: var(--chrome-chip-height);
   box-sizing: border-box;
@@ -195,7 +195,7 @@
 }
 
 .modelName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   line-height: 1.45;
   color: var(--text-primary);
@@ -221,7 +221,7 @@
 }
 
 .chevron {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--text-tertiary);
   flex-shrink: 0;
 }
@@ -230,22 +230,22 @@
 .modelSwitcherInComposer {
   height: 28px;
   min-height: 28px;
-  padding: 0 8px 0 6px;
-  gap: 6px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-sm) 0 var(--spacing-xs-plus);
+  gap: var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   background-color: transparent;
   border: 1px solid transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   user-select: none;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .modelSwitcherInComposer:hover {
@@ -255,7 +255,7 @@
 }
 
 .modelSwitcherInComposer .modelName {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: inherit;
   max-width: 240px;
@@ -265,18 +265,18 @@
 }
 
 .modelSwitcherInComposer .modelEffort {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-weight: 500;
   color: var(--text-tertiary);
-  padding: 1px 4px;
+  padding: 1px var(--spacing-xs);
   background: var(--bg-surface-normal);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .modelSwitcherInComposer .chevron {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
-  margin-left: 2px;
+  margin-left: var(--spacing-2xs);
   display: flex;
   align-items: center;
 }
@@ -288,10 +288,10 @@
   min-width: 0;
   flex: 0 1 auto;
   max-width: 100%;
-  padding: 4px 6px;
-  gap: 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  gap: var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--text-secondary);
   overflow: hidden;
@@ -304,18 +304,18 @@
 }
 
 .modelSwitcherInMeta .modelName {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: inherit;
 }
 
 .modelSwitcherInMeta .modelEffort {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-tertiary);
 }
 
 .modelSwitcherInMeta .chevron {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: inherit;
   opacity: 0.7;
 }
@@ -327,11 +327,11 @@
 }
 
 .modelSwitcherInComposer .modelName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .modelSwitcherInComposer .modelEffort {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .modelSwitcherInComposer .modelProviderIcon,

@@ -15,20 +15,20 @@
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
-  padding: 14px 14px 20px;
-  gap: 12px;
+  padding: var(--spacing-md-snug) var(--spacing-md-snug) var(--spacing-md-plus);
+  gap: var(--spacing-md-tight);
 }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .title {
   margin: 0;
   flex: 1;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -37,7 +37,7 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   cursor: pointer;
   outline: none;
 }
@@ -48,8 +48,8 @@
 }
 
 .empty {
-  margin: 24px 8px;
-  font-size: 13px;
+  margin: var(--spacing-lg) var(--spacing-sm);
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
 }
 
@@ -57,19 +57,19 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .groupTitle {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .sessionId {
-  margin: 4px 0 8px;
-  font-size: 11px;
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary, var(--text-secondary));
 }
 
@@ -79,20 +79,20 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .item {
   width: 100%;
   text-align: left;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface-variant);
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   outline: none;
 }
 
@@ -102,17 +102,17 @@
 }
 
 .itemTitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-primary);
 }
 
 .itemMeta {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary, var(--text-secondary));
 }
 
 .badgeBtn {
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
   border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
   background: color-mix(in srgb, var(--color-primary) 14%, transparent);
   color: var(--color-primary);
