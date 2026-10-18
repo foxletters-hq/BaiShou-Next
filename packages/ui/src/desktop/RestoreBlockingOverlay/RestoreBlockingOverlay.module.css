@@ -10,17 +10,17 @@
   -webkit-backdrop-filter: none;
   pointer-events: all;
   user-select: none;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   max-width: min(360px, 90vw);
-  padding: 28px 32px;
-  border-radius: var(--radius-xl, 20px);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--radius-xl, var(--radius-lg-plus));
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
@@ -34,7 +34,7 @@
 
 .message {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
@@ -42,7 +42,7 @@
 
 .hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
