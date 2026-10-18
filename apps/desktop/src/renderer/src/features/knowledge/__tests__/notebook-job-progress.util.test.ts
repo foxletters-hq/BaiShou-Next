@@ -56,11 +56,49 @@ describe('notebookOrganizeProgressCopy', () => {
         { id: 'live', title: '深度关系', status: 'embedding' }
       ],
       queuedSourceIds: ['live'],
+      leftoverJobSourceIds: ['stale'],
       graph: idleGraph
     })
 
     expect(view.items.map((row) => row.sourceId)).toEqual(['live'])
     expect(view.currentTitle).toBe('深度关系')
+    expect(view.paused).toBe(false)
+  })
+
+  it('should show leftover pending jobs after restart when the live queue is empty', () => {
+    const view = notebookOrganizeProgressCopy({
+      sources: [
+        { id: 'stale', title: '卡住的扫描', status: 'pending' },
+        { id: 'ready', title: '已就绪', status: 'ready' }
+      ],
+      leftoverJobSourceIds: ['stale'],
+      graph: idleGraph
+    })
+
+    expect(view.visible).toBe(true)
+    expect(view.paused).toBe(true)
+    expect(view.failed).toBe(false)
+    expect(view.items.map((row) => row.sourceId)).toEqual(['stale'])
+    expect(view.phases.find((row) => row.id === 'extract')?.status).toBe('pending')
+  })
+
+  it('should pause leftover graph jobs after restart instead of faking them as running', () => {
+    const view = notebookOrganizeProgressCopy({
+      sources: [{ id: 'pdf', title: '合同', status: 'ready' }],
+      graph: {
+        pending: 1,
+        running: 0,
+        failed: 0,
+        currentSourceTitle: '合同',
+        windowsDone: 8,
+        windowsTotal: 20
+      },
+      graphJobsBySource: { pdf: { status: 'pending' } }
+    })
+
+    expect(view.visible).toBe(true)
+    expect(view.paused).toBe(true)
+    expect(view.phases.find((row) => row.id === 'graph')?.status).toBe('pending')
   })
 
   it('should show extract page progress for the current source', () => {

@@ -211,6 +211,7 @@ export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
           />
           <SegmentedControl
             inline
+            size="small"
             value={searchMode}
             aria-label={t('knowledge.vector_search_mode', '搜索模式')}
             options={[

@@ -240,7 +240,7 @@ export function useKnowledgeDetailImport(input: {
         setStatus(
           processChoice === 'later'
             ? t('knowledge.import_stored', '已保存为待整理')
-            : t('knowledge.import_queued', '已加入摄入队列')
+            : t('knowledge.import_queued', '已加入整理队列')
         )
       }
     } catch (e: any) {
@@ -273,7 +273,7 @@ export function useKnowledgeDetailImport(input: {
       setStatus(
         processChoice === 'later'
           ? t('knowledge.import_stored', '已保存为待整理')
-          : t('knowledge.import_queued', '已加入摄入队列')
+          : t('knowledge.import_queued', '已加入整理队列')
       )
     } catch (e: any) {
       setError(String(e?.message || e))
@@ -306,7 +306,7 @@ export function useKnowledgeDetailImport(input: {
       setStatus(
         processChoice === 'later'
           ? t('knowledge.import_stored', '已保存为待整理')
-          : t('knowledge.import_queued', '已加入摄入队列')
+          : t('knowledge.import_queued', '已加入整理队列')
       )
     } catch (e: any) {
       setError(String(e?.message || e))

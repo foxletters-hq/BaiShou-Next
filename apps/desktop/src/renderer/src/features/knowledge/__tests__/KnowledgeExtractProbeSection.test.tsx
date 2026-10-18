@@ -21,8 +21,14 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 vi.mock('@baishou/ui', () => ({
-  Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
+  Button: ({
+    children,
+    isLoading,
+    ...props
+  }: ButtonHTMLAttributes<HTMLButtonElement> & { isLoading?: boolean }) => (
+    <button {...props} aria-busy={isLoading || undefined}>
+      {children}
+    </button>
   ),
   Select: ({
     value,
@@ -115,5 +121,41 @@ describe('KnowledgeExtractProbeSection', () => {
         visionModelId: 'vision-1'
       })
     )
+  })
+
+  it('should mark the run button busy while the probe is in flight', async () => {
+    const user = userEvent.setup()
+    let finish: (value: { pages: Array<{ page: number; text: string }> }) => void = () => undefined
+    probeExtractSample.mockImplementation(
+      () =>
+        new Promise<{ pages: Array<{ page: number; text: string }> }>((resolve) => {
+          finish = resolve
+        })
+    )
+    render(
+      <KnowledgeExtractProbeSection
+        notebookId="nb1"
+        sources={[
+          {
+            id: 'pdf1',
+            title: '合同.pdf',
+            sourceKind: 'file',
+            relativePath: 'nb1/sources/a.pdf',
+            pageCount: 10
+          }
+        ]}
+        engine="vision"
+        engineAvailable
+        ocrLanguage="chi_sim+eng"
+        ocrConcurrency={3}
+        visionProviderId="prov"
+        visionModelId="vision-1"
+      />
+    )
+    await user.selectOptions(screen.getByLabelText('试抽文件'), 'pdf1')
+    await user.click(screen.getByRole('button', { name: '开始试抽' }))
+    expect(screen.getByRole('button', { name: '正在试抽…' })).toHaveAttribute('aria-busy', 'true')
+    finish({ pages: [] })
+    expect(await screen.findByRole('button', { name: '开始试抽' })).not.toHaveAttribute('aria-busy')
   })
 })

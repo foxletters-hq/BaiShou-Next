@@ -47,6 +47,18 @@ describe('source card evidence', () => {
       })
     ).toBeNull()
     expect(sourceCardFailureReason({ status: 'failed', errorMessage: '  ' })).toBeNull()
+    expect(
+      sourceCardFailureReason({
+        status: 'failed',
+        errorMessage: '1033 页中有 1 页没有文本层'
+      })
+    ).toBeNull()
+    expect(
+      sourceCardFailureReason({
+        status: 'failed',
+        errorMessage: 'embedding-not-configured；1033 页中有 1 页没有文本层'
+      })
+    ).toBe('embedding-not-configured')
   })
 
   it('should hide hints while OCR is running', () => {
@@ -57,5 +69,22 @@ describe('source card evidence', () => {
         hideHints: true
       })
     ).toBeNull()
+  })
+
+  it('should hide scan evidence when the source is already ready', () => {
+    expect(
+      pickSourceCardEvidence({
+        pageCount: 1033,
+        missingPages: 1,
+        status: 'ready'
+      })
+    ).toBeNull()
+    expect(
+      pickSourceCardEvidence({
+        pageCount: 1033,
+        missingPages: 1,
+        status: 'partial'
+      })
+    ).toEqual({ type: 'scan', pageCount: 1033, missingPages: 1 })
   })
 })

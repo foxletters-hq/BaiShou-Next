@@ -17,5 +17,6 @@ describe('knowledge vector search chrome', () => {
     expect(css).toMatch(/\.vectorSearchBox \.vectorSearchInput[\s\S]*line-height:\s*26px/)
     expect(css).toMatch(/\.vectorSearchBox \.vectorSearchInput[\s\S]*height:\s*26px/)
     expect(css).toContain('font-size: var(--ui-fs-md)')
+    expect(css).not.toMatch(/font-size:\s*(1[1-8]|12\.5|13\.5)px/)
   })
 })

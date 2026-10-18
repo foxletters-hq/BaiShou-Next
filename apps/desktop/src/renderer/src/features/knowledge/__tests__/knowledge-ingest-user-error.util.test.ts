@@ -39,4 +39,14 @@ describe('knowledgeIngestUserMessage', () => {
       'agent.error.quota'
     )
   })
+
+  it('should localize a graph extract insufficient-balance error', () => {
+    const t = vi.fn((key: string, _fallback?: string) => key)
+    expect(
+      knowledgeIngestUserMessage(
+        'graph-step:extract:Insufficient Balance (request_id: abc)',
+        t as never
+      )
+    ).toBe('agent.error.quota')
+  })
 })

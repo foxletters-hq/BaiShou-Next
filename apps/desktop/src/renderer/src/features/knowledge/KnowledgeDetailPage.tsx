@@ -169,6 +169,11 @@ export const KnowledgeDetailPage: React.FC = () => {
           error={error}
           open={organizeOpen}
           onOpenChange={setOrganizeOpen}
+          onContinue={() => {
+            const ids = detail.jobProgress.sourceRows.map((row) => row.sourceId)
+            detail.setQueuedSourceIds((prev) => [...new Set([...prev, ...ids])])
+            void window.api.knowledge.organizeNotebook(notebookId)
+          }}
         />
 
         {detail.modelMismatch ? (

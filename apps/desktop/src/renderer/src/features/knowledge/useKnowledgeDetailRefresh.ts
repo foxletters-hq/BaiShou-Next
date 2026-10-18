@@ -82,6 +82,7 @@ export function useKnowledgeDetailRefresh(
   const [engineCaps, setEngineCaps] = useState<KnowledgeEngineCaps | null>(null)
   const [vectorKnownTotal, setVectorKnownTotal] = useState(0)
   const [queuedSourceIds, setQueuedSourceIds] = useState<string[]>([])
+  const [leftoverIngestSourceIds, setLeftoverIngestSourceIds] = useState<string[]>([])
   const [reprocessWatching, setReprocessWatching] = useState(false)
   const [modelMismatch, setModelMismatch] = useState(false)
   const reprocessSawWorkRef = useRef(false)
@@ -105,6 +106,7 @@ export function useKnowledgeDetailRefresh(
         pageFrom?: number
         pageTo?: number
         pageTotal?: number
+        leftoverIngestSourceIds?: string[]
         items?: Array<{
           sourceId: string
           status: string
@@ -158,6 +160,7 @@ export function useKnowledgeDetailRefresh(
               jobsBySourceId: {}
             }
       )
+      setLeftoverIngestSourceIds(snap?.leftoverIngestSourceIds ?? [])
       if ((snap?.pending || 0) > 0) {
         setGraphKnownTotal((prev) => Math.max(prev, snap.pending))
       }
@@ -230,6 +233,7 @@ export function useKnowledgeDetailRefresh(
       sources,
       ingestProgress: ocrProgressBySource,
       queuedSourceIds,
+      leftoverJobSourceIds: leftoverIngestSourceIds,
       graphJobsBySource,
       graph: {
         pending: graphJobs.pending,
@@ -252,6 +256,7 @@ export function useKnowledgeDetailRefresh(
     graphKnownTotal,
     graphWindowProgress,
     ocrProgressBySource,
+    leftoverIngestSourceIds,
     queuedSourceIds,
     sources
   ])
