@@ -1,10 +1,8 @@
 import React from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
-import { Library, MessageSquarePlus } from 'lucide-react-native'
+import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
 
@@ -14,6 +12,8 @@ interface RagMemoryActionsSectionProps {
   onAddManualMemory?: () => Promise<void>
   suspectCount?: number
   onReviewSuspects?: () => void
+  showAdd?: boolean
+  showReview?: boolean
 }
 
 export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = ({
@@ -21,7 +21,9 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
   onBatchEmbed,
   onAddManualMemory,
   suspectCount = 0,
-  onReviewSuspects
+  onReviewSuspects,
+  showAdd = true,
+  showReview = true
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -59,55 +61,30 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
       )}
 
       <View style={styles.actionRow}>
-        {onBatchEmbed && (
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: colors.primaryLight,
-                borderColor: 'transparent',
-                opacity: ragState.isRunning ? 0.5 : 1
-              }
-            ]}
+        {onBatchEmbed ? (
+          <Button
+            variant="outlined"
+            size="sm"
+            isDisabled={ragState.isRunning}
             onPress={() => void onBatchEmbed()}
-            disabled={ragState.isRunning}
-            activeOpacity={0.7}
           >
-            <Library size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            <Text style={[styles.actionBtnText, { color: colors.primary }]}>
-              {isBatchEmbedding
-                ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
-                : t('settings.rag_batch_embed')}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {onAddManualMemory && (
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              styles.actionBtnOutlined,
-              {
-                backgroundColor: colors.bgSurfaceHigh,
-                borderColor: colors.borderControl,
-                opacity: ragState.isRunning ? 0.5 : 1
-              }
-            ]}
+            {isBatchEmbedding
+              ? `${t('common.processing')} ${ragState.progress}/${ragState.total}`
+              : t('settings.rag_batch_embed', '开始索引')}
+          </Button>
+        ) : null}
+        {showAdd && onAddManualMemory ? (
+          <Button
+            variant="outlined"
+            size="sm"
+            isDisabled={ragState.isRunning}
             onPress={() => void onAddManualMemory()}
-            disabled={ragState.isRunning}
-            activeOpacity={0.7}
           >
-            <MessageSquarePlus
-              size={16}
-              color={colors.success}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
-            <Text style={[styles.actionBtnText, { color: colors.success }]}>
-              {t('settings.rag_add_manual')}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {onReviewSuspects ? (
-          <Button variant="outlined" onPress={onReviewSuspects}>
+            {t('settings.rag_add_manual', '添加片段')}
+          </Button>
+        ) : null}
+        {showReview && onReviewSuspects ? (
+          <Button variant="outlined" size="sm" onPress={onReviewSuspects}>
             {suspectCount > 0
               ? t('memory.review_suspects_toolbar_count', '检查待确认节点 ({{count}})', {
                   count: suspectCount

@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react'
-import type { EmbeddingMigrationStateView, RagVectorKindFilter } from '@baishou/shared'
+import type {
+  EmbeddingMigrationStateView,
+  RagBatchEmbedPhaseCounts,
+  RagBatchEmbedPhaseKind,
+  RagVectorKindFilter
+} from '@baishou/shared'
 
 export interface RagConfig {
   ragTopK: number
@@ -27,6 +32,8 @@ export interface RagState {
   statusText: string
   statusKey?: string
   error?: string
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
   paused?: boolean
   cancelling?: boolean
 }
@@ -91,8 +98,12 @@ export interface RagMemoryViewProps {
   migrationCancelBusy?: boolean
   suspectCount?: number
   onReviewSuspects?: () => void
-  /** 记忆中心把统计收到「查看当前配置」里，向量页不再重复展示 */
+  /** 记忆中心把统计收到设置弹层里，向量页不再重复展示 */
   hideStats?: boolean
   /** 插入第一张设置卡顶部，与检索参数同卡滚动 */
   cardLead?: ReactNode
+  /** 记忆中心：搜索和条目先出现，启用与检索参数收到设置弹层 */
+  compactChrome?: boolean
+  /** 塞进设置弹层顶部，例如模型就绪行 */
+  settingsLead?: ReactNode
 }
