@@ -30,6 +30,8 @@ import {
 } from './mobile-raw-data-source.runtime'
 import { parseGraphNodePropsJson } from './graph-name-candidates.util'
 import { ensureMobileGraphFreshnessBound } from './mobile-graph-extract'
+import { notifyGraphDataChanged } from './mobile-graph-data-changed'
+import { notifyMobilePendingEmbedCountsChanged } from './mobile-pending-embed-counts'
 
 export async function mobileUpsertNode(options: {
   drizzleDb: AppDatabase
@@ -329,11 +331,14 @@ export async function mobileClearLifeGraph(options: {
 }): Promise<{ shardCount: number }> {
   const freshness = ensureMobileGraphFreshnessBound(options)
   const { graphManager } = ensureMobileRawDataRuntime(options)
-  return clearLifeGraphData({
+  const result = await clearLifeGraphData({
     vaultId: options.vaultId,
     graphRepo: new GraphRepository(options.drizzleDb),
     graphManager,
     freshness,
     stopExtract: options.stopExtract
   })
+  notifyMobilePendingEmbedCountsChanged()
+  notifyGraphDataChanged()
+  return result
 }

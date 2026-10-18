@@ -39,8 +39,6 @@ import {
   resolveMobileEmbeddingForHydration
 } from './mobile-raw-data-source.runtime'
 
-let boundVault: string | null = null
-
 export function ensureMobileGraphFreshnessBound(options: {
   vaultName: string
   vaultId: string
@@ -49,16 +47,15 @@ export function ensureMobileGraphFreshnessBound(options: {
   fileSystem: IFileSystem
 }) {
   const { freshness, graphManager } = ensureMobileRawDataRuntime(options)
-  if (boundVault !== options.vaultName) {
-    bindPendingReextractCollaborators({
-      freshness,
-      graphManager,
-      shadowRepo: options.shadowRepo,
-      getVaultName: () => options.vaultName,
-      getVaultId: () => options.vaultId
-    })
-    boundVault = options.vaultName
-  }
+  // 原始数据运行时重置后会换一个新的 freshness；只按空间名判断会让新实例一直没绑定，
+  // 抽图提交时抛「collaborators not bound」，extract-state 写不出来。绑定很轻，每次都刷新。
+  bindPendingReextractCollaborators({
+    freshness,
+    graphManager,
+    shadowRepo: options.shadowRepo,
+    getVaultName: () => options.vaultName,
+    getVaultId: () => options.vaultId
+  })
   return freshness
 }
 
@@ -280,7 +277,9 @@ async function buildMobileExtractionService(options: {
   } catch {
     embedder = null
   }
-  const graphSync = new GraphSyncService(graphManager, repo, embedder)
+  // 移动端抽图入库不传 embedder，避免在「写入图谱」时单条串行调用远程 Embedding 导致转圈卡死；
+  // 新建节点的向量由整理记忆流水线的后续 graph_node 阶段（backfillUnembeddedGraphNodes）集中处理。
+  const graphSync = new GraphSyncService(graphManager, repo, null)
   const alignDeps = await resolveMobileGraphExtractAlignDeps(options)
   return new GraphLlmExtractionService(
     graphManager,

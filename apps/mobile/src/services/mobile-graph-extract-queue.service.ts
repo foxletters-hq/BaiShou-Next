@@ -5,6 +5,7 @@ import {
   GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
   GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY,
   GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
+  logger,
   buildGraphExtractEnqueueItems,
   resolveGraphExtractConcurrency,
   type GraphExtractQueueSnapshot
@@ -37,6 +38,9 @@ export type MobileGraphExtractContext = {
 
 type Listener = (state: GraphExtractQueueSnapshot) => void
 
+/** 移动端图谱抽取候选池大小：优化为 4（桌面端为 10），加快批次对齐与落盘频率，消除长时停滞感 */
+export const MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 4
+
 const STORAGE_KEY = 'baishou.graph.extractQueue.v1'
 
 /**
@@ -52,6 +56,7 @@ class MobileGraphExtractQueue {
   constructor() {
     this.engine = new GraphExtractQueueEngine({
       concurrency: GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
+      alignPoolSize: MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE,
       persist: (pending) => {
         void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 1, pending }))
       },
@@ -74,12 +79,22 @@ class MobileGraphExtractQueue {
         if (!ctx) {
           throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
         }
-        return mobileCommitGraphDrafts(
-          ctx,
-          items.map((item) => item.draft as GraphExtractDraft),
-          signal,
-          onPhase
-        )
+        try {
+          return await mobileCommitGraphDrafts(
+            ctx,
+            items.map((item) => item.draft as GraphExtractDraft),
+            signal,
+            onPhase
+          )
+        } catch (e) {
+          // 引擎只把错误记在条目上；这里补日志，否则整批失败时没有任何痕迹。
+          logger.warn('[GraphExtract] flush failed', {
+            error: e instanceof Error ? e.message : String(e),
+            stack: e instanceof Error ? e.stack : undefined,
+            drafts: items.length
+          })
+          throw e
+        }
       }
     })
     this.engine.setRunner(async ({ filePath, signal, onProgress }) => {
@@ -162,6 +177,17 @@ class MobileGraphExtractQueue {
 
   stop() {
     this.engine.stop()
+  }
+
+  /** 停队列并丢掉持久化待办，避免清空图谱后恢复旧抽取再写出待确认节点。 */
+  async stopAndDropPersisted(): Promise<void> {
+    this.engine.stop()
+    this.restored = true
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // 清持久化失败时内存队列已空，忽略
+    }
   }
 
   cancelItem(filePath: string): boolean {

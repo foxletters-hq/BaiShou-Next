@@ -32,7 +32,9 @@ describe('mobile graph suspect', () => {
     expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
       fillSrc.indexOf('await backfillUnembeddedGraphNodes')
     )
-    expect(fillSrc).toContain('const report = (phase: RagBatchEmbedPhaseKind')
+    expect(fillSrc).toMatch(/const report = \(\s*phase: RagBatchEmbedPhaseKind/)
+    expect(fillSrc).toContain('bindGraphExtractQueueContext')
+    expect(fillSrc).toContain('mobileGraphExtractQueue.setContext')
   })
 
   it('should not count structural-disambiguate leftovers as organize pending work', () => {
@@ -45,7 +47,10 @@ describe('mobile graph suspect', () => {
   it('should send the graph provider into generateContent instead of the summary slot', () => {
     const extract = readFileSync(join(dir, '../mobile-knowledge-graph-extract.ts'), 'utf8')
     expect(extract).toContain('const { providerId, modelId } = resolveGlobalGraphModelIds')
-    expect(extract).toContain('abortSignal: AbortSignal.timeout(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)')
+    expect(extract).toContain(
+      'abortSignal: createAbortTimeoutSignal(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)'
+    )
+    expect(extract).not.toContain('AbortSignal.timeout(')
     expect(extract).toContain('graph-extract-window-timeout')
     expect(extract).toMatch(/generateContent\([\s\S]*?providerId/)
     const suspect = readFileSync(join(dir, '../mobile-graph-suspect-scan.ts'), 'utf8')
