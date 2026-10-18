@@ -202,6 +202,55 @@ describe('buildAssistantDisplayTimelineFromParts', () => {
     expect(items[4]).toMatchObject({ kind: 'text', text: '是上周那次' })
   })
 
+  it('should use the same display keys for live and persisted think, tools and text', () => {
+    const timeline: AgentStreamTimelineItem[] = [
+      { kind: 'reasoning', text: '先想查谁' },
+      {
+        kind: 'tool',
+        callId: 's1',
+        name: 'diary_search',
+        arguments: { q: '李四' },
+        status: 'completed',
+        result: 'ok',
+        durationMs: 12
+      },
+      { kind: 'reasoning', text: '查完再问' },
+      {
+        kind: 'tool',
+        callId: 'a1',
+        name: 'companion_ask',
+        arguments: { question: '哪次' },
+        status: 'completed',
+        result: '答了'
+      },
+      { kind: 'text', text: '是上周那次' }
+    ]
+    const live = groupStreamTimelineForDisplay(timeline)
+    const persisted = buildAssistantDisplayTimelineFromParts([
+      { id: 't2', type: 'text', data: { text: '是上周那次', seq: 4 } },
+      {
+        id: 'ask',
+        type: 'tool',
+        data: { callId: 'a1', name: 'companion_ask', status: 'completed', result: '答了', seq: 3 }
+      },
+      { id: 'r2', type: 'text', data: { text: '查完再问', isReasoning: true, seq: 2 } },
+      {
+        id: 'search',
+        type: 'tool',
+        data: { callId: 's1', name: 'diary_search', status: 'completed', result: 'ok', seq: 1 }
+      },
+      { id: 'r1', type: 'text', data: { text: '先想查谁', isReasoning: true, seq: 0 } }
+    ])
+    expect(live.map((item) => item.key)).toEqual(persisted.map((item) => item.key))
+    expect(live.map((item) => item.key)).toEqual([
+      'reasoning:0',
+      'tools:s1',
+      'reasoning:1',
+      'tools:a1',
+      'text:0'
+    ])
+  })
+
   it('should keep persisted tool durationMs instead of rewriting it to 0', () => {
     const items = buildAssistantDisplayTimelineFromParts([
       {

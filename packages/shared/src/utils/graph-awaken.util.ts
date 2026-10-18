@@ -44,6 +44,7 @@ export type GraphAwakenFormInput = {
   nickname: string
   birthday: string
   gender: UserGender | ''
+  customGender?: string
 }
 
 export type GraphAwakenFormErrors = {
@@ -68,12 +69,13 @@ export function validateGraphAwakenForm(input: GraphAwakenFormInput): GraphAwake
 
 export function applyGraphAwakenToProfile(
   profile: UserProfile,
-  input: { nickname: string; birthday: string; gender: UserGender }
+  input: { nickname: string; birthday: string; gender: UserGender; customGender?: string | null }
 ): UserProfile {
   return {
     ...profile,
     nickname: input.nickname.trim(),
     birthday: input.birthday.trim(),
-    gender: input.gender
+    gender: input.gender,
+    customGender: input.gender === 'other' ? input.customGender?.trim() || null : null
   }
 }

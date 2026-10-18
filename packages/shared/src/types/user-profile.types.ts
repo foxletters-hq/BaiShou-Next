@@ -7,6 +7,12 @@ export interface UserProfile {
   birthday?: string | null
   /** 性别；图谱唤醒时收集 */
   gender?: UserGender | null
+  /** 自定义性别文本（当 gender === 'other' 时选填或必填） */
+  customGender?: string | null
+  /** 是否在个人资料卡中展示生日和性别（默认为 true） */
+  showIdentityInProfile?: boolean
+  /** 是否向 AI 伙伴发送生日与性别等个人信息（默认为 true） */
+  shareIdentityWithCompanion?: boolean
   avatarPath: string | null // 头像文件绝对或相对路径
   avatarFileMissing?: boolean // 头像文件不存在标记（运行时检测，不持久化）
   chatBackgroundPath?: string | null // 聊天背景图相对路径（如 backgrounds/xxx.jpg）
@@ -19,6 +25,12 @@ export interface UserProfile {
 
 /** 用户性别（图谱唤醒 / 身份资料） */
 export type UserGender = 'male' | 'female' | 'other' | 'unspecified'
+export const USER_GENDERS: readonly UserGender[] = [
+  'male',
+  'female',
+  'other',
+  'unspecified'
+] as const
 
 /**
  * 独立身份卡与对应的事实集

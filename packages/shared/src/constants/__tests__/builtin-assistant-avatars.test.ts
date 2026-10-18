@@ -7,7 +7,9 @@ import {
   BUILTIN_ASSISTANT_AVATAR_IDS,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
-  getBuiltinAssistantAvatarAssetRelativePath
+  getBuiltinAssistantAvatarAssetRelativePath,
+  isBuiltinAssistantAvatarPath,
+  parseBuiltinAssistantAvatarId
 } from '../builtin-assistant-avatars.constants'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -28,5 +30,22 @@ describe('builtin assistant avatars', () => {
     expect(existsSync(file)).toBe(true)
     const bytes = readFileSync(file)
     expect(bytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]))
+  })
+
+  it('correctly identifies and parses builtin assistant avatars with cross-compatibility', () => {
+    expect(BUILTIN_ASSISTANT_AVATAR_IDS).toEqual(['assistant-preset-6'])
+    expect(isBuiltinAssistantAvatarPath('builtin-assistant:assistant-preset-6')).toBe(true)
+    expect(isBuiltinAssistantAvatarPath('builtin-user:user-preset-6')).toBe(true)
+    expect(isBuiltinAssistantAvatarPath('avatars/custom.png')).toBe(false)
+    expect(isBuiltinAssistantAvatarPath(null)).toBe(false)
+
+    expect(parseBuiltinAssistantAvatarId('builtin-assistant:assistant-preset-6')).toBe(
+      'assistant-preset-6'
+    )
+    expect(parseBuiltinAssistantAvatarId('builtin-assistant:assistant-preset-1')).toBe(
+      'assistant-preset-6'
+    )
+    expect(parseBuiltinAssistantAvatarId('builtin-user:user-preset-6')).toBe('assistant-preset-6')
+    expect(parseBuiltinAssistantAvatarId('avatars/custom.png')).toBe(null)
   })
 })

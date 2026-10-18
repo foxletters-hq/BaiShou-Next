@@ -1,14 +1,7 @@
 /** 持久化内置伙伴头像路径前缀：`builtin-assistant:assistant-preset-1` */
 export const BUILTIN_ASSISTANT_AVATAR_PREFIX = 'builtin-assistant:' as const
 
-export const BUILTIN_ASSISTANT_AVATAR_IDS = [
-  'assistant-preset-6',
-  'assistant-preset-1',
-  'assistant-preset-2',
-  'assistant-preset-3',
-  'assistant-preset-4',
-  'assistant-preset-5'
-] as const
+export const BUILTIN_ASSISTANT_AVATAR_IDS = ['assistant-preset-6'] as const
 
 export type BuiltinAssistantAvatarId = (typeof BUILTIN_ASSISTANT_AVATAR_IDS)[number]
 
@@ -21,15 +14,27 @@ export function getBuiltinAssistantAvatarAssetRelativePath(id: BuiltinAssistantA
 }
 
 export function isBuiltinAssistantAvatarPath(avatarPath: string | null | undefined): boolean {
-  return Boolean(avatarPath?.startsWith(BUILTIN_ASSISTANT_AVATAR_PREFIX))
+  if (!avatarPath) return false
+  return (
+    avatarPath.startsWith(BUILTIN_ASSISTANT_AVATAR_PREFIX) || avatarPath.startsWith('builtin-user:')
+  )
 }
 
 export function parseBuiltinAssistantAvatarId(
   avatarPath: string | null | undefined
 ): BuiltinAssistantAvatarId | null {
-  if (!avatarPath?.startsWith(BUILTIN_ASSISTANT_AVATAR_PREFIX)) return null
-  const id = avatarPath.slice(BUILTIN_ASSISTANT_AVATAR_PREFIX.length) as BuiltinAssistantAvatarId
-  return (BUILTIN_ASSISTANT_AVATAR_IDS as readonly string[]).includes(id) ? id : null
+  if (!avatarPath) return null
+  const trimmed = avatarPath.trim()
+  if (trimmed.startsWith(BUILTIN_ASSISTANT_AVATAR_PREFIX)) {
+    const id = trimmed.slice(BUILTIN_ASSISTANT_AVATAR_PREFIX.length) as BuiltinAssistantAvatarId
+    if ((BUILTIN_ASSISTANT_AVATAR_IDS as readonly string[]).includes(id)) return id
+    if (id.startsWith('assistant-preset-')) return DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+    return null
+  }
+  if (trimmed.startsWith('builtin-user:')) {
+    return DEFAULT_BUILTIN_ASSISTANT_AVATAR_ID
+  }
+  return null
 }
 
 export function toBuiltinAssistantAvatarPath(id: BuiltinAssistantAvatarId): string {

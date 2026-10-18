@@ -53,6 +53,15 @@ function readPartDisplayText(data: unknown): string {
   return unwrapMessageMetadataForDisplay(String(raw ?? ''))
 }
 
+function nextTextLikeKey(
+  counts: { reasoning: number; text: number },
+  kind: 'reasoning' | 'text'
+): string {
+  const ordinal = counts[kind]
+  counts[kind] = ordinal + 1
+  return `${kind}:${ordinal}`
+}
+
 function streamToolToInvocation(
   item: Extract<AgentStreamTimelineItem, { kind: 'tool' }>
 ): MockToolInvocation {
@@ -187,6 +196,7 @@ export function groupStreamTimelineForDisplay(
   const groups: AssistantDisplayTimelineItem[] = []
   const unused = visibleAgentGateParts(gates)
   let pendingTools: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>> = []
+  const textLikeCounts = { reasoning: 0, text: 0 }
 
   const flushTools = () => {
     if (pendingTools.length === 0) return
@@ -194,7 +204,7 @@ export function groupStreamTimelineForDisplay(
     pendingTools = []
   }
 
-  for (const [index, item] of items.entries()) {
+  for (const item of items) {
     if (item.kind === 'tool') {
       if (item.name === 'emoji_send') continue
       const matched = pullMatchingAgentGates(unused, [{ name: item.name, callId: item.callId }])
@@ -209,7 +219,7 @@ export function groupStreamTimelineForDisplay(
     if (!item.text.trim()) continue
     groups.push({
       kind: item.kind,
-      key: `${item.kind}:${index}`,
+      key: nextTextLikeKey(textLikeCounts, item.kind),
       text: item.text
     })
   }
@@ -233,6 +243,7 @@ export function buildAssistantDisplayTimelineFromParts(
     invocation: MockToolInvocation
     durationMs: number
   }> = []
+  const textLikeCounts = { reasoning: 0, text: 0 }
 
   const flushTools = () => {
     if (pendingTools.length === 0) return
@@ -262,7 +273,7 @@ export function buildAssistantDisplayTimelineFromParts(
       flushTools()
       items.push({
         kind: data.isReasoning ? 'reasoning' : 'text',
-        key: String(part.id ?? items.length),
+        key: nextTextLikeKey(textLikeCounts, data.isReasoning ? 'reasoning' : 'text'),
         text
       })
       continue

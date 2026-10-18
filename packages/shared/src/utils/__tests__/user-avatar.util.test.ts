@@ -8,10 +8,13 @@ describe('isCustomUserAvatar', () => {
     expect(isCustomUserAvatar('')).toBe(false)
     expect(isCustomUserAvatar('   ')).toBe(false)
     expect(isCustomUserAvatar(USER_DEFAULT_AVATAR_SENTINEL)).toBe(false)
+    expect(isCustomUserAvatar('builtin-user:user-preset-6')).toBe(false)
+    expect(isCustomUserAvatar('builtin-assistant:assistant-preset-6')).toBe(false)
   })
 
   it('returns true for custom paths', () => {
     expect(isCustomUserAvatar('avatars/user.png')).toBe(true)
     expect(isCustomUserAvatar('file:///tmp/a.jpg')).toBe(true)
+    expect(isCustomUserAvatar('data:image/png;base64,...')).toBe(true)
   })
 })
