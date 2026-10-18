@@ -1,10 +1,10 @@
 .card {
   background: var(--bg-surface);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(208, 208, 208, 0.4);
-  padding: 24px;
+  padding: var(--spacing-lg);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
@@ -21,17 +21,17 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .dateRow {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .day {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1;
@@ -40,17 +40,17 @@
 .weekdayCol {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .weekdayRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .weekday {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.5px;
@@ -58,11 +58,11 @@
 
 .yearMonth {
   display: inline-flex;
-  padding: 2px 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
   background-color: transparent;
   border: 0.5px solid var(--color-primary);
-  border-radius: 4px;
-  font-size: 10px;
+  border-radius: var(--radius-xs);
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
@@ -71,33 +71,33 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .favStar {
   color: var(--color-warning);
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
 }
 
 .menuIcon {
   color: rgba(0, 0, 0, 0.15);
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
 }
 
 .metaRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--spacing-xs-plus);
+  margin-bottom: var(--spacing-sm);
 }
 
 .metaBadge {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--settings-font-micro-size);
   font-weight: 500;
   background: var(--color-primary-light);
   color: var(--color-primary);
@@ -107,25 +107,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs);
   background: transparent;
   border: 0.5px solid var(--color-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .time {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--color-primary);
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .preview {
   height: 120px;
   overflow: hidden;
   position: relative;
-  margin-bottom: 8px;
-  font-size: 15px;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--content-font-size-md);
   line-height: 1.6;
   color: rgba(0, 0, 0, 0.85);
   word-break: break-word;
@@ -145,8 +145,8 @@
 .tagsArea {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md-tight);
   /* 两行标签：20px × 2 + 8px 行距，留少量余量避免 +N 被裁切 */
   max-height: 52px;
   overflow: hidden;
@@ -159,9 +159,9 @@
   justify-content: center;
   box-sizing: border-box;
   min-height: 20px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   line-height: 1;
 }
@@ -193,11 +193,11 @@
 
 .deleteBtn {
   display: none;
-  padding: 6px 12px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
   border: none;
   background: transparent;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   cursor: pointer;
   color: var(--color-error);

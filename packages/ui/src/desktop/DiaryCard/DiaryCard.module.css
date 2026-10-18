@@ -1,11 +1,11 @@
 .card {
   background: var(--bg-surface);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--border-control);
   box-shadow: var(--shadow-md);
-  padding: 24px;
+  padding: var(--spacing-lg);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -22,17 +22,17 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .dateBlock {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .day {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 800;
   color: var(--color-text-main);
   line-height: 1;
@@ -41,22 +41,22 @@
 .metaCol {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .weekday {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
 .yearMonthBadge {
-  padding: 2px 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
   background: transparent;
   border: 0.5px solid var(--color-primary);
-  border-radius: 4px;
-  font-size: 10px;
+  border-radius: var(--radius-xs);
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
@@ -81,10 +81,10 @@
 }
 
 .tagsArea {
-  margin-top: 20px;
+  margin-top: var(--spacing-md-plus);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-height: 52px;
   overflow: hidden;
   flex-shrink: 0;
@@ -96,9 +96,9 @@
   justify-content: center;
   box-sizing: border-box;
   min-height: 20px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   line-height: 1;
 }
@@ -129,13 +129,13 @@
 .actionBar {
   display: flex;
   flex-direction: column;
-  margin-top: 20px;
+  margin-top: var(--spacing-md-plus);
   opacity: 0;
   max-height: 0;
   overflow: hidden;
   transition:
-    opacity 0.2s,
-    max-height 0.2s;
+    opacity var(--duration-swift),
+    max-height var(--duration-swift);
 }
 
 .actionVisible {
@@ -153,25 +153,25 @@
 
 .actionDivider {
   height: 1px;
-  background: var(--color-glass-border);
-  margin-bottom: 12px;
+  background: var(--border-muted);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .actionBtns {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .actionBtn {
   background: transparent;
   border: none;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-xs-plus);
   display: flex;
   align-items: center;
   transition: all var(--animation-micro);

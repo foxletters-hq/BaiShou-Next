@@ -5,7 +5,7 @@
   flex-shrink: 0;
   width: 100%;
   border: 1px solid var(--border-muted);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   overflow: hidden;
   box-sizing: border-box;
@@ -52,8 +52,8 @@
 }
 
 .body :global(.cm-content) {
-  padding-bottom: 28px;
-  padding-right: 20px;
+  padding-bottom: var(--spacing-lg);
+  padding-right: var(--spacing-md-plus);
 }
 
 .shell.shellFormField .body :global(.cm-editor) {
@@ -62,7 +62,7 @@
 }
 
 .shell.shellFormField .body :global(.cm-content) {
-  padding: 10px 14px 22px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug) var(--spacing-md-plus);
 }
 
 /* 表单内的人设文本以正文为主，标题只比正文略大，避免压过页面标题 */
@@ -102,10 +102,10 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  padding: 0 3px 3px 0;
+  padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
   border: none;
   background: transparent;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .resizeHandle:hover {

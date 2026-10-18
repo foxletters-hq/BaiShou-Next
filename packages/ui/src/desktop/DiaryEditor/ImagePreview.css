@@ -1,6 +1,6 @@
 .image-preview-trigger {
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .image-preview-trigger:hover {
@@ -22,7 +22,7 @@
   background: var(--bg-overlay);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  animation: image-preview-fade-in 0.2s ease;
+  animation: image-preview-fade-in var(--duration-swift) ease;
   cursor: zoom-out;
   overflow: hidden;
 }
@@ -42,7 +42,7 @@
   justify-content: center;
   width: 100%;
   min-height: 0;
-  padding: 24px;
+  padding: var(--spacing-lg);
   box-sizing: border-box;
 }
 
@@ -63,16 +63,16 @@
   position: relative;
   z-index: 451;
   max-width: calc(100vw - 32px);
-  margin: 0 0 28px;
+  margin: 0 0 var(--spacing-lg);
   cursor: default;
 }
 
 .image-preview-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-radius: 14px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-lg);
@@ -83,7 +83,7 @@
 .image-preview-controls-divider {
   width: 1px;
   height: 22px;
-  margin: 0 4px;
+  margin: 0 var(--spacing-xs);
   background: var(--border-muted);
   flex-shrink: 0;
 }
@@ -95,14 +95,14 @@
   width: 38px;
   height: 38px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
   transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    transform 0.12s ease;
+    background var(--duration-swift) ease,
+    color var(--duration-swift) ease,
+    transform var(--duration-fast) ease;
   flex-shrink: 0;
 }
 
