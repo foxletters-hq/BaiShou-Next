@@ -6,10 +6,9 @@ function worldPoint(clientX, clientY){
   };
 }
 function hitNode(x,y){
-  const nodeScale = appearance.nodeSize == null ? 1 : appearance.nodeSize;
   for(let i=nodes.length-1;i>=0;i--){
     const n=nodes[i];
-    const r=(8+Math.min(10,(n.mentionCount||1)*1.2))*nodeScale;
+    const r=Math.max(nodeRadius(n), HIT_MIN_PX/(transform.k||1));
     const dx=n.x-x, dy=n.y-y;
     if(dx*dx+dy*dy<=r*r) return n;
   }
@@ -40,6 +39,7 @@ function pinchStateFromTouches(){
 }
 
 canvas.addEventListener('touchstart', (ev)=>{
+  ev.preventDefault();
   syncActiveTouches(ev);
   interacting = true;
   stopCameraFollow();
@@ -66,9 +66,10 @@ canvas.addEventListener('touchstart', (ev)=>{
     dragNode=null;
     pan={ x:t.clientX-transform.x, y:t.clientY-transform.y, startX:t.clientX, startY:t.clientY };
   }
-},{passive:true});
+},{passive:false});
 
 canvas.addEventListener('touchmove', (ev)=>{
+  ev.preventDefault();
   syncActiveTouches(ev);
   if(ev.touches.length >= 2){
     dragNode=null;
@@ -99,6 +100,7 @@ canvas.addEventListener('touchmove', (ev)=>{
     pinch.midY = my;
     pinch.dist = ps.dist;
     pinch.k = transform.k;
+    requestDraw();
     return;
   }
 
@@ -111,7 +113,7 @@ canvas.addEventListener('touchmove', (ev)=>{
     stopCameraFollow();
     const p=worldPoint(t.clientX,t.clientY);
     const n=nodes.find(x=>x.id===dragNode);
-    if(n){ n.x=p.x; n.y=p.y; n.vx=0; n.vy=0; wakeSim(); }
+    if(n){ n.x=p.x; n.y=p.y; n.vx=0; n.vy=0; requestDraw(); }
   } else if(pan){
     if(dist < DRAG_THRESHOLD_PX) return;
     stopCameraFollow();
@@ -119,7 +121,7 @@ canvas.addEventListener('touchmove', (ev)=>{
     transform.y=t.clientY-pan.y;
     requestDraw();
   }
-},{passive:true});
+},{passive:false});
 
 canvas.addEventListener('touchend', (ev)=>{
   syncActiveTouches(ev);
@@ -157,17 +159,21 @@ canvas.addEventListener('touchend', (ev)=>{
   dragNode=null;
   pan=null;
   pinch=null;
-},{passive:true});
+},{passive:false});
 
 canvas.addEventListener('touchcancel', ()=>{
   interacting=false;
   dragNode=null; pan=null; pinch=null; activeTouches.clear();
-},{passive:true});
+},{passive:false});
 
 window.__setGraphForce = function(next){
   if(!next || typeof next !== 'object') return;
+  const prev = [force.centerStrength, force.linkStrength, force.chargeStrength, force.linkDistance].join(',');
   force = Object.assign({}, force, next);
-  wakeSim();
+  const now = [force.centerStrength, force.linkStrength, force.chargeStrength, force.linkDistance].join(',');
+  if(prev===now) return;
+  settleLayout();
+  requestDraw();
 };
 
 window.__setGraphAppearance = function(next){
@@ -227,9 +233,10 @@ window.__relayout = function(){
   for(const n of nodes){
     n.x += (Math.random()-0.5)*jitter*2;
     n.y += (Math.random()-0.5)*jitter*2;
-    n.vx = (Math.random()-0.5)*12;
-    n.vy = (Math.random()-0.5)*12;
+    n.vx = 0;
+    n.vy = 0;
   }
-  wakeSim();
+  settleLayout();
+  requestDraw();
 };
 `

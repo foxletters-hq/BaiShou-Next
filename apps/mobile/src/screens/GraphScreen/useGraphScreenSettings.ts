@@ -100,6 +100,7 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     nickname: string
     birthday: string
     gender: UserGender | ''
+    customGender?: string
   }>({ nickname: '', birthday: '', gender: '' })
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileErrors, setProfileErrors] = useState<{
@@ -263,19 +264,29 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     nickname: string
     birthday: string
     gender: UserGender
+    customGender?: string | null
   }) => {
     if (!deps.services) return
     setAwakenBusy(true)
     try {
       await saveMobileGraphAwakenProfile(deps.services.settingsManager as never, fields)
       setSelfNameReady(true)
+      const nextCustomGender =
+        fields.gender === 'other' ? fields.customGender?.trim() || null : null
       setAwakenProfile((prev) =>
         prev
-          ? { ...prev, nickname: fields.nickname, birthday: fields.birthday, gender: fields.gender }
+          ? {
+              ...prev,
+              nickname: fields.nickname,
+              birthday: fields.birthday,
+              gender: fields.gender,
+              customGender: nextCustomGender
+            }
           : ({
               nickname: fields.nickname,
               birthday: fields.birthday,
-              gender: fields.gender
+              gender: fields.gender,
+              customGender: nextCustomGender
             } as UserProfile)
       )
       deps.setStatus('')
@@ -326,20 +337,31 @@ export function useGraphScreenSettings(deps: SettingsDeps) {
     setProfileBusy(true)
     try {
       const oldName = awakenProfile?.nickname?.trim() || ''
+      const nextGender = profileForm.gender as UserGender
+      const nextCustomGender =
+        nextGender === 'other' ? profileForm.customGender?.trim() || null : null
       const fields = {
         nickname: profileForm.nickname.trim(),
         birthday: profileForm.birthday.trim(),
-        gender: profileForm.gender as UserGender
+        gender: nextGender,
+        customGender: nextCustomGender
       }
       await saveMobileGraphAwakenProfile(deps.services.settingsManager as never, fields)
       const synced = await syncSelfPersonNode(oldName, fields.nickname)
       setAwakenProfile((prev) =>
         prev
-          ? { ...prev, nickname: fields.nickname, birthday: fields.birthday, gender: fields.gender }
+          ? {
+              ...prev,
+              nickname: fields.nickname,
+              birthday: fields.birthday,
+              gender: fields.gender,
+              customGender: fields.customGender
+            }
           : ({
               nickname: fields.nickname,
               birthday: fields.birthday,
-              gender: fields.gender
+              gender: fields.gender,
+              customGender: fields.customGender
             } as UserProfile)
       )
       setSelfNameReady(true)

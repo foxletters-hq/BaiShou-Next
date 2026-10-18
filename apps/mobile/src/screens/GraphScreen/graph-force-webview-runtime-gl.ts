@@ -76,7 +76,6 @@ function glDraw(){
   gl.clearColor(bg[0], bg[1], bg[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
   const k = transform.k || 1;
-  const nodeScale = appearance.nodeSize == null ? 1 : appearance.nodeSize;
   const focusing = !!(selectedId && focusIds.size > 0);
 
   const lineData = [];
@@ -108,7 +107,7 @@ function glDraw(){
   const col = [];
   const size = [];
   for(const n of nodes){
-    const r=(6+Math.min(10,(n.mentionCount||1)*1.2))*nodeScale;
+    const r=nodeRadius(n);
     const pending = n.reviewStatus==='pending';
     const highlighted = highlightIds.has(n.id) || n.id===selectedId;
     const inFocus = !focusing || focusIds.has(n.id);

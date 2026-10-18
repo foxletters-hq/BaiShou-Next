@@ -98,9 +98,10 @@ function step(){
     if(dragNode && nd.id===dragNode) continue;
     const deg = degreeById.get(nd.id)||0;
     const ck = deg <= 0 ? centerK * ISOLATED_CENTER_SCALE : centerK;
-    nd.vx += (cx - nd.x) * ck * 0.15;
-    nd.vy += (cy - nd.y) * ck * 0.15;
-    const damp = deg <= 0 ? (1 - VELOCITY_DECAY) : 0.85;
+    const centerMul = settling ? SETTLE_CENTER_SCALE : 1;
+    nd.vx += (cx - nd.x) * ck * 0.15 * centerMul;
+    nd.vy += (cy - nd.y) * ck * 0.15 * centerMul;
+    const damp = 1 - VELOCITY_DECAY;
     nd.vx*=damp; nd.vy*=damp;
     nd.x+=nd.vx; nd.y+=nd.vy;
   }
