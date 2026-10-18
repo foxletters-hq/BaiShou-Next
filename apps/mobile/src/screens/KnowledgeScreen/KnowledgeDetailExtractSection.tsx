@@ -1,48 +1,21 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Image as ImageIcon } from 'lucide-react-native'
 import {
   clampOcrConcurrency,
-  formatExtractProbePagesList,
   listExtractProbeSources,
   listOcrConcurrencyValues,
-  normalizeKnowledgeDefaultExtractEngine,
-  RECOMMENDED_OCR_CONCURRENCY,
-  type KnowledgeConfig
+  RECOMMENDED_OCR_CONCURRENCY
 } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import {
-  Button,
-  HelpTooltip,
-  Input,
-  Select,
-  SegmentedControl,
-  SettingsSection,
-  useNativeTheme
-} from '@baishou/ui/native'
+import { iconSizes, mobileTypography } from '@baishou/ui/theme/tokens'
+import { Button, HelpTooltip, Select, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
-import { knowledgeExtractSettingsVisibility } from './knowledge-screen.util'
-
-const OCR_LANGUAGE_PRESET_VALUES = [
-  'chi_sim+eng',
-  'chi_tra+eng',
-  'jpn+eng',
-  'eng',
-  '__custom__'
-] as const
 
 export function KnowledgeDetailExtractSection(props: {
   busy: boolean
-  engine: KnowledgeConfig['defaultExtractEngine']
-  ocrLanguage: string
-  ocrConcurrency: number
-  ocrUseCustom: boolean
-  onEngineChange: (engine: 'ocr' | 'vision') => void
-  onOcrLanguageChange: (value: string) => void
-  onOcrCustomChange: (custom: boolean) => void
-  onOcrConcurrencyChange: (value: number) => void
+  probing?: boolean
   onSave: () => void
-  onRecoverStale: () => void
   onProbe: () => void
   sources: Array<{
     id: string
@@ -53,211 +26,185 @@ export function KnowledgeDetailExtractSection(props: {
   }>
   probeSourceId: string
   onProbeSourceChange: (id: string) => void
-  onPickVision: () => void
-  onPickEmbedding?: () => void
-  onPickGraphModel?: () => void
-  ocrCapReason?: string
-  visionCapReason?: string
+  visionModelName?: string
+  onSelectVisionModel?: () => void
+  ocrConcurrency: number
+  onOcrConcurrencyChange: (value: number) => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const engine = normalizeKnowledgeDefaultExtractEngine(props.engine)
-  const { showOcrSettings, showVisionSettings } = knowledgeExtractSettingsVisibility(engine)
   const pdfSources = listExtractProbeSources(props.sources)
   const probeSource = pdfSources.find((row) => row.id === props.probeSourceId) || pdfSources[0]
-  const presetValue = props.ocrUseCustom
-    ? '__custom__'
-    : OCR_LANGUAGE_PRESET_VALUES.includes(
-          props.ocrLanguage as (typeof OCR_LANGUAGE_PRESET_VALUES)[number]
-        ) && props.ocrLanguage !== '__custom__'
-      ? props.ocrLanguage
-      : '__custom__'
+
+  const labelStyle = {
+    color: colors.textPrimary,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    lineHeight: 20
+  } as const
+
+  const displayVisionModel =
+    props.visionModelName?.trim() || t('knowledge.follow_chat_model', '跟随对话模型')
 
   return (
-    <SettingsSection
-      title={t('knowledge.settings_section_extract', '导入提取')}
-      titleAddon={
-        <HelpTooltip
-          content={t(
-            'knowledge.settings_section_extract_help',
-            '导入时先抽已有文字。缺页或乱码时，扫描件用本地 OCR，复杂排版可用视觉模型。'
-          )}
-        />
-      }
-    >
-      <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
-        <Text
+    <View style={{ gap: tokens.spacing.md, paddingBottom: tokens.spacing.xs }}>
+      <View style={{ gap: tokens.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.xs }}>
+          <Text style={labelStyle}>{t('knowledge.default_engine', '默认提取方式')}</Text>
+          <HelpTooltip
+            content={[
+              t(
+                'knowledge.settings_section_extract_help_mobile',
+                '能直接读的文字就按文件抽取。PDF 一律交给视觉模型识图。'
+              ),
+              t(
+                'knowledge.vision_model_recommend',
+                '推荐选带看图能力的便宜多模态模型，扫描件抽字不必用最贵的。'
+              )
+            ].join('\n\n')}
+          />
+        </View>
+        <TouchableOpacity
+          activeOpacity={props.onSelectVisionModel ? 0.7 : 1}
+          onPress={props.onSelectVisionModel}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('knowledge.engine_vision_short', '视觉模型')}: ${displayVisionModel}`}
           style={{
-            color: colors.textSecondary,
-            fontSize: settingsTypography.label.fontSize,
-            fontWeight: settingsTypography.label.fontWeight
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.bgSurface,
+            borderWidth: 1,
+            borderColor: colors.borderControl,
+            borderRadius: tokens.radius.md,
+            paddingHorizontal: tokens.spacing.mdSnug,
+            paddingVertical: tokens.spacing.mdTight,
+            minHeight: 44,
+            gap: tokens.spacing.sm
           }}
         >
-          {t('knowledge.default_engine', '默认提取方式')}
-        </Text>
-        <SegmentedControl
-          value={engine === 'vision' ? 'vision' : 'ocr'}
-          onChange={(value) => props.onEngineChange(value === 'vision' ? 'vision' : 'ocr')}
-          options={[
-            { value: 'ocr', label: t('knowledge.engine_ocr', '本地 OCR') },
-            { value: 'vision', label: t('knowledge.engine_vision', '视觉模型') }
-          ]}
-        />
-        {props.ocrCapReason ? (
-          <Text
+          <View
             style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: tokens.spacing.sm,
+              flexShrink: 0
             }}
           >
-            {t('knowledge.engine_ocr', '本地 OCR')} · {props.ocrCapReason}
-          </Text>
-        ) : null}
-        {props.visionCapReason ? (
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize
-            }}
-          >
-            {t('knowledge.engine_vision', '视觉模型')} · {props.visionCapReason}
-          </Text>
-        ) : null}
-        {showOcrSettings ? (
-          <View style={{ gap: tokens.spacing.sm }}>
-            <Select
-              value={presetValue}
-              onValueChange={(value) => {
-                if (value === '__custom__') {
-                  props.onOcrCustomChange(true)
-                  return
-                }
-                props.onOcrCustomChange(false)
-                props.onOcrLanguageChange(value)
+            <ImageIcon size={18} color={colors.textSecondary} strokeWidth={1.75} />
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: mobileTypography.secondary.fontSize,
+                fontWeight: '500',
+                lineHeight: 20
               }}
-              options={[
-                {
-                  value: 'chi_sim+eng',
-                  label: t('knowledge.ocr_lang_chi_sim_eng', '简体中文 + English')
-                },
-                {
-                  value: 'chi_tra+eng',
-                  label: t('knowledge.ocr_lang_chi_tra_eng', '繁體中文 + English')
-                },
-                {
-                  value: 'jpn+eng',
-                  label: t('knowledge.ocr_lang_jpn_eng', '日本語 + English')
-                },
-                { value: 'eng', label: t('knowledge.ocr_lang_eng', 'English') },
-                { value: '__custom__', label: t('knowledge.ocr_lang_custom', '自定义') }
-              ]}
-            />
-            {presetValue === '__custom__' ? (
-              <Input
-                value={props.ocrLanguage}
-                onChangeText={props.onOcrLanguageChange}
-                placeholder="chi_sim+eng"
-              />
-            ) : null}
-            <Select
-              value={String(clampOcrConcurrency(props.ocrConcurrency))}
-              onValueChange={(value) => props.onOcrConcurrencyChange(Number(value))}
-              options={listOcrConcurrencyValues().map((value) => ({
-                value: String(value),
-                label:
-                  value === RECOMMENDED_OCR_CONCURRENCY
-                    ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
-                        count: value
-                      })
-                    : t('knowledge.ocr_concurrency_n', '{{count}} 页并发', { count: value })
-              }))}
-            />
+            >
+              {t('knowledge.engine_vision_short', '视觉模型')}
+            </Text>
           </View>
-        ) : null}
-        {showVisionSettings ? (
-          <Text
+          <View
             style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: tokens.spacing.xs,
+              flexShrink: 1,
+              justifyContent: 'flex-end'
             }}
           >
-            {t(
-              'knowledge.vision_model_recommend',
-              '推荐选带看图能力的便宜多模态模型，扫描件抽字不必用最贵的。'
-            )}
-          </Text>
-        ) : null}
-        <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-          <Button isDisabled={props.busy} onPress={() => void props.onSave()}>
-            {t('common.save', '保存')}
-          </Button>
-          <Button
-            variant="outlined"
-            isDisabled={props.busy}
-            onPress={() => void props.onRecoverStale()}
-          >
-            {t('knowledge.recover_stale', '回收卡住的任务')}
-          </Button>
-          <Button
-            variant="outlined"
-            isDisabled={props.busy}
-            onPress={() => void props.onPickVision()}
-          >
-            {t('knowledge.vision_model', '视觉模型')}
-          </Button>
-          {props.onPickEmbedding ? (
-            <Button
-              variant="outlined"
-              isDisabled={props.busy}
-              onPress={() => void props.onPickEmbedding?.()}
-            >
-              {t('knowledge.embedding_model', '嵌入模型')}
-            </Button>
-          ) : null}
-          {props.onPickGraphModel ? (
-            <Button
-              variant="outlined"
-              isDisabled={props.busy}
-              onPress={() => void props.onPickGraphModel?.()}
-            >
-              {t('knowledge.graph_model', '图抽取模型')}
-            </Button>
-          ) : null}
-          <Select
-            value={probeSource?.id || ''}
-            onValueChange={props.onProbeSourceChange}
-            options={pdfSources.map((source) => ({ value: source.id, label: source.title }))}
-          />
-          {probeSource ? (
             <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
               style={{
                 color: colors.textSecondary,
-                fontSize: settingsTypography.desc.fontSize
+                fontSize: mobileTypography.secondary.fontSize,
+                fontWeight: '400',
+                lineHeight: 20,
+                flexShrink: 1,
+                textAlign: 'right'
               }}
             >
-              {t('knowledge.extract_probe_pages', '试抽页 {{pages}}', {
-                pages: formatExtractProbePagesList(probeSource.pageCount) || '—'
-              })}
+              {displayVisionModel}
             </Text>
-          ) : (
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: settingsTypography.desc.fontSize
-              }}
-            >
-              {t('knowledge.probe_need_pdf', '试抽只支持 PDF，请先导入一份 PDF')}
-            </Text>
-          )}
-          <Button
-            variant="outlined"
-            isDisabled={props.busy || pdfSources.length === 0}
-            onPress={() => void props.onProbe()}
-          >
-            {t('knowledge.extract_probe', '试抽')}
-          </Button>
-        </View>
+            {props.onSelectVisionModel ? (
+              <Text
+                style={{
+                  color: colors.textTertiary,
+                  fontSize: iconSizes.md,
+                  fontWeight: '300'
+                }}
+              >
+                ›
+              </Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
       </View>
-    </SettingsSection>
+
+      <View style={{ gap: tokens.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.xs }}>
+          <Text style={labelStyle}>{t('knowledge.ocr_concurrency', '识图并发')}</Text>
+          <HelpTooltip
+            content={t(
+              'knowledge.ocr_concurrency_hint_mobile',
+              '同时识图的页数，范围 1–10。推荐 3。PDF 页图仍会排队渲染，识图请求可以并行。'
+            )}
+          />
+        </View>
+        <Select
+          variant="settings"
+          value={String(props.ocrConcurrency)}
+          onValueChange={(value) =>
+            props.onOcrConcurrencyChange(clampOcrConcurrency(Number(value)))
+          }
+          options={listOcrConcurrencyValues().map((n) => ({
+            value: String(n),
+            label:
+              n === RECOMMENDED_OCR_CONCURRENCY
+                ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
+                    count: n
+                  })
+                : t('knowledge.ocr_concurrency_option', '{{count}} 页', { count: n })
+          }))}
+        />
+      </View>
+
+      <View style={{ gap: tokens.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.xs }}>
+          <Text style={labelStyle}>{t('knowledge.extract_probe_test', '抽取测试')}</Text>
+          <HelpTooltip
+            content={t(
+              'knowledge.extract_probe_help',
+              '选一份已导入的 PDF，用上方当前抽取方式试抽第 1 页、中间页和最后一页。只展示文字，不会写入资料或嵌入。'
+            )}
+          />
+        </View>
+        <Select
+          variant="settings"
+          value={probeSource?.id || ''}
+          onValueChange={props.onProbeSourceChange}
+          placeholder={t('knowledge.select_source_placeholder', '选择要测试的资料')}
+          emptyText={t('knowledge.no_sources', '暂无资料')}
+          options={pdfSources.map((source) => ({ value: source.id, label: source.title }))}
+        />
+      </View>
+
+      <View style={[styles.submitActionsRow, modalActionsStyle, { marginTop: 0 }]}>
+        <Button
+          size="sm"
+          variant="outlined"
+          isDisabled={props.busy || pdfSources.length === 0}
+          isLoading={props.probing}
+          onPress={() => void props.onProbe()}
+        >
+          {props.probing
+            ? t('knowledge.extract_probe_running', '正在试抽…')
+            : t('knowledge.extract_probe_test', '抽取测试')}
+        </Button>
+        <Button size="sm" isDisabled={props.busy} onPress={() => void props.onSave()}>
+          {t('common.save', '保存')}
+        </Button>
+      </View>
+    </View>
   )
 }

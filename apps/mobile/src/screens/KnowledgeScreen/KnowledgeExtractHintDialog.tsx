@@ -7,8 +7,9 @@ import {
   type KnowledgeExtractHintChoice,
   type VisionExtractHintReason
 } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Modal, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
+import { Button, Modal, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
+import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
 
 export function KnowledgeExtractHintDialog(props: {
   visible: boolean
@@ -18,7 +19,7 @@ export function KnowledgeExtractHintDialog(props: {
   visionModelId?: string | null
   busy?: boolean
   onCancel: () => void
-  onChoose: (choice: Exclude<KnowledgeExtractHintChoice, 'cancel'>) => void
+  onChoose: (choice: Exclude<KnowledgeExtractHintChoice, 'cancel' | 'keep' | 'ocr'>) => void
   onOpenVisionSettings: () => void
 }) {
   const { t } = useTranslation()
@@ -53,25 +54,23 @@ export function KnowledgeExtractHintDialog(props: {
           '抽样页几乎抽不到可用文字，更像扫描件。请选择这次怎么抽出文字。'
         )
   const modelName = props.visionModelId || t('knowledge.extract_hint_vision_model', '视觉模型')
+  const hintStyle = {
+    color: colors.textSecondary,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
+  } as const
 
   return (
     <Modal visible={props.visible} title={title} onClose={props.busy ? undefined : props.onCancel}>
-      <Text
-        style={{
-          color: colors.textSecondary,
-          fontSize: settingsTypography.desc.fontSize,
-          fontWeight: settingsTypography.desc.fontWeight,
-          marginBottom: tokens.spacing.sm
-        }}
-      >
-        {body}
-      </Text>
+      <Text style={{ ...hintStyle, marginBottom: tokens.spacing.sm }}>{body}</Text>
       {props.fileNames.map((name) => (
         <Text
           key={name}
+          numberOfLines={2}
           style={{
             color: colors.textPrimary,
-            fontSize: settingsTypography.row.fontSize,
+            fontSize: mobileTypography.secondary.fontSize,
+            fontWeight: mobileTypography.primary.fontWeight,
             marginBottom: tokens.spacing.xs
           }}
         >
@@ -79,59 +78,45 @@ export function KnowledgeExtractHintDialog(props: {
         </Text>
       ))}
       {props.visionConfigured ? (
-        <Text
-          style={{
-            color: colors.textSecondary,
-            fontSize: settingsTypography.desc.fontSize,
-            marginBottom: tokens.spacing.md
-          }}
-        >
-          {t(
-            'knowledge.extract_hint_vision_ready',
-            '视觉提取会按页调用 {{model}}；本地 OCR 在本机识别，不调用模型。',
-            { model: modelName }
-          )}
+        <Text style={{ ...hintStyle, marginBottom: tokens.spacing.md }}>
+          {t('knowledge.extract_hint_vision_ready_mobile', '视觉提取会按页调用 {{model}}。', {
+            model: modelName
+          })}
         </Text>
       ) : (
-        <View style={{ marginBottom: tokens.spacing.md, gap: tokens.spacing.sm }}>
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize
-            }}
-          >
-            {t(
-              'knowledge.extract_hint_vision_missing',
-              '还没有配置视觉模型。可以先设好再抽，或继续用本地 OCR。'
-            )}
-          </Text>
-          <Button isDisabled={props.busy} onPress={() => void props.onOpenVisionSettings()}>
-            {t('knowledge.vision_model', '视觉模型')}
-          </Button>
-        </View>
+        <Text style={{ ...hintStyle, marginBottom: tokens.spacing.md }}>
+          {t(
+            'knowledge.extract_hint_vision_missing',
+            '还没有配置视觉模型。扫描件请先选一个有识图能力的模型。'
+          )}
+        </Text>
       )}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-        <Button isDisabled={props.busy} onPress={props.onCancel}>
+      <View style={[modalActionsStyle, styles.extractHintActions, { gap: tokens.spacing.sm }]}>
+        <Button size="sm" variant="outlined" isDisabled={props.busy} onPress={props.onCancel}>
           {t('common.cancel', '取消')}
         </Button>
-        <Button isDisabled={!ready || props.busy} onPress={() => props.onChoose('ocr')}>
-          {ready
-            ? t('knowledge.engine_ocr', '本地 OCR')
-            : t('knowledge.heavy_confirm_button', '确认（{{seconds}}）', { seconds: secondsLeft })}
-        </Button>
-        <Button
-          isDisabled={!ready || props.busy || !props.visionConfigured}
-          onPress={() => props.onChoose('vision')}
-        >
-          {t('knowledge.engine_vision', '视觉模型')}
-        </Button>
-        <Button
-          variant="outlined"
-          isDisabled={!ready || props.busy}
-          onPress={() => props.onChoose('keep')}
-        >
-          {t('knowledge.extract_hint_keep', '按当前方式')}
-        </Button>
+        {props.visionConfigured ? (
+          <Button
+            size="sm"
+            isDisabled={!ready || props.busy}
+            onPress={() => props.onChoose('vision')}
+          >
+            {ready
+              ? t('knowledge.extract_hint_vision', '使用视觉提取')
+              : t('knowledge.extract_hint_vision_wait', '使用视觉提取（{{seconds}}）', {
+                  seconds: secondsLeft
+                })}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outlined"
+            isDisabled={props.busy}
+            onPress={() => void props.onOpenVisionSettings()}
+          >
+            {t('knowledge.extract_hint_open_settings', '去配置视觉模型')}
+          </Button>
+        )}
       </View>
     </Modal>
   )

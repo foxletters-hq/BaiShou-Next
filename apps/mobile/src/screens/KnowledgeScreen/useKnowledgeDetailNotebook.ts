@@ -1,10 +1,10 @@
 import type { TFunction } from 'i18next'
+import { useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import {
   canConfirmNotebookDataManage,
   clampOcrConcurrency,
   formatExtractProbeSampleText,
-  isVisionModel,
   listExtractProbeSources,
   notebookDataManageStatusKind,
   parseNotebookDataManageResult,
@@ -19,7 +19,6 @@ import {
   mobileOrganizeNotebook,
   mobileRebuildKnowledgeIndex,
   mobileRebuildNotebookGraph,
-  mobileRecoverStaleIngest,
   mobileResolveNotebookCoverUri,
   mobileProbeExtractSample,
   mobileSetKnowledgeConfig,
@@ -27,7 +26,6 @@ import {
   mobileUpdateNotebook
 } from '@/src/services/mobile-knowledge.service'
 import {
-  mobileListKnowledgeModelOptions,
   mobileGetKnowledgeProcessLabels,
   mobileSetGlobalKnowledgeModel
 } from '@/src/services/mobile-knowledge-models.service'
@@ -52,13 +50,9 @@ export function useKnowledgeDetailNotebook(input: {
   toast: ReturnType<typeof useNativeToast>
   dialog: ReturnType<typeof useDialog>
   askHeavyConfirm: (opts: { title: string; body: string; confirmText: string }) => Promise<boolean>
-  services: {
-    settingsManager?: {
-      get: <T>(key: string) => Promise<T | null | undefined>
-    }
-  } | null
   setBusy: (busy: boolean) => void
   setError: (message: string) => void
+  setEngine: (engine: 'ocr' | 'vision') => void
   setImportProcessMode: (mode: KnowledgeImportProcessMode) => void
   setName: (name: string) => void
   setDescription: (value: string) => void
@@ -72,11 +66,10 @@ export function useKnowledgeDetailNotebook(input: {
     value: { title: string; text: string; pages?: Array<{ page: number; text: string }> } | null
   ) => void
   refreshDetail: () => Promise<void>
+  setOrganizeWatching: (value: boolean) => void
 }) {
   const {
     notebookId,
-    name,
-    description,
     engine,
     ocrLanguage,
     ocrConcurrency,
@@ -91,9 +84,9 @@ export function useKnowledgeDetailNotebook(input: {
     toast,
     dialog,
     askHeavyConfirm,
-    services,
     setBusy,
     setError,
+    setEngine,
     setImportProcessMode,
     setName,
     setDescription,
@@ -104,7 +97,8 @@ export function useKnowledgeDetailNotebook(input: {
     setModelMismatch,
     setClearPhrase,
     setExtractedPreview,
-    refreshDetail
+    refreshDetail,
+    setOrganizeWatching
   } = input
 
   const phrase = t('knowledge.data_manage_clear_phrase', '确认清除')
@@ -115,6 +109,7 @@ export function useKnowledgeDetailNotebook(input: {
     phrase,
     typed: clearPhrase
   })
+  const [probing, setProbing] = useState(false)
 
   const persistImportProcessMode = async (mode: KnowledgeImportProcessMode) => {
     setImportProcessMode(mode)
@@ -144,8 +139,27 @@ export function useKnowledgeDetailNotebook(input: {
       setCoverUri(
         updated.coverImage ? await mobileResolveNotebookCoverUri(updated.coverImage) : null
       )
+      return true
     } catch (e) {
       setError(String((e as Error)?.message || e))
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const applyCoverImage = async (absolutePath: string) => {
+    setBusy(true)
+    try {
+      await mobileSetCoverImage({
+        notebookId,
+        absolutePath
+      })
+      await refreshDetail()
+      return true
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+      return false
     } finally {
       setBusy(false)
     }
@@ -159,18 +173,7 @@ export function useKnowledgeDetailNotebook(input: {
       quality: 0.9
     })
     if (picked.canceled || !picked.assets[0]?.uri) return
-    setBusy(true)
-    try {
-      await mobileSetCoverImage({
-        notebookId,
-        absolutePath: picked.assets[0].uri
-      })
-      await refreshDetail()
-    } catch (e) {
-      setError(String((e as Error)?.message || e))
-    } finally {
-      setBusy(false)
-    }
+    await applyCoverImage(picked.assets[0].uri)
   }
 
   const rebuildIndex = async () => {
@@ -220,30 +223,36 @@ export function useKnowledgeDetailNotebook(input: {
   }
 
   const startOrganize = async () => {
+    setOrganizeWatching(true)
     setBusy(true)
     setError('')
     try {
       const result = await mobileOrganizeNotebook(notebookId)
       await refreshDetail()
+      setOrganizeWatching(result.queued > 0)
       toast.showSuccess(
         result.queued > 0
-          ? t('knowledge.data_manage_queued', '已加入重整理队列')
-          : t('knowledge.data_manage_none', '没有可重整理的资料')
+          ? t('knowledge.organize_queued', '已开始整理')
+          : t('knowledge.organize_none', '没有需要整理的资料')
       )
     } catch (e) {
+      setOrganizeWatching(false)
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
     }
   }
 
-  const onManage = async () => {
-    if (!canConfirm || busy) return
+  const onManage = async (overrideAction?: NotebookDataManageAction) => {
+    const action = overrideAction ?? manageAction
+    const phraseOk = action === 'clear' ? clearPhrase.trim() === phrase.trim() : true
+    const targetOk = manageVector || manageGraph
+    if (!phraseOk || !targetOk || busy) return
     setBusy(true)
     setError('')
     try {
       const raw = await mobileManageNotebookData(notebookId, {
-        action: manageAction,
+        action,
         vector: manageVector,
         graph: manageGraph
       })
@@ -281,93 +290,40 @@ export function useKnowledgeDetailNotebook(input: {
     }
   }
 
-  const confirmManage = async () => {
-    if (manageAction === 'clear') {
-      const ok = await dialog.confirm(
-        t('knowledge.data_manage_clear_intro', '勾选要清除的派生数据。原文还在，清除后不能恢复。'),
-        {
-          title: t('knowledge.data_manage_clear', '清除数据'),
-          confirmText: t('knowledge.data_manage_clear', '清除数据'),
-          cancelText: t('common.cancel', '取消')
-        }
-      )
-      if (ok) await onManage()
-      return
-    }
-    await onManage()
+  const confirmManage = async (overrideAction?: NotebookDataManageAction) => {
+    const action = overrideAction ?? manageAction
+    await onManage(action)
   }
 
-  const saveExtractConfig = async () => {
+  const saveExtractConfig = async (): Promise<boolean> => {
     setBusy(true)
     setError('')
     try {
       await mobileSetKnowledgeConfig({
-        defaultExtractEngine: engine,
+        defaultExtractEngine: 'vision',
         ocrLanguage,
         ocrConcurrency: clampOcrConcurrency(ocrConcurrency)
       })
+      setEngine('vision')
       toast.showSuccess(t('common.saved', '已保存'))
+      return true
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
+      return false
     } finally {
       setBusy(false)
     }
   }
 
-  const recoverStale = async () => {
-    setBusy(true)
-    setError('')
-    try {
-      await mobileRecoverStaleIngest()
-      await refreshDetail()
-      toast.showSuccess(t('knowledge.recover_stale_done', '已回收卡住的任务'))
-    } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const pickVisionModel = async () => {
-    const providers =
-      (await services?.settingsManager?.get<
-        Array<{
-          id: string
-          name?: string
-          type?: string
-          models?: string[]
-          enabledModels?: string[]
-        }>
-      >('ai_providers')) || []
-    const options: Array<{ label: string; value: string }> = [
-      { label: t('knowledge.vision_follow_global', '跟随全局对话模型'), value: '' }
-    ]
-    for (const provider of providers) {
-      const models = provider.enabledModels?.length ? provider.enabledModels : provider.models || []
-      for (const model of models) {
-        if (!isVisionModel(model, provider.type || provider.id)) continue
-        options.push({
-          label: `${provider.name || provider.id} / ${model}`,
-          value: `${provider.id}::${model}`
-        })
-      }
-    }
-    const picked = await dialog.choose(t('knowledge.vision_model', '视觉模型'), options)
-    if (picked == null) return
+  const saveVisionModel = async (providerId: string | null, modelId: string | null) => {
     setBusy(true)
     try {
-      if (!picked) {
-        await mobileSetKnowledgeConfig({ visionProviderId: null, visionModelId: null })
-      } else {
-        const splitAt = picked.indexOf('::')
-        await mobileSetKnowledgeConfig({
-          visionProviderId: picked.slice(0, splitAt),
-          visionModelId: picked.slice(splitAt + 2)
-        })
-      }
+      await mobileSetKnowledgeConfig({ visionProviderId: providerId, visionModelId: modelId })
       toast.showSuccess(t('common.saved', '已保存'))
+      return true
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
+      return false
     } finally {
       setBusy(false)
     }
@@ -380,6 +336,7 @@ export function useKnowledgeDetailNotebook(input: {
       toast.showError(t('knowledge.probe_need_pdf', '试抽只支持 PDF，请先导入一份 PDF'))
       return
     }
+    setProbing(true)
     setBusy(true)
     setError('')
     try {
@@ -403,28 +360,19 @@ export function useKnowledgeDetailNotebook(input: {
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
+      setProbing(false)
       setBusy(false)
     }
   }
 
-  const pickSlotModel = async (field: 'embedding' | 'graph') => {
-    const options = await mobileListKnowledgeModelOptions(
-      field === 'embedding' ? 'embedding' : 'dialogue'
-    )
-    if (options.length === 0) {
-      toast.showError(t('settings.no_models_available', '还没有可用模型'))
-      return
-    }
-    const title =
-      field === 'embedding'
-        ? t('knowledge.embedding_model', '嵌入模型')
-        : t('knowledge.graph_model', '图抽取模型')
-    const picked = await dialog.choose(title, options)
-    if (picked == null || !picked) return
-    const splitAt = picked.indexOf('::')
+  const applySlotModel = async (
+    field: 'embedding' | 'graph',
+    providerId: string,
+    modelId: string
+  ) => {
     if (field === 'embedding') {
       const labels = await mobileGetKnowledgeProcessLabels()
-      if (labels.embeddingModelId) {
+      if (labels.embeddingModelId && labels.embeddingModelId !== modelId) {
         const ok = await dialog.confirm(
           t(
             'agent.rag.migration_switch_warning_content',
@@ -432,44 +380,25 @@ export function useKnowledgeDetailNotebook(input: {
           ),
           { title: t('agent.rag.migration_switch_warning_title', '更换嵌入模型？') }
         )
-        if (!ok) return
+        if (!ok) return false
       }
     }
     setBusy(true)
     try {
       await mobileSetGlobalKnowledgeModel({
         field,
-        providerId: picked.slice(0, splitAt),
-        modelId: picked.slice(splitAt + 2)
+        providerId,
+        modelId
       })
       toast.showSuccess(t('common.saved', '已保存'))
       await refreshDetail()
+      return true
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
+      return false
     } finally {
       setBusy(false)
     }
-  }
-
-  const renameNotebook = async () => {
-    const draft = await dialog.prompt(
-      t('knowledge.notebook_name', '名称'),
-      name,
-      t('knowledge.rename_notebook', '重命名')
-    )
-    const next = draft?.trim()
-    if (!next || next === name) return
-    await saveCover({ name: next })
-  }
-
-  const editDescription = async () => {
-    const draft = await dialog.prompt(
-      t('knowledge.notebook_description', '简介，可以留空'),
-      description,
-      t('knowledge.notebook_description_title', '笔记本简介')
-    )
-    if (draft == null) return
-    await saveCover({ description: draft.trim() })
   }
 
   return {
@@ -478,18 +407,16 @@ export function useKnowledgeDetailNotebook(input: {
     persistImportProcessMode,
     saveCover,
     pickCoverImage,
+    applyCoverImage,
     rebuildIndex,
     rebuildNotebookGraph,
     startOrganize,
     confirmManage,
     deleteNotebook,
     saveExtractConfig,
-    recoverStale,
-    pickVisionModel,
-    pickEmbeddingModel: () => pickSlotModel('embedding'),
-    pickGraphModel: () => pickSlotModel('graph'),
-    probeExtract,
-    renameNotebook,
-    editDescription
+    saveVisionModel,
+    applySlotModel,
+    probing,
+    probeExtract
   }
 }
