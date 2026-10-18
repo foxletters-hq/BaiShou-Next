@@ -4,6 +4,7 @@ import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSummaryWeekNumber } from '@baishou/shared'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
+import { iconSizes, sharedTokens } from '@baishou/ui/theme/tokens'
 
 /** 获取任务状态描述文本 */
 export const getTaskStatusText = (
@@ -244,7 +245,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
               >
                 <div className="sp-missing-card">
                   <div className="sp-missing-card-icon">
-                    <span style={{ fontSize: 20 }}>
+                    <span style={{ fontSize: iconSizes.md }}>
                       {mp.type === 'weekly'
                         ? '🌱'
                         : mp.type === 'monthly'
@@ -324,7 +325,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   {statusText && (
                     <motion.div
                       initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                      animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                      animate={{ opacity: 1, height: 'auto', marginTop: sharedTokens.spacing.sm }}
                       exit={{ opacity: 0, height: 0, marginTop: 0 }}
                       transition={{ duration: 0.2 }}
                       className={`sp-missing-card-status ${taskState?.status || ''}`}

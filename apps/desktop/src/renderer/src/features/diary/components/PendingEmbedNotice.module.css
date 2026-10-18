@@ -9,11 +9,12 @@
   max-width: min(640px, calc(100vw - 48px));
   box-sizing: border-box;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  animation: noticeIn 0.22s var(--ease-out-cubic, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  animation: noticeIn var(--duration-swift) var(--ease-out-cubic, cubic-bezier(0.16, 1, 0.3, 1))
+    both;
   -webkit-app-region: no-drag;
 }
 
@@ -26,10 +27,10 @@
 .banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   min-width: 0;
   margin: 0;
-  padding: 10px 4px 6px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-xs) var(--spacing-xs-plus) var(--spacing-md-tight);
   border: none;
   background: transparent;
   color: inherit;
@@ -49,7 +50,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--color-primary);
   background: rgba(var(--color-primary-rgb), 0.12);
 }
@@ -59,13 +60,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 12px;
+  gap: var(--spacing-xs-plus) var(--spacing-md-tight);
 }
 
 .message {
   flex: 1 1 220px;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   line-height: 1.45;
   color: var(--text-primary);
@@ -75,8 +76,8 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 13px;
+  gap: var(--spacing-2xs);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--color-primary);
   white-space: nowrap;
@@ -85,8 +86,8 @@
 .footer {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px 8px;
+  gap: var(--spacing-md-tight);
+  padding: 0 var(--spacing-md-tight) var(--spacing-sm);
 }
 
 .mute {
@@ -95,7 +96,7 @@
   border: none;
   background: none;
   font-family: var(--font-family);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -106,7 +107,7 @@
 
 .countdown {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }

@@ -1,19 +1,19 @@
 .sectionBody {
-  padding: 16px;
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .textarea {
   width: 100%;
   min-height: 120px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.55;
   font-family: inherit;
   resize: vertical;
@@ -48,23 +48,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-  padding: 0 2px 8px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-xs);
+  padding: 0 var(--spacing-2xs) var(--spacing-sm);
 }
 
 .varsHint {
-  margin: 4px 2px 0;
-  font-size: 12px;
+  margin: var(--spacing-xs) var(--spacing-2xs) 0;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.5;
   color: var(--text-secondary);
 }

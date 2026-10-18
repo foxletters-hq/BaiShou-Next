@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: var(--spacing-md-tight) var(--spacing-xl);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   position: sticky;
@@ -39,7 +39,7 @@
 /* ── 主内容区 ── */
 .sp-content {
   flex: 1;
-  padding: 16px 24px;
+  padding: var(--spacing-md) var(--spacing-lg);
   margin: 0 auto;
   width: 100%;
   min-height: 0;
@@ -57,13 +57,13 @@
   max-width: 1680px;
   margin: 0 auto;
   width: 100%;
-  padding-bottom: 16px;
+  padding-bottom: var(--spacing-md);
 }
 
 .sp-panel-view {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: var(--spacing-xl);
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
@@ -73,13 +73,13 @@
 .sp-dashboard-layout {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 @media (min-width: 860px) {
   .sp-dashboard-layout {
     flex-direction: row;
-    gap: 24px;
+    gap: var(--spacing-lg);
   }
   .sp-dashboard-layout > * {
     flex: 1;
@@ -88,16 +88,16 @@
 
 /* ── AI 建议补全：大卡片容器 ── */
 .sp-missing-panel {
-  margin-top: 8px;
-  margin-bottom: 24px;
-  padding: 16px 18px 18px;
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   min-width: 0;
 }
 
@@ -105,15 +105,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-wrap: wrap;
 }
 
 .sp-missing-panel-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
+  gap: var(--spacing-sm);
+  font-size: var(--content-font-size-md);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
@@ -128,7 +128,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-wrap: wrap;
 }
 
@@ -137,22 +137,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   box-sizing: border-box;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .sp-outline-btn:hover:not(:disabled) {
@@ -184,21 +184,21 @@
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 100;
   min-width: 108px;
-  padding: var(--menu-popup-padding, 4px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
 }
 
 .concurrency-option {
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   cursor: pointer;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-primary);
   font-weight: 400;
@@ -217,11 +217,11 @@
 
 /* 缺失项计数 */
 .sp-missing-count {
-  padding: 2px 8px;
+  padding: var(--spacing-2xs) var(--spacing-sm);
   background: var(--bg-surface-high);
   color: var(--text-secondary);
-  border-radius: 999px;
-  font-size: 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
 }
 
@@ -229,7 +229,7 @@
 .sp-missing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .sp-missing-item {
@@ -242,19 +242,19 @@
 /* 空状态 */
 .sp-missing-empty {
   grid-column: 1 / -1;
-  padding: 28px 16px;
+  padding: var(--spacing-lg) var(--spacing-md);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 /* 卡片内补全项：白底 + 与按钮同款浅描边 */
 .sp-missing-card {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   background: var(--bg-surface);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   display: flex;
   align-items: center;
@@ -267,7 +267,7 @@
   height: 40px;
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,7 +276,7 @@
 
 .sp-missing-card-body {
   flex: 1;
-  margin-left: 12px;
+  margin-left: var(--spacing-md-tight);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -284,7 +284,7 @@
 }
 
 .sp-missing-card-title {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -295,34 +295,34 @@
 .sp-missing-card-meta {
   display: flex;
   align-items: center;
-  margin-top: 4px;
-  gap: 8px;
+  margin-top: var(--spacing-xs);
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
 }
 
 .sp-missing-card-date {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
 .sp-missing-card-badge {
-  padding: 2px 8px;
+  padding: var(--spacing-2xs) var(--spacing-sm);
   background: var(--bg-surface-high);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  font-size: 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--icon-fs-xs);
   font-weight: 500;
 }
 
 .sp-missing-card-action {
-  margin-left: 12px;
+  margin-left: var(--spacing-md-tight);
   width: 34px;
   height: 34px;
   padding: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -330,9 +330,9 @@
   flex-shrink: 0;
   color: var(--text-secondary);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .sp-missing-card-action:hover:not(.processing) {
@@ -368,7 +368,7 @@
 .sp-progress-bar-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex: 1;
   min-width: 160px;
   flex-wrap: wrap;
@@ -387,11 +387,11 @@
   height: 100%;
   background: var(--text-secondary);
   border-radius: var(--radius-full);
-  transition: width 0.4s ease;
+  transition: width var(--duration-slow) ease;
 }
 
 .sp-progress-text {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -405,7 +405,7 @@
 .sp-progress-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
 }
 
@@ -413,18 +413,18 @@
 .sp-stop-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   background: var(--bg-surface);
   color: var(--color-error);
   border: 1px solid var(--color-error);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .sp-stop-btn:hover {
@@ -435,12 +435,12 @@
 .sp-missing-card-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   background: var(--bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   /* 与描边按钮同色，避免边框过淡 */
   border: 1px solid var(--border-control);
   border-left: 3px solid var(--border-control);

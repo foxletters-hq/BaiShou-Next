@@ -1,18 +1,18 @@
 .sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md);
 }
 
 .syncButton {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md-tight);
   height: 32px;
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--settings-font-label-size);
@@ -21,8 +21,8 @@
   cursor: pointer;
   box-sizing: border-box;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .syncButton:hover:not(:disabled) {
@@ -36,41 +36,41 @@
 }
 
 .syncStatusBlock {
-  margin-top: 12px;
+  margin-top: var(--spacing-md-tight);
 }
 
 .progressTrack {
   height: 3px;
   background: var(--bg-surface-low);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   overflow: hidden;
-  margin-bottom: 4px;
-  margin-top: 12px;
+  margin-bottom: var(--spacing-xs);
+  margin-top: var(--spacing-md-tight);
 }
 
 .progressFill {
   height: 100%;
   background: var(--color-primary);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-2xs);
+  transition: width var(--duration-moderate) ease;
 }
 
 .progressMeta {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
 .statsGrid {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .statCard {
   background: var(--bg-surface-high);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm-plus);
   text-align: center;
 }
 
@@ -78,7 +78,7 @@
   font-size: var(--settings-font-micro-size);
   font-weight: var(--settings-font-meta-weight);
   color: var(--text-tertiary);
-  margin-bottom: 2px;
+  margin-bottom: var(--spacing-2xs);
 }
 
 .statValue {

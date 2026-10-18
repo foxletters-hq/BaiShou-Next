@@ -92,130 +92,146 @@ interface DiaryCardProps {
   basePath?: string
 }
 
+const attachmentDirByDateStrCache = new Map<string, Promise<string | undefined>>()
+
+function fetchAttachmentDirForDateStr(dateStr: string): Promise<string | undefined> {
+  const cached = attachmentDirByDateStrCache.get(dateStr)
+  if (cached) return cached
+  const getAttachmentDir = (window as any).api?.diary?.getAttachmentDir
+  if (typeof getAttachmentDir !== 'function') {
+    return Promise.resolve(undefined)
+  }
+  const promise = Promise.resolve(getAttachmentDir(dateStr))
+    .then((res: any) => (res?.success && res.path ? String(res.path) : undefined))
+    .catch(() => {
+      attachmentDirByDateStrCache.delete(dateStr)
+      return undefined
+    })
+  attachmentDirByDateStrCache.set(dateStr, promise)
+  return promise
+}
+
 /** 日记卡片组件 */
-export const DiaryCard: React.FC<DiaryCardProps> = ({
-  entry,
-  onClick,
-  onEdit,
-  onDelete,
-  t,
-  basePath: initialBasePath
-}) => {
-  const [basePath, setBasePath] = React.useState<string | undefined>(initialBasePath)
+export const DiaryCard: React.FC<DiaryCardProps> = React.memo(
+  ({ entry, onClick, onEdit, onDelete, t, basePath: initialBasePath }) => {
+    const [basePath, setBasePath] = React.useState<string | undefined>(initialBasePath)
 
-  React.useEffect(() => {
-    setBasePath(initialBasePath)
-  }, [initialBasePath])
+    React.useEffect(() => {
+      setBasePath(initialBasePath)
+    }, [initialBasePath])
 
-  React.useEffect(() => {
-    if (entry.date) {
-      const dateStr = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-01`
-      ;(window as any).api?.diary
-        ?.getAttachmentDir?.(dateStr)
-        ?.then((res: any) => {
-          if (res?.success && res.path) {
-            setBasePath(res.path)
+    React.useEffect(() => {
+      if (entry.date) {
+        let cancelled = false
+        const dateStr = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-01`
+        void fetchAttachmentDirForDateStr(dateStr).then((path) => {
+          if (!cancelled && path) {
+            setBasePath(path)
           }
         })
-        .catch(() => {})
-    }
-  }, [entry.date])
+        return () => {
+          cancelled = true
+        }
+      }
+      return undefined
+    }, [entry.date])
 
-  const day = String(entry.date.getDate()).padStart(2, '0')
-  const weekday = t(
-    WEEKDAY_NAMES_KEYS[entry.date.getDay()],
-    WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]
-  )
-  const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
-  const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
-  const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
-    limitDiaryPreviewTags(visibleTags)
-  const previewBlocks = React.useMemo(
-    () => buildDiaryCardPreviewBlocks(entry.preview),
-    [entry.preview]
-  )
+    const day = String(entry.date.getDate()).padStart(2, '0')
+    const weekday = t(
+      WEEKDAY_NAMES_KEYS[entry.date.getDay()],
+      WEEKDAY_NAMES_DEFAULT[entry.date.getDay()]
+    )
+    const yearMonth = `${entry.date.getFullYear()} · ${t(MONTH_NAMES_KEYS[entry.date.getMonth()], MONTH_NAMES_DEFAULT[entry.date.getMonth()])}`
+    const visibleTags = entry.tags.filter((t) => t.trim().length > 0)
+    const { visibleTags: previewTags, overflowCount: tagOverflowCount } =
+      limitDiaryPreviewTags(visibleTags)
+    const previewBlocks = React.useMemo(
+      () => buildDiaryCardPreviewBlocks(entry.preview),
+      [entry.preview]
+    )
 
-  return (
-    <div className="diary-card" onClick={onClick}>
-      {/* 头部：日期 + 星期 + 收藏 */}
-      <div className="diary-card-header">
-        <div className="diary-card-date-row">
-          <span className="diary-card-day">{day}</span>
-          <div className="diary-card-weekday-col">
-            <div className="diary-card-weekday-row">
-              <span className="diary-card-weekday">{weekday}</span>
-              <span className="diary-card-yearmonth">{yearMonth}</span>
-              {resolveWeatherId(entry.weather) && (
-                <span className="diary-card-icon-badge">
-                  <WeatherEmoji weather={entry.weather} size={14} />
-                </span>
-              )}
-              {resolveMoodId(entry.mood) && (
-                <span className="diary-card-icon-badge">
-                  <MoodEmoji mood={entry.mood} size={14} />
-                </span>
-              )}
+    return (
+      <div className="diary-card" onClick={onClick}>
+        {/* 头部：日期 + 星期 + 收藏 */}
+        <div className="diary-card-header">
+          <div className="diary-card-date-row">
+            <span className="diary-card-day">{day}</span>
+            <div className="diary-card-weekday-col">
+              <div className="diary-card-weekday-row">
+                <span className="diary-card-weekday">{weekday}</span>
+                <span className="diary-card-yearmonth">{yearMonth}</span>
+                {resolveWeatherId(entry.weather) && (
+                  <span className="diary-card-icon-badge">
+                    <WeatherEmoji weather={entry.weather} size={14} />
+                  </span>
+                )}
+                {resolveMoodId(entry.mood) && (
+                  <span className="diary-card-icon-badge">
+                    <MoodEmoji mood={entry.mood} size={14} />
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        {entry.isFavorite && (
-          <Heart size={18} className="diary-card-fav-star" fill="currentColor" />
-        )}
-      </div>
-
-      {/* 内容预览 */}
-      <div className="diary-card-content">
-        <div className="diary-card-content-text">
-          {previewBlocks.map((block, index) =>
-            block.kind === 'quote' ? (
-              <div key={`quote-${index}`} className="diary-card-quote-line">
-                <MarkdownRenderer content={block.text} basePath={basePath} />
-              </div>
-            ) : (
-              <MarkdownRenderer key={`md-${index}`} content={block.text} basePath={basePath} />
-            )
+          {entry.isFavorite && (
+            <Heart size={18} className="diary-card-fav-star" fill="currentColor" />
           )}
         </div>
 
-        {/* 媒体指示器 */}
-        {entry.hasMedia && (
-          <div className="diary-card-media-indicator">
-            <span className="diary-card-media-icon">📎</span>
-            <span className="diary-card-media-text">
-              {i18n.t(
-                'auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L175',
-                '包含附件'
-              )}
-            </span>
+        {/* 内容预览 */}
+        <div className="diary-card-content">
+          <div className="diary-card-content-text">
+            {previewBlocks.map((block, index) =>
+              block.kind === 'quote' ? (
+                <div key={`quote-${index}`} className="diary-card-quote-line">
+                  <MarkdownRenderer content={block.text} basePath={basePath} />
+                </div>
+              ) : (
+                <MarkdownRenderer key={`md-${index}`} content={block.text} basePath={basePath} />
+              )
+            )}
+          </div>
+
+          {/* 媒体指示器 */}
+          {entry.hasMedia && (
+            <div className="diary-card-media-indicator">
+              <span className="diary-card-media-icon">📎</span>
+              <span className="diary-card-media-text">
+                {i18n.t(
+                  'auto.apps.desktop.src.renderer.src.features.diary.DiaryCard.L175',
+                  '包含附件'
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* 标签 */}
+        {previewTags.length > 0 && (
+          <div className="diary-card-tags">
+            {previewTags.map((tag, idx) => (
+              <span key={idx} className={`diary-card-tag ${getTagColor(tag)}`}>
+                #{tag}
+              </span>
+            ))}
+            {tagOverflowCount > 0 ? (
+              <span className="diary-card-tag diary-card-tag-overflow">+{tagOverflowCount}</span>
+            ) : null}
           </div>
         )}
-      </div>
 
-      {/* 标签 */}
-      {previewTags.length > 0 && (
-        <div className="diary-card-tags">
-          {previewTags.map((tag, idx) => (
-            <span key={idx} className={`diary-card-tag ${getTagColor(tag)}`}>
-              #{tag}
-            </span>
-          ))}
-          {tagOverflowCount > 0 ? (
-            <span className="diary-card-tag diary-card-tag-overflow">+{tagOverflowCount}</span>
-          ) : null}
+        {/* 悬停操作按钮 */}
+        <div className="diary-card-actions" onClick={(e) => e.stopPropagation()}>
+          <button className="diary-card-action-btn edit-btn" onClick={onEdit}>
+            <Edit3 size={14} />
+            {t('common.edit', '编辑')}
+          </button>
+          <button className="diary-card-action-btn delete-btn" onClick={onDelete}>
+            <Trash2 size={14} />
+            {t('common.delete', '删除')}
+          </button>
         </div>
-      )}
-
-      {/* 悬停操作按钮 */}
-      <div className="diary-card-actions" onClick={(e) => e.stopPropagation()}>
-        <button className="diary-card-action-btn edit-btn" onClick={onEdit}>
-          <Edit3 size={14} />
-          {t('common.edit', '编辑')}
-        </button>
-        <button className="diary-card-action-btn delete-btn" onClick={onDelete}>
-          <Trash2 size={14} />
-          {t('common.delete', '删除')}
-        </button>
       </div>
-    </div>
-  )
-}
+    )
+  }
+)

@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: var(--spacing-md-tight) var(--spacing-xl);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   box-shadow: none;
@@ -28,7 +28,7 @@
 .diary-appbar-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .diary-month-selector {
@@ -37,27 +37,27 @@
 }
 
 .diary-year-text {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .diary-month-text {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   color: var(--text-primary);
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
 }
 
 .diary-dropdown-icon {
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .diary-appbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 /* 搜索框 */
@@ -80,8 +80,8 @@
 
 .diary-search-input {
   height: 36px;
-  padding-left: 36px;
-  border-radius: 18px;
+  padding-left: var(--spacing-xl-plus);
+  border-radius: var(--radius-lg);
   font-weight: 500;
 }
 
@@ -97,7 +97,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
 }
 
 .diary-calendar-btn:hover {
@@ -108,19 +108,19 @@
 .diary-add-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-sm) var(--spacing-md);
   background-color: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   font-family: var(--font-family);
 }
 
@@ -147,9 +147,9 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
-  transition: background-color 0.2s;
-  margin-right: 4px;
-  font-size: 20px;
+  transition: background-color var(--duration-swift);
+  margin-right: var(--spacing-xs);
+  font-size: var(--icon-fs-md);
 }
 
 .diary-today-btn svg.lucide {
@@ -172,7 +172,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
 }
 
 .diary-export-btn:hover {
@@ -189,7 +189,7 @@
 .diary-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: var(--spacing-lg) var(--spacing-xl);
   background-color: transparent;
 }
 
@@ -203,13 +203,13 @@
 
 .diary-grid::-webkit-scrollbar-thumb {
   background-color: var(--border-muted);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .diary-grid-inner {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: var(--spacing-lg);
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -232,8 +232,8 @@
     border-color var(--duration-fast) var(--ease-in-out),
     box-shadow var(--duration-fast) var(--ease-in-out);
   box-shadow: none;
-  padding: 24px;
-  padding-bottom: 56px;
+  padding: var(--spacing-lg);
+  padding-bottom: var(--spacing-2xl);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -251,17 +251,17 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .diary-card-date-row {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .diary-card-day {
-  font-size: 28px;
+  font-size: var(--ui-display-md);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
@@ -270,17 +270,17 @@
 .diary-card-weekday-col {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .diary-card-weekday-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .diary-card-weekday {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.5px;
@@ -288,11 +288,11 @@
 
 .diary-card-yearmonth {
   display: inline-flex;
-  padding: 2px 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
   background-color: transparent;
   border: 0.5px solid var(--color-primary);
   border-radius: var(--radius-xs);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
@@ -302,7 +302,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs);
   background: transparent;
   border: 0.5px solid var(--color-primary);
   border-radius: var(--radius-xs);
@@ -310,15 +310,15 @@
 
 .diary-card-menu-icon {
   color: var(--text-tertiary);
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
 }
 
 /* 时间戳 */
 .diary-card-time {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--color-primary);
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 /* 内容预览 */
@@ -327,7 +327,7 @@
   min-height: 72px;
   overflow: hidden;
   position: relative;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
   /* 遮罩渐变：使用 currentColor 保持主题一致 */
   -webkit-mask-image: linear-gradient(to bottom, currentColor 75%, transparent 100%);
   mask-image: linear-gradient(to bottom, currentColor 75%, transparent 100%);
@@ -339,14 +339,14 @@
 }
 
 .diary-card-quote-line {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.7;
   color: var(--text-secondary) !important;
   word-break: break-word;
   border-left: 3px solid var(--color-primary);
   padding: 0 0 0 0.75rem;
-  margin-top: 4px;
-  margin-bottom: 6px;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .diary-card-quote-line p,
@@ -357,7 +357,7 @@
 .diary-card-quote-line h5,
 .diary-card-quote-line h6,
 .diary-card-quote-line li {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.7;
   color: var(--text-secondary) !important;
   margin-top: 0;
@@ -365,7 +365,7 @@
 }
 
 .diary-card-content-text blockquote {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.7;
   color: var(--text-secondary) !important;
   word-break: break-word;
@@ -373,8 +373,8 @@
   border-left: 3px solid var(--color-primary);
   padding: 0 0 0 0.75rem !important;
   border-radius: 0;
-  margin-top: 4px;
-  margin-bottom: 6px;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .diary-card-content-text p,
@@ -385,7 +385,7 @@
 .diary-card-content-text h5,
 .diary-card-content-text h6,
 .diary-card-content-text li {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1.7;
   color: var(--text-primary) !important;
   word-break: break-word;
@@ -412,8 +412,8 @@
 .diary-card-content-text h5,
 .diary-card-content-text h6,
 .diary-card-content-text blockquote {
-  margin-top: 4px;
-  margin-bottom: 6px;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .diary-card-content-text p:first-child,
@@ -428,26 +428,26 @@
 }
 
 .diary-card-content-text h4 {
-  font-size: 17px;
+  font-size: var(--settings-font-page-title-size);
   font-weight: 600;
 }
 
 .diary-card-content-text h5 {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
 }
 
 .diary-card-content-text h6 {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 600;
   color: var(--color-primary) !important;
 }
 
 .diary-card-content-text ul,
 .diary-card-content-text ol {
-  margin-top: 4px;
-  margin-bottom: 6px;
-  padding-left: 20px;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs-plus);
+  padding-left: var(--spacing-md-plus);
 }
 
 .diary-card-content-text code {
@@ -475,8 +475,8 @@
 .diary-card-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md-tight);
   padding-right: 0;
   flex-shrink: 0;
   max-height: 52px;
@@ -494,9 +494,9 @@
   justify-content: center;
   box-sizing: border-box;
   min-height: 20px;
-  padding: 4px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   line-height: 1;
 }
@@ -525,7 +525,7 @@
 /* 收藏星标 */
 .diary-card-fav-star {
   color: var(--color-warning);
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   flex-shrink: 0;
 }
 
@@ -533,17 +533,17 @@
 .diary-card-meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--spacing-xs-plus);
+  margin-bottom: var(--spacing-sm);
 }
 
 .diary-card-meta-badge {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--settings-font-micro-size);
   font-weight: 500;
   background: var(--color-primary-light);
   color: var(--color-primary);
@@ -556,9 +556,9 @@
   right: 24px;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .diary-card:hover .diary-card-actions {
@@ -568,16 +568,16 @@
 .diary-card-action-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
   border: none;
   background: transparent;
   border-radius: var(--radius-xs);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
   font-family: var(--font-family);
 }
 
@@ -607,21 +607,21 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 24px 32px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
   color: var(--text-primary);
   text-align: center;
 }
 
 .diary-empty-icon {
   /* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
-  font-size: 46px;
+  font-size: var(--icon-fs-2xl);
   opacity: 0.5;
   color: var(--color-primary);
 }
 
 .diary-empty-title {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   font-weight: 600;
   color: var(--text-primary);
   max-width: 520px;
@@ -642,7 +642,7 @@
 }
 
 .diary-empty-text {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   line-height: 1.6;
   color: var(--text-tertiary);
   max-width: 520px;
@@ -653,7 +653,7 @@
   border: none;
   color: var(--color-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   font-family: var(--font-family);
@@ -667,7 +667,7 @@
   left: var(--app-content-inset-inline, 8px);
   right: var(--app-content-inset-inline, 8px);
   bottom: var(--app-content-inset-bottom, 8px);
-  border-radius: var(--app-content-radius, 12px);
+  border-radius: var(--app-content-radius, var(--radius-md));
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--bg-overlay);
@@ -677,48 +677,48 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.15s ease-out;
+  animation: fadeIn var(--duration-fast) ease-out;
 }
 
 .diary-delete-modal {
   background: var(--bg-surface);
   width: 320px;
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: var(--spacing-lg);
   box-shadow: var(--shadow-lg);
-  animation: scaleUp 0.2s var(--ease-out-cubic);
+  animation: scaleUp var(--duration-swift) var(--ease-out-cubic);
 }
 
 .dd-modal-title {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .dd-modal-content {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-primary);
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .dd-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .dd-btn-cancel {
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-xs);
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
 }
 
 .dd-btn-cancel:hover {
@@ -728,13 +728,13 @@
 .dd-btn-confirm {
   background: var(--color-error);
   border: none;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   color: var(--text-on-primary);
   cursor: pointer;
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-xs);
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
 }
 
 .dd-btn-confirm:hover {
@@ -774,9 +774,9 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   position: relative;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .diary-filter-btn svg.lucide {
@@ -817,7 +817,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -831,12 +831,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   border-bottom: 1px solid var(--border-muted);
 }
 
 .diary-filter-title {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   color: var(--text-primary);
@@ -845,17 +845,17 @@
 .diary-filter-clear {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   color: var(--text-tertiary);
   cursor: pointer;
-  padding: 4px 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-xs);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .diary-filter-clear:hover {
@@ -864,7 +864,7 @@
 }
 
 .diary-filter-section {
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
 }
 
 .diary-filter-section + .diary-filter-section {
@@ -872,27 +872,27 @@
 }
 
 .diary-filter-section-label {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-tertiary);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .diary-filter-option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .diary-filter-option:hover {
@@ -907,7 +907,7 @@
 .diary-filter-weather-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .diary-filter-weather-btn {
@@ -921,7 +921,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .diary-filter-weather-btn:hover {
@@ -935,7 +935,7 @@
 }
 
 .diary-filter-weather-emoji {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   line-height: 1;
 }
 
@@ -944,8 +944,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0 12px;
-  margin-bottom: 4px;
+  padding: var(--spacing-sm) 0 var(--spacing-md-tight);
+  margin-bottom: var(--spacing-xs);
 }
 
 /* ── 底部分页组件 ── */
@@ -953,12 +953,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  margin-top: 8px;
+  padding: var(--spacing-md) 0;
+  margin-top: var(--spacing-sm);
 }
 
 .diary-pagination-info {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   color: var(--text-tertiary);
@@ -967,7 +967,7 @@
 .diary-pagination-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .diary-page-btn {
@@ -980,11 +980,11 @@
   border-radius: var(--radius-xs);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
 }
 
 .diary-page-btn:hover:not(:disabled) {
@@ -1001,7 +1001,7 @@
 .diary-page-current {
   min-width: 32px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   color: var(--color-primary);
@@ -1012,12 +1012,12 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   height: 32px;
-  padding: 0 20px;
+  padding: 0 var(--spacing-md-plus);
   border-top: 1px solid var(--border-muted);
   background: var(--bg-app);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.3;
   font-weight: 500;
   color: var(--text-secondary);
@@ -1031,7 +1031,7 @@
 .diary-status-bar-indexing {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .diary-status-bar-item--action {

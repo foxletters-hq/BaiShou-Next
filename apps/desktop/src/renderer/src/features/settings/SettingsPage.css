@@ -52,10 +52,10 @@
 }
 
 .settings-header {
-  padding: 16px 12px 12px 12px;
+  padding: var(--spacing-md) var(--spacing-md-tight) var(--spacing-md-tight) var(--spacing-md-tight);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .settings-back-btn {
@@ -68,10 +68,10 @@
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   margin-right: 0;
   flex-shrink: 0;
   padding: 0;
@@ -83,13 +83,13 @@
 }
 
 .settings-retry-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
 }
 
 .settings-retry-btn:hover {
@@ -108,7 +108,7 @@
 .settings-nav-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0 20px;
+  padding: var(--spacing-xs) 0 var(--spacing-md-plus);
 }
 
 .settings-nav-scroll::-webkit-scrollbar {
@@ -116,19 +116,19 @@
 }
 .settings-nav-scroll::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
 }
 
 .settings-nav-group {
   display: flex;
   flex-direction: column;
-  padding: 0 10px;
-  gap: 2px;
+  padding: 0 var(--spacing-sm-plus);
+  gap: var(--spacing-2xs);
 }
 
 .settings-nav-section-label {
-  margin: 14px 8px 6px;
-  padding: 0 4px;
+  margin: var(--spacing-md-snug) var(--spacing-sm) var(--spacing-xs-plus);
+  padding: 0 var(--spacing-xs);
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
   line-height: 1.2;
@@ -138,18 +138,18 @@
 }
 
 .settings-nav-section-label:first-child {
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .settings-nav-item {
   display: flex;
   align-items: center;
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   color: var(--text-primary);
   background: transparent;
   border: none;
@@ -175,8 +175,8 @@
 .settings-nav-icon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
-  margin-right: 12px;
+  font-size: var(--settings-icon-trailing-size);
+  margin-right: var(--spacing-md-tight);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,7 +202,7 @@
 .settings-divider {
   height: 1px;
   background-color: var(--color-outline-variant);
-  margin: 8px 10px;
+  margin: var(--spacing-sm) var(--spacing-sm-plus);
 }
 
 .settings-content-area {
@@ -228,7 +228,7 @@
 
 .settings-content-scroll::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 /* Animations for pane switching */
@@ -291,7 +291,7 @@
 }
 
 .settings-content-enter {
-  animation: paneFadeIn 0.2s ease-out;
+  animation: paneFadeIn var(--duration-swift) ease-out;
 }
 
 .settings-config-loading-overlay {
@@ -303,11 +303,11 @@
   justify-content: center;
   background: transparent;
   pointer-events: none;
-  animation: settingsFadeIn 0.2s ease-out;
+  animation: settingsFadeIn var(--duration-swift) ease-out;
 }
 
 .settings-config-loading-overlay--leaving {
-  animation: settingsFadeOut 0.2s ease-out forwards;
+  animation: settingsFadeOut var(--duration-swift) ease-out forwards;
 }
 
 .settings-pane-body {
@@ -316,7 +316,7 @@
   display: flex;
   flex-direction: column;
   opacity: 0;
-  transition: opacity 0.2s ease-out;
+  transition: opacity var(--duration-swift) ease-out;
   pointer-events: none;
 }
 
@@ -333,10 +333,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
   pointer-events: auto;
-  animation: settingsFadeIn 0.2s ease-out;
+  animation: settingsFadeIn var(--duration-swift) ease-out;
 }
 
 .settings-config-loading-spinner {
@@ -358,7 +358,7 @@
 
 .settings-config-failed-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   color: var(--text-secondary);
 }
 
@@ -369,9 +369,9 @@
 }
 
 .settings-retry-btn {
-  padding: 6px 14px;
-  font-size: 13px;
-  border-radius: 6px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
+  font-size: var(--settings-font-label-size);
+  border-radius: var(--radius-xs-plus);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -399,7 +399,7 @@
 .settings-card-section {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
