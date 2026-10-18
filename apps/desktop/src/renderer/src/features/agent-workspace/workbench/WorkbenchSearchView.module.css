@@ -9,8 +9,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px 6px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm-plus) var(--spacing-xs-plus);
 }
 
 .title {
@@ -25,7 +25,7 @@
 .toolbarActions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .iconBtn {
@@ -33,8 +33,8 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -53,15 +53,15 @@
 .widget {
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  padding: 0 12px 8px 4px;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-md-tight) var(--spacing-sm) var(--spacing-xs);
 }
 
 .replaceToggle {
   width: 16px;
   flex-shrink: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -81,13 +81,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .replaceRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .replaceBox {
@@ -103,7 +103,7 @@
   display: flex;
   align-items: center;
   gap: 1px;
-  padding: 0 2px 0 0;
+  padding: 0 var(--spacing-2xs) 0 0;
   flex-shrink: 0;
 }
 
@@ -111,7 +111,7 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -142,7 +142,7 @@
   height: 16px;
   padding: 0;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -161,13 +161,13 @@
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-right: 22px;
+  gap: var(--spacing-2xs);
+  padding-right: var(--spacing-md-plus);
 }
 
 .filterLabel {
-  margin: 4px 0 0;
-  font-size: 11px;
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--settings-font-micro-size);
   font-weight: 400;
   color: var(--text-secondary);
 }
@@ -182,7 +182,7 @@
 .error,
 .summary {
   margin: 0;
-  padding: 2px 18px 8px;
+  padding: var(--spacing-2xs) var(--spacing-md) var(--spacing-sm);
   font-size: var(--ui-fs-sm);
 }
 
@@ -218,9 +218,9 @@
 .fileHeader {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-height: 22px;
-  padding: 0 10px 0 8px;
+  padding: 0 var(--spacing-sm-plus) 0 var(--spacing-sm);
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
 }
@@ -256,12 +256,12 @@
   flex-shrink: 0;
   min-width: 18px;
   height: 16px;
-  padding: 0 5px;
-  margin-left: 6px;
-  border-radius: 10px;
+  padding: 0 var(--spacing-xs);
+  margin-left: var(--spacing-xs-plus);
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-surface));
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   line-height: 16px;
   text-align: center;
 }
@@ -269,7 +269,7 @@
 .matchRow {
   display: block;
   min-height: 22px;
-  padding: 0 10px 0 28px;
+  padding: 0 var(--spacing-sm-plus) 0 var(--spacing-lg);
   line-height: 22px;
 }
 

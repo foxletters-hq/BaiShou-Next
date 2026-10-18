@@ -24,14 +24,14 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 0 2px;
+  padding: 0 var(--spacing-2xs);
 }
 
 .layoutBtn {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -74,7 +74,7 @@
   min-width: 80px;
   height: 100%;
   box-sizing: border-box;
-  padding: 0 0 0 10px;
+  padding: 0 0 0 var(--spacing-sm-plus);
   border: none;
   border-radius: 0;
   border-right: 1px solid var(--border-muted);
@@ -112,7 +112,7 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  margin-right: 6px;
+  margin-right: var(--spacing-xs-plus);
   color: inherit;
 }
 
@@ -140,10 +140,10 @@
   color: inherit;
   cursor: pointer;
   padding: 0;
-  margin: 0 4px 0 2px;
+  margin: 0 var(--spacing-xs) 0 var(--spacing-2xs);
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,7 +176,7 @@
   gap: 0;
   height: 22px;
   min-height: 22px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
   overflow: hidden;
@@ -198,7 +198,7 @@
 .breadcrumbSeg {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
   max-width: 180px;
   overflow: hidden;
@@ -209,7 +209,7 @@
 .breadcrumbSep {
   display: inline-flex;
   align-items: center;
-  margin: 0 4px;
+  margin: 0 var(--spacing-xs);
   flex-shrink: 0;
   opacity: 0.55;
   font-size: var(--ui-fs-sm);
@@ -249,8 +249,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 24px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
   box-sizing: border-box;
   background: var(--bg-surface);
   user-select: none;
@@ -277,7 +277,7 @@
 
 .status,
 .missingFile {
-  padding: 24px;
+  padding: var(--spacing-lg);
   color: var(--text-secondary);
   font-size: var(--ui-fs-lg);
   font-weight: 400;
@@ -303,7 +303,7 @@
 }
 
 .diffHeader {
-  padding: 10px 16px;
+  padding: var(--spacing-sm-plus) var(--spacing-md);
   font-size: var(--ui-fs-sm);
   font-family: var(--font-family);
   border-bottom: 1px solid var(--border-control);
@@ -322,13 +322,13 @@
 .textPreview {
   height: 100%;
   overflow: auto;
-  padding: 24px 32px;
+  padding: var(--spacing-lg) var(--spacing-xl);
   background: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .previewHint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--spacing-md-tight);
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
@@ -346,9 +346,9 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   height: 24px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border-top: 1px solid var(--border-muted);
   background: var(--bg-app);
   font-size: var(--ui-fs-sm);
@@ -363,7 +363,7 @@
 .statusBranch {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   border: none;
   background: transparent;
   color: inherit;
@@ -403,8 +403,8 @@
   max-width: 320px;
   max-height: 320px;
   overflow: auto;
-  padding: var(--menu-popup-padding, 4px);
-  border-radius: var(--menu-popup-radius, 8px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   background: var(--menu-popup-bg, var(--bg-surface));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
@@ -413,18 +413,18 @@
 .branchCreateRow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
 }
 
 .branchMenuItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   border: none;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
@@ -456,7 +456,7 @@
 
 .branchMenuDivider {
   height: 1px;
-  margin: 4px 6px;
+  margin: var(--spacing-xs) var(--spacing-xs-plus);
   background: var(--border-muted);
 }
 
@@ -465,12 +465,12 @@
   z-index: 45;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-width: calc(100vw - 24px);
   min-height: 34px;
-  padding: 3px;
+  padding: var(--spacing-2xs);
   border: 1px solid var(--border-muted);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.14));
   box-sizing: border-box;
@@ -485,16 +485,16 @@
 .selectionAffordanceAction {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-height: 28px;
   margin: 0;
-  padding: 0 8px;
+  padding: 0 var(--spacing-sm);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   cursor: pointer;
 }
@@ -507,14 +507,14 @@
   display: inline-flex;
   align-items: center;
   min-height: 20px;
-  margin-left: 2px;
-  padding: 0 5px;
+  margin-left: var(--spacing-2xs);
+  padding: 0 var(--spacing-xs);
   border: 1px solid var(--border-control, var(--border-muted));
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-app);
   color: var(--text-secondary);
   font-family: var(--font-family-mono);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   line-height: 1;
 }
 
@@ -522,9 +522,9 @@
   position: fixed;
   z-index: 40;
   width: 260px;
-  padding: 10px;
+  padding: var(--spacing-sm-plus);
   border: 1px solid var(--border-muted);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
   box-sizing: border-box;
@@ -532,9 +532,9 @@
 }
 
 .commentPopoverTitle {
-  margin: 0 0 8px;
+  margin: 0 0 var(--spacing-sm);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
@@ -542,13 +542,13 @@
   width: 100%;
   min-height: 72px;
   margin: 0;
-  padding: 8px;
+  padding: var(--spacing-sm);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-family);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   resize: vertical;
   box-sizing: border-box;
@@ -557,15 +557,15 @@
 .commentPopoverActions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }
 
 .commentPopoverActions button {
   margin: 0;
-  padding: 4px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   border: 1px solid var(--border-control);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;

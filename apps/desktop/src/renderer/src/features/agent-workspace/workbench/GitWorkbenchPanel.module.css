@@ -46,7 +46,7 @@
 .viewHeader {
   display: flex;
   align-items: center;
-  padding: 6px 8px 2px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm) var(--spacing-2xs);
   flex-shrink: 0;
 }
 
@@ -71,9 +71,9 @@
 .sectionHeader {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 100%;
-  padding: 3px var(--git-header-x);
+  padding: var(--spacing-2xs) var(--git-header-x);
   min-height: 22px;
   border: none;
   background: transparent;
@@ -89,7 +89,7 @@
 .sectionChevron {
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: transform 0.15s ease;
+  transition: transform var(--duration-fast) ease;
 }
 
 .sectionChevronOpen {
@@ -107,8 +107,8 @@
 
 .sectionBadge {
   font-size: var(--ui-fs-sm);
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.06);
   color: var(--text-secondary);
 }
@@ -127,8 +127,8 @@
 .subgroupHeader {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding-right: 6px;
+  gap: var(--spacing-xs);
+  padding-right: var(--spacing-xs-plus);
 }
 
 .subgroupToggle {
@@ -136,8 +136,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 8px 5px var(--git-header-x);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--git-header-x);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -164,15 +164,15 @@
 .subgroupTrailing {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   flex-shrink: 0;
   min-height: 22px;
 }
 
 .subgroupBadge {
   font-size: var(--ui-fs-sm);
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.06);
   color: var(--text-secondary);
 }
@@ -183,7 +183,7 @@
   gap: 0;
   flex-shrink: 0;
   opacity: 0;
-  transition: opacity 0.12s;
+  transition: opacity var(--duration-fast);
 }
 
 .subgroupHeader:hover .subgroupActions,
@@ -192,11 +192,11 @@
 }
 
 .subgroupBody {
-  padding-bottom: 4px;
+  padding-bottom: var(--spacing-xs);
 }
 
 .treeEmpty {
-  padding: 6px 8px 8px var(--git-content-x);
+  padding: var(--spacing-xs-plus) var(--spacing-sm) var(--spacing-sm) var(--git-content-x);
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   opacity: 0.75;
@@ -205,8 +205,8 @@
 .treeRow {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px 0 var(--git-content-x);
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-sm) 0 var(--git-content-x);
   min-height: 22px;
   height: 22px;
 }
@@ -266,7 +266,7 @@
 .treeRowEnd {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -276,7 +276,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   line-height: 1;
   flex-shrink: 0;
@@ -330,7 +330,7 @@
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -347,8 +347,8 @@
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);
   font-family: inherit;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border-radius: var(--radius-xs);
   cursor: pointer;
 }
 
@@ -371,7 +371,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-bottom: 6px;
+  padding-bottom: var(--spacing-xs-plus);
 }
 
 .graphList {
@@ -392,7 +392,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 10px;
+  padding-top: var(--spacing-sm-plus);
 }
 
 .graphNode {
@@ -418,16 +418,16 @@
 .graphContent {
   flex: 1;
   min-width: 0;
-  padding: 2px 8px 2px 0;
+  padding: var(--spacing-2xs) var(--spacing-sm) var(--spacing-2xs) 0;
 }
 
 .graphCommit {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   width: 100%;
-  padding: 2px 2px 2px 6px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
 }
 
 .graphCommit:hover {
@@ -438,12 +438,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1;
   min-width: 0;
-  padding: 2px 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   cursor: pointer;
   font-family: inherit;
@@ -467,15 +467,15 @@
 .graphMeta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex-shrink: 0;
 }
 
 .graphHeadBadge {
   font-size: var(--ui-fs-sm);
   font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
   background: var(--color-primary);
   color: var(--text-on-primary);
   letter-spacing: 0.02em;
@@ -493,7 +493,7 @@
 }
 
 .graphFiles {
-  padding: 2px 0 6px;
+  padding: var(--spacing-2xs) 0 var(--spacing-xs-plus);
 }
 
 .graphFiles .treeRow {
@@ -508,7 +508,7 @@
 }
 
 .menuSectionLabel {
-  padding: 4px 10px 2px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus) var(--spacing-2xs);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -517,14 +517,14 @@
 }
 
 .stashMenuBlock {
-  padding: 0 2px;
+  padding: 0 var(--spacing-2xs);
 }
 
 .stashMenuRow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .stashMenuLabel {
@@ -537,7 +537,7 @@
 
 .stashMenuActions {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .stashMenuBtn {
@@ -545,8 +545,8 @@
   background: rgba(0, 0, 0, 0.05);
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   cursor: pointer;
   font-family: inherit;
 }
@@ -556,15 +556,15 @@
 }
 
 .conflictSection {
-  margin: 8px;
-  padding: 10px 12px;
+  margin: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border: 1px solid #d4a72c;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: rgba(212, 167, 44, 0.08);
 }
 
 .conflictTitle {
-  margin: 0 0 8px;
+  margin: 0 0 var(--spacing-sm);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-primary);
@@ -573,8 +573,8 @@
 .conflictRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
 }
 
 .conflictPath {
@@ -594,7 +594,7 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -617,8 +617,8 @@
   right: 2px;
   min-width: 14px;
   height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
+  padding: 0 var(--spacing-2xs);
+  border-radius: var(--radius-sm);
   background: var(--color-primary);
   color: var(--text-on-primary);
   font-size: var(--ui-fs-sm);
@@ -635,12 +635,12 @@
 .branchBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   max-width: 140px;
   height: 28px;
-  padding: 0 8px;
+  padding: 0 var(--spacing-sm);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
@@ -673,8 +673,8 @@
   max-width: 260px;
   max-height: 280px;
   overflow: auto;
-  padding: var(--menu-popup-padding, 4px);
-  border-radius: var(--menu-popup-radius, 8px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   background: var(--menu-popup-bg, var(--bg-surface));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
@@ -688,11 +688,11 @@
 .menuItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   border: none;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
@@ -713,16 +713,16 @@
 
 .menuDivider {
   height: 1px;
-  margin: 4px 6px;
+  margin: var(--spacing-xs) var(--spacing-xs-plus);
   background: var(--border-muted);
 }
 
 .menuInput {
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
 }
 
 .commitBox {
-  padding: 4px var(--git-header-x) 8px;
+  padding: var(--spacing-xs) var(--git-header-x) var(--spacing-sm);
   border-bottom: 1px solid var(--border-muted);
   flex-shrink: 0;
 }
@@ -732,9 +732,9 @@
   box-sizing: border-box;
   min-height: 46px;
   max-height: 120px;
-  padding: 6px 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
   border: 1px solid var(--border-control);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
@@ -754,20 +754,20 @@
 .commitActions {
   display: flex;
   align-items: stretch;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .commitPrimary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex: 1;
   min-width: 0;
   height: 26px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: none;
-  border-radius: 2px 0 0 2px;
+  border-radius: var(--radius-2xs) 0 0 var(--radius-2xs);
   background: var(--color-primary);
   color: var(--text-on-primary);
   font-size: var(--ui-fs-sm);
@@ -791,7 +791,7 @@
   padding: 0;
   border: none;
   border-left: 1px solid color-mix(in srgb, var(--text-on-primary) 28%, transparent);
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 var(--radius-2xs) var(--radius-2xs) 0;
   background: var(--color-primary);
   color: var(--text-on-primary);
   cursor: pointer;
@@ -823,7 +823,7 @@
   width: min(420px, 100%);
   max-height: 85vh;
   overflow: auto;
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-muted);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
@@ -833,7 +833,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
   border-bottom: 1px solid var(--border-muted);
 }
 
@@ -844,10 +844,10 @@
 }
 
 .sheetBody {
-  padding: 12px 14px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .sheetLabel {
@@ -858,13 +858,13 @@
 
 .sheetDivider {
   height: 1px;
-  margin: 8px 0;
+  margin: var(--spacing-sm) 0;
   background: var(--border-muted);
 }
 
 .tokenRow {
   display: flex;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   align-items: center;
 }
 
@@ -876,16 +876,16 @@
 .sheetFooter {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
   border-top: 1px solid var(--border-muted);
 }
 
 .sheetBtn,
 .sheetBtnPrimary {
   height: 32px;
-  padding: 0 14px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: inherit;
@@ -894,8 +894,8 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .sheetBtn:hover,

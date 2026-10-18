@@ -6,7 +6,7 @@
   position: relative;
   z-index: 5;
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .sash::after {
@@ -16,9 +16,9 @@
   bottom: 0;
   left: calc(50% - 2px);
   width: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .sash:hover::after,
@@ -43,9 +43,9 @@
   right: 0;
   top: calc(50% - 2px);
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .sashHorizontal:hover::after,
