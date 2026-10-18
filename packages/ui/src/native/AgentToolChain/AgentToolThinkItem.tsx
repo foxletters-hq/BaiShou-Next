@@ -18,6 +18,9 @@ import {
   isCompanionAskAwaitingAnswer
 } from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
+
+const COLLAPSE_DURATION_MS = 250
 
 export interface AgentToolThinkItemProps {
   model: AgentToolChainItemModel
@@ -31,7 +34,16 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [expanded, setExpanded] = useState(false)
-  const [contentMounted, setContentMounted] = useState(false)
+  const [keepMounted, setKeepMounted] = useState(expanded)
+
+  useEffect(() => {
+    if (expanded) {
+      setKeepMounted(true)
+      return
+    }
+    const timer = setTimeout(() => setKeepMounted(false), COLLAPSE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [expanded])
 
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as ToolInvocationLike | undefined
@@ -50,7 +62,6 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 
   useEffect(() => {
     if (autoExpand && canExpand) {
-      setContentMounted(true)
       setExpanded(true)
     }
   }, [autoExpand, canExpand])
@@ -79,12 +90,10 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 
   const handleToggle = useCallback(() => {
     if (!canExpand) return
-    setExpanded((prev) => {
-      const next = !prev
-      if (next) setContentMounted(true)
-      return next
-    })
+    setExpanded((prev) => !prev)
   }, [canExpand])
+
+  const showContent = Boolean(canExpand && invocation && (expanded || keepMounted))
 
   return (
     <View style={styles.root}>
@@ -122,19 +131,21 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
         {canExpand ? <ThinkChevron expanded={expanded} color={colors.textTertiary} /> : null}
       </Pressable>
 
-      {canExpand && invocation && contentMounted ? (
-        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={250}>
-          <View
-            style={[
-              styles.content,
-              {
-                borderLeftColor: colors.borderMuted,
-                paddingTop: 8
-              }
-            ]}
-          >
-            <ToolResultContent invocation={invocation} />
-          </View>
+      {canExpand && invocation ? (
+        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={COLLAPSE_DURATION_MS}>
+          {showContent ? (
+            <View
+              style={[
+                styles.content,
+                {
+                  borderLeftColor: colors.borderMuted,
+                  paddingTop: sharedTokens.spacing.sm
+                }
+              ]}
+            >
+              <ToolResultContent invocation={invocation} />
+            </View>
+          ) : null}
         </CollapsibleHeight>
       ) : null}
     </View>
@@ -148,39 +159,39 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     alignSelf: 'stretch',
     width: '100%',
     minHeight: 22
   },
   statusText: {
     flexShrink: 0,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     fontWeight: '400'
   },
   sep: {
     flexShrink: 0,
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 20
   },
   subtitle: {
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   spacer: {
     flex: 1
   },
   duration: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontVariant: ['tabular-nums']
   },
   content: {
     width: '100%',
-    paddingLeft: 12,
+    paddingLeft: sharedTokens.spacing.mdTight,
     borderLeftWidth: 2
   }
 })

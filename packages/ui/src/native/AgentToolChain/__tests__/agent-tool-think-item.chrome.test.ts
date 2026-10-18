@@ -21,4 +21,11 @@ describe('native AgentToolThinkItem companion ask chrome', () => {
   it('should hide tool duration when persisted durationMs is 0', () => {
     expect(src).toContain('model.durationMs != null && model.durationMs > 0')
   })
+
+  it('should mount CollapsibleHeight eagerly and animate tool calls when expanded', () => {
+    expect(src).toContain('COLLAPSE_DURATION_MS = 250')
+    expect(src).toContain('keepMounted')
+    expect(src).toContain('<CollapsibleHeight expanded={expanded} animation="ease"')
+    expect(src).not.toContain('contentMounted')
+  })
 })

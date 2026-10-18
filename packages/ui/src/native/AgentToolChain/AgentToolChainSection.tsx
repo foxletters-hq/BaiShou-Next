@@ -6,6 +6,7 @@ import {
 } from '../../shared/agent-tool-chain'
 import { isToolResultError, type ToolInvocationLike } from '../../shared/tool-result.util'
 import { AgentToolThinkItem } from './AgentToolThinkItem'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface AgentToolChainSectionProps {
   invocations?: ToolInvocationLike[]
@@ -55,6 +56,6 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
 const styles = StyleSheet.create({
   root: {
     width: '100%',
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   }
 })
