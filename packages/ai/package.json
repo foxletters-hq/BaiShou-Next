@@ -24,6 +24,7 @@
     "@baishou/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^7.0.68",
+    "js-tiktoken": "^1.0.21",
     "pdf-parse": "^1.1.1",
     "tiktoken": "^1.0.22",
     "zod": "^4.3.6"

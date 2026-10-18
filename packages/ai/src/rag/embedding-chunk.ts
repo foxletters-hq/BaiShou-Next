@@ -1,17 +1,32 @@
-import { get_encoding } from 'tiktoken'
+import { Tiktoken } from 'js-tiktoken/lite'
+import cl100kBase from 'js-tiktoken/ranks/cl100k_base'
 import type { ChunkResult } from './embedding.types'
 
-export const MAX_CHUNK_TOKENS = 1024
+/** 两端共用纯 JS cl100k_base 切片，避免手机无法加载 WASM 分词。 */
+
+export const MAX_CHUNK_TOKENS = 2048
 export const CHUNK_OVERLAP_TOKENS = 128
+export const EMBEDDING_CHUNKER_ID = `tiktoken-${MAX_CHUNK_TOKENS}-${CHUNK_OVERLAP_TOKENS}`
+
+let encoder: Tiktoken | null = null
+
+function getCl100kEncoder(): Tiktoken {
+  if (!encoder) encoder = new Tiktoken(cl100kBase)
+  return encoder
+}
+
+export function countCl100kTokens(text: string): number {
+  if (!text) return 0
+  return getCl100kEncoder().encode(text).length
+}
 
 export function splitTextIntoChunks(text: string): ChunkResult[] {
-  const enc = get_encoding('cl100k_base')
+  const enc = getCl100kEncoder()
   const tokens = enc.encode(text)
   const max = MAX_CHUNK_TOKENS
   const overlap = CHUNK_OVERLAP_TOKENS
 
   if (tokens.length <= max) {
-    enc.free()
     return [{ index: 0, text }]
   }
 
@@ -22,9 +37,7 @@ export function splitTextIntoChunks(text: string): ChunkResult[] {
     let end = start + max
     if (end > tokens.length) end = tokens.length
 
-    const chunkTokens = tokens.slice(start, end)
-    const chunkText = new TextDecoder().decode(enc.decode(chunkTokens))
-    chunks.push({ index, text: chunkText })
+    chunks.push({ index, text: enc.decode(tokens.slice(start, end)) })
 
     if (end >= tokens.length) break
 
@@ -33,7 +46,6 @@ export function splitTextIntoChunks(text: string): ChunkResult[] {
     index++
   }
 
-  enc.free()
   return chunks
 }
 

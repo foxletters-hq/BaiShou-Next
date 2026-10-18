@@ -8,13 +8,8 @@ import {
   mergeEmbedContentHashIntoMetadata,
   toSerializableAiError
 } from '@baishou/shared'
-import { normalizeEmbeddingVector } from '../../rag/embedding-chunk'
-import { SEMANTIC_SEARCH_TIMEOUT_MS, withPromiseTimeout } from '@baishou/shared'
+import { normalizeEmbeddingVector, splitTextIntoChunks } from '../../rag/embedding-chunk'
 
-/** 最大分块 token 数（对齐原版 1024 字符≈512 token） */
-const MAX_CHUNK_LENGTH = 1024
-/** 分块重叠字符数 */
-const CHUNK_OVERLAP = 128
 /** 单篇日记内分块嵌入并发数（对齐桌面 EmbeddingService） */
 const CHUNK_EMBED_CONCURRENCY = 3
 const EMBED_MAX_ATTEMPTS = 3
@@ -41,14 +36,11 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
 
   async embedQuery(text: string): Promise<number[] | null> {
     try {
-      const { embedding } = await withPromiseTimeout(
-        embed({
-          model: this.provider.getEmbeddingModel(this.modelId),
-          value: text
-        }),
-        SEMANTIC_SEARCH_TIMEOUT_MS,
-        'embedQuery'
-      )
+      // 整理/对齐会复用这条路径；15 秒是语义搜索的墙钟，不能套在嵌入请求上。
+      const { embedding } = await embed({
+        model: this.provider.getEmbeddingModel(this.modelId),
+        value: text
+      })
       return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
       logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
@@ -112,7 +104,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     }
 
     // 对齐原版：长文本先分块，每块独立嵌入入库（分块级有限并发）
-    const chunks = splitIntoChunks(options.text)
+    const chunks = splitTextIntoChunks(options.text).map((chunk) => chunk.text)
     let successCount = 0
     let lastDimension = 0
     const metadataJson = mergeEmbedContentHashIntoMetadata(options.metadataJson, contentHash)
@@ -221,28 +213,4 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
       logger.warn('[EmbeddingAdapter] embed_ledger 失败记录写入失败', { error: e })
     }
   }
-}
-
-/**
- * 滑动窗口分块（对齐原版 EmbeddingService._splitIntoChunks）
- *
- * 纯字符长度滑动窗口，不做自然断句。
- * 短文本（≤MAX_CHUNK_LENGTH）返回单块。
- */
-function splitIntoChunks(text: string): string[] {
-  if (text.length <= MAX_CHUNK_LENGTH) {
-    return [text]
-  }
-
-  const chunks: string[] = []
-  let start = 0
-
-  while (start < text.length) {
-    const end = Math.min(start + MAX_CHUNK_LENGTH, text.length)
-    chunks.push(text.substring(start, end))
-    if (end >= text.length) break
-    start = end - CHUNK_OVERLAP
-  }
-
-  return chunks
 }

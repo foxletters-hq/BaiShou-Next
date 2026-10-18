@@ -63,7 +63,7 @@ describe('EmbeddingService', () => {
   describe('tiktoken Chunking', () => {
     it('should split text exceeding max chunk tokens correctly with overlaps', () => {
       // 生成足够长的重复文本
-      const text = 'Word '.repeat(2000)
+      const text = 'Word '.repeat(5000)
       const chunks = service.splitIntoChunks(text)
       expect(chunks.length).toBeGreaterThan(1)
 

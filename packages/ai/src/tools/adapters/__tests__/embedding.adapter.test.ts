@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
-import { EmbeddingAdapter } from '../embedding.adapter'
-import type { IAIProvider } from '../../../providers/provider.interface'
 import type { SqliteHybridSearchRepository } from '@baishou/database'
+import type { IAIProvider } from '../../../providers/provider.interface'
+import {
+  MAX_CHUNK_TOKENS,
+  normalizeEmbeddingVector,
+  splitTextIntoChunks
+} from '../../../rag/embedding-chunk'
+import { EmbeddingAdapter } from '../embedding.adapter'
 
 const { mockEmbed } = vi.hoisted(() => ({
   mockEmbed: vi.fn()
@@ -13,7 +18,7 @@ vi.mock('ai', () => ({
 }))
 
 function createLongText(chunks: number): string {
-  return 'x'.repeat(1024 * chunks)
+  return 'x '.repeat(MAX_CHUNK_TOKENS * chunks)
 }
 
 describe('EmbeddingAdapter', () => {
@@ -30,6 +35,28 @@ describe('EmbeddingAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEmbed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
+  })
+
+  it('should keep embedQuery running after the 15s semantic search timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      let resolveEmbed: ((value: { embedding: number[] }) => void) | undefined
+      mockEmbed.mockImplementation(
+        () =>
+          new Promise<{ embedding: number[] }>((resolve) => {
+            resolveEmbed = resolve
+          })
+      )
+      const adapter = new EmbeddingAdapter(provider, 'Qwen/Qwen3-Embedding-4B')
+      const pending = adapter.embedQuery('记忆整理连通检查')
+
+      await vi.advanceTimersByTimeAsync(16_000)
+      resolveEmbed?.({ embedding: [0.1, 0.2, 0.3] })
+
+      await expect(pending).resolves.toEqual(normalizeEmbeddingVector([0.1, 0.2, 0.3]))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should throw the provider balance message from embedQuery', async () => {
@@ -90,9 +117,11 @@ describe('EmbeddingAdapter', () => {
 
   it('succeeds when all chunks embed', async () => {
     const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+    const text = 'x '.repeat(MAX_CHUNK_TOKENS + 100)
+    const chunkCount = splitTextIntoChunks(text).length
 
     await adapter.embedText({
-      text: 'x'.repeat(1500),
+      text,
       sourceType: 'diary',
       sourceId: '3',
       groupId: 'batch',
@@ -100,13 +129,14 @@ describe('EmbeddingAdapter', () => {
       requireSuccess: true
     })
 
-    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
+    expect(chunkCount).toBeGreaterThan(1)
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(chunkCount)
     expect(hybridRepo.recordEmbedded).toHaveBeenCalledTimes(1)
     expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceType: 'diary',
         sourceId: '3',
-        chunkCount: 2,
+        chunkCount,
         contentHash: expect.any(String),
         modelId: 'text-embedding-3-small',
         dimension: 3
@@ -138,9 +168,11 @@ describe('EmbeddingAdapter', () => {
   it('prefixes every chunk with the date label', async () => {
     const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
     const prefix = '[2026-09-01 日记:]\n'
+    const text = 'x '.repeat(MAX_CHUNK_TOKENS + 100)
+    const chunkCount = splitTextIntoChunks(text).length
 
     await adapter.embedText({
-      text: 'x'.repeat(1500),
+      text,
       sourceType: 'diary',
       sourceId: '5',
       groupId: 'diary',
@@ -149,14 +181,15 @@ describe('EmbeddingAdapter', () => {
       requireSuccess: true
     })
 
-    expect(mockEmbed).toHaveBeenCalledTimes(2)
+    expect(chunkCount).toBeGreaterThan(1)
+    expect(mockEmbed).toHaveBeenCalledTimes(chunkCount)
     expect(mockEmbed.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
     )
     expect(mockEmbed.mock.calls[1]?.[0]).toEqual(
       expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
     )
-    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(chunkCount)
     expect(hybridRepo.insertEmbedding).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ chunkText: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
