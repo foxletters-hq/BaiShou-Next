@@ -5,12 +5,12 @@ export const UI_SETTINGS_STORAGE_KEY = 'baishou-ui-settings-storage'
 
 export const UI_FONT_SIZE_LEVEL_MIN = 0
 export const UI_FONT_SIZE_LEVEL_MAX = 5
-/** 默认档：第二格「默认」 */
-export const UI_FONT_SIZE_LEVEL_DEFAULT = 1
+/** 默认档：第三格「默认」 */
+export const UI_FONT_SIZE_LEVEL_DEFAULT = 2
 
 /**
  * 桌面整页缩放系数（webFrame.setZoomFactor）。
- * 默认档 0.9，对齐历史 Ctrl+/- 默认密度。
+ * 默认档 1.0。
  */
 export const UI_PAGE_ZOOM_FACTORS = [0.75, 0.9, 1.0, 1.1, 1.2, 1.35] as const
 
