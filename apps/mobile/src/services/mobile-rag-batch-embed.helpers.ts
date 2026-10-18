@@ -1,14 +1,23 @@
 import i18n from 'i18next'
 import {
+  applyFrozenPhaseProgress,
   EMBED_API_PROBE_FAILURE_MESSAGE,
   filterUnindexedDiaries,
+  firstActivePhase,
   formatLocalDate,
   isRagMemoryEnabled,
   limitExecute,
   logger,
+  overallFromPhaseCounts,
+  phaseCountsFromPending,
   probeEmbeddingApi,
   resolveMobileBatchEmbedConcurrency,
-  sortDiariesByDateAsc
+  sortDiariesByDateAsc,
+  buildDiaryEmbeddingSourceId,
+  type PendingEmbedCounts,
+  type RagBatchEmbedPhaseCounts,
+  type RagBatchEmbedPhaseKind,
+  type DiaryEmbedDetectionRow
 } from '@baishou/shared'
 import {
   MobileRagAbortError,
@@ -19,10 +28,12 @@ import {
   purgeAllLegacyDiaryEmbeddings,
   purgeLegacyDiaryEmbeddingsForVault
 } from './mobile-diary-embedding.util'
-import { buildDiaryEmbeddingSourceId } from '@baishou/shared'
-import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
+import {
+  listVaultDiaryMetas,
+  loadVaultDiariesForEmbedding,
+  resolveMobileDiaryEmbedListSource
+} from './mobile-rag-vault-diary'
 import { resetCachedMobileRagActiveState } from './mobile-rag-runtime-cache'
-import type { DiaryEmbedDetectionRow } from '@baishou/shared'
 import {
   chainRagProgressCallback,
   embedDiaryEntry,
@@ -47,8 +58,35 @@ import {
 
 type RagProgressOperationType = 'batchEmbed' | 'reembed' | 'migration'
 
+type OrganizeCounts = PendingEmbedCounts & {
+  graphExtract?: number
+  graphDisambiguate?: number
+}
+
 type RawSqlClient = {
   execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
+}
+
+async function loadOrganizeCountsForBatch(
+  deps: MobileRagServiceDeps
+): Promise<OrganizeCounts | undefined> {
+  try {
+    const { getOrganizePendingSnapshot } = await import('./mobile-pending-embed-counts')
+    return await getOrganizePendingSnapshot(deps)
+  } catch {
+    return undefined
+  }
+}
+
+function phaseCountsFromOrganize(counts?: OrganizeCounts): RagBatchEmbedPhaseCounts {
+  return phaseCountsFromPending({
+    diaries: counts?.diaries ?? 0,
+    memories: counts?.memories ?? 0,
+    graphNodes: counts?.graphNodes ?? 0,
+    knowledgeSources: counts?.knowledgeSources ?? 0,
+    graphExtract: counts?.graphExtract ?? 0,
+    graphDisambiguate: counts?.graphDisambiguate ?? 0
+  })
 }
 
 export function resolveControlledDiaryBatchEmbedCount(
@@ -85,7 +123,8 @@ export function resolveControlledDiaryBatchEmbedCount(
 
 async function runPendingFillAfterDiaryBatch(
   deps: MobileRagServiceDeps,
-  onProgress?: RagProgressCallback
+  onProgress?: RagProgressCallback,
+  counts?: OrganizeCounts
 ): Promise<{
   graphUpdated: number
   graphFailed: number
@@ -95,8 +134,9 @@ async function runPendingFillAfterDiaryBatch(
   try {
     const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
     return await runMobileManualPendingEmbedFill(deps, {
-      onProgress: ({ completed, total, statusText }) => {
-        onProgress?.({ current: completed, total, status: statusText })
+      counts,
+      onProgress: ({ completed, total, statusText, phase, phases }) => {
+        onProgress?.({ current: completed, total, status: statusText, phase, phases })
       }
     })
   } catch (error) {
@@ -119,14 +159,17 @@ export async function runControlledDiaryBatchEmbedCore(
   mobileRagOperationControl.begin()
   const progressType = options?.progressType ?? 'batchEmbed'
   const onProgress = chainRagProgressCallback(progressType, options?.onProgress)
+  logger.info('[MobileRag] batch embed core start', { stack: new Error().stack })
   try {
     const ragConfig = (await deps.settingsManager.get<{ ragEnabled?: boolean }>('rag_config')) || {}
     if (!isRagMemoryEnabled({ ragEnabled: ragConfig.ragEnabled ?? true })) {
+      logger.warn('[MobileRag] batch embed skipped', { skipReason: 'rag-disabled' })
       return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'rag-disabled' }
     }
 
     const adapter = await resolveEmbeddingAdapter(deps)
     if (!adapter) {
+      logger.warn('[MobileRag] batch embed skipped', { skipReason: 'embedding-not-configured' })
       return {
         embedded: 0,
         failed: 0,
@@ -160,6 +203,35 @@ export async function runControlledDiaryBatchEmbedCore(
       logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
     }
 
+    const organizeCounts = await loadOrganizeCountsForBatch(deps)
+    let phases = phaseCountsFromOrganize(organizeCounts)
+    const reportOrganizeProgress = (
+      status: string,
+      phase: RagBatchEmbedPhaseKind,
+      nextPhases: RagBatchEmbedPhaseCounts
+    ) => {
+      phases = nextPhases
+      const overall = overallFromPhaseCounts(phases)
+      onProgress?.({
+        current: overall.completed,
+        total: overall.total,
+        status,
+        phase,
+        phases
+      })
+    }
+    reportOrganizeProgress(
+      i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'),
+      firstActivePhase({
+        diaries: organizeCounts?.diaries ?? 0,
+        memories: organizeCounts?.memories ?? 0,
+        graphNodes: organizeCounts?.graphNodes ?? 0,
+        knowledgeSources: organizeCounts?.knowledgeSources ?? 0,
+        graphExtract: organizeCounts?.graphExtract ?? 0
+      }),
+      phases
+    )
+
     const vaultScope = await resolveVaultScope(deps)
     const shadowDb = vaultScope.getShadowDb?.() ?? null
     const vaultEntries = options?.vaultName?.trim()
@@ -171,10 +243,20 @@ export async function runControlledDiaryBatchEmbedCore(
         ]
       : await vaultScope.listVaultEntries()
     const activeVaultName = await vaultScope.resolveActiveVaultName()
+    const activeVaultId = await vaultScope.resolveActiveVaultId()
+    if (activeVaultId) {
+      try {
+        const { bindGraphExtractQueueContext } = await import('./mobile-pending-embed-fill')
+        await bindGraphExtractQueueContext(deps, activeVaultId)
+      } catch {
+        // ignore
+      }
+    }
 
     type VaultEmbedPlan = {
       vaultId: string
       vaultName: string
+      listSource: ReturnType<typeof resolveMobileDiaryEmbedListSource>
       diariesToEmbed: DiaryEmbedDetectionRow[]
       allDiaryIds: number[]
     }
@@ -184,17 +266,21 @@ export async function runControlledDiaryBatchEmbedCore(
 
     for (const vault of vaultEntries) {
       const { id: vaultId, name: vaultName } = vault
-      if (!shadowDb && vaultName !== activeVaultName) {
+      const listSource = resolveMobileDiaryEmbedListSource({
+        isActiveVault: vaultName === activeVaultName,
+        hasShadowDb: Boolean(shadowDb)
+      })
+      if (listSource === 'none') {
         logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
           vaultName,
           activeVaultName
         })
       }
       const allDiaries = sortDiariesByDateAsc(
-        shadowDb
-          ? await listVaultDiaryMetas(shadowDb, vaultId)
-          : vaultName === activeVaultName
-            ? await deps.diaryService.listForEmbedDetection()
+        listSource === 'live'
+          ? await deps.diaryService.listForEmbedDetection()
+          : listSource === 'shadow' && shadowDb
+            ? await listVaultDiaryMetas(shadowDb, vaultId)
             : []
       )
       const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
@@ -209,6 +295,7 @@ export async function runControlledDiaryBatchEmbedCore(
       vaultPlans.push({
         vaultId,
         vaultName,
+        listSource,
         diariesToEmbed,
         allDiaryIds: allDiaries.map((d) => d.id)
       })
@@ -217,7 +304,7 @@ export async function runControlledDiaryBatchEmbedCore(
 
     if (globalTotal === 0) {
       await finalizeBatchEmbedRagConfig(deps, false)
-      const fillResult = await runPendingFillAfterDiaryBatch(deps, onProgress)
+      const fillResult = await runPendingFillAfterDiaryBatch(deps, onProgress, organizeCounts)
       const { invalidateMobilePendingEmbedCountsCache } =
         await import('./mobile-pending-embed-counts')
       invalidateMobilePendingEmbedCountsCache()
@@ -228,11 +315,11 @@ export async function runControlledDiaryBatchEmbedCore(
       return { embedded: 0, failed: 0, total: 0, skipped: false }
     }
 
-    onProgress?.({
-      current: 0,
-      total: globalTotal,
-      status: ''
-    })
+    reportOrganizeProgress(
+      i18n.t('settings.rag_indexing_diary', '正在嵌入日记…'),
+      'diary',
+      applyFrozenPhaseProgress(phases, 'diary', { completed: 0, total: globalTotal })
+    )
 
     const ragSettings =
       (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
@@ -241,29 +328,46 @@ export async function runControlledDiaryBatchEmbedCore(
     const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
 
     const reportProgress = (status: string) => {
-      onProgress?.({
-        current: progress.completed,
-        total: globalTotal,
-        status
+      let nextPhases = applyFrozenPhaseProgress(phases, 'diary', {
+        completed: progress.completed,
+        total: globalTotal
       })
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { mobileGraphExtractQueue } = require('./mobile-graph-extract-queue.service')
+        const queueState = mobileGraphExtractQueue?.getQueueState?.()
+        if (queueState && queueState.items?.length > 0) {
+          const completedExtract = queueState.completedCount + queueState.errorCount
+          if (completedExtract > 0) {
+            nextPhases = applyFrozenPhaseProgress(nextPhases, 'graph_extract', {
+              completed: completedExtract,
+              total: Math.max(nextPhases.graphExtract.total, queueState.items.length)
+            })
+          }
+        }
+      } catch {}
+      reportOrganizeProgress(status, 'diary', nextPhases)
     }
 
     try {
       for (const plan of vaultPlans) {
-        const { vaultId, vaultName, diariesToEmbed, allDiaryIds } = plan
+        const { vaultId, vaultName, listSource, diariesToEmbed, allDiaryIds } = plan
         await purgeLegacyDiaryEmbeddingsForVault(
           deps.rawSqlClient as RawSqlClient | undefined,
           vaultId,
           allDiaryIds
         )
 
-        const diaryById = shadowDb
-          ? await loadVaultDiariesForEmbedding(
-              shadowDb,
-              vaultId,
-              diariesToEmbed.map((meta) => meta.id)
-            )
-          : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
+        const diaryById =
+          listSource === 'live'
+            ? await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
+            : shadowDb
+              ? await loadVaultDiariesForEmbedding(
+                  shadowDb,
+                  vaultId,
+                  diariesToEmbed.map((meta) => meta.id)
+                )
+              : new Map()
 
         await limitExecute(
           diariesToEmbed,
@@ -309,7 +413,12 @@ export async function runControlledDiaryBatchEmbedCore(
                       : meta.updatedAt) ?? new Date(),
                   vaultName
                 },
-                { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+                {
+                  adapter,
+                  skipIndexPrep: true,
+                  skipRagEnabledCheck: true,
+                  contentHash: meta.contentHash
+                }
               )
 
               if (!content?.trim()) {
@@ -365,7 +474,7 @@ export async function runControlledDiaryBatchEmbedCore(
       total: globalTotal,
       vaultCount: vaultPlans.length
     })
-    await runPendingFillAfterDiaryBatch(deps, onProgress)
+    await runPendingFillAfterDiaryBatch(deps, onProgress, organizeCounts)
     return {
       embedded: progress.embedded,
       failed: progress.failed,
@@ -376,6 +485,12 @@ export async function runControlledDiaryBatchEmbedCore(
   } finally {
     mobileRagOperationControl.end()
     resetCachedMobileRagActiveState()
+    void import('./mobile-diary-graph-follow-after-embed')
+      .then((m) => m.clearMobileDiaryGraphFollowPendingCache())
+      .catch(() => {})
+    void import('./mobile-pending-embed-counts')
+      .then((m) => m.notifyMobilePendingEmbedCountsChanged())
+      .catch(() => {})
   }
 }
 
@@ -391,6 +506,9 @@ export async function runControlledDiaryBatchEmbed(
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
   if (getBatchEmbedInFlight()) {
+    logger.warn('[MobileRag] batch embed already in flight', {
+      coalesceRerun: Boolean(options?.coalesceRerun)
+    })
     if (options?.coalesceRerun) {
       setBatchEmbedRerunRequested(true)
       return getBatchEmbedInFlight()!
@@ -398,9 +516,7 @@ export async function runControlledDiaryBatchEmbed(
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
   }
   if (isReembedInFlight()) {
-    if (options?.coalesceRerun) {
-      requestDeferredPostSyncEmbed()
-    }
+    if (options?.coalesceRerun) requestDeferredPostSyncEmbed()
     return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'migration-running' }
   }
 
@@ -419,10 +535,6 @@ export async function runControlledDiaryBatchEmbed(
     return lastResult
   }
 
-  setBatchEmbedInFlight(
-    runLoop().finally(() => {
-      setBatchEmbedInFlight(null)
-    })
-  )
+  setBatchEmbedInFlight(runLoop().finally(() => setBatchEmbedInFlight(null)))
   return getBatchEmbedInFlight()!
 }

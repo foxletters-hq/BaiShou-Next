@@ -1,8 +1,9 @@
 import i18n from 'i18next'
 import { EmbeddingAdapter } from '@baishou/ai'
 import { backfillUnembeddedGraphNodes, MemorySyncService } from '@baishou/core-mobile'
-import { GraphRepository } from '@baishou/database'
+import { GraphRepository, ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import {
+  describeGraphExtractPhase,
   logger,
   markPhaseDone,
   overallFromPhaseCounts,
@@ -15,8 +16,12 @@ import {
 } from '@baishou/shared'
 import { MobileRagAbortError, assertMobileRagCanContinue } from './mobile-rag-operation-control'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { createMobileFileSystem } from './create-mobile-file-system'
 import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
-import { invalidateMobilePendingEmbedCountsCache } from './mobile-pending-embed-counts'
+import {
+  invalidateMobilePendingEmbedCountsCache,
+  notifyMobilePendingEmbedCountsChanged
+} from './mobile-pending-embed-counts'
 import type { MobileRagServiceDeps } from './mobile-rag-core.helpers'
 import { resolveVaultScope } from './mobile-rag-core.helpers'
 import {
@@ -55,6 +60,25 @@ function pendingAsideDiary(counts?: OrganizeFillCounts): number | null {
     (counts.graphExtract ?? 0) +
     (counts.graphDisambiguate ?? 0)
   )
+}
+
+export async function bindGraphExtractQueueContext(
+  deps: MobileRagServiceDeps,
+  vaultId: string
+): Promise<void> {
+  const runtime = agentDbRuntimeRef.current
+  if (!runtime?.drizzleDb) return
+  const vaultScope = await resolveVaultScope(deps)
+  const vaultName = await vaultScope.resolveActiveVaultName()
+  mobileGraphExtractQueue.setContext({
+    vaultId,
+    vaultName,
+    drizzleDb: runtime.drizzleDb,
+    shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
+    pathService: runtime.pathService,
+    fileSystem: createMobileFileSystem(),
+    settingsManager: runtime.settingsManager
+  })
 }
 
 export async function runMobileManualPendingEmbedFill(
@@ -101,11 +125,25 @@ export async function runMobileManualPendingEmbedFill(
     'diary'
   )
 
-  const report = (phase: RagBatchEmbedPhaseKind, next: RagBatchEmbedPhaseCounts) => {
+  function resolveGraphExtractItemDateOrTitle(item: { date?: string; filePath?: string }): string {
+    if (item.date?.trim()) return item.date.trim()
+    const raw = item.filePath || ''
+    const match = raw.match(/(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/)
+    if (match) return match[1]
+    const base = raw.split(/[/\\]/).pop() || raw
+    return base.replace(/\.md$/i, '')
+  }
+
+  const report = (
+    phase: RagBatchEmbedPhaseKind,
+    next: RagBatchEmbedPhaseCounts,
+    customStatusText?: string
+  ) => {
     phases = next
     const overall = overallFromPhaseCounts(phases)
     const statusText =
-      phase === 'memory'
+      customStatusText ??
+      (phase === 'memory'
         ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
         : phase === 'graph_extract'
           ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
@@ -113,7 +151,7 @@ export async function runMobileManualPendingEmbedFill(
             ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
             : phase === 'graph_disambiguate'
               ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
-              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
+              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…'))
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,
@@ -143,20 +181,24 @@ export async function runMobileManualPendingEmbedFill(
   }
   phases = markPhaseDone(phases, 'memory')
 
-  const extractDone = 0
+  let extractQueued = 0
+  let extractCompleted = 0
   try {
     await assertMobileRagCanContinue()
     let extractTotal = phases.graphExtract.total
     invalidateMobilePendingEmbedCountsCache()
+    await bindGraphExtractQueueContext(deps, vaultId)
     const queued = await mobileGraphExtractQueue.enqueue({})
-    extractTotal = Math.max(extractTotal, extractDone + queued.totalPending)
+    extractQueued = queued.totalPending
+    extractTotal = Math.max(extractTotal, queued.totalPending)
     if (extractTotal > 0) {
       report(
         'graph_extract',
         patchPhaseCounts(phases, 'graph_extract', {
-          completed: extractDone,
+          completed: 0,
           total: extractTotal
-        })
+        }),
+        i18n.t('graph.extract_progress_starting', '正在开始整理关系图谱')
       )
     }
     if (mobileGraphExtractQueue.isRunning || queued.queued > 0) {
@@ -170,13 +212,28 @@ export async function runMobileManualPendingEmbedFill(
           }
         },
         onProgress: (state) => {
-          const completed = extractDone + state.completedCount + state.errorCount
+          extractCompleted = state.completedCount + state.errorCount
+          const totalCount = Math.max(extractTotal, state.items.length)
+          const activeItem = state.items.find(
+            (it) => it.status === 'running' || it.status === 'aligning'
+          )
+          let customStatus: string | undefined
+          if (activeItem) {
+            const itemLabel = resolveGraphExtractItemDateOrTitle(activeItem)
+            const phaseDesc = describeGraphExtractPhase(activeItem)
+            const phaseLabel = i18n.t(phaseDesc.key, phaseDesc.defaultValue, phaseDesc.params)
+            customStatus = i18n.t('graph.extract_item_detail', '正在整理 {{item}} · {{phase}}', {
+              item: itemLabel,
+              phase: phaseLabel
+            })
+          }
           report(
             'graph_extract',
             patchPhaseCounts(phases, 'graph_extract', {
-              completed,
-              total: Math.max(extractTotal, extractDone + state.items.length)
-            })
+              completed: extractCompleted,
+              total: totalCount
+            }),
+            customStatus
           )
         }
       })
@@ -200,7 +257,18 @@ export async function runMobileManualPendingEmbedFill(
         completed: 0,
         total: liveUnembedded.length
       })
-      report('graph_node', phases)
+      report(
+        'graph_node',
+        phases,
+        i18n.t(
+          'settings.rag_indexing_graph_node_progress',
+          '正在嵌入图谱节点（{{completed}}/{{total}}）',
+          {
+            completed: 0,
+            total: liveUnembedded.length
+          }
+        )
+      )
     }
     if (drizzleDb) {
       const graphRepo = new GraphRepository(drizzleDb)
@@ -213,12 +281,18 @@ export async function runMobileManualPendingEmbedFill(
         modelId: adapter.embeddingModelId ?? '',
         onBeforeItem: () => assertMobileRagCanContinue(),
         onProgress: ({ completed, total }) => {
+          const nodeTotal = liveUnembedded.length || total
           report(
             'graph_node',
             patchPhaseCounts(phases, 'graph_node', {
               completed,
-              total: liveUnembedded.length || total
-            })
+              total: nodeTotal
+            }),
+            i18n.t(
+              'settings.rag_indexing_graph_node_progress',
+              '正在嵌入图谱节点（{{completed}}/{{total}}）',
+              { completed, total: nodeTotal }
+            )
           )
           if (completed % 8 === 0) {
             invalidateMobilePendingEmbedCountsCache()
@@ -240,10 +314,11 @@ export async function runMobileManualPendingEmbedFill(
 
   invalidateMobilePendingEmbedCountsCache()
   report('finishing', phases)
-  const discovered = graphResult.total + extractDone
+  const discovered = graphResult.total + Math.max(extractCompleted, extractQueued)
   if (asideDiary === 0 && discovered === 0) {
     return { ...empty, skippedReason: 'nothing-to-embed' }
   }
+  notifyMobilePendingEmbedCountsChanged()
   return {
     graphUpdated: graphResult.updated,
     graphFailed: graphResult.failed,
