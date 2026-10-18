@@ -43,3 +43,7 @@ if (typeof expoFetch !== 'function') {
 } else {
   ;(globalThis as any).__expoFetch = expoFetch
 }
+
+// 安装移动端全局字阶缩放
+import { installNativeFontScaling } from '@baishou/ui/native'
+installNativeFontScaling()

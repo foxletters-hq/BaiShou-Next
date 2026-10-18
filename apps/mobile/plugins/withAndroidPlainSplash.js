@@ -13,8 +13,8 @@ function withAndroidPlainSplash(config) {
   return withDangerousMod(config, [
     'android',
     async (config) => {
-      const projectRoot = config.modRequest.projectRoot
-      const androidDir = path.join(projectRoot, 'android')
+      const androidDir =
+        config.modRequest.platformProjectRoot || path.join(config.modRequest.projectRoot, 'android')
       applyAndroidPlainSplashPatch(androidDir)
       return config
     }

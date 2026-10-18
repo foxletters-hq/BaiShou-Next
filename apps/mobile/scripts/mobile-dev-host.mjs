@@ -217,13 +217,27 @@ export function getDevServerHost(lanHost = getLanIp(), port = METRO_PORT) {
   return lanHost
 }
 
+/** Metro 打整包时 JSON.parse 模块图会顶满 Node 默认 ~2GB 堆，启动即 OOM */
+export const METRO_MAX_OLD_SPACE_MB = 6144
+
+/**
+ * 给 Expo / Metro 进程补上堆上限；调用方已写过 max-old-space-size 则不覆盖
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function withMetroNodeOptions(env = process.env) {
+  const existing = typeof env.NODE_OPTIONS === 'string' ? env.NODE_OPTIONS.trim() : ''
+  if (/(^|\s)--max-old-space-size=/.test(existing)) return existing
+  return [existing, `--max-old-space-size=${METRO_MAX_OLD_SPACE_MB}`].filter(Boolean).join(' ')
+}
+
 export function devClientEnv() {
   const lanHost = getLanIp()
   const host = getDevServerHost(lanHost)
   return {
     ...process.env,
     REACT_NATIVE_PACKAGER_HOSTNAME: host,
-    RCT_METRO_PORT: METRO_PORT
+    RCT_METRO_PORT: METRO_PORT,
+    NODE_OPTIONS: withMetroNodeOptions(process.env)
   }
 }
 
