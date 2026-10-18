@@ -2,6 +2,7 @@ import React from 'react'
 import { Modal, View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface RestoreBlockingOverlayProps {
   visible: boolean
@@ -84,54 +85,54 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   panel: {
     width: '100%',
     maxWidth: 320,
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    borderRadius: 20,
+    gap: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.lg,
+    paddingHorizontal: sharedTokens.spacing.lg,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: StyleSheet.hairlineWidth
   },
   successMark: {
-    fontSize: 40,
+    fontSize: mobileTypography.display.fontSize,
     fontWeight: '600',
     lineHeight: 44
   },
   message: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 22
   },
   progressBlock: {
     width: '100%',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   progressTrack: {
     width: '100%',
     height: 8,
-    borderRadius: 999,
+    borderRadius: sharedTokens.radius.full,
     overflow: 'hidden'
   },
   progressFill: {
     height: '100%',
-    borderRadius: 999
+    borderRadius: sharedTokens.radius.full
   },
   progressText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center'
   },
   detail: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'center',
     lineHeight: 17
   },
   hint: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center',
     lineHeight: 18
   }

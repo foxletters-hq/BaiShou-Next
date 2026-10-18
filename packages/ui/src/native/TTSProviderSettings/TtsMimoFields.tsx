@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { FolderOpen, Volume2 } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
@@ -8,6 +8,7 @@ import { Input } from '../Input/Input'
 import { Button } from '../Button'
 import type { TtsProviderConfig } from './tts-provider-settings.types'
 import { ttsProviderSettingsStyles as styles } from './tts-provider-settings.styles'
+import { sharedTokens, mobileControlTokens } from '../../theme/tokens'
 import {
   isMimoPresetModel,
   isMimoVoiceCloneModel,
@@ -94,24 +95,57 @@ export const TtsMimoFields: React.FC<TtsMimoFieldsProps> = ({
           </Text>
           {onPickRefAudio ? (
             <>
-              <Button variant="outline" onPress={() => void handlePickRefAudio()}>
-                <View style={styles.refAudioPickButtonContent}>
+              <TouchableOpacity
+                style={[
+                  styles.refAudioCard,
+                  {
+                    borderColor: refAudioPath ? colors.primary : colors.borderSubtle,
+                    backgroundColor: refAudioPath ? colors.primaryLight : colors.bgSurfaceNormal
+                  }
+                ]}
+                onPress={() => void handlePickRefAudio()}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <View style={[styles.targetIcon, { backgroundColor: colors.bgSurface }]}>
                   <FolderOpen
-                    size={18}
-                    color={colors.textSecondary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                    size={24}
+                    color={refAudioPath ? colors.primary : colors.textSecondary}
+                    strokeWidth={2}
                   />
-                  <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
+                </View>
+                <View style={styles.targetCardContent}>
+                  <Text
+                    style={[
+                      styles.targetTitle,
+                      { color: refAudioPath ? colors.primary : colors.textPrimary }
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="middle"
+                  >
+                    {refAudioName || t('tts.settings.pick_ref_audio_button', '选择参考音频')}
+                  </Text>
+                  <Text
+                    style={[styles.targetDesc, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
                     {refAudioPath
-                      ? t('tts.settings.pick_ref_audio_again_button', '重新选择参考音频')
-                      : t('tts.settings.pick_ref_audio_button', '选择参考音频')}
+                      ? t('tts.settings.pick_ref_audio_again_hint', '点击可重新选择或替换音频文件')
+                      : t(
+                          'tts.settings.mimo_ref_audio_mobile_hint',
+                          '支持 wav / mp3 格式参考音频，将保存到外部存储'
+                        )}
                   </Text>
                 </View>
-              </Button>
+              </TouchableOpacity>
               {refAudioBase64 && onPlayRefAudio ? (
                 <Button
                   variant="outline"
-                  style={{ marginTop: 8 }}
+                  style={{
+                    marginTop: sharedTokens.spacing.xs,
+                    marginBottom: sharedTokens.spacing.xs,
+                    minHeight: mobileControlTokens.height
+                  }}
                   onPress={() => void onPlayRefAudio(refAudioBase64, refPlaybackFormat)}
                 >
                   <View style={styles.refAudioPickButtonContent}>

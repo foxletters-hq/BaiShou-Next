@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
-import { CircleHelp } from 'lucide-react-native'
+import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Archive, Info, RefreshCw } from 'lucide-react-native'
 import { Modal } from '../Modal/Modal'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH, HELP_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { SettingsHelpIconButton } from '../Tooltip/SettingsHelpIconButton'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type SyncModeComparisonHelpProps = {
   context?: 'incremental' | 'fullBackup'
@@ -17,6 +18,7 @@ function SyncModeComparisonBody({ context }: { context?: 'incremental' | 'fullBa
 
   const renderCard = (mode: 'incremental' | 'fullBackup', titleKey: string, descKey: string) => {
     const active = context === mode
+    const Icon = mode === 'incremental' ? RefreshCw : Archive
     return (
       <View
         key={mode}
@@ -25,18 +27,41 @@ function SyncModeComparisonBody({ context }: { context?: 'incremental' | 'fullBa
           {
             borderColor: active ? colors.primary : colors.borderSubtle,
             backgroundColor: colors.bgSurface,
-            borderRadius: tokens.radius.md
+            borderRadius: tokens.radius.lg
           }
         ]}
       >
-        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t(titleKey)}</Text>
+        <View style={styles.cardHeader}>
+          <View
+            style={[
+              styles.cardIconBox,
+              {
+                backgroundColor: colors.primaryContainer
+              }
+            ]}
+          >
+            <Icon
+              size={16}
+              color={active ? colors.primary : colors.textSecondary}
+              strokeWidth={2}
+            />
+          </View>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t(titleKey)}</Text>
+          {active && (
+            <View style={[styles.activeBadge, { backgroundColor: colors.primaryContainer }]}>
+              <Text style={[styles.activeBadgeText, { color: colors.primary }]}>
+                {t('data_sync.sync_mode_current', '当前模块')}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>{t(descKey)}</Text>
       </View>
     )
   }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       {renderCard(
         'incremental',
         'data_sync.sync_mode_comparison_row_incremental',
@@ -47,9 +72,22 @@ function SyncModeComparisonBody({ context }: { context?: 'incremental' | 'fullBa
         'data_sync.sync_mode_comparison_row_full',
         'data_sync.sync_mode_comparison_full_desc'
       )}
-      <Text style={[styles.hint, { color: colors.textTertiary }]}>
-        {t('data_sync.sync_mode_comparison_hint')}
-      </Text>
+      <View
+        style={[
+          styles.hintCard,
+          {
+            backgroundColor: colors.primaryContainer,
+            borderLeftColor: colors.primary,
+            borderLeftWidth: 3,
+            borderRadius: tokens.radius.md
+          }
+        ]}
+      >
+        <Info size={14} color={colors.primary} strokeWidth={2} style={styles.hintIcon} />
+        <Text style={[styles.hint, { color: colors.textPrimary }]}>
+          {t('data_sync.sync_mode_comparison_hint')}
+        </Text>
+      </View>
     </ScrollView>
   )
 }
@@ -59,27 +97,17 @@ export const SyncModeComparisonHelp: React.FC<SyncModeComparisonHelpProps> = ({
   size: _size
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
   const [open, setOpen] = useState(false)
 
   return (
     <>
-      <Pressable
+      <SettingsHelpIconButton
         onPress={() => setOpen(true)}
-        hitSlop={8}
-        accessibilityRole="button"
         accessibilityLabel={t(
           'data_sync.sync_mode_comparison_help_aria',
           '增量同步与全量备份的区别'
         )}
-        style={styles.helpBtn}
-      >
-        <CircleHelp
-          size={HELP_ICON_SIZE}
-          color={colors.textTertiary}
-          strokeWidth={DEFAULT_STROKE_WIDTH}
-        />
-      </Pressable>
+      />
       <Modal
         visible={open}
         title={t('data_sync.sync_mode_comparison_title')}
@@ -97,26 +125,58 @@ export const SyncModeComparisonNotice: React.FC<{
 }> = ({ context }) => <SyncModeComparisonHelp context={context} />
 
 const styles = StyleSheet.create({
-  helpBtn: {
-    padding: 2
+  scrollContent: {
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    gap: sharedTokens.spacing.smPlus
   },
   card: {
-    padding: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 10,
-    gap: 4
+    padding: sharedTokens.spacing.md,
+    borderWidth: 1,
+    gap: sharedTokens.spacing.sm
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  cardIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: sharedTokens.radius.xsPlus,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
+    flex: 1
+  },
+  activeBadge: {
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: 2,
+    borderRadius: sharedTokens.radius.xs
+  },
+  activeBadgeText: {
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   cardDesc: {
-    fontSize: 13,
-    lineHeight: 19
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20
+  },
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus
+  },
+  hintIcon: {
+    marginTop: 2
   },
   hint: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4
+    flex: 1,
+    fontSize: mobileTypography.caption.fontSize,
+    lineHeight: 18
   }
 })

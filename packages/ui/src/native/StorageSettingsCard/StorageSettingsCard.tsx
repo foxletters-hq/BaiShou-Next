@@ -8,6 +8,7 @@ import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { StoragePermissionPrompt } from '../StoragePermissionPrompt/StoragePermissionPrompt'
 import { Button } from '../Button'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeStorageSettingsCardProps {
   storageRootPath?: string
@@ -100,24 +101,36 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
       {onChangeDirectory || onMigrateDirectory || onMigrateFromFlutterLegacy ? (
         <View style={styles.actions}>
           {onMigrateFromFlutterLegacy ? (
-            <Button variant="outlined" onPress={() => void onMigrateFromFlutterLegacy()}>
+            <Button
+              variant="outlined"
+              style={styles.fullAction}
+              onPress={() => void onMigrateFromFlutterLegacy()}
+            >
               {migrateFromFlutterLegacyLabel ??
                 t('storage.flutter_legacy_migration_settings_action', '从旧版白守迁移数据')}
             </Button>
           ) : null}
-          {onMigrateDirectory ? (
-            <Button variant="outlined" onPress={() => void onMigrateDirectory()}>
-              {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
-            </Button>
-          ) : null}
-          {onChangeDirectory ? (
-            <Button
-              variant="outlined"
-              style={{ backgroundColor: colors.bgSurface }}
-              onPress={() => void onChangeDirectory()}
-            >
-              {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
-            </Button>
+          {onMigrateDirectory || onChangeDirectory ? (
+            <View style={styles.parallelRow}>
+              {onMigrateDirectory ? (
+                <Button
+                  variant="outlined"
+                  style={styles.parallelAction}
+                  onPress={() => void onMigrateDirectory()}
+                >
+                  {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
+                </Button>
+              ) : null}
+              {onChangeDirectory ? (
+                <Button
+                  variant="outlined"
+                  style={[styles.parallelAction, { backgroundColor: colors.bgSurface }]}
+                  onPress={() => void onChangeDirectory()}
+                >
+                  {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
+                </Button>
+              ) : null}
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -158,23 +171,28 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             )}
           </Text>
           <View style={styles.actions}>
-            {onChangeExternalJournalsDirectory ? (
-              <Button
-                variant="outlined"
-                style={{ backgroundColor: colors.bgSurface }}
-                onPress={() => void onChangeExternalJournalsDirectory()}
-              >
-                {t('storage.external_journals_pick', '选择日记目录')}
-              </Button>
-            ) : null}
-            {externalJournalsPath && onClearExternalJournalsDirectory ? (
-              <Button
-                variant="outlined"
-                style={{ backgroundColor: colors.bgSurface }}
-                onPress={() => void onClearExternalJournalsDirectory()}
-              >
-                {t('storage.external_journals_clear', '恢复默认目录')}
-              </Button>
+            {onChangeExternalJournalsDirectory ||
+            (externalJournalsPath && onClearExternalJournalsDirectory) ? (
+              <View style={styles.parallelRow}>
+                {onChangeExternalJournalsDirectory ? (
+                  <Button
+                    variant="outlined"
+                    style={[styles.parallelAction, { backgroundColor: colors.bgSurface }]}
+                    onPress={() => void onChangeExternalJournalsDirectory()}
+                  >
+                    {t('storage.external_journals_pick', '自定义日记目录')}
+                  </Button>
+                ) : null}
+                {externalJournalsPath && onClearExternalJournalsDirectory ? (
+                  <Button
+                    variant="outlined"
+                    style={[styles.parallelAction, { backgroundColor: colors.bgSurface }]}
+                    onPress={() => void onClearExternalJournalsDirectory()}
+                  >
+                    {t('storage.external_journals_clear', '恢复默认目录')}
+                  </Button>
+                ) : null}
+              </View>
             ) : null}
           </View>
         </View>
@@ -228,23 +246,28 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             )}
           </Text>
           <View style={styles.actions}>
-            {onChangeExternalSummariesDirectory ? (
-              <Button
-                variant="outlined"
-                style={{ backgroundColor: colors.bgSurface }}
-                onPress={() => void onChangeExternalSummariesDirectory()}
-              >
-                {t('storage.external_summaries_pick', '选择总结目录')}
-              </Button>
-            ) : null}
-            {externalSummariesPath && onClearExternalSummariesDirectory ? (
-              <Button
-                variant="outlined"
-                style={{ backgroundColor: colors.bgSurface }}
-                onPress={() => void onClearExternalSummariesDirectory()}
-              >
-                {t('storage.external_summaries_clear', '恢复默认目录')}
-              </Button>
+            {onChangeExternalSummariesDirectory ||
+            (externalSummariesPath && onClearExternalSummariesDirectory) ? (
+              <View style={styles.parallelRow}>
+                {onChangeExternalSummariesDirectory ? (
+                  <Button
+                    variant="outlined"
+                    style={[styles.parallelAction, { backgroundColor: colors.bgSurface }]}
+                    onPress={() => void onChangeExternalSummariesDirectory()}
+                  >
+                    {t('storage.external_summaries_pick', '自定义总结目录')}
+                  </Button>
+                ) : null}
+                {externalSummariesPath && onClearExternalSummariesDirectory ? (
+                  <Button
+                    variant="outlined"
+                    style={[styles.parallelAction, { backgroundColor: colors.bgSurface }]}
+                    onPress={() => void onClearExternalSummariesDirectory()}
+                  >
+                    {t('storage.external_summaries_clear', '恢复默认目录')}
+                  </Button>
+                ) : null}
+              </View>
             ) : null}
           </View>
         </View>
@@ -255,23 +278,37 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
 
 const styles = StyleSheet.create({
   rootBlock: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   sectionBlock: {
-    gap: 4,
-    marginTop: 12
+    gap: sharedTokens.spacing.xs,
+    marginTop: sharedTokens.spacing.mdTight
   },
   mono: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontFamily: 'monospace',
     lineHeight: 18
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17
   },
   actions: {
-    marginTop: 8,
-    gap: 8
+    marginTop: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.sm
+  },
+  parallelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  parallelAction: {
+    flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'center'
+  },
+  fullAction: {
+    alignSelf: 'stretch',
+    justifyContent: 'center'
   }
 })

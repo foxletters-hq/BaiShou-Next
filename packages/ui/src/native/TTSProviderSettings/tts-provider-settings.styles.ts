@@ -1,69 +1,102 @@
 import { StyleSheet } from 'react-native'
+import { mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const ttsProviderSettingsStyles = StyleSheet.create({
   scroll: { flex: 1 },
   fieldGroup: {
-    paddingHorizontal: 16,
-    paddingVertical: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   fieldGroupCard: {
     paddingVertical: 0
   },
   divider: {
     height: 1,
-    marginVertical: 14
+    marginVertical: sharedTokens.spacing.mdSnug
   },
   fieldGroupDivider: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   cardSection: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'visible'
   },
   label: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8
+    gap: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.sm
   },
   labelInline: {
     marginBottom: 0
+  },
+  providerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm
+  },
+  providerSelectWrap: {
+    alignSelf: 'flex-end',
+    flexShrink: 0
+  },
+  selectorTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: sharedTokens.radius.lg,
+    paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
+    paddingVertical: mobileControlTokens.inputPaddingVertical,
+    minHeight: mobileControlTokens.height,
+    gap: sharedTokens.spacing.sm,
+    width: '100%'
+  },
+  selectorTriggerFlex: {
+    flex: 1,
+    width: undefined
   },
   sliderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   sliderValue: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   fieldGroupRaised: {
     zIndex: 30
   },
   helperText: {
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.sm,
     lineHeight: 18
   },
   input: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
+    paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
+    paddingVertical: mobileControlTokens.inputPaddingVertical,
+    minHeight: mobileControlTokens.height,
+    fontSize: mobileTypography.secondary.fontSize
+  },
+  actionButton: {
+    height: mobileControlTokens.height,
+    minHeight: mobileControlTokens.height
   },
   inputFlex: { flex: 1 },
   multilineInput: {
@@ -72,13 +105,15 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
   },
   modelRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     alignItems: 'center'
   },
   modelInput: { flex: 1 },
   fetchModelsBtn: {
-    paddingHorizontal: 14,
-    minWidth: 72
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    minWidth: 72,
+    height: mobileControlTokens.height,
+    minHeight: mobileControlTokens.height
   },
   visibilityToggle: {
     width: 36,
@@ -89,30 +124,30 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1
   },
-  chipText: { fontSize: 13, fontWeight: '500' },
+  chipText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '500' },
   rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginTop: sharedTokens.spacing.xsPlus,
     marginHorizontal: -8
   },
-  rangeLabel: { fontSize: 11 },
+  rangeLabel: { fontSize: mobileTypography.caption.fontSize },
   resultText: {
-    marginTop: 8,
-    fontSize: 13,
+    marginTop: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   testRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     alignItems: 'center'
   },
   testInputWrap: {
@@ -126,32 +161,145 @@ export const ttsProviderSettingsStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   refAudioPickButtonText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   selectedRefAudioName: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    marginTop: 8
+    marginTop: sharedTokens.spacing.sm
   },
   saveActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    marginTop: 16
+    paddingHorizontal: sharedTokens.spacing.md,
+    marginTop: sharedTokens.spacing.md
   },
   saveActionsGroupCard: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 16
+    marginTop: sharedTokens.spacing.md
   },
   groupCardDesc: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
-  bottomSpacer: { height: 40 }
+  bottomSpacer: { height: 40 },
+  // ─── 对齐增量同步页面风格的选择框与操作控件 ───
+  sectionTitle: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm,
+    textTransform: 'uppercase'
+  },
+  providerCardList: {
+    marginTop: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  targetCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
+    borderWidth: 1.5,
+    marginBottom: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.mdTight
+  },
+  targetIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: sharedTokens.radius.control,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  targetCardContent: {
+    flex: 1,
+    minWidth: 0
+  },
+  targetTitle: {
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
+  },
+  targetDesc: {
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: 2,
+    lineHeight: 16
+  },
+  compactSelectTrigger: {
+    minHeight: 32,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.md
+  },
+  inlineFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    minHeight: 40,
+    gap: sharedTokens.spacing.sm
+  },
+  modelInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    minHeight: 40,
+    gap: sharedTokens.spacing.sm
+  },
+  modelControlsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.xsPlus,
+    flex: 1,
+    justifyContent: 'flex-end'
+  },
+  modelComboboxWrap: {
+    minWidth: 120,
+    maxWidth: 240,
+    flex: 1
+  },
+  compactActionButton: {
+    height: 32,
+    minHeight: 32,
+    maxHeight: 32,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: 0,
+    borderRadius: sharedTokens.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  formatCardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.smPlus
+  },
+  formatOptionCard: {
+    flex: 1,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: sharedTokens.radius.md,
+    borderWidth: 1.5,
+    paddingHorizontal: sharedTokens.spacing.sm
+  },
+  formatOptionText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    textAlign: 'center'
+  },
+  refAudioCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
+    borderWidth: 1.5,
+    gap: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.xsPlus
+  }
 })
