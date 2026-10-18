@@ -8,17 +8,20 @@ import { MOBILE_MCP_ENABLED } from '../config/mobile-features'
 import type { MobileMcpSdkBridge } from './mobile-mcp-sdk.bridge'
 import type { MobileMcpSseBridge } from './mobile-mcp-sse.bridge'
 import { isMcpMessagePath, isMcpSsePath } from './mobile-mcp-sse.util'
+import { invalidateMobileMcpToolContextCache } from './mobile-mcp-context.service'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: false
+  mcpAuthEnabled: false,
+  disabledToolIds: []
 }
 
 export class MobileMcpService {
   private mcpListenerSub: { remove: () => void } | null = null
   private isRunning = false
   private activePort = 0
+  private activeAuthToken: string | undefined = undefined
   private sdkBridge: MobileMcpSdkBridge | null = null
   private sseBridge: MobileMcpSseBridge | null = null
   private bridgesPromise: Promise<void> | null = null
@@ -92,6 +95,7 @@ export class MobileMcpService {
     BaishouServer.stopServer()
     this.isRunning = false
     this.activePort = 0
+    this.activeAuthToken = undefined
     logger.info('[MobileMcpService] Server stopped')
   }
 
@@ -101,8 +105,15 @@ export class MobileMcpService {
   }
 
   async applyConfig(config: McpServerConfig): Promise<void> {
+    invalidateMobileMcpToolContextCache()
     if (!MOBILE_MCP_ENABLED) return
     if (config.mcpEnabled) {
+      const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
+      const authToken =
+        config.mcpAuthEnabled === true ? config.mcpAuthToken?.trim() || undefined : undefined
+      if (this.isRunning && this.activePort === port && this.activeAuthToken === authToken) {
+        return
+      }
       await this.startOnPort(config)
     } else {
       await this.stop()
@@ -147,6 +158,7 @@ export class MobileMcpService {
 
     this.isRunning = true
     this.activePort = boundPort
+    this.activeAuthToken = authToken
     logger.info(`[MobileMcpService] Server started on port ${boundPort} (/mcp + /sse)`)
   }
 

@@ -7,14 +7,22 @@ import {
 } from '@baishou/shared'
 import { APP_VERSION } from '../app-version'
 
-export const MCP_HTTP_CONNECT_TIMEOUT_MS = 12_000
-export const MCP_HTTP_LIST_TOOLS_TIMEOUT_MS = 12_000
-export const MCP_HTTP_PROBE_TIMEOUT_MS = 15_000
+export const MCP_HTTP_CONNECT_TIMEOUT_MS = 20_000
+export const MCP_HTTP_LIST_TOOLS_TIMEOUT_MS = 20_000
+export const MCP_HTTP_PROBE_TIMEOUT_MS = 25_000
 
 export type McpHttpListedTool = {
   name: string
   description?: string
   inputSchema?: unknown
+}
+
+function resolveMobileMcpFetch(): typeof fetch {
+  const expoFetch = (globalThis as any).__expoFetch
+  if (typeof expoFetch === 'function') {
+    return expoFetch
+  }
+  return fetch
 }
 
 export async function withMcpHttpTimeout<T>(
@@ -35,7 +43,11 @@ export async function withMcpHttpTimeout<T>(
   }
 }
 
-export async function connectMcpHttpClient(params: { url: string; authToken?: string }): Promise<{
+export async function connectMcpHttpClient(params: {
+  url: string
+  authToken?: string
+  fetchFn?: typeof fetch
+}): Promise<{
   client: Client
   transport: StreamableHTTPClientTransport
 }> {
@@ -45,7 +57,9 @@ export async function connectMcpHttpClient(params: { url: string; authToken?: st
     headers.Authorization = `Bearer ${token}`
   }
 
+  const selectedFetch = params.fetchFn ?? resolveMobileMcpFetch()
   const transport = new StreamableHTTPClientTransport(new URL(params.url), {
+    fetch: selectedFetch,
     requestInit: Object.keys(headers).length > 0 ? { headers } : undefined
   })
   const client = new Client({ name: 'baishou', version: APP_VERSION })

@@ -7,7 +7,7 @@ import {
 
 export type McpClientUrlError = Exclude<McpClientProbeReason, 'connect' | 'timeout'>
 
-export const MCP_CLIENT_STATUS_FETCH_TIMEOUT_MS = 20_000
+export const MCP_CLIENT_STATUS_FETCH_TIMEOUT_MS = 30_000
 
 export async function withStatusFetchTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined

@@ -52,4 +52,46 @@ describe('mobile mcp client runtime', () => {
     expect(tools).toEqual({})
     expect(connectMcpHttpClient).not.toHaveBeenCalled()
   })
+
+  it('should load tools for enabled server and retry on callTool error', async () => {
+    const { listMcpHttpTools, callMcpHttpTool, closeMcpHttpClient } =
+      await import('../mobile-mcp-http-client')
+    const fakeClient = { listTools: vi.fn(), callTool: vi.fn(), close: vi.fn() }
+    const fakeTransport = { close: vi.fn() }
+    vi.mocked(connectMcpHttpClient).mockResolvedValue({
+      client: fakeClient as never,
+      transport: fakeTransport as never
+    })
+    vi.mocked(listMcpHttpTools).mockResolvedValue([
+      { name: 'get_weather', description: 'Get weather', inputSchema: {} }
+    ])
+    vi.mocked(callMcpHttpTool)
+      .mockRejectedValueOnce(new Error('Transport is closed'))
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Sunny 25C' }] })
+
+    getMobileMcpClientConfig.mockResolvedValue({
+      servers: [
+        {
+          id: 'server-1',
+          name: 'WeatherSrv',
+          url: 'http://127.0.0.1:3000/mcp',
+          enabled: true
+        }
+      ]
+    })
+
+    const tools = await mobileExtraVercelToolsFactory({} as never)
+    const toolIds = Object.keys(tools)
+    expect(toolIds).toEqual(['mcp_call'])
+
+    const vercelTool = tools['mcp_call'] as {
+      description: string
+      execute: (args: Record<string, unknown>) => Promise<string>
+    }
+    expect(vercelTool.description).toContain('get_weather')
+    const result = await vercelTool.execute({ tool: 'get_weather', arguments: { city: 'Beijing' } })
+    expect(result).toBe('Sunny 25C')
+    expect(connectMcpHttpClient).toHaveBeenCalledTimes(2)
+    expect(closeMcpHttpClient).toHaveBeenCalledTimes(1)
+  })
 })

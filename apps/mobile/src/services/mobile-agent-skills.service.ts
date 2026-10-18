@@ -1,12 +1,22 @@
 import {
+  CREATE_SKILL_SLASH_COMMAND,
   DEFAULT_AGENT_SKILLS,
+  dedupePromptShortcuts,
   parseSkillMarkdown,
   skillToPromptShortcut,
   type AgentSkill,
+  type AgentSkillWriteInput,
   type PromptShortcut
 } from '@baishou/shared'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { createMobileFileSystem } from './create-mobile-file-system'
+import { notifyMobileSkillsChanged } from './mobile-skills-events'
+import { ensureMobileShortcutsMigrated } from './mobile-skills-migrate.util'
+import {
+  ensureMobileDefaultSkills,
+  readMobileSkill,
+  writeMobileUserSkill
+} from './mobile-skills-writer.util'
 
 function joinPath(base: string, ...parts: string[]): string {
   return [base.replace(/[\\/]+$/, ''), ...parts].join('/').replace(/\\/g, '/')
@@ -46,8 +56,25 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
     try {
       const vaultRoot = await runtime.pathService.getRootDirectory()
       if (vaultRoot) {
-        roots.push({ path: joinPath(vaultRoot, 'AI', 'skills'), source: 'software' })
+        const fs = createMobileFileSystem()
+        if (runtime.settingsManager) {
+          try {
+            await ensureMobileShortcutsMigrated({
+              vaultRoot,
+              settings: runtime.settingsManager,
+              fs
+            })
+          } catch {
+            /* 迁移失败不阻断已有磁盘技能 */
+          }
+        }
+        try {
+          await ensureMobileDefaultSkills(vaultRoot, fs)
+        } catch {
+          /* 默认技能写入失败不阻断已有磁盘技能 */
+        }
         roots.push({ path: joinPath(vaultRoot, '.agents', 'skills'), source: 'user' })
+        roots.push({ path: joinPath(vaultRoot, 'AI', 'skills'), source: 'software' })
       }
     } catch {
       /* 无存储根时回退默认技能 */
@@ -60,8 +87,7 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
       ...(await readSkillsFromRoot(root.path, root.source === 'user' ? 'user' : 'software'))
     )
   }
-  if (listed.length > 0) return listed
-  return DEFAULT_AGENT_SKILLS.map((skill) =>
+  const defaultShortcuts = DEFAULT_AGENT_SKILLS.map((skill) =>
     skillToPromptShortcut({
       name: skill.name,
       description: skill.description,
@@ -70,4 +96,58 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
       source: 'software'
     })
   )
+
+  const hasCreateSkill = listed.some(
+    (item) =>
+      item.command === CREATE_SKILL_SLASH_COMMAND ||
+      item.id === CREATE_SKILL_SLASH_COMMAND ||
+      item.name === CREATE_SKILL_SLASH_COMMAND
+  )
+
+  const merged = hasCreateSkill ? listed : [...defaultShortcuts, ...listed]
+  return dedupePromptShortcuts(merged)
+}
+
+export async function mobileListSkillsCatalog(): Promise<
+  Array<{ name: string; description?: string }>
+> {
+  const shortcuts = await mobileListSkillShortcuts()
+  return shortcuts.map((item) => ({
+    name: item.command || item.id,
+    description: item.description || item.name || ''
+  }))
+}
+
+/** 注入 ToolContext.skillsWriter：伙伴会话经 skill_write 写入存储根 `.agents/skills` */
+export function createMobileSkillsWriter() {
+  return {
+    async writeSkill(input: AgentSkillWriteInput) {
+      const runtime = agentDbRuntimeRef.current
+      if (!runtime?.pathService) {
+        throw new Error('Storage root is not available')
+      }
+      const vaultRoot = await runtime.pathService.getRootDirectory()
+      const result = await writeMobileUserSkill(vaultRoot, input, createMobileFileSystem())
+      notifyMobileSkillsChanged()
+      return result
+    }
+  }
+}
+
+/** 注入 ToolContext.skillsReader：按名读取存储根 SKILL.md */
+export function createMobileSkillsReader() {
+  return {
+    async readSkill(name: string) {
+      const runtime = agentDbRuntimeRef.current
+      if (!runtime?.pathService) return null
+      const vaultRoot = await runtime.pathService.getRootDirectory()
+      const fs = createMobileFileSystem()
+      try {
+        await ensureMobileDefaultSkills(vaultRoot, fs)
+      } catch {
+        /* 写入失败仍尝试读已有文件 */
+      }
+      return readMobileSkill(vaultRoot, name, fs)
+    }
+  }
 }

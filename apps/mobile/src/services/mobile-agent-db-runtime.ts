@@ -39,7 +39,7 @@ import {
   type MobileAgentDbRecoveryCoordinator
 } from './mobile-agent-db-recovery.coordinator'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
-import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
+import { deriveLegacyVaultId, resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 
 export type AgentDbRuntime = {
   expoDb: ExpoSqliteDatabase
@@ -89,12 +89,15 @@ export async function createSummaryPipelineServices(options: {
   fileSystem: IFileSystem
   settingsManager: SettingsManagerService
   diaryRepoAdapter: unknown
+  activeVaultName?: string | null
   recovery?: MobileAgentDbRecoveryCoordinator
   resolveVaultId?: () => string | null | undefined
 }): Promise<SummaryPipelineServices> {
   const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
   const recovery = options.recovery ?? mobileAgentDbRecovery
-  const resolveVaultId = options.resolveVaultId
+  const resolveVaultId =
+    options.resolveVaultId ??
+    (() => deriveLegacyVaultId(options.activeVaultName?.trim() || 'Personal'))
   const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
   const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
   const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
@@ -149,6 +152,7 @@ export async function rebindSummaryPipelineForVault(options: {
     fileSystem: options.fileSystem,
     settingsManager: options.settingsManager,
     diaryRepoAdapter: options.diaryRepoAdapter,
+    activeVaultName: options.activeVaultName,
     recovery: options.recovery ?? mobileAgentDbRecovery,
     resolveVaultId: options.resolveVaultId
   })
