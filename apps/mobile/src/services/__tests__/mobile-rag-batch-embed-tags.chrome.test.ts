@@ -24,4 +24,23 @@ describe('mobile rag batch embed diary tags', () => {
       src.indexOf("skipReason: 'nothing-to-embed'")
     )
   })
+
+  it('should freeze diary phase progress and pass fill phase rows through', () => {
+    expect(src).toContain('applyFrozenPhaseProgress')
+    expect(src).toContain("applyFrozenPhaseProgress(phases, 'diary'")
+    expect(src).toContain('getOrganizePendingSnapshot')
+    expect(src).toContain('status: statusText, phase, phases')
+    expect(src).toContain('contentHash: meta.contentHash')
+    expect(src).toContain('notifyMobilePendingEmbedCountsChanged')
+    const core = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-rag-core.helpers.ts'),
+      'utf8'
+    )
+    expect(core).toContain('phase?:')
+    expect(core).toContain('phases?:')
+    expect(core).toContain('progress.phase')
+    expect(core).toContain('progress.phases')
+    expect(core).toContain('hashEmbedSourceContent')
+    expect(core).not.toContain('digestStringAsync')
+  })
 })

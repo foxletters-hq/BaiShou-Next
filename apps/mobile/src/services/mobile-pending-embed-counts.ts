@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   buildPendingEmbedCounts,
   createPendingEmbedCountCache,
@@ -9,10 +10,7 @@ import { GraphRepository } from '@baishou/database'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { hasPendingCountSource } from './mobile-pending-embed-ready.util'
 import { resolveVaultScope, type MobileRagServiceDeps } from './mobile-rag-core.helpers'
-import {
-  getMobileDerivedFreshness,
-  getMobileMemoryRawManager
-} from './mobile-raw-data-source.runtime'
+import { getMobileMemoryRawManager } from './mobile-raw-data-source.runtime'
 import { countUnindexedDiariesForActiveVault } from './mobile-unindexed-diary-count'
 
 export type OrganizePendingSnapshot = PendingEmbedCounts & {
@@ -20,8 +18,10 @@ export type OrganizePendingSnapshot = PendingEmbedCounts & {
   graphDisambiguate: number
 }
 
+const ORGANIZE_PENDING_SNAPSHOT_KEY = 'baishou.memory.organizePendingSnapshot.v1'
 const cache = createPendingEmbedCountCache()
 const changeListeners = new Set<() => void>()
+let lastOrganizeSnapshot: OrganizePendingSnapshot | null = null
 
 export function invalidateMobilePendingEmbedCountsCache(): void {
   cache.invalidate()
@@ -37,6 +37,37 @@ export function subscribeMobilePendingEmbedCountsChanged(listener: () => void): 
 export function notifyMobilePendingEmbedCountsChanged(): void {
   cache.invalidate()
   for (const listener of changeListeners) listener()
+}
+
+export function peekOrganizePendingSnapshot(): OrganizePendingSnapshot | null {
+  return lastOrganizeSnapshot
+}
+
+function isOrganizePendingSnapshot(value: unknown): value is OrganizePendingSnapshot {
+  if (!value || typeof value !== 'object') return false
+  const row = value as Record<string, unknown>
+  return typeof row.total === 'number' && typeof row.graphExtract === 'number'
+}
+
+function rememberOrganizePendingSnapshot(snapshot: OrganizePendingSnapshot): void {
+  lastOrganizeSnapshot = snapshot
+  void AsyncStorage.setItem(ORGANIZE_PENDING_SNAPSHOT_KEY, JSON.stringify(snapshot)).catch(() => {
+    // 本地缓存失败不影响计数
+  })
+}
+
+export async function hydrateOrganizePendingSnapshot(): Promise<OrganizePendingSnapshot | null> {
+  if (lastOrganizeSnapshot) return lastOrganizeSnapshot
+  try {
+    const raw = await AsyncStorage.getItem(ORGANIZE_PENDING_SNAPSHOT_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!isOrganizePendingSnapshot(parsed)) return null
+    lastOrganizeSnapshot = parsed
+    return parsed
+  } catch {
+    return null
+  }
 }
 
 export async function getPendingEmbedCounts(
@@ -91,9 +122,27 @@ async function countPendingGraphNodes(vaultId: string): Promise<number> {
   }
 }
 
-async function countPendingGraphExtract(): Promise<number> {
+async function countPendingGraphExtract(input: {
+  vaultId: string
+  vaultName: string
+}): Promise<number> {
   try {
-    return (await getMobileDerivedFreshness()?.listPendingReextract())?.length ?? 0
+    const runtime = agentDbRuntimeRef.current
+    if (!runtime?.pathService) return 0
+    const { mobileListPendingReextract } = await import('./mobile-graph-extract')
+    const { ShadowIndexRepository, alignShadowJournalVaultId, shadowConnectionManager } =
+      await import('@baishou/database')
+    const { createMobileFileSystem } = await import('./create-mobile-file-system')
+    const shadowDb = shadowConnectionManager.getDb()
+    await alignShadowJournalVaultId(shadowDb, { id: input.vaultId, name: input.vaultName })
+    const pending = await mobileListPendingReextract({
+      vaultName: input.vaultName,
+      vaultId: input.vaultId,
+      shadowRepo: new ShadowIndexRepository(shadowDb, input.vaultId),
+      pathService: runtime.pathService,
+      fileSystem: createMobileFileSystem()
+    })
+    return pending.length
   } catch {
     return 0
   }
@@ -103,9 +152,15 @@ async function countPendingGraphExtract(): Promise<number> {
 export async function getOrganizePendingSnapshot(
   deps: MobileRagServiceDeps
 ): Promise<OrganizePendingSnapshot> {
-  const embed = await getPendingEmbedCounts(deps)
-  const vaultScope = await resolveVaultScope(deps)
-  const vaultId = await vaultScope.resolveActiveVaultId()
-  const graphExtract = vaultId ? await countPendingGraphExtract() : 0
-  return { ...embed, graphExtract, graphDisambiguate: 0 }
+  const embedPromise = getPendingEmbedCounts(deps)
+  const extractPromise = (async () => {
+    const vaultScope = await resolveVaultScope(deps)
+    const vaultId = await vaultScope.resolveActiveVaultId()
+    const vaultName = (await vaultScope.resolveActiveVaultName()) || 'Personal'
+    return vaultId ? countPendingGraphExtract({ vaultId, vaultName }) : 0
+  })()
+  const [embed, graphExtract] = await Promise.all([embedPromise, extractPromise])
+  const snapshot = { ...embed, graphExtract, graphDisambiguate: 0 }
+  rememberOrganizePendingSnapshot(snapshot)
+  return snapshot
 }

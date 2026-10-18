@@ -1,6 +1,5 @@
 import i18n from 'i18next'
 import { AIProviderRegistry, EmbeddingAdapter, HybridSearchService } from '@baishou/ai'
-import * as Crypto from 'expo-crypto'
 import {
   diaryDateToSourceCreatedSeconds,
   buildDiaryEmbeddingGroupId,
@@ -15,6 +14,9 @@ import {
   coerceDiaryCalendarDate,
   DIARY_EMBED_GROUP_ID,
   mergeEmbedContentHashIntoMetadata,
+  hashEmbedSourceContent,
+  type RagBatchEmbedPhaseCounts,
+  type RagBatchEmbedPhaseKind,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -33,6 +35,8 @@ export type RagProgressCallback = (progress: {
   current: number
   total: number
   status: string
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
 }) => void
 
 type RagProgressOperationType = 'batchEmbed' | 'reembed' | 'migration'
@@ -107,14 +111,22 @@ export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string;
 
 function broadcastRagProgress(
   type: RagProgressOperationType,
-  progress: { current: number; total: number; status?: string }
+  progress: {
+    current: number
+    total: number
+    status?: string
+    phase?: RagBatchEmbedPhaseKind
+    phases?: RagBatchEmbedPhaseCounts
+  }
 ): void {
   patchCachedMobileRagState({
     isRunning: true,
     type,
     progress: progress.current,
     total: progress.total,
-    statusText: progress.status ?? ''
+    statusText: progress.status ?? '',
+    ...(progress.phase !== undefined ? { phase: progress.phase } : {}),
+    ...(progress.phases !== undefined ? { phases: progress.phases } : {})
   })
 }
 
@@ -303,9 +315,7 @@ export async function embedDiaryEntry(
   await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVaultId, params.diaryId)
 
   const d = coerceDiaryCalendarDate(params.date)
-  const contentHash =
-    options?.contentHash?.trim() ||
-    (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, params.content ?? ''))
+  const contentHash = options?.contentHash?.trim() || hashEmbedSourceContent(params.content ?? '')
   const metadataJson = mergeEmbedContentHashIntoMetadata(
     JSON.stringify({ updated_at: params.updatedAt.getTime() }),
     contentHash

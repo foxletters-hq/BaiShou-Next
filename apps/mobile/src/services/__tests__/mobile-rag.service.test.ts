@@ -7,6 +7,7 @@ import {
   type MobileRagServiceDeps
 } from '../mobile-rag.service'
 import { EmbeddingAdapter } from '@baishou/ai'
+import { hashEmbedSourceContent } from '@baishou/shared'
 import { mobileRagOperationControl } from '../mobile-rag-operation-control'
 import { runMobileIncrementalAfterSync } from '../mobile-incremental-sync-after.util'
 import * as mobilePostSyncDiaryEmbed from '../mobile-post-sync-diary-embed.service'
@@ -18,6 +19,21 @@ vi.mock('../mobile-pending-embed-fill', () => ({
     graphTotal: 0,
     skippedReason: 'nothing-to-embed'
   })
+}))
+
+vi.mock('../mobile-pending-embed-counts', () => ({
+  getOrganizePendingSnapshot: vi.fn().mockResolvedValue({
+    diaries: 0,
+    memories: 0,
+    graphNodes: 0,
+    knowledgeSources: 0,
+    notebookGraphNodes: 0,
+    total: 0,
+    graphExtract: 0,
+    graphDisambiguate: 0
+  }),
+  invalidateMobilePendingEmbedCountsCache: vi.fn(),
+  notifyMobilePendingEmbedCountsChanged: vi.fn()
 }))
 
 function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagServiceDeps {
@@ -136,6 +152,11 @@ describe('embedDiaryEntry', () => {
       })
     )
     expect(embedText.mock.calls[0]?.[0].chunkPrefix).not.toContain('标签')
+    expect(embedText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentHash: hashEmbedSourceContent('开会纪要 #工作')
+      })
+    )
   })
 })
 

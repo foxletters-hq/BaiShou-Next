@@ -19,10 +19,15 @@ describe('mobile pending embed counts stay on the memory system', () => {
     expect(src).toContain('countUnindexedDiariesForActiveVault')
   })
 
-  it('should expose diary graph extract counts and keep disambiguate at zero', () => {
+  it('should count pending graph extract in parallel with embed counts and keep a peekable snapshot', () => {
     expect(src).toContain('export async function getOrganizePendingSnapshot')
-    expect(src).toContain('graphExtract')
     expect(src).toContain('countPendingGraphExtract')
+    expect(src).toContain('mobileListPendingReextract')
+    expect(src).toContain('alignShadowJournalVaultId')
+    expect(src).toContain('export function peekOrganizePendingSnapshot')
+    expect(src).toContain('export async function hydrateOrganizePendingSnapshot')
+    expect(src).toContain('Promise.all([embedPromise, extractPromise])')
+    expect(src).not.toContain('getMobileDerivedFreshness()?.listPendingReextract()')
     expect(src).not.toContain('countPendingGraphDisambiguate')
     expect(src).not.toContain('collectSuspectSignals')
     expect(src).toContain('graphDisambiguate: 0')

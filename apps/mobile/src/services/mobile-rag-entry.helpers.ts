@@ -57,14 +57,21 @@ export async function loadMetadataMap(
 ): Promise<Map<string, { sourceId: string; metadataJson: string | null }>> {
   const map = new Map<string, { sourceId: string; metadataJson: string | null }>()
   if (!client?.execute || embeddingIds.length === 0) return map
-  for (const embeddingId of embeddingIds) {
+  const uniqueIds = [...new Set(embeddingIds.filter(Boolean))]
+  const CHUNK_SIZE = 400
+  for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(i, i + CHUNK_SIZE)
+    const placeholders = chunk.map(() => '?').join(', ')
     const res = await client.execute({
-      sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
-      args: [embeddingId]
+      sql: `SELECT embedding_id as embeddingId, source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id IN (${placeholders})`,
+      args: chunk
     })
-    const row = res.rows?.[0] as Record<string, unknown> | undefined
-    if (row) {
-      map.set(embeddingId, {
+    for (const rawRow of res.rows ?? []) {
+      const row = rawRow as Record<string, unknown>
+      const id =
+        row.embeddingId != null ? String(row.embeddingId) : chunk.length === 1 ? chunk[0]! : ''
+      if (!id) continue
+      map.set(id, {
         sourceId: String(row.sourceId ?? ''),
         metadataJson: (row.metadataJson as string | null) ?? null
       })

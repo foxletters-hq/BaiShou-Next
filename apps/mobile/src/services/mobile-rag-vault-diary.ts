@@ -17,6 +17,16 @@ export type VaultDiaryEmbedRow = {
   tags?: string[]
 }
 
+/** 活跃仓跟待嵌入计数一样走日记库；影子索引只用来扫其他仓。 */
+export function resolveMobileDiaryEmbedListSource(input: {
+  isActiveVault: boolean
+  hasShadowDb: boolean
+}): 'live' | 'shadow' | 'none' {
+  if (input.isActiveVault) return 'live'
+  if (input.hasShadowDb) return 'shadow'
+  return 'none'
+}
+
 export async function listVaultDiaryMetas(
   shadowDb: AppDatabase,
   vaultId: string
