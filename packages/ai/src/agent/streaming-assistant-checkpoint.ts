@@ -4,6 +4,7 @@ import { assembleAssistantPersistParts } from './assemble-assistant-persist-part
 import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
 import type { StreamAccumulator } from './stream-accumulator'
 import {
+  STREAMING_ASSISTANT_FLUSH_IDLE_MS,
   shouldFlushStreamingAssistant,
   streamingAssistantSnapshotKey,
   type StreamingAssistantFlushReason
@@ -43,6 +44,13 @@ export class StreamingAssistantCheckpoint {
   ) {}
 
   schedule(reason: StreamingAssistantFlushReason, now = Date.now()): void {
+    if (
+      reason === 'token' &&
+      this.lastFlushAt != null &&
+      now - this.lastFlushAt < STREAMING_ASSISTANT_FLUSH_IDLE_MS
+    ) {
+      return
+    }
     this.queue = this.queue
       .then(() => this.flushIfNeeded(reason, now))
       .catch((error: unknown) => {
@@ -64,6 +72,13 @@ export class StreamingAssistantCheckpoint {
   }
 
   private async flushIfNeeded(reason: StreamingAssistantFlushReason, now: number): Promise<void> {
+    if (
+      reason === 'token' &&
+      this.lastFlushAt != null &&
+      now - this.lastFlushAt < STREAMING_ASSISTANT_FLUSH_IDLE_MS
+    ) {
+      return
+    }
     const snapshot = this.deps.getSnapshot()
     const key = streamingAssistantSnapshotKey({
       text: snapshot.accumulator.sanitizedText,

@@ -149,7 +149,8 @@ export async function runAgentSessionStream(input: {
     const adapter = new StreamChunkAdapter(accumulator, {
       onChunk: (chunk) => {
         if (chunk.type === ChunkType.TEXT_DELTA) {
-          const leaked = extractLeakedCompanionAsk(accumulator.text)
+          const fullText = accumulator.text
+          const leaked = fullText.includes('</invoke>') ? extractLeakedCompanionAsk(fullText) : null
           if (leaked) {
             startCompanionAskFromStreamInput(
               enabledTools,
@@ -201,6 +202,7 @@ export async function runAgentSessionStream(input: {
           tools: enabledTools,
           stopWhen: stepCountIs(maxStepsThisTurn),
           abortSignal,
+          experimental_telemetry: { isEnabled: false },
           experimental_repairToolCall: buildToolCallRepairHandler(),
           ...(builtReasoning.providerOptions
             ? { providerOptions: builtReasoning.providerOptions }

@@ -13,16 +13,16 @@ describe('buildVisionPageImagePart', () => {
   it('should send bare base64 and mediaType instead of a data URL', async () => {
     const part = await buildVisionPageImagePart(PNG_BASE64)
 
-    expect(part.type).toBe('image')
-    expect(part.image).toBe(PNG_BASE64)
+    expect(part.type).toBe('file')
+    expect(part.data).toBe(PNG_BASE64)
     expect(part.mediaType).toBe('image/png')
-    expect(part.image.startsWith('data:')).toBe(false)
+    expect(part.data.startsWith('data:')).toBe(false)
   })
 
   it('should strip a data URL prefix before sending the image', async () => {
     const part = await buildVisionPageImagePart(`data:image/png;base64,${PNG_BASE64}`)
 
-    expect(part.image).toBe(PNG_BASE64)
+    expect(part.data).toBe(PNG_BASE64)
     expect(part.mediaType).toBe('image/png')
   })
 

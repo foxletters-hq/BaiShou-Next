@@ -70,7 +70,7 @@ export function createOpenCodeGoLanguageModel(
 ): LanguageModel {
   const apiKey = resolveApiKey(config)
   const baseURL = resolveOpenCodeGoBaseUrl(config)
-  const sanitized = createSanitizedFetch()
+  const sanitized = createSanitizedFetch(undefined, { forceOpenCodeSession: true })
   const protocol = resolveOpenCodeGoWireProtocol(modelId)
 
   if (protocol === 'anthropic') {

@@ -84,6 +84,9 @@ function extractCacheUsageFromRecord(
 
 export class StreamAccumulator {
   private _timeline: StreamTimelineItem[] = []
+  private _textCache: string | null = null
+  private _sanitizedTextCache: string | null = null
+  private _reasoningCache: string | null = null
 
   private _inputTokens: number = 0
   private _outputTokens: number = 0
@@ -95,24 +98,30 @@ export class StreamAccumulator {
   }
 
   get text(): string {
-    return this._timeline
+    if (this._textCache !== null) return this._textCache
+    this._textCache = this._timeline
       .filter((item): item is Extract<StreamTimelineItem, { kind: 'text' }> => item.kind === 'text')
       .map((item) => item.text)
       .join('')
+    return this._textCache
   }
 
   get sanitizedText(): string {
-    return sanitizeAssistantGeneratedText(this.text)
+    if (this._sanitizedTextCache !== null) return this._sanitizedTextCache
+    this._sanitizedTextCache = sanitizeAssistantGeneratedText(this.text)
+    return this._sanitizedTextCache
   }
 
   get reasoning(): string {
-    return this._timeline
+    if (this._reasoningCache !== null) return this._reasoningCache
+    this._reasoningCache = this._timeline
       .filter(
         (item): item is Extract<StreamTimelineItem, { kind: 'reasoning' }> =>
           item.kind === 'reasoning'
       )
       .map((item) => item.text)
       .join('\n')
+    return this._reasoningCache
   }
 
   get toolCalls(): ToolCallSnapshot[] {
@@ -280,6 +289,7 @@ export class StreamAccumulator {
   }
 
   private appendReasoning(delta: string): void {
+    this._reasoningCache = null
     const last = this._timeline[this._timeline.length - 1]
     if (last?.kind === 'reasoning') {
       last.text += delta
@@ -289,6 +299,10 @@ export class StreamAccumulator {
   }
 
   private appendText(delta: string): void {
+    if (this._textCache !== null) {
+      this._textCache += delta
+    }
+    this._sanitizedTextCache = null
     const last = this._timeline[this._timeline.length - 1]
     if (last?.kind === 'text') {
       last.text += delta

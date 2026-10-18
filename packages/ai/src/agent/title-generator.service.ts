@@ -3,6 +3,7 @@ import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
 import {
   deriveSessionTitleFromUserText,
+  createAbortTimeoutSignal,
   AI_FIRST_OUTPUT_TIMEOUT_MS,
   logger,
   normalizeReasoningEffortSetting,
@@ -11,6 +12,32 @@ import {
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 import { buildDefaultReasoningOptions } from '../providers/reasoning'
 import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
+
+export function cleanGeneratedTitle(rawText: string, maxLength = 15): string {
+  if (!rawText) return ''
+  let title = rawText.trim()
+  // 仅取首行
+  title = title.split(/\r?\n/)[0]?.trim() || ''
+
+  // 去除常见前置说明/标签词
+  title = title
+    .replace(
+      /^(?:对话名称|会话名称|对话主题|会话主题|主题名称|标题名称|标题|主题|名称|Title|Topic)[：:\s\-—]+/i,
+      ''
+    )
+    .trim()
+
+  // 循环剥除首尾包裹符号（引号、markdown 符号、标点符号等）
+  let prev = ''
+  while (prev !== title && title.length > 0) {
+    prev = title
+    title = title.replace(/^["'“”‘’《「『【(\[*`#]+|["'“”‘’》」』】)\]*`#]+$/g, '').trim()
+    title = title.replace(/[。，！？!?.,;；~～]+$/, '').trim()
+  }
+
+  if (!title) return ''
+  return title.slice(0, maxLength).trim()
+}
 
 export class TitleGeneratorService {
   static onTitleUpdated?: (sessionId: string, newTitle: string) => Promise<void> | void
@@ -93,7 +120,7 @@ export class TitleGeneratorService {
         async () =>
           generateText({
             model,
-            abortSignal: AbortSignal.timeout(AI_FIRST_OUTPUT_TIMEOUT_MS),
+            abortSignal: createAbortTimeoutSignal(AI_FIRST_OUTPUT_TIMEOUT_MS),
             prompt: `请根据用户的这句话，为这段对话起一个极为简短、直指主题的名称。\n要求：\n1. 不能超过 15 个字符\n2. 不能使用类似“对话名称：”这样的前置说明，直接输出最终的名字字符串\n用户的首句话为：\n"""\n${userTrivialText}\n"""\n请输出标题：`,
             temperature: 0.1, // 主打严谨摘要而不是创造力
             ...(builtReasoning.providerOptions
@@ -102,7 +129,7 @@ export class TitleGeneratorService {
           })
       )
 
-      const cleanTitle = text.trim()
+      const cleanTitle = cleanGeneratedTitle(text)
       if (!cleanTitle) return
 
       await TitleGeneratorService.commitSessionTitle(sessionRepo, sessionId, cleanTitle)

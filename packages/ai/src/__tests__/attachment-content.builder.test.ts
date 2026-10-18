@@ -57,8 +57,8 @@ describe('appendImagePartToContentParts', () => {
 
     expect(parts).toHaveLength(1)
     expect(parts[0]).toEqual({
-      type: 'image',
-      image: 'ZmFrZQ==',
+      type: 'file',
+      data: 'ZmFrZQ==',
       mediaType: 'image/png'
     })
   })
@@ -73,8 +73,8 @@ describe('appendImagePartToContentParts', () => {
 
     expect(parts).toHaveLength(1)
     expect(parts[0]).toEqual({
-      type: 'image',
-      image: 'ZmFrZQ==',
+      type: 'file',
+      data: 'ZmFrZQ==',
       mediaType: 'image/png'
     })
   })
@@ -175,7 +175,7 @@ describe('finalizeUserContentParts', () => {
   it('keeps multipart content when image is present', () => {
     const result = finalizeUserContentParts([
       { type: 'text', text: 'look' },
-      { type: 'image', image: 'abc', mediaType: 'image/png' }
+      { type: 'file', data: 'abc', mediaType: 'image/png' }
     ])
     expect(Array.isArray(result)).toBe(true)
   })

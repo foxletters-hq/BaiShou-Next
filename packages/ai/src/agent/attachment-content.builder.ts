@@ -67,7 +67,7 @@ function imagePlaceholderText(att: AttachmentLike): string {
 }
 
 /**
- * 将图片附件追加为 AI SDK ImagePart（压缩后裸 base64 + mediaType）。
+ * 将图片附件追加为 AI SDK FilePart（压缩后裸 base64 + image/* mediaType）。
  * 非视觉模型仅写入文本占位，避免把大图塞进请求体导致 413。
  */
 export async function appendImagePartToContentParts(
@@ -89,15 +89,19 @@ export async function appendImagePartToContentParts(
   const normalized = await normalizeImageForModel(att)
   if (normalized) {
     contentParts.push({
-      type: 'image',
-      image: normalized.base64,
+      type: 'file',
+      data: normalized.base64,
       mediaType: normalized.mimeType
     })
     return
   }
 
   if (att.url?.startsWith('http://') || att.url?.startsWith('https://')) {
-    contentParts.push({ type: 'image', image: att.url })
+    contentParts.push({
+      type: 'file',
+      data: new URL(att.url),
+      mediaType: att.mimeType || 'image/*'
+    })
     return
   }
 

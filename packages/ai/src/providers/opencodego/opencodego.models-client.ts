@@ -26,7 +26,7 @@ export async function fetchOpenCodeGoModelIds(
     headers.Authorization = `Bearer ${apiKey}`
   }
 
-  const response = await createSanitizedFetch()(endpoint, {
+  const response = await createSanitizedFetch(undefined, { forceOpenCodeSession: true })(endpoint, {
     headers: sanitizeRequestHeaders(headers)
   })
 
