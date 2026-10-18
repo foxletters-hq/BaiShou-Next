@@ -11,6 +11,8 @@ import {
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
+import { SegmentedControl } from '../SegmentedControl'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface RagMemorySearchSectionProps {
   searchQuery?: string
@@ -66,9 +68,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
 
   const placeholder = compact
     ? t('common.please_search', '请搜索')
-    : searchMode === 'semantic'
-      ? t('settings.rag_search_semantic_hint', '语义搜索记忆内容...')
-      : t('settings.rag_search_text_hint', '文本搜索记忆内容...')
+    : t('settings.rag_search_placeholder', '搜索记忆')
 
   const kindFallback: Record<RagVectorKindFilter, string> = {
     all: i18n.t('auto.packages.ui.src.native.RagMemoryView.RagMemorySearchSection.L73', '全部'),
@@ -81,130 +81,95 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
     )
   }
 
-  return (
-    <View style={styles.searchStack}>
+  const searchInput =
+    compact || Platform.OS === 'android' ? (
       <View
         style={[
-          styles.searchBox,
-          compact && styles.searchBoxCompact,
-          {
-            backgroundColor: colors.bgSurface,
-            borderColor: colors.borderControl
-          }
+          styles.searchInputWrap,
+          compact ? styles.inputClusterCompact : styles.androidSearchRow
         ]}
       >
-        <View style={[styles.inputCluster, compact && styles.inputClusterCompact]}>
-          {compact ? (
-            <TextInput
-              style={[styles.searchInputCompact, { color: colors.textPrimary }]}
-              value={searchQuery}
-              onChangeText={handleQueryChange}
-              placeholder={placeholder}
-              placeholderTextColor={colors.textTertiary}
-              autoFocus={autoFocus}
-              returnKeyType="search"
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-          ) : Platform.OS === 'android' ? (
-            <View style={[styles.searchInputWrap, styles.androidSearchRow]}>
-              <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-              <TextInput
-                style={[
-                  styles.searchInput,
-                  styles.searchInputCompact,
-                  { color: colors.textPrimary }
-                ]}
-                value={searchQuery}
-                onChangeText={handleQueryChange}
-                placeholder={placeholder}
-                placeholderTextColor={colors.textTertiary}
-                autoFocus={autoFocus}
-                returnKeyType="search"
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
-              {searchQuery.length > 0 ? (
-                <TouchableOpacity
-                  onPress={handleClear}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  activeOpacity={0.7}
-                >
-                  <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ) : (
-            <Input
-              className="min-h-0 flex-1 border-0 bg-transparent px-0"
-              containerStyle={styles.searchInputWrap}
-              style={[styles.searchInput, { color: colors.textPrimary }]}
-              textAlignVertical="center"
-              value={searchQuery}
-              onChangeText={handleQueryChange}
-              placeholder={placeholder}
-              autoFocus={autoFocus}
-              returnKeyType="search"
-              leftSlot={
-                <Search size={18} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-              }
-              rightSlot={
-                searchQuery.length > 0 ? (
-                  <TouchableOpacity
-                    onPress={handleClear}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <X size={16} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                  </TouchableOpacity>
-                ) : undefined
-              }
-            />
-          )}
-        </View>
+        {compact ? null : (
+          <Search size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        )}
+        <TextInput
+          style={[
+            compact ? styles.searchInputCompact : styles.searchInput,
+            { color: colors.textPrimary }
+          ]}
+          value={searchQuery}
+          onChangeText={handleQueryChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textTertiary}
+          autoFocus={autoFocus}
+          returnKeyType="search"
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
+        {searchQuery.length > 0 ? (
+          <TouchableOpacity
+            onPress={handleClear}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <X size={14} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    ) : (
+      <Input
+        className="min-h-0 flex-1 border-0 bg-transparent px-0"
+        containerStyle={styles.searchInputWrap}
+        style={[styles.searchInput, { color: colors.textPrimary }]}
+        textAlignVertical="center"
+        value={searchQuery}
+        onChangeText={handleQueryChange}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        returnKeyType="search"
+        leftSlot={
+          <Search size={16} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        }
+        rightSlot={
+          searchQuery.length > 0 ? (
+            <TouchableOpacity
+              onPress={handleClear}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <X size={14} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
+    )
 
+  return (
+    <View style={styles.searchStack}>
+      <View style={[styles.toolbar, compact && styles.toolbarCompact]}>
         <View
           style={[
-            styles.segmented,
-            compact && styles.segmentedCompact,
-            { backgroundColor: colors.bgSurfaceNormal, borderColor: colors.borderControl }
+            styles.searchBox,
+            compact && styles.searchBoxCompact,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderControl
+            }
           ]}
         >
-          {(['semantic', 'text'] as const).map((mode) => {
-            const active = searchMode === mode
-            return (
-              <TouchableOpacity
-                key={mode}
-                activeOpacity={0.7}
-                style={[
-                  styles.segmentBtn,
-                  compact && styles.segmentBtnCompact,
-                  active && {
-                    backgroundColor: colors.bgSurface,
-                    borderColor: colors.borderSubtle
-                  }
-                ]}
-                onPress={() => handleModeChange(mode)}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    compact && styles.segmentTextCompact,
-                    {
-                      color: active ? colors.primary : colors.textSecondary,
-                      fontWeight: active ? '600' : '500'
-                    }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {mode === 'semantic'
-                    ? t('settings.rag_search_semantic')
-                    : t('settings.rag_search_text')}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
+          {searchInput}
         </View>
+        <SegmentedControl
+          size="small"
+          stretch={false}
+          value={searchMode}
+          accessibilityLabel={t('settings.rag_search_mode', '搜索模式')}
+          onChange={handleModeChange}
+          options={[
+            { value: 'semantic', label: t('settings.rag_search_semantic', '语义搜索') },
+            { value: 'text', label: t('settings.rag_search_text', '文本搜索') }
+          ]}
+        />
       </View>
       {!compact && onSourceKindChange ? (
         <View style={styles.kindRow}>
@@ -226,8 +191,8 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
                 <Text
                   style={{
                     color: active ? colors.primary : colors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: active ? '600' : '500'
+                    fontSize: mobileTypography.secondary.fontSize,
+                    fontWeight: mobileTypography.secondary.fontWeight
                   }}
                 >
                   {t(ragVectorKindLabelKey(kind), kindFallback[kind])}
@@ -243,46 +208,45 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
 
 const styles = StyleSheet.create({
   searchStack: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
+  },
+  toolbar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  toolbarCompact: {
+    flexWrap: 'nowrap'
   },
   kindRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   kindChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.full,
     borderWidth: 1
   },
   searchBox: {
+    flex: 1,
+    minWidth: 120,
+    height: 34,
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    borderRadius: 10,
+    overflow: 'hidden',
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: 0
   },
   searchBoxCompact: {
-    flexWrap: 'nowrap',
-    paddingHorizontal: 8,
-    paddingVertical: 0,
-    gap: 6,
-    height: 40,
-    alignItems: 'center'
-  },
-  inputCluster: {
-    flex: 1,
-    minWidth: 120
-  },
-  inputClusterCompact: {
-    flex: 1,
     minWidth: 0,
-    height: 40,
-    justifyContent: 'center'
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: 0,
+    height: 40
   },
   searchInputWrap: {
     flex: 1,
@@ -295,17 +259,27 @@ const styles = StyleSheet.create({
   androidSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
+  },
+  inputClusterCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40
   },
   searchInput: {
-    fontSize: 14,
-    paddingVertical: 2,
-    minHeight: 32,
-    backgroundColor: 'transparent'
+    flex: 1,
+    fontSize: mobileTypography.secondary.fontSize,
+    paddingVertical: 0,
+    minHeight: 0,
+    height: 32,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'android'
+      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
+      : {})
   },
   searchInputCompact: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     height: 40,
     paddingVertical: 0,
     paddingHorizontal: 0,
@@ -314,40 +288,5 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'android'
       ? { includeFontPadding: false, textAlignVertical: 'center' as const }
       : { paddingTop: 0, paddingBottom: 0 })
-  },
-  segmented: {
-    flexDirection: 'row',
-    flexShrink: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 0
-  },
-  segmentedCompact: {
-    padding: 3,
-    gap: 4,
-    height: 32,
-    alignItems: 'center',
-    alignSelf: 'center'
-  },
-  segmentBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: 'transparent'
-  },
-  segmentBtnCompact: {
-    paddingHorizontal: 10,
-    paddingVertical: 4
-  },
-  segmentText: {
-    fontSize: 14,
-    lineHeight: 18.9,
-    fontWeight: '400'
-  },
-  segmentTextCompact: {
-    fontSize: 12,
-    lineHeight: 16
   }
 })

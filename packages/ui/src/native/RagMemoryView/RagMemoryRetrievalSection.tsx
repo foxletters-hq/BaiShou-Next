@@ -1,9 +1,9 @@
 import React from 'react'
 import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
-import { useSettingsCardStyles } from '../settings/settings-card.styles'
 import {
   BATCH_EMBED_CONCURRENCY_MIN,
   MOBILE_BATCH_EMBED_CONCURRENCY_CAP,
@@ -30,7 +30,6 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const cardStyles = useSettingsCardStyles()
 
   const ragTopK = coerceNumber(config.ragTopK, 20)
   const ragSimilarityThreshold = coerceNumber(config.ragSimilarityThreshold, 0.4)
@@ -38,7 +37,14 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
   return (
     <View>
-      <Text style={[cardStyles.label, { color: colors.textPrimary, marginBottom: 12 }]}>
+      <Text
+        style={{
+          color: colors.textPrimary,
+          fontSize: mobileTypography.title.fontSize,
+          fontWeight: mobileTypography.title.fontWeight,
+          marginBottom: sharedTokens.spacing.xs
+        }}
+      >
         {t('settings.rag_config_params')}
       </Text>
 

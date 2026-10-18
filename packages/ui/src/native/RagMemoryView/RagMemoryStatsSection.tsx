@@ -107,7 +107,7 @@ export const RagMemoryStatsSection: React.FC<RagMemoryStatsSectionProps> = ({
         activeOpacity={0.7}
       >
         <RefreshCw size={14} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-        <Text style={[styles.statValue, { color: colors.primary, fontSize: 12 }]} numberOfLines={2}>
+        <Text style={[styles.statValue, { color: colors.primary }]} numberOfLines={2}>
           {t('settings.rag_detect_dimension')}
         </Text>
       </TouchableOpacity>

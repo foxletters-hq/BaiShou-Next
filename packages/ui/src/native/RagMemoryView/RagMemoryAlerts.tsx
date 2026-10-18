@@ -5,6 +5,7 @@ import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
+import { sharedTokens } from '../../theme/tokens'
 
 interface RagMemoryAlertsProps {
   ragState: RagState
@@ -17,6 +18,8 @@ interface RagMemoryAlertsProps {
   onCancelBatchEmbed?: () => Promise<void>
   suspectCount?: number
   onReviewSuspects?: () => void
+  /** 记忆中心用独立整理弹层，这里不再叠一张补齐嵌入卡 */
+  hideBatchProgress?: boolean
 }
 
 export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
@@ -29,7 +32,8 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   onResumeBatchEmbed,
   onCancelBatchEmbed,
   suspectCount = 0,
-  onReviewSuspects
+  onReviewSuspects,
+  hideBatchProgress = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -50,7 +54,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 
   return (
     <>
-      {isBatchEmbedding && (
+      {isBatchEmbedding && !hideBatchProgress && (
         <View
           style={[
             styles.alertBox,
@@ -70,13 +74,18 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               <View style={styles.batchEmbedActions}>
                 {ragState.paused && !isAborting
                   ? onResumeBatchEmbed && (
-                      <Button variant="outlined" onPress={() => void onResumeBatchEmbed()}>
+                      <Button
+                        variant="outlined"
+                        size="sm"
+                        onPress={() => void onResumeBatchEmbed()}
+                      >
                         {t('settings.rag_batch_embed_resume', '继续')}
                       </Button>
                     )
                   : onPauseBatchEmbed && (
                       <Button
                         variant="outlined"
+                        size="sm"
                         disabled={isAborting}
                         onPress={() => void onPauseBatchEmbed()}
                       >
@@ -86,6 +95,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
                 {onCancelBatchEmbed && (
                   <Button
                     variant="outlined"
+                    size="sm"
                     disabled={isAborting}
                     isLoading={isAborting}
                     onPress={() => void onCancelBatchEmbed()}
@@ -105,7 +115,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             <View
               style={[
                 styles.progressBar,
-                { backgroundColor: colors.bgSurfaceNormal, marginTop: 8 }
+                { backgroundColor: colors.bgSurfaceNormal, marginTop: sharedTokens.spacing.sm }
               ]}
             >
               <View
@@ -143,6 +153,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             {onCancelMigration ? (
               <Button
                 variant="outlined"
+                size="sm"
                 disabled={isAborting}
                 isLoading={isAborting}
                 onPress={() => void onCancelMigration()}
@@ -199,7 +210,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               })}
             </Text>
             {onReviewSuspects ? (
-              <Button variant="outlined" onPress={onReviewSuspects}>
+              <Button variant="outlined" size="sm" onPress={onReviewSuspects}>
                 {t('memory.review_suspects', '去检查')}
               </Button>
             ) : null}
@@ -226,6 +237,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
           {onTriggerMigration ? (
             <Button
               variant="outlined"
+              size="sm"
               onPress={() => void onTriggerMigration()}
               disabled={ragState.isRunning}
             >
