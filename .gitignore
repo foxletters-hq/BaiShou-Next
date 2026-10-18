@@ -110,6 +110,7 @@ playwright-report/
 .cache/
 .eslintcache
 .stylelintcache
+.lint-count-*.json
 *.tgz
 
 # ─── AI Agent / Agentic 工具 ──────────────────────────────

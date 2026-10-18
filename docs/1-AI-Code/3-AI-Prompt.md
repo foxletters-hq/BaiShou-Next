@@ -13,7 +13,7 @@
 
 4. 本项目的 AI 规则都在 docs/1-AI-Code/。动手前先打开 docs/1-AI-Code/0-README.md，它是这个目录的索引。根据当前工作在表里找到对应文件，只打开那一份，不要通读整个目录。表里对不上时，先列出 docs/1-AI-Code/ 下的文件，按文件名判断该打开哪一份。不要把规则再抄到某个编辑器或 AI 工具的专用配置里；改约定只改 docs/1-AI-Code/ 和 packages/ui/COMPONENTS.md。
 
-5. 写界面之前先读 packages/ui/COMPONENTS.md，确认要用的组件是否已经存在。开关、勾选框、分段控件、按钮、输入框、下拉框只允许从 @baishou/ui（桌面端）或 @baishou/ui/native（移动端）引入，不允许在页面里用 CSS 或从 react-native 自己再实现一份。
+5. 写界面之前先读 packages/ui/COMPONENTS.md，确认要用的组件是否已经存在。开关、勾选框、分段控件、按钮、输入框、下拉框、滑块只允许从 @baishou/ui（桌面端）或 @baishou/ui/native（移动端）引入，不允许在页面里用 CSS 或从 react-native 自己再实现一份。
 
 6. 新增、重命名或删除 packages/ui 的公开组件时，把它登记到 scripts/ui-component-index.manifest.json 的对应分组，再执行 pnpm sync 重新生成 packages/ui/COMPONENTS.md 的清单。不要手工编辑清单区块。
 
