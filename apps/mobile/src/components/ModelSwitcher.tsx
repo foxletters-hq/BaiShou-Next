@@ -15,7 +15,7 @@ interface ModelSwitcherProps {
   onSelect: (providerId: string, modelId: string) => void
   currentProviderId?: string
   currentModelId?: string
-  /** 对话模型（默认）| embedding | tts */
+  /** 对话模型（默认）| embedding | tts | vision */
   filterMode?: ModelSwitcherFilterMode
 }
 
