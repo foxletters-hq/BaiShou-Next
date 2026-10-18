@@ -3,6 +3,7 @@ import { Image, Pressable, View, ActivityIndicator, StyleSheet, Text } from 'rea
 import { ImageOff } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 function isDisplayableUri(uri: string): boolean {
   return (
@@ -134,10 +135,10 @@ const styles = StyleSheet.create({
   },
   failed: {
     borderWidth: 1,
-    padding: 12,
-    gap: 8
+    padding: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   failedText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   }
 })

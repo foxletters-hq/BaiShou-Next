@@ -6,8 +6,15 @@ import {
   parseImageSrcWithoutWidth,
   stripImageWidthInMarkdown
 } from '../DiaryEditor/diary-image-markdown.util'
+import { markdownSpacingTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 import { NativeMarkdownImage } from './NativeMarkdownImage'
 import { useMarkdownLinkPress } from './useMarkdownLinkPress'
+import {
+  buildStreamingMarkdownRules,
+  createStreamingElementMemoizer,
+  getStableAstNodeKey,
+  type MarkdownAstNodeLike
+} from './legacy-markdown-streaming-tail'
 import type { MarkdownRendererProps } from './MarkdownRenderer'
 
 function buildMarkdownStyles(
@@ -17,12 +24,22 @@ function buildMarkdownStyles(
   const isPreview = variant === 'preview'
   const isAncillary = variant === 'ancillary'
   const isChat = variant === 'chat' || isAncillary
-  const bodyFontSize = isAncillary ? 14 : 15
-  const bodyLineHeight = isAncillary ? 20 : 24
+  const bodyFontSize = isAncillary
+    ? mobileTypography.secondary.fontSize
+    : mobileTypography.body.fontSize
+  const bodyLineHeight = isAncillary ? 20 : mobileTypography.body.lineHeight
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
-  const paragraphMargin = isAncillary ? 4 : isChat ? 0 : 8
-  const listMargin = isChat ? 4 : 8
-  const headingScale = isChat ? 0.85 : 1
+  const paragraphMargin = isPreview
+    ? markdownSpacingTokens.paragraphPreview
+    : markdownSpacingTokens.paragraph
+  const listMargin = isChat ? markdownSpacingTokens.listCompact : markdownSpacingTokens.list
+  const headingWeight = mobileTypography.title.fontWeight
+  const codeFontSize = isPreview
+    ? bodyFontSize
+    : isAncillary
+      ? mobileTypography.caption.fontSize
+      : mobileTypography.secondary.fontSize
+  const h = markdownSpacingTokens.headings
 
   return StyleSheet.create({
     body: {
@@ -32,45 +49,45 @@ function buildMarkdownStyles(
     },
     heading1: {
       color: colors.textPrimary,
-      fontSize: Math.round(24 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 12 : 16,
-      marginBottom: isChat ? 6 : 8
+      fontSize: mobileTypography.title.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isChat ? h.h1.topCompact : h.h1.top,
+      marginBottom: isChat ? h.h1.bottomCompact : h.h1.bottom
     },
     heading2: {
       color: colors.textPrimary,
-      fontSize: Math.round(20 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 10 : 14,
-      marginBottom: isChat ? 4 : 6
+      fontSize: mobileTypography.title.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isChat ? h.h2.topCompact : h.h2.top,
+      marginBottom: isChat ? h.h2.bottomCompact : h.h2.bottom
     },
     heading3: {
       color: colors.textPrimary,
-      fontSize: Math.round(18 * headingScale),
-      fontWeight: 'bold',
-      marginTop: isChat ? 8 : 12,
-      marginBottom: 4
+      fontSize: mobileTypography.primary.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isChat ? h.h3.topCompact : h.h3.top,
+      marginBottom: h.h3.bottom
     },
     heading4: {
       color: colors.textPrimary,
-      fontSize: Math.round(17 * headingScale),
-      fontWeight: '600',
-      marginTop: isChat ? 8 : 10,
-      marginBottom: 4
+      fontSize: mobileTypography.primary.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isChat ? h.h4.topCompact : h.h4.top,
+      marginBottom: h.h4.bottom
     },
     heading5: {
       color: colors.textPrimary,
-      fontSize: Math.round(16 * headingScale),
-      fontWeight: '600',
-      marginTop: isChat ? 6 : 8,
-      marginBottom: 4
+      fontSize: mobileTypography.body.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isChat ? h.h5.topCompact : h.h5.top,
+      marginBottom: h.h5.bottom
     },
     heading6: {
       color: isPreview ? colors.primary : colors.textSecondary,
-      fontSize: isPreview ? 15 : Math.round(15 * headingScale),
-      fontWeight: '600',
-      marginTop: isPreview ? 0 : isChat ? 4 : 6,
-      marginBottom: isPreview ? 2 : 4
+      fontSize: mobileTypography.body.fontSize,
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h6.topCompact : h.h6.top,
+      marginBottom: isPreview ? h.h6.bottomCompact : h.h6.bottom
     },
     paragraph: {
       color: bodyColor,
@@ -82,43 +99,47 @@ function buildMarkdownStyles(
       textDecorationLine: 'none'
     },
     blockquote: {
-      backgroundColor: isPreview ? colors.bgSurface : colors.bgSurfaceHighest,
-      borderLeftWidth: isPreview ? 3 : 4,
+      backgroundColor: isPreview
+        ? colors.bgSurface
+        : (colors.bgSurfaceLow ?? colors.bgSurfaceNormal),
+      borderLeftWidth: 3,
       borderLeftColor: colors.primary,
-      paddingHorizontal: isPreview ? 12 : 10,
-      paddingVertical: isPreview ? 2 : 6,
+      borderTopRightRadius: sharedTokens.radius.sm,
+      borderBottomRightRadius: sharedTokens.radius.sm,
+      paddingHorizontal: sharedTokens.spacing.mdTight,
+      paddingVertical: isPreview ? sharedTokens.spacing.xxs : sharedTokens.spacing.sm,
       marginBottom: paragraphMargin,
-      color: isPreview ? colors.textSecondary : bodyColor
+      color: colors.textSecondary
     },
     code_inline: {
-      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      backgroundColor: colors.bgSurfaceNormal,
       color: colors.textPrimary,
-      paddingHorizontal: 4,
+      paddingHorizontal: sharedTokens.spacing.xs,
       paddingVertical: 1,
-      borderRadius: 4,
-      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
+      borderRadius: sharedTokens.radius.xs,
+      fontSize: codeFontSize
     },
     code_block: {
-      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      backgroundColor: colors.bgSurfaceNormal,
       color: colors.textPrimary,
-      padding: 10,
-      borderRadius: 8,
+      padding: sharedTokens.spacing.smPlus,
+      borderRadius: sharedTokens.radius.sm,
       fontFamily: 'monospace',
       marginBottom: paragraphMargin,
-      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
+      fontSize: codeFontSize
     },
     fence: {
-      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      backgroundColor: colors.bgSurfaceNormal,
       color: colors.textPrimary,
-      padding: 10,
-      borderRadius: 8,
+      padding: sharedTokens.spacing.smPlus,
+      borderRadius: sharedTokens.radius.sm,
       fontFamily: 'monospace',
       marginBottom: paragraphMargin,
-      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
+      fontSize: codeFontSize
     },
     list_item: {
       color: bodyColor,
-      marginBottom: isChat ? 2 : 4
+      marginBottom: isChat ? markdownSpacingTokens.listItemCompact : markdownSpacingTokens.listItem
     },
     bullet_list: {
       marginTop: 0,
@@ -131,7 +152,11 @@ function buildMarkdownStyles(
     hr: {
       backgroundColor: isPreview ? colors.borderSubtle : colors.borderMuted,
       height: 1,
-      marginVertical: isPreview ? 8 : isChat ? 10 : 16
+      marginVertical: isPreview
+        ? markdownSpacingTokens.dividerPreview
+        : isChat
+          ? markdownSpacingTokens.dividerCompact
+          : markdownSpacingTokens.divider
     },
     table: {
       borderWidth: 1,
@@ -139,20 +164,20 @@ function buildMarkdownStyles(
       marginBottom: paragraphMargin
     },
     thead: {
-      backgroundColor: colors.bgSurfaceHighest
+      backgroundColor: colors.bgSurfaceNormal
     },
     tbody: {
       backgroundColor: colors.bgSurface
     },
     th: {
-      padding: 6,
+      padding: sharedTokens.spacing.xsPlus,
       borderWidth: 1,
       borderColor: colors.borderSubtle,
       color: colors.textPrimary,
       fontWeight: 'bold'
     },
     td: {
-      padding: 6,
+      padding: sharedTokens.spacing.xsPlus,
       borderWidth: 1,
       borderColor: colors.borderSubtle,
       color: colors.textPrimary
@@ -162,8 +187,8 @@ function buildMarkdownStyles(
       borderColor: colors.borderSubtle
     },
     image: {
-      marginVertical: 6,
-      borderRadius: 8,
+      marginVertical: sharedTokens.spacing.xsPlus,
+      borderRadius: sharedTokens.radius.sm,
       overflow: 'hidden'
     }
   })
@@ -174,12 +199,14 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   style,
   variant = 'default',
+  streamingTailFadeChars = 0,
   resolveImageUri,
   loadImageUri,
   onImagePress
 }) => {
   const { colors } = useNativeTheme()
   const { tryOpenCitation } = useMarkdownLinkPress()
+  const defaultBodyColor = variant === 'ancillary' ? colors.textSecondary : colors.textPrimary
   const markdownStyles = useMemo(() => buildMarkdownStyles(colors, variant), [colors, variant])
   const markdownit = useMemo(
     () =>
@@ -193,7 +220,28 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     () => stripImageWidthInMarkdown(content.replace(/\u200B/g, '')),
     [content]
   )
+  const imageCallbacksRef = React.useRef({ resolveImageUri, loadImageUri, onImagePress })
+  imageCallbacksRef.current = { resolveImageUri, loadImageUri, onImagePress }
+  const tailFadeCharsRef = React.useRef(streamingTailFadeChars)
+  tailFadeCharsRef.current = streamingTailFadeChars
+  const prevDisplayContentRef = React.useRef(displayContent)
+  const prevTailFadeCharsRef = React.useRef(streamingTailFadeChars)
+  const tailDrainRevisionRef = React.useRef(0)
+  if (
+    prevDisplayContentRef.current === displayContent &&
+    prevTailFadeCharsRef.current !== streamingTailFadeChars
+  ) {
+    tailDrainRevisionRef.current += 1
+  }
+  prevDisplayContentRef.current = displayContent
+  prevTailFadeCharsRef.current = streamingTailFadeChars
+  const tailDrainRevision = tailDrainRevisionRef.current
+  const handleLinkPress = React.useCallback(
+    (url: string) => !tryOpenCitation(url),
+    [tryOpenCitation]
+  )
   const rules = useMemo(() => {
+    const memoizer = createStreamingElementMemoizer()
     const previewTextRules =
       variant === 'preview'
         ? {
@@ -241,35 +289,65 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           }
         : {}
 
-    if (
-      !resolveImageUri &&
-      !loadImageUri &&
-      !onImagePress &&
-      Object.keys(previewTextRules).length === 0
-    ) {
-      // 仍覆盖默认 FitImage，避免 React 对 `{...{ key }}` 展开告警
-      return {
-        image: (
-          node: { key: string; attributes: { src?: string; alt?: string } },
-          _children: unknown,
-          _parent: unknown,
-          _styles: { image?: object }
-        ) => {
-          const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
-          return (
-            <NativeMarkdownImage
-              key={node.key}
-              rawSrc={rawSrc}
-              alt={node.attributes.alt}
-              imageStyle={[_styles.image, legacyStyles.image, legacyStyles.imageBlock]}
-              syncUri={rawSrc}
-            />
+    const isLastBlockChild = (
+      node: { key: string },
+      parentNodes?: Array<{ children?: Array<{ key: string }> }>
+    ) => {
+      const parent = parentNodes?.[0]
+      if (!parent?.children || parent.children.length === 0) return false
+      return parent.children[parent.children.length - 1]?.key === node.key
+    }
+
+    const blockRules = {
+      paragraph: (
+        node: { key: string; index?: number; type?: string },
+        children: React.ReactNode,
+        parentNodes: Array<{ key?: string; index?: number; children?: Array<{ key: string }> }>,
+        styles: { _VIEW_SAFE_paragraph?: object }
+      ) => {
+        const isLast = isLastBlockChild(node, parentNodes)
+        const stableKey = getStableAstNodeKey(node, parentNodes as MarkdownAstNodeLike[])
+        return memoizer.memoizeContainer(
+          stableKey,
+          children,
+          styles._VIEW_SAFE_paragraph,
+          isLast,
+          () => (
+            <View
+              key={stableKey}
+              style={[styles._VIEW_SAFE_paragraph, isLast ? legacyStyles.lastBlock : null]}
+            >
+              {children}
+            </View>
           )
-        }
+        )
+      },
+      blockquote: (
+        node: { key: string; index?: number; type?: string },
+        children: React.ReactNode,
+        parentNodes: Array<{ key?: string; index?: number; children?: Array<{ key: string }> }>,
+        styles: { _VIEW_SAFE_blockquote?: object }
+      ) => {
+        const isLast = isLastBlockChild(node, parentNodes)
+        const stableKey = getStableAstNodeKey(node, parentNodes as MarkdownAstNodeLike[])
+        return memoizer.memoizeContainer(
+          stableKey,
+          children,
+          styles._VIEW_SAFE_blockquote,
+          isLast,
+          () => (
+            <View
+              key={stableKey}
+              style={[styles._VIEW_SAFE_blockquote, isLast ? legacyStyles.lastBlock : null]}
+            >
+              {children}
+            </View>
+          )
+        )
       }
     }
-    return {
-      ...previewTextRules,
+
+    const imageRule = {
       image: (
         node: { key: string; attributes: { src?: string; alt?: string } },
         _children: unknown,
@@ -277,7 +355,12 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         _styles: { image?: object }
       ) => {
         const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
-        const syncUri = resolveImageUri?.(rawSrc) ?? rawSrc
+        const {
+          resolveImageUri: currentResolve,
+          loadImageUri: currentLoad,
+          onImagePress: currentPress
+        } = imageCallbacksRef.current
+        const syncUri = currentResolve?.(rawSrc) ?? rawSrc
         const imageStyle = [_styles.image, legacyStyles.image, legacyStyles.imageBlock]
 
         return (
@@ -287,13 +370,30 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             alt={node.attributes.alt}
             imageStyle={imageStyle}
             syncUri={syncUri}
-            loadImageUri={loadImageUri}
-            onPress={onImagePress}
+            loadImageUri={currentLoad}
+            onPress={currentPress}
           />
         )
       }
     }
-  }, [variant, resolveImageUri, loadImageUri, onImagePress])
+
+    const streamingRules =
+      variant !== 'preview'
+        ? buildStreamingMarkdownRules({
+            tailFadeCharsRef,
+            defaultTextColor: defaultBodyColor,
+            memoizer,
+            revision: tailDrainRevision
+          })
+        : {}
+
+    return {
+      ...streamingRules,
+      ...blockRules,
+      ...previewTextRules,
+      ...imageRule
+    }
+  }, [defaultBodyColor, tailDrainRevision, variant])
 
   return (
     <View
@@ -306,7 +406,7 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         style={markdownStyles}
         rules={rules}
         markdownit={markdownit}
-        onLinkPress={(url: string) => !tryOpenCitation(url)}
+        onLinkPress={handleLinkPress}
       >
         {displayContent}
       </Markdown>
@@ -324,6 +424,9 @@ const legacyStyles = StyleSheet.create({
   containerCompact: {
     alignSelf: 'stretch',
     width: '100%'
+  },
+  lastBlock: {
+    marginBottom: 0
   },
   image: {
     width: '100%',

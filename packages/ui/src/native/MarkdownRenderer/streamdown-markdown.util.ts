@@ -1,4 +1,5 @@
 import type { MarkdownStyle } from 'react-native-enriched-markdown'
+import { markdownSpacingTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   parseImageSrcWithoutWidth,
   stripImageWidthInMarkdown
@@ -7,20 +8,17 @@ import type { useNativeTheme } from '../theme'
 
 export type StreamdownMarkdownVariant = 'default' | 'chat' | 'ancillary' | 'preview'
 
-/** 卡片预览：h1–h3 略压缩，h4–h6 不低于正文 15px */
-const PREVIEW_HEADING_FONT_SIZES = [19, 17, 16, 17, 16, 15] as const
-const DEFAULT_HEADING_FONT_SIZES = [24, 20, 18, 17, 16, 15] as const
+const MARKDOWN_HEADING_FONT_SIZES = [
+  mobileTypography.title.fontSize,
+  mobileTypography.title.fontSize,
+  mobileTypography.primary.fontSize,
+  mobileTypography.primary.fontSize,
+  mobileTypography.body.fontSize,
+  mobileTypography.body.fontSize
+] as const
 
-function resolveHeadingFontSize(
-  level: 1 | 2 | 3 | 4 | 5 | 6,
-  variant: StreamdownMarkdownVariant,
-  isChat: boolean
-): number {
-  if (variant === 'preview') {
-    return PREVIEW_HEADING_FONT_SIZES[level - 1]
-  }
-  const scale = isChat ? 0.85 : 1
-  return Math.round(DEFAULT_HEADING_FONT_SIZES[level - 1] * scale)
+function resolveHeadingFontSize(level: 1 | 2 | 3 | 4 | 5 | 6): number {
+  return MARKDOWN_HEADING_FONT_SIZES[level - 1]
 }
 
 const IMAGE_IN_MARKDOWN_RE = /!\[([^\]]*)\]\(([^ |)]+)(?:\s*\|\s*(\d+))?\)/g
@@ -44,12 +42,19 @@ export function buildStreamdownMarkdownStyle(
   const isAncillary = variant === 'ancillary'
   const isChat = variant === 'chat' || isAncillary
   const scale = Number.isFinite(contentFontScale) && contentFontScale > 0 ? contentFontScale : 1
-  const bodyFontSize = Math.round((isPreview ? 15 : isAncillary ? 14 : 15) * scale)
-  const bodyLineHeight = Math.round((isPreview ? 24 : isAncillary ? 20 : 24) * scale)
+  const bodyFontSize = Math.round(
+    (isAncillary ? mobileTypography.secondary.fontSize : mobileTypography.body.fontSize) * scale
+  )
+  const bodyLineHeight = Math.round((isAncillary ? 20 : mobileTypography.body.lineHeight) * scale)
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
-  /** 末行由 CHAT_MARKDOWN_BOTTOM_GUARD 托底，段落间距改由 lineHeight 自然分隔 */
-  const paragraphMargin = isPreview ? 2 : isAncillary ? 4 : isChat ? 0 : 8
-  const codeFontSize = Math.round((isAncillary ? 12 : 13) * scale)
+  const paragraphMargin = isPreview
+    ? markdownSpacingTokens.paragraphPreview
+    : markdownSpacingTokens.paragraph
+  const codeFontSize = Math.round(
+    (isAncillary ? mobileTypography.caption.fontSize : mobileTypography.secondary.fontSize) * scale
+  )
+  const headingWeight = mobileTypography.title.fontWeight
+  const h = markdownSpacingTokens.headings
 
   return {
     paragraph: {
@@ -60,45 +65,45 @@ export function buildStreamdownMarkdownStyle(
     },
     h1: {
       color: colors.textPrimary,
-      fontSize: Math.round(resolveHeadingFontSize(1, variant, isChat) * scale),
-      fontWeight: 'bold',
-      marginTop: isPreview ? 0 : isChat ? 12 : 16,
-      marginBottom: isPreview ? 2 : isChat ? 6 : 8
+      fontSize: Math.round(resolveHeadingFontSize(1) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h1.topCompact : h.h1.top,
+      marginBottom: isPreview ? h.h1.bottomCompact : isChat ? h.h1.bottomCompact : h.h1.bottom
     },
     h2: {
       color: colors.textPrimary,
-      fontSize: Math.round(resolveHeadingFontSize(2, variant, isChat) * scale),
-      fontWeight: 'bold',
-      marginTop: isPreview ? 0 : isChat ? 10 : 14,
-      marginBottom: isPreview ? 2 : isChat ? 4 : 6
+      fontSize: Math.round(resolveHeadingFontSize(2) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h2.topCompact : h.h2.top,
+      marginBottom: isPreview ? h.h2.bottomCompact : isChat ? h.h2.bottomCompact : h.h2.bottom
     },
     h3: {
       color: colors.textPrimary,
-      fontSize: Math.round(resolveHeadingFontSize(3, variant, isChat) * scale),
-      fontWeight: 'bold',
-      marginTop: isPreview ? 0 : isChat ? 8 : 12,
-      marginBottom: isPreview ? 2 : 4
+      fontSize: Math.round(resolveHeadingFontSize(3) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h3.topCompact : h.h3.top,
+      marginBottom: isPreview ? h.h3.bottom : h.h3.bottom
     },
     h4: {
       color: colors.textPrimary,
-      fontSize: Math.round(resolveHeadingFontSize(4, variant, isChat) * scale),
-      fontWeight: '600',
-      marginTop: isPreview ? 0 : isChat ? 8 : 10,
-      marginBottom: isPreview ? 2 : 4
+      fontSize: Math.round(resolveHeadingFontSize(4) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h4.topCompact : h.h4.top,
+      marginBottom: isPreview ? h.h4.bottom : h.h4.bottom
     },
     h5: {
       color: colors.textPrimary,
-      fontSize: Math.round(resolveHeadingFontSize(5, variant, isChat) * scale),
-      fontWeight: '600',
-      marginTop: isPreview ? 0 : isChat ? 6 : 8,
-      marginBottom: isPreview ? 2 : 4
+      fontSize: Math.round(resolveHeadingFontSize(5) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h5.topCompact : h.h5.top,
+      marginBottom: isPreview ? h.h5.bottom : h.h5.bottom
     },
     h6: {
       color: isPreview ? colors.primary : colors.textSecondary,
-      fontSize: Math.round(resolveHeadingFontSize(6, variant, isChat) * scale),
-      fontWeight: '600',
-      marginTop: isPreview ? 0 : isChat ? 4 : 6,
-      marginBottom: isPreview ? 2 : 4
+      fontSize: Math.round(resolveHeadingFontSize(6) * scale),
+      fontWeight: headingWeight,
+      marginTop: isPreview ? 0 : isChat ? h.h6.topCompact : h.h6.top,
+      marginBottom: isPreview ? h.h6.bottomCompact : h.h6.bottom
     },
     blockquote: isPreview
       ? {
@@ -108,29 +113,29 @@ export function buildStreamdownMarkdownStyle(
           marginBottom: paragraphMargin
         }
       : {
-          color: bodyColor,
+          color: colors.textSecondary,
           borderColor: colors.primary,
-          backgroundColor: colors.bgSurfaceHighest,
+          backgroundColor: colors.bgSurfaceLow ?? colors.bgSurfaceNormal,
           marginBottom: paragraphMargin
         },
     list: {
       color: bodyColor,
       bulletColor: bodyColor,
       markerColor: bodyColor,
-      marginBottom: isChat ? 6 : 8
+      marginBottom: isChat ? markdownSpacingTokens.listCompact : markdownSpacingTokens.list
     },
     code: {
       color: colors.textPrimary,
-      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      backgroundColor: colors.bgSurfaceNormal,
       borderColor: isPreview ? colors.bgSurfaceNormal : colors.borderSubtle,
       fontSize: isPreview ? bodyFontSize : codeFontSize
     },
     codeBlock: {
       color: colors.textPrimary,
-      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      backgroundColor: colors.bgSurfaceNormal,
       borderColor: isPreview ? colors.bgSurfaceNormal : colors.borderSubtle,
-      borderRadius: 8,
-      padding: 10,
+      borderRadius: sharedTokens.radius.sm,
+      padding: sharedTokens.spacing.smPlus,
       marginBottom: paragraphMargin,
       fontSize: isPreview ? bodyFontSize : codeFontSize,
       fontFamily: 'monospace'
@@ -146,13 +151,21 @@ export function buildStreamdownMarkdownStyle(
     thematicBreak: {
       // 预览卡片里分割线要比编辑器更轻，避免抢正文
       color: isPreview ? colors.borderSubtle : colors.borderMuted,
-      marginTop: isPreview ? 8 : isChat ? 10 : 16,
-      marginBottom: isPreview ? 8 : isChat ? 10 : 16
+      marginTop: isPreview
+        ? markdownSpacingTokens.dividerPreview
+        : isChat
+          ? markdownSpacingTokens.dividerCompact
+          : markdownSpacingTokens.divider,
+      marginBottom: isPreview
+        ? markdownSpacingTokens.dividerPreview
+        : isChat
+          ? markdownSpacingTokens.dividerCompact
+          : markdownSpacingTokens.divider
     },
     table: {
       color: bodyColor,
       headerTextColor: colors.textPrimary,
-      headerBackgroundColor: colors.bgSurfaceHighest,
+      headerBackgroundColor: colors.bgSurfaceNormal,
       rowEvenBackgroundColor: colors.bgSurface,
       rowOddBackgroundColor: colors.bgSurface,
       borderColor: colors.borderSubtle,
@@ -166,7 +179,7 @@ export function buildStreamdownMarkdownStyle(
     },
     math: {
       color: colors.textPrimary,
-      backgroundColor: colors.bgSurfaceHighest
+      backgroundColor: colors.bgSurfaceNormal
     },
     inlineMath: { color: colors.textPrimary }
   }
@@ -196,7 +209,10 @@ export function preserveChatTrailingNewlines(content: string): string {
 }
 
 /** 估算聊天气泡 Markdown 最小高度，避免 EnrichedMarkdownText 少报高度被父级裁剪 */
-export function estimateChatMarkdownMinHeight(content: string, lineHeight = 24): number {
+export function estimateChatMarkdownMinHeight(
+  content: string,
+  lineHeight = mobileTypography.body.lineHeight
+): number {
   if (!content.trim()) return 0
   const charsPerLine = 26
   const lines = content.split('\n').reduce((total, line) => {
