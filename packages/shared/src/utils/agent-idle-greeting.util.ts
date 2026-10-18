@@ -13,15 +13,15 @@ export const AGENT_IDLE_GREETING_KEYS = [
 
 export const AGENT_IDLE_GREETING_FALLBACKS = [
   'Hi，{{name}}，今天过得怎么样？想跟我聊聊吗？',
-  '{{name}}，有什么开心或烦心的事，都可以跟我说',
-  '来吧 {{name}}，随便说说今天的感受',
+  '{{name}}，有什么开心或烦心的事？都可以跟我说',
+  '来吧 {{name}}。随便说说今天的感受',
   '{{name}}，今天心情如何？我在这儿听你说',
   '想聊聊今天发生的事吗？我陪着你，{{name}}',
-  '{{name}}，有什么想倾诉的，慢慢说就好',
+  '{{name}}，有什么想倾诉的？慢慢说就好',
   '今天有没有特别的瞬间想分享？{{name}}，我听着',
-  '累了就歇一会儿，也可以跟我说说话，{{name}}',
-  '{{name}}，不管好坏，今天的心情都可以放在这儿',
-  '嗨 {{name}}，今天想从哪一段感受开始聊？'
+  '累了就歇一会儿。也可以跟我说说话，{{name}}',
+  '{{name}}，不管好坏。今天的心情都可以放在这儿',
+  '嗨 {{name}}。今天想从哪一段感受开始聊？'
 ] as const
 
 /** 随机一条空态标语下标；再次抽取时避开上一句。 */
@@ -32,4 +32,26 @@ export function pickAgentIdleGreetingIndex(length: number, previous?: number): n
   }
   const offset = 1 + Math.floor(Math.random() * (length - 1))
   return (previous + offset) % length
+}
+
+const SENTENCE_END = /[。．.！!？?]/
+
+/** 按句号、问号、感叹号把空态问候拆成多行，标点留在该句末尾。 */
+export function splitAgentIdleGreetingLines(text: string): string[] {
+  const source = text.trim()
+  if (!source) return []
+
+  const lines: string[] = []
+  let start = 0
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i]!
+    if (!SENTENCE_END.test(ch)) continue
+    if (ch === '.' && (source[i - 1] === '.' || source[i + 1] === '.')) continue
+    const piece = source.slice(start, i + 1).trim()
+    if (piece) lines.push(piece)
+    start = i + 1
+  }
+  const tail = source.slice(start).trim()
+  if (tail) lines.push(tail)
+  return lines.length > 0 ? lines : [source]
 }
