@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  Dimensions,
   Modal,
   Pressable,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   type ViewStyle
 } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface FloatingModalProps {
   visible: boolean
@@ -17,6 +19,8 @@ export interface FloatingModalProps {
   cardStyle?: ViewStyle
   /** 点击遮罩是否关闭，默认 true */
   closeOnBackdropPress?: boolean
+  /** none：立刻出现，避免底层画布上的淡入延迟 */
+  animationType?: 'none' | 'fade' | 'slide'
 }
 
 /** 半透明遮罩 + 居中浮层，不占用整页 */
@@ -26,15 +30,24 @@ export const FloatingModal: React.FC<FloatingModalProps> = ({
   children,
   maxWidth = 400,
   cardStyle,
-  closeOnBackdropPress = true
+  closeOnBackdropPress = true,
+  animationType = 'fade'
 }) => {
   const { colors } = useNativeTheme()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const cardWidth = Math.min(screenWidth - 32, maxWidth)
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={animationType}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.overlay, { minHeight: Dimensions.get('screen').height }]}>
         <Pressable
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgOverlay }]}
           onPress={closeOnBackdropPress ? onClose : undefined}
@@ -63,10 +76,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   card: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     overflow: 'hidden',
     zIndex: 1

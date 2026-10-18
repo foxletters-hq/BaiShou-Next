@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal } from '../Modal/Modal'
+import { Modal, modalActionsStyle } from '../Modal/Modal'
 import { Button } from '../Button'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { Input } from '../Input/Input'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ConfirmOptions {
   /** 对话框标题（与字符串形式的 titleOrOptions 二选一） */
@@ -27,13 +28,25 @@ export interface ChooseOption {
   centered?: boolean
 }
 
+export interface PromptOptions {
+  /** 对话框标题（与字符串形式的 title 二选一） */
+  title?: string
+  /** 自定义输入框占位提示，多行时默认"请输入内容"，单行默认"请输入名称" */
+  placeholder?: string
+  /** 多行输入框行数，默认 6 */
+  numberOfLines?: number
+  /** 是否为多行文本输入 */
+  isMultiline?: boolean
+}
+
 export interface DialogContextState {
   confirm: (message: ReactNode, titleOrOptions?: string | ConfirmOptions) => Promise<boolean>
   prompt: (
     message: ReactNode,
     defaultValue?: string,
-    title?: string,
-    isMultiline?: boolean
+    titleOrOptions?: string | PromptOptions,
+    isMultiline?: boolean,
+    extraOptions?: PromptOptions
   ) => Promise<string | null>
   /** 多选一（替代系统 ActionSheet / 多按钮 Alert） */
   choose: (
@@ -59,6 +72,8 @@ interface DialogState {
   message: ReactNode
   defaultValue?: string
   isMultiline?: boolean
+  placeholder?: string
+  numberOfLines?: number
   confirmOptions?: ConfirmOptions
   chooseOptions?: ChooseOption[]
   resolve?: (value: any) => void
@@ -167,9 +182,17 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     (
       message: ReactNode,
       defaultValue?: string,
-      title?: string,
-      isMultiline?: boolean
+      titleOrOptions?: string | PromptOptions,
+      isMultiline?: boolean,
+      extraOptions?: PromptOptions
     ): Promise<string | null> => {
+      const isOptionsObj = typeof titleOrOptions === 'object' && titleOrOptions !== null
+      const options = isOptionsObj ? titleOrOptions : extraOptions
+      const title = isOptionsObj ? options?.title : (titleOrOptions as string | undefined)
+      const multiline = isOptionsObj
+        ? (options?.isMultiline ?? Boolean(isMultiline))
+        : Boolean(isMultiline)
+
       return new Promise((resolve) => {
         setPromptValue(defaultValue || '')
         setState({
@@ -178,7 +201,9 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           message,
           title,
           defaultValue,
-          isMultiline,
+          isMultiline: multiline,
+          placeholder: options?.placeholder,
+          numberOfLines: options?.numberOfLines,
           resolve
         })
       })
@@ -191,7 +216,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return (
         <Text
           style={{
-            fontSize: 15,
+            fontSize: mobileTypography.body.fontSize,
             color: colors.textPrimary,
             marginBottom: tokens.spacing.sm,
             lineHeight: 22
@@ -207,11 +232,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   return (
     <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
       {children}
-      <Modal
-        visible={state.isOpen}
-        onClose={dismissDialog}
-        title={state.type === 'prompt' ? undefined : state.title}
-      >
+      <Modal visible={state.isOpen} onClose={dismissDialog} title={state.title}>
         {state.isOpen ? (
           <View
             style={[
@@ -223,25 +244,42 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           >
             {state.type === 'prompt' ? (
               <>
-                {typeof state.message === 'string' && state.message.trim().length > 0
-                  ? renderMessage()
-                  : null}
+                {typeof state.message === 'string'
+                  ? state.message.trim().length > 0 && state.message !== state.title
+                    ? renderMessage()
+                    : null
+                  : state.message != null
+                    ? renderMessage()
+                    : null}
                 <Input
                   autoFocus
                   value={promptValue}
                   onChangeText={setPromptValue}
                   multiline={state.isMultiline}
                   textarea={state.isMultiline}
-                  numberOfLines={state.isMultiline ? 4 : 1}
-                  placeholder={t('settings.identity_name_placeholder', '请输入名称')}
+                  numberOfLines={state.isMultiline ? (state.numberOfLines ?? 6) : 1}
+                  placeholder={
+                    state.placeholder ??
+                    (state.isMultiline
+                      ? t('common.input_content', '请输入内容')
+                      : t('settings.identity_name_placeholder', '请输入名称'))
+                  }
                   containerStyle={{ marginTop: tokens.spacing.sm }}
+                  style={
+                    state.isMultiline
+                      ? {
+                          minHeight: 140,
+                          textAlignVertical: 'top'
+                        }
+                      : undefined
+                  }
                 />
               </>
             ) : state.type === 'choose' ? (
               typeof state.message === 'string' && state.message.trim().length > 0 ? (
                 <Text
                   style={{
-                    fontSize: 14,
+                    fontSize: mobileTypography.secondary.fontSize,
                     color: colors.textSecondary,
                     marginBottom: tokens.spacing.md,
                     lineHeight: 20
@@ -255,10 +293,14 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             )}
 
             {state.type === 'choose' && state.chooseOptions && (
-              <ScrollView style={styles.chooseList} keyboardShouldPersistTaps="handled">
+              <ScrollView
+                style={styles.chooseList}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+              >
                 {state.chooseOptions.map((opt) => {
                   const labelStyle = {
-                    fontSize: 16,
+                    fontSize: mobileTypography.primary.fontSize,
                     fontWeight: '500' as const,
                     color: opt.destructive ? colors.error : colors.textPrimary
                   }
@@ -301,11 +343,11 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             )}
 
             {state.type !== 'choose' && (
-              <View style={styles.dialogActions}>
+              <View style={modalActionsStyle}>
                 {state.type !== 'alert' && (
                   <Button
                     variant="outline"
-                    style={{ flex: 1 }}
+                    size="sm"
                     onPress={() => closeDialog(state.type === 'prompt' ? null : false)}
                   >
                     {state.confirmOptions?.cancelText ?? t('common.cancel', '取消')}
@@ -313,7 +355,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 )}
                 <Button
                   variant="primary"
-                  style={state.type === 'alert' ? { width: '100%' } : { flex: 1 }}
+                  size="sm"
                   onPress={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
                   destructive={state.confirmOptions?.destructive}
                 >
@@ -324,8 +366,8 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             )}
 
             {state.type === 'choose' && (
-              <View style={styles.dialogActions}>
-                <Button variant="outline" className="w-full" onPress={() => closeDialog(null)}>
+              <View style={modalActionsStyle}>
+                <Button variant="outline" size="sm" onPress={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
                 </Button>
               </View>
@@ -353,26 +395,20 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minHeight: 0
   },
-  dialogActions: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 12,
-    marginTop: 16
-  },
   chooseList: {
     maxHeight: 320,
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   chooseItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    paddingHorizontal: sharedTokens.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   chooseItemWithLeading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight
   },
   chooseItemCentered: {
     alignItems: 'center',
@@ -381,7 +417,7 @@ const styles = StyleSheet.create({
   chooseCenteredRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   chooseLeading: {
     alignItems: 'center',
