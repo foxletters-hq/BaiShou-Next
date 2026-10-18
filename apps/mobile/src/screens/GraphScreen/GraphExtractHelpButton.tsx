@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { CircleHelp } from 'lucide-react-native'
 import { GRAPH_ALIGN_MIN_SIMILARITY_PERCENT, GRAPH_EXTRACT_ALIGN_POOL_SIZE } from '@baishou/shared'
-import { FloatingModal, HELP_ICON_SIZE, useNativeTheme } from '@baishou/ui/native'
+import { FloatingModal, SettingsHelpIconButton, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _size }) => {
   const { t } = useTranslation()
@@ -13,19 +13,10 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _siz
 
   return (
     <>
-      <Pressable
+      <SettingsHelpIconButton
         onPress={() => setOpen(true)}
-        hitSlop={8}
-        accessibilityRole="button"
         accessibilityLabel={t('graph.extract_help_aria', '抽取与抽取池说明')}
-      >
-        <CircleHelp
-          size={HELP_ICON_SIZE}
-          color={colors.textTertiary}
-          strokeWidth={2}
-          style={{ opacity: 0.8 }}
-        />
-      </Pressable>
+      />
       <FloatingModal
         visible={open}
         onClose={() => setOpen(false)}
@@ -78,28 +69,28 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _siz
 
 const styles = StyleSheet.create({
   pad: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
-    gap: 16
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.md
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   section: {
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   body: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 21
   },
   close: {
     alignSelf: 'flex-end',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   }
 })

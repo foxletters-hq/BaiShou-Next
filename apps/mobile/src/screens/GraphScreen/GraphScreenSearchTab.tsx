@@ -2,7 +2,7 @@ import React from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { translateGraphNodeType, type GraphSearchMode } from '@baishou/shared'
-import { Input, useNativeTheme } from '@baishou/ui/native'
+import { Input, SegmentedControl, useNativeTheme } from '@baishou/ui/native'
 import { GraphDiscriminatorLabel } from './GraphNodeSameNameList'
 import { styles } from './GraphScreen.styles'
 
@@ -45,36 +45,20 @@ export function GraphScreenSearchTab(props: {
         </Pressable>
       </View>
       <View style={styles.searchModeRow}>
-        {(['semantic', 'text'] as const).map((mode) => {
-          const active = props.searchMode === mode
-          return (
-            <Pressable
-              key={mode}
-              onPress={() => {
-                props.onSearchModeChange(mode)
-                if (props.query.trim()) void props.onSearch(mode)
-              }}
-              style={[
-                styles.searchModeChip,
-                {
-                  backgroundColor: active ? colors.bgSurfaceHigh : colors.bgSurface,
-                  borderColor: active ? colors.primary : colors.borderSubtle
-                }
-              ]}
-            >
-              <Text
-                style={{
-                  color: active ? colors.primary : colors.textSecondary,
-                  fontWeight: active ? '600' : '400'
-                }}
-              >
-                {mode === 'semantic'
-                  ? t('graph.search_semantic', '语义搜索')
-                  : t('graph.search_text', '文本搜索')}
-              </Text>
-            </Pressable>
-          )
-        })}
+        <SegmentedControl
+          size="small"
+          stretch={false}
+          value={props.searchMode}
+          onChange={(value) => {
+            const nextMode = value as GraphSearchMode
+            props.onSearchModeChange(nextMode)
+            if (props.query.trim()) void props.onSearch(nextMode)
+          }}
+          options={[
+            { value: 'semantic', label: t('graph.search_semantic', '语义搜索') },
+            { value: 'text', label: t('graph.search_text', '文本搜索') }
+          ]}
+        />
       </View>
       <FlatList
         data={props.hits}

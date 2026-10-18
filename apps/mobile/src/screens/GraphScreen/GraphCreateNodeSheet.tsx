@@ -6,11 +6,12 @@ import {
   isGraphNodeSameNameConflict,
   type GraphSameNameExisting
 } from '@baishou/shared'
-import { Button, FloatingModal, Input, useNativeTheme } from '@baishou/ui/native'
+import { Button, FloatingModal, Input, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
 import type { AppDatabase } from '@baishou/database'
 import { mobileCreateNode, mobileFindNodeByName } from '@/src/services/mobile-graph.service'
 import { mobileSplitGraphNode } from '@/src/services/mobile-graph-split'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const CREATE_NODE_TYPES = Object.keys(GRAPH_NODE_TYPE_LABEL_FALLBACKS).filter((t) => t !== 'entry')
 
@@ -152,12 +153,18 @@ export function GraphCreateNodeSheet(props: {
 
   return (
     <FloatingModal visible={props.visible} onClose={props.onClose} closeOnBackdropPress={!saving}>
-      <View style={{ padding: 20, gap: 10 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
+      <View style={{ padding: sharedTokens.spacing.mdPlus, gap: sharedTokens.spacing.smPlus }}>
+        <Text
+          style={{
+            color: colors.textPrimary,
+            fontSize: mobileTypography.title.fontSize,
+            fontWeight: mobileTypography.title.fontWeight
+          }}
+        >
           {t('graph.create_node', '新建节点')}
         </Text>
         <Input label={t('graph.label_name', '名称')} value={name} onChangeText={setName} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: sharedTokens.spacing.sm }}>
           {CREATE_NODE_TYPES.map((type) => {
             const active = nodeType === type
             return (
@@ -165,15 +172,18 @@ export function GraphCreateNodeSheet(props: {
                 key={type}
                 onPress={() => setNodeType(type)}
                 style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
+                  paddingHorizontal: sharedTokens.spacing.smPlus,
+                  paddingVertical: sharedTokens.spacing.xsPlus,
+                  borderRadius: sharedTokens.radius.full,
                   borderWidth: 1,
                   borderColor: active ? colors.primary : colors.borderSubtle
                 }}
               >
                 <Text
-                  style={{ color: active ? colors.primary : colors.textSecondary, fontSize: 12 }}
+                  style={{
+                    color: active ? colors.primary : colors.textSecondary,
+                    fontSize: mobileTypography.caption.fontSize
+                  }}
                 >
                   {t(`graph.node_type.${type}`, GRAPH_NODE_TYPE_LABEL_FALLBACKS[type] ?? type)}
                 </Text>
@@ -195,8 +205,14 @@ export function GraphCreateNodeSheet(props: {
           placeholder={t('graph.aliases_placeholder', '逗号分隔')}
         />
         {conflict ? (
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18 }}>
+          <View style={{ gap: sharedTokens.spacing.sm }}>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: mobileTypography.secondary.fontSize,
+                lineHeight: 18
+              }}
+            >
               {t(
                 'graph.same_name_exists',
                 '已有同类型同名节点「{{name}}」。请打开该节点，或换一个名称。',
@@ -221,26 +237,40 @@ export function GraphCreateNodeSheet(props: {
             />
           </View>
         ) : null}
-        {error ? <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text> : null}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16 }}>
-          <Button variant="outlined" disabled={saving || props.busy} onPress={props.onClose}>
+        {error ? (
+          <Text style={{ color: colors.error, fontSize: mobileTypography.caption.fontSize }}>
+            {error}
+          </Text>
+        ) : null}
+        <View style={modalActionsStyle}>
+          <Button
+            size="sm"
+            variant="outlined"
+            disabled={saving || props.busy}
+            onPress={props.onClose}
+          >
             {t('common.cancel', '取消')}
           </Button>
           {conflict ? (
             <>
               <Button
+                size="sm"
                 variant="outlined"
                 disabled={saving}
                 onPress={() => props.onOpenExisting(conflict.id)}
               >
                 {t('graph.open_existing_node', '打开已有节点')}
               </Button>
-              <Button disabled={saving} onPress={() => void registerAnother()}>
+              <Button size="sm" disabled={saving} onPress={() => void registerAnother()}>
                 {t('graph.register_another_entity', '登记为另一个实体')}
               </Button>
             </>
           ) : (
-            <Button disabled={saving || props.busy || !name.trim()} onPress={() => void submit()}>
+            <Button
+              size="sm"
+              disabled={saving || props.busy || !name.trim()}
+              onPress={() => void submit()}
+            >
               {t('graph.create_node_submit', '创建')}
             </Button>
           )}

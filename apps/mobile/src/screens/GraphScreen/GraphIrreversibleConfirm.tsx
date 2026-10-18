@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
+import { Button, FloatingModal, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const CONFIRM_DELAY_MS = 3000
 
@@ -49,36 +50,63 @@ export function GraphIrreversibleConfirm(props: {
       onClose={props.onCancel}
       closeOnBackdropPress={!props.busy}
     >
-      <View style={{ padding: 20, gap: 12 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
+      <View style={{ padding: sharedTokens.spacing.mdPlus, gap: sharedTokens.spacing.mdTight }}>
+        <Text
+          style={{
+            color: colors.textPrimary,
+            fontSize: mobileTypography.title.fontSize,
+            fontWeight: mobileTypography.title.fontWeight
+          }}
+        >
           {props.title}
         </Text>
-        <Text style={{ color: colors.error, fontSize: 14, fontWeight: '600', lineHeight: 20 }}>
-          {props.warning}
-        </Text>
+        {(() => {
+          const warningText = props.warning
+            ? props.warning.replace(/\{\{\s*survivor\s*\}\}/g, props.survivorName || '').replace(
+                /\{\{\s*losers\s*\}\}/g,
+                (props.losers || [])
+                  .map((n) => n.name)
+                  .filter(Boolean)
+                  .join('、')
+              )
+            : ''
+          return (
+            <Text
+              style={{
+                color: colors.error,
+                fontSize: mobileTypography.secondary.fontSize,
+                fontWeight: '600',
+                lineHeight: 20
+              }}
+            >
+              {warningText}
+            </Text>
+          )
+        })()}
         {props.survivorName ? (
-          <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
+          <Text
+            style={{ color: colors.textPrimary, fontSize: mobileTypography.secondary.fontSize }}
+          >
             {t('graph.merge_keep', '保留 · {{name}}', { name: props.survivorName })}
           </Text>
         ) : null}
         {(props.losers ?? []).map((n) => (
-          <Text key={n.id} style={{ color: colors.textSecondary, fontSize: 13 }}>
+          <Text
+            key={n.id}
+            style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+          >
             {t('graph.merge_absorb', '并入 · {{name}}', { name: n.name })}
           </Text>
         ))}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 8 }}>
-          <Pressable disabled={props.busy} onPress={props.onCancel}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-              {t('common.cancel', '取消')}
-            </Text>
-          </Pressable>
-          <Pressable disabled={!ready} onPress={props.onConfirm}>
-            <Text style={{ color: ready ? colors.error : colors.textSecondary, fontWeight: '600' }}>
-              {ready
-                ? t('graph.merge_confirm', '确认合并')
-                : t('graph.merge_confirm_wait', '请等待 {{sec}} 秒', { sec: remainSec })}
-            </Text>
-          </Pressable>
+        <View style={modalActionsStyle}>
+          <Button size="sm" variant="outlined" isDisabled={props.busy} onPress={props.onCancel}>
+            {t('common.cancel', '取消')}
+          </Button>
+          <Button size="sm" destructive isDisabled={!ready} onPress={props.onConfirm}>
+            {ready
+              ? t('graph.merge_confirm', '确认合并')
+              : t('graph.merge_confirm_wait', '请等待 {{sec}} 秒', { sec: remainSec })}
+          </Button>
         </View>
       </View>
     </FloatingModal>

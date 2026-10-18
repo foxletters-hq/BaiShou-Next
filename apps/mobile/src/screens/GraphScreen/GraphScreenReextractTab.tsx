@@ -32,7 +32,7 @@ export function GraphScreenReextractTab(props: {
             styles.card,
             {
               backgroundColor: colors.bgSurface,
-              borderColor: colors.borderSubtle
+              borderColor: colors.borderControl
             }
           ]}
         >
@@ -40,7 +40,7 @@ export function GraphScreenReextractTab(props: {
             {item.date || item.filePath}
           </Text>
           <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>{item.filePath}</Text>
-          <View style={styles.row}>
+          <View style={[styles.row, { justifyContent: 'flex-end', alignItems: 'center' }]}>
             {(() => {
               const q = props.queueByPath.get(normalizeGraphFilePath(item.filePath))
               if (q?.status === 'running') {
