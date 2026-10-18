@@ -1,7 +1,7 @@
 .preview {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 0 0 8px 8px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   border: 1px solid var(--border-subtle);
   border-top: none;
   background: var(--bg-code);

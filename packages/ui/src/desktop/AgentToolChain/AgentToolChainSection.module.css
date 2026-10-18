@@ -1,6 +1,6 @@
 .root {
   width: 100%;
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -21,14 +21,14 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
   min-width: 0;
   min-height: 22px;
-  padding: 2px 4px 2px 0;
+  padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) 0;
   margin: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   font-family: inherit;
@@ -70,7 +70,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
   flex: 1;
 }
@@ -78,7 +78,7 @@
 .title {
   flex-shrink: 0;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-secondary);
@@ -91,7 +91,7 @@
 
 .sep {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 20px;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
   user-select: none;
@@ -104,7 +104,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
@@ -118,7 +118,7 @@
 
 .duration {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-variant-numeric: tabular-nums;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
   font-weight: 400;
@@ -127,7 +127,7 @@
 .chevron {
   flex-shrink: 0;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
-  transition: transform 0.15s ease-out;
+  transition: transform var(--duration-fast) ease-out;
 }
 
 .chevronOpen {
@@ -143,8 +143,8 @@
 .contentInner {
   overflow: hidden;
   min-width: 0;
-  margin: 2px 0 8px 22px;
-  padding: 8px 10px;
+  margin: var(--spacing-2xs) 0 var(--spacing-sm) var(--spacing-md-plus);
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   border: 1px solid var(--border-muted);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);

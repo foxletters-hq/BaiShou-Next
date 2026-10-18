@@ -2,16 +2,16 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  margin: 4px 0 10px;
-  padding: 12px 14px 14px;
+  margin: var(--spacing-xs) 0 var(--spacing-sm-plus);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug) var(--spacing-md-snug);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface, var(--bg-primary));
 }
 
 .label {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   line-height: 16px;
   letter-spacing: 0.02em;
@@ -19,12 +19,12 @@
 }
 
 .questionBlock + .questionBlock {
-  margin-top: 14px;
+  margin-top: var(--spacing-md-snug);
 }
 
 .question {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 400;
   line-height: 1.65;
   color: var(--text-primary);
@@ -35,20 +35,20 @@
 .options {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
+  gap: var(--spacing-xs-plus);
+  margin-top: var(--spacing-md-tight);
 }
 
 .option {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   border: 1px solid var(--border-control, var(--border-subtle));
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   word-break: break-word;
   text-align: left;
@@ -71,13 +71,13 @@
 
 .customToggle,
 .customSubmit {
-  margin-top: 10px;
-  padding: 6px 10px;
+  margin-top: var(--spacing-sm-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.4;
   cursor: pointer;
 }
@@ -93,19 +93,19 @@
 }
 
 .customBox {
-  margin-top: 10px;
+  margin-top: var(--spacing-sm-plus);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .customInput {
   box-sizing: border-box;
   width: 100%;
   min-height: 72px;
-  padding: 8px 10px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   border: 1px solid var(--border-control, var(--border-subtle));
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
@@ -115,7 +115,7 @@
 .customActions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .optionSelected {
@@ -125,8 +125,8 @@
 }
 
 .status {
-  margin: 12px 0 0;
-  font-size: 13px;
+  margin: var(--spacing-md-tight) 0 0;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
 }
@@ -135,14 +135,14 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
-  margin-top: 12px;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md-tight);
 }
 
 .pagerProgress {
   margin: 0;
   min-width: 48px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 16px;
   text-align: center;
   color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
@@ -156,7 +156,7 @@
   height: 28px;
   padding: 0;
   border: 1px solid var(--border-control, var(--border-subtle));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;

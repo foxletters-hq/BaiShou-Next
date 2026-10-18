@@ -2,17 +2,17 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 14px;
+  gap: var(--spacing-sm-plus);
+  padding: var(--spacing-md-snug) var(--spacing-md);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  animation: agentGateDockIn 160ms ease-out;
+  animation: agentGateDockIn var(--duration-fast) ease-out;
 }
 
 .dockInline {
-  margin: 0 0 10px;
+  margin: 0 0 var(--spacing-sm-plus);
 }
 
 .dockOverlayHost {
@@ -22,7 +22,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 16px 108px;
+  padding: 0 var(--spacing-md) 108px;
   pointer-events: none;
 }
 
@@ -44,12 +44,12 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--settings-font-section-size);
   font-weight: 600;
   color: var(--text-primary);
   /* 程序化 focus 标题仅用于无障碍落焦，不要系统默认黄框 */
@@ -64,7 +64,7 @@
 .queueNav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .queueNavBtn {
@@ -93,14 +93,14 @@
 
 .queueLabel {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-tertiary, var(--text-secondary));
   white-space: nowrap;
 }
 
 .description {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.55;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -108,13 +108,13 @@
 
 .meta {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-tertiary, var(--text-secondary));
 }
 
 .hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -201,41 +201,41 @@
 
 .commandBlock {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--text-primary);
 }
 
 .techDetails {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
 }
 
 .techDetails summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-tertiary, var(--text-secondary));
 }
 
 .techDetailsBody {
-  margin-top: 6px;
+  margin-top: var(--spacing-xs-plus);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .questionList {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
 }
 
 .questionBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .questionTitle {
@@ -250,19 +250,19 @@
 .options {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
+  gap: var(--spacing-xs-plus);
+  margin-top: var(--spacing-xs-plus);
 }
 
 .option {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
   text-align: left;
   border-radius: var(--radius-sm);
   border: none;
-  padding: 6px 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
   background: transparent;
   cursor: pointer;
   color: var(--text-primary);
@@ -304,21 +304,21 @@
 .optionLabel {
   font-size: var(--ui-fs-md);
   line-height: 1.45;
-  padding-top: 2px;
+  padding-top: var(--spacing-2xs);
 }
 
 .askFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
 }
 
 .askPager {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
 }
 
@@ -332,31 +332,31 @@
 .askActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   margin-left: auto;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
   justify-content: flex-end;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .btn {
   border: 1px solid var(--border-control);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 13px;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   cursor: pointer;
   background: var(--bg-surface);
   color: var(--text-primary);
   outline: none;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .btn:focus,
@@ -388,17 +388,17 @@
 .feedback {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .feedbackInput {
   width: 100%;
   min-height: 72px;
   resize: vertical;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--form-field-border, var(--border-control));
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  font-size: var(--settings-font-desc-size);
   font-family: inherit;
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
@@ -418,16 +418,16 @@
 
 .feedbackActions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   justify-content: flex-end;
 }
 
 .confirmPanel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface-high);
 }
