@@ -13,6 +13,36 @@ export type ParsedS3ListResponse = {
   nextContinuationToken?: string
 }
 
+const XML_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'"
+}
+
+/** 只展开一次预定义实体和合法 XML 字符引用，避免改写文件名中的字面量实体。 */
+function decodeXmlText(text: string): string {
+  return text.replace(
+    /&(amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);/g,
+    (reference, entity: string) => {
+      if (!entity.startsWith('#')) return XML_ENTITIES[entity] ?? reference
+      const codePoint = entity.startsWith('#x')
+        ? Number.parseInt(entity.slice(2), 16)
+        : Number.parseInt(entity.slice(1), 10)
+      // 无效引用保留原文；不让越界码点或孤立代理项破坏整页列举。
+      const isXmlCharacter =
+        codePoint === 0x09 ||
+        codePoint === 0x0a ||
+        codePoint === 0x0d ||
+        (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+        (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+        (codePoint >= 0x10000 && codePoint <= 0x10ffff)
+      return isXmlCharacter ? String.fromCodePoint(codePoint) : reference
+    }
+  )
+}
+
 /** 解析 ListObjectsV2 XML 单页响应 */
 export function parseS3ListObjectsXml(xml: string): ParsedS3ListResponse {
   const objects: S3ListedObject[] = []
@@ -25,7 +55,7 @@ export function parseS3ListObjectsXml(xml: string): ParsedS3ListResponse {
     const lmMatch = block.match(/<LastModified>([^<]*)<\/LastModified>/)
     const sizeMatch = block.match(/<Size>(\d+)<\/Size>/)
     objects.push({
-      key: keyMatch[1],
+      key: decodeXmlText(keyMatch[1]),
       lastModified: lmMatch?.[1],
       size: sizeMatch ? parseInt(sizeMatch[1]!, 10) : 0
     })
@@ -37,7 +67,7 @@ export function parseS3ListObjectsXml(xml: string): ParsedS3ListResponse {
   return {
     objects,
     isTruncated: truncatedMatch?.[1] === 'true',
-    nextContinuationToken: tokenMatch?.[1]
+    nextContinuationToken: tokenMatch?.[1] ? decodeXmlText(tokenMatch[1]) : undefined
   }
 }
 

@@ -1,9 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Eye } from 'lucide-react-native'
-import { isVisionModel } from '@baishou/shared'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { ModelVisionBadgeProps } from './ModelVisionBadge'
+import { useIsVisionModel } from './useIsVisionModel'
 
 export function ModelVisionBadge({
   modelId,
@@ -12,8 +12,9 @@ export function ModelVisionBadge({
   style
 }: ModelVisionBadgeProps) {
   const { t } = useTranslation()
+  const supported = useIsVisionModel(modelId, providerKey)
 
-  if (!isVisionModel(modelId, providerKey)) {
+  if (!supported) {
     return null
   }
 

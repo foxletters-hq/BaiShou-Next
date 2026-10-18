@@ -48,9 +48,8 @@ Do not push directly to upstream `main`; merge via Pull Request.
 
 Before opening a **code** Pull Request, sign the [Organization CLA](../../legal/CLA-organization.md) (valid across foxletters-hq repos):
 
-1. Find the **cla-assistant** comment on your PR
-2. Click **Sign in with GitHub to agree**, then **I agree**
-3. The CLA status check turns green when done
+- **Option 1 (Recommended, sign directly without waiting)**: Visit **[CLA Assistant Signing Page](https://cla-assistant.io/foxletters-hq/BaiShou-Next)**, sign in with GitHub, and click **I agree**. One-time signature applies across all repositories in the organization.
+- **Option 2**: After creating a PR, find the **cla-assistant** comment and click **Sign in with GitHub to agree**.
 
 **Documentation-only PRs are usually exempt.** Corporate contributors must also sign the [Corporate CLA](../../legal/CLA-corporate.md).
 

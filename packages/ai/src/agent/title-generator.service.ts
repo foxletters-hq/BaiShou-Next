@@ -99,7 +99,7 @@ export class TitleGeneratorService {
     reasoningEffort?: ReasoningEffortSetting
   ): Promise<void> {
     try {
-      const baseModel = provider.getLanguageModel(modelId)
+      const baseModel = provider.getLanguageModel(modelId, { sessionId })
       const model = wrapLanguageModelWithMiddlewares(baseModel, {
         providerType: provider.config?.type || 'openai',
         providerId: provider.config?.id,

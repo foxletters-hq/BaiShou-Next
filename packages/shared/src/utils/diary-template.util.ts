@@ -115,10 +115,13 @@ export function resolveDiaryWritingStyleSupplement(
   return ''
 }
 
-/** 由编辑器模板推导助手可参考的日记书写说明。 */
+/**
+ * 由编辑器模板推导助手可参考的日记书写说明。
+ * 系统提示词中不渲染具体时刻：时间占位符保持原样，当前时刻来自消息的 <message-time>，
+ * 否则 system 每分钟变化会破坏前缀缓存。
+ */
 export function buildDiaryFormatRulesFromTemplates(
-  config: DiaryTemplateConfig | null | undefined,
-  referenceDate: Date = new Date()
+  config: DiaryTemplateConfig | null | undefined
 ): string {
   const newEntryTemplate = resolveDiaryTemplate(
     config?.newEntryTemplate,
@@ -128,22 +131,20 @@ export function buildDiaryFormatRulesFromTemplates(
     config?.appendBlockTemplate,
     DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
   )
-  const newEntryExample = resolveDiaryNewEntryContent(config, referenceDate).replace(/\u200B$/, '')
-  const appendExample = resolveDiaryAppendBlock(config, referenceDate).replace(/\u200B$/, '')
 
   return [
     '日记正文由你完整编写。系统不会自动添加、识别、删除或改写时间标题；以下编辑器模板仅作为书写结构参考：',
+    '- 模板中的时间占位符在书写时按本轮发送时刻替换：{time} 为 HH:mm，{date} 为 yyyy-MM-dd，{datetime} 为 yyyy-MM-dd HH:mm。',
+    '- 当前时刻取最新一条用户消息的 <message-time>；若对话中没有 <message-time>，请调用 current_time 工具获取。',
     '',
     '关于 diary_write 新建日记：',
     `- 新建日记模板：${newEntryTemplate}`,
-    `- 按当前时间解析后的示例：${JSON.stringify(newEntryExample)}`,
     '- content 必须包含准备写入的完整 Markdown 正文。需要时间标题时，请参考上述模板自行写入，不要依赖系统补写。',
     '- 可根据用户要求和记录内容自行决定是否添加时间标题或小标题，并保持正文结构清楚。',
     '- 标签请直接写进 content，例如在对应标题下写 `#工作 #会议`，空一行后再写正文。',
     '',
     '关于 diary_edit 追加模式（append，默认首选）：',
     `- 追加记录参考模板：${appendTemplate}`,
-    `- 按当前时间解析后的参考示例：${JSON.stringify(appendExample)}`,
     '- 系统只会把 content 作为新段落追加到已有正文末尾，不会自动添加或删除时间标题。',
     '- 需要时间标题、小标题和标签时，请在 content 中完整写出；可根据本次内容自行组织。',
     '- 不要修改当天其它段落里的标签。',
@@ -161,21 +162,20 @@ export function buildDiaryFormatRulesFromTemplates(
 
 /** @deprecated 请使用 buildDiaryWritingGuidelinesForSystemPrompt */
 export function resolveDiaryAiWritingPrompt(
-  config: DiaryTemplateConfig | null | undefined,
-  referenceDate: Date = new Date()
+  config: DiaryTemplateConfig | null | undefined
 ): string {
-  return buildDiaryWritingGuidelinesForSystemPrompt(config, referenceDate)
+  return buildDiaryWritingGuidelinesForSystemPrompt(config)
 }
 
 /**
  * 构建注入 Agent 系统提示词的完整日记书写规范。
  * 模板只作为书写参考；writingStyleSupplement 承载风格/内容补充。
+ * 输出只依赖配置，不依赖当前时间，保证 system prompt 在会话内字节稳定。
  */
 export function buildDiaryWritingGuidelinesForSystemPrompt(
-  config: DiaryTemplateConfig | null | undefined,
-  referenceDate: Date = new Date()
+  config: DiaryTemplateConfig | null | undefined
 ): string {
-  const parts = [buildDiaryFormatRulesFromTemplates(config, referenceDate)]
+  const parts = [buildDiaryFormatRulesFromTemplates(config)]
   const supplement = resolveDiaryWritingStyleSupplement(config)
   if (supplement) {
     parts.push('', '补充书写说明（风格与内容要求，可结合上方模板参考）：', supplement)
@@ -184,9 +184,6 @@ export function buildDiaryWritingGuidelinesForSystemPrompt(
 }
 
 /** 设置页预览：根据当前编辑中的模板草稿生成 Agent 将看到的规范 */
-export function previewDiaryAgentWritingGuidelines(
-  draft: DiaryTemplateDraftConfig,
-  referenceDate: Date = new Date()
-): string {
-  return buildDiaryWritingGuidelinesForSystemPrompt(draft, referenceDate)
+export function previewDiaryAgentWritingGuidelines(draft: DiaryTemplateDraftConfig): string {
+  return buildDiaryWritingGuidelinesForSystemPrompt(draft)
 }

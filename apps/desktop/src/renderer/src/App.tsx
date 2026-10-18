@@ -14,6 +14,7 @@ import { GlobalInputContextMenu } from '@baishou/ui/desktop/ContextMenu'
 import { RestoreBlockingOverlay } from '@baishou/ui/desktop/RestoreBlockingOverlay'
 import { useTranslation } from 'react-i18next'
 import { useRagRuntimeBridge } from './features/settings/hooks/useRagRuntimeBridge'
+import { applyVisionModelsRuntimeOverlay } from '@baishou/shared'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { ensureDesktopAgentGateInboxBridge } from './features/agent/agent-gate-inbox-bridge'
 import { ensureDesktopAgentGateNotificationBridge } from './features/agent/agent-gate-notification-bridge'
@@ -306,6 +307,22 @@ export function App() {
   useEffect(() => {
     if (!import.meta.env.DEV) return
     void import('./dev/memory-leak-probe').then((m) => m.installMemoryLeakProbe())
+  }, [])
+
+  useEffect(() => {
+    const invoke = (
+      window as { electron?: { ipcRenderer?: { invoke?: (channel: string) => Promise<unknown> } } }
+    ).electron?.ipcRenderer?.invoke
+    if (!invoke) return
+    void invoke('vision:get-overlay')
+      .then((ids: unknown) => {
+        if (Array.isArray(ids) && ids.every((id) => typeof id === 'string')) {
+          applyVisionModelsRuntimeOverlay(ids)
+        }
+      })
+      .catch(() => {
+        // 离线时沿用打包快照 + 正则
+      })
   }, [])
 
   useEffect(() => {
