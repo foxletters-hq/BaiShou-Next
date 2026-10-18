@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Input, Switch, useNativeTheme } from '@baishou/ui/native'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { agentGateSettingsStyles as styles } from './agent-gate-settings.styles'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function AgentGateTrustCard(props: {
   isFullTrust: boolean
@@ -68,7 +69,12 @@ export function AgentGateTrustCard(props: {
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('agent.gate.repeat_threshold', '同参连打再确认阈值')}
       </Text>
-      <Text style={[styles.hint, { color: colors.textSecondary, marginBottom: 6 }]}>
+      <Text
+        style={[
+          styles.hint,
+          { color: colors.textSecondary, marginBottom: sharedTokens.spacing.xsPlus }
+        ]}
+      >
         {t(
           'agent.gate.repeat_threshold_hint',
           '相同指纹连续请求达到该次数时再次弹出；0 关闭。确认卡会显示短指纹。'
@@ -78,7 +84,7 @@ export function AgentGateTrustCard(props: {
         value={String(threshold)}
         keyboardType="number-pad"
         onChangeText={onThresholdChange}
-        containerStyle={{ marginTop: 4 }}
+        containerStyle={{ marginTop: sharedTokens.spacing.xs }}
       />
     </SettingsGroupCard>
   )

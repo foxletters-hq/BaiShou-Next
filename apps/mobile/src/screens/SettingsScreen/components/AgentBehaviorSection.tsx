@@ -1,17 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  useNativeTheme,
-  useNativeToast,
-  useDialog,
-  Input,
-  Button,
-  Switch
-} from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const AgentBehaviorSection: React.FC = () => {
   const { t } = useTranslation()
@@ -168,22 +162,6 @@ export const AgentBehaviorSection: React.FC = () => {
 
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('settings.restore_last_session_on_return', '返回后继续上次会话')}
-        </Text>
-        <Text style={[styles.hint, { color: colors.textTertiary }]}>
-          {t(
-            'settings.restore_last_session_on_return_hint',
-            '关闭后进入伙伴页会停留在空白对话，不再自动打开上次会话。'
-          )}
-        </Text>
-        <Switch
-          value={config.restoreLastSessionOnReturn !== false}
-          onValueChange={(checked) => updateConfig({ restoreLastSessionOnReturn: checked })}
-        />
-      </View>
-
-      <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.pinned_assistant_ids')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
@@ -197,10 +175,16 @@ export const AgentBehaviorSection: React.FC = () => {
       </View>
 
       <View style={styles.actions}>
-        <Button variant="outline" className="flex-1" onPress={handleResetDefaults}>
+        <Button size="sm" variant="outline" className="flex-1" onPress={handleResetDefaults}>
           {t('settings.reset_defaults')}
         </Button>
-        <Button variant="primary" className="flex-1" onPress={handleSave} isDisabled={!dirty}>
+        <Button
+          size="sm"
+          variant="primary"
+          className="flex-1"
+          onPress={handleSave}
+          isDisabled={!dirty}
+        >
           {t('common.save')}
         </Button>
       </View>
@@ -210,37 +194,37 @@ export const AgentBehaviorSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 20,
-    marginBottom: 24
+    marginTop: sharedTokens.spacing.mdPlus,
+    marginBottom: sharedTokens.spacing.lg
   },
   heading: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   headingHint: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   card: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   label: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   hint: {
-    fontSize: 12,
-    marginBottom: 10,
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.smPlus,
     lineHeight: 18
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8
+    gap: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.sm
   }
 })

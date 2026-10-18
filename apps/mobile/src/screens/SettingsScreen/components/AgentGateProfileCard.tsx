@@ -13,6 +13,7 @@ import {
 import { Input, SegmentedControl, useNativeTheme } from '@baishou/ui/native'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { agentGateSettingsStyles as styles } from './agent-gate-settings.styles'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 function ProfileRulesReadonly({
   title,
@@ -84,7 +85,12 @@ export function AgentGateProfileCard(props: {
         rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Companion]]}
         colors={colors}
       />
-      <Text style={[styles.profileTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+      <Text
+        style={[
+          styles.profileTitle,
+          { color: colors.textPrimary, marginTop: sharedTokens.spacing.mdTight }
+        ]}
+      >
         {t('agent.gate.profile_workspace', '工作区会话')}
       </Text>
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
@@ -104,7 +110,9 @@ export function AgentGateProfileCard(props: {
       />
 
       <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-      <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 8 }]}>
+      <Text
+        style={[styles.label, { color: colors.textPrimary, marginBottom: sharedTokens.spacing.sm }]}
+      >
         {t('agent.gate.user_rules', '我的额外规则')}
       </Text>
       {permissionRules.length === 0 ? (
@@ -138,7 +146,7 @@ export function AgentGateProfileCard(props: {
         placeholder="action"
         autoCapitalize="none"
         autoCorrect={false}
-        containerStyle={{ marginTop: 8 }}
+        containerStyle={{ marginTop: sharedTokens.spacing.sm }}
       />
       <Input
         value={rulePattern}
@@ -146,7 +154,7 @@ export function AgentGateProfileCard(props: {
         placeholder={t('agent.gate.rule_pattern_optional', '可选 pattern')}
         autoCapitalize="none"
         autoCorrect={false}
-        containerStyle={{ marginTop: 8 }}
+        containerStyle={{ marginTop: sharedTokens.spacing.sm }}
       />
       <View style={styles.effectRow}>
         {([AgentGateEffect.Allow, AgentGateEffect.Ask, AgentGateEffect.Deny] as const).map(
@@ -168,7 +176,7 @@ export function AgentGateProfileCard(props: {
                   style={{
                     color: active ? colors.primary : colors.textSecondary,
                     fontWeight: active ? '600' : '400',
-                    fontSize: 13
+                    fontSize: mobileTypography.secondary.fontSize
                   }}
                 >
                   {effect}
