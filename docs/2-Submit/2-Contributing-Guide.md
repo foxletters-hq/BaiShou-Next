@@ -48,9 +48,8 @@
 
 向本项目提交**包含代码变更**的 Pull Request 前，须签署 [组织级 CLA](../../legal/CLA-organization.md)（foxletters-hq 下多仓通用）：
 
-1. 打开 PR 后，在评论区找到 **cla-assistant** 的提示
-2. 点击 **Sign in with GitHub to agree**，阅读协议后点 **I agree**
-3. PR 的 CLA 状态检查变为 ✅ 即完成
+- **方式一（推荐，手动直签无需等待）**：直接访问 **[CLA Assistant 签署页面](https://cla-assistant.io/foxletters-hq/BaiShou-Next)**，登录 GitHub 点击 **I agree** 授权签署即可。签署一次全仓库通用生效。
+- **方式二**：提交 PR 后，在评论区找到 **cla-assistant** 的提示，点击 **Sign in with GitHub to agree** 完成签署。
 
 **纯文档 PR 通常无需签署。** 企业员工代表公司贡献时，另须签署 [企业 CLA](../../legal/CLA-corporate.md)。
 

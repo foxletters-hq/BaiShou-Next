@@ -71,7 +71,7 @@ export async function prepareAgentSessionContext(input: {
     diarySearcher
   } = options
 
-  const baseModel = provider.getLanguageModel(modelId)
+  const baseModel = provider.getLanguageModel(modelId, { sessionId })
   const effectiveProviderType = resolveEffectiveProviderType(
     provider.config?.type || 'openai',
     modelId

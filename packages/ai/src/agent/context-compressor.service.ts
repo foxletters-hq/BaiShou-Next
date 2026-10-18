@@ -482,7 +482,7 @@ export class ContextCompressorService {
     thoughtDurationMs: number
     summaryDurationMs: number
   } | null> {
-    const baseModel = provider.getLanguageModel(modelId)
+    const baseModel = provider.getLanguageModel(modelId, { sessionId })
     const model = wrapLanguageModelWithMiddlewares(baseModel, {
       providerType,
       modelId,

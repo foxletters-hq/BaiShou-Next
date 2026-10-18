@@ -7,6 +7,8 @@
 import {
   applyDeepSeekPeakCost,
   applyReasoningCatalogFromModelsDevApi,
+  applyVisionModelsRuntimeOverlay,
+  extractVisionModelIdsFromModelsDev,
   logger
 } from '@baishou/shared'
 
@@ -168,6 +170,14 @@ export class ModelPricingService {
 
       const data = await response.json()
       applyReasoningCatalogFromModelsDevApi(data)
+      try {
+        applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
+      } catch (visionError) {
+        logger.warn(
+          '[ModelPricingService] Failed to apply vision overlay from models.dev:',
+          visionError as Error
+        )
+      }
       this.prices.clear()
 
       for (const providerId of Object.keys(data)) {

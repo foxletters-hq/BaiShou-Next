@@ -1,11 +1,14 @@
 import type { EmbeddingModel, LanguageModel } from 'ai'
 import { type AiProviderModel, isChatModelForConnectionTest, ProviderType } from '@baishou/shared'
-import { IAIProvider } from '../provider.interface'
+import { IAIProvider, type LanguageModelRequestContext } from '../provider.interface'
 import { assertAsciiApiKey } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from '../provider-api-error.util'
 import { probeProviderConnection, wrapConnectionTestError } from '../provider-connection-test.util'
-import { OPENCODE_GO_DEFAULT_DIALOGUE_MODEL } from './opencodego.constants'
+import {
+  OPENCODE_GO_CONNECTION_TEST_SESSION_ID,
+  OPENCODE_GO_DEFAULT_DIALOGUE_MODEL
+} from './opencodego.constants'
 import { createOpenCodeGoLanguageModel } from './opencodego.language-model.factory'
 import { fetchOpenCodeGoModelIds } from './opencodego.models-client'
 
@@ -16,10 +19,10 @@ export class OpenCodeGoAdaptedProvider implements IAIProvider {
     this.config = { ...config, type: ProviderType.OpenCodeGo }
   }
 
-  getLanguageModel(modelId?: string): LanguageModel {
+  getLanguageModel(modelId?: string, request?: LanguageModelRequestContext): LanguageModel {
     const targetModel =
       modelId || this.config.defaultDialogueModel || OPENCODE_GO_DEFAULT_DIALOGUE_MODEL
-    return createOpenCodeGoLanguageModel(this.config, targetModel)
+    return createOpenCodeGoLanguageModel(this.config, targetModel, request?.sessionId)
   }
 
   getEmbeddingModel(_modelId?: string): EmbeddingModel {
@@ -67,7 +70,9 @@ export class OpenCodeGoAdaptedProvider implements IAIProvider {
 
     try {
       await probeProviderConnection({
-        model: this.getLanguageModel(modelToTest),
+        model: this.getLanguageModel(modelToTest, {
+          sessionId: OPENCODE_GO_CONNECTION_TEST_SESSION_ID
+        }),
         modelId: modelToTest,
         providerType: this.config.type,
         baseUrl: this.config.baseUrl

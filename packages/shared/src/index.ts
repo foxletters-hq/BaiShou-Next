@@ -76,6 +76,7 @@ export * from './utils/reasoning-catalog-extract'
 export * from './utils/reasoning-catalog-store'
 export * from './utils/provider-vision-models'
 export * from './utils/vision-models.snapshot'
+export * from './utils/vision-models.runtime'
 export * from './utils/reasoning-models.snapshot'
 
 // Mock 数据与类型（供开发阶段跨包使用）
