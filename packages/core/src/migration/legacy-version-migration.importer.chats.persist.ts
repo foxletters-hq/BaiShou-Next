@@ -1,4 +1,5 @@
 import * as path from '../fs/path.util'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   LEGACY_IMPORT_MESSAGE_PAGE_SIZE,
   LEGACY_IMPORT_PART_PAGE_SIZE,
@@ -9,6 +10,22 @@ import {
   buildLegacySessionAggregate,
   toUnixSec
 } from './legacy-version-migration.importer.chats.build'
+
+export function resolveTargetVaultId(
+  deps: LegacyVersionMigrationImporterDeps,
+  targetVaultName: string
+): string {
+  try {
+    const vaults = deps.vaultService?.getAllVaults?.()
+    if (Array.isArray(vaults)) {
+      const match = vaults.find((v) => v.name === targetVaultName)
+      if (match?.id) return match.id
+    }
+  } catch {
+    // best-effort
+  }
+  return deriveLegacyVaultId(targetVaultName)
+}
 
 export async function resolveLegacyOrderBy(
   deps: LegacyVersionMigrationImporterDeps,
@@ -111,31 +128,69 @@ export async function replaceTargetSessionRows(
   await deps.executeRawSql(deps.sqliteClient, 'DELETE FROM agent_sessions WHERE id = ?', [
     session.id
   ])
+
+  let columns = new Set<string>()
+  try {
+    const info = await deps.executeRawSql(deps.sqliteClient, `PRAGMA table_info('agent_sessions')`)
+    columns = new Set(info.rows.map((row: any) => String(row.name)).filter(Boolean))
+  } catch {
+    // best-effort
+  }
+
+  const resolvedVaultId = session.vaultId || resolveTargetVaultId(deps, session.vaultName)
+
+  // 当未能读出列名（如纯 mock 环境且未 mock table_info），默认组装包含 vault_id 的现代 Schema
+  const hasVaultId = columns.size === 0 || columns.has('vault_id')
+  const hasVaultName = columns.has('vault_name')
+
+  const cols: string[] = ['id', 'title']
+  const vals: unknown[] = [session.id, session.title ?? null]
+
+  if (hasVaultId) {
+    cols.push('vault_id')
+    vals.push(resolvedVaultId)
+  }
+  if (hasVaultName) {
+    cols.push('vault_name')
+    vals.push(session.vaultName)
+  }
+
+  cols.push('assistant_id', 'is_pinned', 'system_prompt')
+  vals.push(session.assistantId, session.isPinned ? 1 : 0, session.systemPrompt ?? null)
+
+  if (columns.has('mounted_notebook_ids')) {
+    cols.push('mounted_notebook_ids')
+    vals.push('')
+  }
+
+  cols.push(
+    'provider_id',
+    'model_id',
+    'total_input_tokens',
+    'total_output_tokens',
+    'total_cache_read_input_tokens',
+    'total_cache_write_input_tokens',
+    'total_cost_micros',
+    'created_at',
+    'updated_at'
+  )
+  vals.push(
+    session.providerId,
+    session.modelId,
+    session.totalInputTokens,
+    session.totalOutputTokens,
+    session.totalCacheReadInputTokens,
+    session.totalCacheWriteInputTokens,
+    session.totalCostMicros,
+    toUnixSec(session.createdAt),
+    toUnixSec(session.updatedAt)
+  )
+
+  const placeholders = cols.map(() => '?').join(',')
   await deps.executeRawSql(
     deps.sqliteClient,
-    `INSERT INTO agent_sessions
-      (id, title, vault_name, assistant_id, is_pinned, system_prompt,
-       provider_id, model_id, total_input_tokens, total_output_tokens,
-       total_cache_read_input_tokens, total_cache_write_input_tokens,
-       total_cost_micros, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [
-      session.id,
-      session.title ?? null,
-      session.vaultName,
-      session.assistantId,
-      session.isPinned ? 1 : 0,
-      session.systemPrompt ?? null,
-      session.providerId,
-      session.modelId,
-      session.totalInputTokens,
-      session.totalOutputTokens,
-      session.totalCacheReadInputTokens,
-      session.totalCacheWriteInputTokens,
-      session.totalCostMicros,
-      toUnixSec(session.createdAt),
-      toUnixSec(session.updatedAt)
-    ]
+    `INSERT INTO agent_sessions (${cols.join(',')}) VALUES (${placeholders})`,
+    vals
   )
 }
 
@@ -200,6 +255,9 @@ export async function streamLegacySessionFromSource(options: {
     mappedAssistantId,
     legacyVaultName
   } = options
+  const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
+  const targetVaultId = resolveTargetVaultId(deps, targetVaultName)
+
   if (!deps.getSessionsBaseDirectory) {
     const enrichedMessages = await loadLegacyMessagesForSession(
       deps,
@@ -207,13 +265,13 @@ export async function streamLegacySessionFromSource(options: {
       oldSessionId,
       newSessionId
     )
-    const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
     await deps.upsertSessionAggregate({
       session: buildLegacySessionAggregate(
         sessionRow,
         newSessionId,
         mappedAssistantId,
-        targetVaultName
+        targetVaultName,
+        targetVaultId
       ),
       messages: enrichedMessages
     })
@@ -221,12 +279,12 @@ export async function streamLegacySessionFromSource(options: {
     return
   }
 
-  const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
   const session = buildLegacySessionAggregate(
     sessionRow,
     newSessionId,
     mappedAssistantId,
-    targetVaultName
+    targetVaultName,
+    targetVaultId
   )
   await replaceTargetSessionRows(deps, session)
 

@@ -1,3 +1,4 @@
+import { resolveVaultIdFromRecord } from '@baishou/shared'
 import {
   generateRemappedId,
   normalizeLegacyPartData,
@@ -56,12 +57,21 @@ export function buildLegacySessionAggregate(
   sessionRow: Record<string, unknown>,
   newSessionId: string,
   mappedAssistantId: string,
-  targetVaultName: string
+  targetVaultName: string,
+  targetVaultId?: string
 ) {
+  const resolvedVaultId =
+    targetVaultId ||
+    resolveVaultIdFromRecord({
+      vaultId: typeof sessionRow.vault_id === 'string' ? sessionRow.vault_id : undefined,
+      vaultName: targetVaultName
+    })
+
   return {
     id: newSessionId,
     title: sessionRow.title != null ? String(sessionRow.title) : null,
     vaultName: targetVaultName,
+    vaultId: resolvedVaultId,
     assistantId: mappedAssistantId,
     isPinned: Number(sessionRow.is_pinned) === 1,
     systemPrompt: sessionRow.system_prompt != null ? String(sessionRow.system_prompt) : undefined,

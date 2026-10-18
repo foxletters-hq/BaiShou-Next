@@ -34,9 +34,10 @@ function shouldTreatAsFactoryLatteAssistant(input: {
  */
 export async function ensureDefaultLatteAssistant(
   assistantManager: AssistantManagerService,
-  locale?: string
+  locale?: string,
+  vaultId?: string | null
 ): Promise<void> {
-  await ensureSystemLatteAssistant(assistantManager, locale)
+  await ensureSystemLatteAssistant(assistantManager, locale, vaultId)
 }
 
 /**
@@ -45,9 +46,10 @@ export async function ensureDefaultLatteAssistant(
  */
 export async function syncDefaultLatteAssistantLocale(
   assistantManager: AssistantManagerService,
-  locale?: string
+  locale?: string,
+  vaultId?: string | null
 ): Promise<void> {
-  const assistant = await assistantManager.findById(SYSTEM_LATTE_ASSISTANT_ID)
+  const assistant = await assistantManager.findById(SYSTEM_LATTE_ASSISTANT_ID, vaultId)
   if (!assistant) return
 
   if (

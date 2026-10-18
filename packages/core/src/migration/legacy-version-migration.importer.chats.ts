@@ -11,9 +11,12 @@ import {
 } from './legacy-version-migration.importer.types'
 import {
   buildLegacyMessageAggregate,
-  toDate
+  buildLegacySessionAggregate
 } from './legacy-version-migration.importer.chats.build'
-import { streamLegacySessionFromSource } from './legacy-version-migration.importer.chats.persist'
+import {
+  resolveTargetVaultId,
+  streamLegacySessionFromSource
+} from './legacy-version-migration.importer.chats.persist'
 
 export async function importLegacyChatsFromRows(
   deps: LegacyVersionMigrationImporterDeps,
@@ -86,26 +89,15 @@ export async function importLegacyChatsFromRows(
 
     try {
       const targetVaultName = await deps.resolveTargetVaultName(legacyVaultName)
+      const targetVaultId = resolveTargetVaultId(deps, targetVaultName)
       await upsertSessionAggregate({
-        session: {
-          id: newSessionId,
-          title: sessionRow.title != null ? String(sessionRow.title) : null,
-          vaultName: targetVaultName,
-          assistantId: mappedAssistantId,
-          isPinned: Number(sessionRow.is_pinned) === 1,
-          systemPrompt:
-            sessionRow.system_prompt != null ? String(sessionRow.system_prompt) : undefined,
-          providerId: sessionRow.provider_id != null ? String(sessionRow.provider_id) : '',
-          modelId: sessionRow.model_id != null ? String(sessionRow.model_id) : '',
-          totalInputTokens:
-            sessionRow.total_input_tokens != null ? Number(sessionRow.total_input_tokens) : 0,
-          totalOutputTokens:
-            sessionRow.total_output_tokens != null ? Number(sessionRow.total_output_tokens) : 0,
-          totalCostMicros:
-            sessionRow.total_cost_micros != null ? Number(sessionRow.total_cost_micros) : 0,
-          createdAt: toDate(sessionRow.created_at),
-          updatedAt: toDate(sessionRow.updated_at)
-        },
+        session: buildLegacySessionAggregate(
+          sessionRow,
+          newSessionId,
+          mappedAssistantId,
+          targetVaultName,
+          targetVaultId
+        ),
         messages: enrichedMessages
       })
       await sessionManager.flushSessionToDisk(newSessionId)

@@ -16,13 +16,15 @@ function buildLegacyAssistantInput(
   row: Record<string, unknown>,
   id: string,
   name: string,
-  avatarMap: Record<string, string>
+  avatarMap: Record<string, string>,
+  vaultId?: string
 ): InsertAssistantInput {
   const legacyAvatarPath = row.avatar_path != null ? String(row.avatar_path) : undefined
   const avatarPath = resolveLegacyAvatarPathInMap(legacyAvatarPath, avatarMap) ?? legacyAvatarPath
 
   return {
     id,
+    vaultId,
     name,
     emoji: row.emoji != null ? String(row.emoji) : undefined,
     description: row.description != null ? String(row.description) : undefined,
@@ -44,11 +46,16 @@ function buildLegacyAssistantInput(
 export async function importLegacyAssistantsFromRows(
   deps: LegacyVersionMigrationImporterDeps,
   assistants: Record<string, unknown>[],
-  options?: { assistantIdMap?: Record<string, string>; avatarMap?: Record<string, string> }
+  options?: {
+    assistantIdMap?: Record<string, string>
+    avatarMap?: Record<string, string>
+    vaultId?: string
+  }
 ): Promise<LegacyVersionMigrationImportResult> {
   const { assistantManager, onProgress } = deps
   const priorMap = options?.assistantIdMap ?? {}
   const avatarMap = options?.avatarMap ?? {}
+  const vaultId = options?.vaultId
 
   const existingNames = await deps.existingAssistantNames()
   const existingIds = new Set<string>()
@@ -77,7 +84,7 @@ export async function importLegacyAssistantsFromRows(
       }
       try {
         await assistantManager.ensureDiskFromInput(
-          buildLegacyAssistantInput(row, mappedId, String(row.name ?? mappedId), avatarMap)
+          buildLegacyAssistantInput(row, mappedId, String(row.name ?? mappedId), avatarMap, vaultId)
         )
         imported += 1
       } catch (error) {
@@ -129,7 +136,7 @@ export async function importLegacyAssistantsFromRows(
       })
 
       await assistantManager.create({
-        ...buildLegacyAssistantInput(row, newId, uniqueName, avatarMap),
+        ...buildLegacyAssistantInput(row, newId, uniqueName, avatarMap, vaultId),
         avatarPath
       })
       imported += 1

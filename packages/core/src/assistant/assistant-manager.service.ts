@@ -137,8 +137,9 @@ export class AssistantManagerService {
     const scoped = this.requireVaultId(vaultId)
     const full = await this.repo.findById(id, scoped)
     if (!full) return
+    const { vaultId: _internalVaultId, ...cleanRecord } = full
     const snapshot = {
-      ...full,
+      ...cleanRecord,
       avatarPath: toPersistedAssistantAvatarPath(full.avatarPath),
       assistantKind: normalizeAssistantKind(full.assistantKind),
       sortOrder: full.sortOrder ?? 0
@@ -189,11 +190,11 @@ export class AssistantManagerService {
     })
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, vaultIdOverride?: string | null): Promise<void> {
     if (isSystemLatteAssistantId(id)) {
       throw new Error(SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE)
     }
-    const vaultId = this.requireVaultId()
+    const vaultId = this.requireVaultId(vaultIdOverride)
     const previous = await this.repo.findById(id, vaultId)
     const previousAvatar = previous?.avatarPath ?? null
     await this.repo.delete(id, vaultId)
@@ -226,16 +227,16 @@ export class AssistantManagerService {
   }
 
   // SQLite 是热缓存，当前工作区可见性以 Assistants 目录为准
-  async findAll() {
-    const vaultId = this.tryVaultId()
+  async findAll(vaultIdOverride?: string | null) {
+    const vaultId = this.tryVaultId(vaultIdOverride)
     if (!vaultId) return []
     const items = await this.repo.findAll(vaultId)
     const fileIds = new Set((await this.fileService.listAllAssistants()).map((f) => f.id))
     return Promise.all(items.filter((i) => fileIds.has(i.id)).map((i) => this.mapAvatarOutput(i)))
   }
 
-  async findById(id: string) {
-    const vaultId = this.tryVaultId()
+  async findById(id: string, vaultIdOverride?: string | null) {
+    const vaultId = this.tryVaultId(vaultIdOverride)
     if (!vaultId) return undefined
     const item = await this.repo.findById(id, vaultId)
     if (item) return this.mapAvatarOutput(item)
@@ -374,5 +375,17 @@ export class AssistantManagerService {
         await this.repo.delete(dbRecord.id, vaultId)
       }
     }
+  }
+
+  /**
+   * 将会话关联的助手 ID 批量重绑定（用于出厂默认助手升级为官方系统助手）
+   */
+  async rebindSessionsAssistantId(
+    oldId: string,
+    newId: string,
+    vaultId?: string | null
+  ): Promise<void> {
+    const scoped = this.requireVaultId(vaultId)
+    await this.repo.rebindAssistantSessions(oldId, newId, scoped)
   }
 }
