@@ -23,7 +23,7 @@
   height: 100%;
   display: flex;
   align-items: center;
-  padding-left: 16px;
+  padding-left: var(--spacing-md);
   background: transparent;
 }
 
@@ -32,7 +32,7 @@
   display: flex;
   align-items: center;
   height: var(--tab-height);
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   -webkit-app-region: no-drag;
 }
 
@@ -46,7 +46,7 @@
   box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   pointer-events: none;
   will-change: transform, width;
   box-shadow: var(--shadow-sm);
@@ -74,18 +74,18 @@
   max-width: 168px;
   height: var(--tab-height);
   margin: 0;
-  padding: 0 14px;
+  padding: 0 var(--spacing-md-snug);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--spacing-sm);
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-card) 70%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   box-shadow: none;
   transition:
     color var(--duration-normal) var(--ease-out-cubic),
@@ -113,7 +113,7 @@
 .tabIcon {
   width: 15px;
   height: 15px;
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   margin-right: 0;
   flex-shrink: 0;
 }
@@ -137,8 +137,8 @@
 .vaultSwitcherWrapper {
   display: flex;
   align-items: center;
-  gap: 2px;
-  margin-right: 4px;
+  gap: var(--spacing-2xs);
+  margin-right: var(--spacing-xs);
   -webkit-app-region: no-drag;
 }
 
@@ -149,8 +149,8 @@
 
 .vaultSwitcher {
   height: 36px;
-  padding: 0 12px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -158,7 +158,7 @@
   background: transparent;
   font: inherit;
   -webkit-app-region: no-drag;
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
 }
 
 .vaultSwitcher:hover {
@@ -168,16 +168,16 @@
 .actionIconSm {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .vaultName {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
-  margin: 0 8px 0 4px;
+  margin: 0 var(--spacing-sm) 0 var(--spacing-xs);
 }
 
 .actionBtn {
@@ -185,13 +185,13 @@
   height: 36px;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin: 0 4px;
-  transition: background-color 0.2s;
+  margin: 0 var(--spacing-xs);
+  transition: background-color var(--duration-swift);
 }
 
 .actionBtn:hover {
@@ -199,7 +199,7 @@
 }
 
 .actionIcon {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   color: var(--text-secondary);
 }
 
@@ -207,7 +207,7 @@
   width: 1px;
   height: 20px;
   background-color: var(--border-muted);
-  margin: 0 8px;
+  margin: 0 var(--spacing-sm);
   -webkit-app-region: no-drag;
 }
 
@@ -215,25 +215,25 @@
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 10;
   min-width: 150px;
-  padding: var(--menu-popup-padding, 4px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
   -webkit-app-region: no-drag;
 }
 
 .vaultMenuItem {
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   cursor: pointer;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--spacing-sm);
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
   background: transparent;
   border: none;
@@ -253,15 +253,15 @@
 }
 
 .vaultMenuPlaceholder {
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   cursor: default;
   -webkit-app-region: no-drag;
 }
 
 .syncPanelWrap {
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
   -webkit-app-region: no-drag;
 }
 
@@ -279,11 +279,11 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.1s;
-  font-size: 12px;
+  transition: all var(--duration-instant);
+  font-size: var(--ui-fs-sm);
 }
 
 .winBtn svg {

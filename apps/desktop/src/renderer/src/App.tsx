@@ -8,7 +8,7 @@ import {
   locationToReturnPath
 } from './features/settings/settings-navigation.util'
 import { useToast } from '@baishou/ui/desktop/Toast/useToast'
-import { useDialog, DialogProvider } from '@baishou/ui/desktop/Dialog'
+import { useDialog, DialogProvider } from '@baishou/ui'
 import { ToastProvider } from '@baishou/ui/desktop/Toast/Toast'
 import { GlobalInputContextMenu } from '@baishou/ui/desktop/ContextMenu'
 import { RestoreBlockingOverlay } from '@baishou/ui/desktop/RestoreBlockingOverlay'

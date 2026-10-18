@@ -4,7 +4,7 @@
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-bottom: 20px !important;
+  padding-bottom: var(--spacing-md-plus) !important;
 }
 
 .modalContent {
@@ -22,13 +22,13 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 6px;
+  padding-right: var(--spacing-xs-plus);
   margin-right: -2px;
 }
 
 .hint {
-  margin: 0 0 16px;
-  font-size: 14px;
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--ui-fs-lg);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -36,13 +36,13 @@
 .groupList {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding-bottom: 4px;
+  gap: var(--spacing-md-plus);
+  padding-bottom: var(--spacing-xs);
 }
 
 .groupTitle {
-  margin: 0 0 10px;
-  font-size: 13px;
+  margin: 0 0 var(--spacing-sm-plus);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -52,7 +52,7 @@
 .optionGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 @media (max-width: 520px) {
@@ -64,17 +64,17 @@
 .option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border-radius: 10px;
+  gap: var(--spacing-sm-plus);
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
 }
 
 .option:hover {
@@ -107,7 +107,7 @@
 }
 
 .optionLabel {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -116,19 +116,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
-  padding-top: 16px;
-  margin-top: 12px;
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md-tight);
   border-top: 1px solid var(--border-muted);
 }
 
 .resetBtn {
-  padding: 9px 4px;
+  padding: var(--spacing-sm) var(--spacing-xs);
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
 }
@@ -138,17 +138,17 @@
 }
 
 .doneBtn {
-  padding: 9px 20px;
-  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-md-plus);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .doneBtn:hover {

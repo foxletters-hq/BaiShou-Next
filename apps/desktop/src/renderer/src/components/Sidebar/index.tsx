@@ -6,8 +6,8 @@ import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useUserProfileStore } from '@baishou/store'
-import { ImagePreview, useToast } from '@baishou/ui'
-import { isCustomUserAvatar, resolveCompanionReturnPath } from '@baishou/shared'
+import { ImagePreview, useToast, resolveDesktopUserAvatarSrc } from '@baishou/ui'
+import { resolveCompanionReturnPath } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
 import {
   isSidebarVisibilityConfigured,
@@ -271,15 +271,7 @@ export const Sidebar: React.FC = () => {
         <div className={styles.userCard}>
           <div className={styles.avatar}>
             <img
-              src={
-                isCustomUserAvatar(profile?.avatarPath)
-                  ? profile!.avatarPath!.startsWith('http') ||
-                    profile.avatarPath.startsWith('data:') ||
-                    profile.avatarPath.startsWith('local://')
-                    ? profile.avatarPath
-                    : `local://${profile.avatarPath}`
-                  : appIcon
-              }
+              src={resolveDesktopUserAvatarSrc(profile?.avatarPath)}
               alt="avatar"
               style={{
                 width: '100%',
