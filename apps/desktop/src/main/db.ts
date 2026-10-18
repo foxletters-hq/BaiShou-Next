@@ -119,12 +119,13 @@ export function getAppDb(customBasePath?: string): AppDatabase {
       if (client && typeof client.pragma === 'function') {
         try {
           const checkStarted = performance.now()
-          const rows = client.pragma('integrity_check')
+          const rows = client.pragma('quick_check(1)')
           markStartup('agentDb.integrity_check', {
             ms: startupElapsedMs(checkStarted)
           })
-          if (rows && rows[0] && rows[0].integrity_check !== 'ok') {
-            throw new Error(`integrity_check returned: ${rows[0].integrity_check}`)
+          const status = rows?.[0]?.quick_check ?? rows?.[0]?.integrity_check
+          if (rows && rows[0] && status !== 'ok') {
+            throw new Error(`integrity_check returned: ${status}`)
           }
         } catch (pragmaErr: any) {
           if (pragmaErr.message?.includes('unknown function')) {

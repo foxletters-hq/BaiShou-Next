@@ -3,7 +3,10 @@ import type { ActionStreamHost } from '@baishou/ai'
 import { desktopExtraVercelToolsFactory } from '../services/mcp-client-runtime'
 import { getAgentGate } from '../services/agent-gate.service'
 import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
-import { createDesktopSkillsWriter } from '../services/desktop-skills-writer'
+import {
+  createDesktopSkillsReader,
+  createDesktopSkillsWriter
+} from '../services/desktop-skills-writer'
 import { createDesktopGraphReader } from '../services/desktop-graph-reader'
 import { settingsManager } from './settings.ipc'
 import { resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
@@ -99,6 +102,7 @@ export async function buildCompanionStreamHost(params: {
     knowledgeReader: createDesktopKnowledgeReader(embedQuery),
     knowledgeGraphReader: createDesktopKnowledgeGraphReader(embedQuery),
     skillsWriter: createDesktopSkillsWriter(),
+    skillsReader: createDesktopSkillsReader(),
     resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
     skillsCatalog,
     extraVercelToolsFactory: desktopExtraVercelToolsFactory,

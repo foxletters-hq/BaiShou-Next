@@ -86,6 +86,24 @@ export function registerGraphQueryIpc(): void {
     }
   )
 
+  ipcMain.handle(
+    'graph:list-live-nodes',
+    async (_e, opts?: { keyword?: string; limit?: number; offset?: number }) => {
+      const repo = requireGraphRepo()
+      const vaultId = requireVaultId()
+      return repo.listLiveNodesPage(vaultId, opts)
+    }
+  )
+
+  ipcMain.handle('graph:count-live-nodes', async (_e, opts?: { keyword?: string }) => {
+    const repo = requireGraphRepo()
+    return repo.countLiveNodes(requireVaultId(), opts?.keyword)
+  })
+
+  ipcMain.handle('graph:count-live-edges', async () => {
+    return requireGraphRepo().countLiveCurrentEdges(requireVaultId())
+  })
+
   ipcMain.handle('graph:find-by-name', async (_e, opts: { query: string; nodeType?: string }) => {
     const repo = requireGraphRepo()
     const hits = await repo.findNodesByNameOrAlias(requireVaultId(), opts.query, opts.nodeType)

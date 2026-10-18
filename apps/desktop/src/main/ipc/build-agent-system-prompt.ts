@@ -34,6 +34,7 @@ export async function buildAgentSystemPrompt(
 
   const session = await realSessionRepo.getSessionById(sessionId)
   const modelId = session?.modelId || 'deepseek-chat'
+  const { desktopExtraVercelToolsFactory } = await import('../services/mcp-client-runtime')
 
   return buildSystemPromptForSession({
     sessionId,
@@ -49,6 +50,7 @@ export async function buildAgentSystemPrompt(
     diarySearcher: createDiarySearcher(),
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
+    extraVercelToolsFactory: desktopExtraVercelToolsFactory,
     agentGate: await getAgentGate()
   })
 }

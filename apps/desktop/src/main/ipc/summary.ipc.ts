@@ -226,7 +226,10 @@ export function registerSummaryIPC() {
 
       const diaryRepoAdapter = {
         async list() {
-          const records = await shadowRepo.listAll()
+          const records =
+            typeof shadowRepo.getAllRecords === 'function'
+              ? await shadowRepo.getAllRecords()
+              : await shadowRepo.listAll()
           logger.debug('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
           if (records.length > 0) {
             logger.debug('[DEBUG-IPC] Sample record date field:', {
@@ -320,7 +323,7 @@ export function registerSummaryIPC() {
       return handleBuildSharedContextPreview(
         summaries,
         lookbackMonths,
-        vaultService.getActiveVault()?.name,
+        vaultService.getActiveVault()?.id,
         { userCopyPrefix, locale: options?.locale }
       )
     }

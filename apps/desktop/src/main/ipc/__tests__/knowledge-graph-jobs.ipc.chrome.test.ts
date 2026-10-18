@@ -16,9 +16,11 @@ describe('knowledge graph jobs ipc chrome', () => {
     expect(ipc).toContain('windowsTotal')
     expect(ipc).toContain('resolveListedGraphWindowProgress')
     expect(ipc).toContain('resolveListedGraphJobStatus')
-    expect(ipc).toContain('shouldResumeListedGraphJobs')
-    expect(ipc).toContain('consumeKnowledgeGraphJobs')
-    expect(ipc).toContain("reason: 'list-graph-jobs'")
+    expect(ipc).toContain('leftoverIngestSourceIds')
+    expect(ipc).toContain("stage: 'extract'")
+    expect(ipc).toContain("stage: 'embed'")
+    expect(ipc).not.toContain('shouldResumeListedGraphJobs')
+    expect(ipc).not.toContain("reason: 'list-graph-jobs'")
     expect(ipc).toContain('readGraphWindowProgress')
   })
 
@@ -35,6 +37,9 @@ describe('knowledge graph jobs ipc chrome', () => {
     const extract = readFileSync(
       join(here, '../../services/desktop-knowledge-graph-extract.ts'),
       'utf8'
+    )
+    expect(extract).toContain(
+      'windowConcurrency: GraphExtractQueueService.getInstance().getConcurrency()'
     )
     expect(extract).toContain('rememberGraphWindowProgress')
     expect(extract).toContain('GRAPH_EXTRACT_WINDOW_TIMEOUT_MS')

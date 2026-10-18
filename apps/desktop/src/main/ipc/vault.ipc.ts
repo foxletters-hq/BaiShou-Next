@@ -11,7 +11,8 @@ import {
   ShadowIndexRepository,
   shadowConnectionManager,
   connectionManager,
-  knowledgeConnectionManager
+  knowledgeConnectionManager,
+  alignShadowJournalVaultId
 } from '@baishou/database-desktop'
 import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
@@ -78,6 +79,17 @@ export async function connectGlobalShadowDb(): Promise<void> {
     const sysDir = await pathService.getGlobalShadowIndexDirectory()
     await shadowConnectionManager.connect(sysDir)
     logger.info(`[VaultIPC] 全局 Shadow DB 已连接: ${sysDir}`)
+    const active = vaultService.getActiveVault()
+    if (active) {
+      try {
+        await alignShadowJournalVaultId(shadowConnectionManager.getDb(), {
+          id: active.id,
+          name: active.name
+        })
+      } catch (e) {
+        logger.warn('[VaultIPC] alignShadowJournalVaultId on connect failed:', e as Error)
+      }
+    }
   })
 }
 
@@ -169,7 +181,18 @@ export async function switchVaultFast(vaultName: string) {
   resetGitService()
   const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')
   scheduleVaultEcosystemResync(`vault-switch:${vaultName}`)
-  return vaultService.getActiveVault()
+  const nextActive = vaultService.getActiveVault()
+  if (nextActive) {
+    try {
+      await alignShadowJournalVaultId(shadowConnectionManager.getDb(), {
+        id: nextActive.id,
+        name: nextActive.name
+      })
+    } catch (e) {
+      logger.warn('[VaultIPC] alignShadowJournalVaultId on switch failed:', e as Error)
+    }
+  }
+  return nextActive
 }
 
 export async function initVaultSystem() {
