@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lightColors } from '../../../theme/light'
+import { mobileTypography } from '../../../theme/tokens'
 import { getHeroButtonLabelStyle, getHeroButtonRootStyle } from '../button-field.styles'
 import { mapLegacyButtonVariant, resolveNativeButtonVariant } from '../button.utils'
 
@@ -25,5 +26,15 @@ describe('resolveNativeButtonVariant', () => {
     expect(root.backgroundColor).toBe(lightColors.bgSurface)
     expect(root.borderColor).toBe(lightColors.borderControl)
     expect(getHeroButtonLabelStyle(lightColors, 'outline').color).toBe(lightColors.textPrimary)
+  })
+
+  it('should shrink outline buttons when size is sm', () => {
+    const root = getHeroButtonRootStyle(lightColors, 'outline', 'sm')
+    const label = getHeroButtonLabelStyle(lightColors, 'outline', undefined, undefined, 'sm')
+    expect(root.minHeight).toBe(32)
+    expect(root.paddingHorizontal).toBe(12)
+    expect(root.alignSelf).toBe('flex-start')
+    expect(label.fontSize).toBe(mobileTypography.secondary.fontSize)
+    expect(label.fontWeight).toBe('500')
   })
 })

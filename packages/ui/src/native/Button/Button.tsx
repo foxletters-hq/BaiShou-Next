@@ -14,6 +14,7 @@ import {
   type NativeButtonVariant
 } from './button.utils'
 import { getHeroButtonLabelStyle, getHeroButtonRootStyle } from './button-field.styles'
+import { sharedTokens } from '../../theme/tokens'
 
 export type { LegacyButtonVariant, NativeButtonVariant }
 export { LinkButton, useButton }
@@ -52,6 +53,7 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
       isDisabled,
       className,
       style,
+      size = 'sm',
       ...props
     },
     ref
@@ -62,12 +64,13 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
       destructive
     )
     const mergedDisabled = Boolean(disabled || isDisabled || isLoading)
-    const rootFallback = getHeroButtonRootStyle(colors, heroVariant)
+    const rootFallback = getHeroButtonRootStyle(colors, heroVariant, size)
     const labelFallback = getHeroButtonLabelStyle(
       colors,
       heroVariant,
       labelClassName,
-      tokens.fontFamily
+      tokens.fontFamily,
+      size
     )
     const mergedStyle: StyleProp<ViewStyle> = [
       rootFallback,
@@ -91,7 +94,7 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8
+          gap: sharedTokens.spacing.sm
         }}
       >
         <ActivityIndicator size="small" />
@@ -105,6 +108,7 @@ const NativeButtonRoot = forwardRef<HeroButtonRef, NativeButtonProps>(
       <HeroButton
         ref={ref}
         variant={heroVariant}
+        size={size}
         isDisabled={mergedDisabled}
         className={className}
         style={typeof style === 'function' ? (state) => [rootFallback, style(state)] : mergedStyle}
