@@ -1,6 +1,7 @@
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 import { createBaishouEslintConfig } from '../../eslint.baishou.base.mjs'
 import portalClipRule from '../../scripts/eslint-plugin-ui-theme.mjs'
+import noHardcodedFontSizeRule from '../../scripts/eslint-plugin-no-hardcoded-font-size.mjs'
 
 export default [
   ...createBaishouEslintConfig({
@@ -9,14 +10,16 @@ export default [
       'react-refresh': eslintPluginReactRefresh,
       'ui-theme': {
         rules: {
-          'portal-must-clip-to-content-card': portalClipRule
+          'portal-must-clip-to-content-card': portalClipRule,
+          'no-hardcoded-font-size': noHardcodedFontSizeRule
         }
       }
     },
     extraRules: {
       ...eslintPluginReactRefresh.configs.vite.rules,
       'react-refresh/only-export-components': 'off',
-      'ui-theme/portal-must-clip-to-content-card': 'error'
+      'ui-theme/portal-must-clip-to-content-card': 'error',
+      'ui-theme/no-hardcoded-font-size': 'warn'
     }
   }),
   {
