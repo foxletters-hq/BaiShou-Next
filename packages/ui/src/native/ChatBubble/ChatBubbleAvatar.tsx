@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Image, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { resolveNativeUserAvatarSource } from '../user-avatar.util'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   resolveNativeAssistantAvatarSource,
   shouldShowAssistantEmoji
@@ -51,17 +52,17 @@ const styles = StyleSheet.create({
   avatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   avatarImage: {
     width: 32,
     height: 32
   },
   avatarText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   }
 })

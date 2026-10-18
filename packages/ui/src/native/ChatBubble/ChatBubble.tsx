@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
@@ -8,9 +8,11 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
+import { AgentProcessSection } from '../AgentProcessSection'
 import {
   collectKnowledgeCitationsFromInvocations,
   decorateKnowledgeCitedTexts,
+  composerExtraPlain,
   type AgentStreamTimelineItem,
   type MockChatAttachment
 } from '@baishou/shared'
@@ -19,7 +21,10 @@ import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantD
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { useNativeAssistantTimeline } from './useNativeAssistantTimeline'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
+import { nativeSkillCiteStyles } from './native-skill-cite.styles'
 import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
+import { NativeSkillCiteChip } from './NativeSkillCiteChip'
+import { SkillCitePreviewDialog } from './SkillCitePreviewDialog'
 import { useNativeChatBubbleEdit } from './useNativeChatBubbleEdit'
 import {
   NativeChatBubbleActionsRow,
@@ -27,7 +32,11 @@ import {
 } from './NativeChatBubbleActionsRow'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
 import { formatRelativeTime } from '../../shared/chat-bubble/format-relative-time.util'
-import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
+import {
+  getChatBubbleOverBackgroundStyle,
+  getChatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
+import { sharedTokens } from '../../theme/tokens'
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
   message,
@@ -45,6 +54,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   isTtsPlaying,
   onEditingChange,
   invertMetaOverBackground = false,
+  hasChatBackground = false,
   retryDisabled = false,
   showReasoning = true,
   liveStream,
@@ -52,9 +62,18 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   error = null
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
+  const hasBackground = Boolean(hasChatBackground || invertMetaOverBackground)
+  const metaTone = invertMetaOverBackground || (hasBackground ? 'dark' : false)
+  const metaStyle = getChatOverBackgroundMetaTextStyle(metaTone)
   const displayError = error ?? liveStream?.error ?? null
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
+  const handleImagePress = useCallback((_src: string, resolvedUri: string) => {
+    setPreviewImageUri(resolvedUri)
+  }, [])
+  const [previewSkill, setPreviewSkill] = useState<{ command: string; content: string } | null>(
+    null
+  )
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
 
@@ -84,6 +103,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const markdownStreaming = Boolean(liveStream?.isTextStreaming)
   const thinkLoading = Boolean(liveStream?.isThinkLoading)
   const showThinkSection = isAssistant && showReasoning && (cleanReasoning || thinkLoading)
+  const userCompanionText = useMemo(
+    () =>
+      isAssistant
+        ? ''
+        : composerExtraPlain(
+            message.content || '',
+            message.skillRefs ?? [],
+            message.fileRefs ?? []
+          ),
+    [isAssistant, message.content, message.fileRefs, message.skillRefs]
+  )
 
   const editableContent = isAssistant
     ? cleanContent || message.content || ''
@@ -157,14 +187,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     styles.nameLabel,
     { color: colors.textSecondary },
     isUser ? styles.nameLabelUser : styles.nameLabelAssistant,
-    invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+    metaStyle
   ]
 
-  const timeLabelStyle = [
-    styles.timeLabel,
-    { color: colors.textTertiary },
-    invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
-  ]
+  const timeLabelStyle = [styles.timeLabel, { color: colors.textTertiary }, metaStyle]
 
   return (
     <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={message.id || 'turn'}>
@@ -175,7 +201,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             emoji={aiProfile.emoji}
             avatarPath={aiProfile.avatarPath}
             resolvedAvatarUri={aiProfile.resolvedAvatarUri}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: sharedTokens.spacing.sm }}
           />
         ) : null}
 
@@ -188,6 +214,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         >
           {message.timestamp || displayName ? (
             <View
+              collapsable={false}
               style={[
                 styles.nameTimeRow,
                 isUser ? styles.nameTimeRowUser : styles.nameTimeRowAssistant
@@ -217,61 +244,28 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               styles.bubble,
               edit.isEditing || isAssistant ? styles.bubbleEditing : null,
               !edit.isEditing && isUser ? styles.bubbleUser : null,
-              edit.isEditing
-                ? isUser
-                  ? {
-                      backgroundColor: colors.bgSurface,
-                      borderBottomRightRadius: 4
-                    }
-                  : {
-                      backgroundColor: colors.bgSurface,
-                      borderBottomLeftRadius: 4
-                    }
-                : isUser
-                  ? {
-                      backgroundColor: colors.bgSurface,
-                      borderBottomRightRadius: 4
-                    }
-                  : {
-                      backgroundColor: colors.bgSurface,
-                      borderBottomLeftRadius: 4
-                    }
+              getChatBubbleOverBackgroundStyle(hasBackground, isDark, colors),
+              isUser
+                ? { borderBottomRightRadius: sharedTokens.radius.xs }
+                : { borderBottomLeftRadius: sharedTokens.radius.xs }
             ]}
           >
             {useTimeline ? (
               <AssistantDisplayTimeline
                 items={timelineItems}
                 isStreaming={liveStreamOverlay && !displayError}
+                isThinkLoading={thinkLoading && !displayError}
                 isThinkStreaming={Boolean(liveStream?.isThinkStreaming) && !displayError}
                 isTextStreaming={markdownStreaming && !displayError}
                 error={displayError}
                 knowledgeCitations={knowledgeCitations}
                 citationAnchorKey={message.id || 'turn'}
                 appendCitationMarkers={!liveStreamOverlay}
-                onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                onImagePress={handleImagePress}
               />
             ) : (
               <>
-                {showThinkSection ? (
-                  <View
-                    style={{
-                      marginBottom:
-                        cleanContent || showStreamingTools || showPersistedTools
-                          ? tokens.spacing.sm
-                          : 0,
-                      alignSelf: 'stretch',
-                      width: '100%'
-                    }}
-                  >
-                    <AgentThinkSection
-                      content={cleanReasoning}
-                      isLoading={thinkLoading}
-                      isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}
-                    />
-                  </View>
-                ) : null}
-
-                {showStreamingTools ? (
+                {showThinkSection || showStreamingTools || showPersistedTools ? (
                   <View
                     style={{
                       marginBottom: cleanContent ? tokens.spacing.sm : 0,
@@ -279,22 +273,54 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                       width: '100%'
                     }}
                   >
-                    <ToolResultGroupCard
-                      completedTools={streamingCompletedTools}
+                    <AgentProcessSection
+                      reasoningContent={showThinkSection ? cleanReasoning : undefined}
+                      isReasoningLoading={thinkLoading}
+                      isReasoningStreaming={Boolean(liveStream?.isThinkStreaming)}
+                      invocations={toolInvocations}
+                      streamingCompletedTools={streamingCompletedTools}
                       activeToolName={streamingActiveToolName}
-                    />
-                  </View>
-                ) : null}
+                      isStreaming={Boolean(liveStreamOverlay && !displayError)}
+                      hasAnswerText={Boolean(cleanContent)}
+                    >
+                      {showThinkSection ? (
+                        <View
+                          style={{
+                            marginBottom:
+                              showStreamingTools || showPersistedTools ? tokens.spacing.sm : 0,
+                            alignSelf: 'stretch',
+                            width: '100%'
+                          }}
+                        >
+                          <AgentThinkSection
+                            content={cleanReasoning}
+                            isLoading={thinkLoading}
+                            isMarkdownStreaming={Boolean(liveStream?.isThinkStreaming)}
+                          />
+                        </View>
+                      ) : null}
 
-                {showPersistedTools ? (
-                  <View
-                    style={{
-                      marginBottom: cleanContent ? tokens.spacing.sm : 0,
-                      alignSelf: 'stretch',
-                      width: '100%'
-                    }}
-                  >
-                    <ToolResultGroupCard invocations={toolInvocations} />
+                      {showStreamingTools ? (
+                        <View
+                          style={{
+                            marginBottom: showPersistedTools ? tokens.spacing.sm : 0,
+                            alignSelf: 'stretch',
+                            width: '100%'
+                          }}
+                        >
+                          <ToolResultGroupCard
+                            completedTools={streamingCompletedTools}
+                            activeToolName={streamingActiveToolName}
+                          />
+                        </View>
+                      ) : null}
+
+                      {showPersistedTools ? (
+                        <View style={{ alignSelf: 'stretch', width: '100%' }}>
+                          <ToolResultGroupCard invocations={toolInvocations} />
+                        </View>
+                      ) : null}
+                    </AgentProcessSection>
                   </View>
                 ) : null}
               </>
@@ -319,26 +345,31 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                       content={citedContent}
                       variant="chat"
                       isStreaming={markdownStreaming}
-                      onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                      onImagePress={handleImagePress}
                     />
                   </View>
                 ) : !isAssistant &&
                   (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
                   <View>
                     {message.skillRefs?.length ? (
-                      <View
-                        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
-                      >
+                      <View style={nativeSkillCiteStyles.row}>
                         {message.skillRefs.map((ref) => (
-                          <Text key={ref.command} style={{ color: colors.primary }}>
-                            /{ref.command}
-                          </Text>
+                          <NativeSkillCiteChip
+                            key={ref.command}
+                            command={ref.command}
+                            onPress={() => setPreviewSkill(ref)}
+                          />
                         ))}
                       </View>
                     ) : null}
                     {message.fileRefs?.length ? (
                       <View
-                        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+                        style={{
+                          flexDirection: 'row',
+                          flexWrap: 'wrap',
+                          gap: sharedTokens.spacing.xsPlus,
+                          marginBottom: sharedTokens.spacing.xsPlus
+                        }}
                       >
                         {message.fileRefs.map((ref) => (
                           <Text key={ref.relativePath} style={{ color: colors.textSecondary }}>
@@ -347,9 +378,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                         ))}
                       </View>
                     ) : null}
-                    {message.content ? (
+                    {userCompanionText ? (
                       <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
-                        {message.content}
+                        {userCompanionText}
                       </Text>
                     ) : null}
                   </View>
@@ -390,27 +421,31 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               onResendEdit={onResendEdit ? edit.handleResendEdit : undefined}
               onSaveEdit={onSaveEdit ? edit.handleSaveEdit : undefined}
             />
-          ) : isAssistant && deferAssistantChrome ? (
-            <View style={styles.deferredChromeSpacer} />
           ) : (
-            <NativeChatBubbleActionsRow
-              colors={colors}
-              isUser={isUser}
-              isAssistant={isAssistant}
-              message={message}
-              isTtsPlaying={Boolean(isTtsPlaying)}
-              onCopy={onCopy ?? (() => {})}
-              onStartEdit={edit.handleStartEdit}
-              onResend={onResend}
-              onReadAloud={onReadAloud}
-              onShowContext={onShowContext}
-              onRegenerate={onRegenerate}
-              onBranch={onBranch}
-              onSaveEdit={onSaveEdit}
-              onDelete={onDelete}
-              invertMetaOverBackground={invertMetaOverBackground}
-              retryDisabled={retryDisabled}
-            />
+            <View
+              collapsable={false}
+              pointerEvents={isAssistant && deferAssistantChrome ? 'none' : 'auto'}
+              style={isAssistant && deferAssistantChrome ? styles.deferredChromeHidden : null}
+            >
+              <NativeChatBubbleActionsRow
+                colors={colors}
+                isUser={isUser}
+                isAssistant={isAssistant}
+                message={message}
+                isTtsPlaying={Boolean(isTtsPlaying)}
+                onCopy={onCopy ?? (() => {})}
+                onStartEdit={edit.handleStartEdit}
+                onResend={onResend}
+                onReadAloud={onReadAloud}
+                onShowContext={onShowContext}
+                onRegenerate={onRegenerate}
+                onBranch={onBranch}
+                onSaveEdit={onSaveEdit}
+                onDelete={onDelete}
+                invertMetaOverBackground={metaTone}
+                retryDisabled={retryDisabled}
+              />
+            </View>
           )}
         </View>
 
@@ -420,11 +455,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             nickname={userProfile?.nickname}
             avatarPath={userProfile?.avatarPath}
             resolvedAvatarUri={userProfile?.resolvedAvatarUri}
-            style={{ marginLeft: 8 }}
+            style={{ marginLeft: sharedTokens.spacing.sm }}
           />
         ) : null}
 
         <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
+        <SkillCitePreviewDialog
+          visible={Boolean(previewSkill)}
+          command={previewSkill?.command ?? ''}
+          content={previewSkill?.content ?? ''}
+          onClose={() => setPreviewSkill(null)}
+        />
       </View>
     </KnowledgeCitationBlock>
   )

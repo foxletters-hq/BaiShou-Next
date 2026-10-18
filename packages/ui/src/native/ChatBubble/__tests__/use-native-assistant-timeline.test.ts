@@ -17,4 +17,8 @@ describe('resolveNativeAssistantTimelineItems', () => {
   it('should use persisted parts when overlay is off', () => {
     expect(resolveNativeAssistantTimelineItems(false, live, persisted)).toEqual(persisted)
   })
+
+  it('should keep live items after overlay ends when persisted parts have not arrived', () => {
+    expect(resolveNativeAssistantTimelineItems(false, live, [])).toEqual(live)
+  })
 })

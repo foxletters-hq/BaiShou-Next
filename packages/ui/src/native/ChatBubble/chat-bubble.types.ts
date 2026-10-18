@@ -75,8 +75,10 @@ export interface ChatBubbleProps {
   isTtsPlaying?: boolean
   /** 气泡进入/退出内联编辑时通知父级（用于键盘与底部输入栏联动） */
   onEditingChange?: (editing: boolean, messageId?: string) => void
-  /** 自定义聊天背景上为名称与操作按钮启用反色混合 */
-  invertMetaOverBackground?: boolean
+  /** 自定义聊天背景上为名称与操作按钮启用纯黑/纯白反色 */
+  invertMetaOverBackground?: 'light' | 'dark' | boolean
+  /** 是否存在自定义聊天背景 */
+  hasChatBackground?: boolean
   /** 重试/重新发送处理中时禁用，避免连点 */
   retryDisabled?: boolean
   /** 流式期间用 liveStream 覆盖展示内容，避免与 StreamingBubble 互换 */

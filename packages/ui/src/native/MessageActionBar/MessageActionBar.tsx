@@ -13,9 +13,11 @@ import {
 } from 'lucide-react-native'
 import { NativeIconButton } from '../icons/NativeIconButton'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 import {
-  chatOverBackgroundMetaIconColor,
-  chatOverBackgroundMetaIconStyle
+  type ChatOverBackgroundTone,
+  chatOverBackgroundMetaIconStyle,
+  getChatOverBackgroundMetaIconColor
 } from '../../shared/chat-over-background-meta.style'
 
 export interface MessageActionBarProps {
@@ -28,8 +30,8 @@ export interface MessageActionBarProps {
   onShowContext?: () => void
   isAI?: boolean
   isTtsPlaying?: boolean
-  /** 自定义聊天背景上为操作图标启用反色混合 */
-  invertOverBackground?: boolean
+  /** 自定义聊天背景上为操作图标启用纯黑/纯白反色 */
+  invertOverBackground?: ChatOverBackgroundTone
   /** 聊天气泡操作栏使用更大触控区域 */
   comfortableTouch?: boolean
   /** 重试/重新发送处理中或流式生成未完成时禁用 */
@@ -51,14 +53,20 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
   retryDisabled = false
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const [copied, setCopied] = useState(false)
   const iconSize = comfortableTouch ? 16 : 14
   const iconButtonStyle = comfortableTouch ? styles.comfortableIconButton : undefined
+  const invertedIconColor = getChatOverBackgroundMetaIconColor(invertOverBackground)
+  const useLightBgDeleteTone =
+    invertOverBackground === 'light' || (!invertOverBackground && !isDark)
+  const deleteIconColor = useLightBgDeleteTone
+    ? 'rgba(239, 68, 68, 0.58)'
+    : 'rgba(248, 113, 113, 0.68)'
 
   const invertIconProps = (skipInvert = false) =>
-    invertOverBackground && !skipInvert
-      ? { color: chatOverBackgroundMetaIconColor, style: chatOverBackgroundMetaIconStyle }
+    invertedIconColor && !skipInvert
+      ? { color: invertedIconColor, style: chatOverBackgroundMetaIconStyle }
       : {}
 
   const handleCopy = useCallback(() => {
@@ -74,6 +82,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
 
   return (
     <View
+      collapsable={false}
       style={[
         styles.container,
         comfortableTouch && styles.comfortableContainer,
@@ -157,6 +166,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
           onPress={onDelete}
           size={iconSize}
           style={iconButtonStyle}
+          color={deleteIconColor}
           danger
           accessibilityLabel={t('common.delete', '删除此条气泡')}
         />
@@ -169,17 +179,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingTop: 4
+    gap: sharedTokens.spacing.xs,
+    paddingTop: sharedTokens.spacing.xs
   },
   comfortableContainer: {
-    gap: 6,
-    paddingTop: 5
+    gap: sharedTokens.spacing.xsPlus,
+    paddingTop: sharedTokens.spacing.xs
   },
   comfortableIconButton: {
     width: 30,
     height: 30,
-    borderRadius: 7
+    borderRadius: sharedTokens.radius.sm
   },
   alignLeft: {
     justifyContent: 'flex-start'
