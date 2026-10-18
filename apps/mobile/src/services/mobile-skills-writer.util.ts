@@ -1,0 +1,204 @@
+import {
+  DEFAULT_AGENT_SKILLS,
+  isValidSkillName,
+  parseSkillMarkdown,
+  serializeSkillMarkdown,
+  slugifySkillName,
+  type AgentSkillWriteInput
+} from '@baishou/shared'
+
+const SKILL_FILE_NAME = 'SKILL.md'
+const USER_SKILLS_RELATIVE = ['.agents', 'skills'] as const
+const SOFTWARE_SKILLS_RELATIVE = ['AI', 'skills'] as const
+
+export type MobileSkillFs = {
+  exists(path: string): Promise<boolean>
+  mkdir(path: string, options?: { recursive?: boolean }): Promise<void>
+  writeFile(path: string, data: string): Promise<void>
+  readFile(path: string): Promise<string>
+  readdir(path: string): Promise<string[]>
+  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>
+}
+
+function joinPath(base: string, ...parts: string[]): string {
+  return [base.replace(/[\\/]+$/, ''), ...parts].join('/').replace(/\\/g, '/')
+}
+
+function userSkillsRoot(vaultRoot: string): string {
+  return joinPath(vaultRoot, ...USER_SKILLS_RELATIVE)
+}
+
+function softwareSkillsRoot(vaultRoot: string): string {
+  return joinPath(vaultRoot, ...SOFTWARE_SKILLS_RELATIVE)
+}
+
+export async function listMobileSkillNames(
+  vaultRoot: string,
+  fs: MobileSkillFs
+): Promise<string[]> {
+  const root = vaultRoot.trim()
+  if (!root) return []
+  const [userNames, softwareNames] = await Promise.all([
+    listSkillNames(fs, userSkillsRoot(root)),
+    listSkillNames(fs, softwareSkillsRoot(root))
+  ])
+  return [...new Set([...userNames, ...softwareNames])]
+}
+
+async function listSkillNames(fs: MobileSkillFs, root: string): Promise<string[]> {
+  let names: string[]
+  try {
+    names = await fs.readdir(root)
+  } catch {
+    return []
+  }
+  const out: string[] = []
+  for (const name of names) {
+    if (!isValidSkillName(name)) continue
+    if (await fs.exists(joinPath(root, name, SKILL_FILE_NAME))) out.push(name)
+  }
+  return out
+}
+
+async function writeSkillMarkdown(
+  fs: MobileSkillFs,
+  skillsRoot: string,
+  input: { name: string; description: string; content: string }
+): Promise<string> {
+  const dir = joinPath(skillsRoot, input.name)
+  const location = joinPath(dir, SKILL_FILE_NAME)
+  await fs.mkdir(dir, { recursive: true })
+  await fs.writeFile(location, serializeSkillMarkdown(input))
+  return location
+}
+
+/** 把 skill_write 落到当前存储根的 `.agents/skills/<name>/SKILL.md` */
+export async function writeMobileUserSkill(
+  vaultRoot: string,
+  input: AgentSkillWriteInput,
+  fs: MobileSkillFs
+): Promise<{ name: string; description: string; location: string }> {
+  const root = vaultRoot.trim()
+  if (!root) throw new Error('Storage root is not available')
+
+  const name = slugifySkillName(input.name)
+  if (!isValidSkillName(name)) throw new Error(`Invalid skill name: ${input.name}`)
+
+  const description = input.description.trim() || name
+  const userRoot = userSkillsRoot(root)
+  const [userNames, softwareNames] = await Promise.all([
+    listSkillNames(fs, userRoot),
+    listSkillNames(fs, softwareSkillsRoot(root))
+  ])
+  const merged = new Set([...userNames, ...softwareNames])
+  const previousName = input.previousName?.trim()
+
+  if (previousName) {
+    if (!merged.has(previousName)) throw new Error(`Skill not found: ${previousName}`)
+    if (name !== previousName && merged.has(name)) throw new Error('DUPLICATE_SKILL_NAME')
+  }
+
+  const location = await writeSkillMarkdown(fs, userRoot, {
+    name,
+    description,
+    content: input.content
+  })
+
+  if (previousName && name !== previousName && userNames.includes(previousName)) {
+    await fs.rm(joinPath(userRoot, previousName), { recursive: true, force: true })
+  }
+
+  return { name, description, location }
+}
+
+/** 对齐桌面端：把 DEFAULT_AGENT_SKILLS 落到存储根 AI/skills，供 skill_read 按名读取 */
+export async function ensureMobileDefaultSkills(
+  vaultRoot: string,
+  fs: MobileSkillFs
+): Promise<string[]> {
+  const root = vaultRoot.trim()
+  if (!root) return []
+
+  const softwareRoot = softwareSkillsRoot(root)
+  const written: string[] = []
+
+  for (const skill of DEFAULT_AGENT_SKILLS) {
+    const location = joinPath(softwareRoot, skill.name, SKILL_FILE_NAME)
+    let current: { description: string; content: string } | null = null
+    try {
+      if (await fs.exists(location)) {
+        const parsed = parseSkillMarkdown(await fs.readFile(location), location, {
+          fallbackName: skill.name
+        })
+        if (parsed) current = { description: parsed.description, content: parsed.content }
+      }
+    } catch {
+      current = null
+    }
+
+    if (current && current.description === skill.description) continue
+
+    await writeSkillMarkdown(fs, softwareRoot, {
+      name: skill.name,
+      description: skill.description,
+      content: current?.content || skill.content
+    })
+    written.push(skill.name)
+  }
+
+  return written
+}
+
+/** 用户目录覆盖官方目录；都没有则返回 null */
+export async function readMobileSkill(
+  vaultRoot: string,
+  rawName: string,
+  fs: MobileSkillFs
+): Promise<{ name: string; description: string; content: string; location: string } | null> {
+  const root = vaultRoot.trim()
+  if (!root) return null
+  const name = slugifySkillName(rawName)
+  if (!isValidSkillName(name)) return null
+
+  for (const skillsRoot of [userSkillsRoot(root), softwareSkillsRoot(root)]) {
+    const location = joinPath(skillsRoot, name, SKILL_FILE_NAME)
+    try {
+      if (!(await fs.exists(location))) continue
+      const parsed = parseSkillMarkdown(await fs.readFile(location), location, {
+        fallbackName: name
+      })
+      if (!parsed) continue
+      return {
+        name,
+        description: parsed.description,
+        content: parsed.content,
+        location
+      }
+    } catch {
+      /* 试下一个根 */
+    }
+  }
+  return null
+}
+
+export async function deleteMobileUserSkill(
+  vaultRoot: string,
+  rawName: string,
+  fs: MobileSkillFs
+): Promise<boolean> {
+  const root = vaultRoot.trim()
+  if (!root) return false
+  const name = slugifySkillName(rawName)
+  if (!isValidSkillName(name)) return false
+  const userRoot = userSkillsRoot(root)
+  const dir = joinPath(userRoot, name)
+  try {
+    if (await fs.exists(dir)) {
+      await fs.rm(dir, { recursive: true, force: true })
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}

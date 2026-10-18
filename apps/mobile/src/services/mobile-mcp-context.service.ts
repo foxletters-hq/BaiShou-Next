@@ -46,18 +46,28 @@ export function invalidateMobileMcpToolContextCache(): void {
   mobileMcpToolContextCache = null
 }
 
-/** 仅用于设置页 tools/list 展示：不依赖 Agent 数据库，避免 DB 未就绪时列表失败 */
+import type { McpServerConfig } from '@baishou/shared'
+
 export async function buildMobileMcpToolListContext(
   deps: Pick<MobileMcpToolContextDeps, 'settingsManager' | 'pathService' | 'vaultService'>
 ): Promise<ToolContext> {
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
   const vaultId = await resolveMobileActiveVaultId(deps)
-  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
+  const [userConfig, mcpConfig] = await Promise.all([
+    buildMobileStreamUserConfig(deps.settingsManager, true),
+    deps.settingsManager.get<McpServerConfig>('mcp_server_config').catch(() => null)
+  ])
+  const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
+    ? mcpConfig.disabledToolIds
+    : []
   return {
     sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultId,
     vaultName,
-    userConfig
+    userConfig: {
+      ...userConfig,
+      mcpDisabledToolIds
+    }
   }
 }
 
@@ -92,7 +102,17 @@ export async function buildMobileMcpToolContext(
     return mobileMcpToolContextCache.context
   }
 
-  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
+  const [baseUserConfig, mcpConfig] = await Promise.all([
+    buildMobileStreamUserConfig(deps.settingsManager, true),
+    deps.settingsManager.get<McpServerConfig>('mcp_server_config').catch(() => null)
+  ])
+  const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
+    ? mcpConfig.disabledToolIds
+    : []
+  const userConfig = {
+    ...baseUserConfig,
+    mcpDisabledToolIds
+  }
 
   const drizzleDb = deps.drizzleDb as AppDatabase | undefined
   if (!drizzleDb) {

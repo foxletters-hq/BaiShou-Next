@@ -274,6 +274,10 @@ export async function loadContextAtMessage(
       ? globalModels.globalDialogueModelId
       : ''
 
+  const { createMobileSkillsReader, createMobileSkillsWriter, mobileListSkillsCatalog } =
+    await import('./mobile-agent-skills.service')
+  const skillsCatalog = await mobileListSkillsCatalog().catch(() => undefined)
+
   const systemPrompt = provider
     ? await buildSystemPromptForSession({
         sessionId,
@@ -288,6 +292,13 @@ export async function loadContextAtMessage(
         diarySearcher: deps.diarySearcher,
         webSearchResultFetcher: deps.webSearchResultFetcher,
         fetchSearchPage: deps.fetchSearchPage,
+        skillsWriter: createMobileSkillsWriter(),
+        skillsReader: createMobileSkillsReader(),
+        skillsCatalog,
+        extraVercelToolsFactory: async (toolContext) => {
+          const { mobileExtraVercelToolsFactory } = await import('./mobile-mcp-client-runtime')
+          return mobileExtraVercelToolsFactory(toolContext)
+        },
         agentGate: deps.getAgentGate?.()
       })
     : ''

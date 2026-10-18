@@ -15,8 +15,11 @@ export type MobileMcpClientConfigIo = {
   write: (uri: string, contents: string) => Promise<void>
 }
 
+const ensureTrailingSlash = (dir: string) => (dir.endsWith('/') ? dir : `${dir}/`)
+
 const defaultIo: MobileMcpClientConfigIo = {
-  resolvePath: () => `${documentDirectory}${MOBILE_MCP_CLIENT_CONFIG_FILE}`,
+  resolvePath: () =>
+    `${ensureTrailingSlash(documentDirectory || '')}${MOBILE_MCP_CLIENT_CONFIG_FILE}`,
   exists: async (uri) => (await getInfoAsync(uri)).exists,
   read: (uri) => readAsStringAsync(uri),
   write: (uri, contents) => writeAsStringAsync(uri, contents)
