@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -11,10 +11,7 @@ import {
   TextInput,
   type LayoutChangeEvent
 } from 'react-native'
-import DraggableFlatList, {
-  ScaleDecorator,
-  type RenderItemParams
-} from 'react-native-draggable-flatlist'
+import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import {
   SHORTCUT_TRACE_CHAIN,
@@ -26,17 +23,34 @@ import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Button } from '../Button'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useNativeToast } from '../Toast'
-import { useDialog } from '../Dialog/Dialog'
+import { useDialog } from '../Dialog'
 import {
+  isSameShortcutOrder,
   mergePageReorder,
   SHORTCUT_PAGE_SIZE,
   usePromptShortcutSheet
 } from './usePromptShortcutSheet'
 import { PromptShortcutRow } from './PromptShortcutRow'
 import { PromptShortcutEditor } from './PromptShortcutEditor'
+import { nativeLightHaptic } from './native-light-haptic.util'
+import {
+  buildShortcutEditorPayload,
+  resolveShortcutEditorDraft
+} from './prompt-shortcut-editor.util'
 import { promptShortcutSheetStyles as styles } from './prompt-shortcut-sheet.styles'
+
+/** 夹紧回弹，避免按住顶部条目时下列条目弹簧超调弹一下 */
+const DRAG_SPRING = {
+  damping: 20,
+  mass: 0.2,
+  stiffness: 100,
+  overshootClamping: true,
+  restSpeedThreshold: 0.2,
+  restDisplacementThreshold: 0.2
+}
 
 export interface PromptShortcutSheetProps {
   visible: boolean
@@ -62,9 +76,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, tokens, maxModalWidth, isDark } = useNativeTheme()
   const canManage = Boolean(onAdd && onUpdate && onDelete)
-  const defaultShortcutLabels = getDefaultShortcutLabelsFromT(t)
+  const defaultShortcutLabels = useMemo(() => getDefaultShortcutLabelsFromT(t), [t])
+  const shortcutsRef = useRef(shortcuts)
+  shortcutsRef.current = shortcuts
 
   const {
     searchQuery,
@@ -80,8 +96,21 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     canDrag
   } = usePromptShortcutSheet(shortcuts)
 
+  const [listData, setListData] = useState(paginatedShortcuts)
+  const listDataRef = useRef(paginatedShortcuts)
+  listDataRef.current = listData
+
+  useEffect(() => {
+    if (isSameShortcutOrder(listDataRef.current, paginatedShortcuts)) return
+    setListData(paginatedShortcuts)
+  }, [paginatedShortcuts])
+
   const [listAreaHeight, setListAreaHeight] = useState<number | null>(null)
   const listAreaHeightRef = useRef<number | null>(null)
+  const listSizeStyle = useMemo(
+    () => (listAreaHeight != null ? { height: listAreaHeight } : styles.list),
+    [listAreaHeight]
+  )
   const handleListAreaLayout = useCallback((event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height
     if (height > 0 && height !== listAreaHeightRef.current) {
@@ -91,7 +120,8 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   }, [])
 
   const [editingItem, setEditingItem] = useState<PromptShortcut | null>(null)
-  const [draftName, setDraftName] = useState('')
+  const [draftCommand, setDraftCommand] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
   const [draftContent, setDraftContent] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -100,7 +130,8 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   const resetEditing = useCallback(() => {
     setEditingItem(null)
-    setDraftName('')
+    setDraftCommand('')
+    setDraftDescription('')
     setDraftContent('')
   }, [])
 
@@ -120,14 +151,17 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   const handleCreateNew = useCallback(() => {
     setEditingItem({ id: 'new', icon: '', name: '', content: '' })
-    setDraftName('')
+    setDraftCommand('')
+    setDraftDescription('')
     setDraftContent('')
   }, [])
 
   const handleEdit = useCallback((item: PromptShortcut) => {
+    const draft = resolveShortcutEditorDraft(item)
     setEditingItem(item)
-    setDraftName(item.name || '')
-    setDraftContent(item.content || '')
+    setDraftCommand(draft.command)
+    setDraftDescription(draft.description)
+    setDraftContent(draft.content)
   }, [])
 
   const handleDeletePress = useCallback(
@@ -166,11 +200,17 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     if (!isNew && !onUpdate) return
 
     const payload: PromptShortcut = {
-      ...editingItem,
+      ...buildShortcutEditorPayload(
+        editingItem,
+        {
+          command: draftCommand,
+          description: draftDescription,
+          content: draftContent
+        },
+        t('shortcut.default_tag', '指令')
+      ),
       id: isNew ? `custom-${Date.now()}` : editingItem.id,
-      icon: '',
-      name: draftName.trim() || t('shortcut.default_tag', '指令'),
-      content: draftContent.trim()
+      icon: ''
     }
 
     if (findShortcutCommandConflict(shortcuts, payload, isNew ? undefined : payload.id)) {
@@ -206,8 +246,9 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     // shortcuts 只取 length，避免整表引用变化就重建保存回调
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    draftCommand,
     draftContent,
-    draftName,
+    draftDescription,
     editingItem,
     shortcuts.length,
     onAdd,
@@ -219,16 +260,30 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     toast
   ])
 
+  const handleDragBegin = useCallback(() => {
+    nativeLightHaptic()
+  }, [])
+
   const handleDragEnd = useCallback(
     ({ data }: { data: PromptShortcut[] }) => {
       if (!onReorder || isSearchActive) return
-      const next = mergePageReorder(shortcuts, pageStartIndex, pageSize, data)
+      setListData((prev) => (isSameShortcutOrder(prev, data) ? prev : data))
+      const next = mergePageReorder(shortcutsRef.current, pageStartIndex, pageSize, data)
+      if (isSameShortcutOrder(shortcutsRef.current, next)) return
       void onReorder(next).catch((error) => {
         console.warn('[PromptShortcutSheet] reorder failed', error)
         toast.showError(t('common.errors.save_failed', '保存失败'))
       })
     },
-    [isSearchActive, onReorder, pageSize, pageStartIndex, shortcuts, t, toast]
+    [isSearchActive, onReorder, pageSize, pageStartIndex, t, toast]
+  )
+
+  const handleSelectShortcut = useCallback(
+    (shortcut: PromptShortcut) => {
+      onSelect(shortcut)
+      handleClose()
+    },
+    [handleClose, onSelect]
   )
 
   const renderShortcutRow = useCallback(
@@ -238,14 +293,12 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
         canManage={canManage}
         canDrag={canDrag && Boolean(onReorder)}
         isDragging={isDragging}
+        isDark={isDark}
         colors={colors}
         defaultShortcutLabels={defaultShortcutLabels}
-        onSelect={(shortcut) => {
-          onSelect(shortcut)
-          handleClose()
-        }}
+        onSelect={handleSelectShortcut}
         onEdit={handleEdit}
-        onDelete={(id) => void handleDeletePress(id)}
+        onDelete={handleDeletePress}
         onDrag={drag}
       />
     ),
@@ -254,18 +307,17 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
       canManage,
       colors,
       defaultShortcutLabels,
-      handleClose,
       handleDeletePress,
       handleEdit,
-      onReorder,
-      onSelect
+      handleSelectShortcut,
+      isDark,
+      onReorder
     ]
   )
 
   const renderDraggableItem = useCallback(
-    ({ item, drag, isActive }: RenderItemParams<PromptShortcut>) => (
-      <ScaleDecorator>{renderShortcutRow(item, drag, isActive)}</ScaleDecorator>
-    ),
+    ({ item, drag, isActive }: RenderItemParams<PromptShortcut>) =>
+      renderShortcutRow(item, drag, isActive),
     [renderShortcutRow]
   )
 
@@ -290,7 +342,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   width: '94%',
                   maxWidth: maxModalWidth,
                   height: modalHeight,
-                  backgroundColor: colors.bgSurface,
+                  backgroundColor: isDark ? colors.bgSurface : colors.bgApp,
                   borderRadius: tokens.radius.xl,
                   padding: tokens.spacing.lg
                 }
@@ -299,11 +351,13 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
               {editingItem ? (
                 <PromptShortcutEditor
                   editingItem={editingItem}
-                  draftName={draftName}
+                  draftCommand={draftCommand}
+                  draftDescription={draftDescription}
                   draftContent={draftContent}
                   saving={saving}
                   colors={colors}
-                  onChangeName={setDraftName}
+                  onChangeCommand={setDraftCommand}
+                  onChangeDescription={setDraftDescription}
                   onChangeContent={setDraftContent}
                   onCancel={resetEditing}
                   onSave={() => void handleSave()}
@@ -316,16 +370,9 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     </Text>
                     <View style={styles.headerActions}>
                       {canManage ? (
-                        <Pressable
-                          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-                          onPress={handleCreateNew}
-                        >
-                          <Text
-                            style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}
-                          >
-                            + {t('shortcut.add_short', '新增')}
-                          </Text>
-                        </Pressable>
+                        <Button size="sm" onPress={handleCreateNew}>
+                          + {t('shortcut.add_short', '新增')}
+                        </Button>
                       ) : null}
                       <Pressable onPress={handleClose} hitSlop={12}>
                         <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>×</Text>
@@ -385,7 +432,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
                   {canManage && canDrag ? (
                     <Text style={[styles.dragHint, { color: colors.textTertiary }]}>
-                      {t('shortcut.drag_sort_hint', '按住左侧把手拖动排序')}
+                      {t('shortcut.drag_sort_hint', '按住条目即可拖动排序')}
                     </Text>
                   ) : null}
 
@@ -398,34 +445,30 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                             : t('shortcut.no_shortcuts_hint', '暂无任何快捷指令，立即创建一个吧。')}
                         </Text>
                         {canManage && !isSearchActive ? (
-                          <Pressable
-                            style={[styles.emptyAddBtn, { backgroundColor: colors.primary }]}
-                            onPress={handleCreateNew}
-                          >
-                            <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
-                              + {t('shortcut.add_custom_command', '新增自定义指令')}
-                            </Text>
-                          </Pressable>
+                          <Button size="sm" onPress={handleCreateNew}>
+                            + {t('shortcut.add_custom_command', '新增自定义指令')}
+                          </Button>
                         ) : null}
                       </View>
                     ) : canDrag && onReorder ? (
                       <DraggableFlatList
-                        style={listAreaHeight != null ? { height: listAreaHeight } : styles.list}
-                        containerStyle={
-                          listAreaHeight != null ? { height: listAreaHeight } : styles.list
-                        }
+                        style={listSizeStyle}
+                        containerStyle={listSizeStyle}
                         contentContainerStyle={styles.listContent}
-                        data={paginatedShortcuts}
+                        data={listData}
                         keyExtractor={(item) => item.id}
                         renderItem={renderDraggableItem}
+                        onDragBegin={handleDragBegin}
                         onDragEnd={handleDragEnd}
-                        activationDistance={12}
+                        activationDistance={0}
+                        autoscrollThreshold={tokens.spacing.sm}
+                        animationConfig={DRAG_SPRING}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                       />
                     ) : (
                       <FlatList
-                        style={listAreaHeight != null ? { height: listAreaHeight } : styles.list}
+                        style={listSizeStyle}
                         contentContainerStyle={styles.listContent}
                         data={paginatedShortcuts}
                         keyExtractor={(item) => item.id}

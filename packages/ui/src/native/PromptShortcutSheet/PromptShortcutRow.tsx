@@ -1,30 +1,39 @@
-import React from 'react'
-import { View, Text, Pressable } from 'react-native'
-import { GripVertical, Pencil, Trash2 } from 'lucide-react-native'
-import {
-  localizePromptShortcut,
-  type LocalizedShortcutLabels,
-  type PromptShortcut
-} from '@baishou/shared'
+import React, { useRef, useState } from 'react'
+import { View, Text, Pressable, Dimensions } from 'react-native'
+import { TouchableOpacity } from 'react-native-gesture-handler'
+import { MoreVertical } from 'lucide-react-native'
+import { type LocalizedShortcutLabels, type PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { ContextMenu } from '../ContextMenu'
+import { computeAnchoredMenuPosition } from '../ContextMenu/anchored-menu-position.util'
 import { promptShortcutSheetStyles as styles } from './prompt-shortcut-sheet.styles'
+import { resolveShortcutDisplayInfo } from './prompt-shortcut-display.util'
 
-const ROW_MIN_HEIGHT = 60
+const ROW_MIN_HEIGHT = 64
+/** 点按使用、按住拖动；略短于系统默认长按，避免第二次拖动发闷 */
+const DRAG_LONG_PRESS_MS = 200
 
-export function PromptShortcutRow(props: {
+export { resolveShortcutDisplayInfo }
+
+export const PromptShortcutRow = React.memo(function PromptShortcutRow(props: {
   item: PromptShortcut
   canManage: boolean
   canDrag: boolean
   isDragging?: boolean
+  isDark?: boolean
   colors: {
+    bgSurface?: string
+    bgSurfaceRaised?: string
     bgSurfaceHigh: string
     borderSubtle: string
+    borderMuted?: string
     textPrimary: string
     textSecondary: string
     textTertiary: string
     textOnPrimary: string
     primary: string
+    primaryContainer?: string
     error: string
   }
   defaultShortcutLabels: LocalizedShortcutLabels
@@ -34,80 +43,145 @@ export function PromptShortcutRow(props: {
   onDrag?: () => void
 }) {
   const { t } = useTranslation()
-  const { item, colors } = props
-  const localized = localizePromptShortcut(item, props.defaultShortcutLabels)
+  const { item, colors, isDark = false } = props
+  const moreRef = useRef<View>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 })
+
+  const { localized, isProtected, command, showCustomName, customName, displayDesc } =
+    resolveShortcutDisplayInfo(item, props.defaultShortcutLabels)
+
+  const cardBg = isDark ? colors.bgSurfaceRaised || colors.bgSurface : colors.bgSurface
+  const cardBorder = colors.borderMuted || colors.borderSubtle
+  const canStartDrag = props.canManage && props.canDrag && Boolean(props.onDrag)
+  const dragStartedRef = useRef(false)
+
+  const startDrag = () => {
+    dragStartedRef.current = true
+    props.onDrag?.()
+  }
+
+  const handlePress = () => {
+    if (dragStartedRef.current) return
+    props.onSelect(localized)
+  }
+
+  const handlePressOut = () => {
+    requestAnimationFrame(() => {
+      dragStartedRef.current = false
+    })
+  }
+
+  const openMenu = () => {
+    moreRef.current?.measureInWindow((x, y, width, height) => {
+      const window = Dimensions.get('window')
+      const next = computeAnchoredMenuPosition({
+        triggerX: x,
+        triggerY: y,
+        triggerWidth: width,
+        triggerHeight: height,
+        windowWidth: window.width,
+        windowHeight: window.height
+      })
+      setAnchorPosition({ x: next.left, y: next.top })
+      setMenuOpen(true)
+    })
+  }
+
+  const body = (
+    <>
+      <View style={styles.itemTitleRow}>
+        <Text style={[styles.itemCommand, { color: colors.primary }]} numberOfLines={1}>
+          /{command}
+        </Text>
+        {showCustomName ? (
+          <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {customName}
+          </Text>
+        ) : null}
+        {isProtected ? (
+          <View
+            style={[
+              styles.systemBadge,
+              {
+                backgroundColor: colors.primaryContainer || colors.bgSurfaceHigh
+              }
+            ]}
+          >
+            <Text style={[styles.systemBadgeText, { color: colors.primary }]}>
+              {t('shortcut.builtin_tag', '内置')}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {displayDesc ? (
+        <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
+          {displayDesc}
+        </Text>
+      ) : null}
+    </>
+  )
 
   return (
     <View
       style={[
         styles.item,
         {
-          backgroundColor: colors.bgSurfaceHigh,
-          borderColor: colors.borderSubtle,
-          minHeight: ROW_MIN_HEIGHT,
-          opacity: props.isDragging ? 0.92 : 1
+          backgroundColor: cardBg,
+          borderColor: cardBorder,
+          minHeight: ROW_MIN_HEIGHT
         }
       ]}
     >
-      {props.canManage ? (
-        props.canDrag && props.onDrag ? (
-          <Pressable
-            style={styles.reorderBtns}
-            onPressIn={props.onDrag}
-            hitSlop={6}
-            accessibilityLabel={t('shortcut.drag_handle', '拖动排序')}
-          >
-            <GripVertical
-              size={22}
-              color={colors.textTertiary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
-          </Pressable>
-        ) : (
-          <View style={styles.reorderSpacer} />
-        )
-      ) : null}
-
       <View style={styles.itemBody}>
-        <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-          {localized.name || t('shortcut.default_tag', '指令')}
-        </Text>
-        <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
-          {localized.content}
-        </Text>
+        <TouchableOpacity
+          style={styles.itemBodyPress}
+          onPress={handlePress}
+          onPressOut={handlePressOut}
+          onLongPress={canStartDrag ? startDrag : undefined}
+          delayLongPress={DRAG_LONG_PRESS_MS}
+          activeOpacity={1}
+          accessibilityRole="button"
+          accessibilityLabel={`/${command}`}
+        >
+          {body}
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.itemActions}>
-        <Pressable
-          style={[styles.useBtn, { backgroundColor: colors.primary }]}
-          onPress={() => props.onSelect(localized)}
-          accessibilityLabel={t('common.use', '使用')}
-        >
-          <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 12 }}>
-            {t('common.use', '使用')}
-          </Text>
-        </Pressable>
-        {props.canManage ? (
-          <>
+      {props.canManage && !isProtected ? (
+        <View style={styles.itemActions}>
+          <View ref={moreRef} collapsable={false}>
             <Pressable
-              style={styles.actionBtn}
+              style={styles.moreBtn}
               hitSlop={8}
-              onPress={() => props.onEdit(item)}
-              accessibilityLabel={t('shortcut.edit', '编辑')}
+              onPress={openMenu}
+              accessibilityLabel={t('common.more', '更多操作')}
             >
-              <Pencil size={20} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              <MoreVertical
+                size={18}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </Pressable>
-            <Pressable
-              style={styles.actionBtn}
-              hitSlop={8}
-              onPress={() => props.onDelete(item.id)}
-              accessibilityLabel={t('common.delete', '删除')}
-            >
-              <Trash2 size={22} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            </Pressable>
-          </>
-        ) : null}
-      </View>
+          </View>
+          <ContextMenu
+            visible={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            anchorPosition={anchorPosition}
+            items={[
+              {
+                label: t('shortcut.edit', '编辑'),
+                onPress: () => props.onEdit(item)
+              },
+              {
+                label: t('common.delete', '删除'),
+                onPress: () => props.onDelete(item.id),
+                destructive: true
+              }
+            ]}
+          />
+        </View>
+      ) : null}
     </View>
   )
-}
+})

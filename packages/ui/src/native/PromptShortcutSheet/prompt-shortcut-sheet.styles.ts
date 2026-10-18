@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const promptShortcutSheetStyles = StyleSheet.create({
   gestureRoot: {
@@ -24,55 +25,56 @@ export const promptShortcutSheetStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   headerText: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     flex: 1
   },
   closeIcon: {
-    fontSize: 24,
+    fontSize: iconSizes.lg,
     lineHeight: 24
   },
   addBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 44,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    gap: 8,
-    borderRadius: 10,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     paddingVertical: 0,
     height: 40
   },
   slashHint: {
-    fontSize: 12,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    marginBottom: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth
   },
   dragHint: {
-    fontSize: 11,
-    marginBottom: 8
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18,
+    marginBottom: sharedTokens.spacing.sm
   },
   listArea: {
     flex: 1,
@@ -82,129 +84,161 @@ export const promptShortcutSheetStyles = StyleSheet.create({
     flex: 1
   },
   listContent: {
-    paddingBottom: 8
+    paddingBottom: sharedTokens.spacing.sm
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden'
-  },
-  reorderBtns: {
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-    gap: 2
-  },
-  reorderSpacer: {
-    width: 36,
-    alignSelf: 'stretch'
-  },
-  reorderBtn: {
-    width: 32,
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center'
+    borderRadius: sharedTokens.radius.md,
+    marginBottom: sharedTokens.spacing.smPlus,
+    borderWidth: 1,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    position: 'relative'
   },
   itemBody: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    justifyContent: 'center',
+    paddingRight: sharedTokens.spacing.xsPlus,
+    paddingLeft: sharedTokens.spacing.xxs
+  },
+  itemBodyPress: {
     flex: 1,
-    paddingVertical: 10,
-    paddingRight: 4
+    justifyContent: 'center'
+  },
+  itemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.xsPlus
+  },
+  itemCommand: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   itemName: {
-    fontSize: 15,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500'
+  },
+  systemBadge: {
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
+  },
+  systemBadgeText: {
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   itemContent: {
-    fontSize: 13,
-    marginTop: 4,
+    fontSize: mobileTypography.secondary.fontSize,
+    marginTop: sharedTokens.spacing.xs,
     lineHeight: 18
   },
   itemActions: {
-    flexDirection: 'row',
+    width: 30,
+    flexShrink: 0,
     alignItems: 'center',
-    paddingRight: 6,
-    gap: 4
+    justifyContent: 'center',
+    position: 'relative'
   },
   useBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginRight: 2
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm
   },
-  actionBtn: {
-    width: 36,
-    height: 36,
+  moreBtn: {
+    width: 30,
+    height: 30,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    borderRadius: sharedTokens.radius.xsPlus
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16
+    gap: sharedTokens.spacing.md
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center'
   },
   emptyAddBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control
   },
   paginationBar: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 12,
-    marginTop: 4,
+    paddingTop: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.xs,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between'
   },
   pageMeta: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   pageNavBtns: {
     flexDirection: 'row',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   pageNavBtn: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center'
   },
+  editorRoot: {
+    flex: 1
+  },
+  editorScroll: {
+    flex: 1
+  },
+  editorScrollContent: {
+    paddingRight: 0,
+    paddingLeft: 0
+  },
+  fieldBlock: {
+    width: '100%',
+    alignSelf: 'stretch'
+  },
+  fieldControl: {
+    width: '100%',
+    alignSelf: 'stretch'
+  },
   fieldLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 6
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   fieldInput: {
-    fontSize: 15,
-    borderRadius: 10,
+    fontSize: mobileTypography.body.fontSize,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus
   },
   fieldTextArea: {
-    minHeight: 120,
-    maxHeight: 180
+    minHeight: sharedTokens.spacing.xxxl * 3 + sharedTokens.spacing.xl,
+    maxHeight: sharedTokens.spacing.xxxl * 3 + sharedTokens.spacing.xl,
+    width: '100%'
   },
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20
+    gap: sharedTokens.spacing.smPlus,
+    marginTop: sharedTokens.spacing.mdPlus
   },
   formBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: StyleSheet.hairlineWidth
   },
   formBtnPrimary: {
