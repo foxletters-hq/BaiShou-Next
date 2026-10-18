@@ -14,7 +14,7 @@
   gap: 0;
   border: 1px solid var(--border-subtle);
   border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -25,7 +25,7 @@
   min-width: 220px;
   flex-shrink: 0;
   overflow-y: auto;
-  padding: 8px;
+  padding: var(--spacing-sm);
   background: var(--bg-surface);
   height: 100%;
 }
@@ -38,15 +38,15 @@
   height: 100%;
   min-height: 200px;
   color: var(--text-secondary);
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .gallery-list-item {
-  padding: 14px 16px;
-  margin-bottom: 4px;
-  border-radius: 10px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  border-radius: var(--radius-control);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
   border-left: 3px solid transparent;
 }
 
@@ -63,11 +63,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .gallery-list-item-title {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -77,12 +77,12 @@
 }
 
 .gallery-list-item-date {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-tertiary);
 }
 
 .gallery-list-item-preview {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
   overflow: hidden;
@@ -105,7 +105,7 @@
   min-height: 0;
   overflow-y: auto;
   overflow-anchor: none;
-  padding: 16px 24px;
+  padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -122,7 +122,7 @@
   justify-content: center;
   height: 100%;
   color: var(--text-secondary);
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .gallery-detail-header {
@@ -130,8 +130,8 @@
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs-plus);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -149,27 +149,27 @@
 .gallery-detail-meta {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
 .gallery-detail-type-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-md-tight);
   background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
 }
 
 .gallery-detail-date {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
 
@@ -177,20 +177,20 @@
 .gallery-detail-time {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--ui-fs-sm);
   color: var(--text-tertiary);
 }
 
 .gallery-detail-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .gallery-action-btn {
   background: transparent;
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   width: 36px;
   height: 36px;
   display: flex;
@@ -198,7 +198,7 @@
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
 }
 
 .gallery-action-btn:hover {
@@ -246,7 +246,7 @@
 
 /* 避免编辑时光标/末行字形被底部裁切 */
 .gallery-detail-content.editing .codemirror-editor-wrapper .cm-content {
-  padding-bottom: 28px;
+  padding-bottom: var(--spacing-lg);
 }
 
 .gallery-detail-content h1,
@@ -303,16 +303,16 @@
 
 .gallery-detail-content code {
   background: rgba(var(--color-primary-rgb), 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   font-size: 0.9em;
   font-family: 'Fira Code', 'Courier New', monospace;
 }
 
 .gallery-detail-content pre {
   background: var(--bg-surface-lowest);
-  padding: 16px;
-  border-radius: 8px;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
   overflow-x: auto;
   margin: 1em 0;
   border: 1px solid var(--border-subtle);
@@ -343,7 +343,7 @@
 }
 
 .gallery-empty-text {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-secondary);
 }
 
@@ -364,7 +364,7 @@
   }
 
   .gallery-detail {
-    padding: 16px;
+    padding: var(--spacing-md);
   }
 }
 
@@ -373,15 +373,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
   margin-bottom: 0;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-muted);
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .gallery-filter-container {
@@ -394,14 +394,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-control);
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   height: 28px;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -455,10 +455,10 @@
   width: 420px;
   max-width: 90vw;
   background: var(--bg-surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  padding: 20px;
+  padding: var(--spacing-md-plus);
   display: flex;
   flex-direction: column;
   max-height: 70vh;
@@ -469,13 +469,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm-plus);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .gallery-year-modal-header h3 {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -486,12 +486,12 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
+  padding: var(--spacing-xs);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .gallery-year-modal-close:hover {
@@ -502,7 +502,7 @@
 .gallery-year-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   overflow-y: auto;
   flex: 1;
 }
@@ -513,21 +513,21 @@
 
 .gallery-year-modal-body::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 /* 全部年份 独立大按钮 */
 .gallery-year-modal-all-btn {
   width: 100%;
-  padding: 10px;
-  border-radius: 8px;
+  padding: var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-surface-lowest);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   text-align: center;
 }
 
@@ -550,7 +550,7 @@
   top: 0;
   z-index: 10;
   background: var(--bg-surface);
-  padding-bottom: 8px;
+  padding-bottom: var(--spacing-sm);
   margin-top: -4px;
 }
 
@@ -558,20 +558,20 @@
 .gallery-year-modal-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding-bottom: 8px;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
 }
 
 .gallery-year-modal-grid-item {
-  padding: 10px 0;
-  border-radius: 8px;
+  padding: var(--spacing-sm-plus) 0;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-surface-lowest);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   text-align: center;
 }
 

@@ -1,13 +1,13 @@
 .card {
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
   font-family: var(--font-family-main);
   box-shadow: var(--shadow-md);
   transition: all var(--animation-micro);
   max-width: 800px;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .highlighted {
@@ -20,38 +20,38 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  margin-bottom: var(--spacing-md-plus);
+  padding-bottom: var(--spacing-md-tight);
   border-bottom: 1px dashed var(--border-control);
 }
 
 .dateBadge {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-surface-highest);
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
 }
 
 .metaInfo {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   color: var(--text-secondary);
   background: rgba(128, 128, 128, 0.05);
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-lg-plus);
 }
 
 .icon {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .body {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-primary);
 }

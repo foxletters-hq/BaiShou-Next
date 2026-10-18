@@ -1,30 +1,30 @@
 .summary-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-lg);
 }
 
 .dashboard-hero {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  padding: 32px 24px;
-  border-radius: 16px;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border-radius: var(--radius-lg);
   color: var(--text-on-primary);
 }
 
 .hero-title {
-  font-size: 28px;
+  font-size: var(--ui-display-md);
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .hero-subtitle {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   opacity: 0.9;
   margin: 0;
 }
 
 .stats-grid {
   display: flex;
-  gap: 16px;
+  gap: var(--spacing-md);
   flex-wrap: wrap;
 }
