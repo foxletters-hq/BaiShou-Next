@@ -325,14 +325,20 @@ export {
   mobileListKnowledgeChunks,
   mobileSearchNotebookGraphNodes,
   mobileListNotebookGraphJobs,
+  mobileListNotebookOrganizeJobs,
+  overlayMobileOrganizeJobsLive,
   mobileGetNotebookGraphView,
-  mobileSearchNotebookGraph
+  mobileListNotebookGraphNodesPage,
+  mobileCountNotebookGraph,
+  mobileSearchNotebookGraph,
+  mobileGetNotebookGraphNodePage
 } from './mobile-knowledge-search.service'
 
 export {
   mobileGetKnowledgeConfig,
   mobileSetKnowledgeConfig,
-  subscribeMobileKnowledgeExtractProgress
+  subscribeMobileKnowledgeExtractProgress,
+  subscribeMobileKnowledgeIngestLive
 } from './mobile-knowledge-extract-config'
 
 export async function mobileGetKnowledgeCapabilities() {
@@ -359,7 +365,7 @@ export async function mobileCancelExtract(sourceId: string) {
 
 export async function mobileRecoverStaleIngest() {
   const svc = await buildMobileIngestService()
-  return svc.recoverStaleIngestState()
+  return svc.recoverStaleIngestState({ olderThanMs: 0 })
 }
 
 export async function mobileOcrMissingPages(

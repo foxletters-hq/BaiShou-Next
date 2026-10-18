@@ -12,7 +12,7 @@ import {
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
 export const DEFAULT_MOBILE_KNOWLEDGE_CONFIG: KnowledgeConfig = {
-  defaultExtractEngine: 'ocr',
+  defaultExtractEngine: 'vision',
   importProcessMode: 'both',
   ocrLanguage: 'chi_sim+eng',
   ocrDpi: 250,
@@ -24,12 +24,29 @@ export type MobileKnowledgeExtractProgress = {
   sourceId: string
   page: number
   total: number
-  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize'
+  phase?: 'ocr' | 'vision' | 'render' | 'embed' | 'parse' | 'recognize' | 'graph' | 'graphNodes'
+  windowsDone?: number
+  windowsTotal?: number
+  nodesDone?: number
+  nodesTotal?: number
+  pageFrom?: number
+  pageTo?: number
+  pageTotal?: number
 }
 
 type ProgressListener = (info: MobileKnowledgeExtractProgress) => void
 
 const progressListeners = new Set<ProgressListener>()
+
+export type MobileKnowledgeIngestLive = {
+  sourceId: string
+  stage: string
+  live: boolean
+}
+
+type LiveListener = (info: MobileKnowledgeIngestLive) => void
+
+const liveListeners = new Set<LiveListener>()
 
 export function subscribeMobileKnowledgeExtractProgress(listener: ProgressListener): () => void {
   progressListeners.add(listener)
@@ -40,6 +57,17 @@ export function subscribeMobileKnowledgeExtractProgress(listener: ProgressListen
 
 export function emitMobileKnowledgeExtractProgress(info: MobileKnowledgeExtractProgress): void {
   for (const listener of progressListeners) listener(info)
+}
+
+export function subscribeMobileKnowledgeIngestLive(listener: LiveListener): () => void {
+  liveListeners.add(listener)
+  return () => {
+    liveListeners.delete(listener)
+  }
+}
+
+export function emitMobileKnowledgeIngestLive(info: MobileKnowledgeIngestLive): void {
+  for (const listener of liveListeners) listener(info)
 }
 
 export async function mobileGetKnowledgeConfig(): Promise<KnowledgeConfig> {
@@ -74,6 +102,7 @@ export async function resolveMobileKnowledgeExtractConfig(): Promise<{
   visionModelConfigured: boolean
   visionProviderId: string | null
   visionModelId: string | null
+  pdfVisionOnly: true
 }> {
   const settings = agentDbRuntimeRef.current?.settingsManager
   const cfg = await mobileGetKnowledgeConfig()
@@ -94,6 +123,7 @@ export async function resolveMobileKnowledgeExtractConfig(): Promise<{
       hit && isVisionModel(hit.modelId, hit.provider.type || hit.provider.id)
     ),
     visionProviderId: hit?.provider.id ?? null,
-    visionModelId: hit?.modelId ?? null
+    visionModelId: hit?.modelId ?? null,
+    pdfVisionOnly: true
   }
 }

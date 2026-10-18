@@ -7,11 +7,21 @@ import { getDefaultGlobalModels } from '@baishou/store'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { resolveMobileEmbeddingForHydration } from './mobile-raw-data-source.runtime'
 
-export async function mobileGetKnowledgeProcessLabels(): Promise<{
+export interface KnowledgeProcessLabels {
   embeddingModelId: string | null
   embeddingModelLabel: string
   graphModelLabel: string
-}> {
+  embeddingProviderId?: string | null
+  graphProviderId?: string | null
+}
+
+let cachedKnowledgeProcessLabels: KnowledgeProcessLabels | null = null
+
+export function peekCachedKnowledgeProcessLabels(): KnowledgeProcessLabels | null {
+  return cachedKnowledgeProcessLabels
+}
+
+export async function mobileGetKnowledgeProcessLabels(): Promise<KnowledgeProcessLabels> {
   const runtime = agentDbRuntimeRef.current
   const settings = runtime?.settingsManager
   const global =
@@ -19,11 +29,15 @@ export async function mobileGetKnowledgeProcessLabels(): Promise<{
   const emb = settings
     ? await resolveMobileEmbeddingForHydration(settings)
     : { embeddingModelId: null as string | null }
-  return {
+  const result: KnowledgeProcessLabels = {
     embeddingModelId: emb.embeddingModelId || global.globalEmbeddingModelId || null,
     embeddingModelLabel: global.globalEmbeddingModelId || '',
-    graphModelLabel: global.globalGraphModelId || ''
+    graphModelLabel: global.globalGraphModelId || '',
+    embeddingProviderId: global.globalEmbeddingProviderId || null,
+    graphProviderId: global.globalGraphProviderId || null
   }
+  cachedKnowledgeProcessLabels = result
+  return result
 }
 
 export async function mobileSetGlobalKnowledgeModel(input: {
@@ -44,6 +58,13 @@ export async function mobileSetGlobalKnowledgeModel(input: {
     next.globalGraphModelId = input.modelId
   }
   await settings.set('global_models', next)
+  cachedKnowledgeProcessLabels = {
+    embeddingModelId: next.globalEmbeddingModelId || null,
+    embeddingModelLabel: next.globalEmbeddingModelId || '',
+    graphModelLabel: next.globalGraphModelId || '',
+    embeddingProviderId: next.globalEmbeddingProviderId || null,
+    graphProviderId: next.globalGraphProviderId || null
+  }
   return next
 }
 

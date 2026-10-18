@@ -1,14 +1,28 @@
-import { registerPdfPageBitmapRenderer } from '@baishou/core-mobile'
-import i18n from 'i18next'
+import { getPdfPageRenderNative } from 'expo-pdf-page-render'
+import {
+  getPdfNumPagesProbe,
+  registerPdfNumPagesProbe,
+  registerPdfPageBitmapRenderer
+} from '@baishou/core-mobile'
+import {
+  createMobilePdfPageBitmapRenderer,
+  normalizePdfFilePath
+} from '../utils/mobile-pdf-page-render.util'
 
-/** 注册位图槽位；手机暂不能把 PDF 页画成图，调用时抛错以免静默当成功。 */
+/** 注册系统 PDF 页图渲染；页数优先用原生页数，扫描件不会被文字层切成 1 页。 */
 export function registerMobilePdfPageBitmapRenderer(): void {
-  registerPdfPageBitmapRenderer(async () => {
-    throw new Error(
-      i18n.t(
-        'knowledge.mobile_pdf_bitmap_unavailable',
-        '手机暂无 PDF 页位图，扫描件请改用文本层或到桌面做 OCR'
-      )
-    )
+  const previousProbe = getPdfNumPagesProbe()
+  registerPdfPageBitmapRenderer(createMobilePdfPageBitmapRenderer(getPdfPageRenderNative))
+  registerPdfNumPagesProbe(async (filePath) => {
+    const native = getPdfPageRenderNative()
+    if (native?.isAvailable()) {
+      try {
+        const count = await native.getPageCount(normalizePdfFilePath(filePath))
+        if (typeof count === 'number' && count > 0) return count
+      } catch {
+        /* 原生页数失败时退回文字层探测 */
+      }
+    }
+    return previousProbe ? previousProbe(filePath) : null
   })
 }
