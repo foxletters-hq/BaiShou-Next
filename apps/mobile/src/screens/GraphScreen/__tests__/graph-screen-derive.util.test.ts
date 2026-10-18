@@ -21,6 +21,7 @@ import {
   graphSearchHitViewState,
   graphTokenCountDisplay,
   parseGraphSourceDate,
+  resolveGraphNodeSourcePreview,
   shouldShowGraphEmptyGuide,
   shouldShowGraphMonthEmpty
 } from '../graph-screen-derive.util'
@@ -240,5 +241,46 @@ describe('findGraphScreenNode', () => {
       name: '待审'
     })
     expect(findGraphScreenNode('missing', [{ id: 'a' }], [])).toBeNull()
+  })
+})
+
+describe('resolveGraphNodeSourcePreview', () => {
+  it('should prefer a touching edge whose sourceRef contains a diary date', () => {
+    expect(
+      resolveGraphNodeSourcePreview({
+        nodeId: 'n1',
+        edges: [
+          { fromId: 'n1', toId: 'e1', sourceRef: 'note.md', sourceExcerpt: '片段' },
+          { fromId: 'n1', toId: 'e2', sourceRef: '2024-03-08', sourceExcerpt: '当天摘录' }
+        ]
+      })
+    ).toEqual({ sourceRef: '2024-03-08', excerpt: '当天摘录' })
+  })
+
+  it('should fall back to excerpt then ambiguous source refs when no date is present', () => {
+    expect(
+      resolveGraphNodeSourcePreview({
+        nodeId: 'n1',
+        node: { propsJson: JSON.stringify({ ambiguousSourceRefs: ['legacy-ref'] }) },
+        edges: [
+          { fromId: 'other', toId: 'x', sourceRef: '2024-01-01', sourceExcerpt: '别人的' },
+          { fromId: 'n1', toId: 'e1', sourceExcerpt: '关系摘录' }
+        ]
+      })
+    ).toEqual({ sourceRef: null, excerpt: '关系摘录' })
+    expect(
+      resolveGraphNodeSourcePreview({
+        nodeId: 'n1',
+        node: { propsJson: JSON.stringify({ ambiguousSourceRefs: ['legacy-ref'] }) },
+        edges: []
+      })
+    ).toEqual({ sourceRef: 'legacy-ref', excerpt: null })
+  })
+
+  it('should return empty when the node has no source', () => {
+    expect(resolveGraphNodeSourcePreview({ nodeId: 'n1', edges: [] })).toEqual({
+      sourceRef: null,
+      excerpt: null
+    })
   })
 })

@@ -144,9 +144,57 @@ export function buildGraphScreenDetailEdges<T extends GraphScreenEdge>(opts: {
       partnerName: opts.resolvePartnerName(partnerId)
     })
   }
-  return list
+  return list.sort((a, b) => {
+    const aActionable = a.edge.reviewStatus === 'pending' ? 1 : 0
+    const bActionable = b.edge.reviewStatus === 'pending' ? 1 : 0
+    return bActionable - aActionable
+  })
 }
 
 export function countGraphCanvasNodes(nodes: Array<{ reviewStatus?: string }>): number {
   return nodes.filter((n) => n.reviewStatus !== 'rejected').length
+}
+
+export function resolveGraphReviewOverlayTab(input: {
+  pendingCount: number
+  similarCount: number
+  reextractCount: number
+}): 'pending' | 'similar' | 'reextract' {
+  if (input.pendingCount > 0) return 'pending'
+  if (input.similarCount > 0) return 'similar'
+  return 'reextract'
+}
+
+export function toGraphForceNodes(nodes: GraphScreenNode[]): Array<{
+  id: string
+  name: string
+  nodeType: string
+  discriminator?: string
+  mentionCount?: number
+  reviewStatus?: string
+}> {
+  return nodes.map((node) => ({
+    id: node.id,
+    name: node.name || node.id,
+    nodeType: node.nodeType || 'topic',
+    discriminator: node.discriminator,
+    mentionCount: node.mentionCount,
+    reviewStatus: node.reviewStatus
+  }))
+}
+
+export function toGraphForceEdges(edges: GraphScreenEdge[]): Array<{
+  id: string
+  fromId: string
+  toId: string
+  edgeType: string
+  reviewStatus?: string
+}> {
+  return edges.map((edge) => ({
+    id: edge.id,
+    fromId: edge.fromId,
+    toId: edge.toId,
+    edgeType: edge.edgeType || 'relates_to',
+    reviewStatus: edge.reviewStatus
+  }))
 }

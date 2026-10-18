@@ -20,6 +20,7 @@ import {
 } from '@baishou/ui/native'
 import type { AppDatabase } from '@baishou/database'
 import type { IFileSystem, IStoragePathService } from '@baishou/core-mobile'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   mobileListNameCandidates,
   mobileListSplitEdges,
@@ -36,6 +37,7 @@ export function GraphSplitNodeSheet(props: {
   nodeName?: string
   initialDiscriminator?: string
   initialLabel?: string
+  initialEdges?: MobileSplitEdgeRow[]
   drizzleDb: AppDatabase | null
   pathService: IStoragePathService
   fileSystem: IFileSystem
@@ -65,7 +67,7 @@ export function GraphSplitNodeSheet(props: {
   const [page, setPage] = useState(1)
 
   useEffect(() => {
-    if (!props.visible || !props.nodeId || !props.drizzleDb) return
+    if (!props.visible || !props.nodeId) return
     setDiscriminator(props.initialDiscriminator ?? '')
     setLabel(props.initialLabel ?? '')
     setLabelTouched(Boolean(props.initialLabel?.trim()))
@@ -74,8 +76,23 @@ export function GraphSplitNodeSheet(props: {
     setUnassignedIds([])
     setSaving(false)
     setPage(1)
+
+    if (props.initialEdges && props.initialEdges.length > 0) {
+      setEdges(props.initialEdges)
+      setTargets(
+        Object.fromEntries(
+          props.initialEdges.map((row) => [row.edgeId, 'unassigned' as EdgeTarget])
+        )
+      )
+    }
+
+    if (!props.drizzleDb) {
+      setBareNodeId(props.nodeId)
+      return
+    }
+
     let cancelled = false
-    setLoading(true)
+    setLoading(!props.initialEdges || props.initialEdges.length === 0)
     void (async () => {
       try {
         const candidates = await mobileListNameCandidates(props.drizzleDb!, props.nodeId!)
@@ -88,12 +105,36 @@ export function GraphSplitNodeSheet(props: {
             label: props.nodeName ?? ''
           }
         setBareNodeId(bare.nodeId)
-        const rows = await mobileListSplitEdges(props.drizzleDb!, bare.nodeId)
+
+        const [targetRows, bareRows] = await Promise.all([
+          mobileListSplitEdges(props.drizzleDb!, props.nodeId!),
+          bare.nodeId && bare.nodeId !== props.nodeId
+            ? mobileListSplitEdges(props.drizzleDb!, bare.nodeId)
+            : Promise.resolve([])
+        ])
         if (cancelled) return
+
+        const mergedMap = new Map<string, MobileSplitEdgeRow>()
+        if (props.initialEdges) {
+          for (const row of props.initialEdges) mergedMap.set(row.edgeId, row)
+        }
+        for (const row of targetRows) mergedMap.set(row.edgeId, row)
+        for (const row of bareRows) {
+          if (!mergedMap.has(row.edgeId)) mergedMap.set(row.edgeId, row)
+        }
+        const rows = Array.from(mergedMap.values())
         setEdges(rows)
-        setTargets(Object.fromEntries(rows.map((row) => [row.edgeId, 'unassigned' as EdgeTarget])))
+        setTargets((prev) => {
+          const nextTargets: Record<string, EdgeTarget> = { ...prev }
+          for (const row of rows) {
+            if (!nextTargets[row.edgeId]) nextTargets[row.edgeId] = 'unassigned'
+          }
+          return nextTargets
+        })
       } catch (e) {
-        if (!cancelled) setError(mobileSplitErrorMessage(e))
+        if (!cancelled && (!props.initialEdges || props.initialEdges.length === 0)) {
+          setError(mobileSplitErrorMessage(e))
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -107,6 +148,7 @@ export function GraphSplitNodeSheet(props: {
     props.nodeName,
     props.initialDiscriminator,
     props.initialLabel,
+    props.initialEdges,
     props.drizzleDb
   ])
 
@@ -197,62 +239,137 @@ export function GraphSplitNodeSheet(props: {
 
   return (
     <FloatingModal visible={props.visible} onClose={props.onClose} closeOnBackdropPress={!saving}>
-      <View style={{ padding: 20, gap: 10, maxHeight: 560 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}>
-          {t('graph.split_node_title', '把同名的拆成两个')}
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-          {t(
-            'graph.split_node_hint',
-            '先写清新的这个和原来的怎么区分。下面每条关系可以留给原来的、给新的，或先不管。先不管的下次还能继续分。'
-          )}
-        </Text>
-        <Input
-          label={t('graph.split_discriminator', '怎么区分这两个人')}
-          value={discriminator}
-          onChangeText={changeDiscriminator}
-          placeholder={t('graph.discriminator_placeholder', '例如：同事、大学同学')}
-        />
-        <Input
-          label={t('graph.split_label', '图谱上怎么称呼新的这个')}
-          value={label}
-          onChangeText={(value) => {
-            setLabelTouched(true)
-            setLabel(value)
+      <View style={{ maxHeight: 620, display: 'flex', flexDirection: 'column' }}>
+        <ScrollView
+          style={{ flexShrink: 1 }}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            padding: sharedTokens.spacing.mdPlus,
+            paddingRight: sharedTokens.spacing.mdTight,
+            gap: sharedTokens.spacing.smPlus
           }}
-          placeholder={t('graph.split_label_placeholder', '例如：{{name}}（同事）', {
-            name: originalName || '张三'
-          })}
-        />
-        <Input
-          label={t('graph.split_summary', '一句话介绍新的这个')}
-          value={summary}
-          onChangeText={setSummary}
-        />
-        <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>
-          {t('graph.split_edges_heading', '这些关系分别是谁的')}
-        </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-          {loading
-            ? t('graph.source_loading', '加载中…')
-            : t('graph.split_unassigned_count', '还有 {{count}} 条关系还没决定给谁', {
-                count: unassignedIds.length > 0 ? unassignedIds.length : unassignedCount
-              })}
-        </Text>
-        <ScrollView style={{ maxHeight: 220 }}>
+        >
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontSize: mobileTypography.title.fontSize,
+              fontWeight: mobileTypography.title.fontWeight
+            }}
+          >
+            {t('graph.split_node_title', '把同名的拆成两个')}
+          </Text>
+          <View
+            style={{
+              backgroundColor: colors.bgSurfaceNormal,
+              borderWidth: 1,
+              borderColor: colors.borderControl,
+              borderRadius: sharedTokens.radius.sm,
+              padding: sharedTokens.spacing.smPlus
+            }}
+          >
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: mobileTypography.secondary.fontSize,
+                lineHeight: 18
+              }}
+            >
+              {t(
+                'graph.split_node_hint',
+                '先写清新的这个和原来的怎么区分。下面每条关系可以留给原来的、给新的，或先不管。先不管的下次还能继续分。'
+              )}
+            </Text>
+          </View>
+          <Input
+            label={t('graph.split_discriminator', '怎么区分这两个人')}
+            value={discriminator}
+            onChangeText={changeDiscriminator}
+            placeholder={t('graph.discriminator_placeholder', '例如：同事、大学同学')}
+          />
+          <Input
+            label={t('graph.split_label', '图谱上怎么称呼新的这个')}
+            value={label}
+            onChangeText={(value) => {
+              setLabelTouched(true)
+              setLabel(value)
+            }}
+            placeholder={t('graph.split_label_placeholder', '例如：{{name}}（同事）', {
+              name: originalName || '张三'
+            })}
+          />
+          <Input
+            label={t('graph.split_summary', '一句话介绍新的这个')}
+            value={summary}
+            onChangeText={setSummary}
+          />
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontSize: mobileTypography.primary.fontSize,
+              fontWeight: '600',
+              marginTop: sharedTokens.spacing.xs
+            }}
+          >
+            {t('graph.split_edges_heading', '这些关系分别是谁的')}
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: mobileTypography.secondary.fontSize,
+              lineHeight: 18
+            }}
+          >
+            {loading
+              ? t('graph.source_loading', '加载中…')
+              : t('graph.split_unassigned_count', '还有 {{count}} 条关系还没决定给谁', {
+                  count: unassignedIds.length > 0 ? unassignedIds.length : unassignedCount
+                })}
+          </Text>
+
           {edges.length === 0 && !loading ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: mobileTypography.secondary.fontSize,
+                lineHeight: 20
+              }}
+            >
               {t('graph.split_edges_empty', '这个节点目前没有可分配的关系')}
             </Text>
           ) : (
             visibleEdges.map((edge) => {
               const leftover = unassignedIds.includes(edge.edgeId)
+              const partnerLabel =
+                formatGraphSplitPartnerName(edge.partnerName) || t('graph.unknown_node', '未知节点')
               return (
-                <View key={edge.edgeId} style={{ gap: 6, marginBottom: 12 }}>
-                  <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-                    {formatGraphSplitPartnerName(edge.partnerName)}
+                <View
+                  key={edge.edgeId}
+                  style={{
+                    gap: sharedTokens.spacing.xsPlus,
+                    marginBottom: sharedTokens.spacing.sm,
+                    padding: sharedTokens.spacing.smPlus,
+                    borderRadius: sharedTokens.radius.sm,
+                    backgroundColor: leftover ? colors.bgSurfaceNormal : colors.bgSurface,
+                    borderWidth: 1,
+                    borderColor: leftover ? colors.warning : colors.borderControl
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: colors.textPrimary,
+                      fontSize: mobileTypography.primary.fontSize,
+                      fontWeight: '600'
+                    }}
+                  >
+                    {partnerLabel}
                   </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: mobileTypography.secondary.fontSize,
+                      lineHeight: 18
+                    }}
+                  >
                     {translateGraphEdgeType(tr, edge.edgeType)}
                     {edge.sourceExcerpt ? ` · ${edge.sourceExcerpt}` : ''}
                     {leftover ? ` · ${t('graph.split_unassigned', '先不管')}` : ''}
@@ -261,6 +378,7 @@ export function GraphSplitNodeSheet(props: {
                     accessibilityLabel={t('graph.split_edge_assign', '分配这条关系')}
                     value={targets[edge.edgeId] ?? 'unassigned'}
                     onChange={(value) => setTargets((prev) => ({ ...prev, [edge.edgeId]: value }))}
+                    size="small"
                     options={[
                       { value: 'unassigned', label: t('graph.split_unassigned', '先不管') },
                       {
@@ -281,20 +399,47 @@ export function GraphSplitNodeSheet(props: {
               )
             })
           )}
+
+          {pageCount > 1 ? (
+            <View style={{ alignItems: 'center', marginVertical: sharedTokens.spacing.xs }}>
+              <Pagination
+                current={page}
+                total={pageCount}
+                onChange={setPage}
+                siblingCount={0}
+                showJumper={false}
+              />
+            </View>
+          ) : null}
+
+          {error ? (
+            <Text
+              style={{
+                color: colors.error,
+                fontSize: mobileTypography.secondary.fontSize,
+                lineHeight: 18
+              }}
+            >
+              {error}
+            </Text>
+          ) : null}
         </ScrollView>
-        {pageCount > 1 ? (
-          <Pagination
-            current={page}
-            total={pageCount}
-            onChange={setPage}
-            showJumper={pageCount > 8}
-          />
-        ) : null}
-        {error ? <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text> : null}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: sharedTokens.spacing.sm,
+            padding: sharedTokens.spacing.mdPlus,
+            paddingTop: sharedTokens.spacing.sm,
+            borderTopWidth: 1,
+            borderTopColor: colors.borderControl
+          }}
+        >
           {props.canApprove ? (
             <Button
               variant="outlined"
+              size="sm"
               disabled={saving || props.busy}
               onPress={() => void props.onApprove?.()}
             >
@@ -303,10 +448,16 @@ export function GraphSplitNodeSheet(props: {
                 : t('graph.approve', '通过')}
             </Button>
           ) : null}
-          <Button variant="outlined" disabled={saving || props.busy} onPress={props.onClose}>
+          <Button
+            variant="outlined"
+            size="sm"
+            disabled={saving || props.busy}
+            onPress={props.onClose}
+          >
             {t('common.cancel', '取消')}
           </Button>
           <Button
+            size="sm"
             disabled={saving || props.busy || loading || !discriminator.trim()}
             onPress={() => void submit()}
           >

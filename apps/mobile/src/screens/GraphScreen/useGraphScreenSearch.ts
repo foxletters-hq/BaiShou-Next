@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   clampGraphFocusDepth,
   GRAPH_FOCUS_DEPTH_STORAGE_KEY,
@@ -181,28 +181,51 @@ export function useGraphScreenSearch(deps: SearchDeps) {
     setLocateSeq((n) => n + 1)
   }
 
-  const onSearch = async (nextMode: GraphSearchMode = searchMode) => {
+  const searchSeqRef = useRef(0)
+
+  const onSearch = async (
+    nextQueryOrMode?: string | GraphSearchMode,
+    requestedMode?: GraphSearchMode
+  ) => {
+    const seq = ++searchSeqRef.current
+    let targetQuery = query
+    let targetMode = searchMode
+    if (
+      typeof nextQueryOrMode === 'string' &&
+      (nextQueryOrMode === 'text' || nextQueryOrMode === 'semantic')
+    ) {
+      targetMode = nextQueryOrMode
+    } else if (typeof nextQueryOrMode === 'string') {
+      targetQuery = nextQueryOrMode
+      if (requestedMode) targetMode = requestedMode
+    }
     const runtime = getAgentDbRuntime()
-    const q = query.trim()
+    const q = targetQuery.trim()
     if (!runtime?.drizzleDb || !q) {
+      setSearching(false)
       applySearchHits([])
       return
     }
     setSearching(true)
+    const nextMode = targetMode
     try {
       const found = await mobileSearchGraphNodes(runtime.drizzleDb, deps.vaultId, q, {
         mode: nextMode,
         settingsManager: deps.services?.settingsManager as never
       })
+      if (seq !== searchSeqRef.current) return
       applySearchHits(found)
     } catch (error) {
+      if (seq !== searchSeqRef.current) return
       applySearchHits([])
       const copy = graphSearchErrorCopy(error)
       const message = 'key' in copy ? deps.t(copy.key, copy.fallback) : copy.raw
       deps.setStatus(message)
       deps.toast.showError(message)
     } finally {
-      setSearching(false)
+      if (seq === searchSeqRef.current) {
+        setSearching(false)
+      }
     }
   }
 

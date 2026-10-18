@@ -4,6 +4,7 @@ import { graphPendingItemKey, splitGraphReviewSelection } from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
   mobileDismissSimilarPair,
+  mobileGetNode,
   mobileMergeGraphNodeGroup,
   mobileMergeGraphNodes,
   mobileSetEdgeReview,
@@ -17,12 +18,14 @@ import type { GraphPendingItem, GraphScreenTranslateFn } from './graph-screen.ty
 type ReviewDeps = {
   t: GraphScreenTranslateFn
   toast: { showSuccess: (message: string) => void; showError: (message: string) => void }
+  dialog?: { confirm: (message: any, titleOrOptions?: any) => Promise<boolean> }
   services: { pathService: unknown; fileSystem: unknown } | null
   vaultId: string
   vaultName: string
   graphNodes: any[]
   pendingNodes: any[]
   pendingEdges: any[]
+  similarPairs?: any[]
   selectedId: string | null
   setSelectedId: (id: string | null) => void
   setSelectedNode: (node: any | null) => void
@@ -33,6 +36,9 @@ type ReviewDeps = {
 
 export function useGraphScreenReview(deps: ReviewDeps) {
   const [pendingSelected, setPendingSelected] = useState<Set<string>>(() => new Set())
+  const [reviewingSelectedStatus, setReviewingSelectedStatus] = useState<
+    'approved' | 'rejected' | null
+  >(null)
   const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
   const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
 
@@ -58,64 +64,104 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     reviewStatus: 'approved' | 'rejected',
     endpoints?: { fromId?: string; toId?: string }
   ) => {
-    if (!deps.services) return
+    if (!deps.services) {
+      deps.toast.showError(deps.t('graph.review_unavailable', '现在无法审核，请稍后重试'))
+      return
+    }
     const runtime = getAgentDbRuntime()
-    if (!runtime?.drizzleDb) return
-    await mobileSetEdgeReview({
-      drizzleDb: runtime.drizzleDb,
-      pathService: deps.services.pathService as never,
-      fileSystem: deps.services.fileSystem as never,
-      edgeId,
-      reviewStatus,
-      vaultDisplayName: deps.vaultName
-    })
-    if (reviewStatus === 'approved') {
-      const pendingEnds = [endpoints?.fromId, endpoints?.toId].filter(Boolean) as string[]
-      for (const nodeId of pendingEnds) {
-        const node =
-          deps.pendingNodes.find((n) => n.id === nodeId) ||
-          deps.graphNodes.find((n) => n.id === nodeId && n.reviewStatus === 'pending')
-        if (node) {
-          await mobileSetNodeReview({
+    if (!runtime?.drizzleDb) {
+      deps.toast.showError(deps.t('graph.review_unavailable', '现在无法审核，请稍后重试'))
+      return
+    }
+    deps.setBusy(true)
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+      await mobileSetEdgeReview({
+        drizzleDb: runtime.drizzleDb,
+        pathService: deps.services.pathService as never,
+        fileSystem: deps.services.fileSystem as never,
+        edgeId,
+        reviewStatus,
+        vaultDisplayName: deps.vaultName
+      })
+      if (reviewStatus === 'approved') {
+        const pendingEnds = [endpoints?.fromId, endpoints?.toId].filter(Boolean) as string[]
+        for (const nodeId of pendingEnds) {
+          const freshNode = await mobileGetNode(runtime.drizzleDb, deps.vaultId, nodeId)
+          if (freshNode && freshNode.reviewStatus === 'pending') {
+            await mobileSetNodeReview({
+              drizzleDb: runtime.drizzleDb,
+              pathService: deps.services.pathService as never,
+              fileSystem: deps.services.fileSystem as never,
+              nodeId,
+              reviewStatus: 'approved',
+              vaultDisplayName: deps.vaultName
+            })
+          }
+        }
+      }
+      await deps.refreshVisibleAfterReview()
+      deps.toast.showSuccess(
+        reviewStatus === 'approved'
+          ? deps.t('graph.batch_approved', '已通过 {{count}} 项', { count: 1 })
+          : deps.t('graph.batch_rejected', '已拒绝 {{count}} 项', { count: 1 })
+      )
+    } catch (e: any) {
+      deps.toast.showError(e?.message || String(e))
+    } finally {
+      deps.setBusy(false)
+    }
+  }
+
+  const reviewNode = async (nodeId: string, reviewStatus: 'approved' | 'rejected') => {
+    if (!deps.services) {
+      deps.toast.showError(deps.t('graph.review_unavailable', '现在无法审核，请稍后重试'))
+      return
+    }
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) {
+      deps.toast.showError(deps.t('graph.review_unavailable', '现在无法审核，请稍后重试'))
+      return
+    }
+    deps.setBusy(true)
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+      await mobileSetNodeReview({
+        drizzleDb: runtime.drizzleDb,
+        pathService: deps.services.pathService as never,
+        fileSystem: deps.services.fileSystem as never,
+        nodeId,
+        reviewStatus,
+        vaultDisplayName: deps.vaultName
+      })
+      if (reviewStatus === 'approved') {
+        const incident = deps.pendingEdges.filter((e) => e.fromId === nodeId || e.toId === nodeId)
+        for (const edge of incident) {
+          await mobileSetEdgeReview({
             drizzleDb: runtime.drizzleDb,
             pathService: deps.services.pathService as never,
             fileSystem: deps.services.fileSystem as never,
-            nodeId,
+            edgeId: edge.id,
             reviewStatus: 'approved',
             vaultDisplayName: deps.vaultName
           })
         }
       }
+      await deps.refreshVisibleAfterReview({ stripSuspectOnNodeId: nodeId })
+      deps.toast.showSuccess(
+        reviewStatus === 'approved'
+          ? deps.t('graph.batch_approved', '已通过 {{count}} 项', { count: 1 })
+          : deps.t('graph.batch_rejected', '已拒绝 {{count}} 项', { count: 1 })
+      )
+    } catch (e: any) {
+      deps.toast.showError(e?.message || String(e))
+    } finally {
+      deps.setBusy(false)
     }
-    await deps.refreshVisibleAfterReview()
-  }
-
-  const reviewNode = async (nodeId: string, reviewStatus: 'approved' | 'rejected') => {
-    if (!deps.services) return
-    const runtime = getAgentDbRuntime()
-    if (!runtime?.drizzleDb) return
-    await mobileSetNodeReview({
-      drizzleDb: runtime.drizzleDb,
-      pathService: deps.services.pathService as never,
-      fileSystem: deps.services.fileSystem as never,
-      nodeId,
-      reviewStatus,
-      vaultDisplayName: deps.vaultName
-    })
-    if (reviewStatus === 'approved') {
-      const incident = deps.pendingEdges.filter((e) => e.fromId === nodeId || e.toId === nodeId)
-      for (const edge of incident) {
-        await mobileSetEdgeReview({
-          drizzleDb: runtime.drizzleDb,
-          pathService: deps.services.pathService as never,
-          fileSystem: deps.services.fileSystem as never,
-          edgeId: edge.id,
-          reviewStatus: 'approved',
-          vaultDisplayName: deps.vaultName
-        })
-      }
-    }
-    await deps.refreshVisibleAfterReview({ stripSuspectOnNodeId: nodeId })
   }
 
   const togglePendingItem = (key: string) => {
@@ -192,8 +238,12 @@ export function useGraphScreenReview(deps: ReviewDeps) {
       })
       if (!ok) return
     }
+    setReviewingSelectedStatus(opts.reviewStatus)
     deps.setBusy(true)
     try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
       await mobileSetReviewsBatch({
         drizzleDb: runtime.drizzleDb,
         pathService: deps.services.pathService as never,
@@ -215,6 +265,7 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     } catch (e: any) {
       deps.toast.showError(e?.message || String(e))
     } finally {
+      setReviewingSelectedStatus(null)
       deps.setBusy(false)
     }
   }
@@ -233,10 +284,54 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     })
   }
 
-  const dismissSimilarPair = async (nodeId: string, peerId: string) => {
+  const dismissSimilarPair = async (
+    nodeId: string,
+    peerId: string,
+    nodeName?: string,
+    peerName?: string
+  ) => {
     if (!deps.services) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
+
+    const pair = (deps.similarPairs || []).find(
+      (p) =>
+        (p.nodeId === nodeId && p.peerId === peerId) || (p.nodeId === peerId && p.peerId === nodeId)
+    )
+    const n1 =
+      nodeName ||
+      pair?.nodeName ||
+      deps.graphNodes.find((n) => n.id === nodeId)?.name ||
+      deps.pendingNodes.find((n) => n.id === nodeId)?.name
+    const n2 =
+      peerName ||
+      pair?.peerName ||
+      deps.graphNodes.find((n) => n.id === peerId)?.name ||
+      deps.pendingNodes.find((n) => n.id === peerId)?.name
+
+    const title = deps.t('graph.similar_keep_apart', '不是同一人')
+    const message =
+      n1 && n2
+        ? deps.t(
+            'graph.confirm_keep_apart_named',
+            '确定「{{name1}}」和「{{name2}}」不是同一人？确认后将分开保留，不再提示合并。',
+            { name1: n1, name2: n2 }
+          )
+        : deps.t('graph.confirm_keep_apart', '确定不是同一人？确认后将分开保留，不再提示合并。')
+
+    let ok = false
+    if (deps.dialog) {
+      ok = await deps.dialog.confirm(message, { title })
+    } else {
+      ok = await new Promise<boolean>((resolve) => {
+        Alert.alert(title, message, [
+          { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
+          { text: deps.t('common.confirm', '确定'), onPress: () => resolve(true) }
+        ])
+      })
+    }
+    if (!ok) return
+
     deps.setBusy(true)
     try {
       await mobileDismissSimilarPair({
@@ -287,9 +382,14 @@ export function useGraphScreenReview(deps: ReviewDeps) {
         })
       }
       const loserIds = new Set(losers.map((n) => n.id))
-      if (deps.selectedId && loserIds.has(deps.selectedId)) {
+      if (deps.selectedId && (loserIds.has(deps.selectedId) || deps.selectedId === survivorId)) {
         deps.setSelectedId(survivorId)
-        deps.setSelectedNode(null)
+        try {
+          const updatedSurvivor = await mobileGetNode(runtime.drizzleDb, deps.vaultId, survivorId)
+          deps.setSelectedNode(updatedSurvivor)
+        } catch {
+          deps.setSelectedNode(null)
+        }
       }
       setMergeConfirm(null)
       setMergeSearchOpen(false)
@@ -309,6 +409,7 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     setPendingSelected,
     pendingSelectedCount,
     allPendingSelected,
+    reviewingSelectedStatus,
     mergeSearchOpen,
     setMergeSearchOpen,
     mergeConfirm,

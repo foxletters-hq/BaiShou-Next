@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GRAPH_EDGE_TYPES } from '@baishou/database'
-import { isGraphNodeSameNameConflict, type GraphSameNameExisting } from '@baishou/shared'
+import {
+  isGraphNodeSameNameConflict,
+  type GraphFocusDepth,
+  type GraphSameNameExisting,
+  type GraphSearchMode
+} from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
   graphBareNodeIdForRevert,
@@ -20,8 +25,8 @@ import {
   mobileRevertGraphNodeSplit
 } from '@/src/services/mobile-graph-split'
 import { parseGraphAliasInput, viewDepthFor } from './graph-screen-view.util'
+import { graphSearchErrorCopy } from './graph-screen-derive.util'
 import type { GraphScreenTranslateFn } from './graph-screen.types'
-import type { GraphFocusDepth } from '@baishou/shared'
 import { useGraphScreenDetailDelete } from './useGraphScreenDetailDelete'
 
 type DetailDeps = {
@@ -77,6 +82,8 @@ export function useGraphScreenDetail(deps: DetailDeps) {
   const [addEdgeHits, setAddEdgeHits] = useState<any[]>([])
   const [addEdgeToId, setAddEdgeToId] = useState('')
   const [addEdgeType, setAddEdgeType] = useState<string>(GRAPH_EDGE_TYPES[0] ?? 'relates_to')
+  const [addEdgeSearchMode, setAddEdgeSearchMode] = useState<GraphSearchMode>('text')
+  const [addEdgeSearching, setAddEdgeSearching] = useState(false)
 
   useEffect(() => {
     if (!deps.selectedNode) return
@@ -89,6 +96,8 @@ export function useGraphScreenDetail(deps: DetailDeps) {
     setAddEdgeHits([])
     setAddEdgeToId('')
     setAddEdgeType('relates_to')
+    setAddEdgeSearchMode('text')
+    setAddEdgeSearching(false)
     setEditNameConflict(null)
   }, [deps.selectedNode])
 
@@ -253,15 +262,50 @@ export function useGraphScreenDetail(deps: DetailDeps) {
 
   const { deleteSelected, deleteEdge } = useGraphScreenDetailDelete(deps)
 
-  const searchAddEdgeTarget = async () => {
+  const addEdgeSearchSeqRef = useRef(0)
+
+  const searchAddEdgeTarget = async (
+    nextQueryOrMode?: string | GraphSearchMode,
+    requestedMode?: GraphSearchMode
+  ) => {
+    const seq = ++addEdgeSearchSeqRef.current
+    let targetQuery = addEdgeQuery
+    let targetMode = addEdgeSearchMode
+    if (
+      typeof nextQueryOrMode === 'string' &&
+      (nextQueryOrMode === 'text' || nextQueryOrMode === 'semantic')
+    ) {
+      targetMode = nextQueryOrMode
+    } else if (typeof nextQueryOrMode === 'string') {
+      targetQuery = nextQueryOrMode
+      if (requestedMode) targetMode = requestedMode
+    }
     const runtime = getAgentDbRuntime()
-    const q = addEdgeQuery.trim()
+    const q = targetQuery.trim()
     if (!runtime?.drizzleDb || !q || !deps.selectedNode) {
       setAddEdgeHits([])
+      setAddEdgeSearching(false)
       return
     }
-    const found = await mobileSearchGraphNodes(runtime.drizzleDb, deps.vaultId, q)
-    setAddEdgeHits((found || []).filter((h: any) => h.id !== deps.selectedNode.id))
+    setAddEdgeSearching(true)
+    try {
+      const found = await mobileSearchGraphNodes(runtime.drizzleDb, deps.vaultId, q, {
+        mode: targetMode,
+        settingsManager: (deps.services as any)?.settingsManager as never
+      })
+      if (seq !== addEdgeSearchSeqRef.current) return
+      setAddEdgeHits((found || []).filter((h: any) => h.id !== deps.selectedNode.id))
+    } catch (e: any) {
+      if (seq !== addEdgeSearchSeqRef.current) return
+      setAddEdgeHits([])
+      const copy = graphSearchErrorCopy(e)
+      const message = 'key' in copy ? deps.t(copy.key, copy.fallback) : copy.raw
+      deps.toast.showError(message)
+    } finally {
+      if (seq === addEdgeSearchSeqRef.current) {
+        setAddEdgeSearching(false)
+      }
+    }
   }
 
   const addEdge = async () => {
@@ -315,6 +359,9 @@ export function useGraphScreenDetail(deps: DetailDeps) {
     setEditAliases,
     addEdgeQuery,
     setAddEdgeQuery,
+    addEdgeSearchMode,
+    setAddEdgeSearchMode,
+    addEdgeSearching,
     addEdgeHits,
     addEdgeToId,
     setAddEdgeToId,

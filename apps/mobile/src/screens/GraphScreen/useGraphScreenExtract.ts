@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert } from 'react-native'
 import {
   GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
@@ -56,6 +56,10 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
   const [extractDate, setExtractDate] = useState(() => formatLocalDate(new Date()))
   const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
   const [queueModalOpen, setQueueModalOpen] = useState(false)
+  const tRef = useRef(deps.t)
+  tRef.current = deps.t
+  const setStatusRef = useRef(deps.setStatus)
+  setStatusRef.current = deps.setStatus
 
   const applyQueueSnapshot = useCallback(
     (state: GraphExtractQueueSnapshot) => {
@@ -69,8 +73,8 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
           state.completedCount + state.runningCount + (state.aligningCount ?? 0),
           total
         )
-        deps.setStatus(
-          deps.t(
+        setStatusRef.current(
+          tRef.current(
             'graph.extract_queue_progress',
             '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
             {
@@ -81,8 +85,8 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
           )
         )
       } else if (state.completedCount > 0 || state.errorCount > 0) {
-        deps.setStatus(
-          deps.t('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
+        setStatusRef.current(
+          tRef.current('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
             done: state.completedCount,
             failed: state.errorCount
           })
@@ -90,9 +94,7 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         void deps.refreshRef.current()
       }
     },
-    // applyQueueSnapshot 只读翻译与状态入口，deps 对象每次渲染都会换引用
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 见上
-    [deps.t, deps.setStatus, deps.refreshRef]
+    [deps.refreshRef]
   )
 
   const queueByPath = useMemo(
@@ -136,8 +138,8 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
     })
     if (!selfName) {
       deps.setSelfNameReady(false)
-      deps.setStatus(deps.t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取'))
-      deps.toast.showError(deps.t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取'))
+      deps.setStatus(deps.t('graph.self_name_required', '请先在个人资料中设置昵称后再整理'))
+      deps.toast.showError(deps.t('graph.self_name_required', '请先在个人资料中设置昵称后再整理'))
       return
     }
     if (!filePaths?.length) {

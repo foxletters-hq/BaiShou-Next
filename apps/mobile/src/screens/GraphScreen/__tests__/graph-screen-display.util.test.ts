@@ -6,6 +6,8 @@ import {
   buildGraphScreenDisplayNodes,
   countGraphCanvasNodes,
   filterGraphScreenDisplayNode,
+  resolveGraphReviewOverlayTab,
+  toGraphForceNodes,
   isGraphCanvasFilterActive,
   isGraphTypeFilterActive,
   toggleGraphNodeTypeFilter
@@ -280,5 +282,36 @@ describe('countGraphCanvasNodes', () => {
         { reviewStatus: 'rejected' }
       ])
     ).toBe(2)
+  })
+})
+
+describe('resolveGraphReviewOverlayTab', () => {
+  it('should open pending first when that queue has work', () => {
+    expect(
+      resolveGraphReviewOverlayTab({ pendingCount: 1, similarCount: 2, reextractCount: 3 })
+    ).toBe('pending')
+  })
+
+  it('should skip empty queues and fall through to reextract', () => {
+    expect(
+      resolveGraphReviewOverlayTab({ pendingCount: 0, similarCount: 0, reextractCount: 1 })
+    ).toBe('reextract')
+  })
+})
+
+describe('toGraphForceNodes', () => {
+  it('should fill a display name and node type for the webview', () => {
+    expect(
+      toGraphForceNodes([node({ id: 'n1', name: '', nodeType: undefined, discriminator: '同事' })])
+    ).toEqual([
+      {
+        id: 'n1',
+        name: 'n1',
+        nodeType: 'topic',
+        discriminator: '同事',
+        mentionCount: undefined,
+        reviewStatus: 'approved'
+      }
+    ])
   })
 })
