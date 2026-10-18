@@ -8,10 +8,13 @@ import {
   StyleSheet,
   useWindowDimensions
 } from 'react-native'
+import { X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { MockChatMessage } from './context-chain-dialog.types'
 import { getRoleColor, getRoleLabel } from './context-chain-dialog.utils'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface ContextChainMessageDetailProps {
   message: MockChatMessage & { label?: string }
@@ -51,10 +54,14 @@ export const ContextChainMessageDetail: React.FC<ContextChainMessageDetailProps>
             }
           ]}
         >
-          <View style={[styles.header, { marginBottom: tokens.spacing.md }]}>
+          <View style={[styles.header, { marginBottom: sharedTokens.spacing.mdTight }]}>
             <View style={styles.headerSide} />
             <Pressable onPress={onClose} hitSlop={8} style={styles.headerSideRight}>
-              <Text style={{ fontSize: 24, color: colors.textSecondary }}>×</Text>
+              <X
+                size={iconSizes.md}
+                color={colors.textSecondary}
+                strokeWidth={DEFAULT_STROKE_WIDTH}
+              />
             </Pressable>
 
             <View style={styles.headerCenter} pointerEvents="none">
@@ -68,15 +75,16 @@ export const ContextChainMessageDetail: React.FC<ContextChainMessageDetailProps>
               >
                 <View
                   style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
+                    paddingHorizontal: sharedTokens.spacing.sm,
+                    paddingVertical: sharedTokens.spacing.xxs,
                     borderRadius: tokens.radius.full,
                     backgroundColor: roleColor + '20'
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 14,
+                      fontSize: mobileTypography.caption.fontSize,
+                      lineHeight: 16,
                       color: roleColor,
                       fontWeight: '600'
                     }}
@@ -86,7 +94,15 @@ export const ContextChainMessageDetail: React.FC<ContextChainMessageDetailProps>
                   </Text>
                 </View>
                 {index != null ? (
-                  <Text style={{ fontSize: 14, color: colors.textSecondary }}>#{index + 1}</Text>
+                  <Text
+                    style={{
+                      fontSize: mobileTypography.caption.fontSize,
+                      lineHeight: 16,
+                      color: colors.textSecondary
+                    }}
+                  >
+                    #{index + 1}
+                  </Text>
                 ) : null}
               </View>
             </View>
@@ -101,7 +117,13 @@ export const ContextChainMessageDetail: React.FC<ContextChainMessageDetailProps>
             nestedScrollEnabled={false}
             overScrollMode="never"
           >
-            <Text style={{ fontSize: 16, color: colors.textPrimary, lineHeight: 24 }}>
+            <Text
+              style={{
+                fontSize: mobileTypography.body.fontSize,
+                color: colors.textPrimary,
+                lineHeight: mobileTypography.body.lineHeight
+              }}
+            >
               {message.content || t('agent.chat.no_content', '[无内容]')}
             </Text>
             {extraContent}
@@ -148,7 +170,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 48
+    paddingHorizontal: sharedTokens.spacing.xxl
   },
   scroll: {
     flex: 1,

@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const contextChainFlatListStyles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 4
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   metaChip: {
     flex: 1,
@@ -12,71 +13,70 @@ export const contextChainFlatListStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
+    borderWidth: StyleSheet.hairlineWidth
   },
   compressionHint: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16,
-    marginBottom: 6,
-    paddingHorizontal: 4,
+    marginBottom: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.xs,
     fontWeight: '500'
   },
   roundHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    marginTop: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    marginTop: sharedTokens.spacing.xs
   },
   roundChevron: {
-    fontSize: 12,
-    width: 14,
-    opacity: 0.7
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   roundLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    letterSpacing: 0.2
+    lineHeight: 18
   },
   roundMeta: {
-    fontSize: 13,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500',
-    opacity: 0.85
+    lineHeight: 16
   },
   roundBody: {
-    gap: 2,
-    paddingBottom: 4
+    paddingBottom: sharedTokens.spacing.xs
   },
   messageItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    gap: 8
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.xsPlus
   },
   messageTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   roleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   roleBadgeText: {
-    fontSize: 13,
-    fontWeight: '600'
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600',
+    lineHeight: 16
   },
   messagePreview: {
-    fontSize: 14,
-    lineHeight: 21
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '400',
+    lineHeight: 20
   }
 })
