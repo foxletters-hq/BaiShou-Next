@@ -4,6 +4,7 @@ import { Database, History } from 'lucide-react-native'
 import type { SyncConfig } from '@baishou/core-mobile'
 import { dataSyncScreenStyles as styles } from '../data-sync-screen.styles'
 import { getTargetColor, getTargetIcon } from '../data-sync-cloud.utils'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 
 type Props = {
   colors: Record<string, string>
@@ -68,7 +69,7 @@ export function DataSyncCloudStatCards({
           </Text>
           <Text style={[styles.statValue, { color: colors.textPrimary }]}>
             {cloudRecordCount}{' '}
-            <Text style={{ fontSize: 13, fontWeight: 'normal' }}>
+            <Text style={{ fontSize: mobileTypography.secondary.fontSize, fontWeight: 'normal' }}>
               {t('common.copies_unit', '份')}
             </Text>
           </Text>

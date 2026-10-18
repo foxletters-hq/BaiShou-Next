@@ -5,8 +5,9 @@ import { Cloud, Eye, EyeOff, Globe } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
 import { SYNC_DIVERGENCE_THRESHOLD_OPTIONS } from '@baishou/shared'
-import { Input, Switch, Button, Select } from '@baishou/ui/native'
+import { Input, Switch, Button, Select, HelpTooltip } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
 type ThemeTokens = ReturnType<typeof useNativeTheme>['tokens']
@@ -18,10 +19,12 @@ export interface IncrementalSyncConfigSheetProps {
   colors: ThemeColors
   tokens: ThemeTokens
   testing?: boolean
+  saving?: boolean
   onChange: (next: S3SyncConfig, immediate?: boolean) => void
   onToggleAccessKey: () => void
   onToggleSecretKey: () => void
   onTestConnection: () => void
+  onSave?: () => void
 }
 
 const FILE_CONCURRENCY_OPTIONS = [1, 2, 3, 5, 10, 15, 20]
@@ -33,10 +36,12 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
   colors,
   tokens: _tokens,
   testing = false,
+  saving = false,
   onChange,
   onToggleAccessKey,
   onToggleSecretKey,
-  onTestConnection
+  onTestConnection,
+  onSave
 }) => {
   const { t } = useTranslation()
   const target = config.target === 'webdav' ? 'webdav' : 's3'
@@ -114,13 +119,19 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
         : t('data_sync.max_divergence_option', { percent })
   }))
 
+  const currentDivergence =
+    config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
+      ? 100
+      : config.maxDivergencePercent
+
   return (
     <View style={styles.container}>
       <View style={styles.enableRow}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.enableTitleRow}>
           <Text style={[styles.enableTitle, { color: colors.textPrimary }]}>
             {t('data_sync.incremental_sync')}
           </Text>
+          <HelpTooltip content={t('data_sync.incremental_sync_tooltip')} />
         </View>
         <Switch
           value={config.enabled}
@@ -223,97 +234,156 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
             showSecretKey,
             onToggleSecretKey
           )}
-          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-            {t('data_sync.file_concurrency')}
-          </Text>
-          <Select
-            variant="settings"
-            value={String(config.fileConcurrency ?? 5)}
-            options={fileConcurrencyOptions}
-            onValueChange={(value) =>
-              onChange({ ...config, fileConcurrency: parseInt(value, 10) }, true)
-            }
-          />
         </View>
       )}
 
-      <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-        {t('data_sync.max_divergence_label')}
-      </Text>
-      <Select
-        variant="settings"
-        value={String(
-          config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
-            ? 100
-            : config.maxDivergencePercent
-        )}
-        options={divergenceOptions}
-        onValueChange={(value) =>
-          onChange({ ...config, maxDivergencePercent: parseInt(value, 10) }, true)
-        }
-      />
+      <View style={styles.inlineFieldRow}>
+        <Text style={[styles.inlineFieldLabel, { color: colors.textSecondary }]}>
+          {t('data_sync.file_concurrency', '并发数')}
+        </Text>
+        <Select
+          variant="settings"
+          compact
+          value={String(config.fileConcurrency ?? 5)}
+          options={fileConcurrencyOptions}
+          onValueChange={(value) =>
+            onChange({ ...config, fileConcurrency: parseInt(value, 10) }, true)
+          }
+          triggerStyle={styles.compactSelectTrigger}
+        />
+      </View>
+
+      <View style={styles.inlineFieldRow}>
+        <Text style={[styles.inlineFieldLabel, { color: colors.textSecondary }]}>
+          {t('data_sync.max_divergence_label')}
+        </Text>
+        <Select
+          variant="settings"
+          compact
+          value={String(currentDivergence)}
+          options={divergenceOptions}
+          onValueChange={(value) =>
+            onChange({ ...config, maxDivergencePercent: parseInt(value, 10) }, true)
+          }
+          triggerStyle={styles.compactSelectTrigger}
+        />
+      </View>
       <Text style={[styles.hint, { color: colors.textSecondary }]}>
         {t('data_sync.max_divergence_hint')}
       </Text>
 
-      <Button
-        variant="outline"
-        onPress={onTestConnection}
-        isDisabled={testing}
-        style={styles.testBtn}
-      >
-        {testing ? t('data_sync.testing_connection') : t('data_sync.test_connection')}
-      </Button>
+      <View style={styles.buttonRow}>
+        <Button
+          variant="outline"
+          onPress={onTestConnection}
+          isDisabled={testing || saving}
+          isLoading={testing}
+          style={styles.actionBtn}
+        >
+          {testing ? t('data_sync.testing_connection') : t('data_sync.test_connection')}
+        </Button>
+        <Button
+          variant="primary"
+          onPress={onSave}
+          isDisabled={testing || saving}
+          isLoading={saving}
+          style={styles.actionBtn}
+        >
+          {t('common.save_changes', '保存修改')}
+        </Button>
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   enableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 12
+    gap: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.mdTight
   },
-  enableTitle: { fontSize: 16, fontWeight: '600' },
+  enableTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xs
+  },
+  enableTitle: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: sharedTokens.spacing.mdTight,
     textTransform: 'uppercase'
   },
   targetCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
+    padding: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1.5,
-    marginBottom: 10,
-    gap: 12
+    marginBottom: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   targetIcon: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  targetTitle: { fontSize: 15, fontWeight: '600', flex: 1 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 12 },
-  form: { gap: 4 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 6 },
+  targetTitle: { fontSize: mobileTypography.body.fontSize, fontWeight: '600', flex: 1 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: sharedTokens.spacing.mdTight },
+  form: { gap: sharedTokens.spacing.xs },
+  fieldLabel: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginTop: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.xsPlus
+  },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   passwordInputWrapper: { flex: 1 },
-  eyeBtn: { padding: 8 },
-  hint: { fontSize: 12, lineHeight: 18, marginTop: 6, marginBottom: 4 },
-  testBtn: {
-    marginTop: 20
+  eyeBtn: { padding: sharedTokens.spacing.sm },
+  hint: {
+    fontSize: mobileTypography.caption.fontSize,
+    lineHeight: 18,
+    marginTop: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.smPlus,
+    marginTop: sharedTokens.spacing.mdPlus
+  },
+  actionBtn: {
+    flex: 1
+  },
+  inlineFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40,
+    marginTop: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
+  },
+  inlineFieldLabel: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    flex: 1
+  },
+  compactSelectTrigger: {
+    minHeight: 32,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.md
   }
 })

@@ -6,13 +6,15 @@ import {
   useNativeTheme,
   useNativeToast,
   useDialog,
-  RestoreBlockingOverlay
+  RestoreBlockingOverlay,
+  SettingsHelpIconButton
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import {
   applyArchiveImportFeedback,
   isArchiveImportSuccessful
 } from '../utils/archive-restore-feedback'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   parseSnapshotCreatedAtFromFilename,
   shouldRefreshVaultAfterArchiveImport
@@ -30,7 +32,15 @@ const formatSize = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export const DataSyncSnapshotPanel: React.FC = () => {
+export type DataSyncSnapshotPanelProps = {
+  headerRight?: React.ReactNode
+  onShowHelp?: () => void
+}
+
+export const DataSyncSnapshotPanel: React.FC<DataSyncSnapshotPanelProps> = ({
+  headerRight,
+  onShowHelp
+}) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const toast = useNativeToast()
@@ -113,14 +123,18 @@ export const DataSyncSnapshotPanel: React.FC = () => {
       <RestoreBlockingOverlay visible={isRestoring} />
       <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
         <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t('data_sync.local_snapshots')}
+          <View style={styles.headerTitleBlock}>
+            <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
+              {t('data_sync.local_snapshots', '本地快照')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary }]}>
-              {t('data_sync.snapshots_scope_hint')}
-            </Text>
+            {onShowHelp && (
+              <SettingsHelpIconButton
+                onPress={onShowHelp}
+                accessibilityLabel={t('data_sync.local_snapshots_help', '本地快照说明')}
+              />
+            )}
           </View>
+          {headerRight}
         </View>
 
         <ScrollView
@@ -165,18 +179,45 @@ export const DataSyncSnapshotPanel: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  section: { borderRadius: 12, padding: 16, marginBottom: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
-  hint: { fontSize: 12, lineHeight: 17 },
-  empty: { paddingVertical: 24, textAlign: 'center', fontSize: 14 },
+  section: {
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.md
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: sharedTokens.spacing.mdTight
+  },
+  headerTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  headerTitleLabel: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
+  },
+  empty: {
+    paddingVertical: sharedTokens.spacing.lg,
+    textAlign: 'center',
+    fontSize: mobileTypography.secondary.fontSize
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  name: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
-  meta: { fontSize: 12 },
-  actionBtn: { paddingHorizontal: 8, paddingVertical: 4 }
+  name: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500',
+    marginBottom: sharedTokens.spacing.xs
+  },
+  meta: { fontSize: mobileTypography.caption.fontSize },
+  actionBtn: {
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs
+  }
 })

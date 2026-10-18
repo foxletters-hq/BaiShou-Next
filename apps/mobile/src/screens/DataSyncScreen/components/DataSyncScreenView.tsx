@@ -1,10 +1,14 @@
 import React from 'react'
-import { View } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
+import { Archive, RefreshCw } from 'lucide-react-native'
 import {
   scrollIndicatorStyle,
   KeyboardAwareScrollView,
   RestoreBlockingOverlay,
-  BackupScopeList
+  BackupScopeList,
+  SegmentedContent,
+  SegmentedControl,
+  SettingsHelpIconButton
 } from '@baishou/ui/native'
 import {
   resolveArchiveImportStageDetail,
@@ -20,9 +24,10 @@ import { ArchiveLocalBackupSection } from '../ArchiveLocalBackupSection'
 import { dataSyncScreenStyles as styles } from '../data-sync-screen.styles'
 import { CloudBackupRecordsPanel } from './CloudBackupRecordsPanel'
 import { DataSyncCloudStatCards } from './DataSyncCloudStatCards'
-import { DataSyncBackupTabSection } from './DataSyncBackupTabSection'
+import { DataSyncBackupHeader } from './DataSyncBackupHeader'
 import type { useDataSyncCloud } from '../hooks/useDataSyncCloud'
 import type { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type Props = ReturnType<typeof useDataSyncCloud> & {
   colors: ReturnType<typeof useNativeTheme>['colors']
@@ -198,51 +203,131 @@ export function DataSyncScreenView(all: Props) {
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
         >
-          {backupTab === 'cloud' && (
-            <DataSyncCloudStatCards
-              colors={colors}
-              t={t}
-              syncConfig={syncConfig}
-              totalSizeString={totalSizeString}
-              cloudRecordCount={cloudRecords.length}
+          <View style={styles.topSwitcherContainer}>
+            <SegmentedControl
+              size="small"
+              value={backupTab}
+              onChange={setBackupTab}
+              options={[
+                { value: 'cloud', label: t('data_sync.cloud_backups_tab') },
+                { value: 'snapshot', label: t('data_sync.local_snapshots_tab') },
+                { value: 'local', label: t('data_sync.local_backup_tab', '本地备份') }
+              ]}
             />
-          )}
+          </View>
 
-          <DataSyncBackupTabSection
-            colors={colors}
-            t={t}
-            backupTab={backupTab}
-            setBackupTab={setBackupTab}
-            syncConfig={syncConfig}
-            recordsLoading={recordsLoading}
-            showHelp={showHelp}
-            fetchCloudRecords={fetchCloudRecords}
-            headerProps={headerProps}
-          />
-
-          {backupTab === 'snapshot' ? <DataSyncSnapshotPanel /> : null}
-
-          {backupTab === 'local' && (
-            <View style={[styles.section, { backgroundColor: colors.bgSurface, padding: 16 }]}>
-              <ArchiveLocalBackupSection
-                embedded
-                onExport={handleArchiveExport}
-                onImport={handleArchiveImport}
+          <SegmentedContent value={backupTab}>
+            {backupTab === 'snapshot' && (
+              <DataSyncSnapshotPanel
+                onShowHelp={showHelp}
+                headerRight={
+                  <TouchableOpacity
+                    style={[styles.headerActionBtn, { borderColor: colors.borderControl }]}
+                    onPress={openCountModal}
+                  >
+                    <Archive size={14} color={colors.textSecondary} strokeWidth={2} />
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: mobileTypography.caption.fontSize,
+                        fontWeight: '600'
+                      }}
+                    >
+                      {' '}
+                      {maxCountLabel}
+                    </Text>
+                  </TouchableOpacity>
+                }
               />
-            </View>
-          )}
+            )}
 
-          {backupTab === 'cloud' && (
-            <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
-              <CloudBackupRecordsPanel {...recordsPanelProps} />
-            </View>
-          )}
+            {backupTab === 'cloud' && (
+              <>
+                <DataSyncCloudStatCards
+                  colors={colors}
+                  t={t}
+                  syncConfig={syncConfig}
+                  totalSizeString={totalSizeString}
+                  cloudRecordCount={cloudRecords.length}
+                />
 
-          {(backupTab === 'cloud' || backupTab === 'local') && (
-            <View style={styles.backupScopeWrapper}>
-              <BackupScopeList />
-            </View>
-          )}
+                <View style={[styles.section, { backgroundColor: colors.bgSurface }]}>
+                  <View style={styles.headerTitleRow}>
+                    <View style={styles.headerTitleBlock}>
+                      <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
+                        {t('data_sync.sync_records', '云端备份')}
+                      </Text>
+                      <SettingsHelpIconButton
+                        onPress={showHelp}
+                        accessibilityLabel={t('data_sync.cloud_backup_help', '云端备份说明')}
+                      />
+                      <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
+                        <Text
+                          style={{
+                            color: colors.primary,
+                            fontSize: mobileTypography.caption.fontSize,
+                            fontWeight: '600'
+                          }}
+                        >
+                          {syncConfig.target.toUpperCase()}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => void fetchCloudRecords({ force: true })}
+                        disabled={recordsLoading}
+                        hitSlop={8}
+                      >
+                        <RefreshCw size={20} color={colors.textSecondary} strokeWidth={2} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <DataSyncBackupHeader {...headerProps} />
+
+                  <View style={{ marginTop: sharedTokens.spacing.mdTight }}>
+                    <CloudBackupRecordsPanel {...recordsPanelProps} embedded />
+                  </View>
+                </View>
+
+                <View style={styles.backupScopeWrapper}>
+                  <BackupScopeList />
+                </View>
+              </>
+            )}
+
+            {backupTab === 'local' && (
+              <>
+                <View
+                  style={[
+                    styles.section,
+                    { backgroundColor: colors.bgSurface, padding: sharedTokens.spacing.md }
+                  ]}
+                >
+                  <View style={styles.headerTitleRow}>
+                    <View style={styles.headerTitleBlock}>
+                      <Text style={[styles.headerTitleLabel, { color: colors.textPrimary }]}>
+                        {t('settings.local_archive_backup', '本地全量备份')}
+                      </Text>
+                      <SettingsHelpIconButton
+                        onPress={showHelp}
+                        accessibilityLabel={t('settings.local_backup_help', '本地全量备份说明')}
+                      />
+                    </View>
+                  </View>
+
+                  <ArchiveLocalBackupSection
+                    embedded
+                    onExport={handleArchiveExport}
+                    onImport={handleArchiveImport}
+                  />
+                </View>
+
+                <View style={styles.backupScopeWrapper}>
+                  <BackupScopeList />
+                </View>
+              </>
+            )}
+          </SegmentedContent>
         </KeyboardAwareScrollView>
 
         <DataSyncCountModal

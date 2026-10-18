@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
 import { Input, KeyboardAwareScrollView } from '@baishou/ui/native'
 import type { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
 type ThemeTokens = ReturnType<typeof useNativeTheme>['tokens']
@@ -269,7 +270,13 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
             ]}
             onPress={onSave}
           >
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 16 }}>
+            <Text
+              style={{
+                color: colors.textOnPrimary,
+                fontWeight: '600',
+                fontSize: mobileTypography.primary.fontSize
+              }}
+            >
               {t('data_sync.save_config_button', '保存配置')}
             </Text>
           </TouchableOpacity>
@@ -284,49 +291,73 @@ const styles = StyleSheet.create({
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   backBtn: { width: 40, alignItems: 'center' },
-  appTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
+  appTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
+  },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { padding: sharedTokens.spacing.md, paddingBottom: sharedTokens.spacing.xlPlus },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: sharedTokens.spacing.mdTight,
     textTransform: 'uppercase'
   },
   targetCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
+    padding: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1.5,
-    marginBottom: 10,
-    gap: 12
+    marginBottom: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   targetIcon: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  targetTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-  targetDesc: { fontSize: 12, lineHeight: 17 },
-  configSectionTitle: { fontSize: 16, fontWeight: '600', marginTop: 20, marginBottom: 8 },
-  divider: { height: StyleSheet.hairlineWidth, marginBottom: 16 },
-  localHint: { fontSize: 14, lineHeight: 22, textAlign: 'center', paddingVertical: 24 },
-  form: { gap: 4 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  targetTitle: {
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.xxs
+  },
+  targetDesc: { fontSize: mobileTypography.caption.fontSize, lineHeight: 17 },
+  configSectionTitle: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
+    marginTop: sharedTokens.spacing.mdPlus,
+    marginBottom: sharedTokens.spacing.sm
+  },
+  divider: { height: StyleSheet.hairlineWidth, marginBottom: sharedTokens.spacing.md },
+  localHint: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingVertical: sharedTokens.spacing.lg
+  },
+  form: { gap: sharedTokens.spacing.xs },
+  fieldLabel: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginTop: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.xsPlus
+  },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.sm },
   passwordInputWrapper: { flex: 1 },
-  eyeBtn: { padding: 8 },
+  eyeBtn: { padding: sharedTokens.spacing.sm },
   saveBtn: {
-    marginTop: 28,
-    paddingVertical: 14,
+    marginTop: sharedTokens.spacing.lg,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     alignItems: 'center'
   }
 })

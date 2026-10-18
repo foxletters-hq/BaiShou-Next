@@ -45,6 +45,12 @@ export const LanTransferScreen: React.FC = () => {
   const [importProgress, setImportProgress] = useState<ArchiveImportProgress | null>(null)
   const [isReceiving, setIsReceiving] = useState(false)
   const [receiveProgress, setReceiveProgress] = useState(0)
+  const [localConn, setLocalConn] = useState<{
+    ip: string
+    port: number
+    serviceId: string
+    deviceId?: string
+  } | null>(null)
   const localConnRef = useRef<{
     ip: string
     port: number
@@ -70,6 +76,7 @@ export const LanTransferScreen: React.FC = () => {
   const stopDualMode = useCallback(async () => {
     setIsDiscovering(false)
     setDevices([])
+    setLocalConn(null)
     deviceSeenAtRef.current.clear()
     localConnRef.current = null
     await lanSyncService?.stopDiscovery().catch(() => {})
@@ -84,7 +91,10 @@ export const LanTransferScreen: React.FC = () => {
 
     try {
       const conn = await lanSyncService.startBroadcasting()
-      if (conn) localConnRef.current = conn
+      if (conn) {
+        localConnRef.current = conn
+        setLocalConn(conn)
+      }
 
       await lanSyncService.startDiscovery(
         (device) => {
@@ -281,6 +291,8 @@ export const LanTransferScreen: React.FC = () => {
           sendingTo={sendingTo}
           sendProgress={sendProgress}
           onDevicePress={handleDevicePress}
+          localIp={localConn?.ip}
+          localPort={localConn?.port}
         />
       </StackScreenLayout>
     </>

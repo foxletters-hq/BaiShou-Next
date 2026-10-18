@@ -9,7 +9,8 @@ vi.mock('i18next', () => {
     },
     init() {
       return this
-    }
+    },
+    changeLanguage: async () => {}
   }
   return { default: i18n }
 })
