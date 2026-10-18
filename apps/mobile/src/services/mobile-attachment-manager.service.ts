@@ -1,5 +1,8 @@
-import * as ImagePicker from 'expo-image-picker'
-import { extractReferencedFileNames, collectSessionAttachmentFileNames } from '@baishou/shared'
+import {
+  extractReferencedFileNames,
+  collectSessionAttachmentFileNames,
+  isAttachmentPoolFolderName
+} from '@baishou/shared'
 import type {
   IAttachmentManager,
   AttachmentItem,
@@ -137,7 +140,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const out: SessionAttachmentGroup[] = []
 
     for (const sessionId of sessionIds) {
-      if (sessionId === 'avatars') continue
+      if (isAttachmentPoolFolderName(sessionId)) continue
 
       const sessionDir = joinPath(attDir, sessionId)
       const dirStat = await this.fileSystem.stat(sessionDir).catch(() => null)
@@ -147,6 +150,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
       let total = 0
       const items = []
       for (const name of files) {
+        if (name === '.nomedia') continue
         const fp = joinPath(sessionDir, name)
         const st = await this.fileSystem.stat(fp).catch(() => null)
         if (!st?.isFile) continue
@@ -181,11 +185,12 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const safeSessionId = sessionId.replace(/[/\\]/g, '')
     const safeFileName = fileName.replace(/[/\\]/g, '')
     if (
-      safeSessionId === 'avatars' ||
+      isAttachmentPoolFolderName(safeSessionId) ||
       safeSessionId.trim() === '' ||
       safeFileName.trim() === '' ||
       safeFileName === '.' ||
-      safeFileName === '..'
+      safeFileName === '..' ||
+      safeFileName === '.nomedia'
     ) {
       return
     }
@@ -225,7 +230,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const attDir = await this.pathService.getAttachmentsBaseDirectory()
     for (const id of ids) {
       const safeId = id.replace(/[/\\]/g, '')
-      if (safeId === 'avatars' || safeId.trim() === '') continue
+      if (isAttachmentPoolFolderName(safeId) || safeId.trim() === '') continue
       const fp = joinPath(attDir, safeId)
       await this.fileSystem.rm(fp, { recursive: true, force: true })
     }
@@ -255,16 +260,21 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
         if (!(await this.fileSystem.exists(attachDir))) continue
 
         const attachEntries = await this.fileSystem.readdir(attachDir)
-        const monthFiles: string[] = []
-        for (const name of attachEntries) {
-          const fp = joinPath(attachDir, name)
-          const st = await this.fileSystem.stat(fp).catch(() => null)
-          if (st?.isFile) monthFiles.push(name)
-        }
-        if (monthFiles.length === 0) continue
+        const monthFileStats = (
+          await Promise.all(
+            attachEntries.map(async (name) => {
+              const fullFilePath = joinPath(attachDir, name)
+              const st = await this.fileSystem.stat(fullFilePath).catch(() => null)
+              return st?.isFile ? { name, fullFilePath, size: st.size ?? 0 } : null
+            })
+          )
+        ).filter((item): item is { name: string; fullFilePath: string; size: number } =>
+          Boolean(item)
+        )
+        if (monthFileStats.length === 0) continue
 
         const referencedNames = new Set<string>()
-        const diaryPlainTexts: string[] = []
+        const diaryLowerTexts: string[] = []
         const siblingFiles = await this.fileSystem.readdir(monthPath)
         const diaryFiles = siblingFiles.filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
 
@@ -272,7 +282,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
           diaryFiles.map(async (df) => {
             try {
               const content = await this.fileSystem.readFile(joinPath(monthPath, df))
-              diaryPlainTexts.push(content)
+              diaryLowerTexts.push(content.toLowerCase())
               for (const ref of extractReferencedFileNames(content)) {
                 referencedNames.add(ref)
               }
@@ -282,28 +292,22 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
           })
         )
 
-        for (const name of monthFiles) {
-          const fullFilePath = joinPath(attachDir, name)
-          const st = await this.fileSystem.stat(fullFilePath).catch(() => null)
-          if (!st?.isFile) continue
-
+        for (const { name, fullFilePath, size } of monthFileStats) {
           const relativePath = fullFilePath
             .slice(journalsDir.length)
             .replace(/^[/\\]/, '')
             .replace(/\\/g, '/')
           const lowerFileName = name.toLowerCase()
           let isOrphan = !referencedNames.has(lowerFileName)
-          if (isOrphan && diaryPlainTexts.length > 0) {
-            isOrphan = !diaryPlainTexts.some((content) =>
-              content.toLowerCase().includes(lowerFileName)
-            )
+          if (isOrphan && diaryLowerTexts.length > 0) {
+            isOrphan = !diaryLowerTexts.some((lowerContent) => lowerContent.includes(lowerFileName))
           }
 
           list.push({
             name,
             path: fullFilePath,
             relativePath,
-            sizeMB: (st.size ?? 0) / (1024 * 1024),
+            sizeMB: size / (1024 * 1024),
             birthtime: new Date().toISOString(),
             yearMonth: `${year}-${month}`,
             isOrphan
@@ -387,6 +391,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   static async pickAndImportAvatar(
     manager: MobileAttachmentManagerService
   ): Promise<string | null> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return null
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -401,6 +406,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   static async pickAndImportBackground(
     manager: MobileAttachmentManagerService
   ): Promise<string | null> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return null
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -439,6 +445,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   static async pickAndImportEmojis(
     manager: MobileAttachmentManagerService
   ): Promise<EmojiImportResult[]> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return []
 

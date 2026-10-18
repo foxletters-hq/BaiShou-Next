@@ -151,7 +151,7 @@ export async function resumeStorageAfterFileCopy(deps: {
   watcherDeps: VaultRuntimeWatcherDeps
 }): Promise<VaultBoundDiaryStack> {
   await connectGlobalShadowDb(deps)
-  const diaryStack = createVaultBoundDiaryStack({
+  const diaryStack = await createVaultBoundDiaryStack({
     pathService: deps.pathService,
     vaultService: deps.vaultService,
     fileSystem: deps.fileSystem,
@@ -251,7 +251,7 @@ export async function rebootstrapAfterStorageRootChange(
       await clearAllVaultShadowIndexes(deps.vaultService)
     }
 
-    const diaryStack = createVaultBoundDiaryStack({
+    const diaryStack = await createVaultBoundDiaryStack({
       pathService: deps.pathService,
       vaultService: deps.vaultService,
       fileSystem: deps.fileSystem,

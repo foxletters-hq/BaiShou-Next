@@ -368,6 +368,11 @@ export class MobileFileSystem implements IFileSystem {
     }
     await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
   }
+
+  async md5Hex(filePath: string): Promise<string> {
+    const { md5HexForSyncFile } = await import('./mobile-sync-file-md5.util')
+    return md5HexForSyncFile(this, filePath)
+  }
 }
 
 export function createMobileFileSystem(): IFileSystem {
