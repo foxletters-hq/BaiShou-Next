@@ -4,7 +4,8 @@ import type { useNativeTheme } from '../theme'
 /** 将 RN 主题色映射为 WebView CM 可用的 CSS 变量源（P-1） */
 export function buildDiaryCmThemeFromNative(
   isDark: boolean,
-  colors: ReturnType<typeof useNativeTheme>['colors']
+  colors: ReturnType<typeof useNativeTheme>['colors'],
+  fontScale = 1
 ): DiaryCmTheme {
   return {
     isDark,
@@ -13,6 +14,7 @@ export function buildDiaryCmThemeFromNative(
     bgEditor: colors.bgSurface,
     borderColor: colors.borderSubtle,
     primary: colors.primary,
-    tagColors: [colors.accentBlue, colors.accentGreen, colors.warning, colors.accentPurple]
+    tagColors: [colors.accentBlue, colors.accentGreen, colors.warning, colors.accentPurple],
+    fontScale
   }
 }

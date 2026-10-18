@@ -7,7 +7,7 @@ import type {
   DiaryCmMarkdownMark,
   DiaryCmTheme
 } from '../../shared/diary-codemirror/types'
-import { useDialog } from '../Dialog/Dialog'
+import { useDialog } from '../Dialog'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -105,10 +105,10 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   },
   ref
 ) {
-  const { colors, isDark } = useNativeTheme()
+  const { colors, isDark, contentFontScale } = useNativeTheme()
   const theme = useMemo(
-    () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors),
-    [colors, isDark, themeOverride]
+    () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors, contentFontScale),
+    [colors, isDark, contentFontScale, themeOverride]
   )
 
   const dialog = useDialog()

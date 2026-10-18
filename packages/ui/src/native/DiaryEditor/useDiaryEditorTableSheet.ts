@@ -6,7 +6,7 @@ import type {
   DiaryCmTableSheetResponsePayload
 } from '../../shared/diary-codemirror/types'
 import { confirmMessageForDestructiveItem } from '../../shared/diary-codemirror/table/tableConfirm'
-import { useDialog } from '../Dialog/Dialog'
+import { useDialog } from '../Dialog'
 
 export type ActiveTableSheet = DiaryCmTableSheetRequestPayload & {
   respond: (response: DiaryCmTableSheetResponsePayload) => void
