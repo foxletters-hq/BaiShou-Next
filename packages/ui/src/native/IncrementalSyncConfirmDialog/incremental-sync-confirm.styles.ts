@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const incrementalSyncConfirmStyles = StyleSheet.create({
   overlay: {
@@ -6,7 +7,7 @@ export const incrementalSyncConfirmStyles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   },
   dialogWrap: {
     width: '100%',
@@ -15,43 +16,43 @@ export const incrementalSyncConfirmStyles = StyleSheet.create({
   },
   dialog: {
     width: '100%',
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     flexDirection: 'column'
   },
   headerBlock: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 10,
-    gap: 10
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.smPlus
   },
   title: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   trafficSummary: {
-    marginTop: 6,
-    fontSize: 13,
+    marginTop: sharedTokens.spacing.xsPlus,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   cellularWarning: {
-    marginTop: 4,
-    fontSize: 12,
+    marginTop: sharedTokens.spacing.xs,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
-    padding: 10,
-    borderRadius: 10,
+    padding: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
     backgroundColor: 'rgba(245, 158, 11, 0.1)'
   },
   warningItem: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
-    padding: 10,
-    borderRadius: 10,
+    padding: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control,
     backgroundColor: 'rgba(245, 158, 11, 0.1)'
   },
   scrollBody: {
@@ -59,27 +60,27 @@ export const incrementalSyncConfirmStyles = StyleSheet.create({
     minHeight: 0
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    gap: 10,
-    paddingBottom: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.sm
   },
   vaultSection: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    padding: 10,
-    gap: 6
+    borderRadius: sharedTokens.radius.control,
+    padding: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xsPlus
   },
   vaultHeader: {
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   vaultTitleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   vaultName: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     flexShrink: 1,
     flexGrow: 1
@@ -87,68 +88,68 @@ export const incrementalSyncConfirmStyles = StyleSheet.create({
   vaultTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   badgeActive: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   badgeUnregistered: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   vaultStats: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     alignSelf: 'flex-end'
   },
   fileItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   actionTag: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xsPlus,
     overflow: 'hidden'
   },
   filePath: {
     flex: 1,
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16
   },
   moreHint: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   countdownHint: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'right'
   },
   choicePanel: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    padding: 10,
-    gap: 6
+    borderRadius: sharedTokens.radius.control,
+    padding: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.xsPlus
   },
   choiceTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   choiceDesc: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   choiceMeta: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   deleteChoiceFooter: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 18,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   fullWidthButton: {
     width: '100%',
@@ -156,10 +157,10 @@ export const incrementalSyncConfirmStyles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 18,
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   actionButton: {

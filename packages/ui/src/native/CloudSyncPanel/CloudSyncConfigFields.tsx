@@ -30,7 +30,7 @@ export const CloudSyncTargetSelector: React.FC<CloudSyncTargetSelectorProps> = (
               {
                 backgroundColor: isSelected ? colors.primary : colors.bgSurfaceNormal,
                 borderColor: isSelected ? colors.primary : colors.borderSubtle,
-                borderRadius: tokens.radius.sm
+                borderRadius: tokens.radius.xs
               }
             ]}
             onPress={() => onSelectTarget(opt.key)}

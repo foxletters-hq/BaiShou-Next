@@ -69,7 +69,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             styles.toggleButton,
             {
               backgroundColor: isActive ? colors.error : colors.success,
-              borderRadius: tokens.radius.sm
+              borderRadius: tokens.radius.xs
             }
           ]}
           onPress={handleToggleSync}
@@ -90,7 +90,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
             {
               backgroundColor: colors.bgSurfaceNormal,
               borderColor: colors.borderSubtle,
-              borderRadius: tokens.radius.sm
+              borderRadius: tokens.radius.xs
             }
           ]}
         >

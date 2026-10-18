@@ -74,6 +74,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
     return (
       <View style={[styles.deleteChoiceFooter, { borderTopColor: colors.borderSubtle }]}>
         <Button
+          size="sm"
           variant="primary"
           destructive
           onPress={() => handleDeleteChoiceConfirm('follow-remote')}
@@ -84,6 +85,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
           {t('data_sync.plan_delete_choice_follow_remote')}
         </Button>
         <Button
+          size="sm"
           variant="primary"
           onPress={() => handleDeleteChoiceConfirm('push-local')}
           disabled={choiceDisabled}
@@ -93,6 +95,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
           {t('data_sync.plan_delete_choice_push_local')}
         </Button>
         <Button
+          size="sm"
           variant="outline"
           onPress={() => handleDeleteChoiceConfirm('skip-deletes')}
           disabled={choiceDisabled}
@@ -102,6 +105,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
           {t('data_sync.plan_delete_choice_skip_deletes')}
         </Button>
         <Button
+          size="sm"
           variant="outline"
           onPress={onCancel}
           disabled={choiceDisabled}
@@ -117,6 +121,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
     return (
       <View style={[styles.deleteChoiceFooter, { borderTopColor: colors.borderSubtle }]}>
         <Button
+          size="sm"
           variant="primary"
           onPress={() => onConfirm()}
           disabled={choiceDisabled}
@@ -126,6 +131,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
           {primaryButtonLabel}
         </Button>
         <Button
+          size="sm"
           variant="outline"
           onPress={() => onWaitForWifi?.()}
           disabled={choiceDisabled || !onWaitForWifi}
@@ -134,6 +140,7 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
           {t('data_sync.plan_wait_for_wifi', '等 Wi-Fi 再同步')}
         </Button>
         <Button
+          size="sm"
           variant="outline"
           onPress={onCancel}
           disabled={choiceDisabled}
@@ -147,10 +154,11 @@ export const PlanConfirmFooter = memo(function PlanConfirmFooter({
 
   return (
     <View style={[styles.actionsRow, { borderTopColor: colors.borderSubtle }]}>
-      <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
+      <Button size="sm" variant="outline" onPress={onCancel} style={styles.actionButton}>
         {t('common.cancel', '取消')}
       </Button>
       <Button
+        size="sm"
         variant="primary"
         onPress={() => onConfirm()}
         disabled={choiceDisabled}
