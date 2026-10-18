@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
+  GRAPH_APPEARANCE_DEFAULTS,
   GRAPH_APPEARANCE_STORAGE_KEY,
+  GRAPH_FORCE_DEFAULTS,
   GRAPH_FORCE_STORAGE_KEY,
   clampGraphAppearanceSettings,
   clampGraphForceSettings,
@@ -39,5 +41,22 @@ export function useNotebookGraphAppearance() {
     })
   }, [])
 
-  return { appearanceSettings, forceSettings, onAppearanceChange, onForceChange }
+  const resetGraphSettings = useCallback(() => {
+    const appearance = clampGraphAppearanceSettings({ ...GRAPH_APPEARANCE_DEFAULTS })
+    const force = clampGraphForceSettings({ ...GRAPH_FORCE_DEFAULTS })
+    setAppearanceSettings(appearance)
+    setForceSettings(force)
+    saveGraphAppearanceSettings(appearance)
+    saveGraphForceSettings(force)
+    void AsyncStorage.setItem(GRAPH_APPEARANCE_STORAGE_KEY, JSON.stringify(appearance))
+    void AsyncStorage.setItem(GRAPH_FORCE_STORAGE_KEY, JSON.stringify(force))
+  }, [])
+
+  return {
+    appearanceSettings,
+    forceSettings,
+    onAppearanceChange,
+    onForceChange,
+    resetGraphSettings
+  }
 }
