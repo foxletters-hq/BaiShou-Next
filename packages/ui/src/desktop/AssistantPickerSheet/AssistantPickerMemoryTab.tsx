@@ -7,6 +7,7 @@ import {
   getDefaultCompressionSystemPrompt
 } from '@baishou/shared'
 import styles from './AssistantPickerSheet.module.css'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
 export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewModel }) {
@@ -32,8 +33,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: 8,
-          gap: 8
+          marginBottom: sharedTokens.spacing.sm,
+          gap: sharedTokens.spacing.sm
         }}
       >
         <History size={14} color="var(--color-primary)" />
@@ -59,7 +60,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         >
           <span
             style={{
-              fontSize: 13,
+              fontSize: settingsTypography.label.fontSize,
               color: 'var(--text-secondary)'
             }}
           >
@@ -69,10 +70,10 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           {editingContextWindow >= 0 && (
             <span
               style={{
-                fontSize: 13,
+                fontSize: settingsTypography.label.fontSize,
                 fontWeight: '600',
                 color: 'var(--color-primary)',
-                marginRight: 4
+                marginRight: sharedTokens.spacing.xs
               }}
             >
               {editingContextWindow}
@@ -80,8 +81,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           )}
           <span
             style={{
-              fontSize: 13,
-              marginRight: 8,
+              fontSize: settingsTypography.label.fontSize,
+              marginRight: sharedTokens.spacing.sm,
               color: 'var(--text-primary)'
             }}
           >
@@ -131,8 +132,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: 8,
-          gap: 8
+          marginBottom: sharedTokens.spacing.sm,
+          gap: sharedTokens.spacing.sm
         }}
       >
         <Minimize2 size={14} color="var(--color-primary)" />
@@ -156,7 +157,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         >
           <span
             style={{
-              fontSize: 13,
+              fontSize: settingsTypography.label.fontSize,
               color: 'var(--text-secondary)'
             }}
           >
@@ -166,10 +167,10 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           {editingCompressEnabled && (
             <span
               style={{
-                fontSize: 13,
+                fontSize: settingsTypography.label.fontSize,
                 fontWeight: '600',
                 color: 'var(--color-primary)',
-                marginRight: 8
+                marginRight: sharedTokens.spacing.sm
               }}
             >
               {editingCompressThreshold >= 10000
@@ -229,12 +230,12 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                marginBottom: 12
+                marginBottom: sharedTokens.spacing.mdTight
               }}
             >
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: settingsTypography.label.fontSize,
                   color: 'var(--text-secondary)'
                 }}
               >
@@ -243,7 +244,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <div style={{ flex: 1 }}></div>
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: settingsTypography.label.fontSize,
                   fontWeight: '600',
                   color: 'var(--color-primary)'
                 }}
@@ -285,11 +286,17 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                marginBottom: 8
+                gap: sharedTokens.spacing.sm,
+                marginBottom: sharedTokens.spacing.sm
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span
+                style={{
+                  fontSize: settingsTypography.label.fontSize,
+                  fontWeight: 600,
+                  color: 'var(--text-primary)'
+                }}
+              >
                 {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
               </span>
               <HelpTooltip content={t('agent.assistant.compress_system_prompt_desc')} />
@@ -297,7 +304,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <button
                 type="button"
                 style={{
-                  fontSize: 12,
+                  fontSize: settingsTypography.meta.fontSize,
                   color: 'var(--color-primary)',
                   background: 'none',
                   border: 'none',
@@ -323,17 +330,17 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                marginTop: 12,
-                paddingBottom: 4
+                marginTop: sharedTokens.spacing.mdTight,
+                paddingBottom: sharedTokens.spacing.xs
               }}
             >
               <button
                 type="button"
                 disabled={isSaving}
                 style={{
-                  fontSize: 13,
+                  fontSize: settingsTypography.label.fontSize,
                   padding: '6px 16px',
-                  borderRadius: 8,
+                  borderRadius: sharedTokens.radius.sm,
                   border: 'none',
                   cursor: isSaving ? 'not-allowed' : 'pointer',
                   background: 'var(--color-primary)',

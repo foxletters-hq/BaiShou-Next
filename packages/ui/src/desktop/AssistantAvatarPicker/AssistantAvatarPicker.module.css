@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
   line-height: 0;
 }
@@ -21,8 +21,8 @@
   line-height: 0;
   flex-shrink: 0;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .previewBtn:hover {
@@ -50,7 +50,7 @@
 .actionRow {
   display: flex;
   align-items: stretch;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
 }
 
@@ -60,16 +60,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-muted);
   background: var(--bg-surface-normal);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
 }
 
 .actionBtn:hover {
@@ -91,23 +91,27 @@
 }
 
 .presetGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm-plus);
   width: 100%;
+  padding: var(--spacing-xs) 0;
 }
 
 .presetBtn {
+  width: 80px;
+  height: 80px;
   aspect-ratio: 1;
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 2px solid var(--border-subtle);
   background: var(--bg-surface);
   overflow: hidden;
   cursor: pointer;
   transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast);
 }
 
 .presetBtn:hover {

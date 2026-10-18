@@ -6,6 +6,7 @@ import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantManagementPage.module.css'
 import type { AssistantInfo } from './index'
 import { GripVertical, Pin, Trash2 } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 type AssistantListRowProps = {
   assistant: AssistantInfo
@@ -54,7 +55,11 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
             </span>
             <AssistantKindBadge kind={assistant.assistantKind} compact />
             {isPinned ? (
-              <Pin size={14} color="var(--color-primary)" style={{ marginLeft: 6, opacity: 0.8 }} />
+              <Pin
+                size={14}
+                color="var(--color-primary)"
+                style={{ marginLeft: sharedTokens.spacing.xsPlus, opacity: 0.8 }}
+              />
             ) : null}
           </div>
           <div className={styles.cardDesc}>{assistant.description || assistant.systemPrompt}</div>

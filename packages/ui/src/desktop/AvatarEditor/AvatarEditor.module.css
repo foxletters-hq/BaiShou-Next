@@ -18,22 +18,22 @@
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   overflow: hidden;
-  animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: scaleUp var(--duration-moderate) cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .popoverHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   border-bottom: 1px solid var(--border-subtle);
   background: transparent;
 }
 
 .popoverTitle {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -44,7 +44,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--color-primary);

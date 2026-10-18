@@ -5,6 +5,7 @@ import { useTheme } from '../../hooks'
 import styles from './AssistantEditPage.module.css'
 import { Button } from '../Button/Button'
 import { ChevronRight, Sparkles } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 interface AssistantEditModelBindingProps {
   providerId?: string
@@ -62,7 +63,7 @@ export const AssistantEditModelBinding: React.FC<AssistantEditModelBindingProps>
           {t('common.restore_default', '恢复默认')}
         </Button>
       ) : null}
-      <div className={styles.descText} style={{ marginTop: 8 }}>
+      <div className={styles.descText} style={{ marginTop: sharedTokens.spacing.sm }}>
         {t('agent.assistant.bind_model_desc', '绑定后，和伙伴创建对话时，会默认优先使用选择的模型')}
       </div>
     </>

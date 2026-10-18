@@ -18,26 +18,26 @@
   align-items: center;
   justify-content: space-between;
   height: var(--settings-page-header-height, 64px);
-  padding: 0 32px;
+  padding: 0 var(--spacing-xl);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   z-index: 10;
 }
 
 .appBarTitle {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   line-height: 28px;
   letter-spacing: -0.5px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .appBarControls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .searchBox {
@@ -47,10 +47,10 @@
   height: 36px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 0 12px;
+  border-radius: var(--radius-md);
+  padding: 0 var(--spacing-md-tight);
   width: 240px;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .searchBox:focus-within {
@@ -64,18 +64,18 @@
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
   font-weight: 500;
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 .sortSelect {
   background-color: var(--form-field-bg, var(--bg-surface));
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 12px;
-  padding: 8px 32px 8px 16px;
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-xl) var(--spacing-sm) var(--spacing-md);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
@@ -89,7 +89,7 @@
   background-size:
     0.65em auto,
     100%;
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
 }
 
 .sortSelect:focus {
@@ -103,7 +103,8 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--settings-page-scroll-padding-top, 88px) 32px 32px 32px;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-xl)
+    var(--spacing-xl);
   height: 100%;
   box-sizing: border-box;
   container-type: inline-size;
@@ -115,38 +116,38 @@
 }
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .sortableList {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 @container assistant-scroll (min-width: 720px) {
   .sortableList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--spacing-md);
   }
 }
 
 .sortableRow {
   position: relative;
   background: var(--bg-surface);
-  border-radius: 16px;
-  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-md);
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.03),
     0 0 0 1px var(--border-card) inset;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   min-width: 0;
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    box-shadow var(--duration-swift) ease,
+    transform var(--duration-swift) ease;
 }
 
 .sortableRow:hover {
@@ -168,7 +169,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: grab;
@@ -185,13 +186,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .sortableActions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex-shrink: 0;
 }
 
@@ -199,16 +200,16 @@
 .card {
   position: relative;
   background: var(--bg-surface);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: var(--radius-lg-plus);
+  padding: var(--spacing-lg);
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.03),
     0 0 0 1px var(--border-card) inset;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  gap: var(--spacing-md);
+  transition: all var(--duration-moderate) cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden;
 }
 
@@ -238,13 +239,13 @@
   top: 16px;
   right: 16px;
   display: flex;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   opacity: 0;
   transform: translateX(10px);
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.9);
-  padding: 4px;
-  border-radius: 12px;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-control);
   z-index: 5;
@@ -261,12 +262,12 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
 }
 
 .cardActionBtn:hover {
@@ -283,7 +284,7 @@
 .cardHeader {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .cardAvatar {
@@ -294,12 +295,12 @@
   background: linear-gradient(
     135deg,
     rgba(var(--color-primary-rgb), 0.1),
-    rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1)
+    rgba(var(--color-success-rgb), 0.1)
   );
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: var(--ui-display-md);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   border: 1px solid var(--border-control);
 }
@@ -312,12 +313,12 @@
 .cardNameRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex-wrap: wrap;
 }
 
 .cardName {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -326,7 +327,7 @@
 }
 
 .cardDesc {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
   display: -webkit-box;
@@ -341,38 +342,38 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: var(--spacing-md-tight);
   border-top: 1px dashed var(--border-muted);
 }
 
 .cardMetaTag {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-family: var(--font-mono, monospace);
   font-weight: 600;
   color: var(--text-secondary);
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 /* Add New Card */
 .addCard {
   background: rgba(var(--color-primary-rgb), 0.02);
   border: 2px dashed rgba(var(--color-primary-rgb), 0.3);
-  border-radius: 20px;
+  border-radius: var(--radius-lg-plus);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-height: 200px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   color: var(--color-primary);
 }
 
@@ -384,19 +385,19 @@
 }
 
 .addIcon {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 300;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: rgba(var(--color-primary-rgb), 0.1);
 }
 
 .addText {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 500;
 }
 
@@ -407,19 +408,19 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 64px 24px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-3xl) var(--spacing-lg);
   color: var(--text-secondary);
 }
 
 .emptyIcon {
-  font-size: 64px;
+  font-size: var(--icon-fs-3xl);
   opacity: 0.5;
   filter: grayscale(1);
 }
 
 .emptyText {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
 }
 
@@ -427,17 +428,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px 16px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .emptyBtn:hover {
@@ -458,20 +459,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 
 .dialogBox {
   background: var(--bg-surface);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: var(--radius-lg-plus);
+  padding: var(--spacing-lg);
   width: 90%;
   max-width: 360px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  gap: var(--spacing-md-tight);
+  animation: slideUp var(--duration-moderate) cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .dialogHeaderIcon {
@@ -482,18 +483,18 @@
   height: 64px;
   border-radius: 50%;
   background: rgba(var(--color-error-rgb), 0.1);
-  margin: 0 auto 8px auto;
+  margin: 0 auto var(--spacing-sm) auto;
 }
 
 .dialogTitle {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
 }
 
 .dialogText {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-secondary);
   line-height: 1.5;
   text-align: center;
@@ -502,18 +503,18 @@
 .dialogActions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--spacing-md-tight);
+  margin-top: var(--spacing-md-tight);
 }
 
 .dialogBtn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .dialogBtnCancel {
@@ -534,7 +535,7 @@
   color: var(--text-on-primary);
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 .createBtn {
   display: flex;
@@ -542,16 +543,16 @@
   justify-content: center;
   box-sizing: border-box;
   height: 36px;
-  gap: 6px;
-  padding: 0 18px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md);
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   border: none;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: none;
 }
 
