@@ -8,6 +8,7 @@ import {
 import {
   buildVisionLanguageSlots,
   AI_FIRST_OUTPUT_TIMEOUT_MS,
+  createAbortTimeoutSignal,
   isVisionModel,
   prepareProviderConfigForRuntime,
   resolveProviderModelSlot,
@@ -66,7 +67,7 @@ export function registerMobileVisionPageRecognizer(): void {
         async () =>
           generateText({
             model,
-            abortSignal: AbortSignal.timeout(AI_FIRST_OUTPUT_TIMEOUT_MS),
+            abortSignal: createAbortTimeoutSignal(AI_FIRST_OUTPUT_TIMEOUT_MS),
             messages: [
               {
                 role: 'user',

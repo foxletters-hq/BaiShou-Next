@@ -4,18 +4,34 @@ import {
   NotebookGraphRawManager
 } from '@baishou/core-mobile'
 import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
+  GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY,
   GRAPH_EXTRACT_WINDOW_TIMEOUT_MS,
+  createAbortTimeoutSignal,
   isAgentStreamAbortError,
   resolveGlobalGraphModelIds,
+  resolveGraphExtractConcurrency,
   resolveReasoningEffortForSlot,
   type GlobalModelsConfig
 } from '@baishou/shared'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { MobileStoragePathService } from './path.service'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { emitMobileKnowledgeExtractProgress } from './mobile-knowledge-extract-config'
 import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
+import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
+
+async function resolveMobileKnowledgeGraphWindowConcurrency(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY)
+    if (raw != null) return resolveGraphExtractConcurrency(raw)
+  } catch {
+    // 读不到设置时用当前队列并发
+  }
+  return resolveGraphExtractConcurrency(mobileGraphExtractQueue.getConcurrency())
+}
 
 export function createMobileKnowledgeGraphExtractFn() {
   return async (input: {
@@ -90,7 +106,7 @@ export function createMobileKnowledgeGraphExtractFn() {
               globalModels?.reasoningEffortBySlot,
               'graph'
             ),
-            abortSignal: AbortSignal.timeout(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)
+            abortSignal: createAbortTimeoutSignal(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)
           })
           return text ?? null
         } catch (error) {
@@ -101,6 +117,36 @@ export function createMobileKnowledgeGraphExtractFn() {
         }
       }
     })
-    await svc.extractSource(input)
+    try {
+      await svc.extractSource({
+        ...input,
+        windowConcurrency: await resolveMobileKnowledgeGraphWindowConcurrency(),
+        onProgress: (progress) => {
+          emitMobileKnowledgeExtractProgress({
+            sourceId: input.sourceId,
+            page: progress.pageTotal && progress.pageTo ? progress.pageTo : progress.windowsDone,
+            total:
+              progress.pageTotal && progress.pageTotal > 0
+                ? progress.pageTotal
+                : progress.windowsTotal,
+            phase: (progress.nodesTotal ?? 0) > 0 ? 'graphNodes' : 'graph',
+            windowsDone: progress.windowsDone,
+            windowsTotal: progress.windowsTotal,
+            nodesDone: progress.nodesDone,
+            nodesTotal: progress.nodesTotal,
+            pageFrom: progress.pageFrom,
+            pageTo: progress.pageTo,
+            pageTotal: progress.pageTotal
+          })
+        }
+      })
+    } finally {
+      emitMobileKnowledgeExtractProgress({
+        sourceId: input.sourceId,
+        page: 0,
+        total: 0,
+        phase: 'graph'
+      })
+    }
   }
 }

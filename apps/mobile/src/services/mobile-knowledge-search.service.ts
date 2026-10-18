@@ -7,6 +7,7 @@ import {
 import { expoKnowledgeConnectionManager } from '@baishou/database/expo'
 import {
   KnowledgeSearchService,
+  listLiveIngestSourceIds,
   searchMountedKnowledgeNotebooks,
   searchNotebookGraphForTool
 } from '@baishou/core-mobile'
@@ -125,29 +126,52 @@ export async function mobileSearchNotebookGraphNodes(input: {
   })
 }
 
-export async function mobileListNotebookGraphJobs(notebookId: string) {
+export function overlayMobileOrganizeJobsLive<T extends { sourceId: string; status: string }>(
+  items: T[]
+): T[] {
+  const live = new Set(listLiveIngestSourceIds())
+  return items.map((item) => {
+    if (item.status === 'failed') return item
+    if (live.has(item.sourceId)) return { ...item, status: 'running' }
+    if (item.status === 'running') return { ...item, status: 'pending' }
+    return item
+  })
+}
+
+export async function mobileListNotebookOrganizeJobs(notebookId: string) {
   const id = notebookId.trim()
   if (!id) throw new Error('notebookId required')
   const repo = await ensureMobileKnowledgeRepo()
-  const { listLiveGraphSourceIds } = await import('@baishou/core-mobile')
-  const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
-  const live = new Set(listLiveGraphSourceIds())
+  const jobs = await repo.listIngestJobs({ notebookId: id })
   const sources = await repo.listSources(id)
   const titleById = new Map(sources.map((row) => [row.id, row.title]))
-  const items = jobs.map((job) => ({
-    sourceId: job.sourceId,
-    title: titleById.get(job.sourceId) || job.sourceId,
-    status: live.has(job.sourceId) ? 'running' : job.status,
-    lastError: job.lastError
-  }))
-  const running = items.find((item) => item.status === 'running')
+  const items = overlayMobileOrganizeJobsLive(
+    jobs.map((job) => ({
+      sourceId: job.sourceId,
+      title: titleById.get(job.sourceId) || job.sourceId,
+      stage: job.stage,
+      status: job.status,
+      lastError: job.lastError
+    }))
+  )
+  const graphItems = items.filter((item) => item.stage === 'graph')
+  const running = graphItems.find((item) => item.status === 'running')
   return {
-    pending: items.filter((item) => item.status === 'pending' || item.status === 'running').length,
-    running: items.filter((item) => item.status === 'running').length,
-    failed: items.filter((item) => item.status === 'failed').length,
+    pending: graphItems.filter((item) => item.status === 'pending' || item.status === 'running')
+      .length,
+    running: graphItems.filter((item) => item.status === 'running').length,
+    failed: graphItems.filter((item) => item.status === 'failed').length,
     currentSourceId: running?.sourceId ?? null,
     currentSourceTitle: running?.title ?? null,
     items
+  }
+}
+
+export async function mobileListNotebookGraphJobs(notebookId: string) {
+  const listed = await mobileListNotebookOrganizeJobs(notebookId)
+  return {
+    ...listed,
+    items: listed.items.filter((item) => item.stage === 'graph')
   }
 }
 
@@ -162,6 +186,45 @@ export async function mobileGetNotebookGraphView(notebookId: string, maxNodes = 
     notebookId: id,
     maxNodes
   })
+}
+
+export async function mobileListNotebookGraphNodesPage(opts: {
+  notebookId: string
+  keyword?: string
+  limit?: number
+  offset?: number
+}) {
+  const id = opts.notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  await ensureMobileKnowledgeConnected()
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  return repo.listNodesPage({
+    vaultId: await resolveMobileActiveVaultId(),
+    notebookId: id,
+    keyword: opts.keyword,
+    limit: opts.limit,
+    offset: opts.offset
+  })
+}
+
+export async function mobileCountNotebookGraph(notebookId: string, keyword?: string) {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  await ensureMobileKnowledgeConnected()
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  const vaultId = await resolveMobileActiveVaultId()
+  const [nodeCount, edgeCount, filteredNodeCount] = await Promise.all([
+    repo.countNodes({ vaultId, notebookId: id }),
+    repo.countCurrentEdges({ vaultId, notebookId: id }),
+    keyword?.trim() ? repo.countNodes({ vaultId, notebookId: id, keyword }) : Promise.resolve(0)
+  ])
+  return {
+    nodeCount,
+    edgeCount,
+    filteredNodeCount: keyword?.trim() ? filteredNodeCount : nodeCount
+  }
 }
 
 export async function mobileSearchNotebookGraph(opts: {
@@ -199,6 +262,32 @@ export async function mobileSearchNotebookGraph(opts: {
     })
   }
   return groups
+}
+
+export async function mobileGetNotebookGraphNodePage(notebookId: string, nodeId: string) {
+  const nb = notebookId.trim()
+  const id = nodeId.trim()
+  if (!nb) throw new Error('notebookId required')
+  if (!id) throw new Error('nodeId required')
+  await ensureMobileKnowledgeConnected()
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  const vaultId = await resolveMobileActiveVaultId()
+  const node = await repo.getNodeById(id, vaultId, nb)
+  const touching = (await repo.listEdgesTouching(vaultId, nb, id)).filter(
+    (edge) => edge.isCurrent !== 0
+  )
+  const partnerIds = [
+    ...new Set(
+      touching
+        .map((edge) => (edge.fromId === id ? edge.toId : edge.fromId))
+        .filter((other) => other !== id)
+    )
+  ]
+  const partners = (
+    await Promise.all(partnerIds.map((partnerId) => repo.getNodeById(partnerId, vaultId, nb)))
+  ).filter((row): row is NonNullable<typeof row> => Boolean(row))
+  return { vaultId, node, edges: touching, partners }
 }
 
 async function resolveMobileNotebookGraphEmbed(): Promise<{

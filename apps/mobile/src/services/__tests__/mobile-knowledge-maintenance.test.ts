@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { KnowledgeIngestService, KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR } from '@baishou/core-mobile'
+import { KnowledgeIngestService } from '@baishou/core-mobile'
 
 function createRepo() {
   return {
@@ -71,10 +71,15 @@ describe('mobile knowledge maintenance via rebuildIndex', () => {
     expect(stages).toEqual(['graph'])
   })
 
-  it('should reject graph-only reprocess when the source is not embedded', async () => {
-    await expect(svc.reprocessSource('src_mobile_rebuild', 'graph')).rejects.toThrow(
-      KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR
+  it('should queue embed then graph when graph-only reprocess has no chunks yet', async () => {
+    await svc.reprocessSource('src_mobile_rebuild', 'graph')
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_mobile_rebuild', stage: 'embed' })
     )
-    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+    repo.enqueueIngestJob.mockClear()
+    await svc.processEmbedJob('src_mobile_rebuild')
+    expect(repo.enqueueIngestJob).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'src_mobile_rebuild', stage: 'graph' })
+    )
   })
 })

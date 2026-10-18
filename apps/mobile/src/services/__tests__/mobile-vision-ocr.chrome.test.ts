@@ -13,4 +13,9 @@ describe('mobile vision ocr chrome', () => {
     expect(src).toContain('buildVisionPageImagePart')
     expect(src).not.toContain('data:image/png;base64,${pngBase64}')
   })
+
+  it('should not call AbortSignal.timeout which Hermes does not implement', () => {
+    expect(src).toContain('createAbortTimeoutSignal(AI_FIRST_OUTPUT_TIMEOUT_MS)')
+    expect(src).not.toContain('AbortSignal.timeout(')
+  })
 })

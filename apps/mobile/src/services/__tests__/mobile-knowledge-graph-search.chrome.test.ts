@@ -17,5 +17,7 @@ describe('mobile notebook graph search chrome', () => {
     expect(src).toContain('resolveMobileNotebookGraphEmbed')
     expect(src).toMatch(/searchNotebookGraphForTool\([\s\S]*embedQuery/)
     expect(src).toContain('resolveMobileEmbeddingForHydration')
+    expect(src).toContain('mobileGetNotebookGraphNodePage')
+    expect(src).toContain('listEdgesTouching')
   })
 })
