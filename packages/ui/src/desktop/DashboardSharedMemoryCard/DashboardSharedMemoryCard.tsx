@@ -13,6 +13,7 @@ import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
 import { formatCompactTokenCount } from '../../shared/token-usage-display'
 import './DashboardSharedMemoryCard.css'
+import { sharedTokens } from '../../theme/tokens'
 
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
@@ -189,7 +190,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             size={15}
             content={t(
               'summary.shared_memory_tooltip',
-              '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
+              '根据所选的回溯周期，自动汇总该时间范围内的日记与阶段总结，提炼为高浓度的生活记忆。\n\n在与伙伴对话或生成新总结时注入，让 AI 能自然延续对你近期生活轨迹与关键事件的了解。'
             )}
           />
         </div>
@@ -266,9 +267,13 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         disabled={copying}
       >
         {copying ? (
-          <Loader2 size={16} className="sm-previewSpinner" style={{ marginRight: 6 }} />
+          <Loader2
+            size={16}
+            className="sm-previewSpinner"
+            style={{ marginRight: sharedTokens.spacing.xsPlus }}
+          />
         ) : (
-          <Copy size={16} style={{ marginRight: 6 }} />
+          <Copy size={16} style={{ marginRight: sharedTokens.spacing.xsPlus }} />
         )}
         {t('summary.copy_memories', '复制共同回忆')}
       </button>

@@ -1,7 +1,7 @@
 .dashboard-shared-memory-card {
-  padding: 20px;
+  padding: var(--spacing-md-plus);
   background: var(--bg-surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-control);
   display: flex;
   flex-direction: column;
@@ -12,14 +12,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .sm-header-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
   flex: 1;
 }
@@ -30,15 +30,15 @@
 
 .sm-header-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   color: var(--text-primary);
 }
 
 .sm-controls {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
 .sm-label-row {
@@ -48,7 +48,7 @@
 }
 
 .sm-label {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -72,15 +72,15 @@
 
 .sm-number-input {
   width: 64px;
-  padding: 4px 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
   background: var(--bg-surface-lowest);
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   /* 去掉浏览器 number 微调箭头，数值本身居中显示 */
   -moz-appearance: textfield;
   appearance: textfield;
@@ -100,7 +100,7 @@
 
 .sm-slider-container {
   width: 100%;
-  padding: 8px 0;
+  padding: var(--spacing-sm) 0;
 }
 
 /* 视觉样式见 theme/range-slider.css */
@@ -112,17 +112,17 @@
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md-snug);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .sm-btn:hover:not(:disabled) {
@@ -142,14 +142,14 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    color 0.2s ease,
-    background 0.2s ease;
+    color var(--duration-swift) ease,
+    background var(--duration-swift) ease;
 }
 
 .sm-prefix-btn:hover {
@@ -158,9 +158,9 @@
 }
 
 .sm-preview {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-md);
   background: var(--bg-surface-lowest);
   border: 1px solid var(--border-control);
 }
@@ -168,19 +168,19 @@
 .sm-previewLoading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
 .sm-previewTitle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .sm-previewSpinner,
@@ -201,35 +201,35 @@
 .sm-previewChips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .sm-previewChip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-full);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--color-primary);
   background: rgba(var(--color-primary-rgb), 0.12);
 }
 
 .sm-previewTotal {
-  margin: 8px 0 0;
-  font-size: 11px;
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
 .sm-previewSize {
-  margin: 4px 0 0;
-  font-size: 11px;
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
 .sm-previewEmpty {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
