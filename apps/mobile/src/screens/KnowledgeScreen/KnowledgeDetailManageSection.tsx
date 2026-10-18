@@ -1,14 +1,14 @@
-import React from 'react'
-import { View, Text } from 'react-native'
+import React, { useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import type { NotebookDataManageAction } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { canConfirmNotebookDataManage, type NotebookDataManageAction } from '@baishou/shared'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
 import {
   Button,
   Checkbox,
   Input,
-  SegmentedControl,
-  SettingsSection,
+  Modal,
+  modalActionsStyle,
   useNativeTheme
 } from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
@@ -18,155 +18,209 @@ export function KnowledgeDetailManageSection(props: {
   graphNodes: KnowledgeGraphNodeRow[]
   graphEdges: KnowledgeGraphEdgeRow[]
   sourceCount: number
-  manageAction: NotebookDataManageAction
+  manageAction?: NotebookDataManageAction
   manageVector: boolean
   manageGraph: boolean
   clearPhrase: string
   phrase: string
-  canConfirm: boolean
+  canConfirm?: boolean
   busy: boolean
-  onStartOrganize: () => void
-  onRebuildGraph: () => void
-  onManageAction: (v: NotebookDataManageAction) => void
+  onStartOrganize?: () => void
+  onManageAction?: (v: NotebookDataManageAction) => void
   onToggleVector: () => void
   onToggleGraph: () => void
   onClearPhrase: (v: string) => void
-  onConfirmManage: () => void
+  onConfirmManage: (action?: NotebookDataManageAction) => void | Promise<unknown>
+  onConfirmClear?: () => void | Promise<unknown>
+  onConfirmReprocess?: () => void | Promise<unknown>
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
+  const [clearModalOpen, setClearModalOpen] = useState(false)
+
   const {
-    graphNodes,
-    sourceCount,
-    manageAction,
     manageVector,
     manageGraph,
     clearPhrase,
     phrase,
-    canConfirm,
     busy,
-    onStartOrganize,
-    onRebuildGraph,
-    onManageAction,
     onToggleVector,
     onToggleGraph,
     onClearPhrase,
-    onConfirmManage
+    onConfirmManage,
+    onConfirmClear,
+    onConfirmReprocess
   } = props
 
-  return (
-    <>
-      <SettingsSection title={t('knowledge.data_manage', '数据管理')}>
-        <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
-          {graphNodes.length === 0 ? (
-            <View style={{ gap: tokens.spacing.sm }}>
-              <Text
-                style={{
-                  color: colors.textSecondary,
-                  fontSize: settingsTypography.row.fontSize,
-                  fontWeight: settingsTypography.row.fontWeight
-                }}
-              >
-                {t('knowledge.graph_empty_title', '还没有开始整理这本笔记本的关系')}
-              </Text>
-              <Text
-                style={{
-                  color: colors.textSecondary,
-                  fontSize: settingsTypography.desc.fontSize,
-                  fontWeight: settingsTypography.desc.fontWeight
-                }}
-              >
-                {sourceCount > 0
-                  ? t(
-                      'knowledge.graph_empty_body',
-                      '发现 {{count}} 个来源可以分析。整理后会显示人物、地点和事件关系；人生关系图不会被改动。',
-                      { count: sourceCount }
-                    )
-                  : t(
-                      'knowledge.graph_empty_no_sources',
-                      '先导入资料，再开始整理这本笔记本里的关系。人生关系图是另一份数据，不会混进来。'
-                    )}
-              </Text>
-              <View style={styles.rowGap}>
-                <Button
-                  isDisabled={sourceCount === 0 || busy}
-                  onPress={() => void onStartOrganize()}
-                >
-                  {t('graph.start_organize', '开始整理')}
-                </Button>
-              </View>
-            </View>
-          ) : null}
-          <View style={styles.rowGap}>
-            <Button isDisabled={sourceCount === 0 || busy} onPress={() => void onRebuildGraph()}>
-              {t('knowledge.rebuild_graph', '重新抽取图谱')}
-            </Button>
-          </View>
-        </View>
-      </SettingsSection>
+  const labelStyle = {
+    color: colors.textPrimary,
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight,
+    lineHeight: 20
+  } as const
 
-      <SettingsSection title={t('knowledge.data_manage', '数据管理')}>
-        <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize,
-              fontWeight: settingsTypography.desc.fontWeight
-            }}
-          >
-            {t(
-              'knowledge.data_manage_reprocess_intro',
-              '勾选要按当前模型重新整理的数据。可能耗时较长。'
-            )}
+  const hintStyle = {
+    color: colors.textSecondary,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    lineHeight: 20
+  } as const
+
+  const hasSelectedTarget = manageVector || manageGraph
+  const canClearConfirm = canConfirmNotebookDataManage({
+    action: 'clear',
+    phrase,
+    typed: clearPhrase,
+    vector: manageVector,
+    graph: manageGraph
+  })
+
+  const handleConfirmClear = async () => {
+    if (!canClearConfirm || busy) return
+    if (onConfirmClear) {
+      await onConfirmClear()
+    } else {
+      await onConfirmManage('clear')
+    }
+    setClearModalOpen(false)
+    onClearPhrase('')
+  }
+
+  const handleReprocess = async () => {
+    if (!hasSelectedTarget || busy) return
+    if (onConfirmReprocess) {
+      await onConfirmReprocess()
+    } else {
+      await onConfirmManage('reprocess')
+    }
+  }
+
+  return (
+    <View style={{ gap: tokens.spacing.lg, paddingBottom: tokens.spacing.sm }}>
+      <View style={{ gap: tokens.spacing.sm }}>
+        <Text style={hintStyle}>
+          {t(
+            'knowledge.data_manage_reprocess_intro',
+            '勾选要按当前模型重新整理或清除的数据。可能耗时较长。'
+          )}
+        </Text>
+        <Text style={hintStyle}>
+          {t('knowledge.graph_ops_hint', '重新抽取只会整理这本笔记本。人生关系图不会被改动。')}
+        </Text>
+      </View>
+
+      <View style={{ gap: tokens.spacing.xsPlus }}>
+        <Pressable
+          onPress={onToggleVector}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.sm
+          }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: manageVector }}
+        >
+          <Text style={[labelStyle, { flex: 1 }]}>
+            {t('knowledge.data_manage_vector', '向量片段')}
           </Text>
-          <SegmentedControl
-            value={manageAction}
-            onChange={onManageAction}
-            options={[
-              { value: 'reprocess', label: t('knowledge.data_manage_reprocess', '重整理') },
-              { value: 'clear', label: t('knowledge.data_manage_clear', '清除') }
-            ]}
-          />
-          <View style={{ gap: tokens.spacing.sm }}>
-            <View style={[styles.checkRow, { gap: tokens.spacing.sm }]}>
-              <Checkbox selected={manageVector} onPress={onToggleVector} />
-              <Text
-                style={{
-                  color: colors.textPrimary,
-                  fontSize: settingsTypography.row.fontSize
-                }}
-              >
-                {t('knowledge.data_manage_vector', '向量片段')}
-              </Text>
-            </View>
-            <View style={[styles.checkRow, { gap: tokens.spacing.sm }]}>
-              <Checkbox selected={manageGraph} onPress={onToggleGraph} />
-              <Text
-                style={{
-                  color: colors.textPrimary,
-                  fontSize: settingsTypography.row.fontSize
-                }}
-              >
-                {t('knowledge.data_manage_graph', '本笔记本图谱')}
-              </Text>
-            </View>
+          <Checkbox selected={manageVector} onPress={onToggleVector} />
+        </Pressable>
+
+        <Pressable
+          onPress={onToggleGraph}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.sm
+          }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: manageGraph }}
+        >
+          <Text style={[labelStyle, { flex: 1 }]}>
+            {t('knowledge.data_manage_graph', '本笔记本图谱')}
+          </Text>
+          <Checkbox selected={manageGraph} onPress={onToggleGraph} />
+        </Pressable>
+      </View>
+
+      <View style={[styles.submitActionsRow, modalActionsStyle]}>
+        <Button
+          size="sm"
+          isDisabled={!hasSelectedTarget || busy}
+          onPress={() => void handleReprocess()}
+        >
+          {t('knowledge.data_manage_reprocess', '重整理')}
+        </Button>
+        <Button
+          size="sm"
+          variant="outlined"
+          destructive
+          isDisabled={!hasSelectedTarget || busy}
+          onPress={() => setClearModalOpen(true)}
+        >
+          {t('knowledge.data_manage_clear', '清除数据')}
+        </Button>
+      </View>
+
+      <Modal
+        visible={clearModalOpen}
+        title={t('knowledge.data_manage_clear_title', '清除数据确认')}
+        onClose={
+          busy
+            ? undefined
+            : () => {
+                setClearModalOpen(false)
+                onClearPhrase('')
+              }
+        }
+      >
+        <View style={{ gap: tokens.spacing.sm }}>
+          <Text style={hintStyle}>
+            {t('knowledge.data_manage_clear_intro', '清除选中的本地衍生数据。原文文件不会被删除。')}
+          </Text>
+          <View style={{ gap: tokens.spacing.xs, marginTop: tokens.spacing.xs }}>
+            <Text style={hintStyle}>
+              {t('knowledge.data_manage_clear_confirm_hint', '请输入「{{phrase}}」确认清除：', {
+                phrase
+              })}
+            </Text>
+            <Input
+              value={clearPhrase}
+              onChangeText={onClearPhrase}
+              placeholder={phrase}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </View>
-          {manageAction === 'clear' ? (
-            <Input value={clearPhrase} onChangeText={onClearPhrase} placeholder={phrase} />
-          ) : null}
-          <View style={styles.rowGap}>
+          <View
+            style={[styles.submitActionsRow, modalActionsStyle, { marginTop: tokens.spacing.sm }]}
+          >
             <Button
-              isDisabled={!canConfirm || busy}
-              destructive={manageAction === 'clear'}
-              onPress={() => void onConfirmManage()}
+              size="sm"
+              variant="outlined"
+              isDisabled={busy}
+              onPress={() => {
+                setClearModalOpen(false)
+                onClearPhrase('')
+              }}
             >
-              {manageAction === 'clear'
-                ? t('knowledge.data_manage_clear', '清除')
-                : t('knowledge.data_manage_reprocess', '重整理')}
+              {t('common.cancel', '取消')}
+            </Button>
+            <Button
+              size="sm"
+              destructive
+              isDisabled={!canClearConfirm || busy}
+              onPress={() => void handleConfirmClear()}
+            >
+              {t('knowledge.data_manage_clear', '清除数据')}
             </Button>
           </View>
         </View>
-      </SettingsSection>
-    </>
+      </Modal>
+    </View>
   )
 }
