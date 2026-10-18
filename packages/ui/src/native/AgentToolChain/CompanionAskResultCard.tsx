@@ -7,6 +7,7 @@ import type {
   CompanionAskPresentation
 } from '../../shared/tool-result.util'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 function CompanionAskResultItem({
   question,
@@ -98,7 +99,7 @@ function PagedCompanionAskResults({
   if (!item) return null
 
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: sharedTokens.spacing.sm }}>
       <CompanionAskResultItem
         question={item.question}
         answer={item.answer}
@@ -168,47 +169,47 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-    marginVertical: 4
+    borderRadius: sharedTokens.radius.md,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm,
+    marginVertical: sharedTokens.spacing.xs
   },
   questionBlock: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   label: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16,
     fontWeight: '500'
   },
   question: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22
   },
   status: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   option: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8
+    borderRadius: sharedTokens.radius.control,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm
   },
   optionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   pager: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   pagerProgress: {
     minWidth: 48,
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16,
     textAlign: 'center'
   },
@@ -218,6 +219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 8
+    borderRadius: sharedTokens.radius.sm
   }
 })

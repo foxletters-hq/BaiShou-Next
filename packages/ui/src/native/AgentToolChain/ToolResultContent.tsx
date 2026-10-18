@@ -10,6 +10,7 @@ import {
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useNativeTheme } from '../theme'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const ToolResultContent = React.memo(function ToolResultContent({
   invocation
@@ -170,59 +171,59 @@ function StructuredToolResult({
 const styles = StyleSheet.create({
   viewport: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     overflow: 'hidden',
-    padding: 10
+    padding: sharedTokens.spacing.smPlus
   },
   sourceUrl: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   statusText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   plainText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17,
     fontFamily: 'monospace'
   },
   structGrid: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   structItem: {
     borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 4
+    borderRadius: sharedTokens.radius.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xs
   },
   structTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   structLink: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   structSnippet: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17
   },
   structValueRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
-    paddingVertical: 2,
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   structKey: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   structVal: {
     flex: 1,
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontFamily: 'monospace',
     textAlign: 'right'
   }
