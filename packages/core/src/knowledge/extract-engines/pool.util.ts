@@ -1,5 +1,15 @@
 export { clampOcrConcurrency } from '@baishou/shared'
 
+/** 按并发窗口切批，供 PDF 整批渲染后再并行识图。 */
+export function chunkItems<T>(items: T[], size: number): T[][] {
+  const n = Math.max(1, Math.floor(size) || 1)
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += n) {
+    out.push(items.slice(i, i + n))
+  }
+  return out
+}
+
 /** 有限并发池：最多 concurrency 个任务同时执行 */
 export async function runPool<T>(
   items: T[],

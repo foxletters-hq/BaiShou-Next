@@ -28,6 +28,7 @@ import {
   type AlignedEntityHit,
   type EntityAlignLookup
 } from '../graph/graph-entity-align'
+import { yieldEventLoop } from './extract-engines/pool.util'
 import { refreshNotebookEmbeddingsAfterAlign } from './knowledge-graph-extraction.embed-refresh'
 import type {
   KnowledgeGraphExtractAlignDeps,
@@ -259,22 +260,29 @@ export async function writeAlignedEmbeddings(
   deps: KnowledgeGraphAlignDeps,
   vaultId: string,
   notebookId: string,
-  embeddings: Map<string, number[]>
+  embeddings: Map<string, number[]>,
+  onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const modelId = deps.align?.modelId?.trim()
   const update = deps.repo.updateNodeEmbedding?.bind(deps.repo)
-  if (!modelId || !update || embeddings.size === 0) return
+  const total = embeddings.size
+  if (!modelId || !update || total === 0) return
+  onProgress?.(0, total)
+  let done = 0
   for (const [id, embedding] of embeddings) {
     try {
       await update(id, vaultId, notebookId, embedding, modelId)
     } catch (error) {
       logger.warn('[KnowledgeGraphExtract] updateNodeEmbedding failed', error as Error)
     }
+    done += 1
+    onProgress?.(done, total)
+    await yieldEventLoop()
   }
 }
 
 /**
- * 全部窗口抽完后再对齐一次。本批实体都在内存里，不依赖上一窗是否已经进 SQLite。
+ * 对齐这一池窗口。池内实体在内存里合并，不依赖池内上一窗是否已经进 SQLite。
  */
 export async function commitAlignedWindows(
   deps: KnowledgeGraphAlignDeps,

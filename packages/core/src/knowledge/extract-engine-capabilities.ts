@@ -131,3 +131,22 @@ export function resolveExtractEngine(
   }
   return { engine: 'simple', degraded: false }
 }
+
+/** 移动端 PDF：只用视觉模型，不抽文字层、不降到 OCR。 */
+export function resolvePdfExtractEngine(input: {
+  requested: ExtractEngineId
+  caps: ExtractEngineCapabilities
+  pdfVisionOnly?: boolean
+}): ResolveEngineResult {
+  if (input.pdfVisionOnly) {
+    if (input.caps.vision.available) {
+      return { engine: 'vision', degraded: false }
+    }
+    return {
+      engine: 'vision',
+      degraded: true,
+      message: input.caps.vision.reason || '还没配置视觉模型。请先在设置里选好视觉模型。'
+    }
+  }
+  return resolveExtractEngine(input.requested, input.caps)
+}

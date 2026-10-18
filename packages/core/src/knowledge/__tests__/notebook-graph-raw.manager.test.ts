@@ -116,6 +116,27 @@ describe('NotebookGraphRawManager source shards', () => {
     ).rejects.toThrow(/Invalid notebook graph shard key/)
   })
 
+  it('writeRecords 按分片分组批量写入，任一记录非法则整批都不写', async () => {
+    const now = Date.now()
+    await raw.writeRecords('nb1', 'nodes', [
+      makeNode('n-a', '甲', now, { sourceId: 'src1', nodeType: 'source' }),
+      makeNode('n-b', '乙', now, { sourceId: 'src1' }),
+      makeNode('n-c', '丙', now, { sourceId: 'src2' })
+    ])
+    const src1 = (await raw.readShardRecords('nb1', 'nodes', 'src1')) as Array<{ id: string }>
+    const src2 = (await raw.readShardRecords('nb1', 'nodes', 'src2')) as Array<{ id: string }>
+    expect(src1.map((row) => row.id).sort()).toEqual(['n-a', 'n-b'])
+    expect(src2.map((row) => row.id)).toEqual(['n-c'])
+
+    await expect(
+      raw.writeRecords('nb1', 'nodes', [
+        makeNode('n-ok', '好', now, { sourceId: 'src3' }),
+        { ...makeNode('n-bad', '坏', now), sourceId: '', shardMonth: '2026-08' }
+      ])
+    ).rejects.toThrow(/Invalid notebook graph shard key/)
+    expect(await raw.readShardRecords('nb1', 'nodes', 'src3')).toEqual([])
+  })
+
   it('replaceSourceGraph 只写该资料三个分片', async () => {
     const now = Date.now()
     await raw.replaceSourceGraph({

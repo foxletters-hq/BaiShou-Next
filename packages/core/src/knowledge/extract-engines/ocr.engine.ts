@@ -1,4 +1,4 @@
-import { analyzePageTexts, extractPdfPageTexts, pageTextNeedsOcr } from '../knowledge-extract'
+import { analyzePageTexts, extractPdfPageTexts, resolvePagesNeedingOcr } from '../knowledge-extract'
 import { md5Hex } from '../../fs/md5'
 import { getPdfPageBitmapRenderer, probeTesseractJs, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
@@ -55,25 +55,6 @@ async function createTesseractWorker(lang: string): Promise<TesseractWorker> {
   }
 }
 
-function resolveMissingPageNumbers(
-  existingPageTexts: string[],
-  pageCount: number,
-  explicit?: number[]
-): number[] {
-  if (explicit?.length) {
-    return [...new Set(explicit)].filter((p) => p >= 1 && p <= pageCount).sort((a, b) => a - b)
-  }
-  const missing: number[] = []
-  for (let i = 0; i < pageCount; i++) {
-    if (pageTextNeedsOcr(existingPageTexts[i] ?? '')) missing.push(i + 1)
-  }
-  // 若全部缺文本且 existing 为空数组长度对不上，OCR 全部页
-  if (missing.length === 0 && existingPageTexts.every((t) => !t.trim())) {
-    return Array.from({ length: pageCount }, (_, i) => i + 1)
-  }
-  return missing
-}
-
 /**
  * ocr：tesseract.js（动态 import）+ 平台注入的 PDF 位图渲染。
  * 支持 1–10 页并发；每并发槽位独立 worker，渲染由平台侧串行化。
@@ -119,7 +100,7 @@ export const ocrExtractEngine: ExtractEngine = {
     while (existing.length < pageCount) existing = [...existing, '']
     if (existing.length > pageCount) existing = existing.slice(0, pageCount)
 
-    const pagesToOcr = resolveMissingPageNumbers(existing, pageCount, ctx.pageNumbers)
+    const pagesToOcr = resolvePagesNeedingOcr(existing, pageCount, ctx.pageNumbers)
     if (pagesToOcr.length === 0) {
       return { ...analyzePageTexts(existing), extractEngine: 'ocr', processedPages: [] }
     }
