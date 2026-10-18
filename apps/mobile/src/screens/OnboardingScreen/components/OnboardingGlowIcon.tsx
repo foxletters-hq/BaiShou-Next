@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
-import { Animated, StyleSheet, View } from 'react-native'
+import { Animated, Platform, StyleSheet, View } from 'react-native'
 import type { SlideTheme } from '../onboarding-theme'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface OnboardingGlowIconProps {
   theme: SlideTheme
@@ -69,14 +70,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   iconShell: {
-    borderRadius: 999,
+    borderRadius: sharedTokens.radius.full,
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 4
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20
+      },
+      default: {}
+    })
   }
 })

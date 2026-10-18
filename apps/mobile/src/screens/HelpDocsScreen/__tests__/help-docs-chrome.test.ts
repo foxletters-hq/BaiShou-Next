@@ -17,4 +17,16 @@ describe('mobile help docs chrome', () => {
     expect(src).not.toContain('#fff')
     expect(src).not.toContain('#000')
   })
+
+  it('should inject header hiding styles on both lifecycle stages and end of load', () => {
+    expect(src).toContain('injectedJavaScriptBeforeContentLoaded={HIDE_DOCS_WEB_HEADER_JS}')
+    expect(src).toContain('injectedJavaScript={HIDE_DOCS_WEB_HEADER_JS}')
+    expect(src).toContain('webViewRef.current?.injectJavaScript(HIDE_DOCS_WEB_HEADER_JS)')
+    expect(src).toContain('.site-header')
+    expect(src).toContain('--safe-top')
+    expect(src).toContain('.docs-shell')
+    expect(src).toContain('.docs-sidebar')
+    expect(src).toContain('overflow-y: auto')
+    expect(src).toContain('MutationObserver')
+  })
 })

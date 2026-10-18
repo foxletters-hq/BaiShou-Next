@@ -13,6 +13,7 @@ import {
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { useEmojiToolSettings } from '../hooks/useEmojiToolSettings'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const EmojiSettingsScreen: React.FC = () => {
   const router = useRouter()
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   }
 })

@@ -1,5 +1,6 @@
-import { Dimensions, StyleSheet } from 'react-native'
+import { Dimensions, Platform, StyleSheet } from 'react-native'
 import { BRAND_BLUE_DARK } from './onboarding-theme'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const SCREEN_WIDTH = Dimensions.get('window').width
 
@@ -21,8 +22,8 @@ export const styles = StyleSheet.create({
   pageScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingHorizontal: sharedTokens.spacing.xl,
+    paddingVertical: sharedTokens.spacing.md,
     maxWidth: 480,
     alignSelf: 'center',
     width: '100%'
@@ -31,14 +32,14 @@ export const styles = StyleSheet.create({
     alignItems: 'center'
   },
   slideTitle: {
-    fontSize: 22,
+    fontSize: mobileTypography.display.fontSize,
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: -0.3,
     lineHeight: 30
   },
   slideBody: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     lineHeight: 27,
     textAlign: 'center'
   },
@@ -47,11 +48,15 @@ export const styles = StyleSheet.create({
     height: 140,
     borderRadius: 32,
     overflow: 'hidden',
-    shadowColor: '#9AD4EA',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 30,
-    elevation: 8
+    ...Platform.select({
+      ios: {
+        shadowColor: '#9AD4EA',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 30
+      },
+      default: {}
+    })
   },
   welcomeIcon: {
     width: 140,
@@ -59,16 +64,16 @@ export const styles = StyleSheet.create({
     borderRadius: 32
   },
   welcomeTitle: {
-    marginTop: 36,
-    fontSize: 28,
+    marginTop: sharedTokens.spacing.xlPlus,
+    fontSize: mobileTypography.display.fontSize,
     fontWeight: '600',
     letterSpacing: -0.5,
     textAlign: 'center',
     color: BRAND_BLUE_DARK
   },
   welcomeTagline: {
-    marginTop: 6,
-    fontSize: 16,
+    marginTop: sharedTokens.spacing.xsPlus,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     textAlign: 'center',
     color: BRAND_BLUE_DARK,
@@ -84,54 +89,54 @@ export const styles = StyleSheet.create({
     height: 40
   },
   slogan: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     letterSpacing: 2,
     textAlign: 'center'
   },
   bottomControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 24
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.lg
   },
   indicators: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: sharedTokens.spacing.xs,
     flexShrink: 0
   },
   indicator: {
     height: 7,
-    borderRadius: 4
+    borderRadius: sharedTokens.radius.xs
   },
   navActions: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm
   },
   backText: {
-    fontSize: 13,
-    marginLeft: 2
+    fontSize: mobileTypography.secondary.fontSize,
+    marginLeft: sharedTokens.spacing.xxs
   },
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   nextButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   }
 })

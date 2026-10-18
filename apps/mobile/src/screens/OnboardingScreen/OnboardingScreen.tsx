@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Animated, BackHandler } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
-import { Image } from 'react-native'
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -20,10 +19,10 @@ import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const APP_ICON = require('../../../assets/images/icon.png') as number
+import { OnboardingWelcomeSlide } from './components/OnboardingWelcomeSlide'
+import { OnboardingProfileSlide } from './components/OnboardingProfileSlide'
 import { useBaishou } from '@/src/providers/BaishouProvider'
+import { formatLocalDate, type UserGender } from '@baishou/shared'
 import {
   applyOnboardingUiLanguage,
   hasPersistedOnboardingUiLanguage,
@@ -31,7 +30,19 @@ import {
   syncOnboardingUiLanguageToVault,
   type OnboardingUiLanguage
 } from '@/src/lib/onboarding-language.util'
+import {
+  normalizeOnboardingNickname,
+  persistOnboardingNickname,
+  persistOnboardingProfile,
+  readOnboardingProfile,
+  syncOnboardingNicknameToVault,
+  syncOnboardingProfileToVault,
+  type OnboardingProfileInput
+} from '@/src/lib/onboarding-nickname.util'
 import { isExternalStorageRequiredError } from '@/src/services/storage-permission.service'
+
+// Re-export helpers for chrome/test compatibility
+export { persistOnboardingNickname, syncOnboardingNicknameToVault }
 
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter()
@@ -46,6 +57,11 @@ export const OnboardingScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedLanguage, setSelectedLanguage] = useState<OnboardingUiLanguage | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
+  const [nickname, setNickname] = useState('')
+  const [nicknameError, setNicknameError] = useState(false)
+  const [birthday, setBirthday] = useState(() => formatLocalDate(new Date()))
+  const [gender, setGender] = useState<UserGender | null>(null)
+  const [customGender, setCustomGender] = useState('')
   const scrollViewRef = useRef<ScrollView>(null)
   const floatAnim = useRef(new Animated.Value(0)).current
   const programmaticTargetRef = useRef<number | null>(null)
@@ -65,6 +81,8 @@ export const OnboardingScreen: React.FC = () => {
     currentPage === ONBOARDING_PAGE.LANGUAGE &&
     !languageConfirmed &&
     !selectedLanguage
+  const nextBlockedOnNickname =
+    currentPage === ONBOARDING_PAGE.PROFILE && !normalizeOnboardingNickname(nickname)
 
   const ensureAndroidStorageMounted = async (): Promise<boolean> => {
     if (!storagePermission.isAndroid) return true
@@ -87,6 +105,12 @@ export const OnboardingScreen: React.FC = () => {
       if (!lang) return
       setSelectedLanguage(lang)
       setLanguageConfirmed(true)
+    })
+    void readOnboardingProfile().then((prof) => {
+      if (prof.nickname) setNickname(prof.nickname)
+      if (prof.birthday) setBirthday(prof.birthday)
+      if (prof.gender) setGender(prof.gender)
+      if (prof.customGender) setCustomGender(prof.customGender)
     })
   }, [isPreview])
 
@@ -113,10 +137,43 @@ export const OnboardingScreen: React.FC = () => {
     await syncLanguageToVaultIfReady(lang)
   }
 
+  const syncProfileToVaultIfReady = useCallback(
+    async (prof: OnboardingProfileInput) => {
+      if (!dbReady || !storageReady || !services) return
+      try {
+        await syncOnboardingProfileToVault(prof, services.settingsManager)
+      } catch (e) {
+        if (!isExternalStorageRequiredError(e)) {
+          console.warn('[Onboarding] vault profile sync failed:', e)
+        }
+      }
+    },
+    [dbReady, storageReady, services]
+  )
+
+  const persistProfileSelection = async (
+    prof: OnboardingProfileInput
+  ): Promise<OnboardingProfileInput | null> => {
+    const saved = await persistOnboardingProfile(prof)
+    if (!saved) return null
+    setNickname(saved.nickname)
+    setBirthday(saved.birthday ?? '')
+    setGender(saved.gender)
+    setCustomGender(saved.customGender ?? '')
+    await syncProfileToVaultIfReady(saved)
+    return saved
+  }
+
   useEffect(() => {
     if (!selectedLanguage || !languageConfirmed) return
     void syncLanguageToVaultIfReady(selectedLanguage)
   }, [selectedLanguage, languageConfirmed, syncLanguageToVaultIfReady])
+
+  useEffect(() => {
+    const name = normalizeOnboardingNickname(nickname)
+    if (!name) return
+    void syncProfileToVaultIfReady({ nickname: name, birthday, gender, customGender })
+  }, [nickname, birthday, gender, customGender, syncProfileToVaultIfReady])
 
   const requireLanguageBeforeLeave = async (): Promise<boolean> => {
     if (isPreview || languageConfirmed) return true
@@ -127,6 +184,20 @@ export const OnboardingScreen: React.FC = () => {
     }
     toast.showWarning(t('onboarding.language_required'))
     goToPage(ONBOARDING_PAGE.LANGUAGE, { animated: true })
+    return false
+  }
+
+  const requireNicknameBeforeLeave = async (): Promise<boolean> => {
+    const persisted =
+      normalizeOnboardingNickname(nickname) ?? (await readOnboardingProfile()).nickname
+    if (persisted) {
+      setNickname(persisted)
+      setNicknameError(false)
+      return true
+    }
+    setNicknameError(true)
+    toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+    goToPage(ONBOARDING_PAGE.PROFILE, { animated: true })
     return false
   }
 
@@ -151,6 +222,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const finishOnboarding = async () => {
     if (!(await requireLanguageBeforeLeave())) return
+    if (!(await requireNicknameBeforeLeave())) return
     if (storagePermission.isAndroid && storagePermission.granted === true && !storageReady) {
       const mounted = await ensureAndroidStorageMounted()
       if (!mounted) {
@@ -159,6 +231,10 @@ export const OnboardingScreen: React.FC = () => {
       }
     }
     allowLeaveRef.current = true
+    const name = normalizeOnboardingNickname(nickname)
+    if (name) {
+      await persistProfileSelection({ nickname: name, birthday, gender, customGender })
+    }
     if (isPreview) {
       router.back()
       return
@@ -186,6 +262,16 @@ export const OnboardingScreen: React.FC = () => {
         return
       }
       await persistLanguageSelection(selectedLanguage)
+    }
+
+    if (currentPage === ONBOARDING_PAGE.PROFILE) {
+      const saved = await persistProfileSelection({ nickname, birthday, gender, customGender })
+      if (!saved?.nickname) {
+        setNicknameError(true)
+        toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+        return
+      }
+      setNicknameError(false)
     }
 
     if (storagePermission.isAndroid && currentPage === ONBOARDING_PAGE.STORAGE) {
@@ -260,6 +346,18 @@ export const OnboardingScreen: React.FC = () => {
       return
     }
 
+    if (clampedPage > ONBOARDING_PAGE.PROFILE && !normalizeOnboardingNickname(nickname)) {
+      setNicknameError(true)
+      programmaticTargetRef.current = ONBOARDING_PAGE.PROFILE
+      setCurrentPage(ONBOARDING_PAGE.PROFILE)
+      scrollViewRef.current?.scrollTo({
+        x: ONBOARDING_PAGE.PROFILE * SCREEN_WIDTH,
+        animated: true
+      })
+      toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+      return
+    }
+
     if (clampedPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
       programmaticTargetRef.current = ONBOARDING_PAGE.STORAGE
       setCurrentPage(ONBOARDING_PAGE.STORAGE)
@@ -304,20 +402,25 @@ export const OnboardingScreen: React.FC = () => {
     />
   )
 
-  const renderWelcomeSlide = () => (
-    <View style={styles.slideInner}>
-      <Animated.View
-        style={[
-          styles.welcomeIconWrap,
-          { backgroundColor: colors.bgSurface, transform: [{ scale: welcomeScale }] }
-        ]}
-      >
-        <Image source={APP_ICON} style={styles.welcomeIcon} resizeMode="cover" />
-      </Animated.View>
-      <Text style={styles.welcomeTitle}>{t('onboarding.welcome_title')}</Text>
-      <Text style={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</Text>
-      {renderSlideBody(t('onboarding.welcome_desc'))}
-    </View>
+  const renderWelcomeSlide = () => <OnboardingWelcomeSlide welcomeScale={welcomeScale} />
+
+  const renderProfileSlide = () => (
+    <OnboardingProfileSlide
+      nickname={nickname}
+      onChangeNickname={(val) => {
+        setNickname(val)
+        if (nicknameError && normalizeOnboardingNickname(val)) {
+          setNicknameError(false)
+        }
+      }}
+      nicknameError={nicknameError}
+      birthday={birthday}
+      onChangeBirthday={setBirthday}
+      gender={gender}
+      onChangeGender={setGender}
+      customGender={customGender}
+      onChangeCustomGender={setCustomGender}
+    />
   )
 
   const renderPhilosophySlide = () => (
@@ -385,6 +488,7 @@ export const OnboardingScreen: React.FC = () => {
   const slides = [
     renderLanguageSlide,
     renderWelcomeSlide,
+    renderProfileSlide,
     renderPhilosophySlide,
     renderCompressionSlide,
     renderStorageSlide,
@@ -456,14 +560,16 @@ export const OnboardingScreen: React.FC = () => {
                 {
                   backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK,
                   opacity:
-                    nextBlockedOnLanguage || isMountingStorage
+                    nextBlockedOnLanguage || nextBlockedOnNickname || isMountingStorage
                       ? 0.45
                       : nextBlockedOnStorage && storagePermission.granted !== true
                         ? 0.45
                         : 1
                 }
               ]}
-              activeOpacity={nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9}
+              activeOpacity={
+                nextBlockedOnLanguage || nextBlockedOnNickname || isMountingStorage ? 1 : 0.9
+              }
               disabled={isMountingStorage}
             >
               <Text style={[styles.nextButtonText, { color: colors.textOnPrimary }]}>

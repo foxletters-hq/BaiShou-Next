@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const assistantEditScreenStyles = StyleSheet.create({
   layoutContent: { flex: 1 },
@@ -11,30 +12,30 @@ export const assistantEditScreenStyles = StyleSheet.create({
     justifyContent: 'center'
   },
   loadingText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   content: {
     flex: 1
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 16
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.md
   },
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   bottomBtn: {
     flex: 1,
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   },
   bottomBtnFull: {
     flex: 1
@@ -44,7 +45,7 @@ export const assistantEditScreenStyles = StyleSheet.create({
   },
   bottomBtnPrimary: {},
   bottomBtnText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   avatarCard: {
@@ -64,14 +65,14 @@ export const assistantEditScreenStyles = StyleSheet.create({
     bottom: -2,
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center'
   },
   textBtn: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
-    marginTop: 8
+    marginTop: sharedTokens.spacing.sm
   },
   fieldGap: {
     height: 16
@@ -79,8 +80,8 @@ export const assistantEditScreenStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.sm
   },
   rowSpacer: {
     flex: 1
@@ -89,51 +90,51 @@ export const assistantEditScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   outlinedBtnText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '500'
   },
   modelCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
+    gap: sharedTokens.spacing.mdTight,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   modelInfo: {
     flex: 1,
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   modelSup: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   modelSub: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   valueText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   sectionDivider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 16
+    marginVertical: sharedTokens.spacing.md
   },
   resetLink: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   compressPromptInput: {
     minHeight: 160,
-    marginTop: 8
+    marginTop: sharedTokens.spacing.sm
   }
 })
