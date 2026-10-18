@@ -184,6 +184,7 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
 
     expect(mockRepo.create).toHaveBeenCalledWith({
       ...dummyAssistant,
+      assistantKind: 'companion',
       vaultId: VAULT_PERSONAL
     })
   })

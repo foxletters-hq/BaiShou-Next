@@ -24,6 +24,7 @@ import {
   importLegacyChatsFromRows,
   importLegacyChatsFromSources
 } from './legacy-version-migration.importer.chats'
+import { resolveTargetVaultId } from './legacy-version-migration.importer.chats.persist'
 
 export async function ensureTargetVaultExists(
   deps: LegacyVersionMigrationImporterDeps,
@@ -156,9 +157,11 @@ export async function importLegacyWorkspaceSection(
   let assistantIdMapLocal: Record<string, string> = { ...priorMap }
 
   await scopedDeps.runInVaultContext(legacyVaultName, async () => {
+    const targetVaultId = resolveTargetVaultId(scopedDeps, targetName)
     const assistantResult = await importLegacyAssistantsFromRows(scopedDeps, agentRows.assistants, {
       assistantIdMap: priorMap,
-      avatarMap
+      avatarMap,
+      vaultId: targetVaultId
     })
     agentResultImported += assistantResult.imported
     agentResultSkipped += assistantResult.skipped

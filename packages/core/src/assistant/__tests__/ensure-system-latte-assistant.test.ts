@@ -20,11 +20,15 @@ describe('ensureSystemLatteAssistant', () => {
     findAll = vi.fn()
     create = vi.fn()
     update = vi.fn()
+    const deleteMock = vi.fn()
+    const rebindMock = vi.fn()
     manager = {
       findById,
       findAll,
       create,
-      update
+      update,
+      delete: deleteMock,
+      rebindSessionsAssistantId: rebindMock
     } as unknown as AssistantManagerService
   })
 
@@ -46,24 +50,37 @@ describe('ensureSystemLatteAssistant', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('creates system Latte without stealing an existing default', async () => {
-    findById.mockResolvedValue(null)
-    findAll.mockResolvedValue([
-      {
-        id: DEFAULT_LATTE_ASSISTANT_ID,
-        name: 'My Latte',
-        systemPrompt: 'custom persona',
-        isDefault: true
-      }
-    ])
+  it('smoothly upgrades legacy default assistant to official system Latte', async () => {
+    const legacy = {
+      id: DEFAULT_LATTE_ASSISTANT_ID,
+      name: 'My Latte',
+      systemPrompt: 'custom persona',
+      customSystemPrompt: 'my custom',
+      isDefault: true
+    }
+    findById.mockImplementation(async (id: string) => {
+      if (id === SYSTEM_LATTE_ASSISTANT_ID) return null
+      if (id === DEFAULT_LATTE_ASSISTANT_ID) return legacy
+      return null
+    })
 
-    await ensureSystemLatteAssistant(manager, 'zh')
+    const res = await ensureSystemLatteAssistant(manager, 'zh')
 
+    expect(res).toEqual({ created: true, assistantId: SYSTEM_LATTE_ASSISTANT_ID })
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         id: SYSTEM_LATTE_ASSISTANT_ID,
-        isDefault: false
+        name: 'My Latte',
+        systemPrompt: 'custom persona',
+        customSystemPrompt: 'my custom',
+        isDefault: true
       })
+    )
+    expect(manager.delete).toHaveBeenCalledWith(DEFAULT_LATTE_ASSISTANT_ID, undefined)
+    expect((manager as any).rebindSessionsAssistantId).toHaveBeenCalledWith(
+      DEFAULT_LATTE_ASSISTANT_ID,
+      SYSTEM_LATTE_ASSISTANT_ID,
+      undefined
     )
     expect(update).not.toHaveBeenCalled()
   })

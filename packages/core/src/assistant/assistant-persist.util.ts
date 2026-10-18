@@ -130,9 +130,9 @@ export function normalizeDiskAssistantRecord(
   }
   delete data.custom_system_prompt
 
-  if (data.assistantKind != null) {
-    data.assistantKind = normalizeAssistantKind(String(data.assistantKind)) as AssistantKind
-  }
+  data.assistantKind = normalizeAssistantKind(
+    String(data.assistantKind ?? 'companion')
+  ) as AssistantKind
 
   if (data.sortOrder != null) {
     const parsed = Number(data.sortOrder)
