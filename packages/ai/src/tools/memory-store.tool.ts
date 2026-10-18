@@ -20,12 +20,12 @@ const memoryStoreParams = z.object({
   content: z
     .string()
     .describe(
-      'The text content to store as memory. Include clear context, e.g. "User preference: prefers dark theme".'
+      'Self-contained text content to store as a long-term memory.'
     ),
   tags: z
     .string()
     .optional()
-    .describe('Optional comma-separated tags to categorize the memory. e.g. "preference,UI design"')
+    .describe('Optional comma-separated category tags.')
 })
 
 function newMemoryId(): string {

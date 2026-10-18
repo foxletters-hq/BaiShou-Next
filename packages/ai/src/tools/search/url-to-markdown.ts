@@ -4,7 +4,8 @@ import {
   assertSafeHttpUrl,
   assertSafePublicHttpUrl,
   assessFetchedWebPage,
-  fetchedWebPageIssueMessage
+  fetchedWebPageIssueMessage,
+  normalizeHttpUrl
 } from '@baishou/shared'
 
 export interface FetchUrlAsMarkdownResult {
@@ -42,7 +43,7 @@ export async function fetchUrlAsMarkdown(
   url: string,
   options?: FetchUrlAsMarkdownOptions
 ): Promise<FetchUrlAsMarkdownResult> {
-  const trimmed = url?.trim()
+  const trimmed = normalizeHttpUrl(url ?? '')
   if (!trimmed) {
     throw new Error('url is required')
   }

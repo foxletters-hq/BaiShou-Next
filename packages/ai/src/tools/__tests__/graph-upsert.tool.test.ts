@@ -771,4 +771,167 @@ describe('GraphUpsertTool write semantics', () => {
     expect(text).toContain('新建节点 0')
     expect(text).toContain('更新节点 1')
   })
+
+  it('accepts UUID memory id as source_ref and infers sourceKind as memory', async () => {
+    const writes: Array<{
+      collection?: string
+      record: { sourceRef?: string; sourceKind?: string }
+    }> = []
+    const memoryId = 'a8e99bc1-d419-4b68-b7a4-c5a8e0f9b1c2'
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async () => null)
+      }
+    } as unknown as ToolContext
+
+    const res = await tool.execute(
+      {
+        summary: '基于记忆沉淀',
+        entities: [{ name: '测试记忆节点', type: 'person' }],
+        source_ref: memoryId
+      } as never,
+      context
+    )
+
+    expect(res).not.toContain('source_ref 不是有效日期')
+    expect(res).toContain('新建节点 1')
+    const nodes = writes.filter((w) => w.collection === 'nodes')
+    expect(nodes).toHaveLength(1)
+  })
+
+  it('deletes a node by id together with the file layer and reports deleted count', async () => {
+    const deleted: Array<{ kind: string; id: string }> = []
+    const tombstone = vi.fn()
+    const nodeId = graphNodeIdForEntity(VAULT, 'person', '临时人物')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      deleteGraphRecord: vi.fn(async (input: { kind: 'node' | 'edge'; id: string }) => {
+        deleted.push(input)
+      }),
+      rawDataSourceManager: {
+        writeRecord: vi.fn(),
+        tombstone
+      },
+      graphNodeLookup: {
+        findNodeById: vi.fn(async () => ({
+          id: nodeId,
+          name: '临时人物',
+          nodeType: 'person'
+        }))
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '清理测试节点',
+        entities: [{ id: nodeId, action: 'delete' }]
+      } as never,
+      context
+    )
+
+    expect(deleted).toEqual([{ kind: 'node', id: nodeId }])
+    expect(tombstone).not.toHaveBeenCalled()
+    expect(text).toContain('删节点 1')
+    expect(text).toContain('文件层与本地索引已一并删除')
+  })
+
+  it('falls back to tombstone when deleteGraphRecord is missing during node delete', async () => {
+    const tombstones: Array<{ kind: string; id: string; opts?: unknown }> = []
+    const nodeId = graphNodeIdForEntity(VAULT, 'person', '临时人物B')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(),
+        tombstone: vi.fn(async (kind: string, id: string, opts?: unknown) => {
+          tombstones.push({ kind, id, opts })
+        })
+      },
+      graphNodeLookup: {
+        findNodeById: vi.fn(async () => ({
+          id: nodeId,
+          name: '临时人物B',
+          nodeType: 'person',
+          shardMonth: '2026-08'
+        }))
+      }
+    } as unknown as ToolContext
+
+    const text = await tool.execute(
+      {
+        summary: '清理测试节点B',
+        entities: [{ id: nodeId, action: 'delete' }]
+      } as never,
+      context
+    )
+
+    expect(tombstones).toEqual([
+      { kind: 'graph', id: nodeId, opts: { collection: 'nodes', shardMonth: '2026-08' } }
+    ])
+    expect(text).toContain('删节点 1')
+  })
+
+  it('resolves validFrom independently for edge with its own source_ref', async () => {
+    const writes: Array<{
+      collection?: string
+      record: { sourceRef?: string; sourceKind?: string; validFrom?: number }
+    }> = []
+    const ming = graphNodeIdForEntity(VAULT, 'person', '小明')
+    const hangzhou = graphNodeIdForEntity(VAULT, 'place', '杭州')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async (query: { name: string }) => {
+          if (query.name === '小明') return { id: ming, name: '小明', nodeType: 'person' }
+          if (query.name === '杭州') return { id: hangzhou, name: '杭州', nodeType: 'place' }
+          return null
+        })
+      }
+    } as unknown as ToolContext
+
+    await tool.execute(
+      {
+        summary: '按指定日期写入关系',
+        edges: [
+          {
+            from: '小明',
+            to: '杭州',
+            type: 'located_at',
+            source_ref: '2026-05-20'
+          }
+        ],
+        source_ref: '2026-08-01'
+      } as never,
+      context
+    )
+
+    const edges = writes.filter((w) => w.collection === 'edges')
+    expect(edges).toHaveLength(1)
+    expect(edges[0]!.record.sourceRef).toBe('2026-05-20')
+    expect(edges[0]!.record.sourceKind).toBe('diary')
+    const may20Ms = new Date('2026-05-20T00:00:00').getTime()
+    expect(Math.abs((edges[0]!.record.validFrom ?? 0) - may20Ms)).toBeLessThan(86400000 * 2)
+  })
 })

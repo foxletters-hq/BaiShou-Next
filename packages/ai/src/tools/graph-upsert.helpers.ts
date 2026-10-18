@@ -4,10 +4,12 @@ export function collapseGraphDisplayName(name: string): string {
   return name.trim().replace(/\s+/g, ' ')
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export function graphUpsertSourceRefError(sourceRef: string): string | null {
   const raw = sourceRef.trim()
   if (!raw) return null
-  if (raw.startsWith('mem_') || raw.includes('memory')) return null
+  if (raw.startsWith('mem_') || raw.includes('memory') || UUID_RE.test(raw)) return null
   const date = raw.match(/(\d{4}-\d{2}-\d{2})/)
   if (date) {
     return isRealLocalCalendarDate(date[1])
@@ -43,13 +45,15 @@ export function formatGraphUpsertSkipReceipt(skips: GraphUpsertSkip[]): string {
 export function formatGraphUpsertCounts(input: {
   nodesCreated: number
   nodesUpdated: number
+  nodesDeleted?: number
   edgesWritten: number
   edgesUpdated: number
   edgesDeleted: number
   skips: GraphUpsertSkip[]
 }): string {
+  const deletedNodesStr = input.nodesDeleted ? `，删节点 ${input.nodesDeleted}` : ''
   return (
-    `已写入人生关系图：新建节点 ${input.nodesCreated}，更新节点 ${input.nodesUpdated}，边 ${input.edgesWritten}` +
+    `已写入人生关系图：新建节点 ${input.nodesCreated}，更新节点 ${input.nodesUpdated}${deletedNodesStr}，边 ${input.edgesWritten}` +
     (input.edgesUpdated ? `，改边 ${input.edgesUpdated}` : '') +
     (input.edgesDeleted ? `，删边 ${input.edgesDeleted}` : '') +
     formatGraphUpsertSkipReceipt(input.skips) +

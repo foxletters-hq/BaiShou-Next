@@ -11,7 +11,7 @@ const params = z.object({
   entity: z
     .string()
     .describe(
-      'Person, place, topic, or compound query (e.g. "小明和杭州") to look up in the memory graph.'
+      'Person, place, event, topic, or multi-entity query to look up in the memory graph.'
     ),
   mode: z
     .enum(['network', 'timeline', 'neighbors', 'search'])
