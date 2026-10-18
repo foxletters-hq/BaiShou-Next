@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import {
   collectVisionExtractHints,
+  normalizeKnowledgeImportProcessMode,
   pickVisionExtractHintReason,
   shouldDeferKnowledgeImportOrganize,
   type KnowledgeExtractHint,
@@ -11,27 +12,38 @@ import {
 import { useNativeToast } from '@baishou/ui/native'
 import * as DocumentPicker from 'expo-document-picker'
 import {
+  mobileGetKnowledgeConfig,
   mobileImportSource,
   resolveMobileKnowledgeFilePath
 } from '@/src/services/mobile-knowledge.service'
 import { mobileProbeExtractHint } from '@/src/services/mobile-knowledge-preview.service'
+import { extractEngineShortLabel, knowledgeIngestUserMessage } from './knowledge-screen.util'
+import type { KnowledgeImportMode } from './knowledge-detail.types'
 
 export function useKnowledgeDetailImport(input: {
   notebookId: string
-  engine: 'ocr' | 'vision'
-  importProcessMode: KnowledgeImportProcessMode
+  embeddingModelLabel: string
+  graphModelLabel: string
   t: TFunction
   toast: ReturnType<typeof useNativeToast>
   setBusy: (busy: boolean) => void
   setError: (message: string) => void
   refreshDetail: () => Promise<void>
 }) {
-  const { notebookId, engine, importProcessMode, t, toast, setBusy, setError, refreshDetail } =
-    input
+  const {
+    notebookId,
+    embeddingModelLabel,
+    graphModelLabel,
+    t,
+    toast,
+    setBusy,
+    setError,
+    refreshDetail
+  } = input
+  const [importMode, setImportMode] = useState<KnowledgeImportMode>(null)
   const [pasteTitle, setPasteTitle] = useState('')
   const [pasteText, setPasteText] = useState('')
   const [urlValue, setUrlValue] = useState('')
-  const [showImport, setShowImport] = useState<'text' | 'url' | null>(null)
   const [uploadingSources, setUploadingSources] = useState<
     Array<{ localId: string; fileName: string; status: 'importing' | 'failed'; error?: string }>
   >([])
@@ -42,12 +54,33 @@ export function useKnowledgeDetailImport(input: {
     visionModelId?: string | null
   } | null>(null)
   const extractHintResolver = useRef<((choice: KnowledgeExtractHintChoice) => void) | null>(null)
+  const [importProcessPrompt, setImportProcessPrompt] = useState<{
+    fileNames: string[]
+    extractEngineLabel: string
+    embeddingModelLabel: string
+    graphModelLabel: string
+    defaultMode: KnowledgeImportProcessMode
+  } | null>(null)
+  const importProcessResolver = useRef<((mode: KnowledgeImportProcessMode | null) => void) | null>(
+    null
+  )
+
+  const openAddSource = useCallback(() => {
+    setImportMode('chooser')
+  }, [])
 
   const settleExtractHint = useCallback((choice: KnowledgeExtractHintChoice) => {
     const resolve = extractHintResolver.current
     extractHintResolver.current = null
     setExtractHintPrompt(null)
     resolve?.(choice)
+  }, [])
+
+  const settleImportProcess = useCallback((mode: KnowledgeImportProcessMode | null) => {
+    const resolve = importProcessResolver.current
+    importProcessResolver.current = null
+    setImportProcessPrompt(null)
+    resolve?.(mode)
   }, [])
 
   const askExtractHint = useCallback(
@@ -64,29 +97,59 @@ export function useKnowledgeDetailImport(input: {
     []
   )
 
+  const askImportProcess = useCallback(
+    async (askInput: { fileNames: string[]; extractEngineLabel: string }) => {
+      let defaultMode: KnowledgeImportProcessMode = 'both'
+      try {
+        const cfg = await mobileGetKnowledgeConfig()
+        defaultMode = normalizeKnowledgeImportProcessMode(cfg.importProcessMode)
+      } catch {
+        /* 读不到配置时按立刻处理 */
+      }
+      const missing = t('knowledge.import_process_model_missing', '未配置')
+      return new Promise<KnowledgeImportProcessMode | null>((resolve) => {
+        importProcessResolver.current = resolve
+        setImportProcessPrompt({
+          fileNames: askInput.fileNames,
+          extractEngineLabel: askInput.extractEngineLabel,
+          embeddingModelLabel: embeddingModelLabel.trim() || missing,
+          graphModelLabel: graphModelLabel.trim() || missing,
+          defaultMode
+        })
+      })
+    },
+    [embeddingModelLabel, graphModelLabel, t]
+  )
+
   const onImportText = async () => {
     if (!pasteText.trim()) return
+    const title = pasteTitle.trim() || t('knowledge.pasted_text', '粘贴文本')
+    const processChoice = await askImportProcess({
+      fileNames: [title],
+      extractEngineLabel: t('knowledge.import_process_engine_text', '原文文本')
+    })
+    if (!processChoice) return
     setBusy(true)
     setError('')
     try {
       await mobileImportSource({
         notebookId,
-        title: pasteTitle.trim() || t('knowledge.pasted_text', '粘贴文本'),
+        title,
         kind: 'text',
         textContent: pasteText,
-        importProcessMode
+        importProcessMode: processChoice
       })
       setPasteTitle('')
       setPasteText('')
-      setShowImport(null)
+      setImportMode(null)
       await refreshDetail()
       toast.showSuccess(
-        shouldDeferKnowledgeImportOrganize(importProcessMode)
+        shouldDeferKnowledgeImportOrganize(processChoice)
           ? t('knowledge.import_stored', '已保存为待整理')
-          : t('knowledge.import_queued', '已加入摄入队列')
+          : t('knowledge.import_queued', '已加入整理队列')
       )
     } catch (e) {
-      setError(String((e as Error)?.message || e))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -95,6 +158,11 @@ export function useKnowledgeDetailImport(input: {
   const onImportUrl = async () => {
     const originUrl = urlValue.trim()
     if (!originUrl) return
+    const processChoice = await askImportProcess({
+      fileNames: [originUrl],
+      extractEngineLabel: t('knowledge.import_process_engine_text', '原文文本')
+    })
+    if (!processChoice) return
     setBusy(true)
     setError('')
     try {
@@ -103,18 +171,18 @@ export function useKnowledgeDetailImport(input: {
         title: '',
         kind: 'url',
         originUrl,
-        importProcessMode
+        importProcessMode: processChoice
       })
       setUrlValue('')
-      setShowImport(null)
+      setImportMode(null)
       await refreshDetail()
       toast.showSuccess(
-        shouldDeferKnowledgeImportOrganize(importProcessMode)
+        shouldDeferKnowledgeImportOrganize(processChoice)
           ? t('knowledge.import_stored', '已保存为待整理')
-          : t('knowledge.import_queued', '已加入摄入队列')
+          : t('knowledge.import_queued', '已加入整理队列')
       )
     } catch (e) {
-      setError(String((e as Error)?.message || e))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
     }
@@ -127,6 +195,7 @@ export function useKnowledgeDetailImport(input: {
       multiple: true
     })
     if (picked.canceled || !picked.assets?.length) return
+    setImportMode(null)
     setBusy(true)
     setError('')
     try {
@@ -136,38 +205,39 @@ export function useKnowledgeDetailImport(input: {
         const absolutePath = await resolveMobileKnowledgeFilePath(asset.uri, fileName)
         prepared.push({ fileName, absolutePath })
       }
-      const hintedPaths = new Set<string>()
-      let hintedEngine: 'ocr' | 'vision' = engine
-      if (engine !== 'vision') {
-        const probed: KnowledgeExtractHint[] = []
-        for (const item of prepared) {
-          if (!item.fileName.toLowerCase().endsWith('.pdf')) continue
-          try {
-            const hint = await mobileProbeExtractHint({ absolutePath: item.absolutePath })
-            if (hint.recommendVision) {
-              probed.push(hint)
-              hintedPaths.add(item.absolutePath)
-            }
-          } catch {
-            /* 探测失败不拦导入 */
+      const probed: KnowledgeExtractHint[] = []
+      for (const item of prepared) {
+        if (!item.fileName.toLowerCase().endsWith('.pdf')) continue
+        try {
+          const hint = await mobileProbeExtractHint({ absolutePath: item.absolutePath })
+          if (hint.recommendVision) {
+            probed.push(hint)
           }
-        }
-        const hinted = collectVisionExtractHints(probed)
-        if (hinted.length > 0) {
-          setBusy(false)
-          const choice = await askExtractHint({
-            fileNames: hinted.map((row) => row.fileName),
-            reason: pickVisionExtractHintReason(hinted),
-            visionConfigured: hinted.some((row) => row.visionConfigured),
-            visionModelId: hinted.find((row) => row.visionModelId)?.visionModelId
-          })
-          if (choice === 'cancel') return
-          if (choice === 'vision') hintedEngine = 'vision'
-          else if (choice === 'ocr') hintedEngine = 'ocr'
-          setBusy(true)
-          setError('')
+        } catch {
+          /* 探测失败不拦导入 */
         }
       }
+      const hinted = collectVisionExtractHints(probed)
+      if (hinted.length > 0) {
+        setBusy(false)
+        const choice = await askExtractHint({
+          fileNames: hinted.map((row) => row.fileName),
+          reason: pickVisionExtractHintReason(hinted),
+          visionConfigured: hinted.some((row) => row.visionConfigured),
+          visionModelId: hinted.find((row) => row.visionModelId)?.visionModelId
+        })
+        if (choice === 'cancel') return
+        setBusy(true)
+        setError('')
+      }
+      setBusy(false)
+      const processChoice = await askImportProcess({
+        fileNames: prepared.map((item) => item.fileName),
+        extractEngineLabel: extractEngineShortLabel('vision', t)
+      })
+      if (!processChoice) return
+      setBusy(true)
+      setError('')
       for (const item of prepared) {
         const localId = `${item.absolutePath}:${Date.now()}`
         setUploadingSources((prev) => [
@@ -181,8 +251,8 @@ export function useKnowledgeDetailImport(input: {
             kind: 'file',
             absolutePath: item.absolutePath,
             fileName: item.fileName,
-            importProcessMode,
-            extractEngine: hintedPaths.has(item.absolutePath) ? hintedEngine : engine
+            importProcessMode: processChoice,
+            extractEngine: 'vision'
           })
           setUploadingSources((prev) => prev.filter((row) => row.localId !== localId))
         } catch (e) {
@@ -198,28 +268,31 @@ export function useKnowledgeDetailImport(input: {
       }
       await refreshDetail()
       toast.showSuccess(
-        shouldDeferKnowledgeImportOrganize(importProcessMode)
+        shouldDeferKnowledgeImportOrganize(processChoice)
           ? t('knowledge.import_stored', '已保存为待整理')
-          : t('knowledge.import_queued', '已加入摄入队列')
+          : t('knowledge.import_queued', '已加入整理队列')
       )
     } catch (e) {
-      setError(String((e as Error)?.message || e))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
     }
   }
 
   return {
+    importMode,
+    setImportMode,
     pasteTitle,
     setPasteTitle,
     pasteText,
     setPasteText,
     urlValue,
     setUrlValue,
-    showImport,
-    setShowImport,
     extractHintPrompt,
+    importProcessPrompt,
     settleExtractHint,
+    settleImportProcess,
+    openAddSource,
     uploadingSources,
     dismissUploading: (localId: string) =>
       setUploadingSources((prev) => prev.filter((row) => row.localId !== localId)),

@@ -6,7 +6,6 @@ import {
   mobileDeleteSource,
   mobileEmbedSource,
   mobileGetExtractedPreview,
-  mobileOcrMissingPages,
   mobileReprocessSource,
   mobileRetrySource
 } from '@/src/services/mobile-knowledge.service'
@@ -19,7 +18,6 @@ import type { KnowledgeSourceRow } from './knowledge-detail.types'
 
 export function useKnowledgeDetailSources(input: {
   notebookId: string
-  engine: 'ocr' | 'vision'
   t: TFunction
   toast: ReturnType<typeof useNativeToast>
   dialog: ReturnType<typeof useDialog>
@@ -27,11 +25,11 @@ export function useKnowledgeDetailSources(input: {
   setBusy: (busy: boolean) => void
   setError: (message: string) => void
   refreshDetail: () => Promise<void>
+  setOrganizeWatching?: (value: boolean) => void
   openTextPreview: (title: string, text: string) => void
 }) {
   const {
     notebookId,
-    engine,
     t,
     toast,
     dialog,
@@ -39,6 +37,7 @@ export function useKnowledgeDetailSources(input: {
     setBusy,
     setError,
     refreshDetail,
+    setOrganizeWatching,
     openTextPreview
   } = input
   const [sourcePreview, setSourcePreview] = useState<{
@@ -51,11 +50,13 @@ export function useKnowledgeDetailSources(input: {
   const retrySource = async (source: KnowledgeSourceRow) => {
     setBusy(true)
     setError('')
+    setOrganizeWatching?.(true)
     try {
       await mobileRetrySource(source.id)
       await refreshDetail()
-      toast.showSuccess(t('knowledge.import_queued', '已加入摄入队列'))
+      toast.showSuccess(t('knowledge.import_queued', '已加入整理队列'))
     } catch (e) {
+      setOrganizeWatching?.(false)
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
@@ -80,6 +81,22 @@ export function useKnowledgeDetailSources(input: {
       await refreshDetail()
       toast.showSuccess(t('knowledge.reembed_vector_queued', '已开始重新嵌入'))
     } catch (e) {
+      setError(knowledgeIngestUserMessage(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const retryFailedGraph = async (source: KnowledgeSourceRow) => {
+    setBusy(true)
+    setError('')
+    setOrganizeWatching?.(true)
+    try {
+      await mobileReprocessSource(source.id, 'graph')
+      await refreshDetail()
+      toast.showSuccess(t('knowledge.reembed_graph_queued', '已开始重新抽取图数据'))
+    } catch (e) {
+      setOrganizeWatching?.(false)
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
@@ -152,7 +169,20 @@ export function useKnowledgeDetailSources(input: {
     try {
       await mobileEmbedSource(source.id)
       await refreshDetail()
-      toast.showSuccess(t('knowledge.import_queued', '已加入摄入队列'))
+      toast.showSuccess(t('knowledge.import_queued', '已加入整理队列'))
+    } catch (e) {
+      setError(knowledgeIngestUserMessage(e, t))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const cancelOrganizeSource = async (sourceId: string) => {
+    setBusy(true)
+    setError('')
+    try {
+      await mobileCancelExtract(sourceId)
+      await refreshDetail()
     } catch (e) {
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
@@ -161,26 +191,21 @@ export function useKnowledgeDetailSources(input: {
   }
 
   const cancelExtract = async (source: KnowledgeSourceRow) => {
-    setBusy(true)
-    setError('')
-    try {
-      await mobileCancelExtract(source.id)
-      await refreshDetail()
-    } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
-    } finally {
-      setBusy(false)
-    }
+    await cancelOrganizeSource(source.id)
   }
 
-  const ocrMissing = async (source: KnowledgeSourceRow) => {
+  const restartOrganizeSource = async (sourceId: string, target: 'extract' | 'embed' | 'graph') => {
     setBusy(true)
     setError('')
+    setOrganizeWatching?.(true)
     try {
-      await mobileOcrMissingPages(source.id, { engine })
+      await mobileCancelExtract(sourceId)
+      if (target === 'extract') await mobileRetrySource(sourceId)
+      else await mobileReprocessSource(sourceId, target)
       await refreshDetail()
-      toast.showSuccess(t('knowledge.import_queued', '已加入摄入队列'))
+      toast.showSuccess(t('knowledge.import_queued', '已加入整理队列'))
     } catch (e) {
+      setOrganizeWatching?.(false)
       setError(knowledgeIngestUserMessage(e, t))
     } finally {
       setBusy(false)
@@ -224,12 +249,14 @@ export function useKnowledgeDetailSources(input: {
 
   return {
     retrySource,
+    retryFailedGraph,
     reprocessSourceGraph,
     reprocessSourceVector,
     onDeleteSource,
     embedSource,
     cancelExtract,
-    ocrMissing,
+    cancelOrganizeSource,
+    restartOrganizeSource,
     previewExtracted,
     previewOriginal,
     sourcePreview,
