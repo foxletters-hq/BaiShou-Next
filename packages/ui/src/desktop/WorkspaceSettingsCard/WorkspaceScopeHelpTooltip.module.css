@@ -6,12 +6,12 @@
 .helpContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .intro {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--settings-font-section-size);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -21,22 +21,22 @@
 }
 
 .sectionTitle {
-  margin: 0 0 8px;
-  font-size: 15px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--settings-font-section-size);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .list {
   margin: 0;
-  padding-left: 20px;
-  font-size: 15px;
+  padding-left: var(--spacing-md-plus);
+  font-size: var(--settings-font-section-size);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 
 .list li {
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .list li:last-child {

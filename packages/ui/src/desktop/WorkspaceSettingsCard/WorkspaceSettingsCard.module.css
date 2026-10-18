@@ -1,11 +1,11 @@
 .workspaceCurrentBlock {
   border: 1px solid var(--border-card);
-  border-radius: 16px;
-  padding: 12px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-sm);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .workspaceCurrentInfo {
@@ -13,18 +13,18 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .workspaceSectionLabel {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.2px;
 }
 
 .workspacePathText {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-family: 'Fira Code', 'Consolas', monospace;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -32,24 +32,24 @@
 }
 
 .workspaceEmptyHint {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
 }
 
 .workspaceManageButton {
   flex-shrink: 0;
   border: 1px solid var(--border-control);
-  border-radius: 999px;
-  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   white-space: nowrap;
 }
 
@@ -66,24 +66,24 @@
 .workspaceRecentList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-xs);
 }
 
 .workspaceRecentCard {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-card);
   background: transparent;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
   color: inherit;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .workspaceRecentCard:hover {
@@ -91,7 +91,7 @@
 }
 
 .workspaceRecentTitle {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
   color: var(--text-primary);
   flex: 1;
@@ -102,7 +102,7 @@
 }
 
 .workspaceRecentAction {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--color-primary);
   flex-shrink: 0;

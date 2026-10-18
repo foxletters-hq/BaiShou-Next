@@ -1,17 +1,17 @@
 .storage-settings-root-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 4px 0 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0 var(--spacing-sm);
 }
 
 .storage-settings-actions {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  gap: 10px;
-  margin-top: 8px;
-  padding: 12px 24px 16px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-lg) var(--spacing-md);
 }
 
 .storage-settings-warning {

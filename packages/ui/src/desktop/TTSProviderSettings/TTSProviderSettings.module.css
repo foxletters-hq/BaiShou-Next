@@ -12,20 +12,20 @@
 .headerTitleGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .labelRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .checkboxRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: var(--spacing-sm);
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -34,7 +34,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .headerRow {
@@ -47,7 +47,7 @@
   align-items: center;
   justify-content: flex-start;
   height: var(--settings-page-header-height, 64px);
-  padding: 0 32px;
+  padding: 0 var(--spacing-xl);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
@@ -66,10 +66,11 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--settings-page-scroll-padding-top, 88px) 32px 48px 32px;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-2xl)
+    var(--spacing-xl);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   height: 100%;
   box-sizing: border-box;
 }
@@ -80,32 +81,32 @@
 
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: var(--spacing-lg);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .hint {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-tertiary);
   line-height: 1.4;
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .sliderHeader {
@@ -115,7 +116,7 @@
 }
 
 .sliderValue {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--color-primary);
 }
@@ -133,7 +134,7 @@
 
 .testRow {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   align-items: flex-end;
 }
 
@@ -142,7 +143,7 @@
 }
 
 .actions {
-  margin-top: 32px;
+  margin-top: var(--spacing-xl);
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
@@ -150,14 +151,14 @@
 
 .modelInputRow {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-items: center;
   width: 100%;
 }
 
 .refAudioInputRow {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-items: stretch;
   width: 100%;
 }
@@ -175,14 +176,14 @@
   height: 38px;
   flex-shrink: 0;
   border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md, var(--radius-md));
   background: var(--bg-surface-low);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .refAudioPickBtn:hover {
@@ -206,12 +207,12 @@
 .comboboxContainer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
 }
 
 .comboboxLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -230,10 +231,10 @@
   background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md, var(--radius-md));
   height: 42px;
-  padding: 0 36px 0 14px;
-  font-size: 14px;
+  padding: 0 var(--spacing-xl-plus) 0 var(--spacing-md-snug);
+  font-size: var(--settings-font-row-size);
   line-height: 1.2;
   font-family: var(--font-family);
   width: 100%;
@@ -287,7 +288,7 @@
   width: 100%;
   background-color: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 100;
   overflow: hidden;
@@ -306,7 +307,7 @@
 .comboboxOptionsList {
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: var(--spacing-xs);
   max-height: 280px;
   overflow-y: auto;
 }
@@ -317,17 +318,17 @@
 
 .comboboxOptionsList::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .comboboxOptionItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
 }
@@ -354,7 +355,7 @@
   justify-content: center;
   color: var(--color-primary);
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 /* Responsive columns */
@@ -381,9 +382,10 @@
   background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: var(--radius-md, 12px);
-  padding: 10px 36px 10px 14px;
-  font-size: 14px;
+  border-radius: var(--radius-md, var(--radius-md));
+  padding: var(--spacing-sm-plus) var(--spacing-xl-plus) var(--spacing-sm-plus)
+    var(--spacing-md-snug);
+  font-size: var(--settings-font-row-size);
   font-family: var(--font-family);
   width: 100%;
   box-sizing: border-box;
@@ -420,7 +422,7 @@
 .pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   /* 勿 hidden：卡内绝对定位下拉会被裁切 */
   overflow: visible;
   display: flex;
@@ -433,7 +435,7 @@
   border: none;
   border-bottom: 1px solid var(--border-card);
   border-radius: 0;
-  padding: 24px;
+  padding: var(--spacing-lg);
 }
 
 .pageCard > .blockSection:last-child {
