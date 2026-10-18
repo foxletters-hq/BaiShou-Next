@@ -49,6 +49,14 @@ describe('mcp client helpers', () => {
     )
   })
 
+  it('guarantees external tool id length never exceeds 64 characters', () => {
+    const longServer = 'very_long_server_identifier_from_some_custom_mcp_host'
+    const longTool = 'very_long_tool_name_which_exceeds_openai_standard_sixty_four_characters'
+    const id = buildExternalMcpToolId(longServer, longTool)
+    expect(id.length).toBeLessThanOrEqual(64)
+    expect(id.startsWith('mcp_')).toBe(true)
+  })
+
   it('strips UUID server ids and keeps the baishou_ tool name', () => {
     const registered = buildExternalMcpToolId(
       '401e4719-6331-42be-a21c-aaaaaaaaaaaa',
@@ -102,14 +110,42 @@ describe('sanitizeMcpClientConfig', () => {
       ]
     })
   })
+
+  it('preserves alwaysAllow and authToken flags', () => {
+    expect(
+      sanitizeMcpClientConfig({
+        servers: [
+          {
+            id: 'srv',
+            name: 'Trusted Server',
+            url: 'https://example.com/mcp',
+            enabled: true,
+            authToken: 'secret-token',
+            alwaysAllow: true
+          }
+        ]
+      })
+    ).toEqual({
+      servers: [
+        {
+          id: 'srv',
+          name: 'Trusted Server',
+          url: 'https://example.com/mcp',
+          enabled: true,
+          authToken: 'secret-token',
+          alwaysAllow: true
+        }
+      ]
+    })
+  })
 })
 
 describe('mcp client status helpers', () => {
-  it('normalizes tool names from strings or objects', () => {
+  it('normalizes tool names from strings or objects and summarizes multi-line descriptions', () => {
     expect(
       toMcpClientListedTools([
         'search',
-        { name: 'read', description: '读取文件' },
+        { name: 'read', description: '读取文件\n第二行详细规则不会塞进列表' },
         { name: '' },
         12
       ])

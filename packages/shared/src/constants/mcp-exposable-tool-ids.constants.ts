@@ -1,7 +1,7 @@
 import { AGENT_BUILTIN_TOOL_IDS } from './agent-builtin-tool-ids.constants'
 
 /** 仅伙伴本机使用，不经 MCP 对外暴露 */
-const MCP_HIDDEN_BUILTIN_TOOL_IDS = new Set(['skill_write'])
+const MCP_HIDDEN_BUILTIN_TOOL_IDS = new Set(['skill_write', 'skill_read'])
 
 /** MCP 对外暴露的工具 ID（伙伴内置工具，不含仅本机写入的技能保存） */
 export const MCP_EXPOSABLE_TOOL_IDS = AGENT_BUILTIN_TOOL_IDS.filter(

@@ -35,6 +35,21 @@ export const CREATE_SKILL_GUIDE_PROMPT_WORKSPACE = `请引导我创建一个项�
 `
 
 export const CREATE_SKILL_SLASH_COMMAND = 'create-skill'
+export const CREATE_SKILL_MANAGER_ID = '__create-skill__'
+
+export function isProtectedSkill(shortcut: {
+  id?: string
+  command?: string
+  name?: string
+}): boolean {
+  const id = (shortcut.id || '').trim()
+  const command = (shortcut.command || shortcut.name || '').trim().replace(/^\//, '')
+  return (
+    id === CREATE_SKILL_MANAGER_ID ||
+    id === CREATE_SKILL_SLASH_COMMAND ||
+    command === CREATE_SKILL_SLASH_COMMAND
+  )
+}
 
 export function getCreateSkillGuidePrompt(
   t?: FallbackTranslateFn,

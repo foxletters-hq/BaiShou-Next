@@ -158,6 +158,13 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.skill_write_tooltip'
   },
   {
+    id: 'skill_read',
+    category: 'general',
+    nameKey: 'agent.tools.skill_read',
+    tooltipKey: 'agent.tools.skill_read_tooltip',
+    canBeDisabled: false
+  },
+  {
     id: 'auto_inject_time',
     category: 'general',
     nameKey: 'agent.tools.auto_inject_time',

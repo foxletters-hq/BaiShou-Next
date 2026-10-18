@@ -17,5 +17,6 @@ describe('mcp-exposable-tool-ids.constants', () => {
     expect(isMcpExposableToolId('emoji_send')).toBe(false)
     expect(isMcpExposableToolId('compress_context_upstream')).toBe(false)
     expect(isMcpExposableToolId('skill_write')).toBe(false)
+    expect(isMcpExposableToolId('skill_read')).toBe(false)
   })
 })

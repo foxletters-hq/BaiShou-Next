@@ -34,6 +34,7 @@ export type AgentGateCapabilityId =
   | 'recall_relations'
   | 'graph_upsert'
   | 'skill_write'
+  | 'skill_read'
   | 'web_search'
   | 'url_read'
   | 'current_time'
@@ -108,6 +109,7 @@ export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'recall_relations', actions: ['recall_relations'], defaultEffect: AgentGateEffect.Allow },
   { id: 'graph_upsert', actions: ['graph_upsert'], defaultEffect: AgentGateEffect.Ask },
   { id: 'skill_write', actions: ['skill_write'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'skill_read', actions: ['skill_read'], defaultEffect: AgentGateEffect.Allow },
   { id: 'web_search', actions: ['web_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'url_read', actions: ['url_read'], defaultEffect: AgentGateEffect.Allow },
   { id: 'current_time', actions: ['current_time'], defaultEffect: AgentGateEffect.Allow }

@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   CREATE_SKILL_GUIDE_PROMPT,
   CREATE_SKILL_GUIDE_PROMPT_WORKSPACE,
-  getCreateSkillGuidePrompt
+  CREATE_SKILL_MANAGER_ID,
+  CREATE_SKILL_SLASH_COMMAND,
+  getCreateSkillGuidePrompt,
+  isProtectedSkill
 } from '../create-skill-guide.util'
 
 describe('getCreateSkillGuidePrompt', () => {
@@ -30,5 +33,16 @@ describe('getCreateSkillGuidePrompt', () => {
   it('should accept TFunction at the type level when building the guide prompt', () => {
     const buildWithTFunction: (t: TFunction) => string = (t) => getCreateSkillGuidePrompt(t)
     expect(typeof buildWithTFunction).toBe('function')
+  })
+})
+
+describe('isProtectedSkill', () => {
+  it('identifies create-skill entries by id, command, or name', () => {
+    expect(isProtectedSkill({ id: CREATE_SKILL_MANAGER_ID })).toBe(true)
+    expect(isProtectedSkill({ id: CREATE_SKILL_SLASH_COMMAND })).toBe(true)
+    expect(isProtectedSkill({ command: CREATE_SKILL_SLASH_COMMAND })).toBe(true)
+    expect(isProtectedSkill({ command: `/${CREATE_SKILL_SLASH_COMMAND}` })).toBe(true)
+    expect(isProtectedSkill({ name: CREATE_SKILL_SLASH_COMMAND })).toBe(true)
+    expect(isProtectedSkill({ id: 'custom-1', command: 'code-review' })).toBe(false)
   })
 })
