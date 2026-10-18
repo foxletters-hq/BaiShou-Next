@@ -3,8 +3,10 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { SegmentedControl } from '../SegmentedControl'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { SUMMARY_TABS, type SummaryTab } from './gallery-panel.utils'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface GalleryTabsHeaderProps {
   compact?: boolean
@@ -28,34 +30,10 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const tabButtons = SUMMARY_TABS.map((tab) => {
-    const active = activeTab === tab
-    return (
-      <Pressable
-        key={tab}
-        style={[
-          styles.tabBtn,
-          {
-            borderColor: active ? colors.borderSubtle : 'transparent',
-            backgroundColor: active ? colors.bgSurface : 'transparent'
-          }
-        ]}
-        onPress={() => onTabChange(tab)}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            {
-              color: active ? colors.primary : colors.textSecondary,
-              fontWeight: active ? '600' : '500'
-            }
-          ]}
-        >
-          {t(`summary.tab_${tab}`)}
-        </Text>
-      </Pressable>
-    )
-  })
+  const tabOptions = SUMMARY_TABS.map((tab) => ({
+    value: tab,
+    label: t(`summary.tab_${tab}`)
+  }))
 
   if (compact) {
     return (
@@ -68,16 +46,13 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
           }
         ]}
       >
-        <View
-          style={[
-            styles.compactTabsRow,
-            {
-              backgroundColor: colors.bgSurfaceNormal,
-              borderColor: colors.borderControl
-            }
-          ]}
-        >
-          {tabButtons}
+        <View style={styles.compactTabsWrap}>
+          <SegmentedControl
+            size="small"
+            value={activeTab}
+            options={tabOptions}
+            onChange={onTabChange}
+          />
         </View>
         {availableYears.length > 0 ? (
           <Pressable
@@ -116,16 +91,13 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
 
   return (
     <View style={styles.headerRow}>
-      <View
-        style={[
-          styles.tabsContainer,
-          {
-            backgroundColor: colors.bgSurfaceNormal,
-            borderColor: colors.borderControl
-          }
-        ]}
-      >
-        {tabButtons}
+      <View style={styles.tabsWrap}>
+        <SegmentedControl
+          size="small"
+          value={activeTab}
+          options={tabOptions}
+          onChange={onTabChange}
+        />
       </View>
 
       {availableYears.length > 0 && (
@@ -166,23 +138,18 @@ const styles = StyleSheet.create({
     width: '100%',
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  compactTabsRow: {
-    flexDirection: 'row',
+  compactTabsWrap: {
     alignSelf: 'stretch',
-    marginHorizontal: 12,
-    marginVertical: 8,
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1
+    marginHorizontal: sharedTokens.spacing.mdTight,
+    marginVertical: sharedTokens.spacing.sm
   },
   compactYearRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   headerRow: {
@@ -191,41 +158,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     marginBottom: 0,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
-  tabsContainer: {
+  tabsWrap: {
     flex: 1,
-    flexDirection: 'row',
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
     minWidth: 0
-  },
-  tabBtn: {
-    flex: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 7,
-    borderWidth: 1,
-    alignItems: 'center'
-  },
-  tabText: {
-    fontSize: 13,
-    textAlign: 'center'
   },
   yearTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     minWidth: 100
   },
   yearTriggerText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   }
 })

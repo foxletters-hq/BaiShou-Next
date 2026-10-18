@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface MissingSummaryCardProps {
   type: 'week' | 'month' | 'quarter' | 'year'
@@ -58,60 +59,60 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.mdTight,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   iconBox: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16
+    marginRight: sharedTokens.spacing.md
   },
   calendarIcon: {
-    fontSize: 20
+    fontSize: iconSizes.md
   },
   content: {
     flex: 1,
     justifyContent: 'center'
   },
   title: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   date: {
-    fontSize: 12,
-    marginRight: 8
+    fontSize: mobileTypography.caption.fontSize,
+    marginRight: sharedTokens.spacing.sm
   },
   suggestionBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.md
   },
   suggestionText: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   btn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12
+    marginLeft: sharedTokens.spacing.mdTight
   },
   btnIcon: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   }
 })
