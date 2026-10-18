@@ -8,7 +8,8 @@
   color: var(--text-primary);
   box-sizing: border-box;
   /* 顶栏已含标签上下留白；内容卡紧贴顶栏底，左右下留边 */
-  padding: 0 var(--app-content-inset-inline, 8px) var(--app-content-inset-bottom, 8px);
+  padding: 0 var(--app-content-inset-inline, var(--spacing-sm))
+    var(--app-content-inset-bottom, var(--spacing-sm));
 }
 
 .mainContent {
@@ -18,7 +19,7 @@
   min-height: 0;
   min-width: 0;
   position: relative;
-  border-radius: var(--app-content-radius, 12px);
+  border-radius: var(--app-content-radius, var(--radius-md));
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   box-shadow: var(--shadow-sm);

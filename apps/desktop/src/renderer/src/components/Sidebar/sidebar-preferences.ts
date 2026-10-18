@@ -6,9 +6,6 @@ import {
   type SidebarNavId
 } from './sidebar-nav-catalog'
 
-/** @deprecated 使用 ALL_SIDEBAR_NAV_IDS；保留兼容旧引用 */
-export const DEFAULT_NAV_IDS = [...ALL_SIDEBAR_NAV_IDS]
-
 export type { SidebarNavId }
 
 const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
@@ -103,11 +100,6 @@ export function resetSidebarNavToDefaults(): {
   localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(navOrder))
   localStorage.setItem(MIGRATION_VERSION_KEY, String(CURRENT_MIGRATION_VERSION))
   return { hiddenItems, navOrder }
-}
-
-export function filterVisibleNavIds(order: string[]): string[] {
-  const hidden = new Set(loadHiddenNavItems())
-  return order.filter((id) => !hidden.has(id))
 }
 
 export { SIDEBAR_NAV_PATHS }
