@@ -65,22 +65,3 @@ export function collectTouchedDirPaths(relativePaths: Iterable<string>): string[
   }
   return [...dirs].sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
 }
-
-export function resolveCreateParentDir(
-  selectedPath: string | null,
-  nodesByPath: Record<string, { relativePath: string; isDirectory: boolean }[]>,
-  selectedIsDirectory: boolean
-): string {
-  if (!selectedPath) return ''
-  if (selectedIsDirectory) return normalizeRelativePath(selectedPath)
-  return parentRelativePath(selectedPath)
-}
-
-export function findNodeIsDirectory(
-  relativePath: string,
-  childrenByPath: Record<string, { relativePath: string; isDirectory: boolean }[]>
-): boolean {
-  const parent = parentRelativePath(relativePath)
-  const siblings = childrenByPath[parent] ?? childrenByPath[''] ?? []
-  return siblings.find((node) => node.relativePath === relativePath)?.isDirectory ?? false
-}

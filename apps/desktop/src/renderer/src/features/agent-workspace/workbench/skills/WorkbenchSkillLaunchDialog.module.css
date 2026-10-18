@@ -1,7 +1,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-width: min(420px, 80vw);
   max-width: 480px;
 }
@@ -9,7 +9,7 @@
 .hint,
 .empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -20,7 +20,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-height: 280px;
   overflow: auto;
 }
@@ -30,14 +30,14 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   text-align: left;
   border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: inherit;
   cursor: pointer;
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   font-family: inherit;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .projectName {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -67,13 +67,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
 .footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding-top: 4px;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AgentGatePartBubble,
@@ -29,7 +29,7 @@ import { WorkspaceFileChangeList } from './WorkspaceFileChangeList'
 import type { WorkspaceBubbleActions } from './workspace-bubble-actions.types'
 import styles from './AgentWorkspaceMessageList.module.css'
 
-export function WorkspaceAssistantTurn(props: {
+function WorkspaceAssistantTurnInner(props: {
   msg: WorkspaceChatMessage
   dimmed?: boolean
   editingActive: boolean
@@ -51,35 +51,46 @@ export function WorkspaceAssistantTurn(props: {
     bubbleActions,
     suppressIncompleteBanner = false
   } = props
-  const gateParts = collectAgentGatePartDataForSurface(msg.parts, 'workspace')
-  const timeline = buildWorkspaceAssistantTimeline(msg.parts)
-  const timelineGroups = groupWorkspaceAssistantTimeline(timeline, gateParts)
-  const assistantText =
-    timeline
-      .filter((item) => item.kind === 'text')
-      .map((item) => (item.kind === 'text' ? item.text : ''))
-      .join('\n')
-      .trim() || getWorkspaceAssistantText(msg)
-  const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
-    timeline
-      .filter((item): item is Extract<typeof item, { kind: 'tool' }> => item.kind === 'tool')
-      .map((item) => item.invocation)
+  const gateParts = useMemo(
+    () => collectAgentGatePartDataForSurface(msg.parts, 'workspace'),
+    [msg.parts]
   )
-  const citedTextByKey = new Map(
-    (() => {
-      const textGroups = timelineGroups.filter((item) => item.kind === 'text')
-      const decorated = decorateKnowledgeCitedTexts(
-        textGroups.map((item) => {
-          const parsed = parseRedactedThinking(item.text)
-          return parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
-        }),
-        knowledgeCitations.length,
-        msg.id,
-        { appendWhenMissing: true, citations: knowledgeCitations }
-      )
-      return textGroups.map((item, index) => [item.key, decorated[index] ?? ''] as const)
-    })()
+  const timeline = useMemo(() => buildWorkspaceAssistantTimeline(msg.parts), [msg.parts])
+  const timelineGroups = useMemo(
+    () => groupWorkspaceAssistantTimeline(timeline, gateParts),
+    [timeline, gateParts]
   )
+  const assistantText = useMemo(
+    () =>
+      timeline
+        .filter((item) => item.kind === 'text')
+        .map((item) => (item.kind === 'text' ? item.text : ''))
+        .join('\n')
+        .trim() || getWorkspaceAssistantText(msg),
+    [timeline, msg]
+  )
+  const knowledgeCitations = useMemo(
+    () =>
+      collectKnowledgeCitationsFromInvocations(
+        timeline
+          .filter((item): item is Extract<typeof item, { kind: 'tool' }> => item.kind === 'tool')
+          .map((item) => item.invocation)
+      ),
+    [timeline]
+  )
+  const citedTextByKey = useMemo(() => {
+    const textGroups = timelineGroups.filter((item) => item.kind === 'text')
+    const decorated = decorateKnowledgeCitedTexts(
+      textGroups.map((item) => {
+        const parsed = parseRedactedThinking(item.text)
+        return parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
+      }),
+      knowledgeCitations.length,
+      msg.id,
+      { appendWhenMissing: true, citations: knowledgeCitations }
+    )
+    return new Map(textGroups.map((item, index) => [item.key, decorated[index] ?? ''] as const))
+  }, [timelineGroups, knowledgeCitations, msg.id])
   const [editedContent, setEditedContent] = useState(assistantText)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -227,3 +238,5 @@ export function WorkspaceAssistantTurn(props: {
     </div>
   )
 }
+
+export const WorkspaceAssistantTurn = React.memo(WorkspaceAssistantTurnInner)

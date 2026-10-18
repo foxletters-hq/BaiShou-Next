@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   font-family: var(--font-family);
 }
 
@@ -33,7 +33,7 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -45,14 +45,14 @@
 
 .pathList {
   margin: 0;
-  padding: 8px 10px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   list-style: none;
   max-height: 160px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-radius: 8px;
+  gap: var(--spacing-xs);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface-normal);
 }
 

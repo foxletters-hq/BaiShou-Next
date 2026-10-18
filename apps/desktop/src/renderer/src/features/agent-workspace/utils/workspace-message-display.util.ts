@@ -55,7 +55,7 @@ export function fileRefsFromWorkspaceAttachments(
 
 export function getWorkspaceUserText(message: WorkspaceChatMessage): string {
   if (message.content?.trim()) return message.content
-  return extractTextFromParts(message.parts, false)
+  return extractTextFromParts(message.parts)
 }
 
 export function getWorkspaceUserSkillRefs(
@@ -108,12 +108,7 @@ export function buildWorkspaceModelText(
 
 export function getWorkspaceAssistantText(message: WorkspaceChatMessage): string {
   if (message.content?.trim()) return message.content
-  return extractTextFromParts(message.parts, false)
-}
-
-export function getWorkspaceAssistantReasoning(message: WorkspaceChatMessage): string {
-  if (message.reasoning?.trim()) return message.reasoning
-  return extractTextFromParts(message.parts, true)
+  return extractTextFromParts(message.parts)
 }
 
 /** 与 IPC 映射一致：displayText → text → content，并脱去误带的 message 元数据 */
@@ -133,11 +128,11 @@ export function readWorkspacePartText(data: unknown): string {
   return unwrapMessageMetadataForDisplay(String(raw ?? ''))
 }
 
-function extractTextFromParts(parts: AgentPart[] | undefined, reasoningOnly: boolean): string {
+function extractTextFromParts(parts: AgentPart[] | undefined): string {
   if (!parts?.length) return ''
   return parts
     .filter((part) => part.type === 'text')
-    .filter((part) => Boolean(normalizePartData(part.data).isReasoning) === reasoningOnly)
+    .filter((part) => !normalizePartData(part.data).isReasoning)
     .map((part) => readWorkspacePartText(part.data))
     .join('\n')
     .trim()

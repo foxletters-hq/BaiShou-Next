@@ -25,7 +25,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: var(--spacing-md);
   background-color: var(--bg-app);
 }
 
@@ -35,22 +35,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   color: var(--text-secondary);
   text-align: center;
 }
 
 .primaryBtn {
   border: 1px solid var(--border-control);
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   font-size: var(--ui-fs-md);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .primaryBtn:hover {
@@ -62,10 +62,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md);
   border: 1px solid var(--border-control);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
@@ -73,8 +73,8 @@
   font-weight: 600;
   font-family: inherit;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .addWorkspaceBtn:hover {
@@ -91,14 +91,14 @@
 .messages {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .assistantBubble {
   align-self: flex-start;
   max-width: 80%;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
   background: var(--bg-app);
   border: 1px solid var(--border-subtle);
   white-space: pre-wrap;
@@ -117,14 +117,14 @@
 
 .inputArea {
   flex-shrink: 0;
-  padding: 0 16px 12px;
+  padding: 0 var(--spacing-md) var(--spacing-md-tight);
   background-color: transparent;
 }
 
 .noModelHint {
-  margin: 0 0 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  margin: 0 0 var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface-high);
   color: var(--text-secondary);
   font-size: var(--ui-fs-md);

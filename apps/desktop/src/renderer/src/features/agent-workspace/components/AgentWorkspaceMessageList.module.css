@@ -26,16 +26,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-control, var(--border-muted));
   background: var(--bg-surface);
   color: var(--text-secondary);
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.08));
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .scrollBottomBtn:hover {
@@ -47,8 +47,8 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 16px 14px 12px;
+  gap: var(--spacing-md-plus);
+  padding: var(--spacing-md) var(--spacing-md-snug) var(--spacing-md-tight);
   margin-top: auto;
   width: 100%;
   box-sizing: border-box;
@@ -57,7 +57,7 @@
 
 .empty {
   margin: 0 auto;
-  padding: 12px 12px 28px;
+  padding: var(--spacing-md-tight) var(--spacing-md-tight) var(--spacing-lg);
   max-width: 22rem;
   text-align: center;
   font-size: var(--ui-fs-sm, 12px);
@@ -72,13 +72,13 @@
   align-self: center;
   width: auto;
   max-width: 100%;
-  margin: 0 auto 8px;
-  padding: 6px 14px;
+  margin: 0 auto var(--spacing-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
   border: 1px solid var(--border-control);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: var(--ui-fs-md, 13px);
+  font-size: var(--ui-fs-md, var(--spacing-md-snug));
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -94,7 +94,7 @@
 .turn {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
   min-width: 0;
 }
@@ -120,8 +120,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  padding: 10px 14px;
-  border-radius: 16px 16px 4px 16px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
@@ -137,8 +137,8 @@
 .userAnchorEditable {
   cursor: pointer;
   transition:
-    box-shadow 0.15s ease,
-    background-color 0.15s ease;
+    box-shadow var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
 }
 
 .userAnchorEditable:hover {
@@ -150,7 +150,7 @@
   max-width: min(92%, 52ch);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-self: flex-end;
 }
 
@@ -159,9 +159,9 @@
   width: 100%;
   min-height: 40px;
   max-height: 40vh;
-  padding: 10px 14px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--ui-fs-lg);
@@ -181,13 +181,13 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .userEditCancel,
 .userEditSend {
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--ui-fs-sm);
   font-family: inherit;
@@ -231,7 +231,7 @@
 
 .userTurn .turnActions {
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
 }
 
@@ -246,8 +246,8 @@
 }
 
 .fileChangeError {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(244, 67, 54, 0.35);
   background: rgba(244, 67, 54, 0.08);
   color: var(--text-secondary);
@@ -255,8 +255,8 @@
 }
 
 .streamError {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   background: rgba(244, 67, 54, 0.08);
   color: rgba(244, 67, 54, 0.95);
   font-size: var(--ui-fs-md);
@@ -265,7 +265,7 @@
 
 .streamToolErrors {
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--spacing-md);
   color: rgba(244, 67, 54, 0.95);
   font-size: var(--ui-fs-sm);
   line-height: 1.5;
@@ -274,8 +274,8 @@
 .bouncingDots {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 0;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
 }
 
 .dot {
@@ -287,11 +287,11 @@
 }
 
 .dot:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: var(--duration-fast);
 }
 
 .dot:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: var(--duration-moderate);
 }
 
 @keyframes workspaceDotBounce {

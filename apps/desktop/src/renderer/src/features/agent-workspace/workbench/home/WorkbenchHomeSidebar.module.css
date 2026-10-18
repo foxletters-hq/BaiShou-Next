@@ -20,7 +20,7 @@
 }
 
 .brandRow {
-  padding: 24px 16px 24px 24px;
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -29,8 +29,8 @@
 .logoBox {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
-  margin-right: 16px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-md);
   overflow: hidden;
   background-color: var(--bg-surface);
   display: flex;
@@ -65,21 +65,21 @@
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .menuContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+  padding-top: var(--spacing-sm);
   min-height: 0;
   overflow: hidden;
 }
 
 /* 左右 10px = 日记 .navList */
 .newProjectWrapper {
-  padding: 8px 10px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -88,7 +88,7 @@
   width: 100%;
   height: 38px;
   box-sizing: border-box;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -98,12 +98,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.1s;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-instant);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -128,8 +128,8 @@
 .navList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 10px;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-sm-plus);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -140,12 +140,12 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   color: var(--text-primary);
   background-color: transparent;
   position: relative;
@@ -177,14 +177,14 @@
 /* 对齐日记侧栏不可见拖拽手柄：16px + margin-right 4px */
 .navLead {
   width: 16px;
-  margin-right: 4px;
+  margin-right: var(--spacing-xs);
   flex-shrink: 0;
 }
 
 .navIcon {
   width: 18px;
   height: 18px;
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,7 +208,7 @@
 .recentSection {
   display: flex;
   flex-direction: column;
-  margin-top: 6px;
+  margin-top: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -216,11 +216,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -228,8 +228,8 @@
   text-align: left;
   box-sizing: border-box;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .recentHeader:hover {
@@ -254,7 +254,7 @@
 .recentChevron {
   flex-shrink: 0;
   color: var(--text-tertiary, var(--text-secondary));
-  transition: transform 0.15s ease;
+  transition: transform var(--duration-fast) ease;
   transform: rotate(-90deg);
 }
 
@@ -265,7 +265,7 @@
 .recentList {
   list-style: none;
   margin: 0;
-  padding: 2px 0 4px;
+  padding: var(--spacing-2xs) 0 var(--spacing-xs);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -279,13 +279,13 @@
 .recentItem {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 100%;
-  padding: 3px 6px 3px 6px;
-  border-radius: 8px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus) var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   min-width: 0;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .recentItem:hover,
@@ -302,8 +302,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 4px 4px 2px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-2xs);
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -315,7 +315,7 @@
 .projectChevron {
   flex-shrink: 0;
   color: var(--text-tertiary, var(--text-secondary));
-  transition: transform 0.15s ease;
+  transition: transform var(--duration-fast) ease;
   transform: rotate(-90deg);
 }
 
@@ -337,7 +337,7 @@
 .sessionList {
   list-style: none;
   margin: 0;
-  padding: 1px 0 6px 22px;
+  padding: 1px 0 var(--spacing-xs-plus) var(--spacing-md-plus);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -347,11 +347,11 @@
 .sessionItem {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   width: 100%;
   min-width: 0;
-  border-radius: 7px;
-  transition: background-color 0.12s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
 }
 
 .sessionItem:hover {
@@ -363,15 +363,15 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 4px 4px 8px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) var(--spacing-sm);
   border: none;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
 }
 
 .sessionPinBadge {
@@ -417,9 +417,9 @@
   width: 20px;
   height: 20px;
   padding: 0;
-  margin-right: 2px;
+  margin-right: var(--spacing-2xs);
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-tertiary, var(--text-secondary));
   cursor: pointer;
@@ -445,7 +445,7 @@
 
 .sessionEmpty {
   margin: 0;
-  padding: 4px 8px 6px;
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs-plus);
   font-size: var(--ui-fs-sm);
   line-height: 1.35;
   color: var(--text-tertiary, var(--text-secondary));
@@ -455,9 +455,9 @@
   display: block;
   width: 100%;
   margin: 1px 0 0;
-  padding: 4px 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-tertiary, var(--text-secondary));
   font-family: inherit;
@@ -506,14 +506,14 @@
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   color: var(--text-tertiary, var(--text-secondary));
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .recentActionBtn:hover:not(:disabled) {
@@ -532,15 +532,15 @@
 
 .recentEmpty {
   margin: 0;
-  padding: 6px 16px 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-md) var(--spacing-sm);
   font-size: var(--ui-fs-sm);
   line-height: 1.4;
   color: var(--text-tertiary, var(--text-secondary));
 }
 
 .dividerWrapper {
-  padding: 0 16px;
-  margin: 4px 0 8px 0;
+  padding: 0 var(--spacing-md);
+  margin: var(--spacing-xs) 0 var(--spacing-sm) 0;
   flex-shrink: 0;
 }
 
@@ -552,8 +552,8 @@
 .fixedNav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 10px;
-  margin-bottom: 8px;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
 }

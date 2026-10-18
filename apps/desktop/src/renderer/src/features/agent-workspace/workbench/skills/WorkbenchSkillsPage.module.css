@@ -1,26 +1,26 @@
 .inner {
   width: min(960px, 100%);
   margin: 0 auto;
-  padding: 24px 28px 56px;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-2xl);
   box-sizing: border-box;
 }
 
 .tabBar {
   display: flex;
   align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .title {
   margin: 0;
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 700;
   letter-spacing: -0.04em;
   color: var(--text-primary);
@@ -29,7 +29,7 @@
 
 .subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 400;
   line-height: 1.55;
   color: var(--text-secondary);
@@ -39,8 +39,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin: 22px 0 14px;
+  gap: var(--spacing-md-tight);
+  margin: var(--spacing-md-plus) 0 var(--spacing-md-snug);
 }
 
 .sectionHead .sectionLabel {
@@ -56,7 +56,7 @@
   position: relative;
   display: block;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .searchIcon {
@@ -72,8 +72,8 @@
 .searchInput {
   min-height: 44px;
   padding-left: 42px;
-  padding-right: 16px;
-  border-radius: 999px;
+  padding-right: var(--spacing-md);
+  border-radius: var(--radius-full);
 }
 
 .section {
@@ -82,12 +82,12 @@
 }
 
 .section + .section {
-  margin-top: 12px;
+  margin-top: var(--spacing-md-tight);
 }
 
 .sectionLabel {
-  margin: 0 0 14px;
-  font-size: 13px;
+  margin: 0 0 var(--spacing-md-snug);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -95,7 +95,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .featuredGrid {
@@ -105,8 +105,8 @@
 .iconGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-sm-plus);
 }
 
 .iconCard {
@@ -114,22 +114,22 @@
   display: flex;
   align-items: flex-start;
   min-height: 0;
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border: 1px solid color-mix(in srgb, var(--text-primary) 6%, transparent);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   color: inherit;
   box-sizing: border-box;
   transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    border-color 140ms ease;
+    transform var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .iconCardMain {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -142,7 +142,7 @@
 }
 
 .iconCard:has(.editBtn) .iconCardMain {
-  padding-right: 24px;
+  padding-right: var(--spacing-lg);
 }
 
 .iconCard:hover:not(:disabled) {
@@ -163,7 +163,7 @@
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   background: color-mix(in srgb, var(--text-primary) 6%, var(--bg-app));
 }
@@ -174,23 +174,23 @@
   flex-direction: column;
   align-items: stretch;
   min-height: 0;
-  padding: 10px;
+  padding: var(--spacing-sm-plus);
   border: 1px solid color-mix(in srgb, var(--text-primary) 6%, transparent);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--bg-surface);
   color: inherit;
   box-sizing: border-box;
   transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    border-color 140ms ease;
+    transform var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .cardMain {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
   padding: 0;
   border: none;
@@ -223,7 +223,7 @@
   height: 26px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
   color: var(--text-secondary);
   cursor: pointer;
@@ -242,7 +242,7 @@
 .cover {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: color-mix(in srgb, var(--text-primary) 4%, var(--bg-app));
 }
@@ -257,7 +257,7 @@
 .cardBody {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
   padding: 0;
 }
@@ -265,7 +265,7 @@
 .cardTitleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -275,7 +275,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 650;
   color: var(--text-primary);
   line-height: 1.3;
@@ -283,9 +283,9 @@
 
 .skillTag {
   flex-shrink: 0;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-secondary);
@@ -295,7 +295,7 @@
 
 .cardDesc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   display: -webkit-box;
@@ -305,18 +305,18 @@
 }
 
 .empty {
-  margin: 8px 0 0;
-  font-size: 14px;
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--ui-fs-lg);
   color: var(--text-secondary);
 }
 
 @media (max-width: 720px) {
   .inner {
-    padding: 20px 16px 40px;
+    padding: var(--spacing-md-plus) var(--spacing-md) var(--spacing-xl-plus);
   }
 
   .title {
-    font-size: 26px;
+    font-size: var(--icon-fs-lg);
   }
 
   .sectionHead {
@@ -330,6 +330,6 @@
   .grid,
   .iconGrid {
     grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-    gap: 12px;
+    gap: var(--spacing-md-tight);
   }
 }
