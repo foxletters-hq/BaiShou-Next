@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { toReanimatedColor } from '../../shared/colors/reanimated-color.util'
+import { sharedTokens } from '../../theme/tokens'
 
 const TRACK_OFF_FALLBACK = '#E2E8F0'
 const TRACK_ON_FALLBACK = '#5BA8F5'
@@ -49,8 +50,7 @@ export const Switch: React.FC<NativeSwitchProps> = ({
     const isOn = progress.value > 0.5
     return {
       transform: [{ translateX: progress.value * 18 }],
-      shadowOpacity: isOn ? 0.15 : 0,
-      elevation: isOn ? 3 : 0
+      shadowOpacity: isOn ? 0.15 : 0
     }
   })
 
@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
   track: {
     width: 42,
     height: 24,
-    borderRadius: 12,
-    padding: 3.5,
+    borderRadius: sharedTokens.radius.md,
+    padding: 2.5,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden'
