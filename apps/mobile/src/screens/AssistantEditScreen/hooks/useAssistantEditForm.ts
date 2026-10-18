@@ -23,7 +23,7 @@ import {
   type ModelSwitcherProvider
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import {
   buildAssistantRepoInput,
   findAssistantForUi,
@@ -121,13 +121,28 @@ export function useAssistantEditForm() {
     [services]
   )
 
-  useEffect(() => {
-    if (!dbReady || !services) return
-    services.settingsManager
-      .get<AIProviderConfig[]>('ai_providers')
-      .then((list) => setChatProviders(filterProvidersForModelSwitcher(list || [], 'dialogue')))
-      .catch(() => setChatProviders([]))
+  const reloadChatProviders = useCallback(async (): Promise<ModelSwitcherProvider[]> => {
+    if (!dbReady || !services) return []
+    try {
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      const filtered = filterProvidersForModelSwitcher(list, 'dialogue')
+      setChatProviders(filtered)
+      return filtered
+    } catch {
+      setChatProviders([])
+      return []
+    }
   }, [dbReady, services])
+
+  useEffect(() => {
+    void reloadChatProviders()
+  }, [reloadChatProviders])
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadChatProviders()
+    }, [reloadChatProviders])
+  )
 
   useEffect(() => {
     if (isNew || !dbReady || !services) return
@@ -215,12 +230,13 @@ export function useAssistantEditForm() {
   }, [])
 
   const openModelSwitcher = useCallback(async () => {
-    if (chatProviders.length === 0) {
+    const fresh = await reloadChatProviders()
+    if (fresh.length === 0) {
       toast.showError(t('settings.no_models_available', '暂无可用模型，请先在 AI 服务中配置'))
       return
     }
     setShowModelSwitcher(true)
-  }, [chatProviders.length, t, toast])
+  }, [reloadChatProviders, t, toast])
 
   const persistMemoryConfig = useCallback(
     async (updates: {

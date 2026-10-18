@@ -8,6 +8,7 @@ import {
   type OnboardingUiLanguage
 } from '@/src/lib/onboarding-language.util'
 import { BRAND_BLUE_DARK } from '../onboarding-theme'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 type OnboardingLanguageSlideProps = {
   selectedLanguage: OnboardingUiLanguage | null
@@ -84,33 +85,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(154, 212, 234, 0.18)'
   },
   title: {
-    marginTop: 28,
-    fontSize: 24,
+    marginTop: sharedTokens.spacing.lg,
+    fontSize: mobileTypography.display.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   },
   body: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.primary.fontSize,
     lineHeight: 26,
     textAlign: 'center'
   },
   langList: {
-    marginTop: 28,
+    marginTop: sharedTokens.spacing.lg,
     width: '100%',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   langChip: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: sharedTokens.spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between'
   },
   langChipText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   langChipTextActive: {
     color: BRAND_BLUE_DARK,

@@ -10,6 +10,7 @@ import {
 } from '../../../services/storage-permission.service'
 import { pickUserDirectory } from '../../../services/pick-directory.service'
 import { toFileUri } from '../../../services/android-external-fs'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 function displayPath(uri: string): string {
   return uri.replace(/^file:\/\//, '')
@@ -163,81 +164,81 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    gap: 20
+    gap: sharedTokens.spacing.mdPlus
   },
   pendingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   pendingText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     color: '#6B5B45'
   },
   failedBlock: {
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   failedText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     textAlign: 'center',
     color: '#B45309'
   },
   retryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     backgroundColor: '#FFB74D'
   },
   retryButtonText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   pathBlock: {
     width: '100%',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   pathHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   pathLabel: {
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     color: '#6B5B45'
   },
   pathValueWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   pathValue: {
     fontFamily: 'monospace',
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
     textAlign: 'center'
   },
   loader: {
-    marginTop: 4,
+    marginTop: sharedTokens.spacing.xs,
     alignSelf: 'center'
   },
   changeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     alignSelf: 'center',
     backgroundColor: '#FFB74D',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   changeButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   }
 })
