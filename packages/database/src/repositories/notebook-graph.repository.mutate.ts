@@ -422,17 +422,27 @@ export class NotebookGraphMutateOps {
       .delete(notebookGraphAliasesTable)
       .where(eq(notebookGraphAliasesTable.nodeId, nodeId))
     const seen = new Set<string>()
+    const rowsToInsert: Array<{
+      id: string
+      vaultId: string
+      notebookId: string
+      nodeId: string
+      aliasNormalized: string
+    }> = []
     for (const alias of aliases) {
       const norm = normalizeGraphName(alias)
       if (!norm || seen.has(norm)) continue
       seen.add(norm)
-      await this.db.insert(notebookGraphAliasesTable).values({
+      rowsToInsert.push({
         id: `${nodeId}:${norm}`,
         vaultId,
         notebookId,
         nodeId,
         aliasNormalized: norm
       })
+    }
+    if (rowsToInsert.length > 0) {
+      await this.db.insert(notebookGraphAliasesTable).values(rowsToInsert)
     }
   }
 }

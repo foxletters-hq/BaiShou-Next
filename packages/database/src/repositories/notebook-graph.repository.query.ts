@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, isNull, like, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import {
   GRAPH_GLOBAL_MAX_NODES,
+  GRAPH_SQL_IN_CHUNK,
   graphViewQueryLimit,
   graphViewSqlLimit,
   normalizeGraphName
@@ -14,7 +15,11 @@ import {
 } from '../schema/knowledge'
 import type { AppDatabase } from '../types'
 import type { NotebookGraphPath } from './notebook-graph.ports'
-import { compareDiscriminatorAsc, requireNotebookId } from './notebook-graph.repository.shared'
+import {
+  chunkIds,
+  compareDiscriminatorAsc,
+  requireNotebookId
+} from './notebook-graph.repository.shared'
 
 /** 画布视图不读 embedding blob，避免打开图时把整库向量拷进 IPC。 */
 const NOTEBOOK_GRAPH_VIEW_NODE_COLUMNS = {
@@ -87,20 +92,7 @@ export class NotebookGraphQueryOps {
     const nodes = (await nodeQuery.limit(queryLimit)) as NotebookGraphNodeRow[]
     const idSet = new Set(nodes.map((n) => n.id))
     if (idSet.size === 0) return { nodes, edges: [] }
-    const edgeRows = await this.db
-      .select(NOTEBOOK_GRAPH_VIEW_EDGE_COLUMNS)
-      .from(notebookGraphEdgesTable)
-      .where(
-        and(
-          eq(notebookGraphEdgesTable.vaultId, vaultId),
-          eq(notebookGraphEdgesTable.notebookId, notebookId),
-          eq(notebookGraphEdgesTable.isCurrent, 1),
-          isNull(notebookGraphEdgesTable.deletedAt)
-        )
-      )
-    const edges = (edgeRows as NotebookGraphEdgeRow[]).filter(
-      (e) => idSet.has(e.fromId) && idSet.has(e.toId)
-    )
+    const edges = await this.getEdgesConnectingNodes(vaultId, notebookId, idSet)
     return { nodes, edges }
   }
 
@@ -150,21 +142,22 @@ export class NotebookGraphQueryOps {
       .limit(limit)
     const seen = new Map<string, (typeof byName)[number]>()
     for (const row of byName) seen.set(row.id, row)
-    for (const hit of aliasRows) {
-      if (seen.has(hit.nodeId)) continue
+    const missingAliasIds = [
+      ...new Set(aliasRows.map((hit) => hit.nodeId).filter((nodeId) => !seen.has(nodeId)))
+    ]
+    for (const part of chunkIds(missingAliasIds)) {
       const rows = await this.db
         .select()
         .from(notebookGraphNodesTable)
         .where(
           and(
-            eq(notebookGraphNodesTable.id, hit.nodeId),
+            inArray(notebookGraphNodesTable.id, part),
             eq(notebookGraphNodesTable.vaultId, vaultId),
             eq(notebookGraphNodesTable.notebookId, notebookId),
             isNull(notebookGraphNodesTable.deletedAt)
           )
         )
-        .limit(1)
-      if (rows[0]) seen.set(rows[0].id, rows[0])
+      for (const row of rows) seen.set(row.id, row)
     }
     return [...seen.values()]
       .sort((a, b) => b.mentionCount - a.mentionCount || a.id.localeCompare(b.id))
@@ -299,10 +292,12 @@ export class NotebookGraphQueryOps {
           eq(notebookGraphAliasesTable.aliasNormalized, norm)
         )
       )
-    for (const hit of aliases) {
-      if (seen.has(hit.nodeId)) continue
+    const missingAliasIds = [
+      ...new Set(aliases.map((hit) => hit.nodeId).filter((nodeId) => !seen.has(nodeId)))
+    ]
+    for (const part of chunkIds(missingAliasIds)) {
       const byIdFilters = [
-        eq(notebookGraphNodesTable.id, hit.nodeId),
+        inArray(notebookGraphNodesTable.id, part),
         eq(notebookGraphNodesTable.notebookId, nb),
         isNull(notebookGraphNodesTable.deletedAt)
       ]
@@ -311,8 +306,7 @@ export class NotebookGraphQueryOps {
         .select()
         .from(notebookGraphNodesTable)
         .where(and(...byIdFilters))
-        .limit(1)
-      if (byId[0]) seen.set(byId[0].id, byId[0])
+      for (const row of byId) seen.set(row.id, row)
     }
 
     return [...seen.values()].sort((a, b) =>
@@ -416,9 +410,13 @@ export class NotebookGraphQueryOps {
 
     for (let hop = 0; hop < maxHops; hop++) {
       const next: Frontier[] = []
-      for (const path of frontier) {
-        const tip = path.nodes[path.nodes.length - 1]!
-        const neighbors = await this.db
+      const tips = [...new Set(frontier.map((p) => p.nodes[p.nodes.length - 1]!))]
+      if (tips.length === 0) break
+      const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+      const edgesByTip = new Map<string, NotebookGraphEdgeRow[]>()
+      const seenEdgeIds = new Set<string>()
+      for (const tipChunk of chunkIds(tips, half)) {
+        const incidentChunk = await this.db
           .select()
           .from(notebookGraphEdgesTable)
           .where(
@@ -427,9 +425,34 @@ export class NotebookGraphQueryOps {
               eq(notebookGraphEdgesTable.notebookId, notebookId),
               eq(notebookGraphEdgesTable.isCurrent, 1),
               isNull(notebookGraphEdgesTable.deletedAt),
-              or(eq(notebookGraphEdgesTable.fromId, tip), eq(notebookGraphEdgesTable.toId, tip))
+              or(
+                inArray(notebookGraphEdgesTable.fromId, tipChunk),
+                inArray(notebookGraphEdgesTable.toId, tipChunk)
+              )
             )
           )
+        for (const e of incidentChunk) {
+          if (seenEdgeIds.has(e.id)) continue
+          seenEdgeIds.add(e.id)
+          let fromList = edgesByTip.get(e.fromId)
+          if (!fromList) {
+            fromList = []
+            edgesByTip.set(e.fromId, fromList)
+          }
+          fromList.push(e)
+          if (e.toId !== e.fromId) {
+            let toList = edgesByTip.get(e.toId)
+            if (!toList) {
+              toList = []
+              edgesByTip.set(e.toId, toList)
+            }
+            toList.push(e)
+          }
+        }
+      }
+      for (const path of frontier) {
+        const tip = path.nodes[path.nodes.length - 1]!
+        const neighbors = edgesByTip.get(tip) ?? []
         for (const e of neighbors) {
           const other = e.fromId === tip ? e.toId : e.fromId
           if (seen.has(other) && other !== opts.toId) continue
@@ -487,6 +510,103 @@ export class NotebookGraphQueryOps {
     }
   }
 
+  async listNodesPage(opts: {
+    vaultId: string
+    notebookId: string
+    keyword?: string
+    limit?: number
+    offset?: number
+  }): Promise<NotebookGraphNodeRow[]> {
+    const notebookId = requireNotebookId(opts.notebookId)
+    const vaultId = opts.vaultId.trim()
+    if (!vaultId) throw new Error('listNodesPage: vaultId required')
+    const conditions = [
+      eq(notebookGraphNodesTable.vaultId, vaultId),
+      eq(notebookGraphNodesTable.notebookId, notebookId),
+      isNull(notebookGraphNodesTable.deletedAt),
+      sql`${notebookGraphNodesTable.reviewStatus} != 'rejected'`
+    ]
+    const q = opts.keyword?.trim()
+    if (q) {
+      const pattern = `%${q.replace(/%/g, '')}%`
+      conditions.push(
+        or(
+          like(notebookGraphNodesTable.name, pattern),
+          like(notebookGraphNodesTable.summary, pattern),
+          like(notebookGraphNodesTable.discriminator, pattern),
+          like(notebookGraphNodesTable.nodeType, pattern)
+        )!
+      )
+    }
+    const limit = Math.max(1, opts.limit ?? 20)
+    const offset = Math.max(0, opts.offset ?? 0)
+    const rows = await this.db
+      .select(NOTEBOOK_GRAPH_VIEW_NODE_COLUMNS)
+      .from(notebookGraphNodesTable)
+      .where(and(...conditions))
+      .orderBy(
+        sql`case when ${notebookGraphNodesTable.reviewStatus} = 'pending' then 0 else 1 end`,
+        desc(notebookGraphNodesTable.mentionCount),
+        notebookGraphNodesTable.name,
+        notebookGraphNodesTable.id
+      )
+      .limit(limit)
+      .offset(offset)
+    return rows as NotebookGraphNodeRow[]
+  }
+
+  async countNodes(opts: {
+    vaultId: string
+    notebookId: string
+    keyword?: string
+  }): Promise<number> {
+    const notebookId = requireNotebookId(opts.notebookId)
+    const vaultId = opts.vaultId.trim()
+    if (!vaultId) throw new Error('countNodes: vaultId required')
+    const conditions = [
+      eq(notebookGraphNodesTable.vaultId, vaultId),
+      eq(notebookGraphNodesTable.notebookId, notebookId),
+      isNull(notebookGraphNodesTable.deletedAt),
+      sql`${notebookGraphNodesTable.reviewStatus} != 'rejected'`
+    ]
+    const q = opts.keyword?.trim()
+    if (q) {
+      const pattern = `%${q.replace(/%/g, '')}%`
+      conditions.push(
+        or(
+          like(notebookGraphNodesTable.name, pattern),
+          like(notebookGraphNodesTable.summary, pattern),
+          like(notebookGraphNodesTable.discriminator, pattern),
+          like(notebookGraphNodesTable.nodeType, pattern)
+        )!
+      )
+    }
+    const rows = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(notebookGraphNodesTable)
+      .where(and(...conditions))
+    return Number(rows[0]?.count ?? 0)
+  }
+
+  async countCurrentEdges(opts: { vaultId: string; notebookId: string }): Promise<number> {
+    const notebookId = requireNotebookId(opts.notebookId)
+    const vaultId = opts.vaultId.trim()
+    if (!vaultId) throw new Error('countCurrentEdges: vaultId required')
+    const rows = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(notebookGraphEdgesTable)
+      .where(
+        and(
+          eq(notebookGraphEdgesTable.vaultId, vaultId),
+          eq(notebookGraphEdgesTable.notebookId, notebookId),
+          eq(notebookGraphEdgesTable.isCurrent, 1),
+          isNull(notebookGraphEdgesTable.deletedAt),
+          sql`${notebookGraphEdgesTable.reviewStatus} != 'rejected'`
+        )
+      )
+    return Number(rows[0]?.count ?? 0)
+  }
+
   private async edgesByIds(
     vaultId: string,
     notebookId: string,
@@ -503,5 +623,34 @@ export class NotebookGraphQueryOps {
           inArray(notebookGraphEdgesTable.id, ids)
         )
       )
+  }
+
+  private async getEdgesConnectingNodes(
+    vaultId: string,
+    notebookId: string,
+    idSet: Set<string>
+  ): Promise<NotebookGraphEdgeRow[]> {
+    if (idSet.size === 0) return []
+    const idList = [...idSet]
+    const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+    const edges: NotebookGraphEdgeRow[] = []
+    for (const part of chunkIds(idList, half)) {
+      const edgeRows = await this.db
+        .select(NOTEBOOK_GRAPH_VIEW_EDGE_COLUMNS)
+        .from(notebookGraphEdgesTable)
+        .where(
+          and(
+            eq(notebookGraphEdgesTable.vaultId, vaultId),
+            eq(notebookGraphEdgesTable.notebookId, notebookId),
+            eq(notebookGraphEdgesTable.isCurrent, 1),
+            isNull(notebookGraphEdgesTable.deletedAt),
+            inArray(notebookGraphEdgesTable.fromId, part)
+          )
+        )
+      for (const e of edgeRows as NotebookGraphEdgeRow[]) {
+        if (idSet.has(e.toId)) edges.push(e)
+      }
+    }
+    return edges
   }
 }

@@ -168,7 +168,7 @@ export class KnowledgeStatsOps {
       .where(
         and(
           eq(knowledgeIngestJobsTable.vaultId, vid),
-          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])
+          inArray(knowledgeIngestJobsTable.status, ['pending', 'running'])
         )
       )
       .groupBy(knowledgeIngestJobsTable.notebookId)

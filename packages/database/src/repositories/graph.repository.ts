@@ -52,6 +52,18 @@ export class GraphRepository implements GraphRepositoryPort {
     return this.query.getGlobalGraph(...args)
   }
 
+  listLiveNodesPage(...args: Parameters<GraphQueryOps['listLiveNodesPage']>) {
+    return this.query.listLiveNodesPage(...args)
+  }
+
+  countLiveNodes(...args: Parameters<GraphQueryOps['countLiveNodes']>) {
+    return this.query.countLiveNodes(...args)
+  }
+
+  countLiveCurrentEdges(...args: Parameters<GraphQueryOps['countLiveCurrentEdges']>) {
+    return this.query.countLiveCurrentEdges(...args)
+  }
+
   getNodesByIds(...args: Parameters<GraphQueryOps['getNodesByIds']>) {
     return this.query.getNodesByIds(...args)
   }

@@ -61,12 +61,13 @@ export class GraphQueryOps {
           eq(graphNodeAliasesTable.aliasNormalized, normalized)
         )
       )
-    for (const hit of aliasHits) {
-      if (seen.has(hit.nodeId)) continue
-      const node = await this.getNodeById(hit.nodeId, vaultId)
-      if (!node) continue
-      if (typed && node.nodeType !== typed) continue
-      seen.set(node.id, node)
+    const missingAliasIds = aliasHits.map((hit) => hit.nodeId).filter((nodeId) => !seen.has(nodeId))
+    if (missingAliasIds.length > 0) {
+      const aliasNodes = await this.getNodesByIds(vaultId, missingAliasIds)
+      for (const node of aliasNodes) {
+        if (typed && node.nodeType !== typed) continue
+        seen.set(node.id, node)
+      }
     }
 
     return [...seen.values()].sort((a, b) =>
@@ -134,12 +135,13 @@ export class GraphQueryOps {
 
     const seen = new Map<string, GraphNodeRow>()
     for (const row of byName) seen.set(row.id, mapNode(row))
-    for (const hit of aliasRows) {
-      if (seen.has(hit.nodeId)) continue
-      const node = await this.getNodeById(hit.nodeId, vaultId)
-      if (!node) continue
-      if (opts?.nodeTypes?.length && !opts.nodeTypes.includes(node.nodeType)) continue
-      seen.set(node.id, node)
+    const missingAliasIds = aliasRows.map((hit) => hit.nodeId).filter((nodeId) => !seen.has(nodeId))
+    if (missingAliasIds.length > 0) {
+      const aliasNodes = await this.getNodesByIds(vaultId, missingAliasIds)
+      for (const node of aliasNodes) {
+        if (opts?.nodeTypes?.length && !opts.nodeTypes.includes(node.nodeType)) continue
+        seen.set(node.id, node)
+      }
     }
     return [...seen.values()].sort((a, b) => b.mentionCount - a.mentionCount).slice(0, limit)
   }
@@ -250,23 +252,23 @@ export class GraphQueryOps {
       const edges: GraphEdgeRow[] = []
       const idList = [...idSet]
       const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
-      for (const part of chunkIds(idList, half)) {
-        const rows = await this.database
-          .select()
-          .from(graphEdgesTable)
-          .where(
-            and(
-              monthFilter,
-              inArray(graphEdgesTable.fromId, part),
-              inArray(graphEdgesTable.toId, idList.length <= half ? idList : part)
+      if (idList.length <= half) {
+        for (const part of chunkIds(idList, half)) {
+          const rows = await this.database
+            .select()
+            .from(graphEdgesTable)
+            .where(
+              and(
+                monthFilter,
+                inArray(graphEdgesTable.fromId, part),
+                inArray(graphEdgesTable.toId, idList)
+              )
             )
-          )
-        for (const e of rows.map(mapEdge)) {
-          if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+          for (const e of rows.map(mapEdge)) {
+            if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+          }
         }
-      }
-      if (idList.length > half) {
-        edges.length = 0
+      } else {
         for (const part of chunkIds(idList, half)) {
           const rows = await this.database
             .select()
@@ -300,26 +302,25 @@ export class GraphQueryOps {
     const edges: GraphEdgeRow[] = []
     const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
     const idList = [...idSet]
-    for (const part of chunkIds(idList, half)) {
-      const rows = await this.database
-        .select()
-        .from(graphEdgesTable)
-        .where(
-          and(
-            eq(graphEdgesTable.vaultId, opts.vaultId),
-            eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt),
-            inArray(graphEdgesTable.fromId, part),
-            inArray(graphEdgesTable.toId, idList.length <= half ? idList : part)
+    if (idList.length <= half) {
+      for (const part of chunkIds(idList, half)) {
+        const rows = await this.database
+          .select()
+          .from(graphEdgesTable)
+          .where(
+            and(
+              eq(graphEdgesTable.vaultId, opts.vaultId),
+              eq(graphEdgesTable.isCurrent, true),
+              isNull(graphEdgesTable.deletedAt),
+              inArray(graphEdgesTable.fromId, part),
+              inArray(graphEdgesTable.toId, idList)
+            )
           )
-        )
-      for (const e of rows.map(mapEdge)) {
-        if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+        for (const e of rows.map(mapEdge)) {
+          if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+        }
       }
-    }
-    // When id list is large, second filter: load edges where both ends in set via from-chunk only
-    if (idList.length > half) {
-      edges.length = 0
+    } else {
       for (const part of chunkIds(idList, half)) {
         const rows = await this.database
           .select()
@@ -426,5 +427,77 @@ export class GraphQueryOps {
       .from(graphEdgesTable)
       .where(and(eq(graphEdgesTable.vaultId, vaultId), isNull(graphEdgesTable.deletedAt)))
     return rows.map((r) => ({ id: r.id, shardMonth: r.shardMonth ?? '' }))
+  }
+
+  private liveNodeFilters(vaultId: string, keyword?: string) {
+    const vid = vaultId.trim()
+    const filters = [
+      eq(graphNodesTable.vaultId, vid),
+      isNull(graphNodesTable.deletedAt),
+      ne(graphNodesTable.reviewStatus, 'rejected')
+    ]
+    const q = keyword?.trim()
+    if (q) {
+      const pattern = `%${q}%`
+      filters.push(
+        or(
+          like(graphNodesTable.name, pattern),
+          like(graphNodesTable.summary, pattern),
+          like(graphNodesTable.discriminator, pattern),
+          like(graphNodesTable.nodeType, pattern)
+        )!
+      )
+    }
+    return { vid, filters }
+  }
+
+  async listLiveNodesPage(
+    vaultId: string,
+    options?: { keyword?: string; limit?: number; offset?: number }
+  ): Promise<GraphNodeRow[]> {
+    const { vid, filters } = this.liveNodeFilters(vaultId, options?.keyword)
+    if (!vid) return []
+    const limit = Math.max(1, options?.limit ?? 20)
+    const offset = Math.max(0, options?.offset ?? 0)
+    const rows = await this.database
+      .select()
+      .from(graphNodesTable)
+      .where(and(...filters))
+      .orderBy(
+        sql`case when ${graphNodesTable.reviewStatus} = 'pending' then 0 else 1 end`,
+        desc(graphNodesTable.mentionCount),
+        graphNodesTable.name,
+        graphNodesTable.id
+      )
+      .limit(limit)
+      .offset(offset)
+    return rows.map(mapNode)
+  }
+
+  async countLiveNodes(vaultId: string, keyword?: string): Promise<number> {
+    const { vid, filters } = this.liveNodeFilters(vaultId, keyword)
+    if (!vid) return 0
+    const rows = await this.database
+      .select({ count: sql<number>`count(*)` })
+      .from(graphNodesTable)
+      .where(and(...filters))
+    return Number(rows[0]?.count ?? 0)
+  }
+
+  async countLiveCurrentEdges(vaultId: string): Promise<number> {
+    const vid = vaultId.trim()
+    if (!vid) return 0
+    const rows = await this.database
+      .select({ count: sql<number>`count(*)` })
+      .from(graphEdgesTable)
+      .where(
+        and(
+          eq(graphEdgesTable.vaultId, vid),
+          isNull(graphEdgesTable.deletedAt),
+          eq(graphEdgesTable.isCurrent, true),
+          ne(graphEdgesTable.reviewStatus, 'rejected')
+        )
+      )
+    return Number(rows[0]?.count ?? 0)
   }
 }

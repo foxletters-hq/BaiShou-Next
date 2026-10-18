@@ -81,7 +81,8 @@ export class KnowledgeIngestOps {
             lte(knowledgeIngestJobsTable.nextRetryAt, now)
           )
         ]
-      : [inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])]
+      : // 列表「索引中」只计排队/进行中，失败任务留给重试领取
+        [inArray(knowledgeIngestJobsTable.status, ['pending', 'running'])]
     if (notebookId) filters.push(eq(knowledgeIngestJobsTable.notebookId, notebookId))
     if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
     if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))

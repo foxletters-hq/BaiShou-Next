@@ -24,6 +24,12 @@ export class GraphMutateOps {
       .delete(graphNodeAliasesTable)
       .where(eq(graphNodeAliasesTable.nodeId, nodeId))
     const seen = new Set<string>()
+    const rowsToInsert: Array<{
+      id: string
+      vaultId: string
+      nodeId: string
+      aliasNormalized: string
+    }> = []
     for (const a of aliases) {
       const norm = normalizeGraphName(a)
       if (!norm || seen.has(norm)) continue
@@ -32,12 +38,15 @@ export class GraphMutateOps {
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
           : `a_${nodeId}_${norm}`
-      await this.database.insert(graphNodeAliasesTable).values({
+      rowsToInsert.push({
         id,
         vaultId,
         nodeId,
         aliasNormalized: norm
       })
+    }
+    if (rowsToInsert.length > 0) {
+      await this.database.insert(graphNodeAliasesTable).values(rowsToInsert)
     }
   }
 

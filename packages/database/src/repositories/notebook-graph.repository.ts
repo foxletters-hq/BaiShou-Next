@@ -19,6 +19,18 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
     return this.query.getView(...args)
   }
 
+  listNodesPage(...args: Parameters<NotebookGraphQueryOps['listNodesPage']>) {
+    return this.query.listNodesPage(...args)
+  }
+
+  countNodes(...args: Parameters<NotebookGraphQueryOps['countNodes']>) {
+    return this.query.countNodes(...args)
+  }
+
+  countCurrentEdges(...args: Parameters<NotebookGraphQueryOps['countCurrentEdges']>) {
+    return this.query.countCurrentEdges(...args)
+  }
+
   searchNodes(...args: Parameters<NotebookGraphQueryOps['searchNodes']>) {
     return this.query.searchNodes(...args)
   }

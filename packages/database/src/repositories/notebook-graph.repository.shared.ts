@@ -1,4 +1,12 @@
+import { GRAPH_SQL_IN_CHUNK, embeddingVectorToBytes } from '@baishou/shared'
 import type { NotebookGraphNodeRow } from '../schema/knowledge'
+
+export function chunkIds<T>(ids: T[], size = GRAPH_SQL_IN_CHUNK): T[][] {
+  if (ids.length === 0) return []
+  const out: T[][] = []
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size))
+  return out
+}
 
 export function requireNotebookId(notebookId: string): string {
   const id = notebookId.trim()
@@ -6,8 +14,12 @@ export function requireNotebookId(notebookId: string): string {
   return id
 }
 
+/**
+ * 手机 JS 运行时没有 Buffer，所以用 Uint8Array 视图；桌面端驱动同样接受。
+ * 返回类型仍标成 Buffer，只是为了对上 drizzle 列类型。
+ */
 export function serializeVector(vector: number[]): Buffer {
-  return Buffer.from(new Float32Array(vector).buffer)
+  return embeddingVectorToBytes(vector) as unknown as Buffer
 }
 
 /** applyRawNode 只在传入了新向量时改这三列，避免复核写回把旧向量清掉。 */
