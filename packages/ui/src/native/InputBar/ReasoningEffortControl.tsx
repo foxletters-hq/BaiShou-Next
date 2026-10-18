@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react-native'
 import { formatReasoningEffortLabel, type ReasoningEffortSetting } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 const PANEL_WIDTH = 168
 
@@ -123,13 +124,13 @@ const styles = StyleSheet.create({
   trigger: {
     height: 28,
     maxWidth: 96,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.xs,
     alignItems: 'center',
     justifyContent: 'center'
   },
   triggerLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '400',
     lineHeight: 18
   },
@@ -139,30 +140,30 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 6,
-    gap: 2
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.xsPlus,
+    gap: sharedTokens.spacing.xxs
   },
   sectionLabel: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
-    fontSize: 11,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.xs,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500',
     letterSpacing: 0.2
   },
   row: {
     height: 28,
     minHeight: 28,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.xs,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   rowLabel: {
     flex: 1,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '400',
     lineHeight: 18
   },

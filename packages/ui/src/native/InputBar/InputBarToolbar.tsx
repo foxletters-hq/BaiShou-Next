@@ -17,6 +17,8 @@ type Colors = {
 
 export function InputBarToolbar(props: {
   colors: Colors
+  isDark?: boolean
+  hasChatBackground?: boolean
   onUploadAttachment: () => void
   onShortcutPress: () => void
   onRecall?: () => void
@@ -28,7 +30,7 @@ export function InputBarToolbar(props: {
   onOpenTools?: () => void
 }) {
   const { t } = useTranslation()
-  const { colors } = props
+  const { colors, isDark = false, hasChatBackground = false } = props
 
   const renderChip = (
     label: string,
@@ -43,8 +45,20 @@ export function InputBarToolbar(props: {
         style={[
           styles.chip,
           {
-            backgroundColor: active ? colors.primary : colors.bgSurface,
-            borderColor: active ? colors.primary : colors.colorOutlineVariant
+            backgroundColor: active
+              ? colors.primary
+              : hasChatBackground
+                ? isDark
+                  ? 'rgba(255, 255, 255, 0.08)'
+                  : 'rgba(255, 255, 255, 0.65)'
+                : colors.bgSurface,
+            borderColor: active
+              ? colors.primary
+              : hasChatBackground
+                ? isDark
+                  ? 'rgba(255, 255, 255, 0.12)'
+                  : 'rgba(0, 0, 0, 0.08)'
+                : colors.colorOutlineVariant
           }
         ]}
         onPress={onPress}

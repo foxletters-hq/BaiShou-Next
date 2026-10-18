@@ -1,4 +1,8 @@
 export const TOOLBAR_ANIM_MS = 200
+/** 工具栏自然高度基准（Chip 34 + 垂直留白 10） */
+export const TOOLBAR_HEIGHT = 44
+/** 工具栏展开最大高度上限（包含 Chip 与垂直留白） */
+export const TOOLBAR_MAX_HEIGHT = 48
 /** 展开/收起输入框高度动画，与工具栏开合节奏一致 */
 export const EXPAND_ANIM_MS = 200
 export const INPUT_MIN_HEIGHT = 36

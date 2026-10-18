@@ -59,11 +59,14 @@ export interface InputBarProps {
     options: ReasoningEffortSetting[]
     onChange: (value: ReasoningEffortSetting) => void
   }
+  /** 是否存在聊天背景图（为 true 时底栏外层透明、输入卡片使用悬浮毛玻璃质感，避免纯白遮挡） */
+  hasChatBackground?: boolean
 }
 
 export interface InputBarRef {
   insertText: (text: string) => void
   insertShortcutContent: (content: string) => void
+  applyShortcut: (shortcut: PromptShortcut) => void
   focus: () => void
   blur: () => void
 }

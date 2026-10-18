@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const styles = StyleSheet.create({
   overlay: {
@@ -7,132 +8,131 @@ export const styles = StyleSheet.create({
     alignItems: 'center'
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)'
+    ...StyleSheet.absoluteFillObject
   },
   dialog: {
     flexDirection: 'column',
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    paddingTop: 14,
-    paddingBottom: 10,
-    paddingHorizontal: 10
+    paddingTop: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.smPlus
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingBottom: 8
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.sm
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   sectionWrap: {
-    paddingHorizontal: 8
+    paddingHorizontal: sharedTokens.spacing.sm
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3,
-    paddingTop: 2,
-    paddingBottom: 6
+    paddingTop: sharedTokens.spacing.xxs,
+    paddingBottom: sharedTokens.spacing.xsPlus
   },
   effortRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
-    paddingBottom: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingBottom: sharedTokens.spacing.xs
   },
   effortChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
     height: 26,
-    borderRadius: 6,
+    borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
   effortChipLabel: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 6,
-    marginHorizontal: 4
+    marginVertical: sharedTokens.spacing.xsPlus,
+    marginHorizontal: sharedTokens.spacing.xs
   },
   modelListScroll: {
     flexGrow: 0,
     maxHeight: 280
   },
   modelListContent: {
-    paddingHorizontal: 4,
-    paddingBottom: 4
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingBottom: sharedTokens.spacing.xs
   },
   emptyWrap: {
-    paddingVertical: 20,
+    paddingVertical: sharedTokens.spacing.mdPlus,
     alignItems: 'center'
   },
   emptyText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   providerGroup: {
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   providerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xs
   },
   providerName: {
     flex: 1,
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   countBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 6,
+    borderRadius: sharedTokens.radius.sm,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
     paddingVertical: 1
   },
   countText: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   modelRow: {
     height: 34,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.xsPlus,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   modelInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   modelName: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     flexShrink: 1
   },
   footer: {
-    paddingTop: 10,
-    paddingHorizontal: 4,
-    gap: 8
+    paddingTop: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   saveBtn: {
     height: 40,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
   saveBtnText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.5
   },
@@ -140,11 +140,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xs
   },
   manageBtnText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   }
 })

@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
   View,
   Text,
   Pressable,
   ScrollView,
   Modal,
-  Animated,
   StyleSheet,
   TouchableOpacity,
+  Platform,
   useWindowDimensions
 } from 'react-native'
 import { Check, Settings, X } from 'lucide-react-native'
@@ -39,7 +39,7 @@ interface NativeModelSwitcherProps {
   providers: MockAiProviderModel[]
   currentProviderId?: string | null
   currentModelId?: string | null
-  onSelect: (providerId: string, modelId: string) => void
+  onSelect: (providerId: string, modelId: string, reasoningEffort?: ReasoningEffortSetting) => void
   onManageProviders?: () => void
   showReasoningPanel?: boolean
   reasoningEffort?: ReasoningEffortSetting
@@ -67,10 +67,6 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     getReasoningCatalogEpoch,
     getReasoningCatalogEpoch
   )
-  const [mounted, setMounted] = useState(false)
-  const scaleAnim = useRef(new Animated.Value(0.85)).current
-  const fadeAnim = useRef(new Animated.Value(0)).current
-
   // 内部维护暂存状态，点击底部保存按钮统一生效
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     currentProviderId ?? null
@@ -123,7 +119,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
 
   const handleSave = () => {
     if (selectedProviderId && selectedModelId) {
-      onSelect(selectedProviderId, selectedModelId)
+      onSelect(selectedProviderId, selectedModelId, showReasoningPanel ? selectedEffort : undefined)
       if (showReasoningPanel && onReasoningEffortChange) {
         onReasoningEffortChange(selectedEffort)
       }
@@ -131,55 +127,22 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
     onClose()
   }
 
-  useEffect(() => {
-    if (isOpen) {
-      setMounted(true)
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 65,
-          friction: 11
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true
-        })
-      ]).start()
-      return
-    }
-
-    if (!mounted) return
-
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0.85,
-        duration: 180,
-        useNativeDriver: true
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true
-      })
-    ]).start(({ finished }) => {
-      if (finished) {
-        setMounted(false)
-      }
-    })
-  }, [isOpen, mounted, scaleAnim, fadeAnim])
-
-  if (!mounted) return null
-
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+        <View style={[styles.backdrop, { backgroundColor: colors.bgOverlay }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
+        </View>
 
-        <Animated.View
+        <View
           style={[
             styles.dialog,
             {
@@ -188,9 +151,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               width: '90%',
               maxWidth: Math.min(380, maxModalWidth),
               maxHeight: Math.min(560, windowHeight * 0.82),
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-              ...getNativeElevationStyle(isDark, 'raised')
+              ...(Platform.OS === 'ios' ? getNativeElevationStyle(isDark, 'raised') : {})
             }
           ]}
         >
@@ -393,7 +354,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
               </TouchableOpacity>
             ) : null}
           </View>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   )

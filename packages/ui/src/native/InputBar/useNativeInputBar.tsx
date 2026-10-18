@@ -120,11 +120,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
             ? prev
             : [...prev, { command, content: shortcut.content }]
         )
-        setText((prev) => {
-          const rest = prev.startsWith('/') ? '' : prev
-          const token = `/${command}`
-          return rest.includes(token) ? rest : `${rest}${rest ? ' ' : ''}${token}`.trim()
-        })
+        setText((prev) => (prev.startsWith('/') ? '' : prev))
         shortcutHandlers.endShortcutSession()
         return
       }
@@ -132,6 +128,11 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     },
     [shortcutHandlers]
   )
+
+  const removeSkillRef = useCallback((command: string) => {
+    const normalized = command.replace(/^\//, '')
+    setSkillRefs((prev) => prev.filter((item) => item.command !== normalized))
+  }, [])
 
   const animateInputHeight = useCallback(
     (nextHeight: number, animated: boolean) => {
@@ -207,7 +208,10 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
   const toggleToolbar = useCallback(() => {
     setShowToolbar((prev) => {
       const next = !prev
-      toolbarProgress.value = withTiming(next ? 1 : 0, { duration: TOOLBAR_ANIM_MS })
+      toolbarProgress.value = withTiming(next ? 1 : 0, {
+        duration: TOOLBAR_ANIM_MS,
+        easing: EXPAND_HEIGHT_EASING
+      })
       return next
     })
   }, [toolbarProgress])
@@ -277,6 +281,10 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     },
     insertShortcutContent: (content: string) => {
       shortcutHandlers.insertShortcutContent(content)
+      setTimeout(() => inputRef.current?.focus?.(), 0)
+    },
+    applyShortcut: (shortcut: PromptShortcut) => {
+      applyComposerShortcut(shortcut)
       setTimeout(() => inputRef.current?.focus?.(), 0)
     },
     focus: () => {
@@ -382,6 +390,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     attachments,
     setAttachments,
     skillRefs,
+    removeSkillRef,
     isSending,
     isExpanded,
     inputHeight,

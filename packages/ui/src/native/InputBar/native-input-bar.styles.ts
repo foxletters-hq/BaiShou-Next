@@ -1,5 +1,6 @@
 import { Platform, StyleSheet } from 'react-native'
 import { INPUT_CARD_BOTTOM_ROW, INPUT_MIN_HEIGHT } from './input-bar-height.util'
+import { iconSizes, mobileTypography, settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export const nativeInputBarStyles = StyleSheet.create({
   container: {
@@ -16,39 +17,38 @@ export const nativeInputBarStyles = StyleSheet.create({
   },
   composerChrome: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 8,
-    paddingHorizontal: 14,
-    paddingBottom: 10
+    paddingTop: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.smPlus
   },
   composerShell: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: sharedTokens.radius.lg,
     overflow: 'hidden'
   },
   toolbarAttached: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingTop: 6,
-    paddingBottom: 4
+    paddingTop: sharedTokens.spacing.xsPlus,
+    paddingBottom: sharedTokens.spacing.xs
   },
   toolbarContent: {
-    gap: 8,
-    paddingHorizontal: 4,
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs,
     alignItems: 'center'
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1
   },
   chipIcon: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   chipLabel: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500',
     maxWidth: 120
   },
@@ -61,9 +61,16 @@ export const nativeInputBarStyles = StyleSheet.create({
   inputCard: {
     borderWidth: 0,
     borderRadius: 0,
-    paddingTop: 6,
-    paddingHorizontal: 10,
-    paddingBottom: 6
+    paddingTop: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.xsPlus
+  },
+  skillCiteRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
   },
   topRow: {
     flexDirection: 'row',
@@ -79,20 +86,20 @@ export const nativeInputBarStyles = StyleSheet.create({
   expandToggle: {
     width: 28,
     height: 28,
-    marginLeft: 2,
+    marginLeft: sharedTokens.spacing.xxs,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
   },
   expandToggleMultiline: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   input: {
     minHeight: INPUT_MIN_HEIGHT,
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     lineHeight: 20,
-    paddingLeft: 4,
-    paddingRight: 4,
+    paddingLeft: sharedTokens.spacing.xs,
+    paddingRight: sharedTokens.spacing.xs,
     paddingTop: Platform.OS === 'ios' ? 8 : 6,
     paddingBottom: Platform.OS === 'ios' ? 8 : 6,
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null)
@@ -108,17 +115,17 @@ export const nativeInputBarStyles = StyleSheet.create({
   bottomActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   sendBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     alignItems: 'center',
     justifyContent: 'center'
   },
   sendIcon: {
-    fontSize: 18,
+    fontSize: settingsIcons.trailing,
     fontWeight: '600'
   },
   stopBtn: {
@@ -131,16 +138,16 @@ export const nativeInputBarStyles = StyleSheet.create({
   stopIcon: {
     width: 8,
     height: 8,
-    borderRadius: 2
+    borderRadius: sharedTokens.radius.xxs
   },
   attachmentList: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: sharedTokens.spacing.smPlus,
     maxHeight: 64
   },
   attachmentChip: {
-    marginRight: 8,
-    borderRadius: 8,
+    marginRight: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     width: 64,
     height: 64,
@@ -154,30 +161,30 @@ export const nativeInputBarStyles = StyleSheet.create({
   },
   attDoc: {
     flex: 1,
-    padding: 4,
+    padding: sharedTokens.spacing.xs,
     alignItems: 'center',
     justifyContent: 'center'
   },
   attDocIcon: {
-    fontSize: 20,
-    marginBottom: 2
+    fontSize: iconSizes.md,
+    marginBottom: sharedTokens.spacing.xxs
   },
   attDocName: {
-    fontSize: 9,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'center'
   },
   attRemoveBtn: {
     position: 'absolute',
     top: 2,
     right: 2,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     width: 16,
     height: 16,
     alignItems: 'center',
     justifyContent: 'center'
   },
   attRemoveLabel: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   }
 })

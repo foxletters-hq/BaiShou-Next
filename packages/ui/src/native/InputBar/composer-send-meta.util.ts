@@ -24,6 +24,15 @@ export function fileRefsFromAttachments(attachments: MockChatAttachment[]): Prom
     .filter((item) => item.relativePath.trim().length > 0)
 }
 
+function composerDisplayText(text: string, skillRefs: ComposerSendSkillRef[]): string {
+  const extra = composerExtraPlain(text, skillRefs, [])
+  const cites = skillRefs
+    .map((item) => `/${item.command.replace(/^\//, '')}`)
+    .filter((item) => item.length > 1)
+    .join(' ')
+  return [cites, extra].filter(Boolean).join(' ').trim()
+}
+
 export function buildNativeComposerSend(input: {
   text: string
   skillRefs: ComposerSendSkillRef[]
@@ -38,7 +47,7 @@ export function buildNativeComposerSend(input: {
   return {
     modelText: modelText.trim() || input.text.trim(),
     meta: {
-      displayText: input.text.trim() || modelText.trim(),
+      displayText: composerDisplayText(input.text, input.skillRefs) || modelText.trim(),
       skillRefs: input.skillRefs.length ? input.skillRefs : undefined,
       fileRefs: fileRefs.length ? fileRefs : undefined
     }

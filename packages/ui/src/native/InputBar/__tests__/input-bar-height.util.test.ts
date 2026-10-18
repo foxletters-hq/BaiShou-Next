@@ -8,7 +8,9 @@ import {
   composerContentWidth,
   estimateComposerContentHeight,
   resolveComposerHeight,
-  resolveExpandedInputMaxHeight
+  resolveExpandedInputMaxHeight,
+  TOOLBAR_ANIM_MS,
+  TOOLBAR_HEIGHT
 } from '../input-bar-height.util'
 
 describe('clampInputFrameHeight', () => {
@@ -58,5 +60,12 @@ describe('resolveExpandedInputMaxHeight', () => {
 
   it('should use the screen ratio when the window is short', () => {
     expect(resolveExpandedInputMaxHeight(400)).toBe(Math.round(400 * 0.42))
+  })
+})
+
+describe('toolbar constants', () => {
+  it('should have positive natural toolbar height and duration', () => {
+    expect(TOOLBAR_HEIGHT).toBeGreaterThan(0)
+    expect(TOOLBAR_ANIM_MS).toBeGreaterThan(0)
   })
 })
