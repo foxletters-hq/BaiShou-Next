@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const styles = StyleSheet.create({
   overlay: {
@@ -12,7 +13,7 @@ export const styles = StyleSheet.create({
     zIndex: 2
   },
   dialog: {
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     overflow: 'hidden',
     flexDirection: 'column'
   },
@@ -20,42 +21,26 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1
-  },
-  tab: {
-    height: 28,
-    paddingHorizontal: 14,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center'
   },
   closeBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sharedTokens.radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12
+    marginLeft: sharedTokens.spacing.mdTight
   },
   searchSection: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.mdTight
   },
   searchBox: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
     minHeight: 44,
     justifyContent: 'center'
@@ -76,10 +61,10 @@ export const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     paddingVertical: Platform.OS === 'ios' ? 12 : 10,
     paddingLeft: 38,
-    paddingRight: 36,
+    paddingRight: sharedTokens.spacing.xlPlus,
     minHeight: 44,
     ...(Platform.OS === 'android'
       ? { includeFontPadding: false, textAlignVertical: 'center' }
@@ -93,48 +78,26 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1
   },
-  segmented: {
-    flexDirection: 'row',
-    width: '100%',
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 0
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center'
-  },
-  segmentText: {
-    fontSize: 14,
-    lineHeight: 18.9,
-    fontWeight: '400'
-  },
   listArea: {
     flex: 1
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.lg,
+    gap: sharedTokens.spacing.mdTight
   },
   diaryWrap: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.xlPlus,
+    gap: sharedTokens.spacing.sm
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center',
     lineHeight: 22
   },
@@ -142,18 +105,18 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   selectionCount: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   paginationArea: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.xs,
     borderTopWidth: StyleSheet.hairlineWidth
   }
 })

@@ -15,6 +15,7 @@ import { WEATHER_IDS, weatherI18nKey, normalizeWeatherId, type WeatherId } from 
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { WeatherEmoji } from '../WeatherIcon'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeWeatherPickerProps {
   value: string
@@ -70,16 +71,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
             opacity: pressed ? 0.9 : 1,
             backgroundColor: colors.bgSurface,
             borderColor: open || selectedId ? colors.primary : colors.borderControl,
-            shadowColor: open ? colors.primary : 'transparent',
-            ...(open
-              ? {
-                  borderWidth: 1.5,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 8,
-                  elevation: 3
-                }
-              : { borderWidth: 1 })
+            borderWidth: open ? 1.5 : 1
           }
         ]}
       >
@@ -159,7 +151,12 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
                 { backgroundColor: colors.bgSurfaceHighest, borderTopColor: colors.borderSubtle }
               ]}
             >
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('diary.clear_filter')}
               </Text>
             </Pressable>
@@ -178,31 +175,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 6
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
+    gap: sharedTokens.spacing.xsPlus
   },
   triggerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flexShrink: 1
   },
   triggerLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     flexShrink: 1,
     lineHeight: 16
   },
   chevron: {
-    fontSize: 10,
+    fontSize: iconSizes.xs,
     lineHeight: 12
   },
   overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   dropdownPanel: {
     borderWidth: 1,
@@ -213,13 +210,13 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: sharedTokens.spacing.smPlus,
     minHeight: TRIGGER_HEIGHT,
-    paddingHorizontal: 14
+    paddingHorizontal: sharedTokens.spacing.mdSnug
   },
   optionLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     lineHeight: 18
   },
@@ -228,7 +225,7 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderTopWidth: 1
   }
 })

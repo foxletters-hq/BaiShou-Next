@@ -5,6 +5,7 @@ import { useNativeTheme } from '../theme'
 import { Checkbox } from '../Checkbox'
 import type { RecallItem } from './recall-dialog.types'
 import { getSimilarityColors } from './recall-dialog.utils'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface RecallDialogItemProps {
   item: RecallItem
@@ -36,14 +37,14 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
         borderRadius: tokens.radius.lg
       }}
     >
-      <Checkbox selected={isSelected} style={{ marginTop: 2 }} />
+      <Checkbox selected={isSelected} style={{ marginTop: sharedTokens.spacing.xxs }} />
       <View style={{ flex: 1 }}>
         <View
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 6
+            marginBottom: sharedTokens.spacing.xsPlus
           }}
         >
           <View
@@ -57,7 +58,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
           >
             <Text
               style={{
-                fontSize: 15,
+                fontSize: mobileTypography.body.fontSize,
                 fontWeight: '600',
                 color: colors.textPrimary,
                 flexShrink: 1
@@ -70,14 +71,20 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
               <View
                 style={{
                   backgroundColor: sc.bg,
-                  paddingHorizontal: 6,
+                  paddingHorizontal: sharedTokens.spacing.xsPlus,
                   paddingVertical: 1,
-                  borderRadius: 8,
+                  borderRadius: sharedTokens.radius.sm,
                   borderWidth: 0.5,
                   borderColor: sc.border
                 }}
               >
-                <Text style={{ fontSize: 10, fontWeight: '600', color: sc.fg }}>
+                <Text
+                  style={{
+                    fontSize: mobileTypography.caption.fontSize,
+                    fontWeight: '600',
+                    color: sc.fg
+                  }}
+                >
                   {t('recall.match_score', '匹配度 {{score}}%', {
                     score: (score * 100).toFixed(1)
                   })}
@@ -87,7 +94,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
           </View>
           <Text
             style={{
-              fontSize: 11,
+              fontSize: mobileTypography.caption.fontSize,
               color: colors.textSecondary
             }}
           >
@@ -97,7 +104,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
         <Text
           numberOfLines={2}
           style={{
-            fontSize: 13,
+            fontSize: mobileTypography.secondary.fontSize,
             color: colors.textSecondary,
             lineHeight: 20
           }}

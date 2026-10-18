@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react-native'
 import type { LucideProps } from 'lucide-react-native'
 import { useToast } from 'heroui-native'
@@ -7,6 +7,7 @@ import type { ToastComponentProps } from 'heroui-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   ToastContext,
   type ToastContextType,
@@ -179,26 +180,30 @@ const styles = StyleSheet.create({
     left: 0,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingRight: 16 // 还原原版靠右 16px 边距
+    paddingRight: sharedTokens.spacing.md // 还原原版靠右 16px 边距
   },
   toast: {
     borderCurve: 'continuous',
-    borderRadius: 12, // 还原原版圆角
+    borderRadius: sharedTokens.radius.md, // 还原原版圆角
     borderWidth: 1,
-    paddingHorizontal: 16, // 还原原版内边距
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md, // 还原原版内边距
+    paddingVertical: sharedTokens.spacing.mdTight,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, // 还原原版投影
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8
+    gap: sharedTokens.spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16
+      },
+      default: {}
+    })
   },
   message: {
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     fontWeight: '500'
   }

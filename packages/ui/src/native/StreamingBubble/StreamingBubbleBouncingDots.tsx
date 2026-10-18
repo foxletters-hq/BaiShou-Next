@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { View, Animated, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 
 /** 对齐 desktop BouncingDotsIndicator */
 export function StreamingBubbleBouncingDots() {
@@ -14,12 +15,12 @@ export function StreamingBubbleBouncingDots() {
           Animated.delay(index * 150),
           Animated.timing(anim, {
             toValue: 1,
-            duration: 300,
+            duration: sharedTokens.animation.moderate,
             useNativeDriver: true
           }),
           Animated.timing(anim, {
             toValue: 0,
-            duration: 300,
+            duration: sharedTokens.animation.moderate,
             useNativeDriver: true
           })
         ])
@@ -60,13 +61,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    gap: 6
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.xsPlus
   },
   dot: {
     width: 8,
     height: 8,
-    borderRadius: 4
+    borderRadius: sharedTokens.radius.xs
   }
 })
