@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
 import { isLegacyAppRoot, normalizeImportedSectionIds } from '@baishou/core-mobile'
+import { runAfterIdle } from '@baishou/shared'
 import type {
   LegacyVersionMigrationImportStatus,
   LegacyVersionMigrationScanResult,
@@ -105,7 +106,7 @@ export function useVersionMigration() {
   )
 
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runAfterIdle(() => {
       setPageReady(true)
     })
     return () => task.cancel()

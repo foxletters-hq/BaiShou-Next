@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { deriveLegacyVaultId } from '@baishou/shared'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { subscribeGraphDataChanged } from '@/src/services/mobile-graph-data-changed'
 import { mobileListSuspectNodes } from '@/src/services/mobile-graph-query'
 import { readActiveVaultSafely } from '@/src/screens/MemoryCenterScreen/memory-center-data.util'
 
@@ -31,6 +32,12 @@ export function useMobileSuspectCount() {
       void refresh()
     }, [refresh])
   )
+
+  useEffect(() => {
+    return subscribeGraphDataChanged(() => {
+      void refresh()
+    })
+  }, [refresh])
 
   return { suspectCount, refreshSuspects: refresh }
 }
