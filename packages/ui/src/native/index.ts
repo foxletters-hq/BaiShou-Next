@@ -57,6 +57,7 @@ export * from './StatisticCard'
 export * from './ThinkingBlock'
 export * from './AgentThinkSection'
 export * from './AgentToolChain'
+export * from './AgentProcessSection'
 export * from './AgentMarkdown'
 export * from './CompressionActivityBar'
 export * from './CompressionDivider'
@@ -115,7 +116,6 @@ export * from './EmojiPicker'
 export * from './AssistantAvatar'
 export * from './AssistantAvatarPicker'
 export * from './avatar-image-picker.util'
-export * from './chat-background-image-picker.util'
 export * from './AssistantKindTabBar'
 export * from './AssistantKindBadge'
 export {
@@ -126,7 +126,6 @@ export {
 export { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from './builtin-assistant-avatar.sources'
 export * from './TagInput'
 export * from './DiaryMetaCard'
-export * from './DatePicker'
 export * from './ColorPicker'
 export * from './GalleryPanel'
 export * from './DataManagementCard'
@@ -154,17 +153,22 @@ export {
   type ThemeModePreference
 } from './theme'
 export {
-  nativeUiFontFamilyFromLanguage,
-  nativeUiFontFamilyName,
-  resolveNativeUiFontRole,
-  type NativeUiFontRole
-} from '../theme/native-ui-font'
+  getGlobalFontScale,
+  setGlobalFontScale,
+  scaleFontStyle,
+  installNativeFontScaling,
+  type ScaledTextProps,
+  type ScaledTextInputProps
+} from './native-font-scale'
+export { markdownSpacingTokens } from '../theme/tokens'
 
 export {
   NATIVE_APP_BRAND_ICON,
   resolveNativeUserAvatarSource,
-  isCustomUserAvatar
+  isCustomUserAvatar,
+  isBuiltinUserAvatarPath
 } from './user-avatar.util'
+export { NATIVE_BUILTIN_USER_AVATAR_SOURCES } from './builtin-user-avatar.sources'
 
 export { useKeyboardHeight, type UseKeyboardHeightOptions } from './hooks/useKeyboardHeight'
 export {
@@ -179,7 +183,13 @@ export {
 } from './KeyboardAwareScrollView'
 
 export { resolveActiveToolDisplayName } from '../shared/tool-result.util'
+export {
+  getChatOverBackgroundMetaTextStyle,
+  getChatOverBackgroundMetaIconColor,
+  getChatBubbleOverBackgroundStyle,
+  type ChatOverBackgroundTone
+} from '../shared/chat-over-background-meta.style'
 
 export * from './icons'
-export { HELP_ICON_SIZE } from '../shared/icons/icon-sizes'
+export { DEFAULT_STROKE_WIDTH, HELP_ICON_SIZE } from '../shared/icons/icon-sizes'
 export type { SettingsNavIconId } from '../shared/icons/settings-nav-icon-ids'

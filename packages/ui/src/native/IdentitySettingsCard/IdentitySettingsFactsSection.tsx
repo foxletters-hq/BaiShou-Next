@@ -4,6 +4,7 @@ import { Plus, SquarePen, Tag, Trash2, UserPlus } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface IdentitySettingsFactsSectionProps {
   currentFacts: Record<string, string>
@@ -42,7 +43,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
       >
         <Text
           style={{
-            fontSize: 14,
+            fontSize: mobileTypography.secondary.fontSize,
             fontWeight: '600',
             color: colors.textPrimary
           }}
@@ -54,12 +55,12 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 4,
+            gap: sharedTokens.spacing.xs,
             opacity: pressed ? 0.7 : 1
           })}
         >
           <Plus size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-          <Text style={{ fontSize: 14, color: colors.primary }}>
+          <Text style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.primary }}>
             {t('settings.add_identity_entry', '添加条目')}
           </Text>
         </Pressable>
@@ -76,7 +77,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
           <UserPlus size={32} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
           <Text
             style={{
-              fontSize: 14,
+              fontSize: mobileTypography.secondary.fontSize,
               color: colors.textSecondary,
               textAlign: 'center'
             }}
@@ -101,7 +102,7 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: mobileTypography.secondary.fontSize,
                   fontWeight: '600',
                   color: colors.textPrimary
                 }}
@@ -110,21 +111,24 @@ export const IdentitySettingsFactsSection: React.FC<IdentitySettingsFactsSection
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: mobileTypography.secondary.fontSize,
                   color: colors.textSecondary
                 }}
               >
                 {v}
               </Text>
             </View>
-            <Pressable onPress={() => onStartEdit(k, v)} style={{ padding: 4 }}>
+            <Pressable
+              onPress={() => onStartEdit(k, v)}
+              style={{ padding: sharedTokens.spacing.xs }}
+            >
               <SquarePen
                 size={18}
                 color={colors.textSecondary}
                 strokeWidth={DEFAULT_STROKE_WIDTH}
               />
             </Pressable>
-            <Pressable onPress={() => onDeleteFact(k)} style={{ padding: 4 }}>
+            <Pressable onPress={() => onDeleteFact(k)} style={{ padding: sharedTokens.spacing.xs }}>
               <Trash2 size={18} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </Pressable>
           </View>

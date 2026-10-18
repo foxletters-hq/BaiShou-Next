@@ -1,5 +1,6 @@
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { runAfterIdle } from '@baishou/shared'
 
 /** 申请相册读取权限 */
 export async function requestAvatarLibraryPermission(): Promise<boolean> {
@@ -11,7 +12,7 @@ export async function requestAvatarLibraryPermission(): Promise<boolean> {
  * 等 Dialog / Modal 完全关闭后再执行（Android 上否则相册 Activity 常被吞掉）。
  */
 export function runAfterOverlayDismiss(action: () => void): void {
-  InteractionManager.runAfterInteractions(() => {
+  runAfterIdle(() => {
     const delayMs = Platform.OS === 'android' ? 320 : 64
     setTimeout(action, delayMs)
   })

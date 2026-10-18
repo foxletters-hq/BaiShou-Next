@@ -11,8 +11,10 @@ import {
 } from '@baishou/shared'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { SegmentedControl } from '../SegmentedControl'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
@@ -110,39 +112,20 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('settings.theme_mode', '主题模式')}
       </Text>
-      <View style={[styles.segmentedControl, { borderColor: colors.borderMuted }]}>
-        {(['system', 'light', 'dark'] as const).map((mode, index) => (
-          <TouchableOpacity
-            key={mode}
-            activeOpacity={0.6}
-            style={[
-              styles.segmentBtn,
-              { borderRightColor: colors.borderMuted },
-              themeMode === mode && {
-                backgroundColor: colors.primaryLight
-              },
-              index === 2 && { borderRightWidth: 0 }
-            ]}
-            onPress={() => onThemeModeChange(mode)}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                { color: colors.textPrimary },
-                themeMode === mode && { fontWeight: '600' }
-              ]}
-            >
-              {mode === 'system'
-                ? t('settings.theme_system', '跟随系统')
-                : mode === 'light'
-                  ? t('settings.theme_light', '浅色')
-                  : t('settings.theme_dark', '深色')}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SegmentedControl
+        size="small"
+        value={themeMode}
+        onChange={onThemeModeChange}
+        options={[
+          { value: 'system', label: t('settings.theme_system', '跟随系统') },
+          { value: 'light', label: t('settings.theme_light', '浅色') },
+          { value: 'dark', label: t('settings.theme_dark', '深色') }
+        ]}
+      />
 
-      <Text style={[styles.label, { color: colors.textPrimary, marginTop: 16 }]}>
+      <Text
+        style={[styles.label, { color: colors.textPrimary, marginTop: sharedTokens.spacing.md }]}
+      >
         {t('settings.theme_color', '基核种子色')}
       </Text>
       <View style={styles.colorPalette}>
@@ -274,8 +257,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                     ]}
                   >
                     <Text
+                      disableGlobalFontScale
                       style={{
-                        fontSize: Math.round(12 * scale),
+                        fontSize: Math.round(mobileTypography.caption.fontSize * scale),
                         color:
                           level === draftFontSizeLevel ? colors.textPrimary : colors.textSecondary,
                         fontWeight: level === draftFontSizeLevel ? '500' : '400'
@@ -286,6 +270,49 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                   </View>
                 )
               })}
+            </View>
+            <View
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                borderRadius: sharedTokens.radius.md,
+                borderWidth: 1,
+                paddingHorizontal: sharedTokens.spacing.md,
+                paddingVertical: sharedTokens.spacing.smPlus,
+                marginTop: sharedTokens.spacing.mdPlus
+              }}
+            >
+              <Text
+                disableGlobalFontScale
+                style={{
+                  fontSize: Math.round(
+                    mobileTypography.secondary.fontSize *
+                      (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
+                  ),
+                  color: colors.textSecondary,
+                  marginBottom: sharedTokens.spacing.xs
+                }}
+              >
+                {t('settings.font_size_preview_title', '字阶实时预览')}
+              </Text>
+              <Text
+                disableGlobalFontScale
+                style={{
+                  fontSize: Math.round(
+                    mobileTypography.body.fontSize * (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
+                  ),
+                  lineHeight: Math.round(
+                    (mobileTypography.body.lineHeight ?? 24) *
+                      (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
+                  ),
+                  color: colors.textPrimary
+                }}
+              >
+                {t(
+                  'settings.font_size_preview_text',
+                  '白守相伴，落笔生温。用心记录生活中的每一次灵感与温存。'
+                )}
+              </Text>
             </View>
           </View>
         </>
