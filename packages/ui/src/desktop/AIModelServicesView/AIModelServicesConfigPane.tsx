@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import styles from './AIModelServicesView.module.css'
+import { Eye, EyeOff, Key, Link, List, Search, Trash2 } from 'lucide-react'
+import { isDeepSeekOfficialProvider } from '@baishou/shared'
 import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
-import { Eye, EyeOff, Key, Link, List, Search, Trash2 } from 'lucide-react'
+import styles from './AIModelServicesView.module.css'
 
 export interface AIModelServicesConfigPaneProps {
   vm: AIModelServicesViewModel
@@ -65,7 +66,17 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.headerLeft}>
               <div className={styles.hugeIconBox}>{renderIcon(activeProviderMeta.iconUrl)}</div>
               <div className={styles.headerTextCol}>
-                <h2 className={styles.headerTitle}>{activeProviderMeta.name}</h2>
+                <div className={styles.headerTitleRow}>
+                  <h2 className={styles.headerTitle}>{activeProviderMeta.name}</h2>
+                  {isDeepSeekOfficialProvider(activeProviderMeta.id) ? (
+                    <HelpTooltip
+                      content={t(
+                        'ai_config.deepseek_peak_pricing_help',
+                        '本地费用估算根据 DeepSeek 官方规则按调用时段区分计费：\n\n• 高峰时段（按平时 2 倍估算）：工作日 9:00–12:00、14:00–18:00（北京时间）\n• 空闲时段（正常单价）：工作日其余时段、周末及法定节假日\n\n注：仅用于本地成本估算参考，实际扣费以 DeepSeek 控制台账单为准。'
+                      )}
+                    />
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className={styles.headerActions}>
@@ -90,7 +101,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                 <HelpTooltip
                   content={t(
                     'ai_config.test_connection_help',
-                    '连接测试会调用对话接口。请在弹窗中选择大语言模型（对话模型），不要选择 Embedding、Rerank 或 TTS 模型。若列表为空，请先获取模型并启用对话模型。'
+                    '系统将发送测试文本以验证 API 服务的连通性与密钥有效性。\n\n• 测试模型：请选择「文本对话模型」（不支持 Embedding、Rerank 或 TTS 语音模型）\n• 列表为空：若暂无可用模型，请先点击「获取模型」并启用至少一个对话模型'
                   )}
                   size={14}
                 />

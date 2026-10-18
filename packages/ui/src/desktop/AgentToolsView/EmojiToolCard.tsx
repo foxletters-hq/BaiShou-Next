@@ -8,6 +8,7 @@ import { HelpTooltip } from '../HelpTooltip'
 import { toast } from '../Toast/useToast'
 import type { EmojiToolConfig, ToolManagementConfig } from './agent-tools.types'
 import styles from './AgentToolsView.module.css'
+import { sharedTokens } from '../../theme/tokens'
 
 interface EmojiImportResult {
   relativePath: string
@@ -195,7 +196,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
         isOpen={showSettingsPopup}
         onClose={() => setShowSettingsPopup(false)}
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: sharedTokens.spacing.sm }}>
             <Sticker size={20} />
             <span>{t('agent.tools.emoji_settings_title', '表情包设置')}</span>
           </div>

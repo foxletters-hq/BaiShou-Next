@@ -1,49 +1,73 @@
 .toolsList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md);
 }
 
 .toolItem {
-  padding: 14px 16px;
-  border-radius: 10px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
+  transition:
+    opacity var(--duration-swift) ease,
+    border-color var(--duration-swift) ease;
+}
+
+.toolItemDisabled {
+  opacity: 0.65;
+}
+
+.toolItemMain {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.toolInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolAction {
+  flex-shrink: 0;
+  padding-top: var(--spacing-2xs);
 }
 
 .toolHeader {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs-plus);
 }
 
 .toolName {
   font-family: var(--font-family);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--color-primary);
 }
 
 .toolCategory {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: var(--settings-font-micro-size);
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   background: var(--bg-surface-high, rgba(0, 0, 0, 0.05));
   color: var(--text-secondary);
 }
 
 .toolTitle {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .toolDescription {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -51,7 +75,7 @@
 
 .stateMessage {
   margin: 0;
-  padding: 16px;
-  font-size: 14px;
+  padding: var(--spacing-md);
+  font-size: var(--settings-font-row-size);
   color: var(--text-secondary);
 }

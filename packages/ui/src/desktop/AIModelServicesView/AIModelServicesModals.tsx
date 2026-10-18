@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { withAppContentOverlay } from '../overlay'
 import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
+import { settingsTypography } from '../../theme/tokens'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { resolveProviderTypeLabel } from './ai-model-services.constants'
@@ -165,7 +166,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   style={{
                     color: 'var(--text-secondary)',
                     marginBottom: 15,
-                    fontSize: 13,
+                    fontSize: settingsTypography.label.fontSize,
                     userSelect: 'none'
                   }}
                 >

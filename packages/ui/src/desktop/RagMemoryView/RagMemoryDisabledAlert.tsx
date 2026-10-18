@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './RagMemoryView.module.css'
 import { TriangleAlert } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 interface RagMemoryDisabledAlertProps {
   ragEnabled: boolean
@@ -14,7 +15,7 @@ export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ 
 
   return (
     <div className={styles.disabledAlert}>
-      <TriangleAlert size={16} style={{ marginRight: 8 }} />
+      <TriangleAlert size={16} style={{ marginRight: sharedTokens.spacing.sm }} />
       {t('settings.rag_disabled_alert', 'RAG记忆功能已经关闭了喵~')}
     </div>
   )

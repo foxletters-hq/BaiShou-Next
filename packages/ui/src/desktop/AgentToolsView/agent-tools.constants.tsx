@@ -57,6 +57,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   recall_relations: <Share2 size={20} />,
   graph_upsert: <Share2 size={20} />,
   skill_write: <Sparkles size={20} />,
+  skill_read: <BookOpen size={20} />,
   web_search: <Globe size={20} />,
   url_read: <Link2 size={20} />,
   auto_inject_time: <Clock size={20} />,
@@ -255,6 +256,10 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.skill_write': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L159',
     '保存技能'
+  ),
+  'agent.tools.skill_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L162',
+    '读取技能'
   ),
   'agent.tools.knowledge_search': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L160',

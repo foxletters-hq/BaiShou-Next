@@ -1,7 +1,7 @@
 .titleRow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .statusIndicator {
@@ -35,8 +35,8 @@
   display: grid;
   grid-template-rows: 0fr;
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.28s ease;
+    grid-template-rows var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1),
+    opacity var(--duration-moderate) ease;
   opacity: 0;
   overflow: hidden;
 }
@@ -56,8 +56,8 @@
   display: grid;
   grid-template-rows: 0fr;
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s ease;
+    grid-template-rows var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1),
+    opacity var(--duration-moderate) ease;
   opacity: 0;
   overflow: hidden;
 }
@@ -73,15 +73,15 @@
 
 /* 与 .settings-list-divider.indent 左缘对齐 (margin-left: 56px) */
 .indentedTile {
-  padding-left: 56px !important;
-  padding-right: 16px;
+  padding-left: var(--spacing-2xl) !important;
+  padding-right: var(--spacing-md);
   align-items: center;
 }
 
 .indentedTileTall {
   min-height: 54px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: var(--spacing-sm-plus);
+  padding-bottom: var(--spacing-sm-plus);
   align-items: center;
 }
 
@@ -92,21 +92,21 @@
 
 /* Port + MCP URL 共用缩进区块，与下方 indent 分割线起点一致 */
 .connectionSection {
-  padding: 10px 16px 14px 56px;
+  padding: var(--spacing-sm-plus) var(--spacing-md) var(--spacing-md-snug) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .portRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .portLabel {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
   flex-shrink: 0;
 }
@@ -130,7 +130,7 @@
 
 .endpointLabel {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 400;
   color: var(--text-primary);
 }
@@ -138,7 +138,7 @@
 .endpointRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -150,7 +150,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 400;
   letter-spacing: 0.01em;
   color: var(--color-primary);
@@ -163,7 +163,7 @@
 .authToggleRow {
   padding-left: 0 !important;
   padding-right: 0 !important;
-  margin: 2px 0;
+  margin: var(--spacing-2xs) 0;
 }
 
 .authToggleRow {
@@ -177,15 +177,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color var(--duration-swift) ease,
+    color var(--duration-swift) ease;
 }
 
 .copyBtn:hover {
@@ -200,7 +200,7 @@
 .tokenActions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   flex-shrink: 0;
 }
 
@@ -216,8 +216,8 @@
 
 .confirmBox {
   width: min(400px, calc(100vw - 32px));
-  padding: 20px 22px;
-  border-radius: 12px;
+  padding: var(--spacing-md-plus) var(--spacing-md-plus);
+  border-radius: var(--radius-md);
   background: var(--bg-surface-normal);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
@@ -226,7 +226,7 @@
   font-size: var(--settings-font-section-size);
   font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-sm-plus);
 }
 
 .confirmMessage {
@@ -234,20 +234,20 @@
   font-weight: var(--settings-font-row-weight);
   line-height: 1.5;
   color: var(--text-secondary);
-  margin-bottom: 18px;
+  margin-bottom: var(--spacing-md);
 }
 
 .confirmActions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .confirmCancelBtn,
 .confirmDangerBtn {
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
   font-family: inherit;
@@ -280,8 +280,8 @@
 }
 
 .standaloneConnectionSection {
-  padding: 18px 16px 20px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md-plus);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
 }

@@ -19,7 +19,7 @@
   align-items: center;
   justify-content: flex-start;
   height: var(--settings-page-header-height, 64px);
-  padding: 0 32px;
+  padding: 0 var(--spacing-xl);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
@@ -38,10 +38,10 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--settings-page-scroll-padding-top, 88px) 32px 48px;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   height: 100%;
   box-sizing: border-box;
 }
@@ -52,13 +52,13 @@
 
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   /* 勿 hidden：卡内绝对定位下拉会被裁切 */
   overflow: visible;
   display: flex;
@@ -82,13 +82,13 @@
 }
 
 .cardHeader {
-  padding: 16px 16px 8px 16px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm) var(--spacing-md);
 }
 
 .cardTitleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .cardTitle {
@@ -102,35 +102,35 @@
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
-  padding-bottom: 4px;
+  padding-bottom: var(--spacing-xs);
 }
 
 .engineGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-  padding: 8px 16px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
 }
 
 /* Radio List Tile */
 .radioListTile {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   margin: 0;
   /* 始终占位，避免选中/悬停换边框时布局跳动闪烁 */
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   background-color: transparent;
   min-width: 0;
   box-sizing: border-box;
@@ -150,7 +150,7 @@
 }
 
 .radioCustomContainer {
-  margin-right: 10px;
+  margin-right: var(--spacing-sm-plus);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -166,7 +166,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-swift);
 }
 
 .radioSelected .radioCustomRing {
@@ -178,7 +178,7 @@
   height: 10px;
   border-radius: 50%;
   background-color: var(--color-primary);
-  animation: popIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  animation: popIn var(--duration-swift) cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
 .radioContent {
@@ -192,38 +192,38 @@
 .radioTitleRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-height: 20px;
 }
 
 .radioTitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 20px;
   color: var(--text-primary);
 }
 
 .radioSubtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-primary);
 }
 
 /* API Config Card */
 .apiConfigBody {
-  padding: 16px;
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
 }
 
 .textFieldWrapper {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: flex;
   align-items: center;
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 12px;
-  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color var(--duration-swift),
+    box-shadow var(--duration-swift);
   background-color: var(--form-field-bg, var(--bg-surface));
 }
 
@@ -234,7 +234,7 @@
 
 .textFieldIcon {
   color: var(--text-primary);
-  margin: 0 8px;
+  margin: 0 var(--spacing-sm);
 }
 
 .textFieldInput {
@@ -242,8 +242,8 @@
   border: none;
   outline: none;
   background: transparent;
-  padding: 8px 0;
-  font-size: 14px;
+  padding: var(--spacing-sm) 0;
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
 }
 
@@ -259,8 +259,8 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .iconIconButton:hover {
@@ -269,10 +269,10 @@
 
 /* Slider Row */
 .sliderRow {
-  padding: 14px 16px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .sliderRowHeader {
@@ -283,9 +283,9 @@
 .sliderIcon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   color: var(--text-primary);
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   opacity: 0.8;
   flex-shrink: 0;
 }
@@ -303,48 +303,48 @@
 }
 
 .sliderDesc {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-primary);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .sliderControlRow {
   display: flex;
   align-items: center;
-  padding-left: 32px;
+  padding-left: var(--spacing-xl);
 }
 
 /* 视觉样式见 theme/range-slider.css */
 .sliderInput {
   flex: 1;
   width: 100%;
-  margin: 0 16px 0 0;
+  margin: 0 var(--spacing-md) 0 0;
 }
 
 .sliderValue {
   min-width: 48px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--color-primary);
   background: var(--color-primary-light);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
 }
 
 /* Switch Tile */
 .switchTile {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
 }
 
 .switchIcon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   color: var(--text-primary);
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   flex-shrink: 0;
 }
 
