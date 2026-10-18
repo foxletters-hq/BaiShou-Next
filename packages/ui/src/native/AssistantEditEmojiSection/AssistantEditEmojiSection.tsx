@@ -10,6 +10,7 @@ import { Switch } from '../Switch'
 import { SettingsGroupCard } from '../settings/SettingsGroupCard'
 import { useSettingsCardStyles } from '../settings/settings-card.styles'
 import { AssistantEmojiGroupPickerModal } from './AssistantEmojiGroupPickerModal'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface AssistantEditEmojiSectionProps {
   emojiConfig: EmojiToolConfig
@@ -61,7 +62,12 @@ export const AssistantEditEmojiSection: React.FC<AssistantEditEmojiSectionProps>
           <Text style={[cardStyles.label, { color: colors.textPrimary }]}>
             {t('agent.assistant.emoji_enabled_label', '表情组')}
           </Text>
-          <Text style={[cardStyles.hint, { color: colors.textSecondary, marginTop: 4 }]}>
+          <Text
+            style={[
+              cardStyles.hint,
+              { color: colors.textSecondary, marginTop: sharedTokens.spacing.xs }
+            ]}
+          >
             {t(
               'agent.assistant.emoji_enabled_desc',
               '开启后，该伙伴可在对话中使用你为其选择的表情包组'
@@ -120,24 +126,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 14
+    marginVertical: sharedTokens.spacing.mdSnug
   },
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   pickSectionIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  groupName: { fontSize: 15, fontWeight: '600' },
-  groupMeta: { fontSize: 13, marginTop: 2 }
+  groupName: { fontSize: mobileTypography.body.fontSize, fontWeight: '600' },
+  groupMeta: { fontSize: mobileTypography.secondary.fontSize, marginTop: sharedTokens.spacing.xxs }
 })

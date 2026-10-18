@@ -6,6 +6,7 @@ import type { EmojiToolConfig } from '@baishou/shared'
 import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiSettingsEntryRowProps {
   config: EmojiToolConfig
@@ -49,11 +50,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 4,
-    paddingVertical: 10
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.smPlus
   },
-  info: { flex: 1, gap: 2 },
-  title: { fontSize: 14, fontWeight: '600' },
-  meta: { fontSize: 12 }
+  info: { flex: 1, gap: sharedTokens.spacing.xxs },
+  title: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  meta: { fontSize: mobileTypography.caption.fontSize }
 })

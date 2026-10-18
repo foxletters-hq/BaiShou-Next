@@ -14,6 +14,7 @@ import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AssistantAvatar } from '../AssistantAvatar'
 import { AssistantKindBadge } from '../AssistantKindBadge'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface MockAgentAssistant {
   id: string
@@ -162,7 +163,11 @@ export const AssistantPicker: React.FC<NativeAssistantPickerProps> = ({
             ) : null}
           </View>
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          <ScrollView
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+          >
             {assistants.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -219,11 +224,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingBottom: 12
+    gap: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   headerSpacer: {
@@ -233,37 +238,38 @@ const styles = StyleSheet.create({
     maxHeight: 420
   },
   listContent: {
-    paddingBottom: 8,
-    gap: 8
+    paddingBottom: sharedTokens.spacing.sm,
+    paddingRight: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   emptyWrap: {
     alignItems: 'center',
-    paddingVertical: 32,
-    gap: 16
+    paddingVertical: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.md
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     textAlign: 'center'
   },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control
   },
   createBtnText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
+    padding: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   cardBody: {
     flex: 1
@@ -271,16 +277,16 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flexWrap: 'wrap'
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
     flexShrink: 1
   },
   cardDesc: {
-    fontSize: 13,
-    marginTop: 2
+    fontSize: mobileTypography.secondary.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   }
 })

@@ -5,6 +5,7 @@ import { useNativeTheme } from '../theme'
 import { Checkbox } from '../Checkbox'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import type { AssistantKind } from '@baishou/shared'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface AssistantMatrixAssistant {
   id: string
@@ -112,7 +113,10 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                       }
                     ]}
                   >
-                    <Checkbox selected={isChecked} style={{ marginRight: 10 }} />
+                    <Checkbox
+                      selected={isChecked}
+                      style={{ marginRight: sharedTokens.spacing.smPlus }}
+                    />
                     <Text
                       style={[
                         styles.modelName,
@@ -161,23 +165,23 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: 1
   },
   title: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   subtitle: {
-    fontSize: 12,
-    marginTop: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs
   },
   listContent: {
-    padding: 12
+    padding: sharedTokens.spacing.mdTight
   },
   assistantCard: {
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -185,66 +189,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14
+    padding: sharedTokens.spacing.mdSnug
   },
   assistantNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flex: 1,
     flexWrap: 'wrap'
   },
   assistantName: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   assistantHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   countBadge: {
     minWidth: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6
+    paddingHorizontal: sharedTokens.spacing.xsPlus
   },
   countBadgeText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   expandIcon: {
-    fontSize: 10,
+    fontSize: iconSizes.xs,
     fontWeight: '600'
   },
   modelList: {
     borderTopWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.sm
   },
   modelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm
   },
   modelName: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   },
   noModels: {
     textAlign: 'center',
-    paddingVertical: 12,
-    fontSize: 13
+    paddingVertical: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.secondary.fontSize
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40
+    paddingVertical: sharedTokens.spacing.xlPlus
   },
   emptyText: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   }
 })
