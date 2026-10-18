@@ -26,6 +26,16 @@ export interface SearchEngineOption {
 
 export const SEARCH_ENGINE_OPTIONS: SearchEngineOption[] = [
   {
+    value: 'exa-mcp',
+    titleKey: 'settings.web_search_engine_exa_mcp',
+    titleFallback: 'Exa MCP',
+    descKey: 'settings.web_search_engine_exa_mcp_desc',
+    descFallback: i18n.t(
+      'auto.packages.ui.src.desktop.WebSearchSettingsView.web.search.settings.types.L67',
+      '通过 Exa MCP Server 免费搜索，无需 API Key。'
+    )
+  },
+  {
     value: 'local-bing',
     titleKey: 'settings.web_search_engine_local_bing',
     titleFallback: i18n.t(
@@ -79,16 +89,6 @@ export const SEARCH_ENGINE_OPTIONS: SearchEngineOption[] = [
     descFallback: i18n.t(
       'auto.packages.ui.src.desktop.WebSearchSettingsView.web.search.settings.types.L60',
       '需要配置 API Key，面向 AI 的语义搜索引擎，结果质量高。'
-    )
-  },
-  {
-    value: 'exa-mcp',
-    titleKey: 'settings.web_search_engine_exa_mcp',
-    titleFallback: 'Exa MCP',
-    descKey: 'settings.web_search_engine_exa_mcp_desc',
-    descFallback: i18n.t(
-      'auto.packages.ui.src.desktop.WebSearchSettingsView.web.search.settings.types.L67',
-      '通过 Exa MCP Server 免费搜索，无需 API Key。'
     )
   },
   {

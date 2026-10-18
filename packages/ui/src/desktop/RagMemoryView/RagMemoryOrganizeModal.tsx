@@ -16,6 +16,8 @@ export type RagMemoryOrganizeModalProps = {
   graphExtract?: { current: number; total: number; percent: number } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
+  incomplete?: boolean
+  onContinue?: () => void
 }
 
 function isOrganizeRunning(
@@ -39,13 +41,27 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
   onCancelBatchEmbed,
   graphExtract = null,
   graphExtractWaiting = false,
-  pendingGraphCount = 0
+  pendingGraphCount = 0,
+  incomplete = false,
+  onContinue
 }) => {
   const { t } = useTranslation()
   const running = isOrganizeRunning(ragState, graphExtract, graphExtractWaiting)
-  const title = running
-    ? t('memory.readiness_organizing', '正在整理记忆…')
-    : t('memory.organize_done', '整理完毕')
+  const leftover = incomplete && !running
+  const title = leftover
+    ? t('memory.organize_incomplete', '整理未完成')
+    : running
+      ? t('memory.readiness_organizing', '正在整理记忆…')
+      : t('memory.organize_done', '整理完毕')
+  const leftoverState: RagState = leftover
+    ? {
+        ...ragState,
+        isRunning: true,
+        type: 'batchEmbed',
+        paused: false,
+        cancelling: false
+      }
+    : ragState
   return (
     <Modal
       isOpen={open}
@@ -55,18 +71,36 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
       title={title}
       className={styles.organizeModal}
     >
-      {running ? (
-        <RagMemoryAlerts
-          surface="organize"
-          ragState={ragState}
-          hasMismatchModel={false}
-          onPauseBatchEmbed={onPauseBatchEmbed}
-          onResumeBatchEmbed={onResumeBatchEmbed}
-          onCancelBatchEmbed={onCancelBatchEmbed}
-          graphExtract={graphExtract}
-          graphExtractWaiting={graphExtractWaiting}
-          pendingGraphCount={pendingGraphCount}
-        />
+      {running || leftover ? (
+        <>
+          <RagMemoryAlerts
+            surface="organize"
+            ragState={leftoverState}
+            hasMismatchModel={false}
+            onPauseBatchEmbed={leftover ? undefined : onPauseBatchEmbed}
+            onResumeBatchEmbed={leftover ? undefined : onResumeBatchEmbed}
+            onCancelBatchEmbed={leftover ? undefined : onCancelBatchEmbed}
+            graphExtract={leftover ? null : graphExtract}
+            graphExtractWaiting={leftover ? false : graphExtractWaiting}
+            pendingGraphCount={pendingGraphCount}
+          />
+          {leftover && onContinue ? (
+            <div className={styles.organizeDoneActions}>
+              <Button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onContinue()
+                }}
+              >
+                {t('memory.organize_continue', '继续整理')}
+              </Button>
+              <Button type="button" variant="outlined" onClick={onClose}>
+                {t('common.got_it', '知道了')}
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className={styles.organizeDone}>
           <div className={styles.organizeDoneActions}>

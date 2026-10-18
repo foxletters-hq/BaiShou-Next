@@ -93,6 +93,48 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   const showOrganizeStatusTitle =
     surface !== 'organize' || ragState.cancelling || Boolean(ragState.paused)
 
+  const batchEmbedActionButtons =
+    onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed ? (
+      <div
+        className={surface === 'organize' ? styles.organizeDoneActions : styles.batchEmbedActions}
+      >
+        {ragState.paused && !ragState.cancelling
+          ? onResumeBatchEmbed && (
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                onClick={() => void onResumeBatchEmbed()}
+              >
+                {t('settings.rag_batch_embed_resume', '继续')}
+              </Button>
+            )
+          : onPauseBatchEmbed && (
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                disabled={!!ragState.cancelling}
+                onClick={() => void onPauseBatchEmbed()}
+              >
+                {t('settings.rag_batch_embed_pause', '暂停')}
+              </Button>
+            )}
+        {onCancelBatchEmbed && (
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            disabled={!!ragState.cancelling}
+            isLoading={!!ragState.cancelling}
+            onClick={() => void onCancelBatchEmbed()}
+          >
+            {t('settings.rag_batch_embed_cancel', '取消')}
+          </Button>
+        )}
+      </div>
+    ) : null
+
   const graphPhaseRow = (
     <li
       key="life_graph"
@@ -154,59 +196,24 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
 
       {showOrganize && isBatchEmbedding && (
         <div className={styles.migrationAlert}>
-          <div className={styles.migrationRow}>
-            {ragState.paused && !ragState.cancelling ? (
-              <div className={styles.pauseMark} aria-hidden="true" />
-            ) : (
-              <div className={styles.spinner}></div>
-            )}
-            {showOrganizeStatusTitle ? (
-              <span className={styles.migTitle}>{batchEmbedStatusTitle}</span>
-            ) : null}
-            {(onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed) && (
-              <div className={styles.batchEmbedActions}>
-                {ragState.paused && !ragState.cancelling
-                  ? onResumeBatchEmbed && (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="small"
-                        onClick={() => void onResumeBatchEmbed()}
-                      >
-                        {t('settings.rag_batch_embed_resume', '继续')}
-                      </Button>
-                    )
-                  : onPauseBatchEmbed && (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="small"
-                        disabled={!!ragState.cancelling}
-                        onClick={() => void onPauseBatchEmbed()}
-                      >
-                        {t('settings.rag_batch_embed_pause', '暂停')}
-                      </Button>
-                    )}
-                {onCancelBatchEmbed && (
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="small"
-                    disabled={!!ragState.cancelling}
-                    isLoading={!!ragState.cancelling}
-                    onClick={() => void onCancelBatchEmbed()}
-                  >
-                    {t('settings.rag_batch_embed_cancel', '取消')}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+          {surface !== 'organize' || showOrganizeStatusTitle ? (
+            <div className={styles.migrationRow}>
+              {ragState.paused && !ragState.cancelling ? (
+                <div className={styles.pauseMark} aria-hidden="true" />
+              ) : (
+                <div className={styles.spinner}></div>
+              )}
+              {showOrganizeStatusTitle ? (
+                <span className={styles.migTitle}>{batchEmbedStatusTitle}</span>
+              ) : null}
+              {surface !== 'organize' && batchEmbedActionButtons}
+            </div>
+          ) : null}
           {ragState.phases ? (
             <ul className={styles.phaseList}>
               {MEMORY_ORGANIZE_PHASE_IDS.map((id) => {
                 const item = phaseCountForId(ragState.phases!, id)
-                const status = resolvePhaseRowStatus(id, ragState.phase, item)
+                const status = resolvePhaseRowStatus(id, ragState.phase, item, ragState.phases)
                 const label = t(ragBatchEmbedPhaseLabelKey(id), id)
                 const value =
                   status === 'skipped'
@@ -263,6 +270,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               </div>
             </>
           )}
+          {surface === 'organize' && batchEmbedActionButtons}
         </div>
       )}
 

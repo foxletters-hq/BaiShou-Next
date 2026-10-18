@@ -34,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px 16px;
+  padding: var(--spacing-md-plus) var(--spacing-xl) var(--spacing-md);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
@@ -52,7 +52,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 32px 48px;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -63,7 +63,7 @@
 }
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* ── Dialog presentation (desktop modal) ── */
@@ -119,7 +119,7 @@
 .headerDialog {
   position: relative;
   flex-shrink: 0;
-  padding: 28px 20px 14px;
+  padding: var(--spacing-lg) var(--spacing-md-plus) var(--spacing-md-snug);
   animation: none;
 }
 
@@ -131,13 +131,13 @@
 .titleRow {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .titleIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -150,13 +150,13 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
 .headerSubtitle {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.45;
   color: var(--theme-on-surface-variant);
   font-weight: 400;
@@ -166,7 +166,7 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--theme-on-surface-variant);
   display: inline-flex;
@@ -175,8 +175,8 @@
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .dialogCloseBtn:hover {
@@ -185,21 +185,21 @@
 }
 
 .scrollAreaDialog {
-  padding: 8px 20px 20px;
+  padding: var(--spacing-sm) var(--spacing-md-plus) var(--spacing-md-plus);
 }
 
 .containerDialog .tabSwitcherWrapper {
   position: sticky;
   top: 0;
   z-index: 2;
-  margin-bottom: 16px;
-  padding-top: 2px;
+  margin-bottom: var(--spacing-md);
+  padding-top: var(--spacing-2xs);
   background: linear-gradient(to bottom, var(--bg-surface) 75%, transparent);
 }
 
 .containerDialog .cardMain {
   align-items: center;
-  padding: 12px 4px;
+  padding: var(--spacing-md-tight) var(--spacing-xs);
 }
 
 .containerDialog .title {
@@ -207,16 +207,16 @@
 }
 
 .containerDialog .categoryHeader {
-  padding: 0 0 8px;
+  padding: 0 0 var(--spacing-sm);
   margin-bottom: 0;
 }
 
 .containerDialog .pageCard {
-  border-radius: 10px;
+  border-radius: var(--radius-control);
 }
 
 .tabSwitcherWrapper {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .contentArea {
@@ -230,7 +230,7 @@
 .pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   /* 勿 hidden：卡内绝对定位下拉会被裁切 */
   overflow: visible;
   display: flex;
@@ -241,7 +241,7 @@
 .categoryGroup {
   display: flex;
   flex-direction: column;
-  padding: 16px 20px;
+  padding: var(--spacing-md) var(--spacing-md-plus);
   border-bottom: 1px solid var(--border-card);
   background: transparent;
 }
@@ -253,8 +253,8 @@
 .categoryHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 0 10px;
+  gap: var(--spacing-sm);
+  padding: 0 0 var(--spacing-sm-plus);
   margin: 0;
   color: var(--text-primary);
 }
@@ -286,13 +286,13 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 8px 12px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight) var(--spacing-md-tight);
 }
 
 .toolCard {
   border: none;
-  border-radius: 8px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -314,13 +314,13 @@
 .cardMain {
   display: flex;
   align-items: center;
-  padding: 10px 8px;
-  gap: 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
+  gap: var(--spacing-md-tight);
 }
 
 .toolIconWrapper {
-  padding: 6px;
-  border-radius: 8px;
+  padding: var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -343,7 +343,7 @@
 }
 
 .toolEmoji {
-  font-size: 16px;
+  font-size: var(--settings-font-shell-title-size);
   line-height: 1;
 }
 
@@ -358,7 +358,7 @@
 .toolNameRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -376,10 +376,10 @@
 }
 
 .toolIdTag {
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   background-color: var(--theme-surface-container-highest);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--theme-on-surface-variant);
   font-family: var(--font-family);
   white-space: nowrap;
@@ -387,10 +387,10 @@
 }
 
 .toolMeta {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--theme-on-surface-variant);
   line-height: 1.4;
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 /* Parameters section */
@@ -401,12 +401,12 @@
 
 .paramsDivider {
   height: 1px;
-  margin: 0 16px;
+  margin: 0 var(--spacing-md);
   background-color: var(--theme-outline-variant-50);
 }
 
 .paramsConfigArea {
-  padding: 12px 16px 16px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md) var(--spacing-md);
 }
 
 .paramItem {
@@ -418,12 +418,12 @@
 .paramLabelGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   color: var(--theme-on-surface-variant);
 }
 
 .paramLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface);
 }
 
@@ -431,7 +431,7 @@
   display: flex;
   align-items: center;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--form-field-border, var(--border-control));
   background: var(--form-field-bg, var(--bg-surface));
 }
@@ -475,7 +475,7 @@
   border-left: 1px solid var(--border-muted);
   border-right: 1px solid var(--border-muted);
   background: transparent;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--theme-primary);
   text-align: center;
@@ -501,18 +501,18 @@
 
 .communityIcon {
   color: var(--theme-outline-30);
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .communityTitle {
   font-size: var(--settings-font-section-size);
   font-weight: 500;
   color: var(--theme-on-surface-variant);
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .communityDesc {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-outline);
   margin: 0;
 }
@@ -532,12 +532,12 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
   flex-shrink: 0;
 }
 
@@ -559,7 +559,7 @@
 .emojiPopupContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   height: 480px;
 }
 
@@ -568,13 +568,13 @@
 .emojiManageSection {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1;
   min-height: 0;
 }
 
 .emojiManageLabel {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
   color: var(--theme-on-surface-variant);
   text-transform: uppercase;
@@ -591,15 +591,15 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  padding-right: 4px;
+  padding-right: var(--spacing-xs);
 }
 
 .emojiCard {
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-card);
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
   background: var(--bg-surface);
   width: 90px;
   height: 116px;
@@ -625,7 +625,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 4px;
+  padding: var(--spacing-xs);
 }
 
 .emojiPlaceholder {
@@ -635,8 +635,8 @@
 .emojiCardFooter {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   border-top: 1px solid var(--border-muted);
   flex-shrink: 0;
   height: 26px;
@@ -654,7 +654,7 @@
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   line-height: 1.2;
   color: var(--theme-on-surface);
   outline: none;
@@ -674,12 +674,12 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: none;
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
   flex-shrink: 0;
 }
 
@@ -693,15 +693,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 90px;
   height: 116px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px dashed var(--border-control);
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .emojiAddCard:hover:not(:disabled) {
@@ -720,7 +720,7 @@
 }
 
 .emojiAddText {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 500;
 }
 
@@ -729,15 +729,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 8px;
-  gap: 8px;
+  padding: var(--spacing-md) var(--spacing-sm);
+  gap: var(--spacing-sm);
   width: 90px;
   height: 116px;
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
 }
 
 .emojiEmptyHint:hover {
@@ -754,7 +754,7 @@
 }
 
 .emojiEmptyText {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--theme-on-surface-variant);
   text-align: center;
   margin: 0;
@@ -762,11 +762,11 @@
 }
 
 .emojiPopupAuthor {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--theme-on-surface-variant);
   opacity: 0.6;
   text-align: center;
-  padding-top: 4px;
+  padding-top: var(--spacing-xs);
   flex-shrink: 0;
 }
 
@@ -775,7 +775,7 @@
 .emojiPopupContent {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md-plus);
   min-width: 360px;
 }
 
@@ -784,11 +784,11 @@
 .emojiBackBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   border: none;
   background: transparent;
   color: var(--theme-primary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -801,9 +801,9 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   height: 52px;
-  padding: 0 24px;
+  padding: 0 var(--spacing-lg);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   z-index: 5;
@@ -811,7 +811,7 @@
 }
 
 .emojiPageTitle {
-  font-size: 15px;
+  font-size: var(--settings-font-section-size);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
@@ -821,7 +821,7 @@
 }
 
 .emojiPageScroll {
-  padding-top: 20px;
+  padding-top: var(--spacing-md-plus);
 }
 
 .emojiSubHeader {
@@ -831,26 +831,26 @@
 .emojiSectionToolbar {
   display: flex;
   justify-content: flex-end;
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
 }
 
 .emojiSettingsPage {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .emojiInlinePanel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .emojiInlineToolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0 0;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0 0;
 }
 
 .emojiSearchField {
@@ -858,11 +858,11 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   height: 32px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--theme-on-surface-variant);
 }
@@ -887,14 +887,14 @@
 .emojiInlineAddBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   height: 32px;
-  padding: 0 10px;
+  padding: 0 var(--spacing-sm-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--theme-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -913,8 +913,8 @@
 .emojiInlineRow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm-plus) 0;
 }
 
 .emojiInlineRow + .emojiInlineRow {
@@ -925,11 +925,11 @@
   border: none;
   background: transparent;
   color: var(--theme-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   flex-shrink: 0;
 }
 
@@ -938,8 +938,8 @@
 }
 
 .emojiInlineEmpty {
-  padding: 16px 4px;
-  font-size: 13px;
+  padding: var(--spacing-md) var(--spacing-xs);
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   color: var(--theme-on-surface-variant);
 }
@@ -947,14 +947,14 @@
 .emojiInlinePager {
   display: flex;
   justify-content: center;
-  padding: 4px 0 0;
+  padding: var(--spacing-xs) 0 0;
 }
 
 .emojiManageModalTitle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
 }
 
@@ -962,7 +962,7 @@
   border: none;
   background: transparent;
   color: var(--theme-error);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -971,7 +971,7 @@
 .emojiDialogBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   min-height: 320px;
   max-height: 56vh;
   overflow: hidden;
@@ -984,24 +984,24 @@
 .emojiDialogField {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .emojiDialogToolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .emojiGroupAddRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
-  padding: 10px 8px;
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--theme-on-surface);
   cursor: pointer;
@@ -1017,7 +1017,7 @@
 .emojiGroupTile {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1038,7 +1038,7 @@
 .emojiGroupTile {
   background-color: var(--theme-primary-container-50);
   color: var(--theme-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   overflow: hidden;
 }
@@ -1052,21 +1052,21 @@
 
 .emojiEnableCard {
   border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   background: var(--theme-surface-container-low);
 }
 
 .emojiEnableRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .emojiEnableIcon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1078,13 +1078,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .emojiEnableTitleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .emojiEnableTitle {
@@ -1105,11 +1105,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
 }
 
 .emojiSectionTitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -1119,28 +1119,28 @@
 .emojiAddGroupBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   border: none;
   background: transparent;
   color: var(--theme-primary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   margin-left: auto;
 }
 
 .emojiGroupList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .emojiGroupCard {
   display: flex;
   align-items: center;
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--theme-surface-container-low);
   overflow: hidden;
 }
@@ -1149,8 +1149,8 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-snug) var(--spacing-md);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -1165,7 +1165,7 @@
 }
 
 .emojiGroupMeta {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface-variant);
 }
 
@@ -1174,8 +1174,8 @@
   background: transparent;
   color: var(--theme-error);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1189,8 +1189,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md-snug);
   border: none;
   border-bottom: 1px solid var(--border-muted);
   background: transparent;
@@ -1201,7 +1201,7 @@
 .emojiEntryIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1213,7 +1213,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .emojiEntryTitle {
@@ -1223,7 +1223,7 @@
 }
 
 .emojiEntryMeta {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface-variant);
 }
 
@@ -1233,16 +1233,16 @@
 
 .emojiNameCard {
   border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--theme-surface-container-low);
 }
 
 .emojiFieldLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--theme-on-surface-variant);
 }
@@ -1251,8 +1251,8 @@
   width: 100%;
   height: 32px;
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 8px;
-  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--spacing-md-tight);
   font-size: var(--settings-font-row-size);
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--theme-on-surface);
@@ -1271,23 +1271,23 @@
 .emojiStickerGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .emojiStickerCard {
   border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm-plus);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--theme-surface-container-low);
 }
 
 .emojiStickerPreview {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1303,9 +1303,9 @@
 
 .emojiStickerNameInput {
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
+  font-size: var(--settings-font-desc-size);
   background: var(--theme-surface);
   color: var(--theme-on-surface);
 }
@@ -1323,16 +1323,16 @@
   align-items: center;
   justify-content: center;
   min-height: 140px;
-  padding: 24px;
+  padding: var(--spacing-lg);
   text-align: center;
   color: var(--theme-on-surface-variant);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   white-space: nowrap;
 }
 
 .emojiSettingsEmpty {
-  padding: 24px;
+  padding: var(--spacing-lg);
   text-align: center;
   color: var(--theme-on-surface-variant);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
 }
