@@ -26,6 +26,12 @@ describe('Native StreamingBubble timeline chrome', () => {
     expect(src).not.toContain('<AgentGatePartCard')
   })
 
+  it('should not keep the think spinner spinning after reasoning has finished', () => {
+    expect(src).toContain('isThinkLoading={isReasoning && !error}')
+    expect(src).toContain('isLoading={isReasoning}')
+    expect(src).not.toContain('isLoading={isReasoning || isThinkStreaming}')
+  })
+
   it('should wait until the text stream ends before showing stickers after the timeline', () => {
     expect(src).toContain('showStickerAttachments')
     expect(src).toContain('hasAttachments && !isTextStreaming')

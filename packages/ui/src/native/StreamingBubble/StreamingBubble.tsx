@@ -10,17 +10,22 @@ import {
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../theme'
 import { AgentThinkSection } from '../AgentThinkSection'
+import { AgentProcessSection } from '../AgentProcessSection'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
 import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
 import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
-import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
+import {
+  getChatBubbleOverBackgroundStyle,
+  getChatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { NativeChatBubbleAttachments } from '../ChatBubble/NativeChatBubbleAttachments'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
@@ -38,11 +43,15 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   error = null,
   onRetry,
   invertMetaOverBackground = false,
+  hasChatBackground = false,
   reserveActionBarSpace = false,
   attachments = []
 }: NativeStreamingBubbleProps) {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
+  const hasBackground = Boolean(hasChatBackground || invertMetaOverBackground)
+  const metaTone = invertMetaOverBackground || (hasBackground ? 'dark' : false)
+  const metaTextStyle = getChatOverBackgroundMetaTextStyle(metaTone)
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
@@ -82,7 +91,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
         emoji={aiProfile.emoji}
         avatarPath={aiProfile.avatarPath}
         resolvedAvatarUri={aiProfile.resolvedAvatarUri}
-        style={{ marginRight: 8 }}
+        style={{ marginRight: sharedTokens.spacing.sm }}
       />
 
       <View
@@ -94,13 +103,16 @@ export const StreamingBubble = React.memo(function StreamingBubble({
       >
         {hasBody ? (
           <>
-            <View style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}>
+            <View
+              collapsable={false}
+              style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}
+            >
               <Text
                 style={[
                   chatBubbleStyles.nameLabel,
                   chatBubbleStyles.nameLabelAssistant,
                   { color: colors.textSecondary },
-                  invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
+                  metaTextStyle
                 ]}
               >
                 {aiName}
@@ -111,10 +123,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
               style={[
                 chatBubbleStyles.bubble,
                 chatBubbleStyles.bubbleEditing,
-                {
-                  backgroundColor: colors.bgSurface,
-                  borderBottomLeftRadius: 4
-                }
+                getChatBubbleOverBackgroundStyle(hasBackground, isDark, colors),
+                { borderBottomLeftRadius: sharedTokens.radius.xs }
               ]}
             >
               <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">
@@ -122,6 +132,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                   <AssistantDisplayTimeline
                     items={timelineItems}
                     isStreaming={!error}
+                    isThinkLoading={isReasoning && !error}
                     isThinkStreaming={(isThinkStreaming || isReasoning) && !error}
                     isTextStreaming={isTextStreaming && !error}
                     error={error}
@@ -130,23 +141,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                   />
                 ) : (
                   <>
-                    {hasReasoning && (
-                      <View
-                        style={{
-                          marginBottom: hasText || hasTools ? tokens.spacing.sm : 0,
-                          alignSelf: 'stretch',
-                          width: '100%'
-                        }}
-                      >
-                        <AgentThinkSection
-                          content={cleanReasoning}
-                          isLoading={isReasoning || isThinkStreaming}
-                          isMarkdownStreaming={isThinkStreaming || isReasoning}
-                        />
-                      </View>
-                    )}
-
-                    {hasTools ? (
+                    {hasReasoning || hasTools ? (
                       <View
                         style={{
                           marginBottom: hasText ? tokens.spacing.sm : 0,
@@ -154,17 +149,53 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                           width: '100%'
                         }}
                       >
-                        <ToolResultGroupCard
-                          completedTools={completedTools.map((tool, idx) => ({
+                        <AgentProcessSection
+                          reasoningContent={hasReasoning ? cleanReasoning : undefined}
+                          isReasoningLoading={isReasoning}
+                          isReasoningStreaming={isThinkStreaming || isReasoning}
+                          streamingCompletedTools={completedTools.map((tool, idx) => ({
                             name: tool.name,
                             durationMs: tool.durationMs ?? 0,
                             toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
-                            startTime: tool.toolCallId ?? idx,
                             result: tool.result,
                             args: tool.args
                           }))}
                           activeToolName={error ? null : activeToolName}
-                        />
+                          isStreaming={!error}
+                          hasAnswerText={hasText}
+                        >
+                          {hasReasoning && (
+                            <View
+                              style={{
+                                marginBottom: hasTools ? tokens.spacing.sm : 0,
+                                alignSelf: 'stretch',
+                                width: '100%'
+                              }}
+                            >
+                              <AgentThinkSection
+                                content={cleanReasoning}
+                                isLoading={isReasoning}
+                                isMarkdownStreaming={isThinkStreaming || isReasoning}
+                              />
+                            </View>
+                          )}
+
+                          {hasTools ? (
+                            <View style={{ alignSelf: 'stretch', width: '100%' }}>
+                              <ToolResultGroupCard
+                                completedTools={completedTools.map((tool, idx) => ({
+                                  name: tool.name,
+                                  durationMs: tool.durationMs ?? 0,
+                                  toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
+                                  startTime: tool.toolCallId ?? idx,
+                                  result: tool.result,
+                                  args: tool.args
+                                }))}
+                                activeToolName={error ? null : activeToolName}
+                              />
+                            </View>
+                          ) : null}
+                        </AgentProcessSection>
                       </View>
                     ) : null}
 
@@ -210,7 +241,13 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                   alignSelf: 'flex-start'
                 })}
               >
-                <Text style={{ fontSize: 14, color: colors.onError, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    fontSize: mobileTypography.secondary.fontSize,
+                    color: colors.onError,
+                    fontWeight: '600'
+                  }}
+                >
                   {t('common.retry', '重试')}
                 </Text>
               </Pressable>

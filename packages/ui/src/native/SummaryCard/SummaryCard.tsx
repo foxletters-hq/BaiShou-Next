@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface SummaryCardProps {
   id: string
@@ -62,10 +63,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    marginVertical: 8,
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.mdPlus,
+    marginHorizontal: sharedTokens.spacing.mdPlus,
+    marginVertical: sharedTokens.spacing.sm,
     borderWidth: 1,
     borderStyle: 'solid'
   },
@@ -73,23 +74,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.sm
   },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  date: { fontSize: 12, opacity: 0.6 },
-  title: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  badgeText: { fontSize: mobileTypography.caption.fontSize, fontWeight: '600' },
+  date: { fontSize: mobileTypography.caption.fontSize, opacity: 0.6 },
+  title: {
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm
+  },
   contentContainer: { height: 150, overflow: 'hidden' },
-  snippet: { fontSize: 14, lineHeight: 21, opacity: 0.8 },
+  snippet: { fontSize: mobileTypography.secondary.fontSize, lineHeight: 21, opacity: 0.8 },
   actionsBox: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 16
+    marginTop: sharedTokens.spacing.md
   },
-  actionBtn: { padding: 4 },
-  deleteIcon: { fontSize: 16, opacity: 0.5 }
+  actionBtn: { padding: sharedTokens.spacing.xs },
+  deleteIcon: { fontSize: mobileTypography.primary.fontSize, opacity: 0.5 }
 })

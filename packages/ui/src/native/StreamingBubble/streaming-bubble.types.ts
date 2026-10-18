@@ -35,8 +35,10 @@ export interface NativeStreamingBubbleProps {
   }
   error?: string | null
   onRetry?: () => void
-  /** 自定义聊天背景上为名称启用反色混合 */
-  invertMetaOverBackground?: boolean
+  /** 自定义聊天背景上为名称启用纯黑/纯白反色 */
+  invertMetaOverBackground?: 'light' | 'dark' | boolean
+  /** 是否存在自定义聊天背景 */
+  hasChatBackground?: boolean
   /** 流结束交接期：预留与 ChatBubble 操作栏等高的空间，避免列表跳动 */
   reserveActionBarSpace?: boolean
   /** 流式阶段尚未落库的表情包附件 */

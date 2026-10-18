@@ -12,6 +12,7 @@ import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { CollapsibleHeight } from '../CollapsibleHeight'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 const DEFAULT_MAX_PREVIEW_LINES = 3
 const PREVIEW_LINE_HEIGHT = 14
@@ -224,8 +225,8 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
 const styles = StyleSheet.create({
   shell: {
     width: '100%',
-    marginBottom: 8,
-    borderRadius: 16,
+    marginBottom: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
     overflow: 'hidden'
@@ -233,33 +234,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.smPlus,
     minHeight: 42
   },
   headerIcon: {
-    fontSize: 14,
+    fontSize: mobileTypography.body.fontSize,
     width: 24,
     textAlign: 'center',
-    marginRight: 8,
+    marginRight: sharedTokens.spacing.sm,
     lineHeight: 16
   },
   headerTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     lineHeight: 19
   },
   previewBody: {
-    paddingHorizontal: 14,
-    paddingTop: 4,
-    paddingBottom: 6,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingTop: sharedTokens.spacing.xs,
+    paddingBottom: sharedTokens.spacing.xsPlus,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   body: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingTop: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.smPlus,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   previewContainer: {
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start'
   },
   previewLine: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: PREVIEW_LINE_HEIGHT,
     opacity: 0.68
   },
