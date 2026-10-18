@@ -38,13 +38,14 @@ pnpm ci:check
 | 步骤 | 实际命令                                               |
 | ---- | ------------------------------------------------------ |
 | 1    | `pnpm install --frozen-lockfile`                       |
-| 2    | `pnpm sync:check`                                      |
-| 3    | `pnpm typecheck`                                       |
+| 2    | `pnpm format:check`                                    |
+| 3    | `pnpm sync:check`                                      |
 | 4    | `pnpm audit:cache-invalidation`                        |
-| 5    | `pnpm test`                                            |
-| 6    | `pnpm --filter @baishou/mobile run build:diary-editor` |
-| 7    | `pnpm lint`                                            |
-| 8    | `pnpm format:check`                                    |
+| 5    | `pnpm lint`                                            |
+| 6    | `pnpm lint:css`                                        |
+| 7    | `pnpm typecheck`                                       |
+| 8    | `pnpm test`                                            |
+| 9    | `pnpm --filter @baishou/mobile run build:diary-editor` |
 
 实现入口：`package.json` 的 `ci:check` → `scripts/ci-check-runner.mjs` → `scripts/ci-check.ps1`（Windows）或 `scripts/ci-check.sh`（macOS/Linux）。需要时可打开这些文件核对，不是黑盒。
 

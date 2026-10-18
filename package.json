@@ -30,7 +30,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "lint:css": "stylelint \"apps/**/*.css\" \"packages/**/*.css\"",
+    "lint:css": "stylelint --cache --cache-location .stylelintcache \"apps/**/*.css\" \"packages/**/*.css\"",
     "lint:baseline": "node scripts/print-lint-warning-baseline.mjs",
     "clean": "turbo run clean",
     "db:generate": "turbo run db:generate --filter=@baishou/database",

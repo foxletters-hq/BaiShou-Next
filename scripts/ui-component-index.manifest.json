@@ -203,6 +203,7 @@
       "AgentMarkdown",
       "ThinkingBlock",
       "AgentThinkSection",
+      "AgentProcessSection",
       "MessageActionBar",
       "KnowledgeCitationBlock"
     ],
