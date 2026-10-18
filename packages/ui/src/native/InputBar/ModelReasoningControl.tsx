@@ -20,6 +20,7 @@ import { useNativeTheme } from '../theme'
 import { ProviderBrandIcon } from '../ProviderBrandIcon'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import { computeModelReasoningPanelLayout } from './model-reasoning-panel-layout.util'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ModelReasoningProvider {
   id: string
@@ -42,6 +43,7 @@ export interface ModelReasoningControlProps {
     options: ReasoningEffortSetting[]
     onChange: (value: ReasoningEffortSetting) => void
   }
+  hasChatBackground?: boolean
 }
 
 export function ModelReasoningControl({
@@ -52,10 +54,11 @@ export function ModelReasoningControl({
   providers = [],
   onSelectModel,
   onManageProviders,
-  reasoningEffort
+  reasoningEffort,
+  hasChatBackground = false
 }: ModelReasoningControlProps) {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const triggerRef = useRef<View>(null)
@@ -131,7 +134,7 @@ export function ModelReasoningControl({
               backgroundColor: 'transparent',
               borderColor: 'transparent',
               borderWidth: 0,
-              paddingHorizontal: 4,
+              paddingHorizontal: sharedTokens.spacing.xs,
               maxWidth: Math.min(220, windowWidth - 140)
             }
           ]}
@@ -182,8 +185,16 @@ export function ModelReasoningControl({
                 right: panelLayout.right,
                 width: panelLayout.width,
                 maxHeight: panelLayout.maxHeight,
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderMuted
+                backgroundColor: hasChatBackground
+                  ? isDark
+                    ? 'rgba(30, 30, 34, 0.92)'
+                    : 'rgba(255, 255, 255, 0.94)'
+                  : colors.bgSurface,
+                borderColor: hasChatBackground
+                  ? isDark
+                    ? 'rgba(255, 255, 255, 0.15)'
+                    : 'rgba(0, 0, 0, 0.10)'
+                  : colors.borderMuted
               }
             ]}
           >
@@ -208,8 +219,16 @@ export function ModelReasoningControl({
                                 borderColor: colors.primary
                               }
                             : {
-                                backgroundColor: colors.bgSurfaceHigh,
-                                borderColor: colors.borderSubtle
+                                backgroundColor: hasChatBackground
+                                  ? isDark
+                                    ? 'rgba(255, 255, 255, 0.08)'
+                                    : 'rgba(0, 0, 0, 0.04)'
+                                  : colors.bgSurfaceHigh,
+                                borderColor: hasChatBackground
+                                  ? isDark
+                                    ? 'rgba(255, 255, 255, 0.12)'
+                                    : 'rgba(0, 0, 0, 0.06)'
+                                  : colors.borderSubtle
                               }
                         ]}
                       >
@@ -349,20 +368,20 @@ export function ModelReasoningControl({
 const styles = StyleSheet.create({
   trigger: {
     height: 28,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   triggerText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500',
     flexShrink: 1
   },
   triggerEffortText: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '400'
   },
   backdrop: {
@@ -372,104 +391,108 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
     borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    elevation: 8
+    borderRadius: sharedTokens.radius.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.16,
+        shadowRadius: 12
+      },
+      default: {}
+    })
   },
   sectionWrap: {
-    paddingHorizontal: 8
+    paddingHorizontal: sharedTokens.spacing.sm
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3,
-    paddingTop: 2,
-    paddingBottom: 6
+    paddingTop: sharedTokens.spacing.xxs,
+    paddingBottom: sharedTokens.spacing.xsPlus
   },
   effortRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
-    paddingBottom: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingBottom: sharedTokens.spacing.xs
   },
   effortChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
     height: 26,
-    borderRadius: 6,
+    borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
   effortChipLabel: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: 6,
-    marginHorizontal: 4
+    marginVertical: sharedTokens.spacing.xsPlus,
+    marginHorizontal: sharedTokens.spacing.xs
   },
   modelListScroll: {
     maxHeight: 220
   },
   modelListContent: {
-    paddingHorizontal: 4,
-    paddingBottom: 2
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingBottom: sharedTokens.spacing.xxs
   },
   providerGroup: {
-    marginBottom: 6
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   providerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xs
   },
   providerName: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   modelRow: {
     height: 32,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.xsPlus,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   modelInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   modelName: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     flexShrink: 1
   },
   emptyWrap: {
-    paddingVertical: 16,
+    paddingVertical: sharedTokens.spacing.md,
     alignItems: 'center'
   },
   emptyText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   manageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 6
+    gap: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xsPlus
   },
   manageBtnText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   }
 })

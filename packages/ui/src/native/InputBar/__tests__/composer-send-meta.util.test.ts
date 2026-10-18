@@ -13,6 +13,18 @@ describe('buildNativeComposerSend', () => {
     expect(result.modelText).toContain('帮我看这封信')
   })
 
+  it('should synthesize /command display text when the composer only holds a skill cite', () => {
+    const result = buildNativeComposerSend({
+      text: '帮我看这封信',
+      skillRefs: [{ command: 'summarize', content: '请总结要点' }],
+      attachments: []
+    })
+    expect(result.meta?.displayText).toContain('/summarize')
+    expect(result.meta?.displayText).toContain('帮我看这封信')
+    expect(result.meta?.displayText).not.toContain('请总结要点')
+    expect(result.modelText).toContain('请总结要点')
+  })
+
   it('should treat software shortcuts as skills', () => {
     expect(isSkillShortcut({ id: 'a', content: 'x', command: 'a', source: 'software' })).toBe(true)
     expect(isSkillShortcut({ id: 'b', content: 'y' })).toBe(false)

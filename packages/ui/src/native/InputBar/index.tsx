@@ -1,17 +1,19 @@
-import React, { forwardRef } from 'react'
-import { View, TouchableOpacity, Text, Image, ScrollView } from 'react-native'
+import React, { forwardRef, useState } from 'react'
+import { View, TouchableOpacity, Text, Image, ScrollView, StyleSheet } from 'react-native'
 import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 import { LayoutGrid, Maximize2, Menu, Minimize2, Send } from 'lucide-react-native'
 import { Input } from '../Input/Input'
 import { InlinePromptShortcutList } from './InlinePromptShortcutList'
 import { resolveInputBarPrimaryAction } from '../../shared/input-bar-primary-action.util'
 import { LucideIcon } from '../icons/LucideIcon'
-import { INPUT_MIN_HEIGHT } from './input-bar-height.util'
+import { INPUT_MIN_HEIGHT, TOOLBAR_MAX_HEIGHT } from './input-bar-height.util'
 import { nativeInputBarStyles as styles } from './native-input-bar.styles'
 import { InputBarToolbar } from './InputBarToolbar'
 import { ReasoningEffortControl } from './ReasoningEffortControl'
 import { ModelReasoningControl } from './ModelReasoningControl'
 import { useNativeInputBar } from './useNativeInputBar'
+import { NativeSkillCiteChip } from '../ChatBubble/NativeSkillCiteChip'
+import { SkillCitePreviewDialog } from '../ChatBubble/SkillCitePreviewDialog'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 
 export type { InputBarProps, InputBarRef, InputBarModelSelector } from './input-bar.types'
@@ -20,13 +22,20 @@ export { ModelReasoningControl } from './ModelReasoningControl'
 export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
   const bar = useNativeInputBar(props, ref)
   const { colors, t } = bar
+  const hasChatBackground = Boolean(props.hasChatBackground)
+  const [previewSkill, setPreviewSkill] = useState<{ command: string; content: string } | null>(
+    null
+  )
 
-  const toolbarAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: bar.toolbarProgress.value,
-    maxHeight: bar.toolbarProgress.value * 48,
-    marginBottom: 0,
-    overflow: 'hidden' as const
-  }))
+  const toolbarAnimatedStyle = useAnimatedStyle(() => {
+    const progress = bar.toolbarProgress.value
+    return {
+      opacity: progress,
+      maxHeight: progress * TOOLBAR_MAX_HEIGHT,
+      overflow: 'hidden' as const,
+      display: progress <= 0.001 ? ('none' as const) : ('flex' as const)
+    }
+  })
 
   const inputFrameAnimatedStyle = useAnimatedStyle(() => ({
     height: bar.inputHeightSv.value,
@@ -54,37 +63,19 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
             selectedIndex={bar.shortcutHandlers.selectedIndex}
             onSelect={bar.applyComposerShortcut}
             onHeightChange={bar.setShortcutPanelHeight}
+            hasChatBackground={hasChatBackground}
           />
 
           <View
             style={[
               styles.composerChrome,
               {
-                borderTopColor: colors.borderSubtle,
-                backgroundColor: colors.bgSurface
+                borderTopColor: hasChatBackground ? 'transparent' : colors.borderSubtle,
+                borderTopWidth: hasChatBackground ? 0 : StyleSheet.hairlineWidth,
+                backgroundColor: hasChatBackground ? 'transparent' : colors.bgSurface
               }
             ]}
           >
-            {bar.skillRefs.length > 0 ? (
-              <View style={styles.attachmentList}>
-                {bar.skillRefs.map((skill) => (
-                  <View
-                    key={skill.command}
-                    style={[
-                      styles.attachmentChip,
-                      {
-                        borderColor: colors.borderMuted,
-                        backgroundColor: colors.bgSurfaceHigh
-                      }
-                    ]}
-                  >
-                    <Text style={{ color: colors.primary }} numberOfLines={1}>
-                      /{skill.command}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
             {bar.attachments.length > 0 && (
               <ScrollView
                 horizontal
@@ -135,36 +126,66 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
             <View
               style={[
                 styles.composerShell,
-                {
-                  backgroundColor: bar.isDark ? colors.bgSurfaceHigh : colors.bgSurface,
-                  borderColor: colors.borderStrong
-                }
+                hasChatBackground
+                  ? {
+                      backgroundColor: bar.isDark
+                        ? 'rgba(32, 33, 37, 0.85)'
+                        : 'rgba(255, 255, 255, 0.88)',
+                      borderColor: bar.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)'
+                    }
+                  : {
+                      backgroundColor: bar.isDark ? colors.bgSurfaceHigh : colors.bgSurface,
+                      borderColor: colors.borderStrong
+                    }
               ]}
             >
               <Animated.View
-                style={[
-                  toolbarAnimatedStyle,
-                  bar.showToolbar
-                    ? [styles.toolbarAttached, { borderBottomColor: colors.borderMuted }]
-                    : null
-                ]}
+                style={toolbarAnimatedStyle}
                 pointerEvents={bar.showToolbar ? 'auto' : 'none'}
               >
-                <InputBarToolbar
-                  colors={colors}
-                  onUploadAttachment={() => void bar.handleUploadAttachment()}
-                  onShortcutPress={bar.handleShortcutPress}
-                  onRecall={bar.onRecall}
-                  onOpenNotebookMount={bar.onOpenNotebookMount}
-                  searchMode={bar.searchMode}
-                  onToggleSearchMode={bar.onToggleSearchMode}
-                  ttsMode={bar.ttsMode}
-                  onToggleTtsMode={bar.onToggleTtsMode}
-                  onOpenTools={bar.onOpenTools}
-                />
+                <View
+                  style={[
+                    styles.toolbarAttached,
+                    {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: hasChatBackground
+                        ? bar.isDark
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(0, 0, 0, 0.06)'
+                        : colors.borderMuted
+                    }
+                  ]}
+                >
+                  <InputBarToolbar
+                    colors={colors}
+                    isDark={bar.isDark}
+                    hasChatBackground={hasChatBackground}
+                    onUploadAttachment={() => void bar.handleUploadAttachment()}
+                    onShortcutPress={bar.handleShortcutPress}
+                    onRecall={bar.onRecall}
+                    onOpenNotebookMount={bar.onOpenNotebookMount}
+                    searchMode={bar.searchMode}
+                    onToggleSearchMode={bar.onToggleSearchMode}
+                    ttsMode={bar.ttsMode}
+                    onToggleTtsMode={bar.onToggleTtsMode}
+                    onOpenTools={bar.onOpenTools}
+                  />
+                </View>
               </Animated.View>
 
               <View pointerEvents={bar.composerEnabled ? 'auto' : 'none'} style={styles.inputCard}>
+                {bar.skillRefs.length > 0 ? (
+                  <View style={styles.skillCiteRow}>
+                    {bar.skillRefs.map((skill) => (
+                      <NativeSkillCiteChip
+                        key={skill.command}
+                        command={skill.command}
+                        onPress={() => setPreviewSkill(skill)}
+                        onRemove={() => bar.removeSkillRef(skill.command)}
+                      />
+                    ))}
+                  </View>
+                ) : null}
                 <View
                   style={[
                     styles.topRow,
@@ -248,6 +269,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                         reasoningEffort={
                           props.modelSelector.reasoningEffort || props.reasoningEffort
                         }
+                        hasChatBackground={hasChatBackground}
                       />
                     ) : props.reasoningEffort && props.reasoningEffort.options.length > 0 ? (
                       <ReasoningEffortControl
@@ -273,12 +295,19 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                         style={[
                           styles.sendBtn,
                           {
-                            backgroundColor: colors.bgSurface,
+                            backgroundColor: hasChatBackground
+                              ? bar.isDark
+                                ? 'rgba(255, 255, 255, 0.12)'
+                                : 'rgba(255, 255, 255, 0.75)'
+                              : colors.bgSurface,
                             borderWidth: 1,
-                            borderColor:
-                              !bar.text.trim() &&
-                              bar.attachments.length === 0 &&
-                              bar.skillRefs.length === 0
+                            borderColor: hasChatBackground
+                              ? bar.isDark
+                                ? 'rgba(255, 255, 255, 0.12)'
+                                : 'rgba(0, 0, 0, 0.08)'
+                              : !bar.text.trim() &&
+                                  bar.attachments.length === 0 &&
+                                  bar.skillRefs.length === 0
                                 ? colors.borderSubtle
                                 : colors.borderControl
                           },
@@ -315,6 +344,12 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
           </View>
         </View>
       </View>
+      <SkillCitePreviewDialog
+        visible={Boolean(previewSkill)}
+        command={previewSkill?.command ?? ''}
+        content={previewSkill?.content ?? ''}
+        onClose={() => setPreviewSkill(null)}
+      />
     </View>
   )
 })

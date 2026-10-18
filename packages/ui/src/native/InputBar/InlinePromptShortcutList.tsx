@@ -8,7 +8,10 @@ import {
   localizePromptShortcut
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
+import { FolderOpen, Sparkles } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { LucideIcon } from '../icons/LucideIcon'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 const PANEL_MAX_HEIGHT = 220
 const HEADER_BLOCK_HEIGHT = 32
@@ -47,6 +50,7 @@ export interface InlinePromptShortcutListProps {
   onSelect: (shortcut: PromptShortcut) => void
   /** 面板实际高度（含间距），供外层预留下方分割线位置不变的触摸区 */
   onHeightChange?: (height: number) => void
+  hasChatBackground?: boolean
 }
 
 type ShortcutRowProps = {
@@ -75,12 +79,18 @@ const ShortcutRow = memo(function ShortcutRow({
         }
       ]}
     >
-      <Text style={styles.icon}>{shortcut.icon || '⚡'}</Text>
+      <LucideIcon
+        icon={shortcut.source === 'workspace' ? FolderOpen : Sparkles}
+        size={16}
+        color={colors.textSecondary}
+      />
       <View style={styles.meta}>
-        <Text style={[styles.command, { color: colors.textPrimary }]}>/{command}</Text>
-        {shortcut.name ? (
+        <Text style={[styles.command, { color: colors.textPrimary }]} numberOfLines={1}>
+          {command}
+        </Text>
+        {shortcut.description || shortcut.name ? (
           <Text style={[styles.name, { color: colors.textSecondary }]} numberOfLines={1}>
-            {shortcut.name}
+            {shortcut.description || shortcut.name}
           </Text>
         ) : null}
       </View>
@@ -93,10 +103,11 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
   shortcuts,
   selectedIndex,
   onSelect,
-  onHeightChange
+  onHeightChange,
+  hasChatBackground = false
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const labels = getDefaultShortcutLabelsFromT(t)
   const snapshotRef = useRef({ shortcuts, selectedIndex })
   const onHeightChangeRef = useRef(onHeightChange)
@@ -146,8 +157,16 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
       style={[
         styles.overlay,
         {
-          backgroundColor: colors.bgSurface,
-          borderColor: colors.borderMuted,
+          backgroundColor: hasChatBackground
+            ? isDark
+              ? 'rgba(30, 30, 34, 0.92)'
+              : 'rgba(255, 255, 255, 0.94)'
+            : colors.bgSurface,
+          borderColor: hasChatBackground
+            ? isDark
+              ? 'rgba(255, 255, 255, 0.15)'
+              : 'rgba(0, 0, 0, 0.10)'
+            : colors.borderMuted,
           height: panelBodyHeight
         }
       ]}
@@ -155,7 +174,7 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
       collapsable={false}
     >
       <Text style={[styles.header, { color: colors.textSecondary }]}>
-        {t('shortcut.title', '快捷指令')}
+        {t('shortcut.skill_picker_title', 'Skill')}
       </Text>
       <FlatList
         ref={listRef}
@@ -183,7 +202,7 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
         }}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.textTertiary }]}>
-            {t('shortcut.no_match', '找不到任何匹配的快捷指令...')}
+            {t('shortcut.no_skill_match', '找不到匹配的 Skill')}
           </Text>
         }
         renderItem={({ item, index }) => {
@@ -211,55 +230,58 @@ const styles = StyleSheet.create({
     bottom: '100%',
     marginBottom: INLINE_SHORTCUT_PANEL_GAP,
     zIndex: 30,
-    elevation: 12,
-    borderRadius: 14,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'column',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16
+      },
+      default: {}
+    })
   },
   header: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 6
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.xsPlus
   },
   listContent: {
-    paddingBottom: 6
+    paddingBottom: sharedTokens.spacing.xsPlus
   },
   row: {
     height: ROW_HEIGHT - 6,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
     borderWidth: 1,
-    borderRadius: 10,
-    marginHorizontal: 8,
-    marginBottom: 6
-  },
-  icon: {
-    fontSize: 16,
-    width: 22,
-    textAlign: 'center'
+    borderRadius: sharedTokens.radius.control,
+    marginHorizontal: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   meta: {
     flex: 1,
     minWidth: 0
   },
   command: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   name: {
-    fontSize: 12,
-    marginTop: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   },
   empty: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     textAlign: 'center',
-    paddingVertical: 16
+    paddingVertical: sharedTokens.spacing.md
   }
 })

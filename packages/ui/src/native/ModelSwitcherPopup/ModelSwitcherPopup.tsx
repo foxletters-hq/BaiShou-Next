@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Pressable, FlatList, Modal, SafeAreaView, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { iconSizes, mobileTypography, settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export interface ModelSwitcherPopupProps {
   visible: boolean
@@ -40,7 +41,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
                 ? colors.bgSurfaceNormal
                 : 'transparent',
             borderRadius: tokens.radius.md,
-            gap: 8
+            gap: sharedTokens.spacing.sm
           }
         ]}
         onPress={() => {
@@ -62,7 +63,9 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
             {item.name}
           </Text>
         </View>
-        {isSelected && <Text style={{ color: colors.primary, fontSize: 18 }}>✓</Text>}
+        {isSelected && (
+          <Text style={{ color: colors.primary, fontSize: settingsIcons.trailing }}>✓</Text>
+        )}
       </Pressable>
     )
   }
@@ -132,21 +135,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   headerIcon: {
-    fontSize: 20
+    fontSize: iconSizes.md
   },
   headerText: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   closeIcon: {
-    fontSize: 24
+    fontSize: iconSizes.lg
   },
   list: {
     maxHeight: 350
@@ -154,25 +157,25 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginBottom: 4
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.xs
   },
   itemContent: {
     flex: 1
   },
   providerLabel: {
-    fontSize: 12,
-    marginBottom: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.xxs
   },
   modelName: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   emptyContainer: {
     alignItems: 'center'
   },
   emptyText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   }
 })
