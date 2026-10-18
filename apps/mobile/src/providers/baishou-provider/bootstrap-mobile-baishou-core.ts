@@ -20,10 +20,11 @@ import {
   SummaryFileService,
   VaultService
 } from '@baishou/core-mobile'
-import { AgentSessionService } from '@baishou/ai'
+import { AgentSessionService, TitleGeneratorService } from '@baishou/ai'
 import {
   resolveSummaryTemplatesForGeneration,
   logger,
+  deriveLegacyVaultId,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import {
@@ -42,6 +43,7 @@ import { createMobileFileSystem } from '../../services/create-mobile-file-system
 import { setupMobileLocalFileReader } from '../../services/mobile-local-file-reader.service'
 import { setupMobileImageCompressor } from '../../services/mobile-image-compressor.service'
 import { setupMobileTtsRefAudioReader } from '../../services/mobile-tts-ref-audio.service'
+import { notifyMobileSessionChanged } from '../../services/mobile-session-events'
 import { MobileStoragePathService } from '../../services/path.service'
 import { MobileAttachmentManagerService } from '../../services/mobile-attachment-manager.service'
 import { createMobileSessionDiskPersistenceHooks } from '../../services/session-file-watcher.service'
@@ -133,31 +135,41 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       )
     }
 
-    // 1b. 连接独立 knowledge.db（第二连接单独 loadSqliteVec）
-    try {
-      const knowledgeDbDir = await pathService.getRootDirectory()
-      await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
-      await expoKnowledgeConnectionManager.connect(knowledgeDbDir)
-      const { scheduleConsumeMobileKnowledgeIngestJobs } =
-        await import('../../services/mobile-knowledge-ingest-jobs.consumer')
-      scheduleConsumeMobileKnowledgeIngestJobs('bootstrap')
-      if (expoKnowledgeConnectionManager.isSqliteVecLoaded()) {
-        logger.info('[BaishouProvider] Native sqlite-vec active on knowledge database.')
-      } else {
+    // 1b. 异步连接独立 knowledge.db（第二连接单独 loadSqliteVec，不阻塞主库就绪链路）
+    void (async () => {
+      try {
+        const knowledgeDbDir = await pathService.getRootDirectory()
+        await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
+        await expoKnowledgeConnectionManager.connect(knowledgeDbDir)
+        const { recoverMobileKnowledgeIngestOnStartup } =
+          await import('../../services/mobile-knowledge-ingest-jobs.consumer')
+        void recoverMobileKnowledgeIngestOnStartup().catch((e) => {
+          logger.warn('[BaishouProvider] recover knowledge ingest on startup failed:', e as Error)
+        })
+        if (expoKnowledgeConnectionManager.isSqliteVecLoaded()) {
+          logger.info('[BaishouProvider] Native sqlite-vec active on knowledge database.')
+        } else {
+          logger.warn(
+            '[BaishouProvider] knowledge db sqlite-vec not active:',
+            expoKnowledgeConnectionManager.getSqliteVecLoadReason()
+          )
+        }
+      } catch (knowledgeDbError) {
         logger.warn(
-          '[BaishouProvider] knowledge db sqlite-vec not active:',
-          expoKnowledgeConnectionManager.getSqliteVecLoadReason()
+          '[BaishouProvider] knowledge db connect failed (Ask/检索将不可用):',
+          knowledgeDbError as Error
         )
       }
-    } catch (knowledgeDbError) {
-      logger.warn(
-        '[BaishouProvider] knowledge db connect failed (Ask/检索将不可用):',
-        knowledgeDbError as Error
-      )
-    }
+    })()
 
-    // 3. 构建 Repositories（vault id 解析器稍后挂上活跃仓）
-    let resolveActiveVaultId: () => string | null = () => null
+    // 3. 构建 Repositories（vault id 解析器自动对齐活跃仓，未初始化前兜底）
+    let vaultService: VaultService | null = null
+    const resolveActiveVaultId = (): string => {
+      const active = vaultService?.getActiveVault()
+      if (active?.id) return active.id
+      const name = active?.name?.trim() || 'Personal'
+      return deriveLegacyVaultId(name)
+    }
     const sessionRepo = new SessionRepository(drizzleDb)
     const assistantRepo = new AssistantRepository(drizzleDb, () => resolveActiveVaultId())
     const settingsRepo = new SettingsRepository(drizzleDb)
@@ -244,13 +256,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       () => resolveActiveVaultId()
     )
 
-    const vaultService = new VaultService(pathService, fileSystem)
-    resolveActiveVaultId = () => {
-      const active = vaultService.getActiveVault()
-      if (active?.id) return active.id
-      return null
-    }
-
+    vaultService = new VaultService(pathService, fileSystem)
     const settingsFileService = new SettingsFileService(pathService, fileSystem)
     const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
     const vaultRuntimeDeps = { pathService, vaultService, fileSystem, settingsManager }
@@ -356,6 +362,22 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       hybridSearchService
     }
 
+    // 绑定自动命名成功后的回调：落盘到 JSON 文件并通知移动端前端刷新会话列表
+    TitleGeneratorService.onTitleUpdated = async (sessionId, newTitle) => {
+      try {
+        const runtime = agentDbRuntimeRef.current
+        if (runtime) {
+          await runtime.sessionManager.flushSessionToDisk(sessionId)
+        }
+        notifyMobileSessionChanged(sessionId, newTitle)
+        logger.info(
+          `[AutoTitler Mobile] Title update flushed and broadcasted for ${sessionId}: ${newTitle}`
+        )
+      } catch (e: any) {
+        logger.error('[AutoTitler Mobile] Failed to flush or notify title update:', e)
+      }
+    }
+
     const state: MobileBaishouCoreState = {
       mobileMcpService,
       openAgentDatabase,
@@ -397,27 +419,6 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const nextState = await bootstrapMobileSyncLayer(ctx, state)
     await finalizeVaultRuntimeHandlers(ctx, nextState)
     await finalizeStorageRefHandlers(ctx, nextState)
-    try {
-      const activeVault = vaultService.getActiveVault()
-      if (activeVault) {
-        const { runMobileDerivedIndexHydration } =
-          await import('../../services/mobile-raw-data-source.runtime')
-        const { resolveMobileEmbeddingForHydration } =
-          await import('../../services/mobile-raw-data-source.runtime')
-        const emb = await resolveMobileEmbeddingForHydration(settingsManager)
-        await runMobileDerivedIndexHydration({
-          drizzleDb,
-          vaultId: activeVault.id,
-          vaultName: activeVault.name,
-          vaults: vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name })),
-          embeddingProvider: emb.embeddingProvider,
-          embeddingModelId: emb.embeddingModelId,
-          reason: 'cold-start'
-        })
-      }
-    } catch (e) {
-      logger.warn('[BaishouProvider] derived index hydration skipped:', e as Error)
-    }
     await commitMobileBaishouReadyState(ctx, nextState)
   } catch (e) {
     if (isExternalStorageRequiredError(e)) {

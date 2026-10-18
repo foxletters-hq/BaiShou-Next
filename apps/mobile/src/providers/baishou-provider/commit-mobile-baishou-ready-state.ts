@@ -181,7 +181,9 @@ export async function commitMobileBaishouReadyState(
       reloadAgentGateConfig
     })
     InteractionManager.runAfterInteractions(() => {
-      void runDeferredVaultStartup()
+      setTimeout(() => {
+        void runDeferredVaultStartup()
+      }, 400)
     })
   }
 }

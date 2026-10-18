@@ -1,4 +1,5 @@
 import { htmlToPlainText } from '@baishou/ai'
+import { createAbortTimeoutSignal } from '@baishou/shared'
 
 const MOBILE_BROWSER_HEADERS = {
   'User-Agent':
@@ -9,25 +10,12 @@ const MOBILE_BROWSER_HEADERS = {
 
 const WEB_FETCH_TIMEOUT_MS = 15_000
 
-function createWebFetchSignal(timeoutMs: number): AbortSignal {
-  if (
-    typeof AbortSignal !== 'undefined' &&
-    'timeout' in AbortSignal &&
-    typeof AbortSignal.timeout === 'function'
-  ) {
-    return AbortSignal.timeout(timeoutMs)
-  }
-  const controller = new AbortController()
-  setTimeout(() => controller.abort(), timeoutMs)
-  return controller.signal
-}
-
 /** 获取搜索页原始 HTML（供 local-bing / local-google 解析，对齐桌面端 fetchSearchPage 契约） */
 export async function fetchSearchPageHtml(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
       headers: MOBILE_BROWSER_HEADERS,
-      signal: createWebFetchSignal(WEB_FETCH_TIMEOUT_MS)
+      signal: createAbortTimeoutSignal(WEB_FETCH_TIMEOUT_MS)
     })
     if (!response.ok) {
       return ''

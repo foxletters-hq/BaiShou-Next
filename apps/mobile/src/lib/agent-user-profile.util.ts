@@ -3,6 +3,7 @@ import {
   USER_PROFILE_SETTINGS_KEY,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
+  type UserGender,
   type UserProfile
 } from '@baishou/shared'
 import type { SettingsManagerService, IAttachmentManager, IFileSystem } from '@baishou/core-mobile'
@@ -12,6 +13,11 @@ import { resolveUserAvatarForMobileUi } from './user-avatar-display.util'
 
 export type AgentUserProfileState = {
   nickname: string
+  birthday?: string | null
+  gender?: UserGender | null
+  customGender?: string | null
+  showIdentityInProfile?: boolean
+  shareIdentityWithCompanion?: boolean
   avatarPath?: string | null
   chatBackgroundPath?: string | null
   chatBackgroundBlur?: number
@@ -38,6 +44,11 @@ export function mapSettingsToAgentUserProfile(
 ): AgentUserProfileState {
   return {
     nickname: profile?.nickname?.trim() || fallbackNickname,
+    birthday: profile?.birthday ?? null,
+    gender: profile?.gender ?? null,
+    customGender: profile?.customGender ?? null,
+    showIdentityInProfile: profile?.showIdentityInProfile ?? true,
+    shareIdentityWithCompanion: profile?.shareIdentityWithCompanion ?? true,
     avatarPath: profile?.avatarPath ?? null,
     chatBackgroundPath: profile?.chatBackgroundPath ?? null,
     chatBackgroundBlur: normalizeChatBackgroundBlur(profile?.chatBackgroundBlur),

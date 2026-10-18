@@ -30,7 +30,7 @@ import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from '../../services/mobile-file-
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import { mobileDataBootstrapper } from '../../services/mobile-bootstrapper.service'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import { logger } from '@baishou/shared'
+import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import type { ToolDiarySearcher } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
 import type { VaultService } from '@baishou/core-mobile'
@@ -106,7 +106,13 @@ export function assignReloadAgentDatabaseHandler(
       pathService: vaultCtx.pathService,
       fileSystem: vaultCtx.fileSystem,
       attachmentManager: vaultCtx.attachmentManager,
-      diaryRepoAdapter
+      diaryRepoAdapter,
+      resolveVaultId: () => {
+        const active = vaultCtx.vaultService.getActiveVault()
+        if (active?.id) return active.id
+        const name = active?.name?.trim() || 'Personal'
+        return deriveLegacyVaultId(name)
+      }
     })
     agentDbRuntimeRef.current = newRuntime
 

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import { mobileAgentDbRecovery } from '../../services/mobile-agent-db-recovery.service'
 import { resyncAgentDbCachesFromDisk } from '../../services/mobile-agent-db-resync.util'
@@ -232,7 +232,13 @@ export async function finalizeVaultRuntimeHandlers(
           fileSystem,
           settingsManager,
           diaryRepoAdapter: stack.diaryRepoAdapter,
-          activeVaultName
+          activeVaultName,
+          resolveVaultId: () => {
+            const active = vaultService.getActiveVault()
+            if (active?.id) return active.id
+            const name = active?.name?.trim() || 'Personal'
+            return deriveLegacyVaultId(name)
+          }
         })
         bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
         watcherDeps.summarySyncService = summaryPipeline.summarySyncService
@@ -374,7 +380,13 @@ export async function finalizeVaultRuntimeHandlers(
             fileSystem,
             settingsManager,
             diaryRepoAdapter: stack.diaryRepoAdapter,
-            activeVaultName
+            activeVaultName,
+            resolveVaultId: () => {
+              const active = vaultService.getActiveVault()
+              if (active?.id) return active.id
+              const name = active?.name?.trim() || 'Personal'
+              return deriveLegacyVaultId(name)
+            }
           })
           bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
           watcherDeps.summarySyncService = summaryPipeline.summarySyncService
