@@ -3,6 +3,7 @@ module.exports = function (api) {
   return {
     presets: [['babel-preset-expo', { unstable_transformImportMeta: true }]],
     plugins: [
+      './babel/lucide-native-deep-import.cjs',
       // Reanimated 4.3+ 的 plugin 即 worklets/plugin，不可与 react-native-worklets/plugin 重复注册
       [
         'react-native-reanimated/plugin',
