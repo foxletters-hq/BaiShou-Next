@@ -52,10 +52,19 @@ export class SessionAggregateSync {
     messages.sort((a, b) => a.orderIndex - b.orderIndex)
 
     const parts = await this.db.select().from(partsTbl).where(eq(partsTbl.sessionId, sessionId))
+    const partsByMessageId = new Map<string, typeof parts>()
+    for (const p of parts) {
+      let bucket = partsByMessageId.get(p.messageId)
+      if (!bucket) {
+        bucket = []
+        partsByMessageId.set(p.messageId, bucket)
+      }
+      bucket.push(p)
+    }
 
     const enrichedMessages = messages.map((m) => ({
       ...m,
-      parts: parts.filter((p) => p.messageId === m.id)
+      parts: partsByMessageId.get(m.id) ?? []
     }))
 
     const snapshotRows = await this.db
@@ -246,8 +255,14 @@ export class SessionAggregateSync {
     } else if (rawClient && typeof rawClient.transaction === 'function') {
       await runWithSqliteBusyRetry(async () => {
         const runTx = rawClient.transaction((statements: typeof stmts) => {
+          const stmtCache = new Map<string, any>()
           for (const stmt of statements) {
-            rawClient.prepare(stmt.sql).run(...(stmt.args || []))
+            let prepared = stmtCache.get(stmt.sql)
+            if (!prepared) {
+              prepared = rawClient.prepare(stmt.sql)
+              stmtCache.set(stmt.sql, prepared)
+            }
+            prepared.run(...(stmt.args || []))
           }
         })
         runTx(stmts)

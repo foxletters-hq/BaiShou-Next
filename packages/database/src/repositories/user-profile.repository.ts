@@ -3,6 +3,7 @@ import { systemSettingsTable } from '../schema/system-settings'
 import {
   USER_DEFAULT_AVATAR_SENTINEL,
   isCustomUserAvatar,
+  isBuiltinUserAvatarPath,
   DEFAULT_USER_PROFILE,
   USER_PROFILE_SETTINGS_KEY,
   type UserProfile
@@ -11,7 +12,8 @@ import {
 const KEY = USER_PROFILE_SETTINGS_KEY
 
 function withNormalizedAvatar(profile: UserProfile): UserProfile {
-  if (isCustomUserAvatar(profile.avatarPath)) return profile
+  if (isCustomUserAvatar(profile.avatarPath) || isBuiltinUserAvatarPath(profile.avatarPath))
+    return profile
   return { ...profile, avatarPath: USER_DEFAULT_AVATAR_SENTINEL }
 }
 

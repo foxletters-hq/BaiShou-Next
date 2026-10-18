@@ -198,23 +198,6 @@ export class SessionCrudOps {
     const results = ((await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]).map(
       (row) => withMountedNotebookIds(row)
     )
-    console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${vaultId ?? '*'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
-    )
-    if (results.length === 0 && !searchQuery && normalizedAssistantId && vaultId) {
-      const allDocs = await this.db.select().from(agentSessionsTable)
-      console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
-      if (allDocs.length > 0) {
-        const sampleIds = [...new Set(allDocs.map((row) => row.assistantId ?? '(null)'))].slice(
-          0,
-          5
-        )
-        console.log(
-          `[SessionRepo] assistantId filter=${normalizedAssistantId}, sample assistant_ids in DB:`,
-          sampleIds
-        )
-      }
-    }
     return results
   }
 

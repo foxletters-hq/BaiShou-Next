@@ -48,6 +48,17 @@ describe('UserProfileRepository', () => {
     expect(retrieved.personas['黑客']!.facts['职业']).toBe('赛博黑客')
   })
 
+  it('should preserve builtin avatar paths on retrieval', async () => {
+    const mockProfile = {
+      ...DEFAULT_PROFILE,
+      avatarPath: 'builtin-user:user-preset-6'
+    }
+
+    await repo.saveProfile(mockProfile)
+    const retrieved = await repo.getProfile()
+    expect(retrieved.avatarPath).toBe('builtin-user:user-preset-6')
+  })
+
   it('should gracefully handle bad json', async () => {
     await db.insert((repo as any).table).values({
       key: 'user_profile_data',
