@@ -96,6 +96,7 @@ export function NotebookGraphToolbar({
             </div>
             <SegmentedControl
               inline
+              size="small"
               value={searchMode}
               aria-label={t('graph.search_mode', '搜索模式')}
               onChange={(mode) => {

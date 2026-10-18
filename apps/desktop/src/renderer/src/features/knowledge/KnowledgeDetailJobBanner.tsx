@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal } from '@baishou/ui'
-import { parseKnowledgeGraphStepError } from '@baishou/shared'
+import { parseKnowledgeGraphStepError, splitKnowledgeSourceErrorMessage } from '@baishou/shared'
 import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
 import {
   knowledgeOrganizeCompactKind,
@@ -145,13 +145,15 @@ export function KnowledgeDetailJobBanner({
   status,
   error,
   open,
-  onOpenChange
+  onOpenChange,
+  onContinue
 }: {
   jobProgress: KnowledgeDetailJobProgressView
   status: string
   error: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  onContinue?: () => void
 }) {
   const { t } = useTranslation()
   const sourceRows = useMemo(() => jobProgress.sourceRows ?? [], [jobProgress.sourceRows])
@@ -171,17 +173,19 @@ export function KnowledgeDetailJobBanner({
         : failedStep === 'extract'
           ? t('knowledge.organize_failed_graph_extract', '图谱抽取失败')
           : t('knowledge.organize_failed', '抽取失败')
-    : sourceRows.length > 1
-      ? t('knowledge.organize_count', '正在整理 {{count}} 份资料', { count: sourceRows.length })
-      : compactKind === 'graph'
-        ? t('knowledge.status_graph_organizing', '正在整理图谱')
-        : compactKind === 'graphNodes'
-          ? t('knowledge.organize_phase_graph_nodes_running', '正在整理节点向量')
-          : compactKind === 'embed'
-            ? t('knowledge.status_embedding', '正在建立索引')
-            : compactKind === 'extract'
-              ? t('knowledge.status_extracting', '正在提取文本')
-              : t('knowledge.organize_title', '正在整理')
+    : jobProgress.paused
+      ? t('knowledge.organize_incomplete', '整理未完成')
+      : sourceRows.length > 1
+        ? t('knowledge.organize_count', '正在整理 {{count}} 份资料', { count: sourceRows.length })
+        : compactKind === 'graph'
+          ? t('knowledge.status_graph_organizing', '正在整理图谱')
+          : compactKind === 'graphNodes'
+            ? t('knowledge.organize_phase_graph_nodes_running', '正在整理节点向量')
+            : compactKind === 'embed'
+              ? t('knowledge.status_embedding', '正在建立索引')
+              : compactKind === 'extract'
+                ? t('knowledge.status_extracting', '正在提取文本')
+                : t('knowledge.organize_title', '正在整理')
   const title = jobProgress.failed
     ? jobProgress.currentTitle
       ? failedStep === 'node-embed'
@@ -200,14 +204,21 @@ export function KnowledgeDetailJobBanner({
                 title: jobProgress.currentTitle
               })
       : compactLabel
-    : sourceRows.length > 1
-      ? t('knowledge.organize_count', '正在整理 {{count}} 份资料', { count: sourceRows.length })
-      : jobProgress.currentTitle
-        ? t('knowledge.organize_current', '正在整理「{{title}}」', {
-            title: jobProgress.currentTitle
-          })
-        : compactLabel
-  const jobError = jobProgress.error ? knowledgeIngestUserMessage(jobProgress.error, t) : ''
+    : jobProgress.paused
+      ? t('knowledge.organize_incomplete', '整理未完成')
+      : sourceRows.length > 1
+        ? t('knowledge.organize_count', '正在整理 {{count}} 份资料', { count: sourceRows.length })
+        : jobProgress.currentTitle
+          ? t('knowledge.organize_current', '正在整理「{{title}}」', {
+              title: jobProgress.currentTitle
+            })
+          : compactLabel
+  const jobErrorSplit = splitKnowledgeSourceErrorMessage(jobProgress.error)
+  const jobError = jobErrorSplit.error ? knowledgeIngestUserMessage(jobErrorSplit.error, t) : ''
+  const jobHint = jobErrorSplit.hint ? knowledgeIngestUserMessage(jobErrorSplit.hint, t) : ''
+  const pageErrorSplit = splitKnowledgeSourceErrorMessage(error)
+  const pageError = pageErrorSplit.error ? knowledgeIngestUserMessage(pageErrorSplit.error, t) : ''
+  const pageHint = pageErrorSplit.hint ? knowledgeIngestUserMessage(pageErrorSplit.hint, t) : ''
 
   return (
     <>
@@ -219,7 +230,9 @@ export function KnowledgeDetailJobBanner({
           aria-label={compactLabel}
           onClick={() => onOpenChange(true)}
         >
-          {jobProgress.failed ? null : <span className={styles.organizeSpinner} aria-hidden />}
+          {jobProgress.failed || jobProgress.paused ? null : (
+            <span className={styles.organizeSpinner} aria-hidden />
+          )}
           {compactLabel}
         </Button>
       ) : null}
@@ -266,6 +279,7 @@ export function KnowledgeDetailJobBanner({
           <KnowledgeOrganizePhaseList phases={jobProgress.phases} />
         )}
         {jobError ? <p className={styles.organizeError}>{jobError}</p> : null}
+        {jobHint ? <p className={styles.organizeHint}>{jobHint}</p> : null}
         {sourceRows.length === 0 && jobProgress.items.length > 0 ? (
           <ul className={styles.organizeItemList}>
             {jobProgress.items.map((item) => (
@@ -277,15 +291,29 @@ export function KnowledgeDetailJobBanner({
           </ul>
         ) : null}
         <div className={styles.organizeModalActions}>
+          {jobProgress.paused && onContinue ? (
+            <Button
+              type="button"
+              onClick={() => {
+                onOpenChange(false)
+                onContinue()
+              }}
+            >
+              {t('knowledge.organize_continue', '继续整理')}
+            </Button>
+          ) : null}
           <Button type="button" onClick={() => onOpenChange(false)}>
             {jobProgress.failed
               ? t('common.got_it', '知道了')
-              : t('graph.queue_modal_minimize', '收起，继续整理')}
+              : jobProgress.paused
+                ? t('common.got_it', '知道了')
+                : t('graph.queue_modal_minimize', '收起，继续整理')}
           </Button>
         </div>
       </Modal>
       {status && !jobProgress.visible ? <p className={styles.bannerStatus}>{status}</p> : null}
-      {error ? <p className={styles.bannerError}>{knowledgeIngestUserMessage(error, t)}</p> : null}
+      {pageError ? <p className={styles.bannerError}>{pageError}</p> : null}
+      {pageHint ? <p className={styles.bannerStatus}>{pageHint}</p> : null}
     </>
   )
 }

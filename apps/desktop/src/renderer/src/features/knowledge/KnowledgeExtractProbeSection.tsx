@@ -118,7 +118,12 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
                   disabled={disabled || probing}
                   aria-label={t('knowledge.extract_probe_file', '试抽文件')}
                 />
-                <Button type="button" disabled={!canRun} onClick={() => void onRun()}>
+                <Button
+                  type="button"
+                  disabled={!canRun}
+                  isLoading={probing}
+                  onClick={() => void onRun()}
+                >
                   {probing
                     ? t('knowledge.extract_probe_running', '正在试抽…')
                     : t('knowledge.extract_probe_run', '开始试抽')}

@@ -1,12 +1,12 @@
 .hint {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   max-width: 100%;
-  margin: 0 0 6px;
-  padding: 4px 8px;
+  margin: 0 0 var(--spacing-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--bg-surface-high);
   color: var(--text-secondary);
   font-size: var(--ui-fs-sm);

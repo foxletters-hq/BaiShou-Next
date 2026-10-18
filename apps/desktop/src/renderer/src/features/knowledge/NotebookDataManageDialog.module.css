@@ -4,29 +4,29 @@
 
 .intro,
 .confirmHint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--spacing-md-tight);
   font-size: var(--ui-fs-md);
   line-height: 1.55;
   color: var(--text-secondary);
 }
 
 .actionRow {
-  margin: 0 0 14px;
+  margin: 0 0 var(--spacing-md-snug);
 }
 
 .kinds {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .kind {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: var(--spacing-sm-plus);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-card);
   background: var(--bg-surface);
   cursor: pointer;
@@ -40,7 +40,7 @@
 .kindText {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
 }
 
@@ -63,8 +63,8 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-md);
 }
 
 .actions :global(button) {

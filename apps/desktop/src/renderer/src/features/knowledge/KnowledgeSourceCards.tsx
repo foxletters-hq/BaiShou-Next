@@ -104,7 +104,8 @@ export function KnowledgeSourceCard({
   const evidence = pickSourceCardEvidence({
     pageCount: source.pageCount,
     missingPages,
-    hideHints: Boolean(ocrProgress)
+    hideHints: Boolean(ocrProgress),
+    status: source.status
   })
   const failureReason = sourceCardFailureReason({
     status: source.status,

@@ -49,6 +49,7 @@ export type KnowledgeOrganizeItem = {
 export type KnowledgeOrganizeProgressCopy = {
   visible: boolean
   failed: boolean
+  paused: boolean
   currentTitle: string | null
   error: string | null
   phases: KnowledgeOrganizePhaseRow[]
@@ -77,14 +78,17 @@ export function isKnowledgeOrganizeSource(
   source: KnowledgeOrganizeSource,
   progress?: KnowledgeIngestProgress,
   queuedSourceIds?: Iterable<string>,
-  graphJobStatus?: string | null
+  graphJobStatus?: string | null,
+  leftoverJobSourceIds?: Iterable<string>
 ): boolean {
   if (source.status === 'extracting' || source.status === 'embedding') return true
   if (progress && (progress.total > 0 || progress.page > 0 || progress.phase)) return true
   if (isKnowledgeGraphJobOpen(graphJobStatus)) return true
-  if (queuedSourceIds && new Set(queuedSourceIds).has(source.id)) {
-    return !FINISHED_STATUSES.has(source.status)
+  const queued = queuedSourceIds ? [...queuedSourceIds] : []
+  if (queued.length > 0) {
+    return queued.includes(source.id) && !FINISHED_STATUSES.has(source.status)
   }
+  if (leftoverJobSourceIds && new Set(leftoverJobSourceIds).has(source.id)) return true
   return false
 }
 
@@ -143,17 +147,22 @@ export function notebookOrganizeProgressCopy(input: {
   sources: KnowledgeOrganizeSource[]
   ingestProgress?: Record<string, KnowledgeIngestProgress>
   queuedSourceIds?: Iterable<string>
+  leftoverJobSourceIds?: Iterable<string>
   graph: NotebookGraphJobSnapshot
   graphJobsBySource?: Record<string, KnowledgeGraphJobForSource>
 }): KnowledgeOrganizeProgressCopy {
   const progress = input.ingestProgress ?? {}
   const graphJobsBySource = input.graphJobsBySource ?? {}
+  const queued = input.queuedSourceIds ? [...input.queuedSourceIds] : []
+  const liveSession = queued.length > 0
+  const leftoverJobSourceIds = liveSession ? [] : input.leftoverJobSourceIds
   const organizingSources = input.sources.filter((source) =>
     isKnowledgeOrganizeSource(
       source,
       progress[source.id],
       input.queuedSourceIds,
-      graphJobsBySource[source.id]?.status
+      graphJobsBySource[source.id]?.status,
+      leftoverJobSourceIds
     )
   )
   const items = organizingSources.map((source) => sourceItem(source, progress[source.id]))
@@ -170,6 +179,7 @@ export function notebookOrganizeProgressCopy(input: {
   const queuedBusy = items.some((item) => item.phase === 'queued')
   const graphRemaining = Math.max(0, input.graph.pending, input.graph.running)
   const graphWindows = Math.max(0, input.graph.windowsTotal ?? 0)
+  const graphLive = input.graph.running > 0
   const graphBusy = graphRemaining > 0 || graphWindows > 0 || input.graph.failed > 0
   const extractProgress = sumProgress(items, 'extract')
   const embedProgress = sumProgress(items, 'embed')
@@ -205,7 +215,7 @@ export function notebookOrganizeProgressCopy(input: {
   const failedStep = parseKnowledgeGraphStepError(graphError)?.step ?? null
   const graphWindowsDone = Math.max(0, input.graph.windowsDone ?? 0)
   const graphPages = graphPageSpan(input.graph)
-  const graphWindowsRunning = graphRemaining > 0 || graphWindows > 0
+  const graphWindowsRunning = graphLive && (graphRemaining > 0 || graphWindows > 0)
   const graphExtractDone =
     graphFailedOnly && (failedStep === 'align' || failedStep === 'node-embed')
       ? true
@@ -234,7 +244,7 @@ export function notebookOrganizeProgressCopy(input: {
           pageTo: graphPages?.pageTo,
           pageTotal: graphPages?.pageTotal
         }
-      : extractBusy || embedBusy || queuedBusy || graphWindowsRunning || graphFailedOnly
+      : extractBusy || embedBusy || queuedBusy || graphBusy
         ? { id: 'graph', status: graphExtractDone ? 'done' : 'pending', completed: 0, total: 0 }
         : { id: 'graph', status: 'skipped', completed: 0, total: 0 }
 
@@ -252,7 +262,7 @@ export function notebookOrganizeProgressCopy(input: {
       ? { id: 'graphNodes', status: 'pending', completed: 0, total: 0 }
       : graphWindowsRunning && graphExtractDone
         ? { id: 'graphNodes', status: 'running', completed: 0, total: 0 }
-        : extractBusy || embedBusy || queuedBusy || graphWindowsRunning
+        : extractBusy || embedBusy || queuedBusy || graphBusy
           ? { id: 'graphNodes', status: 'pending', completed: 0, total: 0 }
           : { id: 'graphNodes', status: 'skipped', completed: 0, total: 0 }
 
@@ -263,9 +273,12 @@ export function notebookOrganizeProgressCopy(input: {
     items[0]?.title ||
     null
 
+  const visible = items.length > 0 || graphBusy
+  const failed = graphFailedOnly && !extractBusy && !embedBusy && !queuedBusy
   return {
-    visible: items.length > 0 || graphBusy,
-    failed: graphFailedOnly && !extractBusy && !embedBusy && !queuedBusy,
+    visible,
+    failed,
+    paused: visible && !failed && !extractBusy && !embedBusy && !graphLive && !liveSession,
     currentTitle,
     error: graphFailedOnly ? graphError : null,
     phases: [extract, embed, graph, graphNodes],
