@@ -1,8 +1,8 @@
 .cardContainer {
   display: flex;
   align-items: center;
-  padding: 24px;
-  gap: 24px;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
 }
 
 .avatarZone {
@@ -17,7 +17,7 @@
   justify-content: center;
   align-items: center;
   border: 1px solid var(--border-card);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--duration-fast) ease;
 }
 
 .avatarZone:hover {
@@ -31,7 +31,7 @@
 }
 
 .avatarFallback {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 600;
   color: var(--text-tertiary, var(--text-secondary));
 }
@@ -45,7 +45,7 @@
   align-items: center;
   color: var(--text-on-primary);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-swift) ease;
   pointer-events: none;
 }
 
@@ -56,18 +56,18 @@
 .infoZone {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex: 1;
 }
 
 .nameRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .nickname {
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   font-weight: 600;
   margin: 0;
   color: var(--text-primary);
@@ -77,15 +77,15 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   cursor: pointer;
   width: 24px;
   height: 24px;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: var(--radius-xs-plus);
+  transition: all var(--duration-swift);
 }
 
 .editBtn:hover {
@@ -94,42 +94,72 @@
 }
 
 .desc {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
   margin: 0;
 }
 
-/* Crop Modal */
-.cropOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: var(--bg-overlay);
-  backdrop-filter: none;
-  z-index: 1000;
+.choiceModal {
+  width: min(100%, 360px);
+}
+
+.actionRow {
+  display: flex;
+  align-items: stretch;
+  gap: var(--spacing-sm-plus);
+  width: 100%;
+}
+
+.actionRow button {
+  flex: 1;
+}
+
+.builtinModal {
+  width: min(100%, 380px);
+}
+
+.presetGrid {
   display: flex;
   justify-content: center;
   align-items: center;
-  animation: fadeIn 0.2s ease;
+  gap: var(--spacing-sm-plus);
+  width: 100%;
+  padding: var(--spacing-xs) 0;
 }
 
-.cropModal {
-  background: rgba(30, 41, 59, 0.9);
-  border: 1px solid var(--border-control);
-  border-radius: 16px;
-  padding: 24px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.presetBtn {
+  width: 80px;
+  height: 80px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-subtle);
+  background: var(--bg-surface);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast);
+}
+
+.presetBtn:hover {
+  border-color: var(--border-muted);
+}
+
+.presetBtnSelected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.presetImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .cropTitle {
-  font-size: 16px;
+  font-size: var(--settings-font-shell-title-size);
   font-weight: 600;
   margin: 0;
   text-align: center;
@@ -137,7 +167,7 @@
 
 .imageWorkspace {
   background: rgba(0, 0, 0, 0.5);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: auto; /* allow scroll if image is too tall */
   position: relative;
   user-select: none;
@@ -169,30 +199,30 @@
 
 .sizeSlider {
   flex: 2;
-  margin-right: 16px;
+  margin-right: var(--spacing-md);
   max-width: 150px;
 }
 
 .cropActions {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .cancelBtn,
 .confirmBtn {
   flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .cancelBtn:hover,
