@@ -122,10 +122,10 @@ describe('listed graph job status', () => {
     expect(resolveListedGraphJobStatus('pending', true)).toBe('running')
   })
 
-  it('should resume leftover pending or failed graph jobs, not a live running one', () => {
+  it('should not auto resume leftover graph jobs when the notebook is only listed', () => {
     expect(shouldResumeListedGraphJobs([{ status: 'running' }])).toBe(false)
-    expect(shouldResumeListedGraphJobs([{ status: 'pending' }])).toBe(true)
-    expect(shouldResumeListedGraphJobs([{ status: 'failed' }])).toBe(true)
-    expect(shouldResumeListedGraphJobs([{ status: 'running' }, { status: 'pending' }])).toBe(true)
+    expect(shouldResumeListedGraphJobs([{ status: 'pending' }])).toBe(false)
+    expect(shouldResumeListedGraphJobs([{ status: 'failed' }])).toBe(false)
+    expect(shouldResumeListedGraphJobs([{ status: 'running' }, { status: 'pending' }])).toBe(false)
   })
 })

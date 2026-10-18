@@ -10,6 +10,13 @@ function read(rel: string): string {
 }
 
 describe('provider slot binding', () => {
+  it('should keep desktop PDF extract able to use OCR and the text layer', () => {
+    const configured = read('../../ipc/knowledge-ipc.context.ts')
+    const consumer = read('../knowledge-ingest-jobs.consumer.ts')
+    expect(configured).not.toContain('pdfVisionOnly')
+    expect(consumer).not.toContain('pdfVisionOnly')
+  })
+
   it('should resolve vision as a complete slot instead of the first enabled provider', () => {
     const vision = read('../register-desktop-vision-ocr.ts')
     expect(vision).toContain('resolveProviderModelSlot')

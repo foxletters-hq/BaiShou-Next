@@ -29,7 +29,7 @@ import {
 } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceAgentGate } from './agent-gate.service'
-import { createDesktopSkillsWriter } from './desktop-skills-writer'
+import { createDesktopSkillsReader, createDesktopSkillsWriter } from './desktop-skills-writer'
 import { desktopExtraVercelToolsFactory } from './mcp-client-runtime'
 import { listAgentSkillsCatalogForWorkspace } from './agent-skills.service'
 import {
@@ -254,6 +254,7 @@ export async function runWorkspaceStreamChat(params: {
       toolRegistry,
       diarySearcher: createDiarySearcher(),
       skillsWriter: createDesktopSkillsWriter({ folderRoot }),
+      skillsReader: createDesktopSkillsReader({ folderRoot }),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
       agentGate,

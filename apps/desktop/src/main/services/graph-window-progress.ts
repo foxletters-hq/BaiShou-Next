@@ -55,9 +55,9 @@ export function resolveListedGraphJobStatus(
   return 'pending'
 }
 
-/** 打开笔记本列出任务时，把已入队但没人做的图谱任务重新拉起来。 */
-export function shouldResumeListedGraphJobs(items: ReadonlyArray<{ status: string }>): boolean {
-  return items.some((item) => item.status === 'pending' || item.status === 'failed')
+/** 打开笔记本列出任务时不再自动拉起；未完成的任务留给用户点继续整理。 */
+export function shouldResumeListedGraphJobs(_items: ReadonlyArray<{ status: string }>): boolean {
+  return false
 }
 
 /**

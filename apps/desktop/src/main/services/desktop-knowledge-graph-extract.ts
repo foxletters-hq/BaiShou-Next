@@ -16,6 +16,7 @@ import { fileSystem } from './node-file-system'
 import { pathService, vaultService } from '../ipc/vault.ipc'
 import { buildSummaryAiClient } from '../ipc/summary-ai-client'
 import { settingsManager } from '../ipc/settings.ipc'
+import { GraphExtractQueueService } from './graph-extract-queue.service'
 import { resolveDesktopGraphExtractAlignDeps } from './graph-extract-embed-gate'
 import { clearGraphWindowProgress, rememberGraphWindowProgress } from './graph-window-progress'
 
@@ -103,6 +104,7 @@ export function createDesktopKnowledgeGraphExtractFn() {
     })
     await svc.extractSource({
       ...input,
+      windowConcurrency: GraphExtractQueueService.getInstance().getConcurrency(),
       onProgress: (progress) => {
         broadcastGraphExtractProgress({
           notebookId: input.notebookId,

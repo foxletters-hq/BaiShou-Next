@@ -84,8 +84,9 @@ export class DesktopStoragePathService implements IStoragePathService {
     await this.writeSettingsJson(settings)
   }
 
-  public async getRootDirectory(): Promise<string> {
-    const customPath = await this.getCustomRootPath()
+  private async resolveRootFromSettings(settings: Record<string, unknown>): Promise<string> {
+    const customPath =
+      typeof settings.custom_storage_root === 'string' ? settings.custom_storage_root : null
 
     if (customPath && customPath.trim() !== '') {
       try {
@@ -106,6 +107,11 @@ export class DesktopStoragePathService implements IStoragePathService {
     await fs.mkdir(rootDir, { recursive: true })
     this.scheduleLegacyWriteProbeCleanup(rootDir)
     return rootDir
+  }
+
+  public async getRootDirectory(): Promise<string> {
+    const settings = await this.readSettingsJson()
+    return this.resolveRootFromSettings(settings)
   }
 
   public async getGlobalRegistryDirectory(): Promise<string> {
@@ -129,7 +135,10 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   public async getActiveVaultSettingsDirectory(): Promise<string> {
-    return this.getVaultSystemDirectory(await this.getActiveVaultName())
+    const vaultDir = await this.getActiveVaultDirectory()
+    const vaultSysDir = path.join(vaultDir, '.baishou')
+    await fs.mkdir(vaultSysDir, { recursive: true })
+    return vaultSysDir
   }
 
   public async getGlobalSettingsDirectory(): Promise<string> {
@@ -145,14 +154,19 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
-  private async getActiveVaultName(): Promise<string> {
+  private async getActiveVaultName(
+    existingSettings?: Record<string, unknown>,
+    existingRootDir?: string
+  ): Promise<string> {
     try {
-      const rootDir = await this.getRootDirectory()
+      const settings = existingSettings ?? (await this.readSettingsJson())
+      const rootDir = existingRootDir ?? (await this.resolveRootFromSettings(settings))
       const registryFile = path.join(rootDir, 'vault_registry.json')
       const data = await fs.readFile(registryFile, 'utf-8')
       const vaults = JSON.parse(data)
       if (!Array.isArray(vaults) || vaults.length === 0) return 'Personal'
-      const preferredId = await this.getLocalActiveVaultId()
+      const rawId = settings.active_vault_id
+      const preferredId = typeof rawId === 'string' && rawId.trim() ? rawId.trim() : null
       return pickActiveVaultNameFromRegistryEntries(vaults, preferredId) || 'Personal'
     } catch {
       return 'Personal'
@@ -160,7 +174,13 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   private async getActiveVaultDirectory(): Promise<string> {
-    return this.getVaultDirectory(await this.getActiveVaultName())
+    const settings = await this.readSettingsJson()
+    const rootDir = await this.resolveRootFromSettings(settings)
+    const vaultName = await this.getActiveVaultName(settings, rootDir)
+    const safeName = sanitizeVaultDirectoryName(vaultName)
+    const vaultDir = path.join(rootDir, safeName)
+    await fs.mkdir(vaultDir, { recursive: true })
+    return vaultDir
   }
 
   public async getActiveVaultPath(): Promise<string | null> {
@@ -179,8 +199,9 @@ export class DesktopStoragePathService implements IStoragePathService {
   }
 
   public async getExternalJournalsDirectory(vaultName?: string): Promise<string | null> {
-    const name = vaultName ?? (await this.getActiveVaultName())
-    const sysDir = await this.getVaultSystemDirectory(name)
+    const sysDir = vaultName
+      ? await this.getVaultSystemDirectory(vaultName)
+      : await this.getActiveVaultSettingsDirectory()
     const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
     return external.journalsDirectory?.trim() || null
   }
@@ -189,16 +210,18 @@ export class DesktopStoragePathService implements IStoragePathService {
     journalsDirectory: string | null,
     vaultName?: string
   ): Promise<void> {
-    const name = vaultName ?? (await this.getActiveVaultName())
-    const sysDir = await this.getVaultSystemDirectory(name)
+    const sysDir = vaultName
+      ? await this.getVaultSystemDirectory(vaultName)
+      : await this.getActiveVaultSettingsDirectory()
     await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
       journalsDirectory: journalsDirectory?.trim() || null
     })
   }
 
   public async getExternalSummariesDirectory(vaultName?: string): Promise<string | null> {
-    const name = vaultName ?? (await this.getActiveVaultName())
-    const sysDir = await this.getVaultSystemDirectory(name)
+    const sysDir = vaultName
+      ? await this.getVaultSystemDirectory(vaultName)
+      : await this.getActiveVaultSettingsDirectory()
     const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
     return external.summariesDirectory?.trim() || null
   }
@@ -207,26 +230,21 @@ export class DesktopStoragePathService implements IStoragePathService {
     summariesDirectory: string | null,
     vaultName?: string
   ): Promise<void> {
-    const name = vaultName ?? (await this.getActiveVaultName())
-    const sysDir = await this.getVaultSystemDirectory(name)
+    const sysDir = vaultName
+      ? await this.getVaultSystemDirectory(vaultName)
+      : await this.getActiveVaultSettingsDirectory()
     await patchVaultExternalPaths(this.vaultFileSystem, sysDir, {
       summariesDirectory: summariesDirectory?.trim() || null
     })
   }
 
-  private async resolveActiveJournalsBaseDirectory(): Promise<string> {
-    const vaultName = await this.getActiveVaultName()
-    const vaultDir = await this.getVaultDirectory(vaultName)
-    const sysDir = await this.getVaultSystemDirectory(vaultName)
-    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
-    return resolveJournalsBaseDirectory(vaultDir, external)
-  }
-
   public async getJournalsBaseDirectory(): Promise<string> {
-    const vaultName = await this.getActiveVaultName()
-    const vaultDir = await this.getVaultDirectory(vaultName)
-    const dir = await this.resolveActiveJournalsBaseDirectory()
-    const external = await this.getExternalJournalsDirectory()
+    const vaultDir = await this.getActiveVaultDirectory()
+    const sysDir = path.join(vaultDir, '.baishou')
+    await fs.mkdir(sysDir, { recursive: true })
+    const externalPaths = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    const dir = resolveJournalsBaseDirectory(vaultDir, externalPaths)
+    const external = externalPaths.journalsDirectory?.trim() || null
     if (external) {
       const stat = await fs.stat(dir).catch(() => null)
       if (stat?.isDirectory()) {
@@ -241,19 +259,13 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
-  private async resolveActiveSummariesBaseDirectory(): Promise<string> {
-    const vaultName = await this.getActiveVaultName()
-    const vaultDir = await this.getVaultDirectory(vaultName)
-    const sysDir = await this.getVaultSystemDirectory(vaultName)
-    const external = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
-    return resolveSummariesBaseDirectory(vaultDir, external)
-  }
-
   public async getSummariesBaseDirectory(): Promise<string> {
-    const vaultName = await this.getActiveVaultName()
-    const vaultDir = await this.getVaultDirectory(vaultName)
-    const dir = await this.resolveActiveSummariesBaseDirectory()
-    const external = await this.getExternalSummariesDirectory()
+    const vaultDir = await this.getActiveVaultDirectory()
+    const sysDir = path.join(vaultDir, '.baishou')
+    await fs.mkdir(sysDir, { recursive: true })
+    const externalPaths = await readVaultExternalPaths(this.vaultFileSystem, sysDir)
+    const dir = resolveSummariesBaseDirectory(vaultDir, externalPaths)
+    const external = externalPaths.summariesDirectory?.trim() || null
     if (external) {
       const stat = await fs.stat(dir).catch(() => null)
       if (stat?.isDirectory()) {
@@ -271,15 +283,6 @@ export class DesktopStoragePathService implements IStoragePathService {
   public async getLegacyArchivesDirectory(): Promise<string | null> {
     const activeDir = await this.getActiveVaultDirectory()
     const internalArchives = path.join(activeDir, 'Archives')
-    const external = await this.getExternalSummariesDirectory()
-    if (external && path.normalize(external) !== path.normalize(internalArchives)) {
-      try {
-        await fs.access(internalArchives)
-        return internalArchives
-      } catch {
-        return null
-      }
-    }
     try {
       await fs.access(internalArchives)
       return internalArchives

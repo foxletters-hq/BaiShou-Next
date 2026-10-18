@@ -41,6 +41,7 @@ class DesktopMcpClientRuntime {
   private sessions = new Map<string, SessionRecord>()
   private config: McpClientConfig = { servers: [] }
   private loaded = false
+  private syncPromise: Promise<void> | null = null
 
   async ensureLoaded(): Promise<McpClientConfig> {
     if (!this.loaded) {
@@ -105,7 +106,21 @@ class DesktopMcpClientRuntime {
     error?: string
     reason?: McpClientProbeReason
   }> {
-    return this.probeTools(url, authToken)
+    const result = await this.probeTools(url, authToken)
+    if (result.ok && result.rawTools) {
+      const normalized = normalizeMcpStreamableUrl(url)
+      if (normalized.ok) {
+        for (const session of this.sessions.values()) {
+          if (
+            session.entry.url === normalized.url &&
+            (session.entry.authToken ?? '') === (authToken?.trim() ?? '')
+          ) {
+            session.tools = result.rawTools
+          }
+        }
+      }
+    }
+    return result
   }
 
   private async probeTools(
@@ -114,6 +129,7 @@ class DesktopMcpClientRuntime {
   ): Promise<{
     ok: boolean
     tools: McpClientListedTool[]
+    rawTools?: McpHttpListedTool[]
     error?: string
     reason?: McpClientProbeReason
   }> {
@@ -135,7 +151,7 @@ class DesktopMcpClientRuntime {
         MCP_HTTP_PROBE_TIMEOUT_MS,
         MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE
       )
-      return { ok: true, tools: toMcpClientListedTools(tools) }
+      return { ok: true, tools: toMcpClientListedTools(tools), rawTools: tools }
     } catch (error) {
       return {
         ok: false,
@@ -161,7 +177,8 @@ class DesktopMcpClientRuntime {
           serverName: session.entry.name,
           name: tool.name,
           description: tool.description,
-          inputSchema: tool.inputSchema
+          inputSchema: tool.inputSchema,
+          alwaysAllow: session.entry.alwaysAllow
         })
       }
     }
@@ -169,16 +186,76 @@ class DesktopMcpClientRuntime {
       tools: descriptors,
       context,
       callTool: async (serverId, toolName, args) => {
-        const session = this.sessions.get(serverId)
+        let session = this.sessions.get(serverId)
+        if (!session) {
+          const entry = this.config.servers.find((s) => s.id === serverId && s.enabled)
+          if (entry) {
+            try {
+              const connected = await connectMcpHttpClient({
+                url: entry.url,
+                authToken: entry.authToken
+              })
+              const tools = await listMcpHttpTools(connected.client)
+              session = {
+                entry,
+                client: connected.client,
+                transport: connected.transport,
+                tools
+              }
+              this.sessions.set(serverId, session)
+            } catch (err) {
+              logger.warn(
+                `[desktop-mcp-client-runtime] reconnect on call failed: ${entry.name}`,
+                err as Error
+              )
+            }
+          }
+        }
         if (!session) {
           throw new Error(MCP_CLIENT_NOT_CONNECTED_MESSAGE)
         }
-        return callMcpHttpTool(session.client, toolName, args)
+        try {
+          return await callMcpHttpTool(session.client, toolName, args)
+        } catch (error) {
+          logger.warn(
+            `[desktop-mcp-client-runtime] callTool failed, attempting reconnect: ${toolName}`,
+            error as Error
+          )
+          try {
+            await closeMcpHttpClient(session)
+          } catch {}
+          this.sessions.delete(serverId)
+          const entry = this.config.servers.find((s) => s.id === serverId && s.enabled)
+          if (!entry) throw error
+          const reconnected = await connectMcpHttpClient({
+            url: entry.url,
+            authToken: entry.authToken
+          })
+          const tools = await listMcpHttpTools(reconnected.client)
+          const nextSession = {
+            entry,
+            client: reconnected.client,
+            transport: reconnected.transport,
+            tools
+          }
+          this.sessions.set(serverId, nextSession)
+          return await callMcpHttpTool(nextSession.client, toolName, args)
+        }
       }
     })
   }
 
   private async syncSessions(): Promise<void> {
+    if (this.syncPromise) {
+      return this.syncPromise
+    }
+    this.syncPromise = this.runSyncSessions().finally(() => {
+      this.syncPromise = null
+    })
+    return this.syncPromise
+  }
+
+  private async runSyncSessions(): Promise<void> {
     const enabled = this.config.servers.filter((server) => server.enabled)
     const enabledIds = new Set(enabled.map((server) => server.id))
 
@@ -197,7 +274,17 @@ class DesktopMcpClientRuntime {
     }
 
     for (const entry of enabled) {
-      if (this.sessions.has(entry.id)) continue
+      const existing = this.sessions.get(entry.id)
+      if (existing) {
+        if (existing.tools.length > 0) continue
+        try {
+          existing.tools = await listMcpHttpTools(existing.client)
+          continue
+        } catch {
+          await closeMcpHttpClient(existing)
+          this.sessions.delete(entry.id)
+        }
+      }
       try {
         const connected = await connectMcpHttpClient({
           url: entry.url,

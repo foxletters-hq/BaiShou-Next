@@ -59,10 +59,7 @@ async function countPendingGraphNodes(vaultId: string): Promise<number> {
     throw new Error('graph-db-not-ready')
   }
   const repo = new GraphRepository(connectionManager.getDb())
-  const counted = await repo.countUnembeddedLiveNodes(vaultId)
-  if (counted > 0) return counted
-  const listed = await repo.listUnembeddedLiveNodes(vaultId)
-  return listed.length
+  return await repo.countUnembeddedLiveNodes(vaultId)
 }
 
 async function countPendingGraphExtract(): Promise<number> {

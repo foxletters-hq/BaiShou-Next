@@ -158,7 +158,10 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
     const extractedDb = initNodeDatabase(extractedDbPath)
     const client = (extractedDb as any).session.client
 
-    const settingsRes = await executeRawSql(client, 'SELECT * FROM system_settings')
+    const settingsRes = await executeRawSql(
+      client,
+      "SELECT * FROM system_settings WHERE key = 'user_profile_data'"
+    )
     expect(settingsRes.rows[0].value).toContain('超级白守测试员')
 
     const assistantsRes = await executeRawSql(client, 'SELECT * FROM agent_assistants')
