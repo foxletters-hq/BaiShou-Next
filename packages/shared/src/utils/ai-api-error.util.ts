@@ -5,15 +5,26 @@
 
 export type AiApiErrorKind = 'balance' | 'auth' | 'rate_limit' | 'network' | 'unknown'
 
+function readProviderErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (!value || typeof value !== 'object') return undefined
+  const rec = value as Record<string, unknown>
+  if (typeof rec.message === 'string' && rec.message.trim()) return rec.message.trim()
+  const nested = rec.error
+  if (nested && typeof nested === 'object') {
+    const msg = (nested as Record<string, unknown>).message
+    if (typeof msg === 'string' && msg.trim()) return msg.trim()
+  }
+  if (typeof nested === 'string' && nested.trim()) return nested.trim()
+  return undefined
+}
+
 function readResponseBody(error: Record<string, unknown>): string | undefined {
   const body =
     error.responseBody ?? (error.cause as Record<string, unknown> | undefined)?.responseBody
   if (typeof body !== 'string' || !body.trim()) return undefined
   try {
-    const parsed = JSON.parse(body) as { message?: unknown }
-    if (typeof parsed?.message === 'string' && parsed.message.trim()) {
-      return parsed.message.trim()
-    }
+    return readProviderErrorMessage(JSON.parse(body))
   } catch {
     // ignore invalid JSON
   }
@@ -29,10 +40,8 @@ export function formatAiApiCallError(error: unknown): string {
   const fromBody = readResponseBody(e)
   if (fromBody) return fromBody
 
-  const data = e.data as { message?: unknown } | undefined
-  if (typeof data?.message === 'string' && data.message.trim()) {
-    return data.message.trim()
-  }
+  const fromData = readProviderErrorMessage(e.data)
+  if (fromData) return fromData
 
   const message = typeof e.message === 'string' ? e.message : String(error)
   if (message && message !== '[object Object]') return message

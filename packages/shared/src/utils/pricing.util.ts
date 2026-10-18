@@ -1,3 +1,5 @@
+import { applyDeepSeekPeakCost } from './deepseek-peak-pricing'
+
 export interface ModelPrice {
   input: number // USD per 1M tokens
   output: number // USD per 1M tokens
@@ -107,7 +109,7 @@ export class ModelPricingService {
     const outputCost = (outputTokens / 1_000_000) * effectivePrice.output
     const cacheCost = (cachedInputTokens / 1_000_000) * effectivePrice.cacheRead
 
-    return inputCost + outputCost + cacheCost
+    return applyDeepSeekPeakCost(providerId, inputCost + outputCost + cacheCost)
   }
 }
 
