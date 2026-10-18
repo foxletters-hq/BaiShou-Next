@@ -40,6 +40,7 @@ export const lightColors = {
   onSecondaryContainer: '#37474F',
   errorContainer: '#FEE2E2',
   onErrorContainer: '#991B1B',
+  warningContainer: 'rgba(245, 158, 11, 0.14)',
   tertiary: '#8B5CF6',
   onPrimary: '#FFFFFF',
   onError: '#FFFFFF',
