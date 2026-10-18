@@ -14,9 +14,14 @@ export const AgentScreen = () => {
     <>
       <StatusBar
         barStyle={c.isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={c.colors.bgApp}
+        backgroundColor={c.hasChatBackground ? 'transparent' : c.colors.bgApp}
+        translucent={c.hasChatBackground}
       />
-      <ScreenSafeArea preset="tab" style={{ backgroundColor: c.colors.bgApp }}>
+      <ScreenSafeArea
+        preset="tab"
+        edges={c.hasChatBackground ? ['left', 'right'] : undefined}
+        style={{ backgroundColor: c.hasChatBackground ? 'transparent' : c.colors.bgApp }}
+      >
         <AgentChatList
           colors={c.colors}
           isDark={c.isDark}

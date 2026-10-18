@@ -16,5 +16,7 @@ export const IDLE_LIVE_COMPRESSION = {
 export const LIVE_ASSISTANT_STREAM_KEY = 'live-assistant-stream'
 /** linger 结束后再保留 live 展示，等布局稳定后再释放 minHeight */
 export const HOLD_LIVE_PRESENTATION_MS = 320
+/** 空对话态中心伙伴头像边长，对齐原先空态圆标占位 */
+export const EMPTY_CHAT_AVATAR_SIZE = 88
 
 export type IdleLiveCompression = typeof IDLE_LIVE_COMPRESSION

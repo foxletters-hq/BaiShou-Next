@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Modal, Select, useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import {
+  Button,
+  Input,
+  Modal,
+  modalActionsStyle,
+  Select,
+  useNativeTheme,
+  useNativeToast
+} from '@baishou/ui/native'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function AssistantCreateSheet({
   visible,
@@ -109,11 +118,11 @@ export function AssistantCreateSheet({
             {t('agent.assistant.no_model', '还没有可用模型，可稍后在完整编辑里绑定。')}
           </Text>
         )}
-        <View style={styles.row}>
-          <Button variant="outlined" onPress={resetAndClose}>
+        <View style={modalActionsStyle}>
+          <Button size="sm" variant="outlined" onPress={resetAndClose}>
             {t('common.cancel', '取消')}
           </Button>
-          <Button isDisabled={!name.trim() || saving} onPress={() => void handleSave()}>
+          <Button size="sm" isDisabled={!name.trim() || saving} onPress={() => void handleSave()}>
             {t('common.create', '创建')}
           </Button>
         </View>
@@ -123,6 +132,5 @@ export function AssistantCreateSheet({
 }
 
 const styles = StyleSheet.create({
-  body: { gap: 12 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }
+  body: { gap: sharedTokens.spacing.mdTight }
 })

@@ -188,8 +188,9 @@ export function useAgentScreenController() {
     sessionId: currentSessionId,
     messages,
     isStreaming,
-    isStreamBridgeActive,
-    activeTool
+    isStreamBridgeActive: isStreamBridgeActive || streamPresentationLinger,
+    activeTool,
+    viewportHeight: listViewportHeight
   })
 
   useEffect(() => {

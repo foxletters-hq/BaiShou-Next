@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Image, ScrollView, Text, View } from 'react-native'
+import { Image, Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   canToggleMountedNotebook,
@@ -12,8 +12,8 @@ import {
   toggleMountedNotebook,
   type NotebookMountCandidate
 } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
-import { Button, Checkbox, Modal, useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography } from '@baishou/ui/theme/tokens'
+import { Button, Checkbox, Modal, modalActionsStyle, useNativeTheme } from '@baishou/ui/native'
 import { mobileListMountSummaries } from '../../../services/mobile-knowledge.service'
 import { agentDbRuntimeRef } from '../../../services/mobile-agent-db-runtime-ref'
 
@@ -83,8 +83,8 @@ export function MobileNotebookMountSheet({
       <Text
         style={{
           color: colors.textSecondary,
-          fontSize: settingsTypography.desc.fontSize,
-          fontWeight: settingsTypography.desc.fontWeight,
+          fontSize: mobileTypography.secondary.fontSize,
+          fontWeight: mobileTypography.secondary.fontWeight,
           marginBottom: tokens.spacing.sm
         }}
       >
@@ -94,14 +94,18 @@ export function MobileNotebookMountSheet({
         <Text
           style={{
             color: colors.error,
-            fontSize: settingsTypography.desc.fontSize,
+            fontSize: mobileTypography.secondary.fontSize,
             marginBottom: tokens.spacing.sm
           }}
         >
           {error}
         </Text>
       ) : null}
-      <ScrollView style={{ maxHeight: tokens.spacing.xl * 9 }}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        style={{ maxHeight: tokens.spacing.xl * 9 }}
+        contentContainerStyle={{ paddingRight: tokens.spacing.mdTight }}
+      >
         {candidates.map((row) => {
           const selected = selectedIds.includes(row.id)
           const gate = canToggleMountedNotebook({
@@ -109,41 +113,50 @@ export function MobileNotebookMountSheet({
             candidate: row,
             candidates
           })
+          const disabled = !selected && !gate.allowed
           const appearance = getNotebookCardAppearance(row.id, {
             coverTone: row.coverTone,
             coverIcon: row.coverIcon
           })
+          const handleToggle = () => {
+            if (disabled) return
+            const result = toggleMountedNotebook({
+              selectedIds,
+              candidateId: row.id,
+              candidates
+            })
+            if (result.error) {
+              setError(result.error)
+              return
+            }
+            void persist(result.next)
+          }
+
           return (
-            <View
+            <Pressable
               key={row.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                gap: tokens.spacing.sm,
-                paddingVertical: tokens.spacing.sm
-              }}
+              onPress={handleToggle}
+              disabled={disabled}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected, disabled }}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: tokens.spacing.sm,
+                  paddingVertical: tokens.spacing.sm,
+                  opacity: disabled ? 0.6 : pressed ? 0.7 : 1
+                }
+              ]}
             >
-              <Checkbox
-                selected={selected}
-                disabled={!selected && !gate.allowed}
-                onPress={() => {
-                  const result = toggleMountedNotebook({
-                    selectedIds,
-                    candidateId: row.id,
-                    candidates
-                  })
-                  if (result.error) {
-                    setError(result.error)
-                    return
-                  }
-                  void persist(result.next)
-                }}
-              />
+              <View pointerEvents="none">
+                <Checkbox selected={selected} disabled={disabled} />
+              </View>
               <View
                 style={{
                   width: tokens.spacing.xl,
                   height: tokens.spacing.xl,
-                  borderRadius: tokens.radius.sm,
+                  borderRadius: tokens.radius.xs,
                   overflow: 'hidden',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -163,8 +176,8 @@ export function MobileNotebookMountSheet({
                 <Text
                   style={{
                     color: colors.textPrimary,
-                    fontSize: settingsTypography.row.fontSize,
-                    fontWeight: settingsTypography.row.fontWeight
+                    fontSize: mobileTypography.primary.fontSize,
+                    fontWeight: mobileTypography.primary.fontWeight
                   }}
                 >
                   {row.name}
@@ -172,8 +185,8 @@ export function MobileNotebookMountSheet({
                 <Text
                   style={{
                     color: colors.textSecondary,
-                    fontSize: settingsTypography.meta.fontSize,
-                    fontWeight: settingsTypography.meta.fontWeight,
+                    fontSize: mobileTypography.caption.fontSize,
+                    fontWeight: mobileTypography.caption.fontWeight,
                     marginTop: tokens.spacing.xs
                   }}
                 >
@@ -186,7 +199,7 @@ export function MobileNotebookMountSheet({
                   <Text
                     style={{
                       color: colors.textTertiary,
-                      fontSize: settingsTypography.meta.fontSize,
+                      fontSize: mobileTypography.caption.fontSize,
                       marginTop: tokens.spacing.xs
                     }}
                   >
@@ -194,13 +207,14 @@ export function MobileNotebookMountSheet({
                   </Text>
                 ) : null}
               </View>
-            </View>
+            </Pressable>
           )
         })}
       </ScrollView>
-      <View style={{ marginTop: tokens.spacing.md, gap: tokens.spacing.sm }}>
+      <View style={modalActionsStyle}>
         {selectedIds.length > 0 ? (
           <Button
+            size="sm"
             variant="outlined"
             onPress={() => {
               void persist([])
@@ -209,7 +223,9 @@ export function MobileNotebookMountSheet({
             {t('knowledge.notebook_mount_clear', '取消全部挂载')}
           </Button>
         ) : null}
-        <Button onPress={onClose}>{t('common.close')}</Button>
+        <Button size="sm" variant="outlined" onPress={onClose}>
+          {t('common.close')}
+        </Button>
       </View>
     </Modal>
   )
