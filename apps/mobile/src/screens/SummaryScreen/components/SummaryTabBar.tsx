@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useNativeTheme } from '@baishou/ui/native'
+import { SegmentedControl, useNativeTheme } from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface SummaryTabBarProps {
   activeTab: 'panel' | 'gallery'
@@ -23,59 +24,16 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
         }
       ]}
     >
-      <View
-        style={[
-          styles.group,
-          {
-            backgroundColor: colors.bgSurfaceNormal,
-            borderColor: colors.borderControl
-          }
-        ]}
-      >
-        <Pressable
-          style={[
-            styles.btn,
-            activeTab === 'panel' && {
-              backgroundColor: colors.bgSurface,
-              borderColor: colors.borderSubtle
-            }
+      <View style={styles.tabs}>
+        <SegmentedControl
+          value={activeTab}
+          onChange={onTabChange}
+          accessibilityLabel={t('summary.dashboard_title', '回忆')}
+          options={[
+            { value: 'panel', label: t('summary.panel_tab', '面板') },
+            { value: 'gallery', label: t('summary.memory_gallery', '记忆画廊') }
           ]}
-          onPress={() => onTabChange('panel')}
-        >
-          <Text
-            style={[
-              styles.btnText,
-              {
-                color: activeTab === 'panel' ? colors.primary : colors.textSecondary,
-                fontWeight: activeTab === 'panel' ? '600' : '500'
-              }
-            ]}
-          >
-            {t('summary.panel_tab')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.btn,
-            activeTab === 'gallery' && {
-              backgroundColor: colors.bgSurface,
-              borderColor: colors.borderSubtle
-            }
-          ]}
-          onPress={() => onTabChange('gallery')}
-        >
-          <Text
-            style={[
-              styles.btnText,
-              {
-                color: activeTab === 'gallery' ? colors.primary : colors.textSecondary,
-                fontWeight: activeTab === 'gallery' ? '600' : '500'
-              }
-            ]}
-          >
-            {t('summary.memory_gallery')}
-          </Text>
-        </Pressable>
+        />
       </View>
     </View>
   )
@@ -83,30 +41,15 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  group: {
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    gap: 0,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1
-  },
-  btn: {
-    height: 28,
-    paddingHorizontal: 14,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  btnText: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center'
+  tabs: {
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center'
   }
 })

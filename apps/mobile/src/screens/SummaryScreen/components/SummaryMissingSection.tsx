@@ -5,6 +5,7 @@ import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react-
 import { useNativeTheme } from '@baishou/ui/native'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 import { buildSummaryTitle } from '../utils/buildSummaryTitle'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface MissingPeriod {
   type: string
@@ -135,7 +136,9 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
             />
           </View>
           <View style={styles.progressMeta}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {genCompleted}/{genTotal}
               {genError > 0 && (
                 <Text style={{ color: colors.error }}>
@@ -254,7 +257,12 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                     {buildSummaryTitle({ type: mp.type, startDate: mp.startDate }, t)}
                   </Text>
                   <View style={styles.cardMeta}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: mobileTypography.caption.fontSize
+                      }}
+                    >
                       {mp.startDate &&
                         new Date(mp.startDate).toLocaleDateString(language, {
                           month: 'short',
@@ -291,7 +299,13 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
               {statusText ? (
                 <View style={[styles.statusRow, { borderColor: colors.borderSubtle }]}>
                   <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, flex: 1 }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: mobileTypography.caption.fontSize,
+                      flex: 1
+                    }}
+                  >
                     {statusText}
                   </Text>
                 </View>
@@ -306,36 +320,36 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: 8,
-    paddingBottom: 24,
-    gap: 12
+    marginTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.lg,
+    gap: sharedTokens.spacing.mdTight
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     flex: 1
   },
   countBadge: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden'
   },
   detectBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.full,
     borderWidth: 1,
     borderStyle: 'solid'
   },
@@ -343,94 +357,94 @@ const styles = StyleSheet.create({
     opacity: 0.6
   },
   detectBtnText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   emptyBox: {
-    padding: 24,
-    borderRadius: 16,
+    padding: sharedTokens.spacing.lg,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
     alignItems: 'center',
     justifyContent: 'center'
   },
   progressWrap: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   progressTrack: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: sharedTokens.radius.xxs,
     overflow: 'hidden'
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3
+    borderRadius: sharedTokens.radius.xxs
   },
   progressMeta: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   progressActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.full
   },
   actionBtnText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   emptyText: {
     textAlign: 'center',
-    paddingVertical: 16,
-    fontSize: 14
+    paddingVertical: sharedTokens.spacing.md,
+    fontSize: mobileTypography.secondary.fontSize
   },
   grid: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   cardBlock: {
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   cardIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center'
   },
   cardEmoji: {
-    fontSize: 20
+    fontSize: mobileTypography.title.fontSize
   },
   cardBody: {
     flex: 1,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   cardMeta: {
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   badge: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   cardAction: {
@@ -442,12 +456,12 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingLeft: 8
+    gap: sharedTokens.spacing.sm,
+    paddingLeft: sharedTokens.spacing.sm
   },
   statusDot: {
     width: 6,
     height: 6,
-    borderRadius: 3
+    borderRadius: sharedTokens.radius.xxs
   }
 })
