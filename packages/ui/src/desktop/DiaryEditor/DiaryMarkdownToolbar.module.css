@@ -3,8 +3,8 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 10px 8px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
   /* 与编辑区明确分区：用可见分割线，不用几乎看不见的 subtle */
   border-top: 1px solid var(--border-muted);
   background: var(--bg-surface);
@@ -19,15 +19,15 @@
   height: 34px;
   flex-shrink: 0;
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s,
-    opacity 0.15s;
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    opacity var(--duration-fast);
 }
 
 .scrollBtn:hover:not(:disabled) {
@@ -61,14 +61,14 @@
 .scroll {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: max-content;
 }
 
 .divider {
   width: 1px;
   align-self: stretch;
-  margin: 4px 2px;
+  margin: var(--spacing-xs) var(--spacing-2xs);
   background: var(--border-subtle);
   flex-shrink: 0;
 }
@@ -79,19 +79,19 @@
   justify-content: center;
   min-width: 36px;
   height: 34px;
-  padding: 0 10px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast);
 }
 
 .btn:hover:not(:disabled) {
@@ -110,7 +110,7 @@
 }
 
 .btnMark {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
 }
 
 .italic {
@@ -122,7 +122,7 @@
 }
 
 .hash {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   line-height: 1;
 }
 

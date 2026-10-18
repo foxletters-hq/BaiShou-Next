@@ -7,18 +7,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
   height: 38px;
   min-height: 38px;
-  padding: 0 14px;
+  padding: 0 var(--spacing-md-snug);
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   cursor: pointer;
-  transition: all 0.2s var(--ease-out-cubic);
+  transition: all var(--duration-swift) var(--ease-out-cubic);
   font-family: inherit;
   box-sizing: border-box;
 }
@@ -27,7 +27,7 @@
 .wp-option-content {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
   flex: 1;
 }
@@ -39,7 +39,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   line-height: 1;
 }
 
@@ -85,7 +85,7 @@
   display: flex;
   align-items: center;
   color: var(--text-tertiary);
-  transition: transform 0.25s var(--ease-out-cubic);
+  transition: transform var(--duration-normal) var(--ease-out-cubic);
 }
 
 .wp-chevron-open {
@@ -102,15 +102,15 @@
   z-index: 50;
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
-  padding: var(--menu-popup-padding, 4px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
+  padding: var(--menu-popup-padding, var(--spacing-xs));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-  animation: wp-slide-in 0.25s var(--ease-out-cubic) both;
+  animation: wp-slide-in var(--duration-normal) var(--ease-out-cubic) both;
   overflow: hidden;
 }
 
 .wp-dropdown-closing {
-  animation: wp-slide-out 0.2s var(--ease-in-out) forwards;
+  animation: wp-slide-out var(--duration-swift) var(--ease-in-out) forwards;
 }
 
 .wp-option {
@@ -119,15 +119,15 @@
   justify-content: space-between;
   width: 100%;
   min-height: 38px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
   border: none;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s var(--ease-out-cubic);
+  transition: all var(--duration-fast) var(--ease-out-cubic);
 }
 
 .wp-option:hover {

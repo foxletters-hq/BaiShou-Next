@@ -2,8 +2,14 @@ import { useEffect, type RefObject } from 'react'
 import type { EditorView } from '@codemirror/view'
 import type { TFunction } from 'i18next'
 import { clampPosToDoc } from '../../shared/diary-codemirror/editorContentSync'
-import { setImageActionCallback, setUpdateImageWidthCallback } from './codeMirrorDecorations'
-import { parseImageMarkdown, buildImageMarkdown } from './image-utils'
+import {
+  setImageActionCallback,
+  setUpdateImageWidthCallback
+} from '../../shared/diary-codemirror/extensions/effects'
+import {
+  parseImageMarkdown,
+  buildImageMarkdown
+} from '../../shared/diary-codemirror/utils/image-utils'
 import type { useDialog } from '../Dialog'
 import type { useToast } from '../Toast/useToast'
 
