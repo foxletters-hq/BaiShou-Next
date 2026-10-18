@@ -25,8 +25,9 @@ describe('ui-font-size.util', () => {
     expect(normalizeUiFontSizeLevel(1.6)).toBe(2)
   })
 
-  it('maps default level to relative scale 1 and zoom 0.9', () => {
+  it('maps default level to relative scale 1 and zoom 1.0', () => {
     expect(uiFontSizeScaleFromLevel(UI_FONT_SIZE_LEVEL_DEFAULT)).toBe(1)
+    expect(uiPageZoomFromLevel(UI_FONT_SIZE_LEVEL_DEFAULT)).toBe(1.0)
     expect(uiPageZoomFromLevel(UI_FONT_SIZE_LEVEL_DEFAULT)).toBe(
       UI_PAGE_ZOOM_FACTORS[UI_FONT_SIZE_LEVEL_DEFAULT]
     )
