@@ -1,5 +1,5 @@
 import i18n from 'i18next'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -8,28 +8,30 @@ import {
   Modal,
   SafeAreaView,
   StyleSheet,
-  TouchableOpacity
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native'
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
+} from 'react-native-reanimated'
 import { Search, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
+import { logger } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
-import emojiData from 'emoji-picker-element-data/en/cldr/data.json'
+import { SegmentedContent } from '../SegmentedControl'
+import { loadEmojiCldrData, type EmojiCldrRecord } from './load-emoji-cldr-data'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiPickerProps {
   visible: boolean
   onClose: () => void
   onSelect: (emoji: string) => void
   recentEmojis?: string[]
-}
-
-type EmojiRecord = {
-  emoji: string
-  annotation: string
-  tags: string[]
-  group: number
-  order: number
 }
 
 /** 与 emoji-picker-element 桌面端底部分类 Tab 一致（跳过 group 2 肤色组件） */
@@ -95,9 +97,7 @@ const EMOJI_CATEGORY_TABS: Array<{
   }
 ]
 
-const ALL_EMOJIS = (emojiData as EmojiRecord[]).filter((e) => e.emoji && e.group !== 2)
-
-function groupEmojis(records: EmojiRecord[]): Record<number, string[]> {
+function groupEmojis(records: EmojiCldrRecord[]): Record<number, string[]> {
   const map: Record<number, string[]> = {}
   for (const item of records) {
     if (item.group === 2) continue
@@ -117,31 +117,74 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
   const { colors, tokens, maxModalWidth } = useNativeTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeGroup, setActiveGroup] = useState(0)
+  const [records, setRecords] = useState<EmojiCldrRecord[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (visible) {
+      void loadEmojiCldrData()
+        .then((data) => {
+          if (!cancelled) setRecords(data)
+        })
+        .catch((error: unknown) => {
+          logger.warn('Failed to load emoji picker data', error as Error)
+          if (!cancelled) setRecords([])
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [visible])
 
   const displayRecent = useMemo(
     () => recentEmojis.filter((e) => e && e.trim()).slice(0, 12),
     [recentEmojis]
   )
 
-  const grouped = useMemo(() => groupEmojis(ALL_EMOJIS), [])
+  const allEmojis = useMemo(() => records ?? [], [records])
+  const grouped = useMemo(() => groupEmojis(allEmojis), [allEmojis])
+  const [categoryNavWidth, setCategoryNavWidth] = useState(0)
+  const activeTabIndex = EMOJI_CATEGORY_TABS.findIndex((tab) => tab.id === activeGroup)
+  const categoryTabWidth = categoryNavWidth / EMOJI_CATEGORY_TABS.length
+  const categoryIndicatorOffset = useSharedValue(0)
+  const hasMeasuredIndicatorRef = useRef(false)
+  const categoryIndicatorStyle = useAnimatedStyle(() => ({
+    width: categoryTabWidth,
+    transform: [{ translateX: categoryIndicatorOffset.value }]
+  }))
+
+  useEffect(() => {
+    if (categoryTabWidth <= 0 || activeTabIndex < 0) return
+    const target = activeTabIndex * categoryTabWidth
+    if (!hasMeasuredIndicatorRef.current) {
+      categoryIndicatorOffset.value = target
+      hasMeasuredIndicatorRef.current = true
+      return
+    }
+    categoryIndicatorOffset.value = withSpring(target, {
+      damping: 20,
+      stiffness: 220,
+      mass: 0.6
+    })
+  }, [activeTabIndex, categoryIndicatorOffset, categoryTabWidth])
 
   const filteredEmojis = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return grouped[activeGroup] || []
-    return ALL_EMOJIS.filter(
-      (e) =>
-        e.annotation.toLowerCase().includes(q) ||
-        e.tags.some((tag) => tag.toLowerCase().includes(q)) ||
-        e.emoji.includes(q)
-    ).map((e) => e.emoji)
-  }, [searchQuery, activeGroup, grouped])
+    return allEmojis
+      .filter(
+        (e) =>
+          e.annotation.toLowerCase().includes(q) ||
+          e.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+          e.emoji.includes(q)
+      )
+      .map((e) => e.emoji)
+  }, [searchQuery, activeGroup, grouped, allEmojis])
 
   if (!visible) return null
 
   const numColumns = 8
   const isSearching = searchQuery.trim().length > 0
-  const activeTabIndex = EMOJI_CATEGORY_TABS.findIndex((tab) => tab.id === activeGroup)
-
   const renderEmojiCell = (emoji: string) => (
     <Pressable
       key={emoji}
@@ -194,7 +237,12 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
               </TouchableOpacity>
             </View>
 
-            <View style={{ paddingHorizontal: tokens.spacing.lg, paddingBottom: 10 }}>
+            <View
+              style={{
+                paddingHorizontal: tokens.spacing.lg,
+                paddingBottom: sharedTokens.spacing.smPlus
+              }}
+            >
               <Input
                 placeholder={t('emoji.search', '搜索')}
                 value={searchQuery}
@@ -219,32 +267,43 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
             </View>
 
             <View style={styles.body}>
-              {!isSearching && displayRecent.length > 0 && activeGroup === 0 ? (
-                <View style={[styles.recentSection, { paddingHorizontal: tokens.spacing.lg }]}>
-                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                    {t('emoji.recent', '最近使用')}
-                  </Text>
-                  <View style={styles.emojiRow}>{displayRecent.map(renderEmojiCell)}</View>
+              {!records ? (
+                <View style={styles.loadingWrap}>
+                  <ActivityIndicator color={colors.primary} />
                 </View>
-              ) : null}
+              ) : (
+                <SegmentedContent
+                  value={isSearching ? 'search' : String(activeGroup)}
+                  style={{ flex: 1, minHeight: 0 }}
+                >
+                  {!isSearching && displayRecent.length > 0 && activeGroup === 0 ? (
+                    <View style={[styles.recentSection, { paddingHorizontal: tokens.spacing.lg }]}>
+                      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                        {t('emoji.recent', '最近使用')}
+                      </Text>
+                      <View style={styles.emojiRow}>{displayRecent.map(renderEmojiCell)}</View>
+                    </View>
+                  ) : null}
 
-              <FlatList
-                data={filteredEmojis}
-                keyExtractor={(item, index) => `${item}-${index}`}
-                numColumns={numColumns}
-                renderItem={({ item }) => renderEmojiCell(item)}
-                style={styles.emojiGrid}
-                contentContainerStyle={[
-                  styles.emojiGridContent,
-                  { paddingHorizontal: tokens.spacing.lg }
-                ]}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('emoji.search_results', '无匹配表情')}
-                  </Text>
-                }
-              />
+                  <FlatList
+                    data={filteredEmojis}
+                    keyExtractor={(item, index) => `${item}-${index}`}
+                    numColumns={numColumns}
+                    renderItem={({ item }) => renderEmojiCell(item)}
+                    style={styles.emojiGrid}
+                    contentContainerStyle={[
+                      styles.emojiGridContent,
+                      { paddingHorizontal: tokens.spacing.lg }
+                    ]}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        {t('emoji.search_results', '无匹配表情')}
+                      </Text>
+                    }
+                  />
+                </SegmentedContent>
+              )}
             </View>
 
             {!isSearching ? (
@@ -256,15 +315,14 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                     backgroundColor: colors.bgSurface
                   }
                 ]}
+                onLayout={(event) => setCategoryNavWidth(event.nativeEvent.layout.width)}
               >
-                <View
+                <Animated.View
+                  pointerEvents="none"
                   style={[
                     styles.categoryIndicator,
-                    {
-                      backgroundColor: colors.primary,
-                      width: `${100 / EMOJI_CATEGORY_TABS.length}%`,
-                      left: `${(Math.max(activeTabIndex, 0) * 100) / EMOJI_CATEGORY_TABS.length}%`
-                    }
+                    { backgroundColor: colors.primary },
+                    categoryIndicatorStyle
                   ]}
                 />
                 <View style={styles.categoryRow}>
@@ -284,7 +342,15 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                       >
-                        <Text style={styles.categoryIcon}>{tab.icon}</Text>
+                        <Animated.Text
+                          key={active ? 'selected' : 'unselected'}
+                          entering={
+                            active ? FadeIn.duration(sharedTokens.animation.swift) : undefined
+                          }
+                          style={styles.categoryIcon}
+                        >
+                          {tab.icon}
+                        </Animated.Text>
                       </TouchableOpacity>
                     )
                   })}
@@ -318,23 +384,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 10
+    paddingBottom: sharedTokens.spacing.smPlus
   },
   headerText: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   body: {
     flex: 1,
     minHeight: 0
   },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   recentSection: {
-    paddingBottom: 8
+    paddingBottom: sharedTokens.spacing.sm
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    marginBottom: 6
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   emojiRow: {
     flexDirection: 'row',
@@ -344,7 +415,7 @@ const styles = StyleSheet.create({
     flex: 1
   },
   emojiGridContent: {
-    paddingBottom: 12
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   emojiCell: {
     width: '12.5%',
@@ -353,30 +424,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   emojiText: {
-    fontSize: 26
+    fontSize: mobileTypography.display.fontSize
   },
   emptyText: {
     textAlign: 'center',
-    paddingVertical: 24,
-    fontSize: 14
+    paddingVertical: sharedTokens.spacing.lg,
+    fontSize: mobileTypography.secondary.fontSize
   },
   categoryNav: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingBottom: 4,
+    paddingBottom: sharedTokens.spacing.xs,
     position: 'relative'
   },
   categoryIndicator: {
     position: 'absolute',
     top: 0,
     height: 3,
-    borderRadius: 2
+    borderRadius: sharedTokens.radius.xxs
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 6,
-    paddingBottom: 4,
+    paddingTop: sharedTokens.spacing.xsPlus,
+    paddingBottom: sharedTokens.spacing.xs,
     minHeight: 48
   },
   categoryTab: {
@@ -384,10 +455,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
-    borderRadius: 10
+    borderRadius: sharedTokens.radius.control
   },
   categoryIcon: {
-    fontSize: 24,
+    fontSize: iconSizes.lg,
     lineHeight: 30,
     textAlign: 'center'
   }

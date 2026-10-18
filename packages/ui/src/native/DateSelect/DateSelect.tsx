@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { DateSelectField, DateSelectProps } from './date-select.types'
 import { DateSelectWheelColumn } from './DateSelectWheelColumn'
+import { sharedTokens } from '../../theme/tokens'
 import {
   clampDateParts,
   getDatePickerYears,
@@ -132,7 +133,7 @@ export const DateSelect: React.FC<DateSelectProps> = ({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 8
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.sm
   }
 })

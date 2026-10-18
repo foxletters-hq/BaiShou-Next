@@ -8,6 +8,7 @@ import {
   NativeScrollEvent,
   type ScrollView as ScrollViewType
 } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 import {
   WHEEL_ITEM_HEIGHT,
@@ -160,8 +161,10 @@ export const DateSelectWheelColumn: React.FC<DateSelectWheelColumnProps> = ({
                   styles.itemText,
                   {
                     color: active ? colors.primary : colors.textSecondary,
-                    fontWeight: active ? '700' : '400',
-                    fontSize: active ? 18 : 16
+                    fontWeight: active ? '600' : '400',
+                    fontSize: active
+                      ? mobileTypography.body.fontSize
+                      : mobileTypography.secondary.fontSize
                   }
                 ]}
                 numberOfLines={1}
@@ -190,7 +193,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 4,
     right: 4,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     zIndex: 0
   },
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
     height: WHEEL_ITEM_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   itemText: {
     textAlign: 'center'
