@@ -1,371 +1,415 @@
-import React from 'react'
-import { Text, View } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
+import { Settings } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import type { GraphSimilarPendingPair, GraphFocusDepth } from '@baishou/shared'
-import { settingsTypography } from '@baishou/ui/theme/tokens'
+import { type GraphSimilarPendingPair } from '@baishou/shared'
+import { mobileTypography, settingsIcons } from '@baishou/ui/theme/tokens'
 import {
   Button,
-  Card,
-  HelpTooltip,
-  Input,
+  CompactSearchBar,
+  FloatingModal,
+  SegmentedContent,
   SegmentedControl,
-  SettingsSection,
+  modalActionsStyle,
   useNativeTheme
 } from '@baishou/ui/native'
 import { knowledgeDetailStyles as styles } from './knowledge-detail.styles'
-import {
-  KnowledgeNotebookGraphCanvasTab,
-  type KnowledgeGraphSearchHit
-} from './KnowledgeNotebookGraphCanvasTab'
-import { KnowledgeNotebookGraphPendingTab } from './KnowledgeNotebookGraphPendingTab'
+import type { KnowledgeGraphSearchHit } from './KnowledgeNotebookGraphCanvasTab'
+import { GraphCanvasNodePeek } from '../GraphScreen/GraphCanvasNodePeek'
+import { GraphForceWebView } from '../GraphScreen/GraphForceWebView'
+import { KnowledgeNotebookGraphAppearance } from './KnowledgeNotebookGraphAppearance'
+import { KnowledgeNotebookGraphNodeList } from './KnowledgeNotebookGraphNodeList'
+import { KnowledgeNotebookGraphReviewBar } from './KnowledgeNotebookGraphReviewBar'
+import { useNotebookGraphAppearance } from './useNotebookGraphAppearance'
 import type { KnowledgeGraphEdgeRow, KnowledgeGraphNodeRow } from './knowledge-detail.types'
-
-type GraphTab = 'canvas' | 'reextract' | 'pending' | 'similar'
+import {
+  notebookGraphHasInventory,
+  resolveNotebookGraphList
+} from './knowledge-notebook-graph.util'
 
 export function KnowledgeNotebookGraphSection(props: {
   nodes: KnowledgeGraphNodeRow[]
   edges: KnowledgeGraphEdgeRow[]
+  pagedNodes?: KnowledgeGraphNodeRow[]
+  nodeTotal?: number
+  nodeInventoryCount?: number
+  edgeInventoryCount?: number
+  loading?: boolean
   pendingNodes: KnowledgeGraphNodeRow[]
   pendingEdges: KnowledgeGraphEdgeRow[]
   similarPairs: GraphSimilarPendingPair[]
   searchQuery: string
   onSearchQueryChange: (value: string) => void
-  onSearch: () => void
-  selectedId: string | null
-  highlightIds: Set<string>
-  locateIds: string[] | null
-  locateSeq: number
-  onSelectNode: (id: string) => void
-  onClearSelection: () => void
-  tab: GraphTab
-  onTabChange: (tab: GraphTab) => void
+  onSearch?: (overrideQuery?: string, overrideMode?: 'text' | 'semantic') => void
   graphProgress: string
-  busy: boolean
-  reviewBusy: boolean
-  onReviewNode: (nodeId: string, status: 'approved' | 'rejected') => void
-  onReviewEdge: (edgeId: string, status: 'approved' | 'rejected') => void
-  onReviewAll: (status: 'approved' | 'rejected') => void
-  onMergeSimilar: (pair: GraphSimilarPendingPair) => void
-  onDismissSimilar: (pair: GraphSimilarPendingPair) => void
-  onLocateNode: (nodeId: string) => void
-  onPreviewFragments: (edges: KnowledgeGraphEdgeRow[]) => void
+  onOpenReview: () => void
+  onOpenNode: (nodeId: string) => void
   searchMode: 'text' | 'semantic'
   onSearchModeChange: (mode: 'text' | 'semantic') => void
+  searchHits: KnowledgeGraphSearchHit[]
+  nodePage: number
+  nodePageSize: number
+  onNodePageChange: (page: number) => void
+  onNodePageSizeChange: (size: number) => void
+  viewMode: 'list' | 'graph'
+  onViewModeChange: (mode: 'list' | 'graph') => void
+  fillRemaining?: boolean
   viewMaxNodes: number
   onViewMaxNodesChange: (value: number) => void
-  focusDepth: GraphFocusDepth
-  onFocusDepthChange: (depth: GraphFocusDepth) => void
-  searchHits: KnowledgeGraphSearchHit[]
-  mergeSearchQuery: string
-  onMergeSearchQueryChange: (value: string) => void
-  onSearchMerge: () => void
-  mergeHits: Array<{ id: string; name: string; nodeType?: string }>
-  mergeLoserIds: Set<string>
-  onToggleMergeLoser: (id: string) => void
-  onMergeSearched: () => void
-  pendingSelection: Set<string>
-  onTogglePending: (kind: 'node' | 'edge', id: string) => void
-  onToggleSelectAllPending: () => void
-  onReviewSelected: (status: 'approved' | 'rejected') => void
-  onRebuildGraph: () => void
-  onStartOrganize: () => void
 }) {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
-  const pendingCount = props.pendingNodes.length + props.pendingEdges.length
-  const selectedNode = props.nodes.find((node) => node.id === props.selectedId)
-  const relatedEdges = props.edges.filter(
-    (edge) => edge.fromId === props.selectedId || edge.toId === props.selectedId
+  const {
+    appearanceSettings,
+    forceSettings,
+    onAppearanceChange,
+    onForceChange,
+    resetGraphSettings
+  } = useNotebookGraphAppearance()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [animationTick, setAnimationTick] = useState(0)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const settingsSize = tokens.spacing.xl + tokens.spacing.md
+  const isServerPaged = Boolean(props.pagedNodes)
+  const displayNodes = props.pagedNodes ?? props.nodes
+
+  useEffect(() => {
+    if (props.viewMode !== 'graph') {
+      setSelectedNodeId(null)
+    }
+  }, [props.viewMode])
+
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeId
+        ? (displayNodes.find((n) => n.id === selectedNodeId) ??
+          props.nodes.find((n) => n.id === selectedNodeId) ??
+          null)
+        : null,
+    [selectedNodeId, displayNodes, props.nodes]
+  )
+  const listed = resolveNotebookGraphList({
+    nodes: displayNodes,
+    searchHits: props.searchHits,
+    searchMode: props.searchMode,
+    query: props.searchQuery,
+    page: props.nodePage,
+    pageSize: props.nodePageSize,
+    totalOverride: props.nodeTotal,
+    isServerPaged
+  })
+  const totalNodesCount = props.nodeInventoryCount ?? props.nodes.length
+  const totalEdgesCount = props.edgeInventoryCount ?? props.edges.length
+  const showNodeList =
+    notebookGraphHasInventory(totalNodesCount) || props.searchQuery.trim().length > 0
+
+  const canvasNodes = useMemo(
+    () =>
+      props.nodes.map((node) => ({
+        id: node.id,
+        name: node.name || node.id,
+        nodeType: node.nodeType || 'topic',
+        mentionCount: node.mentionCount,
+        reviewStatus: node.reviewStatus
+      })),
+    [props.nodes]
+  )
+
+  const canvasEdges = useMemo(
+    () =>
+      props.edges.map((edge) => ({
+        id: edge.id,
+        fromId: edge.fromId,
+        toId: edge.toId,
+        edgeType: edge.edgeType || 'relates_to',
+        reviewStatus: edge.reviewStatus
+      })),
+    [props.edges]
   )
 
   return (
-    <SettingsSection
-      title={t('knowledge.graph_panel', '本笔记本图谱')}
-      titleAddon={
-        <HelpTooltip
-          content={t(
-            'knowledge.graph_title_help',
-            '这是从这本笔记本资料里整理出的人物、地点和事件关系。人生关系图是另一套库，不会混在这里。'
-          )}
-        />
-      }
+    <View
+      style={{
+        flex: props.fillRemaining ? 1 : undefined,
+        minHeight: props.fillRemaining ? 0 : undefined,
+        marginHorizontal: tokens.spacing.md,
+        marginTop: tokens.spacing.sm,
+        gap: tokens.spacing.sm
+      }}
     >
-      <View style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm }}>
-        {props.graphProgress ? (
+      <KnowledgeNotebookGraphReviewBar
+        pendingNodeCount={props.pendingNodes.length}
+        pendingEdgeCount={props.pendingEdges.length}
+        similarPairCount={props.similarPairs.length}
+        onOpenReview={props.onOpenReview}
+      />
+      {props.loading ? (
+        <View
+          style={{
+            padding: tokens.spacing.xl,
+            borderRadius: tokens.radius.md,
+            borderWidth: 1,
+            borderColor: colors.borderControl,
+            backgroundColor: colors.bgSurface,
+            gap: tokens.spacing.sm,
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text
             style={{
               color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize,
-              fontWeight: settingsTypography.desc.fontWeight
+              fontSize: mobileTypography.secondary.fontSize
             }}
           >
-            {props.graphProgress}
+            {t('knowledge.graph_loading', '正在加载图谱数据…')}
           </Text>
-        ) : null}
-        <Input
-          value={props.searchQuery}
-          onChangeText={props.onSearchQueryChange}
-          placeholder={t('graph.search_placeholder', '搜索节点')}
-        />
-        <SegmentedControl
-          value={props.searchMode}
-          onChange={(value) => props.onSearchModeChange(value as 'text' | 'semantic')}
-          options={[
-            { value: 'text', label: t('knowledge.vector_search_text', '文本') },
-            { value: 'semantic', label: t('knowledge.vector_search_semantic', '语义') }
-          ]}
-        />
-        <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-          <Button isDisabled={props.busy} onPress={() => void props.onSearch()}>
-            {t('common.search', '搜索')}
-          </Button>
-          <Button
-            variant="outlined"
-            isDisabled={props.busy || props.nodes.length === 0}
-            onPress={() => void props.onRebuildGraph()}
-          >
-            {t('knowledge.rebuild_graph', '重新抽取图谱')}
-          </Button>
-          {props.nodes.length === 0 ? (
-            <Button isDisabled={props.busy} onPress={() => void props.onStartOrganize()}>
-              {t('graph.start_organize', '开始整理')}
-            </Button>
-          ) : null}
         </View>
+      ) : !showNodeList && totalNodesCount === 0 && !props.searchQuery.trim() ? (
+        <View
+          style={{
+            padding: tokens.spacing.md,
+            borderRadius: tokens.radius.md,
+            borderWidth: 1,
+            borderColor: colors.borderControl,
+            backgroundColor: colors.bgSurface,
+            gap: tokens.spacing.xs,
+            alignItems: 'center'
+          }}
+        >
+          <Text
+            style={{
+              color: colors.textPrimary,
+              fontSize: mobileTypography.primary.fontSize,
+              fontWeight: mobileTypography.primary.fontWeight,
+              textAlign: 'center'
+            }}
+          >
+            {t('knowledge.graph_empty_title', '还没有开始整理这本笔记本的关系')}
+          </Text>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: mobileTypography.secondary.fontSize,
+              textAlign: 'center'
+            }}
+          >
+            {t(
+              'knowledge.graph_empty_desc',
+              '可点击右下角整理按钮，自动分析这本笔记本中的人物、地点与事件关系。'
+            )}
+          </Text>
+        </View>
+      ) : null}
+      {notebookGraphHasInventory(props.nodes.length) ? (
         <Text
           style={{
             color: colors.textSecondary,
-            fontSize: settingsTypography.desc.fontSize
+            fontSize: mobileTypography.secondary.fontSize
           }}
         >
-          {t('knowledge.graph_ops_hint', '重新抽取只会整理这本笔记本。人生关系图不会被改动。')}
+          {t('knowledge.graph_inventory', '已有节点 {{nodeCount}} · 关系 {{edgeCount}}', {
+            nodeCount: totalNodesCount,
+            edgeCount: totalEdgesCount
+          })}
         </Text>
-        <SegmentedControl
-          value={props.tab}
-          onChange={(value) => props.onTabChange(value as GraphTab)}
-          options={[
-            { value: 'canvas', label: t('graph.tab_canvas', '画布') },
-            { value: 'reextract', label: t('graph.tab_reextract', '待重抽') },
-            {
-              value: 'pending',
-              label: t('graph.tab_pending_count', '待确认 ({{count}})', { count: pendingCount })
-            },
-            {
-              value: 'similar',
-              label: t('graph.tab_similar_count', '相似待合并 ({{count}})', {
-                count: props.similarPairs.length
-              })
-            }
-          ]}
+      ) : null}
+      {props.graphProgress ? (
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: mobileTypography.secondary.fontSize,
+            fontWeight: mobileTypography.secondary.fontWeight
+          }}
+        >
+          {props.graphProgress}
+        </Text>
+      ) : null}
+      <View style={styles.searchToolbar}>
+        <CompactSearchBar
+          value={props.searchQuery}
+          onChangeText={(text) => {
+            props.onSearchQueryChange(text)
+            if (props.searchMode === 'semantic') props.onSearch?.(text)
+          }}
+          onSubmitEditing={() => void props.onSearch?.()}
+          onClear={() => {
+            props.onSearchQueryChange('')
+            props.onSearch?.('')
+          }}
+          placeholder={t('graph.search_placeholder', '搜索节点名称或语义…')}
         />
-        {props.tab === 'canvas' ? (
-          <KnowledgeNotebookGraphCanvasTab
-            nodes={props.nodes}
-            edges={props.edges}
-            selectedId={props.selectedId}
-            highlightIds={props.highlightIds}
-            locateIds={props.locateIds}
-            locateSeq={props.locateSeq}
-            onSelectNode={props.onSelectNode}
-            onClearSelection={props.onClearSelection}
-            busy={props.busy}
-            reviewBusy={props.reviewBusy}
-            viewMaxNodes={props.viewMaxNodes}
-            onViewMaxNodesChange={props.onViewMaxNodesChange}
-            focusDepth={props.focusDepth}
-            onFocusDepthChange={props.onFocusDepthChange}
-            searchHits={props.searchHits}
-            onLocateNode={props.onLocateNode}
-            mergeSearchQuery={props.mergeSearchQuery}
-            onMergeSearchQueryChange={props.onMergeSearchQueryChange}
-            onSearchMerge={props.onSearchMerge}
-            mergeHits={props.mergeHits}
-            mergeLoserIds={props.mergeLoserIds}
-            onToggleMergeLoser={props.onToggleMergeLoser}
-            onMergeSearched={props.onMergeSearched}
-          />
-        ) : null}
-        {props.tab === 'reextract' ? (
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: settingsTypography.desc.fontSize
+        <View style={{ flexShrink: 0 }}>
+          <SegmentedControl
+            size="small"
+            stretch={false}
+            value={props.searchMode}
+            onChange={(value) => {
+              const nextMode = value as 'text' | 'semantic'
+              props.onSearchModeChange(nextMode)
+              if (nextMode === 'semantic' && props.searchQuery.trim()) {
+                props.onSearch?.(undefined, nextMode)
+              }
             }}
-          >
-            {props.graphProgress || t('knowledge.graph_reextract_empty', '暂无待重抽资料')}
-          </Text>
-        ) : null}
-        {props.selectedId ? (
-          <Card>
-            <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.sm }}>
-              <Text
-                style={{ color: colors.textPrimary, fontSize: settingsTypography.row.fontSize }}
-              >
-                {selectedNode?.name || props.selectedId}
-              </Text>
-              {selectedNode?.nodeType ? (
-                <Text
-                  style={{
-                    color: colors.textSecondary,
-                    fontSize: settingsTypography.desc.fontSize
-                  }}
-                >
-                  {t('graph.node_type', '类型')} · {selectedNode.nodeType}
-                </Text>
-              ) : null}
-              {selectedNode?.mentionCount != null ? (
-                <Text
-                  style={{
-                    color: colors.textSecondary,
-                    fontSize: settingsTypography.desc.fontSize
-                  }}
-                >
-                  {t('graph.mention_count', '提及 {{count}} 次', {
-                    count: selectedNode.mentionCount
-                  })}
-                </Text>
-              ) : null}
-              <Text
-                style={{ color: colors.textSecondary, fontSize: settingsTypography.desc.fontSize }}
-              >
-                {selectedNode?.summary ||
-                  t('graph.node_detail_empty', '点选节点后可以在这里看名称和摘要')}
-              </Text>
-              {relatedEdges.map((edge) => {
-                const otherId = edge.fromId === props.selectedId ? edge.toId : edge.fromId
-                const other = props.nodes.find((node) => node.id === otherId)?.name || otherId
-                return (
-                  <View key={edge.id} style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-                    <Text style={{ color: colors.textPrimary, flex: 1 }}>
-                      {edge.edgeType} · {other}
-                    </Text>
-                    <Button variant="outlined" onPress={() => props.onLocateNode(otherId)}>
-                      {t('graph.view_on_canvas', '在画布查看')}
-                    </Button>
-                    {edge.reviewStatus === 'pending' ? (
-                      <>
-                        <Button
-                          isDisabled={props.reviewBusy}
-                          onPress={() => void props.onReviewEdge(edge.id, 'approved')}
-                        >
-                          {t('graph.approve', '通过')}
-                        </Button>
-                        <Button
-                          destructive
-                          isDisabled={props.reviewBusy}
-                          onPress={() => void props.onReviewEdge(edge.id, 'rejected')}
-                        >
-                          {t('graph.reject', '拒绝')}
-                        </Button>
-                      </>
-                    ) : null}
-                  </View>
-                )
-              })}
-              <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-                {selectedNode?.reviewStatus === 'pending' ? (
-                  <>
-                    <Button
-                      isDisabled={props.reviewBusy}
-                      onPress={() => void props.onReviewNode(selectedNode.id, 'approved')}
-                    >
-                      {t('graph.approve', '通过')}
-                    </Button>
-                    <Button
-                      destructive
-                      isDisabled={props.reviewBusy}
-                      onPress={() => void props.onReviewNode(selectedNode.id, 'rejected')}
-                    >
-                      {t('graph.reject', '拒绝')}
-                    </Button>
-                  </>
-                ) : null}
-                <Button
-                  variant="outlined"
-                  isDisabled={relatedEdges.length === 0}
-                  onPress={() => void props.onPreviewFragments(relatedEdges)}
-                >
-                  {t('knowledge.graph_fragments', '查看原文窗口')}
-                </Button>
-              </View>
-            </View>
-          </Card>
-        ) : null}
-        {props.tab === 'pending' ? (
-          <KnowledgeNotebookGraphPendingTab
-            nodes={props.nodes}
-            pendingNodes={props.pendingNodes}
-            pendingEdges={props.pendingEdges}
-            pendingSelection={props.pendingSelection}
-            reviewBusy={props.reviewBusy}
-            onTogglePending={props.onTogglePending}
-            onToggleSelectAll={props.onToggleSelectAllPending}
-            onReviewNode={props.onReviewNode}
-            onReviewEdge={props.onReviewEdge}
-            onReviewAll={props.onReviewAll}
-            onReviewSelected={props.onReviewSelected}
-            onLocateNode={props.onLocateNode}
+            options={[
+              { value: 'semantic', label: t('settings.rag_search_semantic', '语义搜索') },
+              { value: 'text', label: t('settings.rag_search_text', '文本搜索') }
+            ]}
           />
-        ) : null}
-        {props.tab === 'similar' ? (
-          <View style={{ gap: tokens.spacing.sm }}>
-            {props.similarPairs.length === 0 ? (
-              <Text
+        </View>
+      </View>
+      <SegmentedControl
+        size="small"
+        accessibilityLabel={t('graph.view_mode', '显示方式')}
+        value={props.viewMode}
+        onChange={(value) => props.onViewModeChange(value as 'list' | 'graph')}
+        options={[
+          { value: 'list', label: t('graph.view_list', '列表') },
+          { value: 'graph', label: t('graph.view_graph', '关系图') }
+        ]}
+      />
+      <SegmentedContent
+        value={props.viewMode}
+        style={{
+          flex: props.fillRemaining ? 1 : undefined,
+          minHeight: props.fillRemaining ? 0 : undefined
+        }}
+      >
+        {props.viewMode === 'graph' ? (
+          <>
+            <View
+              collapsable={false}
+              style={{
+                flex: props.fillRemaining ? 1 : undefined,
+                height: props.fillRemaining ? undefined : tokens.spacing.xl * 18,
+                minHeight: 0,
+                borderRadius: tokens.radius.lg,
+                overflow: 'hidden',
+                backgroundColor: colors.bgSurface,
+                borderWidth: 1,
+                borderColor: colors.borderControl
+              }}
+            >
+              <GraphForceWebView
+                nodes={canvasNodes}
+                edges={canvasEdges}
+                forceSettings={forceSettings}
+                appearanceSettings={appearanceSettings}
+                selectedId={selectedNodeId}
+                animationTick={animationTick}
+                onSelectNode={(node) => setSelectedNodeId(node.id)}
+                onClearSelection={() => setSelectedNodeId(null)}
+              />
+              <View
+                pointerEvents="none"
                 style={{
-                  color: colors.textSecondary,
-                  fontSize: settingsTypography.desc.fontSize
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: tokens.radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.borderControl
+                }}
+              />
+              <View
+                pointerEvents="box-none"
+                style={{
+                  position: 'absolute',
+                  top: tokens.spacing.sm,
+                  right: tokens.spacing.sm
                 }}
               >
-                {t('graph.no_similar_pending', '没有相似待合并')}
-              </Text>
-            ) : (
-              props.similarPairs.map((pair) => (
-                <Card key={`${pair.nodeId}:${pair.peerId}`}>
-                  <View style={{ padding: tokens.spacing.sm, gap: tokens.spacing.sm }}>
-                    <Text
-                      style={{
-                        color: colors.textPrimary,
-                        fontSize: settingsTypography.row.fontSize,
-                        fontWeight: settingsTypography.row.fontWeight
-                      }}
-                    >
-                      {pair.nodeName} · {pair.peerName}
-                    </Text>
-                    <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-                      <Button variant="outlined" onPress={() => props.onLocateNode(pair.nodeId)}>
-                        {t('graph.view_on_canvas', '在画布查看')}
-                      </Button>
-                    </View>
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        fontSize: settingsTypography.desc.fontSize
-                      }}
-                    >
-                      {pair.reason || t('graph.similar_pending', '相似待合并')}
-                    </Text>
-                    <View style={[styles.rowGap, { gap: tokens.spacing.sm }]}>
-                      <Button
-                        isDisabled={props.reviewBusy}
-                        onPress={() => void props.onMergeSimilar(pair)}
-                      >
-                        {t('graph.merge', '合并')}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        isDisabled={props.reviewBusy}
-                        onPress={() => void props.onDismissSimilar(pair)}
-                      >
-                        {t('graph.keep_apart', '分开保留')}
-                      </Button>
-                    </View>
-                  </View>
-                </Card>
-              ))
-            )}
-          </View>
+                <Pressable
+                  onPress={() => setSettingsOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('graph.settings', '设置')}
+                  style={{
+                    width: settingsSize,
+                    height: settingsSize,
+                    borderRadius: tokens.radius.md,
+                    borderWidth: 1,
+                    borderColor: settingsOpen ? colors.primary : colors.borderControl,
+                    backgroundColor: colors.bgSurface,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Settings
+                    size={settingsIcons.leading}
+                    color={settingsOpen ? colors.primary : colors.textPrimary}
+                    strokeWidth={2}
+                  />
+                </Pressable>
+              </View>
+              {selectedNodeId ? (
+                <GraphCanvasNodePeek
+                  name={selectedNode?.name || selectedNodeId}
+                  onOpenDetail={() => props.onOpenNode(selectedNodeId)}
+                  style={{ bottom: tokens.spacing.sm }}
+                />
+              ) : null}
+            </View>
+            <FloatingModal
+              visible={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              maxWidth={440}
+              cardStyle={{ padding: tokens.spacing.lg }}
+            >
+              <View style={{ gap: tokens.spacing.md }}>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: mobileTypography.title.fontSize,
+                    fontWeight: mobileTypography.title.fontWeight
+                  }}
+                >
+                  {t('graph.settings', '设置')}
+                </Text>
+                <ScrollView
+                  style={{ maxHeight: tokens.spacing.xl * 16 }}
+                  contentContainerStyle={{
+                    paddingHorizontal: tokens.spacing.md,
+                    paddingVertical: tokens.spacing.sm
+                  }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <KnowledgeNotebookGraphAppearance
+                    appearanceSettings={appearanceSettings}
+                    forceSettings={forceSettings}
+                    viewMaxNodes={props.viewMaxNodes}
+                    onAppearanceChange={onAppearanceChange}
+                    onForceChange={onForceChange}
+                    onViewMaxNodesChange={props.onViewMaxNodesChange}
+                    onReplayLayout={() => setAnimationTick((tick) => tick + 1)}
+                    onResetGraphSettings={resetGraphSettings}
+                  />
+                </ScrollView>
+                <View style={modalActionsStyle}>
+                  <Button size="sm" onPress={() => setSettingsOpen(false)}>
+                    {t('common.close', '关闭')}
+                  </Button>
+                </View>
+              </View>
+            </FloatingModal>
+          </>
+        ) : showNodeList ? (
+          <KnowledgeNotebookGraphNodeList
+            items={listed.items}
+            total={listed.total}
+            page={listed.page}
+            pageSize={props.nodePageSize}
+            totalPages={listed.totalPages}
+            showPagination={listed.showPagination}
+            query={props.searchQuery}
+            onPageChange={props.onNodePageChange}
+            onPageSizeChange={props.onNodePageSizeChange}
+            onOpenNode={props.onOpenNode}
+          />
         ) : null}
-      </View>
-    </SettingsSection>
+      </SegmentedContent>
+    </View>
   )
 }

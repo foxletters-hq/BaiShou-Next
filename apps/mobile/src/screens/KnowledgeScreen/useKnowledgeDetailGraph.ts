@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import {
   collectNotebookGraphSourceWindows,
@@ -10,6 +10,8 @@ import {
 } from '@baishou/shared'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
 import {
+  mobileCountNotebookGraph,
+  mobileListNotebookGraphNodesPage,
   mobileSearchNotebookGraph,
   mobileSearchNotebookGraphNodes
 } from '@/src/services/mobile-knowledge.service'
@@ -28,6 +30,10 @@ import {
 } from './knowledge-source-preview.util'
 import type { KnowledgeGraphEdgeRow, KnowledgeGraphNodeRow } from './knowledge-detail.types'
 import type { KnowledgeGraphSearchHit } from './KnowledgeNotebookGraphCanvasTab'
+import {
+  isCurrentNotebookGraphSearch,
+  shouldResetNotebookGraphSearch
+} from './knowledge-notebook-graph.util'
 
 export function useKnowledgeDetailGraph(input: {
   notebookId: string
@@ -38,16 +44,42 @@ export function useKnowledgeDetailGraph(input: {
   dialog: ReturnType<typeof useDialog>
   setError: (message: string) => void
   refreshDetail: () => Promise<void>
+  applyLocalGraphReview: (input: {
+    kind: 'node' | 'edge'
+    id: string
+    status: 'approved' | 'rejected'
+  }) => void
+  applyLocalGraphReviewBatch: (input: {
+    nodeIds: string[]
+    edgeIds: string[]
+    status: 'approved' | 'rejected'
+  }) => void
+  enabled?: boolean
 }) {
-  const { notebookId, vaultId, nodes, t, toast, dialog, setError, refreshDetail } = input
-  const [graphSearchQuery, setGraphSearchQuery] = useState('')
-  const [graphSearchMode, setGraphSearchMode] = useState<'text' | 'semantic'>('text')
-  const [graphTab, setGraphTab] = useState<'canvas' | 'reextract' | 'pending' | 'similar'>('canvas')
+  const {
+    notebookId,
+    vaultId,
+    nodes,
+    t,
+    toast,
+    dialog,
+    setError,
+    refreshDetail,
+    applyLocalGraphReview,
+    applyLocalGraphReviewBatch,
+    enabled = true
+  } = input
+  const [graphSearchQuery, setGraphSearchQueryState] = useState('')
+  const [graphSearchMode, setGraphSearchModeState] = useState<'text' | 'semantic'>('semantic')
+  const [graphTab, setGraphTab] = useState<'pending' | 'similar' | 'reextract'>('pending')
   const [selectedGraphId, setSelectedGraphId] = useState<string | null>(null)
   const [graphHighlightIds, setGraphHighlightIds] = useState<Set<string>>(() => new Set())
   const [graphLocateIds, setGraphLocateIds] = useState<string[] | null>(null)
   const [graphLocateSeq, setGraphLocateSeq] = useState(0)
   const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewingSelectedStatus, setReviewingSelectedStatus] = useState<
+    'approved' | 'rejected' | null
+  >(null)
   const [fragments, setFragments] = useState<KnowledgeSourceFragment[]>([])
   const [pendingSelection, setPendingSelection] = useState<Set<string>>(() => new Set())
   const [mergeSearchQuery, setMergeSearchQuery] = useState('')
@@ -57,49 +89,122 @@ export function useKnowledgeDetailGraph(input: {
   const [mergeLoserIds, setMergeLoserIds] = useState<Set<string>>(() => new Set())
   const [graphSearchHits, setGraphSearchHits] = useState<KnowledgeGraphSearchHit[]>([])
   const [focusDepth, setFocusDepth] = useState<GraphFocusDepth>(GRAPH_FOCUS_DEPTH_DEFAULT)
+  const [graphNodePage, setGraphNodePage] = useState(1)
+  const [graphNodePageSize, setGraphNodePageSize] = useState(20)
+  const [graphNodesPage, setGraphNodesPage] = useState<KnowledgeGraphNodeRow[]>([])
+  const [graphNodeTotal, setGraphNodeTotal] = useState(0)
+  const [graphInventoryNodeCount, setGraphInventoryNodeCount] = useState(0)
+  const [graphInventoryEdgeCount, setGraphInventoryEdgeCount] = useState(0)
+  const [graphLoading, setGraphLoading] = useState(false)
+  const graphSearchSeqRef = useRef(0)
+  const pageSeqRef = useRef(0)
+  const countsCacheRef = useRef<{
+    keyword: string | undefined
+    counts: {
+      nodeCount: number
+      edgeCount: number
+      filteredNodeCount: number
+    }
+  } | null>(null)
+
+  const loadGraphPage = useCallback(async () => {
+    if (!notebookId || !enabled) return
+    const seq = ++pageSeqRef.current
+    setGraphLoading(true)
+    try {
+      const keyword = graphSearchMode === 'text' ? graphSearchQuery.trim() : undefined
+      const offset = (graphNodePage - 1) * graphNodePageSize
+      const cached = countsCacheRef.current
+      const needCounts = !cached || cached.keyword !== keyword
+      const countsPromise = needCounts
+        ? mobileCountNotebookGraph(notebookId, keyword).then((res) => {
+            countsCacheRef.current = { keyword, counts: res }
+            return res
+          })
+        : Promise.resolve(cached.counts)
+      const [rows, counts] = await Promise.all([
+        mobileListNotebookGraphNodesPage({
+          notebookId,
+          keyword,
+          limit: graphNodePageSize,
+          offset
+        }),
+        countsPromise
+      ])
+      if (seq !== pageSeqRef.current) return
+      setGraphNodesPage(rows as KnowledgeGraphNodeRow[])
+      setGraphNodeTotal(counts.filteredNodeCount)
+      setGraphInventoryNodeCount(counts.nodeCount)
+      setGraphInventoryEdgeCount(counts.edgeCount)
+    } catch {
+      if (seq !== pageSeqRef.current) return
+      setGraphNodesPage([])
+      setGraphNodeTotal(0)
+    } finally {
+      if (seq === pageSeqRef.current) {
+        setGraphLoading(false)
+      }
+    }
+  }, [notebookId, enabled, graphSearchMode, graphSearchQuery, graphNodePage, graphNodePageSize])
+
+  useEffect(() => {
+    if (!enabled) return
+    void loadGraphPage()
+  }, [enabled, loadGraphPage])
+
+  const setGraphSearchQuery = (value: string) => {
+    setGraphNodePage(1)
+    setGraphSearchQueryState(value)
+  }
+  const setGraphSearchMode = (mode: 'text' | 'semantic') => {
+    setGraphNodePage(1)
+    setGraphSearchModeState(mode)
+  }
+  const setGraphNodePageSizeAndReset = (size: number) => {
+    setGraphNodePage(1)
+    setGraphNodePageSize(size)
+  }
 
   const locateGraphNode = (nodeId: string) => {
-    setGraphTab('canvas')
     setSelectedGraphId(nodeId)
     setGraphLocateIds([nodeId])
     setGraphLocateSeq((n) => n + 1)
   }
 
-  const searchGraph = async () => {
-    const q = graphSearchQuery.trim()
-    if (!q) {
+  const searchGraph = async (overrideQuery?: string, overrideMode?: 'text' | 'semantic') => {
+    const q = (overrideQuery !== undefined ? overrideQuery : graphSearchQuery).trim()
+    const mode = overrideMode ?? graphSearchMode
+    const seq = ++graphSearchSeqRef.current
+    if (shouldResetNotebookGraphSearch(q)) {
       setGraphHighlightIds(new Set())
       setGraphLocateIds(null)
       setGraphSearchHits([])
+      setSelectedGraphId(null)
       return
     }
+    if (mode !== 'semantic') return
     try {
-      const hits: KnowledgeGraphSearchHit[] =
-        graphSearchMode === 'semantic'
-          ? (await mobileSearchNotebookGraph({ notebookId, query: q, limit: 12 })).flatMap(
-              (group) =>
-                group.nodes.map((node) => ({
-                  id: node.id,
-                  name: node.name,
-                  nodeType: node.nodeType,
-                  summary: node.summary
-                }))
-            )
-          : (await mobileSearchNotebookGraphNodes({ notebookId, query: q, limit: 12 })).map(
-              (row) => ({
-                id: row.id,
-                name: row.name,
-                nodeType: row.nodeType,
-                summary: row.summary ?? undefined
-              })
-            )
+      const groups = await mobileSearchNotebookGraph({
+        notebookId,
+        query: q,
+        limit: graphNodePageSize
+      })
+      if (!isCurrentNotebookGraphSearch(seq, graphSearchSeqRef.current)) return
+      const hits: KnowledgeGraphSearchHit[] = groups.flatMap((group) =>
+        group.nodes.map((node) => ({
+          id: node.id,
+          name: node.name,
+          nodeType: node.nodeType,
+          summary: node.summary
+        }))
+      )
       setGraphSearchHits(hits)
       const ids = hits.map((hit) => hit.id)
       setGraphHighlightIds(new Set(ids))
       setGraphLocateIds(ids)
       setGraphLocateSeq((n) => n + 1)
-      if (ids[0]) setSelectedGraphId(ids[0])
     } catch (e) {
+      if (!isCurrentNotebookGraphSearch(seq, graphSearchSeqRef.current)) return
       setError(knowledgeIngestUserMessage(e, t))
     }
   }
@@ -110,14 +215,21 @@ export function useKnowledgeDetailGraph(input: {
     return false
   }
 
+  const reviewDoneMessage = (status: 'approved' | 'rejected', count: number) =>
+    status === 'approved'
+      ? t('graph.batch_approved', '已通过 {{count}} 项', { count })
+      : t('graph.batch_rejected', '已拒绝 {{count}} 项', { count })
+
   const reviewNode = async (nodeId: string, status: 'approved' | 'rejected') => {
     if (!requireVault()) return
+    applyLocalGraphReview({ kind: 'node', id: nodeId, status })
     setReviewBusy(true)
     try {
       await mobileReviewNotebookGraphNode({ notebookId, nodeId, reviewStatus: status, vaultId })
-      await refreshDetail()
+      toast.showSuccess(reviewDoneMessage(status, 1))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
+      await refreshDetail()
     } finally {
       setReviewBusy(false)
     }
@@ -125,12 +237,14 @@ export function useKnowledgeDetailGraph(input: {
 
   const reviewEdge = async (edgeId: string, status: 'approved' | 'rejected') => {
     if (!requireVault()) return
+    applyLocalGraphReview({ kind: 'edge', id: edgeId, status })
     setReviewBusy(true)
     try {
       await mobileReviewNotebookGraphEdge({ notebookId, edgeId, reviewStatus: status, vaultId })
-      await refreshDetail()
+      toast.showSuccess(reviewDoneMessage(status, 1))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
+      await refreshDetail()
     } finally {
       setReviewBusy(false)
     }
@@ -148,8 +262,9 @@ export function useKnowledgeDetailGraph(input: {
       })
       setPendingSelection(new Set())
       await refreshDetail()
+      toast.showSuccess(t('common.success', '操作成功'))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setReviewBusy(false)
     }
@@ -181,10 +296,21 @@ export function useKnowledgeDetailGraph(input: {
 
   const reviewSelectedPending = async (status: 'approved' | 'rejected') => {
     if (!requireVault()) return
-    const split = splitGraphReviewSelection(pendingSelection)
-    if (split.nodeIds.length === 0 && split.edgeIds.length === 0) return
+    if (pendingSelection.size === 0) return
+    const previousSelection = pendingSelection
+    setReviewingSelectedStatus(status)
     setReviewBusy(true)
     try {
+      // 先让原生界面画出 loading，再做同步的本地批量更新，避免点击后首帧卡顿。
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      })
+      const split = splitGraphReviewSelection(previousSelection)
+      const count = split.nodeIds.length + split.edgeIds.length
+      if (count === 0) return
+      // 先在本地一次性乐观更新：列表立即变化，不等写库，更不等索引同步
+      applyLocalGraphReviewBatch({ nodeIds: split.nodeIds, edgeIds: split.edgeIds, status })
+      setPendingSelection(new Set())
       await mobileReviewNotebookGraphBatch({
         notebookId,
         vaultId,
@@ -192,11 +318,14 @@ export function useKnowledgeDetailGraph(input: {
         nodeIds: split.nodeIds,
         edgeIds: split.edgeIds
       })
-      setPendingSelection(new Set())
-      await refreshDetail()
+      toast.showSuccess(reviewDoneMessage(status, count))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
+      // 写库失败：恢复选择，并从数据库回滚乐观更新
+      setPendingSelection(previousSelection)
+      await refreshDetail().catch(() => undefined)
     } finally {
+      setReviewingSelectedStatus(null)
       setReviewBusy(false)
     }
   }
@@ -266,8 +395,9 @@ export function useKnowledgeDetailGraph(input: {
       setMergeLoserIds(new Set())
       setMergeHits([])
       await refreshDetail()
+      toast.showSuccess(t('graph.nodes_merged', '已合并节点'))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setReviewBusy(false)
     }
@@ -292,8 +422,9 @@ export function useKnowledgeDetailGraph(input: {
         loserId: pair.peerId
       })
       await refreshDetail()
+      toast.showSuccess(t('graph.nodes_merged', '已合并节点'))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setReviewBusy(false)
     }
@@ -301,6 +432,17 @@ export function useKnowledgeDetailGraph(input: {
 
   const dismissSimilar = async (pair: GraphSimilarPendingPair) => {
     if (!requireVault()) return
+    const ok = await dialog.confirm(
+      pair.nodeName && pair.peerName
+        ? t(
+            'graph.confirm_keep_apart_named',
+            '确定「{{name1}}」和「{{name2}}」不是同一人？确认后将分开保留，不再提示合并。',
+            { name1: pair.nodeName, name2: pair.peerName }
+          )
+        : t('graph.confirm_keep_apart', '确定不是同一人？确认后将分开保留，不再提示合并。'),
+      { title: t('graph.similar_keep_apart', '不是同一人') }
+    )
+    if (!ok) return
     setReviewBusy(true)
     try {
       await mobileDismissNotebookSimilarPair({
@@ -310,8 +452,9 @@ export function useKnowledgeDetailGraph(input: {
         peerId: pair.peerId
       })
       await refreshDetail()
+      toast.showSuccess(t('graph.similar_dismissed', '已分开保留'))
     } catch (e) {
-      setError(knowledgeIngestUserMessage(e, t))
+      toast.showError(knowledgeIngestUserMessage(e, t))
     } finally {
       setReviewBusy(false)
     }
@@ -350,7 +493,9 @@ export function useKnowledgeDetailGraph(input: {
     graphLocateIds,
     graphLocateSeq,
     reviewBusy,
+    reviewingSelectedStatus,
     fragments,
+    graphFragments: fragments,
     setFragments,
     pendingSelection,
     mergeSearchQuery,
@@ -358,8 +503,20 @@ export function useKnowledgeDetailGraph(input: {
     mergeHits,
     mergeLoserIds,
     graphSearchHits,
+    graphNodePage,
+    graphNodePageSize,
+    graphNodesPage,
+    graphNodeTotal,
+    graphInventoryNodeCount,
+    graphInventoryEdgeCount,
+    graphLoading,
+    loadGraphPage,
+    setGraphNodePage,
+    setGraphNodePageSize: setGraphNodePageSizeAndReset,
     focusDepth,
+    graphFocusDepth: focusDepth,
     setFocusDepth,
+    setGraphFocusDepth: setFocusDepth,
     locateGraphNode,
     searchGraph,
     searchMergeNodes,
