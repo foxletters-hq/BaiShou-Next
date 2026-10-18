@@ -5,7 +5,7 @@
   left: var(--app-content-inset-inline, 8px);
   right: var(--app-content-inset-inline, 8px);
   bottom: var(--app-content-inset-bottom, 8px);
-  border-radius: var(--app-content-radius, 12px);
+  border-radius: var(--app-content-radius, var(--radius-md));
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--bg-overlay);
@@ -30,19 +30,19 @@
   background-color: var(--bg-surface);
   border: 1px solid var(--border-muted);
   color: var(--text-primary);
-  border-radius: var(--radius-xl, 20px);
-  padding: 24px 28px;
+  border-radius: var(--radius-xl, var(--radius-lg-plus));
+  padding: var(--spacing-lg) var(--spacing-lg);
   min-width: 400px;
   max-width: 90vw;
   max-height: 90vh;
   box-shadow: var(--shadow-lg);
   font-family: var(--font-family);
-  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: scaleUp var(--duration-moderate) cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
 }
 
 .modalFade {
-  animation: fadeIn var(--duration-fast, 0.15s) ease-out;
+  animation: fadeIn var(--duration-fast, var(--duration-fast)) ease-out;
 }
 
 .overlayStatic,
@@ -55,7 +55,7 @@
   font-size: var(--ui-fs-xl);
   font-weight: 600;
   line-height: 1.35;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
   color: var(--text-primary);
 }
 

@@ -1,12 +1,12 @@
 .color-picker-container {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .color-presets {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .color-preset-btn {
@@ -16,7 +16,7 @@
   border: 2px solid transparent;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .color-preset-btn:hover {
@@ -31,10 +31,10 @@
 .color-custom {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--bg-surface-highlight);
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
 }
 
 .color-input {
@@ -47,7 +47,7 @@
 }
 
 .color-hex {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-family: var(--font-mono, monospace);
   color: var(--text-primary);
 }

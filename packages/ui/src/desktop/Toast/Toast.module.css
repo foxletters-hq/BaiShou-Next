@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   z-index: 999999;
   pointer-events: none;
 }
@@ -13,23 +13,23 @@
 .toast {
   background-color: var(--bg-surface);
   color: var(--text-primary);
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: var(--spacing-md-tight) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   max-width: 80vw;
-  animation: slideInFromRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: slideInFromRight var(--duration-slow) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   pointer-events: auto;
   cursor: pointer;
 }
 
 .exiting {
-  animation: fadeOutToRight 0.2s cubic-bezier(0.8, 0, 0.8, 1) forwards;
+  animation: fadeOutToRight var(--duration-swift) cubic-bezier(0.8, 0, 0.8, 1) forwards;
   pointer-events: none;
 }
 

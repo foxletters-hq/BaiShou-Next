@@ -14,6 +14,8 @@ export interface SegmentedControlProps<T extends string = string> {
   stretch?: boolean
   inline?: boolean
   spaced?: boolean
+  /** 顶栏等紧凑场景用小号，回忆页等默认尺寸保持不变 */
+  size?: 'small'
   disabled?: boolean
   className?: string
   'aria-label'?: string
@@ -34,6 +36,7 @@ export function SegmentedControl<T extends string>({
   stretch = false,
   inline = false,
   spaced = false,
+  size,
   disabled = false,
   className,
   'aria-label': ariaLabel
@@ -80,9 +83,11 @@ export function SegmentedControl<T extends string>({
 
   const groupClass = [
     styles.group,
+    thumb ? styles.groupHasThumb : '',
     stretch ? styles.groupStretch : '',
     inline ? styles.groupInline : '',
     spaced ? styles.groupSpaced : '',
+    size === 'small' ? styles.groupSmall : '',
     className ?? ''
   ]
     .filter(Boolean)
