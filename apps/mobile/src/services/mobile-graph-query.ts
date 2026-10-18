@@ -104,6 +104,14 @@ export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultId: st
   return new GraphRepository(drizzleDb).listPendingEdges(vaultId)
 }
 
+export async function mobileListEdgesTouching(
+  drizzleDb: AppDatabase,
+  vaultId: string,
+  nodeId: string
+) {
+  return new GraphRepository(drizzleDb).listEdgesTouching(vaultId, nodeId)
+}
+
 export async function mobileListPending(drizzleDb: AppDatabase, vaultId: string) {
   return new GraphRepository(drizzleDb).listPendingGraph(vaultId)
 }
@@ -114,6 +122,26 @@ export async function mobileListSuspectNodes(drizzleDb: AppDatabase, vaultId: st
 
 export async function mobileListSimilarPairs(drizzleDb: AppDatabase, vaultId: string) {
   return new GraphRepository(drizzleDb).listSimilarPendingPairs(vaultId)
+}
+
+export async function mobileListLiveNodesPage(
+  drizzleDb: AppDatabase,
+  vaultId: string,
+  options?: { keyword?: string; limit?: number; offset?: number }
+) {
+  return new GraphRepository(drizzleDb).listLiveNodesPage(vaultId, options)
+}
+
+export async function mobileCountLiveNodes(
+  drizzleDb: AppDatabase,
+  vaultId: string,
+  keyword?: string
+) {
+  return new GraphRepository(drizzleDb).countLiveNodes(vaultId, keyword)
+}
+
+export async function mobileCountLiveCurrentEdges(drizzleDb: AppDatabase, vaultId: string) {
+  return new GraphRepository(drizzleDb).countLiveCurrentEdges(vaultId)
 }
 
 export function createMobileGraphRag(drizzleDb: AppDatabase): GraphRagService {

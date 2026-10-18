@@ -34,4 +34,13 @@ describe('mobile graph name lookup', () => {
     expect(mutateSrc).toContain('discriminator: existing.discriminator')
     expect(mutateSrc).toContain("discriminator: ''")
   })
+
+  it('should notify graph pages after the life graph is wiped', () => {
+    const clearFn = mutateSrc.slice(mutateSrc.indexOf('export async function mobileClearLifeGraph'))
+    expect(clearFn).toContain('notifyGraphDataChanged')
+    expect(clearFn).toContain('notifyMobilePendingEmbedCountsChanged')
+    expect(clearFn.indexOf('clearLifeGraphData')).toBeLessThan(
+      clearFn.indexOf('notifyGraphDataChanged')
+    )
+  })
 })

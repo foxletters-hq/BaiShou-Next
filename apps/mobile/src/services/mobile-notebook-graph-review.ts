@@ -2,6 +2,7 @@ import {
   collectSimilarPendingPairs,
   expandApprovedGraphReviewEdgeIds,
   isGraphReviewStatus,
+  logger,
   parseGraphNodePropsRecord,
   removeSimilarPendingPeerFromProps,
   uniqueNonEmptyIds,
@@ -21,6 +22,7 @@ import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { resolveMobileEmbeddingForHydration } from './mobile-raw-data-source.runtime'
+import { notebookGraphNodeReviewNeedsNeighborhood } from './notebook-graph-review.util'
 
 function requireVaultId(vaultId: string): string {
   const id = vaultId.trim()
@@ -95,34 +97,140 @@ async function syncNotebookGraphIndex(notebookId: string, vaultId: string): Prom
   await index.syncPendingIndex({ vaultId, notebookId, absentSweep: 'off' })
 }
 
+import {
+  notifyNotebookGraphChanged,
+  subscribeNotebookGraphChanged
+} from './mobile-notebook-graph-events'
+export { notifyNotebookGraphChanged, subscribeNotebookGraphChanged }
+
+/**
+ * 复核后的后台索引同步。同一本笔记本同一时间只跑一轮；运行期间再来的请求
+ * 合并成一轮补跑，避免连点通过时多轮全量分片同步并发抢 SQLite 与 JS 线程。
+ */
+const notebookIndexSyncs = new Map<string, { queued: boolean; done: Promise<void> }>()
+
+function scheduleNotebookGraphIndexSync(notebookId: string, vaultId: string): void {
+  const key = `${vaultId}\u0000${notebookId}`
+  const running = notebookIndexSyncs.get(key)
+  if (running) {
+    running.queued = true
+    return
+  }
+  const state: { queued: boolean; done: Promise<void> } = {
+    queued: false,
+    done: Promise.resolve()
+  }
+  notebookIndexSyncs.set(key, state)
+  state.done = (async () => {
+    try {
+      do {
+        state.queued = false
+        await syncNotebookGraphIndex(notebookId, vaultId)
+      } while (state.queued)
+    } catch (e) {
+      logger.warn('[NotebookGraphReview] background index sync failed', e as Error)
+    } finally {
+      notebookIndexSyncs.delete(key)
+      notifyNotebookGraphChanged(notebookId)
+    }
+  })()
+}
+
+/** 读取图谱索引前调用：若该笔记本有后台同步在跑，等它结束，避免读到同步前的数据。 */
+export async function mobileWaitNotebookGraphIndexSync(
+  notebookId: string,
+  vaultId: string
+): Promise<void> {
+  const id = notebookId.trim()
+  const vid = vaultId.trim()
+  if (!id || !vid) return
+  await notebookIndexSyncs.get(`${vid}\u0000${id}`)?.done
+}
+
+/** 一次复核（单个或批量）要写的记录先攒在这里，最后统一批量落盘；同一 id 只保留最后一条。 */
+type ReviewWriteSink = {
+  nodes: Map<string, NotebookGraphNodeRawRecord & { sourceId?: string }>
+  edges: Map<string, NotebookGraphEdgeRawRecord>
+}
+
+type TouchingEdgeRow = Awaited<ReturnType<NotebookGraphRepository['listEdgesTouching']>>[number]
+
+function createReviewWriteSink(): ReviewWriteSink {
+  return { nodes: new Map(), edges: new Map() }
+}
+
+/** 统一落盘：每个分片只追加一次；无论成功失败都排队一次后台索引同步（失败时已写入的部分也要同步）。 */
+async function commitReviewWrites(
+  notebookId: string,
+  vaultId: string,
+  sink: ReviewWriteSink
+): Promise<void> {
+  try {
+    const raw = createRaw()
+    if (sink.nodes.size > 0) await raw.writeRecords(notebookId, 'nodes', [...sink.nodes.values()])
+    if (sink.edges.size > 0) await raw.writeRecords(notebookId, 'edges', [...sink.edges.values()])
+  } finally {
+    scheduleNotebookGraphIndexSync(notebookId, vaultId)
+    notifyNotebookGraphChanged(notebookId)
+  }
+}
+
+/** 与选中节点相连的待审边：逐个节点走 from/to 索引，O(k·d·log E)，不扫描整本笔记本的边。 */
+async function listPendingEdgesTouchingNodes(
+  repo: NotebookGraphRepository,
+  vaultId: string,
+  notebookId: string,
+  nodeIds: readonly string[]
+): Promise<TouchingEdgeRow[]> {
+  const byId = new Map<string, TouchingEdgeRow>()
+  for (const nodeId of nodeIds) {
+    for (const edge of await repo.listEdgesTouching(vaultId, notebookId, nodeId)) {
+      if (edge.reviewStatus === 'pending') byId.set(edge.id, edge)
+    }
+  }
+  return [...byId.values()]
+}
+
 async function writeNodeReview(
   notebookId: string,
   nodeId: string,
   reviewStatus: 'approved' | 'rejected',
-  vaultId: string
+  vaultId: string,
+  sink: ReviewWriteSink
 ): Promise<void> {
   const repo = await requireRepo()
   const node = await repo.getNodeById(nodeId, vaultId, notebookId)
   if (!node) throw new Error(`Node not found: ${nodeId}`)
   const now = Date.now()
-  const related = await repo.getNeighborhood({
-    vaultId,
-    notebookId,
-    nodeId,
-    maxNodes: 5000
+  const props = parseGraphNodePropsRecord(node.propsJson)
+  const sourceIdFromProps = typeof props.sourceId === 'string' ? props.sourceId.trim() : ''
+  const related = notebookGraphNodeReviewNeedsNeighborhood({
+    reviewStatus,
+    shardMonth: node.shardMonth,
+    sourceId: sourceIdFromProps
   })
+    ? await repo.getNeighborhood({
+        vaultId,
+        notebookId,
+        nodeId,
+        maxNodes: 5000
+      })
+    : { edges: [] as Awaited<ReturnType<NotebookGraphRepository['getNeighborhood']>>['edges'] }
 
   if (reviewStatus === 'rejected') {
     for (const edge of related.edges) {
       if (edge.reviewStatus === 'rejected' || edge.deletedAt != null) continue
-      await writeEdgeReview(notebookId, edge.id, 'rejected', vaultId, {
-        approvePendingEndpoints: false
-      })
+      await writeEdgeReview(
+        notebookId,
+        edge.id,
+        'rejected',
+        vaultId,
+        { approvePendingEndpoints: false },
+        sink
+      )
     }
   }
 
-  const props = parseGraphNodePropsRecord(node.propsJson)
-  const sourceIdFromProps = typeof props.sourceId === 'string' ? props.sourceId.trim() : ''
   let sourceId = sourceIdFromProps
   let shardMonth = (node.shardMonth || sourceIdFromProps).trim()
   if (!shardMonth) {
@@ -165,10 +273,7 @@ async function writeNodeReview(
     deletedAt: null,
     reviewStatus
   }
-  await createRaw().writeRecord(notebookId, 'nodes', {
-    ...record,
-    sourceId: sourceId || undefined
-  })
+  sink.nodes.set(node.id, { ...record, sourceId: sourceId || undefined })
 }
 
 async function writeEdgeReview(
@@ -176,7 +281,8 @@ async function writeEdgeReview(
   edgeId: string,
   reviewStatus: 'approved' | 'rejected',
   vaultId: string,
-  opts?: { approvePendingEndpoints?: boolean }
+  opts: { approvePendingEndpoints?: boolean } | undefined,
+  sink: ReviewWriteSink
 ): Promise<void> {
   const repo = await requireRepo()
   const edge = await repo.getEdgeById(edgeId, vaultId, notebookId)
@@ -207,13 +313,13 @@ async function writeEdgeReview(
     updatedAt: now,
     deletedAt: null
   }
-  await createRaw().writeEdge(record)
+  sink.edges.set(edge.id, record)
 
   if (reviewStatus === 'approved' && opts?.approvePendingEndpoints !== false) {
     for (const endpointId of [edge.fromId, edge.toId]) {
       const node = await repo.getNodeById(endpointId, vaultId, notebookId)
       if (node?.reviewStatus === 'pending') {
-        await writeNodeReview(notebookId, endpointId, 'approved', vaultId)
+        await writeNodeReview(notebookId, endpointId, 'approved', vaultId, sink)
       }
     }
   }
@@ -228,18 +334,23 @@ export async function mobileReviewNotebookGraphNode(input: {
   const notebookId = requireNotebookId(input.notebookId)
   const vaultId = requireVaultId(input.vaultId)
   if (!isGraphReviewStatus(input.reviewStatus)) throw new Error('Invalid review status')
-  await writeNodeReview(notebookId, input.nodeId, input.reviewStatus, vaultId)
+  const sink = createReviewWriteSink()
+  await writeNodeReview(notebookId, input.nodeId, input.reviewStatus, vaultId, sink)
   if (input.reviewStatus === 'approved') {
-    const pendingEdges = await (await requireRepo()).listPendingEdges(vaultId, notebookId)
-    for (const edge of pendingEdges) {
-      if (edge.fromId === input.nodeId || edge.toId === input.nodeId) {
-        await writeEdgeReview(notebookId, edge.id, 'approved', vaultId, {
-          approvePendingEndpoints: true
-        })
-      }
+    const repo = await requireRepo()
+    const touching = await listPendingEdgesTouchingNodes(repo, vaultId, notebookId, [input.nodeId])
+    for (const edge of touching) {
+      await writeEdgeReview(
+        notebookId,
+        edge.id,
+        'approved',
+        vaultId,
+        { approvePendingEndpoints: true },
+        sink
+      )
     }
   }
-  await syncNotebookGraphIndex(notebookId, vaultId)
+  await commitReviewWrites(notebookId, vaultId, sink)
   return { ok: true }
 }
 
@@ -252,10 +363,16 @@ export async function mobileReviewNotebookGraphEdge(input: {
   const notebookId = requireNotebookId(input.notebookId)
   const vaultId = requireVaultId(input.vaultId)
   if (!isGraphReviewStatus(input.reviewStatus)) throw new Error('Invalid review status')
-  await writeEdgeReview(notebookId, input.edgeId, input.reviewStatus, vaultId, {
-    approvePendingEndpoints: input.reviewStatus === 'approved'
-  })
-  await syncNotebookGraphIndex(notebookId, vaultId)
+  const sink = createReviewWriteSink()
+  await writeEdgeReview(
+    notebookId,
+    input.edgeId,
+    input.reviewStatus,
+    vaultId,
+    { approvePendingEndpoints: input.reviewStatus === 'approved' },
+    sink
+  )
+  await commitReviewWrites(notebookId, vaultId, sink)
   return { ok: true }
 }
 
@@ -266,36 +383,47 @@ export async function mobileReviewNotebookGraphBatch(
   const vaultId = requireVaultId(input.vaultId)
   if (!isGraphReviewStatus(input.reviewStatus)) throw new Error('Invalid review status')
   const repo = await requireRepo()
-  const [pendingNodes, pendingEdges] = await Promise.all([
-    repo.listPendingNodes(vaultId, notebookId),
-    repo.listPendingEdges(vaultId, notebookId)
-  ])
   const nodeIds = uniqueNonEmptyIds(
-    input.allPending ? pendingNodes.map((node) => node.id) : input.nodeIds
+    input.allPending
+      ? (await repo.listPendingNodes(vaultId, notebookId)).map((node) => node.id)
+      : input.nodeIds
   )
-  const edgeIds = input.allPending
-    ? uniqueNonEmptyIds(pendingEdges.map((edge) => edge.id))
-    : input.reviewStatus === 'approved'
-      ? expandApprovedGraphReviewEdgeIds({
-          nodeIds,
-          edgeIds: input.edgeIds,
-          pendingEdges
-        })
-      : uniqueNonEmptyIds(input.edgeIds)
+  let edgeIds: string[]
+  if (input.allPending) {
+    edgeIds = uniqueNonEmptyIds(
+      (await repo.listPendingEdges(vaultId, notebookId)).map((edge) => edge.id)
+    )
+  } else if (input.reviewStatus === 'approved') {
+    // 只查选中节点相连的待审边（走索引），不再扫描整本笔记本的边
+    const touching = await listPendingEdgesTouchingNodes(repo, vaultId, notebookId, nodeIds)
+    edgeIds = expandApprovedGraphReviewEdgeIds({
+      nodeIds,
+      edgeIds: input.edgeIds,
+      pendingEdges: touching
+    })
+  } else {
+    edgeIds = uniqueNonEmptyIds(input.edgeIds)
+  }
 
+  const sink = createReviewWriteSink()
   for (const nodeId of nodeIds) {
     const node = await repo.getNodeById(nodeId, vaultId, notebookId)
     if (!node) continue
-    await writeNodeReview(notebookId, nodeId, input.reviewStatus, vaultId)
+    await writeNodeReview(notebookId, nodeId, input.reviewStatus, vaultId, sink)
   }
   for (const edgeId of edgeIds) {
     const edge = await repo.getEdgeById(edgeId, vaultId, notebookId)
     if (!edge) continue
-    await writeEdgeReview(notebookId, edgeId, input.reviewStatus, vaultId, {
-      approvePendingEndpoints: input.reviewStatus === 'approved'
-    })
+    await writeEdgeReview(
+      notebookId,
+      edgeId,
+      input.reviewStatus,
+      vaultId,
+      { approvePendingEndpoints: input.reviewStatus === 'approved' },
+      sink
+    )
   }
-  await syncNotebookGraphIndex(notebookId, vaultId)
+  await commitReviewWrites(notebookId, vaultId, sink)
   return { ok: true, nodeCount: nodeIds.length, edgeCount: edgeIds.length }
 }
 
@@ -305,9 +433,9 @@ export async function mobileListNotebookSimilarPendingPairs(input: {
 }): Promise<GraphSimilarPendingPair[]> {
   const notebookId = requireNotebookId(input.notebookId)
   const vaultId = requireVaultId(input.vaultId)
-  const view = await (await requireRepo()).getView({ vaultId, notebookId, maxNodes: 400 })
-  const peerNameById = new Map(view.nodes.map((node) => [node.id, node.name]))
-  return collectSimilarPendingPairs(view.nodes, peerNameById)
+  const nodes = await (await requireRepo()).listNodesPage({ vaultId, notebookId, limit: 400 })
+  const peerNameById = new Map(nodes.map((node) => [node.id, node.name]))
+  return collectSimilarPendingPairs(nodes, peerNameById)
 }
 
 export async function mobileDismissNotebookSimilarPair(input: {
@@ -349,6 +477,7 @@ export async function mobileDismissNotebookSimilarPair(input: {
   }
   await createRaw().writeNode(record)
   await syncNotebookGraphIndex(notebookId, vaultId)
+  notifyNotebookGraphChanged(notebookId)
   return { ok: true }
 }
 
@@ -491,5 +620,6 @@ export async function mobileMergeNotebookGraphNodes(input: {
     reviewStatus: (loser.reviewStatus as 'approved' | 'pending' | 'rejected') || 'approved'
   })
   await syncNotebookGraphIndex(notebookId, vaultId)
+  notifyNotebookGraphChanged(notebookId)
   return { ok: true }
 }

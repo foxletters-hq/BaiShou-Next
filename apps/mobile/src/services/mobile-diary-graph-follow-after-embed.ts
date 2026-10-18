@@ -9,7 +9,6 @@ import {
 } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
-import { createMobileFileSystem } from './create-mobile-file-system'
 import {
   mobileGraphExtractQueue,
   type MobileGraphExtractContext
@@ -18,6 +17,20 @@ import {
   mobileListPendingReextract,
   resolveMobileGraphExtractAlignDeps
 } from './mobile-graph.service'
+
+type CachedMobileFollowContext = {
+  vaultId: string
+  timestamp: number
+  alignDeps: Awaited<ReturnType<typeof resolveMobileGraphExtractAlignDeps>>
+  pending: Awaited<ReturnType<typeof mobileListPendingReextract>>
+  justEmbeddedDiaryIds: Set<string>
+}
+
+let cachedMobileFollowContext: CachedMobileFollowContext | null = null
+
+export function clearMobileDiaryGraphFollowPendingCache(): void {
+  cachedMobileFollowContext = null
+}
 
 /**
  * 日记原文向量完成后自动接抽图。未配置自称或队列未就绪时安静跳过，不拆门槛错误码。
@@ -43,6 +56,7 @@ export async function scheduleMobileDiaryGraphAfterEmbed(input: {
 
     const vaultName =
       (await runtime.pathService.getActiveVaultNameForContext().catch(() => '')) || 'Personal'
+    const { createMobileFileSystem } = await import('./create-mobile-file-system')
     const fileSystem = createMobileFileSystem()
     const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
     const ctx: MobileGraphExtractContext = {
@@ -55,26 +69,50 @@ export async function scheduleMobileDiaryGraphAfterEmbed(input: {
       settingsManager: runtime.settingsManager
     }
 
-    const alignDeps = await resolveMobileGraphExtractAlignDeps(ctx)
-    if (!(await alignDeps.isEmbeddingConfigured?.())) return 0
+    const now = Date.now()
+    let cached = cachedMobileFollowContext
+    if (!cached || cached.vaultId !== vaultId || now - cached.timestamp >= 5000) {
+      const alignDeps = await resolveMobileGraphExtractAlignDeps(ctx)
+      if (!(await alignDeps.isEmbeddingConfigured?.())) return 0
+      const pending = await mobileListPendingReextract(ctx)
+      cached = {
+        vaultId,
+        timestamp: now,
+        alignDeps,
+        pending,
+        justEmbeddedDiaryIds: new Set<string>()
+      }
+      cachedMobileFollowContext = cached
+    }
+    cached.justEmbeddedDiaryIds.add(diaryId)
 
-    const records = await shadowRepo.getAllRecords()
-    const record = records.find((row) => String(row.id) === diaryId)
+    const numericId = Number(diaryId)
+    const record =
+      typeof shadowRepo.findById === 'function'
+        ? !Number.isNaN(numericId)
+          ? await shadowRepo.findById(numericId)
+          : null
+        : (await shadowRepo.getAllRecords()).find((row) => String(row.id) === diaryId)
     const filePath = record?.filePath
     if (!filePath) return 0
-    if (alignDeps.isDiaryEmbedded && !(await alignDeps.isDiaryEmbedded(filePath))) {
+
+    const isDiaryEmbedded = async (path: string) => {
+      if (cached!.justEmbeddedDiaryIds.has(diaryId)) return true
+      return (await cached!.alignDeps.isDiaryEmbedded?.(path)) ?? false
+    }
+
+    if (!(await isDiaryEmbedded(filePath))) {
       return 0
     }
 
-    const pending = await mobileListPendingReextract(ctx)
     const wanted = selectDiaryGraphFollowUpItems({
       wanted: [{ filePath, date: record?.date, contentHash: input.contentHash }],
-      pendingReextract: pending
+      pendingReextract: cached.pending
     })
     const { items } = await buildGraphExtractEnqueueItems({
       wanted: wanted.map((row) => row.filePath),
-      pending,
-      isDiaryEmbedded: alignDeps.isDiaryEmbedded
+      pending: cached.pending,
+      isDiaryEmbedded
     })
     if (items.length === 0) return 0
     return mobileGraphExtractQueue.enqueueAfterEmbed(

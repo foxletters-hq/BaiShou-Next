@@ -16,10 +16,14 @@ export {
   mobileLoadGlobalGraph,
   mobileGetNode,
   mobileGetView,
+  mobileListEdgesTouching,
   mobileListPendingEdges,
   mobileListPending,
   mobileListSuspectNodes,
   mobileListSimilarPairs,
+  mobileListLiveNodesPage,
+  mobileCountLiveNodes,
+  mobileCountLiveCurrentEdges,
   createMobileGraphRag
 } from './mobile-graph-query'
 export {
