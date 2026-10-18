@@ -6,6 +6,7 @@ import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
 import { AssistantEmojiGroupPickerDialog } from './AssistantEmojiGroupPickerDialog'
 import styles from './AssistantEditPage.module.css'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface AssistantEditEmojiGroupSectionProps {
   emojiConfig: EmojiToolConfig
@@ -40,7 +41,7 @@ export const AssistantEditEmojiGroupSection: React.FC<AssistantEditEmojiGroupSec
     <>
       <div className={styles.row}>
         <div style={{ flex: 1 }}>
-          <label className={styles.fieldLabel} style={{ marginBottom: 4 }}>
+          <label className={styles.fieldLabel} style={{ marginBottom: sharedTokens.spacing.xs }}>
             {t('agent.assistant.emoji_enabled_label', '表情组')}
           </label>
           <p className={styles.descText} style={{ margin: 0 }}>

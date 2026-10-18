@@ -2,11 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: var(--spacing-md-plus) var(--spacing-lg);
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-muted);
-  transition: all 0.3s;
+  transition: all var(--duration-moderate);
 }
 
 .container:hover {
@@ -17,7 +17,7 @@
 .content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
   flex: 1;
 }
 
@@ -33,40 +33,40 @@
 }
 
 .icon {
-  font-size: 24px;
+  font-size: var(--icon-fs-lg);
 }
 
 .info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   max-width: 400px;
 }
 
 .title {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 600;
   color: #fed7aa;
   margin: 0;
 }
 
 .subtitle {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
   margin: 0;
 }
 
 .launchBtn {
-  padding: 10px 20px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-plus);
   background: #f97316;
   color: var(--text-on-primary);
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
 }
 

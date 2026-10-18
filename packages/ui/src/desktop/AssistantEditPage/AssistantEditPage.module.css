@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
   height: var(--settings-page-header-height, 64px);
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
@@ -21,7 +21,7 @@
 .appBarLeft {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .iconBtn {
@@ -30,12 +30,12 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
 }
 
 .iconBtn:hover {
@@ -66,23 +66,23 @@
 }
 
 .identityPane {
-  padding: 24px 20px 32px;
+  padding: var(--spacing-lg) var(--spacing-md-plus) var(--spacing-xl);
   border-right: 1px solid var(--border-muted);
 }
 
 .voicePane {
-  padding: 24px 24px 32px;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
 }
 
 .fieldBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
 }
 
 .avatarHint {
-  margin: 10px 0 0;
+  margin: var(--spacing-sm-plus) 0 0;
   text-align: center;
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
@@ -94,7 +94,7 @@
   align-items: center;
   align-self: flex-start;
   margin: 0;
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -111,7 +111,7 @@
 
 .moreChevron {
   color: var(--text-secondary);
-  transition: transform var(--duration-fast, 0.15s) ease;
+  transition: transform var(--duration-fast, var(--duration-fast)) ease;
 }
 
 .moreChevronOpen {
@@ -119,7 +119,7 @@
 }
 
 .settingsRow {
-  padding: 16px;
+  padding: var(--spacing-md);
 }
 
 @media (max-width: 720px) {
@@ -138,7 +138,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 24px 24px;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
   background-color: var(--bg-app);
 }
 
@@ -153,13 +153,13 @@
 .formContainer {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .sectionCard {
   background: var(--bg-surface);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
   border: 1px solid var(--border-subtle);
   box-sizing: border-box;
 }
@@ -189,8 +189,8 @@
 .avatarStack {
   position: relative;
   cursor: pointer;
-  margin-bottom: 4px;
-  transition: transform 0.2s;
+  margin-bottom: var(--spacing-xs);
+  transition: transform var(--duration-swift);
 }
 
 .avatarStack:hover {
@@ -213,7 +213,7 @@
 }
 
 .emojiText {
-  font-size: 36px;
+  font-size: var(--ui-display-lg);
 }
 
 .avatarBadge {
@@ -237,9 +237,9 @@
   color: var(--color-primary);
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .textBtn:hover {
@@ -257,7 +257,7 @@
 .restoreDefaultBtn {
   display: inline-flex;
   align-items: center;
-  margin-top: 10px;
+  margin-top: var(--spacing-sm-plus);
   padding: 0;
   border: none;
   background: transparent;
@@ -277,11 +277,11 @@
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .fieldHint {
-  margin: 8px 0 0;
+  margin: var(--spacing-sm) 0 0;
   font-size: var(--settings-font-meta-size);
   font-weight: var(--settings-font-meta-weight);
   line-height: 1.5;
@@ -291,20 +291,20 @@
 .fieldLabelGroup {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
 }
 
 .inputField {
   width: 100%;
   border: 1px solid var(--border-control);
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md-tight) var(--spacing-md);
+  font-size: var(--ui-fs-lg);
   background-color: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-swift);
   box-sizing: border-box;
 }
 
@@ -326,13 +326,13 @@
   width: 100%;
   height: 44px;
   border: 1px solid var(--border-control);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background-color: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .outlinedBtn:active {
@@ -340,7 +340,7 @@
 }
 
 .formFooter {
-  padding: 12px 24px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-lg) var(--spacing-md);
   border-top: 1px solid var(--border-muted);
   background-color: var(--bg-app);
 }
@@ -349,7 +349,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
   box-sizing: border-box;
 }
@@ -361,17 +361,17 @@
   align-items: center;
   justify-content: center;
   height: 36px;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--color-error);
   font-size: var(--settings-font-label-size);
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
+    background-color var(--duration-fast),
+    border-color var(--duration-fast);
 }
 
 .outlineDangerBtn:hover:not(:disabled) {
@@ -391,17 +391,17 @@
   flex: 0 0 auto;
   min-width: 88px;
   height: 36px;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--settings-font-label-size);
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .filledBtn:hover:not(:disabled) {
@@ -436,20 +436,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 
 .dialogBox {
   background: var(--bg-surface);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: var(--radius-lg-plus);
+  padding: var(--spacing-lg);
   width: 90%;
   max-width: 360px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  animation: slideUp 0.2s ease-out;
+  gap: var(--spacing-md-tight);
+  animation: slideUp var(--duration-swift) ease-out;
 }
 
 .dialogHeaderIcon {
@@ -460,18 +460,18 @@
   height: 64px;
   border-radius: 50%;
   background: rgba(var(--color-error-rgb), 0.1);
-  margin: 0 auto 8px auto;
+  margin: 0 auto var(--spacing-sm) auto;
 }
 
 .dialogTitle {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
 }
 
 .dialogText {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   color: var(--text-secondary);
   line-height: 1.5;
   text-align: center;
@@ -480,18 +480,18 @@
 .dialogActions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--spacing-md-tight);
+  margin-top: var(--spacing-md-tight);
 }
 
 .dialogBtn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .dialogBtnCancel {
@@ -555,8 +555,8 @@
 }
 
 .modelIcon {
-  font-size: 20px;
-  margin-right: 12px;
+  font-size: var(--icon-fs-md);
+  margin-right: var(--spacing-md-tight);
 }
 
 .modelInfo {
@@ -597,7 +597,7 @@
 
 .sliderContainer {
   width: 100%;
-  padding: 12px 0 4px;
+  padding: var(--spacing-md-tight) 0 var(--spacing-xs);
 }
 
 /* 视觉样式见 theme/range-slider.css */
@@ -613,7 +613,7 @@
   z-index: 1000;
   display: flex;
   align-items: flex-end;
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-swift) ease-out;
 }
 
 .bottomSheet {
@@ -621,44 +621,44 @@
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
   height: 60vh;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.2s ease-out;
+  animation: slideUp var(--duration-swift) ease-out;
 }
 
 .bottomSheetHeader {
-  padding: 16px 24px;
+  padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .bottomSheetBody {
   flex: 1;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
 }
 
 .providerGroup {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
 }
 
 .providerName {
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   font-weight: 500;
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .modelListItem {
-  padding: 16px 32px;
+  padding: var(--spacing-md) var(--spacing-xl);
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
 }
 
 .modelListItem:active {
@@ -669,7 +669,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
   min-height: 40px;
   padding: 0;
@@ -689,15 +689,15 @@
 .emojiPickerDialogBody {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-height: 280px;
 }
 
 .emojiPickerRow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm-plus) 0;
 }
 
 .emojiPickerRow + .emojiPickerRow {
@@ -707,7 +707,7 @@
 .emojiPickerCheck {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--color-primary);
@@ -729,7 +729,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   border: none;
   background: transparent;
   padding: 0;
@@ -741,7 +741,7 @@
 .emojiGroupPickLeading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-width: 0;
   flex: 1;
 }
@@ -753,8 +753,8 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  padding: 8px;
-  border-radius: 8px;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
   background-color: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
   color: var(--color-primary);
 }
@@ -762,7 +762,7 @@
 .emojiGroupPickText {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 

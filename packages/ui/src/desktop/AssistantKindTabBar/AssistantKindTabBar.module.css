@@ -3,8 +3,8 @@
 }
 
 .hint {
-  margin: 8px 0 0;
-  font-size: 13px;
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--ui-fs-md);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -17,9 +17,9 @@
 .kindCard {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 100%;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
   border: none;
   border-radius: 0;
   background: transparent;
@@ -44,7 +44,7 @@
 .kindCardTitle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   font-size: var(--settings-font-row-size);
   font-weight: var(--settings-font-row-weight);
 }

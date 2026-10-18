@@ -4,7 +4,7 @@
   left: var(--app-content-inset-inline, 8px);
   right: var(--app-content-inset-inline, 8px);
   bottom: var(--app-content-inset-bottom, 8px);
-  border-radius: var(--app-content-radius, 12px);
+  border-radius: var(--app-content-radius, var(--radius-md));
   overflow: hidden;
   box-sizing: border-box;
   background-color: var(--bg-overlay);
@@ -21,14 +21,14 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   box-shadow: var(--shadow-lg);
-  border-radius: var(--app-content-radius, 12px);
+  border-radius: var(--app-content-radius, var(--radius-md));
   width: 80vw;
   max-width: 820px;
   height: 80vh;
   max-height: 640px;
   display: flex;
   overflow: hidden;
-  animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: scaleUp var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275);
   font-family: var(--font-family);
 }
 
@@ -42,10 +42,10 @@
 }
 
 .sidebarHeader {
-  padding: 14px 14px 10px;
+  padding: var(--spacing-md-snug) var(--spacing-md-snug) var(--spacing-sm-plus);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .headerIcon {
@@ -61,14 +61,14 @@
 }
 
 .searchBox {
-  margin: 0 12px 10px;
+  margin: 0 var(--spacing-md-tight) var(--spacing-sm-plus);
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
-  padding: 6px 10px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  transition: all var(--duration-swift);
 }
 
 .searchBox:focus-within {
@@ -81,8 +81,8 @@
   border: none;
   outline: none;
   background: transparent;
-  margin-left: 6px;
-  font-size: var(--settings-font-label-size, 13px);
+  margin-left: var(--spacing-xs-plus);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-primary);
 }
@@ -90,10 +90,10 @@
 .listArea {
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px 10px;
+  padding: 0 var(--spacing-sm) var(--spacing-sm-plus);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .listArea::-webkit-scrollbar {
@@ -101,13 +101,13 @@
 }
 .listArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .emptyText {
   text-align: center;
-  margin-top: 28px;
-  font-size: var(--settings-font-desc-size, 13px);
+  margin-top: var(--spacing-lg);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   color: var(--text-secondary);
 }
 
@@ -115,14 +115,14 @@
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    box-shadow 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift),
+    box-shadow var(--duration-swift);
   border: 1px solid transparent;
 }
 
@@ -154,9 +154,9 @@
 .actionsWrapper {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
   flex-shrink: 0;
 }
 
@@ -174,11 +174,11 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background-color: rgba(var(--color-outline-variant-rgb), 0.3);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .actionBtn:hover {
@@ -207,7 +207,7 @@
 .itemAvatar {
   width: 28px;
   height: 28px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,7 +227,7 @@
 .itemNameRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -254,8 +254,8 @@
   font-weight: var(--settings-font-micro-weight, 600);
   background: var(--color-primary);
   color: var(--text-on-primary);
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
 }
 
 .defaultBadge {
@@ -263,8 +263,8 @@
   font-weight: var(--settings-font-micro-weight, 600);
   background: rgba(var(--color-outline-variant-rgb), 0.3);
   color: var(--text-secondary);
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
 }
 
 .itemDesc {
@@ -278,32 +278,32 @@
 }
 
 .bottomArea {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border-top: 1px solid var(--border-muted);
   background: var(--bg-surface);
 }
 
 .memoryOptionCard {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border: 1px solid var(--border-muted);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
 }
 
 .memoryOptionCardSpaced {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .modelSelectorArea {
   display: flex;
   align-items: center;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-muted);
   background: var(--bg-surface);
-  padding: 10px 12px;
-  gap: 10px;
-  transition: background-color 0.2s;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  gap: var(--spacing-sm-plus);
+  transition: background-color var(--duration-swift);
 }
 
 .modelSelectorArea:hover {
@@ -339,13 +339,13 @@
 }
 
 .modelSelectorModel {
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .modelSelectorPlaceholder {
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   color: var(--text-secondary);
 }
 
@@ -372,7 +372,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   z-index: 10;
 }
 
@@ -388,17 +388,17 @@
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   font-weight: 500;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .detailContent {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px 18px 14px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md-snug);
   overflow: hidden;
   min-height: 0;
 }
@@ -408,15 +408,15 @@
 }
 .detailContent::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.5);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .detailHeader {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
-  padding-right: 28px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-xs);
+  padding-right: var(--spacing-lg);
   flex-shrink: 0;
 }
 
@@ -426,14 +426,14 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .detailName {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   margin: 0;
   font-size: var(--ui-fs-xl);
   font-weight: 600;
@@ -444,7 +444,7 @@
 
 .detailNameEditIcon {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   width: 1em;
   height: 1em;
   color: var(--text-secondary);
@@ -452,28 +452,28 @@
 }
 
 .partnerKindSection {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .detailAvatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: linear-gradient(
     135deg,
     rgba(var(--color-primary-rgb), 0.15),
-    rgba(var(--color-tertiary-rgb), 0.15)
+    rgba(var(--color-success-rgb), 0.15)
   );
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: var(--ui-display-sm);
   box-shadow: none;
 }
 
 .detailTitles p {
   margin: 0;
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   color: var(--text-secondary);
   line-height: 1.45;
 }
@@ -482,19 +482,19 @@
   width: 100%;
   margin-top: 0;
   margin-bottom: 0;
-  padding: 7px 10px;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   border: 1px solid var(--form-field-border, var(--border-control));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   line-height: 1.5;
   resize: vertical;
   min-height: 44px;
   outline: none;
   font-family: inherit;
   box-sizing: border-box;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-swift);
 }
 
 .descriptionInput:focus {
@@ -510,12 +510,12 @@
 .restoreDefaultBtn {
   display: inline-flex;
   align-items: center;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
   padding: 0;
   border: none;
   background: transparent;
   color: var(--color-primary);
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
@@ -528,14 +528,14 @@
 .tabsRow {
   display: flex;
   justify-content: flex-start;
-  gap: 18px;
+  gap: var(--spacing-md);
   border-bottom: 1px solid var(--border-muted);
-  margin-bottom: 14px;
+  margin-bottom: var(--spacing-md-snug);
   flex-shrink: 0;
 }
 
 .tab {
-  padding: 6px 2px 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-2xs) var(--spacing-sm);
   font-size: var(--settings-font-nav-size, 14px);
   font-weight: var(--settings-font-nav-weight, 500);
   color: var(--text-secondary);
@@ -544,10 +544,10 @@
   background: transparent;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   font-family: inherit;
 }
 
@@ -567,7 +567,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   display: block;
-  padding-bottom: 8px;
+  padding-bottom: var(--spacing-sm);
 }
 
 .tabContent::-webkit-scrollbar {
@@ -576,27 +576,27 @@
 
 .tabContent::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.5);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .sectionHeader {
   display: flex;
   align-items: center;
-  margin-top: 16px;
-  margin-bottom: 8px;
-  gap: 6px;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  gap: var(--spacing-xs-plus);
 }
 
 .sectionHeader:first-child {
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .emojiGroupSection {
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .sectionTitle {
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-section-weight, 600);
   color: var(--text-primary);
   margin: 0;
@@ -609,7 +609,7 @@
   width: 100%;
   height: 160px;
   border: 1px solid var(--border-muted);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   overflow-y: auto;
 }
@@ -623,10 +623,10 @@
 .promptBox {
   background: var(--bg-surface);
   border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   font-family: var(--font-mono, monospace);
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   line-height: 1.55;
   color: var(--text-primary);
   min-height: 140px;
@@ -639,10 +639,10 @@
   box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   font-family: inherit;
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   line-height: 1.55;
   color: var(--text-primary);
   min-height: 110px;
@@ -660,18 +660,18 @@
 .metaGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-md-snug);
 }
 
 .metaItem {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .metaLabel {
@@ -688,9 +688,9 @@
 
 .actionRow {
   margin-top: 0;
-  padding-top: 12px;
+  padding-top: var(--spacing-md-tight);
   display: flex;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   flex-shrink: 0;
   border-top: 1px solid var(--border-muted);
   background: var(--bg-surface);
@@ -698,22 +698,22 @@
 
 .applyBtn {
   flex: 1;
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   min-height: 34px;
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--border-control);
-  border-radius: 8px;
-  font-size: var(--settings-font-label-size, 13px);
+  border-radius: var(--radius-sm);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: 500;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   font-family: inherit;
 }
 
@@ -757,5 +757,5 @@
 .sliderInput {
   flex: 1;
   width: 100%;
-  margin: 0 16px 0 0;
+  margin: 0 var(--spacing-md) 0 0;
 }

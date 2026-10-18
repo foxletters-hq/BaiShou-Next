@@ -1,6 +1,7 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
 export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetViewModel }) {
@@ -51,7 +52,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 20
+              marginBottom: sharedTokens.spacing.mdPlus
             }}
           >
             <Trash2 size={32} color="var(--color-error)" />
@@ -59,7 +60,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
           <h3
             style={{
               margin: '0 0 12px 0',
-              fontSize: '18px',
+              fontSize: settingsTypography.pageTitle.fontSize,
               fontWeight: 600,
               color: 'var(--text-primary)'
             }}
@@ -69,7 +70,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
           <p
             style={{
               margin: 0,
-              fontSize: '14px',
+              fontSize: settingsTypography.row.fontSize,
               color: 'var(--text-secondary)',
               lineHeight: 1.5
             }}
@@ -94,7 +95,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               border: 'none',
               background: 'transparent',
               color: 'var(--text-secondary)',
-              fontSize: '15px',
+              fontSize: settingsTypography.section.fontSize,
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'background 0.2s'
@@ -111,7 +112,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               border: 'none',
               background: 'var(--color-error)',
               color: 'var(--text-on-primary)',
-              fontSize: '15px',
+              fontSize: settingsTypography.section.fontSize,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.2s',
