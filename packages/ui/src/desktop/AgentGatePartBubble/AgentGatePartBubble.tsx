@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, CircleX, ShieldCheck } from 'lucide-react'
 import {
   AgentGateReply,
   shouldRenderAgentGateHistoryCard,
@@ -42,6 +42,7 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
   const [expanded, setExpanded] = useState(false)
   if (!shouldRenderAgentGateHistoryCard(data)) return null
   const { request, resolution } = data
+  const isRejected = resolution?.reply === AgentGateReply.Reject
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
   const previewSummary = summarizePreviewForHistory(request.preview)
   const numberedOptionsText =
@@ -76,6 +77,13 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
           setExpanded((open) => !open)
         }}
       >
+        <span className={`${styles.icon} ${isRejected ? styles.errorIcon : ''}`} aria-hidden>
+          {isRejected ? (
+            <CircleX size={14} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          ) : (
+            <ShieldCheck size={14} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          )}
+        </span>
         <span className={styles.title}>{request.title}</span>
         <span className={styles.sep} aria-hidden="true">
           ·

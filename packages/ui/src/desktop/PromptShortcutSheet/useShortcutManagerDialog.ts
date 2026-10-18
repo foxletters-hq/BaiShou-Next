@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import {
+  CREATE_SKILL_MANAGER_ID,
   CREATE_SKILL_SLASH_COMMAND,
   findShortcutCommandConflict,
-  getCreateSkillGuidePrompt
+  getCreateSkillGuidePrompt,
+  isProtectedSkill
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
@@ -10,22 +12,7 @@ import type { PromptShortcut } from './index'
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30] as const
 
-/** 管理列表置顶的「创建 Skill」虚拟项 */
-export const CREATE_SKILL_MANAGER_ID = '__create-skill__'
-
-export function isProtectedSkill(shortcut: {
-  id?: string
-  command?: string
-  name?: string
-}): boolean {
-  const id = (shortcut.id || '').trim()
-  const command = (shortcut.command || shortcut.name || '').trim().replace(/^\//, '')
-  return (
-    id === CREATE_SKILL_MANAGER_ID ||
-    id === CREATE_SKILL_SLASH_COMMAND ||
-    command === CREATE_SKILL_SLASH_COMMAND
-  )
-}
+export { CREATE_SKILL_MANAGER_ID, isProtectedSkill }
 
 /** @deprecated 使用 isProtectedSkill；仅 create-skill 不可删 */
 export const isDefaultShortcut = (id: string) =>

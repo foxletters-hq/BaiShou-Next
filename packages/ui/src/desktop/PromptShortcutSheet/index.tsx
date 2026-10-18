@@ -3,6 +3,7 @@ import { Terminal } from 'lucide-react'
 import { PageSizeSelector } from '../PageSizeSelector'
 import styles from './PromptShortcutSheet.module.css'
 import { useTranslation } from 'react-i18next'
+import { uiTypography } from '../../theme/tokens'
 import {
   getShortcutCommand,
   getDefaultShortcutLabelsFromT,
@@ -89,7 +90,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             >
               <div className={styles.itemIcon}>
                 {shortcut.icon ? (
-                  <span style={{ fontSize: 14 }}>{shortcut.icon}</span>
+                  <span style={{ fontSize: uiTypography.lg }}>{shortcut.icon}</span>
                 ) : (
                   <Terminal size={14} />
                 )}
@@ -109,7 +110,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
             style={{
               padding: '20px',
               textAlign: 'center',
-              fontSize: 12,
+              fontSize: uiTypography.sm,
               color: 'var(--text-secondary)'
             }}
           >

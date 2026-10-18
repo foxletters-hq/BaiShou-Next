@@ -1,7 +1,7 @@
 .diff {
   margin: 0;
-  padding: 8px 0;
-  border-radius: 0 0 8px 8px;
+  padding: var(--spacing-sm) 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   border: 1px solid var(--border-subtle);
   border-top: none;
   background: var(--bg-code);
@@ -21,7 +21,7 @@
 
 .row > .hunkText {
   grid-column: 1 / -1;
-  padding: 2px 10px;
+  padding: var(--spacing-2xs) var(--spacing-sm-plus);
   white-space: pre;
 }
 
@@ -39,7 +39,7 @@
 }
 
 .lineNum {
-  padding: 0 6px;
+  padding: 0 var(--spacing-xs-plus);
   text-align: right;
   color: var(--text-tertiary, var(--text-secondary));
   user-select: none;
@@ -53,7 +53,7 @@
 }
 
 .lineText {
-  padding-right: 10px;
+  padding-right: var(--spacing-sm-plus);
   white-space: pre;
   overflow-x: auto;
 }
@@ -86,7 +86,7 @@
 }
 
 .empty {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   color: var(--text-secondary);
   font-family: var(--font-family);
   display: block;

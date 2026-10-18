@@ -1,7 +1,7 @@
 .item {
   width: 100%;
   min-width: 0;
-  margin-bottom: 2px;
+  margin-bottom: var(--spacing-2xs);
 }
 
 .row {
@@ -9,14 +9,14 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
   min-width: 0;
   min-height: 22px;
-  padding: 2px 4px 2px 0;
+  padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) 0;
   margin: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   font-family: inherit;
@@ -38,9 +38,23 @@
   cursor: default;
 }
 
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary, rgba(0, 0, 0, 0.45));
+}
+
+.errorIcon {
+  color: var(--color-error);
+}
+
 .title {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-secondary);
@@ -49,7 +63,7 @@
 
 .sep {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 20px;
   color: var(--text-tertiary);
   user-select: none;
@@ -61,7 +75,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 400;
   line-height: 20px;
   color: var(--text-tertiary);
@@ -71,7 +85,7 @@
 .chevron {
   flex-shrink: 0;
   color: var(--text-tertiary);
-  transition: transform 0.15s ease-out;
+  transition: transform var(--duration-fast) ease-out;
 }
 
 .chevronOpen {
@@ -87,12 +101,12 @@
 .detail {
   overflow: hidden;
   min-width: 0;
-  margin: 2px 0 8px 0;
-  padding: 8px 10px;
+  margin: var(--spacing-2xs) 0 var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
   border: 1px solid var(--border-muted);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   color: var(--text-secondary);
   white-space: pre-wrap;

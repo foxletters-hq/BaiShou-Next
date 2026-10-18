@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
+  BookOpen,
   ChevronRight,
   CircleX,
   FileDiff,
@@ -52,6 +53,7 @@ const TOOL_ROW_ICONS: Record<string, LucideIcon> = {
   knowledge_search: Search,
   knowledge_graph_search: Search,
   skill_write: Sparkles,
+  skill_read: BookOpen,
   companion_ask: MessageCircleQuestion
 }
 
