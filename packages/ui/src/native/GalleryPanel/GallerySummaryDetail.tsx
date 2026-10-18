@@ -10,6 +10,7 @@ import { MarkdownRenderer } from '../MarkdownRenderer'
 import type { SummaryItem } from './gallery-panel.types'
 import { TYPE_I18N_MAP, formatDateRange, formatGallerySavedAt } from './gallery-panel.utils'
 import { resolveSummaryTimeDisplay } from '@baishou/shared'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface GallerySummaryDetailProps {
   summary?: SummaryItem
@@ -153,68 +154,68 @@ const styles = StyleSheet.create({
   emptyDetail: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    padding: 24
+    gap: sharedTokens.spacing.mdTight,
+    padding: sharedTokens.spacing.lg
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center'
   },
   detailHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdSnug,
+    paddingBottom: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.sm
   },
   metaRow: {
     flex: 1,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.xsPlus
   },
   typeText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   dateText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   savedAtText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   actions: {
     flexDirection: 'row',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   iconBtn: {
-    padding: 8
+    padding: sharedTokens.spacing.sm
   },
   detailScroll: {
     flex: 1
   },
   detailScrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.lg
   },
   editor: {
     minHeight: 280,
-    padding: 12,
-    fontSize: 15,
+    padding: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.body.fontSize,
     lineHeight: 22
   }
 })

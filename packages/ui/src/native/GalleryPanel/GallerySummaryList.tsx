@@ -6,6 +6,7 @@ import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { SummaryItem } from './gallery-panel.types'
 import { formatDateRange, formatSummarySpan, getTitle, getPreview } from './gallery-panel.utils'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface GallerySummaryListProps {
   compact?: boolean
@@ -154,14 +155,14 @@ const styles = StyleSheet.create({
     flexShrink: 1
   },
   listContent: {
-    padding: 8,
+    padding: sharedTokens.spacing.sm,
     flexGrow: 1
   },
   listContentCompact: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.lg,
+    gap: sharedTokens.spacing.mdTight
   },
   listContentEmpty: {
     flexGrow: 1,
@@ -172,35 +173,35 @@ const styles = StyleSheet.create({
     minHeight: 280,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 24
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.xl,
+    paddingVertical: sharedTokens.spacing.lg
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   emptyHint: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22,
     textAlign: 'center'
   },
   item: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 4,
-    borderRadius: 10,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    paddingHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.control,
     borderLeftWidth: 3
   },
   compactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: 16,
+    gap: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    paddingVertical: 16,
-    paddingHorizontal: 16
+    paddingVertical: sharedTokens.spacing.md,
+    paddingHorizontal: sharedTokens.spacing.md
   },
   itemMain: {
     flex: 1,
@@ -210,28 +211,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-    gap: 8
+    marginBottom: sharedTokens.spacing.xsPlus,
+    gap: sharedTokens.spacing.sm
   },
   itemTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     flex: 1
   },
   itemTitleCompact: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     marginBottom: 0
   },
   itemDate: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   itemPath: {
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xs
   },
   itemPreview: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   }
 })

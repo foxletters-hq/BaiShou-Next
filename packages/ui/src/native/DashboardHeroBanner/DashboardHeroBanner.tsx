@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 /** 移动端回忆页顶卡：实色表面 + 左侧主色条，不用整块浅底和光晕 */
 export const DashboardHeroBanner: React.FC = () => {
@@ -20,17 +21,11 @@ export const DashboardHeroBanner: React.FC = () => {
     >
       <View style={[styles.accent, { backgroundColor: colors.primary }]} />
       <View style={styles.copy}>
-        <Text style={[styles.eyebrow, { color: colors.textTertiary }]}>
-          {t('common.app_title', '白守')}
-        </Text>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t('summary.collective_memories_title', '回忆')}
+          {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {t(
-            'summary.algorithm_desc',
-            '基于白守级联折叠算法，自动过滤冗余数据，构建我们共同的记忆脉络。'
-          )}
+          {t('summary.algorithm_desc', '层层沉淀时光印记，凝练日常细节，构建我们共同的记忆脉络。')}
         </Text>
       </View>
     </View>
@@ -39,8 +34,7 @@ export const DashboardHeroBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
   banner: {
-    minHeight: 112,
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
@@ -52,25 +46,18 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
-    paddingVertical: 18,
-    paddingLeft: 16,
-    paddingRight: 18
-  },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.4
+    paddingVertical: sharedTokens.spacing.md,
+    paddingLeft: sharedTokens.spacing.md,
+    paddingRight: sharedTokens.spacing.md
   },
   title: {
-    marginTop: 2,
-    fontSize: 22,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-    lineHeight: 28
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight,
+    letterSpacing: -0.3
   },
   subtitle: {
-    marginTop: 6,
-    fontSize: 13,
+    marginTop: sharedTokens.spacing.xsPlus,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 19
   }
 })

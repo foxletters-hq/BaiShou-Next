@@ -5,6 +5,7 @@ import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { useNativeTheme } from '../../native/theme'
 import { formatCompactTokenCount } from '../../shared/token-usage-display'
 import { buildSharedMemoryPreviewChips } from '../../shared/shared-memory-preview.util'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export function SharedMemoryCopyPreviewPanel({
   preview,
@@ -86,13 +87,13 @@ export function SharedMemoryCopyPreviewPanel({
 
 const previewStyles = StyleSheet.create({
   panel: {
-    marginTop: 16,
-    marginBottom: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    marginTop: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   panelLoading: {
     flexDirection: 'row',
@@ -101,37 +102,37 @@ const previewStyles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   title: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   loadingText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.full
   },
   chipText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   total: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   size: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   emptyText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   }
 })

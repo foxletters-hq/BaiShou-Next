@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput } from 'react-native'
 import { SHARED_MEMORY_LOOKBACK_MIN, SHARED_MEMORY_LOOKBACK_SLIDER_BASE } from '@baishou/shared'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 /** 滑块 + 数字输入：拖动预览仅在本组件内更新，避免牵动整张卡片重渲染 */
 export function LookbackMonthsField({
@@ -107,7 +108,7 @@ export function LookbackMonthsField({
 
 const fieldStyles = StyleSheet.create({
   controls: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   labelRow: {
     flexDirection: 'row',
@@ -115,20 +116,20 @@ const fieldStyles = StyleSheet.create({
     alignItems: 'center'
   },
   label: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     flex: 1
   },
   numberInput: {
     width: 64,
     minHeight: 40,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    fontSize: 14,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     textAlign: 'center',
     borderWidth: 1,
-    borderRadius: 10
+    borderRadius: sharedTokens.radius.control
   },
   sliderWrap: {
     width: '100%',

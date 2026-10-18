@@ -6,6 +6,7 @@ import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { CopyPrefixModal } from './CopyPrefixModal'
 import { SharedMemoryCopyPreviewPanel } from './SharedMemoryCopyPreviewPanel'
 import { LookbackMonthsField } from './LookbackMonthsField'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../../native/theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -62,7 +63,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             <HelpTooltip
               content={t(
                 'summary.shared_memory_tooltip',
-                '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
+                '根据所选的回溯周期，自动汇总该时间范围内的日记与阶段总结，提炼为高浓度的生活记忆。\n\n在与伙伴对话或生成新总结时注入，让 AI 能自然延续对你近期生活轨迹与关键事件的了解。'
               )}
               size={16}
             />
@@ -126,8 +127,8 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
-    borderRadius: 16,
+    padding: sharedTokens.spacing.mdPlus,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid'
   },
@@ -135,8 +136,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 12
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   headerMain: {
     flexDirection: 'row',
@@ -145,36 +146,36 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   headerIcon: {
-    marginRight: 8
+    marginRight: sharedTokens.spacing.sm
   },
   headerTitle: {
     fontWeight: '600',
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   helpWrap: {
-    marginLeft: 8
+    marginLeft: sharedTokens.spacing.sm
   },
   prefixBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
   },
   btn: {
-    marginTop: 16,
-    borderRadius: 12,
-    paddingVertical: 14,
+    marginTop: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center'
   },
   btnIcon: {
-    marginRight: 6
+    marginRight: sharedTokens.spacing.xsPlus
   },
   btnText: {
     fontWeight: '600',
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   }
 })
