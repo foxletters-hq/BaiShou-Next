@@ -96,6 +96,10 @@ export function applyTheme(theme: DiaryCmTheme): void {
   theme.tagColors.forEach((fg, index) => {
     root.style.setProperty(`--tag-${index}-fg`, fg)
   })
+  if (theme.fontScale) {
+    root.style.setProperty('--ui-font-scale', String(theme.fontScale))
+    root.style.setProperty('--content-font-size-lg', `calc(16px * ${theme.fontScale})`)
+  }
   document.body.style.backgroundColor = theme.bgEditor
   document.body.style.color = theme.textPrimary
 }

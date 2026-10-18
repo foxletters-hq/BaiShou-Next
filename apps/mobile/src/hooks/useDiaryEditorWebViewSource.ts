@@ -74,7 +74,7 @@ async function buildFingerprint(htmlUri: string, bundleUri: string): Promise<str
   const bundleMtime =
     bundleInfo.exists && 'modificationTime' in bundleInfo ? (bundleInfo.modificationTime ?? 0) : 0
   const buildStamp = shellHtml.match(BUILD_STAMP_RE)?.[1] ?? ''
-  return `${buildStamp}:${htmlSize}:${bundleSize}:${bundleMtime}`
+  return `${FEATURE_MARKER}:${buildStamp}:${htmlSize}:${bundleSize}:${bundleMtime}`
 }
 
 async function stageDiaryEditorBundle(
@@ -161,30 +161,14 @@ async function readDiaryEditorWebViewSource(): Promise<DiaryEditorWebViewSource 
     const assetBundleSize = bundleInfo.exists && 'size' in bundleInfo ? (bundleInfo.size ?? 0) : 0
     const stagedCurrent = await isStagedBundleCurrent(fingerprint, assetBundleSize)
     if (stagedCurrent) {
-      const [stagedBundleJs, stagedShellHtml] = await Promise.all([
-        readAsStringAsync(STAGING_BUNDLE).catch(() => ''),
-        readAsStringAsync(STAGING_HTML).catch(() => '')
-      ])
-      const hasFeatureMarker = stagedBundleJs.includes(FEATURE_MARKER)
       logStaging(
         i18n.t(
           'auto.apps.mobile.src.hooks.useDiaryEditorWebViewSource.L168',
           'WebView bundle 已缓存（磁盘 staging 与 asset 指纹一致）'
         ),
-        {
-          fingerprint,
-          stagedBundleBytes: stagedBundleJs.length,
-          hasFeatureMarker,
-          buildStamp: stagedShellHtml.match(BUILD_STAMP_RE)?.[1] ?? '(none)'
-        }
+        { fingerprint }
       )
-      if (!hasFeatureMarker) {
-        console.warn(
-          `[DiaryEditor] staging bundle 缺少 ${FEATURE_MARKER}，将强制重新复制。请确认已执行 build:diary-editor`
-        )
-      } else {
-        return makeSource(fingerprint)
-      }
+      return makeSource(fingerprint)
     }
 
     const bundled = await readBundledAssetContent(htmlUri, bundleUri)
