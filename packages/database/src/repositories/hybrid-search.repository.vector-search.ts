@@ -108,7 +108,6 @@ export class HybridSearchVectorQuery {
   ): Promise<ISearchResult[]> {
     const threshold = filter?.threshold
     const vectorBuffer = embeddingVectorToBytes(vector)
-    const vectorStr = `[${vector.join(',')}]`
     const queryFilter: QueryFilter = {
       sourceType: filter?.sourceType,
       startMs: filter?.startMs,
@@ -141,6 +140,7 @@ export class HybridSearchVectorQuery {
 
     if (this.runtime.vectorTopKAvailable !== false) {
       try {
+        const vectorStr = `[${vector.join(',')}]`
         const results = await this.queryWithVectorTopK(vectorStr, limit, threshold, queryFilter)
         this.runtime.vectorTopKAvailable = true
         this.runtime.nativeVectorSupported = true
@@ -173,10 +173,10 @@ export class HybridSearchVectorQuery {
                source_created_at AS createdAt, source_type AS sourceType,
                vec_distance_cosine(embedding, ?) AS distance
         FROM ${HYBRID_SEARCH_TABLE}${where.sql}
-        ORDER BY vec_distance_cosine(embedding, ?) ASC
+        ORDER BY distance ASC
         LIMIT ?
       `,
-      args: [vectorBuffer, ...where.args, vectorBuffer, limit]
+      args: [vectorBuffer, ...where.args, limit]
     })
 
     let results = Array.from(res.rows).map((r) => ({
@@ -247,6 +247,12 @@ export class HybridSearchVectorQuery {
       })
 
       const dimension = queryVector.length
+      let normA = 0
+      for (let i = 0; i < dimension; i++) {
+        const qv = queryVector[i] ?? 0
+        normA += qv * qv
+      }
+      const sqrtNormA = Math.sqrt(normA)
       const scored: Array<ISearchResult & { _dist: number }> = []
 
       for (const r of res.rows) {
@@ -260,15 +266,14 @@ export class HybridSearchVectorQuery {
           const embArr = bytesToFloat32Array(buffer, dimension)
 
           let dot = 0,
-            normA = 0,
             normB = 0
           for (let i = 0; i < dimension; i++) {
-            dot += (queryVector[i] ?? 0) * (embArr[i] ?? 0)
-            normA += (queryVector[i] ?? 0) * (queryVector[i] ?? 0)
-            normB += (embArr[i] ?? 0) * (embArr[i] ?? 0)
+            const ev = embArr[i] ?? 0
+            dot += (queryVector[i] ?? 0) * ev
+            normB += ev * ev
           }
           const distance =
-            normA > 0 && normB > 0 ? 1.0 - dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 1.0
+            sqrtNormA > 0 && normB > 0 ? 1.0 - dot / (sqrtNormA * Math.sqrt(normB)) : 1.0
 
           scored.push({
             messageId: r.embedding_id as string,

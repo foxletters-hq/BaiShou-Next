@@ -1,4 +1,4 @@
-import { eq, sql, like, inArray, gte, lte } from 'drizzle-orm'
+import { desc, eq, sql, like, inArray, gte, lte } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
 import type {
@@ -103,15 +103,19 @@ export class ShadowIndexQueryOps {
     return map
   }
 
-  async getAllRecords(): Promise<Pick<ShadowJournalRecord, 'id' | 'date' | 'filePath'>[]> {
+  async getAllRecords(): Promise<
+    Pick<ShadowJournalRecord, 'id' | 'date' | 'filePath' | 'contentHash'>[]
+  > {
     return await this.ctx.database
       .select({
         id: shadowJournalIndexTable.id,
         date: shadowJournalIndexTable.date,
-        filePath: shadowJournalIndexTable.filePath
+        filePath: shadowJournalIndexTable.filePath,
+        contentHash: shadowJournalIndexTable.contentHash
       })
       .from(shadowJournalIndexTable)
       .where(this.ctx.vaultFilter())
+      .orderBy(desc(shadowJournalIndexTable.date))
   }
 
   countSearchFTS(query: string): Promise<number> {

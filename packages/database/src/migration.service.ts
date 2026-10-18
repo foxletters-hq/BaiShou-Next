@@ -28,6 +28,9 @@ import {
 
 export type { EmbeddedMigrations, MigrationJournal } from './migration.service.types'
 
+export const AGENT_SCHEMA_COMPAT_VERSION_KEY = '__agent_schema_compat_version'
+export const AGENT_SCHEMA_COMPAT_VERSION = 'v1'
+
 /**
  * Agent DB 迁移服务
  *
@@ -126,6 +129,12 @@ export class MigrationService {
 
       if (pendingMigrations.length === 0) {
         logger.info('[MigrationService] Agent DB Schema 已是最新版本。')
+        if (!isAgentMigrationArchiveImport() && (await this._isSchemaCompatCurrent())) {
+          logger.info(
+            '[MigrationService] Agent DB Schema 兼容性与 FTS 索引均为最新，跳过重复回填与重建。'
+          )
+          return
+        }
       } else {
         logger.info(`[MigrationService] 发现 ${pendingMigrations.length} 个待执行迁移...`)
         for (const migration of pendingMigrations) {
@@ -180,6 +189,9 @@ export class MigrationService {
       }
 
       await this._ensureCompatSchema()
+      if (!isAgentMigrationArchiveImport()) {
+        await this._markSchemaCompatCurrent()
+      }
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -392,5 +404,42 @@ export class MigrationService {
 
   private async _ensureSystemSettingsTable(): Promise<void> {
     await ensureSystemSettingsTable(this.sqlExec())
+  }
+
+  private async _isSchemaCompatCurrent(): Promise<boolean> {
+    try {
+      const ftsCheck = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages_fts'`
+      )
+      if (ftsCheck.rows.length === 0) return false
+
+      const settingsCheck = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'`
+      )
+      if (settingsCheck.rows.length === 0) return false
+
+      const res = await this._executeSql(`SELECT value FROM system_settings WHERE key = ?`, [
+        AGENT_SCHEMA_COMPAT_VERSION_KEY
+      ])
+      return res.rows.length > 0 && res.rows[0]?.value === AGENT_SCHEMA_COMPAT_VERSION
+    } catch {
+      return false
+    }
+  }
+
+  private async _markSchemaCompatCurrent(): Promise<void> {
+    try {
+      await this._ensureSystemSettingsTable()
+      const now = Date.now()
+      await this._executeSql(
+        `INSERT INTO system_settings (key, value, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [AGENT_SCHEMA_COMPAT_VERSION_KEY, AGENT_SCHEMA_COMPAT_VERSION, now]
+      )
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] 记录 schema compat 版本印记失败（非阻塞）:', msg)
+    }
   }
 }

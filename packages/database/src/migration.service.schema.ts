@@ -67,7 +67,7 @@ export async function ensureMemoryEmbeddingsVaultIndex(
   }
 }
 
-/** 仓库隔离 V1.0：回填 vault_name（幂等；遗留手动记忆保持空值）。须在 V2.2 rename 之前执行。 */
+/** 仓库隔离 V1.0/V2.2：回填 vault_name 或 vault_id（幂等；遗留手动记忆保持空值）。须在 V2.2 rename 之前执行。 */
 export async function backfillMemoryEmbeddingsVaultNameColumn(
   executeSql: MigrationSqlExecutor
 ): Promise<void> {
@@ -78,15 +78,21 @@ export async function backfillMemoryEmbeddingsVaultNameColumn(
     if (table.rows.length === 0) return
     const tableInfo = await executeSql(`PRAGMA table_info(memory_embeddings)`)
     const hasVaultName = tableInfo.rows.some((c: { name?: string }) => c.name === 'vault_name')
-    if (!hasVaultName) return
+    const hasVaultId = tableInfo.rows.some((c: { name?: string }) => c.name === 'vault_id')
+    if (!hasVaultName && !hasVaultId) return
 
-    const counts = await backfillMemoryEmbeddingsVaultName((sql, args) => executeSql(sql, args))
-    logger.info('[MigrationService] memory_embeddings.vault_name 回填完成', {
+    const targetColumn = hasVaultName ? 'vault_name' : 'vault_id'
+    const counts = await backfillMemoryEmbeddingsVaultName(
+      (sql, args) => executeSql(sql, args),
+      targetColumn
+    )
+    logger.info('[MigrationService] memory_embeddings 仓库归属回填完成', {
+      targetColumn,
       ...counts
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
-    logger.warn('[MigrationService] memory_embeddings.vault_name 回填失败（非阻塞）:', message)
+    logger.warn('[MigrationService] memory_embeddings 仓库归属回填失败（非阻塞）:', message)
   }
 }
 
@@ -325,6 +331,18 @@ export async function ensureCompressionSnapshotsCompatibility(
   }
 }
 
+export async function migrateLegacyDefaultAssistantInDb(
+  executeSql: MigrationSqlExecutor
+): Promise<void> {
+  try {
+    await executeSql(
+      `UPDATE agent_sessions SET assistant_id = 'latte' WHERE assistant_id = 'default'`
+    )
+  } catch {
+    // best-effort
+  }
+}
+
 export async function ensureCompatSchema(
   executeSql: MigrationSqlExecutor,
   storageRoot?: string
@@ -340,4 +358,5 @@ export async function ensureCompatSchema(
   await migrateVaultNameToVaultId(executeSql, storageRoot)
   await migrateSummariesAndAssistantsVault(executeSql)
   await backfillAgentMessagesOrderIndex(executeSql)
+  await migrateLegacyDefaultAssistantInDb(executeSql)
 }

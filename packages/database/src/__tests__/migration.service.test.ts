@@ -437,5 +437,21 @@ describe('MigrationService', () => {
       `)
       expect(tables).toHaveLength(1)
     })
+
+    it('should detect schema compat stamp and mark current', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE VIRTUAL TABLE agent_messages_fts USING fts5(
+          part_id UNINDEXED,
+          message_id UNINDEXED,
+          session_id UNINDEXED,
+          content,
+          tokenize='unicode61'
+        );
+      `)
+      expect(await (service as any)._isSchemaCompatCurrent()).toBe(false)
+      await (service as any)._markSchemaCompatCurrent()
+      expect(await (service as any)._isSchemaCompatCurrent()).toBe(true)
+    })
   })
 })

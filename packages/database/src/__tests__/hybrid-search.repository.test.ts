@@ -299,8 +299,21 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
           chunkText: 'dark theme'
         })
       )
+      // 按 embedding_id (emb-1) 也应能命中，并返回原始 source_id (mem-1)
+      const hitByEmbId = await repo.getBySource('memory', 'emb-1', { vaultId: 'vault-a' })
+      expect(hitByEmbId).toEqual(
+        expect.objectContaining({
+          sourceType: 'memory',
+          sourceId: 'mem-1',
+          chunkText: 'dark theme'
+        })
+      )
       expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-missing' })).toBeNull()
       expect(await repo.getBySource('memory', 'mem-1')).toBeNull()
+
+      // 按 embedding_id 删除测试
+      await repo.deleteEmbeddingsBySource('memory', 'emb-1')
+      expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-a' })).toBeNull()
     })
   })
 })
