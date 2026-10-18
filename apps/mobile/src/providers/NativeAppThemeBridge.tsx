@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
-import i18n from 'i18next'
 import {
   NativeThemeProvider,
-  nativeUiFontFamilyFromLanguage,
   useNativeTheme,
+  setGlobalFontScale,
+  installNativeFontScaling,
   type ThemeModePreference
 } from '@baishou/ui/native'
 import {
@@ -14,6 +14,9 @@ import {
 } from '@baishou/shared'
 import { subscribeThemeRefresh } from '../lib/theme-events'
 import { useBaishou } from './BaishouProvider'
+
+// 确保字阶缩放拦截器已就绪
+installNativeFontScaling()
 
 /** 根容器底色与主题同步，fade 转场时避免露出硬编码白底 */
 function ThemedRootShell({ children }: { children: React.ReactNode }) {
@@ -29,9 +32,6 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
   const [themeMode, setThemeMode] = useState<ThemeModePreference>('system')
   const [seedColor, setSeedColor] = useState<string | undefined>()
   const [contentFontScale, setContentFontScale] = useState(1)
-  const [uiFontFamily, setUiFontFamily] = useState(() =>
-    nativeUiFontFamilyFromLanguage(i18n.language)
-  )
 
   const loadThemeFromSettings = useCallback(async () => {
     if (!services) return
@@ -49,7 +49,9 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
         settings.fontSizeLevel === undefined
           ? UI_FONT_SIZE_LEVEL_DEFAULT
           : normalizeUiFontSizeLevel(settings.fontSizeLevel)
-      setContentFontScale(uiFontSizeScaleFromLevel(level))
+      const scale = uiFontSizeScaleFromLevel(level)
+      setGlobalFontScale(scale)
+      setContentFontScale(scale)
     } catch {
       // ignore
     }
@@ -67,23 +69,11 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
     })
   }, [dbReady, services, loadThemeFromSettings])
 
-  useEffect(() => {
-    const apply = (language: string) => {
-      setUiFontFamily(nativeUiFontFamilyFromLanguage(language))
-    }
-    apply(i18n.language)
-    i18n.on('languageChanged', apply)
-    return () => {
-      i18n.off('languageChanged', apply)
-    }
-  }, [])
-
   return (
     <NativeThemeProvider
       themeMode={themeMode}
       seedColor={seedColor}
       contentFontScale={contentFontScale}
-      uiFontFamily={uiFontFamily}
     >
       <ThemedRootShell>{children}</ThemedRootShell>
     </NativeThemeProvider>

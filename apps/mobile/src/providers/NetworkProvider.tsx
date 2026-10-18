@@ -11,6 +11,7 @@ import NetInfo, { type NetInfoState } from '@react-native-community/netinfo'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   resolveConnectionType,
   resolveIsMetered,
@@ -123,14 +124,14 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     zIndex: 1000,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
     alignItems: 'center'
   },
   bannerText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   }
 })

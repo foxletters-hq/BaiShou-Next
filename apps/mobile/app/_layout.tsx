@@ -14,7 +14,7 @@ import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
 import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
 import { NetworkProvider, NetworkOfflineBanner } from '@/src/providers/NetworkProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
@@ -154,20 +154,20 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <BaishouProvider>
           <NetworkProvider>
             <NativeAppThemeBridge>
               <HeroUIThemeBridge>
-                <ToastProvider>
-                  <DialogProvider>
+                <DialogProvider>
+                  <ToastProvider>
                     <IncrementalSyncProvider>
                       <LegacyMigrationPrompt />
                       <AppContent />
                       <NetworkOfflineBanner />
                     </IncrementalSyncProvider>
-                  </DialogProvider>
-                </ToastProvider>
+                  </ToastProvider>
+                </DialogProvider>
               </HeroUIThemeBridge>
             </NativeAppThemeBridge>
           </NetworkProvider>
