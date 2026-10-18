@@ -3,19 +3,7 @@ import type { ToolInvocationLike } from './tool-result.types'
 
 const SUBTITLE_MAX_CHARS = 56
 
-export function readRawInvocationToolName(invocation: ToolInvocationLike): string | undefined {
-  const raw = invocation.toolName || (invocation as { name?: string }).name
-  if (typeof raw !== 'string' || !raw.trim()) return undefined
-  return raw.trim()
-}
-
-export function readInvocationToolName(invocation: ToolInvocationLike): string | undefined {
-  const raw = readRawInvocationToolName(invocation)
-  if (!raw) return undefined
-  return resolveMcpToolLookupName(raw).lookupName
-}
-
-export function readArgsRecord(args: unknown): Record<string, unknown> | null {
+function parseRawArgsObject(args: unknown): Record<string, unknown> | null {
   if (args == null) return null
   if (typeof args === 'string') {
     const trimmed = args.trim()
@@ -33,6 +21,41 @@ export function readArgsRecord(args: unknown): Record<string, unknown> | null {
     return args as Record<string, unknown>
   }
   return null
+}
+
+export function readRawInvocationToolName(invocation: ToolInvocationLike): string | undefined {
+  const raw = invocation.toolName || (invocation as { name?: string }).name
+  if (typeof raw !== 'string' || !raw.trim()) return undefined
+  const trimmed = raw.trim()
+  if (trimmed === 'mcp_call') {
+    const record = parseRawArgsObject(invocation.args)
+    const nestedTool =
+      typeof record?.tool === 'string'
+        ? record.tool.trim()
+        : typeof record?.name === 'string'
+          ? record.name.trim()
+          : ''
+    if (nestedTool) {
+      return nestedTool.startsWith('mcp_') ? nestedTool : `mcp__gateway__${nestedTool}`
+    }
+  }
+  return trimmed
+}
+
+export function readInvocationToolName(invocation: ToolInvocationLike): string | undefined {
+  const raw = readRawInvocationToolName(invocation)
+  if (!raw) return undefined
+  return resolveMcpToolLookupName(raw).lookupName
+}
+
+export function readArgsRecord(args: unknown): Record<string, unknown> | null {
+  const record = parseRawArgsObject(args)
+  if (!record) return null
+  if (typeof record.tool === 'string' && record.arguments != null) {
+    const nested = parseRawArgsObject(record.arguments)
+    if (nested) return nested
+  }
+  return record
 }
 
 export function readArgString(value: unknown): string | undefined {

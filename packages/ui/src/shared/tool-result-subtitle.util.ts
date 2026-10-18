@@ -45,7 +45,7 @@ export function getToolInvocationSubtitle(invocation?: ToolInvocationLike): stri
       return `${fileNameFromPath(from)} → ${fileNameFromPath(to)}`
     }
   }
-  if (toolName === 'skill_write') {
+  if (toolName === 'skill_write' || toolName === 'skill_read') {
     const name = readArgString(args.name)
     if (name) return truncateSubtitle(name)
   }
@@ -58,6 +58,13 @@ export function getToolInvocationSubtitle(invocation?: ToolInvocationLike): stri
     const value = readArgString(args[key])
     if (value) return key === 'url' ? formatPathishSubtitle(value) : truncateSubtitle(value)
   }
+  const startDate = readArgString(args.start_date)
+  const endDate = readArgString(args.end_date)
+  if (startDate && endDate) {
+    return `${startDate} ~ ${endDate}`
+  }
+  const singleDate = readArgString(args.date)
+  if (singleDate) return truncateSubtitle(singleDate)
   return undefined
 }
 

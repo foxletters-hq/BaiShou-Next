@@ -79,6 +79,18 @@ describe('getToolInvocationSubtitle', () => {
       })
     ).toBe('daily-news')
   })
+
+  it('unwraps nested tool and arguments for mcp_call gateway invocations', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'mcp_call',
+        args: {
+          tool: 'baishou_diary_list',
+          arguments: { start_date: '2026-03-01', end_date: '2026-03-07' }
+        }
+      })
+    ).toBe('2026-03-01 ~ 2026-03-07')
+  })
 })
 
 describe('getToolDisplayName', () => {
@@ -110,6 +122,29 @@ describe('getToolDisplayName', () => {
         t
       )
     ).toBe('baishou_summary_read')
+  })
+
+  it('unwraps mcp_call target tool name for display', () => {
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c3',
+          toolName: 'mcp_call',
+          args: { tool: 'baishou_diary_list', arguments: {} }
+        },
+        t
+      )
+    ).toBe('baishou_diary_list')
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c4',
+          toolName: 'mcp_call',
+          args: { tool: 'read_file', arguments: {} }
+        },
+        t
+      )
+    ).toBe('MCP · read_file')
   })
 })
 
