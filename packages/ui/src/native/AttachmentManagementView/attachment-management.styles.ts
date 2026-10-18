@@ -1,37 +1,38 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const attachmentManagementStyles = StyleSheet.create({
   container: {
     flex: 1
   },
   mainTabNav: {
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   mainTabs: {
     flexDirection: 'row',
-    borderRadius: 8,
-    padding: 4,
-    gap: 8
+    borderRadius: sharedTokens.radius.sm,
+    padding: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   mainTabItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 6
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.xsPlus
   },
   mainTabText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18.9,
     fontWeight: '400'
   },
   overviewCard: {
     flexDirection: 'row',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.mdSnug,
+    marginBottom: sharedTokens.spacing.mdTight,
     borderWidth: 1
   },
   statColumn: {
@@ -41,77 +42,77 @@ export const attachmentManagementStyles = StyleSheet.create({
   statDivider: {
     width: 1,
     alignSelf: 'stretch',
-    marginHorizontal: 4
+    marginHorizontal: sharedTokens.spacing.xs
   },
   statLabel: {
-    fontSize: 11,
-    marginBottom: 4,
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.xs,
     textAlign: 'center'
   },
   statValue: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   },
   toolbar: {
-    gap: 10,
-    marginBottom: 12
+    gap: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   tabRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   filterChipText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   actionBtnText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   paginationRow: {
-    gap: 12,
-    marginVertical: 12
+    gap: sharedTokens.spacing.mdTight,
+    marginVertical: sharedTokens.spacing.mdTight
   },
   folderItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   folderIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10
+    marginRight: sharedTokens.spacing.smPlus
   },
   folderInfo: {
     flex: 1,
@@ -120,59 +121,59 @@ export const attachmentManagementStyles = StyleSheet.create({
   folderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flexWrap: 'wrap'
   },
   folderTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
     flexShrink: 1
   },
   orphanBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   orphanBadgeText: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   folderSubtitle: {
-    fontSize: 12,
-    marginTop: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   },
   folderSize: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginRight: 8
+    marginRight: sharedTokens.spacing.sm
   },
   folderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   iconBtn: {
-    padding: 6,
-    borderRadius: 6
+    padding: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.xsPlus
   },
   sessionFileListCard: {
-    marginBottom: 8,
-    borderRadius: 10,
+    marginBottom: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
-    padding: 8,
-    gap: 4
+    padding: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xs
   },
   fileItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    gap: 10
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.smPlus
   },
   sessionFileThumb: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -184,23 +185,23 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   fileName: {
     flex: 1,
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   fileSize: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   fileActions: {
     flexDirection: 'row',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   diaryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   diaryCard: {
     width: '47%',
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -216,30 +217,30 @@ export const attachmentManagementStyles = StyleSheet.create({
     height: '100%'
   },
   diaryCardInfo: {
-    padding: 8
+    padding: sharedTokens.spacing.sm
   },
   diaryCardTitle: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    marginBottom: 2
+    marginBottom: sharedTokens.spacing.xxs
   },
   diaryCardMeta: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   diaryCardActions: {
     position: 'absolute',
     top: 6,
     right: 6,
     flexDirection: 'row',
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
   diaryOrphanBadge: {
     position: 'absolute',
     top: 6,
     left: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   diaryCheckbox: {
     position: 'absolute',
@@ -248,16 +249,16 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.xlPlus,
+    gap: sharedTokens.spacing.sm
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center',
-    paddingHorizontal: 24
+    paddingHorizontal: sharedTokens.spacing.lg
   },
   loadingContainer: {
     alignItems: 'center',
-    paddingVertical: 40
+    paddingVertical: sharedTokens.spacing.xlPlus
   }
 })

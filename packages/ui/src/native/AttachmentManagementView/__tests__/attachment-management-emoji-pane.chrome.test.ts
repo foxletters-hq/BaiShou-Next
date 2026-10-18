@@ -24,4 +24,10 @@ describe('native attachment management emoji pane', () => {
     expect(types).toContain('onDeleteEmojiAttachments')
     expect(hook).toContain('useAttachmentEmojiState')
   })
+
+  it('should inset the filter sheet scroll indicator like SkillCitePreviewDialog', () => {
+    expect(read('../AttachmentFilterSheet.tsx')).toContain(
+      'paddingRight: sharedTokens.spacing.mdTight'
+    )
+  })
 })

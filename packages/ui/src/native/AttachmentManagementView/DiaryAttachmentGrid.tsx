@@ -9,6 +9,7 @@ import { attachmentManagementStyles as styles } from './attachment-management.st
 import { formatSize, getFileIcon, isImageFile } from './attachment-management.utils'
 import { AttachmentPaginationBar } from './AttachmentPaginationBar'
 import { AttachmentImageThumb } from './AttachmentImageThumb'
+import { mobileTypography } from '../../theme/tokens'
 
 export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }> = ({ vm }) => {
   const { colors } = useNativeTheme()
@@ -88,7 +89,13 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
 
                 {item.isOrphan && (
                   <View style={[styles.diaryOrphanBadge, { backgroundColor: colors.error + 'cc' }]}>
-                    <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: '600' }}>
+                    <Text
+                      style={{
+                        color: colors.textOnPrimary,
+                        fontSize: mobileTypography.caption.fontSize,
+                        fontWeight: '600'
+                      }}
+                    >
                       {t('settings.attachment_orphan_label', '孤立')}
                     </Text>
                   </View>
