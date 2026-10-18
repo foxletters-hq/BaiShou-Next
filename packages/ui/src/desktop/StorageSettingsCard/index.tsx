@@ -168,7 +168,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
                 size="small"
                 onClick={() => void onChangeExternalJournalsDirectory()}
               >
-                {t('storage.external_journals_pick', '选择日记目录')}
+                {t('storage.external_journals_pick', '自定义日记目录')}
               </Button>
             ) : null}
             {externalJournalsPath && onClearExternalJournalsDirectory ? (
@@ -247,7 +247,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
                 size="small"
                 onClick={() => void onChangeExternalSummariesDirectory()}
               >
-                {t('storage.external_summaries_pick', '选择总结目录')}
+                {t('storage.external_summaries_pick', '自定义总结目录')}
               </Button>
             ) : null}
             {externalSummariesPath && onClearExternalSummariesDirectory ? (

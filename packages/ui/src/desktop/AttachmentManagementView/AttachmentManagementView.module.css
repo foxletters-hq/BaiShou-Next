@@ -17,13 +17,13 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--settings-page-content-gap, 24px) 32px 32px;
+  padding: var(--settings-page-content-gap, var(--spacing-lg)) var(--spacing-xl) var(--spacing-xl);
   box-sizing: border-box;
 }
 
 @media (max-width: 500px) {
   .content {
-    padding: 16px;
+    padding: var(--spacing-md);
   }
 }
 
@@ -34,7 +34,7 @@
 }
 
 .overviewCardWrapper {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .overviewCard {
@@ -42,8 +42,8 @@
   justify-content: space-around;
   align-items: center;
   background: var(--bg-surface);
-  border-radius: 12px;
-  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-md-plus);
   border: 1px solid var(--border-card);
 }
 
@@ -51,7 +51,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
@@ -94,30 +94,30 @@
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-md);
 }
 
 .tabsRow {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-items: center;
 }
 
 .actionBtn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: var(--settings-font-label-size, 13px);
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-lg);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   cursor: pointer;
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    opacity var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   height: 32px;
   box-shadow: none;
 }
@@ -151,17 +151,17 @@
   display: flex;
   flex-direction: column;
   background: transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .emptyState {
-  padding: 48px 24px;
+  padding: var(--spacing-2xl) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   color: var(--text-secondary);
 }
 
@@ -171,7 +171,7 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
   flex-shrink: 0;
@@ -195,18 +195,19 @@
 }
 
 .emptyActionBtn {
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   height: 32px;
-  padding: 0 14px;
-  border-radius: 16px;
+  padding: 0 var(--spacing-md-snug);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-control);
   background: transparent;
   color: var(--text-primary);
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   cursor: pointer;
   box-shadow: none;
-  transition: background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: background-color var(--duration-fast, var(--duration-fast))
+    var(--ease-out-cubic, ease);
 }
 
 .emptyActionBtn:hover {
@@ -216,15 +217,15 @@
 .folderItem {
   display: flex;
   align-items: center;
-  padding: 14px 18px;
-  gap: 14px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
+  gap: var(--spacing-md-snug);
   border: 1px solid var(--border-card);
   background: var(--bg-surface);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
   transition:
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    border-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   cursor: pointer;
 }
 
@@ -247,13 +248,13 @@
 .folderIconBox {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.15);
   flex-shrink: 0;
   overflow: hidden;
@@ -276,7 +277,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
 }
 
@@ -300,25 +301,25 @@
   color: var(--color-error);
   font-size: var(--settings-font-micro-size, 11px);
   font-weight: var(--settings-font-micro-weight, 600);
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 8px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
+  margin-left: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .folderFilesSubtitle {
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-desc-weight, 400);
   color: var(--text-secondary);
 }
 
 .folderSizeWrapper {
-  margin-left: 12px;
+  margin-left: var(--spacing-md-tight);
   flex-shrink: 0;
 }
 
 .folderSizeValue {
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-primary);
 }
@@ -326,8 +327,8 @@
 .cardHeaderActions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  gap: var(--spacing-xs);
+  margin-left: var(--spacing-sm);
   flex-shrink: 0;
 }
 
@@ -341,10 +342,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
 }
 
 .cardHeaderActionBtn:hover:not(:disabled) {
@@ -358,7 +359,7 @@
 }
 
 .expandIcon {
-  transition: transform var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: transform var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
 }
 
 .expandIconRotated {
@@ -369,14 +370,14 @@
   display: grid;
   grid-template-rows: 0fr;
   transition:
-    grid-template-rows 0.25s var(--ease-out-cubic, ease),
-    opacity 0.25s ease;
+    grid-template-rows var(--duration-normal) var(--ease-out-cubic, ease),
+    opacity var(--duration-normal) ease;
   opacity: 0;
   overflow: hidden;
   background: var(--bg-surface);
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   margin-top: -12px;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
   border: 1px solid var(--border-card);
   border-top: 1px solid var(--border-subtle);
 }
@@ -388,16 +389,17 @@
 
 .fileListContent {
   min-height: 0;
-  padding: 10px 0 6px;
+  padding: var(--spacing-sm-plus) 0 var(--spacing-xs-plus);
 }
 
 .fileItem {
   display: flex;
   align-items: center;
-  padding: 10px 20px 10px 72px;
-  gap: 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-plus) var(--spacing-sm-plus) 72px;
+  gap: var(--spacing-md-tight);
   border-bottom: 1px solid var(--border-subtle);
-  transition: background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: background-color var(--duration-fast, var(--duration-fast))
+    var(--ease-out-cubic, ease);
 }
 
 .fileItem:last-child {
@@ -421,7 +423,7 @@
 .fileThumb {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   display: block;
   border: 1px solid var(--border-card);
@@ -432,7 +434,7 @@
 
 .fileName {
   flex: 1;
-  font-size: var(--settings-font-desc-size, 13px);
+  font-size: var(--settings-font-desc-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-desc-weight, 400);
   color: var(--text-primary);
   word-break: break-all;
@@ -442,7 +444,7 @@
 .fileMeta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
 }
 
@@ -456,7 +458,7 @@
 
 .fileActions {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .fileActionBtn {
@@ -469,10 +471,10 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
 }
 
 .fileActionBtn:hover:not(:disabled) {
@@ -513,7 +515,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: var(--spacing-md-tight) var(--spacing-xl);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   position: sticky;
@@ -524,7 +526,7 @@
 
 .filtersGroup {
   display: flex;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -532,9 +534,9 @@
 .filterField {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 16px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   height: 32px;
@@ -548,7 +550,7 @@
 }
 
 .filterSelectEmpty {
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-secondary);
 }
@@ -561,13 +563,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--bg-surface);
   color: var(--text-primary);
   border: 1px solid var(--border-control);
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: var(--settings-font-label-size, 13px);
+  padding: var(--spacing-xs) var(--spacing-md-tight);
+  border-radius: var(--radius-lg);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   cursor: pointer;
   min-width: 105px;
@@ -576,9 +578,9 @@
   box-shadow: none;
   outline: none;
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
 }
 
 .dropdownTrigger:hover {
@@ -591,7 +593,7 @@
 }
 
 .dropdownChevron {
-  transition: transform var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: transform var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -606,12 +608,12 @@
   left: 0;
   min-width: 140px;
   background: var(--menu-popup-bg, var(--bg-surface));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 1000;
   overflow: hidden;
-  padding: var(--menu-popup-padding, 4px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
 }
 
 .dropdownMenuYear {
@@ -621,7 +623,7 @@
 .dropdownList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   max-height: 260px;
   overflow-y: auto;
 }
@@ -632,22 +634,22 @@
 
 .dropdownList::-webkit-scrollbar-thumb {
   background: var(--border-muted);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
 }
 
 .dropdownItem {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: var(--settings-font-label-size, 13px);
+  font-size: var(--settings-font-label-size, var(--spacing-md-snug));
   font-weight: var(--settings-font-label-weight, 500);
   cursor: pointer;
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   text-align: left;
   white-space: nowrap;
 }
@@ -671,8 +673,8 @@
 .diaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: var(--spacing-md-snug);
+  margin-bottom: var(--spacing-md);
   width: 100%;
 }
 
@@ -681,11 +683,11 @@
   flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   transition:
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    border-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   cursor: pointer;
   position: relative;
   box-shadow: none;
@@ -715,7 +717,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.25s var(--ease-out-cubic, ease);
+  transition: transform var(--duration-normal) var(--ease-out-cubic, ease);
 }
 
 .diaryCard:hover .diaryPreviewImg {
@@ -733,7 +735,7 @@
   left: 8px;
   z-index: 10;
   opacity: 0;
-  transition: opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: opacity var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -752,8 +754,8 @@
   color: var(--text-on-primary);
   font-size: var(--settings-font-micro-size, 11px);
   font-weight: var(--settings-font-micro-weight, 600);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   z-index: 10;
 }
 
@@ -762,9 +764,9 @@
   bottom: 8px;
   right: 8px;
   display: flex;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   opacity: 0;
-  transition: opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  transition: opacity var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   z-index: 10;
 }
 
@@ -775,7 +777,7 @@
 .diaryHoverActionBtn {
   background: var(--bg-surface);
   border: 1px solid var(--border-control);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   width: 28px;
   height: 28px;
   display: flex;
@@ -784,9 +786,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+    background-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease),
+    color var(--duration-fast, var(--duration-fast)) var(--ease-out-cubic, ease);
   box-shadow: none;
 }
 
@@ -802,10 +804,10 @@
 }
 
 .diaryCardInfo {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 
@@ -830,16 +832,16 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   flex-wrap: wrap;
   box-sizing: border-box;
 }
 
 .paginationRowTop {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .paginationRow {
-  margin-top: 8px;
-  padding-bottom: 16px;
+  margin-top: var(--spacing-sm);
+  padding-bottom: var(--spacing-md);
 }

@@ -10,6 +10,7 @@ import { pickRecentVaults } from './workspace-settings.utils'
 import { validateWorkspaceName } from './workspace-name.validation'
 import styles from './WorkspaceSettingsCard.module.css'
 import { CheckCircle, FolderOpen, Layers, Plus } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 export { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 export type { WorkspaceScopeHelpTooltipProps } from './WorkspaceScopeHelpTooltip'
@@ -158,7 +159,10 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
       {recentVaults.length > 0 ? (
         <>
-          <span className={styles.workspaceSectionLabel} style={{ marginBottom: 4, marginTop: 4 }}>
+          <span
+            className={styles.workspaceSectionLabel}
+            style={{ marginBottom: sharedTokens.spacing.xs, marginTop: sharedTokens.spacing.xs }}
+          >
             {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
           </span>
           <div className={styles.workspaceRecentList}>
@@ -236,7 +240,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                 }}
               />
             ) : (
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: sharedTokens.spacing.xs }}>
                 <Button
                   variant="outlined"
                   size="small"
