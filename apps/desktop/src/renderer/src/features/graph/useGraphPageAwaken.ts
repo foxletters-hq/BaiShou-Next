@@ -34,6 +34,7 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     nickname: string
     birthday: string
     gender: UserGender | ''
+    customGender?: string
   }>({ nickname: '', birthday: '', gender: '' })
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileErrors, setProfileErrors] = useState<{
@@ -79,16 +80,20 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     nickname: string
     birthday: string
     gender: UserGender
+    customGender?: string | null
   }) => {
     setAwakenBusy(true)
     try {
       await saveDesktopGraphAwakenProfile(fields)
       setSelfNameReady(true)
+      const nextCustomGender =
+        fields.gender === 'other' ? fields.customGender?.trim() || null : null
       setAwakenProfile((prev) => ({
         ...(prev || ({} as UserProfile)),
         nickname: fields.nickname,
         birthday: fields.birthday,
-        gender: fields.gender
+        gender: fields.gender,
+        customGender: nextCustomGender
       }))
       deps.setStatus('')
       void window.api.graph.meta().then((m) => {
@@ -136,10 +141,14 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
     setProfileBusy(true)
     try {
       const oldName = awakenProfile?.nickname?.trim() || ''
+      const nextGender = profileForm.gender as UserGender
+      const nextCustomGender =
+        nextGender === 'other' ? profileForm.customGender?.trim() || null : null
       const fields = {
         nickname: profileForm.nickname.trim(),
         birthday: profileForm.birthday.trim(),
-        gender: profileForm.gender as UserGender
+        gender: nextGender,
+        customGender: nextCustomGender
       }
       await saveDesktopGraphAwakenProfile(fields)
       const synced = await syncSelfPersonNode(oldName, fields.nickname)
@@ -147,7 +156,8 @@ export function useGraphPageAwaken(deps: AwakenDeps) {
         ...(prev || ({} as UserProfile)),
         nickname: fields.nickname,
         birthday: fields.birthday,
-        gender: fields.gender
+        gender: fields.gender,
+        customGender: fields.customGender
       }))
       setSelfNameReady(true)
       await deps.refresh()

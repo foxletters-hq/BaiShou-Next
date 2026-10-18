@@ -14,9 +14,19 @@ import styles from './GraphPage.module.css'
 export function GraphPageOrganizePane(props: {
   profileSectionOpen: boolean
   onToggleProfileSection: () => void
-  profileForm: { nickname: string; birthday: string; gender: UserGender | '' }
+  profileForm: {
+    nickname: string
+    birthday: string
+    gender: UserGender | ''
+    customGender?: string
+  }
   onProfileFormChange: (
-    patch: Partial<{ nickname: string; birthday: string; gender: UserGender | '' }>
+    patch: Partial<{
+      nickname: string
+      birthday: string
+      gender: UserGender | ''
+      customGender?: string
+    }>
   ) => void
   profileBusy: boolean
   profileErrors: { nickname?: boolean; birthday?: boolean; gender?: boolean }
@@ -101,8 +111,8 @@ export function GraphPageOrganizePane(props: {
                           : g === 'female'
                             ? t('graph.awaken_gender_female', '女')
                             : g === 'other'
-                              ? t('graph.awaken_gender_other', '其他')
-                              : t('graph.awaken_gender_unspecified', '不愿透露')
+                              ? t('graph.awaken_gender_other', '自定义')
+                              : t('graph.awaken_gender_unspecified', '暂不设置')
                       return (
                         <button
                           key={g}
@@ -122,6 +132,15 @@ export function GraphPageOrganizePane(props: {
                       )
                     })}
                   </div>
+                  {props.profileForm.gender === 'other' ? (
+                    <Input
+                      fieldSize="small"
+                      value={props.profileForm.customGender || ''}
+                      onChange={(e) => props.onProfileFormChange({ customGender: e.target.value })}
+                      placeholder={t('graph.awaken_gender_custom_placeholder', '输入自定义性别')}
+                      disabled={props.profileBusy}
+                    />
+                  ) : null}
                   {props.profileErrors.gender ? (
                     <span className={styles.profileError}>
                       {t('graph.awaken_gender_required', '请选择性别')}

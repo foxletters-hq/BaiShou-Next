@@ -2,38 +2,38 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md-plus);
 }
 
 .pathBlock {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .pathHeader {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .pathLabel {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: #6b5b45;
 }
 
 .pathValueWrap {
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
 }
 
 .pathValue {
   font-family: 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 18px;
   text-align: center;
   color: #6b7280;
@@ -44,17 +44,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-self: center;
   background: #ffb74d;
-  padding: 12px 24px;
-  border-radius: 12px;
+  padding: var(--spacing-md-tight) var(--spacing-lg);
+  border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
   color: var(--text-on-primary);
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   font-weight: 600;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-swift) ease;
 }
 
 .changeButton:hover:not(:disabled) {

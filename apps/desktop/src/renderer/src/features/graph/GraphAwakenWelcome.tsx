@@ -16,12 +16,13 @@ export type GraphAwakenSubmitPayload = {
   nickname: string
   birthday: string
   gender: UserGender
+  customGender?: string | null
 }
 
 type Step = 'welcome' | 'profile'
 
 export interface GraphAwakenWelcomeProps {
-  initialProfile?: Pick<UserProfile, 'nickname' | 'birthday' | 'gender'> | null
+  initialProfile?: Pick<UserProfile, 'nickname' | 'birthday' | 'gender' | 'customGender'> | null
   busy?: boolean
   onSubmit: (payload: GraphAwakenSubmitPayload) => void | Promise<void>
 }
@@ -49,6 +50,7 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
   const [gender, setGender] = useState<UserGender | ''>(
     (initialProfile?.gender as UserGender | undefined) || ''
   )
+  const [customGender, setCustomGender] = useState(initialProfile?.customGender?.trim() || '')
   const [errors, setErrors] = useState<{
     nickname?: boolean
     birthday?: boolean
@@ -62,14 +64,14 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
       case 'female':
         return t('graph.awaken_gender_female', '女')
       case 'other':
-        return t('graph.awaken_gender_other', '其他')
+        return t('graph.awaken_gender_other', '自定义')
       default:
-        return t('graph.awaken_gender_unspecified', '不愿透露')
+        return t('graph.awaken_gender_unspecified', '暂不设置')
     }
   }
 
   const handleSubmit = async () => {
-    const nextErrors = validateGraphAwakenForm({ nickname, birthday, gender })
+    const nextErrors = validateGraphAwakenForm({ nickname, birthday, gender, customGender })
     setErrors({
       nickname: !!nextErrors.nickname,
       birthday: !!nextErrors.birthday,
@@ -79,7 +81,8 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
     await onSubmit({
       nickname: nickname.trim(),
       birthday: birthday.trim(),
-      gender: gender as UserGender
+      gender: gender as UserGender,
+      customGender: gender === 'other' ? customGender.trim() || null : null
     })
   }
 
@@ -161,6 +164,14 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
                     </button>
                   ))}
                 </div>
+                {gender === 'other' ? (
+                  <Input
+                    value={customGender}
+                    onChange={(e) => setCustomGender(e.target.value)}
+                    placeholder={t('graph.awaken_gender_custom_placeholder', '输入自定义性别')}
+                    disabled={busy}
+                  />
+                ) : null}
                 {errors.gender ? (
                   <span className={styles.error}>
                     {t('graph.awaken_gender_required', '请选择性别')}

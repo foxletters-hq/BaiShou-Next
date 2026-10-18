@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 24px;
+  padding: var(--spacing-xl) var(--spacing-lg);
   background: var(--bg-app);
 }
 
@@ -35,14 +35,14 @@
 .step {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   text-align: left;
   width: 100%;
 }
 
 .title {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--ui-display-md);
   font-weight: 650;
   line-height: 1.25;
   color: var(--text-primary);
@@ -50,8 +50,8 @@
 }
 
 .body {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -59,27 +59,27 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--ui-fs-md);
   color: var(--text-primary);
 }
 
 .genderRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .genderChip,
 .genderChipActive {
   height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
+  padding: 0 var(--spacing-md-tight);
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   cursor: pointer;
 }
 
@@ -91,14 +91,14 @@
 }
 
 .error {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--color-error);
 }
 
 .actions {
   display: flex;
-  gap: 10px;
-  margin-top: 8px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-sm);
 }
 
 .genderChip:disabled,
