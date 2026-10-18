@@ -74,6 +74,7 @@ export function AgentGateCardActions({
       {showFeedback ? (
         <>
           <Button
+            size="sm"
             variant="outline"
             onPress={onCancelFeedback}
             disabled={isReplying}
@@ -82,6 +83,7 @@ export function AgentGateCardActions({
             {t('common.cancel', '取消')}
           </Button>
           <Button
+            size="sm"
             variant="outline"
             onPress={() => reject(feedback.trim() || undefined)}
             disabled={isReplying}
@@ -109,6 +111,7 @@ export function AgentGateCardActions({
         ) : (
           <>
             <Button
+              size="sm"
               variant="outline"
               destructive
               onPress={() => reject()}
@@ -119,6 +122,7 @@ export function AgentGateCardActions({
               {t('agent_gate.reject', '拒绝')}
             </Button>
             <Button
+              size="sm"
               variant="outline"
               onPress={submitAsk}
               disabled={isReplying || !askDrafts.complete}
@@ -131,6 +135,7 @@ export function AgentGateCardActions({
       ) : (
         <>
           <Button
+            size="sm"
             variant="outline"
             destructive
             onPress={() => (allowCustomInput ? onShowFeedback() : reject())}
@@ -142,6 +147,7 @@ export function AgentGateCardActions({
           </Button>
           {showAlways ? (
             <Button
+              size="sm"
               variant="outline"
               onPress={() => void onReply({ requestId, reply: AgentGateReply.Always })}
               disabled={isReplying}
@@ -152,6 +158,7 @@ export function AgentGateCardActions({
             </Button>
           ) : null}
           <Button
+            size="sm"
             variant="outline"
             onPress={() => void onReply({ requestId, reply: AgentGateReply.Once })}
             disabled={isReplying}

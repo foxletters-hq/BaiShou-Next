@@ -1,14 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { AgentGateEffect, companionToolEffectOptions } from '@baishou/shared'
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native'
 import { ListOrdered, Minus, Plus } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { SegmentedControl } from '../SegmentedControl'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { AgentToolIcon } from '../icons/agent-tools-icons'
 import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export function AgentToolCard({
   tool,
@@ -60,72 +62,46 @@ export function AgentToolCard({
           : undefined
       }
     >
-      <View style={usePermissionMatrix ? styles.cardStack : styles.cardMain}>
-        <View style={styles.cardMain}>
-          <View style={styles.cardMainLeading}>
-            <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
-              <AgentToolIcon toolId={tool.id} size={AGENT_TOOL_ICON_SIZE} color={colors.primary} />
-            </View>
-            <View style={styles.toolInfo}>
-              <View style={styles.toolNameRow}>
-                <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
-                  {tool.name}
-                </Text>
-                <HelpTooltip
-                  content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-                  size={16}
-                />
-                <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                  <Text
-                    style={[styles.toolIdText, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {tool.id}
-                  </Text>
-                </View>
-              </View>
-            </View>
+      <View style={styles.cardMain}>
+        <View style={styles.cardMainLeading}>
+          <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
+            <AgentToolIcon toolId={tool.id} size={AGENT_TOOL_ICON_SIZE} color={colors.primary} />
           </View>
-          {usePermissionMatrix ? null : (
-            <View style={styles.switchSlot}>
-              <Switch
-                value={isEnabled}
-                disabled={!toggleable}
-                onValueChange={() => onToggleTool(tool.id)}
+          <View style={styles.toolInfo}>
+            <View style={styles.toolNameRow}>
+              <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {tool.name}
+              </Text>
+              <HelpTooltip
+                content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
+                size={16}
               />
             </View>
-          )}
+          </View>
         </View>
         {usePermissionMatrix && currentEffect && onToolEffectChange ? (
-          <View style={styles.effectRow}>
-            {effectOptions.map((effect) => {
-              const active = currentEffect === effect
-              return (
-                <TouchableOpacity
-                  key={effect}
-                  style={[
-                    styles.effectChip,
-                    {
-                      borderColor: active ? colors.primary : colors.borderMuted,
-                      backgroundColor: active ? colors.primaryLight : 'transparent'
-                    }
-                  ]}
-                  onPress={() => onToolEffectChange(tool.id, effect)}
-                >
-                  <Text
-                    style={{
-                      color: active ? colors.primary : colors.textSecondary,
-                      fontWeight: active ? '600' : '400',
-                      fontSize: 12
-                    }}
-                  >
-                    {effectLabel(effect)}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
+          <View style={styles.effectSlot}>
+            <SegmentedControl
+              size="small"
+              stretch={false}
+              value={currentEffect}
+              accessibilityLabel={tool.name}
+              options={effectOptions.map((effect) => ({
+                value: effect,
+                label: effectLabel(effect)
+              }))}
+              onChange={(effect) => onToolEffectChange(tool.id, effect)}
+            />
           </View>
-        ) : null}
+        ) : usePermissionMatrix ? null : (
+          <View style={styles.switchSlot}>
+            <Switch
+              value={isEnabled}
+              disabled={!toggleable}
+              onValueChange={() => onToggleTool(tool.id)}
+            />
+          </View>
+        )}
       </View>
 
       {hasParams && isEnabled && (
@@ -216,42 +192,29 @@ export function AgentToolCard({
 }
 
 const styles = StyleSheet.create({
-  cardStack: {
-    paddingBottom: 8
-  },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 10,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   cardMainLeading: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: sharedTokens.spacing.mdTight,
     minWidth: 0
   },
   switchSlot: {
     flexShrink: 0
   },
-  effectRow: {
-    flexDirection: 'row',
-    flexShrink: 0,
-    gap: 6,
-    paddingHorizontal: 4,
-    paddingBottom: 6
-  },
-  effectChip: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5
+  effectSlot: {
+    flexShrink: 0
   },
   toolIconWrapper: {
-    padding: 6,
-    borderRadius: 8,
+    padding: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm,
     width: 32,
     height: 32,
     alignItems: 'center',
@@ -265,40 +228,29 @@ const styles = StyleSheet.create({
   toolNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     minWidth: 0
   },
   toolName: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     flexShrink: 1
   },
-  toolIdTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    flexShrink: 0,
-    maxWidth: 120
-  },
-  toolIdText: {
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
-  },
   paramsDivider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: 4
+    marginHorizontal: sharedTokens.spacing.xs
   },
   paramRow: {
-    paddingTop: 8,
-    paddingBottom: 12
+    paddingTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   paramInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   paramLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     flexShrink: 1
   },
@@ -306,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -324,7 +276,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderRightWidth: StyleSheet.hairlineWidth,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     textAlign: 'center',
     paddingVertical: 0,

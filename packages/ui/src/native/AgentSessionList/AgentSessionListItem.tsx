@@ -12,40 +12,38 @@ interface AgentSessionListItemProps {
   onShowActions: (item: AgentSession) => void
 }
 
-export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = ({
-  item,
-  onSelect,
-  onShowActions
-}) => {
-  const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = React.memo(
+  ({ item, onSelect, onShowActions }) => {
+    const { t } = useTranslation()
+    const { colors } = useNativeTheme()
 
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.item,
-        {
-          backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
-          borderBottomColor: colors.borderSubtle
-        }
-      ]}
-      onPress={() => onSelect(item.id)}
-      onLongPress={() => onShowActions(item)}
-      delayLongPress={400}
-    >
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          {item.isPinned && <Text style={styles.pinIcon}>📌</Text>}
-          <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.title || t('agent.sessions.default_title', '新对话')}
-          </Text>
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.item,
+          {
+            backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
+            borderBottomColor: colors.borderSubtle
+          }
+        ]}
+        onPress={() => onSelect(item.id)}
+        onLongPress={() => onShowActions(item)}
+        delayLongPress={400}
+      >
+        <View style={styles.itemContent}>
+          <View style={styles.itemHeader}>
+            {item.isPinned && <Text style={styles.pinIcon}>📌</Text>}
+            <Text style={[styles.itemTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.title || t('agent.sessions.default_title', '新对话')}
+            </Text>
+          </View>
+          <View style={styles.itemMeta}>
+            <Text style={[styles.itemTime, { color: colors.textTertiary }]}>
+              {formatSessionTime(item.lastMessageAt)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.itemMeta}>
-          <Text style={[styles.itemTime, { color: colors.textTertiary }]}>
-            {formatSessionTime(item.lastMessageAt)}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  )
-}
+      </Pressable>
+    )
+  }
+)

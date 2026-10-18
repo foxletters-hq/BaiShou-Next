@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet, ActivityIndicator, type ViewStyle } from 
 import type { LucideProps } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { LucideIcon } from './LucideIcon'
+import { sharedTokens } from '../../theme/tokens'
 
 interface NativeIconButtonProps {
   icon: React.ComponentType<LucideProps>
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
   btn: {
     width: 26,
     height: 26,
-    borderRadius: 6,
+    borderRadius: sharedTokens.radius.xsPlus,
     alignItems: 'center',
     justifyContent: 'center'
   },

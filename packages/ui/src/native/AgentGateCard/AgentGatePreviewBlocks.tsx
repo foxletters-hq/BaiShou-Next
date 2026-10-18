@@ -5,6 +5,7 @@ import type { AgentGatePreview, AgentGateFileChangePreview } from '@baishou/shar
 import { formatFileChangeKindLabel } from '../../agent-gate/agent-gate-preview-copy'
 import { useNativeTheme } from '../theme'
 import { agentGateCardStyles as styles } from './agent-gate-card.styles'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export function AgentGatePreviewBlocks({
   filePreviews,
@@ -34,11 +35,15 @@ export function AgentGatePreviewBlocks({
               { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+            >
               {formatFileChangeKindLabel(filePreview.kind)} · {filePreview.path}
               {filePreview.previousPath ? ` ← ${filePreview.previousPath}` : ''}
             </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+            >
               {filePreview.additions > 0 ? (
                 <Text style={{ color: colors.success, fontWeight: '600' }}>
                   +{filePreview.additions}
@@ -55,14 +60,25 @@ export function AgentGatePreviewBlocks({
             {filePreview.diff ? (
               <>
                 <Pressable onPress={() => onToggleDiff(filePreview.path)}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: mobileTypography.caption.fontSize,
+                      fontWeight: '600'
+                    }}
+                  >
                     {expanded
                       ? t('agent_gate.collapse_diff', '收起 Diff')
                       : t('agent_gate.expand_diff', '展开 Diff')}
                   </Text>
                 </Pressable>
                 {expanded ? (
-                  <ScrollView style={styles.diffScroll} nestedScrollEnabled>
+                  <ScrollView
+                    style={styles.diffScroll}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+                  >
                     <Text style={[styles.diffText, { color: colors.textPrimary }]}>
                       {filePreview.diff}
                     </Text>
@@ -102,10 +118,17 @@ export function AgentGatePreviewBlocks({
           !preview.detailLines?.some(
             (line) => line.includes(preview.summary!) || line.endsWith(preview.summary!)
           ) ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{preview.summary}</Text>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
+              {preview.summary}
+            </Text>
           ) : null}
           {preview.detailLines?.map((line) => (
-            <Text key={line} style={{ color: colors.textTertiary, fontSize: 12 }}>
+            <Text
+              key={line}
+              style={{ color: colors.textTertiary, fontSize: mobileTypography.caption.fontSize }}
+            >
               {line}
             </Text>
           ))}

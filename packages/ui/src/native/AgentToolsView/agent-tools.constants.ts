@@ -63,6 +63,10 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L86',
     '保存技能'
   ),
+  'agent.tools.skill_read': i18n.t(
+    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L91',
+    '读取技能'
+  ),
   'agent.tools.web_search': i18n.t(
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L87',
     '网络搜索'
