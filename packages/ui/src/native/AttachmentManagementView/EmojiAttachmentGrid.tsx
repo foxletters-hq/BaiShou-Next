@@ -9,6 +9,7 @@ import { attachmentManagementStyles as styles } from './attachment-management.st
 import { formatSize, getFileIcon, isImageFile } from './attachment-management.utils'
 import { AttachmentPaginationBar } from './AttachmentPaginationBar'
 import { AttachmentImageThumb } from './AttachmentImageThumb'
+import { mobileTypography } from '../../theme/tokens'
 
 export const EmojiAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }> = ({ vm }) => {
   const { colors } = useNativeTheme()
@@ -92,7 +93,13 @@ export const EmojiAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
 
                 {(item.isMissing || item.groupNames.length === 0) && (
                   <View style={[styles.diaryOrphanBadge, { backgroundColor: colors.error + 'cc' }]}>
-                    <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: '600' }}>
+                    <Text
+                      style={{
+                        color: colors.textOnPrimary,
+                        fontSize: mobileTypography.caption.fontSize,
+                        fontWeight: '600'
+                      }}
+                    >
                       {item.isMissing
                         ? t('settings.emoji_attachment_missing_label', '文件缺失')
                         : t('settings.emoji_attachment_unused_label', '未编入组')}

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
+import { mobileTypography } from '../../theme/tokens'
 
 export interface AboutSettingsAboutContentProps {
   version: string
@@ -65,38 +66,91 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
       </Pressable>
 
       <View style={{ alignItems: 'center', gap: tokens.spacing.xs }}>
-        <Text style={{ fontSize: 24, fontWeight: '600', color: colors.textPrimary }}>
+        <Text
+          style={{
+            fontSize: mobileTypography.display.fontSize,
+            fontWeight: '600',
+            color: colors.textPrimary
+          }}
+        >
           {t('about.app_name', '白守')}
         </Text>
-        <Text style={{ fontSize: 16, color: colors.textSecondary }}>{version}</Text>
+        <Text style={{ fontSize: mobileTypography.primary.fontSize, color: colors.textSecondary }}>
+          {version}
+        </Text>
       </View>
 
       <Pressable onPress={onDevTap}>
         <View style={innerCardStyle}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+          <Text
+            style={{
+              fontSize: mobileTypography.secondary.fontSize,
+              fontWeight: '600',
+              color: colors.textPrimary
+            }}
+          >
             {t('about.core_developer_label', '核心开发者')}
           </Text>
-          <Text style={{ fontSize: 16, color: colors.textPrimary }}>
+          <Text style={{ fontSize: mobileTypography.primary.fontSize, color: colors.textPrimary }}>
             Anson & Kasumiame Sakura & Tenkou Akatsuki
           </Text>
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>The Trio</Text>
+          <Text
+            style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.textSecondary }}
+          >
+            The Trio
+          </Text>
         </View>
       </Pressable>
 
+      <View style={innerCardStyle}>
+        <Text
+          style={{
+            fontSize: mobileTypography.secondary.fontSize,
+            fontWeight: '600',
+            color: colors.textPrimary
+          }}
+        >
+          {t('about.copyright_label', '版权信息')}
+        </Text>
+        <Text style={{ fontSize: mobileTypography.primary.fontSize, color: colors.textPrimary }}>
+          {t('about.copyright_owner', '狐信科技 (Foxletters)')}
+        </Text>
+        <Text
+          style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.textSecondary }}
+        >
+          {t('about.copyright_statement', 'Copyright © 2026')}
+        </Text>
+      </View>
+
       <Pressable onPress={() => Linking.openURL('https://www.gnu.org/licenses/agpl-3.0.html')}>
         <View style={innerCardStyle}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+          <Text
+            style={{
+              fontSize: mobileTypography.secondary.fontSize,
+              fontWeight: '600',
+              color: colors.textPrimary
+            }}
+          >
             {t('about.oss_license_label', '开源协议')}
           </Text>
-          <Text style={{ fontSize: 16, color: colors.textPrimary }}>AGPL v3.0</Text>
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>
-            Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+          <Text style={{ fontSize: mobileTypography.primary.fontSize, color: colors.textPrimary }}>
+            AGPL v3.0
+          </Text>
+          <Text
+            style={{ fontSize: mobileTypography.secondary.fontSize, color: colors.textSecondary }}
+          >
+            GNU Affero General Public License v3.0
           </Text>
         </View>
       </Pressable>
 
       <Text
-        style={{ fontSize: 13, lineHeight: 19, color: colors.textSecondary, textAlign: 'center' }}
+        style={{
+          fontSize: mobileTypography.secondary.fontSize,
+          lineHeight: 19,
+          color: colors.textSecondary,
+          textAlign: 'center'
+        }}
       >
         {t(
           'about.contributors_hint',
@@ -104,13 +158,27 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
         )}
       </Text>
 
-      <Button variant="outlined" onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}>
-        {t('about.view_contributors', '查看项目贡献者')}
-      </Button>
+      <View style={{ gap: tokens.spacing.sm, width: '100%' }}>
+        <Button
+          size="md"
+          variant="outlined"
+          className="w-full"
+          style={{ width: '100%' }}
+          onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}
+        >
+          {t('about.view_contributors', '查看项目贡献者')}
+        </Button>
 
-      <Button variant="outlined" onPress={onOpenGithubHost}>
-        {t('about.visit_github', '访问 GitHub 仓库')}
-      </Button>
+        <Button
+          size="md"
+          variant="outlined"
+          className="w-full"
+          style={{ width: '100%' }}
+          onPress={onOpenGithubHost}
+        >
+          {t('about.visit_github', '访问 GitHub 仓库')}
+        </Button>
+      </View>
     </View>
   )
 }

@@ -2,7 +2,7 @@ import React from 'react'
 import { View, ActivityIndicator, RefreshControl, ScrollView } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
-import { SegmentedControl } from '../SegmentedControl'
+import { SegmentedContent, SegmentedControl } from '../SegmentedControl'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
@@ -61,13 +61,15 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
           }
           keyboardShouldPersistTaps="handled"
         >
-          {vm.activePane === 'diary' ? (
-            <DiaryAttachmentPane vm={vm} />
-          ) : vm.activePane === 'session' ? (
-            <SessionAttachmentPane vm={vm} />
-          ) : (
-            <EmojiAttachmentPane vm={vm} />
-          )}
+          <SegmentedContent value={vm.activePane}>
+            {vm.activePane === 'diary' ? (
+              <DiaryAttachmentPane vm={vm} />
+            ) : vm.activePane === 'session' ? (
+              <SessionAttachmentPane vm={vm} />
+            ) : (
+              <EmojiAttachmentPane vm={vm} />
+            )}
+          </SegmentedContent>
         </ScrollView>
       )}
 
