@@ -2,12 +2,9 @@ import React from 'react'
 import { TouchableOpacity, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
-import {
-  shouldShowPendingEmbed,
-  shouldShowPendingExtract,
-  type PendingEmbedCounts
-} from '@baishou/shared'
+import { type PendingEmbedCounts } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
+import { diaryPendingOrganizeCount } from './diary-pending-status.util'
 import { diaryScreenStyles as styles } from './diary-screen.styles'
 
 export function DiaryPendingStatusBar(props: {
@@ -23,20 +20,17 @@ export function DiaryPendingStatusBar(props: {
   const router = useRouter()
   const { graphConfigured, ragConfigured, pendingGraphCount, pendingEmbedCount, onPress } = props
 
-  const showExtract = shouldShowPendingExtract({
+  const totalPending = diaryPendingOrganizeCount({
     graphConfigured,
-    count: pendingGraphCount
-  })
-  const showEmbed = shouldShowPendingEmbed({
     ragConfigured,
-    count: pendingEmbedCount
+    pendingGraphCount,
+    pendingEmbedCount,
+    pendingDiaryCount: props.pendingEmbedParts?.diaries
   })
 
-  if (!showExtract && !showEmbed) {
+  if (totalPending <= 0) {
     return null
   }
-
-  const totalPending = (showExtract ? pendingGraphCount : 0) + (showEmbed ? pendingEmbedCount : 0)
 
   const handlePress = () => {
     if (onPress) {

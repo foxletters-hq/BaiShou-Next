@@ -18,6 +18,7 @@ import {
   StoragePermissionPrompt,
   useNativeTheme
 } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import type { DiaryTagColorRegistry } from '@baishou/shared'
 import { DEFAULT_DIARY_PAGE_SIZE, DIARY_PAGE_SIZE_OPTIONS } from '../diary-filter-state.util'
 
@@ -387,7 +388,12 @@ export const DiaryList: React.FC<DiaryListProps> = memo(function DiaryList({
     return (
       <View style={styles.centered}>
         <Edit3 size={64} color={colors.primary} strokeWidth={2} style={{ opacity: 0.5 }} />
-        <Text style={[styles.emptyText, { color: colors.textTertiary, marginTop: 16 }]}>
+        <Text
+          style={[
+            styles.emptyText,
+            { color: colors.textTertiary, marginTop: sharedTokens.spacing.md }
+          ]}
+        >
           {selectedMonth ? t('diary.no_diaries_month') : t('diary.no_diaries')}
         </Text>
         {selectedMonth && (
@@ -434,81 +440,81 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    gap: 16
+    paddingHorizontal: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.md
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14
+    marginTop: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.secondary.fontSize
   },
   storageTitle: {
-    fontSize: 17,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   },
   storageHintText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22,
     textAlign: 'center'
   },
   retryStorageButton: {
-    marginTop: 4,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    borderRadius: 12
+    marginTop: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.md
   },
   retryStorageButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     textAlign: 'center'
   },
   viewAllBtn: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
     paddingBottom: 176
   },
   refreshBar: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8
+    paddingVertical: sharedTokens.spacing.sm
   },
   columnWrapper: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   cardCell: {
     flex: 1,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   paginationBar: {
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   paginationBarTop: {
-    paddingTop: 4,
-    paddingBottom: 12,
-    marginBottom: 4,
+    paddingTop: sharedTokens.spacing.xs,
+    paddingBottom: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   paginationBarBottom: {
-    paddingTop: 16,
-    marginTop: 8,
+    paddingTop: sharedTokens.spacing.md,
+    marginTop: sharedTokens.spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   paginationMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   paginationInfo: {
     flex: 1,
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   paginationNavScroll: {
     alignSelf: 'stretch'
@@ -517,6 +523,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 2
+    paddingVertical: sharedTokens.spacing.xxs
   }
 })
