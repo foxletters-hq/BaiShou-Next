@@ -8,15 +8,15 @@
   cursor: pointer;
   position: relative;
   box-sizing: border-box;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   outline: none;
   box-shadow: none;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .checkbox:hover:not(:disabled) {
@@ -44,7 +44,7 @@
   border: solid transparent;
   border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
-  transition: border-color 0.12s ease;
+  transition: border-color var(--duration-fast) ease;
 }
 
 .checkbox:checked::after {

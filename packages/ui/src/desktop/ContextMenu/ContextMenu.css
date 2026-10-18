@@ -8,12 +8,12 @@
   z-index: 401;
   min-width: 180px;
   max-width: 280px;
-  padding: var(--menu-popup-padding, 4px);
+  padding: var(--menu-popup-padding, var(--spacing-xs));
   background: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-  animation: context-menu-appear 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: context-menu-appear var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -27,7 +27,7 @@
 }
 
 .context-menu.context-menu-ready {
-  animation: context-menu-appear 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: context-menu-appear var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* 不用 scale/translate：非整数缩放会改文字的合成层抗锯齿，动画结束时字形会抖一下 */
@@ -43,19 +43,19 @@
 .context-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
   min-height: 28px;
-  padding: 5px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   border: none;
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 400;
   line-height: 1.3;
   cursor: pointer;
-  transition: background-color 0.1s ease;
+  transition: background-color var(--duration-instant) ease;
   text-align: left;
 }
 
@@ -102,14 +102,14 @@
 .context-menu-divider {
   height: 1px;
   background: var(--border-subtle);
-  margin: 3px 6px;
+  margin: var(--spacing-2xs) var(--spacing-xs-plus);
 }
 
 .context-menu-shortcut {
   margin-left: auto;
   color: var(--text-tertiary);
-  font-size: 11px;
-  padding-left: 16px;
+  font-size: var(--settings-font-micro-size);
+  padding-left: var(--spacing-md);
   flex-shrink: 0;
 }
 
@@ -127,7 +127,7 @@
 }
 
 .context-menu-item.has-submenu {
-  padding-right: 6px;
+  padding-right: var(--spacing-xs-plus);
 }
 
 .context-menu-submenu {

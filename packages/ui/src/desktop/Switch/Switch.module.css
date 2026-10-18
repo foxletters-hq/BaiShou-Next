@@ -58,7 +58,7 @@
 
 .labelOn,
 .labelOff {
-  font-size: 9px;
+  font-size: var(--icon-fs-xs);
   font-family: var(--font-family);
   position: absolute;
   transition: opacity var(--duration-fast) ease;
@@ -105,5 +105,5 @@
 
 .sizeMd .labelOn,
 .sizeMd .labelOff {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
 }

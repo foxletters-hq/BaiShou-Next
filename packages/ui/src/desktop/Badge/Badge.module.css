@@ -19,5 +19,5 @@
   min-width: 18px;
   height: 18px;
   border-radius: var(--radius-full);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
 }

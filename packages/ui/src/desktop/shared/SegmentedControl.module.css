@@ -1,14 +1,18 @@
 /**
- * 分段滑块 — 选中态由 .thumb 白底指示器滑动呈现；.btnActive 改文字色
- * group / btn / btnActive / thumb；可选 groupStretch、groupInline、badge
+ * 分段滑块 — 选中态由 .thumb 白底指示器滑动呈现；.btnActive 先铺表面色并改文字色
+ * group / btn / btnActive / thumb；可选 groupStretch、groupInline、groupSmall、badge
  */
 .group {
+  --segmented-pad: 3px;
+  --segmented-btn-height: 26px;
+  --segmented-btn-radius: 7px;
+  --segmented-btn-pad-x: 14px;
   display: inline-flex;
   gap: 0;
   background-color: var(--bg-surface-normal);
   border: 1px solid var(--border-control);
-  padding: 3px;
-  border-radius: 10px;
+  padding: var(--segmented-pad);
+  border-radius: var(--radius-control);
   width: fit-content;
   box-sizing: border-box;
   align-items: center;
@@ -22,23 +26,35 @@
 
 .groupInline {
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 .groupSpaced {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md-tight);
+}
+
+.groupSmall {
+  --segmented-pad: 2px;
+  --segmented-btn-height: 22px;
+  --segmented-btn-radius: var(--radius-xs);
+  --segmented-btn-pad-x: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.groupSmall .btn {
+  font-size: var(--ui-fs-sm);
 }
 
 .thumb {
   position: absolute;
-  top: 3px;
+  top: var(--segmented-pad);
   left: 0;
   z-index: 0;
-  height: 26px;
-  border-radius: 7px;
+  height: var(--segmented-btn-height);
+  border-radius: var(--segmented-btn-radius);
   background: var(--bg-surface);
   box-shadow:
-    var(--shadow-sm),
+    0 1px 3px rgba(0, 0, 0, 0.08),
     0 0 0 1px var(--border-subtle);
   pointer-events: none;
   will-change: transform, width;
@@ -46,8 +62,8 @@
 
 .thumbAnimate {
   transition:
-    transform var(--duration-fast) var(--ease-out-cubic),
-    width var(--duration-fast) var(--ease-out-cubic);
+    transform var(--duration-swift) cubic-bezier(0.16, 1, 0.3, 1),
+    width var(--duration-swift) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -61,10 +77,10 @@
   z-index: 1;
   background: transparent;
   border: none;
-  border-radius: 7px;
-  height: 26px;
-  padding: 0 14px;
-  font-size: 13px;
+  border-radius: var(--segmented-btn-radius);
+  height: var(--segmented-btn-height);
+  padding: 0 var(--segmented-btn-pad-x);
+  font-size: var(--ui-fs-md);
   line-height: 1;
   font-weight: 500;
   font-family: inherit;
@@ -74,7 +90,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   box-sizing: border-box;
   white-space: nowrap;
   flex-shrink: 0;
@@ -96,7 +112,7 @@
 
 .btnActive,
 .btnActive:hover:not(:disabled) {
-  background: transparent;
+  background: var(--bg-surface);
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -106,17 +122,22 @@
   cursor: not-allowed;
 }
 
+.groupHasThumb .btnActive,
+.groupHasThumb .btnActive:hover:not(:disabled) {
+  background: transparent;
+}
+
 .btnActive .badge {
   background: rgba(var(--color-primary-rgb), 0.14);
   color: var(--color-primary);
 }
 
 .badge {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
   line-height: 1;
-  padding: 2px 6px;
-  border-radius: 10px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-control);
   background: var(--bg-surface-high);
   color: var(--text-secondary);
   box-sizing: border-box;

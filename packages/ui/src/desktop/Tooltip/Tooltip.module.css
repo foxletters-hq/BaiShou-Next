@@ -8,10 +8,10 @@
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
   color: var(--text-primary);
-  border: 1px solid var(--color-glass-border);
-  padding: 8px 12px;
-  border-radius: var(--radius-md, 8px);
-  font-size: 13px;
+  border: 1px solid var(--border-muted);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-md, var(--radius-sm));
+  font-size: var(--ui-fs-md);
   white-space: normal;
   max-width: 280px;
   width: max-content;
@@ -29,12 +29,12 @@
 
 .top {
   transform-origin: center bottom;
-  animation: tooltipFadeInTop 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tooltipFadeInTop var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .bottom {
   transform-origin: center top;
-  animation: tooltipFadeInBottom 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tooltipFadeInBottom var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes tooltipFadeInTop {

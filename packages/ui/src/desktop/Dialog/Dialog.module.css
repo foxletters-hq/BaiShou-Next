@@ -14,7 +14,7 @@
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
-  margin: 0 0 10px;
+  margin: 0 0 var(--spacing-sm-plus);
 }
 
 .message {
@@ -33,8 +33,8 @@
 .checkboxRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 14px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-md-snug);
   padding: 0;
   border: none;
   background: transparent;
@@ -63,22 +63,22 @@
 
 .promptInput {
   width: 100%;
-  margin-top: 14px;
+  margin-top: var(--spacing-md-snug);
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: var(--spacing-sm-plus);
+  margin-top: var(--spacing-md-plus);
 }
 
 .cancelBtn,
 .confirmBtn {
   min-width: 72px;
   height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-family: var(--font-family);
   font-size: var(--ui-fs-md);
@@ -86,9 +86,9 @@
   cursor: pointer;
   outline: none;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .cancelBtn:focus,
@@ -123,7 +123,7 @@
 .chooseList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -131,14 +131,14 @@
 .chooseItem {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   cursor: pointer;
   text-align: left;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   outline: none;
   font-family: var(--font-family);
   box-shadow: none;
@@ -169,7 +169,7 @@
 .chooseItemText {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   min-width: 0;
 }
 
@@ -194,9 +194,9 @@
 }
 
 .message + .chooseList {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
 }
 
 .chooseList + .checkboxRow {
-  margin-top: 14px;
+  margin-top: var(--spacing-md-snug);
 }

@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
 }
 
@@ -18,7 +18,7 @@
   color: var(--text-primary);
   border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md);
-  padding: 10px 14px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
   font-size: var(--ui-fs-lg);
   font-family: var(--font-family);
   width: 100%;
@@ -70,7 +70,7 @@
   position: fixed;
   background-color: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
-  border-radius: var(--menu-popup-radius, 8px);
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 10000;
   overflow: hidden;
@@ -89,7 +89,7 @@
 .optionsList {
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: var(--spacing-xs);
   max-height: 240px;
   overflow-y: auto;
 }
@@ -100,17 +100,17 @@
 
 .optionsList::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .optionItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   font-size: var(--ui-fs-lg);
   color: var(--text-primary);
-  border-radius: var(--menu-popup-item-radius, 5px);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   cursor: pointer;
   transition: background-color var(--duration-fast) ease;
 }
@@ -138,7 +138,7 @@
 
 .errorText {
   color: var(--color-error);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .disabled {
@@ -154,13 +154,13 @@
 }
 
 .sizeSmall .trigger {
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   font-size: var(--ui-fs-md);
   border-radius: var(--radius-sm);
 }
 
 .sizeSmall .optionItem {
-  padding: 6px 10px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
   font-size: var(--ui-fs-md);
 }
 
@@ -183,16 +183,16 @@
 
 .variantGhost .trigger {
   justify-content: flex-start;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: auto;
   min-width: 0;
   max-width: min(280px, 48vw);
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   box-shadow: none;
   transition: var(--form-field-transition);
