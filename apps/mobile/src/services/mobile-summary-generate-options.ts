@@ -1,5 +1,8 @@
 import {
   logger,
+  buildSummaryIdentitySystemPrompt,
+  formatUserCardFromProfile,
+  getUserProfileFromSettings,
   resolveSummaryGenerationRuntime,
   resolveSummaryTemplatesForGeneration,
   withSummaryPromptLocaleFromUi,
@@ -64,6 +67,30 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     )
   }
 
+  let companionName = assistant?.name?.trim()
+  if (!companionName) {
+    try {
+      const list = await assistantManager.findAll()
+      const primary = list.find((item) => item.isDefault) ?? list[0]
+      companionName = primary?.name?.trim()
+    } catch (e) {
+      logger.warn('[MobileSummaryQueue] Failed to resolve companion name:', e as Error)
+    }
+  }
+
+  let identitySystemPrompt: string | undefined
+  try {
+    const profile = await getUserProfileFromSettings(settingsManager)
+    identitySystemPrompt = buildSummaryIdentitySystemPrompt({
+      userName: profile.nickname,
+      userCard: formatUserCardFromProfile(profile),
+      companionName,
+      locale: promptLocale
+    })
+  } catch (e) {
+    logger.warn('[MobileSummaryQueue] Failed to build summary identity context:', e as Error)
+  }
+
   let sharedContextText: string | undefined
   if (runtime.injectSharedMemoryBeforeGenerate) {
     try {
@@ -109,7 +136,9 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     generateOptions: {
       modelId: resolution.modelId,
       providerId: resolution.providerConfig.id,
-      systemPrompt: runtime.systemPrompt,
+      systemPrompt:
+        [runtime.systemPrompt?.trim(), identitySystemPrompt].filter(Boolean).join('\n\n') ||
+        undefined,
       customTemplates,
       promptLocale,
       sharedContextText,

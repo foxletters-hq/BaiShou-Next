@@ -186,9 +186,8 @@ export function useMobilePromptShortcuts() {
     async (shortcut: PromptShortcut) => {
       try {
         if (!services) return
-        const root =
-          (await services.pathService.getActiveVaultPath()) ||
-          (await services.pathService.getRootDirectory())
+        // 用户技能统一放存储根 .agents/skills，跨端同步与 skill_read 共用同一目录
+        const root = await services.pathService.getRootDirectory()
         if (!root) return
         const input = promptShortcutToSkillInput(shortcut)
         await writeMobileUserSkill(root, input, services.fileSystem)
@@ -204,9 +203,8 @@ export function useMobilePromptShortcuts() {
     async (shortcutNameOrId: string) => {
       try {
         if (!services) return
-        const root =
-          (await services.pathService.getActiveVaultPath()) ||
-          (await services.pathService.getRootDirectory())
+        // 与写盘保持一致：用户技能在存储根 .agents/skills
+        const root = await services.pathService.getRootDirectory()
         if (!root) return
         await deleteMobileUserSkill(root, shortcutNameOrId, services.fileSystem)
         notifyMobileSkillsChanged()

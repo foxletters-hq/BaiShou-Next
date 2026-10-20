@@ -98,7 +98,12 @@ export async function bootstrapMobileSyncLayer(
     fileSystem,
     archiveDbBridge
   )
-  const lanSyncService = new MobileLanSyncService(archiveService, fileSystem, syncDeviceId)
+  const lanSyncService = new MobileLanSyncService(
+    archiveService,
+    fileSystem,
+    syncDeviceId,
+    () => ctx.mobileMcpServiceHolder.current?.isServerRunning() ?? false
+  )
   const cloudSyncService = new MobileCloudSyncService(archiveService, fileSystem)
   const incrementalSyncService = new MobileIncrementalSyncService(
     settingsManager,

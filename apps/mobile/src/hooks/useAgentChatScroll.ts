@@ -10,7 +10,6 @@ import {
   shouldShowScrollToBottomButton
 } from './agent-chat-scroll.decisions'
 import {
-  POST_STREAM_WATCH_MS,
   isNearBottom,
   isNearContentBottom,
   handleAgentChatListScroll,
@@ -18,6 +17,7 @@ import {
   type UseAgentChatScrollParams
 } from './agent-chat-scroll.helpers'
 import { useAgentChatScrollAnchor } from './useAgentChatScrollAnchor'
+import { useAgentChatPostStreamWatch } from './useAgentChatPostStreamWatch'
 
 export type { ScrollFollowMode, UseAgentChatScrollParams }
 
@@ -450,81 +450,25 @@ export function useAgentChatScroll({
     prevNewestIdRef.current = newestMessageId
   }, [newestMessageId, newestMessageRole, activeTool, followScrollToBottom])
 
-  const streamingActiveEffectRef = streamingActiveRef
-  useEffect(() => {
-    const wasStreaming = streamingActiveEffectRef.current
-    const nowStreaming = isStreaming || isStreamBridgeActive
-
-    if (wasStreaming && !nowStreaming) {
-      cancelPendingProgrammaticScroll()
-      postStreamWatchUntilRef.current = Date.now() + POST_STREAM_WATCH_MS
-      setAgentScrollDebugContext({ postStreamWatch: true })
-      if (postStreamWatchTimerRef.current) {
-        clearTimeout(postStreamWatchTimerRef.current)
-      }
-      const watchClearAt = postStreamWatchUntilRef.current
-      postStreamWatchTimerRef.current = setTimeout(() => {
-        postStreamWatchTimerRef.current = null
-        if (postStreamWatchUntilRef.current === watchClearAt) {
-          setAgentScrollDebugContext({ postStreamWatch: false })
-        }
-      }, POST_STREAM_WATCH_MS)
-
-      logAgentScrollEvent('stream_end', {
-        shouldFollow: followModeRef.current === 'following',
-        ...snapshotScroll(),
-        postStreamWatch: true
-      })
-      const metrics = lastScrollMetricsRef.current
-      const wasLocked = userLockedAwayRef.current
-      const away = wasLocked || !metrics || !isNearBottom(metrics)
-      if (away) {
-        userLockedAwayRef.current = true
-        setFollowModeState('idle')
-        holdContentHeightWhileAway()
-        logAgentScrollEvent('stream_end_lock_away', {
-          reason: !metrics ? 'no_metrics' : wasLocked ? 'already_locked' : 'not_near_bottom',
-          ...snapshotScroll()
-        })
-      } else {
-        logAgentScrollEvent('stream_end_stay_following', snapshotScroll())
-      }
-    } else if (!wasStreaming && nowStreaming) {
-      if (!userLockedAwayRef.current) {
-        releaseContentHandoff()
-      }
-      lastContentHeightRef.current = 0
-      logAgentScrollEvent('stream_start')
-    }
-
-    streamingActiveEffectRef.current = nowStreaming
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keep deps size stable for Fast Refresh
-  }, [
+  useAgentChatPostStreamWatch({
     isStreaming,
     isStreamBridgeActive,
-    releaseContentHandoff,
-    holdContentHeightWhileAway,
+    streamingActiveRef,
+    postStreamWatchUntilRef,
+    postStreamWatchTimerRef,
+    lastScrollMetricsRef,
+    userLockedAwayRef,
+    followModeRef,
     snapshotScroll,
     cancelPendingProgrammaticScroll,
+    holdContentHeightWhileAway,
+    releaseContentHandoff,
+    lastContentHeightRef,
+    smoothSettleTimerRef,
+    contentFollowRafRef,
+    streamingFollowRafRef,
     setFollowModeState
-  ])
-
-  useEffect(() => {
-    return () => {
-      if (smoothSettleTimerRef.current) {
-        clearTimeout(smoothSettleTimerRef.current)
-      }
-      if (postStreamWatchTimerRef.current) {
-        clearTimeout(postStreamWatchTimerRef.current)
-      }
-      if (contentFollowRafRef.current != null) {
-        cancelAnimationFrame(contentFollowRafRef.current)
-      }
-      if (streamingFollowRafRef.current != null) {
-        cancelAnimationFrame(streamingFollowRafRef.current)
-      }
-    }
-  }, [])
+  })
 
   const bindFlatList = useCallback((scrollViewRef: RefObject<ScrollView | null>) => {
     scrollViewRefHolder.current = scrollViewRef

@@ -6,6 +6,7 @@ import {
   buildIncrementalSyncPlanMergeResult,
   buildIncrementalSyncPlanReuseBaseline,
   collectManifestVaultScopes,
+  isLegacyRemoteManifest,
   countUnverifiedAncestorEntries,
   isSyncDivergenceConfirmationRequiredError,
   prepareVaultRenamePassForPlan,
@@ -292,6 +293,9 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     const metaDir = await worker.syncMetaDir()
     const interruptedSession = await readIncrementalSyncSession(this.fileSystem, metaDir)
     const extraWarnings: string[] = []
+    if (isLegacyRemoteManifest(remoteManifest)) {
+      extraWarnings.push('data_sync.plan_warning_legacy_remote_writer')
+    }
     let interruptedSyncResume: { completed: number; total: number } | undefined
 
     if (

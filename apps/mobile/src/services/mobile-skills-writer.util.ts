@@ -1,5 +1,6 @@
 import {
   DEFAULT_AGENT_SKILLS,
+  hashSkillContent,
   isValidSkillName,
   parseSkillMarkdown,
   serializeSkillMarkdown,
@@ -63,7 +64,7 @@ async function listSkillNames(fs: MobileSkillFs, root: string): Promise<string[]
 async function writeSkillMarkdown(
   fs: MobileSkillFs,
   skillsRoot: string,
-  input: { name: string; description: string; content: string }
+  input: { name: string; description: string; content: string; bundledHash?: string }
 ): Promise<string> {
   const dir = joinPath(skillsRoot, input.name)
   const location = joinPath(dir, SKILL_FILE_NAME)
@@ -111,6 +112,43 @@ export async function writeMobileUserSkill(
   return { name, description, location }
 }
 
+/**
+ * 旧版移动端把用户技能写到当前 Vault 的 `.agents/skills`。
+ * 统一迁到存储根 `.agents/skills`，只复制主 SKILL.md（资源文件仍可从旧目录手动取回）。
+ */
+export async function migrateLegacyVaultUserSkills(
+  vaultRoot: string,
+  activeVaultRoot: string | null | undefined,
+  fs: MobileSkillFs
+): Promise<string[]> {
+  const root = vaultRoot.trim()
+  const active = activeVaultRoot?.trim()
+  if (!root || !active) return []
+  if (root.replace(/[\\/]+$/, '') === active.replace(/[\\/]+$/, '')) return []
+
+  const sourceRoot = userSkillsRoot(active)
+  const targetRoot = userSkillsRoot(root)
+  const [sourceNames, targetNames] = await Promise.all([
+    listSkillNames(fs, sourceRoot),
+    listSkillNames(fs, targetRoot)
+  ])
+  const existing = new Set(targetNames)
+  const migrated: string[] = []
+  for (const name of sourceNames) {
+    if (existing.has(name)) continue
+    const skill = await readMobileSkill(active, name, fs)
+    if (!skill) continue
+    await writeMobileUserSkill(
+      root,
+      { name, description: skill.description, content: skill.content },
+      fs
+    )
+    existing.add(name)
+    migrated.push(name)
+  }
+  return migrated
+}
+
 /** 对齐桌面端：把 DEFAULT_AGENT_SKILLS 落到存储根 AI/skills，供 skill_read 按名读取 */
 export async function ensureMobileDefaultSkills(
   vaultRoot: string,
@@ -124,20 +162,35 @@ export async function ensureMobileDefaultSkills(
 
   for (const skill of DEFAULT_AGENT_SKILLS) {
     const location = joinPath(softwareRoot, skill.name, SKILL_FILE_NAME)
-    let current: { description: string; content: string } | null = null
+    let current: { description: string; content: string; bundledHash?: string } | null = null
     try {
       if (await fs.exists(location)) {
         const parsed = parseSkillMarkdown(await fs.readFile(location), location, {
           fallbackName: skill.name
         })
-        if (parsed) current = { description: parsed.description, content: parsed.content }
+        if (parsed) {
+          current = {
+            description: parsed.description,
+            content: parsed.content,
+            ...(parsed.bundledHash ? { bundledHash: parsed.bundledHash } : {})
+          }
+        }
       }
     } catch {
       current = null
     }
 
+    const bundledHash = hashSkillContent(skill.content)
+    // 磁盘副本仍带旧版内置指纹 → 未被改动的内置技能，可整体升级正文
+    if (current?.bundledHash && current.bundledHash !== bundledHash) {
+      await writeSkillMarkdown(fs, softwareRoot, { ...skill, bundledHash })
+      written.push(skill.name)
+      continue
+    }
+
     if (current && current.description === skill.description) continue
 
+    // 旧版无指纹或用户已接管：只同步描述，保留用户正文
     await writeSkillMarkdown(fs, softwareRoot, {
       name: skill.name,
       description: skill.description,

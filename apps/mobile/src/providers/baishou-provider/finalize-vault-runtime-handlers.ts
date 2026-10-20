@@ -283,6 +283,7 @@ export async function finalizeVaultRuntimeHandlers(
       await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch((e) => {
         logger.warn('[BaishouProvider] Failed to refresh attachment path remapper:', e as Error)
       })
+      void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
     } catch (e) {
       logger.error('[BaishouProvider] switchVault failed:', e as Error)
       throw e

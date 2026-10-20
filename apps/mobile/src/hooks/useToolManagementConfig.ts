@@ -14,6 +14,7 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   customConfigs: {},
   emojiConfig: {
     enabled: false,
+    frequency: 'normal',
     groups: []
   }
 }

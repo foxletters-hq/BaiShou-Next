@@ -4,6 +4,7 @@ import {
   applySyncDecisionRemovedSideEffects,
   limitExecute,
   summarizeScannedSyncFiles,
+  SYNC_MANIFEST_CAPABILITIES,
   SYNC_MANIFEST_VERSION
 } from '@baishou/shared'
 import { md5HexForSyncFile } from './mobile-sync-file-md5.util'
@@ -65,7 +66,8 @@ export async function buildLocalManifest(
     version: SYNC_MANIFEST_VERSION,
     updatedAt: Date.now(),
     deviceId: delegate.host.deviceId,
-    files: {}
+    files: {},
+    capabilities: [...SYNC_MANIFEST_CAPABILITIES]
   }
 
   const total = Math.max(files.length, 1)

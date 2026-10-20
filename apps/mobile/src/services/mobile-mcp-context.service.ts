@@ -183,6 +183,7 @@ export async function buildMobileMcpToolContext(
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
       agentGate: deps.getAgentGate?.(),
+      skillsReader: (await import('./mobile-agent-skills.service')).createMobileSkillsReader(),
       rawDataSourceManager:
         (await import('./mobile-raw-data-source.runtime')).getMobileRawDataSourceManager() ??
         undefined

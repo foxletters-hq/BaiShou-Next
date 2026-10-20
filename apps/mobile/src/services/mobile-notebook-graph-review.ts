@@ -2,328 +2,37 @@ import {
   collectSimilarPendingPairs,
   expandApprovedGraphReviewEdgeIds,
   isGraphReviewStatus,
-  logger,
   parseGraphNodePropsRecord,
   removeSimilarPendingPeerFromProps,
   uniqueNonEmptyIds,
   type GraphSetReviewsBatchInput,
   type GraphSimilarPendingPair,
-  type NotebookGraphEdgeRawRecord,
   type NotebookGraphNodeRawRecord
 } from '@baishou/shared'
 import i18n from 'i18next'
 import {
-  NotebookGraphIndexService,
-  NotebookGraphRawManager,
-  notebookGraphSourceIdFromSourceRef
-} from '@baishou/core-mobile'
-import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
-import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
-import { createMobileFileSystem } from './create-mobile-file-system'
-import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
-import { resolveMobileEmbeddingForHydration } from './mobile-raw-data-source.runtime'
-import { notebookGraphNodeReviewNeedsNeighborhood } from './notebook-graph-review.util'
-
-function requireVaultId(vaultId: string): string {
-  const id = vaultId.trim()
-  if (!id) throw new Error('active vault not ready')
-  return id
-}
-
-function requireNotebookId(notebookId: string): string {
-  const id = notebookId.trim()
-  if (!id) throw new Error('notebookId required')
-  return id
-}
-
-function parseAliases(raw: string | string[] | undefined): string[] {
-  if (Array.isArray(raw)) return raw.filter((item): item is string => typeof item === 'string')
-  if (typeof raw === 'string' && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw) as unknown
-      if (Array.isArray(parsed)) {
-        return parsed.filter((item): item is string => typeof item === 'string')
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  return []
-}
-
-async function requireRepo(): Promise<NotebookGraphRepository> {
-  await ensureMobileKnowledgeConnected()
-  return new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-}
-
-function createRaw(): NotebookGraphRawManager {
-  const runtime = agentDbRuntimeRef.current
-  if (!runtime?.pathService) throw new Error('runtime not ready')
-  return new NotebookGraphRawManager(runtime.pathService, createMobileFileSystem())
-}
-
-async function resolveVaultName(vaultId: string): Promise<string> {
-  const runtime = agentDbRuntimeRef.current
-  const name = await runtime?.pathService?.getActiveVaultNameForContext?.().catch(() => vaultId)
-  return name?.trim() || vaultId
-}
-
-async function syncNotebookGraphIndex(notebookId: string, vaultId: string): Promise<void> {
-  const runtime = agentDbRuntimeRef.current
-  const raw = createRaw()
-  const repo = await requireRepo()
-  let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
-  let modelId: string | undefined
-  if (runtime?.settingsManager) {
-    try {
-      const { EmbeddingAdapter } = await import('@baishou/ai')
-      const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
-      if (emb.embeddingProvider && emb.embeddingModelId) {
-        const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
-        if (adapter.isConfigured) {
-          embedQuery = (text) => adapter.embedQuery(text)
-          modelId = adapter.embeddingModelId
-        }
-      }
-    } catch {
-      /* 没配嵌入时仍写入复核 */
-    }
-  }
-  const index = new NotebookGraphIndexService(
-    raw,
-    repo,
-    embedQuery && modelId ? { embedQuery, modelId } : null
-  )
-  await index.syncPendingIndex({ vaultId, notebookId, absentSweep: 'off' })
-}
-
-import {
   notifyNotebookGraphChanged,
   subscribeNotebookGraphChanged
 } from './mobile-notebook-graph-events'
+import {
+  createRaw,
+  parseAliases,
+  requireNotebookId,
+  requireRepo,
+  requireVaultId,
+  resolveVaultName,
+  syncNotebookGraphIndex
+} from './mobile-notebook-graph-review.runtime'
+import {
+  commitReviewWrites,
+  createReviewWriteSink,
+  listPendingEdgesTouchingNodes,
+  writeEdgeReview,
+  writeNodeReview
+} from './mobile-notebook-graph-review.writes'
+
 export { notifyNotebookGraphChanged, subscribeNotebookGraphChanged }
-
-/**
- * 复核后的后台索引同步。同一本笔记本同一时间只跑一轮；运行期间再来的请求
- * 合并成一轮补跑，避免连点通过时多轮全量分片同步并发抢 SQLite 与 JS 线程。
- */
-const notebookIndexSyncs = new Map<string, { queued: boolean; done: Promise<void> }>()
-
-function scheduleNotebookGraphIndexSync(notebookId: string, vaultId: string): void {
-  const key = `${vaultId}\u0000${notebookId}`
-  const running = notebookIndexSyncs.get(key)
-  if (running) {
-    running.queued = true
-    return
-  }
-  const state: { queued: boolean; done: Promise<void> } = {
-    queued: false,
-    done: Promise.resolve()
-  }
-  notebookIndexSyncs.set(key, state)
-  state.done = (async () => {
-    try {
-      do {
-        state.queued = false
-        await syncNotebookGraphIndex(notebookId, vaultId)
-      } while (state.queued)
-    } catch (e) {
-      logger.warn('[NotebookGraphReview] background index sync failed', e as Error)
-    } finally {
-      notebookIndexSyncs.delete(key)
-      notifyNotebookGraphChanged(notebookId)
-    }
-  })()
-}
-
-/** 读取图谱索引前调用：若该笔记本有后台同步在跑，等它结束，避免读到同步前的数据。 */
-export async function mobileWaitNotebookGraphIndexSync(
-  notebookId: string,
-  vaultId: string
-): Promise<void> {
-  const id = notebookId.trim()
-  const vid = vaultId.trim()
-  if (!id || !vid) return
-  await notebookIndexSyncs.get(`${vid}\u0000${id}`)?.done
-}
-
-/** 一次复核（单个或批量）要写的记录先攒在这里，最后统一批量落盘；同一 id 只保留最后一条。 */
-type ReviewWriteSink = {
-  nodes: Map<string, NotebookGraphNodeRawRecord & { sourceId?: string }>
-  edges: Map<string, NotebookGraphEdgeRawRecord>
-}
-
-type TouchingEdgeRow = Awaited<ReturnType<NotebookGraphRepository['listEdgesTouching']>>[number]
-
-function createReviewWriteSink(): ReviewWriteSink {
-  return { nodes: new Map(), edges: new Map() }
-}
-
-/** 统一落盘：每个分片只追加一次；无论成功失败都排队一次后台索引同步（失败时已写入的部分也要同步）。 */
-async function commitReviewWrites(
-  notebookId: string,
-  vaultId: string,
-  sink: ReviewWriteSink
-): Promise<void> {
-  try {
-    const raw = createRaw()
-    if (sink.nodes.size > 0) await raw.writeRecords(notebookId, 'nodes', [...sink.nodes.values()])
-    if (sink.edges.size > 0) await raw.writeRecords(notebookId, 'edges', [...sink.edges.values()])
-  } finally {
-    scheduleNotebookGraphIndexSync(notebookId, vaultId)
-    notifyNotebookGraphChanged(notebookId)
-  }
-}
-
-/** 与选中节点相连的待审边：逐个节点走 from/to 索引，O(k·d·log E)，不扫描整本笔记本的边。 */
-async function listPendingEdgesTouchingNodes(
-  repo: NotebookGraphRepository,
-  vaultId: string,
-  notebookId: string,
-  nodeIds: readonly string[]
-): Promise<TouchingEdgeRow[]> {
-  const byId = new Map<string, TouchingEdgeRow>()
-  for (const nodeId of nodeIds) {
-    for (const edge of await repo.listEdgesTouching(vaultId, notebookId, nodeId)) {
-      if (edge.reviewStatus === 'pending') byId.set(edge.id, edge)
-    }
-  }
-  return [...byId.values()]
-}
-
-async function writeNodeReview(
-  notebookId: string,
-  nodeId: string,
-  reviewStatus: 'approved' | 'rejected',
-  vaultId: string,
-  sink: ReviewWriteSink
-): Promise<void> {
-  const repo = await requireRepo()
-  const node = await repo.getNodeById(nodeId, vaultId, notebookId)
-  if (!node) throw new Error(`Node not found: ${nodeId}`)
-  const now = Date.now()
-  const props = parseGraphNodePropsRecord(node.propsJson)
-  const sourceIdFromProps = typeof props.sourceId === 'string' ? props.sourceId.trim() : ''
-  const related = notebookGraphNodeReviewNeedsNeighborhood({
-    reviewStatus,
-    shardMonth: node.shardMonth,
-    sourceId: sourceIdFromProps
-  })
-    ? await repo.getNeighborhood({
-        vaultId,
-        notebookId,
-        nodeId,
-        maxNodes: 5000
-      })
-    : { edges: [] as Awaited<ReturnType<NotebookGraphRepository['getNeighborhood']>>['edges'] }
-
-  if (reviewStatus === 'rejected') {
-    for (const edge of related.edges) {
-      if (edge.reviewStatus === 'rejected' || edge.deletedAt != null) continue
-      await writeEdgeReview(
-        notebookId,
-        edge.id,
-        'rejected',
-        vaultId,
-        { approvePendingEndpoints: false },
-        sink
-      )
-    }
-  }
-
-  let sourceId = sourceIdFromProps
-  let shardMonth = (node.shardMonth || sourceIdFromProps).trim()
-  if (!shardMonth) {
-    for (const edge of related.edges) {
-      const fromRef = notebookGraphSourceIdFromSourceRef(edge.sourceRef)
-      const fromShard = edge.shardMonth?.trim() || ''
-      if (fromRef) {
-        shardMonth = fromRef
-        sourceId = fromRef
-        break
-      }
-      if (fromShard) {
-        shardMonth = fromShard
-        sourceId = fromShard
-        break
-      }
-    }
-  }
-  if (!shardMonth) throw new Error(`Node shard missing: ${nodeId}`)
-
-  const record: NotebookGraphNodeRawRecord = {
-    id: node.id,
-    schemaVersion: 1,
-    vaultId,
-    vaultName: await resolveVaultName(vaultId),
-    notebookId,
-    nodeType: node.nodeType,
-    name: node.name,
-    discriminator: node.discriminator ?? '',
-    aliases: parseAliases(node.aliases),
-    summary: node.summary || '',
-    props,
-    mentionCount: node.mentionCount,
-    firstSeenAt: node.firstSeenAt ?? now,
-    lastSeenAt: node.lastSeenAt ?? now,
-    origin: node.origin === 'user' ? 'user' : 'ai',
-    shardMonth,
-    createdAt: node.createdAt,
-    updatedAt: now,
-    deletedAt: null,
-    reviewStatus
-  }
-  sink.nodes.set(node.id, { ...record, sourceId: sourceId || undefined })
-}
-
-async function writeEdgeReview(
-  notebookId: string,
-  edgeId: string,
-  reviewStatus: 'approved' | 'rejected',
-  vaultId: string,
-  opts: { approvePendingEndpoints?: boolean } | undefined,
-  sink: ReviewWriteSink
-): Promise<void> {
-  const repo = await requireRepo()
-  const edge = await repo.getEdgeById(edgeId, vaultId, notebookId)
-  if (!edge) throw new Error(`Edge not found: ${edgeId}`)
-  const now = Date.now()
-  const record: NotebookGraphEdgeRawRecord = {
-    id: edge.id,
-    schemaVersion: 1,
-    vaultId,
-    vaultName: await resolveVaultName(vaultId),
-    notebookId,
-    fromId: edge.fromId,
-    toId: edge.toId,
-    edgeType: edge.edgeType,
-    props: parseGraphNodePropsRecord(edge.propsJson),
-    validFrom: edge.validFrom ?? null,
-    validTo: edge.validTo ?? null,
-    isCurrent: reviewStatus === 'rejected' ? false : edge.isCurrent === 1,
-    sourceKind: edge.sourceKind,
-    sourceRef: edge.sourceRef,
-    sourceExcerpt: edge.sourceExcerpt,
-    sourceContentHash: edge.sourceContentHash,
-    confidence: edge.confidence,
-    origin: edge.origin === 'user' ? 'user' : 'ai',
-    reviewStatus,
-    shardMonth: edge.shardMonth,
-    createdAt: edge.createdAt,
-    updatedAt: now,
-    deletedAt: null
-  }
-  sink.edges.set(edge.id, record)
-
-  if (reviewStatus === 'approved' && opts?.approvePendingEndpoints !== false) {
-    for (const endpointId of [edge.fromId, edge.toId]) {
-      const node = await repo.getNodeById(endpointId, vaultId, notebookId)
-      if (node?.reviewStatus === 'pending') {
-        await writeNodeReview(notebookId, endpointId, 'approved', vaultId, sink)
-      }
-    }
-  }
-}
+export { mobileWaitNotebookGraphIndexSync } from './mobile-notebook-graph-review.runtime'
 
 export async function mobileReviewNotebookGraphNode(input: {
   notebookId: string

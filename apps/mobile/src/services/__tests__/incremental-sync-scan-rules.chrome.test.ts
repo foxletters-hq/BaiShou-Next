@@ -21,4 +21,11 @@ describe('IncrementalSyncScanRules.kt', () => {
     expect(kotlinSrc).toContain('isIncrementalSyncConflictBackupPath')
     expect(kotlinSrc).not.toContain('isRootSyncMetaDirectory')
   })
+
+  it('should scan root .agents/skills and narrow sqlite runtime exclusion', () => {
+    expect(kotlinSrc).toContain('ROOT_AGENTS_SKILLS_PREFIX')
+    expect(kotlinSrc).toContain('isRootAgentsSkillsTree')
+    expect(kotlinSrc).toContain('USER_CONTENT_SYNC_DIR_REGEX')
+    expect(kotlinSrc).toContain('KNOWN_RUNTIME_SQLITE_DB_NAMES')
+  })
 })

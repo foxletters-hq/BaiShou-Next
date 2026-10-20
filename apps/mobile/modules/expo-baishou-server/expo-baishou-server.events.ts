@@ -30,6 +30,39 @@ export function onLanUploadProgress(
   return mod.addListener('onLanUploadProgress', listener)
 }
 
+export function onLanUploadFailed(listener: (event: { reason: string }) => void) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onLanUploadFailed', listener)
+}
+
+export function onLanSendProgress(
+  listener: (event: { writtenBytes: number; totalBytes: number }) => void
+) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  return mod.addListener('onLanSendProgress', listener)
+}
+
+export function onHttpServerPortChanged(
+  listener: (event: { port: number; requestedPort?: number }) => void
+) {
+  const mod = getNative()
+  if (!mod) {
+    return { remove: () => {} }
+  }
+  try {
+    return mod.addListener('onHttpServerPortChanged', listener)
+  } catch {
+    // 旧原生模块未声明该事件；局域网仍可按旧逻辑启动自己的 server
+    return { remove: () => {} }
+  }
+}
+
 export function onStorageRootCopyProgress(listener: (event: { itemName: string }) => void) {
   const mod = getNative()
   if (!mod) {

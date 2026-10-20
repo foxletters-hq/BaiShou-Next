@@ -245,7 +245,14 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       sessionRepo,
       sessionFileService,
       sessionSyncService,
-      createMobileSessionDiskPersistenceHooks()
+      createMobileSessionDiskPersistenceHooks({
+        resolveVaultName: (vaultId) =>
+          vaultService?.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null,
+        resolveActiveVaultName: () =>
+          vaultService?.getActiveVault()?.name ??
+          pathService.getActiveVaultNameForContext?.() ??
+          null
+      })
     )
 
     const assistantFileService = new AssistantFileService(pathService, fileSystem)

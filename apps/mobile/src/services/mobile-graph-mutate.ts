@@ -17,9 +17,12 @@ import {
 } from '@baishou/database'
 import type { IAIProvider } from '@baishou/ai'
 import {
+  buildGraphSelfPersonAliases,
+  findGraphSelfPersonHit,
   graphDiaryInstant,
   graphEdgeId,
   graphNodeIdForEntity,
+  normalizeGraphAwakenNickname,
   pickSameNameConflictFromHits,
   type GraphNodeWriteResult
 } from '@baishou/shared'
@@ -341,4 +344,40 @@ export async function mobileClearLifeGraph(options: {
   notifyMobilePendingEmbedCountsChanged()
   notifyGraphDataChanged()
   return result
+}
+
+export async function syncMobileSelfPersonNodeOnRename(options: {
+  drizzleDb: AppDatabase
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  vaultId: string
+  vaultDisplayName: string
+  oldName: string | null | undefined
+  newName: string | null | undefined
+}): Promise<boolean> {
+  const prev = normalizeGraphAwakenNickname(options.oldName)
+  const next = normalizeGraphAwakenNickname(options.newName)
+  if (!prev || !next || prev === next) return false
+  try {
+    const repo = new GraphRepository(options.drizzleDb)
+    const hits = await repo.findNodesByNameOrAlias(options.vaultId, prev, 'person')
+    const match = findGraphSelfPersonHit(hits, prev)
+    if (!match) return false
+    const res = await mobileUpsertNode({
+      drizzleDb: options.drizzleDb,
+      pathService: options.pathService,
+      fileSystem: options.fileSystem,
+      vaultId: options.vaultId,
+      vaultDisplayName: options.vaultDisplayName,
+      id: match.id,
+      name: next,
+      nodeType: 'person',
+      aliases: buildGraphSelfPersonAliases(match.aliases, prev, next),
+      summary: match.summary || undefined
+    })
+    return 'id' in res
+  } catch (e) {
+    console.warn('[MobileGraph] syncMobileSelfPersonNodeOnRename failed', e)
+    return false
+  }
 }
