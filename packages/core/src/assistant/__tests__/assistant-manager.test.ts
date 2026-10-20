@@ -189,7 +189,19 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     })
   })
 
-  it('fullResyncFromDisks() only deletes ghosts within the active vault', async () => {
+  it('findAll() falls back to SQLite rows when the assistants directory is empty', async () => {
+    mockFileService.listAllAssistants.mockResolvedValue([])
+    mockRepo.findAll.mockResolvedValue([
+      { ...dummyAssistant, avatarPath: null, assistantKind: 'companion', sortOrder: 0 }
+    ] as any)
+
+    const items = await manager.findAll()
+
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ id: 'ast-1', name: 'My Assistant' })
+  })
+
+  it('fullResyncFromDisks() skips ghost cleanup when no assistant files exist', async () => {
     mockFileService.listAllAssistants.mockResolvedValue([])
     mockRepo.findAll.mockResolvedValue([{ id: 'ast-other', name: 'Other' } as any])
 
@@ -199,14 +211,53 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     })
 
     expect(mockRepo.findAll).toHaveBeenCalledWith(VAULT_PERSONAL)
+    expect(mockRepo.delete).not.toHaveBeenCalled()
+  })
+
+  it('fullResyncFromDisks() only deletes ghosts within the active vault', async () => {
+    mockFileService.listAllAssistants.mockResolvedValue([{ id: 'ast-kept', fullPath: '' }])
+    mockFileService.readAssistant.mockResolvedValue({
+      id: 'ast-kept',
+      name: 'Kept'
+    })
+    mockRepo.findById.mockResolvedValue({
+      id: 'ast-kept',
+      name: 'Kept',
+      updatedAt: new Date('2026-06-16T12:00:00.000Z')
+    } as any)
+    mockRepo.findAll.mockResolvedValue([
+      { id: 'ast-kept', name: 'Kept' },
+      { id: 'ast-other', name: 'Other' }
+    ] as any)
+
+    await manager.fullResyncFromDisks({
+      activeVaultName: 'Personal',
+      activeVaultId: VAULT_PERSONAL
+    })
+
+    expect(mockRepo.findAll).toHaveBeenCalledWith(VAULT_PERSONAL)
     expect(mockRepo.delete).toHaveBeenCalledWith('ast-other', VAULT_PERSONAL)
+    expect(mockRepo.delete).not.toHaveBeenCalledWith('ast-kept', VAULT_PERSONAL)
   })
 
   it('fullResyncFromDisks() does not wipe other vault rows when scanning one vault', async () => {
     const vaultWork = deriveLegacyVaultId('Work')
-    mockFileService.listAllAssistants.mockResolvedValue([])
+    mockFileService.listAllAssistants.mockResolvedValue([{ id: 'ast-kept', fullPath: '' }])
+    mockFileService.readAssistant.mockResolvedValue({
+      id: 'ast-kept',
+      name: 'Kept'
+    })
+    mockRepo.findById.mockResolvedValue({
+      id: 'ast-kept',
+      name: 'Kept',
+      updatedAt: new Date('2026-06-16T12:00:00.000Z')
+    } as any)
     mockRepo.findAll.mockImplementation(async (vaultId?: string | null) => {
-      if (vaultId === VAULT_PERSONAL) return [{ id: 'ast-personal', name: 'P' } as any]
+      if (vaultId === VAULT_PERSONAL)
+        return [
+          { id: 'ast-kept', name: 'Kept' },
+          { id: 'ast-personal', name: 'P' }
+        ] as any
       if (vaultId === vaultWork) return [{ id: 'ast-work', name: 'W' } as any]
       return []
     })

@@ -9,6 +9,7 @@ import {
   buildIncrementalSyncPlanPreview,
   collectManifestVaultScopes,
   finalizeIncrementalSyncManifest,
+  isLegacyRemoteManifest,
   buildIncrementalSyncPlanMergeResult,
   buildIncrementalSyncPlanReuseBaseline,
   isSyncDivergenceConfirmationRequiredError,
@@ -28,6 +29,7 @@ import { limitExecute } from './three-way-sync.utils'
 import {
   applyJsonlConflictResolved,
   classifyMonthlyJsonlPath,
+  classifyNotebookStructureJsonlPath,
   shardKeyValidatorForJsonlKind
 } from '../raw-data/monthly-jsonl-path.util'
 import { JsonlRecordMergeService } from '../raw-data/jsonl-record-merge.service'
@@ -133,7 +135,7 @@ export class ThreeWaySyncService
               const outcome = await applyJsonlConflictResolved({
                 filePath: d.filePath,
                 direction: d.direction,
-                lineMerge: () => this.mergeMonthlyJsonlConflict(d.filePath),
+                lineMerge: () => this.mergeJsonlConflict(d.filePath),
                 overwriteUpload: async () => {
                   if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
                   await this.uploadFile(d.filePath)
@@ -279,6 +281,9 @@ export class ThreeWaySyncService
         deletePropagationReason: deleteBlock?.reason,
         blockedDeleteCount: deleteBlock?.deleteCount,
         blockedDeleteDirection: deleteBlock?.direction,
+        extraWarnings: isLegacyRemoteManifest(remoteRaw)
+          ? ['data_sync.plan_warning_legacy_remote_writer']
+          : [],
         renamedFileCount: renamePass.renamedFileCount
       }),
       planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteRaw)
@@ -286,10 +291,10 @@ export class ThreeWaySyncService
   }
 
   /**
-   * Line-level LWW for Memory monthly JSONL conflicts.
+   * Line-level LWW for Memory monthly shards + Notebooks structure JSONL.
    * Vault Graph and notebook-graph shards overwrite as a whole file.
    */
-  protected async mergeMonthlyJsonlConflict(relPath: string): Promise<boolean> {
+  protected async mergeJsonlConflict(relPath: string): Promise<boolean> {
     try {
       const fullPath = await this.resolveSyncFullPath(relPath)
       const localText = fs.existsSync(fullPath) ? await fs.promises.readFile(fullPath, 'utf8') : ''
@@ -318,6 +323,17 @@ export class ThreeWaySyncService
       if (fs.existsSync(fullPath)) {
         await this.backupFile(relPath, '')
       }
+
+      const notebookStructure = classifyNotebookStructureJsonlPath(relPath)
+      if (notebookStructure) {
+        const text =
+          merged.text.endsWith('\n') || merged.text.length === 0 ? merged.text : `${merged.text}\n`
+        await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
+        await fs.promises.writeFile(fullPath, text, 'utf8')
+        await this.uploadFile(relPath)
+        return true
+      }
+
       const classified = classifyMonthlyJsonlPath(relPath)
       if (!classified) return false
 

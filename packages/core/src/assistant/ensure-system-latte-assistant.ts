@@ -1,7 +1,8 @@
 import {
   DEFAULT_LATTE_ASSISTANT_ID,
   SYSTEM_LATTE_ASSISTANT_ID,
-  getSystemLatteAssistantSeed
+  getSystemLatteAssistantSeed,
+  isFactoryLatteAssistantSystemPrompt
 } from '@baishou/shared'
 import type { AssistantManagerService } from './assistant-manager.service'
 
@@ -12,7 +13,7 @@ export type EnsureSystemLatteResult = {
 
 /**
  * 确保当前工作区存在系统官方伙伴 Latte（id=latte）：
- * - 已存在则幂等返回，绝不改写；
+ * - 已存在则幂等返回；用户自定义人设一律保留，仅把可识别的出厂人设升级到当前版本；
  * - 若存在老版本出厂默认伙伴（id=default），将其平滑升级为官方伙伴（id=latte），
  *   继承用户的全部人设定制、模型、头像与历史会话，并清理旧 default 记录，避免双 Latte 并存；
  * - 缺失且无旧出厂伙伴（新仓）则新建；仅当仓内尚无任何 isDefault 时设为默认。
@@ -24,6 +25,15 @@ export async function ensureSystemLatteAssistant(
 ): Promise<EnsureSystemLatteResult> {
   const existing = await assistantManager.findById(SYSTEM_LATTE_ASSISTANT_ID, vaultId)
   if (existing) {
+    // 用户自定义人设不动；只升级还能识别为出厂默认的旧人设（例如旧版含应用名的文案）
+    if (isFactoryLatteAssistantSystemPrompt(existing.systemPrompt)) {
+      const seed = getSystemLatteAssistantSeed(locale)
+      if ((existing.systemPrompt ?? '') !== seed.systemPrompt) {
+        await assistantManager.update(SYSTEM_LATTE_ASSISTANT_ID, {
+          systemPrompt: seed.systemPrompt
+        })
+      }
+    }
     return { created: false, assistantId: SYSTEM_LATTE_ASSISTANT_ID }
   }
 
@@ -31,12 +41,15 @@ export async function ensureSystemLatteAssistant(
   const legacyDefault = await assistantManager.findById(DEFAULT_LATTE_ASSISTANT_ID, vaultId)
   if (legacyDefault) {
     const seed = getSystemLatteAssistantSeed(locale)
+    const legacyPromptIsFactory = isFactoryLatteAssistantSystemPrompt(legacyDefault.systemPrompt)
     await assistantManager.create({
       id: SYSTEM_LATTE_ASSISTANT_ID,
       name: legacyDefault.name || seed.name,
       description: legacyDefault.description || seed.description,
       avatarPath: legacyDefault.avatarPath || seed.avatarPath,
-      systemPrompt: legacyDefault.systemPrompt || seed.systemPrompt,
+      systemPrompt: legacyPromptIsFactory
+        ? seed.systemPrompt
+        : legacyDefault.systemPrompt || seed.systemPrompt,
       customSystemPrompt: legacyDefault.customSystemPrompt ?? '',
       isDefault: legacyDefault.isDefault ?? true,
       isPinned: legacyDefault.isPinned ?? false,

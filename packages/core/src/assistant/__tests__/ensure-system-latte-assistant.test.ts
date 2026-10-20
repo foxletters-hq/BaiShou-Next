@@ -85,7 +85,50 @@ describe('ensureSystemLatteAssistant', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('is idempotent and never mutates existing partners', async () => {
+  it('replaces a legacy factory prompt with the current default during merge', async () => {
+    const legacy = {
+      id: DEFAULT_LATTE_ASSISTANT_ID,
+      name: 'My Latte',
+      systemPrompt: getSystemLatteAssistantSeed('en').systemPrompt,
+      customSystemPrompt: 'my custom',
+      isDefault: true
+    }
+    findById.mockImplementation(async (id: string) => {
+      if (id === SYSTEM_LATTE_ASSISTANT_ID) return null
+      if (id === DEFAULT_LATTE_ASSISTANT_ID) return legacy
+      return null
+    })
+
+    await ensureSystemLatteAssistant(manager, 'zh')
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: SYSTEM_LATTE_ASSISTANT_ID,
+        systemPrompt: getSystemLatteAssistantSeed('zh').systemPrompt,
+        customSystemPrompt: 'my custom'
+      })
+    )
+  })
+
+  it('upgrades a factory default persona but preserves custom prompts', async () => {
+    const existing = {
+      id: SYSTEM_LATTE_ASSISTANT_ID,
+      name: 'Latte',
+      systemPrompt: getSystemLatteAssistantSeed('en').systemPrompt,
+      customSystemPrompt: 'keep me',
+      isDefault: false
+    }
+    findById.mockResolvedValue(existing)
+
+    const result = await ensureSystemLatteAssistant(manager, 'zh')
+
+    expect(result.created).toBe(false)
+    expect(update).toHaveBeenCalledWith(SYSTEM_LATTE_ASSISTANT_ID, {
+      systemPrompt: getSystemLatteAssistantSeed('zh').systemPrompt
+    })
+  })
+
+  it('is idempotent and never mutates a custom existing partner', async () => {
     const existing = {
       id: SYSTEM_LATTE_ASSISTANT_ID,
       name: 'Latte',

@@ -177,7 +177,7 @@ export class NotebookRawManager implements WholeFileKindManager {
     await this.fs.appendFile(file, `${JSON.stringify(record)}\n`, 'utf8')
   }
 
-  async listNotebookRecords(): Promise<NotebookRawRecord[]> {
+  private async readNotebookRecords(): Promise<NotebookRawRecord[]> {
     const base = await this.baseDir()
     const file = path.join(base, 'notebooks.jsonl')
     if (!(await this.fs.exists(file))) return []
@@ -194,7 +194,16 @@ export class NotebookRawManager implements WholeFileKindManager {
         }
       })
       .filter((r): r is NotebookRawRecord => r != null && typeof r.id === 'string')
-    return collapseJsonlById(rows).filter((r) => !r.deletedAt)
+    return collapseJsonlById(rows)
+  }
+
+  async listNotebookRecords(): Promise<NotebookRawRecord[]> {
+    return (await this.readNotebookRecords()).filter((r) => !r.deletedAt)
+  }
+
+  /** 已删除笔记本 id（用于同步后清理 knowledge.db 的最后一个笔记本） */
+  async listDeletedNotebookIds(): Promise<string[]> {
+    return (await this.readNotebookRecords()).filter((r) => r.deletedAt != null).map((r) => r.id)
   }
 
   async listSourceRecords(notebookId: string): Promise<NotebookSourceRawRecord[]> {

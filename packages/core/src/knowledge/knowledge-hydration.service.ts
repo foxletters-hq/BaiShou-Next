@@ -315,13 +315,24 @@ export class KnowledgeHydrationService {
     liveNotebookIds: Set<string>
   ): Promise<number> {
     // 磁盘无任何笔记本：可能尚未同步到 Notebooks/，不要清空本仓库
-    if (liveNotebookIds.size === 0) return 0
+    // 磁盘一个活笔记本都没有：可能是同步还没落盘，不能全清。
+    // 但若 notebooks.jsonl 明确写了 tombstone（例如删掉最后一个笔记本），只清这些 id。
+    let deletedOnly: Set<string> | null = null
+    if (liveNotebookIds.size === 0) {
+      try {
+        deletedOnly = new Set(await this.deps.notebookManager.listDeletedNotebookIds())
+      } catch {
+        deletedOnly = new Set()
+      }
+    }
+    if (liveNotebookIds.size === 0 && (!deletedOnly || deletedOnly.size === 0)) return 0
 
     let cleaned = 0
     const dbSourceIds = await this.deps.repo.listDistinctSourceIds({ vaultId })
     for (const sourceId of dbSourceIds) {
       if (liveSourceIds.has(sourceId)) continue
       const source = await this.deps.repo.getSource(sourceId)
+      if (deletedOnly && source?.notebookId && !deletedOnly.has(source.notebookId)) continue
       if (this.deps.graphRaw && source?.notebookId) {
         await this.deps.graphRaw.deleteSourceShards(source.notebookId, sourceId)
       }
@@ -342,6 +353,7 @@ export class KnowledgeHydrationService {
     })
     for (const nb of dbNotebooks) {
       if (liveNotebookIds.has(nb.id)) continue
+      if (deletedOnly && !deletedOnly.has(nb.id)) continue
       await this.deps.repo.deleteNotebook(nb.id)
       cleaned += 1
     }

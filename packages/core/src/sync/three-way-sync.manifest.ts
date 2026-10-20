@@ -9,6 +9,7 @@ import type {
 import {
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
+  SYNC_MANIFEST_CAPABILITIES,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
   SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_STORAGE_ID_FILENAME,
@@ -29,10 +30,12 @@ import {
 } from '@baishou/shared'
 import {
   isIncrementalSyncConflictBackupPath,
+  isIncrementalSyncProtectedRemotePath,
   isJsonlShardsManifestSyncPath,
   isSqliteRuntimeSyncPath
 } from '@baishou/shared'
 import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
+import type { SyncRecord } from '../network/cloud-sync.interface'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export type ManifestFileProgressCallback = (
@@ -176,7 +179,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       version: SYNC_MANIFEST_VERSION,
       updatedAt: Date.now(),
       deviceId: this.deviceId,
-      files: {}
+      files: {},
+      capabilities: [...SYNC_MANIFEST_CAPABILITIES]
     }
 
     const total = files.length
@@ -272,6 +276,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
           }
         }
         manifest.files = cleanFiles
+        await this.recoverProtectedRemoteManifestEntries(manifest, remoteFiles, actualFilesSet)
         return reconcileSyncManifestRemovedWithRemoteFiles(manifest, actualFilesSet)
       }
 
@@ -280,6 +285,54 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       try {
         fs.unlinkSync(tempPath)
       } catch {}
+    }
+  }
+
+  /**
+   * 旧端扫描不到、但实际仍存在的保护路径（global settings / vault.json / registry / 用户技能）。
+   * 旧端会从自己的 manifest 里丢掉这些条目；新端需要从实际远端对象补回来，
+   * 否则新装设备会误以为远端没有，从而用本地默认值覆盖云端。
+   */
+  private async recoverProtectedRemoteManifestEntries(
+    manifest: SyncManifest,
+    remoteFiles: readonly SyncRecord[],
+    actualFilesSet: ReadonlySet<string>
+  ): Promise<void> {
+    const missing = remoteFiles.filter((file) => {
+      const rel = file.filename.replace(/\\/g, '/')
+      if (!actualFilesSet.has(rel)) return false
+      if (manifest.files[rel] || manifest.removed?.[rel]) return false
+      return isIncrementalSyncProtectedRemotePath(rel)
+    })
+    if (missing.length === 0) return
+
+    const metaDir = await this.getSyncMetaDirectory()
+    await fs.promises.mkdir(metaDir, { recursive: true })
+    for (const file of missing) {
+      const rel = file.filename.replace(/\\/g, '/')
+      const tempPath = path.join(
+        metaDir,
+        `temp-recover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`
+      )
+      try {
+        await this.cloudClient.downloadFile(rel, tempPath)
+        const stat = await fs.promises.stat(tempPath)
+        manifest.files[rel] = {
+          hash: await this.computeFileHash(tempPath),
+          size: stat.size,
+          lastModified: file.lastModified?.getTime() || stat.mtimeMs
+        }
+        console.warn(`[ThreeWaySync] Recovered protected remote manifest entry: ${rel}`)
+      } catch (e) {
+        console.warn(
+          `[ThreeWaySync] Failed to recover protected remote entry ${rel}:`,
+          e instanceof Error ? e.message : e
+        )
+      } finally {
+        try {
+          fs.unlinkSync(tempPath)
+        } catch {}
+      }
     }
   }
 

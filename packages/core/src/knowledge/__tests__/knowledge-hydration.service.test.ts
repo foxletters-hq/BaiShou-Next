@@ -1,55 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import * as os from 'node:os'
-import { createNodeFileSystem } from '../../fs/create-node-file-system'
-import { NotebookRawManager } from '../../raw-data/managers/notebook.raw-manager'
 import { KnowledgeHydrationService } from '../knowledge-hydration.service'
-import type { IStoragePathService } from '../../vault/storage-path.types'
 import { md5Hex } from '../../fs/md5'
 import { hashEmbedSourceContent } from '@baishou/shared'
-
-function canOpenBetterSqlite3(): boolean {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Database = require('better-sqlite3') as typeof import('better-sqlite3')
-    const db = new Database(':memory:')
-    db.close()
-    return true
-  } catch {
-    return false
-  }
-}
-
-const describeHydration = canOpenBetterSqlite3() ? describe : describe.skip
+import type { KnowledgeHydrationContext } from './knowledge-hydration.test-helpers'
+import { describeHydration, setupKnowledgeHydration } from './knowledge-hydration.test-helpers'
 
 describeHydration('KnowledgeHydrationService', () => {
-  let tempDir: string
   let notebooksDir: string
-  let dbManager: { connect: (d: string) => Promise<void>; disconnect: () => void; getDb: () => any }
-  let repo: import('@baishou/database').KnowledgeRepository
-  let notebookManager: NotebookRawManager
+  let repo: KnowledgeHydrationContext['repo']
+  let notebookManager: KnowledgeHydrationContext['notebookManager']
+  let ctx: KnowledgeHydrationContext
 
   beforeEach(async () => {
-    const { KnowledgeConnectionManager, KnowledgeRepository } = await import('@baishou/database')
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-kb-hydrate-'))
-    notebooksDir = path.join(tempDir, 'Notebooks')
-    await fs.mkdir(notebooksDir, { recursive: true })
-
-    dbManager = new KnowledgeConnectionManager()
-    await dbManager.connect(tempDir)
-    repo = new KnowledgeRepository(dbManager.getDb())
-
-    const fsApi = createNodeFileSystem()
-    const pathService = {
-      getNotebooksBaseDirectory: async () => notebooksDir,
-      getActiveVaultPath: async () => tempDir
-    } as unknown as IStoragePathService
-    notebookManager = new NotebookRawManager(pathService, fsApi)
+    ctx = await setupKnowledgeHydration()
+    notebooksDir = ctx.notebooksDir
+    repo = ctx.repo
+    notebookManager = ctx.notebookManager
   })
 
   afterEach(() => {
-    dbManager?.disconnect()
+    ctx?.cleanup()
   })
 
   it('差集排 embed job；无嵌入模型时跳过排队', async () => {
@@ -263,6 +235,51 @@ describeHydration('KnowledgeHydrationService', () => {
     expect(await repo.listChunksBySource('orphan')).toEqual([])
   })
 
+  it('删除最后一个笔记本时按 notebooks.jsonl tombstone 清理 DB', async () => {
+    const now = Date.now()
+    await repo.createNotebook({ id: 'nb_last', name: '最后一本', vaultId: 'vault_test' })
+    await repo.upsertSource({
+      id: 'src_last',
+      notebookId: 'nb_last',
+      title: '最后一本资料',
+      sourceKind: 'text',
+      contentHash: 'x',
+      status: 'ready',
+      vaultId: 'vault_test'
+    })
+    await notebookManager.appendNotebookRecord({
+      id: 'nb_last',
+      name: '最后一本',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: now
+    })
+
+    const svc = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => false
+    })
+    const result = await svc.hydrate()
+    expect(result.orphansCleaned).toBeGreaterThanOrEqual(1)
+    expect(await repo.getNotebook('nb_last')).toBeNull()
+    expect(await repo.getSource('src_last')).toBeNull()
+  })
+
+  it('notebooks.jsonl 不存在时不清理空 vault', async () => {
+    await repo.createNotebook({ id: 'nb_keep', name: '保留', vaultId: 'vault_test' })
+    const svc = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => false
+    })
+    const result = await svc.hydrate()
+    expect(result.orphansCleaned).toBe(0)
+    expect(await repo.getNotebook('nb_keep')).not.toBeNull()
+  })
+
   it('水合时把 sources.jsonl 的 originUrl 写回资料行', async () => {
     const now = Date.now()
     await notebookManager.appendNotebookRecord({
@@ -434,148 +451,5 @@ describeHydration('KnowledgeHydrationService', () => {
     expect(result.orphansCleaned).toBe(0)
     expect(await repo.getNotebook('nb_other')).not.toBeNull()
     expect(await repo.getSource('src_other')).not.toBeNull()
-  })
-})
-
-describe('KnowledgeHydrationService orphan graph wiring', () => {
-  it('orphan 删资料时删三个 jsonl，并带 deletedShardPaths 灌库', async () => {
-    const deleteSourceShards = vi.fn().mockResolvedValue(undefined)
-    const syncPendingIndex = vi.fn().mockResolvedValue({ shards: 0, nodes: 0, edges: 0 })
-    const deleteSource = vi.fn().mockResolvedValue(undefined)
-    const repo = {
-      getNotebook: vi.fn().mockResolvedValue({
-        id: 'nb1',
-        name: '研究',
-        description: null,
-        vaultId: 'vault_test'
-      }),
-      listDistinctSourceIds: vi.fn().mockResolvedValue(['orphan']),
-      getSource: vi.fn().mockResolvedValue({
-        id: 'orphan',
-        notebookId: 'nb1',
-        vaultId: 'vault_test'
-      }),
-      deleteSource,
-      listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
-    }
-    const notebookManager = {
-      listNotebookRecords: vi
-        .fn()
-        .mockResolvedValue([{ id: 'nb1', name: '研究', description: null }]),
-      listSourceRecords: vi.fn().mockResolvedValue([])
-    }
-    const graphRaw = {
-      readCollapsed: vi.fn().mockResolvedValue([]),
-      deleteSourceShards
-    }
-
-    const svc = new KnowledgeHydrationService({
-      repo: repo as never,
-      notebookManager: notebookManager as never,
-      vaultId: 'vault_test',
-      isEmbeddingConfigured: () => true,
-      graphRaw: graphRaw as never,
-      graphIndex: { syncPendingIndex }
-    })
-    const result = await svc.hydrate()
-
-    expect(result.orphansCleaned).toBe(1)
-    expect(deleteSourceShards).toHaveBeenCalledWith('nb1', 'orphan')
-    expect(deleteSource).toHaveBeenCalledWith('orphan')
-    expect(syncPendingIndex).toHaveBeenCalledWith({
-      vaultId: 'vault_test',
-      notebookId: 'nb1',
-      deletedShardPaths: [
-        'Notebooks/nb1/graph/nodes/orphan.jsonl',
-        'Notebooks/nb1/graph/edges/orphan.jsonl'
-      ]
-    })
-  })
-
-  it('embedMissing false 不入队 embed/graph，仍灌 pending-index', async () => {
-    const enqueueIngestJob = vi.fn()
-    const syncPendingIndex = vi.fn().mockResolvedValue({ shards: 0, nodes: 0, edges: 0 })
-    const repo = {
-      getNotebook: vi.fn().mockResolvedValue(null),
-      createNotebook: vi.fn().mockResolvedValue({ id: 'nb1' }),
-      getSource: vi.fn().mockResolvedValue(null),
-      countChunksBySource: vi.fn().mockResolvedValue(0),
-      getEmbedLedger: vi.fn().mockResolvedValue(null),
-      upsertSource: vi.fn(),
-      updateSourceStatus: vi.fn(),
-      enqueueIngestJob,
-      listDistinctSourceIds: vi.fn().mockResolvedValue([]),
-      listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
-    }
-    const notebookManager = {
-      listNotebookRecords: vi.fn().mockResolvedValue([{ id: 'nb1', name: '本' }]),
-      listSourceRecords: vi.fn().mockResolvedValue([
-        {
-          id: 'src1',
-          title: '资料',
-          kind: 'text',
-          path: 'sources/src1.txt',
-          contentHash: 'abc'
-        }
-      ]),
-      statExtracted: vi.fn().mockResolvedValue({ mtimeMs: Date.now() }),
-      readExtractedText: vi.fn().mockResolvedValue('正文')
-    }
-
-    const svc = new KnowledgeHydrationService({
-      repo: repo as never,
-      notebookManager: notebookManager as never,
-      vaultId: 'vault_test',
-      isEmbeddingConfigured: () => true,
-      graphIndex: { syncPendingIndex }
-    })
-    const result = await svc.hydrate({ embedMissing: false })
-    expect(result.embedJobsEnqueued).toBe(0)
-    expect(result.graphJobsEnqueued).toBe(0)
-    expect(enqueueIngestJob).not.toHaveBeenCalled()
-    expect(syncPendingIndex).toHaveBeenCalledWith({ vaultId: 'vault_test', notebookId: 'nb1' })
-  })
-
-  it('should queue embed only when extracted text also needs graph', async () => {
-    const enqueueIngestJob = vi.fn()
-    const repo = {
-      getNotebook: vi.fn().mockResolvedValue(null),
-      createNotebook: vi.fn().mockResolvedValue({ id: 'nb1' }),
-      updateNotebook: vi.fn(),
-      getSource: vi.fn().mockResolvedValue(null),
-      countChunksBySource: vi.fn().mockResolvedValue(0),
-      getEmbedLedger: vi.fn().mockResolvedValue(null),
-      upsertSource: vi.fn(),
-      updateSourceStatus: vi.fn(),
-      enqueueIngestJob,
-      listDistinctSourceIds: vi.fn().mockResolvedValue([]),
-      listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
-    }
-    const notebookManager = {
-      listNotebookRecords: vi.fn().mockResolvedValue([{ id: 'nb1', name: '本' }]),
-      listSourceRecords: vi.fn().mockResolvedValue([
-        {
-          id: 'src1',
-          title: '资料',
-          kind: 'text',
-          path: 'sources/src1.txt',
-          contentHash: 'abc'
-        }
-      ]),
-      statExtracted: vi.fn().mockResolvedValue({ mtimeMs: Date.now() }),
-      readExtractedText: vi.fn().mockResolvedValue('正文需要向量后再抽图'),
-      findCoverImageOnDisk: vi.fn().mockResolvedValue('')
-    }
-
-    const svc = new KnowledgeHydrationService({
-      repo: repo as never,
-      notebookManager: notebookManager as never,
-      vaultId: 'vault_test',
-      isEmbeddingConfigured: () => true
-    })
-    const result = await svc.hydrate()
-    expect(result.embedJobsEnqueued).toBe(1)
-    expect(result.graphJobsEnqueued).toBe(0)
-    expect(enqueueIngestJob.mock.calls.map((call) => call[0].stage)).toEqual(['embed'])
   })
 })

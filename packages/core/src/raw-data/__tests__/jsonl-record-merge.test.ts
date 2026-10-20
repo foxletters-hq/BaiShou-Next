@@ -10,7 +10,9 @@ import {
 import {
   applyJsonlConflictResolved,
   classifyMonthlyJsonlPath,
+  classifyNotebookStructureJsonlPath,
   isMonthlyJsonlRawPath,
+  shouldLineMergeJsonlOnConflict,
   shouldLineMergeMonthlyJsonlOnConflict,
   shardKeyValidatorForJsonlKind
 } from '../monthly-jsonl-path.util'
@@ -122,6 +124,28 @@ describe('classifyMonthlyJsonlPath', () => {
       shardFile: 'src_abc.jsonl',
       shardMonth: 'src_abc'
     })
+  })
+})
+
+describe('Notebooks structure JSONL', () => {
+  it('classifies notebooks.jsonl and per-notebook sources.jsonl', () => {
+    expect(classifyNotebookStructureJsonlPath('Personal/Notebooks/notebooks.jsonl')).toEqual({
+      relativePath: 'notebooks.jsonl'
+    })
+    expect(classifyNotebookStructureJsonlPath('Personal/Notebooks/nb1/sources.jsonl')).toEqual({
+      relativePath: 'nb1/sources.jsonl'
+    })
+    expect(
+      classifyNotebookStructureJsonlPath('Personal/Notebooks/nb1/graph/nodes/src.jsonl')
+    ).toBeNull()
+    expect(classifyNotebookStructureJsonlPath('Personal/Notebooks/../sources.jsonl')).toBeNull()
+  })
+
+  it('line-merges notebook structure conflicts', () => {
+    expect(shouldLineMergeJsonlOnConflict('Personal/Notebooks/notebooks.jsonl')).toBe(true)
+    expect(shouldLineMergeJsonlOnConflict('Personal/Notebooks/nb1/sources.jsonl')).toBe(true)
+    expect(shouldLineMergeJsonlOnConflict('Personal/Memory/2026-07.jsonl')).toBe(true)
+    expect(shouldLineMergeJsonlOnConflict('Personal/Graph/nodes/2026-07.jsonl')).toBe(false)
   })
 })
 
