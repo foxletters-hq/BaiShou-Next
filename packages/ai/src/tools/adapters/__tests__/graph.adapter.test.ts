@@ -43,4 +43,21 @@ describe('createCompanionGraphLookups', () => {
       graphNodeLookup.findNodeByName({ name: '杭州', nodeType: 'place' })
     ).resolves.toMatchObject({ id: 'p1', name: '杭州' })
   })
+
+  it('exposes all exact name hits so graph_upsert can report ambiguity', async () => {
+    const rows = [
+      { id: 'p1', name: 'Latte', nodeType: 'person' },
+      { id: 'p2', name: 'Latte', nodeType: 'product' }
+    ]
+    const findNodesByNameOrAlias = vi.fn(async () => rows)
+    const { graphNodeLookup } = createCompanionGraphLookups(async () => ({
+      findByNameOrAlias: async () => rows[0] ?? null,
+      findNodesByNameOrAlias,
+      getNodeById: async () => null,
+      getEdgeById: async () => null
+    }))
+
+    await expect(graphNodeLookup.findNodesByName?.({ name: 'Latte' })).resolves.toHaveLength(2)
+    expect(findNodesByNameOrAlias).toHaveBeenCalledWith('Latte', undefined)
+  })
 })

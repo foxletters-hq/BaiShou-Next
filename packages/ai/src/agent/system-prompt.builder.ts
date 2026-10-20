@@ -33,8 +33,13 @@ export interface SystemPromptBuilderOptions {
   workspaceEnv?: WorkspaceEnvInfo
   /** 伙伴会话挂载的笔记本（工作台已写在 workspace_env 里） */
   knowledgeMount?: { notebookIds: string[]; notebookNames?: Record<string, string> }
-  /** Skills 目录（仅名+描述，正文不灌入） */
+  /** Skills 目录（仅名+描述，正文不灌入）。用于预览/无会话状态的场景 */
   skillsCatalog?: Array<{ name: string; description?: string }>
+  /**
+   * 会话级增量 skills instruction（由 instruction-state 计算）。
+   * 提供时优先于 `skillsCatalog`：`catalog` 是冻结基线，`deltas` 只追加在基线之后。
+   */
+  skillsInstruction?: { catalog: string[]; deltas: string[] }
 }
 
 function pushSection(buffer: string[], tag: string, lines: string[]): void {
@@ -78,7 +83,8 @@ export class SystemPromptBuilder {
       locale,
       workspaceEnv,
       knowledgeMount,
-      skillsCatalog
+      skillsCatalog,
+      skillsInstruction
     } = options
 
     const buffer: string[] = []
@@ -119,8 +125,15 @@ export class SystemPromptBuilder {
       pushSection(buffer, 'knowledge_mount', buildKnowledgeMountPromptLines(knowledgeMount))
     }
 
-    // 3c. skills_catalog
-    if (skillsCatalog && skillsCatalog.length > 0) {
+    // 3c. skills_catalog（冻结基线 + 增量说明，保证前缀稳定）
+    if (skillsInstruction) {
+      if (skillsInstruction.catalog.length > 0) {
+        pushSection(buffer, 'skills_catalog', skillsInstruction.catalog)
+      }
+      if (skillsInstruction.deltas.length > 0) {
+        pushSection(buffer, 'skills_catalog_update', skillsInstruction.deltas)
+      }
+    } else if (skillsCatalog && skillsCatalog.length > 0) {
       const skillLines = [
         'Available skills (name + description only). Call skill_read with the skill name to load the full body when you decide to use one. The user may also attach a skill with /name.',
         ...skillsCatalog.map((s) => {
@@ -170,17 +183,16 @@ export class SystemPromptBuilder {
       ])
     }
 
-    // 7. available_tools（仅列出已启用工具 ID 与禁用回退规则，不再重复背诵 API tools 里的长描述）
+    // 7. available_tools（不再重复列举工具 ID：API tools 定义里已有完整名称与描述）
     if (availableToolIds.length > 0) {
       const toolLines: string[] = [
-        `Enabled Tools: ${availableToolIds.join(', ')}`,
-        'Tool schemas and descriptions are provided in the API tools definition. ' +
+        `${availableToolIds.length} tools are enabled for this session. Their names, descriptions, and parameter schemas are provided in the API tools definition. ` +
           'Use a tool when it improves accuracy or when required by the tool usage guidelines below. ' +
           'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.'
       ]
 
       const hasDiaryOrSummaryTools = availableToolIds.some(
-        (id) => id.startsWith('diary_') || id === 'summary_read'
+        (id) => id.startsWith('diary_') || id === 'summary_read' || id === 'summary_write'
       )
       if (
         hasDiaryOrSummaryTools &&

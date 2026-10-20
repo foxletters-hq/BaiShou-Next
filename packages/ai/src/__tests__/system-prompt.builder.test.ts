@@ -266,7 +266,22 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('skill_read')
   })
 
-  it('lists enabled tool IDs without repeating verbose descriptions and injects concise MCP guidelines for mcp_call', () => {
+  it('prefers a frozen skills instruction baseline and appends deltas separately', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      skillsInstruction: {
+        catalog: ['- alpha: 旧描述'],
+        deltas: ['The available skills have changed.', 'New skills:', '- beta: 新技能']
+      }
+    })
+    expect(prompt).toContain('<skills_catalog>')
+    expect(prompt).toContain('- alpha: 旧描述')
+    expect(prompt).toContain('<skills_catalog_update>')
+    expect(prompt).toContain('- beta: 新技能')
+  })
+
+  it('does not repeat the enabled tool ID list in available_tools', () => {
     const prompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
       assistantKind: 'companion',
@@ -276,7 +291,8 @@ describe('SystemPromptBuilder', () => {
       }
     })
     expect(prompt).toContain('<available_tools>')
-    expect(prompt).toContain('Enabled Tools: diary_read, mcp_call')
+    expect(prompt).toContain('2 tools are enabled for this session')
+    expect(prompt).not.toContain('Enabled Tools: diary_read, mcp_call')
     expect(prompt).not.toContain('Very long multi-paragraph diary_read description')
     expect(prompt).toContain('<tool_usage_guidelines>')
     expect(prompt).toContain('外部扩展工具（MCP）调用规范')

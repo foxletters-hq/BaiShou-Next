@@ -1,10 +1,21 @@
 import { z } from 'zod'
 import { tool } from 'ai'
+import { normalizeEmojiSendFrequency, type EmojiSendFrequency } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 
 type EmojiItem = { id: string; name: string; relativePath: string }
-type EmojiConfig = { enabled?: boolean; emojis?: EmojiItem[] }
+type EmojiConfig = { enabled?: boolean; frequency?: EmojiSendFrequency; emojis?: EmojiItem[] }
+
+/** 用户配置的发送频率 → 直接写给模型的指令 */
+const FREQUENCY_DIRECTIVES: Record<EmojiSendFrequency, string> = {
+  low: 'Frequency preference: RARELY. Only send a sticker when it clearly adds emotional expression; most replies should have no sticker.',
+  normal:
+    'Frequency preference: BALANCED. Send a sticker when it naturally fits the mood; not every reply needs one.',
+  high: 'Frequency preference: OFTEN. Send a fitting sticker in most replies (roughly 2 out of 3).',
+  always:
+    'Frequency preference: EVERY REPLY. Send a fitting sticker in every reply, choosing the one that best matches the mood; do not skip it.'
+}
 
 const emojiSendParams = z.object({
   emoji_id: z
@@ -25,10 +36,10 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
 
   readonly description =
     'Send a sticker/emoji image in the chat. ' +
-    'Call this tool with one of the available sticker IDs or names when it naturally fits the conversation mood (humor, empathy, celebration, etc.). ' +
+    'Call this tool with one of the available sticker IDs or names to send a sticker that matches the conversation mood (humor, empathy, celebration, etc.). ' +
     'The emoji_id parameter is flexible — you can pass the sticker ID (with or without file extension) or the display name. ' +
     'Only one sticker per reply — call emoji_send at most once per turn. ' +
-    'Do NOT call this tool on every message — only when a sticker genuinely adds emotional expression. ' +
+    'Follow the frequency preference below when deciding whether a reply should include a sticker. ' +
     'After calling this tool, continue your text response normally. The sticker will be displayed as a separate message automatically — do NOT mention or repeat the sticker result in your text.'
 
   readonly parameters = emojiSendParams
@@ -57,6 +68,7 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
     const emojiConfig =
       (context.userConfig?.['emojiConfig'] as EmojiConfig | undefined) || undefined
     const emojis = emojiConfig?.emojis || []
+    const frequency = normalizeEmojiSendFrequency(emojiConfig?.frequency)
 
     const listLines =
       emojis.length > 0
@@ -65,6 +77,8 @@ export class EmojiSendTool extends AgentTool<typeof emojiSendParams> {
 
     const dynamicDescription =
       this.description +
+      '\n\n' +
+      FREQUENCY_DIRECTIVES[frequency] +
       '\n\nAvailable sticker IDs and names:\n' +
       listLines +
       '\n\nTo send a sticker, call this tool with the emoji_id parameter set to one of the IDs above. The emoji_id is flexible — you can pass the ID with or without the file extension, or use the display name. ' +

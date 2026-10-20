@@ -18,6 +18,11 @@ export type GraphFindNodeFn = (opts: {
   nodeType?: string
 }) => Promise<ToolGraphNodeHit | null>
 
+export type GraphFindNodesFn = (opts: {
+  name: string
+  nodeType?: string
+}) => Promise<ToolGraphNodeHit[]>
+
 export type GraphFindNodeByIdFn = (id: string) => Promise<ToolGraphNodeHit | null>
 
 export type GraphFindEdgeByIdFn = (id: string) => Promise<ToolGraphEdgeHit | null>
@@ -35,7 +40,8 @@ export class GraphReaderAdapter implements ToolGraphReader {
 export class GraphNodeLookupAdapter implements ToolGraphNodeLookup {
   constructor(
     private readonly findNode: GraphFindNodeFn,
-    private readonly findById: GraphFindNodeByIdFn
+    private readonly findById: GraphFindNodeByIdFn,
+    private readonly findNodes?: GraphFindNodesFn
   ) {}
 
   async findNodeByName(opts: {
@@ -43,6 +49,12 @@ export class GraphNodeLookupAdapter implements ToolGraphNodeLookup {
     nodeType?: string
   }): Promise<ToolGraphNodeHit | null> {
     return this.findNode(opts)
+  }
+
+  async findNodesByName(opts: { name: string; nodeType?: string }): Promise<ToolGraphNodeHit[]> {
+    if (this.findNodes) return this.findNodes(opts)
+    const hit = await this.findNode(opts)
+    return hit ? [hit] : []
   }
 
   async findNodeById(id: string): Promise<ToolGraphNodeHit | null> {
@@ -64,6 +76,8 @@ export type CompanionGraphEdgeRow = Parameters<typeof toToolGraphEdgeHit>[0]
 
 export type CompanionGraphVaultRepo = {
   findByNameOrAlias: (name: string, nodeType?: string) => Promise<CompanionGraphNodeRow | null>
+  /** All exact name/alias matches, used to surface ambiguous endpoints. */
+  findNodesByNameOrAlias?: (name: string, nodeType?: string) => Promise<CompanionGraphNodeRow[]>
   getNodeById: (id: string) => Promise<CompanionGraphNodeRow | null>
   getEdgeById: (id: string) => Promise<CompanionGraphEdgeRow | null>
 }
@@ -91,6 +105,17 @@ export function createCompanionGraphLookups(
         const repo = await loadVaultRepo()
         const row = await repo.getNodeById(id)
         return row ? toToolGraphNodeHit(row) : null
+      },
+      async (opts) => {
+        const repo = await loadVaultRepo()
+        if (!repo.findNodesByNameOrAlias) {
+          const hit = await resolveExactGraphNodeHit(opts, {
+            findByNameOrAlias: repo.findByNameOrAlias
+          })
+          return hit ? [toToolGraphNodeHit(hit)] : []
+        }
+        const rows = await repo.findNodesByNameOrAlias(opts.name, opts.nodeType)
+        return rows.map((row) => toToolGraphNodeHit(row))
       }
     ),
     graphEdgeLookup: new GraphEdgeLookupAdapter(async (id) => {

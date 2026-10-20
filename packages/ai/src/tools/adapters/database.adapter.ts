@@ -191,4 +191,99 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
 
     return rows.map((r: any) => `- ${formatLocalDate(r.start)} ~ ${formatLocalDate(r.end)}`)
   }
+
+  async listAllSummaries(): Promise<
+    Array<{
+      type: string
+      startDate: Date
+      endDate: Date
+    }>
+  > {
+    const vaultId = this.tryVaultId()
+    if (!vaultId) return []
+
+    const rows = await this.db
+      .select()
+      .from(summariesTable)
+      .where(eq(summariesTable.vaultId, vaultId))
+
+    return rows.map((row) => ({
+      type: String(row.type),
+      startDate: row.startDate instanceof Date ? row.startDate : new Date(row.startDate),
+      endDate: row.endDate instanceof Date ? row.endDate : new Date(row.endDate)
+    }))
+  }
+
+  async writeSummary(input: {
+    type: string
+    startDate: Date
+    endDate: Date
+    content: string
+  }): Promise<{ ok: true } | { ok: false; message: string }> {
+    const vaultId = this.tryVaultId()
+    if (!vaultId) {
+      return { ok: false, message: 'No active vault ID available for writing summary.' }
+    }
+
+    try {
+      const dayKey = formatLocalDate(input.startDate)
+      const existingRows = await this.db
+        .select()
+        .from(summariesTable)
+        .where(
+          and(
+            eq(summariesTable.vaultId, vaultId),
+            eq(summariesTable.type as any, input.type as any)
+          )
+        )
+      const sameDay = existingRows.find((row) => {
+        const start = row.startDate instanceof Date ? row.startDate : new Date(row.startDate)
+        return formatLocalDate(start) === dayKey
+      })
+
+      const now = new Date()
+      if (sameDay?.id != null) {
+        await this.db
+          .update(summariesTable)
+          .set({
+            startDate: input.startDate,
+            endDate: input.endDate,
+            content: input.content,
+            generatedAt: now,
+            updatedAt: now
+          })
+          .where(eq(summariesTable.id, sameDay.id))
+      } else {
+        await this.db
+          .insert(summariesTable)
+          .values({
+            vaultId,
+            type: input.type as any,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            content: input.content,
+            generatedAt: now
+          })
+          .onConflictDoUpdate({
+            target: [
+              summariesTable.vaultId,
+              summariesTable.type,
+              summariesTable.startDate,
+              summariesTable.endDate
+            ],
+            set: {
+              content: input.content,
+              generatedAt: now,
+              updatedAt: now
+            }
+          })
+      }
+      return { ok: true }
+    } catch (e) {
+      return {
+        ok: false,
+        message: e instanceof Error ? e.message : String(e)
+      }
+    }
+  }
 }

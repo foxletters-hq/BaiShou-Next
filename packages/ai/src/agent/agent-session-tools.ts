@@ -8,6 +8,7 @@ import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
 import { detectProcessCommandRuntime } from '../agent-workspace/workspace-host-process'
 import { SystemPromptBuilder } from './system-prompt.builder'
+import { loadAndUpdateSkillsInstruction } from './instruction-state.util'
 import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import { ContextCompressorService } from './context-compressor.service'
 import { resolveSessionCompressionConfig, usableContextTokens } from './context-compression.utils'
@@ -193,6 +194,12 @@ export async function buildAgentSessionToolsAndPrompt(input: {
     }
   }
 
+  const skillsInstruction = await loadAndUpdateSkillsInstruction({
+    sessionRepo: sessionRepo as any,
+    sessionId,
+    skillsCatalog
+  })
+
   const builtSystemPrompt = SystemPromptBuilder.build({
     vaultName,
     tools: enabledTools as any,
@@ -235,7 +242,7 @@ export async function buildAgentSessionToolsAndPrompt(input: {
     knowledgeMount: {
       notebookIds: workspaceOptions?.notebookIds ?? []
     },
-    skillsCatalog
+    skillsInstruction
   })
 
   return { enabledTools, builtSystemPrompt }

@@ -162,6 +162,19 @@ export interface ToolSummaryReader {
     endDateIso: string
   } | null>
   getAvailableSummaries(type: string, limit?: number): Promise<string[]>
+  listAllSummaries?(): Promise<
+    Array<{
+      type: string
+      startDate: Date
+      endDate: Date
+    }>
+  >
+  writeSummary?(input: {
+    type: string
+    startDate: Date
+    endDate: Date
+    content: string
+  }): Promise<ToolDiaryMutationResult>
 }
 
 /**
@@ -271,7 +284,7 @@ export interface ToolContext {
       previousName?: string
     }): Promise<{ name: string; description: string; location: string }>
   }
-  /** 按名读取 SKILL.md 正文 */
+  /** 按名读取 SKILL.md 正文，或列出所有可用 Skill */
   skillsReader?: {
     readSkill(name: string): Promise<{
       name: string
@@ -279,6 +292,21 @@ export interface ToolContext {
       content: string
       location: string
     } | null>
+    listSkills?(): Promise<
+      Array<{
+        name: string
+        description?: string
+      }>
+    >
+    /** 列出全部技能（含 autoinvoke:false），供用户显式选择 / MCP prompts 使用 */
+    listAllSkills?(): Promise<
+      Array<{
+        name: string
+        description?: string
+      }>
+    >
+    /** 列出技能目录下的资源文件（相对技能目录，最多约 10 个） */
+    listResources?(name: string): Promise<string[]>
   }
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {

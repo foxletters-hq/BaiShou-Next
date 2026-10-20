@@ -27,7 +27,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(32)
+    expect(allTools).toHaveLength(33)
 
     const toolNames = allTools.map((t) => t.name)
     expect(toolNames).toContain('current_time')
@@ -47,6 +47,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('message_search')
     expect(toolNames).toContain('session_list')
     expect(toolNames).toContain('summary_read')
+    expect(toolNames).toContain('summary_write')
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
     expect(toolNames).toContain('emoji_send')
@@ -71,12 +72,13 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     // 无 folderRoot 时跳过 workspace_*；web_search/vector_search/memory_store 缺依赖跳过；
     // 内部压缩工具不暴露。graph / knowledge_search / skill_write / skill_read 仍会进入可调用集。
-    expect(Object.keys(vercelTools)).toHaveLength(19)
+    expect(Object.keys(vercelTools)).toHaveLength(20)
     expect(vercelTools['current_time']).toBeDefined()
     expect(vercelTools['companion_ask']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
     expect(vercelTools['diary_write']).toBeDefined()
     expect(vercelTools['summary_read']).toBeDefined()
+    expect(vercelTools['summary_write']).toBeDefined()
     expect(vercelTools['graph_upsert']).toBeDefined()
     expect(vercelTools['recall_relations']).toBeDefined()
     expect(vercelTools['knowledge_search']).toBeDefined()
@@ -102,7 +104,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(18)
+    expect(Object.keys(vercelTools)).toHaveLength(19)
   })
 
   it('keeps current_time enabled even when listed in disabledToolIds', () => {

@@ -115,7 +115,57 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   diary_read: safeReadTool('diary_read', '读取日记'),
   diary_list: safeReadTool('diary_list', '列出日记'),
   diary_search: safeReadTool('diary_search', '搜索日记'),
+  skill_read: {
+    action: 'skill_read',
+    riskLevel: AgentGateRiskLevel.Safe,
+    buildTitle: (args) => {
+      const name = (args as GateArgs).name
+      return typeof name === 'string' && name.trim() ? `读取技能 ${name.trim()}` : '列出可用技能'
+    },
+    buildResources: (args) => {
+      const name = (args as GateArgs).name
+      if (typeof name !== 'string' || !name.trim() || name.trim() === 'list') return []
+      return [{ kind: 'skill', value: name.trim() }]
+    },
+    buildAlwaysPatterns: (args) => {
+      const name = (args as GateArgs).name
+      return typeof name === 'string' && name.trim() && name.trim() !== 'list' ? [name.trim()] : []
+    }
+  },
   summary_read: safeReadTool('summary_read', '读取总结'),
+  summary_write: {
+    action: 'summary_write',
+    riskLevel: AgentGateRiskLevel.Mutating,
+    buildTitle: (args) => {
+      const type = (args as GateArgs).type
+      const startDate = (args as GateArgs).start_date
+      if (typeof type === 'string' && typeof startDate === 'string') {
+        return `写入总结 (${type} · ${startDate})`
+      }
+      return '写入总结'
+    },
+    buildMetadata: (args) => ({
+      type: (args as GateArgs).type,
+      start_date: (args as GateArgs).start_date,
+      end_date: (args as GateArgs).end_date
+    }),
+    prepare: async (args) => {
+      const type = (args as GateArgs).type
+      const startDate = (args as GateArgs).start_date
+      const endDate = (args as GateArgs).end_date
+      return prepareContentGatePreview({
+        subject:
+          typeof type === 'string' && typeof startDate === 'string'
+            ? `写入总结 (${type} · ${startDate})`
+            : '写入总结',
+        detailLines: [
+          typeof type === 'string' ? `类型：${type}` : null,
+          typeof startDate === 'string' ? `起始日：${startDate}` : null,
+          typeof endDate === 'string' ? `结束日：${endDate}` : null
+        ].filter((line): line is string => Boolean(line))
+      })
+    }
+  },
   message_search: safeReadTool('message_search', '搜索消息'),
   session_list: safeReadTool('session_list', '列出会话'),
   vector_search: safeReadTool('vector_search', '语义搜索'),

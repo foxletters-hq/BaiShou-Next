@@ -16,6 +16,7 @@ import { DiaryEditTool } from './diary-edit.tool'
 import { DiaryDeleteTool } from './diary-delete.tool'
 import { DiaryWriteTool } from './diary-write.tool'
 import { SummaryReadTool } from './summary-read.tool'
+import { SummaryWriteTool } from './summary-write.tool'
 import { MemoryStoreTool } from './memory-store.tool'
 import { MemoryDeleteTool } from './memory-delete.tool'
 import { MessageSearchTool } from './message-search.tool'
@@ -136,6 +137,7 @@ export class ToolRegistry {
       new DiaryDeleteTool(),
       new DiaryWriteTool(),
       new SummaryReadTool(),
+      new SummaryWriteTool(),
       new MemoryStoreTool(),
       new MemoryDeleteTool(),
       new MessageSearchTool(),
