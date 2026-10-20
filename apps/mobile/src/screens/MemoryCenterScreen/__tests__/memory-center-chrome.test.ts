@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const page = readFileSync(join(here, '..', 'MemoryCenterScreen.tsx'), 'utf8')
+const page = [
+  readFileSync(join(here, '..', 'MemoryCenterScreen.tsx'), 'utf8'),
+  readFileSync(join(here, '..', 'useMemoryCenterData.ts'), 'utf8'),
+  readFileSync(join(here, '..', 'useMemoryCenterOrganize.ts'), 'utf8')
+].join('\n')
 const organizeChrome = readFileSync(join(here, '..', 'MemoryOrganizeChrome.tsx'), 'utf8')
 
 describe('mobile memory center chrome', () => {

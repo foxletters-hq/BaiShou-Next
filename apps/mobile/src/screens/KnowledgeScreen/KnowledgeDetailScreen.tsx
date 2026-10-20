@@ -29,6 +29,7 @@ import { KnowledgeNotebookDeleteDialog } from './KnowledgeNotebookDeleteDialog'
 import { KnowledgeExtractHintDialog } from './KnowledgeExtractHintDialog'
 import { KnowledgeSourcePreviewModal } from './KnowledgeSourcePreviewModal'
 import { KnowledgeDetailJobBanner } from './KnowledgeDetailJobBanner'
+import { KnowledgeDetailModelMismatchBanner } from './KnowledgeDetailModelMismatchBanner'
 import { KnowledgeNotebookStatusStrip } from './KnowledgeNotebookStatusStrip'
 import { KnowledgeHeavyConfirmDialog } from './KnowledgeHeavyConfirmDialog'
 import { KnowledgeNotebookOrganizeFab } from './KnowledgeNotebookOrganizeFab'
@@ -136,46 +137,10 @@ export function KnowledgeDetailScreen() {
                 onCancelSource={detail.cancelOrganizeSource}
               />
               {detail.modelMismatch ? (
-                <View
-                  style={{
-                    marginHorizontal: tokens.spacing.md,
-                    marginBottom: tokens.spacing.sm,
-                    padding: tokens.spacing.sm,
-                    gap: tokens.spacing.sm,
-                    borderWidth: 1,
-                    borderRadius: tokens.radius.xs,
-                    borderColor: colors.error,
-                    backgroundColor: colors.bgSurface
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.error,
-                      fontSize: mobileTypography.primary.fontSize,
-                      fontWeight: mobileTypography.primary.fontWeight
-                    }}
-                  >
-                    {t('knowledge.model_mismatch_title', '嵌入模型不一致')}
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      fontSize: mobileTypography.secondary.fontSize
-                    }}
-                  >
-                    {t(
-                      'knowledge.model_mismatch_hard_block',
-                      '提问已硬拦截。请重建索引后再问，否则答案会错得很像样。'
-                    )}
-                  </Text>
-                  <Button
-                    size="sm"
-                    isDisabled={detail.busy}
-                    onPress={() => void detail.rebuildIndex()}
-                  >
-                    {t('knowledge.rebuild_index', '重建索引')}
-                  </Button>
-                </View>
+                <KnowledgeDetailModelMismatchBanner
+                  busy={detail.busy}
+                  onRebuild={() => void detail.rebuildIndex()}
+                />
               ) : null}
             </View>
             <SegmentedContent value={activeTab}>

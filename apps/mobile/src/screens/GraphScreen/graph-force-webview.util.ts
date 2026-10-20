@@ -11,6 +11,10 @@ export const GRAPH_MOBILE_LABEL_ZOOM_ISOLATED = 1
 export const GRAPH_MOBILE_SETTLE_CENTER_SCALE = 0.12
 export const GRAPH_MOBILE_HIT_MIN_PX = 14
 export const GRAPH_MOBILE_CAMERA_FIT_PADDING = 72
+/** 电荷计算的最小距离，近重合时不再让 1/dist² 无限放大。 */
+export const GRAPH_MOBILE_CHARGE_MIN_DIST = 8
+/** 单步最大位移（世界坐标），防止个别节点被斥力弹到图外。 */
+export const GRAPH_MOBILE_MAX_STEP = 24
 
 export function graphMobileNodeRadius(mentionCount: number | undefined, nodeScale: number): number {
   return (

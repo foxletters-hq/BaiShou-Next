@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import {
   collectNotebookGraphSourceWindows,
@@ -10,8 +10,6 @@ import {
 } from '@baishou/shared'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
 import {
-  mobileCountNotebookGraph,
-  mobileListNotebookGraphNodesPage,
   mobileSearchNotebookGraph,
   mobileSearchNotebookGraphNodes
 } from '@/src/services/mobile-knowledge.service'
@@ -34,6 +32,7 @@ import {
   isCurrentNotebookGraphSearch,
   shouldResetNotebookGraphSearch
 } from './knowledge-notebook-graph.util'
+import { useKnowledgeDetailGraphPage } from './useKnowledgeDetailGraphPage'
 
 export function useKnowledgeDetailGraph(input: {
   notebookId: string
@@ -89,80 +88,21 @@ export function useKnowledgeDetailGraph(input: {
   const [mergeLoserIds, setMergeLoserIds] = useState<Set<string>>(() => new Set())
   const [graphSearchHits, setGraphSearchHits] = useState<KnowledgeGraphSearchHit[]>([])
   const [focusDepth, setFocusDepth] = useState<GraphFocusDepth>(GRAPH_FOCUS_DEPTH_DEFAULT)
-  const [graphNodePage, setGraphNodePage] = useState(1)
-  const [graphNodePageSize, setGraphNodePageSize] = useState(20)
-  const [graphNodesPage, setGraphNodesPage] = useState<KnowledgeGraphNodeRow[]>([])
-  const [graphNodeTotal, setGraphNodeTotal] = useState(0)
-  const [graphInventoryNodeCount, setGraphInventoryNodeCount] = useState(0)
-  const [graphInventoryEdgeCount, setGraphInventoryEdgeCount] = useState(0)
-  const [graphLoading, setGraphLoading] = useState(false)
+  const graphPage = useKnowledgeDetailGraphPage({
+    notebookId,
+    enabled,
+    searchMode: graphSearchMode,
+    searchQuery: graphSearchQuery
+  })
   const graphSearchSeqRef = useRef(0)
-  const pageSeqRef = useRef(0)
-  const countsCacheRef = useRef<{
-    keyword: string | undefined
-    counts: {
-      nodeCount: number
-      edgeCount: number
-      filteredNodeCount: number
-    }
-  } | null>(null)
-
-  const loadGraphPage = useCallback(async () => {
-    if (!notebookId || !enabled) return
-    const seq = ++pageSeqRef.current
-    setGraphLoading(true)
-    try {
-      const keyword = graphSearchMode === 'text' ? graphSearchQuery.trim() : undefined
-      const offset = (graphNodePage - 1) * graphNodePageSize
-      const cached = countsCacheRef.current
-      const needCounts = !cached || cached.keyword !== keyword
-      const countsPromise = needCounts
-        ? mobileCountNotebookGraph(notebookId, keyword).then((res) => {
-            countsCacheRef.current = { keyword, counts: res }
-            return res
-          })
-        : Promise.resolve(cached.counts)
-      const [rows, counts] = await Promise.all([
-        mobileListNotebookGraphNodesPage({
-          notebookId,
-          keyword,
-          limit: graphNodePageSize,
-          offset
-        }),
-        countsPromise
-      ])
-      if (seq !== pageSeqRef.current) return
-      setGraphNodesPage(rows as KnowledgeGraphNodeRow[])
-      setGraphNodeTotal(counts.filteredNodeCount)
-      setGraphInventoryNodeCount(counts.nodeCount)
-      setGraphInventoryEdgeCount(counts.edgeCount)
-    } catch {
-      if (seq !== pageSeqRef.current) return
-      setGraphNodesPage([])
-      setGraphNodeTotal(0)
-    } finally {
-      if (seq === pageSeqRef.current) {
-        setGraphLoading(false)
-      }
-    }
-  }, [notebookId, enabled, graphSearchMode, graphSearchQuery, graphNodePage, graphNodePageSize])
-
-  useEffect(() => {
-    if (!enabled) return
-    void loadGraphPage()
-  }, [enabled, loadGraphPage])
 
   const setGraphSearchQuery = (value: string) => {
-    setGraphNodePage(1)
+    graphPage.setGraphNodePage(1)
     setGraphSearchQueryState(value)
   }
   const setGraphSearchMode = (mode: 'text' | 'semantic') => {
-    setGraphNodePage(1)
+    graphPage.setGraphNodePage(1)
     setGraphSearchModeState(mode)
-  }
-  const setGraphNodePageSizeAndReset = (size: number) => {
-    setGraphNodePage(1)
-    setGraphNodePageSize(size)
   }
 
   const locateGraphNode = (nodeId: string) => {
@@ -187,7 +127,7 @@ export function useKnowledgeDetailGraph(input: {
       const groups = await mobileSearchNotebookGraph({
         notebookId,
         query: q,
-        limit: graphNodePageSize
+        limit: graphPage.graphNodePageSize
       })
       if (!isCurrentNotebookGraphSearch(seq, graphSearchSeqRef.current)) return
       const hits: KnowledgeGraphSearchHit[] = groups.flatMap((group) =>
@@ -503,16 +443,7 @@ export function useKnowledgeDetailGraph(input: {
     mergeHits,
     mergeLoserIds,
     graphSearchHits,
-    graphNodePage,
-    graphNodePageSize,
-    graphNodesPage,
-    graphNodeTotal,
-    graphInventoryNodeCount,
-    graphInventoryEdgeCount,
-    graphLoading,
-    loadGraphPage,
-    setGraphNodePage,
-    setGraphNodePageSize: setGraphNodePageSizeAndReset,
+    ...graphPage,
     focusDepth,
     graphFocusDepth: focusDepth,
     setFocusDepth,

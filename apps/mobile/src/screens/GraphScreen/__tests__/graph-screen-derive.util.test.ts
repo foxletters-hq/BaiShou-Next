@@ -183,7 +183,7 @@ describe('profile helpers', () => {
   it('should blank a default nickname and keep a custom one', () => {
     expect(
       graphProfileFormFromAwaken({
-        nickname: '白守用户',
+        nickname: '用户',
         birthday: ' 1990-01-01 ',
         gender: 'male',
         avatarPath: null,

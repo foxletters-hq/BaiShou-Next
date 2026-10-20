@@ -3,24 +3,17 @@ import { unstable_batchedUpdates } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import {
-  GRAPH_VIEW_MAX_NODES_DEFAULT,
-  GRAPH_VIEW_MAX_NODES_STORAGE_KEY,
   clampOcrConcurrency,
   DEFAULT_OCR_CONCURRENCY,
-  parseGraphViewMaxNodes,
   type KnowledgeImportProcessMode,
   type NotebookDataManageAction
 } from '@baishou/shared'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import {
   mobileGetKnowledgeCapabilities,
   mobileGetKnowledgeConfig,
-  mobileGetKnowledgeStats,
   mobileGetNotebook,
-  mobileGetNotebookGraphView,
-  mobileHasKnowledgeModelMismatch,
   mobileListNotebookOrganizeJobs,
   mobileListSources,
   mobileRecoverStaleIngest,
@@ -35,11 +28,9 @@ import {
   mobileWaitNotebookGraphIndexSync,
   subscribeNotebookGraphChanged
 } from '@/src/services/mobile-notebook-graph-review'
-import {
-  mobileGetKnowledgeProcessLabels,
-  peekCachedKnowledgeProcessLabels
-} from '@/src/services/mobile-knowledge-models.service'
+import { peekCachedKnowledgeProcessLabels } from '@/src/services/mobile-knowledge-models.service'
 import { applyNotebookGraphLocalReviewBatch } from '@/src/services/notebook-graph-review.util'
+import { loadKnowledgeDetailOverview } from './knowledge-detail-overview.util'
 import { type KnowledgeNotebookStats } from './knowledge-screen.util'
 import type {
   KnowledgeGraphEdgeRow,
@@ -48,21 +39,22 @@ import type {
   KnowledgeSourceRow
 } from './knowledge-detail.types'
 import {
-  knowledgeOrganizeHasLiveWork,
-  notebookOrganizeShouldKeepWatching
-} from './knowledge-organize-fab.util'
-import {
   createLatestThrottled,
-  knowledgeOrganizeRememberedTotal,
-  knowledgeOrganizeSourceCount,
-  mergeKnowledgeOrganizeJobProgress,
-  type KnowledgeOrganizeJobItem
+  mergeKnowledgeOrganizeJobProgress
 } from './knowledge-organize-banner.util'
+import {
+  applyKnowledgeExtractProgress,
+  patchRunningOrganizeJob
+} from './knowledge-organize-live.util'
 import { useKnowledgeDetailImport } from './useKnowledgeDetailImport'
 import { useKnowledgeDetailSources } from './useKnowledgeDetailSources'
 import { useKnowledgeDetailGraph } from './useKnowledgeDetailGraph'
 import { useKnowledgeDetailNotebook } from './useKnowledgeDetailNotebook'
 import { useKnowledgeDetailVectors } from './useKnowledgeDetailVectors'
+import { useKnowledgeDetailModels } from './useKnowledgeDetailModels'
+import { useKnowledgeDetailOrganize } from './useKnowledgeDetailOrganize'
+import { useKnowledgeDetailPreview } from './useKnowledgeDetailPreview'
+import { useKnowledgeDetailViewMaxNodes } from './useKnowledgeDetailViewMaxNodes'
 import { useKnowledgeHeavyConfirm } from './KnowledgeHeavyConfirmDialog'
 import { extractEngineShortLabel } from './knowledge-screen.util'
 
@@ -103,87 +95,31 @@ export function useKnowledgeDetail(
     Record<string, KnowledgeOcrProgressState>
   >({})
   const [probeSourceId, setProbeSourceId] = useState('')
-  const [extractedPreview, setExtractedPreview] = useState<{
-    title: string
-    text: string
-    pages?: Array<{ page: number; text: string }>
-  } | null>(null)
   const [similarPairs, setSimilarPairs] = useState<
     Awaited<ReturnType<typeof mobileListNotebookSimilarPendingPairs>>
   >([])
-  const [graphJobItems, setGraphJobItems] = useState<
-    Array<{
-      sourceId: string
-      title: string
-      stage?: string
-      status: string
-      lastError?: string | null
-      windowsDone?: number
-      windowsTotal?: number
-      nodesDone?: number
-      nodesTotal?: number
-      pageFrom?: number
-      pageTo?: number
-      pageTotal?: number
-    }>
-  >([])
-  const [organizeJobItems, setOrganizeJobItems] = useState<
-    Array<{
-      sourceId: string
-      title: string
-      stage?: string
-      status: string
-      lastError?: string | null
-      windowsDone?: number
-      windowsTotal?: number
-      nodesDone?: number
-      nodesTotal?: number
-      pageFrom?: number
-      pageTo?: number
-      pageTotal?: number
-    }>
-  >([])
-  const [organizeWatching, setOrganizeWatching] = useState(false)
-  const [organizeKnownTotal, setOrganizeKnownTotal] = useState(0)
-  const [viewMaxNodes, setViewMaxNodes] = useState(GRAPH_VIEW_MAX_NODES_DEFAULT)
   const [vaultId, setVaultId] = useState('')
   const [ocrCapReason, setOcrCapReason] = useState('')
   const [visionCapReason, setVisionCapReason] = useState('')
+
   const cachedLabels = peekCachedKnowledgeProcessLabels()
-  const [embeddingModelLabel, setEmbeddingModelLabel] = useState(
-    cachedLabels?.embeddingModelLabel ?? ''
-  )
-  const [graphModelLabel, setGraphModelLabel] = useState(cachedLabels?.graphModelLabel ?? '')
-  const [embeddingProviderId, setEmbeddingProviderId] = useState(
-    cachedLabels?.embeddingProviderId ?? ''
-  )
-  const [graphProviderId, setGraphProviderId] = useState(cachedLabels?.graphProviderId ?? '')
-  const [modelsLoaded, setModelsLoaded] = useState(Boolean(cachedLabels))
-  const [visionProviderId, setVisionProviderId] = useState('')
-  const [visionModelId, setVisionModelId] = useState('')
-  const [embeddingModelId, setEmbeddingModelId] = useState(cachedLabels?.embeddingModelId ?? '')
-  const [graphModelId, setGraphModelId] = useState(cachedLabels?.graphModelLabel ?? '')
-  const [modelSwitcherSlot, setModelSwitcherSlot] = useState<
-    'vision' | 'embedding' | 'graph' | null
-  >(null)
+  const {
+    fields: modelFields,
+    refreshModels,
+    setVisionProviderId,
+    setVisionModelId,
+    setModelSwitcherSlot
+  } = useKnowledgeDetailModels({ cachedLabels })
+  const preview = useKnowledgeDetailPreview()
+  const organize = useKnowledgeDetailOrganize({
+    sources,
+    pendingJobs: stats?.pendingJobs ?? 0,
+    ocrProgressBySource
+  })
+  const { setGraphJobItems, setOrganizeJobItems, setOrganizeWatching } = organize
+  const { viewMaxNodes, persistViewMaxNodes } = useKnowledgeDetailViewMaxNodes()
 
   const vectors = useKnowledgeDetailVectors({ notebookId, dbReady })
-
-  const refreshModels = useCallback(async () => {
-    try {
-      const labels = await mobileGetKnowledgeProcessLabels()
-      setEmbeddingModelLabel(labels.embeddingModelLabel)
-      setGraphModelLabel(labels.graphModelLabel)
-      setEmbeddingProviderId(labels.embeddingProviderId || '')
-      setGraphProviderId(labels.graphProviderId || '')
-      setEmbeddingModelId(labels.embeddingModelId || '')
-      setGraphModelId(labels.graphModelLabel || '')
-    } catch {
-      /* 模型名仅作提示 */
-    } finally {
-      setModelsLoaded(true)
-    }
-  }, [])
 
   const refreshDetail = useCallback(async () => {
     if (!notebookId) return
@@ -205,62 +141,16 @@ export function useKnowledgeDetail(
     setSources(list || [])
     setDetailLoaded(true)
 
-    const statsTask = mobileGetKnowledgeStats(notebookId)
-      .then((next) => {
-        setStats({
-          sources: next.sources,
-          chunks: next.chunks,
-          pendingJobs: next.pendingJobs,
-          originalBytes: next.originalBytes ?? 0,
-          totalBytes: next.totalBytes ?? 0
-        })
-      })
-      .catch(() => undefined)
-
-    const mismatchTask = mobileHasKnowledgeModelMismatch([notebookId])
-      .then((mismatch) => setModelMismatch(mismatch))
-      .catch(() => setModelMismatch(false))
-
-    const graphTask = mobileGetNotebookGraphView(notebookId, viewMaxNodes)
-      .then((view) => {
-        setGraphNodes(
-          (view.nodes || []).map((n) => ({
-            id: n.id,
-            name: n.name,
-            nodeType: n.nodeType,
-            reviewStatus: n.reviewStatus,
-            summary: n.summary,
-            propsJson: n.propsJson,
-            mentionCount: n.mentionCount
-          }))
-        )
-        setGraphEdges(
-          (view.edges || []).map((e) => ({
-            id: e.id,
-            fromId: e.fromId,
-            toId: e.toId,
-            edgeType: e.edgeType,
-            reviewStatus: e.reviewStatus,
-            sourceExcerpt: e.sourceExcerpt,
-            sourceRef: e.sourceRef
-          }))
-        )
-      })
-      .catch(() => {
-        setGraphNodes([])
-        setGraphEdges([])
-      })
-
-    const similarTask = resolveMobileActiveVaultId()
-      .then(async (activeVaultId) => {
-        setVaultId(activeVaultId)
-        const pairs = await mobileListNotebookSimilarPendingPairs({
-          notebookId,
-          vaultId: activeVaultId
-        })
-        setSimilarPairs(pairs)
-      })
-      .catch(() => setSimilarPairs([]))
+    const overviewTask = loadKnowledgeDetailOverview({
+      notebookId,
+      viewMaxNodes,
+      setStats,
+      setModelMismatch,
+      setGraphNodes,
+      setGraphEdges,
+      setVaultId,
+      setSimilarPairs
+    })
 
     const jobsTask = mobileListNotebookOrganizeJobs(notebookId)
       .then((jobs) => {
@@ -277,24 +167,8 @@ export function useKnowledgeDetail(
 
     void refreshModels()
 
-    await Promise.all([statsTask, mismatchTask, graphTask, similarTask, jobsTask])
-  }, [notebookId, refreshModels, t, viewMaxNodes])
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY)
-        if (cancelled) return
-        setViewMaxNodes(parseGraphViewMaxNodes(raw))
-      } catch {
-        // ignore
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    await Promise.all([overviewTask, jobsTask])
+  }, [notebookId, refreshModels, t, viewMaxNodes, setGraphJobItems, setOrganizeJobItems])
 
   useEffect(() => {
     if (!dbReady) return
@@ -335,7 +209,7 @@ export function useKnowledgeDetail(
     return () => {
       cancelled = true
     }
-  }, [dbReady, notebookId, refreshDetail])
+  }, [dbReady, notebookId, refreshDetail, setVisionProviderId, setVisionModelId])
 
   useEffect(() => {
     if (!dbReady || !notebookId) return
@@ -372,52 +246,11 @@ export function useKnowledgeDetail(
       info: Parameters<Parameters<typeof subscribeMobileKnowledgeExtractProgress>[0]>[0]
     ) => {
       unstable_batchedUpdates(() => {
-        setOcrProgressBySource((prev) => {
-          if (info.total <= 0 && !(info.windowsTotal && info.windowsTotal > 0)) {
-            const next = { ...prev }
-            delete next[info.sourceId]
-            return next
-          }
-          return {
-            ...prev,
-            [info.sourceId]: {
-              page: info.page,
-              total: info.total,
-              phase: info.phase,
-              windowsDone: info.windowsDone,
-              windowsTotal: info.windowsTotal,
-              nodesDone: info.nodesDone,
-              nodesTotal: info.nodesTotal,
-              pageFrom: info.pageFrom,
-              pageTo: info.pageTo,
-              pageTotal: info.pageTotal
-            }
-          }
+        applyKnowledgeExtractProgress(info, {
+          setOcrProgressBySource,
+          setGraphJobItems,
+          setOrganizeJobItems
         })
-        if (info.phase !== 'graph' && info.phase !== 'graphNodes') return
-        const patchGraphProgress = (prev: KnowledgeOrganizeJobItem[]) => {
-          const idx = prev.findIndex((item) => item.sourceId === info.sourceId)
-          const nextItem: KnowledgeOrganizeJobItem = {
-            sourceId: info.sourceId,
-            title: prev[idx]?.title || info.sourceId,
-            stage: 'graph',
-            status: 'running',
-            lastError: prev[idx]?.lastError,
-            windowsDone: info.windowsDone,
-            windowsTotal: info.windowsTotal,
-            nodesDone: info.nodesDone,
-            nodesTotal: info.nodesTotal,
-            pageFrom: info.pageFrom,
-            pageTo: info.pageTo,
-            pageTotal: info.pageTotal
-          }
-          if (idx < 0) return [...prev, nextItem]
-          const next = [...prev]
-          next[idx] = { ...next[idx], ...nextItem }
-          return next
-        }
-        setGraphJobItems(patchGraphProgress)
-        setOrganizeJobItems(patchGraphProgress)
       })
     }
     const throttled = createLatestThrottled(250, applyProgress)
@@ -433,7 +266,7 @@ export function useKnowledgeDetail(
       unsubscribe()
       throttled.flush()
     }
-  }, [])
+  }, [setGraphJobItems, setOrganizeJobItems])
 
   useEffect(() => {
     return subscribeMobileKnowledgeIngestLive((info) => {
@@ -441,87 +274,12 @@ export function useKnowledgeDetail(
         void refreshDetail().catch(() => undefined)
         return
       }
-      const patchRunning = (
-        prev: Array<{
-          sourceId: string
-          title: string
-          stage?: string
-          status: string
-          lastError?: string | null
-        }>
-      ) => {
-        const idx = prev.findIndex(
-          (item) => item.sourceId === info.sourceId && (item.stage || '') === info.stage
-        )
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = { ...next[idx], status: 'running' }
-          return next
-        }
-        return [
-          ...prev,
-          {
-            sourceId: info.sourceId,
-            title: info.sourceId,
-            stage: info.stage,
-            status: 'running'
-          }
-        ]
+      setOrganizeJobItems((prev) => patchRunningOrganizeJob(prev, info))
+      if (info.stage === 'graph') {
+        setGraphJobItems((prev) => patchRunningOrganizeJob(prev, info))
       }
-      setOrganizeJobItems(patchRunning)
-      if (info.stage === 'graph') setGraphJobItems(patchRunning)
     })
-  }, [refreshDetail])
-
-  const organizeLiveInput = {
-    ingestingCount: sources.filter((s) => s.status === 'extracting' || s.status === 'embedding')
-      .length,
-    sources,
-    graphJobItems,
-    ingestJobItems: organizeJobItems,
-    ocrProgressBySource
-  }
-  const hasLiveIngest = knowledgeOrganizeHasLiveWork(organizeLiveInput)
-  const keepWatching = notebookOrganizeShouldKeepWatching(organizeLiveInput)
-  const currentOrganizeCount = knowledgeOrganizeSourceCount({
-    ingestingCount: organizeLiveInput.ingestingCount,
-    pendingJobs: stats?.pendingJobs ?? 0,
-    graphJobItems,
-    ingestJobItems: organizeJobItems,
-    ocrProgressBySource
-  })
-  const runningGraph = graphJobItems.find((item) => item.status === 'running')
-  const runningGraphProgress = runningGraph ? ocrProgressBySource[runningGraph.sourceId] : undefined
-  const graphProgress = runningGraph
-    ? [
-        runningGraph.title,
-        runningGraph.pageTotal && runningGraph.pageTo
-          ? `${runningGraph.pageTo}/${runningGraph.pageTotal}`
-          : runningGraph.windowsTotal
-            ? `${runningGraph.windowsDone ?? 0}/${runningGraph.windowsTotal}`
-            : runningGraphProgress?.total
-              ? `${runningGraphProgress.page}/${runningGraphProgress.total}`
-              : ''
-      ]
-        .filter(Boolean)
-        .join(' ')
-    : ''
-
-  useEffect(() => {
-    setOrganizeKnownTotal((prev) =>
-      knowledgeOrganizeRememberedTotal(
-        prev,
-        currentOrganizeCount,
-        organizeWatching || hasLiveIngest
-      )
-    )
-  }, [currentOrganizeCount, hasLiveIngest, organizeWatching])
-
-  useEffect(() => {
-    if (!organizeWatching) return
-    if (keepWatching) return
-    setOrganizeWatching(false)
-  }, [hasLiveIngest, keepWatching, organizeJobItems, organizeWatching, sources])
+  }, [refreshDetail, setGraphJobItems, setOrganizeJobItems])
 
   const graphRowsRef = useRef({ nodes: graphNodes, edges: graphEdges })
   graphRowsRef.current = { nodes: graphNodes, edges: graphEdges }
@@ -549,16 +307,10 @@ export function useKnowledgeDetail(
     [applyLocalGraphReviewBatch]
   )
 
-  const persistViewMaxNodes = async (value: number) => {
-    const next = parseGraphViewMaxNodes(JSON.stringify(value))
-    setViewMaxNodes(next)
-    await AsyncStorage.setItem(GRAPH_VIEW_MAX_NODES_STORAGE_KEY, JSON.stringify(next))
-  }
-
   const importing = useKnowledgeDetailImport({
     notebookId,
-    embeddingModelLabel,
-    graphModelLabel,
+    embeddingModelLabel: modelFields.embeddingModelLabel,
+    graphModelLabel: modelFields.graphModelLabel,
     t,
     toast,
     setBusy,
@@ -588,7 +340,7 @@ export function useKnowledgeDetail(
     setError,
     refreshDetail,
     setOrganizeWatching,
-    openTextPreview: (title, text) => setExtractedPreview({ title, text })
+    openTextPreview: preview.fields.openTextPreview
   })
   const notebook = useKnowledgeDetailNotebook({
     notebookId,
@@ -620,7 +372,7 @@ export function useKnowledgeDetail(
     setCoverUri,
     setModelMismatch,
     setClearPhrase,
-    setExtractedPreview,
+    setExtractedPreview: preview.setExtractedPreview,
     refreshDetail,
     setOrganizeWatching
   })
@@ -634,9 +386,6 @@ export function useKnowledgeDetail(
     () => graphEdges.filter((edge) => edge.reviewStatus === 'pending'),
     [graphEdges]
   )
-  const ingestingCount = sources.filter(
-    (s) => s.status === 'extracting' || s.status === 'embedding'
-  ).length
 
   return {
     dbReady,
@@ -652,28 +401,10 @@ export function useKnowledgeDetail(
     detailLoaded,
     busy,
     modelMismatch,
-    ingestingCount,
-    pasteTitle: importing.pasteTitle,
-    setPasteTitle: importing.setPasteTitle,
-    pasteText: importing.pasteText,
-    setPasteText: importing.setPasteText,
-    urlValue: importing.urlValue,
-    setUrlValue: importing.setUrlValue,
-    importMode: importing.importMode,
-    setImportMode: importing.setImportMode,
-    openAddSource: importing.openAddSource,
-    extractHintPrompt: importing.extractHintPrompt,
-    settleExtractHint: importing.settleExtractHint,
-    importProcessPrompt: importing.importProcessPrompt,
-    settleImportProcess: importing.settleImportProcess,
+    ...organize.fields,
+    ...importing,
     importProcessMode,
-    embeddingModelLabel,
-    graphModelLabel,
-    embeddingProviderId,
-    graphProviderId,
-    visionProviderId,
-    modelsLoaded,
-    visionModelId,
+    ...modelFields,
     extractEngineLabel: extractEngineShortLabel(engine, t),
     graphNodes,
     graphEdges,
@@ -697,9 +428,6 @@ export function useKnowledgeDetail(
     reprocessSourceVector: sourceActions.reprocessSourceVector,
     rebuildNotebookGraph: notebook.rebuildNotebookGraph,
     startOrganize: notebook.startOrganize,
-    onImportText: importing.onImportText,
-    onImportUrl: importing.onImportUrl,
-    onImportFile: importing.onImportFile,
     onDeleteSource: sourceActions.onDeleteSource,
     confirmManage: notebook.confirmManage,
     deleteNotebook: notebook.deleteNotebook,
@@ -718,17 +446,12 @@ export function useKnowledgeDetail(
     probing: notebook.probing,
     probeSourceId,
     setProbeSourceId,
-    pickVisionModel: () => setModelSwitcherSlot('vision'),
-    pickEmbeddingModel: () => setModelSwitcherSlot('embedding'),
-    pickGraphModel: () => setModelSwitcherSlot('graph'),
-    modelSwitcherSlot,
-    closeModelSwitcher: () => setModelSwitcherSlot(null),
     applyModelSwitcher: async (providerId: string, modelId: string) => {
-      const slot = modelSwitcherSlot
+      const slot = modelFields.modelSwitcherSlot
       if (!slot) return
       if (slot === 'vision') {
-        const prevProvider = visionProviderId
-        const prevModel = visionModelId
+        const prevProvider = modelFields.visionProviderId
+        const prevModel = modelFields.visionModelId
         setVisionProviderId(providerId)
         setVisionModelId(modelId)
         const ok = await notebook.saveVisionModel(providerId, modelId)
@@ -744,8 +467,6 @@ export function useKnowledgeDetail(
       if (!ok) return
       setModelSwitcherSlot(null)
     },
-    embeddingModelId,
-    graphModelId,
     ocrProgressBySource,
     embedSource: sourceActions.embedSource,
     cancelExtract: sourceActions.cancelExtract,
@@ -764,21 +485,12 @@ export function useKnowledgeDetail(
       await graph.previewGraphFragments(edges)
       sourceActions.openFragmentPreview(t('knowledge.graph_fragments', '查看原文窗口'))
     },
-    extractedPreview,
-    closeExtractedPreview: () => setExtractedPreview(null),
-    openTextPreview: (title: string, text: string) => setExtractedPreview({ title, text }),
+    ...preview.fields,
     pendingNodes,
     pendingEdges,
     similarPairs,
-    graphProgress,
-    graphJobItems,
-    organizeJobItems,
-    organizeWatching,
-    organizeKnownTotal,
     viewMaxNodes,
     persistViewMaxNodes,
-    uploadingSources: importing.uploadingSources,
-    dismissUploading: importing.dismissUploading,
     heavyPrompt: heavy.prompt,
     settleHeavyConfirm: heavy.settle
   }

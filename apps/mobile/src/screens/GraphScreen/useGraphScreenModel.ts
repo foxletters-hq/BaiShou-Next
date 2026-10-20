@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  collectGraphFocusIds,
   deriveLegacyVaultId,
   emptyGraphExtractQueueSnapshot,
-  parseDateStr,
-  resolveGraphNodeDisplayName,
-  buildGraphNodeNameMap,
   clampGraphMonthRange,
   defaultGraphMonthRange,
   type GraphMonthRange
@@ -23,24 +19,14 @@ import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/databas
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import { subscribeGraphDataChanged } from '@/src/services/mobile-graph-data-changed'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
-import {
-  buildGraphScreenDetailEdges,
-  buildGraphScreenDisplayEdges,
-  buildGraphScreenDisplayNodes,
-  countGraphCanvasNodes
-} from './graph-screen-display.util'
+import { countGraphCanvasNodes } from './graph-screen-display.util'
 import {
   graphScreenPhaseKey,
-  parseGraphSourceDate,
   resolveGraphNodeSourcePreview,
   shouldShowGraphEmptyGuide,
   shouldShowGraphMonthEmpty
 } from './graph-screen-derive.util'
-import type {
-  GraphScreenTab,
-  GraphScreenTranslateFn,
-  GraphSourcePreview
-} from './graph-screen.types'
+import type { GraphScreenTab, GraphScreenTranslateFn } from './graph-screen.types'
 import { useGraphScreenData } from './useGraphScreenData'
 import { useGraphScreenDetail } from './useGraphScreenDetail'
 import { useGraphScreenExtract } from './useGraphScreenExtract'
@@ -50,6 +36,8 @@ import { useGraphScreenInventory } from './useGraphScreenInventory'
 import { consumeGraphPendingFocus, subscribeGraphPendingFocus } from './graph-pending-focus'
 import { consumeGraphOpsNodeFocus, subscribeGraphOpsNodeFocus } from './graph-cross-page-focus'
 import { useGraphScreenSettings } from './useGraphScreenSettings'
+import { useGraphScreenDisplayModel } from './useGraphScreenDisplayModel'
+import { useGraphScreenSourcePreview } from './useGraphScreenSourcePreview'
 
 export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void | Promise<void> }) {
   const { t } = useTranslation()
@@ -67,7 +55,10 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
   const [status, setStatus] = useState('')
   const [dismissGuide, setDismissGuide] = useState(false)
   const [animationTick, setAnimationTick] = useState(0)
-  const [sourcePreview, setSourcePreview] = useState<GraphSourcePreview | null>(null)
+  const { sourcePreview, setSourcePreview, openSource } = useGraphScreenSourcePreview({
+    services,
+    toast
+  })
 
   useEffect(() => {
     const applyPendingFocus = () => {
@@ -257,83 +248,24 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
     pinNeighborhood: search.pinNeighborhood
   })
 
-  const displayNodes = useMemo(
-    () =>
-      buildGraphScreenDisplayNodes({
-        nodes: data.graphNodes,
-        hideEntry: settings.hideEntry,
-        approvedOnly: settings.approvedOnly,
-        enabledNodeTypes: settings.enabledNodeTypes,
-        localView: search.localView,
-        selectedId: search.selectedId,
-        selectedNode: search.selectedNode,
-        pinNeighborhood: search.pinNeighborhood,
-        highlightIds: search.highlightIds,
-        highlightedEdgeIds: search.highlightedEdgeIds
-      }),
-    [
-      data.graphNodes,
-      settings.hideEntry,
-      settings.approvedOnly,
-      settings.enabledNodeTypes,
-      search.localView,
-      search.selectedId,
-      search.selectedNode,
-      search.pinNeighborhood,
-      search.highlightIds,
-      search.highlightedEdgeIds
-    ]
-  )
-  const displayEdges = useMemo(
-    () =>
-      buildGraphScreenDisplayEdges({
-        displayNodes,
-        edges: data.graphEdges,
-        approvedOnly: settings.approvedOnly,
-        localView: search.localView,
-        selectedId: search.selectedId,
-        nodes: data.graphNodes,
-        pinNeighborhood: search.pinNeighborhood
-      }),
-    [
-      displayNodes,
-      data.graphEdges,
-      settings.approvedOnly,
-      search.localView,
-      search.selectedId,
-      data.graphNodes,
-      search.pinNeighborhood
-    ]
-  )
-  const focusIds = useMemo(() => {
-    if (!search.selectedId) return undefined
-    return collectGraphFocusIds(search.selectedId, displayEdges, search.focusDepth)
-  }, [search.selectedId, displayEdges, search.focusDepth])
-  const graphNodeNameById = useMemo(
-    () =>
-      buildGraphNodeNameMap([
-        ...data.graphNodes,
-        ...data.pendingNodes,
-        ...data.pendingEndpointNodes,
-        ...(search.localView?.nodes || [])
-      ]),
-    [data.graphNodes, data.pendingNodes, data.pendingEndpointNodes, search.localView]
-  )
-  const detailEdges = useMemo(
-    () =>
-      buildGraphScreenDetailEdges({
-        selectedId: search.selectedId,
-        localView: search.localView,
-        edges: data.graphEdges,
-        resolvePartnerName: (partnerId) =>
-          resolveGraphNodeDisplayName(
-            graphNodeNameById,
-            partnerId,
-            t('graph.unknown_node', '未知节点')
-          )
-      }),
-    [search.localView, search.selectedId, data.graphEdges, graphNodeNameById, t]
-  )
+  const { displayNodes, displayEdges, focusIds, graphNodeNameById, detailEdges } =
+    useGraphScreenDisplayModel({
+      graphNodes: data.graphNodes,
+      graphEdges: data.graphEdges,
+      pendingNodes: data.pendingNodes,
+      pendingEndpointNodes: data.pendingEndpointNodes,
+      localView: search.localView,
+      selectedId: search.selectedId,
+      selectedNode: search.selectedNode,
+      pinNeighborhood: search.pinNeighborhood,
+      focusDepth: search.focusDepth,
+      highlightIds: search.highlightIds,
+      highlightedEdgeIds: search.highlightedEdgeIds,
+      hideEntry: settings.hideEntry,
+      approvedOnly: settings.approvedOnly,
+      enabledNodeTypes: settings.enabledNodeTypes,
+      t
+    })
 
   const tabItems = useMemo(
     () =>
@@ -345,60 +277,6 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
       ] as const,
     [t, data.pending.length, review.pendingItems.length, data.similarPairs.length]
   )
-
-  const openSource = async (
-    dateOrRef: string | null | undefined,
-    fallbackExcerpt?: string | null
-  ) => {
-    const { raw, date } = parseGraphSourceDate(dateOrRef)
-    const excerpt = String(fallbackExcerpt || '').trim()
-    if (!date && !excerpt && !raw) {
-      toast.showInfo(t('graph.source_unavailable', '没有可预览的原文'))
-      return
-    }
-    setSourcePreview({
-      date,
-      content: excerpt || '',
-      excerpt: excerpt || null,
-      loading: Boolean(date)
-    })
-    if (!date) {
-      setSourcePreview({
-        date: null,
-        content: excerpt || raw,
-        excerpt: excerpt || null,
-        loading: false
-      })
-      return
-    }
-    if (!services?.diaryService) {
-      setSourcePreview({
-        date,
-        content: excerpt || t('graph.source_load_failed', '加载原文失败'),
-        excerpt: excerpt || null,
-        loading: false
-      })
-      return
-    }
-    try {
-      const entry = await services.diaryService.findByDate(parseDateStr(date))
-      const content = String(entry?.content || '').trim() || excerpt
-      setSourcePreview({
-        date,
-        content: content || t('graph.source_not_found', '未找到该日日记原文'),
-        excerpt: excerpt || null,
-        loading: false
-      })
-    } catch (e: any) {
-      setSourcePreview({
-        date,
-        content:
-          excerpt || String(e?.message || e) || t('graph.source_load_failed', '加载原文失败'),
-        excerpt: excerpt || null,
-        loading: false
-      })
-    }
-  }
 
   const openNodeSource = async (nodeId: string, node?: { propsJson?: string | null } | null) => {
     const inMemory = resolveGraphNodeSourcePreview({
