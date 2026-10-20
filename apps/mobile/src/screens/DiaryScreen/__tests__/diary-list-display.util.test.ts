@@ -26,4 +26,25 @@ describe('mapDiaryListEntries', () => {
     expect(row?.preview).toBe('hello')
     expect(row?.date.getFullYear()).toBe(2026)
   })
+
+  it('should parse date-only strings as local calendar days instead of UTC days', () => {
+    const prevTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const [row] = mapDiaryListEntries([
+        {
+          id: 2,
+          date: '2026-01-01',
+          content: 'new year',
+          preview: 'new year'
+        }
+      ])
+      expect(row?.date.getFullYear()).toBe(2026)
+      expect(row?.date.getMonth()).toBe(0)
+      expect(row?.date.getDate()).toBe(1)
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ
+      else process.env.TZ = prevTz
+    }
+  })
 })

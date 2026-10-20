@@ -194,15 +194,15 @@ export const DiaryEditorScreen: React.FC = () => {
           }
         } else if (isNewEntryMode) {
           const targetDate = date
-            ? normalizeDiaryCalendarDate(new Date(date))
+            ? normalizeDiaryCalendarDate(parseDateStr(date))
             : normalizeDiaryCalendarDate(now)
           initBlankDiaryEntry(templateConfig, now, targetDate)
         } else if (date) {
-          const existing = await services.diaryService.findByDate(new Date(date))
+          const existing = await services.diaryService.findByDate(parseDateStr(date))
           if (existing) {
             applyLoadedDiary(existing, templateConfig, now)
           } else {
-            initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(new Date(date)))
+            initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(parseDateStr(date)))
           }
         } else {
           initBlankDiaryEntry(templateConfig, now, normalizeDiaryCalendarDate(now))

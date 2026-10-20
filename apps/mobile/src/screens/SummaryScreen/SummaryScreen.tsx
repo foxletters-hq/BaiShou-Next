@@ -27,6 +27,7 @@ import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
+import { buildSummaryTaskKey } from './utils/summary-detail.helpers'
 import { peekSummaryDashboardCache } from '@/src/lib/summary-dashboard-cache'
 import { emitSyncMutation } from '@/src/cache/mobile-cache-coordinator'
 import { usePersistedSharedMemoryLookback } from '@/src/hooks/usePersistedSharedMemoryLookback'
@@ -239,7 +240,7 @@ export const SummaryScreen: React.FC = () => {
     setIsBatchGenerating(true)
 
     const pendingTasks = missingSummaries.filter((mp) => {
-      const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`
+      const uKey = buildSummaryTaskKey(mp.type, mp.startDate)
       const state = generationStates[uKey]
       return !state || state.status === 'pending' || state.status === 'error'
     })

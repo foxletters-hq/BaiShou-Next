@@ -88,7 +88,7 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
     }
   }, [pendingPreviewUri, resolvedAvatarUri, profile.avatarPath])
 
-  const displayName = profile.nickname?.trim() || t('profile.default_nickname', '白守用户')
+  const displayName = profile.nickname?.trim() || t('profile.default_nickname', '用户')
   const displayUri = pendingPreviewUri ?? resolvedAvatarUri
   const showAvatarSpinner = avatarResolving && !displayUri && !savingAvatar
   const avatarSource = displayUri
