@@ -60,6 +60,18 @@ export async function afterIncrementalSync(
     await pathService.purgeAgentAvatarBasenames(purgedAvatars)
   }
 
+  const identityChanged = [...result.downloaded, ...result.deletedLocal].some(
+    (filePath) => filePath === 'vault_registry.json' || filePath.endsWith('/.baishou/vault.json')
+  )
+  if (identityChanged) {
+    try {
+      // 远端 registry/vault.json 已落盘：重新校准本机路径、稳定 ID 与活跃仓缓存
+      await vaultService.initRegistry()
+    } catch (e) {
+      logger.warn('[IncrementalSync] vault registry reload after sync failed:', e as Error)
+    }
+  }
+
   const cls = classifyIncrementalSyncPaths([...result.downloaded, ...result.deletedLocal])
   logger.warn('[IncrementalSync][PostSync] start', {
     downloaded: result.downloaded.length,

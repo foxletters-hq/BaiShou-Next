@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight } from 'lucide-react'
 import {
   GRAPH_APPEARANCE_RANGES,
   GRAPH_FOCUS_DEPTH_OPTIONS,
@@ -86,10 +87,16 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
         <button
           type="button"
           className={styles.settingsSectionHead}
+          aria-expanded={sectionOpen.appearance}
           onClick={() => toggle('appearance')}
         >
-          <span className={styles.settingsChevron}>{sectionOpen.appearance ? '▾' : '▸'}</span>
-          {t('graph.appearance', '外观')}
+          <ChevronRight
+            size={15}
+            strokeWidth={2}
+            className={`${styles.settingsChevron}${sectionOpen.appearance ? ` ${styles.settingsChevronOpen}` : ''}`}
+            aria-hidden
+          />
+          <span className={styles.settingsSectionTitle}>{t('graph.appearance', '外观')}</span>
         </button>
         {sectionOpen.appearance ? (
           <div className={styles.settingsSectionBody}>
@@ -240,10 +247,16 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
         <button
           type="button"
           className={styles.settingsSectionHead}
+          aria-expanded={sectionOpen.forces}
           onClick={() => toggle('forces')}
         >
-          <span className={styles.settingsChevron}>{sectionOpen.forces ? '▾' : '▸'}</span>
-          {t('graph.forces', '力度')}
+          <ChevronRight
+            size={15}
+            strokeWidth={2}
+            className={`${styles.settingsChevron}${sectionOpen.forces ? ` ${styles.settingsChevronOpen}` : ''}`}
+            aria-hidden
+          />
+          <span className={styles.settingsSectionTitle}>{t('graph.forces', '力度')}</span>
         </button>
         {sectionOpen.forces ? (
           <div className={styles.settingsSectionBody}>

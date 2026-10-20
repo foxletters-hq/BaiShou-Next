@@ -42,6 +42,8 @@ export function capabilityTitle(id: AgentGateCapabilityId, t: AgentGateSettingsT
       return t('settings.agent_gate_cap_diary_write', '写入日记')
     case 'diary_delete':
       return t('settings.agent_gate_cap_diary_delete', '删除日记')
+    case 'summary_write':
+      return t('settings.agent_gate_cap_summary_write', '写入总结')
     case 'memory_store':
       return t('settings.agent_gate_cap_memory_store', '写入记忆')
     case 'memory_delete':
@@ -77,6 +79,8 @@ export function capabilityHint(id: AgentGateCapabilityId, t: AgentGateSettingsTr
       return t('settings.agent_gate_cap_diary_write_hint', '创建或修改日记')
     case 'diary_delete':
       return t('settings.agent_gate_cap_diary_delete_hint', '删除日记始终需要确认')
+    case 'summary_write':
+      return t('settings.agent_gate_cap_summary_write_hint', '创建或更新周记、月报、季报、年度总结')
     case 'memory_store':
       return t('settings.agent_gate_cap_memory_store_hint', '写入长期记忆')
     case 'memory_delete':

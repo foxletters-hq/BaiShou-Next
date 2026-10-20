@@ -1,10 +1,18 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdArticle, MdChevronLeft, MdChevronRight, MdSettings, MdTune } from 'react-icons/md'
+import {
+  MdArticle,
+  MdChevronLeft,
+  MdChevronRight,
+  MdInfoOutline,
+  MdSettings,
+  MdTune
+} from 'react-icons/md'
 import type { GraphSideMode } from './graph-page.types'
 import { formatGraphRailCount } from './graph-page-view.util'
 import { GraphPageCanvasPane } from './GraphPageCanvasPane'
 import { GraphPageContentPane } from './GraphPageContentPane'
+import { GraphPageDetailPane } from './GraphPageDetailPane'
 import { GraphPageOrganizePane } from './GraphPageOrganizePane'
 import styles from './GraphPage.module.css'
 
@@ -22,6 +30,7 @@ export function GraphPageSideColumn(props: {
   organize: React.ComponentProps<typeof GraphPageOrganizePane>
   canvas: React.ComponentProps<typeof GraphPageCanvasPane>
   content: React.ComponentProps<typeof GraphPageContentPane>
+  detail: React.ComponentProps<typeof GraphPageDetailPane>
 }): React.ReactElement {
   const { t } = useTranslation()
   const { sideMode } = props
@@ -97,6 +106,18 @@ export function GraphPageSideColumn(props: {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={!props.sideCollapsed && sideMode === 'detail'}
+          className={`${styles.railBtn} ${
+            !props.sideCollapsed && sideMode === 'detail' ? styles.railBtnActive : ''
+          }`}
+          title={t('graph.tab_detail', '详情')}
+          onClick={() => props.onOpenSide('detail')}
+        >
+          <MdInfoOutline size={18} />
+        </button>
+        <button
+          type="button"
           className={`${styles.railBtn} ${styles.railCollapseBtn}`}
           title={
             props.sideCollapsed
@@ -115,6 +136,15 @@ export function GraphPageSideColumn(props: {
             <GraphPageOrganizePane {...props.organize} />
           ) : sideMode === 'canvas' ? (
             <GraphPageCanvasPane {...props.canvas} />
+          ) : sideMode === 'detail' ? (
+            <>
+              <div className={styles.settingsHeader}>
+                <div className={styles.settingsTitle}>{t('graph.tab_detail', '详情')}</div>
+              </div>
+              <div className={styles.panel} data-graph-side-scroll>
+                <GraphPageDetailPane {...props.detail} />
+              </div>
+            </>
           ) : (
             <GraphPageContentPane {...props.content} />
           )}

@@ -15,7 +15,7 @@ import {
   buildGraphPageDisplayNodes
 } from './graph-page-display.util'
 import { stripGraphNodeSuspectReason, viewDepthFor } from './graph-page-view.util'
-import type { GraphSideMode, GraphSideTab } from './graph-page.types'
+import type { GraphSideMode } from './graph-page.types'
 
 type SelectionDeps = {
   nodes: any[]
@@ -31,7 +31,6 @@ type SelectionDeps = {
   openSide: (mode: GraphSideMode) => void
   sideCollapsed: boolean
   setSideCollapsedPersist: (collapsed: boolean) => void
-  setTab: (tab: GraphSideTab) => void
   refresh: () => Promise<void>
 }
 
@@ -184,9 +183,8 @@ export function useGraphPageSelection(deps: SelectionDeps) {
     setSelectedNode(node)
     setLocalView(view)
     if (opts?.bypassMonth) setPinNeighborhood(true)
-    deps.openSide('content')
+    deps.openSide('detail')
     if (deps.sideCollapsed) deps.setSideCollapsedPersist(false)
-    deps.setTab('detail')
     if (opts?.locate || opts?.bypassMonth) setLocateSeq((n) => n + 1)
   }
 

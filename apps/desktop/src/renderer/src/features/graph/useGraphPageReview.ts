@@ -76,14 +76,18 @@ export function useGraphPageReview(deps: ReviewDeps) {
     }
   }
 
-  const mergeNodes = (survivorId: string, loserId: string) => {
+  const mergeNodes = (
+    survivorId: string,
+    loserId: string,
+    names?: { survivorName?: string; loserName?: string }
+  ) => {
     if (!survivorId || !loserId || survivorId === loserId) return
     const survivor = findGraphNode(survivorId)
     const loser = findGraphNode(loserId)
     openMergeConfirm({
       survivorId,
-      survivorName: String(survivor?.name || survivorId),
-      losers: [{ id: loserId, name: String(loser?.name || loserId) }]
+      survivorName: String(names?.survivorName || survivor?.name || survivorId),
+      losers: [{ id: loserId, name: String(names?.loserName || loser?.name || loserId) }]
     })
   }
 

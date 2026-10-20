@@ -91,10 +91,31 @@ describe('memory center chrome', () => {
     expect(strip).toContain('styles.extraChips')
   })
 
+  it('uses the same standard size for memory tabs and semantic/text search switches', () => {
+    const sources = [
+      readSrc('features/memory/MemoryCenterPage.tsx'),
+      readSrc('features/graph/GraphPageToolbar.tsx'),
+      readSrc('features/graph/GraphPageNodesPane.tsx'),
+      readRagSrc('RagMemoryToolbar.tsx')
+    ]
+
+    for (const source of sources) {
+      let from = source.indexOf('<SegmentedControl')
+      expect(from).toBeGreaterThanOrEqual(0)
+      while (from >= 0) {
+        const to = source.indexOf('/>', from)
+        expect(to).toBeGreaterThan(from)
+        const block = source.slice(from, to)
+        expect(block).not.toContain('size="small"')
+        from = source.indexOf('<SegmentedControl', to)
+      }
+    }
+  })
+
   it('B7: MemoryCenterPage uses SegmentedControl and does not hand-roll tab buttons', () => {
     const src = readSrc('features/memory/MemoryCenterPage.tsx')
     expect(src).toContain('SegmentedControl')
-    expect(src).toContain('size="small"')
+    expect(src).not.toContain('size="small"')
     expect(src).not.toContain('btnActive')
     expect(src).toContain("value: 'vectors' as const")
     expect(src.indexOf("value: 'vectors' as const")).toBeLessThan(

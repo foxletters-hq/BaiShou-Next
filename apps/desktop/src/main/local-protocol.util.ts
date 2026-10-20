@@ -81,10 +81,11 @@ export function localProtocolFileResponseHeaders(input: {
   size: number
   range?: LocalProtocolByteRange | null
 }): { status: number; headers: Record<string, string> } {
+  const isImage = input.contentType.startsWith('image/')
   const headers: Record<string, string> = {
     'Content-Type': input.contentType,
     'Accept-Ranges': 'bytes',
-    'Cache-Control': 'no-cache'
+    'Cache-Control': isImage ? 'public, max-age=31536000, immutable' : 'no-cache'
   }
   if (!input.range) {
     return { status: 200, headers: { ...headers, 'Content-Length': String(input.size) } }

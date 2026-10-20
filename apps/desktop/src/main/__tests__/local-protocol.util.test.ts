@@ -70,5 +70,10 @@ describe('local-protocol.util', () => {
         'Content-Range': 'bytes 10-19/80'
       }
     })
+    expect(
+      localProtocolFileResponseHeaders({ contentType: 'image/jpeg', size: 120 }).headers[
+        'Cache-Control'
+      ]
+    ).toBe('public, max-age=31536000, immutable')
   })
 })

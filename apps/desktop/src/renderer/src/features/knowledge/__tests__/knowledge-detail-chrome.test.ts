@@ -41,6 +41,8 @@ function readNotebookGraphChrome(): string {
     'NotebookGraphSidePanel.tsx',
     'NotebookGraphOverlays.tsx',
     'useNotebookGraphMerge.ts',
+    'useNotebookGraphSearch.ts',
+    'notebook-graph-view-cache.ts',
     'notebook-graph-pending-reviews.ts'
   ]
     .map(readKnowledge)
@@ -283,6 +285,13 @@ describe('knowledge detail chrome', () => {
     expect(page).not.toContain('triggerBatchEmbed')
     expect(page).toContain('onRebuildGraph={() => {')
     expect(pane).toContain('onRebuildGraph ?? onStartExtract')
+  })
+
+  it('should not flash the empty graph guide before the graph view has loaded', () => {
+    const pane = readNotebookGraphChrome()
+    expect(pane).toContain('const showEmptyGuide = viewLoaded && nodes.length === 0')
+    expect(pane).toContain('{!viewLoaded ? null : showEmptyGuide ? (')
+    expect(pane).toContain('readNotebookGraphViewCache(notebookId, viewMaxNodes)')
   })
 
   it('should delete the open notebook after a three-second confirm dialog', () => {

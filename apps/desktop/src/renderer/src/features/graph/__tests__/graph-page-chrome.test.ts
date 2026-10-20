@@ -123,7 +123,7 @@ describe('GraphPage chrome', () => {
     const canvas = sliceBetween(
       embedPane(sideSrc, '<GraphPageCanvasPane', canvasPaneSrc),
       ") : sideMode === 'canvas' ? (",
-      ') : ('
+      ") : sideMode === 'detail' ? ("
     )
     expect(settingsSrc).toContain("t('graph.focus_depth'")
     expect(settingsSrc).not.toContain("t('graph.view_section'")
@@ -188,7 +188,7 @@ describe('GraphPage chrome', () => {
     const canvas = sliceBetween(
       embedPane(sideSrc, '<GraphPageCanvasPane', canvasPaneSrc),
       ") : sideMode === 'canvas' ? (",
-      ') : ('
+      ") : sideMode === 'detail' ? ("
     )
     expect(canvas).toContain('graphNodeTypeColor')
     expect(canvas).toContain('typeChipActive')
@@ -197,19 +197,27 @@ describe('GraphPage chrome', () => {
   })
 
   it('mounts similar-pending pairs with merge and keep-apart actions', () => {
-    const similar = sliceBetween(
-      embedPane(contentSrc, '<GraphPageSimilarPane', similarSrc),
-      "{tab === 'similar' &&",
-      "{tab === 'detail' &&"
-    )
     expect(contentSrc).toContain("t('graph.tab_similar_count'")
-    expect(similar).toContain("t('graph.similar_empty'")
-    expect(similar).toContain("t('graph.similar_merge'")
-    expect(similar).toContain("t('graph.similar_keep_apart'")
-    expect(similar).toContain('variant="outlined"')
-    expect(similar).not.toContain('variant="ghost"')
-    expect(src).toContain('mergeNodes(pair.peerId, pair.nodeId)')
+    expect(contentSrc).toContain("{tab === 'similar' && <GraphPageSimilarPane")
+    expect(similarSrc).toContain("t('graph.similar_empty'")
+    expect(similarSrc).toContain("t('graph.similar_merge'")
+    expect(similarSrc).toContain("t('graph.similar_keep_apart'")
+    expect(similarSrc).toContain('variant="outlined"')
+    expect(similarSrc).not.toContain('variant="ghost"')
+    expect(src).toContain('review.mergeNodes(pair.peerId, pair.nodeId, {')
+    expect(src).toContain('survivorName: pair.peerName')
+    expect(src).toContain('loserName: pair.nodeName')
     expect(src).toContain('dismissSimilarPair(pair.nodeId, pair.peerId)')
+  })
+
+  it('should warn with merge_irreversible_warning and show resolved node names', () => {
+    const reviewSrc = readSrc('useGraphPageReview.ts')
+    expect(overlaysSrc).toContain('graph.merge_irreversible_warning')
+    expect(overlaysSrc).not.toContain("'graph.merge_irreversible'")
+    expect(overlaysSrc).toContain('graph.merge_keep')
+    expect(overlaysSrc).toContain('graph.merge_absorb')
+    expect(reviewSrc).toContain('survivorName')
+    expect(reviewSrc).toContain('loserName')
   })
 
   it('should allow notebook graph to inject merge search and forbidden anchors', () => {
@@ -224,7 +232,7 @@ describe('GraphPage chrome', () => {
     const pending = sliceBetween(
       embedPane(contentSrc, '<GraphPagePendingPane', pendingSrc),
       "{tab === 'pending' &&",
-      "{tab === 'detail' &&"
+      "{tab === 'similar' &&"
     )
     expect(pending).toContain("t('graph.approve_selected'")
     expect(pending).toContain("t('graph.reject_selected'")
@@ -281,7 +289,9 @@ describe('GraphPage chrome', () => {
     expect(simSrc).toContain('sim.stop()')
     expect(simSrc).not.toContain("force('radial'")
     expect(simSrc).toContain('applyGraphForceStrengths')
-    expect(readSrc('GraphForceCanvas.tsx')).toContain('if (rebuilt) simRef.current?.restart()')
+    expect(simSrc).toContain('prewarmGraphForceSimulation')
+    expect(readSrc('GraphForceCanvas.tsx')).not.toContain('if (rebuilt) simRef.current?.restart()')
+    expect(readSrc('GraphForceCanvas.tsx')).toContain('appliedForceRef')
   })
 
   it('auto-starts unified memory organize when the graph is ready', () => {
@@ -359,13 +369,17 @@ describe('GraphPage chrome', () => {
   })
 
   it('should hide the split entry when the selected node is an entry', () => {
-    const detail = sliceBetween(
-      `${embedPane(contentSrc, '<GraphPageDetailPane', detailSrc)}\n${overlaysSrc}`,
-      "{tab === 'detail' &&",
-      'GraphCreateNodeModal'
-    )
-    expect(detail).toContain("t('graph.split_node'")
-    expect(detail).toContain("selectedNode.nodeType !== 'entry'")
+    expect(sideSrc).toContain('<GraphPageDetailPane')
+    expect(sideSrc).toContain("sideMode === 'detail'")
+    expect(detailSrc).toContain("t('graph.split_node'")
+    expect(detailSrc).toContain("selectedNode.nodeType !== 'entry'")
+  })
+
+  it('should give the detail rail panel the same header chrome as organize and canvas', () => {
+    expect(sideSrc).toContain("t('graph.tab_detail', '详情')")
+    expect(sideSrc).toContain('styles.settingsHeader')
+    expect(sideSrc).toContain('styles.settingsTitle')
+    expect(sideSrc).toContain('<GraphPageDetailPane')
   })
 
   it('should render discriminator as its own tag instead of concatenating it into the name', () => {

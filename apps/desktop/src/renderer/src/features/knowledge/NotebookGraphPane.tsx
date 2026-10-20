@@ -21,12 +21,10 @@ import {
   saveGraphViewMaxNodes,
   type GraphAppearanceSettings,
   type GraphFocusDepth,
-  type GraphForceSettings,
-  type GraphSearchMode
+  type GraphForceSettings
 } from '@baishou/shared'
 import { toast, useDialog } from '@baishou/ui'
 import { GraphForceCanvas } from '../graph/GraphForceCanvas'
-import { graphSearchErrorCopy } from '../graph/graph-page-derive.util'
 import { usePanelResize } from '../agent-workspace/workbench/usePanelResize'
 import {
   applyNotebookGraphPendingReviews,
@@ -57,6 +55,11 @@ import {
   type NotebookGraphSideTab
 } from './NotebookGraphSidePanel'
 import { useNotebookGraphMerge } from './useNotebookGraphMerge'
+import {
+  readNotebookGraphViewCache,
+  writeNotebookGraphViewCache
+} from './notebook-graph-view-cache'
+import { useNotebookGraphSearch } from './useNotebookGraphSearch'
 import graphStyles from '../graph/GraphPage.module.css'
 import styles from './KnowledgePage.module.css'
 
@@ -86,16 +89,14 @@ export const NotebookGraphPane: React.FC<{
   const tr = asGraphTranslateFn(t)
   const [reviewBusy, setReviewBusy] = useState(false)
   const [pendingSelected, setPendingSelected] = useState<Set<string>>(() => new Set())
-  const [nodes, setNodes] = useState<NotebookGraphViewNode[]>([])
-  const [edges, setEdges] = useState<NotebookGraphViewEdge[]>([])
-  const [query, setQuery] = useState('')
-  const [searchMode, setSearchMode] = useState<GraphSearchMode>('semantic')
-  const [searchHits, setSearchHits] = useState<
-    Array<{ id: string; name: string; nodeType: string; summary?: string }>
-  >([])
-  const [searchAttempted, setSearchAttempted] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const searchGroupRef = useRef<HTMLDivElement>(null)
+  const [viewMaxNodes, setViewMaxNodes] = useState(() => loadGraphViewMaxNodes())
+  const cachedGraphView = readNotebookGraphViewCache(notebookId, viewMaxNodes)
+  const [nodes, setNodes] = useState<NotebookGraphViewNode[]>(() => cachedGraphView?.nodes ?? [])
+  const [edges, setEdges] = useState<NotebookGraphViewEdge[]>(() => cachedGraphView?.edges ?? [])
+  const [loadedNotebookId, setLoadedNotebookId] = useState(() =>
+    cachedGraphView ? notebookId : ''
+  )
+  const viewRequestRef = useRef(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set())
   const [locateIds, setLocateIds] = useState<string[] | null>(null)
@@ -107,7 +108,6 @@ export const NotebookGraphPane: React.FC<{
   const [appearanceSettings, setAppearanceSettings] = useState<GraphAppearanceSettings>(() =>
     clampGraphAppearanceSettings(loadGraphAppearanceSettings())
   )
-  const [viewMaxNodes, setViewMaxNodes] = useState(() => loadGraphViewMaxNodes())
   const [animationTick, setAnimationTick] = useState(0)
   const [dismissGuide, setDismissGuide] = useState(false)
   const [sideMode, setSideMode] = useState<NotebookGraphSideMode>('ops')
@@ -117,19 +117,32 @@ export const NotebookGraphPane: React.FC<{
 
   const loadView = useCallback(async () => {
     if (!notebookId) return
+    const requestId = ++viewRequestRef.current
     try {
       const view = await callKnowledgeApi<{
         nodes: NotebookGraphViewNode[]
         edges: NotebookGraphViewEdge[]
       }>('getGraphView', 'knowledge:get-graph-view', { notebookId, maxNodes: viewMaxNodes })
+      if (requestId !== viewRequestRef.current) return
       const remapped = remapNotebookGraphReviewForDisplay(view?.nodes || [], view?.edges || [])
+      writeNotebookGraphViewCache(notebookId, viewMaxNodes, remapped.nodes, remapped.edges)
       setNodes(remapped.nodes)
       setEdges(remapped.edges)
+      setLoadedNotebookId(notebookId)
     } catch {
-      setNodes([])
-      setEdges([])
+      if (requestId !== viewRequestRef.current) return
+      setLoadedNotebookId(notebookId)
     }
   }, [notebookId, viewMaxNodes])
+
+  const notebookIdRef = useRef(notebookId)
+  useEffect(() => {
+    if (notebookIdRef.current === notebookId) return
+    notebookIdRef.current = notebookId
+    setLoadedNotebookId('')
+    setNodes([])
+    setEdges([])
+  }, [notebookId])
 
   useEffect(() => {
     void loadView()
@@ -148,7 +161,9 @@ export const NotebookGraphPane: React.FC<{
   const allPendingSelected =
     pendingItemKeys.length > 0 && pendingSelectedCount === pendingItemKeys.length
   const selectedNode = nodes.find((node) => node.id === selectedId) || null
-  const showEmptyGuide = nodes.length === 0 && !dismissGuide && !extracting
+  const viewLoaded = loadedNotebookId === notebookId
+  const showEmptyGuide = viewLoaded && nodes.length === 0 && !dismissGuide && !extracting
+  const graphLayoutEmpty = !viewLoaded || showEmptyGuide
   const displayNodes = nodes
   const displayEdges = useMemo(() => {
     const idSet = new Set(displayNodes.map((node) => node.id))
@@ -223,65 +238,29 @@ export const NotebookGraphPane: React.FC<{
     persistCollapsed(false)
   }
 
-  const dismissSearchPanel = () => {
-    setSearchAttempted(false)
-    setSearching(false)
-  }
-
-  useEffect(() => {
-    if (!searching && !searchAttempted) return
-    const onPointerDown = (event: MouseEvent) => {
-      const root = searchGroupRef.current
-      if (!root || root.contains(event.target as Node)) return
-      dismissSearchPanel()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') dismissSearchPanel()
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [searchAttempted, searching])
-
-  const onSearch = async (nextMode: GraphSearchMode = searchMode) => {
-    const q = query.trim()
-    if (!q) {
-      setSearchAttempted(false)
-      setSearchHits([])
-      return
-    }
-    setSearchAttempted(true)
-    setSearching(true)
-    try {
-      const hits = await callKnowledgeApi<
-        Array<{ id: string; name: string; nodeType: string; summary?: string }>
-      >('graphSearch', 'knowledge:graph-search', {
-        notebookId,
-        query: q,
-        limit: 20,
-        mode: nextMode
-      })
-      const list = hits || []
-      setSearchHits(list)
-      const ids = list.map((hit) => hit.id)
-      setHighlightIds(new Set(ids))
-      if (ids.length === 0) return
-      setLocateIds(ids)
-      setLocateSeq((n) => n + 1)
-      setSelectedId(ids[0] ?? null)
-      setTab('detail')
-      openSide('content')
-    } catch (error) {
-      setSearchHits([])
-      const copy = graphSearchErrorCopy(error)
-      toast.showError('key' in copy ? t(copy.key, copy.fallback) : copy.raw)
-    } finally {
-      setSearching(false)
-    }
-  }
+  const {
+    query,
+    setQuery,
+    searchMode,
+    setSearchMode,
+    searchHits,
+    searchAttempted,
+    setSearchAttempted,
+    searching,
+    searchGroupRef,
+    onSearch,
+    dismissSearchPanel
+  } = useNotebookGraphSearch({
+    notebookId,
+    t,
+    toast,
+    openSide,
+    setTab,
+    setHighlightIds,
+    setLocateIds,
+    setLocateSeq,
+    setSelectedId
+  })
 
   const locateNode = (id: string) => {
     setSelectedId(id)
@@ -387,7 +366,7 @@ export const NotebookGraphPane: React.FC<{
     >
       <div className={graphStyles.root}>
         <div
-          className={`${graphStyles.mainPhase} ${showEmptyGuide ? graphStyles.mainPhaseEmpty : ''}`}
+          className={`${graphStyles.mainPhase} ${graphLayoutEmpty ? graphStyles.mainPhaseEmpty : ''}`}
         >
           <NotebookGraphToolbar
             query={query}
@@ -409,7 +388,7 @@ export const NotebookGraphPane: React.FC<{
           />
 
           <div className={graphStyles.canvasWrap}>
-            {showEmptyGuide ? (
+            {!viewLoaded ? null : showEmptyGuide ? (
               <NotebookGraphEmptyGuide
                 sourceCount={sourceCount}
                 extracting={extracting}
@@ -442,7 +421,7 @@ export const NotebookGraphPane: React.FC<{
             )}
           </div>
 
-          {!showEmptyGuide ? (
+          {viewLoaded && !showEmptyGuide ? (
             <NotebookGraphSidePanel
               sideCollapsed={sideCollapsed}
               sideWidth={sideWidth}

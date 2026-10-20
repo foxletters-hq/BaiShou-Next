@@ -1,18 +1,9 @@
 import i18n from 'i18next'
 import './app-identity'
 import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
-import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
+import { app, shell, BrowserWindow, dialog, ipcMain, Menu, net } from 'electron'
 import { join } from 'path'
-import { open, stat } from 'node:fs/promises'
-import { createReadStream, existsSync } from 'node:fs'
-import { Readable } from 'node:stream'
-import {
-  localFileContentType,
-  localProtocolEmojiRelativePath,
-  localProtocolFileResponseHeaders,
-  localProtocolUrlToFilePath,
-  parseByteRangeHeader
-} from './local-protocol.util'
+import { registerLocalProtocolHandler, registerLocalProtocolScheme } from './local-protocol-handler'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
@@ -54,13 +45,14 @@ import {
   SettingsRepository,
   connectionManager
 } from '@baishou/database-desktop'
-import { getAppDb } from './db'
+import { clearAgentDbRecoveryNotice, getAgentDbRecoveryNotice, getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 import {
   logger,
   nextUiFontSizeLevel,
   resolvePageZoomShortcut,
+  translateMain,
   uiFontSizeLevelFromZoom,
   uiPageZoomFromLevel
 } from '@baishou/shared'
@@ -82,75 +74,7 @@ if (is.dev) {
 }
 
 // 必须在 app ready 之前注册，否则渲染进程 fetch('local://...') 会直接 Failed to fetch
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'local',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      corsEnabled: true,
-      stream: true
-    }
-  }
-])
-
-function applyLocalProtocolCors(headers: Headers): Headers {
-  headers.set('Access-Control-Allow-Origin', '*')
-  headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
-  headers.set('Access-Control-Allow-Headers', '*')
-  headers.set(
-    'Access-Control-Expose-Headers',
-    'Accept-Ranges, Content-Range, Content-Length, Content-Type'
-  )
-  return headers
-}
-
-function localProtocolResponse(body: BodyInit | null, init?: ResponseInit): Response {
-  const headers = applyLocalProtocolCors(new Headers(init?.headers))
-  return new Response(body, { ...init, headers })
-}
-
-async function serveLocalPhysicalFile(request: Request, physicalPath: string): Promise<Response> {
-  const contentType = localFileContentType(physicalPath)
-  const fileStat = await stat(physicalPath)
-  const size = fileStat.size
-  if (request.method === 'HEAD') {
-    const meta = localProtocolFileResponseHeaders({ contentType, size })
-    return localProtocolResponse(null, { status: meta.status, headers: meta.headers })
-  }
-  const rangeResult = parseByteRangeHeader(request.headers.get('Range'), size)
-  if (rangeResult === 'unsatisfiable') {
-    return localProtocolResponse(null, {
-      status: 416,
-      headers: {
-        'Content-Range': `bytes */${size}`,
-        'Accept-Ranges': 'bytes'
-      }
-    })
-  }
-  if (rangeResult) {
-    const meta = localProtocolFileResponseHeaders({ contentType, size, range: rangeResult })
-    const length = rangeResult.end - rangeResult.start + 1
-    const handle = await open(physicalPath, 'r')
-    try {
-      const buf = Buffer.allocUnsafe(length)
-      const { bytesRead } = await handle.read(buf, 0, length, rangeResult.start)
-      const body = bytesRead === length ? buf : buf.subarray(0, bytesRead)
-      return localProtocolResponse(body, { status: meta.status, headers: meta.headers })
-    } finally {
-      await handle.close()
-    }
-  }
-  const meta = localProtocolFileResponseHeaders({ contentType, size })
-  if (size === 0) {
-    return localProtocolResponse(new Uint8Array(), { status: 200, headers: meta.headers })
-  }
-  return localProtocolResponse(Readable.toWeb(createReadStream(physicalPath)) as ReadableStream, {
-    status: 200,
-    headers: meta.headers
-  })
-}
+registerLocalProtocolScheme()
 
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
@@ -322,6 +246,60 @@ function createWindow(needsOnboarding: boolean): void {
 }
 
 /**
+ * 数据库损坏自动重建后给出明确提示：告诉用户备份位置，并说明聊天记录会尽量从
+ * 工作区 Sessions 文件恢复。提示文件会在用户确认后清除，避免每次启动重复弹出。
+ */
+function scheduleAgentDbRecoveryNotice(): void {
+  const notice = getAgentDbRecoveryNotice()
+  if (!notice || !mainWindow) return
+
+  const win = mainWindow
+  const showNotice = () => {
+    const locale = app.getLocale()
+    const backupPath = notice.backupPath
+    const fallbackPath = backupPath || notice.dbPath
+    const detail = translateMain(locale, 'app.db_recovery_detail').replace(
+      '{{path}}',
+      () => fallbackPath
+    )
+
+    const buttons = backupPath
+      ? [
+          translateMain(locale, 'app.db_recovery_show_file'),
+          translateMain(locale, 'app.db_recovery_ok')
+        ]
+      : [translateMain(locale, 'app.db_recovery_ok')]
+
+    void dialog
+      .showMessageBox(win, {
+        type: 'warning',
+        title: translateMain(locale, 'app.db_recovery_title'),
+        message: translateMain(locale, 'app.db_recovery_message'),
+        detail,
+        buttons,
+        defaultId: buttons.length - 1,
+        cancelId: buttons.length - 1,
+        noLink: true
+      })
+      .then(({ response }) => {
+        if (backupPath && response === 0) {
+          shell.showItemInFolder(backupPath)
+        }
+        clearAgentDbRecoveryNotice(notice)
+      })
+      .catch((e) => {
+        logger.warn('[DB] 展示数据库恢复提示失败（非阻塞）:', e as Error)
+      })
+  }
+
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', showNotice)
+  } else {
+    setTimeout(showNotice, 0)
+  }
+}
+
+/**
  * 核心初始化阶段：在确定存储路径后（或非首次启动）执行
  */
 async function completeFullBootstrap() {
@@ -426,30 +404,7 @@ app.whenReady().then(async () => {
   ensureWindowsToastShortcut()
 
   // Register local protocol for secure local asset rendering
-  protocol.handle('local', async (request) => {
-    try {
-      if (request.method === 'OPTIONS') {
-        return localProtocolResponse(null, { status: 204 })
-      }
-      const emojiRel = localProtocolEmojiRelativePath(request.url)
-      let physicalPath: string
-      if (emojiRel) {
-        const { DesktopStoragePathService } = await import('./services/path.service')
-        const pathService = new DesktopStoragePathService()
-        const emojisDir = await pathService.getEmojisDirectory()
-        physicalPath = join(emojisDir, emojiRel)
-      } else {
-        physicalPath = localProtocolUrlToFilePath(request.url)
-      }
-      if (!existsSync(physicalPath)) {
-        return localProtocolResponse('Not found', { status: 404 })
-      }
-      return serveLocalPhysicalFile(request, physicalPath)
-    } catch (e) {
-      // Squash annoying ERR_FILE_NOT_FOUND stack traces when UI loads dead db avatar paths
-      return localProtocolResponse('Not found', { status: 404 })
-    }
-  })
+  registerLocalProtocolHandler()
 
   // 开发态：F12 开关 DevTools；生产态：屏蔽 Ctrl/Cmd+R 防误刷新
   // 见 https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -564,6 +519,7 @@ app.whenReady().then(async () => {
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   markStartup('createWindow.call', { needsOnboarding })
   createWindow(needsOnboarding)
+  scheduleAgentDbRecoveryNotice()
 
   // 4. 决定是否立即执行全量初始化
   if (!needsOnboarding) {

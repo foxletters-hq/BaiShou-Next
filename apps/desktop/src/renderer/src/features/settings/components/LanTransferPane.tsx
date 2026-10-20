@@ -22,8 +22,13 @@ export const LanTransferPane: React.FC = () => {
         }}
         onStopDiscovery={async () => (window as any).api?.lan?.stopDiscovery()}
         onSendFile={async (ip: string, port: number, progress: any) => {
-          ;(window as any).api?.lan?.onSendProgress(progress)
-          return await (window as any).api?.lan?.sendFile(ip, port)
+          const lan = (window as any).api?.lan
+          const unsubscribe = lan?.onSendProgress?.(progress)
+          try {
+            return await lan?.sendFile(ip, port)
+          } finally {
+            unsubscribe?.()
+          }
         }}
         onFileReceivedListener={(cb: any) => (window as any).api?.lan?.onFileReceived(cb)}
         onImportZip={async (file: string) => {

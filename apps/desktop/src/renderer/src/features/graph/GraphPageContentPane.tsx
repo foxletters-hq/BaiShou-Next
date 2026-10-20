@@ -1,7 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GraphSideTab } from './graph-page.types'
-import { GraphPageDetailPane } from './GraphPageDetailPane'
 import { GraphPageNodesPane } from './GraphPageNodesPane'
 import { GraphPagePendingPane } from './GraphPagePendingPane'
 import { GraphPageReextractPane } from './GraphPageReextractPane'
@@ -17,7 +16,6 @@ export function GraphPageContentPane(props: {
   reextract: React.ComponentProps<typeof GraphPageReextractPane>
   pending: React.ComponentProps<typeof GraphPagePendingPane>
   similar: React.ComponentProps<typeof GraphPageSimilarPane>
-  detail: React.ComponentProps<typeof GraphPageDetailPane>
 }): React.ReactElement {
   const { t } = useTranslation()
   const { tab } = props
@@ -56,13 +54,6 @@ export function GraphPageContentPane(props: {
             count: props.similarCount
           })}
         </button>
-        <button
-          type="button"
-          className={`${styles.tab} ${tab === 'detail' ? styles.tabActive : ''}`}
-          onClick={() => props.onTabChange('detail')}
-        >
-          {t('graph.tab_detail', '详情')}
-        </button>
       </div>
       <div className={styles.panel} data-graph-side-scroll>
         {tab === 'nodes' && <GraphPageNodesPane {...props.nodes} />}
@@ -72,8 +63,6 @@ export function GraphPageContentPane(props: {
         {tab === 'pending' && <GraphPagePendingPane {...props.pending} />}
 
         {tab === 'similar' && <GraphPageSimilarPane {...props.similar} />}
-
-        {tab === 'detail' && <GraphPageDetailPane {...props.detail} />}
       </div>
     </>
   )
