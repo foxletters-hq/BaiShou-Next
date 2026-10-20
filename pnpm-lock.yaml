@@ -194,6 +194,9 @@ importers:
       zod-to-json-schema:
         specifier: ^3.25.2
         version: 3.25.2(zod@4.3.6)
+      zustand:
+        specifier: ^5.0.12
+        version: 5.0.12(@types/react@19.2.14)(immer@11.1.11)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
       '@electron-toolkit/eslint-config-prettier':
         specifier: ^3.0.0
@@ -310,18 +313,6 @@ importers:
       '@baishou/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@expo-google-fonts/noto-sans':
-        specifier: ^0.4.2
-        version: 0.4.2
-      '@expo-google-fonts/noto-sans-jp':
-        specifier: ^0.4.3
-        version: 0.4.3
-      '@expo-google-fonts/noto-sans-sc':
-        specifier: ^0.4.3
-        version: 0.4.3
-      '@expo-google-fonts/noto-sans-tc':
-        specifier: ^0.4.3
-        version: 0.4.3
       '@expo/vector-icons':
         specifier: ^15.1.1
         version: 15.1.1(expo-font@55.0.8)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
@@ -1965,11 +1956,11 @@ packages:
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.hirok.io'
+    deprecated: 'Merged into tsx: https://tsx.is'
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.hirok.io'
+    deprecated: 'Merged into tsx: https://tsx.is'
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -2460,18 +2451,6 @@ packages:
 
   '@expo-google-fonts/material-symbols@0.4.28':
     resolution: {integrity: sha512-59qFO6w4W/wUZ6VuYfN1wtgyk4zFJspbKOdHYISMeDa2H4apZKY0Ab7K5ouee+C+s3/VfAp6tLK7ov+PsENhKw==}
-
-  '@expo-google-fonts/noto-sans-jp@0.4.3':
-    resolution: {integrity: sha512-Fl+Z6vtD24HFAYsvzB0S9Nery1ly16B9PesdY0wBd+wEHAvkNglnkTUspU0HqGOubkmoa8zusJrKv6vDx1o70A==}
-
-  '@expo-google-fonts/noto-sans-sc@0.4.3':
-    resolution: {integrity: sha512-9rAwdFTFHbO/u6Cs0gj2jZbW74TGIiaFNQnXYH2s5wA1bzVkwbaviL4t8YUV642eGYjg86eH6DkAEQmfNHDncQ==}
-
-  '@expo-google-fonts/noto-sans-tc@0.4.3':
-    resolution: {integrity: sha512-69XAOTLPz0WlAxL6qJEKlDMxHsBd4J1M39HjV0gPF2o1xWVALOsVWvDgistnecVockA9wbU/tH5C/gyS2PdnHg==}
-
-  '@expo-google-fonts/noto-sans@0.4.2':
-    resolution: {integrity: sha512-zYD8G2ijWLxqmquoQgghNh/x9p0yxWwArD0oxO1oXY1qx5vOd4t0Kbhnu/Cx8RTy08OgA8RtxuULZFaXwVPnPw==}
 
   '@expo/cli@55.0.32':
     resolution: {integrity: sha512-fq+/yUYBVw5ZudT4igNyJ3WaF17R39iS7EZlrkfHkLI7Y1kmUlivabwKviLoAfepJOKjKODKpViti9EPfmG3SQ==}
@@ -13092,14 +13071,6 @@ snapshots:
 
   '@expo-google-fonts/material-symbols@0.4.28': {}
 
-  '@expo-google-fonts/noto-sans-jp@0.4.3': {}
-
-  '@expo-google-fonts/noto-sans-sc@0.4.3': {}
-
-  '@expo-google-fonts/noto-sans-tc@0.4.3': {}
-
-  '@expo-google-fonts/noto-sans@0.4.2': {}
-
   '@expo/cli@55.0.32(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-constants@55.0.16(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4)))(expo-font@55.0.8)(expo-router@55.0.16)(expo@55.0.26)(react-dom@19.2.4(react@19.2.4))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(typescript@6.0.2)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
@@ -17460,7 +17431,7 @@ snapshots:
       resolve-from: 5.0.0
     optionalDependencies:
       '@babel/runtime': 7.29.2
-      expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.16)(react-dom@19.2.4(react@19.2.0))(react-native-webview@13.16.0(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+      expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(@expo/metro-runtime@55.0.7)(expo-router@55.0.16)(react-dom@19.2.4(react@19.2.4))(react-native-webview@13.16.0(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4))(react@19.2.4))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4))(react@19.2.4))(react-native@0.84.1(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)(typescript@6.0.2)
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color
