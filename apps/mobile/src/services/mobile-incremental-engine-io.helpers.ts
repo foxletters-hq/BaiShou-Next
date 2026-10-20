@@ -17,6 +17,7 @@ import {
   serializeLastRemoteVaultsSnapshot,
   parseVaultIdToNameMap,
   createEmptyLastRemoteVaultsSnapshot,
+  isIncrementalSyncProtectedRemotePath,
   SYNC_MANIFEST_FILENAME
 } from '@baishou/shared'
 import { getAppCacheDirectory } from './mobile-app-paths'
@@ -243,10 +244,52 @@ export async function getIncrementalRemoteManifest(
       }
     }
     manifest.files = cleanFiles
+    await recoverProtectedMobileRemoteEntries(host, client, manifest, files, actualFilesSet)
     return reconcileSyncManifestRemovedWithRemoteFiles(manifest, actualFilesSet)
   }
 
   return manifest
+}
+
+async function recoverProtectedMobileRemoteEntries(
+  host: IncrementalEngineIoHost,
+  client: MobileIncrementalCloudClient,
+  manifest: SyncManifest,
+  remoteFiles: ReadonlyArray<{ filename: string; lastModified: Date }>,
+  actualFilesSet: ReadonlySet<string>
+): Promise<void> {
+  const missing = remoteFiles.filter((file) => {
+    const rel = file.filename.replace(/\\/g, '/')
+    if (!actualFilesSet.has(rel)) return false
+    if (manifest.files[rel] || manifest.removed?.[rel]) return false
+    return isIncrementalSyncProtectedRemotePath(rel)
+  })
+  if (missing.length === 0) return
+
+  const cacheDir = getAppCacheDirectory()
+  for (const file of missing) {
+    const rel = file.filename.replace(/\\/g, '/')
+    const temp = `${cacheDir}temp-recover-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}.json`
+    try {
+      await client.downloadFile(rel, temp)
+      const stat = await host.fileSystem.stat(temp)
+      manifest.files[rel] = {
+        hash: await md5HexForSyncFile(host.fileSystem, temp),
+        size: stat.size ?? 0,
+        lastModified: file.lastModified?.getTime() || stat.mtimeMs || Date.now()
+      }
+      console.warn(`[IncrementalSync] Recovered protected remote manifest entry: ${rel}`)
+    } catch (e) {
+      console.warn(
+        `[IncrementalSync] Failed to recover protected remote entry ${rel}:`,
+        e instanceof Error ? e.message : e
+      )
+    } finally {
+      await host.fileSystem.unlink(temp).catch(() => undefined)
+    }
+  }
 }
 
 export async function refreshIncrementalCheckpointForPaths(options: {

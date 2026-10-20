@@ -16,6 +16,7 @@ import {
   MonthlyJsonlStore,
   applyJsonlConflictResolved,
   classifyMonthlyJsonlPath,
+  classifyNotebookStructureJsonlPath,
   isMonthlyJsonlRawPath,
   shardKeyValidatorForJsonlKind
 } from '@baishou/core-mobile'
@@ -59,7 +60,7 @@ async function markMobileMonthlyJsonlPending(
   }
 }
 
-async function mergeMobileMonthlyJsonlConflict(
+async function mergeMobileJsonlConflict(
   worker: MobileIncrementalEngineWorker,
   client: MobileIncrementalCloudClient,
   syncRoot: string,
@@ -86,6 +87,15 @@ async function mergeMobileMonthlyJsonlConflict(
     const merger = new JsonlRecordMergeService()
     const merged = merger.mergeTexts(localText, remoteText)
     await worker.backupLocalFile(syncRoot, relPath)
+
+    const notebookStructure = classifyNotebookStructureJsonlPath(relPath)
+    if (notebookStructure) {
+      const text =
+        merged.text.endsWith('\n') || merged.text.length === 0 ? merged.text : `${merged.text}\n`
+      await worker.host.fileSystem.writeFile(fullPath, text)
+      await client.uploadFile(fullPath, relPath)
+      return true
+    }
 
     const classified = classifyMonthlyJsonlPath(relPath)
     if (!classified) return false
@@ -321,7 +331,7 @@ export async function runSyncThreeWay(
             filePath: d.filePath,
             direction: d.direction,
             lineMerge: () =>
-              mergeMobileMonthlyJsonlConflict(worker, client, syncRoot, d.filePath, fullPath),
+              mergeMobileJsonlConflict(worker, client, syncRoot, d.filePath, fullPath),
             overwriteUpload: async () => {
               await worker.backupLocalFile(syncRoot, d.filePath)
               await client.uploadFile(fullPath, d.filePath)

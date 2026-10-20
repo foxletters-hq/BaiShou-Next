@@ -13,6 +13,7 @@ import {
   LAN_DEVICE_STALE_MS,
   formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
+  lanDeviceIpCandidates,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
@@ -91,10 +92,12 @@ export const LanTransferScreen: React.FC = () => {
 
     try {
       const conn = await lanSyncService.startBroadcasting()
-      if (conn) {
-        localConnRef.current = conn
-        setLocalConn(conn)
+      if (!conn) {
+        setIsDiscovering(false)
+        return
       }
+      localConnRef.current = conn
+      setLocalConn(conn)
 
       await lanSyncService.startDiscovery(
         (device) => {
@@ -113,6 +116,11 @@ export const LanTransferScreen: React.FC = () => {
         if (total > 0) {
           setReceiveProgress(Math.min(99, Math.round((written / total) * 100)))
         }
+      })
+      lanSyncService.onLanUploadFailed((reason) => {
+        setIsReceiving(false)
+        setReceiveProgress(0)
+        toast.showError(t('lan.receive_failed', { e: reason }))
       })
 
       lanSyncService.onFileReceived((zipPath) => {
@@ -134,6 +142,7 @@ export const LanTransferScreen: React.FC = () => {
           )
           if (!restore || !archiveService) {
             setIsReceiving(false)
+            void services?.fileSystem.unlink(zipPath).catch(() => {})
             return
           }
           setIsReceiving(false)
@@ -152,6 +161,7 @@ export const LanTransferScreen: React.FC = () => {
             toast.showError(msg || t('lan.import_failed'))
             await new Promise((resolve) => setTimeout(resolve, 900))
           } finally {
+            void services?.fileSystem.unlink(zipPath).catch(() => {})
             setIsRestoring(false)
             setImportProgress(null)
             setIsReceiving(false)
@@ -160,6 +170,7 @@ export const LanTransferScreen: React.FC = () => {
       })
     } catch (e: unknown) {
       setIsDiscovering(false)
+      await stopDualMode()
       const msg = e instanceof Error ? e.message : String(e)
       toast.showError(msg || t('lan_transfer.scan_failed', '局域网扫描启动失败'))
     }
@@ -172,6 +183,7 @@ export const LanTransferScreen: React.FC = () => {
     markDeviceSeen,
     notifyArchiveRestoreComplete,
     services,
+    stopDualMode,
     t,
     toast
   ])
@@ -217,7 +229,10 @@ export const LanTransferScreen: React.FC = () => {
       const deviceKey = getLanDeviceDedupKey(device)
       setSendingTo(deviceKey)
       setSendProgress(0)
-      const ok = await lanSyncService.sendFile(device.ip, device.port, (p) => setSendProgress(p))
+      const hostCandidates = lanDeviceIpCandidates(device).join(',') || device.ip
+      const ok = await lanSyncService.sendFile(hostCandidates, device.port, (p) =>
+        setSendProgress(p)
+      )
       setSendingTo(null)
       if (ok) {
         toast.showSuccess(t('lan.send_success', { name: device.nickname }))

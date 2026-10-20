@@ -300,6 +300,8 @@ export function createStartAgentChat(deps: {
                 const hits = await repo.findNodesByNameOrAlias(vaultId, name, nodeType)
                 return pickBareGraphNameHit(hits).hit
               },
+              findNodesByNameOrAlias: (name, nodeType) =>
+                repo.findNodesByNameOrAlias(vaultId, name, nodeType),
               getNodeById: (id) => repo.getNodeById(id, vaultId),
               getEdgeById: (id) => repo.getEdgeById(id, vaultId)
             }
@@ -325,7 +327,13 @@ export function createStartAgentChat(deps: {
           }),
           skillsWriter: createMobileSkillsWriter(),
           skillsReader: createMobileSkillsReader(),
-          skillsCatalog: await mobileListSkillsCatalog().catch(() => undefined),
+          skillsCatalog: await (async () => {
+            const { filterSkillsCatalogByGate } = await import('@baishou/ai')
+            return filterSkillsCatalogByGate(
+              (await mobileListSkillsCatalog().catch(() => undefined)) ?? [],
+              { agentGate: getAgentGate?.() }
+            )
+          })(),
           extraVercelToolsFactory: async (toolContext) => {
             const { mobileExtraVercelToolsFactory } =
               await import('../../services/mobile-mcp-client-runtime')

@@ -1,5 +1,6 @@
 import { InteractionManager } from 'react-native'
 import { logger } from '@baishou/shared'
+import { warmAgentScreenCaches } from '../../lib/agent-user-profile.util'
 import { getTtsPlaybackSettings } from '../../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../../services/archive-guards.util'
 import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
@@ -62,6 +63,9 @@ export async function commitMobileBaishouReadyState(
   const mobileMcpService = s.mobileMcpService
   const runDeferredVaultStartup = s.runDeferredVaultStartup as () => Promise<void>
   void getTtsPlaybackSettings(settingsManager).catch(() => {})
+  if (storageReady) {
+    void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
+  }
 
   if (isMounted()) {
     refs.notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {

@@ -14,6 +14,7 @@ import { notifyMobileSkillsChanged } from './mobile-skills-events'
 import { ensureMobileShortcutsMigrated } from './mobile-skills-migrate.util'
 import {
   ensureMobileDefaultSkills,
+  migrateLegacyVaultUserSkills,
   readMobileSkill,
   writeMobileUserSkill
 } from './mobile-skills-writer.util'
@@ -73,6 +74,12 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
         } catch {
           /* 默认技能写入失败不阻断已有磁盘技能 */
         }
+        try {
+          const activeVaultRoot = await runtime.pathService.getActiveVaultPath()
+          await migrateLegacyVaultUserSkills(vaultRoot, activeVaultRoot, fs)
+        } catch {
+          /* 旧目录迁移失败不阻断已有磁盘技能 */
+        }
         roots.push({ path: joinPath(vaultRoot, '.agents', 'skills'), source: 'user' })
         roots.push({ path: joinPath(vaultRoot, 'AI', 'skills'), source: 'software' })
       }
@@ -112,10 +119,12 @@ export async function mobileListSkillsCatalog(): Promise<
   Array<{ name: string; description?: string }>
 > {
   const shortcuts = await mobileListSkillShortcuts()
-  return shortcuts.map((item) => ({
-    name: item.command || item.id,
-    description: item.description || item.name || ''
-  }))
+  return shortcuts
+    .filter((item) => item.autoinvoke !== false)
+    .map((item) => ({
+      name: item.command || item.id,
+      description: item.description || item.name || ''
+    }))
 }
 
 /** 注入 ToolContext.skillsWriter：伙伴会话经 skill_write 写入存储根 `.agents/skills` */
@@ -148,6 +157,71 @@ export function createMobileSkillsReader() {
         /* 写入失败仍尝试读已有文件 */
       }
       return readMobileSkill(vaultRoot, name, fs)
+    },
+    async listSkills() {
+      return mobileListSkillsCatalog()
+    },
+    async listAllSkills() {
+      const shortcuts = await mobileListSkillShortcuts()
+      return shortcuts.map((item) => ({
+        name: item.command || item.id,
+        description: item.description || item.name || ''
+      }))
+    },
+    async listResources(name: string) {
+      const runtime = agentDbRuntimeRef.current
+      if (!runtime?.pathService) return []
+      const vaultRoot = await runtime.pathService.getRootDirectory()
+      const fs = createMobileFileSystem()
+      const skill = await readMobileSkill(vaultRoot, name, fs)
+      if (!skill?.location) return []
+      return listMobileSkillResourceFiles(skill.location, fs)
     }
   }
+}
+
+const MAX_MOBILE_SKILL_RESOURCE_FILES = 10
+const MAX_MOBILE_SKILL_RESOURCE_DEPTH = 2
+
+/** 列出技能目录下的资源文件（相对路径，最多 10 个；跳过 SKILL.md 与隐藏项） */
+async function listMobileSkillResourceFiles(
+  skillFilePath: string,
+  fs: ReturnType<typeof createMobileFileSystem>
+): Promise<string[]> {
+  const normalized = skillFilePath.replace(/\\/g, '/')
+  const root = normalized.slice(0, normalized.lastIndexOf('/')) || '/'
+  const out: string[] = []
+
+  const walk = async (current: string, depth: number): Promise<void> => {
+    if (out.length >= MAX_MOBILE_SKILL_RESOURCE_FILES || depth > MAX_MOBILE_SKILL_RESOURCE_DEPTH) {
+      return
+    }
+    let names: string[] = []
+    try {
+      names = await fs.readdir(current)
+    } catch {
+      return
+    }
+    for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
+      if (out.length >= MAX_MOBILE_SKILL_RESOURCE_FILES) return
+      if (name.startsWith('.')) continue
+      const abs = joinPath(current, name)
+      let nested: string[] | null = null
+      try {
+        nested = await fs.readdir(abs)
+      } catch {
+        nested = null
+      }
+      if (nested) {
+        await walk(abs, depth + 1)
+        continue
+      }
+      if (abs === normalized) continue
+      const rel = abs.slice(root.length).replace(/^\/+/, '')
+      if (rel) out.push(rel)
+    }
+  }
+
+  await walk(root, 0)
+  return out
 }

@@ -131,7 +131,8 @@ export function AgentChatList(props: AgentChatListProps) {
         source: { uri: p.resolvedChatBackgroundUri },
         resizeMode: 'cover' as const,
         imageStyle: styles.backgroundImageInner,
-        blurRadius: p.chatBackgroundBlur
+        blurRadius: p.chatBackgroundBlur,
+        fadeDuration: 0
       }
     : {}
 

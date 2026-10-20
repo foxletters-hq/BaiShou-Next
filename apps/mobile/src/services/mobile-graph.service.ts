@@ -40,6 +40,7 @@ export {
   mobileSoftDeleteGraph,
   mobileMergeGraphNodes,
   mobileMergeGraphNodeGroup,
-  mobileClearLifeGraph
+  mobileClearLifeGraph,
+  syncMobileSelfPersonNodeOnRename
 } from './mobile-graph-mutate'
 export type { GraphRawManager } from '@baishou/core-mobile'

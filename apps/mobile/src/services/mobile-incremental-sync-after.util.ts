@@ -33,6 +33,17 @@ export async function runMobileIncrementalAfterSync(
   deps: MobileIncrementalAfterSyncDeps
 ): Promise<void> {
   try {
+    const identityChanged = [...outcome.downloadedPaths, ...outcome.deletedLocalPaths].some(
+      (filePath) => filePath === 'vault_registry.json' || filePath.endsWith('/.baishou/vault.json')
+    )
+    if (identityChanged && deps.vaultService) {
+      try {
+        await deps.vaultService.initRegistry()
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync] vault registry reload after sync failed:', e)
+      }
+    }
+
     const cls = classifyIncrementalSyncPaths([
       ...outcome.downloadedPaths,
       ...outcome.deletedLocalPaths

@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   CREATE_SKILL_GUIDE_PROMPT,
   CREATE_SKILL_SLASH_COMMAND,
+  DEFAULT_AGENT_SKILLS,
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_REPAIR_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_NAME,
   serializeSkillMarkdown
 } from '@baishou/shared'
 import {
   ensureMobileDefaultSkills,
+  migrateLegacyVaultUserSkills,
   readMobileSkill,
   writeMobileUserSkill
 } from '../mobile-skills-writer.util'
@@ -73,6 +78,28 @@ function createMemoryFs() {
     }
   }
 }
+
+describe('migrateLegacyVaultUserSkills', () => {
+  it('copies skills from active vault .agents/skills to storage root', async () => {
+    const fs = createMemoryFs()
+    await fs.mkdir('/vault/Personal/.agents/skills/legacy', { recursive: true })
+    await fs.writeFile(
+      '/vault/Personal/.agents/skills/legacy/SKILL.md',
+      serializeSkillMarkdown({
+        name: 'legacy',
+        description: '旧仓技能',
+        content: '旧正文'
+      })
+    )
+
+    const migrated = await migrateLegacyVaultUserSkills('/vault', '/vault/Personal', fs)
+
+    expect(migrated).toEqual(['legacy'])
+    expect(await fs.exists('/vault/.agents/skills/legacy/SKILL.md')).toBe(true)
+    const copied = await readMobileSkill('/vault', 'legacy', fs)
+    expect(copied).toMatchObject({ name: 'legacy', description: '旧仓技能', content: '旧正文' })
+  })
+})
 
 describe('writeMobileUserSkill', () => {
   it('should write a new skill under vault .agents/skills when creating', async () => {
@@ -217,12 +244,20 @@ describe('writeMobileUserSkill', () => {
 })
 
 describe('ensureMobileDefaultSkills', () => {
-  it('should write create-skill under AI/skills when it is missing', async () => {
+  it('should write default skills under AI/skills when missing', async () => {
     const fs = createMemoryFs()
     const written = await ensureMobileDefaultSkills('/vault', fs)
 
-    expect(written).toEqual([CREATE_SKILL_SLASH_COMMAND])
+    expect(written).toEqual([
+      CREATE_SKILL_SLASH_COMMAND,
+      DIARY_APPEND_SKILL_NAME,
+      SUMMARY_WRITE_SKILL_NAME,
+      SUMMARY_REPAIR_SKILL_NAME
+    ])
     expect(await fs.exists('/vault/AI/skills/create-skill/SKILL.md')).toBe(true)
+    expect(await fs.exists('/vault/AI/skills/diary-append/SKILL.md')).toBe(true)
+    expect(await fs.exists('/vault/AI/skills/summary-write/SKILL.md')).toBe(true)
+    expect(await fs.exists('/vault/AI/skills/summary-repair/SKILL.md')).toBe(true)
     expect(await fs.readFile('/vault/AI/skills/create-skill/SKILL.md')).toContain(
       CREATE_SKILL_GUIDE_PROMPT.trim()
     )
@@ -230,15 +265,17 @@ describe('ensureMobileDefaultSkills', () => {
 
   it('should keep existing software create-skill content when description already matches', async () => {
     const fs = createMemoryFs()
-    await fs.mkdir('/vault/AI/skills/create-skill', { recursive: true })
-    await fs.writeFile(
-      '/vault/AI/skills/create-skill/SKILL.md',
-      serializeSkillMarkdown({
-        name: CREATE_SKILL_SLASH_COMMAND,
-        description: CREATE_SKILL_SLASH_COMMAND,
-        content: 'custom body'
-      })
-    )
+    for (const skill of DEFAULT_AGENT_SKILLS) {
+      await fs.mkdir(`/vault/AI/skills/${skill.name}`, { recursive: true })
+      await fs.writeFile(
+        `/vault/AI/skills/${skill.name}/SKILL.md`,
+        serializeSkillMarkdown({
+          name: skill.name,
+          description: skill.description,
+          content: skill.name === CREATE_SKILL_SLASH_COMMAND ? 'custom body' : skill.content
+        })
+      )
+    }
 
     const written = await ensureMobileDefaultSkills('/vault', fs)
 
@@ -248,15 +285,17 @@ describe('ensureMobileDefaultSkills', () => {
 
   it('should refresh description and keep content when the software copy description differs', async () => {
     const fs = createMemoryFs()
-    await fs.mkdir('/vault/AI/skills/create-skill', { recursive: true })
-    await fs.writeFile(
-      '/vault/AI/skills/create-skill/SKILL.md',
-      serializeSkillMarkdown({
-        name: CREATE_SKILL_SLASH_COMMAND,
-        description: 'old-desc',
-        content: 'keep this body'
-      })
-    )
+    for (const skill of DEFAULT_AGENT_SKILLS) {
+      await fs.mkdir(`/vault/AI/skills/${skill.name}`, { recursive: true })
+      await fs.writeFile(
+        `/vault/AI/skills/${skill.name}/SKILL.md`,
+        serializeSkillMarkdown({
+          name: skill.name,
+          description: skill.name === CREATE_SKILL_SLASH_COMMAND ? 'old-desc' : skill.description,
+          content: skill.name === CREATE_SKILL_SLASH_COMMAND ? 'keep this body' : skill.content
+        })
+      )
+    }
 
     const written = await ensureMobileDefaultSkills('/vault', fs)
 
@@ -264,6 +303,48 @@ describe('ensureMobileDefaultSkills', () => {
     const markdown = await fs.readFile('/vault/AI/skills/create-skill/SKILL.md')
     expect(markdown).toContain(`description: ${CREATE_SKILL_SLASH_COMMAND}`)
     expect(markdown).toContain('keep this body')
+  })
+
+  it('should upgrade an untouched bundled skill body when the bundled content changed', async () => {
+    const fs = createMemoryFs()
+    const target = DEFAULT_AGENT_SKILLS.find((skill) => skill.name === SUMMARY_WRITE_SKILL_NAME)!
+    await fs.mkdir(`/vault/AI/skills/${target.name}`, { recursive: true })
+    await fs.writeFile(
+      `/vault/AI/skills/${target.name}/SKILL.md`,
+      serializeSkillMarkdown({
+        name: target.name,
+        description: target.description,
+        content: '旧版内置正文',
+        bundledHash: 'deadbeef'
+      })
+    )
+
+    const written = await ensureMobileDefaultSkills('/vault', fs)
+
+    expect(written).toContain(target.name)
+    const markdown = await fs.readFile(`/vault/AI/skills/${target.name}/SKILL.md`)
+    expect(markdown).toContain(target.content.slice(0, 20))
+    expect(markdown).not.toContain('旧版内置正文')
+  })
+
+  it('should keep a user-owned skill body even when it has no bundled hash', async () => {
+    const fs = createMemoryFs()
+    const target = DEFAULT_AGENT_SKILLS.find((skill) => skill.name === SUMMARY_WRITE_SKILL_NAME)!
+    await fs.mkdir(`/vault/AI/skills/${target.name}`, { recursive: true })
+    await fs.writeFile(
+      `/vault/AI/skills/${target.name}/SKILL.md`,
+      serializeSkillMarkdown({
+        name: target.name,
+        description: target.description,
+        content: '我自己的改写正文'
+      })
+    )
+
+    await ensureMobileDefaultSkills('/vault', fs)
+
+    expect(await fs.readFile(`/vault/AI/skills/${target.name}/SKILL.md`)).toContain(
+      '我自己的改写正文'
+    )
   })
 
   it('should not write when the vault root is empty', async () => {
@@ -298,7 +379,7 @@ describe('ensureMobileDefaultSkills', () => {
 
     const skill = await readMobileSkill('/vault', CREATE_SKILL_SLASH_COMMAND, fs)
     expect(skill?.name).toBe(CREATE_SKILL_SLASH_COMMAND)
-    expect(skill?.content).toContain('请引导我创建一个软件级 Skill')
+    expect(skill?.content).toContain('Guide me to create a software-level Skill')
     expect(skill?.location).toBe('/vault/AI/skills/create-skill/SKILL.md')
   })
 })

@@ -44,8 +44,13 @@ function looksLikeAgentDatabaseDead(error: unknown): boolean {
   )
 }
 
-export function createMobileSessionDiskPersistenceHooks(): SessionDiskPersistenceHooks {
+export function createMobileSessionDiskPersistenceHooks(options?: {
+  resolveVaultName?: (vaultId: string) => Promise<string | null> | string | null
+  resolveActiveVaultName?: () => Promise<string | null> | string | null
+}): SessionDiskPersistenceHooks {
   return {
+    resolveVaultName: options?.resolveVaultName,
+    resolveActiveVaultName: options?.resolveActiveVaultName,
     onBeforeWrite: (sessionId) => {
       sessionFileWatcher.suppressSession(sessionId)
     }

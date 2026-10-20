@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import {
   applyFrozenPhaseProgress,
+  coerceDiaryCalendarDate,
   EMBED_API_PROBE_FAILURE_MESSAGE,
   filterUnindexedDiaries,
   firstActivePhase,
@@ -379,7 +380,7 @@ export async function runControlledDiaryBatchEmbedCore(
             }
 
             const dateLabel = meta.date
-              ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+              ? formatLocalDate(coerceDiaryCalendarDate(meta.date) ?? new Date())
               : ''
 
             try {
@@ -398,8 +399,7 @@ export async function runControlledDiaryBatchEmbedCore(
                 return
               }
 
-              const d =
-                diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
+              const d = coerceDiaryCalendarDate(diary.date ?? meta.date) ?? new Date()
               await embedDiaryEntry(
                 deps,
                 {

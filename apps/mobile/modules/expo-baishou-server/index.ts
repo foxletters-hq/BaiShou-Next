@@ -34,6 +34,16 @@ export function startMcpServer(port: number, authToken?: string | null): number 
   return startServer(port, authToken)
 }
 
+export function getServerPort(): number {
+  const mod = getNative()
+  if (!mod || typeof mod.getServerPort !== 'function') return 0
+  try {
+    return mod.getServerPort()
+  } catch {
+    return 0
+  }
+}
+
 export function stopServer(): void {
   if (!getNative()) return
   requireNative().stopServer()

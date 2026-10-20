@@ -184,7 +184,9 @@ export async function createAgentDbRuntime(
     sessionRepo,
     sessionFileService,
     sessionSyncService,
-    createMobileSessionDiskPersistenceHooks()
+    createMobileSessionDiskPersistenceHooks({
+      resolveActiveVaultName: () => pathService.getActiveVaultNameForContext?.() ?? null
+    })
   )
 
   const assistantFileService = new AssistantFileService(pathService, fileSystem)

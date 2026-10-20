@@ -3,6 +3,10 @@ import type { i18n as I18nInstance } from 'i18next'
 import { SummaryType, logger } from '@baishou/shared'
 import { isSummaryUserAbortError } from '@baishou/core-mobile'
 import { resolveMobileSummaryGenerateOptions } from '../services/mobile-summary-generate-options'
+import {
+  buildSummaryTaskKey,
+  parseSummaryBoundaryDate
+} from '../screens/SummaryScreen/utils/summary-detail.helpers'
 import type { useBaishou } from '../providers/BaishouProvider'
 
 export interface SummaryMissingItem {
@@ -88,8 +92,8 @@ export function useSummaryGenerationQueue(options: {
 
         const target = {
           type: task.target.type as SummaryType,
-          startDate: new Date(task.target.startDate),
-          endDate: new Date(task.target.endDate),
+          startDate: parseSummaryBoundaryDate(task.target.startDate),
+          endDate: parseSummaryBoundaryDate(task.target.endDate),
           label: task.target.label ?? ''
         }
 
@@ -177,8 +181,8 @@ export function useSummaryGenerationQueue(options: {
           )
           await services.summaryManager.save({
             type: task.target.type as SummaryType,
-            startDate: new Date(task.target.startDate),
-            endDate: new Date(task.target.endDate),
+            startDate: target.startDate,
+            endDate: target.endDate,
             content: finalContent
           })
 
@@ -268,7 +272,7 @@ export function useSummaryGenerationQueue(options: {
 
       let added = 0
       for (const item of items) {
-        const uKey = `${item.type}_${new Date(item.startDate).getTime()}`
+        const uKey = buildSummaryTaskKey(item.type, item.startDate)
         if (!queueRef.current.find((q) => q.id === uKey)) {
           queueRef.current.push({
             id: uKey,

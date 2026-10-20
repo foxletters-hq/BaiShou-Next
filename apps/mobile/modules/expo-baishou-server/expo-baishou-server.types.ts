@@ -12,6 +12,9 @@ type ServerEvents = {
   }) => void
   onLanUploadStarted: (event: { totalBytes: number }) => void
   onLanUploadProgress: (event: { writtenBytes: number; totalBytes: number }) => void
+  onLanUploadFailed: (event: { reason: string }) => void
+  onLanSendProgress: (event: { writtenBytes: number; totalBytes: number }) => void
+  onHttpServerPortChanged: (event: { port: number; requestedPort?: number }) => void
   onStorageRootCopyProgress: (event: { itemName: string }) => void
   onArchiveImportProgress: (event: {
     phase: string
@@ -79,6 +82,7 @@ export type NativeZipArchiveExportResult = {
  */
 export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> {
   startServer(port: number, authToken?: string | null): number
+  getServerPort(): number
   stopServer(): void
   resolveMcpHttpResponse(requestId: string, responseBody: string): boolean
   beginMcpHttpStream(requestId: string, responseBody: string): boolean
