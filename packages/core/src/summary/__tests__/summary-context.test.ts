@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { computeLookbackCutoffDate, computeSharedMemoryCopyPreview } from '../summary-context'
+import {
+  buildSharedContextText,
+  computeLookbackCutoffDate,
+  computeSharedMemoryCopyPreview
+} from '../summary-context'
 
 describe('computeLookbackCutoffDate', () => {
   it('anchors lookback to the reference date, not wall-clock now', () => {
@@ -143,5 +147,24 @@ describe('computeSharedMemoryCopyPreview', () => {
 
     expect(withPrefix.estimatedChars).toBeGreaterThan(withoutPrefix.estimatedChars)
     expect(withPrefix.estimatedTokens).toBeGreaterThan(withoutPrefix.estimatedTokens)
+  })
+})
+
+describe('buildSharedContextText', () => {
+  it('starts with the user prefix and localized subtitle without brand copy', async () => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const text = await buildSharedContextText(
+      [{ type: 'monthly', startDate: monthStart, endDate: now, content: 'hello memory' }],
+      6,
+      'zh',
+      { diaries: [], userCopyPrefix: '这是我们的回忆' }
+    )
+
+    expect(text.startsWith('这是我们的回忆\n\n包含最近 6 个月')).toBe(true)
+    expect(text).not.toContain('白守')
+    expect(text).toContain('## [月总结]')
+    expect(text).toContain('hello memory')
   })
 })

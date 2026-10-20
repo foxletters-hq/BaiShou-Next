@@ -177,6 +177,17 @@ export class SessionSyncService {
     allDbSessions: ReadonlyArray<{ id: string; vaultName?: string | null }>,
     options?: DiskResyncOptions
   ): Promise<number> {
+    // 兜底：全盘一个会话文件都没读到，但库里仍有会话时，几乎一定是工作区目录未挂载 /
+    // 路径异常 / 权限失败，而不是用户真的把所有会话删光了。此时禁止按“幽灵”清库。
+    if (allFiles.length === 0 && allDbSessions.length > 0) {
+      console.warn('[SessionSyncService] skip ghost cleanup: scan found 0 session files', {
+        dbCount: allDbSessions.length,
+        activeVaultName: options?.activeVaultName ?? null,
+        diskVaultNames: options?.diskVaultNames ?? []
+      })
+      return 0
+    }
+
     const fileIds = new Set(allFiles.map((f) => f.id))
     const preserveIds = new Set(options?.preserveSessionIds ?? [])
     const toDeleteIds: string[] = []
@@ -185,6 +196,13 @@ export class SessionSyncService {
       ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
     ]
     const scannedVaultSet = vaultNames.length > 0 ? new Set(vaultNames) : null
+    // 某些工作区目录存在但一个会话文件都没读到：这可能是同步/挂载还没完成，
+    // 不能据此把该工作区的库内会话当幽灵删掉。
+    const vaultsWithFiles = new Set(
+      allFiles
+        .map((f) => ('vaultName' in f ? f.vaultName?.trim() : ''))
+        .filter((name): name is string => Boolean(name))
+    )
 
     for (const dbRecord of allDbSessions) {
       if (fileIds.has(dbRecord.id)) continue
@@ -193,8 +211,15 @@ export class SessionSyncService {
       if (scannedVaultSet) {
         // 跨 vault 全扫：仅清理「归属已扫工作区」且盘上已无文件的记录
         const recordVault = dbRecord.vaultName?.trim()
-        if (recordVault && recordVault !== 'default' && !scannedVaultSet.has(recordVault)) {
-          continue
+        if (recordVault && recordVault !== 'default') {
+          if (!scannedVaultSet.has(recordVault)) continue
+          if (vaultsWithFiles.size > 0 && !vaultsWithFiles.has(recordVault)) {
+            console.warn('[SessionSyncService] skip ghost cleanup for vault with 0 files', {
+              vaultName: recordVault,
+              dbCount: allDbSessions.length
+            })
+            continue
+          }
         }
       } else if (activeVaultName && dbRecord.vaultName !== activeVaultName) {
         continue

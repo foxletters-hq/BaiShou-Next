@@ -68,12 +68,45 @@ export function classifyMonthlyJsonlPath(filePath: string): MonthlyJsonlClassifi
   return null
 }
 
+export type NotebookStructureJsonlClassification = {
+  /** 相对 Notebooks/ 的路径：notebooks.jsonl 或 <notebookId>/sources.jsonl */
+  relativePath: string
+}
+
+/**
+ * Notebooks 结构层（notebooks.jsonl / <nb>/sources.jsonl）是追加型 JSONL，
+ * 按 id/updatedAt 做行级 LWW；不要与月分片混淆。
+ */
+export function classifyNotebookStructureJsonlPath(
+  filePath: string
+): NotebookStructureJsonlClassification | null {
+  const p = filePath.replace(/\\/g, '/')
+  const notebookList = p.match(/(?:^|\/)Notebooks\/(notebooks\.jsonl)$/i)
+  if (notebookList) return { relativePath: notebookList[1]! }
+  const sources = p.match(/(?:^|\/)Notebooks\/([^/]+)\/sources\.jsonl$/i)
+  if (sources) {
+    const notebookId = sources[1]!.trim()
+    if (!notebookId || notebookId === '.' || notebookId === '..') return null
+    return { relativePath: `${notebookId}/sources.jsonl` }
+  }
+  return null
+}
+
+export function isNotebookStructureJsonlPath(filePath: string): boolean {
+  return classifyNotebookStructureJsonlPath(filePath) != null
+}
+
 /**
  * Only Memory shards line-merge on conflict.
  * Vault Graph and notebook-graph shards overwrite the whole file.
  */
 export function shouldLineMergeMonthlyJsonlOnConflict(filePath: string): boolean {
   return classifyMonthlyJsonlPath(filePath)?.kind === 'memory'
+}
+
+/** 同步冲突需要走行级 LWW 的 JSONL：Memory 月分片 + Notebooks 结构层。 */
+export function shouldLineMergeJsonlOnConflict(filePath: string): boolean {
+  return shouldLineMergeMonthlyJsonlOnConflict(filePath) || isNotebookStructureJsonlPath(filePath)
 }
 
 export function shardKeyValidatorForJsonlKind(
@@ -96,7 +129,7 @@ export async function applyJsonlConflictResolved(input: {
   overwriteDownload: () => Promise<void>
 }): Promise<JsonlConflictOutcome> {
   const direction = input.direction === 'upload' ? 'upload' : 'download'
-  if (shouldLineMergeMonthlyJsonlOnConflict(input.filePath)) {
+  if (shouldLineMergeJsonlOnConflict(input.filePath)) {
     if (await input.lineMerge()) return 'merged'
   }
   if (direction === 'upload') {

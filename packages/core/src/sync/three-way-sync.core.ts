@@ -100,6 +100,9 @@ export abstract class ThreeWaySyncCore {
   }
 
   protected async computeFileHash(filePath: string): Promise<string> {
+    if (typeof this.syncFileSystem.md5Hex === 'function') {
+      return this.syncFileSystem.md5Hex(filePath)
+    }
     const content = await fs.promises.readFile(filePath)
     return crypto.createHash('md5').update(content).digest('hex')
   }

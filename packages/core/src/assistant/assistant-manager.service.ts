@@ -10,7 +10,8 @@ import {
   deriveLegacyVaultId,
   isVaultId,
   isSystemLatteAssistantId,
-  SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE
+  SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE,
+  logger
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { emitDomainMutation } from '../events'
@@ -232,6 +233,18 @@ export class AssistantManagerService {
     if (!vaultId) return []
     const items = await this.repo.findAll(vaultId)
     const fileIds = new Set((await this.fileService.listAllAssistants()).map((f) => f.id))
+
+    // 兜底：Assistants 目录一个文件都没有、但库里有记录时，先按库返回。
+    // 常见于工作区目录未挂载 / 云盘尚未同步完成；否则 UI 会退回默认伙伴，
+    // 连带把旧会话按 assistantId 过滤掉，看起来像聊天记录和名字都丢了。
+    if (fileIds.size === 0 && items.length > 0) {
+      logger.warn('[AssistantManager] assistants directory is empty; falling back to SQLite rows', {
+        vaultId,
+        count: items.length
+      })
+      return Promise.all(items.map((i) => this.mapAvatarOutput(i)))
+    }
+
     return Promise.all(items.filter((i) => fileIds.has(i.id)).map((i) => this.mapAvatarOutput(i)))
   }
 
@@ -333,6 +346,15 @@ export class AssistantManagerService {
       const allFiles = await this.fileService.listAssistantsAcrossVaults(vaultNames)
       const scannedVaultIds = new Set<string>()
 
+      if (allFiles.length === 0) {
+        logger.warn(
+          '[AssistantManager] cross-vault rescan found 0 assistant files; skip ghost cleanup',
+          {
+            diskVaultNames: vaultNames
+          }
+        )
+      }
+
       for (const f of allFiles) {
         const vaultId = this.resolveVaultIdForName(f.vaultName, options)
         scannedVaultIds.add(vaultId)
@@ -364,12 +386,22 @@ export class AssistantManagerService {
     if (!vaultId) return
 
     const allFiles = await this.fileService.listAllAssistants()
+    const allDb = await this.repo.findAll(vaultId)
+
+    // 兜底：一个伙伴 JSON 都没扫到但库里有记录时，先判定为目录/挂载异常，禁止清库。
+    if (allFiles.length === 0 && allDb.length > 0) {
+      logger.warn(
+        '[AssistantManager] active-vault rescan found 0 assistant files; skip ghost cleanup',
+        { vaultId, dbCount: allDb.length }
+      )
+      return
+    }
+
     for (const f of allFiles) {
       await this.upsertFromDiskFile(f.id, vaultId)
     }
 
     const fileIds = new Set(allFiles.map((f) => f.id))
-    const allDb = await this.repo.findAll(vaultId)
     for (const dbRecord of allDb) {
       if (!fileIds.has(dbRecord.id)) {
         await this.repo.delete(dbRecord.id, vaultId)

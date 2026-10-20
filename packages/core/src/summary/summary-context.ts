@@ -17,7 +17,6 @@ interface LocaleDict {
   weekly: string
   diary: string
   subTitle: (months: number) => string
-  slangs: string[]
 }
 
 /** 支持语言的国际化字典 */
@@ -28,12 +27,7 @@ const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
     monthly: i18n.t('auto.packages.core.src.summary.summary.context.L26', '[月总结]'),
     weekly: i18n.t('auto.packages.core.src.summary.summary.context.L27', '[周总结]'),
     diary: i18n.t('auto.packages.core.src.summary.summary.context.L28', '[日记]'),
-    subTitle: (months) => `包含最近 ${months} 个月的关键人生节点记录与回忆`,
-    slangs: [
-      i18n.t('auto.packages.core.src.summary.summary.context.L30', '📖 白守 · 共同回忆'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L30', '🌸 共同回忆 — 白守'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L30', '✨ 白守 | 共同回忆')
-    ]
+    subTitle: (months) => `包含最近 ${months} 个月的关键人生节点记录与回忆`
   },
   zh_TW: {
     yearly: i18n.t('auto.packages.core.src.summary.summary.context.L33', '[年總結]'),
@@ -41,12 +35,7 @@ const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
     monthly: i18n.t('auto.packages.core.src.summary.summary.context.L35', '[月總結]'),
     weekly: i18n.t('auto.packages.core.src.summary.summary.context.L36', '[周總結]'),
     diary: i18n.t('auto.packages.core.src.summary.summary.context.L37', '[日記]'),
-    subTitle: (months) => `包含最近 ${months} 個月的關鍵人生節點記錄與回憶`,
-    slangs: [
-      i18n.t('auto.packages.core.src.summary.summary.context.L39', '📖 白守 · 共同回憶'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L39', '🌸 共同回憶 — 白守'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L39', '✨ 白守 | 共同回憶')
-    ]
+    subTitle: (months) => `包含最近 ${months} 個月的關鍵人生節點記錄與回憶`
   },
   en: {
     yearly: '[Yearly Summary]',
@@ -54,12 +43,7 @@ const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
     monthly: '[Monthly Summary]',
     weekly: '[Weekly Summary]',
     diary: '[Diary]',
-    subTitle: (months) => `Includes key life events and memories from the past ${months} months`,
-    slangs: [
-      '📖 BaiShou · Shared Memories',
-      '🌸 Shared Memories — BaiShou',
-      '✨ BaiShou | Shared Memories'
-    ]
+    subTitle: (months) => `Includes key life events and memories from the past ${months} months`
   },
   ja: {
     yearly: i18n.t('auto.packages.core.src.summary.summary.context.L55', '[年次のまとめ]'),
@@ -67,12 +51,7 @@ const LOCALE_TRANSLATIONS: Record<string, LocaleDict> = {
     monthly: i18n.t('auto.packages.core.src.summary.summary.context.L57', '[月次のまとめ]'),
     weekly: i18n.t('auto.packages.core.src.summary.summary.context.L58', '[週次のまとめ]'),
     diary: i18n.t('auto.packages.core.src.summary.summary.context.L59', '[日記]'),
-    subTitle: (months) => `過去 ${months} ヶ月間の主要な人生の節目と记录を含みます`,
-    slangs: [
-      i18n.t('auto.packages.core.src.summary.summary.context.L61', '📖 白守 · 共同の思い出'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L61', '🌸 共同の思い出 — 白守'),
-      i18n.t('auto.packages.core.src.summary.summary.context.L61', '✨ 白守 | 共同の思い出')
-    ]
+    subTitle: (months) => `過去 ${months} ヶ月間の主要な人生の節目と记录を含みます`
   }
 }
 
@@ -244,8 +223,7 @@ export type SharedMemoryBuildOptions = SharedMemoryWindowOptions & {
 function buildSharedContextBody(
   allItems: ResolvedSharedMemoryItems['allItems'],
   lookbackMonths: number,
-  locale?: string,
-  options?: { deterministicHeader?: boolean }
+  locale?: string
 ): string {
   const tDict = LOCALE_TRANSLATIONS[resolveLocaleKey(locale || 'zh')] ?? LOCALE_TRANSLATIONS['zh']!
 
@@ -264,10 +242,7 @@ function buildSharedContextBody(
     return `## ${prefix} ${dateStr}\n\n${content}`
   })
 
-  const slang = options?.deterministicHeader
-    ? tDict.slangs[0]!
-    : tDict.slangs[Math.floor(Math.random() * tDict.slangs.length)]!
-  const header = `${slang}\n${tDict.subTitle(lookbackMonths)}\n`
+  const header = `${tDict.subTitle(lookbackMonths)}\n`
   if (formattedParts.length === 0) return ''
   return `${header}\n${formattedParts.join('\n\n---\n\n')}`
 }
@@ -296,7 +271,7 @@ function estimateSharedContextMetrics(
     weekly: tDict.weekly,
     diary: tDict.diary
   }
-  const header = `${tDict.slangs[0]!}\n${tDict.subTitle(lookbackMonths)}\n`
+  const header = `${tDict.subTitle(lookbackMonths)}\n`
   const separator = '\n\n---\n\n'
 
   let bodyChars = 0
