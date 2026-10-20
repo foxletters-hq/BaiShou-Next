@@ -181,8 +181,9 @@ describe('message_search date range (pre-compression text)', () => {
   })
 
   it('LIKE path alone still respects the date range', async () => {
-    const originalFts = (repo as any).searchMessagesViaFts.bind(repo)
-    ;(repo as any).searchMessagesViaFts = async () => []
+    const searchOps = (repo as any).search
+    const originalFts = searchOps.searchMessagesViaFts.bind(searchOps)
+    searchOps.searchMessagesViaFts = async () => []
     try {
       const hits = await repo.searchMessagesByKeyword('keyword', 10, VAULT_ID, {
         startDate: '2026-09-01',
@@ -191,7 +192,7 @@ describe('message_search date range (pre-compression text)', () => {
       expect(hits).toHaveLength(1)
       expect(String(hits[0]?.content)).toContain('区间内原文')
     } finally {
-      ;(repo as any).searchMessagesViaFts = originalFts
+      searchOps.searchMessagesViaFts = originalFts
     }
   })
 })

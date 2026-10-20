@@ -344,6 +344,25 @@ export class SessionCrudOps {
       .where(eq(agentSessionsTable.id, sessionId))
   }
 
+  /** 读取会话级 instruction 基线（JSON 字符串）；无记录返回 null */
+  async getSessionInstructionState(sessionId: string): Promise<string | null> {
+    const docs = await this.db
+      .select({ instructionState: agentSessionsTable.instructionState })
+      .from(agentSessionsTable)
+      .where(eq(agentSessionsTable.id, sessionId))
+      .limit(1)
+    const raw = docs[0]?.instructionState
+    return typeof raw === 'string' && raw.trim() ? raw : null
+  }
+
+  /** 写入会话级 instruction 基线（JSON 字符串）；传 null 清空 */
+  async updateSessionInstructionState(sessionId: string, state: string | null): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({ instructionState: state, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
+  }
+
   async togglePin(id: string, isPinned: boolean): Promise<void> {
     await this.db
       .update(agentSessionsTable)

@@ -18,6 +18,16 @@ import {
 type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultId'>
 type SqlBindValue = string | number | null | Uint8Array | ArrayBuffer
 
+/** LIKE 兜底检索按空白/标点拆词，避免「工具测试 记忆 日记」这类整句永远匹配不到。 */
+function tokenizeKeyword(keyword: string): string[] {
+  const terms = keyword
+    .trim()
+    .split(/[\s,，、;；|/\\。.!！?？:：]+/u)
+    .map((term) => term.replace(/[%_]/g, ' ').trim())
+    .filter(Boolean)
+  return [...new Set(terms)].slice(0, 8)
+}
+
 export class HybridSearchVectorQuery {
   constructor(
     private readonly db: ISqlExecutor,
@@ -77,16 +87,25 @@ export class HybridSearchVectorQuery {
     limit: number,
     filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultId'>
   ): Promise<ISearchResult[]> {
+    const terms = tokenizeKeyword(keyword)
+    if (terms.length === 0) return []
+
     const timeWhere = this.buildWhereClause(filter)
-    const keywordClause = timeWhere.sql ? ' AND chunk_text LIKE ?' : ' WHERE chunk_text LIKE ?'
+    const termPatterns = terms.map((term) => `%${term}%`)
+    const matchClause = `(${terms.map(() => 'chunk_text LIKE ?').join(' OR ')})`
+    const scoreExpr = terms.map(() => '(CASE WHEN chunk_text LIKE ? THEN 1 ELSE 0 END)').join(' + ')
+    const whereSql = timeWhere.sql ? `${timeWhere.sql} AND ${matchClause}` : ` WHERE ${matchClause}`
+
     const res = await this.db.execute({
       sql: `
         SELECT embedding_id, source_id AS sourceId, group_id AS sessionId, chunk_text AS chunkText,
-               source_created_at AS createdAt, source_type AS sourceType
-        FROM ${HYBRID_SEARCH_TABLE}${timeWhere.sql}${keywordClause}
+               source_created_at AS createdAt, source_type AS sourceType,
+               (${scoreExpr}) AS matchScore
+        FROM ${HYBRID_SEARCH_TABLE}${whereSql}
+        ORDER BY matchScore DESC, source_created_at DESC
         LIMIT ?
       `,
-      args: [...timeWhere.args, `%${keyword}%`, limit]
+      args: [...termPatterns, ...timeWhere.args, ...termPatterns, limit]
     })
 
     return Array.from(res.rows).map((r, i) => ({
