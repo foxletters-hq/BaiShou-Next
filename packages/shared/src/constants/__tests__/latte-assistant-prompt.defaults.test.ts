@@ -57,6 +57,16 @@ describe('latte-assistant-prompt.defaults', () => {
     expect(isFactoryLatteAssistantSystemPrompt('你是一个友善且有创意的AI助手。')).toBe(true)
   })
 
+  it('recognizes the previous default prompt that mentioned the app name as factory', () => {
+    const current = getDefaultLatteAssistantSystemPrompt('zh')
+    const previous = current
+      .replace('也是这个应用的看板娘', '也是白守的看板娘')
+      .replace('让每一次对话都更有温度', '让每一次对话都让白守更有温度')
+    expect(previous).not.toBe(current)
+    expect(isFactoryLatteAssistantSystemPrompt(previous)).toBe(true)
+    expect(current).not.toContain('白守')
+  })
+
   it('returns localized default prompt', () => {
     expect(getDefaultLatteAssistantSystemPrompt('en').startsWith('You are Latte.')).toBe(true)
     expect(getDefaultLatteAssistantSystemPrompt('zh').includes('你是 Latte')).toBe(true)

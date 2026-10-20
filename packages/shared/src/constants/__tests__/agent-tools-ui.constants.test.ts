@@ -1,7 +1,12 @@
 import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
+import en from '../../i18n/en.i18n.json'
+import ja from '../../i18n/ja.i18n.json'
+import zh from '../../i18n/zh.i18n.json'
+import zhTW from '../../i18n/zh_TW.i18n.json'
 import {
   AGENT_TOOL_UI_DEFS,
+  WORKSPACE_TOOL_UI_DEFS,
   resolveAgentToolActionLabel,
   resolveAgentToolNameKey
 } from '../agent-tools-ui.constants'
@@ -25,6 +30,29 @@ describe('agent-tools-ui.constants', () => {
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('diary_write')
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('skill_write')
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('skill_read')
+  })
+
+  it('provides nameKey and tooltipKey translations in all four locales for every UI tool', () => {
+    const locales = { zh, zh_TW: zhTW, en, ja } as Record<string, Record<string, unknown>>
+    const lookup = (dict: Record<string, unknown>, dotKey: string): unknown =>
+      dotKey
+        .split('.')
+        .reduce<unknown>(
+          (cur, part) =>
+            cur && typeof cur === 'object' ? (cur as Record<string, unknown>)[part] : undefined,
+          dict
+        )
+
+    for (const [localeName, dict] of Object.entries(locales)) {
+      for (const def of [...AGENT_TOOL_UI_DEFS, ...WORKSPACE_TOOL_UI_DEFS]) {
+        expect(lookup(dict, def.nameKey), `${localeName}:${def.nameKey}`).toEqual(
+          expect.any(String)
+        )
+        expect(lookup(dict, def.tooltipKey), `${localeName}:${def.tooltipKey}`).toEqual(
+          expect.any(String)
+        )
+      }
+    }
   })
 })
 

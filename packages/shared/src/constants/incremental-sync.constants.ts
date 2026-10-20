@@ -13,6 +13,14 @@ export const SYNC_REMOTE_VAULTS_FILENAME = 'last-remote-vaults.json'
 /** `SyncManifest.version` 当前格式版本 */
 export const SYNC_MANIFEST_VERSION = 1
 
+/** 新端写入 manifest 的能力标记；旧端 manifest 不含该字段 */
+export const SYNC_MANIFEST_CAPABILITIES = [
+  'global-settings',
+  'vault-identity',
+  'agents-skills',
+  'notebooks-jsonl-lww'
+] as const
+
 /** 远端 manifest 中「已移除记录」最大条数（同一路径只占一条） */
 export const SYNC_MANIFEST_REMOVED_MAX_ENTRIES = 20000
 

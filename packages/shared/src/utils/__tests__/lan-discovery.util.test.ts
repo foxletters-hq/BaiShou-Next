@@ -5,10 +5,12 @@ import {
   buildLanServiceName,
   getLanDeviceDedupKey,
   isVirtualLanInterfaceName,
+  lanDeviceIpCandidates,
   normalizeLanDeviceType,
   pickBestLanIpv4,
   removeDiscoveredLanDevice,
   resolveDiscoveredLanIpv4,
+  resolveDiscoveredLanIpv4Candidates,
   upsertDiscoveredLanDevice
 } from '../lan-discovery.util'
 
@@ -21,6 +23,28 @@ describe('lan-discovery.util', () => {
         host: 'desktop.local'
       })
     ).toBe('192.168.31.10')
+  })
+
+  it('keeps every candidate so VPN txt IP cannot hide the real Wi-Fi address', () => {
+    const candidates = resolveDiscoveredLanIpv4Candidates({
+      txt: { ip: '10.8.0.2,192.168.31.10' },
+      addresses: ['192.168.31.10', '198.18.0.1'],
+      host: 'desktop.local'
+    })
+
+    expect(candidates[0]).toBe('192.168.31.10')
+    expect(candidates).toContain('10.8.0.2')
+    expect(candidates).not.toContain('198.18.0.1')
+  })
+
+  it('exposes candidate fallback and dedupes by ip', () => {
+    expect(lanDeviceIpCandidates({ ip: '192.168.1.9', ipCandidates: [] })).toEqual(['192.168.1.9'])
+    expect(
+      lanDeviceIpCandidates({
+        ip: '10.0.0.2',
+        ipCandidates: ['10.0.0.2', '192.168.1.9', '10.0.0.2']
+      })
+    ).toEqual(['10.0.0.2', '192.168.1.9'])
   })
 
   it('falls back to addresses before host', () => {
@@ -74,6 +98,7 @@ describe('lan-discovery.util', () => {
 
   it('picks best lan ipv4', () => {
     expect(pickBestLanIpv4(['127.0.0.1', '192.168.1.8', '8.8.8.8'])).toBe('192.168.1.8')
+    expect(pickBestLanIpv4(['127.0.0.1'])).toBeNull()
   })
 
   it('prefers 192.168 over docker-like 172.x private ranges', () => {

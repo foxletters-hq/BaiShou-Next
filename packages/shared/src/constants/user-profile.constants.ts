@@ -13,7 +13,7 @@ export const USER_PROFILE_LEGACY_SETTINGS_KEY = 'user_profile' as const
 
 /** 默认用户档案（与桌面 DEFAULT_PROFILE 对齐） */
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  nickname: '白守用户',
+  nickname: '用户',
   birthday: null,
   gender: null,
   customGender: null,

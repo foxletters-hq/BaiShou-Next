@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DIARY_APPEND_SKILL_CONTENT,
+  DIARY_APPEND_SKILL_DESCRIPTION,
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_CONTENT,
+  SUMMARY_WRITE_SKILL_DESCRIPTION,
+  SUMMARY_WRITE_SKILL_NAME
+} from '../../constants/builtin-skills'
+import {
   appendShortcutInsertText,
   dedupePromptShortcuts,
   filterShortcutsByQuery,
   formatShortcutInsertText,
   findShortcutCommandConflict,
   getShortcutCommand,
+  localizeAgentSkill,
   localizePromptShortcut,
   shouldStartShortcutSession
 } from '../prompt-shortcut.util'
@@ -101,5 +110,77 @@ describe('prompt-shortcut.util', () => {
     expect(localized.name).toBe('Translate')
     expect(localized.content).toBe('Translate this:\n\n')
     expect(getShortcutCommand(localized)).toBe('translate')
+  })
+
+  it('localizes display name and description of built-in skills while keeping English skill content', () => {
+    const labels = {
+      translateName: 'Translate',
+      translateContent: 'Translate this:\n\n',
+      summarizeName: 'Summarize',
+      summarizeContent: 'Summarize this:\n\n',
+      diaryAppendName: '补充日记',
+      diaryAppendDescription: '将近期对话补充进个人日记。',
+      summaryWriteName: '生成周期总结',
+      summaryWriteDescription: '检测缺失总结并撰写落盘。'
+    }
+    const diaryShortcut = localizePromptShortcut(
+      {
+        id: DIARY_APPEND_SKILL_NAME,
+        command: DIARY_APPEND_SKILL_NAME,
+        name: DIARY_APPEND_SKILL_DESCRIPTION,
+        description: DIARY_APPEND_SKILL_DESCRIPTION,
+        content: DIARY_APPEND_SKILL_CONTENT,
+        source: 'software' as const
+      },
+      labels
+    )
+    expect(diaryShortcut.name).toBe('补充日记')
+    expect(diaryShortcut.description).toBe('将近期对话补充进个人日记。')
+    expect(diaryShortcut.content).toBe(DIARY_APPEND_SKILL_CONTENT)
+
+    const summarySkill = localizeAgentSkill(
+      {
+        name: SUMMARY_WRITE_SKILL_NAME,
+        description: SUMMARY_WRITE_SKILL_DESCRIPTION,
+        content: SUMMARY_WRITE_SKILL_CONTENT,
+        location: '/vault/AI/skills/summary-write/SKILL.md',
+        source: 'software' as const
+      },
+      labels
+    )
+    expect(summarySkill.description).toBe('检测缺失总结并撰写落盘。')
+    expect(summarySkill.content).toBe(SUMMARY_WRITE_SKILL_CONTENT)
+  })
+
+  it('places built-in protected skills ahead of custom skills in canonical order', () => {
+    const merged = dedupePromptShortcuts([
+      { id: '123', command: '123', name: '123', content: '123' },
+      { id: 'asd', command: 'asd', name: 'asd', content: 'asd' },
+      {
+        id: SUMMARY_WRITE_SKILL_NAME,
+        command: SUMMARY_WRITE_SKILL_NAME,
+        name: SUMMARY_WRITE_SKILL_DESCRIPTION,
+        content: SUMMARY_WRITE_SKILL_CONTENT
+      },
+      {
+        id: DIARY_APPEND_SKILL_NAME,
+        command: DIARY_APPEND_SKILL_NAME,
+        name: DIARY_APPEND_SKILL_DESCRIPTION,
+        content: DIARY_APPEND_SKILL_CONTENT
+      },
+      {
+        id: 'create-skill',
+        command: 'create-skill',
+        name: 'create-skill',
+        content: 'guide'
+      }
+    ])
+    expect(merged.map((s) => s.command)).toEqual([
+      'create-skill',
+      DIARY_APPEND_SKILL_NAME,
+      SUMMARY_WRITE_SKILL_NAME,
+      '123',
+      'asd'
+    ])
   })
 })

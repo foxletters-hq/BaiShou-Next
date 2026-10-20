@@ -111,6 +111,12 @@ export interface ToolGraphRecaller {
 
 export interface ToolGraphNodeLookup {
   findNodeByName(opts: { name: string; nodeType?: string }): Promise<ToolGraphNodeHit | null>
+  /**
+   * Exact name/alias matches. Used by graph_upsert edge endpoints to report
+   * ambiguous names (e.g. a person and a product both named "Latte") instead
+   * of silently binding to the first node. Optional for older hosts.
+   */
+  findNodesByName?(opts: { name: string; nodeType?: string }): Promise<ToolGraphNodeHit[]>
   findNodeById?(id: string): Promise<ToolGraphNodeHit | null>
 }
 

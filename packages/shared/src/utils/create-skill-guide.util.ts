@@ -1,3 +1,8 @@
+import {
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_REPAIR_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_NAME
+} from '../constants/builtin-skills'
 import type { FallbackTranslateFn } from '../i18n/i18n.types'
 
 /**
@@ -6,59 +11,68 @@ import type { FallbackTranslateFn } from '../i18n/i18n.types'
  */
 export type CreateSkillGuideScope = 'software' | 'workspace'
 
-export const CREATE_SKILL_GUIDE_PROMPT = `请引导我创建一个软件级 Skill（可复用的 AI 工作流指令包）。
+export const CREATE_SKILL_GUIDE_PROMPT = `Guide me to create a software-level Skill (a reusable AI workflow pack).
 
-要求：
-- 一次只问 1–2 个关键问题，根据回答再往下问，不要一次抛出全部问卷
-- 先确认用途与触发场景，再定名称与 description，最后一起写正文
-- 名称必须是 kebab-case（小写字母/数字/连字符，如 code-review），且与目录名一致
-- description 用第三人称、说清「做什么 + 何时用」，便于以后 Agent 选型
-- 正文保持精炼，只写 Agent 不知道的领域知识与步骤
+Requirements:
+- Communicate with me in my current language (matching my message language or App UI locale)
+- Ask only 1–2 key questions at a time, then continue based on my answers; do not dump a full questionnaire at once
+- Confirm purpose and trigger scenarios first, then decide the name and description, and finally write the body together
+- The name must be kebab-case (lowercase letters, numbers, hyphens, e.g. code-review) and match the directory name
+- The description should be in third person and state both what it does and when to use it so the Agent can select it later
+- Keep the body concise: only include domain knowledge and workflow steps the Agent would not already know
 
-确认信息足够后：
-1. 先向我展示完整 SKILL.md 预览：文件开头用 properties 元信息（name: 与 description: 两行），不要用 --- 包裹
-2. 征得我同意后，调用 skill_write 工具写入用户主目录 .agents/skills/<name>/SKILL.md（不要用工作区文件写入工具，也不要写入 AI/skills）
+When the information is sufficient:
+1. Show me a full SKILL.md preview first: start the file with properties metadata (name: and description: lines), and do not wrap them with ---
+2. After I agree, call the skill_write tool to save it as .agents/skills/<name>/SKILL.md in the user home directory (do not use workspace file write tools, and do not write to AI/skills)
 `
 
-export const CREATE_SKILL_GUIDE_PROMPT_WORKSPACE = `请引导我创建一个项目级 Skill（仅当前工作区可复用的 AI 工作流指令包）。
+export const CREATE_SKILL_GUIDE_PROMPT_WORKSPACE = `Guide me to create a project-level Skill (a reusable AI workflow pack scoped to the current workspace).
 
-要求：
-- 一次只问 1–2 个关键问题，根据回答再往下问，不要一次抛出全部问卷
-- 先确认用途与触发场景，再定名称与 description，最后一起写正文
-- 名称必须是 kebab-case（小写字母/数字/连字符，如 code-review），且与目录名一致
-- description 用第三人称、说清「做什么 + 何时用」，便于以后 Agent 选型
-- 正文保持精炼，只写 Agent 不知道的领域知识与步骤
+Requirements:
+- Communicate with me in my current language (matching my message language or App UI locale)
+- Ask only 1–2 key questions at a time, then continue based on my answers; do not dump a full questionnaire at once
+- Confirm purpose and trigger scenarios first, then decide the name and description, and finally write the body together
+- The name must be kebab-case (lowercase letters, numbers, hyphens, e.g. code-review) and match the directory name
+- The description should be in third person and state both what it does and when to use it so the Agent can select it later
+- Keep the body concise: only include domain knowledge and workflow steps the Agent would not already know
 
-确认信息足够后：
-1. 先向我展示完整 SKILL.md 预览：文件开头用 properties 元信息（name: 与 description: 两行），不要用 --- 包裹
-2. 征得我同意后，调用 skill_write 工具写入当前工作区 .agents/skills/<name>/SKILL.md（不要用工作区文件写入工具，也不要写入 AI/skills）
+When the information is sufficient:
+1. Show me a full SKILL.md preview first: start the file with properties metadata (name: and description: lines), and do not wrap them with ---
+2. After I agree, call the skill_write tool to save it as .agents/skills/<name>/SKILL.md in the current workspace (do not use workspace file write tools, and do not write to AI/skills)
 `
 
 export const CREATE_SKILL_SLASH_COMMAND = 'create-skill'
 export const CREATE_SKILL_MANAGER_ID = '__create-skill__'
+
+export const BUILTIN_PROTECTED_SKILL_COMMANDS = [
+  CREATE_SKILL_SLASH_COMMAND,
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_NAME,
+  SUMMARY_REPAIR_SKILL_NAME
+] as const
+
+const PROTECTED_SKILL_COMMAND_SET = new Set<string>(BUILTIN_PROTECTED_SKILL_COMMANDS)
 
 export function isProtectedSkill(shortcut: {
   id?: string
   command?: string
   name?: string
 }): boolean {
-  const id = (shortcut.id || '').trim()
-  const command = (shortcut.command || shortcut.name || '').trim().replace(/^\//, '')
+  const id = (shortcut.id || '').trim().replace(/^\//, '').toLowerCase()
+  const command = (shortcut.command || shortcut.name || '').trim().replace(/^\//, '').toLowerCase()
   return (
     id === CREATE_SKILL_MANAGER_ID ||
-    id === CREATE_SKILL_SLASH_COMMAND ||
-    command === CREATE_SKILL_SLASH_COMMAND
+    PROTECTED_SKILL_COMMAND_SET.has(id) ||
+    PROTECTED_SKILL_COMMAND_SET.has(command)
   )
 }
 
 export function getCreateSkillGuidePrompt(
-  t?: FallbackTranslateFn,
+  _t?: FallbackTranslateFn,
   scope: CreateSkillGuideScope = 'software'
 ): string {
   if (scope === 'workspace') {
-    if (!t) return CREATE_SKILL_GUIDE_PROMPT_WORKSPACE
-    return t('shortcut.create_skill_guide_prompt_workspace', CREATE_SKILL_GUIDE_PROMPT_WORKSPACE)
+    return CREATE_SKILL_GUIDE_PROMPT_WORKSPACE
   }
-  if (!t) return CREATE_SKILL_GUIDE_PROMPT
-  return t('shortcut.create_skill_guide_prompt', CREATE_SKILL_GUIDE_PROMPT)
+  return CREATE_SKILL_GUIDE_PROMPT
 }

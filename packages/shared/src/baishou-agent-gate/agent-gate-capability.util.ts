@@ -26,6 +26,7 @@ export type AgentGateCapabilityId =
   | 'diary_list'
   | 'diary_search'
   | 'summary_read'
+  | 'summary_write'
   | 'message_search'
   | 'session_list'
   | 'vector_search'
@@ -101,6 +102,7 @@ export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'diary_list', actions: ['diary_list'], defaultEffect: AgentGateEffect.Allow },
   { id: 'diary_search', actions: ['diary_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'summary_read', actions: ['summary_read'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'summary_write', actions: ['summary_write'], defaultEffect: AgentGateEffect.Ask },
   { id: 'message_search', actions: ['message_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'session_list', actions: ['session_list'], defaultEffect: AgentGateEffect.Allow },
   { id: 'vector_search', actions: ['vector_search'], defaultEffect: AgentGateEffect.Allow },

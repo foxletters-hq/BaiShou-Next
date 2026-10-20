@@ -10,6 +10,13 @@ import type { MergeDecision } from './three-way-merge'
 const ROOT_SCOPE = '__root__'
 /** 存储根下 `.baishou/settings/`（主题 / 语言 / AI 等全局设置） */
 export const INCREMENTAL_SYNC_GLOBAL_SCOPE = 'global' as const
+
+/** 远端 manifest 由旧端写入（无能力标记）；用于提示混用风险 */
+export function isLegacyRemoteManifest(
+  manifest: Pick<SyncManifest, 'files' | 'capabilities'>
+): boolean {
+  return Object.keys(manifest.files ?? {}).length > 0 && (manifest.capabilities?.length ?? 0) === 0
+}
 const UNKNOWN_SCOPE = '__unknown__'
 const ROOT_FILES = new Set(['vault_registry.json'])
 const GLOBAL_SETTINGS_PREFIX = '.baishou/settings/'

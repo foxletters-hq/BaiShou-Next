@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assembleSummaryGenerationPrompt,
+  buildSummaryIdentitySystemPrompt,
   normalizeSummaryGenerationMode,
   resolveSummaryGenerationRuntime
 } from '../summary-generation.util'
@@ -132,6 +133,32 @@ describe('resolveSummaryGenerationRuntime', () => {
     expect(runtime.systemPrompt).toBe('伙伴人设 Latte')
     expect(runtime.modelId).toBeUndefined()
     expect(runtime.fellBackToPrompt).toBe(false)
+  })
+})
+
+describe('buildSummaryIdentitySystemPrompt', () => {
+  it('states user and companion roles explicitly and blocks default-name confusion', () => {
+    const prompt = buildSummaryIdentitySystemPrompt({
+      userName: '小满',
+      companionName: 'Latte',
+      userCard: '[User Identity Card]\n- 职业: 设计师',
+      locale: 'zh'
+    })
+    expect(prompt).toContain('日记作者 / 用户：小满')
+    expect(prompt).toContain('AI 伙伴：Latte')
+    expect(prompt).toContain('「我」指用户本人')
+    expect(prompt).toContain('不要给 AI 伙伴套用应用/系统默认名')
+    expect(prompt).not.toContain('白守')
+    expect(prompt).toContain('职业: 设计师')
+  })
+
+  it('falls back to localized placeholders and supports English', () => {
+    const prompt = buildSummaryIdentitySystemPrompt({ locale: 'en' })
+    expect(prompt).toContain('Diary author / user: the user (no nickname set)')
+    expect(prompt).toContain('AI companion: the AI companion (unnamed)')
+    expect(prompt).toContain('first-person “I” refers to the user')
+    expect(prompt).toContain('Do not give the AI companion the application/default system name')
+    expect(prompt).not.toContain('BaiShou')
   })
 })
 

@@ -98,6 +98,12 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.summary_read_tooltip'
   },
   {
+    id: 'summary_write',
+    category: 'summary',
+    nameKey: 'agent.tools.summary_write',
+    tooltipKey: 'agent.tools.summary_write_tooltip'
+  },
+  {
     id: 'message_search',
     category: 'memory',
     nameKey: 'agent.tools.message_search',

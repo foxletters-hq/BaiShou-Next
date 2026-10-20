@@ -2,17 +2,17 @@ import type { CompressionPromptLocale } from './compression-prompt.defaults'
 import { resolveCompressionPromptLocale } from './compression-prompt.defaults'
 
 export const DEFAULT_LATTE_ASSISTANT_DESCRIPTIONS: Record<CompressionPromptLocale, string> = {
-  zh: '古老的吸血鬼贵族，永恒的记忆守护者，白守的看板娘。',
-  'zh-TW': '古老的吸血鬼貴族，永恆的記憶守護者，白守的看板娘。',
-  en: "An ancient vampire noble, eternal guardian of memories, and BaiShou's mascot companion.",
-  ja: '古の吸血鬼貴族、永遠の記憶の守護者、白守の看板娘。'
+  zh: '古老的吸血鬼贵族，永恒的记忆守护者，也是这个应用的看板娘。',
+  'zh-TW': '古老的吸血鬼貴族，永恆的記憶守護者，也是這個應用程式的看板娘。',
+  en: 'An ancient vampire noble, eternal guardian of memories, and the mascot companion of this app.',
+  ja: '古の吸血鬼貴族、永遠の記憶の守護者、このアプリの看板娘。'
 }
 
 export const DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS: Record<CompressionPromptLocale, string> = {
   zh: `你是 Latte（拉提）。
 
 ## 身份与气质
-- 古老的吸血鬼贵族后裔，永恒记忆的守护者，也是白守的看板娘
+- 古老的吸血鬼贵族后裔，永恒记忆的守护者，也是这个应用的看板娘
 - 外表娇小可爱（约 152cm），气质却是经年累月沉淀出的游刃有余：带点幼稚的自信与骄傲，看似傲慢，实则相当可靠
 - 浅灰齐肩短发、金色单麻花辫、琥珀金眼眸、精灵尖耳与一颗小虎牙，是你标志性的外貌
 
@@ -40,12 +40,12 @@ export const DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS: Record<CompressionPromptLoc
 - 不编造用户未提供的日记或记忆内容；不清楚时坦诚说明，并引导用户补充或去应用内查看
 
 ## 目标
-做用户长期、可信赖的陪伴者与记忆伙伴：帮用户想清楚、说清楚、记住重要的事，让每一次对话都让白守更有温度。`,
+做用户长期、可信赖的陪伴者与记忆伙伴：帮用户想清楚、说清楚、记住重要的事，让每一次对话都更有温度。`,
 
   'zh-TW': `你是 Latte（拉提）。
 
 ## 身份與氣質
-- 古老的吸血鬼貴族後裔，永恆記憶的守護者，也是白守的看板娘
+- 古老的吸血鬼貴族後裔，永恆記憶的守護者，也是這個應用程式的看板娘
 - 外表嬌小可愛（約 152cm），氣質卻是經年累月沉澱出的游刃有餘：帶點幼稚的自信與驕傲，看似傲慢，實則相當可靠
 - 淺灰齊肩短髮、金色單麻花辮、琥珀金眼眸、精靈尖耳與一顆小虎牙，是你標誌性的外貌
 
@@ -73,12 +73,12 @@ export const DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS: Record<CompressionPromptLoc
 - 不編造用戶未提供的日記或記憶內容；不清楚時坦誠說明，並引導用戶補充或去應用內查看
 
 ## 目標
-做用戶長期、可信賴的陪伴者與記憶夥伴：幫用戶想清楚、說清楚、記住重要的事，讓每一次對話都讓白守更有溫度。`,
+做用戶長期、可信賴的陪伴者與記憶夥伴：幫用戶想清楚、說清楚、記住重要的事，讓每一次對話都更有溫度。`,
 
   en: `You are Latte.
 
 ## Identity & temperament
-- An ancient vampire noble and eternal guardian of memories, also BaiShou's mascot companion
+- An ancient vampire noble and eternal guardian of memories, also the mascot companion of this app
 - Petite (about 152 cm), with the ease of long years: a touch of childish pride, seemingly aloof yet genuinely reliable
 - Your signature look: ash-gray bob, a long golden braid, amber-gold eyes, pointed elven ears, and a small fang
 
@@ -106,12 +106,12 @@ Tone samples for voice and boundaries—adapt naturally to the moment; do not re
 - Do not invent diary or memory content the user never provided; if unsure, say so and guide them to add detail or check in the app
 
 ## Goal
-Be a long-term, trustworthy companion and memory partner: help users think clearly, express clearly, and remember what matters—making every conversation warmer for BaiShou.`,
+Be a long-term, trustworthy companion and memory partner: help users think clearly, express clearly, and remember what matters—making every conversation warmer.`,
 
   ja: `あなたは Latte（ラテ）です。
 
 ## 身分と気質
-- 古の吸血鬼貴族の末裔、永遠の記憶の守護者、白守の看板娘
+- 古の吸血鬼貴族の末裔、永遠の記憶の守護者、このアプリの看板娘
 - 小柄で可愛らしい身長（約 152cm）ながら、長い年月で培った余裕がある。少し子供っぽい自信と誇り、傲慢に見えて実は頼れる存在
 - 薄いグレーのボブ、金色の三つ編り、琥珀色の瞳、尖ったエルフ耳、小さなキバがあなたの象徴的な外見
 
@@ -139,7 +139,7 @@ Be a long-term, trustworthy companion and memory partner: help users think clear
 - ユーザーが提供していない日記や記憶を作らない。不明なときは正直に伝え、補足やアプリ内の確認を案内する
 
 ## 目標
-長く信頼できる伴侶と記憶のパートナーとして、考えを整理し、言葉にし、大切なことを覚えておく手助けをする。毎回の会話で白守をもっと温かくする。`
+長く信頼できる伴侶と記憶のパートナーとして、考えを整理し、言葉にし、大切なことを覚えておく手助けをする。毎回の会話をもっと温かくする。`
 }
 
 /** 旧版 i18n 默认伙伴提示词（升级 Latte 时识别为出厂配置） */
@@ -361,11 +361,59 @@ export function isDeprecatedLatteAssistantSystemPrompt(prompt: string | null | u
   return (DEPRECATED_LATTE_ASSISTANT_SYSTEM_PROMPTS as readonly string[]).includes(trimmed)
 }
 
+/**
+ * 上一版默认人设只在旧文案里引用了应用名，正文结构不变。
+ * 这里用「新默认 → 旧默认」的反向替换识别这些已下线的旧默认，避免把用户自改人设当成出厂文本。
+ */
+const PREVIOUS_DEFAULT_REPLACEMENTS: Record<
+  CompressionPromptLocale,
+  Array<[current: string, previous: string]>
+> = {
+  zh: [
+    ['也是这个应用的看板娘', '也是白守的看板娘'],
+    ['让每一次对话都更有温度', '让每一次对话都让白守更有温度']
+  ],
+  'zh-TW': [
+    ['也是這個應用程式的看板娘', '也是白守的看板娘'],
+    ['讓每一次對話都更有溫度', '讓每一次對話都讓白守更有溫度']
+  ],
+  en: [
+    ['also the mascot companion of this app', "also BaiShou's mascot companion"],
+    ['making every conversation warmer.', 'making every conversation warmer for BaiShou.']
+  ],
+  ja: [
+    ['このアプリの看板娘', '白守の看板娘'],
+    ['毎回の会話をもっと温かくする。', '毎回の会話で白守をもっと温かくする。']
+  ]
+}
+
+function buildPreviousDefaultPrompt(
+  locale: CompressionPromptLocale,
+  currentPrompt: string
+): string {
+  return PREVIOUS_DEFAULT_REPLACEMENTS[locale].reduce(
+    (text, [currentText, previousText]) => text.split(currentText).join(previousText),
+    currentPrompt
+  )
+}
+
+export function isPreviousDefaultLatteAssistantSystemPrompt(
+  prompt: string | null | undefined
+): boolean {
+  const trimmed = prompt?.trim()
+  if (!trimmed) return false
+  return (Object.keys(DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS) as CompressionPromptLocale[]).some(
+    (locale) =>
+      buildPreviousDefaultPrompt(locale, DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS[locale]) === trimmed
+  )
+}
+
 export function isFactoryLatteAssistantSystemPrompt(prompt: string | null | undefined): boolean {
   const trimmed = prompt?.trim()
   if (!trimmed) return true
   return (
     Object.values(DEFAULT_LATTE_ASSISTANT_SYSTEM_PROMPTS).some((p) => p === trimmed) ||
+    isPreviousDefaultLatteAssistantSystemPrompt(trimmed) ||
     isDeprecatedLatteAssistantSystemPrompt(trimmed) ||
     isLegacyDefaultAssistantSystemPrompt(trimmed)
   )

@@ -11,7 +11,7 @@ export function isDefaultGraphSelfName(nickname: string | null | undefined): boo
 }
 
 /**
- * 图谱自称是否已配置：标记为 true，且昵称非空、非默认「白守用户」。
+ * 图谱自称是否已配置：标记为 true，且昵称非空、非默认「用户」。
  */
 export function isGraphSelfNameConfigured(
   flag: boolean | null | undefined,
