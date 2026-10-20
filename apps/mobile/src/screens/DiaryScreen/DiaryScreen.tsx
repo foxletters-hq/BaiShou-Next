@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StatusBar, Keyboard, InteractionManager } from 'react-native'
+import { View, StatusBar, Keyboard, InteractionManager, AppState } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { logger } from '@baishou/shared'
+import { logger, parseDateStr } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -74,6 +74,24 @@ export const DiaryScreen: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
+  const todayDateKeyRef = useRef(formatDiaryDateStr())
+  const todayEntryRequestIdRef = useRef(0)
+
+  const refreshTodayEntry = useCallback(async () => {
+    if (!dbReady || !services || !storageReady) return
+    const dateKey = formatDiaryDateStr()
+    todayDateKeyRef.current = dateKey
+    const requestId = ++todayEntryRequestIdRef.current
+    try {
+      const entry = await services.diaryService.findByDate(parseDateStr(dateKey))
+      if (requestId !== todayEntryRequestIdRef.current) return
+      setTodayEntry(entry?.id != null ? { id: entry.id } : null)
+    } catch {
+      if (requestId !== todayEntryRequestIdRef.current) return
+      setTodayEntry(null)
+    }
+  }, [dbReady, services, storageReady])
+
   const pendingEditorNavRef = useRef(false)
   const listRef = useRef<FlatList<DiaryListEntry> | null>(null)
   const listScrollYRef = useRef(0)
@@ -113,6 +131,7 @@ export const DiaryScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       void refreshConfigured()
+      void refreshTodayEntry()
       if (!editorBundlePreloadedRef.current) {
         editorBundlePreloadedRef.current = true
         InteractionManager.runAfterInteractions(() => {
@@ -122,7 +141,7 @@ export const DiaryScreen: React.FC = () => {
       return () => {
         clearDiarySearch()
       }
-    }, [clearDiarySearch, refreshConfigured])
+    }, [clearDiarySearch, refreshConfigured, refreshTodayEntry])
   )
 
   useEffect(() => {
@@ -271,34 +290,75 @@ export const DiaryScreen: React.FC = () => {
   }, [currentPage, totalPages, setCurrentPage])
 
   useEffect(() => {
-    if (!dbReady || !services || !storageReady) return
-    const dateStr = formatDiaryDateStr()
-    services.diaryService
-      .findByDate(new Date(dateStr))
-      .then((entry) => setTodayEntry(entry?.id != null ? { id: entry.id } : null))
-      .catch(() => setTodayEntry(null))
-  }, [dbReady, services, storageReady, vaultRevision])
+    void refreshTodayEntry()
+  }, [refreshTodayEntry, vaultRevision])
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return
+      const dateKey = formatDiaryDateStr()
+      const dateChanged = dateKey !== todayDateKeyRef.current
+      void refreshTodayEntry()
+      if (dateChanged) void loadEntries({ silent: true })
+    })
+    return () => subscription.remove()
+  }, [loadEntries, refreshTodayEntry])
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const schedule = () => {
+      const now = new Date()
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1)
+      timer = setTimeout(
+        () => {
+          const dateKey = formatDiaryDateStr()
+          const dateChanged = dateKey !== todayDateKeyRef.current
+          void refreshTodayEntry()
+          if (dateChanged) void loadEntries({ silent: true })
+          schedule()
+        },
+        Math.max(1000, nextMidnight.getTime() - now.getTime())
+      )
+    }
+    schedule()
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [loadEntries, refreshTodayEntry])
 
   const displayEntries = useMemo(() => mapDiaryListEntries(entries), [entries])
 
   const ensureStorageThen = useCallback(
-    async (action: () => void) => {
+    async (action: () => void | Promise<void>) => {
       if (!needsFullFileAccess) {
-        action()
+        await action()
         return
       }
       const ok = await requestStorage()
-      if (ok) action()
+      if (ok) await action()
     },
     [needsFullFileAccess, requestStorage]
   )
 
   const handleEditToday = () => {
-    void ensureStorageThen(() => {
-      if (todayEntry) {
-        openDiaryEditor({ id: String(todayEntry.id), append: '1' })
+    void ensureStorageThen(async () => {
+      const dateKey = formatDiaryDateStr()
+      let entry = todayDateKeyRef.current === dateKey ? todayEntry : null
+      if (services?.diaryService) {
+        try {
+          const requestId = ++todayEntryRequestIdRef.current
+          const fresh = await services.diaryService.findByDate(parseDateStr(dateKey))
+          entry = fresh?.id != null ? { id: fresh.id } : null
+          todayDateKeyRef.current = dateKey
+          if (requestId === todayEntryRequestIdRef.current) setTodayEntry(entry)
+        } catch {
+          // 查询失败时沿用当天缓存，避免误开昨天的日记
+        }
+      }
+      if (entry) {
+        openDiaryEditor({ id: String(entry.id), append: '1' })
       } else {
-        openDiaryEditor({ date: formatDiaryDateStr() })
+        openDiaryEditor({ date: dateKey })
       }
     })
   }

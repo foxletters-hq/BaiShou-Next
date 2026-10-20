@@ -3,16 +3,12 @@ import { useRouter } from 'expo-router'
 import { useThrottledFocusRefresh } from '../../../hooks/useThrottledFocusRefresh'
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
-import {
-  useNativeToast,
-  setGlobalFontScale,
-  type UserProfileConfig,
-  type VaultInfo
-} from '@baishou/ui/native'
+import { useNativeToast, setGlobalFontScale, type UserProfileConfig } from '@baishou/ui/native'
 import {
   CHAT_BACKGROUND_BLUR_DEFAULT,
   CHAT_BACKGROUND_OVERLAY_DEFAULT,
   DEFAULT_USER_PROFILE,
+  deriveLegacyVaultId,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   getUserProfileFromSettings,
   normalizeChatBackgroundBlur,
@@ -28,6 +24,8 @@ import {
   type UserProfile
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
+import { getAgentDbRuntime } from '../../../services/mobile-agent-db-runtime-ref'
+import { syncMobileSelfPersonNodeOnRename } from '../../../services/mobile-graph.service'
 import { notifyThemeRefresh } from '../../../lib/theme-events'
 import { notifyUserProfileRefresh } from '../../../lib/user-profile-refresh-signal'
 import {
@@ -42,6 +40,7 @@ import type { SettingsProfileSavePayload } from './SettingsProfileHeader'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
 import { notifyAgentProfileRefresh } from './settings-account-profile.util'
 import { isPendingLocalAvatar } from './settings-account-avatar.util'
+import { useSettingsVaults } from './useSettingsVaults'
 
 export function useSettingsAccount() {
   const { t } = useTranslation()
@@ -49,6 +48,14 @@ export function useSettingsAccount() {
   const { services, dbReady, vaultRevision } = useBaishou()
   const toast = useNativeToast()
   const accountLoadGenRef = useRef(0)
+  const {
+    vaults,
+    activeVault,
+    loadVaults,
+    handleSwitchVault,
+    handleDeleteVault,
+    handleCreateVault
+  } = useSettingsVaults(services, dbReady, toast, t)
 
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [seedColor, setSeedColor] = useState('#5BA8F5')
@@ -96,64 +103,6 @@ export function useSettingsAccount() {
     activePersonaId: DEFAULT_USER_PROFILE.activePersonaId,
     personas: DEFAULT_USER_PROFILE.personas
   })
-  const [vaults, setVaults] = useState<VaultInfo[]>([])
-  const [activeVault, setActiveVault] = useState<VaultInfo | null>(null)
-
-  const loadVaults = useCallback(async () => {
-    if (!services || !dbReady) return
-    try {
-      const allVaults = await services.vaultService.getAllVaults()
-      const active = await services.vaultService.getActiveVault()
-      setVaults(
-        allVaults.map((v) => ({
-          name: v.name,
-          path: v.path,
-          createdAt: v.createdAt,
-          lastAccessedAt: v.lastAccessedAt
-        }))
-      )
-      if (active) {
-        setActiveVault({
-          name: active.name,
-          path: active.path,
-          createdAt: active.createdAt,
-          lastAccessedAt: active.lastAccessedAt
-        })
-      } else {
-        setActiveVault(null)
-      }
-    } catch (e) {
-      console.warn('Load vaults failed', e)
-    }
-  }, [dbReady, services])
-
-  const handleSwitchVault = async (name: string) => {
-    if (!services || !dbReady) return
-    if (activeVault?.name === name) return
-    try {
-      await services.switchVault(name)
-      await loadVaults()
-      toast.showSuccess(t('common.save_success'))
-    } catch {
-      toast.showError(t('common.errors.save_failed'))
-    }
-  }
-
-  const handleDeleteVault = async (name: string) => {
-    if (!services || !dbReady) return
-    try {
-      await services.deleteVault(name)
-      await loadVaults()
-    } catch {
-      toast.showError(t('common.errors.save_failed'))
-    }
-  }
-
-  const handleCreateVault = async (name: string) => {
-    if (!services || !dbReady) return
-    await services.switchVault(name)
-    await loadVaults()
-  }
 
   const loadAccountSettings = useCallback(async () => {
     if (!dbReady || !services) return
@@ -315,6 +264,20 @@ export function useSettingsAccount() {
       await saveUserProfileToSettings(services.settingsManager, next)
       if (normalizeGraphAwakenNickname(next.nickname)) {
         await services.settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
+      }
+      const runtime = getAgentDbRuntime()
+      if (runtime?.drizzleDb) {
+        const vaultName = activeVault?.name || 'Personal'
+        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+        await syncMobileSelfPersonNodeOnRename({
+          drizzleDb: runtime.drizzleDb,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem,
+          vaultId,
+          vaultDisplayName: vaultName,
+          oldName: userProfile.nickname,
+          newName: next.nickname
+        })
       }
       setProfile({
         nickname: next.nickname,

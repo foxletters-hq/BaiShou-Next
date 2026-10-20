@@ -14,9 +14,11 @@ import {
   SLIDE_THEMES,
   BRAND_BLUE_DARK
 } from './onboarding-theme'
-import { SCREEN_WIDTH, styles } from './OnboardingScreen.styles'
+import { styles } from './OnboardingScreen.styles'
+import { useOnboardingPaging } from './useOnboardingPaging'
 import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
+import { OnboardingInfoSlide } from './OnboardingInfoSlide'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
 import { OnboardingWelcomeSlide } from './components/OnboardingWelcomeSlide'
@@ -83,6 +85,21 @@ export const OnboardingScreen: React.FC = () => {
     !selectedLanguage
   const nextBlockedOnNickname =
     currentPage === ONBOARDING_PAGE.PROFILE && !normalizeOnboardingNickname(nickname)
+
+  const { goToPage, handlePrevious, handleScroll } = useOnboardingPaging({
+    currentPage,
+    setCurrentPage,
+    languageConfirmed,
+    isPreview,
+    nickname,
+    storageReadyToAdvance,
+    scrollViewRef,
+    programmaticTargetRef,
+    setNicknameError,
+    toast,
+    t,
+    normalizeNickname: normalizeOnboardingNickname
+  })
 
   const ensureAndroidStorageMounted = async (): Promise<boolean> => {
     if (!storagePermission.isAndroid) return true
@@ -246,15 +263,6 @@ export const OnboardingScreen: React.FC = () => {
     router.replace('/(tabs)')
   }
 
-  const goToPage = (page: number, options?: { animated?: boolean }) => {
-    const target = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
-    programmaticTargetRef.current = target
-    scrollViewRef.current?.scrollTo({
-      x: target * SCREEN_WIDTH,
-      animated: options?.animated ?? true
-    })
-  }
-
   const handleNext = async () => {
     if (currentPage === ONBOARDING_PAGE.LANGUAGE) {
       if (!selectedLanguage) {
@@ -299,12 +307,6 @@ export const OnboardingScreen: React.FC = () => {
     }
   }
 
-  const handlePrevious = () => {
-    if (currentPage > 0) {
-      goToPage(currentPage - 1)
-    }
-  }
-
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (currentPage > 0) {
@@ -313,7 +315,7 @@ export const OnboardingScreen: React.FC = () => {
       return true
     })
     return () => subscription.remove()
-  }, [currentPage])
+  }, [currentPage, goToPage])
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -323,64 +325,8 @@ export const OnboardingScreen: React.FC = () => {
     return unsubscribe
   }, [navigation, isPreview])
 
-  const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
-    const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH)
-    const clampedPage = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
-
-    const pendingTarget = programmaticTargetRef.current
-    if (pendingTarget !== null) {
-      if (clampedPage !== pendingTarget) {
-        return
-      }
-      programmaticTargetRef.current = null
-    }
-
-    if (clampedPage > ONBOARDING_PAGE.LANGUAGE && !languageConfirmed && !isPreview) {
-      programmaticTargetRef.current = ONBOARDING_PAGE.LANGUAGE
-      setCurrentPage(ONBOARDING_PAGE.LANGUAGE)
-      scrollViewRef.current?.scrollTo({
-        x: ONBOARDING_PAGE.LANGUAGE * SCREEN_WIDTH,
-        animated: true
-      })
-      toast.showWarning(t('onboarding.language_required'))
-      return
-    }
-
-    if (clampedPage > ONBOARDING_PAGE.PROFILE && !normalizeOnboardingNickname(nickname)) {
-      setNicknameError(true)
-      programmaticTargetRef.current = ONBOARDING_PAGE.PROFILE
-      setCurrentPage(ONBOARDING_PAGE.PROFILE)
-      scrollViewRef.current?.scrollTo({
-        x: ONBOARDING_PAGE.PROFILE * SCREEN_WIDTH,
-        animated: true
-      })
-      toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
-      return
-    }
-
-    if (clampedPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
-      programmaticTargetRef.current = ONBOARDING_PAGE.STORAGE
-      setCurrentPage(ONBOARDING_PAGE.STORAGE)
-      scrollViewRef.current?.scrollTo({
-        x: ONBOARDING_PAGE.STORAGE * SCREEN_WIDTH,
-        animated: true
-      })
-      toast.showWarning(t('storage.all_files_access_settings_hint'))
-      return
-    }
-
-    if (clampedPage !== currentPage) {
-      setCurrentPage(clampedPage)
-    }
-  }
-
   const theme = SLIDE_THEMES[currentPage]
   const isLast = currentPage === NUM_ONBOARDING_PAGES - 1
-
-  const welcomeScale = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.04]
-  })
 
   const renderSlideTitle = (text: string) => (
     <Text style={[styles.slideTitle, { color: colors.textPrimary }]}>{text}</Text>
@@ -389,6 +335,11 @@ export const OnboardingScreen: React.FC = () => {
   const renderSlideBody = (text: string) => (
     <Text style={[styles.slideBody, { color: colors.textSecondary }]}>{text}</Text>
   )
+
+  const welcomeScale = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04]
+  })
 
   const renderLanguageSlide = () => (
     <OnboardingLanguageSlide
@@ -423,26 +374,6 @@ export const OnboardingScreen: React.FC = () => {
     />
   )
 
-  const renderPhilosophySlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.philosophy_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.philosophy_desc'))}
-    </View>
-  )
-
-  const renderCompressionSlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]} size={56} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.compression_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.compression_desc'))}
-    </View>
-  )
-
   const renderStorageSlide = () => (
     <View style={styles.slideInner}>
       <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.STORAGE]} />
@@ -463,37 +394,40 @@ export const OnboardingScreen: React.FC = () => {
     </View>
   )
 
-  const renderApiConfigSlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.API]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.api_guide_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.api_guide_desc'))}
-    </View>
-  )
-
-  const renderPrivacySlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.privacy_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.privacy_desc'))}
-      <View style={styles.sloganSpacer} />
-      <Text style={[styles.slogan, { color: colors.textSecondary }]}>{t('onboarding.slogan')}</Text>
-    </View>
-  )
-
   const slides = [
     renderLanguageSlide,
     renderWelcomeSlide,
     renderProfileSlide,
-    renderPhilosophySlide,
-    renderCompressionSlide,
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]}
+        title={t('onboarding.philosophy_title')}
+        body={t('onboarding.philosophy_desc')}
+      />
+    ),
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]}
+        title={t('onboarding.compression_title')}
+        body={t('onboarding.compression_desc')}
+      />
+    ),
     renderStorageSlide,
-    renderApiConfigSlide,
-    renderPrivacySlide
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.API]}
+        title={t('onboarding.api_guide_title')}
+        body={t('onboarding.api_guide_desc')}
+      />
+    ),
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]}
+        title={t('onboarding.privacy_title')}
+        body={t('onboarding.privacy_desc')}
+        slogan={t('onboarding.slogan')}
+      />
+    )
   ]
 
   return (

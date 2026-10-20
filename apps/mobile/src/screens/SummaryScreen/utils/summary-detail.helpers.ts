@@ -7,9 +7,22 @@ export function summaryDateToStorageKey(value: Date | string | undefined | null)
   if (value == null || value === '') return ''
   const text = String(value)
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text
+
+  // 历史缓存可能是「日历日 + 午夜」序列化成的 ISO 字符串，直接取日期部分；
+  // 非午夜的 ISO 仍是时刻戳，需要按本地时区还原成日历日。
+  const midnightMatch = /^(\d{4}-\d{2}-\d{2})[T ]00:00:00(?:\.0+)?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(
+    text
+  )
+  if (midnightMatch) return midnightMatch[1]!
+
   const parsed = new Date(text)
   if (!isNaN(parsed.getTime())) return formatLocalDate(parsed)
   return text
+}
+
+/** 生成队列/任务状态的稳定 key，避免用 Date 时间戳受时区与序列化格式影响 */
+export function buildSummaryTaskKey(type: string, startDate: string | Date): string {
+  return `${type}_${summaryDateToStorageKey(startDate)}`
 }
 
 export function isSameSummaryDetail(a: CachedSummaryDetail, b: CachedSummaryDetail): boolean {

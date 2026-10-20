@@ -1,4 +1,4 @@
-import type { DiaryTagColorRegistry } from '@baishou/shared'
+import { parseDateStr, type DiaryTagColorRegistry } from '@baishou/shared'
 import type { DiaryListEntry } from './components/DiaryList'
 
 export type DiaryListSourceRow = {
@@ -24,7 +24,10 @@ export function mapDiaryListEntries(entries: DiaryListSourceRow[] | undefined): 
   return entries.map((e) => {
     let parsedDate = new Date()
     if (e.date) {
-      const pd = new Date(e.date)
+      const pd =
+        typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(e.date)
+          ? parseDateStr(e.date)
+          : new Date(e.date)
       if (!isNaN(pd.getTime())) parsedDate = pd
     } else if (e.createdAt) {
       const cd = new Date(e.createdAt)

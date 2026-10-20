@@ -5,6 +5,7 @@ import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react-
 import { useNativeTheme } from '@baishou/ui/native'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 import { buildSummaryTitle } from '../utils/buildSummaryTitle'
+import { buildSummaryTaskKey, parseSummaryBoundaryDate } from '../utils/summary-detail.helpers'
 import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface MissingPeriod {
@@ -222,7 +223,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
 
       <View style={styles.grid}>
         {missingSummaries.map((mp) => {
-          const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`
+          const uKey = buildSummaryTaskKey(mp.type, mp.startDate)
           const taskState = generationStates[uKey]
           const isRunning = taskState?.status === 'running' || taskState?.status === 'processing'
           const isPending = taskState?.status === 'pending'
@@ -264,13 +265,13 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                       }}
                     >
                       {mp.startDate &&
-                        new Date(mp.startDate).toLocaleDateString(language, {
+                        parseSummaryBoundaryDate(mp.startDate).toLocaleDateString(language, {
                           month: 'short',
                           day: 'numeric'
                         })}
                       {' - '}
                       {mp.endDate &&
-                        new Date(mp.endDate).toLocaleDateString(language, {
+                        parseSummaryBoundaryDate(mp.endDate).toLocaleDateString(language, {
                           month: 'short',
                           day: 'numeric'
                         })}

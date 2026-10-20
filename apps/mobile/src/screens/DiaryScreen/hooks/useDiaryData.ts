@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { logger } from '@baishou/shared'
+import { coerceDiaryCalendarDate, logger } from '@baishou/shared'
 import type { DiaryListFilter } from '@baishou/shared'
 import type { DiaryService } from '@baishou/core-mobile'
 import {
@@ -113,8 +113,8 @@ function searchFilterCacheKey(
 }
 
 function matchesSelectedMonth(dateValue: Date | string, selectedMonth: Date): boolean {
-  const parsed = new Date(dateValue)
-  if (isNaN(parsed.getTime())) return false
+  const parsed = coerceDiaryCalendarDate(dateValue)
+  if (!parsed) return false
   return (
     parsed.getFullYear() === selectedMonth.getFullYear() &&
     parsed.getMonth() === selectedMonth.getMonth()
