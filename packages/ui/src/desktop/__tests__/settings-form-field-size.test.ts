@@ -27,8 +27,7 @@ const SETTINGS_DIRS = [
 /** 紧凑行：输入框紧挨小号按钮，或是定宽的数字框 */
 const COMPACT_ROW_FILES = new Set([
   'CloudSyncPanel/CloudSyncCountModal.tsx',
-  'GitManagementPage/GitVersionCommitBar.tsx',
-  'TTSProviderSettings/TTSProviderSettingsFormTestSection.tsx'
+  'GitManagementPage/GitVersionCommitBar.tsx'
 ])
 
 function listTsx(dir: string): string[] {

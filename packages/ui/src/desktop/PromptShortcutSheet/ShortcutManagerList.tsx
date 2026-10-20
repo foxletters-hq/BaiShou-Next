@@ -77,6 +77,9 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
                   {name && name.toLowerCase() !== command.toLowerCase() ? (
                     <span className={styles.name}>{name}</span>
                   ) : null}
+                  {protectedSkill ? (
+                    <span className={styles.builtinTag}>{t('shortcut.builtin_tag', '内置')}</span>
+                  ) : null}
                 </div>
                 {(s.description || s.content) && (
                   <div className={styles.desc}>{s.description || s.content}</div>

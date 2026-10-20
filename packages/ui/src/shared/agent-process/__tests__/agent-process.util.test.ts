@@ -14,6 +14,35 @@ describe('formatAgentProcessTitle', () => {
     expect(title).toBe('正在执行：diary_search…')
   })
 
+  it('localizes the active tool name via i18n', () => {
+    const t = (key: string, fallback?: string) =>
+      key === 'agent.tools.diary_search' ? '日记搜索' : (fallback ?? key)
+
+    const title = formatAgentProcessTitle({
+      hasReasoning: true,
+      completedToolsCount: 0,
+      isStreaming: true,
+      hasAnswerText: false,
+      activeToolName: 'diary_search',
+      t
+    })
+    expect(title).toBe('正在执行：日记搜索…')
+  })
+
+  it('keeps an already localized active tool display name unchanged', () => {
+    const t = (key: string, fallback?: string) => fallback ?? key
+
+    const title = formatAgentProcessTitle({
+      hasReasoning: true,
+      completedToolsCount: 0,
+      isStreaming: true,
+      hasAnswerText: false,
+      activeToolName: '网络搜索 (Exa)',
+      t
+    })
+    expect(title).toBe('正在执行：网络搜索 (Exa)…')
+  })
+
   it('formats active thinking during streaming before text', () => {
     const title = formatAgentProcessTitle({
       hasReasoning: true,

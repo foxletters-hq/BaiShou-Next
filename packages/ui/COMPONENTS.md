@@ -59,7 +59,7 @@ import { Button, Switch } from '@baishou/ui/native'
 - **日记**：`DiaryCard` `DiaryMetaCard` `DiaryEditor` `DiaryEditorAppBarTitle` `MarkdownRenderer` `TimelineNode` `MoodIcon` `WeatherIcon`
 - **总结与统计**：`SummaryCard` `MissingSummaryCard` `SummaryDashboard` `StatisticCard` `ActivityHeatmap` `GalleryPanel`
 - **仪表盘**：`DashboardHeroBanner` `DashboardStatsCard` `DashboardSharedMemoryCard`
-- **聊天消息流**：`ChatAppBar` `ChatBubble` `StreamingBubble` `AgentMarkdown` `ThinkingBlock` `MessageActionBar` `KnowledgeCitationBlock`
+- **聊天消息流**：`ChatAppBar` `ChatBubble` `StreamingBubble` `AgentMarkdown` `AgentProcessSection` `ThinkingBlock` `MessageActionBar` `KnowledgeCitationBlock`
 - **工具与压缩**：`AgentToolChain` `ToolResultGroupCard` `CompressionDivider` `CompressionActivityBar`
 - **输入与用量**：`InputBar` `TokenBadge` `ContextUsageRing` `SessionContextUsageRing` `ReasoningEffortSelect`
 - **会话与弹窗**：`AgentSessionList` `SessionListItem` `EmojiPicker` `RecallDialog` `ChatCostDialog` `ContextChainDialog` `ContextChainPanel`

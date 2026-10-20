@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import {
   getLanDeviceDedupKey,
+  lanDeviceIpCandidates,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
@@ -54,7 +55,8 @@ export function useLanSyncCard({
       const deviceKey = getLanDeviceDedupKey(device)
       setSendingDevice(deviceKey)
       setSendProgress((prev) => ({ ...prev, [deviceKey]: 0 }))
-      await onSendFile(device.ip, device.port, (p) => {
+      const hostCandidates = lanDeviceIpCandidates(device).join(',') || device.ip
+      await onSendFile(hostCandidates, device.port, (p) => {
         setSendProgress((prev) => ({ ...prev, [deviceKey]: p }))
       })
       setSendingDevice(null)

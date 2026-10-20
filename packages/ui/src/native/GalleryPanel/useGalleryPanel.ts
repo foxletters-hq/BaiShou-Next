@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import type { SummaryItem } from './gallery-panel.types'
-import type { SummaryTab } from './gallery-panel.utils'
+import { parseGalleryDate, type SummaryTab } from './gallery-panel.utils'
 
 const PAGE_STEP = 10
 const SCROLL_BOTTOM_THRESHOLD = 24
@@ -28,7 +28,7 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
     const years = new Set<string>()
     summaries.forEach((s) => {
       if (s.startDate) {
-        const y = new Date(s.startDate).getFullYear()
+        const y = parseGalleryDate(s.startDate).getFullYear()
         if (!isNaN(y)) years.add(String(y))
       }
     })
@@ -39,12 +39,13 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
     let items = summaries.filter((s) => s.type === activeTab)
     if (selectedYear !== 'all') {
       items = items.filter(
-        (s) => s.startDate && new Date(s.startDate).getFullYear().toString() === selectedYear
+        (s) =>
+          s.startDate && parseGalleryDate(s.startDate).getFullYear().toString() === selectedYear
       )
     }
     return [...items].sort((a, b) => {
-      const timeA = a.startDate ? new Date(a.startDate).getTime() : 0
-      const timeB = b.startDate ? new Date(b.startDate).getTime() : 0
+      const timeA = a.startDate ? parseGalleryDate(a.startDate).getTime() : 0
+      const timeB = b.startDate ? parseGalleryDate(b.startDate).getTime() : 0
       return timeB - timeA
     })
   }, [summaries, activeTab, selectedYear])

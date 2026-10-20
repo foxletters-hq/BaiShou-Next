@@ -2,16 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search } from 'lucide-react'
 import { Button } from '../Button/Button'
-import type { EmojiToolConfig } from '@baishou/shared'
+import type { EmojiSendFrequency, EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
   emojiGroupMatchesQuery,
   isEmojiGroupNameTaken,
+  normalizeEmojiSendFrequency,
   normalizeEmojiToolConfig,
   removeEmojiGroup,
   upsertEmojiGroup
 } from '@baishou/shared'
 import { Input } from '../Input/Input'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
@@ -36,6 +38,19 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
   const dialog = useDialog()
   const normalized = normalizeEmojiToolConfig(config)
   const isEnabled = normalized.enabled === true
+  const frequency = normalizeEmojiSendFrequency(normalized.frequency)
+  const frequencyOptions: Array<{ value: EmojiSendFrequency; label: string }> = [
+    { value: 'low', label: t('agent.tools.emoji_frequency_low', '较少') },
+    { value: 'normal', label: t('agent.tools.emoji_frequency_normal', '适中') },
+    { value: 'high', label: t('agent.tools.emoji_frequency_high', '频繁') },
+    { value: 'always', label: t('agent.tools.emoji_frequency_always', '每条回复') }
+  ]
+  const frequencyHints: Record<EmojiSendFrequency, string> = {
+    low: t('agent.tools.emoji_frequency_hint_low', '仅在特别贴合语境时偶尔发送'),
+    normal: t('agent.tools.emoji_frequency_hint_normal', '语境合适时发送，不会每条都带'),
+    high: t('agent.tools.emoji_frequency_hint_high', '大多数回复都会配上表情包'),
+    always: t('agent.tools.emoji_frequency_hint_always', '每条回复都发送一个表情包（仍最多一个）')
+  }
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [managingGroupId, setManagingGroupId] = useState<string | null>(null)
@@ -170,6 +185,26 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
           <Switch checked={isEnabled} onChange={handleToggle} />
         </div>
       </div>
+
+      {isEnabled ? (
+        <div className={styles.emojiFrequencyRow}>
+          <div className={styles.toolInfo}>
+            <div className={styles.toolNameRow}>
+              <span className={styles.toolName}>
+                {t('agent.tools.emoji_frequency_label', '发送频率')}
+              </span>
+            </div>
+            <span className={styles.toolMeta}>{frequencyHints[frequency]}</span>
+          </div>
+          <SegmentedControl
+            size="small"
+            value={frequency}
+            options={frequencyOptions}
+            onChange={(nextFrequency) => onChange({ ...normalized, frequency: nextFrequency })}
+            aria-label={t('agent.tools.emoji_frequency_label', '发送频率')}
+          />
+        </div>
+      ) : null}
 
       <div className={styles.emojiInlineToolbar}>
         <label className={styles.emojiSearchField}>

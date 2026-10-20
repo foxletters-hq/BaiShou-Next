@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { RefreshCw } from 'lucide-react'
 import type { SyncProgressEvent } from '@baishou/shared'
 import { formatSyncProgressSummary } from '../../utils/formatSyncProgress'
 import { useToast } from '../Toast/useToast'
-import { Button } from '../Button/Button'
 import styles from './IncrementalSyncPanel.module.css'
 
 export interface SyncProgress {
@@ -126,18 +126,28 @@ export const IncrementalSyncPanel: React.FC<IncrementalSyncPanelProps> = ({
   return (
     <>
       <div className={styles.container}>
-        <Button
-          variant="outlined"
-          size="small"
+        <button
+          type="button"
+          className={`${styles.syncButton}${isSyncing ? ` ${styles.syncing}` : ''}${
+            !isConfigured ? ` ${styles.disabled}` : ''
+          }`}
           onClick={handleSync}
-          disabled={!isConfigured}
-          isLoading={isSyncing}
+          disabled={!isConfigured || isSyncing}
           title={
             isConfigured ? t('data_sync.sync_now', '同步') : t('common.not_configured', '未配置')
           }
+          aria-label={
+            isConfigured ? t('data_sync.sync_now', '同步') : t('common.not_configured', '未配置')
+          }
         >
-          {t('data_sync.sync_now', '同步')}
-        </Button>
+          <RefreshCw
+            className={`${styles.syncIcon}${isSyncing ? ` ${styles.spinning}` : ''}`}
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span className={styles.syncLabel}>{t('data_sync.sync_now', '同步')}</span>
+        </button>
 
         <AnimatePresence>
           {isSyncing && progress && (

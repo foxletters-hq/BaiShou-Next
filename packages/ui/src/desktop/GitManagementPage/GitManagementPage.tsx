@@ -379,7 +379,7 @@ export const GitManagementPage: React.FC<GitManagementPageProps> = (props) => {
                 </div>
 
                 <div className="gmp-diff-viewer-wrap">
-                  <GitDiffViewer diff={activeDiff} fillHeight showModeToggle />
+                  <GitDiffViewer diff={activeDiff} fillHeight showModeToggle autoWrap />
                 </div>
               </div>
             ) : (

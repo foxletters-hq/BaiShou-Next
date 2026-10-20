@@ -248,7 +248,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
                 {t('common.cancel', '取消')}
               </Button>
               <Button size="sm" onPress={onPickBackground}>
-                {t('settings.chat_background_change', '选择背景')}
+                {t('settings.chat_background_select', '选择背景')}
               </Button>
             </>
           )}

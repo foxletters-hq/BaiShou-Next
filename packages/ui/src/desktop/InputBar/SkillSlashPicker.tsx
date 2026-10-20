@@ -6,6 +6,7 @@ export type SkillSlashPickerItem = {
   id: string
   name: string
   description: string
+  badgeLabel?: string
   iconKind?: 'software' | 'workspace' | 'create'
   onSelect: () => void
 }
@@ -67,6 +68,9 @@ export function SkillSlashPicker({ items, selectedIndex, onSelectIndex, onClose 
             <SlashItemIcon kind={item.iconKind} />
           </span>
           <span className={styles.skillSlashName}>{item.name}</span>
+          {item.badgeLabel ? (
+            <span className={styles.skillSlashBadge}>{item.badgeLabel}</span>
+          ) : null}
           {item.description ? (
             <span className={styles.skillSlashDesc}>{item.description}</span>
           ) : null}

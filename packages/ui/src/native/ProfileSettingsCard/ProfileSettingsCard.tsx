@@ -159,7 +159,7 @@ export const ProfileSettingsCard: React.FC<NativeProfileSettingsCardProps> = ({
             color: colors.textPrimary
           }}
         >
-          {profile.nickname || t('profile.default_nickname', '白守用户')}
+          {profile.nickname || t('profile.default_nickname', '用户')}
         </Text>
 
         <Pressable

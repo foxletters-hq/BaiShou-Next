@@ -31,6 +31,7 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L79',
     '总结读取'
   ),
+  'agent.tools.summary_write': i18n.t('agent.tools.summary_write', '总结写入'),
   'agent.tools.message_search': i18n.t(
     'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L80',
     '消息搜索'

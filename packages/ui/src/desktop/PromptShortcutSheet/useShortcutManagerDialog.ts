@@ -2,9 +2,12 @@ import { useState, useMemo } from 'react'
 import {
   CREATE_SKILL_MANAGER_ID,
   CREATE_SKILL_SLASH_COMMAND,
+  DEFAULT_AGENT_SKILLS,
+  dedupePromptShortcuts,
   findShortcutCommandConflict,
   getCreateSkillGuidePrompt,
-  isProtectedSkill
+  isProtectedSkill,
+  skillToPromptShortcut
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
@@ -14,24 +17,34 @@ export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30] as const
 
 export { CREATE_SKILL_MANAGER_ID, isProtectedSkill }
 
-/** @deprecated 使用 isProtectedSkill；仅 create-skill 不可删 */
-export const isDefaultShortcut = (id: string) =>
-  id === CREATE_SKILL_MANAGER_ID || id === CREATE_SKILL_SLASH_COMMAND
+/** @deprecated 使用 isProtectedSkill；内置 Skill 不可删改 */
+export const isDefaultShortcut = (id: string) => isProtectedSkill({ id })
 
 function buildManagerList(
   shortcuts: PromptShortcut[],
   t: (key: string, fallback: string) => string
 ): PromptShortcut[] {
-  const createItem: PromptShortcut = {
-    id: CREATE_SKILL_MANAGER_ID,
-    command: CREATE_SKILL_SLASH_COMMAND,
-    name: CREATE_SKILL_SLASH_COMMAND,
-    description: CREATE_SKILL_SLASH_COMMAND,
-    content: getCreateSkillGuidePrompt(t),
-    tag: CREATE_SKILL_SLASH_COMMAND
-  }
+  const builtinItems: PromptShortcut[] = DEFAULT_AGENT_SKILLS.map((skill) =>
+    skill.name === CREATE_SKILL_SLASH_COMMAND
+      ? {
+          id: CREATE_SKILL_MANAGER_ID,
+          command: CREATE_SKILL_SLASH_COMMAND,
+          name: CREATE_SKILL_SLASH_COMMAND,
+          description: CREATE_SKILL_SLASH_COMMAND,
+          content: getCreateSkillGuidePrompt(t),
+          tag: CREATE_SKILL_SLASH_COMMAND,
+          source: 'software' as const
+        }
+      : skillToPromptShortcut({
+          name: skill.name,
+          description: skill.description,
+          content: skill.content,
+          location: 'software',
+          source: 'software'
+        })
+  )
   const rest = shortcuts.filter((item) => !isProtectedSkill(item))
-  return [createItem, ...rest]
+  return dedupePromptShortcuts([...builtinItems, ...rest])
 }
 
 export function useShortcutManagerDialog(

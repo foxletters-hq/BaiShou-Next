@@ -2,16 +2,18 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { ChevronRight, Plus, Trash2 } from 'lucide-react-native'
-import type { EmojiToolConfig } from '@baishou/shared'
+import type { EmojiSendFrequency, EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
   isEmojiGroupNameTaken,
+  normalizeEmojiSendFrequency,
   normalizeEmojiToolConfig,
   removeEmojiGroup,
   upsertEmojiGroup
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { SegmentedControl } from '../SegmentedControl'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { mobileTypography, sharedTokens } from '../../theme/tokens'
@@ -40,6 +42,19 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
   const { colors, tokens } = useNativeTheme()
   const normalized = normalizeEmojiToolConfig(config)
   const isEnabled = normalized.enabled === true
+  const frequency = normalizeEmojiSendFrequency(normalized.frequency)
+  const frequencyOptions: Array<{ value: EmojiSendFrequency; label: string }> = [
+    { value: 'low', label: t('agent.tools.emoji_frequency_low', '较少') },
+    { value: 'normal', label: t('agent.tools.emoji_frequency_normal', '适中') },
+    { value: 'high', label: t('agent.tools.emoji_frequency_high', '频繁') },
+    { value: 'always', label: t('agent.tools.emoji_frequency_always', '每条回复') }
+  ]
+  const frequencyHints: Record<EmojiSendFrequency, string> = {
+    low: t('agent.tools.emoji_frequency_hint_low', '仅在特别贴合语境时偶尔发送'),
+    normal: t('agent.tools.emoji_frequency_hint_normal', '语境合适时发送，不会每条都带'),
+    high: t('agent.tools.emoji_frequency_hint_high', '大多数回复都会配上表情包'),
+    always: t('agent.tools.emoji_frequency_hint_always', '每条回复都发送一个表情包（仍最多一个）')
+  }
 
   const handleToggle = () => {
     onChange({ ...normalized, enabled: !isEnabled })
@@ -102,6 +117,26 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
           </View>
           <Switch value={isEnabled} onValueChange={handleToggle} />
         </View>
+
+        {isEnabled ? (
+          <View style={[styles.frequencySection, { borderTopColor: colors.borderSubtle }]}>
+            <View style={styles.frequencyHeader}>
+              <Text style={[styles.frequencyLabel, { color: colors.textPrimary }]}>
+                {t('agent.tools.emoji_frequency_label', '发送频率')}
+              </Text>
+              <Text style={[styles.frequencyHint, { color: colors.textSecondary }]}>
+                {frequencyHints[frequency]}
+              </Text>
+            </View>
+            <SegmentedControl
+              size="small"
+              value={frequency}
+              options={frequencyOptions}
+              onChange={(nextFrequency) => onChange({ ...normalized, frequency: nextFrequency })}
+              accessibilityLabel={t('agent.tools.emoji_frequency_label', '发送频率')}
+            />
+          </View>
+        ) : null}
       </View>
 
       {isEnabled ? (
@@ -186,6 +221,15 @@ const styles = StyleSheet.create({
     gap: sharedTokens.spacing.mdTight
   },
   enableText: { flex: 1, gap: sharedTokens.spacing.xs },
+  frequencySection: {
+    marginTop: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.mdTight,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: sharedTokens.spacing.sm
+  },
+  frequencyHeader: { gap: sharedTokens.spacing.xxs },
+  frequencyLabel: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  frequencyHint: { fontSize: mobileTypography.secondary.fontSize, lineHeight: 18 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

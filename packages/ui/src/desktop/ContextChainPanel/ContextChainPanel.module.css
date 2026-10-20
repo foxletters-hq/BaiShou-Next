@@ -56,26 +56,6 @@
   transform: translateX(-50%);
 }
 
-.resizeHandle::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 3px;
-  height: 48px;
-  border-radius: var(--radius-2xs);
-  background: var(--border-subtle);
-  opacity: 0;
-  transition: opacity var(--duration-fast);
-}
-
-.panel:hover .resizeHandle::after,
-.resizeHandle:active::after {
-  opacity: 1;
-  background: var(--color-primary);
-}
-
 .panelActive {
   transform: translateX(0);
   opacity: 1;

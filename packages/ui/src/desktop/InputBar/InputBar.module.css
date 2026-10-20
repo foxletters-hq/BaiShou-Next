@@ -506,6 +506,20 @@
   color: var(--text-primary);
 }
 
+.skillSlashBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--border-muted));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--bg-surface-high));
+  font-size: var(--icon-fs-xs, 11px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-primary);
+}
+
 .skillSlashEmpty {
   margin: 0;
   padding: var(--spacing-sm-plus) var(--spacing-md-tight);

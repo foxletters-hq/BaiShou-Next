@@ -129,6 +129,7 @@ export const PlanScrollContent = memo(function PlanScrollContent({
           const isRegistered =
             summary.vaultName === '__root__' ||
             summary.vaultName === '__unknown__' ||
+            summary.vaultName === 'global' ||
             registeredSet.has(summary.vaultName)
           const statsText = formatVaultStats(summary, t)
 

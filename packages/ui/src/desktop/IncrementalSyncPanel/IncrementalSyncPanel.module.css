@@ -8,47 +8,53 @@
 .syncButton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-xs-plus);
   height: 32px;
-  padding: 0 var(--spacing-md-tight);
-  /* 与设置页 / 全部生成等同款控件描边 */
-  border: 1px solid var(--border-control);
+  padding: 0 var(--spacing-sm-plus);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: var(--settings-font-desc-size);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   box-sizing: border-box;
+  -webkit-app-region: no-drag;
   transition:
     background-color var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
+    color var(--duration-fast) ease;
 }
 
-.syncButton:hover:not(.disabled) {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
+.syncButton:hover:not(:disabled) {
+  background: rgba(var(--text-primary-rgb), 0.05);
+  color: var(--text-primary);
 }
 
-.syncButton:active:not(.disabled) {
-  background: var(--bg-surface-high);
+.syncButton:active:not(:disabled) {
+  background: rgba(var(--text-primary-rgb), 0.08);
+}
+
+.syncButton:focus-visible {
+  outline: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .syncButton.syncing {
   cursor: wait;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
-.syncButton.disabled {
-  opacity: 0.4;
+.syncButton.disabled:not(.syncing),
+.syncButton:disabled:not(.syncing) {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .syncIcon {
   width: 14px;
   height: 14px;
-  font-size: var(--settings-font-row-size);
   color: inherit;
   transition: transform var(--duration-swift) ease;
   flex-shrink: 0;

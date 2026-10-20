@@ -113,7 +113,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       {onCopyPrefixChange ? (
         <CopyPrefixModal
           visible={prefixModalVisible}
-          initialValue={copyPrefix}
+          initialValue={copyPrefix || t('summary.copy_prefix_default', '这是我们的回忆')}
           onCancel={() => setPrefixModalVisible(false)}
           onConfirm={(value) => {
             onCopyPrefixChange(value)
