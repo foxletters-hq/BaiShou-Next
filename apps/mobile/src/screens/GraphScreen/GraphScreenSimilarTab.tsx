@@ -33,12 +33,15 @@ export function GraphScreenSimilarTab(props: {
           {
             backgroundColor: colors.bgSurface,
             borderColor: colors.borderControl,
-            marginBottom: sharedTokens.spacing.smPlus
+            marginBottom: sharedTokens.spacing.md
           }
         ]}
       >
         <Text style={[styles.pendingHintText, { color: colors.textSecondary }]}>
-          {t('graph.similar_hint', '模型吃不准这两人是不是同一个。能并就合并，不能并就分开保留。')}
+          {t(
+            'graph.similar_hint',
+            '以下节点名称或语义相近，请确认是否指向同一对象；若相同可合并，不同则分开保留。'
+          )}
         </Text>
       </View>
       {props.pairs.map((pair) => (

@@ -6,7 +6,8 @@ function applyChargePair(a,b,scale,chargeMag,chargeMax2,useMax){
   let dist2=dx*dx+dy*dy||1;
   if(useMax && dist2>chargeMax2) return;
   if(!scale) return;
-  let f=chargeMag*4.5*scale/dist2;
+  // 两个节点几乎重合时 1/dist² 会爆炸，给距离一个下限。
+  let f=chargeMag*4.5*scale/Math.max(dist2, CHARGE_MIN_DIST2);
   let dist=Math.sqrt(dist2);
   dx/=dist; dy/=dist;
   a.vx+=dx*f; a.vy+=dy*f;
@@ -103,6 +104,13 @@ function step(){
     nd.vy += (cy - nd.y) * ck * 0.15 * centerMul;
     const damp = 1 - VELOCITY_DECAY;
     nd.vx*=damp; nd.vy*=damp;
+    // 单步位移封顶，避免偶发的大速度把节点甩到所有节点之外。
+    const speed2 = nd.vx*nd.vx + nd.vy*nd.vy;
+    if(speed2 > MAX_STEP*MAX_STEP){
+      const speed = Math.sqrt(speed2);
+      nd.vx = nd.vx / speed * MAX_STEP;
+      nd.vy = nd.vy / speed * MAX_STEP;
+    }
     nd.x+=nd.vx; nd.y+=nd.vy;
   }
 }
