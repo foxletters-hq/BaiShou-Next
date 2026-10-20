@@ -244,4 +244,67 @@ describe('VectorSearchTool', () => {
     expect(result).toContain('memory_id: mem_manual_coffee')
     expect(result).toContain('每天喝一杯拿铁')
   })
+
+  it('keeps keyword-only hits in hybrid mode even below the vector similarity threshold', async () => {
+    const result = await tool.execute(
+      { query: '工具测试 记忆 日记', mode: 'hybrid' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: {
+          searchSimilar: vi.fn().mockResolvedValue([]),
+          searchFts: vi.fn().mockResolvedValue([
+            {
+              messageId: 'mem_tools_1',
+              sourceId: 'mem_tools_1',
+              sessionId: 'memory',
+              snippet: '工具测试记忆：今天把所有工具过了一遍',
+              createdAt: Date.parse('2026-10-18T22:13:00Z'),
+              sourceType: 'memory'
+            }
+          ]),
+          deleteBySource: vi.fn()
+        }
+      })
+    )
+
+    expect(result).toContain('工具测试记忆')
+    expect(result).toContain('[FTS]')
+    expect(result).toContain('匹配方式: 关键词')
+    expect(result).toContain('memory_id: mem_tools_1')
+  })
+
+  it('still filters low-similarity vector hits before merging', async () => {
+    const result = await tool.execute(
+      { query: '不相关的内容', mode: 'hybrid' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: {
+          searchSimilar: vi.fn().mockResolvedValue([
+            {
+              sourceType: 'chat',
+              sourceId: 'msg_low',
+              groupId: 'sess-1',
+              chunkText: '低相似度内容',
+              distance: 0.7,
+              createdAt: Date.parse('2026-10-18T22:11:00Z')
+            }
+          ]),
+          searchFts: vi.fn().mockResolvedValue([]),
+          deleteBySource: vi.fn()
+        }
+      })
+    )
+
+    expect(result).toContain('向量相似度过滤')
+    expect(result).toContain('没有找到语义相关的历史消息')
+    expect(result).not.toContain('低相似度内容')
+  })
 })

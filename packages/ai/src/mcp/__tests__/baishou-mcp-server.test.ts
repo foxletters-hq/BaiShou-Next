@@ -14,6 +14,8 @@ import {
   buildBaishouMcpToolSchemas,
   executeBaishouMcpTool,
   listBaishouMcpExposedTools,
+  listMcpPromptDescriptors,
+  readMcpPromptSkill,
   listBaishouMcpToolsForUi
 } from '../baishou-mcp-server'
 import { DEFAULT_NEGOTIATED_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js'
@@ -34,6 +36,45 @@ const baseContext: ToolContext = {
 }
 
 describe('baishou-mcp-server', () => {
+  it('lists skills as MCP prompts, including built-ins when disk returns none', async () => {
+    const prompts = await listMcpPromptDescriptors({
+      ...baseContext,
+      skillsReader: {
+        readSkill: vi.fn(),
+        listSkills: vi.fn().mockResolvedValue([{ name: 'daily-brief', description: '写早报' }])
+      }
+    })
+    const names = prompts.map((prompt) => prompt.name)
+    expect(names).toContain('daily-brief')
+    expect(names).toContain('summary-write')
+    expect(names).toContain('summary-repair')
+    expect(names).toContain('diary-append')
+  })
+
+  it('reads a skill prompt body and falls back to the built-in definition', async () => {
+    const fromDisk = await readMcpPromptSkill(
+      {
+        ...baseContext,
+        skillsReader: {
+          readSkill: vi.fn().mockResolvedValue({
+            name: 'daily-brief',
+            description: '写早报',
+            content: '读昨天日记。',
+            location: '/vault/.agents/skills/daily-brief/SKILL.md'
+          })
+        }
+      },
+      'daily-brief'
+    )
+    expect(fromDisk?.content).toBe('读昨天日记。')
+
+    const builtin = await readMcpPromptSkill(
+      { ...baseContext, skillsReader: { readSkill: vi.fn().mockResolvedValue(null) } },
+      'summary-write'
+    )
+    expect(builtin?.content).toContain('Period Summary Detection & Generation')
+  })
+
   it('negotiates supported client protocol versions', () => {
     expect(negotiateMcpProtocolVersion('2025-11-25')).toBe('2025-11-25')
     expect(negotiateMcpProtocolVersion('2024-11-05')).toBe('2024-11-05')
@@ -171,6 +212,8 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools).toContain('baishou_vector_search')
     expect(mcpTools).toContain('baishou_session_list')
     expect(mcpTools).toContain('baishou_message_search')
+    expect(mcpTools).toContain('baishou_summary_write')
+    expect(mcpTools).toContain('baishou_skill_read')
   })
 
   it('does not expose emoji_send via MCP even when emoji config is enabled', () => {

@@ -5,10 +5,10 @@
  * Gate Ask (or Allow rule) still runs before execute.
  */
 
-import { z } from 'zod'
 import type {
   GraphEdgeRawRecord,
   GraphNodeRawRecord,
+  ToolGraphNodeHit,
   ToolRawDataSourceManager
 } from '@baishou/shared'
 import {
@@ -23,108 +23,19 @@ import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 import {
   collapseGraphDisplayName,
+  formatGraphUpsertCandidates,
   formatGraphUpsertCounts,
   graphUpsertSourceRefError,
   type GraphUpsertSkip
 } from './graph-upsert.helpers'
-
-const entityItem = z
-  .object({
-    name: z
-      .string()
-      .optional()
-      .describe(
-        'Display name of the person, place, event, or topic. Required when creating; optional when deleting by id.'
-      ),
-    type: z
-      .string()
-      .optional()
-      .describe(
-        'Entity type: person, place, organization, event, topic, emotion, work, activity, product, food. Default topic.'
-      ),
-    aliases: z.array(z.string()).optional(),
-    summary: z.string().optional(),
-    id: z.string().optional(),
-    action: z
-      .enum(['write', 'update', 'delete'])
-      .optional()
-      .describe('write = new or update node (default). delete = remove a node (needs id or name).')
-  })
-  .passthrough()
-
-const edgeItem = z
-  .object({
-    from: z.string().optional().describe('Source entity name or id.'),
-    to: z.string().optional().describe('Target entity name or id.'),
-    type: z
-      .string()
-      .optional()
-      .describe('Relation type, e.g. knows / located_at / participates_in.'),
-    excerpt: z.string().optional().describe('Short diary excerpt that supports this edge.'),
-    id: z
-      .string()
-      .optional()
-      .describe('Existing edge id from recall_relations when updating or deleting.'),
-    action: z
-      .enum(['write', 'update', 'delete'])
-      .optional()
-      .describe(
-        'write = new edge (default). update = change an existing edge (needs id). delete = remove an edge (needs id).'
-      )
-  })
-  .passthrough()
-
-const jsonArrayOrList = <T extends z.ZodTypeAny>(item: T, describe: string) =>
-  z
-    .union([z.array(item), z.string()])
-    .optional()
-    .describe(describe)
-
-const graphUpsertParams = z.object({
-  summary: z
-    .string()
-    .describe(
-      'Short human-readable summary of the graph write proposal shown to the user for confirmation.'
-    ),
-  entities: jsonArrayOrList(
-    entityItem,
-    'Entities to upsert or delete. Prefer a JSON array of {name, type?, action?, id?, aliases?, summary?}. A JSON array string is also accepted.'
-  ),
-  edges: jsonArrayOrList(
-    edgeItem,
-    'Relations to upsert or delete. Prefer a JSON array of {from, to, type, excerpt?, action?, id?}. Names are resolved to existing nodes. A JSON array string is also accepted.'
-  ),
-  source_ref: z
-    .string()
-    .optional()
-    .describe('Source diary date (YYYY-MM-DD) or memory id this proposal is based on.')
-})
-
-function parseJsonArray(raw: string | undefined): unknown[] {
-  if (!raw?.trim()) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function asObjectArray(raw: unknown): unknown[] {
-  if (Array.isArray(raw)) return raw
-  if (typeof raw === 'string') return parseJsonArray(raw)
-  return []
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function inferSourceKind(sourceRef: string | undefined): GraphEdgeRawRecord['sourceKind'] {
-  if (!sourceRef) return 'manual'
-  if (/^\d{4}-\d{2}-\d{2}/.test(sourceRef) || sourceRef.includes('Journals/')) return 'diary'
-  if (sourceRef.startsWith('mem_') || sourceRef.includes('memory') || UUID_RE.test(sourceRef))
-    return 'memory'
-  return 'session'
-}
+import {
+  asGraphUpsertObjectArray,
+  graphUpsertParams,
+  graphUpsertReusedFromHit,
+  inferGraphSourceKind,
+  resolveGraphEdgeAction,
+  type GraphUpsertParams
+} from './graph-upsert.schema'
 
 async function deleteGraphNodeTogether(
   context: ToolContext,
@@ -158,60 +69,6 @@ async function deleteGraphEdgeTogether(
   })
 }
 
-function graphUpsertReusedFromHit(
-  hit:
-    | {
-        name?: string
-        nodeType?: string
-        aliases?: string[]
-        summary?: string
-        mentionCount?: number
-        firstSeenAt?: number | null
-        createdAt?: number
-        shardMonth?: string
-        origin?: 'ai' | 'user'
-        discriminator?: string
-      }
-    | null
-    | undefined
-): {
-  name?: string
-  nodeType?: string
-  aliases?: string[]
-  summary?: string
-  mentionCount?: number
-  firstSeenAt?: number | null
-  createdAt?: number
-  shardMonth?: string
-  origin?: 'ai' | 'user'
-  discriminator?: string
-} | null {
-  if (!hit) return null
-  return {
-    name: hit.name,
-    nodeType: hit.nodeType,
-    aliases: hit.aliases,
-    summary: hit.summary,
-    mentionCount: hit.mentionCount,
-    firstSeenAt: hit.firstSeenAt,
-    createdAt: hit.createdAt,
-    shardMonth: hit.shardMonth,
-    origin: hit.origin,
-    discriminator: hit.discriminator
-  }
-}
-
-function resolveEdgeAction(obj: Record<string, unknown>): 'write' | 'update' | 'delete' {
-  const raw = String(obj.action ?? '')
-    .trim()
-    .toLowerCase()
-  if (raw === 'delete' || raw === 'remove') return 'delete'
-  if (raw === 'update' || raw === 'patch') return 'update'
-  if (raw === 'write' || raw === 'upsert' || raw === 'create') return 'write'
-  if (typeof obj.id === 'string' && obj.id.trim()) return 'update'
-  return 'write'
-}
-
 export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
   readonly name = 'graph_upsert'
 
@@ -225,6 +82,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
     'Names collapse newlines and repeated spaces into a single space before matching. ' +
     'To change a relation, pass the edge id from recall_relations with action=update (type/excerpt/from/to) or action=delete. ' +
     'update and delete require that edge id; without it the row is skipped with missing_id. ' +
+    'If an endpoint name matches several nodes (for example a person and a product both named Latte), pass from_type/to_type or an explicit node id; otherwise the edge is skipped as ambiguous_node. ' +
     'Call this when the user asks you to remember or correct a relationship. Requires Gate confirmation. ' +
     'Do not invent sources: include source_ref when the write comes from a diary or memory. ' +
     'source_ref must be a real YYYY-MM-DD or a memory id. ' +
@@ -244,7 +102,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
     return '写入人生关系图'
   }
 
-  async execute(args: z.infer<typeof graphUpsertParams>, context: ToolContext): Promise<string> {
+  async execute(args: GraphUpsertParams, context: ToolContext): Promise<string> {
     const summary = args.summary.trim()
     if (!summary) {
       return '请提供 summary，说明拟写入图谱的内容。'
@@ -255,8 +113,8 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
       return '原始数据源管理器未就绪，无法落盘图谱提案。请重启应用或检查 Vault。'
     }
 
-    const entityItems = asObjectArray(args.entities)
-    const edgeItems = asObjectArray(args.edges)
+    const entityItems = asGraphUpsertObjectArray(args.entities)
+    const edgeItems = asGraphUpsertObjectArray(args.edges)
     if (entityItems.length === 0 && edgeItems.length === 0) {
       return '未写入：entities 与 edges 均为空。请提供至少一个节点或边提案（JSON 数组）。'
     }
@@ -280,7 +138,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
     const diary = graphDiaryInstant(sourceRef ?? undefined, now)
     const shardMonth = diary.shardMonth
     const validFrom = diary.validFrom ?? now
-    const sourceKind = inferSourceKind(sourceRef ?? undefined)
+    const sourceKind = inferGraphSourceKind(sourceRef ?? undefined)
     const nameToId = new Map<string, string>()
     const vaultId = context.vaultId
     const vaultName = context.vaultName
@@ -382,7 +240,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           mentionCount: reused?.mentionCount ?? 0,
           firstSeenAt: reused?.firstSeenAt ?? now,
           lastSeenAt: now,
-          origin: preferGraphOrigin(reused?.origin, 'ai'),
+          origin: preferGraphOrigin(reused?.origin, 'user'),
           shardMonth: reused?.shardMonth || shardMonth,
           createdAt: reused?.createdAt ?? now,
           updatedAt: now,
@@ -396,23 +254,44 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         else nodesCreated += 1
       }
 
-      const resolveEnd = async (raw: string): Promise<string | null> => {
+      type ResolvedEnd =
+        | { kind: 'id'; id: string }
+        | { kind: 'ambiguous'; candidates: ToolGraphNodeHit[] }
+
+      const resolveEnd = async (raw: string, nodeType?: string): Promise<ResolvedEnd | null> => {
         const key = normalizeGraphName(raw)
         if (!key) return null
-        if (nameToId.has(key)) return nameToId.get(key)!
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(raw)) return raw
+        // 本批次刚写入的同名实体优先（nameToId 由 entities 构建）
+        if (nameToId.has(key)) return { kind: 'id', id: nameToId.get(key)! }
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(raw)) return { kind: 'id', id: raw }
         if (context.graphNodeLookup) {
           const byId = context.graphNodeLookup.findNodeById
             ? await context.graphNodeLookup.findNodeById(raw)
             : null
           if (byId) {
             nameToId.set(key, byId.id)
-            return byId.id
+            return { kind: 'id', id: byId.id }
           }
-          const hit = await context.graphNodeLookup.findNodeByName({ name: raw })
+          if (context.graphNodeLookup.findNodesByName) {
+            const hits = await context.graphNodeLookup.findNodesByName({ name: raw, nodeType })
+            const unique = [
+              ...new Map(
+                hits
+                  .filter((hit) => !nodeType || hit.nodeType === nodeType)
+                  .map((hit) => [hit.id, hit])
+              ).values()
+            ]
+            if (unique.length === 0) return null
+            // 同名跨类型（如 person/product 都叫 Latte）或多条同类型同名节点：
+            // 不猜第一条，交给模型补 from_type/to_type 或节点 id。
+            if (unique.length > 1) return { kind: 'ambiguous', candidates: unique }
+            nameToId.set(key, unique[0]!.id)
+            return { kind: 'id', id: unique[0]!.id }
+          }
+          const hit = await context.graphNodeLookup.findNodeByName({ name: raw, nodeType })
           if (hit) {
             nameToId.set(key, hit.id)
-            return hit.id
+            return { kind: 'id', id: hit.id }
           }
         }
         return null
@@ -421,7 +300,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
       for (const item of edgeItems) {
         if (!item || typeof item !== 'object') continue
         const obj = item as Record<string, unknown>
-        const action = resolveEdgeAction(obj)
+        const action = resolveGraphEdgeAction(obj)
         const existingId = typeof obj.id === 'string' ? obj.id.trim() : ''
 
         if (action === 'delete') {
@@ -467,8 +346,36 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           String(obj.from ?? obj.fromId ?? existing?.fromId ?? '')
         )
         const toRaw = collapseGraphDisplayName(String(obj.to ?? obj.toId ?? existing?.toId ?? ''))
-        const fromId = await resolveEnd(fromRaw)
-        const toId = await resolveEnd(toRaw)
+        const fromType =
+          typeof obj.from_type === 'string'
+            ? collapseGraphDisplayName(obj.from_type).toLowerCase() || undefined
+            : undefined
+        const toType =
+          typeof obj.to_type === 'string'
+            ? collapseGraphDisplayName(obj.to_type).toLowerCase() || undefined
+            : undefined
+        const fromResolved = await resolveEnd(fromRaw, fromType)
+        if (fromResolved?.kind === 'ambiguous') {
+          skips.push({
+            reason: 'ambiguous_node',
+            from: fromRaw,
+            to: toRaw,
+            candidates: formatGraphUpsertCandidates(fromResolved.candidates)
+          })
+          continue
+        }
+        const toResolved = await resolveEnd(toRaw, toType)
+        if (toResolved?.kind === 'ambiguous') {
+          skips.push({
+            reason: 'ambiguous_node',
+            from: fromRaw,
+            to: toRaw,
+            candidates: formatGraphUpsertCandidates(toResolved.candidates)
+          })
+          continue
+        }
+        const fromId = fromResolved?.id
+        const toId = toResolved?.id
         if (!fromId || !toId) {
           skips.push({ reason: 'missing_node', from: fromRaw, to: toRaw })
           continue
@@ -488,7 +395,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         const edgeValidFrom = edgeDiary.validFrom ?? (nextSourceRefResolved ? now : validFrom)
         const edgeShardMonth = edgeDiary.shardMonth || shardMonth
         const edgeSourceKind = nextSourceRefResolved
-          ? inferSourceKind(nextSourceRefResolved)
+          ? inferGraphSourceKind(nextSourceRefResolved)
           : sourceKind
 
         const record: GraphEdgeRawRecord = {
@@ -504,15 +411,17 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
               ? (obj.attrs as Record<string, unknown>)
               : {},
           validFrom: existing?.validFrom ?? edgeValidFrom,
-          validTo: existing?.validTo ?? null,
-          isCurrent: existing?.isCurrent ?? true,
+          // 显式写入/更新即恢复为当前边：避免改一条已失效的边后仍然是失效态。
+          validTo: null,
+          isCurrent: true,
           sourceKind: existing?.sourceKind ?? edgeSourceKind,
           sourceRef: nextSourceRefResolved,
           sourceExcerpt:
             typeof obj.excerpt === 'string' ? obj.excerpt : (existing?.sourceExcerpt ?? ''),
           sourceContentHash: existing?.sourceContentHash ?? null,
           confidence: normalizeGraphExtractConfidence(obj.confidence, existing?.confidence ?? 70),
-          origin: preferGraphOrigin(existing?.origin, 'ai'),
+          // Gate 已由用户确认，工具写入按 user 来源处理，日记重新抽取时不会被当作旧 AI 边清掉。
+          origin: preferGraphOrigin(existing?.origin, 'user'),
           reviewStatus,
           shardMonth: existing?.shardMonth || edgeShardMonth,
           createdAt: existing?.createdAt ?? now,

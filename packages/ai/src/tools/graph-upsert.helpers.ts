@@ -20,13 +20,21 @@ export function graphUpsertSourceRefError(sourceRef: string): string | null {
   return `source_ref 不是有效日期: ${raw}。请使用真实的 YYYY-MM-DD 或记忆 id。`
 }
 
-export type GraphUpsertSkipReason = 'missing_id' | 'not_found' | 'missing_node'
+export type GraphUpsertSkipReason = 'missing_id' | 'not_found' | 'missing_node' | 'ambiguous_node'
 
 export type GraphUpsertSkip = {
   reason: GraphUpsertSkipReason
   from?: string
   to?: string
   id?: string
+  /** Human-readable candidates for ambiguous_node, e.g. "Latte(person)|Latte(product)" */
+  candidates?: string
+}
+
+export function formatGraphUpsertCandidates(
+  hits: ReadonlyArray<{ name: string; nodeType: string }>
+): string {
+  return [...new Set(hits.map((hit) => `${hit.name}(${hit.nodeType})`))].slice(0, 6).join('|')
 }
 
 export function formatGraphUpsertSkipReceipt(skips: GraphUpsertSkip[]): string {
@@ -36,6 +44,7 @@ export function formatGraphUpsertSkipReceipt(skips: GraphUpsertSkip[]): string {
     if (skip.from) bits.push(`from=${skip.from}`)
     if (skip.to) bits.push(`to=${skip.to}`)
     if (skip.id) bits.push(`id=${skip.id}`)
+    if (skip.candidates) bits.push(`candidates=${skip.candidates}`)
     bits.push(`reason=${skip.reason}`)
     return bits.join(' ')
   })

@@ -138,6 +138,15 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       const bestVecScore = vectorResults.length > 0 ? vectorResults[0]!.score.toFixed(4) : '-'
       pipeline.push(`🔍 向量语义搜索: ${vectorResults.length} 条命中 (最佳 ${bestVecScore})`)
 
+      // 阈值只筛向量候选；纯关键词命中的 RRF 分数量级很小，不能被同一个阈值洗掉。
+      const vectorCandidates =
+        minScore > 0 ? vectorResults.filter((r) => r.score >= minScore) : vectorResults
+      if (minScore > 0) {
+        pipeline.push(
+          `✂️ 向量相似度过滤 (≥${minScore.toFixed(2)}): ${vectorResults.length} → ${vectorCandidates.length} 条`
+        )
+      }
+
       if (mode === 'hybrid' && vectorStore.searchFts) {
         const ftsRaw = await vectorStore.searchFts(args.query, maxResults, {
           ...timeFilter,
@@ -156,19 +165,11 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
           sourceId: r.sourceId ?? r.messageId
         }))
 
-        results = HybridSearchUtils.mergeRRF(ftsResults, vectorResults, maxResults)
+        results = HybridSearchUtils.mergeRRF(ftsResults, vectorCandidates, maxResults)
         pipeline.push(`🔀 RRF融合排序: ${results.length} 条合并`)
       } else {
-        results = vectorResults
+        results = vectorCandidates
       }
-
-      const beforeScoreCount = results.length
-      if (minScore > 0) {
-        results = results.filter((r) => r.score >= minScore)
-      }
-      pipeline.push(
-        `✂️ 相似度过滤 (≥${minScore.toFixed(2)}): ${beforeScoreCount} → ${results.length} 条`
-      )
 
       if (results.length === 0) {
         const rangeHint = rangeLabel ? `（时间范围: ${rangeLabel}）` : ''
@@ -202,7 +203,11 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
           lines.push(`时间: ${timeLabel}`)
         }
         lines.push(`内容: ${r.chunkText}`)
-        lines.push(`相似度: ${r.score.toFixed(4)}`)
+        if (r.source === 'fts') {
+          lines.push('匹配方式: 关键词')
+        } else {
+          lines.push(`相似度: ${r.score.toFixed(4)}`)
+        }
         lines.push('')
       }
 

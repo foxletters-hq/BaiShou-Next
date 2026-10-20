@@ -4,8 +4,9 @@ export const MCP_EXTERNAL_SESSION_ID = 'mcp-external'
 /** MCP initialize 说明：告知外部客户端当前工作空间 */
 export function buildMcpInstructions(vaultName: string): string {
   return (
-    'BaiShou is an AI companion diary app. Use the tools below to read/edit diaries, search memories, and manage stored knowledge. ' +
-    `Current workspace: ${vaultName}. Diary tools read and write within this workspace only.`
+    'This is an AI companion diary app. Use the tools below to read/edit diaries, write period summaries, search memories, and manage stored knowledge. ' +
+    `Current workspace: ${vaultName}. Diary and summary tools read and write within this workspace only. ` +
+    'Built-in workflow skills (such as "diary-append" for appending conversation events to the diary, "summary-write" for detecting and generating missing weekly/monthly/quarterly/yearly summaries, and "summary-repair" for verifying and repairing existing summaries) and user custom skills are available two ways: call `baishou_skill_read` without `name` to list all skills (or pass `name` to read the full SKILL.md), or use MCP prompts (`prompts/list` / `prompts/get`) where every skill is exposed as a prompt with the same name.'
   )
 }
 

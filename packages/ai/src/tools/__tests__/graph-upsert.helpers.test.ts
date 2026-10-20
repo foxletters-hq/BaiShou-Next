@@ -34,4 +34,23 @@ describe('graph upsert helpers', () => {
     expect(text).toContain('更新节点 1')
     expect(text).toContain('from=测试人物A to=不存在的ABC reason=missing_node')
   })
+
+  it('should print ambiguous candidates so the model can ask for a type', () => {
+    const text = formatGraphUpsertCounts({
+      nodesCreated: 0,
+      nodesUpdated: 0,
+      edgesWritten: 0,
+      edgesUpdated: 0,
+      edgesDeleted: 0,
+      skips: [
+        {
+          reason: 'ambiguous_node',
+          from: 'Latte',
+          candidates: 'Latte(person)|Latte(product)'
+        }
+      ]
+    })
+    expect(text).toContain('candidates=Latte(person)|Latte(product)')
+    expect(text).toContain('reason=ambiguous_node')
+  })
 })

@@ -37,6 +37,7 @@ export const BAISHOU_MCP_CONCISE_DESCRIPTIONS: Readonly<Record<string, string>> 
   diary_list: 'List diary dates and short previews within a YYYY-MM-DD date range.',
   diary_search: 'Search local personal diary entries by keyword or phrase.',
   summary_read: 'Read AI-generated period summaries (weekly, monthly, quarterly, or yearly).',
+  summary_write: 'Write or update a period summary (weekly, monthly, quarterly, or yearly).',
   message_search: 'Search past conversation messages by keyword or date range.',
   session_list: 'List active chat sessions and previews within a YYYY-MM-DD date range.',
   vector_search: 'Semantic vector search across conversation history and stored memories.',
@@ -48,6 +49,8 @@ export const BAISHOU_MCP_CONCISE_DESCRIPTIONS: Readonly<Record<string, string>> 
   web_search: 'Search the public web for up-to-date facts, news, and information.',
   url_read: 'Fetch and read the main text content of a specific web URL.',
   current_time: 'Get the current real-world date, time, weekday, and timezone.',
+  skill_read:
+    'List available BaiShou skills (e.g. diary-append, summary-write) or read a specific SKILL.md workflow by name.',
   knowledge_search: 'Search uploaded documents and notes in the knowledge base.',
   knowledge_graph_search: 'Query entities and relationships in the knowledge base graph.'
 }
