@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import {
+  isOfficialAgentSkillName,
   isValidSkillName,
   parseSkillMarkdown,
   skillToPromptShortcut,
@@ -45,6 +46,9 @@ export async function createAgentSkill(input: AgentSkillWriteInput): Promise<Age
   const skillsRoot = await resolveUserAgentsSkillsRoot({ ensure: true })
   const name = slugifySkillName(input.name)
   if (!isValidSkillName(name)) throw new Error(`Invalid skill name: ${input.name}`)
+  if (isOfficialAgentSkillName(name)) {
+    throw new Error('PROTECTED_SKILL_NAME')
+  }
   const existing = await listSkillFiles(skillsRoot, 'user')
   if (existing.some((s) => s.name === name)) {
     throw new Error('DUPLICATE_SKILL_NAME')
@@ -65,6 +69,9 @@ export async function updateAgentSkill(input: AgentSkillWriteInput): Promise<Age
   const previousName = input.previousName?.trim() || input.name
   const nextName = slugifySkillName(input.name)
   if (!isValidSkillName(nextName)) throw new Error(`Invalid skill name: ${input.name}`)
+  if (isOfficialAgentSkillName(previousName) || isOfficialAgentSkillName(nextName)) {
+    throw new Error('PROTECTED_SKILL_NAME')
+  }
 
   const merged = await listMergedSoftwareSkills()
   const userExisting = await listSkillFiles(userRoot, 'user')
@@ -102,6 +109,9 @@ export async function removeAgentSkill(name: string): Promise<void> {
   const skillsRoot = await resolveUserAgentsSkillsRoot()
   const skillName = name.trim()
   if (!isValidSkillName(skillName)) throw new Error(`Invalid skill name: ${name}`)
+  if (isOfficialAgentSkillName(skillName)) {
+    throw new Error('PROTECTED_SKILL_NAME')
+  }
   const dir = resolveSkillDir(skillsRoot, skillName)
   const skillFile = path.join(dir, SKILL_FILE_NAME)
   try {

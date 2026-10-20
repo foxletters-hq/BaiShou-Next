@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { constants as fsConstants } from 'fs'
+import { createHash } from 'crypto'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import {
@@ -48,9 +49,86 @@ export async function resolveBundledSkillsRoot(): Promise<string> {
   }
 }
 
+const migratedHomeSkillRoots = new Set<string>()
+
+/** 存储根下的用户技能目录；拿不到存储根时返回 null */
+async function resolveSyncedUserSkillsRoot(): Promise<string | null> {
+  try {
+    const { pathService } = await import('../ipc/vault.ipc')
+    const root = (await pathService.getRootDirectory()).trim()
+    return root ? resolveAgentsSkillsRoot(root) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 把旧版 home/.agents/skills 一次性复制到存储根。
+ * 用 userData 下的标记文件按目标根去重，避免用户删掉技能后又被旧副本复活。
+ */
+async function migrateLegacyHomeSkillsIfNeeded(targetRoot: string): Promise<void> {
+  const homeRoot = resolveAgentsSkillsRoot(app.getPath('home'))
+  if (path.resolve(homeRoot) === path.resolve(targetRoot)) return
+  if (migratedHomeSkillRoots.has(targetRoot)) return
+
+  const markerKey = createHash('sha1').update(targetRoot).digest('hex').slice(0, 12)
+  const markerPath = path.join(app.getPath('userData'), `.agents-skills-migrated-${markerKey}`)
+  try {
+    await fs.access(markerPath)
+    migratedHomeSkillRoots.add(targetRoot)
+    return
+  } catch {
+    // first run for this storage root
+  }
+
+  let allOk = true
+  try {
+    await fs.mkdir(targetRoot, { recursive: true })
+    const names = await fs.readdir(homeRoot).catch(() => [] as string[])
+    for (const name of names) {
+      if (!isValidSkillName(name)) continue
+      const fromDir = resolveSkillDir(homeRoot, name)
+      const fromFile = resolveSkillFile(homeRoot, name)
+      if (!(await pathExists(fromFile))) continue
+      const toDir = resolveSkillDir(targetRoot, name)
+      if (await pathExists(toDir)) continue
+      try {
+        await fs.cp(fromDir, toDir, { recursive: true })
+      } catch (error) {
+        allOk = false
+        console.warn('[agent-skills] failed to migrate home skill', name, error)
+      }
+    }
+  } catch (error) {
+    allOk = false
+    console.warn('[agent-skills] failed to prepare synced skills root', error)
+  }
+
+  if (!allOk) return
+  try {
+    await fs.writeFile(markerPath, '1', 'utf8')
+  } catch {
+    // marker 写失败下次重试，不阻断技能读取
+  }
+  migratedHomeSkillRoots.add(targetRoot)
+}
+
 export async function resolveUserAgentsSkillsRoot(options?: { ensure?: boolean }): Promise<string> {
-  const preferred = resolveAgentsSkillsRoot(app.getPath('home'))
+  const syncedRoot = await resolveSyncedUserSkillsRoot()
+  const preferred = syncedRoot ?? resolveAgentsSkillsRoot(app.getPath('home'))
   const fallback = resolveAgentsSkillsRoot(app.getPath('userData'))
+
+  if (syncedRoot) {
+    try {
+      await fs.mkdir(preferred, { recursive: true })
+      await fs.access(preferred, fsConstants.W_OK)
+      await migrateLegacyHomeSkillsIfNeeded(preferred)
+      return preferred
+    } catch (error) {
+      console.warn('[agent-skills] synced user skills root unavailable, falling back', error)
+    }
+  }
+
   if (!options?.ensure) {
     try {
       await fs.access(preferred)
@@ -110,7 +188,7 @@ export async function getSkillsRootMtimeMs(skillsRoot: string): Promise<number> 
 
 export async function writeSkillFile(
   skillsRoot: string,
-  input: { name: string; description: string; content: string },
+  input: { name: string; description: string; content: string; bundledHash?: string },
   source: AgentSkill['source'] = 'software'
 ): Promise<AgentSkill> {
   if (!isValidSkillName(input.name)) {
@@ -128,7 +206,8 @@ export async function writeSkillFile(
     description: input.description.trim() || input.name,
     content: input.content,
     location,
-    source
+    source,
+    ...(input.bundledHash ? { bundledHash: input.bundledHash } : {})
   }
 }
 

@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import {
   CREATE_SKILL_SLASH_COMMAND,
   getCreateSkillGuidePrompt,
+  getDefaultShortcutLabelsFromT,
+  localizeAgentSkill,
+  localizeAgentSkills,
   type AgentSkill,
   type AgentSkillWriteInput
 } from '@baishou/shared'
@@ -124,20 +127,27 @@ export function useWorkbenchSkillsCatalog(params: {
     }
   }, [params.folderRoot, params.scopeId, params.tab, params.waitingForProject])
 
+  const shortcutLabels = useMemo(() => getDefaultShortcutLabelsFromT(t), [t])
+
   const skillMatchesQuery = useCallback(
     (skill: AgentSkill): boolean => {
+      const localized = localizeAgentSkill(skill, shortcutLabels)
       return matchesWorkbenchSkillSearch(params.query, {
         name: skill.name,
-        title: skill.description || skill.name,
-        description: skill.description || skill.name
+        title: localized.description || skill.name,
+        description:
+          `${localized.description || ''} ${skill.description || ''}`.trim() || skill.name
       })
     },
-    [params.query]
+    [params.query, shortcutLabels]
   )
 
   const visibleOfficialAndUser = useMemo(
-    () => omitHiddenBundledTemplateSkills(listedSkills).filter(skillMatchesQuery),
-    [listedSkills, skillMatchesQuery]
+    () =>
+      localizeAgentSkills(omitHiddenBundledTemplateSkills(listedSkills), shortcutLabels).filter(
+        skillMatchesQuery
+      ),
+    [listedSkills, shortcutLabels, skillMatchesQuery]
   )
   const { official: officialSkills, user: userSkills } = useMemo(
     () => partitionWorkbenchSkills(visibleOfficialAndUser),
@@ -161,12 +171,12 @@ export function useWorkbenchSkillsCatalog(params: {
     () =>
       ensureOfficialCreateSkill(officialSkills, {
         name: CREATE_SKILL_SLASH_COMMAND,
-        description: CREATE_SKILL_SLASH_COMMAND,
+        description: shortcutLabels.createSkillDescription || CREATE_SKILL_SLASH_COMMAND,
         content: getCreateSkillGuidePrompt(t),
         location: '',
         source: 'software'
       }).filter(skillMatchesQuery),
-    [officialSkills, skillMatchesQuery, t]
+    [officialSkills, shortcutLabels, skillMatchesQuery, t]
   )
 
   return {

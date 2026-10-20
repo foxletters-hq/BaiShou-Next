@@ -210,7 +210,8 @@
 .modelEffort {
   font-size: inherit;
   font-weight: 500;
-  line-height: inherit;
+  /* 与 .modelName 使用同一行高，避免「强度」相对模型名上下偏移 */
+  line-height: 1.45;
   color: var(--text-tertiary);
   flex-shrink: 0;
   max-width: 72px;
@@ -265,12 +266,9 @@
 }
 
 .modelSwitcherInComposer .modelEffort {
-  font-size: var(--settings-font-micro-size);
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-tertiary);
-  padding: 1px var(--spacing-xs);
-  background: var(--bg-surface-normal);
-  border-radius: var(--radius-xs);
 }
 
 .modelSwitcherInComposer .chevron {
@@ -327,10 +325,6 @@
 }
 
 .modelSwitcherInComposer .modelName {
-  font-size: var(--ui-fs-sm);
-}
-
-.modelSwitcherInComposer .modelEffort {
   font-size: var(--ui-fs-sm);
 }
 

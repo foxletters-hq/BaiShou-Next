@@ -12,7 +12,12 @@ import {
 import { useToast, AssistantPickerSheet, useDialog } from '@baishou/ui'
 import { AssistantCreateModal } from './components/AssistantCreateModal'
 import styles from './AgentLayout.module.css'
-import { LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
+import {
+  LATTE_ASSISTANT_NAME,
+  buildAgentChatNavigationPath,
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity
+} from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
 import i18n from 'i18next'
 import {
@@ -35,7 +40,12 @@ export const AgentLayout: React.FC = () => {
   const agentBehavior = useSettingsStore((s) => s.agentBehavior)
   const configHydrated = useSettingsStore((s) => s.configHydrated)
   const restoreLastSessionOnReturn = agentBehavior?.restoreLastSessionOnReturn !== false
-  const { loadProfile } = useUserProfileStore()
+  const { profile: userProfile, loadProfile } = useUserProfileStore()
+  const chatBackgroundUrl = userProfile?.chatBackgroundPath
+  const chatBackgroundBlur = normalizeChatBackgroundBlur(userProfile?.chatBackgroundBlur)
+  const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(
+    userProfile?.chatBackgroundOverlayOpacity
+  )
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isSessionsOpen, setIsSessionsOpen] = useState(false)
@@ -398,6 +408,26 @@ export const AgentLayout: React.FC = () => {
   return (
     <div className={styles.layoutContainer}>
       <div className={styles.chatArea}>
+        {chatBackgroundUrl ? (
+          <>
+            <div
+              className={styles.chatBackground}
+              style={{
+                backgroundImage: `url(${chatBackgroundUrl})`,
+                filter: chatBackgroundBlur > 0 ? `blur(${chatBackgroundBlur}px)` : undefined,
+                transform: chatBackgroundBlur > 0 ? 'scale(1.06)' : undefined
+              }}
+              aria-hidden
+            />
+            {chatBackgroundOverlay > 0 ? (
+              <div
+                className={styles.chatBackgroundOverlay}
+                style={{ backgroundColor: `rgba(0, 0, 0, ${chatBackgroundOverlay / 100})` }}
+                aria-hidden
+              />
+            ) : null}
+          </>
+        ) : null}
         <Outlet
           context={
             {

@@ -51,6 +51,8 @@ export async function buildCompanionStreamHost(params: {
         return {
           findByNameOrAlias: async (name, nodeType) =>
             (await repo.findNodesByNameOrAlias(vaultId, name, nodeType))[0] ?? null,
+          findNodesByNameOrAlias: (name, nodeType) =>
+            repo.findNodesByNameOrAlias(vaultId, name, nodeType),
           getNodeById: (id) => repo.getNodeById(id, vaultId),
           getEdgeById: (id) => repo.getEdgeById(id, vaultId)
         }
@@ -67,7 +69,8 @@ export async function buildCompanionStreamHost(params: {
   let skillsCatalog: Array<{ name: string; description?: string }> | undefined
   try {
     const { listAgentSkillsCatalog } = await import('../services/agent-skills.service')
-    skillsCatalog = await listAgentSkillsCatalog()
+    const { filterSkillsCatalogByGate } = await import('@baishou/ai')
+    skillsCatalog = filterSkillsCatalogByGate(await listAgentSkillsCatalog(), { agentGate })
   } catch {
     skillsCatalog = undefined
   }

@@ -284,7 +284,7 @@ export const Sidebar: React.FC = () => {
           </div>
           <div className={styles.userInfo}>
             <div className={styles.userName}>
-              {profile?.nickname || t('profile.default_nickname', '白守用户')}
+              {profile?.nickname || t('profile.default_nickname', '用户')}
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ export function WorkbenchSkillsSkillTab({
   scopeOptions,
   loadingProjectSkills,
   scopedSkills,
-  onLaunch,
+  onOpen,
   onEdit,
   onScopeChange
 }: {
@@ -37,11 +37,15 @@ export function WorkbenchSkillsSkillTab({
   scopeOptions: Array<{ value: string; label: string }>
   loadingProjectSkills: boolean
   scopedSkills: AgentSkill[]
-  onLaunch: (skill: AgentSkill) => void
+  onOpen: (skill: AgentSkill) => void
   onEdit: (skill: AgentSkill) => void
   onScopeChange: (scope: string) => void
 }) {
   const { t } = useTranslation()
+  const sectionLabel =
+    projectParam || scopeId !== GLOBAL_SKILL_SCOPE
+      ? t('workbench.skills_project_section', '项目技能')
+      : t('workbench.skills_global_section', '全局技能')
   return (
     <>
       <header className={styles.hero}>
@@ -77,16 +81,14 @@ export function WorkbenchSkillsSkillTab({
             skills={officialIconSkills}
             icon={<Sparkles size={14} strokeWidth={2} />}
             launching={launching}
-            onLaunch={onLaunch}
+            onOpen={onOpen}
           />
         )}
       </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionLabel}>
-            {t('workbench.skills_project_section', '项目技能')}
-          </h2>
+          <h2 className={styles.sectionLabel}>{sectionLabel}</h2>
           <div className={styles.sectionFilter}>
             <Select
               value={waitingForProject ? (projectParam ?? GLOBAL_SKILL_SCOPE) : scopeId}
@@ -133,7 +135,7 @@ export function WorkbenchSkillsSkillTab({
             }
             launching={launching}
             editLabel={editLabel}
-            onLaunch={onLaunch}
+            onOpen={onOpen}
             onEdit={onEdit}
           />
         )}

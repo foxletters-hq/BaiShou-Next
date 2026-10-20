@@ -19,6 +19,23 @@
   flex-direction: column;
 }
 
+.chatBackground {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.chatBackgroundOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
 /* 折叠后的细轨道（60px宽），点击后展开 */
 .collapsedRail {
   width: 60px;

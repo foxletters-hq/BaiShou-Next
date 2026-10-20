@@ -35,28 +35,8 @@ import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
 import { applyCompanionContextRecompressResult } from './companion-context-recompress.util'
 import { commitCompanionQueueEdit } from './commit-companion-queue-edit'
-
-type SendMeta = {
-  displayText?: string
-  skillRefs?: Array<{ command: string; content: string }>
-}
-
-function consumeChatInitMeta(draftSessionId: string): SendMeta | null {
-  try {
-    const key = `baishou:chat-init-meta:${draftSessionId}`
-    const raw = sessionStorage.getItem(key)
-    if (!raw) return null
-    sessionStorage.removeItem(key)
-    const parsed = JSON.parse(raw) as SendMeta & { text?: string }
-    if (!parsed || typeof parsed !== 'object') return null
-    return {
-      displayText: parsed.displayText,
-      skillRefs: parsed.skillRefs
-    }
-  } catch {
-    return null
-  }
-}
+import { consumeChatInitMeta } from './chat-init-meta.util'
+import { usePricingStatus } from './usePricingStatus'
 
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
@@ -183,75 +163,13 @@ export function useAgentChatFlow() {
   )
   const storeRunRecompress = useContextCompressionStore((s) => s.runRecompress)
   const storeClearRecompressError = useContextCompressionStore((s) => s.clearError)
-  const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
-  const pricingBootWarnShownRef = useRef(false)
   const inputBarRef = useRef<InputBarRef>(null)
 
   // ── 4. TTS 音频朗读 Hook ──
   const tts = useTts(t)
 
   // ── 5. 计费价格表时间获取与更新 ──
-  const fetchPricingLastUpdated = useCallback(async () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const status = await window.electron.ipcRenderer.invoke('pricing:get-status')
-        if (status?.lastUpdated) {
-          setPricingLastUpdated(new Date(status.lastUpdated))
-        }
-
-        const pricingUnavailable =
-          status?.loadFailed || status?.hasPrices === false || !status?.lastUpdated
-        if (pricingUnavailable && !pricingBootWarnShownRef.current) {
-          pricingBootWarnShownRef.current = true
-          toast.showWarning(
-            t(
-              'agent.chat.pricing_boot_load_failed',
-              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
-            )
-          )
-        }
-      } catch (e) {
-        console.error('Failed to get pricing status:', e)
-        if (!pricingBootWarnShownRef.current) {
-          pricingBootWarnShownRef.current = true
-          toast.showWarning(
-            t(
-              'agent.chat.pricing_boot_load_failed',
-              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
-            )
-          )
-        }
-      }
-    }
-  }, [t])
-
-  const handleRefreshPricing = useCallback(async () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const result = await window.electron.ipcRenderer.invoke('pricing:refresh')
-        if (result.success && result.lastUpdated) {
-          setPricingLastUpdated(new Date(result.lastUpdated))
-          toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))
-        } else if (!result.success || result.loadFailed || !result.hasPrices) {
-          const errMsg = result.error || t('agent.chat.pricing_refresh_failed', '请检查网络环境')
-          toast.showError(errMsg)
-          return { ...result, success: false, error: errMsg }
-        }
-        return result
-      } catch (e) {
-        const errMsg =
-          e instanceof Error ? e.message : t('agent.chat.pricing_refresh_failed', '请检查网络环境')
-        console.error('Failed to refresh pricing:', e)
-        toast.showError(errMsg)
-        return { success: false, error: errMsg }
-      }
-    }
-    return { success: false, error: 'No electron context' }
-  }, [t])
-
-  useEffect(() => {
-    fetchPricingLastUpdated()
-  }, [fetchPricingLastUpdated])
+  const { pricingLastUpdated, handleRefreshPricing } = usePricingStatus(t)
 
   // ── 6. 初始化加载 ──
   useEffect(() => {
@@ -455,11 +373,11 @@ export function useAgentChatFlow() {
 
   const handleSendRef = useRef(handleSend)
   handleSendRef.current = handleSend
-  const initConsumedRef = useRef(false)
+  const initConsumedRef = useRef<string | null>(null)
 
   useEffect(() => {
     const raw = searchParams.get('init')
-    if (!raw?.trim() || initConsumedRef.current) return
+    if (!raw?.trim() || initConsumedRef.current === `${sessionId ?? ''}:${raw}`) return
     if (!isDraftChatSessionId(sessionId)) return
     if (stream.isStreaming) return
     if (
@@ -469,7 +387,7 @@ export function useAgentChatFlow() {
       return
     }
 
-    initConsumedRef.current = true
+    initConsumedRef.current = `${sessionId ?? ''}:${raw}`
     const meta = sessionId ? consumeChatInitMeta(sessionId) : null
     setSearchParams(
       (prev) => {

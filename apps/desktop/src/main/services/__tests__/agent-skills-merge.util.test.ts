@@ -30,6 +30,13 @@ describe('agent-skills-merge.util', () => {
     ])
   })
 
+  it('should keep autoinvoke:false skills out of the model catalog but readable by name', () => {
+    const hidden = { ...skill('manual-only', '手动技能'), autoinvoke: false }
+    expect(toCatalogEntries([hidden, skill('demo', 'desc')])).toEqual([
+      { name: 'demo', description: 'desc' }
+    ])
+  })
+
   it('should keep user skills when omitting hidden bundled templates', () => {
     const kept = omitBundledTemplateSkills([skill('custom', 'c', 'user')])
     expect(kept).toHaveLength(1)

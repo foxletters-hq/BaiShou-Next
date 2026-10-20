@@ -31,7 +31,10 @@ import {
   updateAgentWorkspace
 } from '../services/agent-workspace-registry.store'
 import { cleanupUnusedWorkspaceShadowGit } from '../services/workspace-shadow-git.provider'
-import { ensureScratchWorkspace } from '../services/agent-workspace-scratch.service'
+import {
+  ensureScratchWorkspace,
+  listAgentWorkspacesRepairingScratch
+} from '../services/agent-workspace-scratch.service'
 import { getAgentManagers } from './agent-helpers'
 import { registerAgentWorkspaceFilesIPC } from './agent-workspace-files.ipc'
 import { registerAgentWorkspaceGitIPC } from './agent-workspace-git.ipc'
@@ -52,7 +55,15 @@ export function registerAgentWorkspaceIPC(): void {
   })
 
   ipcMain.handle('agent-workspace:list-workspaces', async () => {
-    return listAgentWorkspaces()
+    try {
+      return await listAgentWorkspacesRepairingScratch()
+    } catch (error) {
+      logger.warn(
+        '[AgentWorkspaceIPC] scratch workspace self-heal failed:',
+        error instanceof Error ? error.message : String(error)
+      )
+      return listAgentWorkspaces()
+    }
   })
 
   ipcMain.handle('agent-workspace:ensure-scratch-workspace', async () => {

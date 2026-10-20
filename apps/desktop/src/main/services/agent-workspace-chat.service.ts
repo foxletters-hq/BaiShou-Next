@@ -6,6 +6,7 @@ import {
 } from '@baishou/ai'
 import {
   logger,
+  AgentGateProfileId,
   type BaishouAgentGateConfig,
   buildAgentDialogueSelectionState,
   isAgentStreamAbortError,
@@ -224,7 +225,11 @@ export async function runWorkspaceStreamChat(params: {
 
     let skillsCatalog: Array<{ name: string; description?: string }> | undefined
     try {
-      skillsCatalog = await listAgentSkillsCatalogForWorkspace(folderRoot)
+      const { filterSkillsCatalogByGate } = await import('@baishou/ai')
+      skillsCatalog = filterSkillsCatalogByGate(
+        await listAgentSkillsCatalogForWorkspace(folderRoot),
+        { agentGate, profileId: AgentGateProfileId.Workspace }
+      )
     } catch {
       skillsCatalog = undefined
     }

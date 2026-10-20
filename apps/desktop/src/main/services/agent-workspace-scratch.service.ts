@@ -63,6 +63,31 @@ export async function ensureScratchWorkspace(): Promise<AgentWorkspaceEntry> {
   return updated ?? { ...created, displayName: SCRATCH_WORKSPACE_DISPLAY_NAME, kind: 'scratch' }
 }
 
+/**
+ * 读取工作区列表前自愈：仅当注册表里仍有「稿纸」但目录已不存在时重建。
+ * 用户已从注册表移除的稿纸没有条目，因此不会被复活。
+ */
+export async function listAgentWorkspacesRepairingScratch(): Promise<AgentWorkspaceEntry[]> {
+  const workspaces = await listAgentWorkspaces()
+  const scratch = workspaces.find((entry) => isScratchWorkspaceEntry(entry))
+  if (!scratch || !(await isMissingDirectory(scratch.folderRoot))) {
+    return workspaces
+  }
+
+  await ensureScratchWorkspace()
+  return listAgentWorkspaces()
+}
+
+async function isMissingDirectory(folderRoot: string): Promise<boolean> {
+  try {
+    return !(await fs.stat(folderRoot)).isDirectory()
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    // 只有明确的“不存在”才自愈；权限等异常先保持原状，避免误迁移会话
+    return code === 'ENOENT' || code === 'ENOTDIR'
+  }
+}
+
 async function resolveWritableScratchFolderRoot(): Promise<string> {
   const preferred = resolveScratchWorkspaceFolderRoot({
     documentsRoot: app.getPath('documents'),

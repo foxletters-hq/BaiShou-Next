@@ -146,6 +146,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
     agentGate,
+    skillsReader: (await import('../services/desktop-skills-writer')).createDesktopSkillsReader(
+      activeWorkspace?.folderRoot ? { folderRoot: activeWorkspace.folderRoot } : undefined
+    ),
     rawDataSourceManager: (
       await import('../services/raw-data-source.runtime')
     ).getRawDataSourceManager(),

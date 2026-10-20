@@ -13,10 +13,12 @@ export function mergeSkillsByName(base: AgentSkill[], overlay: AgentSkill[]): Ag
 }
 
 export function toCatalogEntries(skills: AgentSkill[]): AgentSkillCatalogEntry[] {
-  return skills.map((s) => ({
-    name: s.name,
-    description: s.description
-  }))
+  return skills
+    .filter((s) => s.autoinvoke !== false)
+    .map((s) => ({
+      name: s.name,
+      description: s.description
+    }))
 }
 
 export function omitBundledTemplateSkills(skills: AgentSkill[]): AgentSkill[] {

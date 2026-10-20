@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   AgentGatePartBubble,
   AgentMarkdownRenderer,
+  AgentProcessSection,
   AgentThinkSection,
   AgentToolChainSection,
   KnowledgeCitationBlock,
@@ -110,6 +111,7 @@ function renderStreamTimelineItem(
   options: {
     isStreaming: boolean
     isLast: boolean
+    asThink?: boolean
     failedByName: Map<string, string>
     onSelectChange?: (change: WorkspaceChangeEntry) => void
     onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
@@ -131,8 +133,30 @@ function renderStreamTimelineItem(
   }
   if (item.kind === 'text') {
     const parsed = parseRedactedThinking(item.text, '')
-    const content = options.citedTextByIndex?.get(index) || parsed.cleanContent || item.text
-    if (!content.trim()) return null
+    const content =
+      options.citedTextByIndex?.get(index) ||
+      parsed.cleanContent ||
+      (!parsed.cleanReasoning ? item.text : '')
+    const cleanReasoning = parsed.cleanReasoning.trim()
+    if (!cleanReasoning && !content.trim()) return null
+    if (options.asThink) {
+      return (
+        <React.Fragment key={`stream-text-${index}`}>
+          {cleanReasoning ? (
+            <AgentThinkSection
+              content={cleanReasoning}
+              isStreaming={options.isStreaming && options.isLast && !content.trim()}
+            />
+          ) : null}
+          {content.trim() ? (
+            <AgentThinkSection
+              content={content}
+              isStreaming={options.isStreaming && options.isLast}
+            />
+          ) : null}
+        </React.Fragment>
+      )
+    }
     return (
       <AgentMarkdownRenderer
         key={`stream-text-${index}`}
@@ -218,7 +242,7 @@ export function WorkspaceStreamingTurn(props: {
       const decorated = decorateKnowledgeCitedTexts(
         textGroups.map((item) => {
           const parsed = parseRedactedThinking(item.text, '')
-          return parsed.cleanContent || item.text
+          return parsed.cleanContent || (!parsed.cleanReasoning ? item.text : '')
         }),
         knowledgeCitations.length,
         'streaming',
@@ -227,6 +251,120 @@ export function WorkspaceStreamingTurn(props: {
       return textGroups.map((item, offset) => [item.index, decorated[offset] ?? ''] as const)
     })()
   )
+
+  const liveStreaming = Boolean(isStreaming && !isBridgeActive && !streamError)
+  const hasTrailingGateChanges = !streamHasFileOps && gateChanges.length > 0
+  let lastActiveWorkIndex = hasTrailingGateChanges ? streamGroups.length : -1
+  if (!hasTrailingGateChanges) {
+    for (let i = 0; i < streamGroups.length; i += 1) {
+      const group = streamGroups[i]!
+      if (group.kind === 'reasoning' && group.text.trim()) {
+        lastActiveWorkIndex = i
+      } else if (group.kind !== 'text') {
+        lastActiveWorkIndex = i
+      } else if (parseRedactedThinking(group.text, '').cleanReasoning.trim()) {
+        lastActiveWorkIndex = i
+      }
+    }
+  }
+
+  const processSteps: React.ReactNode[] = []
+  const answerNodes: React.ReactNode[] = []
+  const reasoningSegments: string[] = []
+  const timelineCompletedTools: Array<{ name: string; durationMs: number }> = []
+  let timelineActiveToolName: string | null = null
+
+  if (useLiveTimeline) {
+    for (const [index, item] of streamGroups.entries()) {
+      const isLast =
+        !hasTrailingGateChanges &&
+        (index === streamGroups.length - 1 ||
+          streamGroups.slice(index + 1).every((entry) => entry.kind === 'gate'))
+      if (item.kind === 'reasoning') {
+        const parsed = parseRedactedThinking('', item.text)
+        const content = (parsed.cleanReasoning || item.text).trim()
+        if (content) reasoningSegments.push(content)
+      } else if (item.kind === 'text') {
+        const parsed = parseRedactedThinking(item.text, '')
+        const cleanReasoning = parsed.cleanReasoning.trim()
+        const content = (
+          citedTextByIndex.get(index) ||
+          parsed.cleanContent ||
+          (!cleanReasoning ? item.text : '')
+        ).trim()
+        if (cleanReasoning) reasoningSegments.push(cleanReasoning)
+        if (index < lastActiveWorkIndex) {
+          if (content) reasoningSegments.push(content)
+        } else {
+          if (cleanReasoning) {
+            processSteps.push(
+              <AgentThinkSection
+                key={`stream-text-think-${index}`}
+                content={cleanReasoning}
+                isStreaming={liveStreaming && isLast && !content}
+              />
+            )
+          }
+          if (content) {
+            const node = renderStreamTimelineItem(item, index, {
+              isStreaming: liveStreaming,
+              isLast,
+              asThink: false,
+              failedByName,
+              onSelectChange,
+              onReviewAll,
+              gateChanges,
+              citedTextByIndex
+            })
+            if (node) answerNodes.push(node)
+          }
+          continue
+        }
+      } else if (item.kind === 'tools' || item.kind === 'file_ops') {
+        for (const tool of item.items) {
+          if (tool.status === 'running') {
+            timelineActiveToolName = tool.name
+          } else {
+            timelineCompletedTools.push({
+              name: tool.name,
+              durationMs: tool.durationMs ?? 0
+            })
+          }
+        }
+      }
+
+      const stepNode = renderStreamTimelineItem(item, index, {
+        isStreaming: liveStreaming,
+        isLast,
+        asThink: true,
+        failedByName,
+        onSelectChange,
+        onReviewAll,
+        gateChanges,
+        citedTextByIndex
+      })
+      if (stepNode) processSteps.push(stepNode)
+    }
+
+    if (hasTrailingGateChanges) {
+      for (const change of gateChanges) {
+        timelineCompletedTools.push({ name: change.kind, durationMs: 0 })
+      }
+      processSteps.push(
+        <WorkspaceFileChangeList
+          key="stream-gate-files"
+          changes={gateChanges}
+          running
+          onSelectChange={onSelectChange ?? (() => undefined)}
+          onReviewAll={onReviewAll}
+        />
+      )
+    }
+  }
+
+  const combinedTimelineReasoning = reasoningSegments.join('\n\n')
+  const effectiveActiveToolName = timelineActiveToolName ?? activeToolName ?? null
+  const processIsStreaming = Boolean(liveStreaming && answerNodes.length === 0)
 
   return (
     <div
@@ -242,42 +380,47 @@ export function WorkspaceStreamingTurn(props: {
       <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">
         {useLiveTimeline ? (
           <>
-            {streamGroups.map((item, index, groups) =>
-              renderStreamTimelineItem(item, index, {
-                isStreaming: isStreaming && !isBridgeActive,
-                isLast:
-                  index === groups.length - 1 ||
-                  groups.slice(index + 1).every((entry) => entry.kind === 'gate'),
-                failedByName,
-                onSelectChange,
-                onReviewAll,
-                gateChanges,
-                citedTextByIndex
-              })
-            )}
-            {!streamHasFileOps && gateChanges.length > 0 ? (
-              <WorkspaceFileChangeList
-                changes={gateChanges}
-                running
-                onSelectChange={onSelectChange ?? (() => undefined)}
-                onReviewAll={onReviewAll}
-              />
+            {processSteps.length > 0 || processIsStreaming ? (
+              <AgentProcessSection
+                reasoningContent={combinedTimelineReasoning || undefined}
+                streamingCompletedTools={timelineCompletedTools}
+                activeToolName={streamError ? null : effectiveActiveToolName}
+                isReasoningLoading={processIsStreaming && !effectiveActiveToolName}
+                isReasoningStreaming={processIsStreaming && !effectiveActiveToolName}
+                isStreaming={liveStreaming}
+                hasAnswerText={answerNodes.length > 0}
+              >
+                {processSteps}
+              </AgentProcessSection>
             ) : null}
+            {answerNodes}
           </>
         ) : (
           <>
-            {streamHasReasoning ? (
-              <AgentThinkSection
-                content={streamingParsed.cleanReasoning}
-                isStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
-              />
-            ) : null}
-            {streamHasTools ? (
-              <AgentToolChainSection
-                completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
-                activeToolName={activeToolName}
-                isStreaming
-              />
+            {streamHasReasoning || streamHasTools ? (
+              <AgentProcessSection
+                reasoningContent={streamHasReasoning ? streamingParsed.cleanReasoning : undefined}
+                isReasoningLoading={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
+                isReasoningStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
+                streamingCompletedTools={streamingCompletedTools.filter((tool) => !tool.error)}
+                activeToolName={streamError ? null : activeToolName}
+                isStreaming={liveStreaming}
+                hasAnswerText={streamHasText}
+              >
+                {streamHasReasoning ? (
+                  <AgentThinkSection
+                    content={streamingParsed.cleanReasoning}
+                    isStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
+                  />
+                ) : null}
+                {streamHasTools ? (
+                  <AgentToolChainSection
+                    completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
+                    activeToolName={activeToolName}
+                    isStreaming
+                  />
+                ) : null}
+              </AgentProcessSection>
             ) : null}
             {streamHasText ? (
               <AgentMarkdownRenderer
@@ -331,7 +474,12 @@ export function WorkspacePendingAssistantTurn(props: {
       }`}
     >
       {pendingAssistantMsg.reasoning ? (
-        <AgentThinkSection content={pendingAssistantMsg.reasoning} />
+        <AgentProcessSection
+          reasoningContent={pendingAssistantMsg.reasoning}
+          hasAnswerText={Boolean(pendingAssistantMsg.content)}
+        >
+          <AgentThinkSection content={pendingAssistantMsg.reasoning} />
+        </AgentProcessSection>
       ) : null}
       {pendingAssistantMsg.content ? (
         <AgentMarkdownRenderer content={pendingAssistantMsg.content} />

@@ -10,8 +10,6 @@ import {
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import {
-  normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   getReasoningControlForModel,
@@ -261,12 +259,6 @@ export const AgentScreen: React.FC = () => {
     return { ...flow.chat, messages }
   }, [flow.chat, pendingQueueCtl.pendingQueue])
 
-  const chatBackgroundUrl = flow.userProfile?.chatBackgroundPath
-  const chatBackgroundBlur = normalizeChatBackgroundBlur(flow.userProfile?.chatBackgroundBlur)
-  const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(
-    flow.userProfile?.chatBackgroundOverlayOpacity
-  )
-
   /** 未自动加载上次对话 / 新对话草稿：居中展示欢迎区 + 输入框（有真实 sessionId 时不闪空态） */
   const isEmptyIdle =
     isDraftChatSessionId(flow.sessionId) &&
@@ -277,26 +269,6 @@ export const AgentScreen: React.FC = () => {
 
   return (
     <div className={styles.screen}>
-      {chatBackgroundUrl ? (
-        <>
-          <div
-            className={styles.chatBackground}
-            style={{
-              backgroundImage: `url(${chatBackgroundUrl})`,
-              filter: chatBackgroundBlur > 0 ? `blur(${chatBackgroundBlur}px)` : undefined,
-              transform: chatBackgroundBlur > 0 ? 'scale(1.06)' : undefined
-            }}
-            aria-hidden
-          />
-          {chatBackgroundOverlay > 0 ? (
-            <div
-              className={styles.chatBackgroundOverlay}
-              style={{ backgroundColor: `rgba(0, 0, 0, ${chatBackgroundOverlay / 100})` }}
-              aria-hidden
-            />
-          ) : null}
-        </>
-      ) : null}
       <AgentChatChrome
         currentAssistant={currentAssistant}
         onShowPicker={onShowAssistantPicker}
