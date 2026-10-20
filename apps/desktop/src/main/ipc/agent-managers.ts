@@ -15,7 +15,7 @@ import {
 import { AgentSessionService, ToolRegistry } from '@baishou/ai'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
 import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
-import { fileSystem, pathService, resolveActiveVaultId } from './vault.ipc'
+import { fileSystem, pathService, resolveActiveVaultId, vaultService } from './vault.ipc'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
@@ -58,6 +58,9 @@ export function getAgentManagers(): AgentManagers {
     sessionFileService,
     sessionSyncService,
     {
+      resolveVaultName: (vaultId) =>
+        vaultService.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null,
+      resolveActiveVaultName: () => vaultService.getActiveVault()?.name ?? null,
       onBeforeWrite: (sessionId) => {
         void (async () => {
           try {

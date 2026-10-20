@@ -20,9 +20,11 @@ import {
   isWorkbenchSkillEditable,
   matchesWorkbenchSkillSearch,
   resolveSkillEditScope,
+  resolveWorkbenchSkillSection,
   resolveWorkbenchSkillsPageTab
 } from '../../utils/workspace-skill-launch.util'
 import { WorkbenchSkillEditorDialog } from './WorkbenchSkillEditorDialog'
+import { WorkbenchSkillDetailDialog } from './WorkbenchSkillDetailDialog'
 import { WorkbenchSkillLaunchDialog } from './WorkbenchSkillLaunchDialog'
 import pageStyles from '../home/WorkbenchHomePage.module.css'
 import { WORKBENCH_SKILL_CARDS } from './workbench-skill-catalog'
@@ -33,6 +35,11 @@ import styles from './WorkbenchSkillsPage.module.css'
 
 interface WorkspaceOutletContext {
   setFolderRoot: (path: string | null) => void
+}
+
+/** 官方技能正文可能未随列表返回；writer 技能用内置正文兜底 */
+function resolveSkillBody(skill: AgentSkill): string {
+  return skill.content.trim() || (skill.name === WRITER_SKILL_NAME ? WRITER_SKILL_CONTENT : '')
 }
 
 export const WorkbenchSkillsPage: React.FC = () => {
@@ -49,6 +56,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
   const [query, setQuery] = useState('')
   const [launching, setLaunching] = useState(false)
   const [launchSkillTarget, setLaunchSkillTarget] = useState<AgentSkill | null>(null)
+  const [detailSkill, setDetailSkill] = useState<AgentSkill | null>(null)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
   const [savingSkill, setSavingSkill] = useState(false)
   const {
@@ -156,9 +164,10 @@ export const WorkbenchSkillsPage: React.FC = () => {
         }
 
         setFolderRoot(entryFolder)
-        const content =
-          skill.content.trim() || (skill.name === WRITER_SKILL_NAME ? WRITER_SKILL_CONTENT : '')
-        const payload = buildSkillSendMeta({ name: skill.name, content })
+        const payload = buildSkillSendMeta({
+          name: skill.name,
+          content: resolveSkillBody(skill)
+        })
         const sessionId = await window.api.agentWorkspace.createSession({
           folderRoot: entryFolder,
           assistantId: chrome.selectedAssistantId,
@@ -202,6 +211,67 @@ export const WorkbenchSkillsPage: React.FC = () => {
       setLaunchSkillTarget(skill)
     },
     [launching]
+  )
+
+  const openSkillDetail = useCallback((skill: AgentSkill) => {
+    setDetailSkill(skill)
+  }, [])
+
+  const launchSkillInCompanion = useCallback(
+    (skill: AgentSkill) => {
+      if (resolveWorkbenchSkillSection(skill.source, skill.name) === 'project') {
+        void dialog.alert(
+          t('workbench.skills_detail_project_only', '项目技能依赖所属项目目录，只能在项目中使用'),
+          skill.name
+        )
+        return
+      }
+      try {
+        const draftSessionId = `new-${Date.now()}`
+        const payload = buildSkillSendMeta({
+          name: skill.name,
+          content: resolveSkillBody(skill)
+        })
+        // 伙伴页用草稿会话 id 消费 sessionStorage 中的技能引用与展示文案
+        sessionStorage.setItem(`baishou:chat-init-meta:${draftSessionId}`, JSON.stringify(payload))
+        const params = new URLSearchParams({ init: payload.text })
+        if (chrome.selectedAssistantId) params.set('assistantId', chrome.selectedAssistantId)
+        navigate(`/chat/${encodeURIComponent(draftSessionId)}?${params.toString()}`)
+      } catch (error) {
+        console.error('[WorkbenchSkillsPage] launch skill in companion failed:', error)
+        void dialog.alert(
+          error instanceof Error
+            ? error.message
+            : t('workbench.skills_detail_companion_failed', '打开伙伴对话失败'),
+          skill.description || skill.name
+        )
+      }
+    },
+    [chrome.selectedAssistantId, dialog, navigate, t]
+  )
+
+  const handleUseSkillInProject = useCallback(
+    (skill: AgentSkill) => {
+      setDetailSkill(null)
+      // 项目技能依赖所属项目目录，直接在该项目打开，避免选到其他项目后路径/脚本失效
+      if (
+        selectedWorkspace &&
+        resolveWorkbenchSkillSection(skill.source, skill.name) === 'project'
+      ) {
+        void launchSkill(skill, selectedWorkspace.folderRoot)
+        return
+      }
+      beginUseSkill(skill)
+    },
+    [beginUseSkill, launchSkill, selectedWorkspace]
+  )
+
+  const handleUseSkillInCompanion = useCallback(
+    (skill: AgentSkill) => {
+      setDetailSkill(null)
+      launchSkillInCompanion(skill)
+    },
+    [launchSkillInCompanion]
   )
 
   const beginUseTemplate = useCallback(
@@ -330,7 +400,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
               scopeOptions={scopeOptions}
               loadingProjectSkills={catalog.loadingProjectSkills}
               scopedSkills={catalog.scopedSkills}
-              onLaunch={beginUseSkill}
+              onOpen={openSkillDetail}
               onEdit={handleEditSkill}
               onScopeChange={setScope}
             />
@@ -360,6 +430,14 @@ export const WorkbenchSkillsPage: React.FC = () => {
         onClose={() => setLaunchSkillTarget(null)}
         onPickWorkspace={handlePickLaunchWorkspace}
         onOpenFolder={handleLaunchOpenFolder}
+      />
+      <WorkbenchSkillDetailDialog
+        open={detailSkill !== null}
+        skill={detailSkill}
+        busy={launching}
+        onClose={() => setDetailSkill(null)}
+        onUseInProject={handleUseSkillInProject}
+        onUseInCompanion={handleUseSkillInCompanion}
       />
       <WorkbenchSkillEditorDialog
         open={editingSkill !== null}

@@ -53,10 +53,9 @@ export function ensureOfficialCreateSkill<T extends { name: string; description?
   official: T[],
   fallback: T
 ): T[] {
+  const defaultDesc = fallback.description ?? CREATE_SKILL_SLASH_COMMAND
   const normalized = official.map((item) =>
-    item.name === CREATE_SKILL_SLASH_COMMAND
-      ? { ...item, description: CREATE_SKILL_SLASH_COMMAND }
-      : item
+    item.name === CREATE_SKILL_SLASH_COMMAND ? { ...item, description: defaultDesc } : item
   )
   if (normalized.some((item) => item.name === CREATE_SKILL_SLASH_COMMAND)) return normalized
   return [fallback, ...normalized]

@@ -9,7 +9,7 @@ export function WorkbenchSkillIconGrid({
   iconForSkill,
   badgeForSkill,
   launching,
-  onLaunch,
+  onOpen,
   onEdit,
   editLabel
 }: {
@@ -18,7 +18,7 @@ export function WorkbenchSkillIconGrid({
   iconForSkill?: (skill: AgentSkill) => React.ReactNode
   badgeForSkill?: (skill: AgentSkill) => string | undefined
   launching: boolean
-  onLaunch: (skill: AgentSkill) => void
+  onOpen: (skill: AgentSkill) => void
   onEdit?: (skill: AgentSkill) => void
   editLabel?: string
 }) {
@@ -33,7 +33,7 @@ export function WorkbenchSkillIconGrid({
               type="button"
               className={styles.iconCardMain}
               disabled={launching}
-              onClick={() => onLaunch(skill)}
+              onClick={() => onOpen(skill)}
             >
               <span className={styles.iconBadge} aria-hidden>
                 {iconForSkill?.(skill) ?? icon}

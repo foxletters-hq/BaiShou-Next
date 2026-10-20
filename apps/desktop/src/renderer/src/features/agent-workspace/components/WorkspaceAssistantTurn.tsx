@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   AgentGatePartBubble,
   AgentMarkdownRenderer,
+  AgentProcessSection,
   AgentThinkSection,
   AgentToolChainSection,
   ChatBubbleInlineEditor,
@@ -15,6 +16,7 @@ import {
   collectKnowledgeCitationsFromInvocations,
   decorateKnowledgeCitedTexts,
   readAssistantStreamStatus,
+  type MockToolInvocation,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
@@ -127,6 +129,100 @@ function WorkspaceAssistantTurnInner(props: {
       )[0] ?? fallbackParsed.cleanContent)
     : ''
 
+  let lastActiveWorkIndex = -1
+  for (let i = 0; i < timelineGroups.length; i += 1) {
+    const item = timelineGroups[i]!
+    if (item.kind === 'reasoning' && item.text.trim()) {
+      lastActiveWorkIndex = i
+    } else if (item.kind !== 'text') {
+      lastActiveWorkIndex = i
+    } else if (parseRedactedThinking(item.text).cleanReasoning.trim()) {
+      lastActiveWorkIndex = i
+    }
+  }
+
+  const processSteps: React.ReactNode[] = []
+  const answerNodes: React.ReactNode[] = []
+  const reasoningSegments: string[] = []
+  const processInvocations: MockToolInvocation[] = []
+
+  for (const [index, item] of timelineGroups.entries()) {
+    if (item.kind === 'gate') {
+      processSteps.push(<AgentGatePartBubble key={item.key} data={item.data} />)
+      continue
+    }
+    if (item.kind === 'reasoning') {
+      const parsed = parseRedactedThinking('', item.text)
+      const content = (parsed.cleanReasoning || item.text).trim()
+      if (!content) continue
+      reasoningSegments.push(content)
+      processSteps.push(<AgentThinkSection key={item.key} content={content} />)
+      continue
+    }
+    if (item.kind === 'text') {
+      const parsed = parseRedactedThinking(item.text)
+      const cited = citedTextByKey.get(item.key)
+      const cleanReasoning = parsed.cleanReasoning.trim()
+      if (cleanReasoning) {
+        reasoningSegments.push(cleanReasoning)
+        processSteps.push(<AgentThinkSection key={`${item.key}:think`} content={cleanReasoning} />)
+      }
+      if (cited?.trim()) {
+        if (index < lastActiveWorkIndex) {
+          reasoningSegments.push(cited.trim())
+          processSteps.push(<AgentThinkSection key={item.key} content={cited} />)
+        } else if (!editingActive) {
+          answerNodes.push(<AgentMarkdownRenderer key={item.key} content={cited} />)
+        }
+      }
+      continue
+    }
+    if (item.kind === 'tools') {
+      processInvocations.push(...item.invocations)
+      processSteps.push(<AgentToolChainSection key={item.key} invocations={item.invocations} />)
+      continue
+    }
+    if (item.kind === 'file_change_failed') {
+      processSteps.push(
+        <div key={item.key} className={styles.fileChangeError}>
+          {t('file_change.failed', '文件变更失败')}: {item.data.path}
+        </div>
+      )
+      continue
+    }
+    const changes = buildFileOpEntries(
+      msg.id,
+      item.invocations,
+      item.items.map((entry) => entry.data)
+    )
+    if (item.invocations.length > 0) {
+      processInvocations.push(...item.invocations)
+    } else {
+      for (const change of changes) {
+        processInvocations.push({
+          toolCallId: change.id,
+          toolName: change.kind,
+          state: 'result',
+          args: { path: change.path },
+          result: change.path
+        })
+      }
+    }
+    processSteps.push(
+      <WorkspaceFileChangeList
+        key={item.key}
+        changes={changes}
+        onSelectChange={(change) => onSelectChange?.(change)}
+        onReviewAll={onReviewAll}
+      />
+    )
+  }
+
+  const combinedReasoning = reasoningSegments.join('\n\n')
+  const hasAnswerText = Boolean(
+    answerNodes.length > 0 || (editingActive && assistantText.trim().length > 0)
+  )
+
   return (
     <div
       className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
@@ -135,53 +231,27 @@ function WorkspaceAssistantTurnInner(props: {
     >
       <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id}>
         {timelineGroups.length > 0 ? (
-          timelineGroups.map((item) => {
-            if (item.kind === 'text' && editingActive) return null
-            if (item.kind === 'gate') {
-              return <AgentGatePartBubble key={item.key} data={item.data} />
-            }
-            if (item.kind === 'reasoning') {
-              return <AgentThinkSection key={item.key} content={item.text} />
-            }
-            if (item.kind === 'text') {
-              const parsed = parseRedactedThinking(item.text)
-              const cited = citedTextByKey.get(item.key)
-              return (
-                <React.Fragment key={item.key}>
-                  {parsed.cleanReasoning ? (
-                    <AgentThinkSection content={parsed.cleanReasoning} />
-                  ) : null}
-                  {cited ? <AgentMarkdownRenderer content={cited} /> : null}
-                </React.Fragment>
-              )
-            }
-            if (item.kind === 'tools') {
-              return <AgentToolChainSection key={item.key} invocations={item.invocations} />
-            }
-            if (item.kind === 'file_change_failed') {
-              return (
-                <div key={item.key} className={styles.fileChangeError}>
-                  {t('file_change.failed', '文件变更失败')}: {item.data.path}
-                </div>
-              )
-            }
-            return (
-              <WorkspaceFileChangeList
-                key={item.key}
-                changes={buildFileOpEntries(
-                  msg.id,
-                  item.invocations,
-                  item.items.map((entry) => entry.data)
-                )}
-                onSelectChange={(change) => onSelectChange?.(change)}
-                onReviewAll={onReviewAll}
-              />
-            )
-          })
+          <>
+            {processSteps.length > 0 ? (
+              <AgentProcessSection
+                reasoningContent={combinedReasoning || undefined}
+                invocations={processInvocations}
+                hasAnswerText={hasAnswerText}
+              >
+                {processSteps}
+              </AgentProcessSection>
+            ) : null}
+            {answerNodes}
+          </>
         ) : fallbackParsed ? (
           <>
             {fallbackParsed.cleanReasoning ? (
-              <AgentThinkSection content={fallbackParsed.cleanReasoning} />
+              <AgentProcessSection
+                reasoningContent={fallbackParsed.cleanReasoning}
+                hasAnswerText={Boolean(fallbackCited)}
+              >
+                <AgentThinkSection content={fallbackParsed.cleanReasoning} />
+              </AgentProcessSection>
             ) : null}
             {fallbackCited ? <AgentMarkdownRenderer content={fallbackCited} /> : null}
           </>

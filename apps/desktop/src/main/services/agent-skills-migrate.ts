@@ -3,6 +3,7 @@ import {
   DEFAULT_AGENT_SKILLS,
   LEGACY_WRITER_SKILL_NAME,
   RETIRED_OFFICIAL_SKILL_NAMES,
+  hashSkillContent,
   isValidSkillName,
   planOfficialSkillRelocations,
   promptShortcutToSkillInput,
@@ -110,10 +111,17 @@ async function ensureDefaultSkills(skillsRoot: string, existing: AgentSkill[]): 
   const byName = new Map(existing.map((skill) => [skill.name, skill]))
   for (const skill of DEFAULT_AGENT_SKILLS) {
     const current = byName.get(skill.name)
+    const bundledHash = hashSkillContent(skill.content)
     if (!current) {
-      await writeSkillFile(skillsRoot, skill)
+      await writeSkillFile(skillsRoot, { ...skill, bundledHash })
       continue
     }
+    // 磁盘副本仍带旧版内置指纹 → 未被改动的内置技能，可整体升级正文
+    if (current.bundledHash && current.bundledHash !== bundledHash) {
+      await writeSkillFile(skillsRoot, { ...skill, bundledHash })
+      continue
+    }
+    // 旧版无指纹或用户已接管：只同步描述，保留用户正文
     if (current.description !== skill.description) {
       await writeSkillFile(skillsRoot, {
         name: skill.name,

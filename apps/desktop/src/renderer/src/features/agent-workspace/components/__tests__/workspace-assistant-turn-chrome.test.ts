@@ -24,10 +24,12 @@ describe('workspace assistant turn chrome', () => {
     expect(src).not.toContain(
       '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey={msg.id} />'
     )
+    expect(src).toContain('<AgentProcessSection')
     const stream = readFileSync(join(here, '../WorkspaceStreamingTurn.tsx'), 'utf8')
     expect(stream).toContain(
       '<KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">'
     )
+    expect(stream).toContain('<AgentProcessSection')
   })
 
   it('should list every file change and open all diffs from the header', () => {
