@@ -297,6 +297,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'mounted_notebook_ids',
     ddl: `ALTER TABLE agent_sessions ADD COLUMN mounted_notebook_ids TEXT NOT NULL DEFAULT ''`
   },
+  {
+    table: 'agent_sessions',
+    column: 'instruction_state',
+    ddl: `ALTER TABLE agent_sessions ADD COLUMN instruction_state TEXT`
+  },
   // ── agent_messages（原 0002_cache_token_usage）──
   {
     table: 'agent_messages',

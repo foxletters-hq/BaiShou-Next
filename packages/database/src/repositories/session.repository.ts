@@ -69,6 +69,16 @@ export class SessionRepository {
     return this.run(() => this.crudOps.updateMountedNotebookIds(...args))
   }
 
+  getSessionInstructionState(...args: Parameters<SessionCrudOps['getSessionInstructionState']>) {
+    return this.run(() => this.crudOps.getSessionInstructionState(...args))
+  }
+
+  updateSessionInstructionState(
+    ...args: Parameters<SessionCrudOps['updateSessionInstructionState']>
+  ) {
+    return this.run(() => this.crudOps.updateSessionInstructionState(...args))
+  }
+
   deleteSessions(...args: Parameters<SessionCrudOps['deleteSessions']>) {
     return this.run(() => this.crudOps.deleteSessions(...args))
   }

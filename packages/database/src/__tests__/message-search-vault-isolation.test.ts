@@ -147,14 +147,15 @@ describe('message_search vault isolation (P0-1)', () => {
   })
 
   it('LIKE path alone still scopes by vault_id', async () => {
-    const originalFts = (repo as any).searchMessagesViaFts.bind(repo)
-    ;(repo as any).searchMessagesViaFts = async () => []
+    const searchOps = (repo as any).search
+    const originalFts = searchOps.searchMessagesViaFts.bind(searchOps)
+    searchOps.searchMessagesViaFts = async () => []
     try {
       const inA = await repo.searchMessagesByKeyword('secret keyword', 10, VAULT_A)
       expect(inA.some((r) => String(r.content).includes('vault B'))).toBe(false)
       expect(inA.some((r) => String(r.content).includes('vault A'))).toBe(true)
     } finally {
-      ;(repo as any).searchMessagesViaFts = originalFts
+      searchOps.searchMessagesViaFts = originalFts
     }
   })
 

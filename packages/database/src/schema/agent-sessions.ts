@@ -8,6 +8,8 @@ export const agentSessionsTable = sqliteTable('agent_sessions', {
   isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
   systemPrompt: text('system_prompt'),
   mountedNotebookIds: text('mounted_notebook_ids').notNull().default(''),
+  /** 会话级 instruction 基线（JSON）：skills_catalog 等增量指令的冻结快照 */
+  instructionState: text('instruction_state'),
   providerId: text('provider_id').notNull(),
   modelId: text('model_id').notNull(),
   totalInputTokens: integer('total_input_tokens').notNull().default(0),

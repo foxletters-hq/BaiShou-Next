@@ -213,6 +213,35 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts-march')
     })
+
+    it('queryFTS splits whitespace-separated terms and ranks fuller matches first', async () => {
+      await repo.insertEmbedding({
+        id: 'fts-all-terms',
+        sourceType: 'memory',
+        sourceId: 'mem-tools',
+        groupId: 'memory',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '工具测试 记忆 日记：今天把所有工具过了一遍',
+        embedding: [1, 0, 0],
+        modelId: 'x'
+      })
+      await repo.insertEmbedding({
+        id: 'fts-one-term',
+        sourceType: 'memory',
+        sourceId: 'mem-other',
+        groupId: 'memory',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '这里只有记忆两个字',
+        embedding: [0, 1, 0],
+        modelId: 'x'
+      })
+
+      const res = await repo.queryFTS('工具测试 记忆 日记', 5, { vaultId: 'Personal' })
+
+      expect(res.map((row) => row.messageId)).toEqual(['fts-all-terms', 'fts-one-term'])
+    })
   })
 
   describe('Date range vector filter', () => {
