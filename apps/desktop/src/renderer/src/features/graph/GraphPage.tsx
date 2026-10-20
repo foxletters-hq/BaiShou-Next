@@ -270,7 +270,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     onPageChange: m.inventory.setPage,
                     onPageSizeChange: m.inventory.setPageSize,
                     onOpenNode: (id) => {
-                      m.setTab('detail')
+                      side.openSide('detail')
                       void selection.onSelectNode(id)
                     }
                   },
@@ -303,44 +303,49 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   similar: {
                     pairs: data.similarPairs,
                     busy: m.busy,
-                    onMerge: (pair) => review.mergeNodes(pair.peerId, pair.nodeId),
+                    onMerge: (pair) =>
+                      review.mergeNodes(pair.peerId, pair.nodeId, {
+                        survivorName: pair.peerName,
+                        loserName: pair.nodeName
+                      }),
                     onKeepApart: (pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId),
                     onLocateNode: selection.locatePendingNode
-                  },
-                  detail: {
-                    selectedNode: selection.selectedNode,
-                    focusDepth: selection.focusDepth,
-                    onFocusDepthChange: selection.updateFocusDepth,
-                    editName: detail.editName,
-                    onEditNameChange: detail.setEditName,
-                    editNameConflict: detail.editNameConflict,
-                    onSelectNode: (id) => void selection.onSelectNode(id),
-                    onMergeIntoExisting: review.mergeNodes,
-                    editSummary: detail.editSummary,
-                    onEditSummaryChange: detail.setEditSummary,
-                    editAliases: detail.editAliases,
-                    onEditAliasesChange: detail.setEditAliases,
-                    nameCandidates: detail.nameCandidates,
-                    busy: m.busy,
-                    onSaveNodeEdit: () => void detail.saveNodeEdit(),
-                    onDeleteSelectedNode: () => void detail.deleteSelectedNode(),
-                    onOpenSplit: () => detail.setSplitOpen(true),
-                    onRevertSplit: (discriminator) => void detail.revertSplit(discriminator),
-                    onReviewNode: (nodeId, status) => void review.reviewNode(nodeId, status),
-                    addEdgeQuery: detail.addEdgeQuery,
-                    onAddEdgeQueryChange: detail.setAddEdgeQuery,
-                    onSearchAddEdgeTarget: () => void detail.searchAddEdgeTarget(),
-                    addEdgeType: detail.addEdgeType,
-                    onAddEdgeTypeChange: detail.setAddEdgeType,
-                    edgeTypes: detail.edgeTypes,
-                    addEdgeToId: detail.addEdgeToId,
-                    onAddEdgeToIdChange: detail.setAddEdgeToId,
-                    onAddEdge: () => void detail.addEdge(),
-                    addEdgeHits: detail.addEdgeHits,
-                    detailEdges: selection.detailEdges,
-                    onOpenSource: (ref, excerpt) => void source.openSource(ref, excerpt),
-                    onDeleteEdge: (edgeId) => void detail.deleteEdge(edgeId)
                   }
+                }}
+                detail={{
+                  selectedNode: selection.selectedNode,
+                  focusDepth: selection.focusDepth,
+                  onFocusDepthChange: selection.updateFocusDepth,
+                  editName: detail.editName,
+                  onEditNameChange: detail.setEditName,
+                  editNameConflict: detail.editNameConflict,
+                  onSelectNode: (id) => void selection.onSelectNode(id),
+                  onMergeIntoExisting: (survivorId, survivorName, loserId, loserName) =>
+                    review.mergeNodes(survivorId, loserId, { survivorName, loserName }),
+                  editSummary: detail.editSummary,
+                  onEditSummaryChange: detail.setEditSummary,
+                  editAliases: detail.editAliases,
+                  onEditAliasesChange: detail.setEditAliases,
+                  nameCandidates: detail.nameCandidates,
+                  busy: m.busy,
+                  onSaveNodeEdit: () => void detail.saveNodeEdit(),
+                  onDeleteSelectedNode: () => void detail.deleteSelectedNode(),
+                  onOpenSplit: () => detail.setSplitOpen(true),
+                  onRevertSplit: (discriminator) => void detail.revertSplit(discriminator),
+                  onReviewNode: (nodeId, status) => void review.reviewNode(nodeId, status),
+                  addEdgeQuery: detail.addEdgeQuery,
+                  onAddEdgeQueryChange: detail.setAddEdgeQuery,
+                  onSearchAddEdgeTarget: () => void detail.searchAddEdgeTarget(),
+                  addEdgeType: detail.addEdgeType,
+                  onAddEdgeTypeChange: detail.setAddEdgeType,
+                  edgeTypes: detail.edgeTypes,
+                  addEdgeToId: detail.addEdgeToId,
+                  onAddEdgeToIdChange: detail.setAddEdgeToId,
+                  onAddEdge: () => void detail.addEdge(),
+                  addEdgeHits: detail.addEdgeHits,
+                  detailEdges: selection.detailEdges,
+                  onOpenSource: (ref, excerpt) => void source.openSource(ref, excerpt),
+                  onDeleteEdge: (edgeId) => void detail.deleteEdge(edgeId)
                 }}
               />
             ) : null}

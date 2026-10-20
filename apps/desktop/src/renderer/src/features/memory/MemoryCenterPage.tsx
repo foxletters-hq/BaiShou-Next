@@ -161,7 +161,6 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
             <div className={styles.tabs}>
               <SegmentedControl
                 value={tab}
-                size="small"
                 aria-label={t('memory.tabs', '记忆类型')}
                 options={tabOptions}
                 onChange={selectTab}

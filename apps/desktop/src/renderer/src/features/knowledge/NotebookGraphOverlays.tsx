@@ -47,7 +47,7 @@ export function NotebookGraphOverlays(props: {
         isOpen={!!props.mergeConfirm}
         title={t('graph.merge_nodes', '合并节点')}
         warning={t(
-          'graph.merge_irreversible',
+          'graph.merge_irreversible_warning',
           '合并不可撤销。被合并节点会并入保留节点，关系改挂到保留节点，对端同步后只保留目标节点。'
         )}
         detail={

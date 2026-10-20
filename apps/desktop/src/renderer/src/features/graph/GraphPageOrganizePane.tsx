@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight } from 'lucide-react'
 import {
   GRAPH_EXTRACT_CONCURRENCY_MAX,
   GRAPH_EXTRACT_CONCURRENCY_MIN,
@@ -58,10 +59,18 @@ export function GraphPageOrganizePane(props: {
           <button
             type="button"
             className={styles.settingsSectionHead}
+            aria-expanded={props.profileSectionOpen}
             onClick={props.onToggleProfileSection}
           >
-            <span className={styles.settingsChevron}>{props.profileSectionOpen ? '▾' : '▸'}</span>
-            {t('graph.profile_section', '身份资料')}
+            <ChevronRight
+              size={15}
+              strokeWidth={2}
+              className={`${styles.settingsChevron}${props.profileSectionOpen ? ` ${styles.settingsChevronOpen}` : ''}`}
+              aria-hidden
+            />
+            <span className={styles.settingsSectionTitle}>
+              {t('graph.profile_section', '身份资料')}
+            </span>
           </button>
           {props.profileSectionOpen ? (
             <div className={styles.settingsSectionBody}>
@@ -209,13 +218,15 @@ export function GraphPageOrganizePane(props: {
               )}
             />
           </div>
-          <DatePicker
-            value={props.extractDate}
-            onChange={(_, ymd) => props.onExtractDateChange(ymd)}
-            size="small"
-            placeholder={t('graph.select_diary_date', '选择日记日期')}
-            disabled={props.busy}
-          />
+          <div className={styles.opsFullWidth}>
+            <DatePicker
+              value={props.extractDate}
+              onChange={(_, ymd) => props.onExtractDateChange(ymd)}
+              size="small"
+              placeholder={t('graph.select_diary_date', '选择日记日期')}
+              disabled={props.busy}
+            />
+          </div>
           <Button type="button" disabled={props.busy} onClick={() => void props.onRunExtractOne()}>
             {t('graph.extract_one_action', '重新梳理这篇')}
           </Button>
@@ -242,10 +253,16 @@ export function GraphPageOrganizePane(props: {
           <button
             type="button"
             className={styles.settingsSectionHead}
+            aria-expanded={dataSectionOpen}
             onClick={() => setDataSectionOpen((open) => !open)}
           >
-            <span className={styles.settingsChevron}>{dataSectionOpen ? '▾' : '▸'}</span>
-            {t('graph.data_ops', '数据操作')}
+            <ChevronRight
+              size={15}
+              strokeWidth={2}
+              className={`${styles.settingsChevron}${dataSectionOpen ? ` ${styles.settingsChevronOpen}` : ''}`}
+              aria-hidden
+            />
+            <span className={styles.settingsSectionTitle}>{t('graph.data_ops', '数据操作')}</span>
           </button>
           {dataSectionOpen ? (
             <div className={styles.settingsSectionBody}>

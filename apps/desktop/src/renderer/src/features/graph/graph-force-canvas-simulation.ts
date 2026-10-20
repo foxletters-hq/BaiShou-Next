@@ -56,6 +56,27 @@ export function createGraphForceTickDrawScheduler(
   }
 }
 
+/** 首帧前同步预热的 tick 数；大图少跑几轮，避免阻塞首屏。 */
+export function graphForcePrewarmTicks(nodeCount: number): number {
+  if (nodeCount > 1200) return 60
+  if (nodeCount > 400) return 120
+  return 200
+}
+
+/**
+ * 首帧前把 d3 从初始 alpha=1 同步跑到接近冷却，避免整张图在用户眼前抖几秒。
+ * 结束后保留低 alpha，拖拽 / 改参数时 restart 仍有响应。
+ */
+export function prewarmGraphForceSimulation(
+  sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
+  nodeCount: number
+): void {
+  const ticks = graphForcePrewarmTicks(nodeCount)
+  for (let i = 0; i < ticks && sim.alpha() > 0.01; i++) sim.tick()
+  sim.alpha(0.1)
+  sim.stop()
+}
+
 export function applyGraphForceCenter(
   sim: Simulation<GraphForceSimNode, GraphForceSimLink>,
   x: number,
@@ -197,7 +218,7 @@ export function rebuildGraphForceSimulation(
   }
 
   applyGraphForceStrengths(sim, forces, refs.degreeByIdRef.current)
-  sim.stop()
+  prewarmGraphForceSimulation(sim, simNodes.length)
   refs.simRef.current = sim
   return true
 }

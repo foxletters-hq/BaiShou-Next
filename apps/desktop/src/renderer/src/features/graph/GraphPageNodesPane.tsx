@@ -51,18 +51,20 @@ export function GraphPageNodesPane(props: {
         </p>
       )}
       <div className={styles.inventorySearch}>
-        <Input
-          value={props.query}
-          onChange={(event) => props.onQueryChange(event.target.value)}
-          placeholder={
-            props.searchMode === 'semantic'
-              ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
-              : t('graph.search_placeholder_text', '按名称 / 别名搜索')
-          }
-          fieldSize="small"
-        />
+        <div className={styles.inventorySearchField}>
+          <Input
+            value={props.query}
+            onChange={(event) => props.onQueryChange(event.target.value)}
+            placeholder={
+              props.searchMode === 'semantic'
+                ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
+                : t('graph.search_placeholder_text', '按名称 / 别名搜索')
+            }
+            fieldSize="small"
+          />
+        </div>
         <SegmentedControl
-          size="small"
+          className={styles.inventorySearchMode}
           stretch={false}
           value={props.searchMode}
           onChange={(value) => props.onSearchModeChange(value as GraphSearchMode)}

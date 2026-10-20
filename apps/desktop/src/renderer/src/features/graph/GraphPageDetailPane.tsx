@@ -27,7 +27,12 @@ export function GraphPageDetailPane(props: {
   onEditNameChange: (value: string) => void
   editNameConflict: GraphEditNameConflict | null
   onSelectNode: (id: string) => void
-  onMergeIntoExisting: (survivorId: string, loserId: string) => void
+  onMergeIntoExisting: (
+    survivorId: string,
+    survivorName: string,
+    loserId: string,
+    loserName: string
+  ) => void
   editSummary: string
   onEditSummaryChange: (value: string) => void
   editAliases: string
@@ -135,7 +140,12 @@ export function GraphPageDetailPane(props: {
                 type="button"
                 className={styles.linkBtn}
                 onClick={() =>
-                  props.onMergeIntoExisting(props.editNameConflict!.id, selectedNode.id)
+                  props.onMergeIntoExisting(
+                    props.editNameConflict!.id,
+                    props.editNameConflict!.name,
+                    selectedNode.id,
+                    String(selectedNode.name || selectedNode.id)
+                  )
                 }
               >
                 {t('graph.merge_into_existing', '合并到该节点')}

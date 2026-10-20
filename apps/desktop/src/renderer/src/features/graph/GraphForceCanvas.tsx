@@ -28,6 +28,12 @@ import {
 
 export type { GraphCanvasEdge, GraphCanvasNode } from './graph-force-canvas.types'
 
+function graphForceSettingsSignature(force: GraphForceSettings): string {
+  return [force.centerStrength, force.linkStrength, force.chargeStrength, force.linkDistance].join(
+    ','
+  )
+}
+
 export const GraphForceCanvas: React.FC<{
   /** 标签页切走时停力导向 tick，避免隐藏画布继续占 CPU。 */
   paused?: boolean
@@ -74,6 +80,8 @@ export const GraphForceCanvas: React.FC<{
   const linksRef = useRef<GraphForceCanvasEngineRefs['linksRef']['current']>([])
   const transformRef = useRef({ x: 0, y: 0, k: 1 })
   const forceRef = useRef<GraphForceSettings>(forceSettings)
+  /** 重建时已经应用过当前参数；挂载后的第一次 effect 不再 restart。 */
+  const appliedForceRef = useRef(graphForceSettingsSignature(forceSettings))
   const appearanceRef = useRef<GraphAppearanceSettings>(appearanceSettings)
   const dragRef = useRef<GraphForceCanvasEngineRefs['dragRef']['current']>({
     id: null,
@@ -300,13 +308,13 @@ export const GraphForceCanvas: React.FC<{
     }
     drawRef.current = draw
 
-    const rebuilt = rebuildGraphForceSimulation(refs, canvas, nodes, edges)
+    // 重建时已在内部同步预热到稳定，首帧直接绘制，避免开局抖动。
+    rebuildGraphForceSimulation(refs, canvas, nodes, edges)
     if (pausedRef.current) {
       simRef.current?.stop()
       return
     }
     draw()
-    if (rebuilt) simRef.current?.restart()
   }, [nodes, edges, refs])
 
   useEffect(() => {
@@ -321,6 +329,9 @@ export const GraphForceCanvas: React.FC<{
   useEffect(() => {
     const sim = simRef.current
     if (!sim || pausedRef.current) return
+    const signature = graphForceSettingsSignature(forceSettings)
+    if (signature === appliedForceRef.current) return
+    appliedForceRef.current = signature
     applyGraphForceStrengths(sim, forceSettings, degreeByIdRef.current)
     sim.alpha(0.35).restart()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 按字段订阅

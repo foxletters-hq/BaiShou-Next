@@ -399,6 +399,7 @@ export class DesktopLanSyncService implements ILanSyncService {
     onProgress?: (percent: number) => void
   ): Promise<boolean> {
     let zipFile: string | null = null
+    let readStream: fs.ReadStream | null = null
     try {
       const reachableHost = await this.findReachableIp(ip, port)
       if (!reachableHost) {
@@ -410,7 +411,8 @@ export class DesktopLanSyncService implements ILanSyncService {
       if (!zipFile) return false
 
       const stat = await fsp.stat(zipFile)
-      const readStream = fs.createReadStream(zipFile)
+      const stream = fs.createReadStream(zipFile)
+      readStream = stream
 
       return await new Promise<boolean>((resolve) => {
         let settled = false
@@ -435,6 +437,8 @@ export class DesktopLanSyncService implements ILanSyncService {
 
         const finishIfUploadCompleteAfterAbort = (reason: string) => {
           if (!bodyFullySent || uploadedBytes < stat.size) return false
+          // 对端已经明确返回非 200（例如磁盘满/校验失败）时，不能因为连接随后断开就报成功。
+          if (responseStatus !== null && responseStatus !== 200) return false
           console.warn(`[DesktopLanSyncService] ${reason}; upload complete, treating as success`)
           onProgress?.(100)
           finish(true)
@@ -469,7 +473,7 @@ export class DesktopLanSyncService implements ILanSyncService {
             responseStatus = res.statusCode ?? null
             res.resume()
             res.on('end', () => {
-              onProgress?.(100)
+              if (res.statusCode === 200) onProgress?.(100)
               finish(res.statusCode === 200)
             })
             res.on('error', (e) => {
@@ -502,12 +506,12 @@ export class DesktopLanSyncService implements ILanSyncService {
           finishIfUploadCompleteAfterAbort('Connection closed without HTTP response')
         })
 
-        readStream.on('error', (e) => {
+        stream.on('error', (e) => {
           console.error('[DesktopLanSyncService] read stream error:', e)
           finish(false)
         })
 
-        readStream.on('data', (chunk: Buffer | string) => {
+        stream.on('data', (chunk: Buffer | string) => {
           uploadedBytes += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk)
           if (onProgress) {
             const pct = Math.min(99, Math.round((uploadedBytes / stat.size) * 100))
@@ -515,12 +519,13 @@ export class DesktopLanSyncService implements ILanSyncService {
           }
         })
 
-        readStream.pipe(req)
+        stream.pipe(req)
       })
     } catch (e) {
       console.error('[DesktopLanSyncService] failed to send file', e)
       return false
     } finally {
+      readStream?.destroy()
       if (zipFile) {
         await fsp.unlink(zipFile).catch(() => {})
       }

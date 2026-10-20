@@ -22,60 +22,65 @@ export function GraphPageSimilarPane(props: {
   return (
     <>
       <p className={styles.pendingHint}>
-        {t('graph.similar_hint', '模型吃不准这两人是不是同一个。能并就合并，不能并就分开保留。')}
+        {t(
+          'graph.similar_hint',
+          '以下节点名称或语义相近，请确认是否指向同一对象；若相同可合并，不同则分开保留。'
+        )}
       </p>
-      {props.pairs.map((pair) => (
-        <div key={`${pair.nodeId}:${pair.peerId}`} className={styles.itemCompact}>
-          <div className={styles.similarNodesList}>
-            <div className={styles.similarNodeRow}>
-              <span className={styles.similarNodeLabel}>
-                {t('graph.similar_node_1', '节点1：')}
-              </span>
-              <button
-                type="button"
-                className={styles.linkBtn}
-                onClick={() => props.onLocateNode(pair.nodeId)}
-              >
-                {pair.nodeName}
-              </button>
+      <div className={styles.similarPairsList}>
+        {props.pairs.map((pair) => (
+          <div key={`${pair.nodeId}:${pair.peerId}`} className={styles.similarCard}>
+            <div className={styles.similarNodesList}>
+              <div className={styles.similarNodeRow}>
+                <span className={styles.similarNodeLabel}>
+                  {t('graph.similar_node_1', '节点1：')}
+                </span>
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() => props.onLocateNode(pair.nodeId)}
+                >
+                  {pair.nodeName}
+                </button>
+              </div>
+              <div className={styles.similarNodeRow}>
+                <span className={styles.similarNodeLabel}>
+                  {t('graph.similar_node_2', '节点2：')}
+                </span>
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  onClick={() => props.onLocateNode(pair.peerId)}
+                >
+                  {pair.peerName}
+                </button>
+              </div>
             </div>
-            <div className={styles.similarNodeRow}>
-              <span className={styles.similarNodeLabel}>
-                {t('graph.similar_node_2', '节点2：')}
-              </span>
-              <button
-                type="button"
-                className={styles.linkBtn}
-                onClick={() => props.onLocateNode(pair.peerId)}
+            <div className={styles.similarMeta}>
+              {t('graph.similar_similarity', '相似度 {{percent}}%', {
+                percent: Math.round(pair.similarity * 100)
+              })}
+            </div>
+            <div className={styles.similarReason}>{pair.reason}</div>
+            {pair.sourceExcerpt ? (
+              <div className={styles.similarExcerpt}>{pair.sourceExcerpt}</div>
+            ) : null}
+            <div className={styles.similarActions}>
+              <Button size="small" disabled={props.busy} onClick={() => props.onMerge(pair)}>
+                {t('graph.similar_merge', '合并')}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={props.busy}
+                onClick={() => props.onKeepApart(pair)}
               >
-                {pair.peerName}
-              </button>
+                {t('graph.similar_keep_apart', '不是同一人')}
+              </Button>
             </div>
           </div>
-          <div className={styles.itemMetaCompact}>
-            {t('graph.similar_similarity', '相似度 {{percent}}%', {
-              percent: Math.round(pair.similarity * 100)
-            })}
-          </div>
-          <div className={styles.pendingHint}>{pair.reason}</div>
-          {pair.sourceExcerpt ? (
-            <div className={styles.itemMetaCompact}>{pair.sourceExcerpt}</div>
-          ) : null}
-          <div className={styles.rowActionsInline}>
-            <Button size="small" disabled={props.busy} onClick={() => props.onMerge(pair)}>
-              {t('graph.similar_merge', '合并')}
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              disabled={props.busy}
-              onClick={() => props.onKeepApart(pair)}
-            >
-              {t('graph.similar_keep_apart', '不是同一人')}
-            </Button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </>
   )
 }

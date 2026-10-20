@@ -6,7 +6,8 @@ import {
   LAN_DISCOVERY_REQUERY_MS,
   normalizeLanDeviceType,
   pickBestLanIpv4,
-  resolveDiscoveredLanIpv4
+  resolveDiscoveredLanIpv4,
+  resolveDiscoveredLanIpv4Candidates
 } from '@baishou/shared'
 
 type DiscoveryCallbacks = {
@@ -73,7 +74,13 @@ export class LanDiscovery {
       .map((ip) => ip.trim())
       .filter(Boolean)
     const addressIps = (service.addresses ?? []).filter((addr) => !addr.includes(':'))
+    const ipCandidates = resolveDiscoveredLanIpv4Candidates({
+      txt: records,
+      addresses: [...txtIps, ...addressIps],
+      host: service.host
+    })
     const deviceIp =
+      ipCandidates[0] ||
       resolveDiscoveredLanIpv4({
         txt: records,
         addresses: [...txtIps, ...addressIps],
@@ -88,6 +95,7 @@ export class LanDiscovery {
       deviceId: String(records.device_id ?? records.deviceId ?? '').trim(),
       nickname: String(records.nickname ?? service.name),
       ip: deviceIp,
+      ipCandidates,
       port: service.port,
       deviceType: normalizeLanDeviceType({
         txt: records,

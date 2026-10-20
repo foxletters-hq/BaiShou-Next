@@ -79,7 +79,6 @@ export function useGraphPageModel({
     openSide: side.openSide,
     sideCollapsed: side.sideCollapsed,
     setSideCollapsedPersist: side.setSideCollapsedPersist,
-    setTab,
     refresh: data.refresh
   })
   const search = useGraphPageSearch({

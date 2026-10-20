@@ -7,6 +7,9 @@ import {
 } from '@baishou/core-desktop'
 import {
   logger,
+  buildSummaryIdentitySystemPrompt,
+  formatUserCardFromProfile,
+  getUserProfileFromSettings,
   resolveSummaryConfigFromSettings,
   resolveSummaryGenerationRuntime,
   resolveSummaryTemplatesForGeneration,
@@ -64,6 +67,31 @@ export async function resolveDesktopSummaryGenerateOptions(
   const runtime = resolveSummaryGenerationRuntime(summaryConfigForGen, assistant, providers)
   if (runtime.fellBackToPrompt) {
     logger.warn('[SummaryQueue] Assistant generation mode unavailable; falling back to prompt mode')
+  }
+
+  let companionName = assistant?.name?.trim()
+  if (!companionName) {
+    try {
+      const { assistantManager } = getAgentManagers()
+      const list = await assistantManager.findAll()
+      const primary = list.find((item) => item.isDefault) ?? list[0]
+      companionName = primary?.name?.trim()
+    } catch (e) {
+      logger.warn('[SummaryQueue] Failed to resolve companion name:', e as Error)
+    }
+  }
+
+  let identitySystemPrompt: string | undefined
+  try {
+    const profile = await getUserProfileFromSettings(settingsManager)
+    identitySystemPrompt = buildSummaryIdentitySystemPrompt({
+      userName: profile.nickname,
+      userCard: formatUserCardFromProfile(profile),
+      companionName,
+      locale: promptLocale
+    })
+  } catch (e) {
+    logger.warn('[SummaryQueue] Failed to build summary identity context:', e as Error)
   }
 
   let sharedContextText: string | undefined
@@ -128,7 +156,9 @@ export async function resolveDesktopSummaryGenerateOptions(
     generateOptions: {
       modelId: resolution.modelId,
       providerId: resolution.providerConfig.id,
-      systemPrompt: runtime.systemPrompt,
+      systemPrompt:
+        [runtime.systemPrompt?.trim(), identitySystemPrompt].filter(Boolean).join('\n\n') ||
+        undefined,
       customTemplates,
       promptLocale: promptLocale as SummaryGenerateOptions['promptLocale'],
       sharedContextText,

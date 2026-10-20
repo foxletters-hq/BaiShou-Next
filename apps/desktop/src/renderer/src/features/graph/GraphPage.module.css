@@ -307,6 +307,7 @@
 .opsBlock {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-sm);
   padding-bottom: var(--spacing-md-tight);
   margin-bottom: var(--spacing-md-tight);
@@ -323,12 +324,18 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
+  width: 100%;
 }
 
 .opsConcurrency {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs-plus);
+  width: 100%;
+}
+
+.opsFullWidth {
+  width: 100%;
 }
 
 .opsLabelRow {
@@ -347,6 +354,7 @@
   gap: var(--spacing-sm);
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--border-subtle);
+  width: 100%;
 }
 
 .filterSectionHead {
@@ -354,6 +362,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
+  width: 100%;
 }
 
 .filterSectionTitle {
@@ -940,42 +949,86 @@
 
 .settingsSection {
   border-bottom: 1px solid var(--border-subtle);
-  margin: 0 -4px var(--spacing-sm-plus);
-  padding: 0 var(--spacing-xs) var(--spacing-sm-plus);
+  margin: 0 0 var(--spacing-md-tight);
+  padding: 0 0 var(--spacing-sm-plus);
 }
 
 .settingsSection:last-child {
   border-bottom: none;
   margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .settingsSectionHead {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs-plus);
-  width: 100%;
+  width: calc(100% + var(--spacing-sm));
+  margin: 0 calc(var(--spacing-xs) * -1);
   border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
-  padding: var(--spacing-xs-plus) var(--spacing-2xs);
+  padding: var(--spacing-xs-plus) var(--spacing-xs);
   font-family: inherit;
   font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
+  transition:
+    background-color var(--duration-fast, 140ms) ease,
+    color var(--duration-fast, 140ms) ease;
+}
+
+.settingsSectionHead:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.settingsSectionHead:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.settingsSectionTitle {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .settingsChevron {
-  width: 12px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
-  font-size: var(--settings-font-micro-size);
+  transition:
+    transform var(--duration-fast, 160ms) cubic-bezier(0.22, 1, 0.36, 1),
+    color var(--duration-fast, 140ms) ease;
+}
+
+.settingsSectionHead:hover .settingsChevron {
+  color: var(--text-primary);
+}
+
+.settingsChevronOpen {
+  transform: rotate(90deg);
+  color: var(--text-primary);
 }
 
 .settingsSectionBody {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-sm-plus);
-  padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-2xs);
+  padding: var(--spacing-sm) 0 var(--spacing-2xs);
+}
+
+.settingsSectionBody > * {
+  width: 100%;
+}
+
+.settingsSectionBody > button {
+  width: auto;
 }
 
 .viewField {
@@ -1102,6 +1155,7 @@
 .profileFields {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-sm-plus);
 }
 
@@ -1109,6 +1163,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  width: 100%;
   font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
@@ -1208,11 +1263,20 @@
 
 .inventorySearch {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
   min-width: 0;
+}
+
+.inventorySearchField {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.inventorySearchMode {
+  flex-shrink: 0;
 }
 
 .inventoryItem {
@@ -1893,11 +1957,27 @@
   color: var(--text-secondary);
 }
 
+.similarPairsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.similarCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+}
+
 .similarNodesList {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
 }
 
 .similarNodeRow {
@@ -1910,4 +1990,34 @@
   font-size: var(--ui-fs-md);
   font-weight: 500;
   color: var(--text-secondary);
+}
+
+.similarMeta {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.similarReason {
+  padding: var(--spacing-sm) var(--spacing-sm-plus);
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--ui-fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg-surface-normal);
+  border: 1px solid var(--border-subtle);
+}
+
+.similarExcerpt {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-tertiary, var(--text-secondary));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-2xs);
 }
