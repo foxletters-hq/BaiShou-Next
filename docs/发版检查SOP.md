@@ -1,7 +1,7 @@
 # 发版检查 SOP（Android / Windows）
 
 > **适用**：白守 Next 正式版（Android APK + Windows 安装包）  
-> **配套文档**：[发版流程.md](./发版流程.md)、[打包须知.md](./打包须知.md)、[.cursor/skills/baishou-release/SKILL.md](../.cursor/skills/baishou-release/SKILL.md)  
+> **配套文档**：[发版功能检查清单.md](./发版功能检查清单.md)、[发版流程.md](./发版流程.md)、[打包须知.md](./打包须知.md)、[.cursor/skills/baishou-release/SKILL.md](../.cursor/skills/baishou-release/SKILL.md)  
 > **原则**：tag 必须指向 `main`；版本号不得复用；Android `versionCode` 必须递增；任何一项未通过都不得发版。
 
 ---
