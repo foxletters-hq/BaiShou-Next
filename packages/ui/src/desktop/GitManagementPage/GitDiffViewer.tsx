@@ -16,6 +16,8 @@ export interface GitDiffViewerProps {
   /** 主编辑区默认 split，侧栏默认 unified */
   defaultMode?: GitDiffViewMode
   showModeToggle?: boolean
+  /** 统一视图长行自动换行，避免横向滚动 */
+  autoWrap?: boolean
   fillHeight?: boolean
   className?: string
 }
@@ -176,6 +178,7 @@ export const GitDiffViewer: React.FC<GitDiffViewerProps> = ({
   diff,
   defaultMode = 'unified',
   showModeToggle = false,
+  autoWrap = false,
   fillHeight = false,
   className
 }) => {
@@ -210,7 +213,11 @@ export const GitDiffViewer: React.FC<GitDiffViewerProps> = ({
       {mode === 'split' ? (
         <SplitDiffBody diff={diff} />
       ) : (
-        <div className={`${styles.unified} ${fillHeight ? styles.unifiedFill : ''}`}>
+        <div
+          className={`${styles.unified} ${fillHeight ? styles.unifiedFill : ''} ${
+            autoWrap ? styles.unifiedWrap : ''
+          }`}
+        >
           <UnifiedDiffBody diff={diff} />
         </div>
       )}

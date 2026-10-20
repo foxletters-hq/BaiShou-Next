@@ -57,7 +57,7 @@ function previewKey(providerId: string, modelId: string): string {
   return `${providerId}::${modelId}`
 }
 
-function computeShellCoords(
+export function computeShellCoords(
   anchorRect: DOMRect | null | undefined,
   height: number,
   width = SHELL_WIDTH
@@ -68,7 +68,9 @@ function computeShellCoords(
   let top: number
 
   if (anchorRect) {
-    left = anchorRect.right - width
+    // 触发器在视口左半侧（如对话输入框左下角）时左对齐向右展开，避免遮挡左侧侧边栏；在右半侧（如设置行右侧）时右对齐
+    const anchorCenterX = anchorRect.left + anchorRect.width / 2
+    left = anchorCenterX <= vw / 2 ? anchorRect.left : anchorRect.right - width
     top = anchorRect.top - height - ANCHOR_GAP
     if (top < VIEW_PAD) {
       top = Math.min(anchorRect.bottom + ANCHOR_GAP, vh - height - VIEW_PAD)

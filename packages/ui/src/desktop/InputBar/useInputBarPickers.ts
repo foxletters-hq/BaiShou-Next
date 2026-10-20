@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CREATE_SKILL_SLASH_COMMAND,
   getShortcutCommand,
+  isProtectedSkill,
   parseFileMentionToken,
+  sortBuiltinShortcutsFirst,
   type PromptFileRef,
   type PromptShortcut
 } from '@baishou/shared'
@@ -44,7 +46,7 @@ export function useInputBarPickers(params: {
   }, [])
 
   const filteredShortcuts = useMemo(() => {
-    const list = localizedShortcuts ?? []
+    const list = sortBuiltinShortcutsFirst(localizedShortcuts ?? [])
     const q = (slashToken?.query || '').trim().toLowerCase()
     if (!q) return list
     return list.filter((shortcut) => {
@@ -57,19 +59,27 @@ export function useInputBarPickers(params: {
 
   const slashPickerEntries = useMemo(() => {
     const q = (slashToken?.query || '').trim().toLowerCase()
+    const createSkillShortcut = (localizedShortcuts ?? []).find(
+      (item) => getShortcutCommand(item) === CREATE_SKILL_SLASH_COMMAND
+    )
     const createName = CREATE_SKILL_SLASH_COMMAND
-    const createDesc = CREATE_SKILL_SLASH_COMMAND
+    const createDesc =
+      (createSkillShortcut?.description || createSkillShortcut?.name || '').trim() ||
+      CREATE_SKILL_SLASH_COMMAND
+    const createTitle = (createSkillShortcut?.name || '').trim().toLowerCase()
     const entries: Array<{
       id: string
       name: string
       description: string
       kind: 'create' | 'skill'
+      isBuiltin?: boolean
       skill?: PromptShortcut
     }> = []
 
     const createMatches =
       !q ||
       createName.includes(q) ||
+      createTitle.includes(q) ||
       createDesc.toLowerCase().includes(q) ||
       'create skill'.includes(q)
     if (createMatches) {
@@ -77,7 +87,8 @@ export function useInputBarPickers(params: {
         id: '__create-skill__',
         name: createName,
         description: createDesc,
-        kind: 'create'
+        kind: 'create',
+        isBuiltin: true
       })
     }
 
@@ -89,11 +100,12 @@ export function useInputBarPickers(params: {
         name: command,
         description: (skill.description || skill.name || '').trim(),
         kind: 'skill',
+        isBuiltin: skill.source !== 'workspace' && isProtectedSkill(skill),
         skill
       })
     }
     return entries
-  }, [filteredShortcuts, slashToken])
+  }, [filteredShortcuts, localizedShortcuts, slashToken])
 
   const mentionPathQuery = useMemo(
     () => parseFileMentionToken(mentionToken?.query || '').relativePath,

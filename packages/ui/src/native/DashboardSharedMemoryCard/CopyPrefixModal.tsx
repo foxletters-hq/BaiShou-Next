@@ -36,7 +36,7 @@ export function CopyPrefixModal({
           marginBottom: tokens.spacing.mdTight
         }}
       >
-        {t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：Hi，这是我的回忆...）')}
+        {t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：这是我们的回忆...）')}
       </Text>
       <Input
         value={value}

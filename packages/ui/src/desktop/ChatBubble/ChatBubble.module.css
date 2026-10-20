@@ -221,6 +221,19 @@
   text-align: left;
 }
 
+/* 自定义背景：气泡半透明度与移动端 ChatBubble 保持一致 */
+:global(.chat-over-background) .userBubbleCard,
+:global(.chat-over-background) .aiBubbleCard {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+:global([data-theme='dark']) :global(.chat-over-background) .userBubbleCard,
+:global([data-theme='dark']) :global(.chat-over-background) .aiBubbleCard {
+  background: rgba(32, 33, 37, 0.85);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
 .attachmentsWrap {
   display: flex;
   flex-wrap: wrap;

@@ -49,6 +49,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   diary_list: <List size={20} />,
   diary_search: <Search size={20} />,
   summary_read: <FileText size={20} />,
+  summary_write: <FilePen size={20} />,
   message_search: <MessageSquare size={20} />,
   session_list: <MessagesSquare size={20} />,
   vector_search: <ScanSearch size={20} />,
@@ -173,6 +174,7 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L139',
     '总结读取'
   ),
+  'agent.tools.summary_write': i18n.t('agent.tools.summary_write', '总结写入'),
   'agent.tools.message_search': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L140',
     '消息搜索'

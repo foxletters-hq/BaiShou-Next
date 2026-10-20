@@ -1,6 +1,6 @@
+import { resolveAgentToolActionLabel, type AssistantDisplayTimelineItem } from '@baishou/shared'
 import { formatToolDurationMs } from '../agent-tool-chain/agent-tool-chain.util'
 import { parseRedactedThinking } from '../chat-bubble/redacted-thinking'
-import type { AssistantDisplayTimelineItem } from '@baishou/shared'
 
 export interface AgentProcessMetaOptions {
   hasReasoning: boolean
@@ -42,7 +42,11 @@ export function formatAgentProcessTitle({
   // 流式中且尚未输出正文：展示当前正在进行的实时步骤
   if (isStreaming && !hasAnswerText) {
     if (activeToolName) {
-      return translate('agent.chat.tool_running', '正在执行：{{name}}…', { name: activeToolName })
+      // 工具名按 i18n 显示（未知工具回退原始编号；已本地化的名称保持不变）
+      const name = resolveAgentToolActionLabel(activeToolName, (key, fallback) =>
+        translate(key, fallback)
+      )
+      return translate('agent.chat.tool_running', '正在执行：{{name}}…', { name })
     }
     if (isThinkLoading || hasReasoning) {
       return translate('agent.chat.thinking_active', '深度思考中…')

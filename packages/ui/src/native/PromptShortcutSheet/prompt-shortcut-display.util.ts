@@ -26,13 +26,24 @@ export function resolveShortcutDisplayInfo(
 
   let displayDesc = ''
   if (isProtected) {
-    // 保护型技能（如 create-skill）展示第一段正文说明
-    const firstLine =
-      rawContent
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)[0] || rawDesc
-    displayDesc = firstLine
+    // 保护型技能（如 create-skill）优先展示本地化说明，否则展示第一段正文说明
+    if (rawDesc && rawDesc.toLowerCase() !== titleCommand.toLowerCase()) {
+      displayDesc = rawDesc
+    } else {
+      const firstLine =
+        rawContent
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)[0] || rawDesc
+      displayDesc = firstLine
+    }
+  } else if (
+    rawDesc &&
+    rawDesc.toLowerCase() !== titleCommand.toLowerCase() &&
+    rawDesc !== customName
+  ) {
+    // 当技能有独立于标题别名的说明（如本地化后的官方技能说明）时，优先展示该说明
+    displayDesc = rawDesc
   } else {
     // 1. 从 content 中剥离 markdown 顶级标题（如 # 标题、## 标题）
     let body = rawContent.replace(/^#+\s+[^\n]*\n*/, '').trim()
@@ -49,15 +60,9 @@ export function resolveShortcutDisplayInfo(
 
     // 3. 决定副文本：
     // 若剥离重复前缀后 body 具有实质有效内容，优先显示 body；
-    // 否则使用与名称不重复的 rawDesc，最后回退至 rawContent 或 rawDesc
+    // 否则回退至 rawContent 或 rawDesc
     if (body) {
       displayDesc = body
-    } else if (
-      rawDesc &&
-      rawDesc.toLowerCase() !== titleCommand.toLowerCase() &&
-      rawDesc !== customName
-    ) {
-      displayDesc = rawDesc
     } else {
       displayDesc = rawContent || rawDesc
     }

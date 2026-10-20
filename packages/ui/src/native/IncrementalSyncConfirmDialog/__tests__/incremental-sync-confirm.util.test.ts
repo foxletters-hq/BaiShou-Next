@@ -10,6 +10,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
   if (key === 'data_sync.plan_stat_download') return `down:${options?.count}`
   if (key === 'data_sync.plan_vault_root') return '根目录文件'
   if (key === 'data_sync.plan_vault_unknown') return '未知工作区'
+  if (key === 'data_sync.plan_vault_global') return '全局设置'
   return key
 }
 
@@ -39,6 +40,10 @@ describe('formatVaultLabel', () => {
 
   it('should keep the original name when it is a real vault', () => {
     expect(formatVaultLabel('工作区甲', t)).toBe('工作区甲')
+  })
+
+  it('should use the global label for the global scope', () => {
+    expect(formatVaultLabel('global', t)).toBe('全局设置')
   })
 })
 

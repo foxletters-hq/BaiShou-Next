@@ -49,6 +49,7 @@
       "ChatBubble",
       "StreamingBubble",
       "AgentMarkdown",
+      "AgentProcessSection",
       "ThinkingBlock",
       "MessageActionBar",
       "KnowledgeCitationBlock"

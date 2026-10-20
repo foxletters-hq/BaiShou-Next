@@ -5,6 +5,7 @@ import type { PromptShortcut } from '@baishou/shared'
 import {
   getShortcutCommand,
   getDefaultShortcutLabelsFromT,
+  isProtectedSkill,
   localizePromptShortcut
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -58,6 +59,7 @@ type ShortcutRowProps = {
   selected: boolean
   onSelect: (shortcut: PromptShortcut) => void
   command: string
+  builtinLabel?: string
   colors: ReturnType<typeof useNativeTheme>['colors']
 }
 
@@ -66,6 +68,7 @@ const ShortcutRow = memo(function ShortcutRow({
   selected,
   onSelect,
   command,
+  builtinLabel,
   colors
 }: ShortcutRowProps) {
   return (
@@ -85,9 +88,23 @@ const ShortcutRow = memo(function ShortcutRow({
         color={colors.textSecondary}
       />
       <View style={styles.meta}>
-        <Text style={[styles.command, { color: colors.textPrimary }]} numberOfLines={1}>
-          {command}
-        </Text>
+        <View style={styles.commandRow}>
+          <Text style={[styles.command, { color: colors.textPrimary }]} numberOfLines={1}>
+            {command}
+          </Text>
+          {builtinLabel ? (
+            <View
+              style={[
+                styles.builtinBadge,
+                { backgroundColor: colors.primaryContainer || colors.bgSurfaceHigh }
+              ]}
+            >
+              <Text style={[styles.builtinBadgeText, { color: colors.primary }]}>
+                {builtinLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         {shortcut.description || shortcut.name ? (
           <Text style={[styles.name, { color: colors.textSecondary }]} numberOfLines={1}>
             {shortcut.description || shortcut.name}
@@ -207,12 +224,14 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
         }
         renderItem={({ item, index }) => {
           const localized = localizePromptShortcut(item, labels)
+          const isBuiltin = item.source !== 'workspace' && isProtectedSkill(item)
           return (
             <ShortcutRow
               shortcut={localized}
               selected={index === displaySelectedIndex}
               onSelect={onSelect}
               command={getShortcutCommand(localized)}
+              builtinLabel={isBuiltin ? t('shortcut.builtin_tag', '内置') : undefined}
               colors={colors}
             />
           )
@@ -271,8 +290,23 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0
   },
+  commandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus
+  },
   command: {
     fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    flexShrink: 1
+  },
+  builtinBadge: {
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: 1,
+    borderRadius: sharedTokens.radius.xs
+  },
+  builtinBadgeText: {
+    fontSize: 10,
     fontWeight: '600'
   },
   name: {

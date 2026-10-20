@@ -40,6 +40,9 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
     supportsTtsProviderStreaming(providerType) &&
     !(providerType === 'mimo-tts' && isMimoVoiceCloneModel(mimoModelId))
 
+  // 原生 range 的已填充部分由 background-size 控制；不设置会整条轨道都是底色
+  const speedPercent = Math.min(100, Math.max(0, ((currentConfig.speed - 0.5) / 1.5) * 100))
+
   const handlePickRefAudio = async () => {
     if (!onPickRefAudio) return
     const picked = await onPickRefAudio()
@@ -208,6 +211,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
               value={currentConfig.speed}
               onChange={(e) => updateCurrentConfig({ speed: parseFloat(e.target.value) })}
               className={styles.rangeInput}
+              style={{ backgroundSize: `${speedPercent}% 100%` }}
             />
           </div>
         </div>

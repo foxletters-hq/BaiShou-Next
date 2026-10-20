@@ -9,6 +9,7 @@ export const AGENT_TOOL_ICON_IDS = {
   diary_list: 'List',
   diary_search: 'Search',
   summary_read: 'FileText',
+  summary_write: 'FilePen',
   message_search: 'MessageSquare',
   session_list: 'MessagesSquare',
   vector_search: 'ScanSearch',

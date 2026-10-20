@@ -135,7 +135,7 @@
 .testRow {
   display: flex;
   gap: var(--spacing-md-tight);
-  align-items: flex-end;
+  align-items: center;
 }
 
 .testInput {

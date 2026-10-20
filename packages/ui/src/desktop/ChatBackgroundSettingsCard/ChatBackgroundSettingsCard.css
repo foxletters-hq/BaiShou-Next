@@ -1,8 +1,23 @@
-.chat-bg-settings-wrapper .settings-expansion-content {
-  padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+.chat-bg-modal {
+  width: min(560px, 92vw);
+}
+
+.chat-bg-modal-body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md-tight);
+}
+
+.chat-bg-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
+}
+
+.chat-bg-reset-row {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .chat-bg-preview-area {
@@ -93,8 +108,10 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-xs);
   opacity: 0;
   transition: opacity var(--duration-swift) ease;
   color: var(--text-on-primary);
@@ -111,6 +128,7 @@
   border-radius: var(--radius-sm);
   padding: var(--spacing-sm) var(--spacing-md-snug);
   font-size: var(--settings-font-desc-size);
+  font-family: inherit;
   color: var(--color-error);
   cursor: pointer;
   transition: all var(--duration-swift);

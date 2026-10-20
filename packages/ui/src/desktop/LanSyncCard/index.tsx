@@ -12,6 +12,7 @@ import {
   LAN_DEVICE_STALE_MS,
   formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
+  lanDeviceIpCandidates,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
@@ -20,6 +21,7 @@ export interface DiscoveredDevice {
   deviceId: string
   nickname: string
   ip: string
+  ipCandidates?: string[]
   port: number
   deviceType: 'mobile' | 'desktop' | 'other'
   rawServiceId: string
@@ -253,7 +255,8 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     markDeviceSeen(device)
     setSendingTo(deviceKey)
     setProgress(0)
-    const success = await onSendFile(device.ip, device.port, (p) => setProgress(p))
+    const hostCandidates = lanDeviceIpCandidates(device).join(',') || device.ip
+    const success = await onSendFile(hostCandidates, device.port, (p) => setProgress(p))
     setSendingTo(null)
     if (success) {
       toast.showSuccess(

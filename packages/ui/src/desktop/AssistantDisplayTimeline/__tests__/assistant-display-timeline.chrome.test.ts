@@ -13,5 +13,8 @@ describe('AssistantDisplayTimeline chrome', () => {
     expect(src).toContain("item.kind === 'gate'")
     expect(src).toContain('<AgentGatePartBubble')
     expect(src).toContain("item.kind === 'reasoning'")
+    expect(src).toContain('<AgentProcessSection')
+    expect(src).toContain('coalesceTimelineItemsForDisplay')
+    expect(src).not.toContain('variant="ancillary"')
   })
 })

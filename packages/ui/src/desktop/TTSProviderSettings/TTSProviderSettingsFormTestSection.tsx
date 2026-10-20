@@ -12,7 +12,6 @@ export function TTSProviderSettingsFormTestSection({ vm }: { vm: TTSProviderSett
       <label className={styles.label}>{t('tts.settings.test_label', '测试 TTS')}</label>
       <div className={styles.testRow}>
         <Input
-          fieldSize="small"
           placeholder={t('tts.settings.test_placeholder', '输入一段文本测试语音合成效果')}
           value={testText}
           onChange={(e) => setTestText(e.target.value)}

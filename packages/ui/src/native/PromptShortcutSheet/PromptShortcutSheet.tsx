@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   StyleSheet,
   Dimensions,
-  TextInput,
   type LayoutChangeEvent
 } from 'react-native'
 import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist'
@@ -17,14 +16,13 @@ import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   findShortcutCommandConflict,
-  getDefaultShortcutLabelsFromT
+  getDefaultShortcutLabelsFromT,
+  isProtectedSkill
 } from '@baishou/shared'
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useNativeToast } from '../Toast'
 import { useDialog } from '../Dialog'
 import {
@@ -35,6 +33,11 @@ import {
 } from './usePromptShortcutSheet'
 import { PromptShortcutRow } from './PromptShortcutRow'
 import { PromptShortcutEditor } from './PromptShortcutEditor'
+import {
+  PromptShortcutEmptyState,
+  PromptShortcutPaginationBar,
+  PromptShortcutSearchSection
+} from './PromptShortcutSheetSections'
 import { nativeLightHaptic } from './native-light-haptic.util'
 import {
   buildShortcutEditorPayload,
@@ -157,6 +160,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   }, [])
 
   const handleEdit = useCallback((item: PromptShortcut) => {
+    if (isProtectedSkill(item)) return
     const draft = resolveShortcutEditorDraft(item)
     setEditingItem(item)
     setDraftCommand(draft.command)
@@ -166,7 +170,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   const handleDeletePress = useCallback(
     async (id: string) => {
-      if (!onDelete) return
+      if (!onDelete || isProtectedSkill({ id })) return
       const confirmed = await dialog.confirm(
         t('shortcut.delete_confirm', '确定删除这条快捷指令吗？'),
         {
@@ -211,6 +215,11 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
       ),
       id: isNew ? `custom-${Date.now()}` : editingItem.id,
       icon: ''
+    }
+
+    if (isProtectedSkill(payload)) {
+      toast.showError(t('shortcut.reserved_command', '该名称已保留，请换一个 Skill 名称'))
+      return
     }
 
     if (findShortcutCommandConflict(shortcuts, payload, isNew ? undefined : payload.id)) {
@@ -380,76 +389,35 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     </View>
                   </View>
 
-                  <Text
-                    style={[
-                      styles.slashHint,
-                      {
-                        color: colors.textSecondary,
-                        backgroundColor: colors.primaryContainer,
-                        borderColor: colors.borderMuted
-                      }
-                    ]}
-                  >
-                    {t(
+                  <PromptShortcutSearchSection
+                    hint={t(
                       'shortcut.input_slash_hint',
                       '在空输入框输入 / 可快速匹配快捷指令；继续输入可过滤，按回车或点击条目即可插入正文。'
                     )}
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.searchRow,
-                      {
-                        backgroundColor: colors.bgSurface,
-                        borderColor: colors.borderControl
-                      }
-                    ]}
-                  >
-                    <Search
-                      size={20}
-                      color={colors.textTertiary}
-                      strokeWidth={DEFAULT_STROKE_WIDTH}
-                    />
-                    <TextInput
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      placeholder={t('shortcut.search_placeholder', '搜索快捷指令...')}
-                      placeholderTextColor={colors.textTertiary}
-                      style={[styles.searchInput, { color: colors.textPrimary }]}
-                      returnKeyType="search"
-                      clearButtonMode="while-editing"
-                    />
-                    {searchQuery.length > 0 ? (
-                      <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                        <X
-                          size={18}
-                          color={colors.textTertiary}
-                          strokeWidth={DEFAULT_STROKE_WIDTH}
-                        />
-                      </Pressable>
-                    ) : null}
-                  </View>
-
-                  {canManage && canDrag ? (
-                    <Text style={[styles.dragHint, { color: colors.textTertiary }]}>
-                      {t('shortcut.drag_sort_hint', '按住条目即可拖动排序')}
-                    </Text>
-                  ) : null}
+                    searchQuery={searchQuery}
+                    onChangeSearchQuery={setSearchQuery}
+                    placeholder={t('shortcut.search_placeholder', '搜索快捷指令...')}
+                    dragHint={
+                      canManage && canDrag
+                        ? t('shortcut.drag_sort_hint', '按住条目即可拖动排序')
+                        : undefined
+                    }
+                    colors={colors}
+                  />
 
                   <View style={styles.listArea} onLayout={handleListAreaLayout}>
                     {paginatedShortcuts.length === 0 ? (
-                      <View style={[styles.emptyContainer, { padding: tokens.spacing.lg }]}>
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                          {isSearchActive
+                      <PromptShortcutEmptyState
+                        text={
+                          isSearchActive
                             ? t('shortcut.no_match', '找不到任何匹配的快捷指令')
-                            : t('shortcut.no_shortcuts_hint', '暂无任何快捷指令，立即创建一个吧。')}
-                        </Text>
-                        {canManage && !isSearchActive ? (
-                          <Button size="sm" onPress={handleCreateNew}>
-                            + {t('shortcut.add_custom_command', '新增自定义指令')}
-                          </Button>
-                        ) : null}
-                      </View>
+                            : t('shortcut.no_shortcuts_hint', '暂无任何快捷指令，立即创建一个吧。')
+                        }
+                        canAdd={canManage && !isSearchActive}
+                        addLabel={t('shortcut.add_custom_command', '新增自定义指令')}
+                        onAdd={handleCreateNew}
+                        colors={colors}
+                      />
                     ) : canDrag && onReorder ? (
                       <DraggableFlatList
                         style={listSizeStyle}
@@ -480,50 +448,16 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                   </View>
 
                   {filteredShortcuts.length > 0 && totalPages > 1 ? (
-                    <View style={[styles.paginationBar, { borderTopColor: colors.borderSubtle }]}>
-                      <Text style={[styles.pageMeta, { color: colors.textSecondary }]}>
-                        {t('common.page_info', '{{current}} / {{total}}', {
-                          current: currentPage,
-                          total: totalPages
-                        })}
-                      </Text>
-                      <View style={styles.pageNavBtns}>
-                        <Pressable
-                          style={[
-                            styles.pageNavBtn,
-                            {
-                              borderColor: colors.borderControl,
-                              opacity: currentPage <= 1 ? 0.4 : 1
-                            }
-                          ]}
-                          disabled={currentPage <= 1}
-                          onPress={() => setCurrentPage(currentPage - 1)}
-                        >
-                          <ChevronLeft
-                            size={22}
-                            color={colors.textPrimary}
-                            strokeWidth={DEFAULT_STROKE_WIDTH}
-                          />
-                        </Pressable>
-                        <Pressable
-                          style={[
-                            styles.pageNavBtn,
-                            {
-                              borderColor: colors.borderControl,
-                              opacity: currentPage >= totalPages ? 0.4 : 1
-                            }
-                          ]}
-                          disabled={currentPage >= totalPages}
-                          onPress={() => setCurrentPage(currentPage + 1)}
-                        >
-                          <ChevronRight
-                            size={22}
-                            color={colors.textPrimary}
-                            strokeWidth={DEFAULT_STROKE_WIDTH}
-                          />
-                        </Pressable>
-                      </View>
-                    </View>
+                    <PromptShortcutPaginationBar
+                      pageInfo={t('common.page_info', '{{current}} / {{total}}', {
+                        current: currentPage,
+                        total: totalPages
+                      })}
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onChangePage={setCurrentPage}
+                      colors={colors}
+                    />
                   ) : null}
                 </View>
               )}

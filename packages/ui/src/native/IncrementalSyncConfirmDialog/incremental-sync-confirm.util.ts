@@ -46,6 +46,7 @@ export function formatVaultLabel(
     return t('data_sync.plan_vault_root', { defaultValue: '根目录文件' })
   if (vaultName === '__unknown__')
     return t('data_sync.plan_vault_unknown', { defaultValue: '未知工作区' })
+  if (vaultName === 'global') return t('data_sync.plan_vault_global', { defaultValue: '全局设置' })
   return vaultName
 }
 

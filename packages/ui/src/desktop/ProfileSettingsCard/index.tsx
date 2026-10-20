@@ -119,7 +119,7 @@ export const ProfileSettingsCard: React.FC<ProfileSettingsCardProps> = ({ profil
         <div className={styles.infoZone}>
           <div className={styles.nameRow}>
             <h2 className={styles.nickname}>
-              {profile.nickname || t('profile.default_nickname', '白守用户')}
+              {profile.nickname || t('profile.default_nickname', '用户')}
             </h2>
             <button
               className={styles.editBtn}

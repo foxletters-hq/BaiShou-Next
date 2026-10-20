@@ -157,8 +157,8 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   const handlePrefixSettings = useCallback(async () => {
     if (!onCopyPrefixChange) return
     const next = await dialog.prompt(
-      t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：Hi，这是我的回忆...）'),
-      copyPrefix,
+      t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：这是我们的回忆...）'),
+      copyPrefix.trim() || t('summary.copy_prefix_default', '这是我们的回忆'),
       t('summary.copy_prefix_label', '拷贝前缀'),
       true
     )

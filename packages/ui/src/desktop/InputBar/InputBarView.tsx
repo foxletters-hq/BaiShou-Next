@@ -218,6 +218,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         id: entry.id,
         name: entry.name,
         description: entry.description,
+        badgeLabel: entry.isBuiltin ? t('shortcut.builtin_tag', '内置') : undefined,
         iconKind:
           entry.kind === 'create'
             ? ('create' as const)
@@ -229,7 +230,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           else if (entry.skill) applyShortcut(entry.skill)
         }
       })),
-    [slashPickerEntries, armCreateSkillChip, applyShortcut]
+    [slashPickerEntries, armCreateSkillChip, applyShortcut, t]
   )
 
   const plusMenuItems = useMemo((): ContextMenuItem[] => {

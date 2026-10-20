@@ -43,7 +43,7 @@ input[type='range']::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
   height: 14px;
-  margin-top: -5var (--spacing-xs);
+  margin-top: calc((3px - 14px) / 2);
   border-radius: 50%;
   background: var(--color-primary);
   cursor: pointer;

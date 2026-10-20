@@ -846,6 +846,13 @@
   gap: var(--spacing-sm);
 }
 
+.emojiFrequencyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md-tight);
+  padding: 0 var(--spacing-sm);
+}
+
 .emojiInlineToolbar {
   display: flex;
   align-items: center;

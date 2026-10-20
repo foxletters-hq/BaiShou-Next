@@ -152,6 +152,23 @@
   font-family: var(--font-family-mono);
 }
 
+/* 统一视图自动换行：保留缩进与空格，长 token 也按容器宽度折行 */
+.unifiedWrap .unifiedContent {
+  width: 100%;
+  min-width: 0;
+}
+
+.unifiedWrap .unifiedRow {
+  grid-template-columns: 3px 40px 40px 16px minmax(0, 1fr);
+}
+
+.unifiedWrap .lineText,
+.unifiedWrap .hunkText {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .lineAdd {
   background: var(--diff-add-bg);
   color: var(--text-primary);
