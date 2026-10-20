@@ -14,6 +14,12 @@ describe('incremental-sync-scan.util', () => {
     expect(isSqliteRuntimeSyncPath('baishou_agent.db-wal')).toBe(true)
     expect(isSqliteRuntimeSyncPath('Personal/shadow_index.db')).toBe(true)
     expect(isSqliteRuntimeSyncPath('Journals/a.md')).toBe(false)
+    // 用户导入的 .db 资料不是运行时库
+    expect(isSqliteRuntimeSyncPath('Personal/Notebooks/nb1/sources/data.db')).toBe(false)
+    expect(isSqliteRuntimeSyncPath('Personal/Attachments/data.db')).toBe(false)
+    expect(
+      shouldIncludeIncrementalSyncFile('data.db', 'Personal/Notebooks/nb1/sources/data.db')
+    ).toBe(true)
     expect(shouldIncludeIncrementalSyncFile('baishou_agent.db-shm', 'baishou_agent.db-shm')).toBe(
       false
     )
@@ -121,6 +127,22 @@ describe('incremental-sync-scan.util', () => {
         'Personal/.baishou/settings/user_profile.json'
       )
     ).toBe(true)
+  })
+
+  it('scans root .agents/skills for cross-device user skills', () => {
+    expect(shouldScanIncrementalSyncDirectory('.agents', '.agents')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('skills', '.agents/skills')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('demo', '.agents/skills/demo')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('.git', '.agents/skills/.git')).toBe(false)
+    expect(shouldScanIncrementalSyncDirectory('other', '.agents/other')).toBe(false)
+    expect(shouldIncludeIncrementalSyncFile('SKILL.md', '.agents/skills/demo/SKILL.md')).toBe(true)
+    expect(
+      shouldIncludeIncrementalSyncFile('asset.txt', '.agents/skills/demo/assets/asset.txt')
+    ).toBe(true)
+    // 仓内 .agents 不是全局技能目录
+    expect(
+      shouldIncludeIncrementalSyncFile('SKILL.md', 'Personal/.agents/skills/demo/SKILL.md')
+    ).toBe(false)
   })
 
   it('excludes other root dot directories; root .baishou is scannable for settings', () => {

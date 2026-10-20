@@ -206,11 +206,16 @@ export interface ToolManagementConfig {
   emojiConfig?: EmojiToolConfig // 表情包工具配置
 }
 
+/** 表情包发送频率：较少 / 适中 / 频繁 / 每条回复 */
+export type EmojiSendFrequency = 'low' | 'normal' | 'high' | 'always'
+
 /**
  * 表情包工具配置
  */
 export interface EmojiToolConfig {
   enabled: boolean // 是否启用表情包回复
+  /** 表情包发送频率，缺省视为 normal */
+  frequency?: EmojiSendFrequency
   /** 表情包组列表（读取后应经 normalizeEmojiToolConfig 归一化） */
   groups?: EmojiGroup[]
   /** @deprecated 旧版扁平列表，读取时自动迁移到默认组 */

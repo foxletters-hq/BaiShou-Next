@@ -1,3 +1,14 @@
+import {
+  DIARY_APPEND_SKILL_CONTENT,
+  DIARY_APPEND_SKILL_DESCRIPTION,
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_REPAIR_SKILL_CONTENT,
+  SUMMARY_REPAIR_SKILL_DESCRIPTION,
+  SUMMARY_REPAIR_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_CONTENT,
+  SUMMARY_WRITE_SKILL_DESCRIPTION,
+  SUMMARY_WRITE_SKILL_NAME
+} from '../constants/builtin-skills'
 import { isWorkbenchTemplateSkillName, WRITER_SKILL_NAME } from '../constants/writer-skill'
 import type { AgentSkill } from '../types/agent-skill.types'
 import type { PromptShortcut } from '../types/prompt-shortcut.types'
@@ -112,10 +123,18 @@ export function serializeSkillMarkdown(skill: {
   name: string
   description: string
   content: string
+  bundledHash?: string
+  autoinvoke?: boolean
 }): string {
   const description = skill.description.trim() || skill.name
   const body = normalizeSkillMarkdown(skill.content)
-  return `name: ${skill.name}\ndescription: ${escapeYamlScalar(description)}\n\n${body.trimEnd()}\n`
+  const bundledHash = skill.bundledHash?.trim()
+  return (
+    `name: ${skill.name}\ndescription: ${escapeYamlScalar(description)}\n` +
+    (bundledHash ? `bundledHash: ${bundledHash}\n` : '') +
+    (skill.autoinvoke === false ? 'autoinvoke: false\n' : '') +
+    `\n${body.trimEnd()}\n`
+  )
 }
 
 function escapeYamlScalar(value: string): string {
@@ -144,7 +163,27 @@ export function parseSkillMarkdown(
   const name = fallback || (fieldName && isValidSkillName(fieldName) ? fieldName : '')
   if (!name) return null
   const description = meta.fields.description?.trim() || name
-  return { name, description, content: meta.content, location }
+  const bundledHash = meta.fields.bundledHash?.trim()
+  const autoinvoke = meta.fields.autoinvoke?.trim().toLowerCase()
+  return {
+    name,
+    description,
+    content: meta.content,
+    location,
+    ...(bundledHash ? { bundledHash } : {}),
+    ...(autoinvoke === 'false' ? { autoinvoke: false } : {})
+  }
+}
+
+/** 内置技能正文指纹（FNV-1a 32 位），用于判断磁盘副本是否为未改动的内置版本 */
+export function hashSkillContent(content: string): string {
+  const text = normalizeSkillMarkdown(content).trim()
+  let hash = 0x811c9dc5
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
 }
 
 /** Skill → 输入框 `/` 与管理 UI 复用的 PromptShortcut 形态 */
@@ -158,7 +197,8 @@ export function skillToPromptShortcut(skill: AgentSkill): PromptShortcut {
     description: skill.description,
     content: skill.content,
     tag: skill.description || name,
-    source
+    source,
+    ...(skill.autoinvoke === false ? { autoinvoke: false } : {})
   }
 }
 
@@ -202,6 +242,21 @@ export const DEFAULT_AGENT_SKILLS: Array<{
     name: CREATE_SKILL_SLASH_COMMAND,
     description: CREATE_SKILL_SLASH_COMMAND,
     content: CREATE_SKILL_GUIDE_PROMPT
+  },
+  {
+    name: DIARY_APPEND_SKILL_NAME,
+    description: DIARY_APPEND_SKILL_DESCRIPTION,
+    content: DIARY_APPEND_SKILL_CONTENT
+  },
+  {
+    name: SUMMARY_WRITE_SKILL_NAME,
+    description: SUMMARY_WRITE_SKILL_DESCRIPTION,
+    content: SUMMARY_WRITE_SKILL_CONTENT
+  },
+  {
+    name: SUMMARY_REPAIR_SKILL_NAME,
+    description: SUMMARY_REPAIR_SKILL_DESCRIPTION,
+    content: SUMMARY_REPAIR_SKILL_CONTENT
   }
 ]
 

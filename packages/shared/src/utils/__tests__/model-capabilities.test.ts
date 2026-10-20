@@ -31,7 +31,7 @@ describe('VISION_MODELS_SNAPSHOT', () => {
   it('includes opencodego kimi vision models from models.dev', () => {
     const opencode = VISION_MODELS_SNAPSHOT.byProvider.opencodego
     expect(opencode).toContain('kimi-k2.7-code')
-    expect(opencode).toContain('kimi-k2.6')
+    expect(opencode).toContain('kimi-k3')
   })
 
   it('includes current Claude Haiku and GPT Luna vision ids', () => {

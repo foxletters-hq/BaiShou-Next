@@ -214,6 +214,23 @@ describe('agent-gate-ruleset.util', () => {
     })
   })
 
+  describe('skill resources', () => {
+    it('matches skill names and allows a bare wildcard for skills', () => {
+      expect(
+        agentGateResourcePatternMatch('summary-write', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(true)
+      expect(
+        agentGateResourcePatternMatch('summary-*', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(true)
+      expect(agentGateResourcePatternMatch('*', [{ kind: 'skill', value: 'summary-write' }])).toBe(
+        true
+      )
+      expect(
+        agentGateResourcePatternMatch('daily-*', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(false)
+    })
+  })
+
   describe('allowlistEntriesToPermissionRules', () => {
     it('maps entries to Allow rules', () => {
       expect(

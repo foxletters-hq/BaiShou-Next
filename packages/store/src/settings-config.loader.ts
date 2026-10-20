@@ -147,6 +147,7 @@ export function getDefaultToolManagementConfig(): ToolManagementConfig {
     customConfigs: {},
     emojiConfig: {
       enabled: false,
+      frequency: 'normal',
       groups: []
     }
   }

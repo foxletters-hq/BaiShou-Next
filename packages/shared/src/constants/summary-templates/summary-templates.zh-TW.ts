@@ -12,8 +12,9 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 
 ###### 👥 核心人物與關係進展
-- **(人物 1)**:
-- **(人物 2)**:
+- **使用者（我）**:
+- **AI 夥伴**:
+- **其他人物**:
 
 ---
 
@@ -55,8 +56,9 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 
 ###### 👥 核心關係動態
-- **(人物 1)**:
-- **(人物 2)**:
+- **使用者（我）**:
+- **AI 夥伴**:
+- **其他人物**:
 
 ---
 
@@ -89,6 +91,9 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 
 ###### 👥 長期關係沉澱
+- **使用者（我）**:
+- **AI 夥伴**:
+- **其他人物**:
 
 ---
 
@@ -120,6 +125,9 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 
 ###### 👥 年度重要關係
+- **使用者（我）**:
+- **AI 夥伴**:
+- **其他人物**:
 
 ---
 

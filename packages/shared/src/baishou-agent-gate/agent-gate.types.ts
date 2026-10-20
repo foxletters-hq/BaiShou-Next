@@ -34,6 +34,7 @@ export type AgentGateResourceKind =
   | 'workspace_path'
   | 'external_path'
   | 'shell_command'
+  | 'skill'
 
 export interface AgentGateAllowlistEntry {
   id: string

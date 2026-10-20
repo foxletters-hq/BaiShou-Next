@@ -54,13 +54,16 @@ function sanitizeAllowlist(raw: unknown): AgentGateAllowlistEntry[] {
                 entry.resourceKind === 'shell_command' ||
                 entry.resourceKind === 'workspace_path' ||
                 entry.resourceKind === 'file_path' ||
-                entry.resourceKind === 'external_path'
+                entry.resourceKind === 'external_path' ||
+                entry.resourceKind === 'skill'
                   ? entry.resourceKind
                   : action === 'workspace_run'
                     ? ('shell_command' as const)
                     : action === 'external_directory'
                       ? ('external_path' as const)
-                      : undefined
+                      : action === 'skill_read'
+                        ? ('skill' as const)
+                        : undefined
             }
           : {}),
         ...(typeof entry.sourceSessionId === 'string'

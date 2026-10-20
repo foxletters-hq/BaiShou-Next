@@ -56,6 +56,11 @@ export function agentGateResourcePatternMatch(
   resources: readonly AgentGateResourceRef[]
 ): boolean {
   if (resources.length === 0) return false
+  // Skill names are identifiers, not paths: a bare `*` legitimately means "all skills".
+  const skillResources = resources.filter((r) => r.kind === 'skill')
+  if (skillResources.length > 0) {
+    return skillResources.some((resource) => agentGateGlobMatch(pattern, resource.value))
+  }
   // Shell commands must use structured prefix match, never bare glob `*`.
   const shellResources = resources.filter((r) => r.kind === 'shell_command')
   if (shellResources.length > 0) {

@@ -41,7 +41,7 @@ export interface DemoSummaryWriter {
 
 export function resolveDemoDiaryDate(demo: DemoDiaryEntry, referenceDate: Date = new Date()): Date {
   if (demo.dateFixed) {
-    return new Date(demo.dateFixed)
+    return parseDemoDate(demo.dateFixed)
   }
   const entryDate = new Date(referenceDate.getTime())
   if (demo.dateDaysOffset != null) {

@@ -79,3 +79,27 @@ export function applyGraphAwakenToProfile(
     customGender: input.gender === 'other' ? input.customGender?.trim() || null : null
   }
 }
+
+export function findGraphSelfPersonHit<
+  T extends { name?: string; aliases?: unknown; nodeType?: string }
+>(hits: T[] | null | undefined, prevName: string): T | undefined {
+  return (hits || []).find((h) => {
+    if (h.nodeType && h.nodeType !== 'person') return false
+    if (h.name === prevName) return true
+    const aliases = Array.isArray(h.aliases) ? h.aliases : []
+    return aliases.includes(prevName)
+  })
+}
+
+export function buildGraphSelfPersonAliases(
+  existingAliases: unknown,
+  prevName: string,
+  nextName: string
+): string[] {
+  const aliases = new Set<string>([
+    ...(Array.isArray(existingAliases) ? (existingAliases as string[]) : []),
+    prevName
+  ])
+  aliases.delete(nextName)
+  return [...aliases]
+}

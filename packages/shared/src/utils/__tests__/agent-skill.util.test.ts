@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import {
+  DIARY_APPEND_SKILL_NAME,
+  SUMMARY_REPAIR_SKILL_NAME,
+  SUMMARY_WRITE_SKILL_NAME
+} from '../../constants/builtin-skills'
 import { CREATE_SKILL_GUIDE_PROMPT, CREATE_SKILL_SLASH_COMMAND } from '../create-skill-guide.util'
 import {
   DEFAULT_AGENT_SKILLS,
@@ -170,6 +175,9 @@ describe('agent-skill.util', () => {
 
   it('treats only bundled defaults as official skill names', () => {
     expect(isOfficialAgentSkillName(CREATE_SKILL_SLASH_COMMAND)).toBe(true)
+    expect(isOfficialAgentSkillName(DIARY_APPEND_SKILL_NAME)).toBe(true)
+    expect(isOfficialAgentSkillName(SUMMARY_WRITE_SKILL_NAME)).toBe(true)
+    expect(isOfficialAgentSkillName(SUMMARY_REPAIR_SKILL_NAME)).toBe(true)
     expect(isOfficialAgentSkillName('translate')).toBe(false)
     expect(isOfficialAgentSkillName('summarize')).toBe(false)
     expect(isRetiredOfficialSkillName('translate')).toBe(true)
@@ -189,6 +197,29 @@ describe('agent-skill.util', () => {
     )
     expect(createSkill?.description).toBe(CREATE_SKILL_SLASH_COMMAND)
     expect(createSkill?.content).toBe(CREATE_SKILL_GUIDE_PROMPT)
+  })
+
+  it('summary-write skill only generates missing summaries', () => {
+    const skill = DEFAULT_AGENT_SKILLS.find((item) => item.name === SUMMARY_WRITE_SKILL_NAME)
+    expect(skill?.description).toContain('generate missing period summaries')
+    expect(skill?.description).not.toContain('repair')
+    expect(skill?.content).toContain('Period Summary Detection & Generation')
+    expect(skill?.content).not.toContain('Repairing Existing Summaries')
+    expect(skill?.content).not.toContain('diary_search')
+    expect(skill?.content).not.toContain('白守')
+  })
+
+  it('summary-repair skill reads, verifies, and repairs existing summaries', () => {
+    const skill = DEFAULT_AGENT_SKILLS.find((item) => item.name === SUMMARY_REPAIR_SKILL_NAME)
+    expect(skill?.description).toContain('repair')
+    expect(skill?.content).toContain('Period Summary Verification & Repair')
+    expect(skill?.content).toContain('summary_read')
+    expect(skill?.content).toContain('diary_search')
+    expect(skill?.content).toContain('vector_search')
+    expect(skill?.content).toContain('companion_ask')
+    expect(skill?.content).toContain('summary_write')
+    expect(skill?.content).toContain('application')
+    expect(skill?.content).not.toContain('白守')
   })
 
   it('relocates non-official names out of the official skill root', () => {

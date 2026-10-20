@@ -101,6 +101,7 @@ export function isExcludedLanIpv4(ip: string): boolean {
   const a = octets[0]
   const b = octets[1]
   if (a === undefined || b === undefined) return true
+  if (a === 0 || a === 127) return true
   if (a === 169 && b === 254) return true
   if (a === 198 && (b === 18 || b === 19)) return true
   return false
@@ -151,7 +152,7 @@ export function pickBestLanIpv4(candidates: string[]): string | null {
   }
 
   const sorted = [...unique].sort((a, b) => score(b) - score(a) || a.localeCompare(b))
-  return sorted.find((ip) => score(ip) > -50) ?? sorted[0] ?? null
+  return sorted.find((ip) => score(ip) > -50) ?? sorted.find((ip) => score(ip) > -100) ?? null
 }
 
 export function parseLanTxtIpv4(txt?: Record<string, unknown> | null): string | null {
@@ -162,23 +163,45 @@ export function parseLanTxtIpv4(txt?: Record<string, unknown> | null): string | 
   return pickBestLanIpv4(raw)
 }
 
+/**
+ * 收集所有可尝试的 IPv4，最优地址放第一位。
+ * 发送端必须保留整份候选列表：TXT 里的 IP 可能是 VPN 地址，
+ * 而 mDNS SRV/A 记录里还有真实 Wi-Fi 地址。
+ */
+export function resolveDiscoveredLanIpv4Candidates(options: {
+  txt?: Record<string, unknown> | null
+  addresses?: string[]
+  host?: string
+}): string[] {
+  const fromTxt = String(options.txt?.ip ?? '')
+    .split(',')
+    .map((ip) => ip.trim())
+  const fromAddresses = (options.addresses ?? []).map((addr) => addr.trim())
+  const host = String(options.host ?? '').trim()
+
+  const all = [...new Set([...fromTxt, ...fromAddresses, host])].filter(
+    (ip) => isIpv4(ip) && !isExcludedLanIpv4(ip)
+  )
+  if (all.length === 0) return []
+
+  const best = pickBestLanIpv4(all)
+  if (!best) return all
+  return [best, ...all.filter((ip) => ip !== best)]
+}
+
 export function resolveDiscoveredLanIpv4(options: {
   txt?: Record<string, unknown> | null
   addresses?: string[]
   host?: string
 }): string {
-  const fromTxt = parseLanTxtIpv4(options.txt)
-  if (fromTxt) return fromTxt
+  return resolveDiscoveredLanIpv4Candidates(options)[0] ?? 'Unknown'
+}
 
-  const fromAddresses = pickBestLanIpv4(
-    (options.addresses ?? []).filter((addr) => !addr.includes(':'))
-  )
-  if (fromAddresses) return fromAddresses
-
-  const host = String(options.host ?? '').trim()
-  if (host && isIpv4(host)) return host
-
-  return 'Unknown'
+/** 发送时优先传整份候选列表；接收端会依次/并行探测，避免只押中 VPN 地址 */
+export function lanDeviceIpCandidates(device: { ip: string; ipCandidates?: string[] }): string[] {
+  const candidates = (device.ipCandidates ?? []).filter((ip) => isIpv4(ip))
+  if (candidates.length > 0) return [...new Set(candidates)]
+  return device.ip && device.ip !== 'Unknown' ? [device.ip] : []
 }
 
 export function getLanDeviceHostKey(device: LanDiscoveredDeviceLike): string | null {

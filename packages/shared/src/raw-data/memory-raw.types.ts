@@ -68,6 +68,12 @@ export interface ToolRawDataSourceManager {
     record: unknown,
     opts?: { collection?: string }
   ): Promise<{ shardPath: string; relativePath: string; contentHash: string }>
+  writeFile?: (
+    kind: 'journal' | 'summary' | 'session' | 'notebook',
+    relativePath: string,
+    content: string | Uint8Array,
+    opts?: { skipVersion?: boolean }
+  ) => Promise<{ contentHash: string }>
   tombstone(
     kind: 'memory' | 'graph',
     id: string,

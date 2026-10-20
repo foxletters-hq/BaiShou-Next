@@ -194,6 +194,8 @@ export interface SyncManifest {
   files: Record<string, ManifestEntry>
   /** 已移除记录（key 为路径；旧客户端无此字段时按空对象处理） */
   removed?: Record<string, RemovedManifestEntry>
+  /** 写入端支持的新能力；旧客户端不写该字段 */
+  capabilities?: string[]
 }
 
 /** 同步操作类型 */

@@ -12,8 +12,9 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 ---
 
 ###### 👥 主要人物と関係の進展
-- **(人物1)**:
-- **(人物2)**:
+- **ユーザー（私）**:
+- **AI パートナー**:
+- **その他の人物**:
 
 ---
 
@@ -55,8 +56,9 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 ---
 
 ###### 👥 関係の動き
-- **(人物1)**:
-- **(人物2)**:
+- **ユーザー（私）**:
+- **AI パートナー**:
+- **その他の人物**:
 
 ---
 
@@ -89,6 +91,9 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 ---
 
 ###### 👥 長期的な関係
+- **ユーザー（私）**:
+- **AI パートナー**:
+- **その他の人物**:
 
 ---
 
@@ -120,6 +125,9 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 ---
 
 ###### 👥 年間の重要な関係
+- **ユーザー（私）**:
+- **AI パートナー**:
+- **その他の人物**:
 
 ---
 
