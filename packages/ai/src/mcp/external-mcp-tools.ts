@@ -30,7 +30,8 @@ export type ExternalMcpToolDescriptor = {
 export type ExternalMcpToolCaller = (
   serverId: string,
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  options?: { signal?: AbortSignal }
 ) => Promise<unknown>
 
 function asObjectJsonSchema(raw: unknown): {
@@ -254,7 +255,13 @@ function extractMcpCallTargetAndArgs(rawArgs: Record<string, unknown> | undefine
 
   const fallbackArgs: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(rawArgs)) {
-    if (key === 'server' || key === 'tool' || key === 'name' || key === 'arguments' || key === 'args') {
+    if (
+      key === 'server' ||
+      key === 'tool' ||
+      key === 'name' ||
+      key === 'arguments' ||
+      key === 'args'
+    ) {
       continue
     }
     fallbackArgs[key] = value
@@ -312,8 +319,7 @@ export function buildExternalMcpVercelTools(params: {
         },
         tool: {
           type: 'string',
-          description:
-            'Exact MCP tool name from the Available MCP tools catalog.'
+          description: 'Exact MCP tool name from the Available MCP tools catalog.'
         },
         arguments: {
           type: 'object',
@@ -323,7 +329,7 @@ export function buildExternalMcpVercelTools(params: {
       },
       required: ['tool']
     } as any),
-    execute: (async (rawArgs: Record<string, unknown>) => {
+    execute: (async (rawArgs: Record<string, unknown>, options?: { abortSignal?: AbortSignal }) => {
       const { serverHint, toolName, callArgs } = extractMcpCallTargetAndArgs(rawArgs)
       const target = findTargetExternalTool(params.tools, serverHint, toolName)
       if (!target) {
@@ -333,7 +339,11 @@ export function buildExternalMcpVercelTools(params: {
 
       const gateToolId = buildExternalMcpToolId(target.serverId, target.name)
       const runExecute = async (args: Record<string, unknown>) => {
-        const result = await params.callTool(target.serverId, target.name, args ?? {})
+        const result = options?.abortSignal
+          ? await params.callTool(target.serverId, target.name, args ?? {}, {
+              signal: options.abortSignal
+            })
+          : await params.callTool(target.serverId, target.name, args ?? {})
         return formatMcpClientToolResult(result)
       }
       const gatedExecute = wrapVercelToolExecuteWithAgentGate(

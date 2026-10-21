@@ -5,6 +5,7 @@ import {
   type ToolContext
 } from '@baishou/ai'
 import {
+  MCP_CLIENT_CALL_TIMEOUT_MESSAGE,
   MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE,
   MCP_CLIENT_NOT_CONNECTED_MESSAGE,
   logger,
@@ -185,7 +186,7 @@ class DesktopMcpClientRuntime {
     return buildExternalMcpVercelTools({
       tools: descriptors,
       context,
-      callTool: async (serverId, toolName, args) => {
+      callTool: async (serverId, toolName, args, options) => {
         let session = this.sessions.get(serverId)
         if (!session) {
           const entry = this.config.servers.find((s) => s.id === serverId && s.enabled)
@@ -215,8 +216,14 @@ class DesktopMcpClientRuntime {
           throw new Error(MCP_CLIENT_NOT_CONNECTED_MESSAGE)
         }
         try {
-          return await callMcpHttpTool(session.client, toolName, args)
+          return await callMcpHttpTool(session.client, toolName, args, options)
         } catch (error) {
+          if (
+            options?.signal?.aborted ||
+            (error instanceof Error && error.message.startsWith(MCP_CLIENT_CALL_TIMEOUT_MESSAGE))
+          ) {
+            throw error
+          }
           logger.warn(
             `[desktop-mcp-client-runtime] callTool failed, attempting reconnect: ${toolName}`,
             error as Error
@@ -239,7 +246,7 @@ class DesktopMcpClientRuntime {
             tools
           }
           this.sessions.set(serverId, nextSession)
-          return await callMcpHttpTool(nextSession.client, toolName, args)
+          return await callMcpHttpTool(nextSession.client, toolName, args, options)
         }
       }
     })

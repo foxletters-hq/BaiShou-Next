@@ -6,6 +6,7 @@ import {
   EmbeddingAdapter,
   MCP_EXTERNAL_SESSION_ID,
   MemoryDeduplicationServiceImpl,
+  createAutoApproveAgentGate,
   syncMcpToolUserConfig
 } from '@baishou/ai'
 import {
@@ -109,6 +110,11 @@ export async function buildMobileMcpToolContext(
   const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
     ? mcpConfig.disabledToolIds
     : []
+  const baseAgentGate = deps.getAgentGate?.()
+  const agentGate =
+    mcpConfig?.mcpAutoApproveTools === true && baseAgentGate
+      ? createAutoApproveAgentGate(baseAgentGate)
+      : baseAgentGate
   const userConfig = {
     ...baseUserConfig,
     mcpDisabledToolIds
@@ -124,7 +130,7 @@ export async function buildMobileMcpToolContext(
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
-      agentGate: deps.getAgentGate?.()
+      agentGate
     }
   }
 
@@ -182,7 +188,7 @@ export async function buildMobileMcpToolContext(
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
-      agentGate: deps.getAgentGate?.(),
+      agentGate,
       skillsReader: (await import('./mobile-agent-skills.service')).createMobileSkillsReader(),
       rawDataSourceManager:
         (await import('./mobile-raw-data-source.runtime')).getMobileRawDataSourceManager() ??
@@ -209,7 +215,7 @@ export async function buildMobileMcpToolContext(
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
-      agentGate: deps.getAgentGate?.()
+      agentGate
     }
   }
 }

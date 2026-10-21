@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import {
+  MCP_CLIENT_CALL_TIMEOUT_MESSAGE,
   MCP_CLIENT_CONNECT_TIMEOUT_MESSAGE,
   MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE,
   logger
@@ -10,6 +11,7 @@ import { APP_VERSION } from '../../app-version'
 export const MCP_HTTP_CONNECT_TIMEOUT_MS = 12_000
 export const MCP_HTTP_LIST_TOOLS_TIMEOUT_MS = 12_000
 export const MCP_HTTP_PROBE_TIMEOUT_MS = 15_000
+export const MCP_HTTP_CALL_TIMEOUT_MS = 60_000
 
 export type McpHttpListedTool = {
   name: string
@@ -81,9 +83,23 @@ export async function listMcpHttpTools(
 export async function callMcpHttpTool(
   client: Client,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  options?: { signal?: AbortSignal }
 ): Promise<unknown> {
-  return client.callTool({ name, arguments: args })
+  try {
+    return await client.callTool({ name, arguments: args }, undefined, {
+      signal: options?.signal,
+      timeout: MCP_HTTP_CALL_TIMEOUT_MS,
+      maxTotalTimeout: MCP_HTTP_CALL_TIMEOUT_MS
+    })
+  } catch (error) {
+    if (options?.signal?.aborted) throw error
+    const message = error instanceof Error ? error.message : String(error)
+    if (/timeout|timed out/i.test(message)) {
+      throw new Error(`${MCP_CLIENT_CALL_TIMEOUT_MESSAGE}: ${name}`)
+    }
+    throw error
+  }
 }
 
 export async function closeMcpHttpClient(params: {

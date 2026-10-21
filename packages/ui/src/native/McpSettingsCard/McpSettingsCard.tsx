@@ -12,6 +12,7 @@ import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { McpAutoApproveRow } from './McpAutoApproveRow'
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
@@ -130,7 +131,12 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         </View>
 
         <View
-          style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}
+          style={[
+            styles.row,
+            styles.tokenBody,
+            styles.rowBorder,
+            { borderTopColor: colors.borderMuted }
+          ]}
         >
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             {t('settings.mcp_url_label', '连接地址（推荐）')}
@@ -199,6 +205,11 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           ) : null}
         </View>
 
+        <McpAutoApproveRow
+          enabled={config.mcpAutoApproveTools === true}
+          onChange={(value) => onChange({ ...config, mcpAutoApproveTools: value })}
+        />
+
         <View style={[styles.row, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
           <View style={[styles.titleRow, { flex: 1 }]}>
             <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
@@ -213,12 +224,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
 
         {authEnabled && authTokenForUi ? (
           <View
-            style={[
-              styles.row,
-              styles.col,
-              styles.rowBorder,
-              { borderTopColor: colors.borderMuted }
-            ]}
+            style={[styles.tokenBody, styles.rowBorder, { borderTopColor: colors.borderMuted }]}
           >
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               {t('settings.mcp_auth_token', '访问令牌')}
@@ -450,10 +456,7 @@ const styles = StyleSheet.create({
   rowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth
   },
-  col: {
-    flexDirection: 'column',
-    alignItems: 'flex-start'
-  },
+  tokenBody: { flexDirection: 'column', alignItems: 'flex-start' },
   label: {
     fontSize: mobileTypography.secondary.fontSize
   },

@@ -21,6 +21,7 @@ export interface McpServerConfig {
   mcpPort: number
   mcpAuthEnabled?: boolean
   mcpAuthToken?: string
+  mcpAutoApproveTools?: boolean
 }
 
 interface McpSettingsCardProps {
@@ -68,6 +69,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
 
   const handleToggleAuth = (checked: boolean) => {
     onChange({ ...config, mcpAuthEnabled: checked })
+  }
+
+  const handleToggleAutoApprove = (checked: boolean) => {
+    onChange({ ...config, mcpAutoApproveTools: checked })
   }
 
   const enableRow = (
@@ -217,6 +222,25 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           </span>
         </div>
       ) : null}
+      <div className={`settings-list-tile settings-list-tile-noclick ${styles.authToggleRow}`}>
+        <div className="settings-list-tile-content">
+          <span className="settings-list-tile-title">
+            {t('settings.mcp_auto_approve', 'MCP 工具自动允许')}
+          </span>
+          <span className="settings-list-tile-subtitle">
+            {t(
+              'settings.mcp_auto_approve_desc',
+              '开启后外部客户端调用本机工具（含写入/删除）不再弹窗确认；仅建议在可信网络使用。'
+            )}
+          </span>
+        </div>
+        <Switch
+          checked={config.mcpAutoApproveTools === true}
+          aria-label={t('settings.mcp_auto_approve', 'MCP 工具自动允许')}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => handleToggleAutoApprove(e.target.checked)}
+        />
+      </div>
       <div className={`settings-list-tile settings-list-tile-noclick ${styles.authToggleRow}`}>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">

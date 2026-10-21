@@ -6,4 +6,5 @@
 export const MCP_CLIENT_TIMEOUT_TOKEN = '超时'
 export const MCP_CLIENT_CONNECT_TIMEOUT_MESSAGE = '连接超时'
 export const MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE = '获取工具超时'
+export const MCP_CLIENT_CALL_TIMEOUT_MESSAGE = '工具调用超时'
 export const MCP_CLIENT_NOT_CONNECTED_MESSAGE = '外部 MCP 未连接'

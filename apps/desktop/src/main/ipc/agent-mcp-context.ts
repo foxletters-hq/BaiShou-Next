@@ -9,6 +9,7 @@ import {
   EmbeddingAdapter,
   MemoryDeduplicationServiceImpl,
   MCP_EXTERNAL_SESSION_ID,
+  createAutoApproveAgentGate,
   syncMcpToolUserConfig,
   type ToolContext
 } from '@baishou/ai'
@@ -71,6 +72,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
     ? mcpConfig.disabledToolIds
     : []
+  const autoApproveTools = mcpConfig?.mcpAutoApproveTools === true
   const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
 
   const drizzleDb = connectionManager.getDb()
@@ -132,6 +134,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     mcpDisabledToolIds
   }
 
+  const effectiveAgentGate = autoApproveTools ? createAutoApproveAgentGate(agentGate) : agentGate
   const context = syncMcpToolUserConfig({
     sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultId: activeVault?.id || deriveLegacyVaultId(vaultName),
@@ -145,7 +148,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
-    agentGate,
+    agentGate: effectiveAgentGate,
     skillsReader: (await import('../services/desktop-skills-writer')).createDesktopSkillsReader(
       activeWorkspace?.folderRoot ? { folderRoot: activeWorkspace.folderRoot } : undefined
     ),
