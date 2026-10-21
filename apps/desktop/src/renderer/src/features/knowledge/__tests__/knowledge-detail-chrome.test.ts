@@ -16,6 +16,7 @@ function readKnowledgeDetailChrome(): string {
     'KnowledgeSourceCards.tsx',
     'KnowledgeSourceFileIcon.tsx',
     'KnowledgeDetailJobBanner.tsx',
+    'knowledge-organize-compact.util.ts',
     'KnowledgeDetailSettingsDialog.tsx',
     'KnowledgeDetailImportDialogs.tsx',
     'KnowledgeDetailHostDialogs.tsx',
@@ -87,7 +88,11 @@ describe('knowledge detail chrome', () => {
     expect(page).toContain('styles.createCard')
     expect(page).toContain('styles.listGrid')
     expect(page).toContain('styles.sourceCard')
-    expect(page).toContain('styles.organizeCompact')
+    expect(page).not.toContain('styles.organizeCompact')
+    expect(page).toContain('organizeStatus={organizeStatus}')
+    expect(panel).toContain("row.key === 'sources' ? organizeCard : null")
+    expect(panel).toContain("t('knowledge.organize_status', '整理状态')")
+    expect(panelCss).toContain('.statusSpinner')
     expect(page).toContain('pickSourceCardEvidence')
     expect(page).toContain('sourceCardFailureReason')
     expect(page).toContain('knowledgeIngestUserMessage')
@@ -106,7 +111,7 @@ describe('knowledge detail chrome', () => {
     expect(page).not.toContain("evidence?.type === 'error'")
     expect(page).toContain('notebookOrganizeProgressCopy')
     expect(page).toContain('knowledgeIngestProgressLabel')
-    expect(page).toContain('organizeCompact')
+    expect(page).toContain('knowledgeOrganizeCompactStatus')
     expect(page).toContain("t('knowledge.organize_title', '正在整理')")
     expect(page).toContain("t('knowledge.status_graph_organizing', '正在整理图谱')")
     expect(readKnowledge('KnowledgeSourceCards.tsx')).toContain('knowledgeSourceDisplayStatus')
@@ -250,6 +255,7 @@ describe('knowledge detail chrome', () => {
 
   it('should list organizing sources and expand one source phases in the modal', () => {
     const banner = readKnowledge('KnowledgeDetailJobBanner.tsx')
+    const compact = readKnowledge('knowledge-organize-compact.util.ts')
     const css = readKnowledge('KnowledgePage.module.css')
     const page = readKnowledgeDetailChrome()
     expect(page).toContain('sourceRows')
@@ -258,7 +264,7 @@ describe('knowledge detail chrome', () => {
     expect(banner).toContain('knowledgeOrganizeDefaultSourceId')
     expect(banner).toContain('setOpenSourceId')
     expect(banner).toContain('knowledgeOrganizeSourceSummary')
-    expect(banner).toContain("t('knowledge.organize_count'")
+    expect(compact).toContain("t('knowledge.organize_count'")
     expect(banner).toContain('jobProgress.paused')
     expect(banner).toContain("t('knowledge.organize_incomplete'")
     expect(banner).toContain("t('knowledge.organize_continue'")
@@ -296,10 +302,13 @@ describe('knowledge detail chrome', () => {
 
   it('should delete the open notebook after a three-second confirm dialog', () => {
     const page = readKnowledgeDetailChrome()
+    const panel = readKnowledge('NotebookStatusPanel.tsx')
     const dialog = readKnowledge('KnowledgeDeleteNotebookDialog.tsx')
     expect(page).toContain('KnowledgeDeleteNotebookDialog')
     expect(page).toContain('window.api.knowledge.deleteNotebook')
-    expect(page).toContain("t('knowledge.delete_notebook'")
+    expect(page).toContain('onDeleteNotebook={() => setDeleteOpen(true)}')
+    expect(page).not.toContain('styles.detailTopRight')
+    expect(panel).toContain("t('knowledge.delete_notebook'")
     expect(dialog).toContain('isNotebookHeavyConfirmReady')
     expect(dialog).toContain('notebookHeavyConfirmSecondsLeft')
   })

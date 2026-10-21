@@ -25,6 +25,7 @@ export function prepareSystemPromptWithEpoch(params: {
     sourceContents: {
       'runtime/time': extractTaggedSection(full, 'runtime_context'),
       'workspace/env': extractTaggedSection(full, 'workspace_env'),
+      'knowledge/mount': extractTaggedSection(full, 'knowledge_mount'),
       'skills/catalog': extractTaggedSection(full, 'skills_catalog')
     }
   })

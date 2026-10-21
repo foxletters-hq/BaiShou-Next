@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Button, Modal } from '@baishou/ui'
 import { parseKnowledgeGraphStepError, splitKnowledgeSourceErrorMessage } from '@baishou/shared'
 import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
+import { knowledgeOrganizeCompactStatus } from './knowledge-organize-compact.util'
 import {
-  knowledgeOrganizeCompactKind,
   type KnowledgeOrganizePhaseRow,
   type KnowledgeOrganizeProgressCopy
 } from './notebook-job-progress.util'
@@ -164,28 +164,7 @@ export function KnowledgeDetailJobBanner({
     setOpenSourceId((current) => knowledgeOrganizeDefaultSourceId(sourceRows, current))
   }, [sourceRows])
   const failedStep = parseKnowledgeGraphStepError(jobProgress.error)?.step ?? null
-  const compactKind = knowledgeOrganizeCompactKind(jobProgress.phases, jobProgress.failed)
-  const compactLabel = jobProgress.failed
-    ? failedStep === 'node-embed'
-      ? t('knowledge.organize_failed_graph_nodes', '节点向量失败')
-      : failedStep === 'align'
-        ? t('knowledge.organize_failed_graph_align', '图谱对齐失败')
-        : failedStep === 'extract'
-          ? t('knowledge.organize_failed_graph_extract', '图谱抽取失败')
-          : t('knowledge.organize_failed', '抽取失败')
-    : jobProgress.paused
-      ? t('knowledge.organize_incomplete', '整理未完成')
-      : sourceRows.length > 1
-        ? t('knowledge.organize_count', '正在整理 {{count}} 份资料', { count: sourceRows.length })
-        : compactKind === 'graph'
-          ? t('knowledge.status_graph_organizing', '正在整理图谱')
-          : compactKind === 'graphNodes'
-            ? t('knowledge.organize_phase_graph_nodes_running', '正在整理节点向量')
-            : compactKind === 'embed'
-              ? t('knowledge.status_embedding', '正在建立索引')
-              : compactKind === 'extract'
-                ? t('knowledge.status_extracting', '正在提取文本')
-                : t('knowledge.organize_title', '正在整理')
+  const compactLabel = knowledgeOrganizeCompactStatus(t, jobProgress).label
   const title = jobProgress.failed
     ? jobProgress.currentTitle
       ? failedStep === 'node-embed'
@@ -222,20 +201,6 @@ export function KnowledgeDetailJobBanner({
 
   return (
     <>
-      {jobProgress.visible ? (
-        <Button
-          type="button"
-          size="small"
-          className={styles.organizeCompact}
-          aria-label={compactLabel}
-          onClick={() => onOpenChange(true)}
-        >
-          {jobProgress.failed || jobProgress.paused ? null : (
-            <span className={styles.organizeSpinner} aria-hidden />
-          )}
-          {compactLabel}
-        </Button>
-      ) : null}
       <Modal
         isOpen={open && jobProgress.visible}
         onClose={() => onOpenChange(false)}

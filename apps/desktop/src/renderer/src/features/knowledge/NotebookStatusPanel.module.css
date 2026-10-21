@@ -93,6 +93,21 @@
   color: var(--color-warning);
 }
 
+.statusSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: notebookStatusSpin 1s linear infinite;
+}
+
+@keyframes notebookStatusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .actions {
   display: flex;
   flex-direction: column;
@@ -107,4 +122,14 @@
   padding: 0 var(--spacing-md-tight);
   font-size: var(--ui-fs-md);
   white-space: nowrap;
+}
+
+.actionBtn.actionDanger {
+  color: var(--color-error);
+}
+
+.actionBtn.actionDanger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--border-control));
+  background: color-mix(in srgb, var(--color-error) 8%, var(--bg-surface));
+  color: var(--color-error);
 }

@@ -3,6 +3,7 @@ import {
   takePendingMountedNotebookIds,
   type NotebookMountScope
 } from '@baishou/shared'
+import { notifyNotebookMountChanged } from './useNotebookMount'
 
 export async function applyPendingNotebookMountToSession(opts: {
   sessionId: string
@@ -21,10 +22,12 @@ export async function applyPendingNotebookMountToSession(opts: {
   if (ids.length === 0) return
   if (window.api.setMountedNotebooks) {
     await window.api.setMountedNotebooks(sessionId, ids)
+    notifyNotebookMountChanged(sessionId)
     return
   }
   await window.api.agentWorkspace.attachNotebook({
     sessionId,
     notebookIds: ids
   })
+  notifyNotebookMountChanged(sessionId)
 }

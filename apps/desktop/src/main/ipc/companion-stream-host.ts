@@ -77,6 +77,27 @@ export async function buildCompanionStreamHost(params: {
 
   const { readSessionMountedNotebookIds } = await import('../services/session-mounted-notebooks')
   const notebookIds = await readSessionMountedNotebookIds(params.sessionId)
+  let notebookNames: Record<string, string> | undefined
+  if (notebookIds.length > 0) {
+    try {
+      const { KnowledgeRepository, knowledgeConnectionManager } = await import(
+        '@baishou/database-desktop'
+      )
+      if (knowledgeConnectionManager.isConnected()) {
+        const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
+        const rows = await repo.listNotebooks({ vaultId: resolveActiveVaultId() })
+        const wanted = new Set(notebookIds)
+        notebookNames = {}
+        for (const row of rows) {
+          if (!wanted.has(row.id)) continue
+          const name = row.name?.trim()
+          if (name) notebookNames[row.id] = name
+        }
+      }
+    } catch {
+      notebookNames = undefined
+    }
+  }
 
   return {
     agentGate,
@@ -112,7 +133,8 @@ export async function buildCompanionStreamHost(params: {
     workspace: {
       folderRoot: '',
       sessionKind: 'companion',
-      notebookIds
+      notebookIds,
+      notebookNames
     }
   }
 }

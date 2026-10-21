@@ -142,6 +142,23 @@
   scroll-behavior: auto;
   display: flex;
   flex-direction: column;
+  /* 底部窄幅渐隐：用缓入曲线让淡出更自然，避免消息在输入框上方硬裁切；底部留白大于渐隐高度，滚到底不受影响 */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 20px),
+    rgba(0, 0, 0, 0.84) calc(100% - 15px),
+    rgba(0, 0, 0, 0.5) calc(100% - 10px),
+    rgba(0, 0, 0, 0.16) calc(100% - 5px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 20px),
+    rgba(0, 0, 0, 0.84) calc(100% - 15px),
+    rgba(0, 0, 0, 0.5) calc(100% - 10px),
+    rgba(0, 0, 0, 0.16) calc(100% - 5px),
+    transparent 100%
+  );
 }
 
 .messageContent {
@@ -270,17 +287,20 @@
   margin: 0 0 52px;
   flex: 0 1 auto;
   min-width: 0;
+  max-width: none;
   font-size: var(--icon-fs-md);
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 @media (max-width: 520px) {
   .emptyGreeting {
     font-size: var(--settings-font-page-title-size);
     margin-bottom: var(--spacing-xl-plus);
+    white-space: normal;
   }
 
   .emptyMascotImg {
@@ -305,6 +325,11 @@
   flex-shrink: 0;
   width: 100%;
   max-width: 1000px;
+}
+
+/* 已挂载笔记本标签：抵消 InputBar 顶部 12px 内边距，贴近输入框 */
+.mountHintTight.mountHintTight {
+  margin-bottom: calc(var(--spacing-2xs) - var(--spacing-md-tight));
 }
 
 .scrollToBottomBtn {

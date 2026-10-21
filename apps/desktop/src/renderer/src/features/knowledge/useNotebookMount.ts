@@ -11,6 +11,18 @@ import {
 } from '@baishou/shared'
 import { resolveNotebookCoverPreviewUrl } from './notebook-list.util'
 
+/** 笔记本挂载变更事件：让输入框标签与挂载对话框实时同步 */
+export const NOTEBOOK_MOUNT_CHANGED_EVENT = 'baishou:notebook-mount-changed'
+
+export function notifyNotebookMountChanged(sessionId?: string): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent(NOTEBOOK_MOUNT_CHANGED_EVENT, {
+      detail: { sessionId: sessionId ?? null }
+    })
+  )
+}
+
 export function useNotebookMount(
   sessionId?: string,
   opts?: { assistantId?: string | null; scope?: NotebookMountScope }
@@ -60,12 +72,26 @@ export function useNotebookMount(
     void refresh()
   }, [refresh])
 
+  // 挂载对话框与输入框标签共享同一份挂载结果：任一处改动后都立即刷新
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId?: string | null }>).detail
+      const changedSessionId = detail?.sessionId ?? null
+      if (changedSessionId && sessionId && changedSessionId !== sessionId) return
+      void refresh()
+    }
+    window.addEventListener(NOTEBOOK_MOUNT_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(NOTEBOOK_MOUNT_CHANGED_EVENT, onChanged)
+  }, [refresh, sessionId])
+
   const persist = async (next: string[]) => {
     setBusy(true)
     setError('')
     try {
       if (draft) {
         setSelectedIds(setPendingMountedNotebookIds(pendingKey, next))
+        notifyNotebookMountChanged(sessionId)
         return
       }
       if (!sessionId) return
@@ -78,6 +104,7 @@ export function useNotebookMount(
         })
       }
       setSelectedIds(next)
+      notifyNotebookMountChanged(sessionId)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
