@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AgentSessionsModal } from './components/AgentSessionsModal'
 import type { AgentAssistant } from './components/AgentSidebar'
@@ -406,7 +407,12 @@ export const AgentLayout: React.FC = () => {
   }
 
   return (
-    <div className={styles.layoutContainer}>
+    <motion.div
+      className={styles.layoutContainer}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
       <div className={styles.chatArea}>
         {chatBackgroundUrl ? (
           <>
@@ -510,6 +516,6 @@ export const AgentLayout: React.FC = () => {
         onBackToPicker={() => setIsPickerOpen(true)}
         onCreated={fetchAssistants}
       />
-    </div>
+    </motion.div>
   )
 }

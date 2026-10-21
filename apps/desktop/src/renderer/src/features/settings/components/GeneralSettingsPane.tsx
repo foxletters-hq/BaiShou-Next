@@ -182,6 +182,8 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                       window.location.reload()
                     }}
                     onManageWorkspace={() => settingsNav.goWorkspaces()}
+                    showTopBarSwitcher={Boolean(settings.showTopBarVaultSwitcher)}
+                    onShowTopBarSwitcherChange={settings.setShowTopBarVaultSwitcher}
                   />
                   <div className={styles.divider} />
                   <AppearanceSettingsCard
