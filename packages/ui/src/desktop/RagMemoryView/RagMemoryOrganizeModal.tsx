@@ -58,6 +58,7 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
         ...ragState,
         isRunning: true,
         type: 'batchEmbed',
+        phase: 'starting',
         paused: false,
         cancelling: false
       }

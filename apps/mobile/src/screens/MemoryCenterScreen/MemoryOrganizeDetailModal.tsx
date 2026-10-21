@@ -97,7 +97,11 @@ export function MemoryOrganizeDetailModal(props: {
                 row.status === 'skipped'
                   ? t('settings.rag_phase_skipped', '无需补齐')
                   : row.status === 'pending'
-                    ? t('settings.rag_phase_waiting', '等待中')
+                    ? row.total > 0
+                      ? t('settings.rag_phase_pending_count', '待整理 {{count}} 篇', {
+                          count: row.total
+                        })
+                      : t('settings.rag_phase_waiting', '等待中')
                     : row.status === 'done'
                       ? t('settings.rag_phase_done_count', '已完成 {{completed}}/{{total}}', {
                           completed: row.completed,

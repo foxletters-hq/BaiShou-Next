@@ -81,7 +81,8 @@ function useMemoryOrganizeUi(input: {
           type: 'idle',
           progress: 0,
           total: leftoverSnapshot.total,
-          phase: leftoverSnapshot.phase,
+          // 未继续整理时不存在“正在跑”的阶段，统一按待整理展示
+          phase: 'starting',
           phases: leftoverSnapshot.phases,
           paused: false,
           cancelling: false,
