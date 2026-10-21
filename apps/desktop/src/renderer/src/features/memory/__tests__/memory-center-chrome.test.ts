@@ -73,6 +73,15 @@ describe('memory center chrome', () => {
     expect(src).toContain("ensureConfigForSegment('rag')")
   })
 
+  it('fades in when entering standalone memory center from sidebar while avoiding double fade in settings', () => {
+    const pageCss = readSrc('features/memory/MemoryCenterPage.module.css')
+    expect(pageCss).toContain('@keyframes memoryCenterFadeIn')
+    expect(pageCss).toMatch(
+      /\.root \{[^}]*animation: memoryCenterFadeIn var\(--duration-swift\) ease-out/
+    )
+    expect(pageCss).toMatch(/\.rootEmbedded \{[^}]*animation: none/)
+  })
+
   it('title row and status strip keep buttons and labels vertically centered', () => {
     const pageCss = readSrc('features/memory/MemoryCenterPage.module.css')
     const ragCss = readRagSrc('RagMemoryView.module.css')
@@ -328,7 +337,9 @@ describe('memory center chrome', () => {
     expect(toolbar).not.toContain('data-rag-action="batch-embed"')
     expect(toolbar).not.toContain('settings.rag_batch_embed')
     expect(bar).toContain('memory.start_organize')
-    expect(bar).toContain('未整理 {{count}} 篇')
+    const chipUtil = readSrc('features/memory/memory-readiness-chip.util.ts')
+    expect(chipUtil).toContain('未整理 {{count}} 篇')
+    expect(chipUtil).toContain('memory.readiness_graph_pending')
     expect(bar).not.toContain('未索引')
     expect(barCss).toContain('.chipWrap')
     expect(barCss).toContain('.detailMenu')

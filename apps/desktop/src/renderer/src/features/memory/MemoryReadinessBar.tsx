@@ -8,6 +8,7 @@ import {
   type RagIndexingSnapshot
 } from '../settings/rag-indexing-snapshot'
 import { listPendingEmbedPartLines } from './pending-embed-part-lines.util'
+import { formatVectorPendingValue } from './memory-readiness-chip.util'
 import styles from './MemoryReadinessBar.module.css'
 
 export type MemoryReadinessBarProps = {
@@ -108,9 +109,10 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
           } else if (row.state === 'ready' && pendingGraphCount <= 0) {
             value = t('memory.readiness_vector_done', '已全部整理')
           } else if (row.state === 'pending' || pendingGraphCount > 0) {
-            value = t('memory.readiness_vector_pending', '未整理 {{count}} 篇', {
-              count: row.count ?? 0
-            })
+            value = formatVectorPendingValue(
+              { embedPending: row.count ?? 0, pendingGraphCount },
+              t
+            )
             onAction = onOpenOrganize
               ? () => onOpenOrganize()
               : pendingEmbedParts

@@ -1,15 +1,26 @@
+@keyframes memoryCenterFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .root {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   background: var(--bg-app);
+  animation: memoryCenterFadeIn var(--duration-swift) ease-out;
 }
 
 .rootEmbedded {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  animation: none;
 }
 
 /* 顶栏：宽度够时整理状态跟在标题右侧同一行，不够再整块换行 */
