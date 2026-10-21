@@ -11,6 +11,7 @@ const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
   mcpAuthEnabled: false,
+  mcpAutoApproveTools: false,
   disabledToolIds: []
 }
 

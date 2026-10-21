@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
-import {
-  EXTERNAL_MCP_GATEWAY_TOOL_ID,
-  buildExternalMcpVercelTools
-} from '../external-mcp-tools'
+import { EXTERNAL_MCP_GATEWAY_TOOL_ID, buildExternalMcpVercelTools } from '../external-mcp-tools'
 import type { ToolContext } from '../../tools/agent.tool'
 
 describe('buildExternalMcpVercelTools', () => {
@@ -17,7 +14,8 @@ describe('buildExternalMcpVercelTools', () => {
           serverId: 'alpha',
           serverName: 'Alpha',
           name: 'ping',
-          description: 'Ping the remote server\nExtra verbose second paragraph that should be omitted',
+          description:
+            'Ping the remote server\nExtra verbose second paragraph that should be omitted',
           inputSchema: {
             type: 'object',
             properties: { q: { type: 'string' } },
@@ -38,10 +36,40 @@ describe('buildExternalMcpVercelTools', () => {
     expect(vercelTool.description).toContain('ping({ q: string }): Ping the remote server')
     expect(vercelTool.description).not.toContain('Extra verbose second paragraph')
 
-    await expect(vercelTool.execute({ tool: 'ping', arguments: { q: 'hi' } })).resolves.toBe(
-      'pong'
-    )
+    await expect(vercelTool.execute({ tool: 'ping', arguments: { q: 'hi' } })).resolves.toBe('pong')
     expect(callTool).toHaveBeenCalledWith('alpha', 'ping', { q: 'hi' })
+  })
+
+  it('forwards the stream abort signal to the remote MCP call', async () => {
+    const callTool = vi.fn(async () => ({
+      content: [{ type: 'text', text: 'pong' }]
+    }))
+    const tools = buildExternalMcpVercelTools({
+      tools: [{ serverId: 'alpha', serverName: 'Alpha', name: 'ping' }],
+      callTool,
+      context: {} as ToolContext
+    })
+    const vercelTool = tools[EXTERNAL_MCP_GATEWAY_TOOL_ID] as {
+      execute: (
+        args: Record<string, unknown>,
+        options?: { abortSignal?: AbortSignal }
+      ) => Promise<string>
+    }
+    const controller = new AbortController()
+
+    await vercelTool.execute(
+      { tool: 'ping', arguments: { q: 'hi' } },
+      { abortSignal: controller.signal }
+    )
+
+    expect(callTool).toHaveBeenCalledWith(
+      'alpha',
+      'ping',
+      { q: 'hi' },
+      {
+        signal: controller.signal
+      }
+    )
   })
 
   it('includes remote baishou_* tools and third-party tools in the unified mcp_call catalog', async () => {

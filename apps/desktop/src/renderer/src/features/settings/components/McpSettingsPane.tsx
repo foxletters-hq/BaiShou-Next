@@ -41,7 +41,8 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
                 settings.mcpServerConfig || {
                   mcpEnabled: false,
                   mcpPort: 31004,
-                  mcpAuthEnabled: false
+                  mcpAuthEnabled: false,
+                  mcpAutoApproveTools: false
                 }
               }
               onChange={settings.setMcpServerConfig}
@@ -64,6 +65,7 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
                 mcpEnabled: false,
                 mcpPort: 31004,
                 mcpAuthEnabled: false,
+                mcpAutoApproveTools: false,
                 disabledToolIds: []
               }
             }
