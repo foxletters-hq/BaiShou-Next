@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady } from '@baishou/shared'
+import { useSettingsStore } from '@baishou/store'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
@@ -21,6 +22,7 @@ export const TitleBar: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const isOnboarding = location.pathname.startsWith('/welcome')
+  const showTopBarVaultSwitcher = useSettingsStore((s) => s.showTopBarVaultSwitcher)
 
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
@@ -292,7 +294,7 @@ export const TitleBar: React.FC = () => {
               </div>
             )}
 
-            {!isAgentWorkspace ? (
+            {!isAgentWorkspace && showTopBarVaultSwitcher ? (
               <div
                 className={styles.vaultSwitcherWrapper}
                 ref={vaultMenuRef}
@@ -345,7 +347,9 @@ export const TitleBar: React.FC = () => {
               </div>
             ) : null}
 
-            <div className={styles.divider}></div>
+            {s3Configured || (!isAgentWorkspace && showTopBarVaultSwitcher) ? (
+              <div className={styles.divider}></div>
+            ) : null}
           </>
         )}
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from '../components/Sidebar'
@@ -77,18 +77,33 @@ export const MainLayout: React.FC = () => {
 
   const prevVaultScopeRevisionRef = useRef(vaultScopeRevision)
   const prevCacheKeyRef = useRef<string | null>(null)
-  const [mountedKeys, setMountedKeys] = useState(() =>
-    nextMountedCacheKeys(new Set(), activeCacheKey)
-  )
-  const showRouteMask = shouldShowRouteSwitchMask({
-    previousKey: prevCacheKeyRef.current,
-    nextKey: activeCacheKey,
-    mountedKeys
-  })
+  const mountedKeysRef = useRef<Set<string>>(nextMountedCacheKeys(new Set(), activeCacheKey))
+  const routeMaskSeqRef = useRef(0)
+  // 遮罩必须活到淡出动画结束：一旦同一次 effect 里清掉上一页 key，条件就会立刻变 false，
+  // 遮罩在首帧前被卸载，有背景图时能明显看出伙伴页是硬切的。
+  const [routeMask, setRouteMask] = useState<{ id: number; from: string; to: string } | null>(null)
 
-  useEffect(() => {
-    setMountedKeys((prev) => nextMountedCacheKeys(prev, activeCacheKey))
-    prevCacheKeyRef.current = activeCacheKey
+  useLayoutEffect(() => {
+    const previousKey = prevCacheKeyRef.current
+    const nextKey = activeCacheKey
+
+    if (
+      previousKey &&
+      nextKey &&
+      shouldShowRouteSwitchMask({
+        previousKey,
+        nextKey,
+        mountedKeys: mountedKeysRef.current
+      })
+    ) {
+      routeMaskSeqRef.current += 1
+      setRouteMask({ id: routeMaskSeqRef.current, from: previousKey, to: nextKey })
+    } else {
+      setRouteMask(null)
+    }
+
+    prevCacheKeyRef.current = nextKey
+    mountedKeysRef.current = nextMountedCacheKeys(mountedKeysRef.current, nextKey)
   }, [activeCacheKey])
 
   useEffect(() => {
@@ -135,12 +150,15 @@ export const MainLayout: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {showRouteMask ? (
+          {routeMask ? (
             <motion.div
-              key={`${prevCacheKeyRef.current ?? 'none'}->${activeCacheKey ?? 'none'}`}
+              key={routeMask.id}
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
               transition={{ duration: ROUTE_SWITCH_MASK_SECONDS, ease: 'easeOut' }}
+              onAnimationComplete={() => {
+                setRouteMask((current) => (current?.id === routeMask.id ? null : current))
+              }}
               style={{
                 position: 'absolute',
                 inset: 0,
