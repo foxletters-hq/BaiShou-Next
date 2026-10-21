@@ -3,8 +3,14 @@ import type { AgentPart, MockChatAttachment, PromptFileRef } from '@baishou/shar
 import { clearStreamBridgeForSession } from '../../agent/hooks/agent-stream-session-store'
 import { hasPersistedAssistantTail } from '../utils/workspace-persisted-assistant.util'
 import {
-  prependOlderWorkspaceMessages,
+  applyWorkspaceCacheToRoundWindow,
+  cacheNeedsMoreForRoundWindow,
+  enrichCacheForRoundWindow,
+  groupMessagesIntoRounds,
+  isViewingLatestWorkspaceRounds,
+  resolveWorkspaceRoundWindowStart,
   WORKSPACE_MESSAGE_PAGE_SIZE,
+  WORKSPACE_ROUNDS_PER_PAGE,
   workspaceHasMoreMessages
 } from '../utils/workspace-chat-pagination.util'
 
@@ -49,12 +55,18 @@ async function fetchWorkspaceMessages(
 function resetPagination(
   setMessages: (rows: WorkspaceChatMessage[]) => void,
   setHasMore: (value: boolean) => void,
+  messageCacheRef: { current: WorkspaceChatMessage[] },
+  roundWindowStartRef: { current: number },
   loadedFromEndRef: { current: number },
+  fetchHasMoreRef: { current: boolean },
   hasMoreRef: { current: boolean }
 ) {
   setMessages([])
   setHasMore(false)
+  messageCacheRef.current = []
+  roundWindowStartRef.current = 0
   loadedFromEndRef.current = 0
+  fetchHasMoreRef.current = false
   hasMoreRef.current = false
 }
 
@@ -71,35 +83,83 @@ export function useWorkspaceChatMessages(params: {
     useState<PendingWorkspaceAssistantMsg | null>(null)
   const streamSessionIdRef = useRef<string | null>(null)
   const sessionIdRef = useRef(sessionId)
+  const messageCacheRef = useRef<WorkspaceChatMessage[]>([])
+  const roundWindowStartRef = useRef(0)
   const loadedFromEndRef = useRef(0)
+  const fetchHasMoreRef = useRef(false)
   const hasMoreRef = useRef(false)
   const loadMoreLockRef = useRef(false)
   const prevStreamingRef = useRef(isStreaming)
   sessionIdRef.current = sessionId
 
-  const applyLatestPage = useCallback((rows: WorkspaceChatMessage[], requestedLimit: number) => {
-    const nextHasMore = workspaceHasMoreMessages(rows.length, requestedLimit)
-    setMessages(rows)
-    loadedFromEndRef.current = rows.length
-    hasMoreRef.current = nextHasMore
-    setHasMore(nextHasMore)
+  const syncFromCache = useCallback((roundWindowStart: number) => {
+    const result = applyWorkspaceCacheToRoundWindow(
+      messageCacheRef.current,
+      roundWindowStart,
+      fetchHasMoreRef.current
+    )
+    roundWindowStartRef.current = result.roundWindowStart
+    hasMoreRef.current = result.hasMore
+    setMessages(result.display)
+    setHasMore(result.hasMore)
+    return result
   }, [])
 
   const refresh = useCallback(
     async (overrideSessionId?: string): Promise<WorkspaceChatMessage[] | null> => {
       const sid = overrideSessionId ?? sessionId
       if (!sid || sid === 'new-session') {
-        resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
+        resetPagination(
+          setMessages,
+          setHasMore,
+          messageCacheRef,
+          roundWindowStartRef,
+          loadedFromEndRef,
+          fetchHasMoreRef,
+          hasMoreRef
+        )
         return null
       }
       const limit = Math.max(loadedFromEndRef.current, WORKSPACE_MESSAGE_PAGE_SIZE)
       const rows = await fetchWorkspaceMessages(sid, limit, 0)
-      const stillCurrent = sessionIdRef.current === sid || streamSessionIdRef.current === sid
-      if (!stillCurrent) return null
-      applyLatestPage(rows, limit)
-      return rows
+      const isStillCurrent = () =>
+        sessionIdRef.current === sid || streamSessionIdRef.current === sid
+      if (!isStillCurrent()) return null
+
+      const preserveWindow =
+        messageCacheRef.current.length > 0 &&
+        !isViewingLatestWorkspaceRounds(messageCacheRef.current, roundWindowStartRef.current)
+      const prevTotalRounds = groupMessagesIntoRounds(messageCacheRef.current).length
+      const targetVisibleRounds = preserveWindow
+        ? Math.max(WORKSPACE_ROUNDS_PER_PAGE, prevTotalRounds - roundWindowStartRef.current)
+        : WORKSPACE_ROUNDS_PER_PAGE
+
+      const enriched = await enrichCacheForRoundWindow({
+        cache: rows,
+        loadedFromEnd: rows.length,
+        fetchHasMore: workspaceHasMoreMessages(rows.length, limit),
+        targetVisibleRounds,
+        fetchPage: (pageLimit, pageOffset) => fetchWorkspaceMessages(sid, pageLimit, pageOffset),
+        isCurrent: isStillCurrent,
+        pageLimit: WORKSPACE_MESSAGE_PAGE_SIZE
+      })
+      if (!isStillCurrent()) return null
+
+      messageCacheRef.current = enriched.cache
+      loadedFromEndRef.current = enriched.loadedFromEnd
+      fetchHasMoreRef.current = enriched.fetchHasMore
+
+      const nextStart = preserveWindow
+        ? Math.max(
+            0,
+            groupMessagesIntoRounds(enriched.cache).length - targetVisibleRounds
+          )
+        : resolveWorkspaceRoundWindowStart(enriched.cache, roundWindowStartRef.current, false)
+
+      const applied = syncFromCache(nextStart)
+      return applied.display
     },
-    [applyLatestPage, sessionId]
+    [sessionId, syncFromCache]
   )
 
   const loadMore = useCallback(async () => {
@@ -107,26 +167,62 @@ export function useWorkspaceChatMessages(params: {
     if (!sid || sid === 'new-session' || loadMoreLockRef.current || !hasMoreRef.current) return
     loadMoreLockRef.current = true
     try {
-      const rows = await fetchWorkspaceMessages(
-        sid,
-        WORKSPACE_MESSAGE_PAGE_SIZE,
-        loadedFromEndRef.current
+      const currentRounds = groupMessagesIntoRounds(messageCacheRef.current)
+      const currentVisibleRounds = Math.max(
+        WORKSPACE_ROUNDS_PER_PAGE,
+        currentRounds.length - roundWindowStartRef.current
       )
+      const targetVisibleRounds = currentVisibleRounds + WORKSPACE_ROUNDS_PER_PAGE
+
+      if (
+        !cacheNeedsMoreForRoundWindow(
+          messageCacheRef.current,
+          targetVisibleRounds,
+          fetchHasMoreRef.current
+        )
+      ) {
+        if (roundWindowStartRef.current > 0) {
+          const nextStart = Math.max(0, currentRounds.length - targetVisibleRounds)
+          syncFromCache(nextStart)
+        } else {
+          hasMoreRef.current = false
+          setHasMore(false)
+        }
+        return
+      }
+
+      const enriched = await enrichCacheForRoundWindow({
+        cache: messageCacheRef.current,
+        loadedFromEnd: loadedFromEndRef.current,
+        fetchHasMore: fetchHasMoreRef.current,
+        targetVisibleRounds,
+        fetchPage: (pageLimit, pageOffset) => fetchWorkspaceMessages(sid, pageLimit, pageOffset),
+        isCurrent: () => sessionIdRef.current === sid,
+        pageLimit: WORKSPACE_MESSAGE_PAGE_SIZE
+      })
       if (sessionIdRef.current !== sid) return
-      if (rows.length === 0) {
+      if (
+        enriched.loadedFromEnd === loadedFromEndRef.current &&
+        !enriched.fetchHasMore &&
+        roundWindowStartRef.current === 0
+      ) {
+        fetchHasMoreRef.current = false
         hasMoreRef.current = false
         setHasMore(false)
         return
       }
-      const nextHasMore = workspaceHasMoreMessages(rows.length, WORKSPACE_MESSAGE_PAGE_SIZE)
-      setMessages((prev) => prependOlderWorkspaceMessages(prev, rows))
-      loadedFromEndRef.current += rows.length
-      hasMoreRef.current = nextHasMore
-      setHasMore(nextHasMore)
+
+      messageCacheRef.current = enriched.cache
+      loadedFromEndRef.current = enriched.loadedFromEnd
+      fetchHasMoreRef.current = enriched.fetchHasMore
+
+      const nextRounds = groupMessagesIntoRounds(enriched.cache)
+      const nextStart = Math.max(0, nextRounds.length - targetVisibleRounds)
+      syncFromCache(nextStart)
     } finally {
       loadMoreLockRef.current = false
     }
-  }, [sessionId])
+  }, [sessionId, syncFromCache])
 
   const setStreamSessionId = useCallback((sid: string | null) => {
     streamSessionIdRef.current = sid
@@ -134,10 +230,26 @@ export function useWorkspaceChatMessages(params: {
 
   useEffect(() => {
     if (!sessionId || sessionId === 'new-session') {
-      resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
+      resetPagination(
+        setMessages,
+        setHasMore,
+        messageCacheRef,
+        roundWindowStartRef,
+        loadedFromEndRef,
+        fetchHasMoreRef,
+        hasMoreRef
+      )
       return
     }
-    resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
+    resetPagination(
+      setMessages,
+      setHasMore,
+      messageCacheRef,
+      roundWindowStartRef,
+      loadedFromEndRef,
+      fetchHasMoreRef,
+      hasMoreRef
+    )
     void refresh()
   }, [refresh, sessionId])
 
@@ -153,9 +265,11 @@ export function useWorkspaceChatMessages(params: {
     }
     window.addEventListener('baishou:workspace-messages-changed', onChanged)
     window.addEventListener('baishou:assistant-message-usage', onChanged)
+    window.addEventListener('baishou:agent-stream-finished', onChanged)
     return () => {
       window.removeEventListener('baishou:workspace-messages-changed', onChanged)
       window.removeEventListener('baishou:assistant-message-usage', onChanged)
+      window.removeEventListener('baishou:agent-stream-finished', onChanged)
     }
   }, [refresh, sessionId])
 

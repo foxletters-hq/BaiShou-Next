@@ -281,7 +281,7 @@ describe('useChatMessages', () => {
 
   describe('refreshLatestMessages pagination reset', () => {
     it('should collapse expanded history when resetPagination is true', async () => {
-      const dbMessages = Array.from({ length: 12 }, (_, i) => ({
+      const dbMessages = Array.from({ length: 24 }, (_, i) => ({
         id: String(i),
         role: i % 2 === 0 ? 'user' : 'assistant',
         content: `m${i}`
@@ -301,20 +301,20 @@ describe('useChatMessages', () => {
         await Promise.resolve()
       })
 
-      expect(result.current.messages).toHaveLength(6)
+      expect(result.current.messages).toHaveLength(12)
 
       await act(async () => {
         await result.current.loadMore()
       })
 
-      expect(result.current.messages.length).toBeGreaterThan(6)
+      expect(result.current.messages.length).toBeGreaterThan(12)
 
       mockRenderer.invoke.mockResolvedValue(dbMessages)
       await act(async () => {
         await result.current.refreshLatestMessages(1, 's1', { resetPagination: true })
       })
 
-      expect(result.current.messages).toHaveLength(6)
+      expect(result.current.messages).toHaveLength(12)
     })
   })
 

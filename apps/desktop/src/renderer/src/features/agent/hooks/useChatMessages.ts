@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
-import { CHAT_MESSAGE_FETCH_LIMIT, CHAT_TAIL_FETCH_LIMIT } from '../utils/chat-round-pagination'
+import {
+  CHAT_MESSAGE_FETCH_LIMIT,
+  CHAT_ROUNDS_PER_PAGE,
+  CHAT_TAIL_FETCH_LIMIT,
+  enrichCacheForRoundWindow,
+  groupMessagesIntoRounds
+} from '../utils/chat-round-pagination'
 import { clearStreamBridgeForSession } from './useAgentStream'
+import { isPersistedAssistantStreamInProgress } from '../utils/persisted-streaming-assistant.util'
 import {
   chatSessionMessageCache,
   type SessionMessageCacheEntry
@@ -124,7 +131,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
   )
 
   const ingestFetchedTail = useCallback(
-    (fetched: any[], preserveWindow: boolean) => {
+    (
+      fetched: any[],
+      preserveWindow: boolean,
+      paginationMeta?: { loadedFromEnd: number; fetchHasMore: boolean }
+    ) => {
       messageCacheRef.current = applyPendingUsageToMessages(
         mergeFetchedWithCache(messageCacheRef.current, fetched),
         pendingUsageByMessageIdRef.current
@@ -134,8 +145,9 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           pendingUsageByMessageIdRef.current.delete(msg.id)
         }
       }
-      loadedFromEndRef.current = fetched.length
-      fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
+      loadedFromEndRef.current = paginationMeta?.loadedFromEnd ?? fetched.length
+      fetchHasMoreRef.current =
+        paginationMeta?.fetchHasMore ?? fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
       setCompactionAnchor(resolveLatestCompactionAnchor(fetched))
 
       const start = resolveRoundWindowStart(
@@ -241,7 +253,22 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
               messageCacheRef.current,
               roundWindowStartRef.current
             )
-            ingestFetchedTail(fetched, preserveWindow)
+            const prevTotalRounds = groupMessagesIntoRounds(messageCacheRef.current).length
+            const targetVisibleRounds = preserveWindow
+              ? Math.max(CHAT_ROUNDS_PER_PAGE, prevTotalRounds - roundWindowStartRef.current)
+              : CHAT_ROUNDS_PER_PAGE
+            const enriched = await enrichCacheForRoundWindow({
+              cache: fetched,
+              loadedFromEnd: fetched.length,
+              fetchHasMore: fetched.length >= fetchLimit,
+              targetVisibleRounds,
+              fetchPage: (limit, offset) => fetchMessagesFromIpc(targetId, limit, offset),
+              pageLimit: CHAT_MESSAGE_FETCH_LIMIT
+            })
+            ingestFetchedTail(enriched.cache, preserveWindow, {
+              loadedFromEnd: enriched.loadedFromEnd,
+              fetchHasMore: enriched.fetchHasMore
+            })
 
             const latestAssistant = [...fetched].reverse().find((m) => m.role === 'assistant')
             if (
@@ -313,7 +340,20 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           const fetched = await fetchMessagesFromIpc(sessionId, CHAT_MESSAGE_FETCH_LIMIT, 0)
           if (currentSessionIdRef.current !== sessionId) return
           if (fetched) {
-            ingestFetchedTail(fetched, false)
+            const enriched = await enrichCacheForRoundWindow({
+              cache: fetched,
+              loadedFromEnd: fetched.length,
+              fetchHasMore: fetched.length >= CHAT_MESSAGE_FETCH_LIMIT,
+              targetVisibleRounds: CHAT_ROUNDS_PER_PAGE,
+              fetchPage: (limit, offset) => fetchMessagesFromIpc(sessionId, limit, offset),
+              isCurrent: () => currentSessionIdRef.current === sessionId,
+              pageLimit: CHAT_MESSAGE_FETCH_LIMIT
+            })
+            if (currentSessionIdRef.current !== sessionId) return
+            ingestFetchedTail(enriched.cache, false, {
+              loadedFromEnd: enriched.loadedFromEnd,
+              fetchHasMore: enriched.fetchHasMore
+            })
           }
         } catch (e) {
           if (currentSessionIdRef.current !== sessionId) return
@@ -431,8 +471,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
   const prevStreamingRef = useRef(isStreaming)
   useEffect(() => {
+    if (isStreaming && sessionId) {
+      streamSessionIdRef.current = sessionId
+    }
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      if (streamSessionIdRef.current !== sessionId) {
+      if (streamSessionIdRef.current && streamSessionIdRef.current !== sessionId) {
         prevStreamingRef.current = isStreaming
         return
       }
@@ -450,16 +493,36 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           if (!success || !sessionId) continue
           persistSessionCache(sessionId)
           const last = messageCacheRef.current[messageCacheRef.current.length - 1]
-          if (last?.role === 'assistant' && !knownAssistantIds.has(last.id)) {
+          if (
+            last?.role === 'assistant' &&
+            (!knownAssistantIds.has(last.id) || !isPersistedAssistantStreamInProgress(last))
+          ) {
             clearStreamBridgeForSession(sessionId)
             return
           }
         }
+        clearStreamBridgeForSession(sessionId)
       }
       void sync()
     }
     prevStreamingRef.current = isStreaming
   }, [isStreaming, sessionId, refreshLatestMessages, persistSessionCache])
+
+  useEffect(() => {
+    if (!sessionId) return
+    const onStreamFinished = (e: Event) => {
+      const detail = (e as CustomEvent<{ sessionId?: string }>).detail
+      if (!detail?.sessionId || detail.sessionId !== sessionId) return
+      void refreshLatestMessages(2).then((ok) => {
+        if (ok) {
+          persistSessionCache(sessionId)
+          clearStreamBridgeForSession(sessionId)
+        }
+      })
+    }
+    window.addEventListener('baishou:agent-stream-finished', onStreamFinished)
+    return () => window.removeEventListener('baishou:agent-stream-finished', onStreamFinished)
+  }, [sessionId, refreshLatestMessages, persistSessionCache])
 
   const {
     loadMore,

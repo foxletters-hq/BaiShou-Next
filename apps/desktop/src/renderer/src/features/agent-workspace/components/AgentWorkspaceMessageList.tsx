@@ -172,11 +172,12 @@ export const AgentWorkspaceMessageList = forwardRef<
     const el = scroll.scrollRef.current
     loadMoreLockRef.current = true
     const prevHeight = el?.scrollHeight ?? 0
+    const prevTop = el?.scrollTop ?? 0
     void onLoadMore().finally(() => {
       requestAnimationFrame(() => {
         const pane = scroll.scrollRef.current
         if (pane) {
-          pane.scrollTop = pane.scrollHeight - prevHeight
+          pane.scrollTop = pane.scrollHeight - prevHeight + prevTop
         }
         loadMoreLockRef.current = false
         syncLoadMoreVisibility()

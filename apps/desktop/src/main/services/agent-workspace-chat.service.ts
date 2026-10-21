@@ -16,7 +16,11 @@ import {
 } from '@baishou/shared'
 import type { IpcMainInvokeEvent } from 'electron'
 import i18n from 'i18next'
-import { ElectronStreamEmitter } from '../ipc/electron-stream-emitter'
+import {
+  beginMainStreamSnapshot,
+  clearMainStreamSnapshot,
+  ElectronStreamEmitter
+} from '../ipc/electron-stream-emitter'
 import {
   applySessionReasoningEffort,
   buildStreamConfig,
@@ -204,6 +208,7 @@ export async function runWorkspaceStreamChat(params: {
       }
     }
 
+    beginMainStreamSnapshot(params.sessionId)
     const emitter = new ElectronStreamEmitter(params.event)
     const agentGate = await getWorkspaceAgentGate(workspaceId)
     const knowledgeReader = createDesktopKnowledgeReader()
@@ -334,6 +339,7 @@ export async function runWorkspaceStreamChat(params: {
       await finalizeRoundCheckpoint(roundCheckpointId, folderRoot)
     }
     removeActiveWorkspaceStreamSessionId(params.sessionId)
+    clearMainStreamSnapshot(params.sessionId)
     invalidateMcpToolContextCache()
     // 正常结束排空；用户点「立即发送」打断时也排空，普通 Stop 仍保留排队。
     // claim 在外层 finally 才释放，这里等空闲再排，避免第一次点击被忙检查丢掉。

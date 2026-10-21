@@ -98,6 +98,10 @@ export function registerChatIPC() {
     return AgentChatService.stopStream(sessionId)
   })
 
+  ipcMain.handle('agent:get-active-stream', async (_, sessionId: string) => {
+    return AgentChatService.getActiveStreamSnapshot(sessionId)
+  })
+
   // ==========================================
   // API: 编辑并重新发送消息
   // ==========================================

@@ -11,6 +11,7 @@ import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.con
 import { ensureDesktopAgentGateInboxBridge } from '../agent-gate-inbox-bridge'
 import {
   ensureGlobalStreamIpcListeners,
+  hydrateSessionStreamFromMain,
   sessionListeners,
   updateSessionState,
   resetStreamDisplayBuffers,
@@ -138,6 +139,7 @@ export function useAgentStream(
     }
     sessionListeners[currentSessionId].add(forceUpdate)
     forceUpdate()
+    void hydrateSessionStreamFromMain(currentSessionId)
 
     return () => {
       if (sessionListeners[currentSessionId]) {

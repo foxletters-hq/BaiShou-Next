@@ -60,7 +60,7 @@
   padding: var(--spacing-md-tight) var(--spacing-md-tight) var(--spacing-lg);
   max-width: 22rem;
   text-align: center;
-  font-size: var(--ui-fs-sm, 12px);
+  font-size: var(--ui-fs-sm);
   line-height: 1.55;
   color: var(--text-tertiary);
 }
@@ -110,7 +110,7 @@
 
 .streamIncomplete {
   margin: 0;
-  font-size: var(--ui-fs-sm, 12px);
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-tertiary);
 }

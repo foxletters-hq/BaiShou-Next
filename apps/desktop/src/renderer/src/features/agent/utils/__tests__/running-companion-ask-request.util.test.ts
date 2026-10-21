@@ -95,6 +95,58 @@ describe('resolveCompanionAskDockRequest', () => {
       })
     ).toBeNull()
   })
+
+  it('should merge multiple=true from timeline into pendingGate when main process omitted it', () => {
+    const timeline = [
+      {
+        kind: 'tool' as const,
+        callId: 'call_1',
+        name: 'companion_ask',
+        status: 'running' as const,
+        arguments: {
+          question: '你想让我补哪一份？',
+          options: ['第34周', '第39周'],
+          multiple: true
+        }
+      }
+    ]
+    const pendingGate: AgentGateRequest = {
+      id: 'bag_1',
+      sessionId: 'sess_1',
+      vaultName: 'Personal',
+      status: AgentGateRequestStatus.Pending,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '你想让我补哪一份？',
+      options: [
+        { id: '0', label: '第34周' },
+        { id: '1', label: '第39周' }
+      ],
+      allowCustomInput: true,
+      questions: [
+        {
+          id: '0',
+          question: '你想让我补哪一份？',
+          options: [
+            { id: '0', label: '第34周' },
+            { id: '1', label: '第39周' }
+          ],
+          allowCustomInput: true
+        }
+      ],
+      metadata: {},
+      createdAt: 1
+    }
+
+    const resolved = resolveCompanionAskDockRequest({
+      pendingGate,
+      sessionId: 'sess_1',
+      timeline,
+      isStreaming: true
+    })
+    expect(resolved?.multiple).toBe(true)
+    expect(resolved?.questions?.[0]?.multiple).toBe(true)
+  })
 })
 
 describe('waitForLiveCompanionAskRequest', () => {
