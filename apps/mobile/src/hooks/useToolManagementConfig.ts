@@ -4,7 +4,8 @@ import type { ToolManagementConfig } from '@baishou/shared'
 import {
   AUTO_INJECT_TIME_TOOL_ID,
   normalizeEmojiToolConfig,
-  normalizeToolManagementConfig
+  normalizeToolManagementConfig,
+  publishPlayfulProcessStatus
 } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { publishEmojiToolConfig, subscribeEmojiToolConfig } from '../lib/emoji-tool-config.store'
@@ -12,6 +13,7 @@ import { publishEmojiToolConfig, subscribeEmojiToolConfig } from '../lib/emoji-t
 export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
   customConfigs: {},
+  playfulProcessStatus: true,
   emojiConfig: {
     enabled: false,
     frequency: 'normal',
@@ -28,6 +30,7 @@ export function mergeToolManagementConfig(
   })
   return {
     ...merged,
+    playfulProcessStatus: merged.playfulProcessStatus !== false,
     emojiConfig: normalizeEmojiToolConfig(merged.emojiConfig)
   }
 }
@@ -60,6 +63,7 @@ export function useToolManagementConfig() {
     )
     setConfig(next)
     publishEmojiToolConfig(next.emojiConfig!)
+    publishPlayfulProcessStatus(next.playfulProcessStatus !== false)
   }, [dbReady, services])
 
   useEffect(() => {
@@ -83,6 +87,7 @@ export function useToolManagementConfig() {
       const normalized = mergeToolManagementConfig(next)
       setConfig(normalized)
       publishEmojiToolConfig(normalized.emojiConfig!)
+      publishPlayfulProcessStatus(normalized.playfulProcessStatus !== false)
       if (!services || !dbReady) return
       await services.settingsManager.set('tool_management_config', normalized)
     },

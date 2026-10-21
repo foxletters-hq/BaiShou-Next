@@ -92,8 +92,8 @@ const styles = StyleSheet.create({
     borderRadius: sharedTokens.radius.sm
   },
   stickerImage: {
-    width: 280,
-    height: 280,
+    width: 220,
+    height: 220,
     maxWidth: '100%',
     borderRadius: sharedTokens.radius.md
   },

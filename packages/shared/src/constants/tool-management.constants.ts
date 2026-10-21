@@ -9,10 +9,39 @@ export const AUTO_INJECT_TIME_TOOL_ID = 'auto_inject_time'
 /** @deprecated 使用 AUTO_INJECT_TIME_TOOL_ID */
 export const AUTO_INJECT_CURRENT_TIME_TOOL_ID = AUTO_INJECT_TIME_TOOL_ID
 
-/** 与 settings 默认值一致：默认关闭 auto inject time */
+/** 与 settings 默认值一致：默认关闭 auto inject time，默认开启趣味状态文案 */
 export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
-  customConfigs: {}
+  customConfigs: {},
+  playfulProcessStatus: true
+}
+
+type PlayfulProcessStatusListener = (enabled: boolean) => void
+
+let sharedPlayfulProcessStatus = true
+const playfulProcessStatusListeners = new Set<PlayfulProcessStatusListener>()
+
+export function getSharedPlayfulProcessStatus(): boolean {
+  return sharedPlayfulProcessStatus
+}
+
+export function publishPlayfulProcessStatus(enabled: boolean | undefined): void {
+  const next = enabled !== false
+  if (sharedPlayfulProcessStatus === next) return
+  sharedPlayfulProcessStatus = next
+  for (const listener of playfulProcessStatusListeners) {
+    listener(next)
+  }
+}
+
+export function subscribePlayfulProcessStatus(
+  listener: PlayfulProcessStatusListener
+): () => void {
+  playfulProcessStatusListeners.add(listener)
+  listener(sharedPlayfulProcessStatus)
+  return () => {
+    playfulProcessStatusListeners.delete(listener)
+  }
 }
 
 export function normalizeToolManagementConfig(config: ToolManagementConfig): ToolManagementConfig {
@@ -34,7 +63,10 @@ export function normalizeToolManagementConfig(config: ToolManagementConfig): Too
     delete customConfigs[LEGACY_AUTO_INJECT_TIME_TOOL_ID]
   }
 
-  return { ...config, disabledToolIds, customConfigs }
+  const playfulProcessStatus = config.playfulProcessStatus !== false
+  publishPlayfulProcessStatus(playfulProcessStatus)
+
+  return { ...config, disabledToolIds, customConfigs, playfulProcessStatus }
 }
 
 function isAutoInjectTimeDisabled(disabledToolIds: string[]): boolean {

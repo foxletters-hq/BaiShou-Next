@@ -24,7 +24,7 @@ describe('ChatBubble sticker chrome', () => {
       css.indexOf('.attStickerPlaceholder {')
     )
     expect(stickerRule).toContain('object-fit: contain')
-    expect(stickerRule).toContain('max-width: min(320px, 100%)')
+    expect(stickerRule).toContain('max-width: min(240px, 100%)')
     expect(stickerRule).not.toContain('object-fit: cover')
     expect(css).toContain('.attachmentsWrapAfter')
   })
