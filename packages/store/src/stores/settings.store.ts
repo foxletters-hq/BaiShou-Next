@@ -9,7 +9,8 @@ import {
   withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type EmojiToolConfig,
-  EMOJI_TOOL_CONFIG_UPDATED_EVENT
+  EMOJI_TOOL_CONFIG_UPDATED_EVENT,
+  publishPlayfulProcessStatus
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
 import {
@@ -38,6 +39,7 @@ export const useSettingsStore = create<SettingsStore>()(
         locale: 'zh',
         themeColor: '#5BA8F5',
         fontSizeLevel: UI_FONT_SIZE_LEVEL_DEFAULT,
+        showTopBarVaultSwitcher: false,
 
         providers: [],
         globalModels: null,
@@ -60,6 +62,8 @@ export const useSettingsStore = create<SettingsStore>()(
         toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
         setThemeColor: (themeColor) => set({ themeColor }),
         setFontSizeLevel: (level) => set({ fontSizeLevel: normalizeUiFontSizeLevel(level) }),
+        setShowTopBarVaultSwitcher: (showTopBarVaultSwitcher) =>
+          set({ showTopBarVaultSwitcher: Boolean(showTopBarVaultSwitcher) }),
         setLocale: (locale) => {
           set({ locale })
           const resolvedUi =
@@ -292,6 +296,7 @@ export const useSettingsStore = create<SettingsStore>()(
         },
 
         setToolManagementConfig: async (config) => {
+          publishPlayfulProcessStatus(config.playfulProcessStatus !== false)
           set({ toolManagementConfig: config })
           if (typeof window !== 'undefined' && (window as any).api?.settings) {
             await (window as any).api.settings.setToolManagementConfig(config)
@@ -348,7 +353,8 @@ export const useSettingsStore = create<SettingsStore>()(
         useGlassmorphism: state.useGlassmorphism,
         locale: state.locale,
         themeColor: state.themeColor,
-        fontSizeLevel: normalizeUiFontSizeLevel(state.fontSizeLevel)
+        fontSizeLevel: normalizeUiFontSizeLevel(state.fontSizeLevel),
+        showTopBarVaultSwitcher: Boolean(state.showTopBarVaultSwitcher)
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<SettingsState>
@@ -357,7 +363,11 @@ export const useSettingsStore = create<SettingsStore>()(
           ...p,
           fontSizeLevel: normalizeUiFontSizeLevel(
             p.fontSizeLevel !== undefined ? p.fontSizeLevel : current.fontSizeLevel
-          )
+          ),
+          showTopBarVaultSwitcher:
+            typeof p.showTopBarVaultSwitcher === 'boolean'
+              ? p.showTopBarVaultSwitcher
+              : current.showTopBarVaultSwitcher
         }
       },
       migrate: (persistedState) => persistedState as any

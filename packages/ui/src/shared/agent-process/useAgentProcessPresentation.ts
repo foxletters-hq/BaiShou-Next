@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatAgentProcessTitle, type AgentProcessMetaOptions } from './agent-process.util'
+import {
+  getSharedPlayfulProcessStatus,
+  subscribePlayfulProcessStatus
+} from '@baishou/shared'
+import {
+  AGENT_PROCESS_ACTIVE_PHRASES,
+  AGENT_PROCESS_COMPLETED_PHRASES,
+  AGENT_PROCESS_ROTATE_INTERVAL_MS,
+  formatAgentProcessTitle,
+  pickNextAgentProcessPhraseIndex,
+  type AgentProcessMetaOptions
+} from './agent-process.util'
 
 export interface UseAgentProcessPresentationOptions extends Omit<AgentProcessMetaOptions, 't'> {
   /** 初始展开状态覆盖（若未指定则由智能状态机决定） */
@@ -17,12 +28,37 @@ export function useAgentProcessPresentation(options: UseAgentProcessPresentation
     hasAnswerText = false,
     activeToolName = null,
     isThinkLoading = false,
+    playfulStatus,
+    phraseIndex,
     defaultExpanded
   } = options
 
   const prevHasAnswerTextRef = useRef(hasAnswerText)
   const prevIsStreamingRef = useRef(isStreaming)
   const userTouchedRef = useRef(false)
+
+  const [sharedPlayfulStatus, setSharedPlayfulStatus] = useState(getSharedPlayfulProcessStatus)
+  useEffect(() => subscribePlayfulProcessStatus(setSharedPlayfulStatus), [])
+
+  const effectivePlayfulStatus = playfulStatus ?? sharedPlayfulStatus
+  const isActiveProcess = Boolean(isStreaming && !hasAnswerText)
+
+  const [activePhraseIndex, setActivePhraseIndex] = useState(() =>
+    pickNextAgentProcessPhraseIndex(AGENT_PROCESS_ACTIVE_PHRASES.length)
+  )
+  const [completedPhraseIndex] = useState(() =>
+    pickNextAgentProcessPhraseIndex(AGENT_PROCESS_COMPLETED_PHRASES.length)
+  )
+
+  useEffect(() => {
+    if (!isActiveProcess || !effectivePlayfulStatus) return
+    const timer = setInterval(() => {
+      setActivePhraseIndex((prev) =>
+        pickNextAgentProcessPhraseIndex(AGENT_PROCESS_ACTIVE_PHRASES.length, prev)
+      )
+    }, AGENT_PROCESS_ROTATE_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [isActiveProcess, effectivePlayfulStatus])
 
   // 初始状态：如果已有正文或者不在流式中，默认收起；若在流式中且尚无正文，默认展开
   const computeInitialExpanded = () => {
@@ -60,6 +96,9 @@ export function useAgentProcessPresentation(options: UseAgentProcessPresentation
     }
   }, [hasAnswerText, isStreaming])
 
+  const effectivePhraseIndex =
+    phraseIndex ?? (isActiveProcess ? activePhraseIndex : completedPhraseIndex)
+
   const title = formatAgentProcessTitle({
     hasReasoning,
     completedToolsCount,
@@ -68,6 +107,8 @@ export function useAgentProcessPresentation(options: UseAgentProcessPresentation
     hasAnswerText,
     activeToolName,
     isThinkLoading,
+    playfulStatus: effectivePlayfulStatus,
+    phraseIndex: effectivePhraseIndex,
     t: (key: string, fallback?: string, options?: Record<string, unknown>) =>
       String(fallback !== undefined ? t(key, fallback, options as any) : t(key, options as any))
   })

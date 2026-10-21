@@ -4,12 +4,15 @@ import {
   AGENT_TOOL_CATEGORY_ORDER,
   AgentGateEffect,
   isEnablingAutoInjectTime,
-  normalizeToolManagementConfig
+  normalizeToolManagementConfig,
+  publishPlayfulProcessStatus
 } from '@baishou/shared'
 import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { Smile } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
+import { Switch } from '../Switch'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import { AgentToolCategoryIcon } from '../icons/agent-tools-icons'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -111,10 +114,16 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   }, [allTools])
 
   const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
+  const playfulEnabled = normalizedConfig.playfulProcessStatus !== false
   const visibleCategoryKeys = AGENT_TOOL_CATEGORY_ORDER.filter(
     (catKey) => (groupedTools[catKey]?.length ?? 0) > 0
   )
   const lastCategoryKey = visibleCategoryKeys[visibleCategoryKeys.length - 1]
+
+  const togglePlayfulProcessStatus = (next: boolean) => {
+    publishPlayfulProcessStatus(next)
+    onChange({ ...normalizedConfig, playfulProcessStatus: next })
+  }
 
   const content = (
     <View
@@ -140,6 +149,37 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           </Text>
         </View>
         <View style={styles.categoryList}>
+          <View
+            style={[
+              styles.interactionRow,
+              {
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: colors.borderSubtle
+              }
+            ]}
+          >
+            <View style={styles.interactionInfo}>
+              <View style={styles.interactionTitleRow}>
+                <Text style={[styles.interactionTitle, { color: colors.textPrimary }]}>
+                  {t('agent.tools.playful_process_status', '趣味思考状态')}
+                </Text>
+                <HelpTooltip
+                  content={t(
+                    'agent.tools.playful_process_status_help',
+                    '开启后，伙伴在思考与调用工具时，工作过程顶部将轮播「伙伴正在喝茶…」等趣味日常状态；关闭后恢复「深度思考中…」等经典提示。'
+                  )}
+                  size={16}
+                />
+              </View>
+              <Text style={[styles.interactionMeta, { color: colors.textTertiary }]}>
+                {t(
+                  'agent.tools.playful_process_status_desc',
+                  '在工作过程顶部展示伙伴的趣味日常动态'
+                )}
+              </Text>
+            </View>
+            <Switch value={playfulEnabled} onValueChange={togglePlayfulProcessStatus} />
+          </View>
           <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
         </View>
       </View>
@@ -243,5 +283,28 @@ const styles = StyleSheet.create({
   },
   categoryList: {
     backgroundColor: 'transparent'
+  },
+  interactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.smPlus
+  },
+  interactionInfo: {
+    flex: 1,
+    gap: sharedTokens.spacing.xxs
+  },
+  interactionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  interactionTitle: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
+  },
+  interactionMeta: {
+    fontSize: mobileTypography.caption.fontSize
   }
 })

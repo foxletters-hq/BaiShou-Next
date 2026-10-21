@@ -20,6 +20,8 @@ export interface SettingsState {
   themeColor: string
   /** 阅读字号档位：0=小 … 1=默认 … 5=大 */
   fontSizeLevel: number
+  /** 是否在顶部窗口栏显示工作空间切换（默认 false） */
+  showTopBarVaultSwitcher: boolean
 
   providers: AIProviderConfig[]
   globalModels: GlobalModelsConfig | null
@@ -45,6 +47,7 @@ export interface SettingsActions {
   setLocale: (locale: string) => void
   setThemeColor: (color: string) => void
   setFontSizeLevel: (level: number) => void
+  setShowTopBarVaultSwitcher: (show: boolean) => void
 
   loadConfig: (options?: { force?: boolean }) => Promise<void>
   /** 强制从主进程重新拉取指定配置键（忽略已加载缓存） */

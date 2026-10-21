@@ -2,6 +2,7 @@ import {
   AUTO_INJECT_TIME_TOOL_ID,
   normalizeEmojiToolConfig,
   normalizeReasoningEffortBySlot,
+  publishPlayfulProcessStatus,
   type AgentBehaviorConfig,
   type AIProviderConfig,
   type GlobalModelsConfig,
@@ -145,6 +146,7 @@ export function getDefaultToolManagementConfig(): ToolManagementConfig {
   return {
     disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
     customConfigs: {},
+    playfulProcessStatus: true,
     emojiConfig: {
       enabled: false,
       frequency: 'normal',
@@ -157,7 +159,8 @@ function getDefaultMcpServerConfig(): McpServerConfig {
   return {
     mcpEnabled: false,
     mcpPort: 31004,
-    mcpAuthEnabled: false
+    mcpAuthEnabled: false,
+    mcpAutoApproveTools: false
   }
 }
 
@@ -263,10 +266,13 @@ export function normalizeSettingsConfigKey(
     case 'toolManagementConfig': {
       const toolManagementConfig = raw as ToolManagementConfig | null
       const defaults = getDefaultToolManagementConfig()
+      const playfulProcessStatus = toolManagementConfig?.playfulProcessStatus !== false
+      publishPlayfulProcessStatus(playfulProcessStatus)
       return {
         toolManagementConfig: {
           ...defaults,
           ...toolManagementConfig,
+          playfulProcessStatus,
           emojiConfig: normalizeEmojiToolConfig({
             ...defaults.emojiConfig,
             ...(toolManagementConfig?.emojiConfig ?? {})
