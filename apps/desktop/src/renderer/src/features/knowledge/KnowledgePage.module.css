@@ -784,16 +784,11 @@
   box-sizing: border-box;
 }
 
-.detailTopLeft,
-.detailTopRight {
+.detailTopLeft {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs-plus);
   min-width: 0;
-}
-
-.detailTopRight {
-  justify-content: flex-end;
 }
 
 .detailTabBar {
@@ -1623,18 +1618,14 @@
 @media (max-width: 1100px) {
   .detailTopBar {
     height: auto;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'left right'
-      'tabs tabs';
+      'left'
+      'tabs';
   }
 
   .detailTopLeft {
     grid-area: left;
-  }
-
-  .detailTopRight {
-    grid-area: right;
   }
 
   .detailTabBar {
@@ -2768,28 +2759,6 @@
   border-radius: inherit;
   background: var(--color-primary);
   transition: width var(--duration-swift) ease;
-}
-
-.organizeCompact {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.organizeSpinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
-  border-top-color: var(--color-primary);
-  border-radius: var(--radius-full);
-  animation: knowledgeOrganizeSpin 1s linear infinite;
-}
-
-@keyframes knowledgeOrganizeSpin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .organizePhaseList {

@@ -240,7 +240,8 @@ export async function buildAgentSessionToolsAndPrompt(input: {
           })()
         : undefined,
     knowledgeMount: {
-      notebookIds: workspaceOptions?.notebookIds ?? []
+      notebookIds: workspaceOptions?.notebookIds ?? [],
+      notebookNames: workspaceOptions?.notebookNames
     },
     skillsInstruction
   })

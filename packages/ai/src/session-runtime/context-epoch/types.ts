@@ -31,6 +31,7 @@ export interface ContextEpochPrepareInput {
     'runtime/time'?: string
     'runtime/vault'?: string
     'workspace/env'?: string
+    'knowledge/mount'?: string
     'skills/catalog'?: string
   }
   workspaceEnv?: WorkspaceEnvInfo

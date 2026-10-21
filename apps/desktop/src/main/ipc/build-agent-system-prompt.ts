@@ -1,4 +1,4 @@
-import { buildSystemPromptForSession } from '@baishou/ai'
+import { buildSystemPromptForSession, filterSkillsCatalogByGate } from '@baishou/ai'
 import {
   getAgentManagers,
   toolRegistry,
@@ -8,8 +8,21 @@ import {
   buildStreamConfig
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
-import { getAgentGate } from '../services/agent-gate.service'
-import { resolveWebSearchEnabled } from '@baishou/shared'
+import { buildCompanionStreamHost } from './companion-stream-host'
+import { getWorkspaceAgentGate } from '../services/agent-gate.service'
+import { getWorkspaceSessionBinding } from '../services/agent-workspace-session.store'
+import { resolveOrCreateWorkspaceIdByFolder } from '../services/agent-workspace-registry.store'
+import {
+  getWorkspaceGateConfig,
+  getWorkspacePersonalMemoryRead,
+  getWorkspaceToolManagement
+} from '../services/agent-workspace-policy.store'
+import { resolveWorkspaceGitMetaLight } from '../services/workspace-chat-git-meta'
+import { listAgentSkillsCatalogForWorkspace } from '../services/agent-skills.service'
+import { readSessionMountedNotebookIds } from '../services/session-mounted-notebooks'
+import { createDesktopSkillsReader, createDesktopSkillsWriter } from '../services/desktop-skills-writer'
+import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
+import { AgentGateProfileId, resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 async function resolveSearchModeEnabled(explicit?: boolean): Promise<boolean> {
@@ -35,6 +48,94 @@ export async function buildAgentSystemPrompt(
   const session = await realSessionRepo.getSessionById(sessionId)
   const modelId = session?.modelId || 'deepseek-chat'
   const { desktopExtraVercelToolsFactory } = await import('../services/mcp-client-runtime')
+  const binding = await getWorkspaceSessionBinding(sessionId)
+
+  if (binding?.folderRoot) {
+    const folderRoot = binding.folderRoot
+    const workspaceId = await resolveOrCreateWorkspaceIdByFolder(folderRoot)
+    const [workspaceGateConfig, workspaceTools, personalMemoryReadEnabled, agentGate, notebookIds] =
+      await Promise.all([
+        getWorkspaceGateConfig(workspaceId),
+        getWorkspaceToolManagement(workspaceId),
+        getWorkspacePersonalMemoryRead(workspaceId),
+        getWorkspaceAgentGate(workspaceId),
+        readSessionMountedNotebookIds(sessionId)
+      ])
+
+    let gitMeta: {
+      isGitRepo: boolean
+      gitBranch?: string | null
+      gitChangesCount?: number | null
+    } = { isGitRepo: false }
+    try {
+      gitMeta = await resolveWorkspaceGitMetaLight(folderRoot)
+    } catch {
+      gitMeta = { isGitRepo: false }
+    }
+
+    let skillsCatalog: Array<{ name: string; description?: string }> | undefined
+    try {
+      skillsCatalog = filterSkillsCatalogByGate(
+        await listAgentSkillsCatalogForWorkspace(folderRoot),
+        { agentGate, profileId: AgentGateProfileId.Workspace }
+      )
+    } catch {
+      skillsCatalog = undefined
+    }
+
+    const { createDesktopKnowledgeGraphReader } =
+      await import('../services/desktop-knowledge-graph-reader')
+    const { getRawDataSourceManager, syncGraphPendingIndex } =
+      await import('../services/raw-data-source.runtime')
+
+    return buildSystemPromptForSession({
+      sessionId,
+      sessionRepo: realSessionRepo,
+      assistantRepo: {
+        findById: async (id) => (await realAssistantRepo.findById(id)) ?? null
+      },
+      userConfig: {
+        ...(userConfig as Record<string, unknown>),
+        disabledToolIds: workspaceTools.disabledToolIds,
+        baishou_agent_gate_config: workspaceGateConfig,
+        workspaceId,
+        personalMemoryReadEnabled
+      },
+      provider,
+      modelId,
+      systemModels: systemModels as any,
+      toolRegistry,
+      diarySearcher: createDiarySearcher(),
+      webSearchResultFetcher: createWebSearchResultFetcher(),
+      fetchSearchPage: createFetchSearchPage(),
+      rawDataSourceManager: getRawDataSourceManager(),
+      syncGraphPendingIndex,
+      knowledgeReader: createDesktopKnowledgeReader(),
+      knowledgeGraphReader: createDesktopKnowledgeGraphReader(),
+      skillsWriter: createDesktopSkillsWriter({ folderRoot }),
+      skillsReader: createDesktopSkillsReader({ folderRoot }),
+      skillsCatalog,
+      extraVercelToolsFactory: desktopExtraVercelToolsFactory,
+      agentGate,
+      gateProfile: AgentGateProfileId.Workspace,
+      workspace: {
+        folderRoot,
+        sessionKind: 'workspace',
+        notebookIds,
+        env: {
+          platform: process.platform,
+          isGitRepo: gitMeta.isGitRepo,
+          gitBranch: gitMeta.gitBranch,
+          gitChangesCount: gitMeta.gitChangesCount
+        }
+      }
+    })
+  }
+
+  const companionHost = await buildCompanionStreamHost({
+    sessionId,
+    systemModels
+  })
 
   return buildSystemPromptForSession({
     sessionId,
@@ -50,7 +151,20 @@ export async function buildAgentSystemPrompt(
     diarySearcher: createDiarySearcher(),
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
+    rawDataSourceManager: companionHost.rawDataSourceManager,
+    syncGraphPendingIndex: companionHost.syncGraphPendingIndex,
+    deleteGraphRecord: companionHost.deleteGraphRecord,
+    graphReader: companionHost.graphReader,
+    graphNodeLookup: companionHost.graphNodeLookup,
+    graphEdgeLookup: companionHost.graphEdgeLookup,
+    knowledgeReader: companionHost.knowledgeReader,
+    knowledgeGraphReader: companionHost.knowledgeGraphReader,
+    skillsWriter: companionHost.skillsWriter,
+    skillsReader: companionHost.skillsReader,
+    skillsCatalog: companionHost.skillsCatalog,
     extraVercelToolsFactory: desktopExtraVercelToolsFactory,
-    agentGate: await getAgentGate()
+    agentGate: companionHost.agentGate as any,
+    resolveVaultDisplayName: companionHost.resolveVaultDisplayName,
+    workspace: companionHost.workspace
   })
 }

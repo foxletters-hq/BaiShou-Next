@@ -34,7 +34,15 @@ const rows: NotebookOpenGuideRow[] = [
 
 describe('NotebookStatusPanel', () => {
   it('should render model cards and stacked manage buttons without a start-chat action', () => {
-    render(<NotebookStatusPanel rows={rows} onOpenSettings={vi.fn()} onOpenDataManage={vi.fn()} />)
+    render(
+      <NotebookStatusPanel
+        rows={rows}
+        onOpenSettings={vi.fn()}
+        onOpenDataManage={vi.fn()}
+        onOpenOrganize={vi.fn()}
+        onDeleteNotebook={vi.fn()}
+      />
+    )
 
     expect(screen.getByLabelText('当前模型与抽取状态')).toBeInTheDocument()
     expect(screen.getByText('嵌入模型')).toBeInTheDocument()
@@ -43,6 +51,7 @@ describe('NotebookStatusPanel', () => {
     expect(document.querySelector('img[src="icon://graph"]')).toBeTruthy()
     expect(screen.getByRole('button', { name: '笔记本管理' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '数据管理' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '删除笔记本' })).toBeInTheDocument()
     expect(screen.queryByText('对话模型')).not.toBeInTheDocument()
     expect(screen.queryByText('用这本笔记本开始对话')).not.toBeInTheDocument()
   })
@@ -56,6 +65,8 @@ describe('NotebookStatusPanel', () => {
         rows={rows}
         onOpenSettings={vi.fn()}
         onOpenDataManage={vi.fn()}
+        onOpenOrganize={vi.fn()}
+        onDeleteNotebook={vi.fn()}
         onPickRow={onPickRow}
       />
     )
@@ -74,6 +85,8 @@ describe('NotebookStatusPanel', () => {
         rows={rows}
         onOpenSettings={vi.fn()}
         onOpenDataManage={vi.fn()}
+        onOpenOrganize={vi.fn()}
+        onDeleteNotebook={vi.fn()}
         onPickRow={onPickRow}
       />
     )
@@ -91,10 +104,34 @@ describe('NotebookStatusPanel', () => {
         rows={rows}
         onOpenSettings={vi.fn()}
         onOpenDataManage={onOpenDataManage}
+        onOpenOrganize={vi.fn()}
+        onDeleteNotebook={vi.fn()}
       />
     )
 
     await user.click(screen.getByRole('button', { name: '数据管理' }))
     expect(onOpenDataManage).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show the organize status card after sources and open its details', async () => {
+    const user = userEvent.setup()
+    const onOpenOrganize = vi.fn()
+
+    render(
+      <NotebookStatusPanel
+        rows={rows}
+        organizeStatus={{ label: '提取中', running: true, failed: false }}
+        onOpenSettings={vi.fn()}
+        onOpenDataManage={vi.fn()}
+        onOpenOrganize={onOpenOrganize}
+        onDeleteNotebook={vi.fn()}
+      />
+    )
+
+    const card = screen.getByRole('button', { name: '整理状态 提取中' })
+    const sourceCard = screen.getByText('来源').closest('div')
+    expect(card.previousElementSibling).toBe(sourceCard)
+    await user.click(card)
+    expect(onOpenOrganize).toHaveBeenCalledTimes(1)
   })
 })

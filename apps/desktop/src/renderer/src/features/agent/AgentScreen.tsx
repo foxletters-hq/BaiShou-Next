@@ -336,6 +336,8 @@ export const AgentScreen: React.FC = () => {
             sessionId={flow.sessionId}
             assistantId={flow.currentAssistant?.id}
             scope="companion"
+            refreshToken={notebookMountOpen}
+            className={styles.mountHintTight}
             onOpen={() => setNotebookMountOpen(true)}
           />
           <ComposerRuntimeQueueBar

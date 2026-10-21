@@ -8,7 +8,13 @@ import type {
   ContextEpochStore
 } from './types'
 
-const SOURCE_ORDER = ['runtime/time', 'runtime/vault', 'workspace/env', 'skills/catalog'] as const
+const SOURCE_ORDER = [
+  'runtime/time',
+  'runtime/vault',
+  'workspace/env',
+  'knowledge/mount',
+  'skills/catalog'
+] as const
 
 export function fingerprint(content: string): string {
   let hash = 0
@@ -23,6 +29,7 @@ function stripVolatileSections(full: string): string {
   return full
     .replace(/<runtime_context>[\s\S]*?<\/runtime_context>\s*/g, '')
     .replace(/<workspace_env>[\s\S]*?<\/workspace_env>\s*/g, '')
+    .replace(/<knowledge_mount>[\s\S]*?<\/knowledge_mount>\s*/g, '')
     .replace(/<skills_catalog>[\s\S]*?<\/skills_catalog>\s*/g, '')
     .replace(/<conversation_time>[\s\S]*?<\/conversation_time>\s*/g, '')
     .replace(/\n{3,}/g, '\n\n')
@@ -82,9 +89,11 @@ function composeSystem(
     const tag =
       id === 'workspace/env'
         ? 'workspace_env'
-        : id === 'skills/catalog'
-          ? 'skills_catalog'
-          : 'system_update'
+        : id === 'knowledge/mount'
+          ? 'knowledge_mount'
+          : id === 'skills/catalog'
+            ? 'skills_catalog'
+            : 'system_update'
     parts.push(`<${tag}>\n${snap.content}\n</${tag}>`)
   }
   return parts.join('\n\n')
@@ -169,7 +178,10 @@ export class ContextEpoch {
     }
 
     const nextBaseline = existing?.baseline?.trim()
-      ? existing.baseline
+      ? existing.baseline.includes('<knowledge_mount')
+        ? // 兼容旧版 baseline：历史上 knowledge_mount 被误当成稳定段，需要在这里剥离
+          stripVolatileSections(existing.baseline)
+        : existing.baseline
       : stripVolatileSections(input.fullSystemPrompt)
 
     const isNewEpoch = !existing

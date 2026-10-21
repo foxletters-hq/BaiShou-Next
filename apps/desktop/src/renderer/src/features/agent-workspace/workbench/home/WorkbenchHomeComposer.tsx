@@ -90,10 +90,8 @@ function securityModeLabel(
     case 'full_access':
       return t('settings.agent_security_full_access', '完全访问')
     case 'allow_list':
-      return t('settings.agent_security_allow_list', '白名单')
-    case 'auto_review':
     default:
-      return t('settings.agent_security_auto_review', '自动审核')
+      return t('settings.agent_security_allow_list', '白名单')
   }
 }
 
@@ -212,7 +210,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   }, [onOpenFolder, onWorkspaceChange, t, workspaceId, workspaceOptions])
 
   const securityMenuItems = useMemo((): ContextMenuItem[] => {
-    const modes: AgentWorkspaceSecurityMode[] = ['full_access', 'auto_review', 'allow_list']
+    const modes: AgentWorkspaceSecurityMode[] = ['full_access', 'allow_list']
     const items: ContextMenuItem[] = modes.map((mode) => ({
       label: securityModeLabel(mode, t),
       onClick: () => onSecurityModeChange(mode)
@@ -285,6 +283,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
       <KnowledgeMountHint
         assistantId={currentAssistant?.id}
         scope="workbench"
+        refreshToken={notebookMountOpen}
         onOpen={() => setNotebookMountOpen(true)}
       />
       <InputBar

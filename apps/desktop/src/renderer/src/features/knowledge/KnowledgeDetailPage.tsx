@@ -12,6 +12,7 @@ import { NotebookStatusPanel } from './NotebookStatusPanel'
 import { NotebookGraphPane } from './NotebookGraphPane'
 import { KnowledgeSourcesColumn } from './KnowledgeSourceCards'
 import { KnowledgeDetailJobBanner } from './KnowledgeDetailJobBanner'
+import { knowledgeOrganizeCompactStatus } from './knowledge-organize-compact.util'
 import { KnowledgeDetailSettingsDialog } from './KnowledgeDetailSettingsDialog'
 import { KnowledgeDetailImportDialogs } from './KnowledgeDetailImportDialogs'
 import { KnowledgeDetailHostDialogs } from './KnowledgeDetailHostDialogs'
@@ -107,6 +108,10 @@ export const KnowledgeDetailPage: React.FC = () => {
     navigate('/agent-workspace/knowledge')
   }, [navigate])
 
+  const organizeStatus = detail.jobProgress.visible
+    ? knowledgeOrganizeCompactStatus(t, detail.jobProgress)
+    : null
+
   useEffect(() => {
     if (settingsWasOpenRef.current && !showSettings) closePicker()
     settingsWasOpenRef.current = showSettings
@@ -156,11 +161,6 @@ export const KnowledgeDetailPage: React.FC = () => {
             </h1>
           </div>
           <KnowledgeNotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className={styles.detailTopRight}>
-            <Button type="button" disabled={busy} onClick={() => setDeleteOpen(true)}>
-              {t('knowledge.delete_notebook', '删除笔记本')}
-            </Button>
-          </div>
         </header>
 
         <KnowledgeDetailJobBanner
@@ -196,11 +196,14 @@ export const KnowledgeDetailPage: React.FC = () => {
             <NotebookStatusPanel
               rows={detail.statusRows}
               busy={busy}
+              organizeStatus={organizeStatus}
               onOpenSettings={() => {
                 closePicker()
                 setShowSettings(true)
               }}
               onOpenDataManage={() => setDataManageOpen(true)}
+              onOpenOrganize={() => setOrganizeOpen(true)}
+              onDeleteNotebook={() => setDeleteOpen(true)}
               onPickRow={pickStatusRow}
             />
             <KnowledgeSourcesColumn

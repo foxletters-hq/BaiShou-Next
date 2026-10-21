@@ -85,6 +85,8 @@ export interface StreamChatOptions {
     sessionKind?: AgentSessionKind
     /** 会话挂载的知识库笔记本（最多 3 本） */
     notebookIds?: string[]
+    /** notebookId → 显示名，供 system prompt 展示可读名称 */
+    notebookNames?: Record<string, string>
     /** 工作区身份，供 Gate scope / 观测 */
     workspaceId?: string
     /** 注入 system <workspace_env> 的元数据 */
