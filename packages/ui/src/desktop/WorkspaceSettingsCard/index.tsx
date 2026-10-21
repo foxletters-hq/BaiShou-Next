@@ -5,6 +5,7 @@ import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
 import { Button } from '../Button/Button'
+import { Switch } from '../Switch/Switch'
 import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 import { pickRecentVaults } from './workspace-settings.utils'
 import { validateWorkspaceName } from './workspace-name.validation'
@@ -40,6 +41,8 @@ export interface WorkspaceSettingsCardProps {
   embedded?: boolean
   isLast?: boolean
   onManageWorkspace?: () => void
+  showTopBarSwitcher?: boolean
+  onShowTopBarSwitcherChange?: (show: boolean) => void
 }
 
 export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
@@ -50,7 +53,9 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   onCreate,
   embedded = false,
   isLast = false,
-  onManageWorkspace
+  onManageWorkspace,
+  showTopBarSwitcher = false,
+  onShowTopBarSwitcherChange
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -156,6 +161,27 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
           {t('workspace.manage', '管理工作空间')}
         </Button>
       </div>
+
+      {onShowTopBarSwitcherChange ? (
+        <div className={styles.workspaceToggleCard}>
+          <div className={styles.workspaceToggleInfo}>
+            <span className="settings-list-tile-title">
+              {t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+            </span>
+            <span className="settings-list-tile-subtitle">
+              {t(
+                'workspace.show_topbar_switcher_desc',
+                '开启后，可在顶部窗口栏快速切换当前工作空间。'
+              )}
+            </span>
+          </div>
+          <Switch
+            checked={Boolean(showTopBarSwitcher)}
+            aria-label={t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+            onChange={(e) => onShowTopBarSwitcherChange(e.target.checked)}
+          />
+        </div>
+      ) : null}
 
       {recentVaults.length > 0 ? (
         <>

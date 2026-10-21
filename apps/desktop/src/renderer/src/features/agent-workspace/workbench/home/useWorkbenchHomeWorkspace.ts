@@ -48,7 +48,7 @@ export function useWorkbenchHomeWorkspace({
   const { sessions, reloadSessions, pinSession } = useWorkspaceSessions()
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
-  const [securityMode, setSecurityMode] = useState<AgentWorkspaceSecurityMode>('auto_review')
+  const [securityMode, setSecurityMode] = useState<AgentWorkspaceSecurityMode>('allow_list')
   const [gateConfig, setGateConfig] = useState<BaishouAgentGateConfig | null>(null)
   const [sending, setSending] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -119,16 +119,13 @@ export function useWorkbenchHomeWorkspace({
   const selectedWorkspace = sortedWorkspaces.find((ws) => ws.id === selectedWorkspaceId) ?? null
 
   useEffect(() => {
-    if (!selectedWorkspaceId) {
-      setGateConfig(null)
-      return
-    }
+    const targetWorkspaceId = selectedWorkspaceId || 'global'
     let cancelled = false
     const loadGate = async () => {
       try {
         const config = await window.api.settings.getBaishouAgentGateConfig({
           kind: 'workspace',
-          workspaceId: selectedWorkspaceId
+          workspaceId: targetWorkspaceId
         })
         if (cancelled) return
         setGateConfig(config)
@@ -138,8 +135,13 @@ export function useWorkbenchHomeWorkspace({
       }
     }
     void loadGate()
+    const unsubscribe = window.api.agentGate?.onAllowlistChanged?.((_allowlist, scope) => {
+      if (scope && scope.kind !== 'workspace') return
+      void loadGate()
+    })
     return () => {
       cancelled = true
+      unsubscribe?.()
     }
   }, [selectedWorkspaceId])
 
@@ -361,12 +363,10 @@ export function useWorkbenchHomeWorkspace({
         await selectWorkspace(workspace.id)
         setFolderRoot(workspace.folderRoot)
 
-        const cachedGate =
-          !createdScratch && selectedWorkspaceId === workspace.id ? gateConfig : null
         const saved = await persistSecurityMode({
           workspaceId: workspace.id,
           mode: securityMode,
-          currentGate: cachedGate
+          currentGate: null
         })
         setGateConfig(saved)
 

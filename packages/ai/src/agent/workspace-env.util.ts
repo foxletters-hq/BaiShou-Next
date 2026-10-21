@@ -17,7 +17,6 @@ export interface WorkspaceEnvInfo {
 export function buildWorkspaceEnvLines(env: WorkspaceEnvInfo): string[] {
   const lines: string[] = [
     `Working directory: ${env.folderRoot}`,
-    `Workspace root folder: ${env.folderRoot}`,
     `Platform: ${env.platform}`,
     ...(env.commandRuntimeLabel
       ? [

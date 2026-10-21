@@ -41,18 +41,29 @@ function clampTimeoutMs(value: number | undefined): number {
   return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.trunc(value)))
 }
 
-function resolveRunCwd(folderRoot: string, workdir: string | undefined): string {
+function resolveRunCwd(
+  folderRoot: string,
+  workdir: string | undefined,
+  allowExternal = false
+): string {
   if (workdir == null || workdir.trim() === '') {
     return resolve(folderRoot)
   }
 
   const trimmed = workdir.trim()
+  if (trimmed.includes('\0')) {
+    throw new WorkspacePathError('Invalid path')
+  }
   if (/^(?:[a-zA-Z]:[\\/]|\\\\|\/)/.test(trimmed)) {
     const abs = resolve(trimmed)
-    if (!isPathInsideWorkspaceRoot(folderRoot, abs)) {
+    if (!allowExternal && !isPathInsideWorkspaceRoot(folderRoot, abs)) {
       throw new WorkspacePathError('workdir must be inside the workspace root')
     }
     return abs
+  }
+
+  if (allowExternal) {
+    return resolve(folderRoot, trimmed)
   }
 
   return resolveWorkspacePath(folderRoot, normalizeWorkspaceRelativePath(trimmed))
@@ -101,7 +112,7 @@ export class WorkspaceRunTool extends AgentTool<typeof workspaceRunParams> {
         return 'Error: command is required'
       }
 
-      const cwd = resolveRunCwd(folderRoot, args.workdir)
+      const cwd = resolveRunCwd(folderRoot, args.workdir, Boolean(context.agentGate))
       const timeoutMs = clampTimeoutMs(args.timeout_ms)
       const runtime = detectProcessCommandRuntime()
       const result = await runHostProcess({

@@ -124,4 +124,44 @@ describe('scanWorkspaceRunCommand', () => {
     })
     expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
   })
+
+  it('detects cd ../.. stepping outside workspace root as external_path', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'cd .. && git status',
+      folderRoot: ROOT
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
+    expect(result.prefixPattern).toBe('git status *')
+  })
+
+  it('keeps cd into subfolder and back inside workspace as workspace_path', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'cd src && cd .. && pnpm test',
+      folderRoot: ROOT
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(false)
+    expect(result.prefixPatterns).toEqual(['pnpm test *'])
+  })
+
+  it('detects relative parent traversal arguments like cat ../secret.env as external_path', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'cat ../secret.env',
+      folderRoot: ROOT
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
+  })
+
+  it('detects home directory (~) and redirection (>../out.txt) outside workspace as external_path', () => {
+    const homeCmd = scanWorkspaceRunCommand({
+      command: 'cd ~ && ls',
+      folderRoot: ROOT
+    })
+    expect(homeCmd.resources.some((r) => r.kind === 'external_path')).toBe(true)
+
+    const redirCmd = scanWorkspaceRunCommand({
+      command: 'echo hi >../outside.txt',
+      folderRoot: ROOT
+    })
+    expect(redirCmd.resources.some((r) => r.kind === 'external_path')).toBe(true)
+  })
 })
