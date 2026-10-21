@@ -19,6 +19,7 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
   const { t } = useTranslation()
   const [hasSkipped, setHasSkipped] = useState(hasAnyWorkbenchDontAskAgain)
   const [personalMemoryReadEnabled, setPersonalMemoryReadEnabled] = useState(true)
+  const [externalDirectoryAllowed, setExternalDirectoryAllowed] = useState(false)
 
   useEffect(() => {
     if (!workspaceId) return
@@ -29,6 +30,12 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
         if (!cancelled) setPersonalMemoryReadEnabled(enabled !== false)
       })
       .catch(() => undefined)
+    void window.api.settings
+      .getWorkspaceExternalDirectoryAllowed?.(workspaceId)
+      ?.then((allowed) => {
+        if (!cancelled) setExternalDirectoryAllowed(allowed === true)
+      })
+      ?.catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -49,6 +56,24 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
     [personalMemoryReadEnabled, workspaceId]
   )
 
+  const handleExternalDirectoryChange = useCallback(
+    async (allowed: boolean) => {
+      const previous = externalDirectoryAllowed
+      setExternalDirectoryAllowed(allowed)
+      try {
+        const saved = await window.api.settings.setWorkspaceExternalDirectoryAllowed(
+          workspaceId,
+          allowed
+        )
+        setExternalDirectoryAllowed(saved === true)
+      } catch (e) {
+        setExternalDirectoryAllowed(previous)
+        toast.showError(String((e as Error)?.message || e))
+      }
+    },
+    [externalDirectoryAllowed, workspaceId]
+  )
+
   const handleReset = useCallback(() => {
     const cleared = clearAllWorkbenchDontAskAgain()
     setHasSkipped(hasAnyWorkbenchDontAskAgain())
@@ -61,6 +86,33 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
 
   return (
     <div className={pane.stack}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
+            {t('workbench.external_directory_section', '当前工作区范围')}
+          </h3>
+        </div>
+        <section className={pane.cardSection}>
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
+                {t('workbench.external_directory_access', '允许访问工作区外目录')}
+              </span>
+              <span className="settings-list-tile-subtitle">
+                {t(
+                  'workbench.external_directory_access_desc',
+                  '仅对当前工作区生效。开启后，读写文件或执行命令触及工作区外路径时不再每次询问。'
+                )}
+              </span>
+            </div>
+            <Switch
+              checked={externalDirectoryAllowed}
+              aria-label={t('workbench.external_directory_access', '允许访问工作区外目录')}
+              onChange={(event) => void handleExternalDirectoryChange(event.target.checked)}
+            />
+          </div>
+        </section>
+      </div>
       <div className={pane.stackGroup}>
         <div className={pane.sectionLabelRow}>
           <h3 className={pane.sectionLabel}>

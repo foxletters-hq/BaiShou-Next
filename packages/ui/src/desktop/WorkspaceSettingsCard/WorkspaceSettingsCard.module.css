@@ -8,6 +8,25 @@
   gap: var(--spacing-md-tight);
 }
 
+.workspaceToggleCard {
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+}
+
+.workspaceToggleInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .workspaceCurrentInfo {
   flex: 1;
   min-width: 0;

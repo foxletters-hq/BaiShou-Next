@@ -5,7 +5,7 @@ import { persistSecurityMode } from '../workbench-home-security.util'
 const currentGate: BaishouAgentGateConfig = {
   exclusionList: [],
   allowlist: [],
-  securityMode: 'auto_review'
+  securityMode: 'allow_list'
 }
 
 describe('persistSecurityMode', () => {

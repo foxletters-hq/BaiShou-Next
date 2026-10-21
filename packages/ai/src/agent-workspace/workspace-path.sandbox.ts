@@ -70,3 +70,49 @@ export function toWorkspaceRelativePath(folderRoot: string, absolutePath: string
 
   return relative(root, absolute).replace(/\\/g, '/')
 }
+
+/**
+ * Resolve a path that is normally inside folderRoot, or allow external paths when gated by AgentGate.
+ */
+export function resolveWorkspaceOrExternalPath(
+  folderRoot: string,
+  inputPath: string,
+  allowExternal = false
+): {
+  relativePath: string
+  absolutePath: string
+  isExternal: boolean
+} {
+  if (!allowExternal) {
+    const relativePath = normalizeWorkspaceRelativePath(inputPath)
+    const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
+    return { relativePath, absolutePath, isExternal: false }
+  }
+
+  if (inputPath == null || typeof inputPath !== 'string') {
+    throw new WorkspacePathError('Path is required')
+  }
+  if (inputPath.includes('\0')) {
+    throw new WorkspacePathError('Invalid path')
+  }
+
+  const trimmed = inputPath.trim()
+  const root = resolve(folderRoot)
+  if (trimmed === '' || trimmed === '.' || trimmed === './') {
+    return { relativePath: '', absolutePath: root, isExternal: false }
+  }
+
+  const looksAbs = /^(?:[a-zA-Z]:[\\/]|\\\\|\/)/.test(trimmed)
+  const absolutePath = looksAbs ? resolve(trimmed) : resolve(root, trimmed)
+
+  if (isPathInsideWorkspaceRoot(root, absolutePath)) {
+    const relativePath = toWorkspaceRelativePath(root, absolutePath)
+    return { relativePath, absolutePath, isExternal: false }
+  }
+
+  return {
+    relativePath: trimmed.replace(/\\/g, '/'),
+    absolutePath,
+    isExternal: true
+  }
+}

@@ -11,7 +11,7 @@ import {
   hashWorkspaceContent,
   type WorkspaceFsAdapter
 } from './workspace-fs'
-import { normalizeWorkspaceRelativePath, resolveWorkspacePath } from './workspace-path.sandbox'
+import { resolveWorkspaceOrExternalPath } from './workspace-path.sandbox'
 import { scanWorkspaceRunCommand } from './workspace-command-scan'
 import { rememberWorkspaceGateFreshness } from './workspace-gate-freshness.registry'
 
@@ -127,8 +127,7 @@ export async function prepareWorkspaceWriteGate(
   const { folderRoot, fs } = resolveFs(
     ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
   )
-  const relativePath = normalizeWorkspaceRelativePath(path)
-  const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
+  const { relativePath, absolutePath } = resolveWorkspaceOrExternalPath(folderRoot, path, true)
   const existed = await fs.exists(absolutePath)
   const beforeContent = existed ? ((await fs.readFile(absolutePath)) ?? '') : ''
   const sourceHash = await currentHash(fs, absolutePath, existed)
@@ -183,8 +182,7 @@ export async function prepareWorkspacePatchGate(
   const { folderRoot, fs } = resolveFs(
     ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
   )
-  const relativePath = normalizeWorkspaceRelativePath(path)
-  const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
+  const { relativePath, absolutePath } = resolveWorkspaceOrExternalPath(folderRoot, path, true)
   const existed = await fs.exists(absolutePath)
   if (!existed) {
     throw new WorkspaceGatePrepareError(`File not found: ${relativePath}`)
@@ -254,8 +252,7 @@ export async function prepareWorkspaceDeleteGate(
   const { folderRoot, fs } = resolveFs(
     ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
   )
-  const relativePath = normalizeWorkspaceRelativePath(path)
-  const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
+  const { relativePath, absolutePath } = resolveWorkspaceOrExternalPath(folderRoot, path, true)
   const existed = await fs.exists(absolutePath)
   if (!existed) {
     throw new WorkspaceGatePrepareError(`File not found: ${relativePath}`)
@@ -308,10 +305,16 @@ export async function prepareWorkspaceRenameGate(
   const { folderRoot, fs } = resolveFs(
     ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
   )
-  const fromRel = normalizeWorkspaceRelativePath(path)
-  const toRel = normalizeWorkspaceRelativePath(newPath)
-  const fromAbs = resolveWorkspacePath(folderRoot, fromRel)
-  const toAbs = resolveWorkspacePath(folderRoot, toRel)
+  const { relativePath: fromRel, absolutePath: fromAbs } = resolveWorkspaceOrExternalPath(
+    folderRoot,
+    path,
+    true
+  )
+  const { relativePath: toRel, absolutePath: toAbs } = resolveWorkspaceOrExternalPath(
+    folderRoot,
+    newPath,
+    true
+  )
 
   if (fromRel === toRel) {
     throw new WorkspaceGatePrepareError(`Source and destination are the same: ${toRel}`)

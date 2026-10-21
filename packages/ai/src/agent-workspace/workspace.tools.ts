@@ -1,14 +1,19 @@
 import { z } from 'zod'
+import {
+  AgentGateKind,
+  AgentGateProfileId,
+  AgentGateRiskLevel,
+  type FileChangePartData
+} from '@baishou/shared'
 import { AgentTool, type ToolContext } from '../tools/agent.tool'
 import { buildFileChangePartData } from './file-change.part-builder'
 import {
-  normalizeWorkspaceRelativePath,
-  resolveWorkspacePath,
+  resolveWorkspaceOrExternalPath,
   WorkspacePathError
 } from './workspace-path.sandbox'
 import { createNodeWorkspaceFs, type WorkspaceFsAdapter } from './workspace-fs'
 import { WorkspaceRunTool } from './workspace-run.tool'
-import type { FileChangePartData } from '@baishou/shared'
+import { externalPathToDirectoryGlob } from '../baishou-agent-gate/agent-gate-workspace-path.util'
 
 const WORKSPACE_TOOL_CATEGORY = 'workspace'
 
@@ -34,14 +39,50 @@ function resolveRelativePath(
 ): {
   relativePath: string
   absolutePath: string
+  isExternal: boolean
   folderRoot: string
   fs: WorkspaceFsAdapter
   roundCheckpointId?: string
 } {
   const { folderRoot, fs, roundCheckpointId } = requireWorkspace(context)
-  const relativePath = normalizeWorkspaceRelativePath(path)
-  const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
-  return { relativePath, absolutePath, folderRoot, fs, roundCheckpointId }
+  const allowExternal = Boolean(context.agentGate)
+  const { relativePath, absolutePath, isExternal } = resolveWorkspaceOrExternalPath(
+    folderRoot,
+    path,
+    allowExternal
+  )
+  return { relativePath, absolutePath, isExternal, folderRoot, fs, roundCheckpointId }
+}
+
+async function assertExternalDirectoryIfNeeded(
+  context: ToolContext,
+  toolName: string,
+  absolutePath: string,
+  isExternal: boolean
+): Promise<void> {
+  if (!isExternal || !context.agentGate) return
+  const glob = externalPathToDirectoryGlob(absolutePath)
+  const scope =
+    context.workspace?.sessionKind === 'workspace' && context.workspace.workspaceId
+      ? { kind: 'workspace' as const, workspaceId: context.workspace.workspaceId }
+      : { kind: 'companion' as const }
+  await context.agentGate.assert({
+    sessionId: context.sessionId,
+    vaultName: context.vaultName,
+    kind: AgentGateKind.Tool,
+    action: 'external_directory',
+    title: `访问区外目录 ${glob.replace(/\/\*\*$/, '') || glob}`,
+    description: '该操作触及工作区外路径，需先确认区外目录访问。',
+    allowCustomInput: true,
+    profileId: AgentGateProfileId.Workspace,
+    scope,
+    metadata: {
+      toolName,
+      riskLevel: AgentGateRiskLevel.Safe,
+      externalDirectory: glob
+    },
+    resources: [{ kind: 'external_path', value: glob }]
+  })
 }
 
 /**
@@ -54,10 +95,14 @@ function resolveRelativePath(
 async function noteAgentTouchedPath(
   context: ToolContext,
   folderRoot: string,
-  relativePath: string
+  relativePath: string,
+  isExternal = false
 ): Promise<void> {
+  if (isExternal) return
   const checkpointId = context.workspace?.roundCheckpointId
-  const service = context.workspace?.roundCheckpointService
+  const service = context.workspace?.roundCheckpointId
+    ? context.workspace?.roundCheckpointService
+    : undefined
   if (!checkpointId || !service) return
   await service.ensurePathCaptured(checkpointId, folderRoot, relativePath)
 }
@@ -100,8 +145,11 @@ export class WorkspaceListTool extends AgentTool<typeof workspaceListParams> {
 
   async execute(args: z.infer<typeof workspaceListParams>, context: ToolContext): Promise<string> {
     try {
-      const rel = args.path != null ? normalizeWorkspaceRelativePath(args.path) : ''
-      const { absolutePath, fs } = resolveRelativePath(context, rel || '.')
+      const { relativePath: rel, absolutePath, isExternal, fs } = resolveRelativePath(
+        context,
+        args.path ?? '.'
+      )
+      await assertExternalDirectoryIfNeeded(context, this.name, absolutePath, isExternal)
       const exists = await fs.exists(absolutePath)
       if (!exists) {
         return `Error: Directory not found: ${rel || '.'}`
@@ -158,7 +206,8 @@ export class WorkspaceReadTool extends AgentTool<typeof workspaceReadParams> {
 
   async execute(args: z.infer<typeof workspaceReadParams>, context: ToolContext): Promise<string> {
     try {
-      const { relativePath, absolutePath, fs } = resolveRelativePath(context, args.path)
+      const { relativePath, absolutePath, isExternal, fs } = resolveRelativePath(context, args.path)
+      await assertExternalDirectoryIfNeeded(context, this.name, absolutePath, isExternal)
       const exists = await fs.exists(absolutePath)
       if (!exists) {
         return `Error: File not found: ${relativePath}`
@@ -207,11 +256,9 @@ export class WorkspaceWriteTool extends AgentTool<typeof workspaceWriteParams> {
 
   async execute(args: z.infer<typeof workspaceWriteParams>, context: ToolContext): Promise<string> {
     try {
-      const { relativePath, absolutePath, folderRoot, fs, roundCheckpointId } = resolveRelativePath(
-        context,
-        args.path
-      )
-      await noteAgentTouchedPath(context, folderRoot, relativePath)
+      const { relativePath, absolutePath, isExternal, folderRoot, fs, roundCheckpointId } =
+        resolveRelativePath(context, args.path)
+      await noteAgentTouchedPath(context, folderRoot, relativePath, isExternal)
 
       const existed = await fs.exists(absolutePath)
       const beforeContent = existed ? await fs.readFile(absolutePath) : null
@@ -262,16 +309,14 @@ export class WorkspacePatchTool extends AgentTool<typeof workspacePatchParams> {
 
   async execute(args: z.infer<typeof workspacePatchParams>, context: ToolContext): Promise<string> {
     try {
-      const { relativePath, absolutePath, folderRoot, fs, roundCheckpointId } = resolveRelativePath(
-        context,
-        args.path
-      )
+      const { relativePath, absolutePath, isExternal, folderRoot, fs, roundCheckpointId } =
+        resolveRelativePath(context, args.path)
       const exists = await fs.exists(absolutePath)
       if (!exists) {
         return `Error: File not found: ${relativePath}`
       }
 
-      await noteAgentTouchedPath(context, folderRoot, relativePath)
+      await noteAgentTouchedPath(context, folderRoot, relativePath, isExternal)
 
       const beforeContent = await fs.readFile(absolutePath)
       if (beforeContent == null) {
@@ -332,16 +377,14 @@ export class WorkspaceDeleteTool extends AgentTool<typeof workspaceDeleteParams>
     context: ToolContext
   ): Promise<string> {
     try {
-      const { relativePath, absolutePath, folderRoot, fs, roundCheckpointId } = resolveRelativePath(
-        context,
-        args.path
-      )
+      const { relativePath, absolutePath, isExternal, folderRoot, fs, roundCheckpointId } =
+        resolveRelativePath(context, args.path)
       const exists = await fs.exists(absolutePath)
       if (!exists) {
         return `Error: File not found: ${relativePath}`
       }
 
-      await noteAgentTouchedPath(context, folderRoot, relativePath)
+      await noteAgentTouchedPath(context, folderRoot, relativePath, isExternal)
 
       const beforeContent = await fs.readFile(absolutePath)
       await fs.deleteFile(absolutePath)
@@ -388,8 +431,9 @@ export class WorkspaceRenameTool extends AgentTool<typeof workspaceRenameParams>
   ): Promise<string> {
     try {
       const from = resolveRelativePath(context, args.path)
-      const toRel = normalizeWorkspaceRelativePath(args.new_path)
-      const toAbs = resolveWorkspacePath(from.folderRoot, toRel)
+      const to = resolveRelativePath(context, args.new_path)
+      const toRel = to.relativePath
+      const toAbs = to.absolutePath
       if (from.relativePath === toRel) {
         return `Error: Source and destination are the same: ${toRel}`
       }
@@ -404,8 +448,8 @@ export class WorkspaceRenameTool extends AgentTool<typeof workspaceRenameParams>
         return `Error: Destination already exists: ${toRel}`
       }
 
-      await noteAgentTouchedPath(context, from.folderRoot, from.relativePath)
-      await noteAgentTouchedPath(context, from.folderRoot, toRel)
+      await noteAgentTouchedPath(context, from.folderRoot, from.relativePath, from.isExternal)
+      await noteAgentTouchedPath(context, from.folderRoot, toRel, to.isExternal)
 
       const beforeContent = await from.fs.readFile(from.absolutePath)
       await from.fs.rename(from.absolutePath, toAbs)
