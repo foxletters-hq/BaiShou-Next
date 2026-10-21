@@ -382,6 +382,36 @@ describe('useAgentStream', () => {
       expect(result.current.isBridgeActive).toBe(true)
       vi.useRealTimers()
     })
+
+    it('should recover active streaming state from main process after page reload', async () => {
+      mockRenderer.invoke.mockImplementation(async (channel: string, sid: string) => {
+        if (channel === 'agent:get-active-stream' && sid === 's-reload') {
+          return {
+            sessionId: 's-reload',
+            isStreaming: true,
+            text: '恢复的正文',
+            reasoning: '恢复的思考',
+            timeline: [{ kind: 'reasoning', text: '恢复的思考' }],
+            activeTool: { name: 'url_read', args: { url: 'https://example.com' }, callId: 'c1' },
+            completedTools: [{ name: 'diary_list', startTime: 100, durationMs: 50, callId: 'c0' }],
+            pendingEmojis: []
+          }
+        }
+        return null
+      })
+
+      const { result } = renderHook(() => useAgentStream('s-reload'))
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(result.current.isStreaming).toBe(true)
+      expect(result.current.text).toBe('恢复的正文')
+      expect(result.current.reasoning).toBe('恢复的思考')
+      expect(result.current.activeTool?.name).toBe('url_read')
+      expect(result.current.completedTools).toHaveLength(1)
+    })
   })
 
   describe('reset', () => {

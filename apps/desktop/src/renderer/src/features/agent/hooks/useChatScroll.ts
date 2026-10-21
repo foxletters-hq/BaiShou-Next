@@ -141,6 +141,20 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     if (!pendingInstantBottomRef.current) return
     jumpToBottomInstant()
     if (messages.length === 0) return
+
+    // 切换会话后的首帧可能还挂着上一个会话的消息：
+    // 此时不能消费待贴底标记，否则新会话消息真正到达时就不会再滚到底部。
+    const ownerSessionId = (messages[messages.length - 1] as { sessionId?: unknown } | undefined)
+      ?.sessionId
+    if (
+      typeof ownerSessionId === 'string' &&
+      ownerSessionId.length > 0 &&
+      sessionId &&
+      ownerSessionId !== sessionId
+    ) {
+      return
+    }
+
     pendingInstantBottomRef.current = false
     enterFollowing()
     requestAnimationFrame(() => {

@@ -54,9 +54,76 @@ const compressionTextDisplayBuffers: Record<string, StreamingTextDisplayBuffer> 
 const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
 /** 用户点击停止后，忽略随后迟到的 stream-finish 错误（避免「取消成功」后又弹失败） */
 const userStoppedSessions = new Set<string>()
+const hydratingSessions = new Set<string>()
 
 export function markAgentStreamUserStopped(sessionId: string | undefined): void {
   if (sessionId) userStoppedSessions.add(sessionId)
+}
+
+/**
+ * 页面热重载 / 刷新后，从主进程恢复正在进行中的会话流快照，
+ * 避免渲染进程刷新后状态丢失而主进程仍在继续输出。
+ */
+export async function hydrateSessionStreamFromMain(sessionId: string | undefined): Promise<void> {
+  if (!sessionId || userStoppedSessions.has(sessionId) || hydratingSessions.has(sessionId)) return
+  if (typeof window === 'undefined' || !window.electron?.ipcRenderer?.invoke) return
+
+  hydratingSessions.add(sessionId)
+  try {
+    const snap = await window.electron.ipcRenderer.invoke('agent:get-active-stream', sessionId)
+    if (!snap || !snap.isStreaming || userStoppedSessions.has(sessionId)) return
+
+    if (typeof snap.text === 'string' && snap.text.length > 0) {
+      const buf = ensureStreamTextDisplayBuffer(sessionId)
+      if (snap.text.length > buf.getFullText().length) {
+        buf.reset()
+        buf.push(snap.text)
+        buf.flush()
+      }
+    }
+    if (typeof snap.reasoning === 'string' && snap.reasoning.length > 0) {
+      const buf = ensureStreamReasoningDisplayBuffer(sessionId)
+      if (snap.reasoning.length > buf.getFullText().length) {
+        buf.reset()
+        buf.push(snap.reasoning)
+        buf.flush()
+      }
+    }
+
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true
+      state.isBridgeActive = false
+      if (typeof snap.text === 'string' && snap.text.length >= state.text.length) {
+        state.text = snap.text
+      }
+      if (typeof snap.reasoning === 'string' && snap.reasoning.length >= state.reasoning.length) {
+        state.reasoning = snap.reasoning
+      }
+      if (Array.isArray(snap.timeline) && snap.timeline.length >= state.timeline.length) {
+        state.timeline = snap.timeline
+      }
+      if (snap.activeTool && !state.activeTool) {
+        state.activeTool = snap.activeTool
+        state.activeToolStartTime = snap.activeToolStartTime
+      }
+      if (
+        Array.isArray(snap.completedTools) &&
+        snap.completedTools.length >= state.completedTools.length
+      ) {
+        state.completedTools = snap.completedTools
+      }
+      if (
+        Array.isArray(snap.pendingEmojis) &&
+        snap.pendingEmojis.length >= state.pendingEmojis.length
+      ) {
+        state.pendingEmojis = snap.pendingEmojis
+      }
+    })
+  } catch {
+    // 忽略测试环境或旧通道未注册时的调用异常
+  } finally {
+    hydratingSessions.delete(sessionId)
+  }
 }
 
 function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
@@ -267,14 +334,21 @@ function registerGlobalStreamIpcListeners(): () => void {
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
     const delta = chunk ?? ''
+    let needsHydrate = false
     updateSessionState(
       sId,
       (state) => {
+        if (!state.isStreaming) {
+          state.isStreaming = true
+          state.isBridgeActive = false
+          needsHydrate = true
+        }
         appendTimelineText(state.timeline, delta)
       },
       { notify: false }
     )
     ensureStreamTextDisplayBuffer(sId).push(delta)
+    if (needsHydrate) void hydrateSessionStreamFromMain(sId)
   }
 
   const onReasoningChunk = (_: unknown, payload: any) => {
@@ -282,14 +356,21 @@ function registerGlobalStreamIpcListeners(): () => void {
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
     const delta = chunk ?? ''
+    let needsHydrate = false
     updateSessionState(
       sId,
       (state) => {
+        if (!state.isStreaming) {
+          state.isStreaming = true
+          state.isBridgeActive = false
+          needsHydrate = true
+        }
         appendTimelineReasoning(state.timeline, delta)
       },
       { notify: false }
     )
     ensureStreamReasoningDisplayBuffer(sId).push(delta)
+    if (needsHydrate) void hydrateSessionStreamFromMain(sId)
   }
 
   const onToolStart = (_: unknown, payload: any) => {
@@ -318,12 +399,22 @@ function registerGlobalStreamIpcListeners(): () => void {
             : null
       if (typeof emojiId === 'string' && emojiId.length > 0) {
         updateSessionState(sId, (state) => {
+          if (!state.isStreaming) {
+            state.isStreaming = true
+            state.isBridgeActive = false
+          }
           state.pendingEmojis.push({ emojiId })
         })
       }
       return
     }
+    let needsHydrate = false
     updateSessionState(sId, (state) => {
+      if (!state.isStreaming) {
+        state.isStreaming = true
+        state.isBridgeActive = false
+        needsHydrate = true
+      }
       const start = Date.now()
       state.activeToolStartTime = start
       state.activeTool = { name, args, callId: toolCallId }
@@ -334,6 +425,7 @@ function registerGlobalStreamIpcListeners(): () => void {
         startTime: start
       })
     })
+    if (needsHydrate) void hydrateSessionStreamFromMain(sId)
   }
 
   const onToolResult = (_: unknown, payload: any) => {
@@ -347,13 +439,20 @@ function registerGlobalStreamIpcListeners(): () => void {
     const result = typeof payload === 'object' ? payload?.result : undefined
     // emoji_send 工具不在流式阶段显示工具卡片（表情包已作为 pendingEmojis 即时显示）
     if (name === 'emoji_send') return
+    let needsHydrate = false
     updateSessionState(sId, (state) => {
+      if (!state.isStreaming) {
+        state.isStreaming = true
+        state.isBridgeActive = false
+        needsHydrate = true
+      }
       const start = state.activeToolStartTime || Date.now()
       const durationMs = Date.now() - start
       state.completedTools.push({ name, startTime: start, durationMs, callId: toolCallId })
       state.activeTool = null
       completeTimelineTool(state.timeline, { callId: toolCallId, name, result })
     })
+    if (needsHydrate) void hydrateSessionStreamFromMain(sId)
   }
 
   const onStreamFinish = (_: unknown, payload: any) => {
@@ -395,6 +494,16 @@ function registerGlobalStreamIpcListeners(): () => void {
         })
       )
     }
+
+    window.dispatchEvent(
+      new CustomEvent('baishou:agent-stream-finished', {
+        detail: {
+          sessionId: sId,
+          messageId: payload?.messageId,
+          error: payload?.error
+        }
+      })
+    )
   }
 
   const onCompressionEvent = (_: unknown, event: any) => {

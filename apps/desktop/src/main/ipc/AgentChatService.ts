@@ -14,7 +14,12 @@ import {
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
-import { ElectronStreamEmitter } from './electron-stream-emitter'
+import {
+  beginMainStreamSnapshot,
+  clearMainStreamSnapshot,
+  ElectronStreamEmitter,
+  getActiveMainStreamSnapshot
+} from './electron-stream-emitter'
 import {
   getAgentManagers,
   toolRegistry,
@@ -72,6 +77,7 @@ async function drainCompanionInbox(
 
 export class AgentChatService {
   public static stopStream(sessionId?: string) {
+    clearMainStreamSnapshot(sessionId)
     if (sessionId) {
       cancelAgentGateSession(sessionId, 'stream_stopped')
     } else {
@@ -142,33 +148,38 @@ export class AgentChatService {
     forceRecompress?: boolean
   }) {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
+    beginMainStreamSnapshot(params.sessionId)
     const emitter = new ElectronStreamEmitter(params.event)
     const streamHost = await buildCompanionStreamHost({
       sessionId: params.sessionId,
       systemModels: params.systemModels
     })
 
-    return AgentChatCoreService.runStreamChat({
-      ...streamHost,
-      emitter,
-      sessionId: params.sessionId,
-      userText: params.userText,
-      userMessageId: params.userMessageId,
-      provider: params.provider,
-      modelId: params.modelId,
-      systemModels: params.systemModels,
-      userConfig: params.userConfig,
-      attachments: params.attachments,
-      skipUserMessageRecording: params.skipUserMessageRecording,
-      forceRecompress: params.forceRecompress,
-      realSessionRepo,
-      realSnapshotRepo,
-      toolRegistry,
-      diarySearcher: createDiarySearcher(),
-      webSearchResultFetcher: createWebSearchResultFetcher(),
-      fetchSearchPage: createFetchSearchPage(),
-      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
-    })
+    try {
+      return await AgentChatCoreService.runStreamChat({
+        ...streamHost,
+        emitter,
+        sessionId: params.sessionId,
+        userText: params.userText,
+        userMessageId: params.userMessageId,
+        provider: params.provider,
+        modelId: params.modelId,
+        systemModels: params.systemModels,
+        userConfig: params.userConfig,
+        attachments: params.attachments,
+        skipUserMessageRecording: params.skipUserMessageRecording,
+        forceRecompress: params.forceRecompress,
+        realSessionRepo,
+        realSnapshotRepo,
+        toolRegistry,
+        diarySearcher: createDiarySearcher(),
+        webSearchResultFetcher: createWebSearchResultFetcher(),
+        fetchSearchPage: createFetchSearchPage(),
+        flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
+      })
+    } finally {
+      clearMainStreamSnapshot(params.sessionId)
+    }
   }
 
   public static async chat(
@@ -376,6 +387,24 @@ export class AgentChatService {
       })
     }
     return updated
+  }
+
+  public static getActiveStreamSnapshot(sessionId: string) {
+    const snap = getActiveMainStreamSnapshot(sessionId)
+    if (snap) return snap
+    if (isAgentStreamSessionBusy(sessionId)) {
+      return {
+        sessionId,
+        isStreaming: true,
+        text: '',
+        reasoning: '',
+        timeline: [],
+        activeTool: null,
+        completedTools: [],
+        pendingEmojis: []
+      }
+    }
+    return null
   }
 }
 

@@ -33,12 +33,16 @@ function readStringList(value: unknown): string[] | undefined {
 /** 流式工具行里已经有完整问题时，先在输入框上方挂出确认卡，不必再等收件箱事件。 */
 export function buildRunningCompanionAskRequest(
   sessionId: string,
-  timeline: readonly AgentStreamTimelineItem[]
+  timeline: readonly AgentStreamTimelineItem[],
+  includeCompleted = false
 ): AgentGateRequest | null {
   const running = [...timeline]
     .reverse()
     .find(
-      (item) => item.kind === 'tool' && item.name === 'companion_ask' && item.status === 'running'
+      (item) =>
+        item.kind === 'tool' &&
+        item.name === 'companion_ask' &&
+        (includeCompleted || item.status === 'running')
     )
   if (!running || running.kind !== 'tool') return null
   const record = readArgsRecord(running.arguments)
@@ -48,11 +52,13 @@ export function buildRunningCompanionAskRequest(
   const options = readStringList(record.options)
   const allowCustomInput =
     typeof record.allow_custom_input === 'boolean' ? record.allow_custom_input : undefined
+  const multiple = typeof record.multiple === 'boolean' ? record.multiple : undefined
   const rawQuestions = Array.isArray(record.questions) ? record.questions : undefined
   const questions = normalizeCompanionAskQuestions({
     question,
     options,
     allowCustomInput,
+    multiple,
     questions: rawQuestions
       ?.map((item) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return null
@@ -62,7 +68,8 @@ export function buildRunningCompanionAskRequest(
           question: row.question,
           options: readStringList(row.options),
           allowCustomInput:
-            typeof row.allow_custom_input === 'boolean' ? row.allow_custom_input : undefined
+            typeof row.allow_custom_input === 'boolean' ? row.allow_custom_input : undefined,
+          multiple: typeof row.multiple === 'boolean' ? row.multiple : undefined
         }
       })
       .filter((item): item is NonNullable<typeof item> => item != null)
@@ -80,6 +87,7 @@ export function buildRunningCompanionAskRequest(
     title: first.question,
     options: first.options,
     allowCustomInput: questions.some((item) => item.allowCustomInput),
+    ...(first.multiple ? { multiple: true } : {}),
     questions,
     metadata: {},
     scope: { kind: 'companion' },
@@ -110,7 +118,23 @@ export function resolveCompanionAskDockRequest(input: {
   timeline: readonly AgentStreamTimelineItem[]
   isStreaming: boolean
 }): AgentGateRequest | null {
-  if (input.pendingGate) return input.pendingGate
+  if (input.pendingGate) {
+    const fromTimeline = input.sessionId
+      ? buildRunningCompanionAskRequest(input.sessionId, input.timeline, true)
+      : null
+    if (!fromTimeline?.questions?.length) return input.pendingGate
+    return {
+      ...input.pendingGate,
+      ...(fromTimeline.multiple ? { multiple: true } : {}),
+      questions: (input.pendingGate.questions ?? fromTimeline.questions).map((q, idx) => {
+        const match =
+          fromTimeline.questions?.find(
+            (item) => item.id === q.id || item.question === q.question
+          ) ?? fromTimeline.questions?.[idx]
+        return match?.multiple && !q.multiple ? { ...q, multiple: true } : q
+      })
+    }
+  }
   if (!input.isStreaming || !input.sessionId) return null
   return buildRunningCompanionAskRequest(input.sessionId, input.timeline)
 }

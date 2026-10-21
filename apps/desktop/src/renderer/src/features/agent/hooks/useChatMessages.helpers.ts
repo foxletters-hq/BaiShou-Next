@@ -2,7 +2,8 @@ import {
   CHAT_ROUNDS_PER_PAGE,
   computeInitialRoundWindowStart,
   flattenRoundSlice,
-  groupMessagesIntoRounds
+  groupMessagesIntoRounds,
+  leadingRoundNeedsParent
 } from '../utils/chat-round-pagination'
 import type { SessionMessageCacheEntry } from '../utils/chat-session-message-cache'
 
@@ -117,7 +118,10 @@ export function applyCacheToWindow(
   fetchHasMore: boolean
 ): { display: any[]; hasMore: boolean; roundWindowStart: number } {
   const rounds = groupMessagesIntoRounds(cache)
-  const clampedStart = Math.min(roundWindowStart, computeInitialRoundWindowStart(rounds.length))
+  let clampedStart = Math.min(roundWindowStart, computeInitialRoundWindowStart(rounds.length))
+  if (clampedStart === 0 && fetchHasMore && rounds.length > 1 && leadingRoundNeedsParent(cache)) {
+    clampedStart = 1
+  }
   const display = flattenRoundSlice(rounds, clampedStart)
   return {
     display,
