@@ -270,6 +270,15 @@ export function useDiaryEditorPage() {
           if (saved?.id && saved.id !== diaryId) {
             setDiaryId(saved.id)
           }
+          setIsDirty(false)
+          initialStateRef.current = {
+            content: newContent,
+            selectedDate,
+            weather,
+            mood,
+            isFavorite,
+            mediaPaths: [...mediaPaths]
+          }
           return saved
         }
         setIsDirty(false)
@@ -279,7 +288,7 @@ export function useDiaryEditorPage() {
           weather,
           mood,
           isFavorite,
-          mediaPaths
+          mediaPaths: [...mediaPaths]
         }
       } catch (e: unknown) {
         logger.error('Diary save failed', { error: e })
@@ -365,6 +374,22 @@ export function useDiaryEditorPage() {
     }
   }
 
+  const handleQuickSave = async () => {
+    if (savePhase !== 'idle') return
+    setSavePhase('saving')
+    try {
+      await autoSave(content)
+      toast.showSuccess(t('common.saved', '已保存'))
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : undefined
+      toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
+    } finally {
+      setSavePhase('idle')
+    }
+  }
+
+  const hasUnsavedChanges = !isLoading && (isDirty || checkIsReallyDirty())
+
   return {
     t,
     isLoading,
@@ -375,12 +400,13 @@ export function useDiaryEditorPage() {
     mood,
     isFavorite,
     mediaPaths,
-    isDirty,
+    isDirty: hasUnsavedChanges,
     isSaving: savePhase !== 'idle',
     savePhase,
     handleContentChange,
     handleBack,
     handleSave,
+    handleQuickSave,
     goBackToSidebar,
     setSelectedDate,
     setWeather,

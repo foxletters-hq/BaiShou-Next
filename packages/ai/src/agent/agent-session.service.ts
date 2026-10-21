@@ -15,12 +15,11 @@ import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate
 import { onAgentGateLifecycle } from './agent-gate-lifecycle'
 import { AgentSessionRuntimeRecorder } from './session-runtime-event'
 import { resolveSessionRuntimeProfile, DEFAULT_SESSION_MAX_STEPS } from '../session-runtime'
-import { prepareAgentSessionContext } from './agent-session-context'
+import { prepareAgentSessionContext, resolveAgentSessionMetadata } from './agent-session-context'
 import { buildAgentSessionToolsAndPrompt } from './agent-session-tools'
 import { runAgentSessionStream } from './agent-session-stream-run'
 import { finishAgentSessionStream } from './agent-session-stream-finish'
 import { isAgentFirstOutputTimeoutError } from './agent-stream-timeout'
-import { shouldKeepCompanionAskAfterStream } from '../tools/companion-ask-stream.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -103,7 +102,7 @@ export class AgentSessionService {
       })
       sessionAgentGate = sessionAgentGateResolved
 
-      const prepared = await prepareAgentSessionContext({
+      const sessionMetadata = await resolveAgentSessionMetadata({
         options,
         sessionAgentGate,
         workspaceOptions
@@ -113,15 +112,23 @@ export class AgentSessionService {
         options,
         sessionAgentGate,
         workspaceOptions,
-        mergedUserConfig: prepared.mergedUserConfig,
-        effectiveSystemPrompt: prepared.effectiveSystemPrompt,
-        assistantKind: prepared.assistantKind,
-        injectMessageTime: prepared.injectMessageTime,
-        configRecentCount: prepared.configRecentCount,
-        vaultId: prepared.vaultId,
-        vaultName: prepared.vaultName,
-        saveDiaryBeforeCompression: prepared.saveDiaryBeforeCompression,
+        mergedUserConfig: sessionMetadata.mergedUserConfig,
+        effectiveSystemPrompt: sessionMetadata.effectiveSystemPrompt,
+        assistantKind: sessionMetadata.assistantKind,
+        injectMessageTime: sessionMetadata.injectMessageTime,
+        configRecentCount: sessionMetadata.configRecentCount,
+        vaultId: sessionMetadata.vaultId,
+        vaultName: sessionMetadata.vaultName,
+        saveDiaryBeforeCompression: sessionMetadata.saveDiaryBeforeCompression,
         interruptOnGateReject
+      })
+
+      const prepared = await prepareAgentSessionContext({
+        options,
+        sessionAgentGate,
+        workspaceOptions,
+        prebuiltMetadata: sessionMetadata,
+        builtSystemPrompt
       })
 
       if (
@@ -270,12 +277,10 @@ export class AgentSessionService {
       unsubGateBuffer()
       abortSignal?.removeEventListener('abort', onAbortCancelGate)
       abortSignal?.removeEventListener('abort', onAbortRuntime)
-      const keepCompanionAsk = shouldKeepCompanionAskAfterStream(
-        sessionAgentGate?.listPending(sessionId) ?? []
-      )
-      if (!keepCompanionAsk) {
-        sessionAgentGate?.cancelSession(sessionId, 'stream ended')
-      }
+      // 只保留用户还没答完的 companion_ask；其他挂起门控随流结束一起清掉
+      sessionAgentGate?.cancelSession(sessionId, 'stream ended', {
+        keepRequest: (request) => request.action === 'companion_ask'
+      })
     }
   }
 }

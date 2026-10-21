@@ -17,11 +17,11 @@ describe('buildContextEncodingSystemPromptLines', () => {
 })
 
 describe('shouldWrapRoleForModel', () => {
-  it('wraps all model context roles', () => {
+  it('wraps only user and assistant conversation roles (not system summaries or tool outputs)', () => {
     expect(shouldWrapRoleForModel('user')).toBe(true)
     expect(shouldWrapRoleForModel('assistant')).toBe(true)
-    expect(shouldWrapRoleForModel('system')).toBe(true)
-    expect(shouldWrapRoleForModel('tool')).toBe(true)
+    expect(shouldWrapRoleForModel('system')).toBe(false)
+    expect(shouldWrapRoleForModel('tool')).toBe(false)
     expect(shouldWrapRoleForModel('other')).toBe(false)
   })
 })

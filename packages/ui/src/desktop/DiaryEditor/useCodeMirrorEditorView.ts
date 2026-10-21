@@ -23,13 +23,18 @@ function scheduleEditorMount(callback: () => void): () => void {
 }
 
 export function useCodeMirrorEditorView(
-  props: Pick<CodeMirrorEditorProps, 'content' | 'placeholder' | 'basePath' | 'onChange'>,
+  props: Pick<
+    CodeMirrorEditorProps,
+    'content' | 'placeholder' | 'basePath' | 'onChange' | 'onSelectionCountChange'
+  >,
   setPreviewSrc: (src: string | null) => void,
   setTextContextMenu: (menu: TextContextMenuState | null) => void
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
+  const onSelectionCountChangeRef = useRef(props.onSelectionCountChange)
+  const lastSelectedCountRef = useRef(0)
   const basePathRef = useRef(props.basePath)
   const contentRef = useRef(props.content)
   /** 程序化写入正文时不向上层回传 change，避免误判为「用户已修改」 */
@@ -40,6 +45,10 @@ export function useCodeMirrorEditorView(
   useEffect(() => {
     onChangeRef.current = props.onChange
   }, [props.onChange])
+
+  useEffect(() => {
+    onSelectionCountChangeRef.current = props.onSelectionCountChange
+  }, [props.onSelectionCountChange])
 
   useEffect(() => {
     translateRef.current = t
@@ -103,6 +112,21 @@ export function useCodeMirrorEditorView(
         extraExtensions: [
           editorContextMenuExtension({
             onOpen: (payload) => setTextContextMenu(payload)
+          }),
+          EditorView.updateListener.of((update) => {
+            if (!update.selectionSet && !update.docChanged) return
+            let selectedCount = 0
+            for (const range of update.state.selection.ranges) {
+              if (!range.empty) {
+                selectedCount += update.state
+                  .sliceDoc(range.from, range.to)
+                  .replace(/\s+/g, '').length
+              }
+            }
+            if (selectedCount !== lastSelectedCountRef.current) {
+              lastSelectedCountRef.current = selectedCount
+              onSelectionCountChangeRef.current?.(selectedCount)
+            }
           })
         ]
       })

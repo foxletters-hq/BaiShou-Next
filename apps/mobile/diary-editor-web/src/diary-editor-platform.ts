@@ -96,10 +96,21 @@ export function applyTheme(theme: DiaryCmTheme): void {
   theme.tagColors.forEach((fg, index) => {
     root.style.setProperty(`--tag-${index}-fg`, fg)
   })
-  if (theme.fontScale) {
-    root.style.setProperty('--ui-font-scale', String(theme.fontScale))
-    root.style.setProperty('--content-font-size-lg', `calc(16px * ${theme.fontScale})`)
-  }
+  // WebView 不加载桌面 css-variables，这里补齐编辑器会用到的字号 token，
+  // 否则 var(--ui-fs-lg) 无效会退回浏览器默认 16px，且不跟随软件字体大小。
+  const rawFontScale = theme.fontScale
+  const fontScale =
+    typeof rawFontScale === 'number' && Number.isFinite(rawFontScale) && rawFontScale > 0
+      ? rawFontScale
+      : 1
+  root.style.setProperty('--ui-font-scale', String(fontScale))
+  root.style.setProperty('--ui-fs-sm', `calc(12px * ${fontScale})`)
+  root.style.setProperty('--ui-fs-md', `calc(13px * ${fontScale})`)
+  root.style.setProperty('--ui-fs-lg', `calc(14px * ${fontScale})`)
+  root.style.setProperty('--ui-fs-xl', `calc(16px * ${fontScale})`)
+  root.style.setProperty('--content-font-size', `calc(14px * ${fontScale})`)
+  root.style.setProperty('--content-font-size-md', `calc(15px * ${fontScale})`)
+  root.style.setProperty('--content-font-size-lg', `calc(16px * ${fontScale})`)
   document.body.style.backgroundColor = theme.bgEditor
   document.body.style.color = theme.textPrimary
 }

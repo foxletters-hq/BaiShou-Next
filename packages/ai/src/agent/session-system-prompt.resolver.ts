@@ -16,7 +16,9 @@ import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
+import { detectProcessCommandRuntime } from '../agent-workspace/workspace-host-process'
 import { SystemPromptBuilder } from './system-prompt.builder'
+import { resolveSkillsInstructionSection } from './instruction-state.util'
 import { resolveSessionAssistantContext } from './session-assistant-context.util'
 
 export interface AgentToolsContextParams {
@@ -25,6 +27,7 @@ export interface AgentToolsContextParams {
     getSessionById?: (
       id: string
     ) => Promise<{ vaultId?: string; vaultName?: string; assistantId?: string } | null>
+    getSessionInstructionState?: (id: string) => Promise<string | null>
     db?: unknown
     database?: unknown
   }
@@ -46,6 +49,14 @@ export interface AgentToolsContextParams {
   diarySearcher?: unknown
   webSearchResultFetcher?: unknown
   fetchSearchPage?: unknown
+  rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
+  syncGraphPendingIndex?: () => Promise<void>
+  deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
+  graphReader?: import('@baishou/shared').ToolGraphReader
+  graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+  graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
+  knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+  knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
   skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
   skillsReader?: import('../tools/agent.tool').ToolContext['skillsReader']
   skillsCatalog?: Array<{ name: string; description?: string }>
@@ -60,6 +71,12 @@ export interface AgentToolsContextParams {
     folderRoot?: string
     sessionKind?: AgentSessionKind
     notebookIds?: string[]
+    env?: {
+      platform?: string
+      isGitRepo?: boolean
+      gitBranch?: string | null
+      gitChangesCount?: number | null
+    }
   }
 }
 
@@ -124,6 +141,14 @@ async function buildToolExecutionContext(
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
     fetchSearchPage: params.fetchSearchPage as any,
+    rawDataSourceManager: params.rawDataSourceManager,
+    syncGraphPendingIndex: params.syncGraphPendingIndex,
+    deleteGraphRecord: params.deleteGraphRecord,
+    graphReader: params.graphReader,
+    graphNodeLookup: params.graphNodeLookup,
+    graphEdgeLookup: params.graphEdgeLookup,
+    knowledgeReader: params.knowledgeReader,
+    knowledgeGraphReader: params.knowledgeGraphReader,
     skillsWriter: params.skillsWriter,
     skillsReader: params.skillsReader,
     agentGate: params.agentGate,
@@ -135,7 +160,8 @@ async function buildToolExecutionContext(
         ? {
             folderRoot: params.workspace.folderRoot ?? '',
             sessionKind: params.workspace.sessionKind,
-            notebookIds: params.workspace.notebookIds
+            notebookIds: params.workspace.notebookIds,
+            env: params.workspace.env
           }
         : undefined
   }
@@ -184,6 +210,17 @@ export async function buildSystemPromptForSession(
   const localeFromParams =
     typeof params.userConfig?.locale === 'string' ? params.userConfig.locale : undefined
 
+  let skillsInstruction: { catalog: string[]; deltas: string[] } | undefined
+  if (params.skillsCatalog && typeof params.sessionRepo.getSessionInstructionState === 'function') {
+    try {
+      const storedRaw = await params.sessionRepo.getSessionInstructionState(params.sessionId)
+      const section = resolveSkillsInstructionSection(params.skillsCatalog, storedRaw)
+      skillsInstruction = { catalog: section.catalog, deltas: section.deltas }
+    } catch {
+      skillsInstruction = undefined
+    }
+  }
+
   return SystemPromptBuilder.build({
     vaultName: resolveVaultIdentity({
       vaultId: sessionObj?.vaultId,
@@ -207,6 +244,27 @@ export async function buildSystemPromptForSession(
     ),
     customGuidelines,
     locale: localeFromMerged ?? localeFromParams,
-    skillsCatalog: params.skillsCatalog
+    workspaceEnv:
+      params.workspace?.sessionKind === 'workspace' && params.workspace.folderRoot
+        ? (() => {
+            const runtime = detectProcessCommandRuntime()
+            return {
+              folderRoot: params.workspace.folderRoot,
+              platform: params.workspace.env?.platform ?? process.platform,
+              commandRuntimeBinary: runtime.binary,
+              commandRuntimeFamily: runtime.family,
+              commandRuntimeLabel: runtime.label,
+              isGitRepo: params.workspace.env?.isGitRepo,
+              gitBranch: params.workspace.env?.gitBranch,
+              gitChangesCount: params.workspace.env?.gitChangesCount,
+              notebookIds: params.workspace.notebookIds
+            }
+          })()
+        : undefined,
+    knowledgeMount: {
+      notebookIds: params.workspace?.notebookIds ?? []
+    },
+    skillsCatalog: params.skillsCatalog,
+    skillsInstruction
   })
 }

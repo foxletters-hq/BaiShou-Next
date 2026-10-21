@@ -79,6 +79,19 @@ function hasInlineCacheMarker(providerOptions: Record<string, unknown> | undefin
   return Object.keys(INLINE_CACHE_PROVIDER_OPTIONS).some((key) => key in providerOptions)
 }
 
+function messageHasInlineCache(msg: ModelMessage): boolean {
+  const existing = (msg as { providerOptions?: Record<string, unknown> }).providerOptions
+  if (hasInlineCacheMarker(existing)) return true
+  const content = (msg as { content?: unknown }).content
+  if (Array.isArray(content) && content.length > 0) {
+    const lastPart = content[content.length - 1] as
+      | { providerOptions?: Record<string, unknown> }
+      | undefined
+    if (hasInlineCacheMarker(lastPart?.providerOptions)) return true
+  }
+  return false
+}
+
 function useMessageLevelCacheOptions(ctx: PromptCachingContext): boolean {
   const type = (ctx.providerType || '').toLowerCase()
   return type === 'anthropic' || (type === 'vertexai' && isClaudeModel(ctx.modelId))
@@ -133,8 +146,12 @@ function lastIndexOfRole(messages: ModelMessage[], role: ModelMessage['role']): 
   return -1
 }
 
+/** 单次请求中最多为多少条 system 消息打缓存断点（主 system + 压缩摘要 system），预留预算给 tools 与最新 user */
+const MAX_SYSTEM_MESSAGE_BREAKPOINTS = 2
+
 /**
- * 按 agent 循环最优策略注入断点：system（若内嵌于 messages）→ 最新 user 消息。
+ * 按 agent 循环最优策略注入断点：system（主 system 与压缩摘要，最多 2 个）→ 最新 user 消息。
+ * 若消息已由上游（如 buildCachedSystemForStream）打上断点，同样计入预算扣减。
  * tools 断点在 applyInlineCacheMarkersToTools 中处理。
  */
 export function applyInlineCacheMarkersToMessages(
@@ -145,24 +162,39 @@ export function applyInlineCacheMarkersToMessages(
   if (messages.length === 0 || breakpointBudget.remaining <= 0) return messages
 
   let next = messages
+  let systemBreakpointsUsed = 0
 
-  const systemIdx = messages.findIndex((m) => m.role === 'system')
-  if (systemIdx >= 0 && breakpointBudget.remaining > 0) {
-    const marked = markMessageWithCache(messages[systemIdx]!, ctx)
-    if (marked !== messages[systemIdx]) {
-      next = next.slice()
-      next[systemIdx] = marked
+  for (let i = 0; i < next.length; i++) {
+    if (next[i]?.role !== 'system') continue
+    if (systemBreakpointsUsed >= MAX_SYSTEM_MESSAGE_BREAKPOINTS) break
+
+    if (messageHasInlineCache(next[i]!)) {
+      breakpointBudget.remaining = Math.max(0, breakpointBudget.remaining - 1)
+      systemBreakpointsUsed += 1
+      continue
+    }
+
+    if (breakpointBudget.remaining <= 0) break
+    const marked = markMessageWithCache(next[i]!, ctx)
+    if (marked !== next[i]) {
+      if (next === messages) next = messages.slice()
+      next[i] = marked
       breakpointBudget.remaining -= 1
+      systemBreakpointsUsed += 1
     }
   }
 
   const userIdx = lastIndexOfRole(next, 'user')
   if (userIdx >= 0 && breakpointBudget.remaining > 0) {
-    const marked = markMessageWithCache(next[userIdx]!, ctx)
-    if (marked !== next[userIdx]) {
-      if (next === messages) next = next.slice()
-      next[userIdx] = marked
-      breakpointBudget.remaining -= 1
+    if (messageHasInlineCache(next[userIdx]!)) {
+      breakpointBudget.remaining = Math.max(0, breakpointBudget.remaining - 1)
+    } else {
+      const marked = markMessageWithCache(next[userIdx]!, ctx)
+      if (marked !== next[userIdx]) {
+        if (next === messages) next = messages.slice()
+        next[userIdx] = marked
+        breakpointBudget.remaining -= 1
+      }
     }
   }
 

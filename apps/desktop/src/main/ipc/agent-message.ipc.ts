@@ -3,7 +3,8 @@ import i18n from 'i18next'
 import {
   ContextAtMessageService,
   ContextCompressorService,
-  reconcileCompressionStateAfterTruncate
+  reconcileCompressionStateAfterTruncate,
+  resolveEffectiveProviderType
 } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import {
@@ -92,12 +93,20 @@ export function registerMessageIPC() {
       const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
       const webSearchEnabled = resolveWebSearchEnabled(searchMode, storedSearchMode)
 
-      const { userConfig } = await buildStreamConfig(
-        undefined,
-        undefined,
+      const { provider, userConfig } = await buildStreamConfig(
+        session?.providerId ?? undefined,
+        session?.modelId ?? undefined,
         webSearchEnabled,
         prefs.assistantContextWindow,
         prefs.assistantEmojiPrefs
+      ).catch(() =>
+        buildStreamConfig(
+          undefined,
+          undefined,
+          webSearchEnabled,
+          prefs.assistantContextWindow,
+          prefs.assistantEmojiPrefs
+        )
       )
 
       const recentCount =
@@ -105,6 +114,10 @@ export function registerMessageIPC() {
 
       const { buildAgentSystemPrompt } = await import('./build-agent-system-prompt')
       const systemPrompt = await buildAgentSystemPrompt(sessionId, webSearchEnabled)
+      const effectiveProviderType = resolveEffectiveProviderType(
+        provider?.config?.type || 'openai',
+        session?.modelId || ''
+      )
 
       return ContextAtMessageService.getContextAtMessage(
         sessionId,
@@ -114,7 +127,7 @@ export function registerMessageIPC() {
         {
           recentCount,
           modelId: session?.modelId,
-          providerType: session?.providerId,
+          providerType: effectiveProviderType,
           systemPrompt,
           wrapMessageTime: isAutoInjectCurrentTimeEnabled(
             Array.isArray(userConfig?.disabledToolIds)

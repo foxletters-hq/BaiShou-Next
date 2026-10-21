@@ -12,10 +12,7 @@ export function buildContextEncodingSystemPromptLines(): string[] {
     `<${MESSAGE_CONTENT_TAG}>`,
     'stored message body',
     `</${MESSAGE_CONTENT_TAG}>`,
-    'The time is the persisted send time, not author wording.',
-    '',
-    '[Rules]',
-    `Do not copy <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, or invent timestamp tags in your reply.`
+    'The time is the persisted send time, not author wording.'
   ]
 }
 

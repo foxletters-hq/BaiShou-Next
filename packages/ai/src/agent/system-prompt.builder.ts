@@ -50,6 +50,11 @@ function pushSection(buffer: string[], tag: string, lines: string[]): void {
   buffer.push('')
 }
 
+const BUILTIN_PLACEHOLDER_GUIDELINES = new Set([
+  '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
+  '请使用工具查阅日记内容，不要编造。引用时注明日期。'
+])
+
 function resolveLocale(locale?: string): string | undefined {
   if (!locale || locale.trim() === '' || locale === 'system') return undefined
   return locale
@@ -89,7 +94,18 @@ export class SystemPromptBuilder {
 
     const buffer: string[] = []
     const availableToolIds = Object.keys(tools)
-    const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds)
+    const hasSkillsCatalog = Boolean(
+      (skillsInstruction &&
+        (skillsInstruction.catalog.length > 0 || skillsInstruction.deltas.length > 0)) ||
+        (skillsCatalog && skillsCatalog.length > 0)
+    )
+    const hasDiaryWriteTools =
+      availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
+    const hasDiaryWritingGuidelines = Boolean(hasDiaryWriteTools && diaryAiWritingPrompt?.trim())
+    const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds, {
+      hasSkillsCatalog,
+      hasDiaryWritingGuidelines
+    })
     const promptLocale = resolveLocale(locale)
     const kindLabel = translateMain(
       promptLocale,
@@ -229,15 +245,14 @@ export class SystemPromptBuilder {
     }
 
     // 9. diary_writing_guidelines
-    const hasDiaryWriteTools =
-      availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
-    if (hasDiaryWriteTools && diaryAiWritingPrompt?.trim()) {
+    if (hasDiaryWritingGuidelines && diaryAiWritingPrompt) {
       pushSection(buffer, 'diary_writing_guidelines', [diaryAiWritingPrompt.trim()])
     }
 
-    // 10. behavior_guidelines
-    if (customGuidelines && customGuidelines.trim().length > 0) {
-      pushSection(buffer, 'behavior_guidelines', [customGuidelines.trim()])
+    // 10. behavior_guidelines（过滤掉内置默认占位文案与旧版重复教条）
+    const trimmedGuidelines = customGuidelines?.trim()
+    if (trimmedGuidelines && !BUILTIN_PLACEHOLDER_GUIDELINES.has(trimmedGuidelines)) {
+      pushSection(buffer, 'behavior_guidelines', [trimmedGuidelines])
     }
 
     return buffer.join('\n').trimEnd() + '\n'

@@ -262,5 +262,42 @@ describe('MessageAdapter.toVercelMessages', () => {
       })
       expect(wrapped[0]?.content).toBe(wrapMessageBodyForModel('你好', at))
     })
+
+    it('does not wrap system compaction summary or tool-result outputs in message-time tags', async () => {
+      const at = new Date(2026, 5, 15, 10, 0)
+      const dbMessages: MessageWithParts[] = [
+        {
+          id: 'snapshot_1',
+          sessionId: 'sess-1',
+          role: 'system',
+          isSummary: true,
+          orderIndex: -1,
+          createdAt: at,
+          parts: [
+            {
+              id: 'p_snap_1',
+              messageId: 'snapshot_1',
+              sessionId: 'sess-1',
+              type: 'text',
+              data: { text: '[往期对话摘要压缩]：\n历史摘要内容' }
+            }
+          ]
+        },
+        makeUserMsg('查一下', { createdAt: at }),
+        makeAssistantMsg([makeTextPart('好的'), makeToolPart()], { createdAt: at })
+      ]
+
+      const wrapped = await MessageAdapter.toVercelMessages(dbMessages, undefined, undefined, {
+        wrapMessageTime: true
+      })
+
+      expect(wrapped[0]?.role).toBe('system')
+      expect(wrapped[0]?.content).toBe('[往期对话摘要压缩]：\n历史摘要内容')
+
+      const toolMsg = wrapped.find((m) => m.role === 'tool')
+      const toolOutput = (toolMsg?.content as any[])?.[0]?.output?.value
+      expect(toolOutput).toBe('搜索结果内容')
+      expect(String(toolOutput)).not.toContain('<message-time>')
+    })
   })
 })

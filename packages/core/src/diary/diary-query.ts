@@ -10,6 +10,7 @@ import {
   resolveDiaryTagsFromSources,
   resolveMoodId,
   resolveWeatherId,
+  truncateTextSafe,
   weatherMatchesFilter
 } from '@baishou/shared'
 
@@ -62,7 +63,7 @@ export function mapShadowRowToMeta(
     id: s.id,
     date: parseDateStr(s.date.split('T')[0]!),
     preview: normalizeDiaryPreviewMarkdown(
-      previewOverride || (rawContent ? rawContent.substring(0, 500) : '')
+      previewOverride || (rawContent ? truncateTextSafe(rawContent, 500) : '')
     ),
     tags: parsedTags,
     tagColors: Object.keys(tagColors).length > 0 ? tagColors : undefined,

@@ -1,11 +1,14 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Keyboard, X } from 'lucide-react'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
+import { Modal } from '../Modal/Modal'
 import styles from './DiaryMarkdownToolbar.module.css'
 
 export interface DiaryMarkdownToolbarProps {
   onInsertText: (prefix: string, suffix?: string) => void
+  onToggleLinePrefix?: (prefix: string) => void
+  onInsertCodeBlock?: () => void
   onUndo: () => void
   onRedo: () => void
   onToggleMark: (marker: DiaryCmMarkdownMark) => void
@@ -21,6 +24,8 @@ function ToolbarDivider() {
 
 export function DiaryMarkdownToolbar({
   onInsertText,
+  onToggleLinePrefix,
+  onInsertCodeBlock,
   onUndo,
   onRedo,
   onToggleMark,
@@ -31,6 +36,120 @@ export function DiaryMarkdownToolbar({
   const viewportRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  const isMac = useMemo(
+    () => typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform),
+    []
+  )
+  const modKey = isMac ? '⌘' : 'Ctrl'
+
+  const shortcutSections = useMemo(
+    () => [
+      {
+        title: t('diary.shortcuts_section_general', '常用操作'),
+        items: [
+          {
+            label: t('diary.shortcut_quick_save', '保存草稿（不退出）'),
+            keys: [modKey, 'S']
+          },
+          {
+            label: t('diary.toolbar_undo', '撤销'),
+            keys: [modKey, 'Z']
+          },
+          {
+            label: t('diary.toolbar_redo', '重做'),
+            keys: isMac ? ['⌘', 'Shift', 'Z'] : ['Ctrl', 'Y']
+          },
+          {
+            label: t('diary.shortcut_search', '查找 / 替换'),
+            keys: [modKey, 'F']
+          }
+        ]
+      },
+      {
+        title: t('diary.shortcuts_section_markdown', 'Markdown 格式'),
+        items: [
+          {
+            label: t('diary.toolbar_bold', '加粗'),
+            keys: [modKey, 'B']
+          },
+          {
+            label: t('diary.toolbar_italic', '斜体'),
+            keys: [modKey, 'I']
+          },
+          {
+            label: t('diary.toolbar_strikethrough', '删除线'),
+            keys: [modKey, 'Shift', 'X']
+          },
+          {
+            label: t('diary.toolbar_code', '行内代码'),
+            keys: [modKey, 'Q']
+          },
+          {
+            label: t('diary.toolbar_code_block', '代码块'),
+            keys: [modKey, 'W']
+          },
+          {
+            label: t('diary.shortcut_link', '插入链接'),
+            keys: [modKey, 'K']
+          },
+          {
+            label: t('diary.shortcut_table', '插入表格'),
+            keys: [modKey, 'Shift', 'T']
+          }
+        ]
+      },
+      {
+        title: t('diary.shortcuts_section_editing', '排版与交互'),
+        items: [
+          {
+            label: t('diary.shortcut_continue_block', '列表 / 引用自动续行（空行再按退出）'),
+            keys: ['Enter']
+          },
+          {
+            label: t('diary.shortcut_indent', '增加 / 减少缩进'),
+            keys: ['Tab', 'Shift + Tab']
+          },
+          {
+            label: t('diary.shortcut_open_link', '打开文内链接'),
+            keys: [`${modKey} + 单击`]
+          }
+        ]
+      }
+    ],
+    [isMac, modKey, t]
+  )
+
+  useEffect(() => {
+    if (!shortcutsOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShortcutsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [shortcutsOpen])
+
+  const handleLinePrefix = useCallback(
+    (prefix: string) => {
+      if (onToggleLinePrefix) {
+        onToggleLinePrefix(prefix)
+      } else {
+        onInsertText(prefix)
+      }
+    },
+    [onToggleLinePrefix, onInsertText]
+  )
+
+  const handleCodeBlock = useCallback(() => {
+    if (onInsertCodeBlock) {
+      onInsertCodeBlock()
+    } else {
+      onInsertText('```\n', '\n```')
+    }
+  }, [onInsertCodeBlock, onInsertText])
 
   const updateScrollAffordance = useCallback(() => {
     const viewport = viewportRef.current
@@ -162,7 +281,7 @@ export function DiaryMarkdownToolbar({
             type="button"
             className={styles.btn}
             onClick={() => onToggleMark('`')}
-            title={t('diary.toolbar_code', '行内代码')}
+            title={`${t('diary.toolbar_code', '行内代码')} (${modKey}+Q)`}
             aria-label={t('diary.toolbar_code', '行内代码')}
           >
             <svg
@@ -182,7 +301,7 @@ export function DiaryMarkdownToolbar({
           <button
             type="button"
             className={styles.btn}
-            onClick={() => onInsertText('> ')}
+            onClick={() => handleLinePrefix('> ')}
             title={t('diary.toolbar_quote', '引用')}
             aria-label={t('diary.toolbar_quote', '引用')}
           >
@@ -194,7 +313,7 @@ export function DiaryMarkdownToolbar({
           <button
             type="button"
             className={styles.btn}
-            onClick={() => onInsertText('- ')}
+            onClick={() => handleLinePrefix('- ')}
             title={t('diary.toolbar_list', '无序列表')}
             aria-label={t('diary.toolbar_list', '无序列表')}
           >
@@ -214,6 +333,28 @@ export function DiaryMarkdownToolbar({
             </svg>
           </button>
 
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={handleCodeBlock}
+            title={`${t('diary.toolbar_code_block', '代码块')} (${modKey}+W)`}
+            aria-label={t('diary.toolbar_code_block', '代码块')}
+          >
+            <svg
+              className={styles.icon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <polyline points="9 9 6 12 9 15" />
+              <polyline points="15 9 18 12 15 15" />
+            </svg>
+          </button>
+
           <ToolbarDivider />
 
           <button
@@ -229,7 +370,7 @@ export function DiaryMarkdownToolbar({
           <button
             type="button"
             className={styles.btn}
-            onClick={() => onInsertText('##### ')}
+            onClick={() => handleLinePrefix('##### ')}
             title={t('diary.toolbar_insert_h5', '插入五级标题')}
             aria-label={t('diary.toolbar_insert_h5', '插入五级标题')}
           >
@@ -239,7 +380,7 @@ export function DiaryMarkdownToolbar({
           <button
             type="button"
             className={styles.btn}
-            onClick={() => onInsertText('###### ')}
+            onClick={() => handleLinePrefix('###### ')}
             title={t('diary.toolbar_insert_h6', '插入六级标题')}
             aria-label={t('diary.toolbar_insert_h6', '插入六级标题')}
           >
@@ -281,6 +422,63 @@ export function DiaryMarkdownToolbar({
           <ChevronRight className={styles.scrollIcon} />
         </button>
       ) : null}
+
+      <button
+        type="button"
+        className={`${styles.btn} ${styles.shortcutTriggerBtn}`}
+        onClick={() => setShortcutsOpen(true)}
+        title={t('diary.toolbar_shortcuts', '快捷键说明')}
+        aria-label={t('diary.toolbar_shortcuts', '快捷键说明')}
+      >
+        <Keyboard className={styles.icon} />
+        <span className={styles.shortcutTriggerLabel}>
+          {t('diary.toolbar_shortcuts_short', '快捷键')}
+        </span>
+      </button>
+
+      <Modal
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+        animation="fade"
+        className={styles.shortcutsModal}
+      >
+        <div className={styles.shortcutsHeader}>
+          <span className={styles.shortcutsTitle}>
+            {t('diary.shortcuts_modal_title', '编辑器快捷键')}
+          </span>
+          <button
+            type="button"
+            className={styles.shortcutsCloseBtn}
+            onClick={() => setShortcutsOpen(false)}
+            aria-label={t('common.close', '关闭')}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className={styles.shortcutsBody}>
+          {shortcutSections.map((section) => (
+            <div key={section.title} className={styles.shortcutSection}>
+              <div className={styles.shortcutSectionTitle}>{section.title}</div>
+              <div className={styles.shortcutList}>
+                {section.items.map((item) => (
+                  <div key={item.label} className={styles.shortcutRow}>
+                    <span className={styles.shortcutLabel}>{item.label}</span>
+                    <span className={styles.shortcutKeys}>
+                      {item.keys.map((k, idx) => (
+                        <React.Fragment key={k}>
+                          {idx > 0 && <span className={styles.shortcutKeyPlus}>+</span>}
+                          <kbd className={styles.kbd}>{k}</kbd>
+                        </React.Fragment>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
     </div>
   )
 }

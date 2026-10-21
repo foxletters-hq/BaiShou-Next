@@ -43,6 +43,11 @@
   line-height: 1;
 }
 
+.wp-icon-empty {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-tertiary);
+}
+
 .wp-icon-img {
   width: 18px;
   height: 18px;

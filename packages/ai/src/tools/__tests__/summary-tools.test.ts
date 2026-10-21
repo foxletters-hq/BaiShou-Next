@@ -63,6 +63,55 @@ describe('SummaryReadTool and SummaryWriteTool', () => {
     expect(output).toBe('##### 2026年3月第10周总结\n\n本周内容')
   })
 
+  it('SummaryReadTool lists existing summaries with type, date range, and limit in list mode', async () => {
+    const tool = new SummaryReadTool()
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultId: 'vault-1',
+      vaultName: 'default',
+      summaryReader: {
+        readSummary: vi.fn(),
+        getAvailableSummaries: vi.fn(),
+        listAllSummaries: vi.fn().mockResolvedValue([
+          {
+            type: SummaryType.weekly,
+            startDate: new Date(2026, 2, 2, 0, 0, 0),
+            endDate: new Date(2026, 2, 8, 23, 59, 59)
+          },
+          {
+            type: SummaryType.weekly,
+            startDate: new Date(2026, 2, 9, 0, 0, 0),
+            endDate: new Date(2026, 2, 15, 23, 59, 59)
+          },
+          {
+            type: SummaryType.monthly,
+            startDate: new Date(2026, 2, 1, 0, 0, 0),
+            endDate: new Date(2026, 2, 31, 23, 59, 59)
+          }
+        ])
+      }
+    }
+
+    const recentTwo = await tool.execute({ mode: 'list', type: 'all', limit: 2 }, context)
+    expect(recentTwo).toContain('Found 2 existing summary period(s)')
+    expect(recentTwo).toContain('start_date: `2026-03-09`')
+    expect(recentTwo).toContain('start_date: `2026-03-02`')
+    expect(recentTwo).not.toContain('start_date: `2026-03-01`')
+
+    const rangeFiltered = await tool.execute(
+      {
+        mode: 'list',
+        type: 'weekly',
+        start_date: '2026-03-09',
+        end_date: '2026-03-15'
+      },
+      context
+    )
+    expect(rangeFiltered).toContain('Found 1 existing summary period(s)')
+    expect(rangeFiltered).toContain('start_date: `2026-03-09`')
+    expect(rangeFiltered).not.toContain('start_date: `2026-03-02`')
+  })
+
   it('SummaryWriteTool writes summary markdown to Summaries relativePath and upserts DB record', async () => {
     const tool = new SummaryWriteTool()
     const writeFile = vi.fn().mockResolvedValue({ contentHash: 'abc123' })

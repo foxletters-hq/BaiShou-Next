@@ -6,7 +6,12 @@
  */
 
 import { z } from 'zod'
-import { formatLocalDate, MEMORY_SOURCE_TYPE, type ToolRawDataSourceManager } from '@baishou/shared'
+import {
+  formatLocalDate,
+  MEMORY_SOURCE_TYPE,
+  truncateTextSafe,
+  type ToolRawDataSourceManager
+} from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSourceLookup } from './agent.tool'
 
@@ -63,7 +68,7 @@ function isMemoryNotFoundError(error: unknown): boolean {
 }
 
 function previewText(text: string): string {
-  return text.length > 60 ? `${text.slice(0, 60)}...` : text
+  return text.length > 60 ? truncateTextSafe(text, 60, '...') : text
 }
 
 async function tombstoneMemoryIfNeeded(

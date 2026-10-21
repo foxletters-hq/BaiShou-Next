@@ -4,6 +4,8 @@ import type { EditorContextMenuOpenPayload } from '../../shared/editor-menus'
 export interface CodeMirrorEditorHandle {
   insertAtCursor: (text: string) => void
   insertWrappedText: (prefix: string, suffix?: string) => void
+  toggleLinePrefix: (prefix: string) => void
+  insertCodeBlock: () => void
   undo: () => void
   redo: () => void
   toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
@@ -13,6 +15,7 @@ export interface CodeMirrorEditorHandle {
 export interface CodeMirrorEditorProps {
   content: string
   onChange: (value: string) => void
+  onSelectionCountChange?: (selectedCharCount: number) => void
   placeholder?: string
   basePath?: string
   onPasteFiles?: (files: File[]) => Promise<string[]>

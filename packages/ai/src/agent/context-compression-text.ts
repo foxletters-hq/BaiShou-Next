@@ -1,5 +1,9 @@
 import type { ModelMessage } from 'ai'
-import { buildCompressionPreviousSummaryBlock, wrapMessageBodyForModel } from '@baishou/shared'
+import {
+  buildCompressionPreviousSummaryBlock,
+  truncateTextSafe,
+  wrapMessageBodyForModel
+} from '@baishou/shared'
 import type { MessageWithParts } from './message.adapter'
 import { TOOL_OUTPUT_MAX_CHARS } from './compression.constants'
 import { estimateTextTokens } from './call-chain-view-model.builder'
@@ -57,7 +61,7 @@ export function extractMessageText(msg: MessageWithParts): string {
 
 function truncateForCompression(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
-  return `${text.slice(0, maxChars)}\n…[已截断]`
+  return truncateTextSafe(text, maxChars, '\n…[已截断]')
 }
 
 /** 压缩专用文本提取（tool 输出限长） */

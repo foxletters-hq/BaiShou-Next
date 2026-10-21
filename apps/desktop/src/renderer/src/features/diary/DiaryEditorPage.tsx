@@ -93,6 +93,7 @@ export const DiaryEditorPage: React.FC = () => {
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
         isSaving={editor.savePhase !== 'idle'}
+        isDirty={editor.isDirty}
         savePhase={editor.savePhase}
         onContentChange={editor.handleContentChange}
         onDateChange={editor.setSelectedDate}
@@ -101,6 +102,7 @@ export const DiaryEditorPage: React.FC = () => {
         onFavoriteChange={editor.setIsFavorite}
         onMediaPathsChange={editor.setMediaPaths}
         onSave={editor.handleSave}
+        onQuickSave={editor.handleQuickSave}
         onCancel={editor.handleBack}
         onReadAloud={handleReadAloud}
         isTtsPlaying={tts.ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}

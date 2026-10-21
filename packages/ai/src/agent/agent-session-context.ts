@@ -1,13 +1,9 @@
 import {
   createAgentStreamAbortError,
-  resolveSessionDisabledToolIds,
-  normalizeAssistantKind,
-  buildEffectiveAssistantSystemPrompt,
   isAutoInjectCurrentTimeEnabled,
   resolveVaultIdentity,
   type AssistantKind
 } from '@baishou/shared'
-import { AssistantRepository } from '@baishou/database'
 import {
   estimateContextTokensForTrigger,
   estimateTokensSinceLastSnapshot,
@@ -23,6 +19,7 @@ import { COMPRESSION_MESSAGE_FETCH_LIMIT } from './compression.constants'
 import { ContextCompressorService } from './context-compressor.service'
 import { ContextWindowBuilder } from './context-window.builder'
 import { MessageAdapter, type MessageWithParts } from './message.adapter'
+import { resolveSessionAssistantContext } from './session-assistant-context.util'
 import { runCompressionSaveDiaryLifecycle } from '../baishou-agent-gate/compression-save-diary.lifecycle'
 import { replaceEpochBaselineAfterCompression } from '../session-runtime/context-epoch'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
@@ -35,15 +32,7 @@ import {
   type ProviderType
 } from '../middleware/middleware-factory'
 
-export async function prepareAgentSessionContext(input: {
-  options: StreamChatOptions
-  sessionAgentGate?: IBaishouAgentGate
-  workspaceOptions?: StreamChatOptions['workspace']
-}): Promise<{
-  model: ReturnType<typeof wrapLanguageModelWithMiddlewares>
-  effectiveProviderType: string
-  messagesForModel: Awaited<ReturnType<typeof MessageAdapter.toVercelMessages>>
-  dbHistory: Awaited<ReturnType<typeof ContextWindowBuilder.buildFromMessages>>
+export interface ResolvedAgentSessionMetadata {
   mergedUserConfig: Record<string, unknown>
   effectiveSystemPrompt?: string
   assistantKind: AssistantKind
@@ -52,68 +41,33 @@ export async function prepareAgentSessionContext(input: {
   vaultId: string
   vaultName: string
   saveDiaryBeforeCompression: (messages: MessageWithParts[]) => Promise<void>
-}> {
+}
+
+export async function resolveAgentSessionMetadata(input: {
+  options: StreamChatOptions
+  sessionAgentGate?: IBaishouAgentGate
+  workspaceOptions?: StreamChatOptions['workspace']
+}): Promise<ResolvedAgentSessionMetadata> {
   const { options, sessionAgentGate, workspaceOptions } = input
   const {
     sessionId,
-    provider,
-    modelId,
     sessionRepo,
-    snapshotRepo,
     systemPrompt,
     userConfig,
-    abortSignal,
-    userMessageId,
-    streamClaimGeneration,
-    forceRecompress,
-    flushSessionToDisk,
     resolveVaultDisplayName,
     diarySearcher
   } = options
 
-  const baseModel = provider.getLanguageModel(modelId, { sessionId })
-  const effectiveProviderType = resolveEffectiveProviderType(
-    provider.config?.type || 'openai',
-    modelId
-  )
-  const model = wrapLanguageModelWithMiddlewares(baseModel, {
-    providerType: effectiveProviderType,
-    providerId: provider.config?.id,
-    modelId,
-    sessionId,
-    baseUrl: provider.config?.baseUrl
-  })
-
   const sessionObj = await sessionRepo.getSessionById?.(sessionId)
-
-  let mergedUserConfig = userConfig || {}
-  let effectiveSystemPrompt = systemPrompt
-  let assistantKind: AssistantKind = 'companion'
-  if (sessionObj?.assistantId) {
-    const vaultId = String(sessionObj?.vaultId ?? '').trim() || null
-    const astRepo = new AssistantRepository(
-      (sessionRepo as any).db || (sessionRepo as any).database,
-      () => vaultId
-    )
-    const ast = await astRepo.findById(sessionObj.assistantId, vaultId)
-    if (ast) {
-      assistantKind = normalizeAssistantKind(ast.assistantKind)
-      mergedUserConfig = {
-        ...mergedUserConfig,
-        disabledToolIds: resolveSessionDisabledToolIds(
-          Array.isArray(mergedUserConfig['disabledToolIds'])
-            ? (mergedUserConfig['disabledToolIds'] as string[])
-            : [],
-          assistantKind,
-          workspaceOptions?.sessionKind
-        )
-      }
-      const combined = buildEffectiveAssistantSystemPrompt(ast.systemPrompt, ast.customSystemPrompt)
-      if (combined) {
-        effectiveSystemPrompt = combined
-      }
-    }
-  }
+  const { mergedUserConfig, effectiveSystemPrompt, assistantKind } =
+    await resolveSessionAssistantContext({
+      sessionId,
+      sessionRepo: sessionRepo as any,
+      userConfig: userConfig || {},
+      systemPrompt,
+      sessionKind: workspaceOptions?.sessionKind,
+      sessionObj
+    })
 
   const injectMessageTime = isAutoInjectCurrentTimeEnabled(
     Array.isArray(mergedUserConfig['disabledToolIds'])
@@ -141,6 +95,84 @@ export async function prepareAgentSessionContext(input: {
       messages
     })
   }
+
+  return {
+    mergedUserConfig,
+    effectiveSystemPrompt,
+    assistantKind,
+    injectMessageTime,
+    configRecentCount,
+    vaultId,
+    vaultName,
+    saveDiaryBeforeCompression
+  }
+}
+
+export async function prepareAgentSessionContext(input: {
+  options: StreamChatOptions
+  sessionAgentGate?: IBaishouAgentGate
+  workspaceOptions?: StreamChatOptions['workspace']
+  prebuiltMetadata?: ResolvedAgentSessionMetadata
+  builtSystemPrompt?: string
+}): Promise<{
+  model: ReturnType<typeof wrapLanguageModelWithMiddlewares>
+  effectiveProviderType: string
+  messagesForModel: Awaited<ReturnType<typeof MessageAdapter.toVercelMessages>>
+  dbHistory: Awaited<ReturnType<typeof ContextWindowBuilder.buildFromMessages>>
+  mergedUserConfig: Record<string, unknown>
+  effectiveSystemPrompt?: string
+  assistantKind: AssistantKind
+  injectMessageTime: boolean
+  configRecentCount: number
+  vaultId: string
+  vaultName: string
+  saveDiaryBeforeCompression: (messages: MessageWithParts[]) => Promise<void>
+}> {
+  const { options, sessionAgentGate, workspaceOptions, prebuiltMetadata, builtSystemPrompt } = input
+  const {
+    sessionId,
+    provider,
+    modelId,
+    sessionRepo,
+    snapshotRepo,
+    abortSignal,
+    userMessageId,
+    streamClaimGeneration,
+    forceRecompress,
+    flushSessionToDisk
+  } = options
+
+  const baseModel = provider.getLanguageModel(modelId, { sessionId })
+  const effectiveProviderType = resolveEffectiveProviderType(
+    provider.config?.type || 'openai',
+    modelId
+  )
+  const model = wrapLanguageModelWithMiddlewares(baseModel, {
+    providerType: effectiveProviderType,
+    providerId: provider.config?.id,
+    modelId,
+    sessionId,
+    baseUrl: provider.config?.baseUrl
+  })
+
+  const metadata =
+    prebuiltMetadata ??
+    (await resolveAgentSessionMetadata({
+      options,
+      sessionAgentGate,
+      workspaceOptions
+    }))
+  const {
+    mergedUserConfig,
+    effectiveSystemPrompt,
+    assistantKind,
+    injectMessageTime,
+    configRecentCount,
+    vaultId,
+    vaultName,
+    saveDiaryBeforeCompression
+  } = metadata
+  const systemPromptForTokens = builtSystemPrompt || effectiveSystemPrompt
 
   let compressionConfig = await resolveSessionCompressionConfig(sessionId, sessionRepo)
   const loadSessionMessages = async () =>
@@ -181,7 +213,7 @@ export async function prepareAgentSessionContext(input: {
           ? estimateTokensSinceLastSnapshot(sessionMessages, snapshotForWindow)
           : estimateContextTokensForTrigger(sessionMessages, snapshotForWindow, {
               recentCount: configRecentCount,
-              systemPrompt: effectiveSystemPrompt
+              systemPrompt: systemPromptForTokens
             })
       if (resolveCompressionTrigger(contextTokens, compressionConfig)) {
         logger.info(
@@ -202,7 +234,7 @@ export async function prepareAgentSessionContext(input: {
             wrapMessageTime: injectMessageTime,
             prefetchedMessages: sessionMessages,
             recentCount: configRecentCount,
-            systemPrompt: effectiveSystemPrompt,
+            systemPrompt: systemPromptForTokens,
             countTokensSinceLastSnapshot
           }
         )

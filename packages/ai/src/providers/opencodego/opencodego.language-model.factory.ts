@@ -2,7 +2,12 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { LanguageModel } from 'ai'
-import { type AiProviderModel, ProviderType, resolveProviderBaseUrl } from '@baishou/shared'
+import {
+  type AiProviderModel,
+  ProviderType,
+  resolveProviderBaseUrl,
+  sanitizeSurrogatesDeep
+} from '@baishou/shared'
 import { createSanitizedFetch, sanitizeApiKeyForHttp } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { applyOpenAiThinkingBodyInject } from '../reasoning/openai-thinking-inject'
@@ -34,8 +39,12 @@ function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.
       typeof nextInit.body === 'string'
     ) {
       try {
-        const body = JSON.parse(nextInit.body) as Record<string, unknown>
-        let mutated = applyOpenAiThinkingBodyInject(body)
+        const parsed = JSON.parse(nextInit.body) as Record<string, unknown>
+        const body = sanitizeSurrogatesDeep(parsed)
+        let mutated = body !== parsed
+        if (applyOpenAiThinkingBodyInject(body)) {
+          mutated = true
+        }
         const modelId = typeof body.model === 'string' ? body.model : ''
         if (modelId.toLowerCase().includes('deepseek') && Array.isArray(body.messages)) {
           for (const msg of body.messages) {

@@ -114,6 +114,35 @@ describe('prompt-caching.util', () => {
       const lastUser = result[2] as { providerOptions?: Record<string, unknown> }
       expect(lastUser.providerOptions?.anthropic).toEqual(INLINE_CACHE_PROVIDER_OPTIONS.anthropic)
     })
+
+    it('accounts for pre-marked primary system message and also marks compaction summary system message', () => {
+      const budget = { remaining: ANTHROPIC_BREAKPOINT_CAP }
+      const messages: ModelMessage[] = [
+        {
+          role: 'system',
+          content: 'main system prompt',
+          providerOptions: { ...INLINE_CACHE_PROVIDER_OPTIONS }
+        } as ModelMessage,
+        {
+          role: 'system',
+          content: '[往期对话摘要压缩]：\nsummary'
+        },
+        { role: 'user', content: 'hello' }
+      ]
+
+      const result = applyInlineCacheMarkersToMessages(
+        messages,
+        { providerType: 'anthropic', modelId: 'claude-3-5-sonnet' },
+        budget
+      )
+
+      const summarySys = result[1] as { providerOptions?: Record<string, unknown> }
+      const lastUser = result[2] as { providerOptions?: Record<string, unknown> }
+      expect(summarySys.providerOptions?.anthropic).toEqual(INLINE_CACHE_PROVIDER_OPTIONS.anthropic)
+      expect(lastUser.providerOptions?.anthropic).toEqual(INLINE_CACHE_PROVIDER_OPTIONS.anthropic)
+      // 3 breakpoints used: pre-marked system[0] + newly marked system[1] + user[2], leaving 1 for tools
+      expect(budget.remaining).toBe(1)
+    })
   })
 
   describe('applyInlineCacheMarkersToTools', () => {

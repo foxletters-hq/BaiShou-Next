@@ -90,7 +90,7 @@ describe('live preview marker hiding', () => {
     expect(parent.textContent).not.toMatch(/`code`/)
   })
 
-  it('keeps inline code backticks inside the mark when the caret is inside', () => {
+  it('keeps backticks inside the chip while the caret is inside', () => {
     const content = 'use `code` here\n'
     mount(content, content.indexOf('c'))
     const el = parent.querySelector('.cm-rendered-inline-code')

@@ -3,6 +3,7 @@ import type {
   AgentSessionRuntimeListener,
   SessionRuntimeToolPayloadSummary
 } from '@baishou/shared'
+import { truncateTextSafe } from '@baishou/shared'
 import { ChunkType, type StreamChunk } from './stream-chunk.types'
 
 const listeners = new Set<AgentSessionRuntimeListener>()
@@ -90,7 +91,7 @@ export function summarizeToolPayloadForRuntime(
   const raw = stringifyToolPayload(value)
   const charLength = raw.length
   const truncated = charLength > maxChars
-  const preview = truncated ? raw.slice(0, maxChars) : raw
+  const preview = truncated ? truncateTextSafe(raw, maxChars) : raw
   const summary: SessionRuntimeToolPayloadSummary = {
     preview,
     truncated,

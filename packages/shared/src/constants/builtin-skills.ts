@@ -204,7 +204,7 @@ Keep following the persona rules when speaking to the user. This skill governs *
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Check current date                        | \`current_time\` / \`baishou_current_time\`                                                              |
 | Detect all missing summaries via bitmap   | \`summary_read\` / \`baishou_summary_read\` with \`mode: "missing"\`                                     |
-| Ask user which summaries to generate      | \`companion_ask\`                                                                                        |
+| Ask user which summaries to generate      | \`companion_ask\` (pass \`multiple: true\` when 2+ periods are missing)                                  |
 | List diary dates in a week/month          | \`diary_list\` / \`baishou_diary_list\` (pass \`start_date\`, \`end_date\`)                              |
 | Read full diary entries in a week/month   | \`diary_read\` / \`baishou_diary_read\` (pass \`dates\` array)                                           |
 | Read existing or lower-level summaries    | \`summary_read\` / \`baishou_summary_read\` (pass \`type\`, \`start_date\`)                              |
@@ -232,7 +232,7 @@ Call \`summary_read\`:
 
 Call \`companion_ask\` (in the user's language):
 - In \`question\`, concisely list the count and date ranges of the detected missing summaries.
-- In \`options\`, provide specific period choices (if there are many, offer options such as generating all in order, generating the most recent one, or grouping by type).
+- When 2 or more missing periods are detected, pass \`multiple: true\` on \`companion_ask\` and make each option a single period item (for example \`["2026年第34周（8月17日—8月23日）", "2026年第39周（9月21日—9月27日）"]\`). Do **not** prefix options with "Only..." / "只补..." or mix "Both / All of them" / "两份都补" into a multi-select option list, because the user can directly check one or more periods.
 
 ### Step 3: Read Source Material
 
@@ -346,9 +346,9 @@ Once drafted, call \`summary_write\`:
 
 export const SUMMARY_REPAIR_SKILL_CONTENT = `# Period Summary Verification & Repair
 
-Read a specified existing summary, verify its people, roles, and facts against the underlying diaries and memories (FTS + RAG), ask the user to confirm the corrections, then overwrite the same period via \`summary_write\`.
+Confirm the repair scope with the user (specific summary, recent N summaries, or a date range), read the target existing summary(ies), verify people, roles, and facts against the underlying diaries and memories (FTS + RAG), ask the user to confirm the corrections, then overwrite the same period(s) via \`summary_write\`.
 
-Keep following the persona rules when speaking to the user. This skill governs **how to read, verify, and repair an existing summary**—not how to generate new missing summaries. It is designed for companion sessions; project/workbench sessions expose personal memory as read-only, so do not attempt to write summaries there.
+Keep following the persona rules when speaking to the user. This skill governs **how to read, verify, and repair existing summaries**—not how to generate new missing summaries. It is designed for companion sessions; project/workbench sessions expose personal memory as read-only, so do not attempt to write summaries there.
 
 ## Language Rule
 
@@ -357,61 +357,68 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 ## When to Use
 
-- The user asks to repair, correct, proofread, or verify an existing weekly/monthly/quarterly/yearly summary
+- The user asks to repair, correct, proofread, or verify an existing weekly/monthly/quarterly/yearly summary, or invokes \`/summary-repair\`
 - The user says a summary swapped people, used a wrong name, hallucinated details, missed an event, or listed the application/default name as a person
-- The user asks you to read several summaries and cross-check them against diaries
+- The user asks you to read several recent summaries or a date range of summaries and cross-check them against diaries
 - You notice a likely role or name error while reading a summary and want to offer a fix
 
 ## Hard Rules
 
-1. **Read the target first**: Call \`summary_read(mode: "read", type, start_date)\` to read the current Markdown body. Never rewrite a summary you have not read.
-2. **Establish the roles before editing**:
+1. **Ask the repair scope first when not specified**: If the user invokes \`/summary-repair\` (or asks to check/repair summaries) without specifying which summary, how many recent summaries, or what date range to check, first call \`summary_read(mode: "list")\` to inspect available summaries, then call \`companion_ask\` to let the user choose the scope (e.g., pick specific summary period(s), check the most recent N summaries, or check a specific time range). Set \`multiple: true\` on \`companion_ask\` whenever the user may select multiple summaries or options.
+2. **Read the target first**: Call \`summary_read(mode: "read", type, start_date)\` to read the current Markdown body of each target summary. Never rewrite a summary you have not read.
+3. **Establish the roles before editing**:
    - The diary author ("I" / "我") is the **user**.
    - The AI companion is the **current companion** (for example Latte), not the application and not a system default name.
    - Never swap the user's and the companion's identities, feelings, or actions.
    - Never treat the application name or a system default name as a person's name. If a summary does so, correct it.
-3. **Verify facts with real sources**: Use \`diary_list\` + \`diary_read\` for the same period. Use \`diary_search\` (FTS) to find names, events, and quotations, and \`vector_search\` (RAG) for semantic evidence. Use \`recall_relations\` when available to check existing relationship records. If RAG is unavailable, complete at least the FTS + diary-text verification.
-4. **Build a person map before writing**: List every person in the summary and confirm who they are. Check the user, the companion, and other people separately. Do not guess a name when the sources are unclear—ask the user.
-5. **Propose before overwriting**: Use \`companion_ask\` to show the discovered error(s) (original → corrected) and the repair scope. Get confirmation before writing.
-6. **Overwrite the same period**: Call \`summary_write\` with the **same** \`type\` and \`start_date\` as the original summary. Pass the full corrected Markdown body. Never create a duplicate period.
-7. **Fix only what is wrong**: Keep accurate sections and the original structure/headings. Do not rewrite the whole summary just to change style, and do not edit diaries as part of summary repair.
-8. **Report briefly**: After saving, confirm what names/roles/facts were corrected in a few sentences. Do not paste the full summary into chat.
+4. **Verify facts with real sources**: Use \`diary_list\` + \`diary_read\` for the same period. Use \`diary_search\` (FTS) to find names, events, and quotations, and \`vector_search\` (RAG) for semantic evidence. Use \`recall_relations\` when available to check existing relationship records. If RAG is unavailable, complete at least the FTS + diary-text verification.
+5. **Build a person map before writing**: List every person in the summary and confirm who they are. Check the user, the companion, and other people separately. Do not guess a name when the sources are unclear—ask the user.
+6. **Propose before overwriting**: Use \`companion_ask\` to show the discovered error(s) (original → corrected) and the repair scope. When multiple summaries or independent fixes are proposed, set \`multiple: true\` so the user can select which ones to apply. Get confirmation before writing.
+7. **Overwrite the same period**: Call \`summary_write\` with the **same** \`type\` and \`start_date\` as the original summary. Pass the full corrected Markdown body. Never create a duplicate period.
+8. **Fix only what is wrong**: Keep accurate sections and the original structure/headings. Do not rewrite the whole summary just to change style, and do not edit diaries as part of summary repair.
+9. **Report briefly**: After saving, confirm what names/roles/facts were corrected in a few sentences. Do not paste the full summary into chat.
 
 ## Tool Usage
 
 | Scenario                                  | Tool (Built-in / MCP)                                                                                    |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Read the target summary                   | \`summary_read\` / \`baishou_summary_read\` with \`mode: "read"\`, \`type\`, \`start_date\`          |
+| List existing summaries (recent / range)  | \`summary_read\` / \`baishou_summary_read\` with \`mode: "list"\` (optional \`type\`, \`start_date\`, \`end_date\`, \`limit\`) |
+| Ask user for scope or confirm corrections | \`companion_ask\` (set \`multiple: true\` when the user can pick multiple summaries or fixes)            |
+| Read a specific target summary            | \`summary_read\` / \`baishou_summary_read\` with \`mode: "read"\`, \`type\`, \`start_date\`              |
 | Confirm current date / period             | \`current_time\` / \`baishou_current_time\`                                                              |
 | List diary dates in the period            | \`diary_list\` / \`baishou_diary_list\` (pass \`start_date\`, \`end_date\`)                              |
 | Read full diary entries                   | \`diary_read\` / \`baishou_diary_read\` (pass \`dates\` array)                                           |
 | FTS keyword search for people/events      | \`diary_search\` / \`baishou_diary_search\`                                                              |
 | RAG semantic search for relationship facts| \`vector_search\` / \`baishou_vector_search\`                                                            |
 | Check existing relationship records       | \`recall_relations\` / \`baishou_recall_relations\`                                                      |
-| Ask the user to confirm corrections       | \`companion_ask\`                                                                                        |
 | Overwrite the same period summary         | \`summary_write\` / \`baishou_summary_write\` (same \`type\` + \`start_date\`, full corrected \`content\`) |
 
 ## Workflow
 
 \`\`\`
 Task Progress:
-- [ ] 1. Read the target summary with summary_read(mode: "read")
-- [ ] 2. List and read the diaries for the same period
-- [ ] 3. Search names/events with diary_search (FTS), verify relationships with vector_search (RAG) and recall_relations
-- [ ] 4. Build a person map and identify role/name/fact errors
-- [ ] 5. Show the original → corrected changes and ask for confirmation
-- [ ] 6. Overwrite the same period with summary_write using the full corrected Markdown
-- [ ] 7. Briefly report what was corrected
+- [ ] 1. Confirm repair scope (if unspecified: call summary_read(mode: "list") and ask via companion_ask with multiple: true)
+- [ ] 2. Read the target summary(ies) with summary_read(mode: "read", type, start_date)
+- [ ] 3. List and read the diaries (and lower-level summaries if applicable) for the same period(s)
+- [ ] 4. Search names/events with diary_search (FTS), verify relationships with vector_search (RAG) and recall_relations
+- [ ] 5. Build a person map and identify role/name/fact errors
+- [ ] 6. Show the original → corrected changes via companion_ask (use multiple: true for multiple items) and get confirmation
+- [ ] 7. Overwrite the confirmed period(s) with summary_write using the full corrected Markdown
+- [ ] 8. Briefly report what was corrected
 \`\`\`
 
-### Step 1: Read the Target Summary
+### Step 1: Confirm Repair Scope & Read Target Summary(ies)
 
-Call \`summary_read\` with:
-- \`mode: "read"\`
-- \`type\`: \`"weekly"\` | \`"monthly"\` | \`"quarterly"\` | \`"yearly"\`
-- \`start_date\`: the period start date in \`YYYY-MM-DD\`
-
-If the exact period is not found, ask the user to confirm the date, or use the available-summary list returned by the tool.
+1. **If the user has NOT specified which summary to check** (e.g., only sent \`/summary-repair\`):
+   - First call \`summary_read(mode: "list", limit: 10)\` to get recent existing summaries.
+   - Then call \`companion_ask\` with \`multiple: true\` and \`allow_custom_input: true\`:
+     - Put each recent summary period as its own option (e.g., \`"2026年第39周（9月21日—9月27日）"\`, \`"2026年第34周（8月17日—8月23日）"\`), plus quick scope options like \`"排查最近 3 篇总结"\` / \`"排查最近 5 篇总结"\`.
+     - Do **not** add "Only..." / "只修..." or "All" / "全部" options; the user can directly check multiple options or type a custom date range in custom input.
+2. **If the user chose "recent N" or a date range**:
+   - Call \`summary_read(mode: "list", type, start_date, end_date, limit)\` to get the matching summary periods.
+3. **Read each target summary**:
+   - Call \`summary_read(mode: "read", type, start_date)\` for each target period (\`type\`: \`"weekly"\` | \`"monthly"\` | \`"quarterly"\` | \`"yearly"\`, \`start_date\`: \`YYYY-MM-DD\`).
+   - If an exact period is not found, ask the user to confirm the date, or use the available-summary list returned by the tool.
 
 ### Step 2: Read the Source Material
 
@@ -439,6 +446,7 @@ Call \`companion_ask\` in the user's language:
 - Quote the erroneous line or summarize it.
 - Show the corrected version.
 - State which period and sections will change.
+- If there are multiple summaries or independent corrections, set \`multiple: true\` on the options so the user can check which ones to apply.
 - Ask for confirmation before writing.
 
 ### Step 5: Overwrite the Same Period
@@ -454,7 +462,7 @@ Do not create a new period or a duplicate summary.
 ### Step 6: Report
 
 Confirm in a few sentences:
-- Which summary period was repaired.
+- Which summary period(s) were repaired.
 - Which names/roles/facts were corrected.
 - Whether any uncertainty remains (for example, an ambiguous person the user should confirm).
 
