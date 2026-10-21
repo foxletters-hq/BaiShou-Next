@@ -36,9 +36,11 @@ function selectedOptionLabel(
   request: AgentGateRequest,
   selectedOptionIds?: string[]
 ): string | null {
-  const selectedId = selectedOptionIds?.[0]
-  if (!selectedId) return null
-  return request.options.find((option) => option.id === selectedId)?.label ?? null
+  if (!selectedOptionIds || selectedOptionIds.length === 0) return null
+  const labels = selectedOptionIds
+    .map((id) => request.options.find((option) => option.id === id)?.label)
+    .filter((label): label is string => Boolean(label))
+  return labels.length > 0 ? labels.join('、') : null
 }
 
 export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) => {

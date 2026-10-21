@@ -20,6 +20,8 @@ export interface AgentGateQuestion {
   question: string
   options: AgentGateOption[]
   allowCustomInput?: boolean
+  /** 是否允许用户多选选项；缺省为单选 */
+  multiple?: boolean
 }
 
 export interface AgentGateQuestionAnswer {
@@ -68,10 +70,9 @@ export type AgentGateApprovalPreset = 'always_ask' | 'dangerous_only' | 'never_a
 /**
  * 工作台全局安全模式（不再按工作区配置）。
  * - full_access：尽量自动过，黑名单 / 危险命令仍钳制为 Ask
- * - auto_review：常规编辑直接过；命令经模型快速审核，黑名单仍强制问
  * - allow_list：默认询问，仅白名单（allowlist）自动放行
  */
-export type AgentWorkspaceSecurityMode = 'full_access' | 'auto_review' | 'allow_list'
+export type AgentWorkspaceSecurityMode = 'full_access' | 'allow_list'
 
 export interface BaishouAgentGateConfig {
   exclusionList: string[]
@@ -86,11 +87,6 @@ export interface BaishouAgentGateConfig {
    * 有序规则表（G4 设计稿中的 rules）；顺序即优先级（最后匹配赢）。
    */
   permissionRules?: AgentGatePermissionRule[]
-  /**
-   * Consecutive same-fingerprint asserts in one session that force Ask.
-   * Default 3; set 0 to disable.
-   */
-  repeatAssertAskThreshold?: number
   /**
    * When true (default), tools whose action evaluates to Deny (with no resources)
    * are omitted from the model tool list.
@@ -123,7 +119,6 @@ export interface WorkspaceGatePolicyV2 {
   exclusionList: string[]
   commandBlacklist?: string[]
   hideDeniedTools: boolean
-  repeatAssertAskThreshold: number
 }
 
 /** 分层求值命中来源（写入权限卡 metadata，供 UI 展示） */
@@ -157,6 +152,8 @@ export interface AgentWorkspacePolicy {
   toolManagement: WorkspaceToolManagementConfig
   /** 工作台按需只读个人记忆；缺省视为开启 */
   personalMemoryReadEnabled: boolean
+  /** 工作区级：是否允许直接访问工作区外目录（不每次询问）；缺省为 false */
+  externalDirectoryAllowed?: boolean
   updatedAt: string
 }
 
@@ -171,6 +168,8 @@ export interface AgentGateRequest {
   description?: string
   options: AgentGateOption[]
   allowCustomInput: boolean
+  /** 单题时是否允许多选；多题时以 questions[i].multiple 为准 */
+  multiple?: boolean
   /** 一次问多题时使用；缺省则按 title + options 当作单题 */
   questions?: AgentGateQuestion[]
   metadata: Record<string, unknown>
@@ -180,10 +179,6 @@ export interface AgentGateRequest {
   previews?: AgentGatePreview[]
   /** 伙伴 / 工作区作用域（旧请求可能缺省） */
   scope?: AgentGateConfigScope
-  /** Assert fingerprint used for repeat Ask protection (UI may show truncated). */
-  fingerprint?: string
-  /** Consecutive same-fingerprint asserts in this session when Ask was raised. */
-  repeatCount?: number
   /** 本轮并入这张确认卡的同类工具调用次数（含当前这一次）。 */
   coalescedCount?: number
   messageId?: string
@@ -234,6 +229,7 @@ export interface AgentGateAssertInput {
   description?: string
   options?: AgentGateOption[]
   allowCustomInput?: boolean
+  multiple?: boolean
   questions?: AgentGateQuestion[]
   metadata?: Record<string, unknown>
   /** 预执行结构化预览（会写入 pending request） */

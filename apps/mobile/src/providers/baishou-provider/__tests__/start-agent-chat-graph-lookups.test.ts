@@ -35,9 +35,10 @@ describe('start-agent-chat companion graph lookups', () => {
     expect(src).toContain('skillsWriter: createMobileSkillsWriter()')
   })
 
-  it('should inject skillsCatalog and skillsReader for on-demand skill bodies', () => {
+  it('should inject gate-filtered skillsCatalog and skillsReader for on-demand skill bodies', () => {
     expect(src).toContain('mobileListSkillsCatalog')
-    expect(src).toContain('skillsCatalog: await mobileListSkillsCatalog()')
+    expect(src).toContain('filterSkillsCatalogByGate')
+    expect(src).toContain('skillsCatalog: await (async () => {')
     expect(src).toContain('createMobileSkillsReader')
     expect(src).toContain('skillsReader: createMobileSkillsReader()')
   })

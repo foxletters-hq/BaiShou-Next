@@ -7,6 +7,7 @@ import {
   BaishouAgentGateEventBus
 } from '@baishou/ai'
 import {
+  AgentGateEffect,
   assignBaishouAgentGateConfig,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   cloneBaishouAgentGateConfig,
@@ -19,9 +20,13 @@ import {
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { settingsManager } from '../ipc/settings.ipc'
-import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
+import {
+  getWorkspaceExternalDirectoryAllowed,
+  getWorkspaceGateConfig,
+  setWorkspaceExternalDirectoryAllowed,
+  setWorkspaceGateConfig
+} from './agent-workspace-policy.store'
 import { getWorkspaceAutoAccept, setWorkspaceAutoAccept } from './agent-workspace-auto-accept.store'
-import { classifyWorkspaceGateRisk } from './workspace-gate-risk-classifier'
 
 type GateRuntime = ReturnType<typeof createBaishouAgentGate>
 
@@ -38,11 +43,33 @@ let companionRuntime: ScopedRuntime | null = null
 const workspaceRuntimes = new Map<string, ScopedRuntime>()
 /** 工作区自动接受的进程内缓存（供 gate 同步查询） */
 const workspaceAutoAcceptCache = new Map<string, boolean>()
+/** 工作区级「允许访问工作区外目录」进程内缓存 */
+const workspaceExternalDirectoryCache = new Map<string, boolean>()
 /** requestId → scope key，用于 reply 路由 */
 const requestScopeIndex = new Map<string, ScopeKey>()
 let bridgeRegistered = false
 let lifecycleBridgeUnsub: (() => void) | null = null
 let busIndexSubscribed = false
+
+function applyWorkspaceExternalDirectoryPolicy(
+  config: BaishouAgentGateConfig,
+  externalAllowed: boolean
+): void {
+  const baseRules = (config.permissionRules ?? []).filter(
+    (rule) =>
+      !(
+        rule.action === 'external_directory' &&
+        !rule.pattern &&
+        rule.effect === AgentGateEffect.Allow
+      )
+  )
+  if (externalAllowed) {
+    baseRules.push({ action: 'external_directory', effect: AgentGateEffect.Allow })
+  } else {
+    config.allowlist = config.allowlist.filter((entry) => entry.action !== 'external_directory')
+  }
+  config.permissionRules = baseRules
+}
 
 function scopeKeyOf(scope: AgentGateConfigScope): ScopeKey {
   return scope.kind === 'companion' ? 'companion' : `workspace:${scope.workspaceId}`
@@ -76,25 +103,43 @@ async function persistCompanionConfig(config: BaishouAgentGateConfig): Promise<v
 }
 
 async function persistWorkspaceConfig(
-  _workspaceId: string,
+  workspaceId: string,
   config: BaishouAgentGateConfig
 ): Promise<void> {
-  const saved = await setWorkspaceGateConfig(undefined, config)
-  // 全局配置：同步到所有已创建的工作区 runtime
-  for (const scoped of workspaceRuntimes.values()) {
+  // 在聊天确认卡中点击「始终允许」访问区外目录时，自动转为当前工作区级设置落盘，不污染全局白名单
+  if (workspaceId && config.allowlist.some((entry) => entry.action === 'external_directory')) {
+    workspaceExternalDirectoryCache.set(workspaceId, true)
+    await setWorkspaceExternalDirectoryAllowed(workspaceId, true)
+  }
+
+  const globalToSave: BaishouAgentGateConfig = {
+    ...config,
+    allowlist: config.allowlist.filter((entry) => entry.action !== 'external_directory'),
+    permissionRules: config.permissionRules?.filter(
+      (rule) =>
+        !(
+          rule.action === 'external_directory' &&
+          !rule.pattern &&
+          rule.effect === AgentGateEffect.Allow
+        )
+    )
+  }
+  const saved = await setWorkspaceGateConfig(undefined, globalToSave)
+  // 全局配置：同步到所有已创建的工作区 runtime，同时保留各工作区自身的区外目录开关
+  for (const [wsId, scoped] of workspaceRuntimes.entries()) {
     const current = scoped.runtime.getConfig()
     current.allowlist = saved.allowlist.map((e) => ({ ...e }))
     current.exclusionList = [...saved.exclusionList]
     current.permissionRules = saved.permissionRules?.map((r) => ({ ...r }))
     current.actionRules = saved.actionRules ? { ...saved.actionRules } : undefined
     current.hideDeniedTools = saved.hideDeniedTools
-    current.repeatAssertAskThreshold = saved.repeatAssertAskThreshold
     current.securityMode = saved.securityMode
     current.commandBlacklist = Array.isArray(saved.commandBlacklist)
       ? [...saved.commandBlacklist]
       : undefined
     current.scopePreset = saved.scopePreset
     current.approvalPreset = saved.approvalPreset
+    applyWorkspaceExternalDirectoryPolicy(current, workspaceExternalDirectoryCache.get(wsId) === true)
   }
 }
 
@@ -142,8 +187,7 @@ function createScopedRuntime(
     isAutoAccept:
       scope.kind === 'workspace'
         ? () => workspaceAutoAcceptCache.get(scope.workspaceId) === true
-        : undefined,
-    riskClassifier: scope.kind === 'workspace' ? classifyWorkspaceGateRisk : undefined
+        : undefined
   })
   return { key, scope, runtime: runtimeRef }
 }
@@ -167,17 +211,47 @@ export async function ensureWorkspaceGateRuntime(workspaceId: string): Promise<G
   const existing = workspaceRuntimes.get(workspaceId)
   if (existing) return existing.runtime
 
-  const enabled = await getWorkspaceAutoAccept(workspaceId)
+  const [enabled, externalAllowed, rawGateConfig] = await Promise.all([
+    getWorkspaceAutoAccept(workspaceId),
+    getWorkspaceExternalDirectoryAllowed(workspaceId),
+    getWorkspaceGateConfig(workspaceId)
+  ])
   workspaceAutoAcceptCache.set(workspaceId, enabled)
+  workspaceExternalDirectoryCache.set(workspaceId, externalAllowed)
 
-  const config = cloneBaishouAgentGateConfig(
-    await getWorkspaceGateConfig(workspaceId),
-    DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
-  )
+  const config = cloneBaishouAgentGateConfig(rawGateConfig, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
+  applyWorkspaceExternalDirectoryPolicy(config, externalAllowed)
   const scoped = createScopedRuntime({ kind: 'workspace', workspaceId }, config)
   workspaceRuntimes.set(workspaceId, scoped)
   ensureLifecycleBridge()
   return scoped.runtime
+}
+
+export async function getWorkspaceExternalDirectoryEnabled(workspaceId: string): Promise<boolean> {
+  if (workspaceExternalDirectoryCache.has(workspaceId)) {
+    return workspaceExternalDirectoryCache.get(workspaceId) === true
+  }
+  const allowed = await getWorkspaceExternalDirectoryAllowed(workspaceId)
+  workspaceExternalDirectoryCache.set(workspaceId, allowed)
+  return allowed
+}
+
+export async function setWorkspaceExternalDirectoryEnabled(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const next = await setWorkspaceExternalDirectoryAllowed(workspaceId, enabled)
+  workspaceExternalDirectoryCache.set(workspaceId, next)
+  const scoped = workspaceRuntimes.get(workspaceId)
+  if (scoped) {
+    applyWorkspaceExternalDirectoryPolicy(scoped.runtime.getConfig(), next)
+  }
+  sharedEventBus.publish({
+    type: 'agent_gate.allowlist_changed',
+    allowlist: scoped ? scoped.runtime.allowlistStore.list() : [],
+    scope: { kind: 'workspace', workspaceId }
+  })
+  return next
 }
 
 export async function getWorkspaceAutoAcceptEnabled(workspaceId: string): Promise<boolean> {
@@ -251,9 +325,6 @@ export async function patchScopedAgentGateConfig(
     next.actionRules = patch.actionRules ? { ...patch.actionRules } : undefined
   }
   if (typeof patch.hideDeniedTools === 'boolean') next.hideDeniedTools = patch.hideDeniedTools
-  if (typeof patch.repeatAssertAskThreshold === 'number') {
-    next.repeatAssertAskThreshold = patch.repeatAssertAskThreshold
-  }
   if (patch.scopePreset !== undefined) next.scopePreset = patch.scopePreset
   if (patch.approvalPreset !== undefined) next.approvalPreset = patch.approvalPreset
   if (patch.securityMode !== undefined) next.securityMode = patch.securityMode
@@ -266,9 +337,7 @@ export async function patchScopedAgentGateConfig(
     // 以 patch 显式传入的 securityMode 为准，避免旧 approvalPreset 干扰
     const explicitMode = patch.securityMode
     const mode =
-      explicitMode === 'full_access' ||
-      explicitMode === 'auto_review' ||
-      explicitMode === 'allow_list'
+      explicitMode === 'full_access' || explicitMode === 'allow_list'
         ? explicitMode
         : resolveWorkspaceSecurityMode(next)
     const expanded = applyWorkspaceSecurityModeToConfig(
@@ -283,7 +352,6 @@ export async function patchScopedAgentGateConfig(
     next.permissionRules = expanded.permissionRules?.map((rule) => ({ ...rule }))
     next.actionRules = expanded.actionRules ? { ...expanded.actionRules } : undefined
     next.hideDeniedTools = expanded.hideDeniedTools
-    next.repeatAssertAskThreshold = expanded.repeatAssertAskThreshold
     next.securityMode = mode
     next.commandBlacklist = Array.isArray(expanded.commandBlacklist)
       ? [...expanded.commandBlacklist]
@@ -297,7 +365,16 @@ export async function patchScopedAgentGateConfig(
       approvalPreset: undefined,
       scopePreset: undefined
     })
+    applyWorkspaceExternalDirectoryPolicy(
+      next,
+      workspaceExternalDirectoryCache.get(scope.workspaceId) === true
+    )
   }
+  sharedEventBus.publish({
+    type: 'agent_gate.allowlist_changed',
+    allowlist: rt.allowlistStore.list(),
+    scope
+  })
   return cloneBaishouAgentGateConfig(
     next,
     scope.kind === 'companion'
@@ -390,6 +467,8 @@ export function resetAgentGateRuntimes(reason = 'vault-switch'): void {
   cancelAllAgentGateSessions(reason)
   companionRuntime = null
   workspaceRuntimes.clear()
+  workspaceAutoAcceptCache.clear()
+  workspaceExternalDirectoryCache.clear()
   requestScopeIndex.clear()
 }
 

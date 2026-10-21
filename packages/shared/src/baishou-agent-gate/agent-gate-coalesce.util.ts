@@ -55,10 +55,7 @@ export function resolveAgentGateToolCoalesceKey(input: {
   }
 
   if (input.action === 'external_directory') {
-    const declared = firstAlwaysPattern(input.metadata)
-    const external = (input.resources ?? []).find((item) => item.kind === 'external_path')
-    const pattern = declared || (external ? external.value.replace(/\\/g, '/') : null)
-    return pattern ? `external_directory::${pattern}` : null
+    return 'external_directory'
   }
 
   const external = (input.resources ?? []).find((item) => item.kind === 'external_path')

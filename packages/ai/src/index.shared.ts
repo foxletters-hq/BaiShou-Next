@@ -70,6 +70,7 @@ export * from './middleware/middleware-factory'
 export * from './middleware/prompt-caching.middleware'
 export * from './middleware/prompt-caching.util'
 export * from './middleware/prompt-caching.types'
+export * from './middleware/text-safety.middleware'
 
 // Agent Handlers
 export * from './agent/message.adapter'

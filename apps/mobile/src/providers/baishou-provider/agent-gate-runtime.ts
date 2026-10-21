@@ -31,7 +31,6 @@ export function createMobileAgentGateRuntime(settingsManager: GateSettingsManage
       allowlist: [...(folded.allowlist ?? [])],
       actionRules: folded.actionRules ? { ...folded.actionRules } : undefined,
       permissionRules: folded.permissionRules?.map((rule) => ({ ...rule })),
-      repeatAssertAskThreshold: folded.repeatAssertAskThreshold,
       hideDeniedTools: folded.hideDeniedTools
     })
     await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, agentGateConfig)

@@ -5,7 +5,6 @@ import {
   capabilityEffectOptions,
   capabilityHint,
   capabilityTitle,
-  clampRepeatAssertAskThreshold,
   effectLabel,
   movePermissionRule,
   nextExclusionList,
@@ -147,14 +146,5 @@ describe('workspaceCustomPresetPatch', () => {
       approvalPreset: 'custom'
     })
     expect(workspaceCustomPresetPatch('companion')).toEqual({})
-  })
-})
-
-describe('clampRepeatAssertAskThreshold', () => {
-  it('should clamp to 0..20 when the input is finite', () => {
-    expect(clampRepeatAssertAskThreshold(Number.NaN)).toBeNull()
-    expect(clampRepeatAssertAskThreshold(-3.2)).toBe(0)
-    expect(clampRepeatAssertAskThreshold(21.8)).toBe(20)
-    expect(clampRepeatAssertAskThreshold(4.9)).toBe(4)
   })
 })

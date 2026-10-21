@@ -8,12 +8,14 @@ export interface CompanionAskStreamQuestion {
   question: string
   options?: string[]
   allow_custom_input?: boolean
+  multiple?: boolean
 }
 
 export interface CompanionAskStreamArgs {
   question?: string
   options?: string[]
   allow_custom_input?: boolean
+  multiple?: boolean
   questions?: CompanionAskStreamQuestion[]
 }
 
@@ -29,12 +31,16 @@ function readQuestion(value: unknown): CompanionAskStreamQuestion | null {
   if (record.allow_custom_input != null && typeof record.allow_custom_input !== 'boolean') {
     return null
   }
+  if (record.multiple != null && typeof record.multiple !== 'boolean') {
+    return null
+  }
   return {
     question: record.question,
     ...(record.options ? { options: record.options } : {}),
     ...(typeof record.allow_custom_input === 'boolean'
       ? { allow_custom_input: record.allow_custom_input }
-      : {})
+      : {}),
+    ...(typeof record.multiple === 'boolean' ? { multiple: record.multiple } : {})
   }
 }
 
@@ -70,7 +76,8 @@ export function parseCompanionAskStreamArgs(buffer: string): CompanionAskStreamA
           ...(single.options ? { options: single.options } : {}),
           ...(single.allow_custom_input != null
             ? { allow_custom_input: single.allow_custom_input }
-            : {})
+            : {}),
+          ...(single.multiple != null ? { multiple: single.multiple } : {})
         }
       : {}),
     ...(questions ? { questions } : {})

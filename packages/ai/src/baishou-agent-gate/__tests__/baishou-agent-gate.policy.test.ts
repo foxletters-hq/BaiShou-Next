@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AgentGateEffect,
   applyCapabilityStateToConfig,
+  applyWorkspaceSecurityModeToConfig,
   cloneBaishouAgentGateConfig,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
 } from '@baishou/shared'
@@ -402,5 +403,80 @@ describe('BaishouAgentGatePolicyService', () => {
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
     expect(policy.evaluate({ action: 'workspace_delete' })).toBe(AgentGateEffect.Deny)
+  })
+
+  it('full_access 安全模式下普通命令直接 Allow，命中黑名单仍为 Ask', () => {
+    const config = applyWorkspaceSecurityModeToConfig(
+      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+      'full_access'
+    )
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'git status' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [
+          {
+            kind: 'shell_command',
+            value:
+              '"=== python 一行脚本 ==="; python -c "import platform,sys; print(\'py ok\')"; "=== node 一行脚本 ==="; node -e "console.log(\'node ok\')"'
+          }
+        ]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'git reset --hard HEAD~1' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('组合命令在每段都命中白名单时自动 Allow，只要有一段未命中则 Ask', () => {
+    const config = applyWorkspaceSecurityModeToConfig(
+      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+      'allow_list'
+    )
+    config.allowlist = [
+      {
+        id: 'bagal_git_status',
+        action: 'workspace_run',
+        pattern: 'git status *',
+        resourceKind: 'shell_command',
+        createdAt: 1
+      },
+      {
+        id: 'bagal_pnpm_test',
+        action: 'workspace_run',
+        pattern: 'pnpm test *',
+        resourceKind: 'shell_command',
+        createdAt: 2
+      }
+    ]
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'cd packages/ai && git status -s && pnpm test' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'git status -s && pnpm publish' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
   })
 })

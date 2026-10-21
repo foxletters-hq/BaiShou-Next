@@ -33,23 +33,14 @@ describe('agent-gate-preset.util (security modes)', () => {
     expect(hasCatchAllAllowRule(next)).toBe(true)
   })
 
-  it('auto_review allows edit without catch-all', () => {
-    const next = applyWorkspaceSecurityModeToConfig(
-      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
-      'auto_review'
-    )
-    expect(next.securityMode).toBe('auto_review')
-    expect(hasCatchAllAllowRule(next)).toBe(false)
-    const rules = next.permissionRules ?? []
+  it('resolveWorkspaceSecurityMode defaults to allow_list and migrates legacy auto_review', () => {
+    expect(resolveWorkspaceSecurityMode(undefined)).toBe('allow_list')
     expect(
-      rules.some(
-        (rule) => rule.action === 'workspace_write' && rule.effect === AgentGateEffect.Allow
-      )
-    ).toBe(true)
-  })
-
-  it('resolveWorkspaceSecurityMode defaults to auto_review', () => {
-    expect(resolveWorkspaceSecurityMode(undefined)).toBe('auto_review')
+      resolveWorkspaceSecurityMode({
+        ...cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+        securityMode: 'auto_review' as any
+      })
+    ).toBe('allow_list')
     expect(
       resolveWorkspaceSecurityMode({
         ...cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
@@ -72,7 +63,7 @@ describe('agent-gate-preset.util (security modes)', () => {
         ...cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
         commandBlacklist: []
       },
-      'auto_review'
+      'allow_list'
     )
     expect(next.commandBlacklist).toEqual([])
   })

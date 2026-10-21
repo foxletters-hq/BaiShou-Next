@@ -286,7 +286,6 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
 export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
   exclusionList: [...SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList],
   allowlist: [],
-  repeatAssertAskThreshold: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.repeatAssertAskThreshold,
   hideDeniedTools: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.hideDeniedTools
 }
 
@@ -294,6 +293,7 @@ export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
   mcpAuthEnabled: false,
+  mcpAutoApproveTools: false,
   disabledToolIds: []
 }
 

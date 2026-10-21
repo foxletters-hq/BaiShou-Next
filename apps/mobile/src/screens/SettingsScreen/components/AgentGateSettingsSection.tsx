@@ -12,10 +12,8 @@ export const AgentGateSettingsSection: React.FC = () => {
       <AgentGateTrustCard
         isFullTrust={gate.isFullTrust}
         hideDeniedTools={gate.config.hideDeniedTools !== false}
-        threshold={gate.threshold}
         onTrustToggle={gate.handleTrustToggle}
         onHideDeniedToggle={(v) => gate.handleBoolToggle('hideDeniedTools', v)}
-        onThresholdChange={gate.persistThreshold}
       />
       <AgentGateProfileCard
         config={gate.config}

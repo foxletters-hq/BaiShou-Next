@@ -51,12 +51,6 @@ export function summarizePreviewForHistory(preview: AgentGatePreview | undefined
   return null
 }
 
-export function humanizeRepeatHint(request: AgentGateRequest): string | null {
-  const count = request.repeatCount ?? 0
-  if (count < 2) return null
-  return `同一操作已连续请求 ${count} 次，需要你再次确认`
-}
-
 export function resolveScopeLabel(request: AgentGateRequest): string {
   if (request.scope?.kind === 'workspace') {
     return `工作区 ${request.scope.workspaceId}`

@@ -121,17 +121,17 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       rawEffect = AgentGateEffect.Allow
       usedCatchAllFallback = true
     }
-    // auto_review：命令默认先按 Allow 初评（sanitize 禁止裸 workspace_run Allow），
-    // 再交给黑名单钳制与模型二次审核；allow_list 保持默认 Ask。
-    let usedAutoReviewCommandDefault = false
+    // full_access：命令默认先按 Allow 初评（sanitize 禁止裸 workspace_run Allow），
+    // 再交给黑名单钳制；allow_list 保持默认 Ask。
+    let usedFullAccessCommandDefault = false
     if (
-      config.securityMode === 'auto_review' &&
+      config.securityMode === 'full_access' &&
       input.action === 'workspace_run' &&
       rawEffect === AgentGateEffect.Ask &&
       !forceExcluded
     ) {
       rawEffect = AgentGateEffect.Allow
-      usedAutoReviewCommandDefault = true
+      usedFullAccessCommandDefault = true
     }
     const riskLevelRaw = input.metadata?.riskLevel
     const riskLevel =
@@ -174,7 +174,7 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
             effect,
             ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
           }
-        : usedAutoReviewCommandDefault
+        : usedFullAccessCommandDefault
           ? {
               layer: 'user',
               action: 'workspace_run',

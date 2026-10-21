@@ -220,4 +220,36 @@ describe('BaishouAgentGateService', () => {
     })
     await second
   })
+
+  it('external_directory 的 once 放行本轮内其它区外目录', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'external_directory',
+      title: '访问区外目录 D:/Dir1',
+      resources: [{ kind: 'external_path', value: 'D:/Dir1/**' }]
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    await expect(
+      gate.assert({
+        ...baseAssertInput,
+        action: 'external_directory',
+        title: '访问区外目录 D:/Dir2',
+        resources: [{ kind: 'external_path', value: 'D:/Dir2/**' }]
+      })
+    ).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+  })
 })

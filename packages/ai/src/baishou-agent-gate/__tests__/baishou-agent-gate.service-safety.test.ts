@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   AgentGateCorrectedError,
-  AgentGateEffect,
   AgentGateKind,
   AgentGateReply,
-  AgentGateRiskLevel,
   applyWorkspaceSecurityModeToConfig,
   cloneBaishouAgentGateConfig,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
@@ -155,76 +153,6 @@ describe('BaishouAgentGateService', () => {
     await expect(pendingAssert).resolves.toBeUndefined()
     await Promise.resolve()
     expect(persist).toHaveBeenCalled()
-  })
-
-  it('同指纹连续第 3 次即使 full_trust 也强制 ask', async () => {
-    const { gate } = createBaishouAgentGate({
-      config: {
-        exclusionList: [],
-        allowlist: [],
-        repeatAssertAskThreshold: 3,
-        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
-      }
-    })
-
-    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
-    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
-
-    let settled = false
-    const third = gate.assert(baseAssertInput).then(() => {
-      settled = true
-    })
-    await Promise.resolve()
-    expect(settled).toBe(false)
-    expect(gate.listPending('sess_1')).toHaveLength(1)
-
-    await gate.reply({
-      requestId: gate.listPending('sess_1')[0]!.id,
-      reply: AgentGateReply.Once
-    })
-    await third
-    expect(settled).toBe(true)
-  })
-
-  it('安全读操作连续多次不因连打强制 ask', async () => {
-    const { gate } = createBaishouAgentGate({
-      config: {
-        exclusionList: [],
-        allowlist: [],
-        repeatAssertAskThreshold: 3
-      }
-    })
-
-    const readPage = (title: string) =>
-      gate.assert({
-        sessionId: 'sess_1',
-        vaultName: 'Personal',
-        kind: AgentGateKind.Tool,
-        action: 'url_read',
-        title,
-        metadata: { riskLevel: AgentGateRiskLevel.Safe }
-      })
-
-    await expect(readPage('读取网页 1')).resolves.toBeUndefined()
-    await expect(readPage('读取网页 2')).resolves.toBeUndefined()
-    await expect(readPage('读取网页 3')).resolves.toBeUndefined()
-    expect(gate.listPending('sess_1')).toHaveLength(0)
-  })
-
-  it('repeatAssertAskThreshold=0 关闭连打强制 ask', async () => {
-    const { gate } = createBaishouAgentGate({
-      config: {
-        exclusionList: [],
-        allowlist: [],
-        repeatAssertAskThreshold: 0,
-        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
-      }
-    })
-
-    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
-    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
-    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
-    expect(gate.listPending()).toHaveLength(0)
   })
 
   it('reject 级联时同 session 其它请求也带 CorrectedError', async () => {

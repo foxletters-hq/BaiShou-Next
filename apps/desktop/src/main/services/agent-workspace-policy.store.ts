@@ -6,6 +6,7 @@ import {
   AGENT_WORKSPACE_POLICY_STORE_FILE,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
+  WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY,
   WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY,
   WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY,
   cloneBaishouAgentGateConfig,
@@ -52,6 +53,7 @@ async function loadStore(): Promise<WorkspacePolicyFile> {
         gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
         toolManagement: fields.toolManagement,
         personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
+        externalDirectoryAllowed: fields.externalDirectoryAllowed,
         updatedAt: policy?.updatedAt ?? new Date().toISOString()
       }
     }
@@ -79,6 +81,7 @@ function buildDefaultPolicy(workspaceId: string): AgentWorkspacePolicy {
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
     toolManagement: fields.toolManagement,
     personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
+    externalDirectoryAllowed: fields.externalDirectoryAllowed,
     updatedAt: new Date().toISOString()
   }
 }
@@ -95,6 +98,7 @@ function normalizePolicy(
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
     toolManagement: fields.toolManagement,
     personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
+    externalDirectoryAllowed: fields.externalDirectoryAllowed,
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString()
   }
 }
@@ -122,12 +126,17 @@ export async function getWorkspacePersonalMemoryRead(workspaceId: string): Promi
   return (await getWorkspacePolicy(workspaceId)).personalMemoryReadEnabled
 }
 
+export async function getWorkspaceExternalDirectoryAllowed(workspaceId: string): Promise<boolean> {
+  return (await getWorkspacePolicy(workspaceId)).externalDirectoryAllowed === true
+}
+
 export async function setWorkspacePolicy(
   workspaceId: string,
   patch: {
     gateConfig?: BaishouAgentGateConfig
     toolManagement?: WorkspaceToolManagementConfig
     personalMemoryReadEnabled?: boolean
+    externalDirectoryAllowed?: boolean
   }
 ): Promise<AgentWorkspacePolicy> {
   if (patch.gateConfig) {
@@ -137,13 +146,15 @@ export async function setWorkspacePolicy(
   const current = normalizePolicy(workspaceId, store.byWorkspaceId[workspaceId])
   const fields = applyWorkspacePolicyPatch(current, {
     toolManagement: patch.toolManagement,
-    personalMemoryReadEnabled: patch.personalMemoryReadEnabled
+    personalMemoryReadEnabled: patch.personalMemoryReadEnabled,
+    externalDirectoryAllowed: patch.externalDirectoryAllowed
   })
   const next: AgentWorkspacePolicy = {
     workspaceId,
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
     toolManagement: fields.toolManagement,
     personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
+    externalDirectoryAllowed: fields.externalDirectoryAllowed,
     updatedAt: new Date().toISOString()
   }
   store.byWorkspaceId[workspaceId] = next
@@ -160,6 +171,13 @@ export async function setWorkspacePolicy(
       domain: 'settings',
       action: 'update',
       meta: { key: WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY }
+    })
+  }
+  if (typeof patch.externalDirectoryAllowed === 'boolean') {
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY }
     })
   }
   // 对外仍返回当前全局 gate，避免调用方读到空占位
@@ -189,6 +207,16 @@ export async function setWorkspacePersonalMemoryRead(
 ): Promise<boolean> {
   return (await setWorkspacePolicy(workspaceId, { personalMemoryReadEnabled: enabled }))
     .personalMemoryReadEnabled
+}
+
+export async function setWorkspaceExternalDirectoryAllowed(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  return (
+    (await setWorkspacePolicy(workspaceId, { externalDirectoryAllowed: enabled }))
+      .externalDirectoryAllowed === true
+  )
 }
 
 /** 测试 / Vault 重置时清空内存缓存（不删磁盘文件） */

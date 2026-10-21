@@ -36,7 +36,8 @@ export function ensureDesktopAgentGateInboxBridge(): void {
   unsubscribeAsked =
     window.api.agentGate.onAsked?.((request: AgentGateRequest) => {
       if (!request?.id) return
-      useAgentGateInboxStore.getState().upsertAsked(request)
+      // 已回复 / 已取消的请求可能还有迟到的 asked 事件，不能让确认卡复活
+      useAgentGateInboxStore.getState().upsertAsked(request, { respectTombstone: true })
     }) ?? null
 
   unsubscribeReplied =

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
+  WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY,
   WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY,
   WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY
 } from '@baishou/shared'
@@ -75,6 +76,38 @@ describe('agent-workspace-policy.store mutation emit', () => {
           domain: 'settings',
           action: 'update',
           meta: { key: WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY }
+        })
+      ])
+    )
+  })
+
+  it('persists per-workspace externalDirectoryAllowed and emits mutation key', async () => {
+    const { domainMutationBus } = await import('@baishou/core-desktop')
+    const {
+      getWorkspaceExternalDirectoryAllowed,
+      resetWorkspacePolicyCache,
+      setWorkspaceExternalDirectoryAllowed
+    } = await import('../agent-workspace-policy.store')
+    resetWorkspacePolicyCache()
+
+    expect(await getWorkspaceExternalDirectoryAllowed('ws-1')).toBe(false)
+
+    const events: DomainMutationEvent[] = []
+    const unsub = domainMutationBus.subscribe((event) => {
+      events.push(event)
+    })
+    const saved = await setWorkspaceExternalDirectoryAllowed('ws-1', true)
+    unsub()
+
+    expect(saved).toBe(true)
+    expect(await getWorkspaceExternalDirectoryAllowed('ws-1')).toBe(true)
+    expect(await getWorkspaceExternalDirectoryAllowed('ws-2')).toBe(false)
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          domain: 'settings',
+          action: 'update',
+          meta: { key: WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY }
         })
       ])
     )

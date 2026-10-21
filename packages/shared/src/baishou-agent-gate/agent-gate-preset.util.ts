@@ -16,19 +16,18 @@ export type { AgentGateScopePreset, AgentGateApprovalPreset } from './agent-gate
 /**
  * 将工作台安全模式展开为 permissionRules。
  * - full_access：`*: allow` 垫底（黑名单仍钳制）
- * - auto_review：常规编辑直接允许；命令在策略层按 Allow 初评后再经模型审核（sanitize 禁止裸 workspace_run Allow）
  * - allow_list：编辑/命令默认询问，仅 allowlist 放行
  */
 export function applyWorkspaceSecurityModeToConfig(
   config: BaishouAgentGateConfig,
   mode: AgentWorkspaceSecurityMode
 ): BaishouAgentGateConfig {
-  const allowList = mode === 'allow_list'
   const fullAccess = mode === 'full_access'
+  const normalizedMode: AgentWorkspaceSecurityMode = fullAccess ? 'full_access' : 'allow_list'
 
   const effects = {
     browse: AgentGateEffect.Allow,
-    edit: allowList ? AgentGateEffect.Ask : AgentGateEffect.Allow,
+    edit: fullAccess ? AgentGateEffect.Allow : AgentGateEffect.Ask,
     delete: AgentGateEffect.Ask,
     command: AgentGateEffect.Ask,
     external: AgentGateEffect.Ask
@@ -47,7 +46,7 @@ export function applyWorkspaceSecurityModeToConfig(
 
   return {
     ...next,
-    securityMode: mode,
+    securityMode: normalizedMode,
     commandBlacklist,
     // 清理旧二维标签，避免 UI 误读
     scopePreset: undefined,
@@ -55,34 +54,22 @@ export function applyWorkspaceSecurityModeToConfig(
   }
 }
 
-/** 从配置读取安全模式；缺省 auto_review */
+/** 从配置读取安全模式；缺省 allow_list（兼容旧 auto_review 落盘配置） */
 export function resolveWorkspaceSecurityMode(
   config: BaishouAgentGateConfig | null | undefined
 ): AgentWorkspaceSecurityMode {
-  const mode = config?.securityMode
-  if (mode === 'full_access' || mode === 'auto_review' || mode === 'allow_list') {
-    return mode
+  const mode = config?.securityMode as string | undefined
+  if (mode === 'full_access') {
+    return 'full_access'
+  }
+  if (mode === 'allow_list' || mode === 'auto_review') {
+    return 'allow_list'
   }
   // 兼容旧 approvalPreset（仅在 securityMode 缺失时）
   if (config?.approvalPreset === 'never_ask' || (config != null && hasCatchAllAllowRule(config))) {
     return 'full_access'
   }
-  if (config?.approvalPreset === 'dangerous_only') {
-    return 'auto_review'
-  }
-  if (config?.approvalPreset === 'always_ask') {
-    return 'allow_list'
-  }
-  // 兼容：无 securityMode 时用编辑规则推断
-  const rules = config?.permissionRules ?? []
-  const editActions = ['workspace_write', 'workspace_patch', 'workspace_rename'] as const
-  const editAllowed = editActions.every((action) =>
-    rules.some(
-      (rule) => rule.action === action && !rule.pattern && rule.effect === AgentGateEffect.Allow
-    )
-  )
-  if (editAllowed) return 'auto_review'
-  return 'auto_review'
+  return 'allow_list'
 }
 
 /**
@@ -94,7 +81,7 @@ export function matchesCommandBlacklist(
 ): boolean {
   const normalized = unwrapWindowsCmdInvocation(command)
   if (!normalized) return false
-  if (isDangerousShellCommand(normalized)) return true
+  if (!Array.isArray(blacklist) && isDangerousShellCommand(normalized)) return true
 
   const patterns = Array.isArray(blacklist) ? blacklist : DEFAULT_WORKSPACE_COMMAND_BLACKLIST
   const haystack = normalized.toLowerCase()
@@ -120,12 +107,7 @@ export function applyWorkspacePresetsToConfig(
   presets: { scopePreset: string; approvalPreset: string },
   _trustedDirs: readonly string[] = []
 ): BaishouAgentGateConfig {
-  const mode =
-    presets.approvalPreset === 'never_ask'
-      ? 'full_access'
-      : presets.approvalPreset === 'always_ask'
-        ? 'allow_list'
-        : 'auto_review'
+  const mode = presets.approvalPreset === 'never_ask' ? 'full_access' : 'allow_list'
   return applyWorkspaceSecurityModeToConfig(config, mode)
 }
 
@@ -138,12 +120,7 @@ export function inferWorkspacePresets(config: BaishouAgentGateConfig): {
   const mode = resolveWorkspaceSecurityMode(config)
   return {
     scopePreset: 'workspace_write',
-    approvalPreset:
-      mode === 'full_access'
-        ? 'never_ask'
-        : mode === 'allow_list'
-          ? 'always_ask'
-          : 'dangerous_only',
+    approvalPreset: mode === 'full_access' ? 'never_ask' : 'always_ask',
     trustedExternalDirs: []
   }
 }

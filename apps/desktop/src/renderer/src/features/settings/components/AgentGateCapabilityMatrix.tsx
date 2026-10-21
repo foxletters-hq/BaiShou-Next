@@ -3,20 +3,18 @@ import { useTranslation } from 'react-i18next'
 import {
   AgentGateEffect,
   capabilityStateFromConfig,
-  DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   getGateCapabilitiesForScene,
   type AgentGateCapabilityEffect,
   type AgentGateCapabilityId,
   type AgentToolScene,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
-import { HelpTooltip, Input, SegmentedControl, Switch } from '@baishou/ui'
+import { HelpTooltip, SegmentedControl, Switch } from '@baishou/ui'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import {
   capabilityEffectOptions,
   capabilityHint,
   capabilityTitle,
-  clampRepeatAssertAskThreshold,
   effectLabel
 } from './agent-gate-settings.util'
 import pane from './GeneralSettingsPane.module.css'
@@ -42,8 +40,6 @@ export const AgentGateCapabilityMatrix: React.FC<AgentGateCapabilityMatrixProps>
   const { t } = useTranslation()
   const capabilities = getGateCapabilitiesForScene(scene)
   const capabilityState = capabilityStateFromConfig(config, scene)
-  const threshold =
-    config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
 
   return (
     <div className={pane.stackGroup}>
@@ -107,36 +103,6 @@ export const AgentGateCapabilityMatrix: React.FC<AgentGateCapabilityMatrixProps>
               checked={config.hideDeniedTools !== false}
               aria-label={t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
               onChange={(e) => void onPatchConfig({ hideDeniedTools: e.target.checked })}
-            />
-          </div>
-          <div className={pane.divider} />
-
-          <div className="settings-list-tile settings-list-tile-noclick">
-            <div className="settings-list-tile-content">
-              <span className="settings-list-tile-title">
-                {t('settings.agent_gate_repeat_threshold', '同参连打再确认阈值')}
-              </span>
-              <span className="settings-list-tile-subtitle">
-                {t(
-                  'settings.agent_gate_repeat_threshold_hint',
-                  '相同指纹连续请求达到该次数时再次弹出确认；0 表示关闭。'
-                )}
-              </span>
-            </div>
-            <Input
-              fieldSize="small"
-              className={styles.compactNumberInput}
-              inputClassName={styles.compactNumberInputField}
-              type="number"
-              min={0}
-              max={20}
-              disabled={saving}
-              value={threshold}
-              onChange={(e) => {
-                const next = clampRepeatAssertAskThreshold(Number(e.target.value))
-                if (next == null) return
-                void onPatchConfig({ repeatAssertAskThreshold: next })
-              }}
             />
           </div>
         </div>

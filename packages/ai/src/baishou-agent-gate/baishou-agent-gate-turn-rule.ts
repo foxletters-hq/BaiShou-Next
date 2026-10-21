@@ -3,6 +3,7 @@ import {
   AgentGateRiskLevel,
   isWorkspaceEditGateAction,
   resolveCommandPrefixPatternFromCommand,
+  resolveCommandPrefixPatternsFromCommand,
   WORKSPACE_EDIT_GATE_ACTIONS,
   type AgentGatePermissionRule,
   type AgentGatePreview,
@@ -32,10 +33,10 @@ export function buildTurnAllowRule(input: {
   }
 
   if (input.action === 'external_directory') {
-    const external = input.resources.find((item) => item.kind === 'external_path')
-    const pattern = declared || (external ? external.value.replace(/\\/g, '/') : null)
-    if (!pattern) return null
-    return { action: input.action, effect: AgentGateEffect.Allow, pattern }
+    if (declared && declared !== '*') {
+      return { action: input.action, effect: AgentGateEffect.Allow, pattern: declared }
+    }
+    return { action: input.action, effect: AgentGateEffect.Allow }
   }
 
   return { action: input.action, effect: AgentGateEffect.Allow }
@@ -48,6 +49,23 @@ export function buildTurnAllowRules(input: {
   alwaysPatterns?: string[]
   preview?: AgentGatePreview
 }): AgentGatePermissionRule[] {
+  if (input.action === 'workspace_run') {
+    const declared = (input.alwaysPatterns ?? []).map((p) => p.trim()).filter(Boolean)
+    const shellResource = input.resources.find((item) => item.kind === 'shell_command')
+    const patterns =
+      declared.length > 0
+        ? declared
+        : shellResource
+          ? resolveCommandPrefixPatternsFromCommand(shellResource.value)
+          : []
+    if (patterns.length > 0) {
+      return patterns.map((pattern) => ({
+        action: input.action,
+        effect: AgentGateEffect.Allow,
+        pattern
+      }))
+    }
+  }
   const rule = buildTurnAllowRule(input)
   if (!rule) return []
   if (!isWorkspaceEditGateAction(input.action)) return [rule]

@@ -58,6 +58,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
   if (sceneProp === 'workspace') {
     return (
       <WorkspaceGatePermissionsPanel
+        workspaceId={scope.kind === 'workspace' ? scope.workspaceId : undefined}
         config={config}
         saving={saving}
         notificationPrefs={notificationPrefs}

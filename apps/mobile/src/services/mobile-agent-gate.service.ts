@@ -11,7 +11,8 @@ let getAgentGateRef: (() => IBaishouAgentGate | undefined) | null = null
 
 function applyLifecycleToInbox(event: AgentGateLifecycleEvent): void {
   if (event.type === 'agent_gate.asked') {
-    useAgentGateInboxStore.getState().upsertAsked(event.request)
+    // 已回复 / 已取消的请求可能还有迟到的 asked 事件，不能让确认卡复活
+    useAgentGateInboxStore.getState().upsertAsked(event.request, { respectTombstone: true })
     return
   }
   if (event.type === 'agent_gate.replied') {

@@ -6,7 +6,6 @@ import {
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
-  DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   hasCatchAllAllowRule,
   setCatchAllAllowRule,
   type AgentGateNotificationPrefs,
@@ -23,7 +22,6 @@ import {
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
-import { clampAgentGateRepeatThreshold } from './agent-gate-settings.util'
 
 export function useAgentGateSettings() {
   const { t } = useTranslation()
@@ -100,8 +98,6 @@ export function useAgentGateSettings() {
 
   const isFullTrust = hasCatchAllAllowRule(config)
   const exclusionList = config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
-  const threshold =
-    config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
   const permissionRules = config.permissionRules ?? []
 
   const addExclusion = () => {
@@ -148,15 +144,6 @@ export function useAgentGateSettings() {
     })
   }
 
-  const persistThreshold = (text: string) => {
-    const n = clampAgentGateRepeatThreshold(text)
-    if (n == null) return
-    void persist({
-      ...config,
-      repeatAssertAskThreshold: n
-    })
-  }
-
   const persistWorkspaceMode = (mode: AgentWorkspaceSecurityMode) => {
     void persist(applyWorkspaceSecurityModeToConfig(config, mode))
   }
@@ -175,7 +162,6 @@ export function useAgentGateSettings() {
     updateNotificationPrefs,
     isFullTrust,
     exclusionList,
-    threshold,
     permissionRules,
     handleTrustToggle,
     handleBoolToggle,
@@ -184,7 +170,6 @@ export function useAgentGateSettings() {
     removeExclusion,
     addPermissionRule,
     removePermissionRule,
-    persistThreshold,
     persistWorkspaceMode
   }
 }
