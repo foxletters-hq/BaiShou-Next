@@ -4,6 +4,9 @@ import { clampWidth, IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 import { invokeImageAction, invokeUpdateImageWidth } from '../extensions/effects'
 import type { DiaryCmPlatform } from '../types'
 
+/** 复用 DOM 时保留绑定了事件监听的旧实例，宽度变化只改尺寸、不重建图片 */
+const boundWidgets = new WeakMap<HTMLElement, ImageWidget>()
+
 export class ImageWidget extends WidgetType {
   private container: HTMLElement | null = null
   private resizeHandle: HTMLElement | null = null
@@ -30,20 +33,57 @@ export class ImageWidget extends WidgetType {
       this.src === other.src &&
       this.alt === other.alt &&
       this.width === other.width &&
+      this.imageFrom === other.imageFrom &&
+      this.imageTo === other.imageTo &&
       this.showLinkBar === other.showLinkBar
     )
+  }
+
+  /**
+   * 宽度变化时 CodeMirror 会先判 eq 不等、再走 updateDOM。
+   * 这里原地改宽度，复用已加载的 img，避免重建时图片短暂失去高度把滚动位置顶回顶部。
+   */
+  updateDOM(dom: HTMLElement): boolean {
+    const bound = boundWidgets.get(dom)
+    if (!bound) return false
+    // 图片地址变化必须重建，避免复用旧 img 的 src
+    if (bound.src !== this.src) return false
+
+    // 事件监听绑定在旧实例上，这里同步新的文档区间，避免拖拽后按旧位置改写 Markdown
+    bound.imageFrom = this.imageFrom
+    bound.imageTo = this.imageTo
+    bound.width = this.width
+    bound.alt = this.alt
+    bound.showLinkBar = this.showLinkBar
+
+    const img = dom.querySelector<HTMLImageElement>('img.cm-image-resizable')
+    if (img) img.alt = this.alt
+    if (bound.linkBar) {
+      bound.linkBar.style.display = this.showLinkBar ? 'block' : 'none'
+    }
+    dom.classList.toggle('cm-image-active', this.showLinkBar)
+
+    this.container = dom
+    this.applyContainerWidth(dom)
+    return true
+  }
+
+  private applyContainerWidth(container: HTMLElement): void {
+    if (this.width) {
+      container.style.width = `${this.width}px`
+      container.style.maxWidth = '100%'
+      container.classList.remove('cm-image-container--unsized')
+    } else {
+      container.style.width = ''
+      container.classList.add('cm-image-container--unsized')
+      container.style.maxWidth = `${IMAGE_SIZE_CONFIG.defaultDisplayWidth}px`
+    }
   }
 
   toDOM(): HTMLElement {
     this.container = document.createElement('div')
     this.container.className = 'cm-image-container'
-    if (this.width) {
-      this.container.style.width = `${this.width}px`
-      this.container.style.maxWidth = '100%'
-    } else {
-      this.container.classList.add('cm-image-container--unsized')
-      this.container.style.maxWidth = `${IMAGE_SIZE_CONFIG.defaultDisplayWidth}px`
-    }
+    this.applyContainerWidth(this.container)
 
     this.linkBar = document.createElement('div')
     this.linkBar.className = 'cm-image-link-bar'
@@ -76,6 +116,7 @@ export class ImageWidget extends WidgetType {
     }
 
     this.bindEvents(img)
+    boundWidgets.set(this.container, this)
 
     return this.container
   }

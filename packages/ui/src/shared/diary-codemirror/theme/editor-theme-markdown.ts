@@ -7,44 +7,50 @@ import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
  */
 export const editorThemeMarkdown = {
   '.cm-code': {
-    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
+    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
     backgroundColor: 'var(--bg-surface-normal)',
     padding: '2px 6px',
     borderRadius: '4px',
-    fontSize: 'inherit'
+    fontSize: '0.9em'
   },
   '.cm-codeBlock': {
-    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
+    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
     backgroundColor: 'var(--bg-surface-normal)',
     padding: '16px',
     borderRadius: '8px',
     border: '1px solid var(--border-subtle)',
     margin: '16px 0',
-    fontSize: 'var(--ui-fs-md)',
+    fontSize: '0.9em',
     overflowX: 'auto',
     lineHeight: '1.6'
   },
 
   // 围栏代码块行级灰底（inline live preview）
   '.cm-rendered-codeBlock': {
-    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
+    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
     backgroundColor: 'var(--bg-surface-normal)',
-    fontSize: 'var(--ui-fs-md)',
-    lineHeight: '1.6'
+    fontSize: '0.9em',
+    lineHeight: '1.5'
   },
   '.cm-code-line': {
     backgroundColor: 'var(--bg-code-block) !important',
-    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
+    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
+    fontSize: '0.9em',
     paddingLeft: '12px !important',
     paddingRight: '12px !important',
     minHeight: '1.5em',
     lineHeight: '1.5'
   },
   '.cm-code-line .cm-rendered-inline-code': {
+    display: 'inline',
+    height: 'auto',
     backgroundColor: 'transparent !important',
     padding: '0 !important',
     margin: '0 !important',
-    borderRadius: '0 !important'
+    borderRadius: '0 !important',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    lineHeight: 'inherit'
   },
   '.cm-activeLine.cm-code-line': {
     backgroundColor: 'var(--bg-code-block) !important'
@@ -85,19 +91,19 @@ export const editorThemeMarkdown = {
     boxSizing: 'border-box'
   },
   '.cm-code-line-top': {
-    paddingTop: '20px !important',
-    minHeight: 'calc(1.5em + 20px)',
-    borderTopLeftRadius: '8px',
-    borderTopRightRadius: '8px'
+    paddingTop: '4px !important',
+    minHeight: 'calc(1.5em + 4px)',
+    borderTopLeftRadius: '6px',
+    borderTopRightRadius: '6px'
   },
   '.cm-code-line-bottom': {
-    paddingBottom: '20px !important',
-    minHeight: 'calc(1.5em + 20px)',
-    borderBottomLeftRadius: '8px',
-    borderBottomRightRadius: '8px'
+    paddingBottom: '4px !important',
+    minHeight: 'calc(1.5em + 4px)',
+    borderBottomLeftRadius: '6px',
+    borderBottomRightRadius: '6px'
   },
   '.cm-code-line-top.cm-code-line-bottom': {
-    minHeight: 'calc(1.5em + 40px)'
+    minHeight: 'calc(1.5em + 8px)'
   },
   '.cm-rendered-codeMark': {
     color: 'var(--text-tertiary)',
@@ -156,19 +162,18 @@ export const editorThemeMarkdown = {
   '.cm-placeholder': {
     color: 'var(--text-tertiary)',
     opacity: '0.6',
-    fontSize: 'var(--content-font-size-md)',
-    lineHeight: '1.7'
+    fontSize: 'inherit',
+    lineHeight: 'inherit'
   },
   '.cm-diary-tag-token': {
     display: 'inline-block',
     borderRadius: '10px',
     padding: '1px 8px',
     margin: '0 6px 0 0',
-    // WebView 不加载 css-variables；`#标签` 无空格仍会套上标题 1.8em。
-    // 必须带 px 回退，否则 var 无效后 chip 会继承标题字号。
-    fontSize: 'var(--content-font-size-lg, 16px)',
+    // 与正文同字号，不再单独放大；行高跟随编辑器
+    fontSize: 'inherit',
     fontWeight: '500',
-    lineHeight: '24px',
+    lineHeight: 'inherit',
     verticalAlign: 'baseline',
     boxSizing: 'border-box'
   },

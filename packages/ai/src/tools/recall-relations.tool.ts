@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import { formatLocalDate } from '@baishou/shared'
+import { formatLocalDate, truncateTextSafe } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 
@@ -70,7 +70,7 @@ function formatRelationEdge(
   const validFrom = formatValidFrom(edge.validFrom)
   const excerpt =
     opts?.includeExcerpt !== false && edge.sourceExcerpt
-      ? ` 「${edge.sourceExcerpt.slice(0, 80)}」`
+      ? ` 「${truncateTextSafe(edge.sourceExcerpt, 80)}」`
       : ''
   const stale = edge.isCurrent === false ? ' （已失效）' : ''
   return `- ${from} —${edge.edgeType}→ ${to}${id}${src}${validFrom}${excerpt}${stale}`
@@ -198,7 +198,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
                     const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
                     const validFrom = formatValidFrom(e.validFrom)
                     const ex = e.sourceExcerpt
-                      ? `「${e.sourceExcerpt.slice(0, 80)}」`
+                      ? `「${truncateTextSafe(e.sourceExcerpt, 80)}」`
                       : e.sourceRef
                         ? `[${e.sourceRef}]`
                         : ''

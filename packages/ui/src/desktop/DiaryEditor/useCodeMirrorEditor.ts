@@ -1,7 +1,11 @@
 import { useImperativeHandle, useState } from 'react'
 import { undo, redo } from '@codemirror/commands'
 import { useTranslation } from 'react-i18next'
-import { toggleMarkdownMark } from '../../shared/diary-codemirror/extensions/keymap'
+import {
+  toggleMarkdownMark,
+  toggleLinePrefix,
+  insertFencedCodeBlock
+} from '../../shared/diary-codemirror/extensions/keymap'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
@@ -61,6 +65,18 @@ export function useCodeMirrorEditor(
           changes: { from, to, insert: prefix + selected + suffix },
           selection: { anchor: from + prefix.length, head: to + prefix.length }
         })
+        view.focus()
+      },
+      toggleLinePrefix: (prefix: string) => {
+        const view = viewRef.current
+        if (!view) return
+        toggleLinePrefix(view, prefix)
+        view.focus()
+      },
+      insertCodeBlock: () => {
+        const view = viewRef.current
+        if (!view) return
+        insertFencedCodeBlock(view)
         view.focus()
       },
       undo: () => {

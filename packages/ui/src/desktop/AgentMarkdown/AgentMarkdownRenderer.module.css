@@ -1,10 +1,11 @@
 /* 覆盖 @ant-design/x-markdown 默认 width: 100%，让气泡随内容变宽 */
 .root:global(.x-markdown),
 .ancillary:global(.x-markdown) {
+  --font-size: var(--ui-fs-lg);
   width: fit-content !important;
   max-width: 100%;
   font-family: var(--font-family) !important;
-  font-size: var(--content-font-size-md, 15px);
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-primary);
 }
@@ -29,7 +30,7 @@
 }
 
 .ancillary:global(.x-markdown) {
-  font-size: var(--content-font-size, 14px);
+  font-size: var(--ui-fs-lg);
   line-height: 1.7;
   color: var(--text-secondary) !important;
 }
@@ -80,7 +81,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--font-family);
-  font-size: var(--content-font-size, 14px);
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-primary);
 }

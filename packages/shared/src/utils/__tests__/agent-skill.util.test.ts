@@ -213,6 +213,8 @@ describe('agent-skill.util', () => {
     const skill = DEFAULT_AGENT_SKILLS.find((item) => item.name === SUMMARY_REPAIR_SKILL_NAME)
     expect(skill?.description).toContain('repair')
     expect(skill?.content).toContain('Period Summary Verification & Repair')
+    expect(skill?.content).toContain('summary_read(mode: "list"')
+    expect(skill?.content).toContain('multiple: true')
     expect(skill?.content).toContain('summary_read')
     expect(skill?.content).toContain('diary_search')
     expect(skill?.content).toContain('vector_search')

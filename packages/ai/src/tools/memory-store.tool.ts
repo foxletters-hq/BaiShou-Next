@@ -10,6 +10,7 @@ import {
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
   hashEmbedSourceContent,
+  truncateTextSafe,
   type MemoryRawRecord,
   type ToolRawDataSourceManager
 } from '@baishou/shared'
@@ -172,7 +173,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
       }
 
-      const preview = args.content.length > 100 ? args.content.slice(0, 100) + '...' : args.content
+      const preview =
+        args.content.length > 100 ? truncateTextSafe(args.content, 100, '...') : args.content
       return (
         `记忆已成功存储并建立向量索引。\n内容: ${preview}` +
         (args.tags ? `\n标签: ${args.tags}` : '') +

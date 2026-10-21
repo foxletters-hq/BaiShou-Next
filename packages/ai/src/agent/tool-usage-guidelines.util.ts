@@ -1,7 +1,17 @@
+export interface ToolUsageGuidelinesOptions {
+  /** 是否在 system prompt 中实际注入了 <skills_catalog>（无目录时不输出 skill_read 导引） */
+  hasSkillsCatalog?: boolean
+  /** 是否在 system prompt 中注入了 <diary_writing_guidelines>（避免重复展开 append/overwrite 细则） */
+  hasDiaryWritingGuidelines?: boolean
+}
+
 /**
  * 根据当前可用工具，构建伙伴必须遵守的工具使用规范（注入 system prompt）。
  */
-export function buildToolUsageGuidelines(availableToolIds: readonly string[]): string | null {
+export function buildToolUsageGuidelines(
+  availableToolIds: readonly string[],
+  options?: ToolUsageGuidelinesOptions
+): string | null {
   const ids = new Set(availableToolIds)
   const lines: string[] = []
 
@@ -87,7 +97,7 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     )
   }
 
-  if (ids.has('skill_read')) {
+  if (ids.has('skill_read') && (options?.hasSkillsCatalog ?? true)) {
     if (lines.length > 0) lines.push('')
     lines.push('## 选用技能时先读正文')
     lines.push(
@@ -100,10 +110,13 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     if (lines.length > 0) lines.push('')
     lines.push('## 向用户提问')
     lines.push(
-      '- 需要用户做选择、确认、同意或提供名称时，**必须**调用 companion_ask，不要把问题写在普通回复里。'
+      '- 执行操作或推进任务分支前，若需要用户做明确选择、确认、同意或提供名称，**必须**调用 companion_ask，不要把问题写在普通回复里（日常闲聊、情绪共鸣或顺着话题的自然反问除外）。'
     )
     lines.push(
       '- companion_ask 必须带 question 或 questions，以及每题至少两个 options。能一次问清的相关选择，收进同一题的 options。'
+    )
+    lines.push(
+      '- 若某道题允许用户同时选择多项（例如勾选要生成或修复的哪几篇总结、勾选要应用的修改项），必须在该题传 `multiple: true`，且每个 option 直接写单个候选项名称（如「2026年第34周（8月17日—8月23日）」），不要在多选选项里混入「两份都补」「只选A」这类互斥单选措辞。'
     )
     lines.push(
       '- 彼此独立但可以同时决定的问题，必须放进同一次 companion_ask 的 questions，用户会在同一张确认卡里一起回答。不要先问一件事、等用户答完再追问第二件。'
@@ -121,18 +134,21 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
       '- 调用 diary_edit 修改某篇日记之前，**必须**在同一轮任务中先对该日期调用 diary_read，确认现有内容与结构后再编辑。'
     )
     lines.push('## 编辑时保留已有段落（强制）')
-    lines.push(
-      '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留。'
-    )
-    lines.push(
-      '- 用户只要求改/补某一段时：用 **append** 追加勘误或补充；或在 overwrite 时把 diary_read 读到的**全文**作为底稿，仅修改目标段落后整体写回。' +
-        '**禁止**只传修改后的片段——那会删掉其他所有段落。'
-    )
-    lines.push('- 默认使用 **append（追加）**；content 只传需要新增或勘误的一段，不要传整篇日记。')
-    lines.push(
-      '- **overwrite（整篇覆盖）** 仅在用户明确要求替换/重写当天整篇日记时使用；' +
-        '此时 content 必须是合并保留后的**完整正文**（含所有要保留的段落），修改个别段落、润色、补充一律用 append。'
-    )
+    if (options?.hasDiaryWritingGuidelines) {
+      lines.push(
+        '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留（append 与 overwrite 的具体要求见下方 `<diary_writing_guidelines>`）。'
+      )
+    } else {
+      lines.push(
+        '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留。'
+      )
+      lines.push(
+        '- 默认使用 **append（追加）**：新增记录、补充或追加勘误时使用，content **只传本次新增的一段**，不要传整篇日记。'
+      )
+      lines.push(
+        '- **overwrite（整篇覆盖，慎用）**：仅在用户明确要求重写整篇日记，或必须原位修改既有某段时使用；此时须以 diary_read 读到的**全文**为底稿，仅修改目标段落后整体写回，**禁止**只传修改后的片段。'
+      )
+    }
   }
 
   const hasExternalMcp = availableToolIds.some((id) => id === 'mcp_call' || id.startsWith('mcp_'))

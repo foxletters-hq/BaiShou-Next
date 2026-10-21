@@ -11,7 +11,8 @@ import {
 import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
-const ATX_HEADING_PREFIX_RE = /^(#{1,6})\s?/
+/** CommonMark ATX 标题需要 `#` 后有空白；`#标签` 是日记标签，不能当标题吃掉首个 `#` */
+const ATX_HEADING_PREFIX_RE = /^(#{1,6})(?:\s+|$)/
 const BLOCKQUOTE_PREFIX_RE = /^(\s*>\s?)/
 /** CommonMark 风格 thematic break：至少 3 个相同 `-` / `*` / `_`，允许中间空格 */
 const HR_LINE_RE = /^\s*([-*_])(?:\s*\1){2,}\s*$/
@@ -93,10 +94,9 @@ function styleInlineCodeRuns(
     const innerTo = innerFrom + inner.length
     const editing = selectionIntersectsRange(state, from, to)
 
-    if (editing) {
-      if (from < to) marks.push(inlineCodeMark.range(from, to))
-    } else {
-      if (innerFrom < innerTo) marks.push(inlineCodeMark.range(innerFrom, innerTo))
+    // 灰底包住整段（含反引号）；chip 用固定行高，显示 ` 时不会撑高
+    if (from < to) marks.push(inlineCodeMark.range(from, to))
+    if (!editing) {
       if (openLen > 0) {
         pushReplaceDecoration(marks, doc, from, from + openLen, hideSpec)
       }

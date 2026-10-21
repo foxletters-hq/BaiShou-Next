@@ -1,7 +1,8 @@
 import {
   KNOWLEDGE_PER_NOTEBOOK_HIT_LIMIT,
   KNOWLEDGE_TOTAL_HIT_LIMIT,
-  isGarbledExtractText
+  isGarbledExtractText,
+  truncateTextSafe
 } from '@baishou/shared'
 import type { ToolKnowledgeSearchHit } from '@baishou/shared'
 
@@ -63,7 +64,7 @@ export function formatKnowledgeSearchHits(query: string, hits: ToolKnowledgeSear
     blocks.push(`### ${name}`)
     for (const hit of group) {
       const title = hit.title?.trim() || hit.sourceId.slice(0, 8)
-      const excerpt = hit.chunkText.replace(/\s+/g, ' ').trim().slice(0, 400)
+      const excerpt = truncateTextSafe(hit.chunkText.replace(/\s+/g, ' ').trim(), 400)
       blocks.push(`[${index}] ${name} · ${title}（${locationOf(hit)}）\n${excerpt}`)
       index += 1
     }
@@ -87,7 +88,7 @@ export function citationsFromKnowledgeHits(hits: ToolKnowledgeSearchHit[]): Arra
     notebookName: notebookLabel(hit),
     sourceId: hit.sourceId,
     title: hit.title?.trim() || hit.sourceId,
-    excerpt: hit.chunkText.replace(/\s+/g, ' ').trim().slice(0, 240),
+    excerpt: truncateTextSafe(hit.chunkText.replace(/\s+/g, ' ').trim(), 240),
     page: hit.page,
     offset: hit.offset,
     chunkIndex: hit.chunkIndex

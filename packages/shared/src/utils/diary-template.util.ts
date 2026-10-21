@@ -127,10 +127,14 @@ export function buildDiaryFormatRulesFromTemplates(
     config?.newEntryTemplate,
     DEFAULT_DIARY_NEW_ENTRY_TEMPLATE
   )
+    .replace(/\u200B/g, '')
+    .trimEnd()
   const appendTemplate = resolveDiaryTemplate(
     config?.appendBlockTemplate,
     DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE
   )
+    .replace(/\u200B/g, '')
+    .trimEnd()
 
   return [
     '日记正文由你完整编写。系统不会自动添加、识别、删除或改写时间标题；以下编辑器模板仅作为书写结构参考：',

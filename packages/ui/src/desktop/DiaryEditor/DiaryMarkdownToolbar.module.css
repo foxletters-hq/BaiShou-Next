@@ -130,3 +130,126 @@
   width: 18px;
   height: 18px;
 }
+
+.shortcutTriggerBtn {
+  margin-left: auto;
+  gap: 6px;
+  padding: 0 var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.shortcutTriggerLabel {
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.shortcutsModal {
+  width: 440px;
+  max-width: 92vw;
+  padding: var(--spacing-md-plus, 18px) var(--spacing-lg, 20px);
+}
+
+.shortcutsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md, 14px);
+}
+
+.shortcutsTitle {
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shortcutsCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-xs, 6px);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.shortcutsCloseBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.shortcutsBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 14px);
+}
+
+.shortcutSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shortcutSectionTitle {
+  font-size: var(--ui-fs-xs, 11px);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.shortcutList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shortcutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs, 6px);
+  background: var(--bg-surface-low);
+}
+
+.shortcutLabel {
+  font-size: var(--ui-fs-md);
+  color: var(--text-primary);
+}
+
+.shortcutKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.shortcutKeyPlus {
+  font-size: var(--ui-fs-xs, 11px);
+  color: var(--text-tertiary);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--ui-fs-xs, 11px);
+  line-height: 1;
+  box-shadow: 0 1px 0 var(--border-subtle);
+}

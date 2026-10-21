@@ -42,4 +42,27 @@ describe('heading with diary tag line (screenshot case)', () => {
     expect(firstLine?.textContent).toContain('07:00')
     expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)
   })
+
+  it('keeps the first tag # inside its chip instead of splitting it as a heading marker', () => {
+    const content = '#生活 #美食 #夏天\n'
+    parent = document.createElement('div')
+    document.body.appendChild(parent)
+    view = createDiaryCodeMirror(parent, {
+      content,
+      platform: {
+        resolveAttachmentUrl: (u) => u,
+        interactionMode: 'touch',
+        scrollMode: 'viewport',
+        tagLineMode: true
+      }
+    })
+
+    const firstLine = parent.querySelector('.cm-line')
+    expect(firstLine?.classList.contains('cm-rendered-h1')).toBe(false)
+    expect(firstLine?.querySelector('.cm-heading-mark')).toBeNull()
+
+    const tokens = firstLine?.querySelectorAll('.cm-diary-tag-token') ?? []
+    expect(tokens.length).toBe(3)
+    expect(tokens[0]?.textContent).toBe('#生活')
+  })
 })

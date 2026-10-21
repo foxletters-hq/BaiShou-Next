@@ -9,10 +9,9 @@ const src = readFileSync(
 )
 
 describe('agent session service chrome', () => {
-  it('should not cancel a still-open companion_ask when the model stream ends', () => {
-    expect(src).toContain('shouldKeepCompanionAskAfterStream')
-    expect(src).toContain('sessionAgentGate?.listPending(sessionId)')
-    expect(src).toContain("sessionAgentGate?.cancelSession(sessionId, 'stream ended')")
-    expect(src).toContain('if (!keepCompanionAsk)')
+  it('should keep a still-open companion_ask but clear other gates when the stream ends', () => {
+    expect(src).toContain("sessionAgentGate?.cancelSession(sessionId, 'stream ended'")
+    expect(src).toContain("keepRequest: (request) => request.action === 'companion_ask'")
+    expect(src).not.toContain('keepCompanionAsk')
   })
 })

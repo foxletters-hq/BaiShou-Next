@@ -298,4 +298,40 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('外部扩展工具（MCP）调用规范')
     expect(prompt).toContain('mcp_call')
   })
+
+  it('omits skill_read usage guideline when skills_catalog is absent', () => {
+    const withoutCatalog = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {
+        skill_read: { description: 'Read skill' }
+      }
+    })
+    expect(withoutCatalog).not.toContain('选用技能时先读正文')
+
+    const withCatalog = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {
+        skill_read: { description: 'Read skill' }
+      },
+      skillsCatalog: [{ name: 'test-skill', description: 'Test' }]
+    })
+    expect(withCatalog).toContain('选用技能时先读正文')
+  })
+
+  it('filters out built-in placeholder customGuidelines', () => {
+    const promptWithPlaceholder = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      customGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。'
+    })
+    expect(promptWithPlaceholder).not.toContain('<behavior_guidelines>')
+
+    const promptWithCustom = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      customGuidelines: '回答尽量精炼。'
+    })
+    expect(promptWithCustom).toContain('<behavior_guidelines>')
+    expect(promptWithCustom).toContain('回答尽量精炼。')
+  })
 })

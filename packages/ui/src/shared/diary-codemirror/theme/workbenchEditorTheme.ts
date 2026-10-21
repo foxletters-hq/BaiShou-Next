@@ -87,7 +87,7 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     },
   /* 笔记正文：阅读区字号 + 行级标题放大。字号只挂 .cm-line，避免行内再放大导致点击落点偏移 */
   '&.workbench-cm-editor.workbench-cm-doc': {
-    fontSize: 'var(--content-font-size-md)',
+    fontSize: 'var(--ui-fs-lg)',
     lineHeight: '1.7'
   },
   '&.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h1': {

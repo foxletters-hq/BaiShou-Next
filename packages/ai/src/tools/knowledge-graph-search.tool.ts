@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod'
+import { truncateTextSafe } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 import { resolveKnowledgeToolNotebookIds } from './knowledge-tool-scope.util'
@@ -84,14 +85,14 @@ export class KnowledgeGraphSearchTool extends AgentTool<typeof params> {
         nodeTotal += result.nodes.length
         edgeTotal += result.edges.length
         const nodeLines = result.nodes.slice(0, 16).map((n) => {
-          const summary = n.summary?.trim() ? `：${n.summary.trim().slice(0, 80)}` : ''
+          const summary = n.summary?.trim() ? `：${truncateTextSafe(n.summary.trim(), 80)}` : ''
           return `- ${n.name}（${n.nodeType}）${summary}`
         })
         const nameById = new Map(result.nodes.map((n) => [n.id, n.name]))
         const edgeLines = result.edges.slice(0, 24).map((e) => {
           const from = nameById.get(e.fromId) || e.fromId.slice(0, 8)
           const to = nameById.get(e.toId) || e.toId.slice(0, 8)
-          const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 60)}」` : ''
+          const excerpt = e.sourceExcerpt ? ` 「${truncateTextSafe(e.sourceExcerpt, 60)}」` : ''
           return `- ${from} —${e.edgeType}→ ${to}${excerpt}`
         })
         const pathLines =

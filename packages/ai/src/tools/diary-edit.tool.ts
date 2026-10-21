@@ -17,7 +17,7 @@ const diaryEditParams = z.object({
     .default('append')
     .describe(
       'Edit mode. "append" adds content as a new section without generating a timestamp header (default, preferred). ' +
-        '"overwrite" replaces the entire entry—use only when the user explicitly asked for a full rewrite.'
+        '"overwrite" replaces the entire entry—use only when the user explicitly asked for a full rewrite or an in-place edit of an existing section (preserving all other sections from diary_read).'
     )
 })
 

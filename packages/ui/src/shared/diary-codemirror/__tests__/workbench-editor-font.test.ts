@@ -35,7 +35,7 @@ describe('workbench editor font', () => {
 
   it('should use reading-size tokens and line-level heading scale on the document editor', () => {
     expect(theme).toMatch(
-      /'&\.workbench-cm-editor\.workbench-cm-doc'\s*:\s*\{[^}]*fontSize:\s*'var\(--content-font-size-md\)'/s
+      /'&\.workbench-cm-editor\.workbench-cm-doc'\s*:\s*\{[^}]*fontSize:\s*'var\(--ui-fs-lg\)'/s
     )
     expect(theme).toMatch(
       /workbench-cm-doc \.cm-line\.cm-rendered-h1'\s*:\s*\{[^}]*fontSize:\s*'1\.\d+em'/s

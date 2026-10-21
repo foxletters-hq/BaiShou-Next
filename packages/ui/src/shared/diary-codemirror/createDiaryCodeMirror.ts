@@ -122,7 +122,7 @@ export function createDiaryCodeMirrorExtensions(
       : []),
     listContinuationExtension,
     inlineMarkEnterExtension,
-    markdownKeymap,
+    Prec.high(markdownKeymap),
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     markdownSupport,
     ...(isTouch ? [] : diaryMarkdownTableAutocompletionExt(markdownSupport)),

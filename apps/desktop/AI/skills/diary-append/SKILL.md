@@ -1,169 +1,151 @@
 name: diary-append
-description: 将今天或近期与 AI 对话中的事件补充进个人日记（只增不改、不重复、按事件时间排序）。当用户说补日记、记进日记或调用 /diary-append 时使用。
-bundledHash: 8f72ec00
+description: "Append events from today's or recent AI conversations into the personal diary (append-only, deduplicated, ordered by event time). Use when the user asks to backfill/append to their diary or invokes /diary-append."
+bundledHash: d39711c4
 
-# 个人日记补充
+# Personal Diary Append
 
-用日记工具（或日记 MCP）把对话里发生的事**补充**进个人日记。只增不改，不重复，按事件时间排序。
+Use the diary tools (or diary MCP tools) to **append** events from the conversation into the user's personal diary. Append-only, no duplicates, ordered by actual event time.
 
-对人说话仍遵守仓库角色规则。本 skill 管的是**怎么补日记**。
+Keep following the persona rules when speaking to the user. This skill governs **how to append to the diary**.
 
-## 何时使用
+## Language Rule
 
-- 用户说补充日记、记进日记、写进日记、补日记，或输入 `/diary-append`
-- 要把今天或最近的对话写进个人日记
-- 跨天补记某日还没写上的事
+- This skill specification is written in English, and the host invocation header may contain Chinese text. Do **not** let the language of this skill file or the invocation wrapper dictate your output language.
+- Always write diary headings, tags, body paragraphs, and your final confirmation reply in the **user's language** (matching the existing diary language, the user's conversation language, or the App UI locale).
 
-## 硬性规则
+## When to Use
 
-1. **先读后写**：目标日期必须先调用 `diary_read`（或 `baishou_diary_read` / `diary_list` 确认有无），看过已有正文再决定写什么。若今天的日记尚未创建，或对话涉及昨天/跨天内容，也必须先读一眼昨天的日记，确认有无需要补入昨天或避免重复记录的内容。
-2. **不重复**：已写过的事件、观点、细节不再写第二遍。语义重复也算重复。
-3. **不修改**：禁止改写、删减、润色已有段落。禁止为了“更顺”去动旧文。
-4. **只补缺失**：只追加对话里有、日记里还没有的内容。
-5. **时间顺序**：新段落按**事件发生时间**插入，不是按“现在补记的时刻”硬堆在末尾。
-6. **不写例行环节**：用户发送共同回忆、周期总结、同步确认等例行内容，**不要写入日记**。
-7. **标签只写正文**：用段落里的 `#标签` 即可。调用 `diary_write` / `diary_edit` 时**不要传 `tags` 参数**，避免写进 frontmatter。
-8. **详略要分**：日记不是工作日志。哪些该详写、哪些只提一句，见下面「详略标准」。
-9. **每个事件独立使用六级时间标题**：每个事件都必须单独写成一个段落，并使用 `###### HH:MM - 标题` 作为该事件自己的标题。禁止用一个当前时间的六级标题包住多个事件，也禁止用加粗文字、列表或普通小标题替代事件时间标题。
+- The user asks (in any language) to append to the diary, record today's chat in the diary, backfill the diary, or invokes `/diary-append`
+- Recording events from today's or recent conversations into the personal diary
+- Backfilling events that belong to yesterday or an earlier date
 
-## 工具用法
+## Hard Rules
 
-| 场景                           | 工具（内置 / MCP）                                           |
-| ------------------------------ | ------------------------------------------------------------ |
-| 确认今天日期                   | `current_time` / `baishou_current_time`（使用个人日记所在的本地时区） |
-| 查某日有无日记                 | `diary_list` / `baishou_diary_list` 或 `diary_read` / `baishou_diary_read` |
-| 新建某日日记                   | `diary_write` / `baishou_diary_write`                    |
-| 追加一条内容（仅在格式允许时） | `diary_edit` / `baishou_diary_edit`，`mode: "append"`  |
-| 按时间插入或追加事件（默认）   | `diary_edit` / `baishou_diary_edit`，`mode: "overwrite"`，正文=**全部旧段落原样保留** + 在正确位置插入新段落 |
-| 不确定是否写过                 | `diary_search` / `baishou_diary_search`                  |
+1. **Read before write**: Always call `diary_read` (or `baishou_diary_read` / `diary_list`) on the target date first and inspect the existing body before deciding what to write. If today's diary does not exist yet, or if the conversation spans yesterday / midnight, also read yesterday's diary first to check whether anything belongs in yesterday's entry or was already recorded there.
+2. **No duplicates**: Never write an event, opinion, or detail a second time if it is already covered. Semantic duplicates count as duplicates.
+3. **Never modify existing text**: Do not rewrite, trim, or polish existing paragraphs. Never touch old paragraphs just to make them flow better.
+4. **Append missing facts only**: Only add events or concrete facts from the conversation that are not yet in the diary.
+5. **Chronological order**: Insert new paragraphs by **actual event time**, not by dumping everything at the bottom under the current timestamp.
+6. **Skip routine context**: Do **not** record routine payloads pasted by the user such as shared memory packs, period summaries, or sync confirmations.
+7. **Tags in body only**: Put `#tag` lines inside the paragraph body. When calling `diary_write` / `diary_edit`, **do not pass the `tags` parameter** so tags are not written into YAML frontmatter.
+8. **Detail vs. brevity**: A personal diary is not a work changelog. Follow the "Detail Standard" below for what to expand and what to summarize in one sentence.
+9. **Dedicated H6 time heading per event**: Every event must be its own paragraph with its own `###### HH:MM - Title` heading. Never group multiple distinct events under a single current-time H6 heading, and never replace the H6 time heading with bold text, bullet lists, or other heading levels.
 
-- 某日已有日记 → 只用 `diary_edit`，默认使用 `mode: "overwrite"`，不要 `diary_write`。每个新增事件都必须有自己的六级时间标题。
-- 某日没有日记、且要补的内容属于该日 → 用 `diary_write` 创建正文，并让每个事件都带有自己的六级时间标题；之后若继续补充，按本规则用 `overwrite` 保留旧文后插入。
-- `overwrite` 用于在已有日记中追加或插入事件；`content` 必须是全日完整正文，旧段落必须逐字保留，只能在正确位置新增完整的六级标题段落，缺一段都会丢内容。
-- 不要用 `diary_delete` / `baishou_diary_delete`。
+## Tool Usage
 
-## 工作流程
+| Scenario                                    | Tool (Built-in / MCP)                                                                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Check current local date & time             | `current_time` / `baishou_current_time` (use the local timezone of the personal diary)                             |
+| Check if a date already has a diary         | `diary_list` / `baishou_diary_list` or `diary_read` / `baishou_diary_read`                                     |
+| Create a new diary for a date               | `diary_write` / `baishou_diary_write`                                                                              |
+| Append at the end (only when order allows)  | `diary_edit` / `baishou_diary_edit` with `mode: "append"`                                                        |
+| Insert or append in time order (default)    | `diary_edit` / `baishou_diary_edit` with `mode: "overwrite"`, keeping **every existing paragraph verbatim**      |
+| Check whether an event was already recorded | `diary_search` / `baishou_diary_search`                                                                            |
+
+- Target date already has a diary → Use `diary_edit` only, defaulting to `mode: "overwrite"`; do not call `diary_write`. Every newly added event must have its own H6 time heading.
+- Target date has no diary yet and has events to record → Use `diary_write` to create it, giving each event its own H6 time heading; if more events are added later, use `overwrite` while preserving all existing text.
+- When using `overwrite`, `content` must be the complete full-day body with all existing paragraphs preserved word for word and new H6 event sections inserted at the proper chronological positions. Dropping any existing section loses user data.
+- Never call `diary_delete` / `baishou_diary_delete`.
+
+## Workflow
 
 ```
 Task Progress:
-- [ ] 1. current_time 确认“今天”（及“昨天”日期）
-- [ ] 2. 从对话整理待补事件（时间、要点、标签）
-- [ ] 2.5 定详略：关键话语和判断详写；技术或文档改动只留结论
-- [ ] 3. 过滤：例行共同回忆、已无关紧要的重复碎嘴
-- [ ] 4. 按事件归属日期分组（今天无日记时顺带检查昨天日记）
-- [ ] 5. 对各日期：read → 去重 → write，或用 overwrite 保留旧文后插入
-- [ ] 6. 向用户简短确认补了哪几天、几条（不回贴全文）
+- [ ] 1. Call current_time to confirm "today" (and "yesterday")
+- [ ] 2. Extract candidate events from the conversation (time, title, key points, tags)
+- [ ] 2.5 Apply the Detail Standard: keep key quotes and decisions in detail; keep code/doc changes to conclusions only
+- [ ] 3. Filter out routine shared-memory pastes and trivial repetitive chatter
+- [ ] 4. Group events by target date (also inspect yesterday's diary if today's diary does not exist yet)
+- [ ] 5. For each date: read → deduplicate → write (or overwrite while preserving existing text verbatim)
+- [ ] 6. Briefly confirm to the user which dates and how many entries were added (do not paste the full diary back)
 ```
 
-### Step 1: 整理待补事件
+### Step 1: Extract Candidate Events
 
-从当前对话提取可记事项，每条尽量有：
+For each noteworthy event in the conversation, prepare:
 
-- 大致时间（有则写 `HH:MM`，没有就按对话顺序估一个合理上午/下午/晚间点，或只用标题不加精确分钟）
-- 一行标题
-- 朴实正文（动作、结果、关键对话；少形容词）
-- 标签（人物、项目、主题）
+- Approximate time (`HH:MM` if known; otherwise estimate a reasonable morning/afternoon/evening time from message order, or use an H6 heading without exact minutes)
+- A concise single-line title (in the user's language)
+- Grounded body text (actions, outcomes, key dialogue; minimal adjectives)
+- Tags (people, projects, themes, in the user's language)
 
-**朴实写法**：写清楚发生了什么、为什么这样决定、之后有什么结果。避免空泛、夸张和堆砌式表达。
+**Grounded style**: State clearly what happened, why a decision was made, and what resulted. Avoid vague filler or exaggerated rhetoric.
 
-### Step 1.5: 详略标准（重要）
+### Step 1.5: Detail Standard (Important)
 
-日记是以后要反复回看的记忆，不是交付日志。**判断标准是「半年后回看，这个细节还有用吗」。**
+A diary is a long-term memory to revisit months or years later, not a delivery changelog. **The criterion is: "Six months from now, will this detail still matter?"**
 
-**需要详写（可以逐句、可以长）：**
+**Write in detail (can be multi-sentence or verbatim):**
 
-- **对话原文**：和他人聊天的关键句子。原话比转述有价值，以后可以反复分析。
-- **人的态度和反应**：谁答应了什么、谁回避了什么、语气变化、给了什么表情。
-- **自己的判断和当时的想法**：为什么这么决定、担心什么、和对话伙伴梳理出的结论。
-- **情绪现场**：难受到什么程度、身体什么反应、说了什么话。
-- **具体的生活细节**：做饭步骤、买了什么、多少钱、身体数据。这些是生活的质感。
+- **Key quotes from conversations**: Exact words spoken by others or important exchanges. Direct quotes are more valuable than paraphrases when looking back.
+- **People's attitudes and reactions**: Who agreed to what, who dodged a topic, tone shifts, expressions.
+- **Personal judgments and reasoning at the moment**: Why a choice was made, what the user was worried about, conclusions reached with the AI companion.
+- **Emotional and physical state**: How intense a feeling was, physical reactions, what was said in the moment.
+- **Concrete life details**: Cooking steps, what was bought and for how much, health/body metrics. These capture the texture of daily life.
 
-**只写结果，不要展开（一两句话打住）：**
+**Keep to a 1–2 sentence conclusion (do not expand):**
 
-- **代码和文档的改动明细**：只写目标、决策和结果，**不要**逐项列出页面、字段、数字或文件差异。
-- **技术实现细节**：只写功能是否完成、问题是否解决，不要贴排查过程和函数名。
-- **文件结构、配置项、参数**：这些在代码库和文档里，日记里重复一遍没有意义。
-- **可以从产物本身查到的东西**：改了什么，打开文件就能看到。日记要记的是「为什么改」和「改完之后发生了什么」。
+- **Code and document diff details**: Record only the goal, key decision, and outcome. **Do not** list page-by-page, field-by-field, or file-by-file diffs.
+- **Technical implementation minutiae**: Record whether the feature or bug was resolved, not the debugging steps or function names.
+- **File trees, config keys, parameters**: Those live in the codebase or docs; repeating them in the diary adds no value.
+- **Anything directly inspectable from the artifact itself**: Record *why* it was changed and *what happened after*, not a mechanical inventory of edits.
 
-**判断口诀**：**别人说的话要留，自己改的东西只留结论。**
+**Rule of thumb**: **Keep what people said in detail; keep technical edits to conclusions.**
 
-对照示例——同一类改动：
+### Step 2: Assign Target Dates
 
-> ❌ 逐页列出文档改了哪些标题、表格、字段和数字。
+- Read today's diary via `diary_read`; if today has no diary yet, also read yesterday's diary.
+- Events from today → write to today's date (create with `diary_write` if missing).
+- Events clearly belonging to yesterday or another date → write to that specific date; do not lump them into today.
+- Conversations spanning midnight → split into separate events under their respective dates.
 
-> ✅ 说明文档的目标版本、关键决策和最终结果，并记录解决了哪一个影响整体逻辑的问题。
+### Step 3: Deduplicate
 
-后一版留下的是**决策和判断**，前一版留下的是逐项差异。
+After reading the target date's diary, check each candidate event:
 
-### Step 2: 归属日期
+- Same event already has a section → skip
+- Existing section already covers the main point and the conversation only repeats it → skip
+- Existing section only mentions it in passing and the conversation adds **new concrete facts** → append only the new facts without rewriting the old section
 
-- 先用 `diary_read` 查看今天的日记；如果今天还没有创建日记，也一并读取昨天的日记看一眼。
-- 内容说的是今天 → 写入今天；今天无日记则先 `diary_write` 创建。
-- 内容明确属于昨天/某天 → 写入对应日期；不要塞进今天。
-- 一条里跨天 → 拆成多条，分别进对应日期。
+### Step 4: Format & Chronological Insertion
 
-### Step 3: 去重
-
-读完目标日后，逐条对照：
-
-- 同一事件已有段落 → 跳过
-- 旧文已覆盖要点、新对话只是复述 → 跳过
-- 旧文只有一笔带过、对话里有**新的具体事实** → 只补新事实，不重写旧段
-
-### Step 4: 写入与时间序
-
-每个事件都必须单独成段，事件发生时间直接写在该事件自己的六级标题中：
+Every event must be a standalone section with its event time in the H6 heading (written in the user's language):
 
 ```markdown
-###### HH:MM - 标题
+###### HH:MM - Event Title
 
-#标签1 #标签2
+#Tag1 #Tag2
 
-正文……
+Paragraph body...
 ```
 
-或无标题短句时：
+Or for a short untitled note:
 
 ```markdown
 ###### HH:MM
 
-#标签1 #标签2
+#Tag1 #Tag2
 
-正文……
+Paragraph body...
 ```
 
-**排序与写入方式（重要）：**
+**Ordering & write mode (Important):**
 
-- 新增事件必须按照**事件实际发生时间**排序。每个事件都要有自己的 `###### HH:MM - 标题`，不能把多个事件写在一个当前补记时间的标题下面。
-- 已有日记时优先使用 `overwrite`：正文必须是**全部旧正文逐字保留**，并在正确位置插入新的完整事件段落。例如：
+- Sort new events by **actual event time**. Every event must have its own `###### HH:MM - Title` heading; never bundle multiple events under a single heading.
+- When the diary already exists, prefer `overwrite`: `content` must preserve **all existing text verbatim** and insert the new complete H6 event sections at the proper chronological positions.
+- Multiple events at the same minute → keep their conversation order right next to each other.
+- When adding multiple events at once, perform a single `overwrite` with all sections sorted in chronological order.
 
-```markdown
-###### HH:MM - 事件标题一
+**Parameters:** `mode` is required on `diary_edit`. **Do not pass `tags`**; keep tags only as `#tag` lines in the Markdown body.
 
-#标签一 #标签二
+### Step 5: Reply to the User
 
-正文……
+Reply in 1–2 sentences in the user's language stating which date(s) were updated, how many sections were added, and what duplicates/routine items were skipped. Do not paste the full diary text into the chat.
 
-###### HH:MM - 事件标题二
+## What Not to Write
 
-#标签三 #标签四
-
-正文……
-```
-
-- 同分钟多条 → 保持对话中的先后，紧挨着写。
-- 一次要补多条，无论它们是否都晚于旧文最后一条，都优先一次 `overwrite` 按时间排好，避免打乱顺序。
-
-**参数：** `mode` 必填。**不要传 `tags`**；标签只出现在正文 `#标签` 行。
-
-### Step 5: 回复用户
-
-用一两句话说明：补进了哪一日期、新增几段、跳过了哪些重复/例行项。不要把日记全文再贴回聊天。
-
-## 不要写入的内容
-
-- 用户发送共同回忆包、周期总结或同步确认等例行内容
-- 已在日记中出现过的同一事件
-- 用户明确说不用记、或仅调试 Skill/工具的话
-- 无信息增量的纯表情、纯附和
-- 代码、文档、配置的逐项改动明细（只写结论，见「详略标准」）
+- Routine shared-memory packs, period summaries, or sync confirmations pasted by the user
+- Events already recorded in the diary
+- Anything the user explicitly said not to record, or meta-chatter only testing skills/tools
+- Zero-information emoji-only replies or filler acknowledgments
+- Line-by-line code, document, or configuration diffs (record conclusions only; see "Detail Standard")

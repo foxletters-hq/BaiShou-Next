@@ -6,7 +6,8 @@ import {
   isChatModelForConnectionTest,
   isOpenAiStyleReasoningModel,
   mergeZhipuKnownEmbeddingModels,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  sanitizeSurrogatesDeep
 } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
@@ -113,8 +114,15 @@ function createOpenAICompatFetchInterceptor(
       typeof safeInit.body === 'string'
     ) {
       try {
-        const body = JSON.parse(safeInit.body)
-        let mutated = applyChatCompletionsReasoningEffortForTools(body)
+        const parsed = JSON.parse(safeInit.body) as Record<string, unknown>
+        // 严格 JSON 解析器（如 DeepSeek 的 serde_json）不接受孤立 UTF-16 代理项，
+        // 截断工具输出时可能产生半个 emoji，这里在序列化前统一兜底。
+        const body = sanitizeSurrogatesDeep(parsed)
+        let mutated = body !== parsed
+
+        if (applyChatCompletionsReasoningEffortForTools(body)) {
+          mutated = true
+        }
 
         if (applyOpenAiThinkingBodyInject(body)) {
           mutated = true

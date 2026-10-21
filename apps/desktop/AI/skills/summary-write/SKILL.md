@@ -1,171 +1,179 @@
 name: summary-write
-description: 复用位图与级联检测机制找出可生成的缺失周期总结（周记、月报、季报、年度总结），询问用户确认后读取对应日记或下级总结并撰写落盘。当用户说写总结、补周记/月报/季报/年报或调用 /summary-write 时使用。
-bundledHash: d989166d
+description: "Detect and generate missing period summaries (weekly, monthly, quarterly, yearly) via the bitmap and cascade detector, then read the source material and write the new summary. Use when the user asks to write or backfill a summary, or invokes /summary-write."
+bundledHash: 3460912f
 
-# 周期总结检测与生成
+# Period Summary Detection & Generation
 
-通过系统位图与级联检测机制查找缺失的**周记（weekly）、月报（monthly）、季报（quarterly）、年度总结（yearly）**，询问用户确认后，读取原始日记或下级总结撰写并落盘。
+Detect missing **weekly, monthly, quarterly, and yearly** summaries via the built-in bitmap and cascade detector, confirm with the user, read the underlying diaries or lower-level summaries, and write the completed summary to disk.
 
-对人说话仍遵守仓库角色规则。本 skill 管的是**怎么查缺失总结、怎么读素材、怎么写总结并保存**。
+Keep following the persona rules when speaking to the user. This skill governs **how to detect missing summaries, read source material, draft the summary, and save it**. It is designed for companion sessions; project/workbench sessions expose personal memory as read-only, so do not attempt to write summaries there.
 
-## 何时使用
+## Language Rule
 
-- 用户说写总结、补总结、写周记/月报/季报/年终总结，或输入 `/summary-write`
-- 用户想检查最近有哪些周期总结漏写并一键补齐
+- This skill specification is written in English, and the host invocation header may contain Chinese text. Do **not** let the language of this skill file or the invocation wrapper dictate your output language.
+- Always write `companion_ask` questions/options, the generated summary Markdown (including all headings and section titles), and your final reply in the **user's language** (matching the user's conversation language, existing diaries/summaries, or App UI locale).
 
-## 硬性规则
+## When to Use
 
-1. **先查缺失再询问**：先调用 `summary_read(mode: "missing")`（或 `baishou_summary_read`）复用系统位图检测出所有可生成的缺失总结，再用 `companion_ask` 让用户选择要生成哪几篇。未经用户确认，不要直接批量调用 `summary_write`。
-2. **先读素材后动笔**：写任何一篇总结前，必须先读取该周期内的真实素材（写周记读日记；写月报读周记或当月日记；写季报读月报；写年报读季报）。严禁不读素材凭印象或编造内容。
-3. **严格遵循周期与级联规则**：
-   - **周记 (`weekly`)**：周一至周日为完整一周，仅当该周已结束（周日 23:59:59 已过）且周内有日记时生成。`start_date` 必须为该周**周一**（`YYYY-MM-DD`）。
-   - **月报 (`monthly`)**：自然月已结束，且该月内已有周记（或日记）时生成。`start_date` 必须为 `YYYY-MM-01`。
-   - **季报 (`quarterly`)**：自然季度已结束，且该季度内已有月报时生成。`start_date` 必须为季度首日（`YYYY-01-01`、`YYYY-04-01`、`YYYY-07-01`、`YYYY-10-01`）。
-   - **年度总结 (`yearly`)**：自然年已结束，且该年内已有季报时生成。`start_date` 必须为 `YYYY-01-01`。
-   - **级联解锁**：如果某月因为缺周记而尚未出现在缺失月报列表里，等把该月周记写完落盘后，再次调用 `summary_read(mode: "missing")` 即可检测出新解锁的月报（季报、年报同理）。
-4. **真实有质感**：总结不是流水账口号。保留关键事件、重要人物互动、核心决策、情绪与认知变化，严格按对应层级的 Markdown 模板结构成文。
+- The user asks (in any language) to write or backfill a summary, weekly review, monthly report, quarterly report, or yearly review, or invokes `/summary-write`
+- The user wants to check which period summaries are missing and generate them
 
-## 工具用法
+> This skill only generates missing summaries. To verify or repair an existing summary, use `/summary-repair`.
 
-| 场景                     | 工具（内置 / MCP）                                                     |
-| ------------------------ | ---------------------------------------------------------------------- |
-| 确认当前日期             | `current_time` / `baishou_current_time`                            |
-| 位图检测所有缺失总结     | `summary_read` / `baishou_summary_read`，传 `mode: "missing"`    |
-| 询问用户要生成哪些总结   | `companion_ask`                                                      |
-| 列出周/月内有哪些日记    | `diary_list` / `baishou_diary_list`（传入 `start_date`、`end_date`） |
-| 读取周/月内日记全文      | `diary_read` / `baishou_diary_read`（传入 `dates` 数组）         |
-| 读取下级总结全文         | `summary_read` / `baishou_summary_read`（传入 `type`、`start_date`） |
-| 将总结写入文件与数据库   | `summary_write` / `baishou_summary_write`（传入 `type`、`start_date`、`end_date`、`content`） |
+## Hard Rules
 
-## 工作流程
+1. **Detect missing first, then ask**: When generating missing summaries, first call `summary_read(mode: "missing")` (or `baishou_summary_read`) to run the bitmap & cascade detector, then call `companion_ask` so the user can choose which period(s) to generate. Never batch-call `summary_write` without user confirmation.
+2. **Read source material before writing**: Before drafting any summary, you must read the real source material for that period (read diaries for weekly; read weeklies or diaries for monthly; read monthlies for quarterly; read quarterlies for yearly). Never fabricate facts or write from vague memory without reading the sources.
+3. **Never treat the application or system default name as a person's name**: The application name and system defaults are **not** people in the user's life. Never list them under "Key People & Relationship Progress" or attribute human actions to them.
+4. **Follow period boundary & cascade rules strictly**:
+   - **Weekly (`weekly`)**: Monday through Sunday is one full week. Generated only after the week has ended (Sunday 23:59:59 has passed) and the week has at least one diary entry. `start_date` must be the **Monday** of that week (`YYYY-MM-DD`).
+   - **Monthly (`monthly`)**: Generated only after the calendar month has ended and the month has weekly summaries (or diaries). `start_date` must be `YYYY-MM-01`.
+   - **Quarterly (`quarterly`)**: Generated only after the calendar quarter has ended and the quarter has monthly summaries. `start_date` must be the first day of the quarter (`YYYY-01-01`, `YYYY-04-01`, `YYYY-07-01`, or `YYYY-10-01`).
+   - **Yearly (`yearly`)**: Generated only after the calendar year has ended and the year has quarterly summaries. `start_date` must be `YYYY-01-01`.
+   - **Cascade unlocking**: If a month was not listed as missing because its weekly summaries were incomplete, once those weekly summaries are saved via `summary_write`, call `summary_read(mode: "missing")` again to detect the newly unlocked monthly summary (and similarly for quarterly and yearly).
+5. **Grounded and meaningful**: Summaries are not generic slogans. Preserve key events, important relationship interactions, core decisions, and emotional/cognitive shifts, following the structured Markdown template for that period type.
+
+## Tool Usage
+
+| Scenario                                  | Tool (Built-in / MCP)                                                                                    |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Check current date                        | `current_time` / `baishou_current_time`                                                              |
+| Detect all missing summaries via bitmap   | `summary_read` / `baishou_summary_read` with `mode: "missing"`                                     |
+| Ask user which summaries to generate      | `companion_ask` (pass `multiple: true` when 2+ periods are missing)                                  |
+| List diary dates in a week/month          | `diary_list` / `baishou_diary_list` (pass `start_date`, `end_date`)                              |
+| Read full diary entries in a week/month   | `diary_read` / `baishou_diary_read` (pass `dates` array)                                           |
+| Read existing or lower-level summaries    | `summary_read` / `baishou_summary_read` (pass `type`, `start_date`)                              |
+| Save summary to file & database           | `summary_write` / `baishou_summary_write` (pass `type`, `start_date`, `end_date`, `content`) |
+
+## Workflow
 
 ```
 Task Progress:
-- [ ] 1. 调用 summary_read(mode: "missing") 复用位图检测可生成的周记/月报/季报/年报
-- [ ] 2. 调用 companion_ask 向用户展示可生成的总结列表，请用户选择要生成的周期
-- [ ] 3. 对用户选中的周期：按层级读取该周期内的全部日记或下级总结
-- [ ] 4. 按对应模板撰写 Markdown 正文，调用 summary_write 落盘保存
-- [ ] 5. 若写完下级总结可能解锁上级总结，再次调用 summary_read(mode: "missing") 检查并提示
-- [ ] 6. 向用户简短汇报已生成的总结周期与要点（不刷屏回贴整篇长文）
+- [ ] 1. Call summary_read(mode: "missing") to detect generatable weekly/monthly/quarterly/yearly summaries
+- [ ] 2. Call companion_ask to present the missing periods and let the user choose which to generate
+- [ ] 3. For each selected period: read all underlying diaries or lower-level summaries
+- [ ] 4. Draft the Markdown summary in the user's language and call summary_write to save it
+- [ ] 5. If saving lower-level summaries may unlock a higher-level summary, call summary_read(mode: "missing") again to check
+- [ ] 6. Briefly report the saved summary periods and key highlights to the user (do not paste the full summary into chat)
 ```
 
-### Step 1: 位图检测缺失总结
+### Step 1: Detect Missing Summaries via Bitmap
 
-调用 `summary_read`：
-- 参数：`{ "mode": "missing" }`（若用户明确只看某类，如只看周记，可传 `{ "mode": "missing", "type": "weekly" }`）。
-- 若返回无缺失总结：告诉用户目前所有已结束周期的总结均已齐备；若用户想重制某篇已有总结，询问具体周期。
+Call `summary_read`:
+- Arguments: `{ "mode": "missing" }` (or `{ "mode": "missing", "type": "weekly" }` if the user only asked for a specific tier).
+- If no missing summaries are found: inform the user that all completed periods are up to date, and offer to use `/summary-repair` if they want to fix an existing summary.
 
-### Step 2: 询问用户确认
+### Step 2: Confirm with the User
 
-调用 `companion_ask`：
-- 在 `question` 中简明列出检测到的缺失总结数量与周期范围。
-- 在 `options` 中提供具体周期选项（当缺失项较多时，可提供「全部按顺序生成」、「仅生成最近一篇」或按类型分组选项）。
+Call `companion_ask` (in the user's language):
+- In `question`, concisely list the count and date ranges of the detected missing summaries.
+- When 2 or more missing periods are detected, pass `multiple: true` on `companion_ask` and make each option a single period item (for example `["2026年第34周（8月17日—8月23日）", "2026年第39周（9月21日—9月27日）"]`). Do **not** prefix options with "Only..." / "只补..." or mix "Both / All of them" / "两份都补" into a multi-select option list, because the user can directly check one or more periods.
 
-### Step 3: 读取素材
+### Step 3: Read Source Material
 
-根据目标总结类型读取素材：
-- **周记 (`weekly`)**：
-  1. `diary_list(start_date: 周一, end_date: 周日)` 获取该周全部日记日期。
-  2. `diary_read(dates: [...])` 读取这些日记的完整正文。
-- **月报 (`monthly`)**：
-  1. 读取该月内已有的全部周记（`summary_read(type: "weekly", start_date: ...)`）。
-  2. 若需要补充具体日期细节或该月直接由日记生成，再用 `diary_list` + `diary_read` 读取当月日记。
-- **季报 (`quarterly`)**：
-  1. 调用 `summary_read(type: "monthly", start_date: "YYYY-MM-01")` 读取该季度内各月月报。
-- **年度总结 (`yearly`)**：
-  1. 调用 `summary_read(type: "quarterly", start_date: ...)` 读取该年内四个季度的季报。
+Read the sources corresponding to the target summary type:
+- **Weekly (`weekly`)**:
+  1. `diary_list(start_date: Monday, end_date: Sunday)` to list all diary dates in that week.
+  2. `diary_read(dates: [...])` to read the full text of those diaries.
+- **Monthly (`monthly`)**:
+  1. Read all existing weekly summaries in that month (`summary_read(type: "weekly", start_date: ...)`).
+  2. If additional daily details are needed or the month is generated directly from diaries, call `diary_list` + `diary_read` for that month.
+- **Quarterly (`quarterly`)**:
+  1. Call `summary_read(type: "monthly", start_date: "YYYY-MM-01")` for each month in the quarter.
+- **Yearly (`yearly`)**:
+  1. Call `summary_read(type: "quarterly", start_date: ...)` for the quarters in that year.
 
-### Step 4: 按模板撰写并调用 `summary_write` 落盘
+### Step 4: Draft Using the Template Structure and Save via `summary_write`
 
-默认参考以下结构撰写（若用户有自定义格式要求则按用户要求）：
+Follow the section structure below, **localizing all headings and labels into the user's language** (unless the user requested a custom format):
 
-#### 周记模板 (`weekly`)
+#### Weekly Template (`weekly`)
 ```markdown
-##### {year}年{month}月第{week}周总结
+##### Week {week} Summary — {month}/{year} (localize title to user's language, e.g. "{year}年{month}月第{week}周总结")
 
-###### 📅 时间周期
-- **日期范围**: {start} 至 {end}
+###### 📅 Period
+- **Date range**: {start} to {end}
 
-###### 🎯 本周核心关键词
-**关键词1**, **关键词2**, **关键词3**
-
----
-
-###### 👥 核心人物与关系进展
-- **(人物)**: 关键互动与进展
+###### 🎯 Core Keywords
+**Keyword 1**, **Keyword 2**, **Keyword 3**
 
 ---
 
-###### 🎞️ 关键事件回顾 (Timeline)
-- **【事件标题】**
-    - **细节**: 具体过程与关键对话/事实
-    - **意义**: 决策原因或后续影响
+###### 👥 Key People & Relationship Progress
+- **(Person)**: Key interactions and progress
 
 ---
 
-###### 💡 思考与认知迭代
-- **关于技术/工作**:
-- **关于生活/自我**:
+###### 🎞️ Key Events (Timeline)
+- **[Event Title]**
+    - **Details**: Concrete facts and key conversations
+    - **Significance**: Why decisions were made or follow-up impact
 
 ---
 
-###### 📊 状态评估
-- **身心能量**:
-- **本周遗憾**:
-- **下周展望**:
+###### 💡 Reflections & Mindset Shifts
+- **Work / Technology**:
+- **Life / Self**:
 
 ---
-###### 🍵 给月度总结的"胶囊"
-> (一句话概括本周最值得留存的记忆锚点)
+
+###### 📊 State Check-in
+- **Energy & Well-being**:
+- **Regrets This Week**:
+- **Next Week Focus**:
+
+---
+###### 🍵 Capsule for Monthly Summary
+> (One sentence capturing the most memorable anchor of the week)
 ```
 
-#### 月报模板 (`monthly`)
+#### Monthly Template (`monthly`)
 ```markdown
-##### {year}年{month}月度总结
+##### {month}/{year} Monthly Summary (localize title to user's language, e.g. "{year}年{month}月度总结")
 
-###### 📅 日期范围
-- **范围**: {start} 至 {end}
+###### 📅 Date Range
+- **Range**: {start} to {end}
 
-###### 🎯 本月核心主题
-**主题1**, **主题2**
-
----
-
-###### 📈 关键进展与成就
-- **工作/技术**:
-- **生活/个人**:
+###### 🎯 Core Themes This Month
+**Theme 1**, **Theme 2**
 
 ---
 
-###### 👥 核心关系动态
-- **(人物)**:
+###### 📈 Key Progress & Achievements
+- **Work / Technology**:
+- **Life / Personal**:
 
 ---
 
-###### 💡 深度思考
+###### 👥 Relationship Dynamics
+- **(Person)**:
 
 ---
 
-###### 📊 状态评估 (0-10)
-- **状态**:
-- **满意度**:
+###### 💡 Deeper Reflection
 
 ---
-###### 🔮 下月展望
-- **重点方向**:
+
+###### 📊 State Check-in (0–10)
+- **State**:
+- **Satisfaction**:
+
+---
+###### 🔮 Next Month Outlook
+- **Focus**:
 ```
 
-#### 季报模板 (`quarterly`) 与年度总结模板 (`yearly`)
-- **季报 (`quarterly`)**：以 `##### {year}年第{quarter}季度总结` 开头，涵盖日期范围、季度核心主题、重要里程碑、核心关系脉络、认知与心态变化、下季度展望。
-- **年度总结 (`yearly`)**：以 `##### {year}年度总结` 开头，涵盖年度周期、年度关键词、四季/重要篇章回顾、年度人物志、成长与蜕变、写给下一年的自己。
+#### Quarterly (`quarterly`) & Yearly (`yearly`) Templates
+- **Quarterly (`quarterly`)**: Start with a localized H5 quarter title (e.g. `##### Q{quarter} {year} Quarterly Summary` / `##### {year}年第{quarter}季度总结`), covering date range, core themes, quarterly milestones, relationship threads, mindset shifts, and next quarter outlook.
+- **Yearly (`yearly`)**: Start with a localized H5 year title (e.g. `##### {year} Yearly Summary` / `##### {year}年度总结`), covering period, yearly keywords, seasonal/major chapters review, key people of the year, growth & transformation, and a note to next year's self.
 
-撰写完成后，调用 `summary_write`：
+Once drafted, call `summary_write`:
 - `type`: `"weekly"` | `"monthly"` | `"quarterly"` | `"yearly"`
-- `start_date`: 周期起始日 `YYYY-MM-DD`
-- `end_date`: 周期结束日 `YYYY-MM-DD`
-- `content`: 完整 Markdown 正文
+- `start_date`: Period start date `YYYY-MM-DD`
+- `end_date`: Period end date `YYYY-MM-DD`
+- `content`: Complete Markdown body
 
-### Step 5: 级联复查与回复
+### Step 5: Cascade Re-check & Reply
 
-- 若刚完成了某月最后所缺的周记（或某季度的月报），可再调用一次 `summary_read(mode: "missing")` 检查是否新解锁了月报/季报/年报；若有，告知用户或询问是否继续生成。
-- 最后用简短几句话向用户确认已保存的总结周期及核心关键词，无需在聊天窗口重贴全文。
+- If you just completed the remaining weekly summaries for a finished month (or monthly summaries for a finished quarter), call `summary_read(mode: "missing")` again to check whether a higher-level summary was unlocked; if so, let the user know or ask whether to continue.
+- Finally, confirm the saved summary period(s) and core keywords in a few short sentences in the user's language without pasting the full Markdown body into chat.

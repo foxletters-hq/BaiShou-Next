@@ -83,8 +83,8 @@ function runDiaryTagEnter(view: EditorView): boolean {
   const head = state.selection.main.head
   const line = state.doc.lineAt(head)
 
-  // 列表行交给 listContinuation 处理
-  if (/^\s*[-*+]\s/.test(line.text)) return false
+  // 列表行或引用行交给 listContinuation 处理
+  if (/^\s*(?:[-*+]\s|>)/.test(line.text)) return false
 
   if (shouldSkipDiaryTagExtractionLine(line.text)) return false
 
