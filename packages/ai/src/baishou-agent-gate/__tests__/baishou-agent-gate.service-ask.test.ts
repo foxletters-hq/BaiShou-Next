@@ -261,6 +261,31 @@ describe('BaishouAgentGateService', () => {
     unsub()
   })
 
+  it('cancelSession 可以只保留 companion_ask，清掉同一会话里的其它挂起', async () => {
+    const { gate } = createBaishouAgentGate()
+
+    const ask = gate
+      .assert({
+        ...baseAssertInput,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask',
+        title: '继续吗？'
+      })
+      .catch((error) => error)
+    const tool = gate.assert(baseAssertInput).catch((error) => error)
+    await Promise.resolve()
+
+    gate.cancelSession('sess_1', 'stream ended', {
+      keepRequest: (request) => request.action === 'companion_ask'
+    })
+
+    expect(await tool).toBeInstanceOf(AgentGateCancelledError)
+    expect(gate.listPending('sess_1').map((request) => request.action)).toEqual(['companion_ask'])
+
+    gate.cancelSession('sess_1', 'test cleanup')
+    expect(await ask).toBeInstanceOf(AgentGateCancelledError)
+  })
+
   it('assertWithResolution 在 allow 时直接返回空 requestId', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
@@ -308,5 +333,37 @@ describe('BaishouAgentGateService', () => {
     expect(resolution.selectedOptionIds).toEqual(['1'])
     expect(resolution.message).toBe('备注')
     expect(resolution.reply).toBe(AgentGateReply.Once)
+  })
+
+  it('external_directory 点 Always 后整项放行，不再按单个子目录反复询问', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'external_directory',
+      title: '访问区外目录 D:/OtherA',
+      resources: [{ kind: 'external_path', value: 'D:/OtherA/**' }]
+    })
+    const [request] = gate.listPending('sess_1')
+    expect(request?.action).toBe('external_directory')
+
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    await first
+
+    // 访问另一个区外目录时不再询问
+    await expect(
+      gate.assert({
+        ...baseAssertInput,
+        action: 'external_directory',
+        title: '访问区外目录 E:/OtherB',
+        resources: [{ kind: 'external_path', value: 'E:/OtherB/**' }]
+      })
+    ).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
   })
 })

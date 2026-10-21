@@ -141,13 +141,6 @@ export function sanitizeBaishouAgentGateConfigPatch(
   if (typeof config.hideDeniedTools === 'boolean') {
     next.hideDeniedTools = config.hideDeniedTools
   }
-  if (
-    typeof config.repeatAssertAskThreshold === 'number' &&
-    Number.isFinite(config.repeatAssertAskThreshold) &&
-    config.repeatAssertAskThreshold >= 0
-  ) {
-    next.repeatAssertAskThreshold = Math.floor(config.repeatAssertAskThreshold)
-  }
 
   if (config.scopePreset !== undefined) {
     const allowed = new Set(['readonly', 'workspace_write', 'with_trusted_dirs', 'custom'])
@@ -162,9 +155,11 @@ export function sanitizeBaishouAgentGateConfigPatch(
     }
   }
   if (config.securityMode !== undefined) {
-    const allowed = new Set(['full_access', 'auto_review', 'allow_list'])
-    if (typeof config.securityMode === 'string' && allowed.has(config.securityMode)) {
-      next.securityMode = config.securityMode as BaishouAgentGateConfig['securityMode']
+    const rawMode = config.securityMode as string
+    if (rawMode === 'full_access') {
+      next.securityMode = 'full_access'
+    } else if (rawMode === 'allow_list' || rawMode === 'auto_review') {
+      next.securityMode = 'allow_list'
     }
   }
   if (Array.isArray(config.commandBlacklist)) {

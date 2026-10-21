@@ -67,10 +67,14 @@ const COMMAND_PREFIX_ARITY: Record<string, number> = {
   unzip: 1
 }
 
-/** Patterns that must never be Always-allowlisted (force Ask / exclusion). */
+/**
+ * Patterns for catastrophic destructive commands (recursive wipe / disk format / shutdown).
+ * Inline interpreter flags (`python -c`, `node -e`, `bash -c`, `powershell -Command`) are NOT treated
+ * as dangerous red-line commands here; their permanent allowlist eligibility is governed separately
+ * by `ALWAYS_FORBIDDEN_BINARIES`.
+ */
 const DANGEROUS_SHELL_PATTERNS: RegExp[] = [
-  /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-rf|-fr)\b/i,
-  /\brm\s+(-[a-zA-Z]*r|--recursive)\b/i,
+  /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-rf|-fr|--recursive)\b/i,
   /\bdel\s+\/s\b/i,
   /\brd\s+\/s\b/i,
   /\brmdir\s+\/s\b/i,
@@ -78,19 +82,10 @@ const DANGEROUS_SHELL_PATTERNS: RegExp[] = [
   /\bmkfs(\.|$|\s)/i,
   /\bdd\s+.*\bif=/i,
   /\b(Remove-Item|ri)\b.*-Recurse\b/i,
-  /\b(Remove-Item|ri)\b.*-Force\b.*-Recurse\b/i,
   /\bcipher\s+\/w\b/i,
   /\bdiskpart\b/i,
   /\breg\s+delete\b/i,
-  /\bshutdown\b/i,
-  /\b(Invoke-Expression|iex)\b/i,
-  /\bfind\b.*\b-delete\b/i,
-  /\bcurl\b.+\|\s*(ba)?sh\b/i,
-  /\bwget\b.+\|\s*(ba)?sh\b/i,
-  /\bpython3?\s+-[cE]\b/i,
-  /\bnode\s+-e\b/i,
-  /\b(bash|sh|zsh)\s+-c\b/i,
-  /\b(powershell|pwsh)\b.*\b-Command\b/i
+  /\bshutdown\b/i
 ]
 
 /**
@@ -110,10 +105,89 @@ export const DEFAULT_WORKSPACE_COMMAND_BLACKLIST = [
   'diskpart',
   'shutdown',
   'reg delete',
-  'dd if='
+  'dd if=',
+  'git reset --hard',
+  'git clean -fd',
+  'git push --force',
+  'git push -f'
 ] as const
 
 const SHELL_OPERATOR_RE = /(?:&&|\|\||[|;`]|\$\()/
+
+const DIRECTORY_CHANGE_BINARIES = new Set([
+  'cd',
+  'chdir',
+  'pushd',
+  'popd',
+  'set-location',
+  'push-location',
+  'pop-location',
+  'sl'
+])
+
+function hasCommandSubstitution(command: string): boolean {
+  const stripped = command.replace(/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g, ' ')
+  return /(?:`|\$\()/.test(stripped)
+}
+
+/**
+ * Split a shell command line by top-level (unquoted) chain operators: `&&`, `||`, `;`.
+ * Pipes (`|`) stay inside their segment so pipeline heads can still be inspected.
+ */
+export function splitShellChainRawSegments(command: string): string[] {
+  const segments: string[] = []
+  let quote: '"' | "'" | null = null
+  let current = ''
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!
+    if (quote) {
+      current += ch
+      if (ch === quote && command[i - 1] !== '\\') quote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      current += ch
+      continue
+    }
+    if (command.startsWith('&&', i) || command.startsWith('||', i)) {
+      segments.push(current.trim())
+      current = ''
+      i += 1
+      continue
+    }
+    if (ch === ';') {
+      segments.push(current.trim())
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  if (current.trim() || segments.length > 0) {
+    segments.push(current.trim())
+  }
+  return segments.filter(Boolean)
+}
+
+/** True when the segment is a directory-changing builtin (`cd`, `pushd`, `Set-Location`, etc.). */
+export function isDirectoryChangeSegment(segment: string): boolean {
+  const tokens = tokenizeCommand(segment)
+  if (tokens.length === 0) return false
+  return DIRECTORY_CHANGE_BINARIES.has(normalizeBinary(tokens[0]!))
+}
+
+/**
+ * Extract effective command segments from a shell command line.
+ * Pure directory-change segments (`cd foo && npm test`) are skipped when followed by real commands,
+ * because directory access is separately gated by `external_directory`.
+ */
+export function splitShellChainCommands(command: string): string[] {
+  const unwrapped = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
+  if (!unwrapped) return []
+  const raw = splitShellChainRawSegments(unwrapped)
+  const nonCd = raw.filter((seg) => !isDirectoryChangeSegment(seg))
+  return nonCd.length > 0 ? nonCd : raw
+}
 
 /**
  * Tokenize a shell command for prefix matching.
@@ -246,41 +320,88 @@ function firstShellSegment(command: string): string {
   return segment.trim()
 }
 
-export function resolveCommandPrefixPatternFromCommand(command: string): string | null {
+function hasForbiddenPipeStage(segment: string): boolean {
+  let quote: '"' | "'" | null = null
+  const stages: string[] = []
+  let current = ''
+  for (let i = 0; i < segment.length; i++) {
+    const ch = segment[i]!
+    if (quote) {
+      current += ch
+      if (ch === quote && segment[i - 1] !== '\\') quote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      current += ch
+      continue
+    }
+    if (ch === '|' && segment[i + 1] !== '|') {
+      stages.push(current.trim())
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  if (current.trim()) stages.push(current.trim())
+  if (stages.length <= 1) return false
+
+  for (let i = 1; i < stages.length; i++) {
+    const tokens = tokenizeCommand(stages[i]!)
+    if (tokens.length === 0) continue
+    const binary = normalizeBinary(tokens[0]!)
+    if (ALWAYS_FORBIDDEN_BINARIES.has(binary)) return true
+  }
+  return false
+}
+
+export function resolveCommandPrefixPatternsFromCommand(command: string): string[] {
   const unwrapped = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
-  if (!unwrapped) return null
-  if (isDangerousShellCommand(unwrapped)) return null
-  const headSource = commandHasShellOperators(unwrapped) ? firstShellSegment(unwrapped) : unwrapped
-  if (!headSource) return null
-  return resolveCommandPrefixPattern(tokenizeCommand(headSource))
+  if (!unwrapped) return []
+  if (isDangerousShellCommand(unwrapped) || hasCommandSubstitution(unwrapped)) return []
+  const segments = splitShellChainCommands(unwrapped)
+  if (segments.length === 0) return []
+
+  const patterns: string[] = []
+  for (const seg of segments) {
+    if (isDangerousShellCommand(seg) || hasForbiddenPipeStage(seg)) return []
+    const headSource = commandHasShellOperators(seg) ? firstShellSegment(seg) : seg
+    if (!headSource) return []
+    const pattern = resolveCommandPrefixPattern(tokenizeCommand(headSource))
+    if (!pattern) return []
+    if (!patterns.includes(pattern)) {
+      patterns.push(pattern)
+    }
+  }
+  return patterns
+}
+
+export function resolveCommandPrefixPatternFromCommand(command: string): string | null {
+  const patterns = resolveCommandPrefixPatternsFromCommand(command)
+  return patterns[0] ?? null
 }
 
 /**
  * Whether this shell command may be permanently allowlisted at all.
  */
 export function canPermanentlyAllowShellCommand(command: string): boolean {
-  return resolveCommandPrefixPatternFromCommand(command) != null
+  return resolveCommandPrefixPatternsFromCommand(command).length > 0
 }
 
-/**
- * Match a live command against an allowlist/permission pattern.
- * - Pattern ending with ` *` matches that command head, including a later pipeline that starts with it
- * - Pattern without `*` requires exact token-prefix equality (same arity length)
- * - A pattern that itself contains pipes or separators matches only that exact command line
- * - Never matches by raw substring of the full command string
- */
-export function matchShellCommandPattern(command: string, pattern: string): boolean {
-  const live = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
-  const trimmedPattern = unwrapWorkspaceCommandLine(pattern).replace(/\s+/g, ' ').trim()
-  if (commandHasShellOperators(trimmedPattern)) {
-    if (isDangerousShellCommand(live) || isDangerousShellCommand(trimmedPattern)) return false
-    return live === trimmedPattern
-  }
+function matchSingleShellSegmentPattern(segment: string, pattern: string): boolean {
+  const live = unwrapWorkspaceCommandLine(segment).replace(/\s+/g, ' ').trim()
+  if (!live) return false
   if (commandHasShellOperators(live)) {
-    if (isDangerousShellCommand(live)) return false
+    if (
+      isDangerousShellCommand(live) ||
+      hasCommandSubstitution(live) ||
+      hasForbiddenPipeStage(live)
+    ) {
+      return false
+    }
     const head = firstShellSegment(live)
     if (!head) return false
-    return matchShellCommandPattern(head, pattern)
+    return matchSingleShellSegmentPattern(head, pattern)
   }
 
   const cmdTokens = tokenizeCommand(live)
@@ -310,6 +431,28 @@ export function matchShellCommandPattern(command: string, pattern: string): bool
   }
   if (!hasWildcard && cmdTokens.length !== patternTokens.length) return false
   return true
+}
+
+/**
+ * Match a live command against an allowlist/permission pattern.
+ * - Pattern ending with ` *` matches that command head, including a later pipeline that starts with it
+ * - Compound commands (`&&`, `||`, `;`) strip pure `cd` segments and require every command segment to match
+ * - Pattern without `*` requires exact token-prefix equality (same arity length)
+ * - A pattern that itself contains pipes or separators matches only that exact command line
+ * - Never matches by raw substring of the full command string
+ */
+export function matchShellCommandPattern(command: string, pattern: string): boolean {
+  const live = unwrapWorkspaceCommandLine(command).replace(/\s+/g, ' ').trim()
+  const trimmedPattern = unwrapWorkspaceCommandLine(pattern).replace(/\s+/g, ' ').trim()
+  if (commandHasShellOperators(trimmedPattern)) {
+    if (isDangerousShellCommand(live) || isDangerousShellCommand(trimmedPattern)) return false
+    return live === trimmedPattern
+  }
+  if (isDangerousShellCommand(live) || hasCommandSubstitution(live)) return false
+
+  const segments = splitShellChainCommands(live)
+  if (segments.length === 0) return false
+  return segments.every((seg) => matchSingleShellSegmentPattern(seg, pattern))
 }
 
 export function isDangerousShellCommand(command: string): boolean {

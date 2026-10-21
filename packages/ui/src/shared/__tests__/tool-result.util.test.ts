@@ -190,6 +190,33 @@ describe('resolveCompanionAskPresentation', () => {
     expect(presentation.selectedOptionIds).toEqual(['0'])
   })
 
+  it('preserves original options without adding a fake combined option on multi-select', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: {
+        question: '要检查哪几篇总结？',
+        options: ['2026-03-02 周总结', '2026-03-09 周总结', '2026-03 月度总结'],
+        multiple: true
+      },
+      result: JSON.stringify({
+        approved: true,
+        question: '要检查哪几篇总结？',
+        answer: '2026-03-02 周总结、2026-03 月度总结',
+        selectedOptionIds: ['0', '2']
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.answer).toBe('2026-03-02 周总结、2026-03 月度总结')
+    expect(presentation.options.map((option) => option.label)).toEqual([
+      '2026-03-02 周总结',
+      '2026-03-09 周总结',
+      '2026-03 月度总结'
+    ])
+    expect(presentation.selectedOptionIds).toEqual(['0', '2'])
+  })
+
   it('turns a multi-question companion_ask result into stacked items', () => {
     const presentation = resolveToolResultPresentation({
       toolName: 'companion_ask',

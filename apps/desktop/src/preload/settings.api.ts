@@ -49,6 +49,10 @@ export const settingsApi = {
       ipcRenderer.invoke('settings:get-workspace-personal-memory-read', workspaceId),
     setWorkspacePersonalMemoryRead: (workspaceId: string, enabled: boolean) =>
       ipcRenderer.invoke('settings:set-workspace-personal-memory-read', workspaceId, enabled),
+    getWorkspaceExternalDirectoryAllowed: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-external-directory-allowed', workspaceId),
+    setWorkspaceExternalDirectoryAllowed: (workspaceId: string, enabled: boolean) =>
+      ipcRenderer.invoke('settings:set-workspace-external-directory-allowed', workspaceId, enabled),
 
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
     setSearchModeEnabled: (enabled: boolean) =>

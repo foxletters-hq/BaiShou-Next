@@ -1,29 +1,19 @@
 import React from 'react'
 import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Input, Switch, useNativeTheme } from '@baishou/ui/native'
+import { Switch, useNativeTheme } from '@baishou/ui/native'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { agentGateSettingsStyles as styles } from './agent-gate-settings.styles'
-import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export function AgentGateTrustCard(props: {
   isFullTrust: boolean
   hideDeniedTools: boolean
-  threshold: number
   onTrustToggle: (v: boolean) => void
   onHideDeniedToggle: (v: boolean) => void
-  onThresholdChange: (text: string) => void
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const {
-    isFullTrust,
-    hideDeniedTools,
-    threshold,
-    onTrustToggle,
-    onHideDeniedToggle,
-    onThresholdChange
-  } = props
+  const { isFullTrust, hideDeniedTools, onTrustToggle, onHideDeniedToggle } = props
 
   return (
     <SettingsGroupCard>
@@ -64,28 +54,6 @@ export function AgentGateTrustCard(props: {
         </View>
         <Switch value={hideDeniedTools} onValueChange={onHideDeniedToggle} />
       </View>
-
-      <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-      <Text style={[styles.label, { color: colors.textPrimary }]}>
-        {t('agent.gate.repeat_threshold', '同参连打再确认阈值')}
-      </Text>
-      <Text
-        style={[
-          styles.hint,
-          { color: colors.textSecondary, marginBottom: sharedTokens.spacing.xsPlus }
-        ]}
-      >
-        {t(
-          'agent.gate.repeat_threshold_hint',
-          '相同指纹连续请求达到该次数时再次弹出；0 关闭。确认卡会显示短指纹。'
-        )}
-      </Text>
-      <Input
-        value={String(threshold)}
-        keyboardType="number-pad"
-        onChangeText={onThresholdChange}
-        containerStyle={{ marginTop: sharedTokens.spacing.xs }}
-      />
     </SettingsGroupCard>
   )
 }

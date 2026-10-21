@@ -36,15 +36,13 @@ describe('sanitizeBaishouAgentGateConfigPatch', () => {
   it('migrates legacy FullTrust to catch-all allow rule and keeps safety toggles', () => {
     const patch = sanitizeBaishouAgentGateConfigPatch({
       trustMode: AgentGateTrustMode.FullTrust,
-      hideDeniedTools: false,
-      repeatAssertAskThreshold: 5
+      hideDeniedTools: false
     } as never)
     expect(patch.permissionRules).toEqual(
       expect.arrayContaining([{ action: '*', effect: AgentGateEffect.Allow }])
     )
     expect((patch as { trustMode?: unknown }).trustMode).toBeUndefined()
     expect(patch.hideDeniedTools).toBe(false)
-    expect(patch.repeatAssertAskThreshold).toBe(5)
   })
 
   it('migrates legacy external fields into external_directory rules', () => {

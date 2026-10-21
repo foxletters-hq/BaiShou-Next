@@ -384,7 +384,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         workdir: typeof workdir === 'string' ? workdir : undefined,
         folderRoot
       })
-      return scan.prefixPattern ? [scan.prefixPattern] : []
+      return scan.prefixPatterns
     },
     prepare: async (args, ctx) => prepareWorkspaceRunGate(args, ctx)
   },

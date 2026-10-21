@@ -69,6 +69,53 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
       return execute(args)
     }
 
+    const action = metadata.action ?? toolName
+    const title = metadata.buildTitle?.(args, context) ?? defaultGateTitle(toolName)
+    const builtMetadata = metadata.buildMetadata?.(args, context) ?? {}
+    const resources = mergeAgentGateResources(
+      metadata.buildResources?.(args, context),
+      extractAgentGateResourcesFromMetadata(builtMetadata)
+    )
+    const alwaysPatterns = metadata.buildAlwaysPatterns?.(args, context)
+    const profileId = resolveProfileFromContext(context)
+    const scope = resolveScopeFromContext(context)
+
+    // G4.2：区外路径先过 external_directory 门，再生成预览与过能力门
+    if (action !== 'external_directory') {
+      const externalGlobs = collectExternalDirectoryGlobs(resources)
+      if (externalGlobs.length > 0) {
+        try {
+          for (const glob of externalGlobs) {
+            await gate.assert({
+              sessionId: context.sessionId,
+              vaultName: context.vaultName,
+              kind: AgentGateKind.Tool,
+              action: 'external_directory',
+              title: `访问区外目录 ${glob.replace(/\/\*\*$/, '') || glob}`,
+              description: `该操作触及工作区外路径，需先确认区外目录访问。`,
+              allowCustomInput: true,
+              profileId,
+              scope,
+              metadata: {
+                toolName,
+                riskLevel: metadata.riskLevel,
+                externalDirectory: glob
+              },
+              resources: [{ kind: 'external_path', value: glob }]
+            })
+          }
+        } catch (error) {
+          if (isAgentGateControlError(error)) {
+            if (context.interruptOnGateReject && error instanceof AgentGateRejectedError) {
+              throw error
+            }
+            return error.message
+          }
+          throw error
+        }
+      }
+    }
+
     let prepared: AgentGatePrepareResult | null | undefined
     if (metadata.prepare) {
       try {
@@ -88,14 +135,6 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
     const freshnessToken = prepared?.freshnessToken
     const releaseFreshness = () => forgetWorkspaceGateFreshnessToken(freshnessToken)
 
-    const action = metadata.action ?? toolName
-    const title = metadata.buildTitle?.(args, context) ?? defaultGateTitle(toolName)
-    const builtMetadata = metadata.buildMetadata?.(args, context) ?? {}
-    const resources = mergeAgentGateResources(
-      metadata.buildResources?.(args, context),
-      extractAgentGateResourcesFromMetadata(builtMetadata)
-    )
-    const alwaysPatterns = metadata.buildAlwaysPatterns?.(args, context)
     const gateMetadata = {
       toolName,
       riskLevel: metadata.riskLevel,
@@ -106,34 +145,7 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
       ...(alwaysPatterns ? { alwaysPatterns } : {})
     }
 
-    const profileId = resolveProfileFromContext(context)
-    const scope = resolveScopeFromContext(context)
-
     try {
-      // G4.2：区外路径先过 external_directory 门，再过能力门
-      if (action !== 'external_directory') {
-        const externalGlobs = collectExternalDirectoryGlobs(resources)
-        for (const glob of externalGlobs) {
-          await gate.assert({
-            sessionId: context.sessionId,
-            vaultName: context.vaultName,
-            kind: AgentGateKind.Tool,
-            action: 'external_directory',
-            title: `访问区外目录 ${glob.replace(/\/\*\*$/, '') || glob}`,
-            description: `该操作触及工作区外路径，需先确认区外目录访问。`,
-            allowCustomInput: true,
-            profileId,
-            scope,
-            metadata: {
-              toolName,
-              riskLevel: metadata.riskLevel,
-              externalDirectory: glob
-            },
-            resources: [{ kind: 'external_path', value: glob }]
-          })
-        }
-      }
-
       await gate.assert({
         sessionId: context.sessionId,
         vaultName: context.vaultName,

@@ -3,7 +3,12 @@ import type {
   AgentGateResourceRef,
   BaishouAgentGateConfig
 } from '@baishou/shared'
-import { allowlistEntryMatches, createAgentGateAllowlistEntryId } from '@baishou/shared'
+import {
+  allowlistEntryMatches,
+  createAgentGateAllowlistEntryId,
+  isDangerousShellCommand,
+  splitShellChainCommands
+} from '@baishou/shared'
 
 export interface IAgentGateAllowlistStore {
   list(): AgentGateAllowlistEntry[]
@@ -24,9 +29,31 @@ export class BaishouAgentGateAllowlistStore implements IAgentGateAllowlistStore 
   }
 
   has(action: string, resources?: readonly AgentGateResourceRef[]): boolean {
-    return this.getConfig().allowlist.some((entry) =>
-      allowlistEntryMatches(entry, { action, resources })
-    )
+    const entries = this.getConfig().allowlist
+    if (entries.some((entry) => allowlistEntryMatches(entry, { action, resources }))) {
+      return true
+    }
+    if (action === 'workspace_run' && resources && resources.length > 0) {
+      const shellResources = resources.filter((r) => r.kind === 'shell_command')
+      if (
+        shellResources.length > 0 &&
+        shellResources.every((r) => !isDangerousShellCommand(r.value))
+      ) {
+        const segments = shellResources.flatMap((r) => splitShellChainCommands(r.value))
+        if (segments.length > 1) {
+          const nonShell = resources.filter((r) => r.kind !== 'shell_command')
+          return segments.every((seg) =>
+            entries.some((entry) =>
+              allowlistEntryMatches(entry, {
+                action,
+                resources: [...nonShell, { kind: 'shell_command', value: seg }]
+              })
+            )
+          )
+        }
+      }
+    }
+    return false
   }
 
   add(entry: Omit<AgentGateAllowlistEntry, 'id' | 'createdAt'>): AgentGateAllowlistEntry {

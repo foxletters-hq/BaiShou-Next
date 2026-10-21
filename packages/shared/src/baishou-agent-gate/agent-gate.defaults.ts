@@ -29,10 +29,10 @@ export const WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY = 'workspace_tool_management'
 /** 工作区个人记忆只读开关写入后的 mutation meta.key（不经 SettingsManager） */
 export const WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY = 'workspace_personal_memory_read'
 
-export const AGENT_GATE_LIFECYCLE_COMPRESSION_SAVE_DIARY = 'lifecycle_compression_save_diary'
+/** 工作区访问区外目录开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY = 'workspace_external_directory'
 
-/** Default consecutive same-fingerprint asserts before forcing Ask */
-export const DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD = 3
+export const AGENT_GATE_LIFECYCLE_COMPRESSION_SAVE_DIARY = 'lifecycle_compression_save_diary'
 
 /** Prefix for reject-with-feedback messages returned to the model */
 export const AGENT_GATE_CORRECTED_FEEDBACK_PREFIX = '[用户纠正]'
@@ -64,21 +64,19 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
 export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
   exclusionList: [...DEFAULT_AGENT_GATE_EXCLUSION_LIST],
   allowlist: [],
-  repeatAssertAskThreshold: DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   hideDeniedTools: true
 }
 
 /**
- * 工作区默认门控：auto_review + 默认命令黑名单。
+ * 工作区默认门控：allow_list + 默认命令黑名单。
  * 具体 permissionRules 由 applyWorkspaceSecurityModeToConfig 在写入时展开。
  */
 export const DEFAULT_WORKSPACE_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
   exclusionList: [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST],
   allowlist: [],
   commandBlacklist: [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST],
-  repeatAssertAskThreshold: DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   hideDeniedTools: true,
-  securityMode: 'auto_review'
+  securityMode: 'allow_list'
 }
 
 /** 工作区工具开关默认：全部开启（由运行时硬过滤决定可见工具集） */
@@ -89,6 +87,9 @@ export const DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG: WorkspaceToolManagementCo
 
 /** 工作台按需只读个人记忆；缺字段视为开启 */
 export const DEFAULT_WORKSPACE_PERSONAL_MEMORY_READ_ENABLED = true
+
+/** 工作区默认是否直接允许访问工作区外目录；缺字段视为关闭（首次询问） */
+export const DEFAULT_WORKSPACE_EXTERNAL_DIRECTORY_ALLOWED = false
 
 /** 工作台个人记忆总开关控制的只读工具（不含写入/删除，也不含关系图读取） */
 export const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS = [
@@ -103,6 +104,10 @@ export const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS = [
 
 export function normalizeWorkspacePersonalMemoryReadEnabled(value: unknown): boolean {
   return value !== false
+}
+
+export function normalizeWorkspaceExternalDirectoryAllowed(value: unknown): boolean {
+  return value === true
 }
 
 export function cloneBaishouAgentGateConfig(
@@ -122,7 +127,6 @@ export function cloneBaishouAgentGateConfig(
     allowlist: (source.allowlist ?? []).map((entry) => ({ ...entry })),
     actionRules: source.actionRules ? { ...source.actionRules } : undefined,
     permissionRules: source.permissionRules?.map((rule) => ({ ...rule })),
-    repeatAssertAskThreshold: source.repeatAssertAskThreshold ?? base.repeatAssertAskThreshold,
     hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools,
     scopePreset: source.scopePreset ?? base.scopePreset,
     approvalPreset: source.approvalPreset ?? base.approvalPreset,
@@ -155,7 +159,6 @@ export function assignBaishouAgentGateConfig(
   target.allowlist = source.allowlist.map((entry) => ({ ...entry }))
   target.actionRules = source.actionRules ? { ...source.actionRules } : undefined
   target.permissionRules = source.permissionRules?.map((rule) => ({ ...rule }))
-  target.repeatAssertAskThreshold = source.repeatAssertAskThreshold
   target.hideDeniedTools = source.hideDeniedTools
   target.scopePreset = source.scopePreset
   target.approvalPreset = source.approvalPreset
@@ -171,15 +174,13 @@ export function toWorkspaceGatePolicyV2(config: BaishouAgentGateConfig): Workspa
   return {
     version: 2,
     scopePreset: config.scopePreset ?? 'workspace_write',
-    approvalPreset: config.approvalPreset ?? 'dangerous_only',
-    securityMode: config.securityMode ?? 'auto_review',
+    approvalPreset: config.approvalPreset ?? 'always_ask',
+    securityMode: config.securityMode === 'full_access' ? 'full_access' : 'allow_list',
     rules: (config.permissionRules ?? []).map((rule) => ({ ...rule })),
     remembered: (config.allowlist ?? []).map((entry) => ({ ...entry })),
     exclusionList: [...config.exclusionList],
     commandBlacklist: [...(config.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)],
-    hideDeniedTools: config.hideDeniedTools !== false,
-    repeatAssertAskThreshold:
-      config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
+    hideDeniedTools: config.hideDeniedTools !== false
   }
 }
 
@@ -189,7 +190,6 @@ export function fromWorkspaceGatePolicyV2(policy: WorkspaceGatePolicyV2): Baisho
     allowlist: policy.remembered.map((entry) => ({ ...entry })),
     permissionRules: policy.rules.map((rule) => ({ ...rule })),
     hideDeniedTools: policy.hideDeniedTools,
-    repeatAssertAskThreshold: policy.repeatAssertAskThreshold,
     scopePreset: policy.scopePreset,
     approvalPreset: policy.approvalPreset,
     securityMode: policy.securityMode,
@@ -211,15 +211,22 @@ export function cloneWorkspaceToolManagementConfig(
 }
 
 export function resolveWorkspacePolicyFields(
-  raw?: Pick<Partial<AgentWorkspacePolicy>, 'toolManagement' | 'personalMemoryReadEnabled'> | null
+  raw?: Pick<
+    Partial<AgentWorkspacePolicy>,
+    'toolManagement' | 'personalMemoryReadEnabled' | 'externalDirectoryAllowed'
+  > | null
 ): {
   toolManagement: WorkspaceToolManagementConfig
   personalMemoryReadEnabled: boolean
+  externalDirectoryAllowed: boolean
 } {
   return {
     toolManagement: cloneWorkspaceToolManagementConfig(raw?.toolManagement),
     personalMemoryReadEnabled: normalizeWorkspacePersonalMemoryReadEnabled(
       raw?.personalMemoryReadEnabled
+    ),
+    externalDirectoryAllowed: normalizeWorkspaceExternalDirectoryAllowed(
+      raw?.externalDirectoryAllowed
     )
   }
 }
@@ -228,14 +235,17 @@ export function applyWorkspacePolicyPatch(
   current: {
     toolManagement: WorkspaceToolManagementConfig
     personalMemoryReadEnabled: boolean
+    externalDirectoryAllowed?: boolean
   },
   patch: {
     toolManagement?: WorkspaceToolManagementConfig
     personalMemoryReadEnabled?: boolean
+    externalDirectoryAllowed?: boolean
   }
 ): {
   toolManagement: WorkspaceToolManagementConfig
   personalMemoryReadEnabled: boolean
+  externalDirectoryAllowed: boolean
 } {
   return {
     toolManagement: patch.toolManagement
@@ -244,6 +254,10 @@ export function applyWorkspacePolicyPatch(
     personalMemoryReadEnabled:
       typeof patch.personalMemoryReadEnabled === 'boolean'
         ? patch.personalMemoryReadEnabled
-        : current.personalMemoryReadEnabled
+        : current.personalMemoryReadEnabled,
+    externalDirectoryAllowed:
+      typeof patch.externalDirectoryAllowed === 'boolean'
+        ? patch.externalDirectoryAllowed
+        : normalizeWorkspaceExternalDirectoryAllowed(current.externalDirectoryAllowed)
   }
 }

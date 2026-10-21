@@ -168,12 +168,21 @@ export function resolveCompanionAskPresentation(
   let answer = declined ? null : (fromResult?.answer ?? null)
 
   if (!answer && selectedOptionIds.length > 0) {
-    const matched = options.find((option) => option.id === selectedOptionIds[0])
-    if (matched) answer = matched.label
+    const matchedLabels = selectedOptionIds
+      .map((id) => options.find((option) => option.id === id)?.label)
+      .filter((label): label is string => Boolean(label))
+    if (matchedLabels.length > 0) answer = matchedLabels.join('、')
   }
 
   const displayOptions = [...options]
-  if (answer && !displayOptions.some((option) => option.label === answer)) {
+  const hasMatchedSelection =
+    selectedOptionIds.length > 0 &&
+    selectedOptionIds.every((id) => displayOptions.some((option) => option.id === id))
+  if (
+    answer &&
+    !hasMatchedSelection &&
+    !displayOptions.some((option) => option.label === answer)
+  ) {
     displayOptions.push({
       id: selectedOptionIds[0] ?? 'custom',
       label: answer
@@ -208,10 +217,20 @@ export function resolveCompanionAskPresentation(
           let itemAnswer = declined ? null : (resultItem?.answer ?? null)
           const itemSelected = resultItem?.selectedOptionIds ?? []
           if (!itemAnswer && itemSelected.length > 0) {
-            itemAnswer = itemOptions.find((option) => option.id === itemSelected[0])?.label ?? null
+            const matchedLabels = itemSelected
+              .map((id) => itemOptions.find((option) => option.id === id)?.label)
+              .filter((label): label is string => Boolean(label))
+            itemAnswer = matchedLabels.length > 0 ? matchedLabels.join('、') : null
           }
           const itemDisplay = [...itemOptions]
-          if (itemAnswer && !itemDisplay.some((option) => option.label === itemAnswer)) {
+          const itemHasMatchedSelection =
+            itemSelected.length > 0 &&
+            itemSelected.every((id) => itemDisplay.some((option) => option.id === id))
+          if (
+            itemAnswer &&
+            !itemHasMatchedSelection &&
+            !itemDisplay.some((option) => option.label === itemAnswer)
+          ) {
             itemDisplay.push({ id: itemSelected[0] ?? 'custom', label: itemAnswer })
           }
           return {

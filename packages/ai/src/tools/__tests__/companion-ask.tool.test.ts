@@ -351,4 +351,49 @@ describe('CompanionAskTool', () => {
       ]
     })
   })
+
+  it('resolves multiple selected options when multiple is true', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const pending = tool.execute(
+      {
+        question: '要检查并修复哪几篇总结？',
+        options: ['2026-03-02 周总结', '2026-03-09 周总结', '2026-03 月度总结'],
+        multiple: true,
+        allow_custom_input: true
+      },
+      { ...baseContext, agentGate: gate }
+    )
+
+    const [request] = gate.listPending('sess_1')
+    expect(request?.multiple).toBe(true)
+    expect(request?.questions?.[0]?.multiple).toBe(true)
+
+    await gate.reply({
+      requestId: request!.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: ['0', '2'],
+      questionAnswers: [{ questionId: '0', selectedOptionIds: ['0', '2'] }]
+    })
+
+    const result = await pending
+    expect(JSON.parse(result)).toEqual({
+      approved: true,
+      question: '要检查并修复哪几篇总结？',
+      answer: '2026-03-02 周总结、2026-03 月度总结',
+      selectedOptionIds: ['0', '2'],
+      answers: [
+        {
+          question: '要检查并修复哪几篇总结？',
+          answer: '2026-03-02 周总结、2026-03 月度总结',
+          selectedOptionIds: ['0', '2']
+        }
+      ]
+    })
+  })
 })

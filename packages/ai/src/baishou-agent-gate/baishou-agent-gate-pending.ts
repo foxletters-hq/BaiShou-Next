@@ -13,7 +13,6 @@ import {
   type AgentGateResolution
 } from '@baishou/shared'
 import type { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
-import type { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
 import type { EvaluatePolicyInput, PendingEntry } from './baishou-agent-gate.types'
 
 export class AgentGatePendingRegistry {
@@ -21,7 +20,6 @@ export class AgentGatePendingRegistry {
 
   constructor(
     private readonly eventBus: BaishouAgentGateEventBus,
-    private readonly repeatTracker: AgentGateRepeatTracker,
     private readonly evaluatePolicy: (input: EvaluatePolicyInput) => { effect: AgentGateEffect }
   ) {}
 
@@ -37,7 +35,6 @@ export class AgentGatePendingRegistry {
 
   waitForResolution(
     request: import('@baishou/shared').AgentGateRequest,
-    fingerprint: string,
     resources?: import('@baishou/shared').AgentGateResourceRef[],
     profileId?: import('@baishou/shared').AgentGateProfileId,
     coalesceKey?: string | null
@@ -45,7 +42,6 @@ export class AgentGatePendingRegistry {
     return new Promise<AgentGateResolution>((resolve, reject) => {
       this.pending.set(request.id, {
         request,
-        fingerprint,
         coalesceKey,
         resources,
         profileId,
@@ -156,8 +152,11 @@ export class AgentGatePendingRegistry {
         continue
       }
 
-      // 区外路径必须单独确认，不能被区内写入的本次允许带走
-      if (item.resources?.some((resource) => resource.kind === 'external_path')) {
+      // 区外路径必须单独确认，不能被区内写入的本次允许带走（但 external_directory 自身放行时可级联其它区外目录请求）
+      if (
+        action !== 'external_directory' &&
+        item.resources?.some((resource) => resource.kind === 'external_path')
+      ) {
         continue
       }
 
@@ -184,7 +183,6 @@ export class AgentGatePendingRegistry {
       item.request.status = AgentGateRequestStatus.Resolved
       item.request.resolvedAt = resolution.resolvedAt
       this.pending.delete(id)
-      this.repeatTracker.clearFingerprint(sessionId, item.fingerprint)
 
       const cascaded: AgentGateResolution = {
         requestId: item.request.id,
@@ -204,10 +202,15 @@ export class AgentGatePendingRegistry {
     }
   }
 
-  cancelSession(sessionId: string, reason?: string): string[] {
+  cancelSession(
+    sessionId: string,
+    reason?: string,
+    keepRequest?: (request: import('@baishou/shared').AgentGateRequest) => boolean
+  ): string[] {
     const requestIds: string[] = []
     for (const [id, entry] of this.pending.entries()) {
       if (entry.request.sessionId !== sessionId) continue
+      if (keepRequest?.(entry.request)) continue
       entry.request.status = AgentGateRequestStatus.Cancelled
       for (const waiter of entry.waiters) {
         waiter.reject(new AgentGateCancelledError(reason))

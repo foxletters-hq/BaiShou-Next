@@ -7,6 +7,8 @@ import {
   matchShellCommandPattern,
   resolveCommandPrefixPattern,
   resolveCommandPrefixPatternFromCommand,
+  resolveCommandPrefixPatternsFromCommand,
+  splitShellChainCommands,
   tokenizeCommand
 } from '../agent-gate-shell-match.util'
 
@@ -70,10 +72,11 @@ describe('matchShellCommandPattern', () => {
 })
 
 describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
-  it('flags recursive delete and interpreter -c', () => {
+  it('flags recursive delete but does not over-flag inline interpreter one-liners', () => {
     expect(isDangerousShellCommand('rm -rf /')).toBe(true)
-    expect(isDangerousShellCommand('rm -r dist')).toBe(true)
-    expect(isDangerousShellCommand('python -c "print(1)"')).toBe(true)
+    expect(isDangerousShellCommand('rm --recursive dist')).toBe(true)
+    expect(isDangerousShellCommand('python -c "print(1)"')).toBe(false)
+    expect(isDangerousShellCommand('node -e "console.log(1)"')).toBe(false)
     expect(isDangerousShellCommand('git status')).toBe(false)
     expect(isDangerousShellCommand('rm -rf .sandbox-rm-test')).toBe(true)
     expect(isDangerousShellCommand('Remove-Item -Recurse -Force .sandbox-rm-test')).toBe(true)
@@ -118,6 +121,26 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
     expect(matchShellCommandPattern('Select-Object Name', 'get-childitem *')).toBe(false)
     expect(canPermanentlyAllowShellCommand('git status && rm -rf dist')).toBe(false)
     expect(matchShellCommandPattern('git status && rm -rf dist', 'git status *')).toBe(false)
+  })
+
+  it('extracts multiple prefix patterns for compound commands and skips pure cd segments', () => {
+    expect(splitShellChainCommands('cd packages/ai && pnpm test')).toEqual(['pnpm test'])
+    expect(resolveCommandPrefixPatternsFromCommand('cd packages/ai && pnpm test')).toEqual([
+      'pnpm test *'
+    ])
+    expect(matchShellCommandPattern('cd packages/ai && pnpm test', 'pnpm test *')).toBe(true)
+
+    expect(resolveCommandPrefixPatternsFromCommand('git status && pnpm test')).toEqual([
+      'git status *',
+      'pnpm test *'
+    ])
+    // A single pattern must not match a chain with an unrelated second command
+    expect(matchShellCommandPattern('git status && pnpm publish', 'git status *')).toBe(false)
+    // Forbidden interpreter in second segment blocks permanent allow for the whole chain
+    expect(canPermanentlyAllowShellCommand('git status && python script.py')).toBe(false)
+    // Piping into a forbidden interpreter also blocks matching and permanent allow
+    expect(canPermanentlyAllowShellCommand('echo payload | python script.py')).toBe(false)
+    expect(matchShellCommandPattern('git status | bash', 'git status *')).toBe(false)
   })
 })
 

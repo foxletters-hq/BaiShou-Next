@@ -1,16 +1,8 @@
-import { AgentGateEffect, AgentGateKind, i18n, type AgentGateAssertInput } from '@baishou/shared'
+import { AgentGateEffect, i18n, type AgentGateAssertInput } from '@baishou/shared'
 import type {
   AgentGateRiskClassifier,
   AgentGateRiskClassifierResult
 } from './agent-gate-risk-classifier.types'
-
-const AUTO_REVIEW_SKIP_ACTIONS = new Set([
-  'workspace_list',
-  'workspace_read',
-  'workspace_write',
-  'workspace_patch',
-  'workspace_rename'
-])
 
 export type AutoReviewResult = {
   assertInput: AgentGateAssertInput
@@ -26,7 +18,7 @@ export type AutoReviewResult = {
   }
 }
 
-export function shouldApplyAutoReview(input: {
+export function shouldApplyAutoReview(_input: {
   effect: AgentGateEffect
   assertInput: AgentGateAssertInput
   turnAllowed: boolean
@@ -35,16 +27,8 @@ export function shouldApplyAutoReview(input: {
   isAutoAccept?: () => boolean
   riskClassifier?: AgentGateRiskClassifier
 }): boolean {
-  return (
-    input.effect === AgentGateEffect.Allow &&
-    input.assertInput.kind !== AgentGateKind.Proactive &&
-    !input.turnAllowed &&
-    input.securityMode === 'auto_review' &&
-    input.isAutoAccept?.() !== true &&
-    Boolean(input.riskClassifier) &&
-    !input.safeRisk &&
-    !AUTO_REVIEW_SKIP_ACTIONS.has(input.assertInput.action)
-  )
+  // 工作台已收敛为 full_access / allow_list 两档模式，不再使用模型自动审核
+  return false
 }
 
 function askOverride(): NonNullable<AutoReviewResult['detailedOverride']> {

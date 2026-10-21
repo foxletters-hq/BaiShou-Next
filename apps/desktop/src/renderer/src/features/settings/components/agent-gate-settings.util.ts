@@ -21,7 +21,10 @@ export function scopesMatch(a?: AgentGateConfigScope, b?: AgentGateConfigScope):
   if (!a || !b) return false
   if (a.kind !== b.kind) return false
   if (a.kind === 'workspace' && b.kind === 'workspace') {
-    return a.workspaceId === b.workspaceId
+    if (a.workspaceId && b.workspaceId) {
+      return a.workspaceId === b.workspaceId
+    }
+    return true
   }
   return true
 }
@@ -193,9 +196,4 @@ export function workspaceCustomPresetPatch(
   scene: AgentToolScene
 ): { scopePreset: 'custom'; approvalPreset: 'custom' } | Record<string, never> {
   return scene === 'workspace' ? { scopePreset: 'custom', approvalPreset: 'custom' } : {}
-}
-
-export function clampRepeatAssertAskThreshold(value: number): number | null {
-  if (!Number.isFinite(value)) return null
-  return Math.max(0, Math.min(20, Math.floor(value)))
 }

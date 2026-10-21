@@ -31,7 +31,7 @@ export async function setGlobalWorkspaceGateConfig(
 ): Promise<BaishouAgentGateConfig> {
   const explicit = config.securityMode
   const mode =
-    explicit === 'full_access' || explicit === 'auto_review' || explicit === 'allow_list'
+    explicit === 'full_access' || explicit === 'allow_list'
       ? explicit
       : resolveWorkspaceSecurityMode(config)
   const next = applyWorkspaceSecurityModeToConfig(

@@ -22,6 +22,7 @@ import styles from './AgentGateSettings.module.css'
 export type WorkspaceGatePermissionsView = 'home' | 'blacklist' | 'allowlist'
 
 export interface WorkspaceGatePermissionsPanelProps {
+  workspaceId?: string
   config: BaishouAgentGateConfig
   saving: boolean
   notificationPrefs: AgentGateNotificationPrefs
@@ -33,6 +34,7 @@ export interface WorkspaceGatePermissionsPanelProps {
 }
 
 export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPanelProps> = ({
+  workspaceId,
   config,
   saving,
   notificationPrefs,
@@ -45,6 +47,44 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
   const { t } = useTranslation()
   const [view, setView] = useState<WorkspaceGatePermissionsView>('home')
   const [blacklistDraft, setBlacklistDraft] = useState('')
+  const [externalDirectoryAllowed, setExternalDirectoryAllowed] = useState(false)
+
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    const syncExternalAllowed = () => {
+      void window.api.settings
+        ?.getWorkspaceExternalDirectoryAllowed?.(workspaceId)
+        ?.then((allowed: boolean) => {
+          if (!cancelled) setExternalDirectoryAllowed(allowed === true)
+        })
+        ?.catch(() => undefined)
+    }
+    syncExternalAllowed()
+    const unsubscribe = window.api.agentGate?.onAllowlistChanged?.((_allowlist, scope) => {
+      if (scope && scope.kind !== 'workspace') return
+      syncExternalAllowed()
+    })
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [workspaceId, config])
+
+  const handleExternalDirectoryChange = async (allowed: boolean) => {
+    if (!workspaceId) return
+    const previous = externalDirectoryAllowed
+    setExternalDirectoryAllowed(allowed)
+    try {
+      const saved = await window.api.settings.setWorkspaceExternalDirectoryAllowed(
+        workspaceId,
+        allowed
+      )
+      setExternalDirectoryAllowed(saved === true)
+    } catch {
+      setExternalDirectoryAllowed(previous)
+    }
+  }
 
   const navigate = (next: WorkspaceGatePermissionsView) => {
     setView(next)
@@ -112,7 +152,7 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                   <span className="settings-list-tile-subtitle">
                     {t(
                       'settings.agent_gate_blacklist_restore_hint',
-                      '恢复为推荐的危险命令列表，不会影响白名单。'
+                      '恢复为推荐的黑名单命令列表，不会影响白名单。'
                     )}
                   </span>
                 </div>
@@ -212,7 +252,7 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
           <p className={styles.emptyHint}>
             {t(
               'settings.agent_gate_allowlist_page_hint',
-              '供白名单与自动审核使用。在审批中点「始终允许」后会出现在这里。'
+              '供白名单模式使用。在审批中点「始终允许」后会出现在这里。'
             )}
           </p>
           <section className={pane.cardSection}>
@@ -262,11 +302,6 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
       hint: t('settings.agent_security_full_access_hint', '尽量自动执行；黑名单命令仍会询问')
     },
     {
-      value: 'auto_review' as const,
-      title: t('settings.agent_security_auto_review', '自动审核'),
-      hint: t('settings.agent_security_auto_review_hint', '编辑直通；命令经模型审核')
-    },
-    {
       value: 'allow_list' as const,
       title: t('settings.agent_security_allow_list', '白名单'),
       hint: t('settings.agent_security_allow_list_hint', '默认询问；仅始终允许的命令自动放行')
@@ -293,7 +328,7 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
             <p className={styles.emptyHint}>
               {t(
                 'settings.agent_security_mode_hint',
-                '全局统一，对所有工作区生效。危险命令默认需确认。'
+                '全局统一，对所有工作区生效。黑名单中的命令始终需要确认。'
               )}
             </p>
             {modes.map((mode) => (
@@ -360,6 +395,39 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
           </div>
         </section>
       </div>
+
+      {workspaceId ? (
+        <div className={pane.stackGroup}>
+          <div className={pane.sectionLabelRow}>
+            <h3 className={pane.sectionLabel}>
+              {t('workbench.external_directory_section', '当前工作区范围')}
+            </h3>
+          </div>
+          <section className={pane.cardSection}>
+            <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+              <div className="settings-list-tile settings-list-tile-noclick">
+                <div className="settings-list-tile-content">
+                  <span className="settings-list-tile-title">
+                    {t('workbench.external_directory_access', '允许访问工作区外目录')}
+                  </span>
+                  <span className="settings-list-tile-subtitle">
+                    {t(
+                      'workbench.external_directory_access_desc',
+                      '仅对当前工作区生效。开启后，读写文件或执行命令触及工作区外路径时不再每次询问。'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  checked={externalDirectoryAllowed}
+                  disabled={saving}
+                  aria-label={t('workbench.external_directory_access', '允许访问工作区外目录')}
+                  onChange={(e) => void handleExternalDirectoryChange(e.target.checked)}
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <div className={pane.stackGroup}>
         <div className={pane.sectionLabelRow}>

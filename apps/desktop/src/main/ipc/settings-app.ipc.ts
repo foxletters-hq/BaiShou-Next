@@ -153,6 +153,34 @@ export function registerSettingsAppIPC() {
     }
   )
 
+  ipcMain.handle(
+    'settings:get-workspace-external-directory-allowed',
+    async (_, workspaceId: string) => {
+      const { getWorkspaceExternalDirectoryEnabled } =
+        await import('../services/agent-gate.service')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      return getWorkspaceExternalDirectoryEnabled(workspaceId.trim())
+    }
+  )
+
+  ipcMain.handle(
+    'settings:set-workspace-external-directory-allowed',
+    async (_, workspaceId: string, enabled: unknown) => {
+      const { setWorkspaceExternalDirectoryEnabled } =
+        await import('../services/agent-gate.service')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      const saved = await setWorkspaceExternalDirectoryEnabled(
+        workspaceId.trim(),
+        enabled === true
+      )
+      return saved
+    }
+  )
+
   ipcMain.handle('settings:get-search-mode-enabled', async () => {
     const stored = await settingsManager.get<boolean>('search_mode_enabled')
     return resolveWebSearchEnabled(undefined, stored)

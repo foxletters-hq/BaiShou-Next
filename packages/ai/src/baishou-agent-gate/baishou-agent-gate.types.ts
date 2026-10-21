@@ -12,8 +12,12 @@ import {
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import type { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
-import type { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
 import type { AgentGateRiskClassifier } from './agent-gate-risk-classifier.types'
+
+export interface CancelAgentGateSessionOptions {
+  /** 仍需要跨流保留的请求（例如用户还没答完的 companion_ask） */
+  keepRequest?: (request: AgentGateRequest) => boolean
+}
 
 export interface IBaishouAgentGate {
   assert(input: AgentGateAssertInput): Promise<void>
@@ -22,7 +26,7 @@ export interface IBaishouAgentGate {
   reply(input: AgentGateReplyInput): Promise<void>
   get(requestId: string): AgentGateRequest | undefined
   listPending(sessionId?: string): AgentGateRequest[]
-  cancelSession(sessionId: string, reason?: string): void
+  cancelSession(sessionId: string, reason?: string, options?: CancelAgentGateSessionOptions): void
   /** Non-blocking policy probe (e.g. hideDeniedTools). */
   probeEffect(input: AgentGateEvaluateInput): AgentGateEffect
 }
@@ -34,7 +38,6 @@ export interface PendingWaiter {
 
 export interface PendingEntry {
   request: AgentGateRequest
-  fingerprint: string
   coalesceKey?: string | null
   resources?: AgentGateResourceRef[]
   profileId?: AgentGateProfileId
@@ -45,7 +48,6 @@ export interface CreateBaishouAgentGateOptions {
   config: BaishouAgentGateConfig
   persistConfig?: () => Promise<void>
   eventBus?: BaishouAgentGateEventBus
-  repeatTracker?: AgentGateRepeatTracker
   /** 写入 allowlist_changed 事件，便于 UI 按场景刷新 */
   configScope?: AgentGateConfigScope
   /** G4：工作区自动接受（运行时查询，不进配置） */

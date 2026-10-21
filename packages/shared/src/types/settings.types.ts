@@ -204,6 +204,8 @@ export interface ToolManagementConfig {
   disabledToolIds: string[] // 被禁用的工具 ID 列表
   customConfigs: Record<string, Record<string, any>> // 各工具的独立 key-value 用户配置
   emojiConfig?: EmojiToolConfig // 表情包工具配置
+  /** 是否开启伙伴工作过程趣味状态文案（如「伙伴正在喝茶…」），默认开启 true */
+  playfulProcessStatus?: boolean
 }
 
 /** 表情包发送频率：较少 / 适中 / 频繁 / 每条回复 */
@@ -244,6 +246,8 @@ export interface McpServerConfig {
   mcpAuthEnabled?: boolean
   /** 可选访问令牌；鉴权开启且为空时自动生成 */
   mcpAuthToken?: string
+  /** 外部 MCP 客户端调用工具时自动允许，不再弹窗确认（默认关闭） */
+  mcpAutoApproveTools?: boolean
   /** 禁用对外暴露的 MCP 工具 ID 列表（如 ['web_search', 'url_read']） */
   disabledToolIds?: string[]
 }

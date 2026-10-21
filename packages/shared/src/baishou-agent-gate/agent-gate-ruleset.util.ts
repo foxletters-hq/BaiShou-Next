@@ -4,7 +4,11 @@ import type {
   AgentGateResourceRef,
   BaishouAgentGateConfig
 } from './agent-gate.types'
-import { matchShellCommandPattern } from './agent-gate-shell-match.util'
+import {
+  isDangerousShellCommand,
+  matchShellCommandPattern,
+  splitShellChainCommands
+} from './agent-gate-shell-match.util'
 
 const EFFECT_PRECEDENCE: Record<AgentGateEffect, number> = {
   [AgentGateEffect.Deny]: 3,
@@ -182,21 +186,72 @@ export function evaluateLayeredRules(
   return matched?.rule.effect
 }
 
-export function findLastMatchingLayeredRule(
-  input: FindLastMatchingLayeredRuleInput
+function findLastMatchingSingleLayeredRule(
+  action: string,
+  resources: readonly AgentGateResourceRef[],
+  layers: FindLastMatchingLayeredRuleInput['layers']
 ): FindLastMatchingLayeredRuleResult | undefined {
-  const resources = input.resources ?? []
-  for (let layerIndex = input.layers.length - 1; layerIndex >= 0; layerIndex--) {
-    const layer = input.layers[layerIndex]
+  for (let layerIndex = layers.length - 1; layerIndex >= 0; layerIndex--) {
+    const layer = layers[layerIndex]
     if (!layer) continue
     for (let i = layer.rules.length - 1; i >= 0; i--) {
       const rule = layer.rules[i]
       if (!rule) continue
-      if (!agentGatePermissionRuleMatches(rule, input.action, resources)) continue
+      if (!agentGatePermissionRuleMatches(rule, action, resources)) continue
       return { rule, layer: layer.kind }
     }
   }
   return undefined
+}
+
+export function findLastMatchingLayeredRule(
+  input: FindLastMatchingLayeredRuleInput
+): FindLastMatchingLayeredRuleResult | undefined {
+  const resources = input.resources ?? []
+  const direct = findLastMatchingSingleLayeredRule(input.action, resources, input.layers)
+  if (direct?.rule.effect === AgentGateEffect.Deny || direct?.rule.effect === AgentGateEffect.Allow) {
+    return direct
+  }
+
+  const shellResources = resources.filter((r) => r.kind === 'shell_command')
+  if (
+    shellResources.length > 0 &&
+    shellResources.every((r) => !isDangerousShellCommand(r.value))
+  ) {
+    const segments = shellResources.flatMap((r) => splitShellChainCommands(r.value))
+    if (segments.length > 1) {
+      const nonShellResources = resources.filter((r) => r.kind !== 'shell_command')
+      let askMatch: FindLastMatchingLayeredRuleResult | undefined
+      let lastAllowMatch: FindLastMatchingLayeredRuleResult | undefined
+      let hasUnmatched = false
+
+      for (const seg of segments) {
+        const segMatch = findLastMatchingSingleLayeredRule(
+          input.action,
+          [...nonShellResources, { kind: 'shell_command', value: seg }],
+          input.layers
+        )
+        if (!segMatch) {
+          hasUnmatched = true
+          continue
+        }
+        if (segMatch.rule.effect === AgentGateEffect.Deny) {
+          return segMatch
+        }
+        if (segMatch.rule.effect === AgentGateEffect.Ask) {
+          askMatch = segMatch
+          continue
+        }
+        lastAllowMatch = segMatch
+      }
+
+      if (hasUnmatched) return direct
+      if (askMatch) return askMatch
+      if (lastAllowMatch) return lastAllowMatch
+    }
+  }
+
+  return direct
 }
 
 /** 将始终允许名单转为规则层（全部为 Allow） */

@@ -147,6 +147,7 @@ export function CompanionAskFields({
       {visible.map((question) => {
         const selected = drafts.selectedById[question.id]
         const customOpen = drafts.customOpenId === question.id
+        const optionRole = question.multiple ? 'checkbox' : 'radio'
         return (
           <View key={question.id} style={{ gap: sharedTokens.spacing.sm }}>
             {paged ? (
@@ -161,12 +162,18 @@ export function CompanionAskFields({
               </Text>
             ) : null}
             {question.options.map((option, optionIndex) => {
-              const isSelected = selected === option.id
+              const isSelected = drafts.isOptionSelected
+                ? drafts.isOptionSelected(question.id, option.id)
+                : selected === option.id
               return (
                 <Pressable
                   key={option.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
+                  accessibilityRole={optionRole}
+                  accessibilityState={
+                    question.multiple
+                      ? { checked: isSelected, selected: isSelected }
+                      : { selected: isSelected }
+                  }
                   onPress={() => drafts.selectOption(question.id, option.id)}
                   style={{
                     flexDirection: 'row',

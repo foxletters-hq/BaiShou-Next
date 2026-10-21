@@ -1,5 +1,9 @@
 import type { AgentGatePermissionRule } from '@baishou/shared'
-import { agentGatePermissionRuleMatches, type AgentGateResourceRef } from '@baishou/shared'
+import {
+  AgentGateEffect,
+  findLastMatchingLayeredRule,
+  type AgentGateResourceRef
+} from '@baishou/shared'
 
 /** 本轮回答内的「本次允许」：进程内有效，随 cancelSession 清掉 */
 export class AgentGateTurnAllowStore {
@@ -23,9 +27,12 @@ export class AgentGateTurnAllowStore {
     action: string,
     resources: readonly AgentGateResourceRef[] = []
   ): boolean {
-    return this.list(sessionId).some((rule) =>
-      agentGatePermissionRuleMatches(rule, action, resources)
-    )
+    const matched = findLastMatchingLayeredRule({
+      action,
+      resources,
+      layers: [{ kind: 'session', rules: this.list(sessionId) }]
+    })
+    return matched?.rule.effect === AgentGateEffect.Allow
   }
 
   clearSession(sessionId: string): void {

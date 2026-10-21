@@ -42,27 +42,37 @@ export function CompanionAskFields({
         const selectedId = drafts.selectedById[question.id]
         const customOpen = drafts.customOpenId === question.id
         const customMark = optionMark(question.options.length)
+        const optionRole = question.multiple ? 'checkbox' : 'radio'
         return (
           <div key={question.id} className={styles.questionBlock}>
             {paged ? <p className={styles.questionTitle}>{question.question}</p> : null}
-            <div className={styles.options} role="radiogroup" aria-label={question.question}>
-              {question.options.map((option, optionIndex) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedId === option.id}
-                  className={`${styles.option} ${selectedId === option.id ? styles.optionSelected : ''}`}
-                  onClick={() => drafts.selectOption(question.id, option.id)}
-                >
-                  <span className={styles.optionMark}>{optionMark(optionIndex)}</span>
-                  <span className={styles.optionLabel}>{option.label}</span>
-                </button>
-              ))}
+            <div
+              className={styles.options}
+              role={question.multiple ? 'group' : 'radiogroup'}
+              aria-label={question.question}
+            >
+              {question.options.map((option, optionIndex) => {
+                const isSelected = drafts.isOptionSelected
+                  ? drafts.isOptionSelected(question.id, option.id)
+                  : selectedId === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role={optionRole}
+                    aria-checked={isSelected}
+                    className={`${styles.option} ${isSelected ? styles.optionSelected : ''}`}
+                    onClick={() => drafts.selectOption(question.id, option.id)}
+                  >
+                    <span className={styles.optionMark}>{optionMark(optionIndex)}</span>
+                    <span className={styles.optionLabel}>{option.label}</span>
+                  </button>
+                )
+              })}
               {question.allowCustomInput ? (
                 <button
                   type="button"
-                  role="radio"
+                  role={optionRole}
                   aria-checked={customOpen}
                   className={`${styles.option} ${customOpen ? styles.optionSelected : ''}`}
                   disabled={isReplying}
