@@ -236,7 +236,7 @@
    * 桌面壳层几何（TitleBar + 主内容圆角卡）
    * 全屏 portal 遮罩应裁到内容卡，勿盖住顶栏；见 .baishou-app-content-overlay
    */
-  --app-titlebar-height: 52px;
+  --app-titlebar-height: 40px;
   --app-content-inset-inline: var(--spacing-sm);
   --app-content-inset-bottom: var(--spacing-sm);
   --app-content-radius: var(--radius-md);

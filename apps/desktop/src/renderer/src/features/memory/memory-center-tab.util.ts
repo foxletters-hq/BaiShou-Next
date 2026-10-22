@@ -101,14 +101,21 @@ export function resolveMemoryOnboardingLaunch(input: {
 
 export type MemoryOrganizeAction = 'configure' | 'embed-then-graph' | 'graph'
 
+export {
+  resolveMemoryOrganizeConfigurePrompt,
+  type MemoryOrganizeConfigurePrompt
+} from '@baishou/shared'
+
 /** 记忆中心「开始整理记忆」：未配置嵌入模型先去配置，否则先补齐嵌入再整理图谱。 */
 export function resolveMemoryOrganizeAction(input: {
   embeddingConfigured: boolean
+  extractConfigured?: boolean
   unindexedDiaryCount?: number
   pendingEmbedCount?: number
   indexing?: boolean
 }): MemoryOrganizeAction {
   if (!input.embeddingConfigured) return 'configure'
+  if (input.extractConfigured === false) return 'configure'
   if (input.indexing) return 'embed-then-graph'
   return memoryOnboardingEmbedBacklog(input) > 0 ? 'embed-then-graph' : 'graph'
 }

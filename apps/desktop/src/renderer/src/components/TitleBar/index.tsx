@@ -235,7 +235,7 @@ export const TitleBar: React.FC = () => {
   return (
     <div className={styles.titleBar}>
       <div className={styles.dragRegion}>
-        {!isOnboarding && (
+        {!isOnboarding && WORKBENCH_ENTRY_ENABLED ? (
           <div
             ref={tabsContainerRef}
             className={styles.tabsContainer}
@@ -263,20 +263,18 @@ export const TitleBar: React.FC = () => {
               <BookOpen className={styles.tabIcon} />
               <span className={styles.tabLabel}>{t('nav.diary', '日记')}</span>
             </div>
-            {WORKBENCH_ENTRY_ENABLED ? (
-              <div
-                ref={workbenchTabRef}
-                className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
-                onClick={() => navigate('/agent-workspace')}
-                role="tab"
-                aria-selected={isAgentWorkspace}
-              >
-                <Layers className={styles.tabIcon} />
-                <span className={styles.tabLabel}>{t('nav.workbench', '工作台')}</span>
-              </div>
-            ) : null}
+            <div
+              ref={workbenchTabRef}
+              className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
+              onClick={() => navigate('/agent-workspace')}
+              role="tab"
+              aria-selected={isAgentWorkspace}
+            >
+              <Layers className={styles.tabIcon} />
+              <span className={styles.tabLabel}>{t('nav.workbench', '工作台')}</span>
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className={styles.actions}>

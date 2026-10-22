@@ -186,6 +186,14 @@ export class MobileDataBootstrapper {
         await ensureDefaultLatteAssistant(deps.assistantManager, locale, activeVaultId ?? undefined)
       }
     }
+
+    try {
+      const { notifyMobilePendingEmbedCountsChanged } =
+        await import('./mobile-pending-embed-counts')
+      notifyMobilePendingEmbedCountsChanged()
+    } catch {
+      // ignore
+    }
   }
 
   async runWhenVaultReady(
@@ -324,6 +332,14 @@ export class MobileDataBootstrapper {
         }
       } catch (e) {
         logger.warn('[MobileBootstrapper] derived index hydration failed:', e as Error)
+      }
+
+      try {
+        const { notifyMobilePendingEmbedCountsChanged } =
+          await import('./mobile-pending-embed-counts')
+        notifyMobilePendingEmbedCountsChanged()
+      } catch {
+        // ignore
       }
 
       logger.info('[MobileBootstrapper] Ecosystem resync complete')

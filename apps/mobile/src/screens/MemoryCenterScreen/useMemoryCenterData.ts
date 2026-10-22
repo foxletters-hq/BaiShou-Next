@@ -58,7 +58,7 @@ export type MemoryOrganizeRefreshSnapshot = {
  */
 export function useMemoryCenterData() {
   const { t } = useTranslation()
-  const { dbReady, services } = useBaishou()
+  const { dbReady, services, vaultRevision, archiveRestoreEpoch } = useBaishou()
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [pendingEmbedParts, setPendingEmbedParts] = useState<MemoryPendingPartCounts>(
     () =>
@@ -156,6 +156,11 @@ export function useMemoryCenterData() {
       void refresh()
     }, [refresh])
   )
+
+  useEffect(() => {
+    if (!dbReady || (vaultRevision === 0 && archiveRestoreEpoch === 0)) return
+    void refresh()
+  }, [archiveRestoreEpoch, dbReady, refresh, vaultRevision])
 
   useEffect(() => {
     void hydrateOrganizePendingSnapshot().then((snap) => {

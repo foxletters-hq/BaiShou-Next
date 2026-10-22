@@ -10,7 +10,14 @@ import { app } from 'electron'
 import express from 'express'
 
 import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core-desktop'
-import { buildLanServiceName, pickBestLanIpv4, isPrivateLanIpv4 } from '@baishou/shared'
+import {
+  buildLanMdnsHost,
+  buildLanServiceName,
+  isExcludedLanIpv4,
+  isPrivateLanIpv4,
+  isVirtualLanInterfaceName,
+  pickBestLanIpv4
+} from '@baishou/shared'
 import { LanDiscovery } from './LanDiscovery'
 import { getDesktopInstallInstanceId } from './install-instance.service'
 
@@ -34,38 +41,15 @@ export class DesktopLanSyncService implements ILanSyncService {
   }
 
   private isExcludedIp(ip: string): boolean {
-    const [a, b] = ip.split('.').map(Number)
-    if (Number.isNaN(a) || Number.isNaN(b)) return true
-    if (a === 127) return true
-    if (a === 169 && b === 254) return true
-    if (a === 198 && (b === 18 || b === 19)) return true
-    return false
+    return isExcludedLanIpv4(ip)
   }
 
   private isPrivateLanIp(ip: string): boolean {
-    const [a, b] = ip.split('.').map(Number)
-    if (a === 10) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 192 && b === 168) return true
-    return false
+    return isPrivateLanIpv4(ip)
   }
 
   private isVirtualInterface(name: string): boolean {
-    const lower = name.toLowerCase()
-    return [
-      'clash',
-      'meta',
-      'tun',
-      'wintun',
-      'wireguard',
-      'tailscale',
-      'vpn',
-      'virtual',
-      'vethernet',
-      'hyper-v',
-      'npcap',
-      'loopback'
-    ].some((keyword) => lower.includes(keyword))
+    return isVirtualLanInterfaceName(name)
   }
 
   private scoreNetworkCandidate(address: string, ifaceName: string): number {
@@ -156,14 +140,24 @@ export class DesktopLanSyncService implements ILanSyncService {
 
     const bestIp = this.pickBestIp(ips) || ips[0]
     const orderedIps = bestIp ? [bestIp, ...ips.filter((ip) => ip !== bestIp)] : ips
+    const host = buildLanMdnsHost(os.hostname(), deviceId)
 
-    this.discovery.publish(serviceName, port, {
-      nickname: safeNickname,
-      ip: orderedIps.slice(0, 4).join(','),
-      device_type: 'desktop',
-      dtype: 'desktop',
-      device_id: deviceId
-    })
+    this.discovery.publish(
+      serviceName,
+      port,
+      {
+        nickname: safeNickname,
+        ip: orderedIps.slice(0, 4).join(','),
+        device_type: 'desktop',
+        dtype: 'desktop',
+        device_id: deviceId
+      },
+      {
+        host,
+        interfaceIp: bestIp ?? null,
+        ips: orderedIps
+      }
+    )
 
     return serviceName
   }
@@ -345,7 +339,9 @@ export class DesktopLanSyncService implements ILanSyncService {
     onDeviceLost: (deviceId: string) => void
   ): Promise<void> {
     await this.stopDiscovery()
-    this.discovery.startDiscovery(this.publishedServiceName, onDeviceFound, onDeviceLost)
+    const ips = await this.getPreferredLocalIps()
+    const bestIp = this.pickBestIp(ips) || ips[0] || null
+    this.discovery.startDiscovery(this.publishedServiceName, onDeviceFound, onDeviceLost, bestIp)
   }
 
   public async stopDiscovery(): Promise<void> {

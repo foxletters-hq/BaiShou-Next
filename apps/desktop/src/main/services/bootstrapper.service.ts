@@ -118,6 +118,8 @@ export class GlobalDataBootstrapper {
   private async notifyRenderersAfterResync(): Promise<void> {
     const { emitSyncMutation } = await import('../cache/desktop-main-cache-coordinator')
     emitSyncMutation('resync-complete', 'global-bootstrapper')
+    const { notifyPendingEmbedCountsChanged } = await import('./pending-embed-counts.service')
+    notifyPendingEmbedCountsChanged()
     BrowserWindow.getAllWindows().forEach((w) => {
       w.webContents.send('session:file-changed')
       w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })

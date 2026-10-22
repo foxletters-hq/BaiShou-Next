@@ -1,15 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { firstActivePhase, phaseCountsFromPending } from '@baishou/shared'
-import { SegmentedControl } from '@baishou/ui'
+import {
+  firstActivePhase,
+  localizeAiApiErrorMessage,
+  phaseCountsFromPending
+} from '@baishou/shared'
+import { SegmentedControl, useToast } from '@baishou/ui'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { GraphPage } from '../graph/GraphPage'
 import { MemoryCenterOrganizeSlot } from './MemoryCenterOrganizeSlot'
 import { MemoryHelpButton } from './MemoryHelpButton'
 import { MemoryVectorTab } from './MemoryVectorTab'
-import { consumeMemoryGraphTab, subscribeMemoryGraphTab } from './memory-graph-tab-focus'
+import {
+  consumeMemoryGraphTab,
+  requestMemoryGraphTab,
+  subscribeMemoryGraphTab
+} from './memory-graph-tab-focus'
 import {
   getMemoryReadinessLoading,
   getMemoryReadinessSnapshot,
@@ -22,12 +30,14 @@ import {
   memoryCenterPathForTab,
   memoryCenterTabFromPath,
   resolveMemoryOrganizeAction,
+  resolveMemoryOrganizeConfigurePrompt,
   type MemoryCenterTab
 } from './memory-center-tab.util'
 import styles from './MemoryCenterPage.module.css'
 
 export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t } = useTranslation()
+  const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const routeTab = memoryCenterTabFromPath(location.pathname)
@@ -96,34 +106,59 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       if (result?.cancelled) return 'cancelled'
       if (result && result.ok === false) return 'failed'
       return 'ok'
-    } catch {
+    } catch (error) {
       patchCachedRagActiveState({
         isRunning: false,
         type: 'idle',
         statusText: ''
       })
+      toast.showError(localizeAiApiErrorMessage(error, t))
       return 'failed'
     }
-  }, [t])
+  }, [t, toast])
 
   const startOrganizeMemory = useCallback(async () => {
     if (getMemoryReadinessLoading()) {
       await refreshMemoryReadiness()
+    } else {
+      await refreshMemoryReadiness()
     }
     const snap = getMemoryReadinessSnapshot()
+    const extractConfigured = snap.rows.some((row) => row.id === 'extract' && row.state === 'ready')
     const action = resolveMemoryOrganizeAction({
       embeddingConfigured: snap.embeddingConfigured,
+      extractConfigured: snap.pendingGraphCount > 0 ? extractConfigured : true,
       pendingEmbedCount: snap.pendingEmbedCount,
       unindexedDiaryCount: snap.unindexedDiaryCount,
       indexing: Boolean(ragIndexingSnapshotFromState(getCachedRagActiveState()))
     })
     if (action === 'configure') {
+      const prompt = resolveMemoryOrganizeConfigurePrompt({
+        embeddingConfigured: snap.embeddingConfigured,
+        extractConfigured
+      })
+      if (prompt) {
+        toast.showInfo(
+          t(
+            prompt.toastKey,
+            prompt.toastKey === 'memory.need_extract_to_organize'
+              ? '请先配置图抽取模型，才能开始整理记忆'
+              : prompt.toastKey === 'memory.need_embedding_to_organize'
+                ? '接下来请先配置嵌入模型，才能整理记忆'
+                : '请先配置嵌入模型和图抽取模型，才能开始整理记忆'
+          )
+        )
+      }
       goConfigure()
       return
     }
     if (snap.pendingGraphCount > 0) {
       const selfName = await ensureDesktopGraphSelfName()
-      if (!selfName && action === 'graph') return
+      if (!selfName && action === 'graph') {
+        toast.showInfo(t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取'))
+        requestMemoryGraphTab()
+        return
+      }
     }
     setMemoryOrganizePipeline('embed')
     const outcome = await startBatchEmbed()
@@ -131,7 +166,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
     if (outcome !== 'ok') {
       setMemoryOrganizePipeline('idle')
     }
-  }, [goConfigure, startBatchEmbed])
+  }, [goConfigure, startBatchEmbed, t, toast])
   startOrganizeMemoryRef.current = startOrganizeMemory
   const onUnifiedOrganize = useCallback(() => {
     void startOrganizeMemoryRef.current()

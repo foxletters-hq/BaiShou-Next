@@ -37,12 +37,15 @@ export function useGraphPageModel({
   onUnifiedOrganize
 }: GraphPageProps) {
   const { t } = useTranslation()
-  const translate: GraphPageTranslateFn = (key, defaultValue, options) => {
-    if (defaultValue === undefined) {
-      return options ? t(key, options) : t(key)
-    }
-    return options ? t(key, defaultValue, options) : t(key, defaultValue)
-  }
+  const translate = useCallback<GraphPageTranslateFn>(
+    (key, defaultValue, options) => {
+      if (defaultValue === undefined) {
+        return options ? t(key, options) : t(key)
+      }
+      return options ? t(key, defaultValue, options) : t(key, defaultValue)
+    },
+    [t]
+  )
   const navigate = useNavigate()
   const readiness = useMemoryReadiness()
   const dialog = useDialog()
@@ -55,15 +58,17 @@ export function useGraphPageModel({
   const month = useGraphPageMonthRange()
   const settings = useGraphPageSettings()
   const side = useGraphPageSideLayout()
+  const openSideRef = useRef(side.openSide)
+  openSideRef.current = side.openSide
   useEffect(() => {
     const applyPendingFocus = () => {
       if (!consumeGraphPendingFocus()) return
-      side.openSide('content')
+      openSideRef.current('content')
       setTab('pending')
     }
     applyPendingFocus()
     return subscribeGraphPendingFocus(applyPendingFocus)
-  }, [side])
+  }, [])
   const data = useGraphPageData(month.monthRange, settings.viewMaxNodes)
   const selection = useGraphPageSelection({
     nodes: data.nodes,

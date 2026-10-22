@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatLanBackupSizeMb,
   formatLanReceivedBackupContent,
+  buildLanMdnsHost,
   buildLanServiceName,
   getLanDeviceDedupKey,
   isVirtualLanInterfaceName,
@@ -96,6 +97,18 @@ describe('lan-discovery.util', () => {
     expect(buildLanServiceName('Anson', 'desktop-12345678-abcd')).toBe('BaiShou-Anson-5678abcd')
   })
 
+  it('builds ASCII .local mDNS hostnames so Android DNSSD treats SRV target as local domain', () => {
+    expect(buildLanMdnsHost('Thinkbook14-2025', 'desktop-12345678-abcd')).toBe(
+      'Thinkbook14-2025-5678abcd.local'
+    )
+    expect(buildLanMdnsHost('MacBook-Pro.local.', 'desktop-12345678-abcd')).toBe(
+      'MacBook-Pro-5678abcd.local'
+    )
+    expect(buildLanMdnsHost('我的电脑', 'desktop-12345678-abcd')).toBe(
+      'baishou-device-5678abcd.local'
+    )
+  })
+
   it('picks best lan ipv4', () => {
     expect(pickBestLanIpv4(['127.0.0.1', '192.168.1.8', '8.8.8.8'])).toBe('192.168.1.8')
     expect(pickBestLanIpv4(['127.0.0.1'])).toBeNull()
@@ -108,6 +121,7 @@ describe('lan-discovery.util', () => {
 
   it('detects virtual lan interface names', () => {
     expect(isVirtualLanInterfaceName('vEthernet (WSL)')).toBe(true)
+    expect(isVirtualLanInterfaceName('Mihomo')).toBe(true)
     expect(isVirtualLanInterfaceName('docker0')).toBe(true)
     expect(isVirtualLanInterfaceName('WLAN')).toBe(false)
     expect(isVirtualLanInterfaceName('以太网')).toBe(false)

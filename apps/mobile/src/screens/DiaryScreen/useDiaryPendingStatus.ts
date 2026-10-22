@@ -37,7 +37,7 @@ function applyDiaryPendingView(
 }
 
 export function useDiaryPendingStatus() {
-  const { services, dbReady } = useBaishou()
+  const { services, dbReady, vaultRevision, archiveRestoreEpoch } = useBaishou()
   const initial = initialDiaryPendingStatusFromSnapshot(peekOrganizePendingSnapshot())
   const [pendingGraphCount, setPendingGraphCount] = useState(initial.pendingGraphCount)
   const [pendingEmbedCount, setPendingEmbedCount] = useState(initial.pendingEmbedCount)
@@ -123,6 +123,11 @@ export function useDiaryPendingStatus() {
       void refreshStatusBar()
     })
   }, [refreshStatusBar])
+
+  useEffect(() => {
+    if (!dbReady || (vaultRevision === 0 && archiveRestoreEpoch === 0)) return
+    void refreshStatusBar()
+  }, [archiveRestoreEpoch, dbReady, refreshStatusBar, vaultRevision])
 
   const firstFocusRef = useRef(true)
   useFocusEffect(

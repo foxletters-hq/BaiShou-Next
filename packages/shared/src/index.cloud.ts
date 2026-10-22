@@ -79,6 +79,7 @@ export {
   LAN_DEVICE_STALE_MS,
   LAN_DISCOVERY_RESCAN_MS,
   LAN_DISCOVERY_REQUERY_MS,
+  buildLanMdnsHost,
   buildLanServiceName,
   formatLanBackupSizeMb,
   formatLanReceivedBackupContent,

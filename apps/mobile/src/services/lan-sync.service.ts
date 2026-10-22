@@ -109,6 +109,12 @@ export class MobileLanSyncService implements ILanSyncService {
           rawServiceId: service.name
         }
 
+        if (!service.port || service.port <= 0) {
+          if (this.serviceNameToDedupKey.has(service.name)) {
+            this.removeDeviceByServiceName(service.name)
+          }
+          return
+        }
         if (device.ip === 'Unknown') return
         this.emitDevice(device)
       } catch (e) {
@@ -573,7 +579,17 @@ export class MobileLanSyncService implements ILanSyncService {
         this.serviceNameToDedupKey.clear()
         this.discoveryActive = true
         this.scanLanServices()
-        if (!this.shouldRestartDiscoveryScan()) return
+        if (!this.shouldRestartDiscoveryScan()) {
+          // DNSSD 长连接不会在 TTL 刷新时重复触发 resolved；定期续期活跃设备 seenAt 防止被 UI 2 分钟过期清理
+          if (this.rescanTimer) clearInterval(this.rescanTimer)
+          this.rescanTimer = setInterval(() => {
+            if (!this.discoveryActive || !this.deviceFoundCb) return
+            for (const device of this.activeDevices.values()) {
+              this.deviceFoundCb(device)
+            }
+          }, LAN_DISCOVERY_RESCAN_MS)
+          return
+        }
 
         // NSD / iOS：启动后再主动扫一次，并周期全量 rescan
         setTimeout(() => {

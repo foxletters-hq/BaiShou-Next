@@ -274,7 +274,7 @@ stackGroup
 | 中     | `--duration-moderate` | `moderate` | **300ms** |
 | 慢     | `--duration-slow`     | `slow`     | **400ms** |
 
-**不要收进这张表的：** 1px 发丝描边、`line-height`、`width` / `height`（含圆形头像的一半半径）、≥500ms 的转圈 / Toast 长等待、壳层几何 `--app-titlebar-height`（52px）。菜单项 `--menu-popup-item-radius: 5px` 是故意略小于外壳的例外。移动端滑动条几何见 §3.11，不要写进间距表。
+**不要收进这张表的：** 1px 发丝描边、`line-height`、`width` / `height`（含圆形头像的一半半径）、≥500ms 的转圈 / Toast 长等待、壳层几何 `--app-titlebar-height`（40px）。菜单项 `--menu-popup-item-radius: 5px` 是故意略小于外壳的例外。移动端滑动条几何见 §3.11，不要写进间距表。
 
 ### 3.11 移动端滑动条
 
@@ -365,12 +365,12 @@ stackGroup
 
 | Token                        | 默认                       | 用途                       |
 | ---------------------------- | -------------------------- | -------------------------- |
-| `--app-titlebar-height`      | `52px`                     | TitleBar / `AppShell` 顶垫 |
+| `--app-titlebar-height`      | `40px`                     | TitleBar / `AppShell` 顶垫 |
 | `--app-content-inset-inline` | `var(--spacing-sm)`        | 内容卡左右外边距           |
 | `--app-content-inset-bottom` | `var(--spacing-sm)`        | 内容卡底外边距             |
 | `--app-content-radius`       | `var(--radius-md)`（12px） | 内容卡圆角                 |
 
-`AppShell` / `MainLayout` / `SettingsOverlayHost` / TitleBar **必须**引用上述 token，禁止再写散落的 `52px` / `8px` / `12px` 平行值。
+`AppShell` / `MainLayout` / `SettingsOverlayHost` / TitleBar **必须**引用上述 token，禁止再写散落的 `40px` / `8px` / `12px` 平行值。
 
 **全屏 portal 遮罩政策：**
 

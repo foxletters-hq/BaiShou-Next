@@ -285,7 +285,13 @@ export function useMemoryReadiness() {
       diary?: { onSyncEvent?: (cb: (event: { type?: string }) => void) => () => void }
     }
     const unsubscribe = api.diary?.onSyncEvent?.((event) => {
-      if (event?.type === 'embed-pending-changed') void refresh()
+      if (
+        event?.type === 'embed-pending-changed' ||
+        event?.type === 'vault-resync-complete' ||
+        event?.type === 'indexing-complete'
+      ) {
+        void refresh()
+      }
     })
     return () => {
       unsubscribe?.()

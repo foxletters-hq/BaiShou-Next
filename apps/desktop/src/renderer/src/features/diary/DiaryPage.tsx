@@ -234,7 +234,9 @@ export const DiaryPage: React.FC = () => {
         event?.type === 'saved' ||
         event?.type === 'embed-pending-changed' ||
         event?.type === 'embed-failed' ||
-        event?.type === 'embed-failure-cleared'
+        event?.type === 'embed-failure-cleared' ||
+        event?.type === 'vault-resync-complete' ||
+        event?.type === 'indexing-complete'
       ) {
         if (!hasLoadedOnce) return
         void refreshStatusBar()

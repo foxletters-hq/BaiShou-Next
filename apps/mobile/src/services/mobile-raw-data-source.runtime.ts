@@ -131,7 +131,10 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.graphManager.resetCache()
   runtime = null
   void import('./mobile-pending-embed-counts')
-    .then((m) => m.invalidateMobilePendingEmbedCountsCache())
+    .then((m) => {
+      m.clearMobileOrganizePendingSnapshot()
+      m.invalidateMobilePendingEmbedCountsCache()
+    })
     .catch(() => {})
 }
 

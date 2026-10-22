@@ -1,6 +1,6 @@
 .overlay {
   position: fixed;
-  top: var(--app-titlebar-height, 52px);
+  top: var(--app-titlebar-height, 40px);
   left: var(--app-content-inset-inline, 8px);
   right: var(--app-content-inset-inline, 8px);
   bottom: var(--app-content-inset-bottom, 8px);
