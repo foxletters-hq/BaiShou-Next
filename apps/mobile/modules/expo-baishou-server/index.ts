@@ -34,6 +34,40 @@ export function startMcpServer(port: number, authToken?: string | null): number 
   return startServer(port, authToken)
 }
 
+/** 独立 LAN server。旧版 APK 没有该原生方法时返回 -1，由调用方回退到共享 server。 */
+export function startLanServer(port: number): number {
+  const mod = requireNative()
+  if (typeof mod.startLanServer !== 'function') return -1
+  return mod.startLanServer(port)
+}
+
+export function getLanServerPort(): number {
+  const mod = getNative()
+  if (!mod || typeof mod.getLanServerPort !== 'function') return 0
+  try {
+    return mod.getLanServerPort()
+  } catch {
+    return 0
+  }
+}
+
+export function stopLanServer(): void {
+  const mod = getNative()
+  if (!mod || typeof mod.stopLanServer !== 'function') return
+  mod.stopLanServer()
+}
+
+/** 新 APK 支持 MCP / LAN 双原生 HTTP Server；旧 APK 仍走共享 server 兼容逻辑。 */
+export function supportsIndependentLanServer(): boolean {
+  try {
+    const mod = getNative()
+    if (!mod || typeof mod.hasIndependentLanServer !== 'function') return false
+    return mod.hasIndependentLanServer() === true
+  } catch {
+    return false
+  }
+}
+
 export function getServerPort(): number {
   const mod = getNative()
   if (!mod || typeof mod.getServerPort !== 'function') return 0

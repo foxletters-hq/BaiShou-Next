@@ -127,7 +127,8 @@ internal class BaishouHttpServer(
     private val context: Context,
     private val authToken: String?,
     private val emitEvent: (String, Map<String, Any>) -> Unit,
-    private val dispatchMcpRequest: (McpHttpRequest) -> NanoHTTPD.Response
+    /** MCP server 传入分发器；LAN server 传 null，避免 LAN 端口暴露 MCP 路由 */
+    private val dispatchMcpRequest: ((McpHttpRequest) -> NanoHTTPD.Response)? = null
 ) : NanoHTTPD(port) {
 
     private fun isAuthorized(session: IHTTPSession): Boolean {
@@ -209,6 +210,9 @@ internal class BaishouHttpServer(
     }
 
     private fun handleMcp(session: IHTTPSession): Response {
+        val dispatch = dispatchMcpRequest
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Endpoint Not Found")
+
         if (session.method == Method.OPTIONS) {
             return corsResponse(Response.Status.OK, MIME_PLAINTEXT, "")
         }
@@ -225,7 +229,7 @@ internal class BaishouHttpServer(
                 Method.POST -> readRequestBody(session)
                 else -> ""
             }
-            dispatchMcpRequest(McpHttpRequest(method, path, headers, body))
+            dispatch(McpHttpRequest(method, path, headers, body))
         } catch (e: Exception) {
             e.printStackTrace()
             corsResponse(
@@ -283,7 +287,7 @@ internal class BaishouHttpServer(
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri ?: ""
-        if (isMcpRoute(uri)) {
+        if (dispatchMcpRequest != null && isMcpRoute(uri)) {
             return handleMcp(session)
         }
 
@@ -291,7 +295,8 @@ internal class BaishouHttpServer(
             return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}")
         }
 
-        if (session.method == Method.POST && session.uri == "/upload") {
+        // 上传/接收事件只属于 LAN server；MCP 端口不处理备份包上传
+        if (dispatchMcpRequest == null && session.method == Method.POST && session.uri == "/upload") {
             var destFile: File? = null
             try {
                 val targetFile = File(
@@ -363,7 +368,8 @@ internal class BaishouHttpServer(
 private const val OPEN_DIRECTORY_TREE_CODE = 8842
 
 class ExpoBaishouServerModule : Module() {
-    private var server: BaishouHttpServer? = null
+    private var mcpServer: BaishouHttpServer? = null
+    private var lanServer: BaishouHttpServer? = null
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
     private val activeMcpStreams = ConcurrentHashMap<String, ActiveMcpStream>()
     private var pendingDirectoryPromise: Promise? = null
@@ -449,6 +455,67 @@ class ExpoBaishouServerModule : Module() {
         }
     }
 
+    private fun closePendingMcpRequests(statusCode: Int) {
+        pendingMcpRequests.values.forEach { pending ->
+            pending.dispatchMeta.set(McpDispatchMeta.Fixed(statusCode, emptyMap(), ""))
+            closeQuietly(pending.pipeOut)
+            pending.latch.countDown()
+        }
+        pendingMcpRequests.clear()
+        activeMcpStreams.values.forEach { stream ->
+            closeQuietly(stream.pipeOut)
+            closeQuietly(stream.pipeIn)
+        }
+        activeMcpStreams.clear()
+    }
+
+    private fun stopServerInstance(target: String) {
+        when (target) {
+            "mcp" -> {
+                mcpServer?.stop()
+                mcpServer = null
+                closePendingMcpRequests(503)
+            }
+            "lan" -> {
+                lanServer?.stop()
+                lanServer = null
+            }
+        }
+        sendEvent("onHttpServerPortChanged", mapOf("port" to 0, "server" to target))
+    }
+
+    private fun startServerInstance(target: String, port: Int, authToken: String?): Int {
+        stopServerInstance(target)
+        return try {
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            val mcpDispatcher: ((McpHttpRequest) -> NanoHTTPD.Response)? =
+                if (target == "mcp") ({ request -> dispatchMcpRequestToJs(request) }) else null
+            val instance = BaishouHttpServer(
+                port,
+                context,
+                authToken,
+                { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
+                mcpDispatcher
+            )
+            instance.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
+            if (target == "mcp") {
+                mcpServer = instance
+            } else {
+                lanServer = instance
+            }
+            val boundPort = instance.listeningPort
+            sendEvent(
+                "onHttpServerPortChanged",
+                mapOf("port" to boundPort, "requestedPort" to port, "server" to target)
+            )
+            boundPort
+        } catch (e: Exception) {
+            e.printStackTrace()
+            sendEvent("onHttpServerPortChanged", mapOf("port" to 0, "server" to target))
+            -1
+        }
+    }
+
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
@@ -516,53 +583,31 @@ class ExpoBaishouServerModule : Module() {
         }
 
         Function("getServerPort") {
-            server?.listeningPort ?: 0
+            mcpServer?.listeningPort ?: 0
+        }
+
+        Function("getLanServerPort") {
+            lanServer?.listeningPort ?: 0
+        }
+
+        Function("hasIndependentLanServer") {
+            true
         }
 
         Function("startServer") { port: Int, authToken: String? ->
-            if (server != null) {
-                server?.stop()
-                server = null
-            }
-            try {
-                val context = appContext.reactContext ?: throw Exception("React context is null")
-                server = BaishouHttpServer(
-                    port,
-                    context,
-                    authToken,
-                    { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
-                    { request -> dispatchMcpRequestToJs(request) }
-                )
-                server?.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
-                val boundPort = server?.listeningPort ?: port
-                // 让局域网页在 MCP 重启/换端口后能更新 mDNS 广播，而不是继续指向旧端口。
-                sendEvent(
-                    "onHttpServerPortChanged",
-                    mapOf("port" to boundPort, "requestedPort" to port)
-                )
-                return@Function boundPort
-            } catch (e: Exception) {
-                e.printStackTrace()
-                sendEvent("onHttpServerPortChanged", mapOf("port" to 0))
-                return@Function -1
-            }
+            startServerInstance("mcp", port, authToken)
+        }
+
+        Function("startLanServer") { port: Int ->
+            startServerInstance("lan", port, null)
         }
 
         Function("stopServer") {
-            server?.stop()
-            server = null
-            pendingMcpRequests.values.forEach { pending ->
-                pending.dispatchMeta.set(McpDispatchMeta.Fixed(503, emptyMap(), ""))
-                closeQuietly(pending.pipeOut)
-                pending.latch.countDown()
-            }
-            pendingMcpRequests.clear()
-            activeMcpStreams.values.forEach { stream ->
-                closeQuietly(stream.pipeOut)
-                closeQuietly(stream.pipeIn)
-            }
-            activeMcpStreams.clear()
-            sendEvent("onHttpServerPortChanged", mapOf("port" to 0))
+            stopServerInstance("mcp")
+        }
+
+        Function("stopLanServer") {
+            stopServerInstance("lan")
         }
 
         AsyncFunction("uploadLanFileAsync") { url: String, filePath: String, promise: Promise ->
