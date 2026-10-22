@@ -330,6 +330,7 @@ export class GraphLlmExtractionService {
             }
           : undefined,
         embedQuery: this.alignDeps?.embedQuery,
+        embedBatch: this.alignDeps?.embedBatch,
         nodeIdForEntity: (type, name) => graphNodeIdForEntity(vaultId, type, name),
         judgeMerges: async (input) => {
           throwIfGraphExtractAborted(signal)

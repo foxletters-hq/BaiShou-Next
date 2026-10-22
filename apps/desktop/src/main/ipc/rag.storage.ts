@@ -128,6 +128,138 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     })
   }
 
+  async replaceSourceEmbeddings(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    groupId: string
+    modelId: string
+    dimension: number
+    contentHash: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    replaceExisting?: boolean
+    recordLedger?: boolean
+    chunks: Array<{
+      id: string
+      chunkIndex: number
+      chunkText: string
+      embedding: number[]
+    }>
+  }): Promise<void> {
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      const vaultId = params.vaultId.trim()
+      if (!vaultId) {
+        throw new Error('replaceSourceEmbeddings: vaultId is required')
+      }
+      const now = Date.now()
+      const createdAtDate = new Date(now)
+      const sourceCreatedAtDate = new Date(
+        normalizeUnixToSeconds(params.sourceCreatedAt ?? now) * 1000
+      )
+      const metadataJson = params.metadataJson || '{}'
+
+      await db.run(sql.raw('SAVEPOINT rag_replace_source_sp'))
+      try {
+        if (params.replaceExisting) {
+          await db
+            .delete(memoryEmbeddingsTable)
+            .where(
+              and(
+                eq(memoryEmbeddingsTable.sourceType, params.sourceType),
+                eq(memoryEmbeddingsTable.sourceId, params.sourceId)
+              )
+            )
+        }
+
+        const BATCH_SIZE = 50
+        for (let i = 0; i < params.chunks.length; i += BATCH_SIZE) {
+          const slice = params.chunks.slice(i, i + BATCH_SIZE)
+          await db
+            .insert(memoryEmbeddingsTable)
+            .values(
+              slice.map((chunk) => ({
+                embeddingId: chunk.id,
+                sourceType: params.sourceType,
+                sourceId: params.sourceId,
+                groupId: params.groupId,
+                vaultId,
+                chunkIndex: chunk.chunkIndex,
+                chunkText: chunk.chunkText,
+                metadataJson,
+                embedding: Buffer.from(new Float32Array(chunk.embedding).buffer),
+                dimension: chunk.embedding.length,
+                modelId: params.modelId,
+                createdAt: createdAtDate,
+                sourceCreatedAt: sourceCreatedAtDate
+              }))
+            )
+            .onConflictDoUpdate({
+              target: [memoryEmbeddingsTable.embeddingId],
+              set: {
+                chunkText: sql`excluded.chunk_text`,
+                embedding: sql`excluded.embedding`,
+                dimension: sql`excluded.dimension`,
+                modelId: sql`excluded.model_id`,
+                metadataJson: sql`excluded.metadata_json`,
+                vaultId: sql`excluded.vault_id`,
+                groupId: sql`excluded.group_id`,
+                sourceCreatedAt: sql`excluded.source_created_at`
+              }
+            })
+        }
+
+        if (params.recordLedger) {
+          await db
+            .insert(embedLedgerTable)
+            .values({
+              vaultId,
+              sourceType: params.sourceType,
+              sourceId: params.sourceId,
+              contentHash: params.contentHash,
+              chunkCount: params.chunks.length,
+              modelId: params.modelId,
+              dimension: params.dimension,
+              status: 'embedded',
+              attempts: 0,
+              lastError: null,
+              embeddedAt: now,
+              updatedAt: now
+            })
+            .onConflictDoUpdate({
+              target: [
+                embedLedgerTable.vaultId,
+                embedLedgerTable.sourceType,
+                embedLedgerTable.sourceId
+              ],
+              set: {
+                contentHash: params.contentHash,
+                chunkCount: params.chunks.length,
+                modelId: params.modelId,
+                dimension: params.dimension,
+                status: 'embedded',
+                attempts: 0,
+                lastError: null,
+                embeddedAt: now,
+                updatedAt: now
+              }
+            })
+        }
+
+        await db.run(sql.raw('RELEASE rag_replace_source_sp'))
+      } catch (e) {
+        try {
+          await db.run(sql.raw('ROLLBACK TO rag_replace_source_sp'))
+          await db.run(sql.raw('RELEASE rag_replace_source_sp'))
+        } catch {
+          // ignore
+        }
+        throw e
+      }
+    })
+  }
+
   async listLedgerBySource(
     sourceType: string,
     options?: { vaultId?: string }

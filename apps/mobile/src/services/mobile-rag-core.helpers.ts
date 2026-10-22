@@ -237,7 +237,8 @@ export async function resolveEmbeddingAdapter(
 
 export async function loadEmbeddedDiaryIndex(
   deps: MobileRagServiceDeps,
-  vaultId: string
+  vaultId: string,
+  options?: { skipReconcile?: boolean }
 ): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
@@ -246,10 +247,12 @@ export async function loadEmbeddedDiaryIndex(
   const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
   const embeddedContentHashMap = new Map<string, string>()
-  try {
-    await deps.hsRepo.reconcileEmbedLedger?.({ vaultId, sourceType: 'diary' })
-  } catch (error) {
-    logger.warn('[MobileRag] embed_ledger 自检失败', error as Error)
+  if (!options?.skipReconcile) {
+    try {
+      await deps.hsRepo.reconcileEmbedLedger?.({ vaultId, sourceType: 'diary' })
+    } catch (error) {
+      logger.warn('[MobileRag] embed_ledger 自检失败', error as Error)
+    }
   }
   const client = deps.rawSqlClient as {
     execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
@@ -355,15 +358,18 @@ export async function embedDiaryEntry(
     throw error
   }
 
-  try {
-    const { scheduleMobileDiaryGraphAfterEmbed } =
-      await import('./mobile-diary-graph-follow-after-embed')
-    await scheduleMobileDiaryGraphAfterEmbed({
-      vaultId: resolvedVaultId,
-      diaryId: params.diaryId,
-      contentHash
-    })
-  } catch (followError) {
-    logger.warn('[MobileDiaryEmbed] 向量完成后自动接抽图失败', followError as Error)
+  // 批量嵌入（skipIndexPrep === true）结束后由整理流水统一调度图谱抽取，避免边嵌日记边抢占嵌入槽位与 SQLite 写锁
+  if (!options?.skipIndexPrep) {
+    try {
+      const { scheduleMobileDiaryGraphAfterEmbed } =
+        await import('./mobile-diary-graph-follow-after-embed')
+      await scheduleMobileDiaryGraphAfterEmbed({
+        vaultId: resolvedVaultId,
+        diaryId: params.diaryId,
+        contentHash
+      })
+    } catch (followError) {
+      logger.warn('[MobileDiaryEmbed] 向量完成后自动接抽图失败', followError as Error)
+    }
   }
 }

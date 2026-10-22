@@ -9,10 +9,29 @@ import {
   toSerializableAiError
 } from '@baishou/shared'
 import { normalizeEmbeddingVector, splitTextIntoChunks } from '../../rag/embedding-chunk'
+import { withEmbeddingSlot, yieldMainThreadIfNeeded } from '../../rag/embedding-concurrency'
 
 /** 单篇日记内分块嵌入并发数（对齐桌面 EmbeddingService） */
 const CHUNK_EMBED_CONCURRENCY = 3
 const EMBED_MAX_ATTEMPTS = 3
+
+function isTransientEmbeddingError(error: unknown): boolean {
+  const status = (error as { statusCode?: number; status?: number } | null)?.statusCode ??
+    (error as { status?: number } | null)?.status
+  if (status === 408 || status === 429 || (typeof status === 'number' && status >= 500)) {
+    return true
+  }
+  const msg = String((error as { message?: string } | null)?.message ?? error ?? '').toLowerCase()
+  return (
+    msg.includes('timed out') ||
+    msg.includes('timeout') ||
+    msg.includes('rate limit') ||
+    msg.includes('too many requests') ||
+    msg.includes('429') ||
+    msg.includes('econnreset') ||
+    msg.includes('fetch failed')
+  )
+}
 
 export class EmbeddingAdapter implements ToolEmbeddingService {
   /**
@@ -39,10 +58,12 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
   async embedQuery(text: string): Promise<number[] | null> {
     try {
       // 整理/对齐会复用这条路径；15 秒是语义搜索的墙钟，不能套在嵌入请求上。
-      const { embedding } = await embed({
-        model: this.provider.getEmbeddingModel(this.modelId),
-        value: text
-      })
+      const { embedding } = await withEmbeddingSlot(() =>
+        embed({
+          model: this.provider.getEmbeddingModel(this.modelId),
+          value: text
+        })
+      )
       return embedding?.length ? normalizeEmbeddingVector(embedding) : null
     } catch (e) {
       logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
@@ -52,7 +73,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
 
   /**
    * 批量嵌入多条短文本（如图谱节点名片）。优先使用单次 HTTP embedMany 请求，
-   * 若供应商不支持数组输入则自动降级为并发单条 embedQuery。
+   * 若供应商不支持数组输入则自动降级为有限并发单条 embedQuery。
    */
   async embedBatch(texts: string[]): Promise<Array<number[] | null>> {
     if (texts.length === 0) return []
@@ -61,29 +82,46 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     }
     if (!this.batchUnsupported) {
       try {
-        const { embeddings } = await embedMany({
-          model: this.provider.getEmbeddingModel(this.modelId),
-          values: texts
-        })
+        const { embeddings } = await withEmbeddingSlot(() =>
+          embedMany({
+            model: this.provider.getEmbeddingModel(this.modelId),
+            values: texts
+          })
+        )
         if (Array.isArray(embeddings) && embeddings.length === texts.length) {
           return embeddings.map((vec) => (vec?.length ? normalizeEmbeddingVector(vec) : null))
         }
       } catch (e) {
-        this.batchUnsupported = true
+        if (!isTransientEmbeddingError(e)) {
+          this.batchUnsupported = true
+        }
         logger.warn('[EmbeddingAdapter] embedMany fallback to concurrent embedQuery', { error: e })
       }
     }
-    return Promise.all(texts.map((t) => this.embedQuery(t)))
+    const out: Array<number[] | null> = new Array(texts.length).fill(null)
+    let cursor = 0
+    const workerCount = Math.min(CHUNK_EMBED_CONCURRENCY, texts.length)
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (cursor < texts.length) {
+          const index = cursor++
+          out[index] = await this.embedQuery(texts[index]!)
+        }
+      })
+    )
+    return out
   }
 
   private async embedQueryWithRetry(text: string, label: string): Promise<number[] | null> {
     let lastError: unknown
     for (let attempt = 1; attempt <= EMBED_MAX_ATTEMPTS; attempt++) {
       try {
-        const { embedding } = await embed({
-          model: this.provider.getEmbeddingModel(this.modelId),
-          value: text
-        })
+        const { embedding } = await withEmbeddingSlot(() =>
+          embed({
+            model: this.provider.getEmbeddingModel(this.modelId),
+            value: text
+          })
+        )
         if (embedding?.length) {
           return normalizeEmbeddingVector(embedding)
         }
@@ -132,10 +170,13 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     }
 
     // 对齐原版：长文本先分块，每块独立嵌入入库（分块级有限并发）
+    await yieldMainThreadIfNeeded()
     const chunks = splitTextIntoChunks(options.text).map((chunk) => chunk.text)
+    await yieldMainThreadIfNeeded()
     let successCount = 0
     let lastDimension = 0
     const metadataJson = mergeEmbedContentHashIntoMetadata(options.metadataJson, contentHash)
+    const preparedChunks: Array<{ index: number; chunkText: string; embedding: number[] }> = []
 
     const embedOneChunk = async (index: number): Promise<boolean> => {
       const rawChunk = chunks[index]!
@@ -145,19 +186,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         return false
       }
 
-      await hybridRepo.insertEmbedding({
-        id: `${options.sourceId}_chunk_${index}`,
-        sourceType: options.sourceType,
-        sourceId: options.sourceId,
-        groupId: options.groupId,
-        vaultId,
-        chunkIndex: index,
-        chunkText: chunk,
-        metadataJson,
-        embedding: embVector,
-        modelId: this.modelId,
-        sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
-      })
+      preparedChunks.push({ index, chunkText: chunk, embedding: embVector })
       lastDimension = embVector.length
       return true
     }
@@ -183,6 +212,50 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         await this.writeEmbedLedgerFailure(hybridRepo, options, vaultId, error.message)
         throw error
       }
+    }
+
+    preparedChunks.sort((a, b) => a.index - b.index)
+    if (
+      typeof hybridRepo.replaceSourceEmbeddings === 'function' &&
+      successCount === chunks.length &&
+      chunks.length > 0
+    ) {
+      await hybridRepo.replaceSourceEmbeddings({
+        vaultId,
+        sourceType: options.sourceType,
+        sourceId: options.sourceId,
+        groupId: options.groupId,
+        modelId: this.modelId,
+        dimension: lastDimension,
+        contentHash,
+        metadataJson,
+        sourceCreatedAt: options.sourceCreatedAt ?? Date.now(),
+        replaceExisting: true,
+        recordLedger: this.isLedgerSourceType(options.sourceType),
+        chunks: preparedChunks.map((item) => ({
+          id: `${options.sourceId}_chunk_${item.index}`,
+          chunkIndex: item.index,
+          chunkText: item.chunkText,
+          embedding: item.embedding
+        }))
+      })
+      return
+    }
+
+    for (const item of preparedChunks) {
+      await hybridRepo.insertEmbedding({
+        id: `${options.sourceId}_chunk_${item.index}`,
+        sourceType: options.sourceType,
+        sourceId: options.sourceId,
+        groupId: options.groupId,
+        vaultId,
+        chunkIndex: item.index,
+        chunkText: item.chunkText,
+        metadataJson,
+        embedding: item.embedding,
+        modelId: this.modelId,
+        sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
+      })
     }
 
     if (successCount === chunks.length && chunks.length > 0) {

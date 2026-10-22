@@ -141,6 +141,7 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
   settingsManager: SettingsManagerService
 }): Promise<GraphExtractAlignDeps> {
   let embedQuery: GraphExtractAlignDeps['embedQuery']
+  let embedBatch: GraphExtractAlignDeps['embedBatch']
   let modelId: string | undefined
   let hsRepo: SqliteHybridSearchRepository | null = null
   const embeddedSourceIds = new Set<string>()
@@ -152,6 +153,7 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
       const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId, hsRepo)
       if (adapter.isConfigured) {
         embedQuery = (text) => adapter.embedQuery(text)
+        embedBatch = (texts) => adapter.embedBatch(texts)
         modelId = adapter.embeddingModelId
       }
     }
@@ -185,6 +187,7 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
 
   return {
     embedQuery,
+    embedBatch,
     modelId,
     isEmbeddingConfigured: () => Boolean(embedQuery),
     isDiaryEmbedded: async (filePath) => {
@@ -323,6 +326,7 @@ async function buildMobileExtractionService(options: {
     createDefaultGraphExtractLlm(llmDeps),
     {
       embedQuery: alignDeps.embedQuery ?? embedder?.embedQuery,
+      embedBatch: alignDeps.embedBatch,
       modelId: alignDeps.modelId ?? embedder?.modelId,
       isEmbeddingConfigured: alignDeps.isEmbeddingConfigured,
       isDiaryEmbedded: alignDeps.isDiaryEmbedded

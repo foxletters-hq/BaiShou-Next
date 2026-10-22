@@ -41,6 +41,7 @@ export interface ExtractDiariesResult {
 
 export type GraphExtractAlignDeps = {
   embedQuery?: (text: string) => Promise<number[] | null>
+  embedBatch?: (texts: string[]) => Promise<Array<number[] | null>>
   modelId?: string
   isEmbeddingConfigured?: () => boolean | Promise<boolean>
   isDiaryEmbedded?: (filePath: string) => boolean | Promise<boolean>

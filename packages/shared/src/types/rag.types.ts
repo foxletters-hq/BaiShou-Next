@@ -158,6 +158,26 @@ export interface IEmbeddingStorage {
   }): Promise<void>
 
   deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void>
+  /** 单事务原子替换/写入指定来源的全部切片并同步更新账本，避免逐块独立事务与中间态失配 */
+  replaceSourceEmbeddings?(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    groupId: string
+    modelId: string
+    dimension: number
+    contentHash: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    replaceExisting?: boolean
+    recordLedger?: boolean
+    chunks: Array<{
+      id: string
+      chunkIndex: number
+      chunkText: string
+      embedding: number[]
+    }>
+  }): Promise<void>
   /** 一个来源的全部切片写完后记一行；按来源覆盖，不按切片累加 */
   recordEmbedded?(params: EmbedLedgerRecordParams): Promise<void>
   /** 嵌入失败时记 failed 并累加 attempts，不改 chunk_count */

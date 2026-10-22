@@ -36,6 +36,7 @@ export async function resolveExtractLlm() {
 
 export async function resolveGraphQueryEmbedder(): Promise<{
   embedQuery: (text: string) => Promise<number[] | null>
+  embedBatch?: (texts: string[]) => Promise<Array<number[] | null>>
   modelId?: string
 } | null> {
   try {
@@ -52,6 +53,7 @@ export async function resolveGraphQueryEmbedder(): Promise<{
     if (!adapter.isConfigured) return null
     return {
       embedQuery: (text) => adapter.embedQuery(text),
+      embedBatch: (texts) => adapter.embedBatch(texts),
       modelId: adapter.embeddingModelId
     }
   } catch {
@@ -101,6 +103,7 @@ export async function buildExtractionService(): Promise<GraphLlmExtractionServic
       llm,
       {
         embedQuery: alignDeps.embedQuery ?? embedder?.embedQuery,
+        embedBatch: alignDeps.embedBatch ?? embedder?.embedBatch,
         modelId,
         isEmbeddingConfigured: alignDeps.isEmbeddingConfigured,
         isDiaryEmbedded: alignDeps.isDiaryEmbedded

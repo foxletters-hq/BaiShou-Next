@@ -11,6 +11,8 @@ import {
 } from './notebook-graph.repository.shared'
 
 export class NotebookGraphEmbedOps {
+  private vecCosineSupported: boolean | null = null
+
   constructor(private readonly db: AppDatabase) {}
 
   async updateNodeEmbedding(
@@ -85,39 +87,45 @@ export class NotebookGraphEmbedOps {
     const query = new Float32Array(vector)
     const buf = serializeVector(vector)
 
-    try {
-      const conditions = [
-        eq(notebookGraphNodesTable.vaultId, vid),
-        eq(notebookGraphNodesTable.notebookId, nb),
-        isNull(notebookGraphNodesTable.deletedAt),
-        sql`${notebookGraphNodesTable.embedding} is not null`,
-        eq(notebookGraphNodesTable.dimension, query.length)
-      ]
-      if (opts?.nodeType) conditions.push(eq(notebookGraphNodesTable.nodeType, opts.nodeType))
-      if (opts?.modelId) conditions.push(eq(notebookGraphNodesTable.modelId, opts.modelId))
+    if (this.vecCosineSupported !== false) {
+      try {
+        const conditions = [
+          eq(notebookGraphNodesTable.vaultId, vid),
+          eq(notebookGraphNodesTable.notebookId, nb),
+          isNull(notebookGraphNodesTable.deletedAt),
+          sql`${notebookGraphNodesTable.embedding} is not null`,
+          eq(notebookGraphNodesTable.dimension, query.length)
+        ]
+        if (opts?.nodeType) conditions.push(eq(notebookGraphNodesTable.nodeType, opts.nodeType))
+        if (opts?.modelId) conditions.push(eq(notebookGraphNodesTable.modelId, opts.modelId))
 
-      const rows = await this.db
-        .select({
-          row: notebookGraphNodesTable,
-          distance:
-            sql<number>`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf})`.as(
-              'distance'
-            )
-        })
-        .from(notebookGraphNodesTable)
-        .where(and(...conditions))
-        .orderBy(sql`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf}) ASC`)
-        .limit(topK)
+        const rows = await this.db
+          .select({
+            row: notebookGraphNodesTable,
+            distance:
+              sql<number>`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf})`.as(
+                'distance'
+              )
+          })
+          .from(notebookGraphNodesTable)
+          .where(and(...conditions))
+          .orderBy(sql`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf}) ASC`)
+          .limit(topK)
 
-      return rows.map((r) => ({ ...omitNodeEmbedding(r.row), distance: Number(r.distance) }))
-    } catch (e) {
-      if (!isMissingSqliteFunctionError(e)) throw e
+        this.vecCosineSupported = true
+        return rows.map((r) => ({ ...omitNodeEmbedding(r.row), distance: Number(r.distance) }))
+      } catch (e) {
+        if (!isMissingSqliteFunctionError(e)) throw e
+        this.vecCosineSupported = false
+      }
     }
 
     const filters = [
       eq(notebookGraphNodesTable.vaultId, vid),
       eq(notebookGraphNodesTable.notebookId, nb),
       isNull(notebookGraphNodesTable.deletedAt),
+      sql`${notebookGraphNodesTable.embedding} is not null`,
+      eq(notebookGraphNodesTable.dimension, query.length),
       ...(opts?.nodeType ? [eq(notebookGraphNodesTable.nodeType, opts.nodeType)] : [])
     ]
     const rows = await this.db
@@ -130,16 +138,18 @@ export class NotebookGraphEmbedOps {
         `[NotebookGraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
       )
     }
-    const scored: Array<Omit<NotebookGraphNodeRow, 'embedding'> & { distance: number }> = []
+    const scored: Array<{ row: typeof rows[number]; distance: number }> = []
     for (const row of rows) {
       if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
       if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
       const embBuf = row.embedding as Buffer
       const emb = new Float32Array(embBuf.buffer, embBuf.byteOffset, row.dimension)
-      scored.push({ ...omitNodeEmbedding(row), distance: cosineDistance(query, emb) })
+      scored.push({ row, distance: cosineDistance(query, emb) })
     }
     scored.sort((a, b) => a.distance - b.distance)
-    return scored.slice(0, topK)
+    return scored
+      .slice(0, topK)
+      .map((item) => ({ ...omitNodeEmbedding(item.row), distance: item.distance }))
   }
 
   async clearNodeEmbedding(id: string, vaultId: string, notebookId: string): Promise<void> {

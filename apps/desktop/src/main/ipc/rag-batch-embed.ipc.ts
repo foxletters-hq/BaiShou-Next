@@ -151,7 +151,8 @@ export function registerRagBatchEmbedIpc(): void {
       let lastAt = 0
       return (force = false) => {
         const now = Date.now()
-        if (!force && now - lastAt < 800) return
+        // 整理进行中节流到 5000ms，防止渲染层高频触发待嵌入统计与图谱全量重刷占满主线程
+        if (!force && now - lastAt < 5000) return
         lastAt = now
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })

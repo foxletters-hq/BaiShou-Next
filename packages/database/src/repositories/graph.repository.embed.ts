@@ -7,6 +7,8 @@ import { chunkIds, cosineDistance, mapNode, serializeVector } from './graph.repo
 import type { GraphNodeRow } from './graph.repository.types'
 
 export class GraphEmbedOps {
+  private vecCosineSupported: boolean | null = null
+
   constructor(private readonly database: AppDatabase) {}
 
   async searchNodesByVector(
@@ -18,37 +20,43 @@ export class GraphEmbedOps {
     const query = new Float32Array(vector)
     const buf = serializeVector(vector)
 
-    try {
-      const conditions = [
-        eq(graphNodesTable.vaultId, vaultId),
-        isNull(graphNodesTable.deletedAt),
-        sql`${graphNodesTable.embedding} is not null`,
-        eq(graphNodesTable.dimension, query.length)
-      ]
-      if (opts?.nodeType) conditions.push(eq(graphNodesTable.nodeType, opts.nodeType))
-      if (opts?.modelId) conditions.push(eq(graphNodesTable.modelId, opts.modelId))
+    if (this.vecCosineSupported !== false) {
+      try {
+        const conditions = [
+          eq(graphNodesTable.vaultId, vaultId),
+          isNull(graphNodesTable.deletedAt),
+          sql`${graphNodesTable.embedding} is not null`,
+          eq(graphNodesTable.dimension, query.length)
+        ]
+        if (opts?.nodeType) conditions.push(eq(graphNodesTable.nodeType, opts.nodeType))
+        if (opts?.modelId) conditions.push(eq(graphNodesTable.modelId, opts.modelId))
 
-      const rows = await this.database
-        .select({
-          row: graphNodesTable,
-          distance: sql<number>`vec_distance_cosine(${graphNodesTable.embedding}, ${buf})`.as(
-            'distance'
-          )
-        })
-        .from(graphNodesTable)
-        .where(and(...conditions))
-        .orderBy(sql`vec_distance_cosine(${graphNodesTable.embedding}, ${buf}) ASC`)
-        .limit(topK)
+        const rows = await this.database
+          .select({
+            row: graphNodesTable,
+            distance: sql<number>`vec_distance_cosine(${graphNodesTable.embedding}, ${buf})`.as(
+              'distance'
+            )
+          })
+          .from(graphNodesTable)
+          .where(and(...conditions))
+          .orderBy(sql`vec_distance_cosine(${graphNodesTable.embedding}, ${buf}) ASC`)
+          .limit(topK)
 
-      return rows.map((r) => ({ ...mapNode(r.row), distance: Number(r.distance) }))
-    } catch (e) {
-      if (!isMissingSqliteFunctionError(e)) throw e
+        this.vecCosineSupported = true
+        return rows.map((r) => ({ ...mapNode(r.row), distance: Number(r.distance) }))
+      } catch (e) {
+        if (!isMissingSqliteFunctionError(e)) throw e
+        this.vecCosineSupported = false
+      }
     }
 
     // JS fallback when sqlite-vec is unavailable
     const filters = [
       eq(graphNodesTable.vaultId, vaultId),
       isNull(graphNodesTable.deletedAt),
+      sql`${graphNodesTable.embedding} is not null`,
+      eq(graphNodesTable.dimension, query.length),
       ...(opts?.nodeType ? [eq(graphNodesTable.nodeType, opts.nodeType)] : [])
     ]
     const rows = await this.database
@@ -61,16 +69,18 @@ export class GraphEmbedOps {
         `[GraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
       )
     }
-    const scored: Array<GraphNodeRow & { distance: number }> = []
+    const scored: Array<{ row: typeof rows[number]; distance: number }> = []
     for (const row of rows) {
       if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
       if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
       const embBuf = row.embedding as Buffer
       const emb = new Float32Array(embBuf.buffer, embBuf.byteOffset, row.dimension)
-      scored.push({ ...mapNode(row), distance: cosineDistance(query, emb) })
+      scored.push({ row, distance: cosineDistance(query, emb) })
     }
     scored.sort((a, b) => a.distance - b.distance)
-    return scored.slice(0, topK)
+    return scored
+      .slice(0, topK)
+      .map((item) => ({ ...mapNode(item.row), distance: item.distance }))
   }
 
   async countUnembeddedLiveNodes(vaultId: string): Promise<number> {

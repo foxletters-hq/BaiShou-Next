@@ -16,9 +16,11 @@ export { EmbeddingProviderConfigError }
 
 class DesktopEmbeddingConfig implements IEmbeddingConfig {
   private _cachedConfig: any = {}
+  private _cachedProvider: { instance: any; expiresAt: number } | null = null
 
   async load() {
     this._cachedConfig = (await settingsManager.get<any>('global_models')) || {}
+    this._cachedProvider = null
   }
 
   getGlobalEmbeddingModelId(): string {
@@ -35,6 +37,7 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     config.globalEmbeddingDimension = dimension
     await settingsManager.set('global_models', config)
     this._cachedConfig = config
+    this._cachedProvider = null
   }
   async restoreEmbeddingModelConfig(config: {
     globalEmbeddingProviderId: string
@@ -50,8 +53,13 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     }
     await settingsManager.set('global_models', next)
     this._cachedConfig = next
+    this._cachedProvider = null
   }
   async getProviderInstance(): Promise<any> {
+    const now = Date.now()
+    if (this._cachedProvider && now < this._cachedProvider.expiresAt) {
+      return this._cachedProvider.instance
+    }
     await this.load()
     const providerId = this.getGlobalEmbeddingProviderId()
     if (!providerId) return null
@@ -79,7 +87,9 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
       throw e
     }
 
-    return AIProviderRegistry.getInstance().getOrUpdateProvider(normalized)
+    const instance = AIProviderRegistry.getInstance().getOrUpdateProvider(normalized)
+    this._cachedProvider = { instance, expiresAt: Date.now() + 3000 }
+    return instance
   }
 }
 

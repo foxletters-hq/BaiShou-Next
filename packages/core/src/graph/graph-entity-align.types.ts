@@ -135,6 +135,7 @@ export type EntityAlignLookup = {
     topK?: number
   ) => Promise<Array<AlignedEntityHit & { distance: number }>>
   embedQuery?: (text: string) => Promise<number[] | null>
+  embedBatch?: (texts: string[]) => Promise<Array<number[] | null>>
   /** 笔记本抽图需要节点向量时为真；失败必须冒出来，不能当可选召回吞掉。 */
   requireEmbedQuery?: boolean
   nodeIdForEntity: (type: string, name: string) => string

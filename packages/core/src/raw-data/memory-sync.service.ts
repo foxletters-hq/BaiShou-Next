@@ -3,6 +3,7 @@ import {
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
   countPendingMemoriesAgainstLedger,
+  hashEmbedSourceContent,
   isVaultId,
   resolveVaultIdFromRecord,
   type MemoryRawRecord
@@ -59,6 +60,23 @@ export class MemorySyncService {
     let deleted = 0
     let inferredVault = options?.vaultName
 
+    let ledgerBySourceId: Map<string, { contentHash: string; status: string }> | null = null
+    if (embedMissing && pending.length > 0 && this.sink.listLedgerBySource) {
+      try {
+        const ledgerRows = await this.sink.listLedgerBySource(MEMORY_SOURCE_TYPE, {
+          vaultId: options?.vaultId?.trim() || undefined
+        })
+        ledgerBySourceId = new Map(
+          ledgerRows.map((row) => [
+            row.sourceId,
+            { contentHash: row.contentHash, status: row.status }
+          ])
+        )
+      } catch {
+        ledgerBySourceId = null
+      }
+    }
+
     for (const shard of pending) {
       await options?.onBeforeItem?.()
       const rows = collapseJsonlById(
@@ -79,8 +97,15 @@ export class MemorySyncService {
           hasPendingLiveRows = true
           continue
         }
+        if (ledgerBySourceId) {
+          const existing = ledgerBySourceId.get(row.id)
+          const rowHash = hashEmbedSourceContent(row.content ?? '')
+          if (existing?.status === 'embedded' && existing.contentHash === rowHash) {
+            continue
+          }
+        }
         let lastErr: unknown
-        for (let attempt = 0; attempt <= 3; attempt++) {
+        for (let attempt = 0; attempt <= 1; attempt++) {
           try {
             await this.sink.embedText({
               text: row.content,
@@ -99,7 +124,7 @@ export class MemorySyncService {
             break
           } catch (err) {
             lastErr = err
-            if (attempt < 3) {
+            if (attempt < 1) {
               await options?.onBeforeItem?.()
             }
           }

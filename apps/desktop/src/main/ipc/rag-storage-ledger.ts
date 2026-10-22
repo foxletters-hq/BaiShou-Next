@@ -15,6 +15,7 @@ import {
 import { eq, and, sql } from 'drizzle-orm'
 import { getAppDb } from '../db'
 import { withEmbeddingWriteLock } from './rag-storage.util'
+import { isBatchEmbedSessionActive } from '../services/batch-embed-control.service'
 
 export async function listLedgerBySource(
   sourceType: string,
@@ -260,6 +261,10 @@ export async function rebuildEmbedLedgerUnlocked(
 export async function reconcileEmbedLedger(
   params?: EmbedLedgerReconcileParams
 ): Promise<EmbedLedgerReconcileResult> {
+  // 批量嵌入进行中时 memory_embeddings 与 embed_ledger 处于高频写入态，跳过全量计数自检与重建，防止阻塞主线程
+  if (isBatchEmbedSessionActive()) {
+    return { rebuilt: false, ledgerChunkSum: 0, vectorCount: 0 }
+  }
   return withEmbeddingWriteLock(async () => {
     const { ledgerChunkSum, vectorCount, mismatch } = await readEmbedLedgerCountGap(params)
     if (!mismatch) {
