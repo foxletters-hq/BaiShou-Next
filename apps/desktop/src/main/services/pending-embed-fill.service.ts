@@ -12,6 +12,7 @@ import {
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import {
+  describeGraphExtractPhase,
   logger,
   markPhaseDone,
   overallFromPhaseCounts,
@@ -95,11 +96,25 @@ export async function runManualPendingEmbedFill(options?: {
     'diary'
   )
 
-  const report = (phase: RagBatchEmbedPhaseKind, next: RagBatchEmbedPhaseCounts) => {
+  function resolveGraphExtractItemDateOrTitle(item: { date?: string; filePath?: string }): string {
+    if (item.date?.trim()) return item.date.trim()
+    const raw = item.filePath || ''
+    const match = raw.match(/(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/)
+    if (match) return match[1]!
+    const base = raw.split(/[/\\]/).pop() || raw
+    return base.replace(/\.md$/i, '')
+  }
+
+  const report = (
+    phase: RagBatchEmbedPhaseKind,
+    next: RagBatchEmbedPhaseCounts,
+    customStatusText?: string
+  ) => {
     phases = next
     const overall = overallFromPhaseCounts(phases)
     const statusText =
-      phase === 'memory'
+      customStatusText ??
+      (phase === 'memory'
         ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
         : phase === 'graph_node'
           ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
@@ -107,7 +122,7 @@ export async function runManualPendingEmbedFill(options?: {
             ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
             : phase === 'graph_disambiguate'
               ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
-              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
+              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…'))
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,
@@ -131,6 +146,7 @@ export async function runManualPendingEmbedFill(options?: {
   } catch (error) {
     if (isBatchEmbedAbortedError(error)) throw error
     logger.warn('[PendingEmbedFill] memory fill failed', error as Error)
+    throw error
   }
   phases = markPhaseDone(phases, 'memory')
 
@@ -143,6 +159,10 @@ export async function runManualPendingEmbedFill(options?: {
     const { enqueueGraphExtract } = await import('../ipc/graph.ipc')
     const extractQueue = GraphExtractQueueService.getInstance()
     try {
+      const preState = extractQueue.getQueueState()
+      if (preState.lastError) {
+        throw new Error(preState.lastError)
+      }
       invalidatePendingEmbedCountsCache()
       const queued = await enqueueGraphExtract(extractQueue)
       extractTotal = Math.max(extractTotal, extractDone + queued.totalPending)
@@ -152,12 +172,11 @@ export async function runManualPendingEmbedFill(options?: {
           patchPhaseCounts(phases, 'graph_extract', {
             completed: extractDone,
             total: extractTotal
-          })
+          }),
+          i18n.t('graph.extract_progress_starting', '正在开始整理关系图谱')
         )
       }
       if (extractQueue.isRunning || queued.queued > 0) {
-        let lastReportedCompleted = -1
-        let lastReportedTotal = -1
         await extractQueue.waitUntilIdle({
           shouldContinue: async () => {
             try {
@@ -168,19 +187,44 @@ export async function runManualPendingEmbedFill(options?: {
             }
           },
           onProgress: (state) => {
-            const completed = extractDone + state.completedCount + state.errorCount
             const nextTotal = Math.max(extractTotal, extractDone + state.items.length)
-            if (completed === lastReportedCompleted && nextTotal === lastReportedTotal) {
-              return
+            const completed = Math.min(
+              nextTotal,
+              extractDone + state.completedCount + (state.aligningCount ?? 0)
+            )
+            const activeItems = state.items.filter(
+              (it) => it.status === 'running' || it.status === 'aligning'
+            )
+            const activeItem =
+              activeItems.find(
+                (it) =>
+                  it.phase === 'recalling' ||
+                  it.phase === 'waiting_align' ||
+                  it.phase === 'aligning' ||
+                  it.phase === 'writing'
+              ) ??
+              activeItems.find((it) => it.status === 'running' && it.phaseDetail) ??
+              activeItems.find((it) => it.status === 'running') ??
+              activeItems[0]
+            let customStatus: string | undefined
+            if (activeItem) {
+              const itemLabel = resolveGraphExtractItemDateOrTitle(activeItem)
+              const phaseDesc = describeGraphExtractPhase(activeItem)
+              const phaseLabel = i18n.t(phaseDesc.key, phaseDesc.defaultValue, phaseDesc.params)
+              const retrySuffix =
+                (activeItem.retryCount ?? 0) > 0 ? `（重试 ${activeItem.retryCount}/3）` : ''
+              customStatus = i18n.t('graph.extract_item_detail', '正在整理 {{item}} · {{phase}}', {
+                item: itemLabel,
+                phase: `${phaseLabel}${retrySuffix}`
+              })
             }
-            lastReportedCompleted = completed
-            lastReportedTotal = nextTotal
             report(
               'graph_extract',
               patchPhaseCounts(phases, 'graph_extract', {
                 completed,
                 total: nextTotal
-              })
+              }),
+              customStatus
             )
           }
         })
@@ -188,18 +232,29 @@ export async function runManualPendingEmbedFill(options?: {
       // 取消后 waitUntilIdle 会直接返回而不抛错，这里补一次检查，
       // 让下面的 catch 停掉仍在后台跑的抽图队列。
       await assertBatchEmbedCanContinue()
+      const finalState = extractQueue.getQueueState()
+      if (finalState.lastError || finalState.errorCount > 0) {
+        throw new Error(
+          finalState.lastError ||
+            i18n.t('settings.rag_graph_extract_failed', '关系图谱抽取失败，请检查模型配置后重试')
+        )
+      }
+      if (!queued.blockedPendingEmbed) {
+        phases = markPhaseDone(phases, 'graph_extract')
+      }
     } catch (error) {
       if (isBatchEmbedAbortedError(error)) {
         extractQueue.stop()
         throw error
       }
       logger.warn('[PendingEmbedFill] diary graph extract failed', error as Error)
+      throw error
     }
   } catch (error) {
     if (isBatchEmbedAbortedError(error)) throw error
     logger.warn('[PendingEmbedFill] graph extract phase failed', error as Error)
+    throw error
   }
-  phases = markPhaseDone(phases, 'graph_extract')
 
   // 抽图会新建节点；结束后再补 embedding 仍为空的空位，避免抽图前写入旧空位。
   let graphResult = { updated: 0, failed: 0, total: 0 }
@@ -212,23 +267,79 @@ export async function runManualPendingEmbedFill(options?: {
         completed: 0,
         total: liveUnembedded.length
       })
-      report('graph_node', phases)
+      report(
+        'graph_node',
+        phases,
+        i18n.t(
+          'settings.rag_indexing_graph_node_progress',
+          '正在嵌入图谱节点（{{completed}}/{{total}}）',
+          {
+            completed: 0,
+            total: liveUnembedded.length
+          }
+        )
+      )
     }
     graphResult = await backfillUnembeddedGraphNodes({
       vaultId,
+      concurrency: 10,
       listUnembeddedLiveNodes: async () => liveUnembedded,
       updateNodeEmbedding: (id, vid, embedding, modelId) =>
         graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
-      embedQuery: (text) => adapter.embedQuery(text),
+      updateNodeEmbeddingsBatch: (vid, modelId, items) =>
+        graphRepo.updateNodeEmbeddingsBatch(vid, modelId, items),
+      embedBatch:
+        typeof adapter.embedBatch === 'function'
+          ? async (texts) => {
+              const maxRetries = 3
+              let lastErr: unknown
+              for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                  const vecs = await adapter.embedBatch(texts)
+                  if (vecs?.some((v) => v?.length)) return vecs
+                } catch (err) {
+                  lastErr = err
+                }
+                if (attempt < maxRetries) {
+                  await assertBatchEmbedCanContinue()
+                }
+              }
+              if (lastErr) throw lastErr
+              return texts.map(() => null)
+            }
+          : undefined,
+      embedQuery: async (text) => {
+        const maxRetries = 3
+        let lastErr: unknown
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const vec = await adapter.embedQuery(text)
+            if (vec?.length) return vec
+          } catch (err) {
+            lastErr = err
+          }
+          if (attempt < maxRetries) {
+            await assertBatchEmbedCanContinue()
+          }
+        }
+        if (lastErr) throw lastErr
+        return null
+      },
       modelId: adapter.embeddingModelId ?? '',
       onBeforeItem: () => assertBatchEmbedCanContinue(),
       onProgress: ({ completed, total }) => {
+        const nodeTotal = liveUnembedded.length || total
         report(
           'graph_node',
           patchPhaseCounts(phases, 'graph_node', {
             completed,
-            total: liveUnembedded.length || total
-          })
+            total: nodeTotal
+          }),
+          i18n.t(
+            'settings.rag_indexing_graph_node_progress',
+            '正在嵌入图谱节点（{{completed}}/{{total}}）',
+            { completed, total: nodeTotal }
+          )
         )
         if (completed % 8 === 0) {
           invalidatePendingEmbedCountsCache()
@@ -238,10 +349,11 @@ export async function runManualPendingEmbedFill(options?: {
   } catch (error) {
     if (isBatchEmbedAbortedError(error) || isEmbedApiUnavailableError(error)) throw error
     logger.warn('[PendingEmbedFill] graph node fill failed', error as Error)
+    throw error
   }
   phases = markPhaseDone(
     patchPhaseCounts(phases, 'graph_node', {
-      completed: graphResult.updated + graphResult.failed,
+      completed: graphResult.updated,
       total: Math.max(graphResult.total, phases.graphNodes.total)
     }),
     'graph_node'

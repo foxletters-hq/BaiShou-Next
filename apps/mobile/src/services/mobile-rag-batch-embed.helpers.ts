@@ -5,6 +5,7 @@ import {
   EMBED_API_PROBE_FAILURE_MESSAGE,
   filterUnindexedDiaries,
   firstActivePhase,
+  formatAiApiCallError,
   formatLocalDate,
   isRagMemoryEnabled,
   limitExecute,
@@ -90,6 +91,13 @@ function phaseCountsFromOrganize(counts?: OrganizeCounts): RagBatchEmbedPhaseCou
   })
 }
 
+function stopMobileGraphExtractQueueSafely(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('./mobile-graph-extract-queue.service').mobileGraphExtractQueue?.stop?.()
+  } catch {}
+}
+
 export function resolveControlledDiaryBatchEmbedCount(
   result: ControlledDiaryBatchEmbedResult
 ): number {
@@ -116,7 +124,8 @@ export function resolveControlledDiaryBatchEmbedCount(
   }
   if (result.failed > 0) {
     throw new Error(
-      `成功嵌入 ${result.embedded} 篇，${result.failed} 篇失败（共 ${result.total} 篇待处理）`
+      result.lastError ||
+        `成功嵌入 ${result.embedded} 篇，${result.failed} 篇失败（共 ${result.total} 篇待处理）`
     )
   }
   return result.embedded
@@ -126,12 +135,7 @@ async function runPendingFillAfterDiaryBatch(
   deps: MobileRagServiceDeps,
   onProgress?: RagProgressCallback,
   counts?: OrganizeCounts
-): Promise<{
-  graphUpdated: number
-  graphFailed: number
-  graphTotal: number
-  skippedReason?: 'no-vault' | 'adapter-unavailable' | 'nothing-to-embed'
-}> {
+) {
   try {
     const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
     return await runMobileManualPendingEmbedFill(deps, {
@@ -141,6 +145,7 @@ async function runPendingFillAfterDiaryBatch(
       }
     })
   } catch (error) {
+    stopMobileGraphExtractQueueSafely()
     logger.warn('[MobileRag] pending embed fill after diary batch failed', error as Error)
     throw error
   }
@@ -189,9 +194,7 @@ export async function runControlledDiaryBatchEmbedCore(
     try {
       await prepareMobileEmbeddingIndex(deps, adapter)
     } catch (error) {
-      if (error instanceof MobileRagAbortError) {
-        throw error
-      }
+      if (error instanceof MobileRagAbortError) throw error
       logger.error('[MobileRag] prepare embedding index failed', { error })
       await finalizeBatchEmbedRagConfig(deps, true)
       return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'prepare-failed' }
@@ -200,9 +203,8 @@ export async function runControlledDiaryBatchEmbedCore(
     const purgedLegacy = await purgeAllLegacyDiaryEmbeddings(
       deps.rawSqlClient as RawSqlClient | undefined
     )
-    if (purgedLegacy > 0) {
+    if (purgedLegacy > 0)
       logger.info('[MobileRag] purged legacy diary vectors', { count: purgedLegacy })
-    }
 
     const organizeCounts = await loadOrganizeCountsForBatch(deps)
     let phases = phaseCountsFromOrganize(organizeCounts)
@@ -213,13 +215,7 @@ export async function runControlledDiaryBatchEmbedCore(
     ) => {
       phases = nextPhases
       const overall = overallFromPhaseCounts(phases)
-      onProgress?.({
-        current: overall.completed,
-        total: overall.total,
-        status,
-        phase,
-        phases
-      })
+      onProgress?.({ current: overall.completed, total: overall.total, status, phase, phases })
     }
     reportOrganizeProgress(
       i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'),
@@ -235,38 +231,28 @@ export async function runControlledDiaryBatchEmbedCore(
 
     const vaultScope = await resolveVaultScope(deps)
     const shadowDb = vaultScope.getShadowDb?.() ?? null
-    const vaultEntries = options?.vaultName?.trim()
-      ? [
-          {
-            id: await vaultScope.resolveVaultIdByName(options.vaultName.trim()),
-            name: options.vaultName.trim()
-          }
-        ]
+    const vaultNameOpt = options?.vaultName?.trim()
+    const vaultEntries = vaultNameOpt
+      ? [{ id: await vaultScope.resolveVaultIdByName(vaultNameOpt), name: vaultNameOpt }]
       : await vaultScope.listVaultEntries()
     const activeVaultName = await vaultScope.resolveActiveVaultName()
     const activeVaultId = await vaultScope.resolveActiveVaultId()
     if (activeVaultId) {
-      try {
-        const { bindGraphExtractQueueContext } = await import('./mobile-pending-embed-fill')
-        await bindGraphExtractQueueContext(deps, activeVaultId)
-      } catch {
-        // ignore
-      }
+      await import('./mobile-pending-embed-fill')
+        .then((m) => m.bindGraphExtractQueueContext(deps, activeVaultId))
+        .catch(() => {})
     }
 
-    type VaultEmbedPlan = {
+    const vaultPlans: Array<{
       vaultId: string
       vaultName: string
       listSource: ReturnType<typeof resolveMobileDiaryEmbedListSource>
       diariesToEmbed: DiaryEmbedDetectionRow[]
       allDiaryIds: number[]
-    }
-
-    const vaultPlans: VaultEmbedPlan[] = []
+    }> = []
     let globalTotal = 0
 
-    for (const vault of vaultEntries) {
-      const { id: vaultId, name: vaultName } = vault
+    for (const { id: vaultId, name: vaultName } of vaultEntries) {
       const listSource = resolveMobileDiaryEmbedListSource({
         isActiveVault: vaultName === activeVaultName,
         hasShadowDb: Boolean(shadowDb)
@@ -286,10 +272,9 @@ export async function runControlledDiaryBatchEmbedCore(
       )
       const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
         await loadEmbeddedDiaryIndex(deps, vaultId)
-      const resolveSourceId = (meta: { id: unknown }) =>
-        buildDiaryEmbeddingSourceId(vaultId, meta.id as number)
       const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
-        resolveSourceId,
+        resolveSourceId: (meta: { id: unknown }) =>
+          buildDiaryEmbeddingSourceId(vaultId, meta.id as number),
         embeddedContentHashMap
       })
       if (diariesToEmbed.length === 0) continue
@@ -326,7 +311,18 @@ export async function runControlledDiaryBatchEmbedCore(
       (await deps.settingsManager.get<{ batchEmbedConcurrency?: number }>('rag_config')) || {}
     const batchConcurrency = resolveMobileBatchEmbedConcurrency(ragSettings.batchEmbedConcurrency)
 
-    const progress = { embedded: 0, failed: 0, loadSkipped: 0, completed: 0 }
+    const progress = {
+      embedded: 0,
+      failed: 0,
+      loadSkipped: 0,
+      completed: 0,
+      lastError: undefined as string | undefined
+    }
+    let abortAfterRetryExhausted = false
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('./mobile-graph-extract-queue.service').mobileGraphExtractQueue?.clearError?.()
+    } catch {}
 
     const reportProgress = (status: string) => {
       let nextPhases = applyFrozenPhaseProgress(phases, 'diary', {
@@ -338,7 +334,7 @@ export async function runControlledDiaryBatchEmbedCore(
         const { mobileGraphExtractQueue } = require('./mobile-graph-extract-queue.service')
         const queueState = mobileGraphExtractQueue?.getQueueState?.()
         if (queueState && queueState.items?.length > 0) {
-          const completedExtract = queueState.completedCount + queueState.errorCount
+          const completedExtract = queueState.completedCount
           if (completedExtract > 0) {
             nextPhases = applyFrozenPhaseProgress(nextPhases, 'graph_extract', {
               completed: completedExtract,
@@ -352,6 +348,7 @@ export async function runControlledDiaryBatchEmbedCore(
 
     try {
       for (const plan of vaultPlans) {
+        if (abortAfterRetryExhausted) break
         const { vaultId, vaultName, listSource, diariesToEmbed, allDiaryIds } = plan
         await purgeLegacyDiaryEmbeddingsForVault(
           deps.rawSqlClient as RawSqlClient | undefined,
@@ -374,25 +371,23 @@ export async function runControlledDiaryBatchEmbedCore(
           diariesToEmbed,
           batchConcurrency,
           async (meta) => {
+            if (abortAfterRetryExhausted) return
             await assertMobileRagCanContinue()
-            if (mobileRagOperationControl.isAborted) {
-              return
-            }
+            if (mobileRagOperationControl.isAborted) return
 
             const dateLabel = meta.date
               ? formatLocalDate(coerceDiaryCalendarDate(meta.date) ?? new Date())
               : ''
+            let itemFailed = false
 
             try {
               reportProgress(
                 `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
               )
-
-              if (mobileRagOperationControl.isAborted) {
-                return
-              }
+              if (mobileRagOperationControl.isAborted) return
 
               const diary = diaryById.get(meta.id)
+              diaryById.delete(meta.id)
               const content = diary && 'content' in diary ? diary.content : undefined
               if (!diary) {
                 progress.loadSkipped++
@@ -400,52 +395,58 @@ export async function runControlledDiaryBatchEmbedCore(
               }
 
               const d = coerceDiaryCalendarDate(diary.date ?? meta.date) ?? new Date()
-              await embedDiaryEntry(
-                deps,
-                {
-                  diaryId: meta.id,
-                  content: content ?? '',
-                  tags: [],
-                  date: d,
-                  updatedAt:
-                    ('updatedAt' in diary && diary.updatedAt instanceof Date
-                      ? diary.updatedAt
-                      : meta.updatedAt) ?? new Date(),
-                  vaultName
-                },
-                {
-                  adapter,
-                  skipIndexPrep: true,
-                  skipRagEnabledCheck: true,
-                  contentHash: meta.contentHash
+              const updatedAt =
+                ('updatedAt' in diary && diary.updatedAt instanceof Date
+                  ? diary.updatedAt
+                  : meta.updatedAt) ?? new Date()
+              const entryArgs = {
+                diaryId: meta.id,
+                content: content ?? '',
+                tags: [],
+                date: d,
+                updatedAt,
+                vaultName
+              }
+              const entryOpts = {
+                adapter,
+                skipIndexPrep: true,
+                skipRagEnabledCheck: true,
+                contentHash: meta.contentHash
+              }
+              for (let attempt = 0; attempt <= 3; attempt++) {
+                try {
+                  await embedDiaryEntry(deps, entryArgs, entryOpts)
+                  break
+                } catch (embedError) {
+                  if (mobileRagOperationControl.isAborted || attempt >= 3) throw embedError
                 }
-              )
+              }
 
               if (!content?.trim()) {
                 progress.loadSkipped++
                 return
               }
-
               progress.embedded++
             } catch (error) {
-              if (mobileRagOperationControl.isAborted) {
-                return
-              }
+              if (mobileRagOperationControl.isAborted) return
+              itemFailed = true
               progress.failed++
-              logger.warn('[MobileRag] diary embed failed', {
+              abortAfterRetryExhausted = true
+              progress.lastError = formatAiApiCallError(error)
+              logger.warn('[MobileRag] diary embed failed after retries', {
                 vaultName,
                 diaryId: meta.id,
                 date: dateLabel,
                 error
               })
             } finally {
-              progress.completed++
+              if (!itemFailed) progress.completed++
               reportProgress(
                 `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
               )
             }
           },
-          { shouldStop: () => mobileRagOperationControl.isAborted }
+          { shouldStop: () => mobileRagOperationControl.isAborted || abortAfterRetryExhausted }
         )
       }
     } catch (error) {
@@ -457,31 +458,16 @@ export async function runControlledDiaryBatchEmbedCore(
     }
 
     await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
-
     if (mobileRagOperationControl.isAborted) {
-      logger.info('[MobileRag] controlled batch embed aborted', {
-        embedded: progress.embedded,
-        failed: progress.failed,
-        total: globalTotal
-      })
       throw new MobileRagAbortError(progress.embedded)
     }
-
-    logger.info('[MobileRag] controlled batch embed finished', {
-      embedded: progress.embedded,
-      failed: progress.failed,
-      loadSkipped: progress.loadSkipped,
-      total: globalTotal,
-      vaultCount: vaultPlans.length
-    })
-    await runPendingFillAfterDiaryBatch(deps, onProgress, organizeCounts)
-    return {
-      embedded: progress.embedded,
-      failed: progress.failed,
-      loadSkipped: progress.loadSkipped,
-      total: globalTotal,
-      skipped: false
+    if (progress.failed > 0) {
+      stopMobileGraphExtractQueueSafely()
+      return { ...progress, total: globalTotal, skipped: false }
     }
+
+    await runPendingFillAfterDiaryBatch(deps, onProgress, organizeCounts)
+    return { ...progress, total: globalTotal, skipped: false }
   } finally {
     mobileRagOperationControl.end()
     resetCachedMobileRagActiveState()
@@ -506,9 +492,6 @@ export async function runControlledDiaryBatchEmbed(
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
   if (getBatchEmbedInFlight()) {
-    logger.warn('[MobileRag] batch embed already in flight', {
-      coalesceRerun: Boolean(options?.coalesceRerun)
-    })
     if (options?.coalesceRerun) {
       setBatchEmbedRerunRequested(true)
       return getBatchEmbedInFlight()!
@@ -521,13 +504,7 @@ export async function runControlledDiaryBatchEmbed(
   }
 
   const runLoop = async (): Promise<ControlledDiaryBatchEmbedResult> => {
-    let lastResult: ControlledDiaryBatchEmbedResult = {
-      embedded: 0,
-      failed: 0,
-      total: 0,
-      skipped: true,
-      skipReason: 'not-started'
-    }
+    let lastResult!: ControlledDiaryBatchEmbedResult
     do {
       clearBatchEmbedRerunRequested()
       lastResult = await runControlledDiaryBatchEmbedCore(deps, options)

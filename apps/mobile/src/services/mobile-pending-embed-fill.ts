@@ -173,11 +173,16 @@ export async function runMobileManualPendingEmbedFill(
         memoryManager,
         createMobileMemoryEmbedSink(deps.hsRepo, adapter)
       )
-      await sync.syncPendingIndex({ vaultId, embedMissing: true })
+      await sync.syncPendingIndex({
+        vaultId,
+        embedMissing: true,
+        onBeforeItem: () => assertMobileRagCanContinue()
+      })
     }
   } catch (error) {
     if (error instanceof MobileRagAbortError) throw error
     logger.warn('[PendingEmbedFill] mobile memory fill failed', error as Error)
+    throw error
   }
   phases = markPhaseDone(phases, 'memory')
 
@@ -185,10 +190,16 @@ export async function runMobileManualPendingEmbedFill(
   let extractCompleted = 0
   try {
     await assertMobileRagCanContinue()
+    const preState = mobileGraphExtractQueue.getQueueState()
+    if (preState.lastError) {
+      throw new Error(preState.lastError)
+    }
     let extractTotal = phases.graphExtract.total
     invalidateMobilePendingEmbedCountsCache()
     await bindGraphExtractQueueContext(deps, vaultId)
+    await assertMobileRagCanContinue()
     const queued = await mobileGraphExtractQueue.enqueue({})
+    await assertMobileRagCanContinue()
     extractQueued = queued.totalPending
     extractTotal = Math.max(extractTotal, queued.totalPending)
     if (extractTotal > 0) {
@@ -208,23 +219,37 @@ export async function runMobileManualPendingEmbedFill(
             await assertMobileRagCanContinue()
             return true
           } catch {
+            mobileGraphExtractQueue.stop()
             return false
           }
         },
         onProgress: (state) => {
-          extractCompleted = state.completedCount + state.errorCount
           const totalCount = Math.max(extractTotal, state.items.length)
-          const activeItem = state.items.find(
+          extractCompleted = Math.min(totalCount, state.completedCount + (state.aligningCount ?? 0))
+          const activeItems = state.items.filter(
             (it) => it.status === 'running' || it.status === 'aligning'
           )
+          const activeItem =
+            activeItems.find(
+              (it) =>
+                it.phase === 'recalling' ||
+                it.phase === 'waiting_align' ||
+                it.phase === 'aligning' ||
+                it.phase === 'writing'
+            ) ??
+            activeItems.find((it) => it.status === 'running' && it.phaseDetail) ??
+            activeItems.find((it) => it.status === 'running') ??
+            activeItems[0]
           let customStatus: string | undefined
           if (activeItem) {
             const itemLabel = resolveGraphExtractItemDateOrTitle(activeItem)
             const phaseDesc = describeGraphExtractPhase(activeItem)
             const phaseLabel = i18n.t(phaseDesc.key, phaseDesc.defaultValue, phaseDesc.params)
+            const retrySuffix =
+              (activeItem.retryCount ?? 0) > 0 ? `（重试 ${activeItem.retryCount}/3）` : ''
             customStatus = i18n.t('graph.extract_item_detail', '正在整理 {{item}} · {{phase}}', {
               item: itemLabel,
-              phase: phaseLabel
+              phase: `${phaseLabel}${retrySuffix}`
             })
           }
           report(
@@ -241,12 +266,20 @@ export async function runMobileManualPendingEmbedFill(
     // 取消后 waitUntilIdle 会直接返回而不抛错，这里补一次检查，
     // 让下面的 catch 停掉仍在后台跑的抽图队列。
     await assertMobileRagCanContinue()
+    const finalState = mobileGraphExtractQueue.getQueueState()
+    if (finalState.lastError || finalState.errorCount > 0) {
+      throw new Error(
+        finalState.lastError ||
+          i18n.t('settings.rag_graph_extract_failed', '关系图谱抽取失败，请检查模型配置后重试')
+      )
+    }
   } catch (error) {
     if (error instanceof MobileRagAbortError) {
       mobileGraphExtractQueue.stop()
       throw error
     }
     logger.warn('[PendingEmbedFill] mobile graph extract phase failed', error as Error)
+    throw error
   }
   phases = markPhaseDone(phases, 'graph_extract')
 
@@ -280,10 +313,49 @@ export async function runMobileManualPendingEmbedFill(
       const graphRepo = new GraphRepository(drizzleDb)
       graphResult = await backfillUnembeddedGraphNodes({
         vaultId,
+        concurrency: 10,
         listUnembeddedLiveNodes: async () => liveUnembedded,
         updateNodeEmbedding: (id, vid, embedding, modelId) =>
           graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
-        embedQuery: (text) => adapter.embedQuery(text),
+        updateNodeEmbeddingsBatch: (vid, modelId, items) =>
+          graphRepo.updateNodeEmbeddingsBatch(vid, modelId, items),
+        embedBatch:
+          typeof adapter.embedBatch === 'function'
+            ? async (texts) => {
+                const maxRetries = 3
+                let lastErr: unknown
+                for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                  try {
+                    const vecs = await adapter.embedBatch(texts)
+                    if (vecs?.some((v) => v?.length)) return vecs
+                  } catch (err) {
+                    lastErr = err
+                  }
+                  if (attempt < maxRetries) {
+                    await assertMobileRagCanContinue()
+                  }
+                }
+                if (lastErr) throw lastErr
+                return texts.map(() => null)
+              }
+            : undefined,
+        embedQuery: async (text) => {
+          const maxRetries = 3
+          let lastErr: unknown
+          for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+              const vec = await adapter.embedQuery(text)
+              if (vec?.length) return vec
+            } catch (err) {
+              lastErr = err
+            }
+            if (attempt < maxRetries) {
+              await assertMobileRagCanContinue()
+            }
+          }
+          if (lastErr) throw lastErr
+          return null
+        },
         modelId: adapter.embeddingModelId ?? '',
         onBeforeItem: () => assertMobileRagCanContinue(),
         onProgress: ({ completed, total }) => {
@@ -309,10 +381,11 @@ export async function runMobileManualPendingEmbedFill(
   } catch (error) {
     if (error instanceof MobileRagAbortError) throw error
     logger.warn('[PendingEmbedFill] mobile graph node fill failed', error as Error)
+    throw error
   }
   phases = markPhaseDone(
     patchPhaseCounts(phases, 'graph_node', {
-      completed: graphResult.updated + graphResult.failed,
+      completed: graphResult.updated,
       total: Math.max(graphResult.total, phases.graphNodes.total)
     }),
     'graph_node'

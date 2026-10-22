@@ -57,6 +57,28 @@ export function MemoryOrganizeDetailModal(props: {
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
         >
+          {incomplete && props.ragState.error ? (
+            <View
+              style={{
+                marginBottom: tokens.spacing.sm,
+                paddingHorizontal: tokens.spacing.smPlus,
+                paddingVertical: tokens.spacing.xsPlus,
+                borderRadius: tokens.radius.sm,
+                borderWidth: 1,
+                borderColor: colors.error,
+                backgroundColor: colors.bgSurfaceNormal
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.error,
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
+                {props.ragState.error}
+              </Text>
+            </View>
+          ) : null}
           {running && detailText ? (
             <View
               style={{
@@ -98,9 +120,13 @@ export function MemoryOrganizeDetailModal(props: {
                   ? t('settings.rag_phase_skipped', '无需补齐')
                   : row.status === 'pending'
                     ? row.total > 0
-                      ? t('settings.rag_phase_pending_count', '待整理 {{count}} 篇', {
-                          count: row.total
-                        })
+                      ? row.id === 'graphNodes' || row.id === 'memories'
+                        ? t('settings.rag_phase_pending_item_count', '待整理 {{count}} 个', {
+                            count: row.total
+                          })
+                        : t('settings.rag_phase_pending_count', '待整理 {{count}} 篇', {
+                            count: row.total
+                          })
                       : t('settings.rag_phase_waiting', '等待中')
                     : row.status === 'done'
                       ? t('settings.rag_phase_done_count', '已完成 {{completed}}/{{total}}', {

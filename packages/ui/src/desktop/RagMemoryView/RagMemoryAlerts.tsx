@@ -26,7 +26,7 @@ interface RagMemoryAlertsProps {
   onCollapseOrganize?: () => void
   onRestoreMigration?: () => Promise<void>
   onResumeMigration?: () => Promise<void>
-  graphExtract?: { current: number; total: number; percent: number } | null
+  graphExtract?: { current: number; total: number; percent: number; statusText?: string } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
   suspectCount?: number
@@ -218,59 +218,85 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             </div>
           ) : null}
           {ragState.phases ? (
-            <ul className={styles.phaseList}>
-              {MEMORY_ORGANIZE_PHASE_IDS.map((id) => {
-                const item = phaseCountForId(ragState.phases!, id)
-                const status = resolvePhaseRowStatus(id, ragState.phase, item, ragState.phases)
-                const label = t(ragBatchEmbedPhaseLabelKey(id), id)
-                const value =
-                  status === 'skipped'
-                    ? t('settings.rag_phase_skipped', '无需补齐')
-                    : status === 'pending'
-                      ? item.total > 0
-                        ? t('settings.rag_phase_pending_count', '待整理 {{count}} 篇', {
-                            count: item.total
-                          })
-                        : t('settings.rag_phase_waiting', '等待中')
+            <>
+              {ragState.phase !== 'starting' &&
+              Boolean(
+                (ragState.phase === 'graph_extract' && graphExtract?.statusText?.trim()) ||
+                ragState.statusText?.trim()
+              ) &&
+              ragState.statusText !== batchEmbedStatusTitle ? (
+                <p className={styles.migDesc}>
+                  {(ragState.phase === 'graph_extract' && graphExtract?.statusText?.trim()) ||
+                    ragState.statusText}
+                </p>
+              ) : null}
+              <ul className={styles.phaseList}>
+                {MEMORY_ORGANIZE_PHASE_IDS.map((id) => {
+                  const item = phaseCountForId(ragState.phases!, id)
+                  const status = resolvePhaseRowStatus(id, ragState.phase, item, ragState.phases)
+                  const label = t(ragBatchEmbedPhaseLabelKey(id), id)
+                  const value =
+                    status === 'skipped'
+                      ? t('settings.rag_phase_skipped', '无需补齐')
+                      : status === 'pending'
+                        ? item.total > 0
+                          ? t('settings.rag_phase_pending_count', '待整理 {{count}} 篇', {
+                              count: item.total
+                            })
+                          : t('settings.rag_phase_waiting', '等待中')
+                        : status === 'done'
+                          ? t('settings.rag_phase_done_count', '已完成 {{completed}}/{{total}}', {
+                              completed: item.completed,
+                              total: item.total
+                            })
+                          : `${item.completed}/${item.total}`
+                  const rawBarPercent =
+                    status === 'running' && item.total > 0 ? (item.completed / item.total) * 100 : 0
+                  const barPercent =
+                    status === 'running'
+                      ? Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            id === 'graph_extract'
+                              ? Math.max(rawBarPercent, graphExtract?.percent ?? 0)
+                              : rawBarPercent
+                          )
+                        )
                       : status === 'done'
-                        ? t('settings.rag_phase_done_count', '已完成 {{completed}}/{{total}}', {
-                            completed: item.completed,
-                            total: item.total
-                          })
-                        : `${item.completed}/${item.total}`
-                const barPercent =
-                  status === 'running' && item.total > 0
-                    ? Math.min(100, Math.max(0, (item.completed / item.total) * 100))
-                    : status === 'done'
-                      ? 100
-                      : 0
-                return (
-                  <li
-                    key={id}
-                    className={`${styles.phaseRow} ${
-                      status === 'running'
-                        ? styles.phaseRowCurrent
-                        : status === 'skipped'
-                          ? styles.phaseRowMuted
-                          : ''
-                    }`}
-                  >
-                    <span className={styles.phaseLabel}>{label}</span>
-                    {status === 'running' || status === 'done' ? (
-                      <div className={styles.phaseBar}>
-                        <div className={styles.phaseBarFill} style={{ width: `${barPercent}%` }} />
-                      </div>
-                    ) : (
-                      <span className={styles.phaseBarSpacer} />
-                    )}
-                    <span className={styles.phaseValue}>{value}</span>
-                  </li>
-                )
-              })}
-              {showGraphInEmbedPhases && (ragState.phases?.graphExtract?.total ?? 0) <= 0
-                ? graphPhaseRow
-                : null}
-            </ul>
+                        ? 100
+                        : 0
+                  return (
+                    <li
+                      key={id}
+                      className={`${styles.phaseRow} ${
+                        status === 'running'
+                          ? styles.phaseRowCurrent
+                          : status === 'skipped'
+                            ? styles.phaseRowMuted
+                            : ''
+                      }`}
+                    >
+                      <span className={styles.phaseLabel}>{label}</span>
+                      {status === 'running' || status === 'done' ? (
+                        <div className={styles.phaseBar}>
+                          <div
+                            className={styles.phaseBarFill}
+                            style={{ width: `${barPercent}%` }}
+                          />
+                        </div>
+                      ) : (
+                        <span className={styles.phaseBarSpacer} />
+                      )}
+                      <span className={styles.phaseValue}>{value}</span>
+                    </li>
+                  )
+                })}
+                {showGraphInEmbedPhases && (ragState.phases?.graphExtract?.total ?? 0) <= 0
+                  ? graphPhaseRow
+                  : null}
+              </ul>
+            </>
           ) : (
             <>
               <p className={styles.migDesc}>
@@ -299,6 +325,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
                 : t('memory.readiness_graph_starting', '正在开始整理关系图谱')}
             </span>
           </div>
+          {graphExtract?.statusText ? (
+            <p className={styles.migDesc}>{graphExtract.statusText}</p>
+          ) : null}
           <ul className={styles.phaseList}>{graphPhaseRow}</ul>
         </div>
       )}

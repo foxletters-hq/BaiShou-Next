@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
+  describeGraphExtractPhase,
   emptyGraphExtractQueueSnapshot,
   formatLocalDate,
   graphExtractOverallProgress,
   loadGraphExtractConcurrency,
+  localizeAiApiErrorMessage,
   saveGraphExtractConcurrency
 } from '@baishou/shared'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { refreshMemoryReadiness } from '../memory/useMemoryReadiness'
-import { getRagRuntimeSnapshot, subscribeRagRuntime } from '../settings/rag-runtime-cache'
+import {
+  getRagRuntimeSnapshot,
+  patchCachedRagActiveState,
+  subscribeRagRuntime
+} from '../settings/rag-runtime-cache'
 import {
   graphCancelQueueItem,
   graphGetQueueState,
@@ -65,20 +71,39 @@ export function useGraphPageExtract(deps: ExtractDeps) {
     setExtractRunning(running)
     if (running) {
       wasRunningRef.current = true
-      const done = state.completedCount
+      const done = state.completedCount + (state.aligningCount ?? 0)
       const total = state.items.length
-      const current = Math.min(done + state.runningCount + (state.aligningCount ?? 0), total)
-      d.setStatus(
-        d.t(
-          'graph.extract_queue_progress',
-          '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
-          {
-            current,
-            total,
-            percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
-          }
-        )
+      const current = Math.min(done, total)
+      const activeItems = state.items.filter(
+        (it) => it.status === 'running' || it.status === 'aligning'
       )
+      const activeItem =
+        activeItems.find(
+          (it) =>
+            it.phase === 'recalling' ||
+            it.phase === 'waiting_align' ||
+            it.phase === 'aligning' ||
+            it.phase === 'writing'
+        ) ??
+        activeItems.find((it) => it.status === 'running') ??
+        activeItems[0]
+      const baseText = d.t(
+        'graph.extract_queue_progress',
+        '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
+        {
+          current,
+          total,
+          percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
+        }
+      )
+      if (activeItem) {
+        const phaseDesc = describeGraphExtractPhase(activeItem)
+        const phaseLabel = d.t(phaseDesc.key, phaseDesc.defaultValue, phaseDesc.params)
+        const itemLabel = activeItem.date || activeItem.filePath.split(/[/\\]/).pop() || ''
+        d.setStatus(`${baseText} · ${itemLabel}（${phaseLabel}）`)
+      } else {
+        d.setStatus(baseText)
+      }
     } else if (state.completedCount > 0 || state.errorCount > 0) {
       d.setStatus(
         d.t('graph.extract_batch_result', '关系整理：完成 {{done}}，失败 {{failed}}', {
@@ -88,6 +113,13 @@ export function useGraphPageExtract(deps: ExtractDeps) {
       )
       if (wasRunningRef.current) {
         wasRunningRef.current = false
+        if (state.lastError && !getRagRuntimeSnapshot().activeRagState.isRunning) {
+          const friendlyError = localizeAiApiErrorMessage(state.lastError, (key, fallback) =>
+            d.t(key, fallback)
+          )
+          patchCachedRagActiveState({ error: friendlyError })
+          d.toast.showError(friendlyError)
+        }
         void d.refreshRef.current().finally(() => {
           void refreshMemoryReadiness()
         })
@@ -217,7 +249,9 @@ export function useGraphPageExtract(deps: ExtractDeps) {
         }
         return
       }
+      patchCachedRagActiveState({ error: undefined })
       setExtractRunning(true)
+      setQueueModalOpen(true)
       deps.setStatus(
         deps.t('graph.extract_queued', '已加入整理队列（{{count}} 篇），可继续点其他日记', {
           count: result.queued

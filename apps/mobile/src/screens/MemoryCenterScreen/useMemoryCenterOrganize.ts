@@ -8,6 +8,7 @@ import {
   hasGraphModelConfigured,
   isDefaultGraphSelfName,
   isEmbeddingConfiguredForMemory,
+  localizeAiApiErrorMessage,
   logger,
   normalizeGraphAwakenNickname,
   resolveMemoryOrganizeAction,
@@ -395,17 +396,29 @@ export function useMemoryCenterOrganize(input: {
         await writeMemoryOrganizeInterrupted(false)
         await refresh()
       } catch (error) {
-        patchCachedMobileRagState({ isRunning: false, type: 'idle', statusText: '' })
         if (isMemoryOrganizeCancelledError(error)) {
+          patchCachedMobileRagState({
+            isRunning: false,
+            type: 'idle',
+            statusText: '',
+            error: undefined
+          })
           toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
           await refresh()
           return
         }
+        const friendlyError = localizeAiApiErrorMessage(error, t)
+        patchCachedMobileRagState({
+          isRunning: false,
+          type: 'idle',
+          statusText: '',
+          error: friendlyError
+        })
         logger.error(
           '[MemoryOrganize] batchEmbed failed',
           error instanceof Error ? error : String(error)
         )
-        toast.showError(error instanceof Error ? error.message : String(error))
+        toast.showError(friendlyError)
         await refresh()
       } finally {
         setBusy(false)

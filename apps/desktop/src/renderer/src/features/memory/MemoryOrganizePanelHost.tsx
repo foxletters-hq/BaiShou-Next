@@ -65,7 +65,7 @@ export function MemoryOrganizePanelHost(props: {
     (ragState.isRunning && ragState.type === 'batchEmbed') ||
     Boolean(readiness.graphExtracting && readiness.graphExtracting.total > 0) ||
     Boolean(readiness.indexing)
-  const leftover = leftoverCount > 0 && !running
+  const leftover = (leftoverCount > 0 || Boolean(ragState.error)) && !running
   const leftoverState = leftover
     ? {
         ...ragState,
@@ -74,6 +74,7 @@ export function MemoryOrganizePanelHost(props: {
         progress: 0,
         total: Math.max(leftoverCount, 1),
         statusText: '',
+        error: ragState.error,
         phase: firstActivePhase({
           ...readiness.pendingEmbedParts,
           graphExtract: readiness.pendingGraphCount

@@ -36,6 +36,7 @@ export function registerRagBatchEmbedIpc(): void {
     running?: boolean
     phase?: RagBatchEmbedPhaseKind
     phases?: RagBatchEmbedPhaseCounts
+    error?: string
   }
   const lastBatchProgress: {
     current: {
@@ -63,7 +64,8 @@ export function registerRagBatchEmbedIpc(): void {
       phase: extras?.phase,
       phases: extras?.phases,
       paused: running && isBatchEmbedPaused(),
-      cancelling: running && isBatchEmbedAbortRequested()
+      cancelling: running && isBatchEmbedAbortRequested(),
+      error: extras?.error
     }
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('agent:rag-progress', payload)
@@ -118,8 +120,11 @@ export function registerRagBatchEmbedIpc(): void {
         progress: last?.progress ?? 0,
         total: last?.total ?? 0,
         statusText: '',
+        phase: last?.extras?.phase,
+        phases: last?.extras?.phases,
         paused: false,
-        cancelling: false
+        cancelling: false,
+        error: last?.extras?.error
       }
     }
     return {
@@ -155,18 +160,26 @@ export function registerRagBatchEmbedIpc(): void {
     })()
 
     try {
+      try {
+        const { GraphExtractQueueService } = await import('../services/graph-extract-queue.service')
+        GraphExtractQueueService.getInstance().clearError()
+      } catch {
+        // ignore
+      }
       const { getOrganizePendingSnapshot, invalidatePendingEmbedCountsCache } =
         await import('../services/pending-embed-counts.service')
       invalidatePendingEmbedCountsCache()
       sendProgress(0, 1, i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'), {
-        phase: 'starting'
+        phase: 'starting',
+        error: undefined
       })
       const counts = await getOrganizePendingSnapshot()
       let phases = phaseCountsFromPending(counts)
       const overallTotal = overallFromPhaseCounts(phases).total
       sendProgress(0, overallTotal, i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'), {
         phase: firstActivePhase(counts),
-        phases
+        phases,
+        error: undefined
       })
 
       const diaryResult = await runControlledDiaryBatchEmbed({
@@ -180,7 +193,7 @@ export function registerRagBatchEmbedIpc(): void {
             const { GraphExtractQueueService } = require('../services/graph-extract-queue.service')
             const queueState = GraphExtractQueueService.getInstance().getQueueState()
             if (queueState && queueState.items?.length > 0) {
-              const completedExtract = queueState.completedCount + queueState.errorCount
+              const completedExtract = queueState.completedCount
               if (completedExtract > 0) {
                 nextPhases = applyFrozenPhaseProgress(nextPhases, 'graph_extract', {
                   completed: completedExtract,
@@ -209,15 +222,18 @@ export function registerRagBatchEmbedIpc(): void {
         total: diaryResult.total
       })
 
-      if (diaryResult.failed > 0 && diaryResult.embedded === 0 && diaryResult.total > 0) {
-        const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+      if (diaryResult.failed > 0 && diaryResult.total > 0) {
         const message =
           diaryResult.lastError ||
           i18n.t(
             'settings.rag_diary_embed_api_unavailable',
             '嵌入接口不可用，没有写入任何日记向量。请检查嵌入模型的接口地址。'
           )
-        await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
+        if (diaryResult.embedded === 0) {
+          const ragConfig =
+            (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+          await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
+        }
         throw new Error(message)
       }
 
@@ -283,18 +299,28 @@ export function registerRagBatchEmbedIpc(): void {
       }
       console.error('Batch Embed failed:', e)
       const err = toSerializableAiError(e, 'Batch embed failed')
-      endBatchEmbedControl()
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send('agent:rag-progress', {
-          isRunning: false,
-          type: 'idle',
-          progress: 0,
-          total: 0,
-          paused: false,
-          cancelling: false,
-          error: err.message
-        })
+      try {
+        const { GraphExtractQueueService } = await import('../services/graph-extract-queue.service')
+        GraphExtractQueueService.getInstance().stop()
+      } catch {
+        // ignore
       }
+      try {
+        const { invalidatePendingEmbedCountsCache } =
+          await import('../services/pending-embed-counts.service')
+        invalidatePendingEmbedCountsCache()
+      } catch {
+        // ignore
+      }
+      notifyPendingChanged(true)
+      endBatchEmbedControl()
+      const failedProgress = lastBatchProgress.current
+      sendProgress(failedProgress?.progress ?? 0, failedProgress?.total ?? 0, '', {
+        running: false,
+        phase: failedProgress?.extras?.phase,
+        phases: failedProgress?.extras?.phases,
+        error: err.message
+      })
       throw err
     } finally {
       try {

@@ -95,7 +95,7 @@ export interface RagMemoryViewProps {
   onPageChange?: (page: number, pageSize: number) => void
   onExportEmbeddings?: () => Promise<void>
   onManageBackups?: () => Promise<void>
-  graphExtract?: { current: number; total: number; percent: number } | null
+  graphExtract?: { current: number; total: number; percent: number; statusText?: string } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
   suspectCount?: number

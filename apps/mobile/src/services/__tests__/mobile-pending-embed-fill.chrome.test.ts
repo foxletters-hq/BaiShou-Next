@@ -30,7 +30,7 @@ describe('mobile pending embed fill graph extract', () => {
       join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-graph-extract-queue.service.ts'),
       'utf8'
     )
-    expect(queueSrc).toContain('MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 4')
+    expect(queueSrc).toContain('MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30')
     expect(queueSrc).toContain('alignPoolSize: MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE')
   })
 

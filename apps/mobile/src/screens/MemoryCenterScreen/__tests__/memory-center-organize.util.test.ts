@@ -180,6 +180,9 @@ describe('memoryOrganizeCardKind', () => {
     expect(memoryOrganizeCardKind({ running: false, pendingCount: 4, interrupted: true })).toBe(
       'incomplete'
     )
+    expect(memoryOrganizeCardKind({ running: false, pendingCount: 0, hasError: true })).toBe(
+      'incomplete'
+    )
   })
 })
 

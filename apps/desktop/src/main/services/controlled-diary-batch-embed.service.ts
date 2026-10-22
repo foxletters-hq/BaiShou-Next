@@ -277,8 +277,9 @@ export async function runControlledDiaryBatchEmbed(
     loadSkipped += vaultResult.loadSkipped
     failed += vaultResult.failed
     if (vaultResult.lastError) lastError = vaultResult.lastError
-    if (embedded === 0 && failed >= 3) {
+    if (vaultResult.failed > 0) {
       stopAfterApiFailures = true
+      break
     }
   }
   throwIfBatchEmbedAborted()
@@ -358,12 +359,13 @@ async function embedVaultDiaries(
   let loadSkipped = 0
   let failed = 0
   let lastError: string | undefined
-  let consecutiveApiFails = 0
+  let abortAfterRetryExhausted = false
 
   await limitExecute(
     diariesToEmbed,
     ctx.batchConcurrency,
     async (meta) => {
+      if (abortAfterRetryExhausted) return
       if ((await checkpointBatchEmbed()) === 'aborted') return
       const dateLabel = new Date(meta.date).toLocaleDateString()
       const completed = ctx.getGlobalCompleted()
@@ -390,23 +392,33 @@ async function embedVaultDiaries(
         return
       }
 
+      let itemFailed = false
       try {
-        await deleteDiaryEmbeddingAliases(vaultId, diary.id)
-        await ctx.embeddingService.reEmbedText(
-          buildDesktopDiaryReEmbedArgs({
-            content: diary.content ?? '',
-            date: diary.date,
-            vaultId,
-            diaryId: diary.id,
-            updatedAt: diary.updatedAt ?? Date.now(),
-            skipIndexPrep: true
-          })
-        )
+        const maxRetries = 3
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            await deleteDiaryEmbeddingAliases(vaultId, diary.id)
+            await ctx.embeddingService.reEmbedText(
+              buildDesktopDiaryReEmbedArgs({
+                content: diary.content ?? '',
+                date: diary.date,
+                vaultId,
+                diaryId: diary.id,
+                updatedAt: diary.updatedAt ?? Date.now(),
+                skipIndexPrep: true
+              })
+            )
+            break
+          } catch (embedError) {
+            if (isBatchEmbedAbortRequested() || attempt >= maxRetries) {
+              throw embedError
+            }
+          }
+        }
         if (!diary.content?.trim()) {
           loadSkipped++
           return
         }
-        consecutiveApiFails = 0
         embedded++
         try {
           const { scheduleDiaryGraphAfterEmbed } =
@@ -420,17 +432,20 @@ async function embedVaultDiaries(
           logger.warn('[ControlledDiaryBatchEmbed] 向量完成后自动接抽图失败', followError as Error)
         }
       } catch (error) {
+        itemFailed = true
         failed++
-        consecutiveApiFails++
+        abortAfterRetryExhausted = true
         lastError = formatAiApiCallError(error)
-        logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入失败', {
+        logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入重试 3 次后仍失败，中止剩余队列', {
           vaultName,
           diaryId: meta.id,
           date: dateLabel,
           error
         })
       } finally {
-        ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+        if (!itemFailed) {
+          ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+        }
         ctx.options &&
           reportProgress(
             ctx.options,
@@ -445,11 +460,7 @@ async function embedVaultDiaries(
     },
     {
       shouldStop: () =>
-        isBatchEmbedAbortRequested() ||
-        Boolean(ctx.shouldStop?.()) ||
-        (ctx.getGlobalEmbedded() + embedded === 0 &&
-          ctx.getGlobalFailed() + failed >= 3 &&
-          consecutiveApiFails >= 3)
+        isBatchEmbedAbortRequested() || Boolean(ctx.shouldStop?.()) || abortAfterRetryExhausted
     }
   )
 

@@ -67,7 +67,8 @@ function useMemoryOrganizeUi(input: {
   const organizeCardKind = memoryOrganizeCardKind({
     running: organizing,
     pendingCount: input.organizeSnapshotReady ? pendingArticleCount : 0,
-    interrupted: isInterrupted
+    interrupted: isInterrupted,
+    hasError: Boolean(ragState.error)
   })
   const leftoverSnapshot = snapshotMemoryEmbedPhases(
     input.pendingEmbedParts,
@@ -80,7 +81,8 @@ function useMemoryOrganizeUi(input: {
           isRunning: false,
           type: 'idle',
           progress: 0,
-          total: leftoverSnapshot.total,
+          total: Math.max(leftoverSnapshot.total, 1),
+          error: ragState.error,
           // 未继续整理时不存在“正在跑”的阶段，统一按待整理展示
           phase: 'starting',
           phases: leftoverSnapshot.phases,
@@ -122,6 +124,7 @@ export function MemoryOrganizeProgressHost(props: {
     patchCachedMobileRagState({ paused: false, cancelling: false, isRunning: true })
   }, [services])
   const onCancel = useCallback(() => {
+    setDetailOpen(false)
     void dialog
       .confirm(
         t(
@@ -131,10 +134,19 @@ export function MemoryOrganizeProgressHost(props: {
         { title: t('common.warning', '警告') }
       )
       .then((ok) => {
-        if (!ok) return
+        if (!ok) {
+          setDetailOpen(true)
+          return
+        }
         void writeMemoryOrganizeInterrupted(true)
         services?.ragService.requestOperationAbort()
-        patchCachedMobileRagState({ cancelling: true, paused: false })
+        patchCachedMobileRagState({
+          isRunning: false,
+          type: 'idle',
+          cancelling: false,
+          paused: false,
+          statusText: t('memory.organize_incomplete', '整理未完成')
+        })
       })
   }, [dialog, services, t])
 

@@ -38,6 +38,8 @@ describe('RagMemoryOrganizeModal chrome', () => {
     expect(css).toMatch(/\.organizeDoneActions \{[^}]*justify-content: flex-end/s)
     expect(modal).toContain('onCollapseOrganize={leftover ? undefined : onClose}')
     expect(modal).toContain('running && !leftover && !embedRunning')
+    expect(modal).toContain('leftover && ragState.error')
+    expect(modal).toContain('styles.dangerAlert')
     expect(alerts).toContain('onCollapseOrganize')
     expect(alerts).toContain('memory.organize_collapse')
   })
