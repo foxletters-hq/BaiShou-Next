@@ -152,8 +152,16 @@ export class GraphRepository implements GraphRepositoryPort {
     return this.sync.applyRawNode(...args)
   }
 
+  applyRawNodesBatch(...args: Parameters<GraphSyncOps['applyRawNodesBatch']>) {
+    return this.sync.applyRawNodesBatch(...args)
+  }
+
   applyRawEdge(...args: Parameters<GraphSyncOps['applyRawEdge']>) {
     return this.sync.applyRawEdge(...args)
+  }
+
+  applyRawEdgesBatch(...args: Parameters<GraphSyncOps['applyRawEdgesBatch']>) {
+    return this.sync.applyRawEdgesBatch(...args)
   }
 
   searchNodesByVector(...args: Parameters<GraphEmbedOps['searchNodesByVector']>) {
@@ -182,6 +190,10 @@ export class GraphRepository implements GraphRepositoryPort {
 
   updateNodeEmbedding(...args: Parameters<GraphEmbedOps['updateNodeEmbedding']>) {
     return this.embed.updateNodeEmbedding(...args)
+  }
+
+  updateNodeEmbeddingsBatch(...args: Parameters<GraphEmbedOps['updateNodeEmbeddingsBatch']>) {
+    return this.embed.updateNodeEmbeddingsBatch(...args)
   }
 
   listPendingEdges(...args: Parameters<GraphReviewOps['listPendingEdges']>) {

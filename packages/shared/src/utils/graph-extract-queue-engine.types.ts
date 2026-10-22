@@ -16,6 +16,7 @@ export interface GraphExtractQueueItem {
   phase?: GraphExtractQueuePhase
   phaseDetail?: string
   error?: string
+  retryCount?: number
 }
 
 export type GraphExtractQueueSnapshot = {
@@ -29,6 +30,7 @@ export type GraphExtractQueueSnapshot = {
   overallProgress: number
   alignPoolSize: number
   alignPoolCount: number
+  lastError?: string
 }
 
 export function emptyGraphExtractQueueSnapshot(
@@ -44,7 +46,8 @@ export function emptyGraphExtractQueueSnapshot(
     errorCount: 0,
     overallProgress: 0,
     alignPoolSize,
-    alignPoolCount: 0
+    alignPoolCount: 0,
+    lastError: undefined
   }
 }
 
@@ -95,6 +98,10 @@ export type GraphExtractQueueEngineOptions = {
   progressThrottleMs?: number
   /** false = schedule the next job in the same turn (tests). */
   deferKick?: boolean
+  /** 单篇抽取或提交批次报错时的最大自动重试次数，默认 3 次。 */
+  maxRetries?: number
+  /** 自动重试间隔毫秒数，默认 0。 */
+  retryDelayMs?: number
 }
 
 export const DEFAULT_GRAPH_EXTRACT_QUEUE_MESSAGES: GraphExtractQueueMessages = {

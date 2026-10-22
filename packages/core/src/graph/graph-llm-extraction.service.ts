@@ -18,8 +18,8 @@ import {
   type GraphExtractQueueProgressUpdate
 } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
-import * as path from '../fs/path.util'
 import { md5Hex } from '../fs/md5'
+import { resolveGraphExtractDiaryPath } from '../journal/journal-files.util'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { DerivedFreshnessService } from '../raw-data/derived-freshness.service'
 import type { GraphPendingIndexSync } from '../raw-data/graph-sync.service'
@@ -67,14 +67,6 @@ export {
 
 function normalizeFilePath(filePath: string): string {
   return normalizeGraphFilePath(filePath)
-}
-
-function isPathInsideVault(vaultRoot: string, absolutePath: string): boolean {
-  const root = path.resolve(vaultRoot).replace(/\\/g, '/').replace(/\/+$/, '')
-  const abs = path.resolve(absolutePath).replace(/\\/g, '/')
-  const rootLower = root.toLowerCase()
-  const absLower = abs.toLowerCase()
-  return absLower === rootLower || absLower.startsWith(`${rootLower}/`)
 }
 
 /**
@@ -374,6 +366,7 @@ export class GraphLlmExtractionService {
     const touchedNodeIds: string[] = []
     const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
     const shardMonths = new Set<string>()
+    let anyRemovedFromShard = false
     const persistCtx = { repo: this.repo, graphManager: this.graphManager }
 
     for (const draft of drafts) {
@@ -382,6 +375,7 @@ export class GraphLlmExtractionService {
         const persisted = await persistGraphExtractDraft(persistCtx, draft, aligned, now)
         touchedNodeIds.push(...persisted.nodeIds)
         alignedEmbeddings.push(...persisted.embeddings)
+        if (persisted.removedFromShard) anyRemovedFromShard = true
         shardMonths.add(draft.shardMonth)
         results.push({ filePath: draft.filePath })
       } catch (e) {
@@ -404,7 +398,7 @@ export class GraphLlmExtractionService {
       precomputedNodeEmbeddings.set(item.id, { embedding: item.embedding, text: item.text })
     }
     await this.graphSync.syncPendingIndex({
-      absentSweep: 'shard-present',
+      absentSweep: anyRemovedFromShard ? 'shard-present' : 'off',
       precomputedNodeEmbeddings
     })
     logStage('sync-done')
@@ -445,21 +439,12 @@ export class GraphLlmExtractionService {
 
   private async resolveAbsolutePath(filePath: string): Promise<string> {
     const rel = normalizeFilePath(filePath)
-    if (!rel || rel.includes('\0') || rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) {
-      throw new Error(`Invalid diary path (must be vault-relative): ${filePath}`)
-    }
-    if (rel.split('/').some((seg) => seg === '..')) {
-      throw new Error(`Invalid diary path (path traversal): ${filePath}`)
-    }
-    const vault = await this.pathService.getActiveVaultPath()
-    if (!vault) throw new Error('No active vault')
-    const abs = path.resolve(vault, rel)
-    if (!isPathInsideVault(vault, abs)) {
-      throw new Error(`Diary path escapes vault: ${filePath}`)
-    }
-    if (!(await this.fs.exists(abs))) {
-      throw new Error(`Diary file not found: ${rel}`)
-    }
-    return abs
+    const dateStr = graphDiaryInstant(rel || filePath).dateStr
+    return resolveGraphExtractDiaryPath({
+      filePath,
+      pathService: this.pathService,
+      fs: this.fs,
+      dateStr
+    })
   }
 }

@@ -90,4 +90,37 @@ describe('backfillUnembeddedGraphNodes', () => {
     expect(isEmbedApiUnavailableError(new Error('other'))).toBe(false)
     expect(isEmbedApiUnavailableError('EMBED_API_UNAVAILABLE')).toBe(false)
   })
+
+  it('batches embedding requests, deduplicates identical card texts, and flushes DB updates in batch', async () => {
+    const batchTexts: string[][] = []
+    const dbBatches: Array<Array<{ id: string; embedding: number[] }>> = []
+    const result = await backfillUnembeddedGraphNodes({
+      vaultId: 'v1',
+      modelId: 'm1',
+      concurrency: 10,
+      listUnembeddedLiveNodes: async () => [
+        { id: 'n1', name: '甲', summary: '同事' },
+        { id: 'n2', name: '甲', summary: '同事' },
+        { id: 'n3', name: '乙', summary: '朋友' }
+      ],
+      updateNodeEmbedding: async () => {},
+      updateNodeEmbeddingsBatch: async (_vid, _modelId, items) => {
+        dbBatches.push(items)
+      },
+      embedQuery: async () => [9, 9],
+      embedBatch: async (texts) => {
+        batchTexts.push(texts)
+        return texts.map((_, idx) => [idx + 1, idx + 2])
+      }
+    })
+    expect(result).toEqual({ updated: 3, failed: 0, total: 3 })
+    expect(batchTexts).toHaveLength(1)
+    expect(batchTexts[0]).toHaveLength(2)
+    expect(dbBatches).toHaveLength(1)
+    expect(dbBatches[0]).toEqual([
+      { id: 'n1', embedding: [1, 2] },
+      { id: 'n2', embedding: [1, 2] },
+      { id: 'n3', embedding: [2, 3] }
+    ])
+  })
 })

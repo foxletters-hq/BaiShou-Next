@@ -36,10 +36,13 @@ export abstract class GraphExtractQueueEngineBase {
   protected readonly watchdogMs: number
   protected readonly progressThrottleMs: number
   protected readonly deferKick: boolean
+  protected readonly maxRetries: number
+  protected readonly retryDelayMs: number
   protected alignPool: GraphExtractQueuedDraft[] = []
   protected flushing = false
   protected flushAbort: AbortController | null = null
   protected flushGeneration = 0
+  protected lastError: string | undefined = undefined
   /** filePath → 取消时的正文哈希；空字符串表示拦截该路径直到用户手动再入队 */
   protected cancelledFollow = new Map<string, string>()
 
@@ -52,6 +55,8 @@ export abstract class GraphExtractQueueEngineBase {
     this.watchdogMs = options.watchdogMs ?? 2000
     this.progressThrottleMs = options.progressThrottleMs ?? 80
     this.deferKick = options.deferKick !== false
+    this.maxRetries = Math.max(0, options.maxRetries ?? 3)
+    this.retryDelayMs = Math.max(0, options.retryDelayMs ?? 0)
   }
 
   setConcurrency(value: unknown) {
@@ -103,6 +108,7 @@ export abstract class GraphExtractQueueEngineBase {
 
   stop() {
     this.stopped = true
+    this.lastError = undefined
     this.clearKick()
     this.clearWatchdog()
     this.clearCleanup()
@@ -119,6 +125,42 @@ export abstract class GraphExtractQueueEngineBase {
     for (const ac of this.taskAborts.values()) ac.abort()
     this.taskAborts.clear()
     this.queue = []
+    this.persistPending()
+    this.broadcast()
+  }
+
+  clearError() {
+    const hadError = this.lastError !== undefined || this.queue.some((q) => q.status === 'error')
+    this.lastError = undefined
+    this.queue = this.queue.filter((q) => q.status !== 'error')
+    if (hadError) {
+      this.broadcast()
+    }
+  }
+
+  protected haltOnFatalError(failedTaskIds: ReadonlySet<string>, errorMessage: string) {
+    this.lastError = errorMessage
+    this.stopped = true
+    this.clearKick()
+    this.clearWatchdog()
+    this.clearCleanup()
+    this.clearProgressTimer()
+    this.flushGeneration += 1
+    this.flushAbort?.abort()
+    this.flushAbort = null
+    this.flushing = false
+    this.alignPool = []
+    for (const item of this.queue) {
+      if (isGraphExtractBusyStatus(item.status)) {
+        this.rememberCancelledFollow(item)
+      }
+    }
+    for (const [id, ac] of this.taskAborts.entries()) {
+      if (!failedTaskIds.has(id)) {
+        ac.abort()
+      }
+    }
+    this.queue = this.queue.filter((q) => q.status === 'completed' || q.status === 'error')
     this.persistPending()
     this.broadcast()
   }
@@ -165,6 +207,10 @@ export abstract class GraphExtractQueueEngineBase {
   protected rememberCancelledFollow(item: GraphExtractQueueItem): void {
     const key = normalizeGraphFilePath(item.filePath) || item.id
     if (!key) return
+    if (!this.cancelledFollow.has(key) && this.cancelledFollow.size >= 10_000) {
+      const oldest = this.cancelledFollow.keys().next().value
+      if (oldest !== undefined) this.cancelledFollow.delete(oldest)
+    }
     this.cancelledFollow.set(key, String(item.contentHash || '').trim())
   }
 
@@ -177,7 +223,18 @@ export abstract class GraphExtractQueueEngineBase {
     }
     if (!opts.afterEmbed) {
       this.stopped = false
+      this.lastError = undefined
+      this.queue = this.queue.filter((q) => q.status !== 'error')
+    } else if (this.lastError !== undefined) {
+      // 已因重试耗尽报错中断时，不再接受后台自动接续入队，等待用户手动重试清理报错。
+      return 0
     }
+
+    const indexById = new Map<string, number>()
+    for (let i = 0; i < this.queue.length; i++) {
+      indexById.set(this.queue[i]!.id, i)
+    }
+    const replacedIndices = new Set<number>()
 
     let added = 0
     for (const item of items) {
@@ -195,11 +252,13 @@ export abstract class GraphExtractQueueEngineBase {
       ) {
         continue
       }
-      const existing = this.queue.find((q) => q.id === filePath)
-      if (existing) {
-        if (isGraphExtractBusyStatus(existing.status)) continue
-        this.queue = this.queue.filter((q) => q.id !== filePath)
+      const existingIdx = indexById.get(filePath)
+      if (existingIdx !== undefined) {
+        const existing = this.queue[existingIdx]
+        if (existing && isGraphExtractBusyStatus(existing.status)) continue
+        replacedIndices.add(existingIdx)
       }
+      const newIdx = this.queue.length
       this.queue.push({
         id: filePath,
         filePath,
@@ -209,7 +268,12 @@ export abstract class GraphExtractQueueEngineBase {
         status: 'pending',
         phase: 'queued'
       })
+      indexById.set(filePath, newIdx)
       added++
+    }
+
+    if (replacedIndices.size > 0) {
+      this.queue = this.queue.filter((_, idx) => !replacedIndices.has(idx))
     }
 
     if (added > 0) {
@@ -242,7 +306,8 @@ export abstract class GraphExtractQueueEngineBase {
       errorCount: items.filter((i) => i.status === 'error').length,
       overallProgress: graphExtractOverallProgress(items),
       alignPoolSize: this.alignPoolSize,
-      alignPoolCount: this.alignPool.length
+      alignPoolCount: this.alignPool.length,
+      lastError: this.lastError
     }
   }
 

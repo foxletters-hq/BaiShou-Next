@@ -4,13 +4,13 @@ import { normalizeGraphFilePath, normalizeGraphName } from './graph-identity.uti
 /** 笔记本单窗抽图墙钟上限。首个 token 之后模型仍可能挂死，不能只靠首字超时。 */
 export const GRAPH_EXTRACT_WINDOW_TIMEOUT_MS = 10 * 60_000
 
-/** 图谱抽取 LLM 并发：用户可选，默认 5，上限 10。 */
+/** 图谱抽取 LLM 并发：用户可选，默认 10，上限 20。 */
 export const GRAPH_EXTRACT_CONCURRENCY_MIN = 1
-export const GRAPH_EXTRACT_CONCURRENCY_MAX = 10
-export const GRAPH_EXTRACT_CONCURRENCY_DEFAULT = 5
+export const GRAPH_EXTRACT_CONCURRENCY_MAX = 20
+export const GRAPH_EXTRACT_CONCURRENCY_DEFAULT = 10
 
 /** 攒满这么多篇草稿（或本批抽完）再做一次模型对齐并落盘。 */
-export const GRAPH_EXTRACT_ALIGN_POOL_SIZE = 10
+export const GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30
 
 export const GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY = 'baishou.graph.extractConcurrency.v1'
 
@@ -108,8 +108,8 @@ export type GraphExtractPhaseCopy = {
 }
 
 export function graphExtractItemProgress(item: { status?: string; progress?: number }): number {
-  if (item.status === 'completed' || item.status === 'error') return 100
-  if (item.status === 'pending') return 0
+  if (item.status === 'completed') return 100
+  if (item.status === 'error' || item.status === 'pending') return 0
   const n = Math.round(Number(item.progress) || 0)
   return Math.max(0, Math.min(100, n))
 }
@@ -119,8 +119,8 @@ export function graphExtractBarPercent(item: {
   progress?: number
   phase?: GraphExtractQueuePhase
 }): number {
-  if (item.status === 'completed' || item.status === 'error') return 100
-  if (item.status === 'pending' || item.phase === 'queued') return 0
+  if (item.status === 'completed') return 100
+  if (item.status === 'error' || item.status === 'pending' || item.phase === 'queued') return 0
   if (item.phase) return graphExtractPhaseProgress(item.phase)
   if (item.status === 'running') return graphExtractPhaseProgress('model')
   if (item.status === 'aligning') return graphExtractPhaseProgress('waiting_pool')

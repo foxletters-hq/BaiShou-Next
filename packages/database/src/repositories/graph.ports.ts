@@ -132,27 +132,55 @@ export interface GraphReview {
 /** pending-index apply + orphan sweep. */
 export interface GraphSyncApply {
   getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
-  applyRawNode(row: {
-    id: string
-    vaultId: string
-    nodeType: string
-    name: string
-    discriminator?: string
-    aliases: string[]
-    summary: string
-    props: Record<string, unknown>
-    mentionCount: number
-    firstSeenAt: number
-    lastSeenAt: number
-    origin: 'ai' | 'user'
-    createdAt: number
-    updatedAt: number
-    deletedAt: number | null
-    reviewStatus?: 'approved' | 'pending' | 'rejected'
-    shardMonth?: string
-    embedding?: number[] | null
-    modelId?: string
-  }): Promise<import('./graph.repository.types').ApplyRawNodeResult | void>
+  getNodesByIds?(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
+  applyRawNode(
+    row: {
+      id: string
+      vaultId: string
+      nodeType: string
+      name: string
+      discriminator?: string
+      aliases: string[]
+      summary: string
+      props: Record<string, unknown>
+      mentionCount: number
+      firstSeenAt: number
+      lastSeenAt: number
+      origin: 'ai' | 'user'
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+      reviewStatus?: 'approved' | 'pending' | 'rejected'
+      shardMonth?: string
+      embedding?: number[] | null
+      modelId?: string
+    },
+    existingByIdOption?: GraphNodeRow | null
+  ): Promise<import('./graph.repository.types').ApplyRawNodeResult | void>
+  applyRawNodesBatch?(
+    rows: Array<{
+      id: string
+      vaultId: string
+      nodeType: string
+      name: string
+      discriminator?: string
+      aliases: string[]
+      summary: string
+      props: Record<string, unknown>
+      mentionCount: number
+      firstSeenAt: number
+      lastSeenAt: number
+      origin: 'ai' | 'user'
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+      reviewStatus?: 'approved' | 'pending' | 'rejected'
+      shardMonth?: string
+      embedding?: number[] | null
+      modelId?: string
+      existingById?: GraphNodeRow | null
+    }>
+  ): Promise<Array<import('./graph.repository.types').ApplyRawNodeResult>>
   applyRawEdge(row: {
     id: string
     vaultId: string
@@ -175,6 +203,30 @@ export interface GraphSyncApply {
     updatedAt: number
     deletedAt: number | null
   }): Promise<void>
+  applyRawEdgesBatch?(
+    rows: Array<{
+      id: string
+      vaultId: string
+      fromId: string
+      toId: string
+      edgeType: string
+      props: Record<string, unknown>
+      validFrom: number | null
+      validTo: number | null
+      isCurrent: boolean
+      sourceKind: string
+      sourceRef: string | null
+      sourceExcerpt: string
+      sourceContentHash: string | null
+      confidence: number
+      origin: 'ai' | 'user'
+      reviewStatus: 'approved' | 'pending' | 'rejected'
+      shardMonth: string
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+    }>
+  ): Promise<void>
   softDeleteNode(id: string): Promise<void>
   softDeleteEdge(id: string): Promise<void>
   listNodeIds(vaultId: string): Promise<string[]>
@@ -196,4 +248,9 @@ export interface GraphExtractStore extends GraphNodeLookup {
 }
 
 export interface GraphRepositoryPort
-  extends GraphQuery, GraphWrite, GraphReview, GraphSyncApply, GraphExtractStore {}
+  extends
+    GraphQuery,
+    GraphWrite,
+    GraphReview,
+    Omit<GraphSyncApply, 'getNodesByIds'>,
+    GraphExtractStore {}

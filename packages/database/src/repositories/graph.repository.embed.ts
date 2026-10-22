@@ -1,9 +1,9 @@
-import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT } from '@baishou/shared'
 import { isMissingSqliteFunctionError } from '../utils/sqlite-function-error.util'
 import { graphNodesTable } from '../schema/graph'
 import type { AppDatabase } from '../types'
-import { cosineDistance, mapNode, serializeVector } from './graph.repository.shared'
+import { chunkIds, cosineDistance, mapNode, serializeVector } from './graph.repository.shared'
 import type { GraphNodeRow } from './graph.repository.types'
 
 export class GraphEmbedOps {
@@ -210,5 +210,32 @@ export class GraphEmbedOps {
         updatedAt: new Date()
       })
       .where(and(eq(graphNodesTable.id, id), eq(graphNodesTable.vaultId, vaultId)))
+  }
+
+  async updateNodeEmbeddingsBatch(
+    vaultId: string,
+    modelId: string,
+    items: Array<{ id: string; embedding: number[] }>
+  ): Promise<void> {
+    const valid = items.filter((item) => item.id && item.embedding?.length > 0)
+    if (valid.length === 0) return
+    const now = new Date()
+    for (const part of chunkIds(valid, 40)) {
+      if (part.length === 0) continue
+      const embCases = part.map(
+        (item) => sql`WHEN ${item.id} THEN ${serializeVector(item.embedding)}`
+      )
+      const dimCases = part.map((item) => sql`WHEN ${item.id} THEN ${item.embedding.length}`)
+      const ids = part.map((item) => item.id)
+      await this.database
+        .update(graphNodesTable)
+        .set({
+          embedding: sql`CASE id ${sql.join(embCases, sql` `)} ELSE ${graphNodesTable.embedding} END`,
+          dimension: sql`CASE id ${sql.join(dimCases, sql` `)} ELSE ${graphNodesTable.dimension} END`,
+          modelId,
+          updatedAt: now
+        })
+        .where(and(eq(graphNodesTable.vaultId, vaultId), inArray(graphNodesTable.id, ids)))
+    }
   }
 }

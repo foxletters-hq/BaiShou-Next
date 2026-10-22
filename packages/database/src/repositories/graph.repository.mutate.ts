@@ -89,7 +89,10 @@ export class GraphMutateOps {
 
     const aliases = mergeAliases([], input.aliases ?? [name])
     const embeddingBuf = input.embedding?.length ? serializeVector(input.embedding) : null
-    const existingById = await this.lookup.getNodeById(id, input.vaultId)
+    const existingById =
+      input.existingById !== undefined
+        ? input.existingById
+        : await this.lookup.getNodeById(id, input.vaultId)
     const origin = preferGraphOrigin(existingById?.origin, input.origin)
     const values = {
       id,
@@ -147,6 +150,117 @@ export class GraphMutateOps {
       })
     await this.replaceAliases(input.vaultId, id, aliases)
     return id
+  }
+
+  /**
+   * Batch upsert forceId nodes + aliases in a few multi-row SQL statements.
+   * Caller may fall back to single-row upsertNode if a unique constraint conflict occurs.
+   */
+  async upsertNodesBatch(inputs: UpsertNodeInput[]): Promise<void> {
+    if (inputs.length === 0) return
+    const now = Date.now()
+    for (const part of chunkIds(inputs, 35)) {
+      if (part.length === 0) continue
+      const nodeValues: Array<typeof graphNodesTable.$inferInsert> = []
+      const nodeIds: string[] = []
+      const aliasRowsToInsert: Array<{
+        id: string
+        vaultId: string
+        nodeId: string
+        aliasNormalized: string
+      }> = []
+
+      for (const input of part) {
+        const name = input.name.trim().replace(/\s+/g, ' ')
+        const nameNormalized = normalizeGraphName(name)
+        const discriminator = normalizeGraphDiscriminator(input.discriminator)
+        const updatedAt = input.updatedAt ?? now
+        const createdAt = input.createdAt ?? now
+        const id =
+          input.id ?? graphNodeIdForEntity(input.vaultId, input.nodeType, name, discriminator)
+        const aliases = mergeAliases([], input.aliases ?? [name])
+        const embeddingBuf = input.embedding?.length ? serializeVector(input.embedding) : null
+        const origin = preferGraphOrigin(input.existingById?.origin, input.origin)
+
+        nodeIds.push(id)
+        nodeValues.push({
+          id,
+          vaultId: input.vaultId,
+          nodeType: input.nodeType,
+          name,
+          nameNormalized,
+          discriminator,
+          aliases: JSON.stringify(aliases),
+          summary: input.summary ?? '',
+          propsJson: input.propsJson ?? '{}',
+          embedding: embeddingBuf,
+          dimension: input.embedding?.length ?? null,
+          modelId: input.modelId ?? '',
+          mentionCount: input.mentionCount ?? 1,
+          firstSeenAt:
+            input.firstSeenAt != null ? new Date(input.firstSeenAt) : new Date(createdAt),
+          lastSeenAt: input.lastSeenAt != null ? new Date(input.lastSeenAt) : new Date(updatedAt),
+          origin,
+          shardMonth: input.shardMonth ?? '',
+          reviewStatus: input.reviewStatus ?? 'approved',
+          createdAt: new Date(createdAt),
+          updatedAt: new Date(updatedAt),
+          deletedAt: input.deletedAt != null ? new Date(input.deletedAt) : null
+        })
+
+        const seenNorm = new Set<string>()
+        for (const a of aliases) {
+          const norm = normalizeGraphName(a)
+          if (!norm || seenNorm.has(norm)) continue
+          seenNorm.add(norm)
+          const aliasId =
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `a_${id}_${norm}`
+          aliasRowsToInsert.push({
+            id: aliasId,
+            vaultId: input.vaultId,
+            nodeId: id,
+            aliasNormalized: norm
+          })
+        }
+      }
+
+      await this.database
+        .insert(graphNodesTable)
+        .values(nodeValues)
+        .onConflictDoUpdate({
+          target: [graphNodesTable.id],
+          set: {
+            name: sql`excluded.name`,
+            nameNormalized: sql`excluded.name_normalized`,
+            discriminator: sql`excluded.discriminator`,
+            aliases: sql`excluded.aliases`,
+            summary: sql`excluded.summary`,
+            propsJson: sql`excluded.props_json`,
+            mentionCount: sql`excluded.mention_count`,
+            lastSeenAt: sql`excluded.last_seen_at`,
+            origin: sql`excluded.origin`,
+            shardMonth: sql`excluded.shard_month`,
+            reviewStatus: sql`excluded.review_status`,
+            updatedAt: sql`excluded.updated_at`,
+            deletedAt: sql`excluded.deleted_at`,
+            embedding: sql`COALESCE(excluded.embedding, ${graphNodesTable.embedding})`,
+            dimension: sql`COALESCE(excluded.dimension, ${graphNodesTable.dimension})`,
+            modelId: sql`CASE WHEN excluded.embedding IS NOT NULL THEN excluded.model_id ELSE ${graphNodesTable.modelId} END`
+          }
+        })
+
+      await this.database
+        .delete(graphNodeAliasesTable)
+        .where(inArray(graphNodeAliasesTable.nodeId, nodeIds))
+
+      for (const aliasChunk of chunkIds(aliasRowsToInsert, 120)) {
+        if (aliasChunk.length > 0) {
+          await this.database.insert(graphNodeAliasesTable).values(aliasChunk)
+        }
+      }
+    }
   }
 
   private async touchNode(
@@ -240,6 +354,71 @@ export class GraphMutateOps {
         }
       })
     return input.id
+  }
+
+  async upsertEdgesBatch(inputs: UpsertEdgeInput[]): Promise<void> {
+    if (inputs.length === 0) return
+    const now = Date.now()
+    for (const part of chunkIds(inputs, 40)) {
+      if (part.length === 0) continue
+      const edgeValues = part.map((input) => {
+        const createdAt = input.createdAt ?? now
+        const updatedAt = input.updatedAt ?? now
+        const review = normalizeGraphEdgeReviewFields({
+          confidence: input.confidence,
+          reviewStatus: input.reviewStatus,
+          fallbackConfidence: 100
+        })
+        return {
+          id: input.id,
+          vaultId: input.vaultId,
+          fromId: input.fromId,
+          toId: input.toId,
+          edgeType: input.edgeType,
+          propsJson: input.propsJson ?? '{}',
+          validFrom: input.validFrom != null ? new Date(input.validFrom) : null,
+          validTo: input.validTo != null ? new Date(input.validTo) : null,
+          isCurrent: input.isCurrent ?? true,
+          sourceKind: input.sourceKind ?? 'manual',
+          sourceRef: input.sourceRef ?? null,
+          sourceExcerpt: input.sourceExcerpt ?? '',
+          sourceContentHash: input.sourceContentHash ?? null,
+          confidence: review.confidence,
+          origin: input.origin ?? 'ai',
+          reviewStatus: review.reviewStatus,
+          shardMonth: input.shardMonth,
+          createdAt: new Date(createdAt),
+          updatedAt: new Date(updatedAt),
+          deletedAt: input.deletedAt != null ? new Date(input.deletedAt) : null
+        }
+      })
+
+      await this.database
+        .insert(graphEdgesTable)
+        .values(edgeValues)
+        .onConflictDoUpdate({
+          target: [graphEdgesTable.id],
+          set: {
+            fromId: sql`excluded.from_id`,
+            toId: sql`excluded.to_id`,
+            edgeType: sql`excluded.edge_type`,
+            propsJson: sql`excluded.props_json`,
+            validFrom: sql`excluded.valid_from`,
+            validTo: sql`excluded.valid_to`,
+            isCurrent: sql`excluded.is_current`,
+            sourceKind: sql`excluded.source_kind`,
+            sourceRef: sql`excluded.source_ref`,
+            sourceExcerpt: sql`excluded.source_excerpt`,
+            sourceContentHash: sql`excluded.source_content_hash`,
+            confidence: sql`excluded.confidence`,
+            origin: sql`excluded.origin`,
+            reviewStatus: sql`excluded.review_status`,
+            shardMonth: sql`excluded.shard_month`,
+            updatedAt: sql`excluded.updated_at`,
+            deletedAt: sql`excluded.deleted_at`
+          }
+        })
+    }
   }
 
   async supersedeEdge(edgeId: string, validTo: number): Promise<void> {
