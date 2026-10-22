@@ -1,5 +1,0 @@
----
-alwaysApply: true
----
-
-长期指令只认 `docs/1-AI-Code/3-AI-Prompt.md`。打开并遵守那份文件。不要在本文件或其他 IDE 配置里再抄一份项目规则。
