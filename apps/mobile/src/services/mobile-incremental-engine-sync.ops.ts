@@ -305,6 +305,9 @@ export async function runSyncThreeWay(
           break
         case 'download':
           if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+            if (isMonthlyJsonlRawPath(d.filePath)) {
+              await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+            }
             downloaded++
             downloadedPaths.push(d.filePath)
             mutated = true
@@ -341,6 +344,9 @@ export async function runSyncThreeWay(
             overwriteDownload: async () => {
               await worker.backupLocalFile(syncRoot, d.filePath)
               if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+                if (isMonthlyJsonlRawPath(d.filePath)) {
+                  await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+                }
                 downloaded++
                 downloadedPaths.push(d.filePath)
               }
@@ -349,6 +355,7 @@ export async function runSyncThreeWay(
           if (outcome === 'merged') {
             uploaded++
             uploadedPaths.push(d.filePath)
+            downloadedPaths.push(d.filePath)
           }
           mutated = true
           break

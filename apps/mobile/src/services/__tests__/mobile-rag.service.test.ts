@@ -32,6 +32,7 @@ vi.mock('../mobile-pending-embed-counts', () => ({
     graphExtract: 0,
     graphDisambiguate: 0
   }),
+  clearMobileOrganizePendingSnapshot: vi.fn(),
   invalidateMobilePendingEmbedCountsCache: vi.fn(),
   notifyMobilePendingEmbedCountsChanged: vi.fn()
 }))
@@ -392,5 +393,59 @@ describe('createMobileRagService.reembedAll', () => {
 
     expect(scheduleSpy).not.toHaveBeenCalled()
     scheduleSpy.mockRestore()
+  })
+
+  it('returns vaultTotalCount combining memory_embeddings and graph_nodes and supports UNION ALL pagination in queryEntries', async () => {
+    const execute = vi.fn(async ({ sql }: { sql: string; args?: unknown[] }) => {
+      if (sql.includes("group_id LIKE 'diary:%'")) {
+        return { rows: [{ count: 52 }] }
+      }
+      if (sql.includes('UNION ALL')) {
+        return {
+          rows: [
+            { kind: 'graph', row_id: 'node-1', sort_ts: 2000 },
+            { kind: 'mem', row_id: 'emb-1', sort_ts: 1000 }
+          ]
+        }
+      }
+      if (sql.includes('WHERE embedding_id IN')) {
+        return {
+          rows: [
+            {
+              embedding_id: 'emb-1',
+              chunk_text: '[2026-03-14 日记:]\n老日记片段',
+              model_id: 'embed-model',
+              created_at: 1000,
+              source_created_at: 1000,
+              source_type: 'diary',
+              source_id: 'Personal#25',
+              metadata_json: '{}'
+            }
+          ]
+        }
+      }
+      if (sql.includes('WHERE vault_id = ?')) {
+        return { rows: [{ count: 52 }] }
+      }
+      return { rows: [{ count: 52 }] }
+    })
+
+    const deps = createDeps({
+      rawSqlClient: { execute } as never
+    })
+    const service = createMobileRagService(deps)
+    const stats = await service.getStats()
+
+    expect(stats.diaryCountForVault).toBe(52)
+    expect(stats.vaultTotalCount).toBe(52)
+
+    const page = await service.queryEntries({
+      limit: 10,
+      offset: 0,
+      mode: 'text',
+      withTotal: true,
+      sourceKind: 'all'
+    })
+    expect(page.total).toBe(52)
   })
 })

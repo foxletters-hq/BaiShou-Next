@@ -76,8 +76,23 @@ export async function countDiaryEmbeddingsForVault(
   if (!rawClient?.execute) return 0
   const result = await rawClient.execute({
     sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}
-          WHERE source_type = 'diary' AND group_id = ? AND vault_id = ?`,
+          WHERE source_type = 'diary'
+            AND (group_id = ? OR group_id LIKE 'diary:%')
+            AND vault_id = ?`,
     args: [DIARY_EMBED_GROUP_ID, vaultId]
+  })
+  const row = result.rows?.[0] as Record<string, number> | undefined
+  return Number(row?.count ?? 0)
+}
+
+export async function countAllMemoryEmbeddingsForVault(
+  rawClient: RawSqlClient | undefined,
+  vaultId: string
+): Promise<number> {
+  if (!rawClient?.execute || !vaultId.trim()) return 0
+  const result = await rawClient.execute({
+    sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE vault_id = ?`,
+    args: [vaultId]
   })
   const row = result.rows?.[0] as Record<string, number> | undefined
   return Number(row?.count ?? 0)

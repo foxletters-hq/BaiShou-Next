@@ -247,6 +247,22 @@ export async function migrateAgentDbVaultNameToVaultId(
   }
 
   const diarySourceIdsRewritten = await rewriteDiaryEmbeddingSourceIdPrefixes(exec, map)
+  if (await tableExists(exec, 'memory_embeddings')) {
+    await exec(`
+      UPDATE memory_embeddings
+      SET group_id = 'diary'
+      WHERE source_type = 'diary'
+        AND group_id LIKE 'diary:%'
+        AND vault_id IS NOT NULL AND vault_id != ''
+    `)
+    await exec(`
+      UPDATE memory_embeddings
+      SET group_id = 'memory'
+      WHERE source_type = 'memory'
+        AND group_id LIKE 'memory:%'
+        AND vault_id IS NOT NULL AND vault_id != ''
+    `)
+  }
   await refreshVaultIndexes(exec)
 
   return {

@@ -3,8 +3,15 @@ import type { DerivedFreshnessService } from './derived-freshness.service'
 import type { GraphRawManager } from './managers/graph.raw-manager'
 import type { GraphExtractStateRawRecord } from './raw-data-source.types'
 
+const JOURNAL_DATE_IN_PATH = /(?:^|\/)(\d{4}-\d{2}-\d{2})\.md$/i
+
 function normalizeFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\/+/, '')
+}
+
+function extractJournalDateFromPath(filePath: string): string | null {
+  const m = JOURNAL_DATE_IN_PATH.exec(normalizeFilePath(filePath))
+  return m?.[1] ?? null
 }
 
 /**
@@ -23,16 +30,34 @@ export function bindPendingReextractCollaborators(options: {
     loadExtractHashes: async () => {
       const rows = await graphManager.readAllCollapsedExtractStates()
       const byPath = new Map<string, GraphExtractStateRawRecord>()
+      const byDate = new Map<string, GraphExtractStateRawRecord>()
       for (const row of rows) {
         const key = normalizeFilePath(row.filePath)
         const existing = byPath.get(key)
         if (!existing || (row.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) {
           byPath.set(key, row)
         }
+        const dateKey = extractJournalDateFromPath(key)
+        if (dateKey) {
+          const existingByDate = byDate.get(dateKey)
+          if (!existingByDate || (row.updatedAt ?? 0) >= (existingByDate.updatedAt ?? 0)) {
+            byDate.set(dateKey, row)
+          }
+        }
       }
       const out = new Map<string, string>()
       for (const [key, row] of byPath) {
-        out.set(key, row.sourceContentHash)
+        const dateKey = extractJournalDateFromPath(key)
+        const dateWinner = dateKey ? byDate.get(dateKey) : undefined
+        out.set(key, (dateWinner ?? row).sourceContentHash)
+      }
+      for (const [date, row] of byDate) {
+        const hash = row.sourceContentHash
+        out.set(`date:${date}`, hash)
+        const canonical = `Journals/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`
+        if (!out.has(canonical)) out.set(canonical, hash)
+        const flat = `Journals/${date}.md`
+        if (!out.has(flat)) out.set(flat, hash)
       }
       return out
     },

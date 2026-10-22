@@ -2,7 +2,11 @@ import i18n from 'i18next'
 import { logger, type MemoryClearKind, type RagVectorKindFilter } from '@baishou/shared'
 import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
 import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
-import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
+import {
+  countAllMemoryEmbeddingsForVault,
+  countDiaryEmbeddingsForVault
+} from './mobile-diary-embedding.util'
+import { countEmbeddedGraphEntries } from './mobile-rag-vector-kind.helpers'
 import {
   chainRagProgressCallback,
   resolveEmbeddingAdapter,
@@ -68,6 +72,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       totalCount: number
       currentDimension: number
       diaryCountForVault: number
+      vaultTotalCount: number
       activeVaultName: string
     }> {
       const vaultScope = await resolveVaultScope(deps)
@@ -93,7 +98,14 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         totalCount = ragConfig.totalEmbeddings || 0
       }
 
-      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultId)
+      const [diaryCountForVault, vaultMemoryCount, vaultGraphCount] = await Promise.all([
+        countDiaryEmbeddingsForVault(rawClient, activeVaultId),
+        countAllMemoryEmbeddingsForVault(rawClient, activeVaultId),
+        countEmbeddedGraphEntries(activeVaultId)
+      ])
+      const rawVaultTotal = vaultMemoryCount + vaultGraphCount
+      const vaultTotalCount =
+        rawVaultTotal > 0 ? rawVaultTotal : diaryCountForVault > 0 ? diaryCountForVault : 0
 
       let currentDimension = globalModels.globalEmbeddingDimension || 0
       try {
@@ -105,7 +117,13 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         logger.warn('[MobileRag] getCurrentEmbeddingMeta failed', e as Error)
       }
 
-      return { totalCount, currentDimension, diaryCountForVault, activeVaultName }
+      return {
+        totalCount,
+        currentDimension,
+        diaryCountForVault,
+        vaultTotalCount,
+        activeVaultName
+      }
     },
 
     async hasModelMismatch(): Promise<boolean> {

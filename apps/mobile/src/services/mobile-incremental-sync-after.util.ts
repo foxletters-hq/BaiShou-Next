@@ -150,8 +150,15 @@ export async function runMobileIncrementalAfterSync(
 
     if (cls.memory || cls.graph) {
       try {
-        const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =
-          await import('./mobile-raw-data-source.runtime')
+        const {
+          ensureMobileRawDataRuntime,
+          runMobileDerivedIndexHydration,
+          resolveMobileEmbeddingForHydration
+        } = await import('./mobile-raw-data-source.runtime')
+        ensureMobileRawDataRuntime({
+          pathService: deps.pathService,
+          fileSystem: deps.fileSystem
+        })
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
         const pathServiceWithVault = deps.pathService as unknown as {
@@ -237,9 +244,16 @@ export async function runMobileIncrementalAfterSync(
       }
     }
 
-    const { invalidateMobilePendingEmbedCountsCache } =
-      await import('./mobile-pending-embed-counts')
+    const {
+      clearMobileOrganizePendingSnapshot,
+      invalidateMobilePendingEmbedCountsCache,
+      notifyMobilePendingEmbedCountsChanged
+    } = await import('./mobile-pending-embed-counts')
+    clearMobileOrganizePendingSnapshot()
     invalidateMobilePendingEmbedCountsCache()
+    notifyMobilePendingEmbedCountsChanged()
+    const { notifyGraphDataChanged } = await import('./mobile-graph-data-changed')
+    notifyGraphDataChanged()
     deps.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
     console.warn('[IncrementalSync][PostSync] done', {
       checkpointRefreshCount: checkpointRefreshPaths.length

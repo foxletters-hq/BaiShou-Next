@@ -1,5 +1,5 @@
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import { and, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, eq, inArray, like, or, sql } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingSourceId,
   DIARY_EMBED_GROUP_ID,
@@ -88,10 +88,23 @@ export async function countDiaryEmbeddingsForVault(vaultId: string): Promise<num
     .where(
       and(
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+        or(
+          eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+          like(memoryEmbeddingsTable.groupId, 'diary:%')
+        ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
     )
+  return Number(rows[0]?.count ?? 0)
+}
+
+export async function countAllMemoryEmbeddingsForVault(vaultId: string): Promise<number> {
+  if (!vaultId.trim()) return 0
+  const db = getAppDb()
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(memoryEmbeddingsTable)
+    .where(eq(memoryEmbeddingsTable.vaultId, vaultId))
   return Number(rows[0]?.count ?? 0)
 }
 
@@ -127,7 +140,10 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
     .where(
       and(
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+        or(
+          eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+          like(memoryEmbeddingsTable.groupId, 'diary:%')
+        ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
     )

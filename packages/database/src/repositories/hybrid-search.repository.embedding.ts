@@ -275,8 +275,13 @@ export class HybridSearchEmbeddingStore {
     const conditions = ['source_type = ?']
     const args: (string | number)[] = [sourceType]
     if (options?.groupId) {
-      conditions.push('group_id = ?')
-      args.push(options.groupId)
+      if (options.groupId === 'diary' || options.groupId === 'memory') {
+        conditions.push(`(group_id = ? OR group_id LIKE ?)`)
+        args.push(options.groupId, `${options.groupId}:%`)
+      } else {
+        conditions.push('group_id = ?')
+        args.push(options.groupId)
+      }
     }
     if (options?.vaultId) {
       conditions.push('vault_id = ?')

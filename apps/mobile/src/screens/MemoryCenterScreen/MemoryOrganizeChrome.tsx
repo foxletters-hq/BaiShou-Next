@@ -9,6 +9,7 @@ import {
   patchCachedMobileRagState,
   subscribeMobileRagRuntime
 } from '@/src/services/mobile-rag-runtime-cache'
+import { notifyMobilePendingEmbedCountsChanged } from '@/src/services/mobile-pending-embed-counts'
 import { MemoryOrganizeDetailModal } from './MemoryOrganizeDetailModal'
 import { MemoryOrganizeFab } from './MemoryOrganizeFab'
 import { MemoryOrganizeProgressCard } from './MemoryOrganizeProgressCard'
@@ -118,6 +119,7 @@ export function MemoryOrganizeProgressHost(props: {
     void writeMemoryOrganizeInterrupted(true)
     services?.ragService.requestOperationPause()
     patchCachedMobileRagState({ paused: true, cancelling: false, isRunning: true })
+    notifyMobilePendingEmbedCountsChanged()
   }, [services])
   const onResume = useCallback(() => {
     services?.ragService.requestOperationResume()
@@ -181,6 +183,17 @@ export function MemoryOrganizeProgressHost(props: {
       ) : null}
     </>
   )
+}
+
+export function MemoryOnboardingHost(props: {
+  pendingEmbedParts: OrganizePendingParts
+  pendingGraphCount: number
+  organizeSnapshotReady: boolean
+  children: React.ReactNode
+}) {
+  const { organizeCardKind } = useMemoryOrganizeUi(props)
+  if (organizeCardKind !== 'hidden' || !props.children) return null
+  return <>{props.children}</>
 }
 
 export function MemoryOrganizeFabHost(props: {

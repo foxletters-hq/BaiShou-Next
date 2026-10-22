@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import { eq, sql, and } from 'drizzle-orm'
+import { eq, like, or, sql, and } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
@@ -77,7 +77,10 @@ async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
     .where(
       and(
         eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+        or(
+          eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+          like(memoryEmbeddingsTable.groupId, 'diary:%')
+        ),
         eq(memoryEmbeddingsTable.vaultId, vaultId)
       )
     )
