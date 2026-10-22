@@ -14,7 +14,12 @@ type ServerEvents = {
   onLanUploadProgress: (event: { writtenBytes: number; totalBytes: number }) => void
   onLanUploadFailed: (event: { reason: string }) => void
   onLanSendProgress: (event: { writtenBytes: number; totalBytes: number }) => void
-  onHttpServerPortChanged: (event: { port: number; requestedPort?: number }) => void
+  onHttpServerPortChanged: (event: {
+    port: number
+    requestedPort?: number
+    /** 新原生模块会区分 MCP / LAN；旧版 APK 不返回此字段 */
+    server?: 'mcp' | 'lan'
+  }) => void
   onStorageRootCopyProgress: (event: { itemName: string }) => void
   onArchiveImportProgress: (event: {
     phase: string
@@ -84,6 +89,10 @@ export declare class ExpoBaishouServerModule extends NativeModule<ServerEvents> 
   startServer(port: number, authToken?: string | null): number
   getServerPort(): number
   stopServer(): void
+  startLanServer(port: number): number
+  getLanServerPort(): number
+  stopLanServer(): void
+  hasIndependentLanServer(): boolean
   resolveMcpHttpResponse(requestId: string, responseBody: string): boolean
   beginMcpHttpStream(requestId: string, responseBody: string): boolean
   pushMcpHttpStreamChunk(requestId: string, chunk: string): boolean

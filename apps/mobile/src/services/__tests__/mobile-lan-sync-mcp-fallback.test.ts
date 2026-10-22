@@ -6,6 +6,10 @@ const server = vi.hoisted(() => ({
   startMcpServer: vi.fn(() => 45678),
   getServerPort: vi.fn(() => 0),
   stopServer: vi.fn(),
+  startLanServer: vi.fn(() => 46000),
+  getLanServerPort: vi.fn(() => 0),
+  stopLanServer: vi.fn(),
+  supportsIndependentLanServer: vi.fn(() => false),
   onHttpServerPortChanged: vi.fn(() => ({ remove: vi.fn() })),
   onFileReceived: vi.fn(() => ({ remove: vi.fn() })),
   onLanUploadStarted: vi.fn(() => ({ remove: vi.fn() })),
@@ -47,11 +51,31 @@ describe('MobileLanSyncService MCP fallback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     server.isBaishouServerAvailable.mockReturnValue(true)
+    server.supportsIndependentLanServer.mockReturnValue(false)
+    server.startLanServer.mockReturnValue(46000)
     server.getServerPort.mockReturnValue(0)
+    server.getLanServerPort.mockReturnValue(0)
     server.startServer.mockImplementation(() => {
       server.getServerPort.mockReturnValue(45678)
       return 45678
     })
+  })
+
+  it('uses an independent LAN server and leaves MCP completely alone', async () => {
+    server.supportsIndependentLanServer.mockReturnValue(true)
+    const service = createService(() => true)
+
+    const conn = await service.startBroadcasting()
+
+    expect(conn).toMatchObject({ ip: '192.168.1.20', port: 46000 })
+    expect(server.startLanServer).toHaveBeenCalledWith(0)
+    expect(server.startServer).not.toHaveBeenCalled()
+    expect(server.onHttpServerPortChanged).not.toHaveBeenCalled()
+
+    await service.stopBroadcasting()
+
+    expect(server.stopLanServer).toHaveBeenCalledTimes(1)
+    expect(server.stopServer).not.toHaveBeenCalled()
   })
 
   it('starts its own server instead of throwing when MCP claims running but the native port is gone', async () => {

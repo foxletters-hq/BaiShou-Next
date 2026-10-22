@@ -49,7 +49,7 @@ export function onLanSendProgress(
 }
 
 export function onHttpServerPortChanged(
-  listener: (event: { port: number; requestedPort?: number }) => void
+  listener: (event: { port: number; requestedPort?: number; server?: 'mcp' | 'lan' }) => void
 ) {
   const mod = getNative()
   if (!mod) {
