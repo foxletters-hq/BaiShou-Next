@@ -54,6 +54,10 @@ export class ShadowIndexRepository {
     return this.upsertOps.deleteAllForVault(vaultId)
   }
 
+  async deleteAllRecords(): Promise<void> {
+    return this.upsertOps.deleteAllRecords()
+  }
+
   async findByDatePrefix(...args: Parameters<ShadowIndexQueryOps['findByDatePrefix']>) {
     return this.queryOps.findByDatePrefix(...args)
   }

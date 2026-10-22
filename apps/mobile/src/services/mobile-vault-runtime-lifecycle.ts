@@ -239,13 +239,11 @@ export async function rebootstrapAfterStorageRootChange(
       sessionManager: deps.bootstrapDeps.sessionManager
     })
     await deps.vaultService.initRegistry()
-    if (blockingResync) {
-      await preferActiveVaultWithJournalsOnDisk({
-        vaultService: deps.vaultService,
-        fileSystem: deps.fileSystem,
-        pathService: deps.pathService as unknown as MobileExternalPathService
-      })
-    }
+    await preferActiveVaultWithJournalsOnDisk({
+      vaultService: deps.vaultService,
+      fileSystem: deps.fileSystem,
+      pathService: deps.pathService as unknown as MobileExternalPathService
+    })
 
     const { resetMobileRawDataRuntime, ensureMobileRawDataRuntime } =
       await import('./mobile-raw-data-source.runtime')
@@ -256,9 +254,7 @@ export async function rebootstrapAfterStorageRootChange(
     })
 
     await connectGlobalShadowDb(deps)
-    if (blockingResync) {
-      await clearAllVaultShadowIndexes(deps.vaultService)
-    }
+    await clearAllVaultShadowIndexes(deps.vaultService)
 
     const diaryStack = await createVaultBoundDiaryStack({
       pathService: deps.pathService,
@@ -277,6 +273,7 @@ export async function rebootstrapAfterStorageRootChange(
       },
       {
         deferResync: !blockingResync,
+        forceShadowResync: blockingResync,
         resyncReason: blockingResync ? 'archive-full-restore' : 'storage-root-changed'
       }
     )

@@ -5,6 +5,7 @@ import * as os from 'node:os'
 
 import { ShadowIndexConnectionManager } from '../shadow-index.connection.manager'
 import { SHADOW_INDEX_DB_FILENAME } from '../shadow-index-schema.shared'
+import { ShadowIndexRepository } from '../repositories/shadow-index.repository'
 
 import { sql } from 'drizzle-orm'
 import { existsSync } from 'node:fs'
@@ -163,5 +164,41 @@ describe('ShadowIndexConnectionManager', () => {
 
     manager.disconnect()
     expect(manager.isConnected()).toBe(false)
+  })
+
+  it('should clear all records across all vaults via deleteAllRecords before archive restore', async () => {
+    await manager.connect(tempDir)
+    const db = manager.getDb()
+    const oldPhoneRepo = new ShadowIndexRepository(db, 'vlt_old_phone')
+    const restoredRepo = new ShadowIndexRepository(db, 'vlt_restored')
+
+    await oldPhoneRepo.upsert({
+      filePath: 'Journals/2026/01/2026-01-01.md',
+      date: '2026-01-01T00:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      contentHash: 'h1',
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: 'old phone diary',
+      tags: ''
+    })
+    await restoredRepo.upsert({
+      filePath: 'Journals/2026/01/2026-01-02.md',
+      date: '2026-01-02T00:00:00.000Z',
+      createdAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      contentHash: 'h2',
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: 'restored diary',
+      tags: ''
+    })
+
+    const cleaner = new ShadowIndexRepository(db, '__all__')
+    await cleaner.deleteAllRecords()
+
+    expect(await oldPhoneRepo.count()).toBe(0)
+    expect(await restoredRepo.count()).toBe(0)
   })
 })

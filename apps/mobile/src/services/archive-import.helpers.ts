@@ -388,15 +388,15 @@ export async function runArchiveImportFromZip(
         }
 
         await ctx.vaultService.initRegistry()
-        const globalShadowDir = await ctx.pathService.getGlobalShadowIndexDirectory()
+        // Mobile 的全局 shadow_index_v2.db 由 ExpoShadowIndexConnectionManager 进程内常驻持有，
+        // 不可直接 unlink 底层文件（会导致 WAL/文件描述符失效、重建写入失败），改由 rebootstrap 时通过 SQL 清表。
         await purgeImportedShadowIndexCaches(ctx.fileSystem, {
-          workspaceRoot: rootDir,
-          globalShadowDir
+          workspaceRoot: rootDir
         })
 
         reportArchiveImportStage(onProgress, 'rebuilding_index')
         const rebootstrapOptions: ArchiveRestoreRebootstrapOptions = {
-          blockingResync: false,
+          blockingResync: true,
           deferSummaryScan: true
         }
         if (ctx.dbBridge?.rebootstrapAfterArchiveRestore) {
@@ -519,10 +519,8 @@ export async function runArchiveImportFromZip(
       }
 
       await ctx.vaultService.initRegistry()
-      const globalShadowDir = await ctx.pathService.getGlobalShadowIndexDirectory()
       await purgeImportedShadowIndexCaches(ctx.fileSystem, {
-        workspaceRoot: rootDir,
-        globalShadowDir
+        workspaceRoot: rootDir
       })
       reportArchiveImportStage(onProgress, 'rebuilding_index')
       if (ctx.dbBridge?.rebootstrapAfterArchiveRestore) {

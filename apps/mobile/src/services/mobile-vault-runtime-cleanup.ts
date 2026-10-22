@@ -39,12 +39,10 @@ export async function deleteVaultWithShadowCleanup(
 }
 
 /** 全量归档恢复前清空 Shadow 索引，避免旧索引与全新磁盘内容不一致 */
-export async function clearAllVaultShadowIndexes(vaultService: VaultService): Promise<void> {
+export async function clearAllVaultShadowIndexes(_vaultService?: VaultService): Promise<void> {
   if (!shadowConnectionManager.isConnected()) return
   const db = shadowConnectionManager.getDb()
-  for (const vault of vaultService.getAllVaults()) {
-    const shadowRepo = new ShadowIndexRepository(db, vault.id)
-    await shadowRepo.deleteAllForVault(vault.id)
-  }
+  const shadowRepo = new ShadowIndexRepository(db, '__all__')
+  await shadowRepo.deleteAllRecords()
   logger.info('[VaultRuntime] Cleared shadow index for all vaults before archive restore resync')
 }
