@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-21T18:32:10.430Z',
+  syncedAt: '2026-10-22T18:23:48.303Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -79,10 +79,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'gemma-4-26b-a4b-it',
       'gemma-4-31b-it',
       'lyria-3-clip-preview',
-      'lyria-3-pro-preview',
-      'veo-3.1-fast-generate-preview',
-      'veo-3.1-generate-preview',
-      'veo-3.1-lite-generate-preview'
+      'lyria-3-pro-preview'
     ],
     anthropic: [
       'claude-fable-5',
@@ -273,7 +270,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'meta/muse-wonder',
       'minimax/minimax-01',
       'minimax/minimax-m3',
-      'minimax/minimax-m3.1-flash:free',
+      'minimax/minimax-m3.1-flash',
       'mistralai/ministral-14b-2512',
       'mistralai/ministral-3b-2512',
       'mistralai/ministral-8b-2512',
@@ -447,6 +444,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'mimo-v2.6-flash',
       'mimo-v2.6-pro',
       'minimax-m3',
+      'minimax-m3.1-flash',
       'minimax-m3.1-flash-free',
       'muse-spark-1.2-contributor',
       'muse-spark-1.3-contributor',
@@ -1035,13 +1033,13 @@ export const VISION_MODELS_SNAPSHOT = {
     'mimo-v2.6-pro',
     'mimo-v2.6-pro-ultraspeed',
     'minimax-m3',
+    'minimax-m3.1-flash',
     'minimax-m3.1-flash-free',
     'minimax/minimax-01',
     'minimax/minimax-h3',
     'minimax/minimax-h3-max',
     'minimax/minimax-m3',
     'minimax/minimax-m3.1-flash',
-    'minimax/minimax-m3.1-flash:free',
     'ministral-14b-2512',
     'ministral-3b-2512',
     'ministral-3b-latest',
@@ -1283,9 +1281,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'thinkingmachines/inkling:free',
     'unbiased/pareto-26.10',
     'unbiased/pareto-26.9',
-    'veo-3.1-fast-generate-preview',
-    'veo-3.1-generate-preview',
-    'veo-3.1-lite-generate-preview',
     'x-ai/grok-4.20',
     'x-ai/grok-4.20-multi-agent',
     'x-ai/grok-4.3',
