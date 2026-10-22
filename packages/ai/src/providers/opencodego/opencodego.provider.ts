@@ -75,7 +75,9 @@ export class OpenCodeGoAdaptedProvider implements IAIProvider {
         }),
         modelId: modelToTest,
         providerType: this.config.type,
-        baseUrl: this.config.baseUrl
+        baseUrl: this.config.baseUrl,
+        // 与真实聊天保持一致走流式；移动端 expo/fetch 读取非流式 JSON 可能失败
+        streaming: true
       })
     } catch (e: unknown) {
       const detail = extractApiErrorMessage(e)

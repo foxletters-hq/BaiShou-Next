@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast } from '@baishou/ui/native'
-import { AIProviderConfig, isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import { AIProviderConfig } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 import {
@@ -129,16 +129,9 @@ export function useAIProviderConfigForm(input: {
         localApiKey,
         baseUrl
       )
-      const prevEnabled = config.enabledModels || []
-      let enabledModels: string[]
-      if (prevEnabled.length > 0) {
-        const matched = models.filter((m) => prevEnabled.includes(m))
-        enabledModels = matched.length > 0 ? matched : models
-      } else {
-        // 首次获取模型：默认启用对话模型（若没有分类则启用全部），避免在切换模型弹窗为空
-        const dialogueModels = models.filter((m) => !isEmbeddingModel(m) && !isTtsModel(m))
-        enabledModels = dialogueModels.length > 0 ? dialogueModels : models
-      }
+      // 新获取的模型默认全部关闭，仅保留用户此前已启用的模型
+      const prevEnabled = new Set(config.enabledModels || [])
+      const enabledModels = models.filter((m) => prevEnabled.has(m))
       const shouldEnable = !config.isEnabled
       const items = shouldEnable ? buildAndCacheProviderListItems(savedProviders, t) : []
       await persistProvider({
@@ -154,24 +147,6 @@ export function useAIProviderConfigForm(input: {
     } finally {
       setIsFetching(false)
     }
-  }
-
-  const handleEnableDialogueModels = async () => {
-    const currentConfig = getProviderConfig(savedProviders, providerId, providerMeta)
-    const models = currentConfig.models || []
-    const dialogueModels = models.filter((m) => !isEmbeddingModel(m) && !isTtsModel(m))
-    const toEnable = dialogueModels.length > 0 ? dialogueModels : models
-    const shouldEnable = !currentConfig.isEnabled
-    const items = shouldEnable ? buildAndCacheProviderListItems(savedProviders, t) : []
-    await persistProvider({
-      enabledModels: toEnable,
-      ...(shouldEnable ? { isEnabled: true, sortOrder: computeSortOrderOnEnable(items) } : {})
-    })
-    toast.showSuccess(
-      t('ai_config.models_enabled_count', `已启用 ${toEnable.length} 个模型`, {
-        count: toEnable.length
-      })
-    )
   }
 
   const runTestConnection = async (testModelId: string) => {
@@ -234,11 +209,15 @@ export function useAIProviderConfigForm(input: {
       toast.showWarning(t('settings.provider_disabled'))
       return
     }
-    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-      title: t('common.delete'),
-      confirmText: t('common.delete'),
-      destructive: true
-    })
+    const providerName = activeConfig.name || providerMeta?.name || providerId
+    const confirmed = await dialog.confirm(
+      t('agent.provider.delete_confirm', '确定要删除"$name"吗？').replace('$name', providerName),
+      {
+        title: t('agent.provider.delete_title', '删除供应商'),
+        confirmText: t('common.delete'),
+        destructive: true
+      }
+    )
     if (!confirmed || !services || !dbReady) return
     const next = savedProviders.filter((p) => p.id !== providerId)
     await services.settingsManager.set('ai_providers', next)
@@ -296,7 +275,6 @@ export function useAIProviderConfigForm(input: {
     handleResetConfig,
     handleToggleEnable,
     handleFetchModels,
-    handleEnableDialogueModels,
     handleTestConnection,
     handleDeleteProvider,
     sortedDisplayModels,

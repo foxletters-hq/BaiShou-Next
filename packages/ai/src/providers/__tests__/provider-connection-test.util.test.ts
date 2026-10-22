@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { generateText } from 'ai'
+import { generateText, streamText } from 'ai'
 import {
   CONNECTION_TEST_MAX_OUTPUT_TOKENS,
   CONNECTION_TEST_PROMPT,
@@ -8,7 +8,8 @@ import {
 } from '../provider-connection-test.util'
 
 vi.mock('ai', () => ({
-  generateText: vi.fn()
+  generateText: vi.fn(),
+  streamText: vi.fn()
 }))
 
 describe('provider-connection-test.util', () => {
@@ -66,6 +67,40 @@ describe('provider-connection-test.util', () => {
     vi.mocked(generateText).mockRejectedValueOnce(new Error('Unauthorized'))
 
     await expect(probeProviderConnection({ model })).rejects.toThrow('Unauthorized')
+  })
+
+  it('resolves streaming probes without calling generateText', async () => {
+    vi.mocked(streamText).mockReturnValueOnce({
+      fullStream: (async function* () {
+        yield { type: 'start' }
+        yield { type: 'finish' }
+      })()
+    } as any)
+
+    await expect(
+      probeProviderConnection({ model, modelId: 'kimi-k2.7-code', streaming: true })
+    ).resolves.toBeUndefined()
+
+    expect(generateText).not.toHaveBeenCalled()
+    expect(streamText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model,
+        prompt: CONNECTION_TEST_PROMPT,
+        maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS
+      })
+    )
+  })
+
+  it('surfaces errors emitted as streaming events', async () => {
+    vi.mocked(streamText).mockReturnValueOnce({
+      fullStream: (async function* () {
+        yield { type: 'error', error: new Error('Unauthorized') }
+      })()
+    } as any)
+
+    await expect(
+      probeProviderConnection({ model, modelId: 'kimi-k2.7-code', streaming: true })
+    ).rejects.toThrow('Unauthorized')
   })
 
   it('wraps connection test errors with provider name logging prefix', () => {
