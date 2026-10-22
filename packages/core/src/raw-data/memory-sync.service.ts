@@ -50,6 +50,8 @@ export class MemorySyncService {
      * 同步下载传 false：跳过 embedText，含待嵌入活行的分片不 commitIndexed。
      */
     embedMissing?: boolean
+    /** 嵌入每条记忆前调用的钩子（用于取消/暂停检查） */
+    onBeforeItem?: () => Promise<void>
   }): Promise<{ shards: number; upserted: number; deleted: number }> {
     const embedMissing = options?.embedMissing !== false
     const pending = await this.memoryManager.listPendingIndex()
@@ -58,6 +60,7 @@ export class MemorySyncService {
     let inferredVault = options?.vaultName
 
     for (const shard of pending) {
+      await options?.onBeforeItem?.()
       const rows = collapseJsonlById(
         (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
       )
@@ -65,6 +68,7 @@ export class MemorySyncService {
       let hasPendingLiveRows = false
       for (const row of rows) {
         if (!row?.id) continue
+        await options?.onBeforeItem?.()
         if (!inferredVault && row.vaultName) inferredVault = row.vaultName
         if (row.deletedAt != null) {
           await this.sink.deleteBySource?.(MEMORY_SOURCE_TYPE, row.id)
@@ -75,19 +79,34 @@ export class MemorySyncService {
           hasPendingLiveRows = true
           continue
         }
-        await this.sink.embedText({
-          text: row.content,
-          sourceType: MEMORY_SOURCE_TYPE,
-          sourceId: row.id,
-          groupId: MEMORY_EMBED_GROUP_ID,
-          vaultId: resolveVaultIdFromRecord({
-            vaultId: row.vaultId,
-            vaultName: row.vaultName,
-            inferredVaultName: inferredVault
-          }),
-          metadataJson: buildMemoryMetadataJson(row),
-          sourceCreatedAt: row.createdAt
-        })
+        let lastErr: unknown
+        for (let attempt = 0; attempt <= 3; attempt++) {
+          try {
+            await this.sink.embedText({
+              text: row.content,
+              sourceType: MEMORY_SOURCE_TYPE,
+              sourceId: row.id,
+              groupId: MEMORY_EMBED_GROUP_ID,
+              vaultId: resolveVaultIdFromRecord({
+                vaultId: row.vaultId,
+                vaultName: row.vaultName,
+                inferredVaultName: inferredVault
+              }),
+              metadataJson: buildMemoryMetadataJson(row),
+              sourceCreatedAt: row.createdAt
+            })
+            lastErr = undefined
+            break
+          } catch (err) {
+            lastErr = err
+            if (attempt < 3) {
+              await options?.onBeforeItem?.()
+            }
+          }
+        }
+        if (lastErr !== undefined) {
+          throw lastErr
+        }
         upserted += 1
       }
 
@@ -96,6 +115,7 @@ export class MemorySyncService {
       }
     }
 
+    await options?.onBeforeItem?.()
     const orphansCleaned = await this.sweepOrphans({
       inferredVaultName: inferredVault,
       vaultId: options?.vaultId,

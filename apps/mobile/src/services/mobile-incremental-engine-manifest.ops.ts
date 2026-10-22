@@ -39,8 +39,8 @@ export async function buildLocalManifest(
   const diskCached = await delegate.readLocalManifestFile().catch(() => delegate.emptyManifest())
   const cachedManifest = delegate.mergeManifestFileCaches(
     diskCached,
-    delegate.host.pendingSyncLocalManifest,
-    delegate.host.planManifestCache?.local
+    delegate.host.planManifestCache?.local,
+    delegate.host.pendingSyncLocalManifest
   )
 
   const files = await scanIncrementalSyncFilesForManifest(

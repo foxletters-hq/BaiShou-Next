@@ -59,6 +59,82 @@ export async function resolveJournalFilePath(
   return null
 }
 
+function isPathInsideDir(rootDir: string, absolutePath: string): boolean {
+  const root = path.resolve(rootDir).replace(/\\/g, '/').replace(/\/+$/, '')
+  const abs = path.resolve(absolutePath).replace(/\\/g, '/')
+  const rootLower = root.toLowerCase()
+  const absLower = abs.toLowerCase()
+  return absLower === rootLower || absLower.startsWith(`${rootLower}/`)
+}
+
+/**
+ * 解析关系图谱抽取所需的日记绝对路径：
+ * 兼容默认 Vault 内路径、外部日记目录（如 Obsidian `2.日记/...`），以及跨端同步后的标准 `Journals/YYYY/MM/YYYY-MM-DD.md` 回退。
+ */
+export async function resolveGraphExtractDiaryPath(options: {
+  filePath: string
+  pathService: {
+    getActiveVaultPath: () => Promise<string | null>
+    getJournalsBaseDirectory?: () => Promise<string>
+  }
+  fs: IFileSystem
+  dateStr?: string | null
+}): Promise<string> {
+  const rel = options.filePath.replace(/\\/g, '/').replace(/^\/+/, '').trim()
+  if (!rel || rel.includes('\0') || rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) {
+    throw new Error(`Invalid diary path (must be vault-relative): ${options.filePath}`)
+  }
+  if (rel.split('/').some((seg) => seg === '..')) {
+    throw new Error(`Invalid diary path (path traversal): ${options.filePath}`)
+  }
+  const vault = await options.pathService.getActiveVaultPath()
+  const journalsBase =
+    typeof options.pathService.getJournalsBaseDirectory === 'function'
+      ? await options.pathService.getJournalsBaseDirectory().catch(() => '')
+      : ''
+  if (!vault && !journalsBase) {
+    throw new Error('No active vault')
+  }
+
+  if (vault) {
+    const absInVault = path.resolve(vault, rel)
+    if (!isPathInsideDir(vault, absInVault)) {
+      throw new Error(`Diary path escapes vault: ${options.filePath}`)
+    }
+    if (await options.fs.exists(absInVault)) {
+      return absInVault
+    }
+  }
+
+  const effectiveJournalsBase = journalsBase || (vault ? path.join(vault, 'Journals') : '')
+  if (effectiveJournalsBase) {
+    const hintAbs = path.resolve(resolveShadowJournalAbsolutePath(effectiveJournalsBase, rel))
+    const hintSafe =
+      isPathInsideDir(effectiveJournalsBase, hintAbs) ||
+      (vault ? isPathInsideDir(vault, hintAbs) : false)
+    if (hintSafe && (await options.fs.exists(hintAbs))) {
+      return hintAbs
+    }
+    if (options.dateStr && /^\d{4}-\d{2}-\d{2}$/.test(options.dateStr)) {
+      const fallback = await resolveJournalFilePath(
+        options.fs,
+        effectiveJournalsBase,
+        options.dateStr,
+        hintSafe ? hintAbs : undefined
+      )
+      if (
+        fallback &&
+        (isPathInsideDir(effectiveJournalsBase, fallback) ||
+          (vault ? isPathInsideDir(vault, fallback) : false))
+      ) {
+        return fallback
+      }
+    }
+  }
+
+  throw new Error(`Diary file not found: ${rel}`)
+}
+
 export type CollectJournalPathsResult = {
   /** 每个日历日保留一条路径（优先标准 yyyy/MM/ 布局） */
   pathsByDate: Map<string, string>
