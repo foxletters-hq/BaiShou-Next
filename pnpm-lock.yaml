@@ -33,7 +33,7 @@ patchedDependencies:
     hash: 2f40265801b803fded64f428b20fb4fb1302b6d50951f5ec2c711f1ac9988447
     path: patches/metro-runtime@0.83.7.patch
   metro@0.83.7:
-    hash: 7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9
+    hash: a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4
     path: patches/metro@0.83.7.patch
 
 importers:
@@ -489,7 +489,7 @@ importers:
         version: 4.3.0
       uniwind:
         specifier: ^1.0.5
-        version: 1.8.0(@expo/metro-config@55.0.23(expo@55.0.26)(typescript@5.9.3))(metro-cache@0.83.7)(metro-transform-worker@0.83.7)(metro@0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(tailwindcss@4.3.0)
+        version: 1.8.0(@expo/metro-config@55.0.23(expo@55.0.26)(typescript@5.9.3))(metro-cache@0.83.7)(metro-transform-worker@0.83.7)(metro@0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(tailwindcss@4.3.0)
       zod-to-json-schema:
         specifier: ^3.25.2
         version: 3.25.2(zod@4.3.6)
@@ -13669,7 +13669,7 @@ snapshots:
 
   '@expo/metro@55.1.1':
     dependencies:
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-babel-transformer: 0.83.7
       metro-cache: 0.83.7
       metro-cache-key: 0.83.7
@@ -15541,7 +15541,7 @@ snapshots:
       '@react-native/dev-middleware': 0.83.6
       debug: 4.4.3
       invariant: 2.2.4
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-config: 0.83.7
       metro-core: 0.83.7
       semver: 7.7.4
@@ -15557,7 +15557,7 @@ snapshots:
       '@react-native/dev-middleware': 0.84.1
       debug: 4.4.3
       invariant: 2.2.4
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-config: 0.83.7
       metro-core: 0.83.7
       semver: 7.7.4
@@ -21661,7 +21661,7 @@ snapshots:
       connect: 3.7.0
       flow-enums-runtime: 0.0.6
       jest-validate: 29.7.0
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-cache: 0.83.7
       metro-core: 0.83.7
       metro-runtime: 0.83.7(patch_hash=2f40265801b803fded64f428b20fb4fb1302b6d50951f5ec2c711f1ac9988447)
@@ -21748,7 +21748,7 @@ snapshots:
       '@babel/parser': 7.29.2
       '@babel/types': 7.29.0
       flow-enums-runtime: 0.0.6
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-babel-transformer: 0.83.7
       metro-cache: 0.83.7
       metro-cache-key: 0.83.7
@@ -21761,7 +21761,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  metro@0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9):
+  metro@0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@babel/core': 7.29.0
@@ -24978,13 +24978,13 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  uniwind@1.8.0(@expo/metro-config@55.0.23(expo@55.0.26)(typescript@5.9.3))(metro-cache@0.83.7)(metro-transform-worker@0.83.7)(metro@0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(tailwindcss@4.3.0):
+  uniwind@1.8.0(@expo/metro-config@55.0.23(expo@55.0.26)(typescript@5.9.3))(metro-cache@0.83.7)(metro-transform-worker@0.83.7)(metro@0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4))(react-native@0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(tailwindcss@4.3.0):
     dependencies:
       '@tailwindcss/node': 4.3.0
       '@tailwindcss/oxide': 4.3.0
       culori: 4.0.2
       lightningcss: 1.30.1
-      metro: 0.83.7(patch_hash=7861b8de5e1b0392db9309e489db725417e592345abc7028d2e702966b3b8fc9)
+      metro: 0.83.7(patch_hash=a6cc16ea1e63f91552b3172327aa3e6761193b3fc75e8285353373689bd535e4)
       metro-cache: 0.83.7
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@react-native/metro-config@0.84.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.0)
