@@ -93,6 +93,41 @@ export interface DiaryEmbedDetectionRow {
   contentHash: string
 }
 
+const DIARY_CONTENT_HASH_CACHE_MAX_ENTRIES = 10_000
+const diaryContentHashCache = new Map<
+  number,
+  {
+    updatedAtMs: number
+    rawContent: string
+    contentHash: string
+  }
+>()
+
+function resolveCachedDiaryContentHash(
+  id: number,
+  updatedAt: Date | undefined,
+  rawContent: string
+): string {
+  const updatedAtMs = updatedAt ? updatedAt.getTime() : -1
+  const cached = diaryContentHashCache.get(id)
+  if (cached && cached.updatedAtMs === updatedAtMs && cached.rawContent === rawContent) {
+    return cached.contentHash
+  }
+  const contentHash = hashEmbedSourceContent(rawContent)
+  if (diaryContentHashCache.size >= DIARY_CONTENT_HASH_CACHE_MAX_ENTRIES) {
+    const oldestKey = diaryContentHashCache.keys().next().value
+    if (oldestKey !== undefined) {
+      diaryContentHashCache.delete(oldestKey)
+    }
+  }
+  diaryContentHashCache.set(id, {
+    updatedAtMs,
+    rawContent,
+    contentHash
+  })
+  return contentHash
+}
+
 /** 从影子索引瘦行生成检测行：只哈希 raw_content 正文，忽略文件级 content_hash。 */
 export function toDiaryEmbedDetectionRow(input: {
   id: number
@@ -102,16 +137,25 @@ export function toDiaryEmbedDetectionRow(input: {
 }): DiaryEmbedDetectionRow {
   const date =
     typeof input.date === 'string' ? parseDateStr(String(input.date).split('T')[0]!) : input.date
-  const updatedAt = input.updatedAt
+  const rawUpdatedAt = input.updatedAt
     ? input.updatedAt instanceof Date
       ? input.updatedAt
       : new Date(input.updatedAt)
     : undefined
+  const updatedAt = rawUpdatedAt && !Number.isNaN(rawUpdatedAt.getTime()) ? rawUpdatedAt : undefined
+  const rawContent = input.rawContent ?? ''
+  let resolvedHash: string | undefined
+
   return {
     id: input.id,
     date,
-    updatedAt: updatedAt && !Number.isNaN(updatedAt.getTime()) ? updatedAt : undefined,
-    contentHash: hashEmbedSourceContent(input.rawContent ?? '')
+    updatedAt,
+    get contentHash(): string {
+      if (resolvedHash === undefined) {
+        resolvedHash = resolveCachedDiaryContentHash(input.id, updatedAt, rawContent)
+      }
+      return resolvedHash
+    }
   }
 }
 
@@ -154,10 +198,12 @@ export function filterUnindexedDiaries<
     }
 
     const ledgerHash = embeddedContentHashMap?.get(sId)?.trim() ?? ''
-    const diaryHash = (resolveContentHash?.(d) ?? d.contentHash ?? '').trim()
-    // 长度不同说明账本还是旧摘要算法，不能当成正文已改；改回按 updated_at 判断。
-    if (ledgerHash && diaryHash && ledgerHash.length === diaryHash.length) {
-      return ledgerHash !== diaryHash
+    if (ledgerHash) {
+      const diaryHash = (resolveContentHash?.(d) ?? d.contentHash ?? '').trim()
+      // 长度不同说明账本还是旧摘要算法，不能当成正文已改；改回按 updated_at 判断。
+      if (diaryHash && ledgerHash.length === diaryHash.length) {
+        return ledgerHash !== diaryHash
+      }
     }
 
     const existingUpdatedAt = embeddedUpdatedAtMap.get(sId)

@@ -19,17 +19,29 @@ export type OrganizePendingSnapshot = PendingEmbedCounts & {
 }
 
 const ORGANIZE_PENDING_SNAPSHOT_KEY = 'baishou.memory.organizePendingSnapshot.v1'
+const ORGANIZE_EXTRACT_CACHE_TTL_MS = 10_000
 const cache = createPendingEmbedCountCache()
 const changeListeners = new Set<() => void>()
 let lastOrganizeSnapshot: OrganizePendingSnapshot | null = null
+let cachedGraphExtractValue: { value: number; expiresAt: number } | null = null
+let inFlightGraphExtract: Promise<number> | null = null
+let graphExtractEpoch = 0
+
+function invalidateGraphExtractCache(): void {
+  graphExtractEpoch += 1
+  cachedGraphExtractValue = null
+  inFlightGraphExtract = null
+}
 
 export function invalidateMobilePendingEmbedCountsCache(): void {
   cache.invalidate()
+  invalidateGraphExtractCache()
 }
 
 export function clearMobileOrganizePendingSnapshot(): void {
   lastOrganizeSnapshot = null
   cache.invalidate()
+  invalidateGraphExtractCache()
   void AsyncStorage.removeItem(ORGANIZE_PENDING_SNAPSHOT_KEY).catch(() => {
     // 忽略本地快照清理失败
   })
@@ -44,6 +56,7 @@ export function subscribeMobilePendingEmbedCountsChanged(listener: () => void): 
 
 export function notifyMobilePendingEmbedCountsChanged(): void {
   cache.invalidate()
+  invalidateGraphExtractCache()
   for (const listener of changeListeners) listener()
 }
 
@@ -156,17 +169,44 @@ async function countPendingGraphExtract(input: {
   }
 }
 
+async function getCachedPendingGraphExtract(deps: MobileRagServiceDeps): Promise<number> {
+  const now = Date.now()
+  if (cachedGraphExtractValue && now < cachedGraphExtractValue.expiresAt) {
+    return cachedGraphExtractValue.value
+  }
+  if (inFlightGraphExtract) {
+    return inFlightGraphExtract
+  }
+  const startEpoch = graphExtractEpoch
+  const run = (async () => {
+    const vaultScope = await resolveVaultScope(deps)
+    const vaultId = await vaultScope.resolveActiveVaultId()
+    const vaultName = (await vaultScope.resolveActiveVaultName()) || 'Personal'
+    const value = vaultId ? await countPendingGraphExtract({ vaultId, vaultName }) : 0
+    if (graphExtractEpoch === startEpoch) {
+      cachedGraphExtractValue = {
+        value,
+        expiresAt: Date.now() + ORGANIZE_EXTRACT_CACHE_TTL_MS
+      }
+    }
+    return value
+  })()
+  inFlightGraphExtract = run
+  try {
+    return await run
+  } finally {
+    if (inFlightGraphExtract === run) {
+      inFlightGraphExtract = null
+    }
+  }
+}
+
 /** 整理进度条用：嵌入待办 + 抽图待办。阶段数组顺序由 shared 决定，这里只提供字段。 */
 export async function getOrganizePendingSnapshot(
   deps: MobileRagServiceDeps
 ): Promise<OrganizePendingSnapshot> {
   const embedPromise = getPendingEmbedCounts(deps)
-  const extractPromise = (async () => {
-    const vaultScope = await resolveVaultScope(deps)
-    const vaultId = await vaultScope.resolveActiveVaultId()
-    const vaultName = (await vaultScope.resolveActiveVaultName()) || 'Personal'
-    return vaultId ? countPendingGraphExtract({ vaultId, vaultName }) : 0
-  })()
+  const extractPromise = getCachedPendingGraphExtract(deps)
   const [embed, graphExtract] = await Promise.all([embedPromise, extractPromise])
   const snapshot = { ...embed, graphExtract, graphDisambiguate: 0 }
   rememberOrganizePendingSnapshot(snapshot)

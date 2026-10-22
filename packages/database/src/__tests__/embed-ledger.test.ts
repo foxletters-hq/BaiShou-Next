@@ -347,7 +347,8 @@ describe('embed_ledger write path', () => {
   })
 
   it('rebuild leaves the ledger untouched when an insert fails midway', async () => {
-    for (const suffix of ['30', '31', '32']) {
+    for (let i = 0; i < 60; i++) {
+      const suffix = String(30 + i)
       await repo.insertEmbedding({
         id: `emb-${suffix}`,
         sourceType: 'diary',

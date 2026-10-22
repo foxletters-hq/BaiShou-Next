@@ -214,6 +214,7 @@ export class MigrationService {
       return
     }
     await this._backfillAgentMessagesFts()
+    await this._markSchemaCompatCurrent()
     logger.info('[MigrationService] Agent 消息 FTS 历史索引补建完成。')
   }
 

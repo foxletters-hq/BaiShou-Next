@@ -36,11 +36,42 @@ describe('mobile pending embed counts stay on the memory system', () => {
   it('should notify subscribers after pending counts are invalidated on purpose', () => {
     expect(src).toContain('export function notifyMobilePendingEmbedCountsChanged')
     expect(src).toContain('export function subscribeMobilePendingEmbedCountsChanged')
+    expect(src).toContain('invalidateGraphExtractCache()')
     const write = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-rag-memory-write.helpers.ts'),
       'utf8'
     )
     expect(write).toContain('notifyMobilePendingEmbedCountsChanged')
     expect(write).toContain('finally')
+  })
+
+  it('should preserve restored agent database file during archive import instead of quarantining it', () => {
+    const archiveBridge = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'providers',
+        'baishou-provider',
+        'archive-db-bridge.ts'
+      ),
+      'utf8'
+    )
+    const reloadDb = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'providers',
+        'baishou-provider',
+        'reload-agent-database.ts'
+      ),
+      'utf8'
+    )
+    expect(archiveBridge).toContain(
+      'reloadAgentDatabaseRef.current({ preserveExistingFile: true })'
+    )
+    expect(reloadDb).toContain('if (options?.preserveExistingFile)')
+    expect(reloadDb).toContain('verifyExpoAgentDatabaseIntegrity')
   })
 })

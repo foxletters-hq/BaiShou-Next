@@ -165,9 +165,7 @@ export class HybridSearchLedgerStore {
         sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE ${clause}`,
         args
       })
-      for (const row of pending) {
-        await this.insertRebuiltLedgerRow(row)
-      }
+      await this.insertRebuiltLedgerRowsBatch(pending)
       await this.db.execute(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`)
     } catch (e) {
       await this.db.execute(`ROLLBACK TO ${EMBED_LEDGER_REBUILD_SAVEPOINT}`).catch(() => undefined)
@@ -229,38 +227,49 @@ export class HybridSearchLedgerStore {
     return { ledgerChunkSum, vectorCount, mismatch }
   }
 
-  private async insertRebuiltLedgerRow(row: AggregatedEmbedLedgerRow): Promise<void> {
+  private async insertRebuiltLedgerRowsBatch(rows: AggregatedEmbedLedgerRow[]): Promise<void> {
+    if (rows.length === 0) return
     const now = Date.now()
-    const stamp = row.updatedAt > 0 ? row.updatedAt : now
-    await this.db.execute({
-      sql: `
-        INSERT INTO ${EMBED_LEDGER_TABLE}
-        (vault_id, source_type, source_id, content_hash, chunk_count,
-         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)
-        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
-          content_hash = excluded.content_hash,
-          chunk_count = excluded.chunk_count,
-          model_id = excluded.model_id,
-          dimension = excluded.dimension,
-          status = 'embedded',
-          attempts = 0,
-          last_error = NULL,
-          embedded_at = excluded.embedded_at,
-          updated_at = excluded.updated_at
-      `,
-      args: [
-        row.vaultId,
-        row.sourceType,
-        row.sourceId,
-        row.contentHash,
-        row.chunkCount,
-        row.modelId,
-        row.dimension,
-        stamp,
-        stamp
-      ]
-    })
+    const batchSize = 50
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const chunk = rows.slice(i, i + batchSize)
+      const placeholders: string[] = []
+      const args: Array<string | number> = []
+      for (const row of chunk) {
+        const stamp = row.updatedAt > 0 ? row.updatedAt : now
+        placeholders.push("(?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)")
+        args.push(
+          row.vaultId,
+          row.sourceType,
+          row.sourceId,
+          row.contentHash,
+          row.chunkCount,
+          row.modelId,
+          row.dimension,
+          stamp,
+          stamp
+        )
+      }
+      await this.db.execute({
+        sql: `
+          INSERT INTO ${EMBED_LEDGER_TABLE}
+          (vault_id, source_type, source_id, content_hash, chunk_count,
+           model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
+          VALUES ${placeholders.join(', ')}
+          ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
+            content_hash = excluded.content_hash,
+            chunk_count = excluded.chunk_count,
+            model_id = excluded.model_id,
+            dimension = excluded.dimension,
+            status = 'embedded',
+            attempts = 0,
+            last_error = NULL,
+            embedded_at = excluded.embedded_at,
+            updated_at = excluded.updated_at
+        `,
+        args
+      })
+    }
   }
 
   async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {

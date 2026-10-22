@@ -234,6 +234,34 @@ describe('filterUnindexedDiaries', () => {
     )
     expect(result).toHaveLength(0)
   })
+
+  it('does not evaluate lazy contentHash when diary is not in embeddedIds or ledger has no hash', () => {
+    let hashReads = 0
+    const rowUnindexed = {
+      id: 1,
+      updatedAt: new Date('2026-05-20T00:00:00Z'),
+      get contentHash(): string {
+        hashReads += 1
+        return 'hash-1'
+      }
+    }
+    const rowNoLedgerHash = {
+      id: 2,
+      updatedAt: new Date('2026-05-20T00:00:00Z'),
+      get contentHash(): string {
+        hashReads += 1
+        return 'hash-2'
+      }
+    }
+    const result = filterUnindexedDiaries(
+      [rowUnindexed, rowNoLedgerHash],
+      new Set(['2']),
+      new Map([['2', new Date('2026-05-20T00:00:00Z').getTime()]]),
+      { embeddedContentHashMap: new Map() }
+    )
+    expect(result.map((d) => d.id)).toEqual([1])
+    expect(hashReads).toBe(0)
+  })
 })
 
 describe('embed ledger metadata helpers', () => {
