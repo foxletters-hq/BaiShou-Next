@@ -108,8 +108,6 @@ async function buildToolExecutionContext(
       params.systemModels.embeddingModelId,
       hsRepo
     )
-  } else if (params.provider && params.modelId && params.userConfig?.hasEmbeddingModel) {
-    embAdapter = new EmbeddingAdapter(params.provider, params.modelId, hsRepo)
   }
 
   let dedupService: any

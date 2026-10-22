@@ -46,4 +46,50 @@ describe('useModelSelection', () => {
     expect(result.current.currentProviderId).toBe('provider-2')
     expect(result.current.currentModelId).toBe('model-2')
   })
+
+  it('preserves manual model selection when transitioning from draft session to newly created session', async () => {
+    const { result, rerender } = renderHook(
+      ({ sessionId }: { sessionId: string | undefined }) =>
+        useModelSelection({ sessionId, currentAssistant: { id: 'a1' } }),
+      { initialProps: { sessionId: 'new-session' } }
+    )
+
+    await act(async () => {
+      await result.current.selectDialogueModel('provider-custom', 'model-custom')
+    })
+    expect(result.current.currentProviderId).toBe('provider-custom')
+    expect(result.current.currentModelId).toBe('model-custom')
+
+    rerender({ sessionId: 'persisted-uuid-123' })
+    expect(result.current.currentProviderId).toBe('provider-custom')
+    expect(result.current.currentModelId).toBe('model-custom')
+  })
+
+  it('restores session providerId and modelId from agent:get-session when switching to an existing session', async () => {
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === 'agent:get-session') {
+        return { id: 'sess-existing', providerId: 'provider-saved', modelId: 'model-saved' }
+      }
+      return undefined
+    })
+    ;(window as any).electron = { ipcRenderer: { invoke } }
+
+    try {
+      const { result } = renderHook(() =>
+        useModelSelection({
+          sessionId: 'sess-existing',
+          currentAssistant: { id: 'a1' }
+        })
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(result.current.currentProviderId).toBe('provider-saved')
+      expect(result.current.currentModelId).toBe('model-saved')
+    } finally {
+      delete (window as any).electron
+    }
+  })
 })

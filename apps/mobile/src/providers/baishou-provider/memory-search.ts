@@ -64,7 +64,9 @@ export function createMemorySearch(deps: {
         return mapResults(ftsResults)
       }
 
-      const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
+      const embeddingProviderConfig = providers.find(
+        (p: any) => p.id === embeddingProviderId && p.isEnabled !== false
+      )
       if (!embeddingProviderConfig) {
         logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
         const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {

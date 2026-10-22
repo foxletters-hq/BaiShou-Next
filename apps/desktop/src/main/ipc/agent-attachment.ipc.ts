@@ -4,12 +4,15 @@ import * as os from 'os'
 import * as path from 'path'
 import {
   classifyPromptAttachmentKind,
+  type GlobalModelsConfig,
   logger,
   normalizeFileCiteRefs,
+  resolveDialogueModelSelection,
   supportsNativePdf,
   stripAttachmentBinaryForStorage
 } from '@baishou/shared'
 import { pathService } from './vault.ipc'
+import { settingsManager } from './settings.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
 import { getWorkspaceSessionBinding } from '../services/agent-workspace-session.store'
 import {
@@ -80,6 +83,8 @@ export function registerAttachmentIPC() {
       args: {
         sessionId: string
         text: string
+        providerId?: string
+        modelId?: string
         attachments?: any[]
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
@@ -99,14 +104,23 @@ export function registerAttachmentIPC() {
             `[CRITICAL BUG] 试图保存消息时，在数据库中找不到 sessionId=${args.sessionId}！`
           )
         }
-        const activeModelId = existingSession.modelId
-        const activeProviderId = existingSession.providerId
+        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+        const resolvedDialogue = resolveDialogueModelSelection({
+          requestedProviderId: args.providerId ?? existingSession.providerId,
+          requestedModelId: args.modelId ?? existingSession.modelId,
+          globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+          globalDialogueModelId: globalModels?.globalDialogueModelId
+        })
+        const activeModelId = resolvedDialogue.modelId || ''
+        const activeProviderId = resolvedDialogue.providerId || ''
         let activeProviderType = ''
-        try {
-          const providerInstance = await getActiveProvider(activeProviderId)
-          activeProviderType = providerInstance.config.type || ''
-        } catch (provErr) {
-          logger.warn('Failed to resolve provider type for session', { error: provErr as any })
+        if (activeProviderId) {
+          try {
+            const providerInstance = await getActiveProvider(activeProviderId)
+            activeProviderType = providerInstance.config.type || ''
+          } catch (provErr) {
+            logger.warn('Failed to resolve provider type for session', { error: provErr as any })
+          }
         }
 
         // 处理附件：伙伴会话复制到附件库；工作台图片做本机快照，其余记原路径

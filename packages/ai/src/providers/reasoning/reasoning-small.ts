@@ -25,6 +25,7 @@ export function buildDefaultReasoningProviderOptions(
     effort?: ReasoningEffortSetting
     budgetTokens?: number | null
     hasTools?: boolean
+    small?: boolean
   }
 ): Record<string, Record<string, unknown>> | undefined {
   return buildReasoningProviderOptions(ctx)
@@ -35,6 +36,7 @@ export function buildDefaultReasoningOptions(
     effort?: ReasoningEffortSetting
     budgetTokens?: number | null
     hasTools?: boolean
+    small?: boolean
   }
 ): BuiltReasoningOptions {
   return buildReasoningProviderOptionsResult(ctx)

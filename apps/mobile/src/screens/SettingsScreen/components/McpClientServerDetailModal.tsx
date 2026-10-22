@@ -49,7 +49,6 @@ export function McpClientServerDetailModal({
   const [url, setUrl] = useState('')
   const [authToken, setAuthToken] = useState('')
   const [enabled, setEnabled] = useState(true)
-  const [alwaysAllow, setAlwaysAllow] = useState(false)
 
   useEffect(() => {
     if (server) {
@@ -57,7 +56,6 @@ export function McpClientServerDetailModal({
       setUrl(server.url)
       setAuthToken(server.authToken ?? '')
       setEnabled(server.enabled)
-      setAlwaysAllow(Boolean(server.alwaysAllow))
     }
   }, [server])
 
@@ -76,8 +74,7 @@ export function McpClientServerDetailModal({
       name: name.trim() || server.name,
       url: parsed.url,
       authToken: authToken.trim() || undefined,
-      enabled,
-      alwaysAllow
+      enabled
     })
     onClose()
   }
@@ -130,36 +127,6 @@ export function McpClientServerDetailModal({
             {t('settings.mcp_custom_enable', '启用')}
           </Text>
           <Switch value={enabled} onValueChange={setEnabled} />
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: tokens.spacing.xs
-          }}
-        >
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: tokens.spacing.xsPlus,
-              paddingRight: tokens.spacing.md
-            }}
-          >
-            <Text style={[cardStyles.label, { color: colors.textPrimary, flexShrink: 1 }]}>
-              {t('settings.mcp_custom_always_allow', '始终允许（写操作免确认）')}
-            </Text>
-            <HelpTooltip
-              content={t(
-                'settings.mcp_custom_always_allow_desc',
-                '开启后伙伴调用该服务的所有工具（包括写操作）自动执行，无需弹窗确认'
-              )}
-            />
-          </View>
-          <Switch value={alwaysAllow} onValueChange={setAlwaysAllow} />
         </View>
 
         <View style={{ gap: tokens.spacing.xs }}>

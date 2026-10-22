@@ -9,9 +9,9 @@ const src = readFileSync(
 )
 
 describe('agent MCP auto approve', () => {
-  it('should auto-approve MCP asks while keeping deny rules when the server opted in', () => {
-    expect(src).toContain('mcpAutoApproveTools')
+  it('should always auto-approve external MCP asks while keeping deny rules', () => {
     expect(src).toContain('createAutoApproveAgentGate(agentGate)')
     expect(src).toContain('agentGate: effectiveAgentGate')
+    expect(src).not.toContain('mcpAutoApproveTools === true')
   })
 })

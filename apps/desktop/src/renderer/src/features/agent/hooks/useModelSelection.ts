@@ -1,14 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSettingsStore } from '@baishou/store'
 import {
+  type AIProviderConfig,
   buildAgentDialogueSelectionState,
   detectDialogueSelectionSwitches,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
   resolveDialogueModelSelection,
   type AgentDialogueSelectionState,
   type AgentDialogueSelectionSwitchEvent,
   type DialogueModelSelectionSource,
   UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
 } from '@baishou/shared'
+import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
+import { peekChatInitMeta } from './chat-init-meta.util'
+import { peekWorkspaceInitMeta } from '../../agent-workspace/utils/workspace-init-meta.util'
 
 export interface UseModelSelectionParams {
   sessionId: string | undefined
@@ -57,6 +63,7 @@ function isSameSelectionState(
 export function useModelSelection(params: UseModelSelectionParams): UseModelSelectionResult {
   const { sessionId, currentAssistant } = params
   const globalModels = useSettingsStore((s) => s.globalModels)
+  const providers = useSettingsStore((s: { providers?: AIProviderConfig[] }) => s.providers)
   const globalDialogueProviderId = globalModels?.globalDialogueProviderId
   const globalDialogueModelId = globalModels?.globalDialogueModelId
 
@@ -80,6 +87,8 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   const userManuallySetModelRef = useRef<boolean>(false)
   const prevSessionIdRef = useRef<string | null>(null)
   const selectionStateRef = useRef<AgentDialogueSelectionState>(selectionState)
+  const currentIdsRef = useRef({ providerId: currentProviderId, modelId: currentModelId })
+  currentIdsRef.current = { providerId: currentProviderId, modelId: currentModelId }
 
   const commitResolved = useCallback(
     (resolved: ReturnType<typeof resolveDialogueModelSelection>) => {
@@ -98,9 +107,45 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   )
 
   useEffect(() => {
-    if (prevSessionIdRef.current !== sessionId) {
-      userManuallySetModelRef.current = false
-      prevSessionIdRef.current = sessionId || null
+    const prevSessionId = prevSessionIdRef.current ?? undefined
+    const normalizedSessionId = sessionId || null
+    if (prevSessionIdRef.current !== normalizedSessionId) {
+      const inlineCreatedFromDraft =
+        isDraftChatSessionId(prevSessionId) &&
+        !isDraftChatSessionId(sessionId) &&
+        userManuallySetModelRef.current &&
+        isConfiguredProviderId(currentIdsRef.current.providerId) &&
+        isConfiguredDialogueModelId(currentIdsRef.current.modelId)
+      if (!inlineCreatedFromDraft) {
+        userManuallySetModelRef.current = false
+      }
+      prevSessionIdRef.current = normalizedSessionId
+    }
+
+    if (!userManuallySetModelRef.current && sessionId) {
+      const initMeta = isDraftChatSessionId(sessionId)
+        ? peekChatInitMeta(sessionId)
+        : peekWorkspaceInitMeta(sessionId)
+      if (
+        initMeta &&
+        isConfiguredProviderId(initMeta.providerId) &&
+        isConfiguredDialogueModelId(initMeta.modelId)
+      ) {
+        const pid = initMeta.providerId!.trim()
+        const mid = initMeta.modelId!.trim()
+        userManuallySetModelRef.current = true
+        setCurrentProviderId(pid)
+        setCurrentModelId(mid)
+        commitResolved(
+          resolveDialogueModelSelection({
+            requestedProviderId: pid,
+            requestedModelId: mid,
+            globalDialogueProviderId,
+            globalDialogueModelId
+          })
+        )
+        return
+      }
     }
 
     if (userManuallySetModelRef.current) return
@@ -113,7 +158,45 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     setCurrentProviderId(ui.providerId)
     setCurrentModelId(ui.modelId)
     commitResolved(resolved)
-  }, [sessionId, globalDialogueProviderId, globalDialogueModelId, commitResolved])
+
+    if (
+      !sessionId ||
+      isDraftChatSessionId(sessionId) ||
+      typeof window === 'undefined' ||
+      !window.electron?.ipcRenderer?.invoke
+    ) {
+      return
+    }
+
+    let cancelled = false
+    Promise.resolve(window.electron.ipcRenderer.invoke('agent:get-session', sessionId))
+      .then((doc: { providerId?: string | null; modelId?: string | null } | null | undefined) => {
+        if (cancelled || userManuallySetModelRef.current) return
+        if (
+          !isConfiguredProviderId(doc?.providerId) ||
+          !isConfiguredDialogueModelId(doc?.modelId)
+        ) {
+          return
+        }
+        const pid = doc!.providerId!.trim()
+        const mid = doc!.modelId!.trim()
+        if (
+          Array.isArray(providers) &&
+          providers.length > 0 &&
+          !providers.some((p) => p.id === pid && p.isEnabled !== false)
+        ) {
+          return
+        }
+        userManuallySetModelRef.current = true
+        setCurrentProviderId(pid)
+        setCurrentModelId(mid)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, globalDialogueProviderId, globalDialogueModelId, providers, commitResolved])
 
   useEffect(() => {
     if (!userManuallySetModelRef.current) return
@@ -143,11 +226,33 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     setCurrentModelId(id)
   }, [])
 
-  const selectDialogueModel = useCallback(async (providerId: string, modelId: string) => {
-    userManuallySetModelRef.current = true
-    setCurrentProviderId(providerId)
-    setCurrentModelId(modelId)
-  }, [])
+  const selectDialogueModel = useCallback(
+    async (providerId: string, modelId: string) => {
+      userManuallySetModelRef.current = true
+      setCurrentProviderId(providerId)
+      setCurrentModelId(modelId)
+      if (
+        sessionId &&
+        !isDraftChatSessionId(sessionId) &&
+        isConfiguredProviderId(providerId) &&
+        isConfiguredDialogueModelId(modelId) &&
+        typeof window !== 'undefined' &&
+        window.electron?.ipcRenderer?.invoke
+      ) {
+        try {
+          await window.electron.ipcRenderer.invoke(
+            'agent:update-session-dialogue-model',
+            sessionId,
+            providerId,
+            modelId
+          )
+        } catch {
+          // ignore persistence failure in UI
+        }
+      }
+    },
+    [sessionId]
+  )
 
   return {
     currentProviderId,

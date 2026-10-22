@@ -25,7 +25,12 @@ import {
   createDesktopSkillsWriter
 } from '../services/desktop-skills-writer'
 import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
-import { AgentGateProfileId, resolveWebSearchEnabled } from '@baishou/shared'
+import {
+  AgentGateProfileId,
+  type GlobalModelsConfig,
+  resolveDialogueModelSelection,
+  resolveWebSearchEnabled
+} from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 async function resolveSearchModeEnabled(explicit?: boolean): Promise<boolean> {
@@ -38,18 +43,25 @@ export async function buildAgentSystemPrompt(
   searchMode?: boolean
 ): Promise<string> {
   const { realSessionRepo, realAssistantRepo } = getAgentManagers()
+  const session = await realSessionRepo.getSessionById(sessionId)
+  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+  const resolvedDialogue = resolveDialogueModelSelection({
+    requestedProviderId: session?.providerId,
+    requestedModelId: session?.modelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
   const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
   const webSearchEnabled = await resolveSearchModeEnabled(searchMode)
   const { provider, systemModels, userConfig } = await buildStreamConfig(
-    undefined,
-    undefined,
+    resolvedDialogue.providerId ?? undefined,
+    resolvedDialogue.modelId ?? undefined,
     webSearchEnabled,
     prefs.assistantContextWindow,
     prefs.assistantEmojiPrefs
   )
 
-  const session = await realSessionRepo.getSessionById(sessionId)
-  const modelId = session?.modelId || 'deepseek-chat'
+  const modelId = resolvedDialogue.modelId || ''
   const { desktopExtraVercelToolsFactory } = await import('../services/mcp-client-runtime')
   const binding = await getWorkspaceSessionBinding(sessionId)
 

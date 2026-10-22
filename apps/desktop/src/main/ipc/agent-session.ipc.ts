@@ -3,7 +3,12 @@ import { ipcMain } from 'electron'
 import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger, sessionBelongsToActiveVaultId } from '@baishou/shared'
+import {
+  GlobalModelsConfig,
+  logger,
+  resolveDialogueModelSelection,
+  sessionBelongsToActiveVaultId
+} from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
 import { vaultService, resolveActiveVaultId } from './vault.ipc'
 
@@ -95,27 +100,15 @@ export function registerSessionIPC() {
         if (active?.id) vaultId = active.id
       } catch (e) {}
 
-      let providerId =
-        typeof requestedProviderId === 'string' &&
-        requestedProviderId.trim() &&
-        requestedProviderId.trim() !== 'unknown' &&
-        requestedProviderId.trim() !== 'default'
-          ? requestedProviderId.trim()
-          : 'default'
-      let modelId =
-        typeof requestedModelId === 'string' &&
-        requestedModelId.trim() &&
-        requestedModelId.trim() !== 'unknown' &&
-        requestedModelId.trim() !== 'default' &&
-        requestedModelId.trim() !== 'off'
-          ? requestedModelId.trim()
-          : 'default'
-      if (providerId === 'default' || modelId === 'default') {
-        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-        if (providerId === 'default')
-          providerId = globalModels?.globalDialogueProviderId || 'default'
-        if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default'
-      }
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const resolvedDialogue = resolveDialogueModelSelection({
+        requestedProviderId,
+        requestedModelId,
+        globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+        globalDialogueModelId: globalModels?.globalDialogueModelId
+      })
+      const providerId = resolvedDialogue.providerId || 'default'
+      const modelId = resolvedDialogue.modelId || 'default'
 
       const newId = id || crypto.randomUUID()
       logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`)

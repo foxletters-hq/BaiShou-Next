@@ -45,13 +45,29 @@ async function executeSaveUserMessage(
 
   let attachments = args.attachments as AttachmentInput[] | undefined
   if (pathService && fileSystem && attachments?.length) {
+    let resolvedProviderType = args.providerType || existing.providerId || ''
+    const runtime = getAgentDbRuntime()
+    if (runtime?.settingsManager && resolvedProviderType) {
+      try {
+        const providers =
+          (await runtime.settingsManager.get<Array<{ id: string; type?: string }>>(
+            'ai_providers'
+          )) || []
+        const matched = providers.find((p) => p.id === resolvedProviderType)
+        if (matched?.type) {
+          resolvedProviderType = matched.type
+        }
+      } catch {
+        // ignore settings lookup failure
+      }
+    }
     attachments = await processAgentAttachments(
       pathService,
       fileSystem,
       args.sessionId,
       attachments,
       args.modelId || existing.modelId || '',
-      args.providerType || ''
+      resolvedProviderType
     )
   }
 

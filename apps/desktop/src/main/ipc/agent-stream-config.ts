@@ -21,6 +21,7 @@ import {
   requireResolvedDialogueModel,
   resolveReasoningEffortForSlot,
   resolveProviderModelSlot,
+  prepareProviderConfigForRuntime,
   type ResolvedDialogueModel,
   clampRagSimilarityThreshold,
   clampRagTopK
@@ -48,7 +49,7 @@ export async function getActiveProvider(requestedProviderId?: string) {
   }
 
   const registry = AIProviderRegistry.getInstance()
-  const provider = registry.getOrUpdateProvider(actualConfig)
+  const provider = registry.getOrUpdateProvider(prepareProviderConfigForRuntime(actualConfig))
   if (!provider) throw new Error(`Failed to instantiate provider ${actualConfig.id}`)
   return provider
 }

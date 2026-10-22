@@ -3,8 +3,8 @@ import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import {
   isConfiguredDialogueModelId,
-  isConfiguredProviderId,
-  isAutoInjectCurrentTimeEnabled
+  isAutoInjectCurrentTimeEnabled,
+  resolveDialogueModelSelection
 } from '@baishou/shared'
 import type { RecompressResult } from '@baishou/store'
 import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
@@ -29,16 +29,14 @@ export async function recompressSessionContext(
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
   const globalModels = await deps.settingsManager.get<any>('global_models')
 
-  const providerId = isConfiguredProviderId(session.providerId)
-    ? session.providerId
-    : isConfiguredProviderId(globalModels?.globalDialogueProviderId)
-      ? globalModels.globalDialogueProviderId
-      : ''
-  const modelId = isConfiguredDialogueModelId(session.modelId)
-    ? session.modelId
-    : isConfiguredDialogueModelId(globalModels?.globalDialogueModelId)
-      ? globalModels.globalDialogueModelId
-      : ''
+  const resolvedDialogue = resolveDialogueModelSelection({
+    requestedProviderId: session.providerId,
+    requestedModelId: session.modelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+  const providerId = resolvedDialogue.providerId || ''
+  const modelId = resolvedDialogue.modelId || ''
 
   const config = providerId
     ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)

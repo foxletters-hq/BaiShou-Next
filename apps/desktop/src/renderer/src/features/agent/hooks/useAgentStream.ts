@@ -59,6 +59,8 @@ export interface UseAgentStreamResult {
     attachments?: any[],
     meta?: {
       displayText?: string
+      providerId?: string
+      modelId?: string
       skillRefs?: Array<{ command: string; content: string }>
       fileRefs?: Array<{
         relativePath: string
@@ -167,6 +169,8 @@ export function useAgentStream(
       attachments?: any[],
       meta?: {
         displayText?: string
+        providerId?: string
+        modelId?: string
         skillRefs?: Array<{ command: string; content: string }>
         fileRefs?: Array<{
           relativePath: string
@@ -179,6 +183,8 @@ export function useAgentStream(
       const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', {
         sessionId,
         text: userText,
+        providerId: meta?.providerId,
+        modelId: meta?.modelId,
         attachments,
         displayText: meta?.displayText,
         skillRefs: meta?.skillRefs,
