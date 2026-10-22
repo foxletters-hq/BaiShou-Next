@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
-import {
-  insertFencedCodeBlock,
-  insertMarkdownLink,
-  toggleLinePrefix
-} from '../extensions/keymap'
+import { editorThemeBase } from '../theme/editor-theme-base'
+import { insertFencedCodeBlock, insertMarkdownLink, toggleLinePrefix } from '../extensions/keymap'
 import { continueMarkdownBlockquote } from '../extensions/listContinuationKeymap'
 import type { EditorView } from '@codemirror/view'
 
@@ -44,6 +41,10 @@ describe('inline code chip', () => {
     // 上 padding 略大于下 padding，让灰底在行高里视觉居中且完整包住文字与光标
     expect(parseFloat(style.paddingTop)).toBeGreaterThan(parseFloat(style.paddingBottom))
     expect(parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)).toBeCloseTo(0.22, 5)
+  })
+
+  it('keeps the zero-width ::before anchor on one line', () => {
+    expect(editorThemeBase['.cm-rendered-inline-code::before'].whiteSpace).toBe('nowrap')
   })
 
   it('uses the same smaller mono size for fenced code lines', () => {

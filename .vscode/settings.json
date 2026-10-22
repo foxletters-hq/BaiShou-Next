@@ -43,5 +43,21 @@
     "**/pnpm-lock.yaml": true,
     "**/release": true,
     "**/releases": true
-  }
+  },
+  "java.import.gradle.enabled": false,
+  "java.import.maven.enabled": false,
+  "java.autobuild.enabled": false,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.gradle/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/dist-*/**",
+    "**/out/**",
+    "**/.expo/**",
+    "**/.turbo/**"
+  ],
+  "gradle.autoDetect": "off",
+  "gradle.nestedProjects": false
 }

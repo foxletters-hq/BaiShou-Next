@@ -2,13 +2,14 @@ import React from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { normalizeGraphFilePath } from '@baishou/shared'
-import { useNativeTheme } from '@baishou/ui/native'
+import { Button, useNativeTheme } from '@baishou/ui/native'
 import { styles } from './GraphScreen.styles'
 
 export function GraphScreenReextractTab(props: {
   pending: Array<{ filePath: string; date?: string }>
   queueByPath: Map<string, { status?: string }>
-  onRunExtract: (filePaths: string[]) => void
+  busy?: boolean
+  onRunExtract: (filePaths?: string[]) => void
   onCancelQueueItem: (filePath: string) => void
   onOpenSource: (date: string) => void
   listPad: { padding: number; paddingBottom: number }
@@ -21,6 +22,21 @@ export function GraphScreenReextractTab(props: {
       data={props.pending}
       keyExtractor={(item) => item.filePath}
       contentContainerStyle={props.listPad}
+      ListHeaderComponent={
+        props.pending.length > 0 ? (
+          <View style={styles.fullRowButtonWrap}>
+            <Button
+              size="sm"
+              className="w-full"
+              style={styles.fullRowButton}
+              isDisabled={props.busy}
+              onPress={() => props.onRunExtract()}
+            >
+              {t('graph.reextract_all', '一键重抽全部')}
+            </Button>
+          </View>
+        ) : null
+      }
       ListEmptyComponent={
         <Text style={{ color: colors.textSecondary }}>
           {t('graph.reextract_empty', '暂无待重抽日记')}

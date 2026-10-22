@@ -11,7 +11,7 @@
   gap: var(--spacing-xs);
   max-width: 100%;
   margin: 0;
-  padding: 4px 10px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   background: var(--bg-surface-high);

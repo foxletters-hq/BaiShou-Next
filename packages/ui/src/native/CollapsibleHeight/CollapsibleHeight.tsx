@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -47,26 +47,29 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
   const isInitialMountRef = useRef(true)
   const expandGenRef = useRef(0)
 
-  const markSettled = (gen?: number) => {
-    if (gen !== undefined && gen !== expandGenRef.current) {
-      return
-    }
-    if (!prevExpandedRef.current) {
-      return
-    }
-    if (latestMeasuredHeightRef.current > 0) {
-      animatedHeight.value = latestMeasuredHeightRef.current
-    }
-    isSettledRef.current = true
-    setIsSettled(true)
-  }
+  const markSettled = useCallback(
+    (gen?: number) => {
+      if (gen !== undefined && gen !== expandGenRef.current) {
+        return
+      }
+      if (!prevExpandedRef.current) {
+        return
+      }
+      if (latestMeasuredHeightRef.current > 0) {
+        animatedHeight.value = latestMeasuredHeightRef.current
+      }
+      isSettledRef.current = true
+      setIsSettled(true)
+    },
+    [animatedHeight]
+  )
 
-  const clearSettled = () => {
+  const clearSettled = useCallback(() => {
     expandGenRef.current += 1
     isSettledRef.current = false
     isSettledShared.value = false
     setIsSettled(false)
-  }
+  }, [isSettledShared])
 
   useEffect(() => {
     if (isSettled) {
@@ -233,7 +236,9 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
     measuredHeight,
     animation,
     durationMs,
-    isSettledShared
+    isSettledShared,
+    markSettled,
+    clearSettled
   ])
 
   useEffect(() => {

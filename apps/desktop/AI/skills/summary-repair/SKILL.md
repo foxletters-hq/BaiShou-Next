@@ -38,18 +38,18 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 ## Tool Usage
 
-| Scenario                                  | Tool (Built-in / MCP)                                                                                    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| List existing summaries (recent / range)  | `summary_read` / `baishou_summary_read` with `mode: "list"` (optional `type`, `start_date`, `end_date`, `limit`) |
-| Ask user for scope or confirm corrections | `companion_ask` (set `multiple: true` when the user can pick multiple summaries or fixes)            |
-| Read a specific target summary            | `summary_read` / `baishou_summary_read` with `mode: "read"`, `type`, `start_date`              |
-| Confirm current date / period             | `current_time` / `baishou_current_time`                                                              |
-| List diary dates in the period            | `diary_list` / `baishou_diary_list` (pass `start_date`, `end_date`)                              |
-| Read full diary entries                   | `diary_read` / `baishou_diary_read` (pass `dates` array)                                           |
-| FTS keyword search for people/events      | `diary_search` / `baishou_diary_search`                                                              |
-| RAG semantic search for relationship facts| `vector_search` / `baishou_vector_search`                                                            |
-| Check existing relationship records       | `recall_relations` / `baishou_recall_relations`                                                      |
-| Overwrite the same period summary         | `summary_write` / `baishou_summary_write` (same `type` + `start_date`, full corrected `content`) |
+| Scenario                                   | Tool (Built-in / MCP)                                                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| List existing summaries (recent / range)   | `summary_read` / `baishou_summary_read` with `mode: "list"` (optional `type`, `start_date`, `end_date`, `limit`) |
+| Ask user for scope or confirm corrections  | `companion_ask` (set `multiple: true` when the user can pick multiple summaries or fixes)                        |
+| Read a specific target summary             | `summary_read` / `baishou_summary_read` with `mode: "read"`, `type`, `start_date`                                |
+| Confirm current date / period              | `current_time` / `baishou_current_time`                                                                          |
+| List diary dates in the period             | `diary_list` / `baishou_diary_list` (pass `start_date`, `end_date`)                                              |
+| Read full diary entries                    | `diary_read` / `baishou_diary_read` (pass `dates` array)                                                         |
+| FTS keyword search for people/events       | `diary_search` / `baishou_diary_search`                                                                          |
+| RAG semantic search for relationship facts | `vector_search` / `baishou_vector_search`                                                                        |
+| Check existing relationship records        | `recall_relations` / `baishou_recall_relations`                                                                  |
+| Overwrite the same period summary          | `summary_write` / `baishou_summary_write` (same `type` + `start_date`, full corrected `content`)                 |
 
 ## Workflow
 
@@ -93,6 +93,7 @@ Build a person map:
 - **Other people**: keep the names exactly as they appear in the diaries unless the user corrects them.
 
 Check for these common errors:
+
 - The user's feelings/actions attributed to the companion, or vice versa.
 - The companion called by the application/default name.
 - Invented people, events, or relationships not supported by the diaries.
@@ -101,6 +102,7 @@ Check for these common errors:
 ### Step 4: Propose the Correction
 
 Call `companion_ask` in the user's language:
+
 - Quote the erroneous line or summarize it.
 - Show the corrected version.
 - State which period and sections will change.
@@ -110,6 +112,7 @@ Call `companion_ask` in the user's language:
 ### Step 5: Overwrite the Same Period
 
 Call `summary_write`:
+
 - `type`: same as the original
 - `start_date`: same as the original
 - `end_date`: same as the original
@@ -120,6 +123,7 @@ Do not create a new period or a duplicate summary.
 ### Step 6: Report
 
 Confirm in a few sentences:
+
 - Which summary period(s) were repaired.
 - Which names/roles/facts were corrected.
 - Whether any uncertainty remains (for example, an ambiguous person the user should confirm).

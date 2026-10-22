@@ -15,7 +15,7 @@ import { WEATHER_IDS, weatherI18nKey, normalizeWeatherId, type WeatherId } from 
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { WeatherEmoji } from '../WeatherIcon'
-import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
+import { iconSizes, mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeWeatherPickerProps {
   value: string
@@ -33,7 +33,6 @@ const weatherLabelFallback: Record<WeatherId, string> = {
   windy: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L31', '风')
 }
 
-const TRIGGER_HEIGHT = 38
 const ICON_SIZE = 18
 
 export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onChange }) => {
@@ -70,8 +69,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
           {
             opacity: pressed ? 0.9 : 1,
             backgroundColor: colors.bgSurface,
-            borderColor: open || selectedId ? colors.primary : colors.borderControl,
-            borderWidth: open ? 1.5 : 1
+            borderColor: open || selectedId ? colors.primary : colors.borderControl
           }
         ]}
       >
@@ -171,12 +169,13 @@ const styles = StyleSheet.create({
   trigger: {
     alignSelf: 'flex-start',
     maxWidth: 176,
-    height: TRIGGER_HEIGHT,
+    height: mobileControlTokens.height,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: sharedTokens.spacing.mdTight,
-    borderRadius: sharedTokens.radius.md,
+    borderRadius: mobileControlTokens.radius,
+    borderWidth: 1,
     gap: sharedTokens.spacing.xsPlus
   },
   triggerContent: {
@@ -211,7 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sharedTokens.spacing.smPlus,
-    minHeight: TRIGGER_HEIGHT,
+    minHeight: mobileControlTokens.height,
     paddingHorizontal: sharedTokens.spacing.mdSnug
   },
   optionLabel: {

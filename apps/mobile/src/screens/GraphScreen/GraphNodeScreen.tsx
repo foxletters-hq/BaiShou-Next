@@ -22,6 +22,7 @@ export function GraphNodeScreen() {
   const nodeId = decodeURIComponent(String(params.nodeId ?? '').trim())
   const m = useGraphScreenModel()
   const { search, detail, review, data, extract } = m
+  const { onSelectNode } = search
   const [loading, setLoading] = useState(true)
   const loadedOnceRef = useRef(false)
 
@@ -29,7 +30,7 @@ export function GraphNodeScreen() {
     if (!nodeId || !m.dbReady) return
     let cancelled = false
     setLoading(true)
-    void search.onSelectNode(nodeId).then(() => {
+    void onSelectNode(nodeId).then(() => {
       if (!cancelled) {
         loadedOnceRef.current = true
         setLoading(false)
@@ -38,13 +39,13 @@ export function GraphNodeScreen() {
     return () => {
       cancelled = true
     }
-  }, [nodeId, m.dbReady])
+  }, [nodeId, m.dbReady, onSelectNode])
 
   useEffect(() => {
     if (loadedOnceRef.current && !loading && !search.selectedNode) {
       router.back()
     }
-  }, [loadedOnceRef.current, loading, search.selectedNode, router])
+  }, [loading, search.selectedNode, router])
 
   const title = search.selectedNode?.name || t('knowledge.graph_node_page', '节点详情')
 

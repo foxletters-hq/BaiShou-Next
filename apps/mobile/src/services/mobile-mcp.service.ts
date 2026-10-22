@@ -8,7 +8,6 @@ import { MOBILE_MCP_ENABLED } from '../config/mobile-features'
 import type { MobileMcpSdkBridge } from './mobile-mcp-sdk.bridge'
 import type { MobileMcpSseBridge } from './mobile-mcp-sse.bridge'
 import { isMcpMessagePath, isMcpSsePath } from './mobile-mcp-sse.util'
-import { invalidateMobileMcpToolContextCache } from './mobile-mcp-context.service'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
@@ -77,23 +76,41 @@ export class MobileMcpService {
     return this.activePort
   }
 
+  /**
+   * 只有 MCP 仍实际持有原生 HTTP server 时才算运行中。
+   * 局域网传输会复用同一个原生 server，MCP 被停掉/端口被接管后不能继续返回 true。
+   */
   isServerRunning(): boolean {
-    return this.isRunning
+    if (!this.isRunning || this.activePort <= 0) return false
+    try {
+      return BaishouServer.getServerPort() === this.activePort
+    } catch {
+      return false
+    }
   }
 
   async start(): Promise<void> {
     if (!MOBILE_MCP_ENABLED) return
     const config = await this.getConfig()
     if (!config.mcpEnabled) return
+    const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
+    const authToken =
+      config.mcpAuthEnabled === true ? config.mcpAuthToken?.trim() || undefined : undefined
+    if (this.isServerRunning() && this.activePort === port && this.activeAuthToken === authToken) {
+      return
+    }
     await this.startOnPort(config)
   }
 
   async stop(): Promise<void> {
-    if (!this.isRunning && !this.sdkBridge) return
+    if (!this.isRunning && !this.sdkBridge && !this.sseBridge) return
     this.teardownListener()
     await this.sdkBridge?.closeAllSessions()
     await this.sseBridge?.closeAllSessions()
-    BaishouServer.stopServer()
+    // 局域网传输可能已经接管原生 server；此时停掉会把平台 HTTP 服务一起杀掉
+    if (this.isServerRunning()) {
+      BaishouServer.stopServer()
+    }
     this.isRunning = false
     this.activePort = 0
     this.activeAuthToken = undefined
@@ -106,13 +123,17 @@ export class MobileMcpService {
   }
 
   async applyConfig(config: McpServerConfig): Promise<void> {
-    invalidateMobileMcpToolContextCache()
     if (!MOBILE_MCP_ENABLED) return
     if (config.mcpEnabled) {
       const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
       const authToken =
         config.mcpAuthEnabled === true ? config.mcpAuthToken?.trim() || undefined : undefined
-      if (this.isRunning && this.activePort === port && this.activeAuthToken === authToken) {
+      // 不能只看 this.isRunning：原生 server 可能已被 LAN 接管或启动失败
+      if (
+        this.isServerRunning() &&
+        this.activePort === port &&
+        this.activeAuthToken === authToken
+      ) {
         return
       }
       await this.startOnPort(config)
@@ -136,6 +157,12 @@ export class MobileMcpService {
     this.teardownListener()
     await sdkBridge.closeAllSessions()
     await sseBridge.closeAllSessions()
+
+    // 先清掉旧状态：startMcpServer 会先停掉现有原生 server，
+    // 若新端口绑定失败，不能留下 isRunning=true / activePort 指向已死实例。
+    this.isRunning = false
+    this.activePort = 0
+    this.activeAuthToken = undefined
 
     const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
     const authToken =

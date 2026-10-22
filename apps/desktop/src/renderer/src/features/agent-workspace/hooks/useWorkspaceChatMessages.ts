@@ -150,10 +150,7 @@ export function useWorkspaceChatMessages(params: {
       fetchHasMoreRef.current = enriched.fetchHasMore
 
       const nextStart = preserveWindow
-        ? Math.max(
-            0,
-            groupMessagesIntoRounds(enriched.cache).length - targetVisibleRounds
-          )
+        ? Math.max(0, groupMessagesIntoRounds(enriched.cache).length - targetVisibleRounds)
         : resolveWorkspaceRoundWindowStart(enriched.cache, roundWindowStartRef.current, false)
 
       const applied = syncFromCache(nextStart)

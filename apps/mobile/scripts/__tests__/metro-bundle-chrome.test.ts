@@ -14,4 +14,21 @@ describe('mobile metro bundle chrome', () => {
     expect(lucideIndex).toBeGreaterThan(-1)
     expect(reanimatedIndex).toBeGreaterThan(lucideIndex)
   })
+
+  it('should compute content-based SHA-1 for .worklets instead of performance.now()', () => {
+    const metroPatch = readFileSync(join(here, '../../../../patches/metro@0.83.7.patch'), 'utf8')
+    expect(metroPatch).not.toContain('performance.now()')
+    expect(metroPatch).toContain('_fs.default.promises.readFile')
+  })
+
+  it('should preserve default blockList and exclude desktop/build directories in metro.config.js', () => {
+    const metroConfig = readFileSync(join(here, '../../metro.config.js'), 'utf8')
+    expect(metroConfig).toContain(
+      'const defaultBlockList = Array.isArray(config.resolver.blockList)'
+    )
+    expect(metroConfig).toContain('...defaultBlockList')
+    expect(metroConfig).toContain('packages/core-desktop')
+    expect(metroConfig).toContain('packages/database-desktop')
+    expect(metroConfig).toContain('@lobehub|@ant-design|antd')
+  })
 })

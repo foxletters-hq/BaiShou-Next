@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert } from 'react-native'
 import {
@@ -32,7 +33,14 @@ type ExtractDeps = {
     showError: (message: string) => void
     showInfo: (message: string) => void
   }
-  dialog: { confirm: (message: string, title?: string) => Promise<boolean> }
+  dialog: {
+    confirm: (
+      message: string,
+      titleOrOptions?:
+        | string
+        | { title?: string; confirmText?: string; cancelText?: string; destructive?: boolean }
+    ) => Promise<boolean>
+  }
   services: {
     settingsManager: unknown
     pathService: unknown
@@ -76,7 +84,10 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         setStatusRef.current(
           tRef.current(
             'graph.extract_queue_progress',
-            '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
+            i18n.t(
+              'graph.extract_queue_progress',
+              '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）'
+            ),
             {
               current,
               total,
@@ -86,10 +97,14 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         )
       } else if (state.completedCount > 0 || state.errorCount > 0) {
         setStatusRef.current(
-          tRef.current('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
-            done: state.completedCount,
-            failed: state.errorCount
-          })
+          tRef.current(
+            'graph.extract_done',
+            i18n.t('graph.extract_done', '完成 {{done}}，失败 {{failed}}'),
+            {
+              done: state.completedCount,
+              failed: state.errorCount
+            }
+          )
         )
         void deps.refreshRef.current()
       }
@@ -109,23 +124,27 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
   const confirmBatchExtract = (): Promise<boolean> => {
     const count = deps.pending.length
     if (count <= 0) return Promise.resolve(false)
+    const title = deps.t('graph.process_pending_reextract_title', '梳理待重抽')
+    const message = deps.t(
+      'graph.confirm_batch_extract',
+      '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 {{similarity}}% 的候选并由模型判断是否合并再写入。',
+      {
+        count,
+        concurrency: extractConcurrency,
+        similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
+      }
+    )
+    if (deps.dialog?.confirm) {
+      return deps.dialog.confirm(message, {
+        title,
+        confirmText: deps.t('common.confirm', '开始')
+      })
+    }
     return new Promise((resolve) => {
-      Alert.alert(
-        deps.t('graph.process_pending_reextract_title', '梳理待重抽'),
-        deps.t(
-          'graph.confirm_batch_extract',
-          '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 {{similarity}}% 的候选并由模型判断是否合并再写入。',
-          {
-            count,
-            concurrency: extractConcurrency,
-            similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
-          }
-        ),
-        [
-          { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
-          { text: deps.t('common.confirm', '开始'), onPress: () => resolve(true) }
-        ]
-      )
+      Alert.alert(title, message, [
+        { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
+        { text: deps.t('common.confirm', '开始'), onPress: () => resolve(true) }
+      ])
     })
   }
 

@@ -482,7 +482,7 @@
 .de-save-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .de-save-dirty-dot {

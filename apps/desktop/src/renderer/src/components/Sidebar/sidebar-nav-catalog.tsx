@@ -104,15 +104,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L89',
       '日记与回忆'
     ),
-    itemIds: [
-      'diary',
-      'companion',
-      'workbench',
-      'summary',
-      'memory',
-      'diary-template',
-      'summary-settings'
-    ]
+    itemIds: ['diary', 'companion', 'summary', 'memory', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',

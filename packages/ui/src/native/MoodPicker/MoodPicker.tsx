@@ -20,14 +20,13 @@ import {
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { MoodEmoji } from '../MoodIcon/MoodEmoji'
-import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
+import { iconSizes, mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeMoodPickerProps {
   value: string
   onChange: (value: string) => void
 }
 
-const TRIGGER_HEIGHT = 38
 const ICON_SIZE = 18
 
 export const MoodPicker: React.FC<NativeMoodPickerProps> = ({ value, onChange }) => {
@@ -63,8 +62,7 @@ export const MoodPicker: React.FC<NativeMoodPickerProps> = ({ value, onChange })
           {
             opacity: pressed ? 0.9 : 1,
             backgroundColor: colors.bgSurface,
-            borderColor: open || isKnownMood ? colors.primary : colors.borderSubtle,
-            borderWidth: open ? 1.5 : 1
+            borderColor: open || isKnownMood ? colors.primary : colors.borderControl
           }
         ]}
       >
@@ -164,12 +162,13 @@ const styles = StyleSheet.create({
   trigger: {
     alignSelf: 'flex-start',
     maxWidth: 176,
-    height: TRIGGER_HEIGHT,
+    height: mobileControlTokens.height,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: sharedTokens.spacing.mdTight,
-    borderRadius: sharedTokens.radius.md,
+    borderRadius: mobileControlTokens.radius,
+    borderWidth: 1,
     gap: sharedTokens.spacing.xsPlus
   },
   triggerContent: {
@@ -205,7 +204,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sharedTokens.spacing.smPlus,
-    minHeight: TRIGGER_HEIGHT,
+    minHeight: mobileControlTokens.height,
     paddingHorizontal: sharedTokens.spacing.mdSnug
   },
   optionLabel: {

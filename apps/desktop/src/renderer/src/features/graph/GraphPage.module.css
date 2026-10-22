@@ -1964,6 +1964,13 @@
   margin-top: var(--spacing-sm);
 }
 
+.similarToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm-plus);
+}
+
 .similarCard {
   display: flex;
   flex-direction: column;

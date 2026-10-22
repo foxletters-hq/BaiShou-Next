@@ -4,6 +4,8 @@ export interface ToolManagementConfig {
   disabledToolIds: string[]
   customConfigs: Record<string, Record<string, unknown>>
   emojiConfig?: EmojiToolConfig
+  /** 是否开启伙伴工作过程趣味状态文案（如「伙伴正在喝茶…」），默认开启 true */
+  playfulProcessStatus?: boolean
 }
 
 export interface AgentToolsViewProps {

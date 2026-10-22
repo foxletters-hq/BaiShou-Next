@@ -28,6 +28,17 @@ function selectionIntersectsRange(state: EditorState, from: number, to: number):
   return false
 }
 
+/** 引用块末尾的空 `>` 行：后面没有紧邻的引用行 */
+function isTrailingEmptyBlockquoteLine(
+  doc: EditorState['doc'],
+  lineNumber: number,
+  content: string
+): boolean {
+  if (content.trim().length > 0) return false
+  if (lineNumber >= doc.lines) return true
+  return !BLOCKQUOTE_PREFIX_RE.test(doc.line(lineNumber + 1).text)
+}
+
 function hideDelimiterRuns(
   marks: DecorationMark[],
   doc: EditorState['doc'],
@@ -151,7 +162,12 @@ export function collectLineSyntaxDecorations(
       if (!isActiveLine) {
         pushReplaceDecoration(marks, doc, line.from, line.from + quote[0].length, hideSpec)
       }
-      pushLineDecoration(marks, blockquoteLineStyle, line.from)
+      // 光标不在末尾空引用行时收起竖线，避免续行产生的空 `>` 把引用块看成两行高。
+      // 光标落在该行时仍保留竖线，便于确认当前仍在引用内。
+      const quoteContent = text.slice(quote[0].length)
+      if (isActiveLine || !isTrailingEmptyBlockquoteLine(doc, lineNum, quoteContent)) {
+        pushLineDecoration(marks, blockquoteLineStyle, line.from)
+      }
     }
 
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, STRONG_WRAPPER_RE, 1, state)

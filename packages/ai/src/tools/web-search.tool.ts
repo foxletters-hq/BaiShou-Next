@@ -15,9 +15,7 @@ const webSearchParams = z.object({
     .array(z.string())
     .min(1)
     .max(3)
-    .describe(
-      '1 to 3 search queries covering different angles or keywords for the topic.'
-    )
+    .describe('1 to 3 search queries covering different angles or keywords for the topic.')
 })
 
 export class WebSearchTool extends AgentTool<typeof webSearchParams> {

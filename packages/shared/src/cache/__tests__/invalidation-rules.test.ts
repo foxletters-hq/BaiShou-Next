@@ -62,6 +62,13 @@ describe('resolveInvalidatedCacheKeys', () => {
     expect(toolKeys).toContain('mcp.toolContext')
   })
 
+  it('invalidates mcp tool context when the MCP server config changes', () => {
+    const keys = resolveInvalidatedCacheKeys(
+      event({ domain: 'settings', action: 'update', meta: { key: 'mcp_server_config' } })
+    )
+    expect(keys).toEqual(['mcp.toolContext'])
+  })
+
   it('invalidates mcp tool context when agent gate or workspace policy settings change', () => {
     const companionGateKeys = resolveInvalidatedCacheKeys(
       event({

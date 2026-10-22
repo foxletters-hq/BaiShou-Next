@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatVectorPendingValue } from '../memory-readiness-chip.util'
 
-function translate(
-  _key: string,
-  fallback: string,
-  options?: Record<string, unknown>
-): string {
+function translate(_key: string, fallback: string, options?: Record<string, unknown>): string {
   if (!options) return fallback
   return Object.entries(options).reduce(
     (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),

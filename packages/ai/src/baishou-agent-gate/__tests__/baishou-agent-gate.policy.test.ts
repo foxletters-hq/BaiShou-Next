@@ -468,7 +468,9 @@ describe('BaishouAgentGatePolicyService', () => {
     expect(
       policy.evaluate({
         action: 'workspace_run',
-        resources: [{ kind: 'shell_command', value: 'cd packages/ai && git status -s && pnpm test' }]
+        resources: [
+          { kind: 'shell_command', value: 'cd packages/ai && git status -s && pnpm test' }
+        ]
       })
     ).toBe(AgentGateEffect.Allow)
 

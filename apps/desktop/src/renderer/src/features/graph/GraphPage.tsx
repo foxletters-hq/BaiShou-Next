@@ -308,6 +308,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                         survivorName: pair.peerName,
                         loserName: pair.nodeName
                       }),
+                    onMergeAll: () => void review.mergeAllSimilarPairs(),
                     onKeepApart: (pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId),
                     onLocateNode: selection.locatePendingNode
                   }

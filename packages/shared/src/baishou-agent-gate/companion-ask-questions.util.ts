@@ -21,7 +21,9 @@ export interface CompanionAskDraftAnswer {
 function getDraftSelectedOptionIds(draft: CompanionAskDraftAnswer | undefined): string[] {
   if (!draft) return []
   if (Array.isArray(draft.selectedOptionIds) && draft.selectedOptionIds.length > 0) {
-    return draft.selectedOptionIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    return draft.selectedOptionIds.filter(
+      (id): id is string => typeof id === 'string' && id.length > 0
+    )
   }
   return draft.selectedOptionId ? [draft.selectedOptionId] : []
 }
@@ -50,7 +52,7 @@ export function normalizeCompanionAskQuestions(input: {
         question: item.question.trim(),
         options: mapOptionLabels(item.options),
         allowCustomInput: item.allowCustomInput ?? true,
-        ...(item.multiple ?? (input.questions!.length === 1 ? input.multiple : undefined)
+        ...((item.multiple ?? (input.questions!.length === 1 ? input.multiple : undefined))
           ? { multiple: true }
           : {})
       }))

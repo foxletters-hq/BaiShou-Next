@@ -160,8 +160,7 @@ async function buildToolExecutionContext(
         ? {
             folderRoot: params.workspace.folderRoot ?? '',
             sessionKind: params.workspace.sessionKind,
-            notebookIds: params.workspace.notebookIds,
-            env: params.workspace.env
+            notebookIds: params.workspace.notebookIds
           }
         : undefined
   }

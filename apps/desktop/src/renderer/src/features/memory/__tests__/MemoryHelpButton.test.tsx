@@ -56,6 +56,6 @@ describe('MemoryHelpButton', () => {
         '日记和伙伴共用这一套记忆。片段保存原文，用于回忆细节；关系保存联系，用于理清脉络。笔记本资料的向量和关系图在各自笔记本里管理，不并入这里。'
       )
     ).toBeTruthy()
-    expect(screen.getByText('打开知识库')).toBeTruthy()
+    expect(screen.queryByText('打开知识库')).toBeNull()
   })
 })

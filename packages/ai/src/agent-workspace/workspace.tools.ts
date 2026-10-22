@@ -7,10 +7,7 @@ import {
 } from '@baishou/shared'
 import { AgentTool, type ToolContext } from '../tools/agent.tool'
 import { buildFileChangePartData } from './file-change.part-builder'
-import {
-  resolveWorkspaceOrExternalPath,
-  WorkspacePathError
-} from './workspace-path.sandbox'
+import { resolveWorkspaceOrExternalPath, WorkspacePathError } from './workspace-path.sandbox'
 import { createNodeWorkspaceFs, type WorkspaceFsAdapter } from './workspace-fs'
 import { WorkspaceRunTool } from './workspace-run.tool'
 import { externalPathToDirectoryGlob } from '../baishou-agent-gate/agent-gate-workspace-path.util'
@@ -145,10 +142,12 @@ export class WorkspaceListTool extends AgentTool<typeof workspaceListParams> {
 
   async execute(args: z.infer<typeof workspaceListParams>, context: ToolContext): Promise<string> {
     try {
-      const { relativePath: rel, absolutePath, isExternal, fs } = resolveRelativePath(
-        context,
-        args.path ?? '.'
-      )
+      const {
+        relativePath: rel,
+        absolutePath,
+        isExternal,
+        fs
+      } = resolveRelativePath(context, args.path ?? '.')
       await assertExternalDirectoryIfNeeded(context, this.name, absolutePath, isExternal)
       const exists = await fs.exists(absolutePath)
       if (!exists) {

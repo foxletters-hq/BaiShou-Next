@@ -39,6 +39,7 @@ describe('GraphScreen chrome - node detail and split', () => {
     expect(candidatesUtilSrc).toContain('readGraphNameRegistry')
     expect(sameNameListSrc).toContain("t('graph.same_name_siblings'")
     expect(sameNameListSrc).toContain("t('graph.discriminator_label'")
+    expect(sameNameListSrc).toContain("t('graph.bare_entity'")
     expect(sameNameListSrc).toContain('onOpen')
     expect(sameNameListSrc).toContain('onRevertSplit')
     expect(overlaysSrc).toContain("t('graph.source_excerpt_label'")
@@ -204,6 +205,10 @@ describe('GraphScreen chrome - node detail and split', () => {
       'similar_empty',
       'similar_hint',
       'similar_merge',
+      'similar_merge_all',
+      'confirm_merge_all_similar',
+      'similar_merged_all',
+      'similar_merge_all_failed',
       'locate',
       'similar_keep_apart',
       'confirm_keep_apart',

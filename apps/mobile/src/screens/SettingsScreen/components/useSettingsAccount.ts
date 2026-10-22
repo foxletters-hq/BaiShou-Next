@@ -20,7 +20,6 @@ import {
   UI_FONT_SIZE_LEVEL_DEFAULT,
   withSummaryPromptLocaleFromUi,
   type SummaryConfig,
-  type UserGender,
   type UserProfile
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -32,13 +31,16 @@ import {
   invalidateChatBackgroundDisplayCache,
   resolveChatBackgroundForMobileUi
 } from '../../../lib/chat-background-display.util'
-import { peekAgentUserProfileCache } from '../../../lib/agent-user-profile.util'
 import { resolveUserAvatarForMobileUi } from '../../../lib/user-avatar-display.util'
 import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-mobile'
 import { resolveAppUiLanguage } from '../../../lib/device-locale'
 import type { SettingsProfileSavePayload } from './SettingsProfileHeader'
 import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
-import { notifyAgentProfileRefresh } from './settings-account-profile.util'
+import {
+  notifyAgentProfileRefresh,
+  resolveInitialSettingsAccountProfile,
+  type SettingsAccountProfileState
+} from './settings-account-profile.util'
 import { isPendingLocalAvatar } from './settings-account-avatar.util'
 import { useSettingsVaults } from './useSettingsVaults'
 
@@ -61,37 +63,9 @@ export function useSettingsAccount() {
   const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
   const [fontSizeLevel, setFontSizeLevel] = useState(UI_FONT_SIZE_LEVEL_DEFAULT)
-  const [profile, setProfile] = useState<{
-    nickname: string
-    birthday?: string | null
-    gender?: UserGender | null
-    customGender?: string | null
-    avatarPath?: string | null
-    showIdentityInProfile?: boolean
-    shareIdentityWithCompanion?: boolean
-  }>(() => {
-    const cached = peekAgentUserProfileCache()
-    if (!cached) {
-      return {
-        nickname: '',
-        avatarPath: '',
-        birthday: null,
-        gender: null,
-        customGender: null,
-        showIdentityInProfile: true,
-        shareIdentityWithCompanion: true
-      }
-    }
-    return {
-      nickname: cached.nickname || '',
-      birthday: cached.birthday ?? null,
-      gender: cached.gender ?? null,
-      customGender: cached.customGender ?? null,
-      avatarPath: cached.avatarPath ?? '',
-      showIdentityInProfile: cached.showIdentityInProfile ?? true,
-      shareIdentityWithCompanion: cached.shareIdentityWithCompanion ?? true
-    }
-  })
+  const [profile, setProfile] = useState<SettingsAccountProfileState>(
+    resolveInitialSettingsAccountProfile
+  )
   const [chatBackgroundPath, setChatBackgroundPath] = useState<string | null>(null)
   const [chatBackgroundBlur, setChatBackgroundBlur] = useState(CHAT_BACKGROUND_BLUR_DEFAULT)
   const [chatBackgroundOverlayOpacity, setChatBackgroundOverlayOpacity] = useState(

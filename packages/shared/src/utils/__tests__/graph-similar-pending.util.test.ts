@@ -4,6 +4,7 @@ import {
   applyAlignedSimilarPendingToProps,
   applySimilarPendingToProps,
   collectSimilarPendingPairs,
+  groupSimilarPendingPairsForMerge,
   listGraphSimilarPending,
   meetsGraphSimilarPendingThreshold,
   nodePropsHaveSimilarPending,
@@ -227,6 +228,65 @@ describe('collectSimilarPendingPairs', () => {
         [{ id: 'n-s', name: '可疑', propsJson: JSON.stringify({ suspectReason: '同人异职' }) }],
         new Map([['n-s', '可疑']])
       )
+    ).toEqual([])
+  })
+})
+
+describe('groupSimilarPendingPairsForMerge', () => {
+  it('should keep the peer as survivor for a simple pair', () => {
+    expect(groupSimilarPendingPairsForMerge([{ nodeId: 'n-new', peerId: 'n-old' }])).toEqual([
+      { survivorId: 'n-old', loserIds: ['n-new'] }
+    ])
+  })
+
+  it('should merge reversed and duplicated pairs into one group', () => {
+    expect(
+      groupSimilarPendingPairsForMerge([
+        { nodeId: 'a', peerId: 'b' },
+        { nodeId: 'b', peerId: 'a' },
+        { nodeId: 'a', peerId: 'b' }
+      ])
+    ).toEqual([{ survivorId: 'b', loserIds: ['a'] }])
+  })
+
+  it('should pick the chain sink so no survivor is deleted first', () => {
+    expect(
+      groupSimilarPendingPairsForMerge([
+        { nodeId: 'a', peerId: 'b' },
+        { nodeId: 'b', peerId: 'c' }
+      ])
+    ).toEqual([{ survivorId: 'c', loserIds: ['a', 'b'] }])
+  })
+
+  it('should fall back to the first peer when every node is a loser', () => {
+    expect(
+      groupSimilarPendingPairsForMerge([
+        { nodeId: 'a', peerId: 'b' },
+        { nodeId: 'b', peerId: 'c' },
+        { nodeId: 'c', peerId: 'a' }
+      ])
+    ).toEqual([{ survivorId: 'b', loserIds: ['a', 'c'] }])
+  })
+
+  it('should keep separate clusters apart', () => {
+    expect(
+      groupSimilarPendingPairsForMerge([
+        { nodeId: 'a', peerId: 'b' },
+        { nodeId: 'c', peerId: 'd' }
+      ])
+    ).toEqual([
+      { survivorId: 'b', loserIds: ['a'] },
+      { survivorId: 'd', loserIds: ['c'] }
+    ])
+  })
+
+  it('should ignore empty ids and self pairs', () => {
+    expect(
+      groupSimilarPendingPairsForMerge([
+        { nodeId: 'a', peerId: 'a' },
+        { nodeId: '', peerId: 'b' },
+        { nodeId: 'c', peerId: '  ' }
+      ])
     ).toEqual([])
   })
 })

@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
-import { graphPendingItemKey, splitGraphReviewSelection } from '@baishou/shared'
+import {
+  graphPendingItemKey,
+  groupSimilarPendingPairsForMerge,
+  splitGraphReviewSelection,
+  type GraphSimilarPendingPair
+} from '@baishou/shared'
 import { findGraphPageNode } from './graph-page-derive.util'
 import type { GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
 
@@ -10,6 +15,7 @@ type ReviewDeps = {
   nodes: any[]
   pendingNodes: any[]
   pendingEdges: any[]
+  similarPairs: GraphSimilarPendingPair[]
   selectedId: string | null
   setSelectedId: (id: string | null) => void
   setSelectedNode: (node: any | null) => void
@@ -137,6 +143,66 @@ export function useGraphPageReview(deps: ReviewDeps) {
     await deps.refreshVisibleAfterReview({ stripSuspectOnNodeId: nodeId })
   }
 
+  const mergeAllSimilarPairs = async () => {
+    const groups = groupSimilarPendingPairsForMerge(deps.similarPairs)
+    if (groups.length === 0) return
+    const loserIds = groups.flatMap((group) => group.loserIds)
+    if (loserIds.length === 0) return
+    const ok = await deps.dialog.confirm(
+      deps.t(
+        'graph.confirm_merge_all_similar',
+        '将合并全部 {{count}} 个相似待合并节点（共 {{groups}} 组）。合并不可撤销，被合并节点的关系会改挂到保留节点。',
+        { count: loserIds.length, groups: groups.length }
+      ),
+      deps.t('graph.similar_merge_all', '一键合并全部')
+    )
+    if (!ok) return
+
+    const selectedId = deps.selectedId
+    const selectedGroup = selectedId
+      ? groups.find((group) => group.loserIds.includes(selectedId))
+      : undefined
+    const failures: string[] = []
+    deps.setBusy(true)
+    try {
+      for (const group of groups) {
+        try {
+          await window.api.graph.mergeNodesBatch({
+            survivorId: group.survivorId,
+            loserIds: group.loserIds,
+            reason: 'merge-all-similar'
+          })
+        } catch (e: any) {
+          failures.push(e?.message || String(e))
+        }
+      }
+      if (selectedGroup) {
+        deps.setSelectedId(selectedGroup.survivorId)
+        deps.setSelectedNode(null)
+      }
+      setMergeConfirm(null)
+      setMergeSearchOpen(false)
+      await deps.refresh()
+      if (selectedGroup) void deps.onSelectNode(selectedGroup.survivorId)
+      if (failures.length > 0) {
+        deps.toast.showError(
+          deps.t('graph.similar_merge_all_failed', '有 {{count}} 组相似节点合并失败：{{message}}', {
+            count: failures.length,
+            message: failures[0]
+          })
+        )
+        return
+      }
+      deps.toast.showSuccess(
+        deps.t('graph.similar_merged_all', '已合并 {{count}} 个相似节点', {
+          count: loserIds.length
+        })
+      )
+    } finally {
+      deps.setBusy(false)
+    }
+  }
+
   const togglePendingItem = (key: string) => {
     setPendingSelected((prev) => {
       const next = new Set(prev)
@@ -225,6 +291,7 @@ export function useGraphPageReview(deps: ReviewDeps) {
     openMergeConfirm,
     mergeNodes,
     dismissSimilarPair,
+    mergeAllSimilarPairs,
     runConfirmedMerge,
     reviewNode,
     togglePendingItem,

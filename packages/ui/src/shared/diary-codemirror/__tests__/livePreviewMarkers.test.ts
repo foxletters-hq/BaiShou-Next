@@ -154,6 +154,30 @@ describe('live preview marker hiding', () => {
     expect(parent.querySelector('.cm-rendered-blockquote')).not.toBeNull()
   })
 
+  it('hides the rail on a trailing empty quote line when the caret is elsewhere', () => {
+    const content = '> quoted line\n> \n\nplain line\n'
+    const v = mount(content, content.indexOf('plain'))
+    focusEditor(v)
+
+    expect(parent.querySelectorAll('.cm-rendered-blockquote').length).toBe(1)
+  })
+
+  it('hides the rail when the trailing empty quote line is the last document line', () => {
+    const content = '> quoted line\n> '
+    const v = mount(content, 0)
+    focusEditor(v)
+
+    expect(parent.querySelectorAll('.cm-rendered-blockquote').length).toBe(1)
+  })
+
+  it('keeps the rail on a trailing empty quote line while the caret is on it', () => {
+    const content = '> quoted line\n> \n\nplain line\n'
+    const v = mount(content, content.indexOf('\n> ') + 2)
+    focusEditor(v)
+
+    expect(parent.querySelectorAll('.cm-rendered-blockquote').length).toBe(2)
+  })
+
   it('renders --- as a visual horizontal rule when cursor is elsewhere', () => {
     const content = 'before\n---\nafter\n'
     const v = mount(content, content.length)

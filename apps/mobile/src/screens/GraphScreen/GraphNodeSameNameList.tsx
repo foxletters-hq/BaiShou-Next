@@ -45,7 +45,15 @@ export function GraphNodeSameNameList(props: {
               {t('graph.revert_split', '撤回拆分')}
             </Button>
           ) : null}
-          <GraphDiscriminatorLabel value={entity.label || entity.discriminator} />
+          {entity.discriminator ? (
+            <GraphDiscriminatorLabel value={entity.label || entity.discriminator} />
+          ) : (
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.caption.fontSize }}
+            >
+              {t('graph.bare_entity', '原实体')}
+            </Text>
+          )}
         </View>
       ))}
     </View>

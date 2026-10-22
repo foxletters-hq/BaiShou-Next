@@ -11,6 +11,7 @@ import {
   type McpClientServerStatus
 } from '@baishou/shared'
 import { Switch, useSettingsCardStyles, useNativeTheme } from '@baishou/ui/native'
+import { settingsTypography } from '@baishou/ui/theme/tokens'
 
 export interface McpClientServerCardProps {
   server: McpClientServerEntry
@@ -103,7 +104,14 @@ export function McpClientServerCard({
     >
       <View style={{ flex: 1, minWidth: 0, gap: tokens.spacing.xxs }}>
         <Text
-          style={[cardStyles.label, { color: colors.textPrimary, fontSize: 15, fontWeight: '600' }]}
+          style={[
+            cardStyles.label,
+            {
+              color: colors.textPrimary,
+              fontSize: settingsTypography.section.fontSize,
+              fontWeight: '600'
+            }
+          ]}
           numberOfLines={1}
         >
           {server.name}
@@ -124,9 +132,15 @@ export function McpClientServerCard({
               backgroundColor: statusColor
             }}
           />
-          <Text style={{ fontSize: 12, color: colors.textSecondary }}>{subtitle}</Text>
+          <Text style={{ fontSize: settingsTypography.meta.fontSize, color: colors.textSecondary }}>
+            {subtitle}
+          </Text>
           <Text
-            style={{ fontSize: 12, color: colors.textTertiary, flexShrink: 1 }}
+            style={{
+              fontSize: settingsTypography.meta.fontSize,
+              color: colors.textTertiary,
+              flexShrink: 1
+            }}
             numberOfLines={1}
           >
             · {server.url}

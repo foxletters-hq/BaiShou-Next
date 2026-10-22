@@ -50,11 +50,14 @@ export async function resolveSessionAssistantContext(params: {
 
   if (sessionObj?.assistantId) {
     const vaultId = String(sessionObj?.vaultId ?? '').trim() || null
-    let ast: {
-      systemPrompt?: string | null
-      customSystemPrompt?: string | null
-      assistantKind?: string | null
-    } | null = null
+    let ast:
+      | {
+          systemPrompt?: string | null
+          customSystemPrompt?: string | null
+          assistantKind?: string | null
+        }
+      | null
+      | undefined = null
 
     if (params.assistantRepo) {
       ast = await params.assistantRepo.findById(sessionObj.assistantId, vaultId)

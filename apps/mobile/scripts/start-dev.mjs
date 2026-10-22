@@ -14,7 +14,7 @@ import {
   startReverseKeeper,
   waitForMetro
 } from './mobile-dev-env.mjs'
-import { resetWorkletsCache, rmMetroTmpCaches } from './clear-cache.mjs'
+import { hasWorkletsCacheFiles, resetWorkletsCache, rmMetroTmpCaches } from './clear-cache.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -29,7 +29,7 @@ if (hasAdbDevice()) {
 const devHost = getDevServerHost(lanHost)
 const env = devClientEnv()
 
-if (clearCache) {
+if (clearCache || !hasWorkletsCacheFiles()) {
   console.log('\n🧹 清理 Metro / worklets 缓存（避免 .worklets ENOENT）…\n')
   resetWorkletsCache()
   rmMetroTmpCaches()

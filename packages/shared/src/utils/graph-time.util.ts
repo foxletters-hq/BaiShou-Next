@@ -1,6 +1,10 @@
 /** Diary date → graph edge validFrom / shardMonth (never use Date.now() for diary edges). */
 
-const DATE_RE = /(\d{4})[-/](\d{2})[-/](\d{2})/
+/**
+ * 结尾的 `(?!\d)` 不能少：目录里的 YYYY/MM 会和文件名开头的年份拼成假日期。
+ * 例如 Journals/2026/07/2026-07-09.md 会被误匹配为 `2026/07/20`。
+ */
+const DATE_RE = /(\d{4})[-/](\d{2})[-/](\d{2})(?!\d)/
 const MONTH_RE = /^(\d{4})-(\d{2})$/
 
 export type GraphDiaryInstant = {

@@ -139,7 +139,10 @@ async function persistWorkspaceConfig(
       : undefined
     current.scopePreset = saved.scopePreset
     current.approvalPreset = saved.approvalPreset
-    applyWorkspaceExternalDirectoryPolicy(current, workspaceExternalDirectoryCache.get(wsId) === true)
+    applyWorkspaceExternalDirectoryPolicy(
+      current,
+      workspaceExternalDirectoryCache.get(wsId) === true
+    )
   }
 }
 

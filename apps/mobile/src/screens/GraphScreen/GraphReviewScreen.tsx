@@ -119,6 +119,7 @@ export function GraphReviewScreen() {
               onMerge={(pair) =>
                 review.mergeSimilarPair(pair.peerId, pair.nodeId, pair.peerName, pair.nodeName)
               }
+              onMergeAll={() => void review.mergeAllSimilarPairs()}
               onKeepApart={(pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId)}
               onLocateNode={(id) => openNode(id)}
               listPad={listPad}
@@ -127,6 +128,7 @@ export function GraphReviewScreen() {
             <GraphScreenReextractTab
               pending={data.pending}
               queueByPath={extract.queueByPath}
+              busy={m.busy}
               onRunExtract={(filePaths) => void extract.runExtract(filePaths)}
               onCancelQueueItem={extract.cancelQueueItem}
               onOpenSource={(date) => void m.openSource(date)}

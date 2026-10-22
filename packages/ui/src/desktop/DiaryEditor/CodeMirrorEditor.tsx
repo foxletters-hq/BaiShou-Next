@@ -85,8 +85,7 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
           let curr: HTMLElement | null = topLineEl
           while (curr && curr.classList.contains('cm-code-line')) {
             lines.push(curr.textContent ?? '')
-            curr =
-              curr.nextElementSibling instanceof HTMLElement ? curr.nextElementSibling : null
+            curr = curr.nextElementSibling instanceof HTMLElement ? curr.nextElementSibling : null
           }
           codeText = lines
             .filter((line, idx) => {
@@ -150,15 +149,9 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
             style={{ top: `${hoveredCodeBlock.top}px`, right: `${hoveredCodeBlock.right}px` }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleCopyCode}
-            title={
-              copiedCode
-                ? t('common.copied', '已复制')
-                : t('diary.copy_code', '复制代码')
-            }
+            title={copiedCode ? t('common.copied', '已复制') : t('diary.copy_code', '复制代码')}
             aria-label={
-              copiedCode
-                ? t('common.copied', '已复制')
-                : t('diary.copy_code', '复制代码')
+              copiedCode ? t('common.copied', '已复制') : t('diary.copy_code', '复制代码')
             }
           >
             {copiedCode ? <Check size={14} /> : <Copy size={14} />}

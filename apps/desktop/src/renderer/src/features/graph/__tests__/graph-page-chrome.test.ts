@@ -201,13 +201,19 @@ describe('GraphPage chrome', () => {
     expect(contentSrc).toContain("{tab === 'similar' && <GraphPageSimilarPane")
     expect(similarSrc).toContain("t('graph.similar_empty'")
     expect(similarSrc).toContain("t('graph.similar_merge'")
+    expect(similarSrc).toContain("t('graph.similar_merge_all'")
     expect(similarSrc).toContain("t('graph.similar_keep_apart'")
     expect(similarSrc).toContain('variant="outlined"')
     expect(similarSrc).not.toContain('variant="ghost"')
     expect(src).toContain('review.mergeNodes(pair.peerId, pair.nodeId, {')
     expect(src).toContain('survivorName: pair.peerName')
     expect(src).toContain('loserName: pair.nodeName')
+    expect(src).toContain('review.mergeAllSimilarPairs()')
     expect(src).toContain('dismissSimilarPair(pair.nodeId, pair.peerId)')
+    const reviewSrc = readSrc('useGraphPageReview.ts')
+    expect(reviewSrc).toContain('groupSimilarPendingPairsForMerge')
+    expect(reviewSrc).toContain("reason: 'merge-all-similar'")
+    expect(reviewSrc).toContain('mergeNodesBatch')
   })
 
   it('should warn with merge_irreversible_warning and show resolved node names', () => {
@@ -495,6 +501,10 @@ describe('GraphPage chrome', () => {
       'similar_empty',
       'similar_hint',
       'similar_merge',
+      'similar_merge_all',
+      'confirm_merge_all_similar',
+      'similar_merged_all',
+      'similar_merge_all_failed',
       'similar_keep_apart',
       'similar_dismissed'
     ]

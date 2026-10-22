@@ -106,6 +106,7 @@ export function useGraphPageModel({
     nodes: data.nodes,
     pendingNodes: data.pendingNodes,
     pendingEdges: data.pendingEdges,
+    similarPairs: data.similarPairs,
     selectedId: selection.selectedId,
     setSelectedId: selection.setSelectedId,
     setSelectedNode: selection.setSelectedNode,

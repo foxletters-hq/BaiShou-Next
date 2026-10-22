@@ -35,15 +35,15 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 ## Tool Usage
 
-| Scenario                                  | Tool (Built-in / MCP)                                                                                    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Check current date                        | `current_time` / `baishou_current_time`                                                              |
-| Detect all missing summaries via bitmap   | `summary_read` / `baishou_summary_read` with `mode: "missing"`                                     |
-| Ask user which summaries to generate      | `companion_ask` (pass `multiple: true` when 2+ periods are missing)                                  |
-| List diary dates in a week/month          | `diary_list` / `baishou_diary_list` (pass `start_date`, `end_date`)                              |
-| Read full diary entries in a week/month   | `diary_read` / `baishou_diary_read` (pass `dates` array)                                           |
-| Read existing or lower-level summaries    | `summary_read` / `baishou_summary_read` (pass `type`, `start_date`)                              |
-| Save summary to file & database           | `summary_write` / `baishou_summary_write` (pass `type`, `start_date`, `end_date`, `content`) |
+| Scenario                                | Tool (Built-in / MCP)                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Check current date                      | `current_time` / `baishou_current_time`                                                      |
+| Detect all missing summaries via bitmap | `summary_read` / `baishou_summary_read` with `mode: "missing"`                               |
+| Ask user which summaries to generate    | `companion_ask` (pass `multiple: true` when 2+ periods are missing)                          |
+| List diary dates in a week/month        | `diary_list` / `baishou_diary_list` (pass `start_date`, `end_date`)                          |
+| Read full diary entries in a week/month | `diary_read` / `baishou_diary_read` (pass `dates` array)                                     |
+| Read existing or lower-level summaries  | `summary_read` / `baishou_summary_read` (pass `type`, `start_date`)                          |
+| Save summary to file & database         | `summary_write` / `baishou_summary_write` (pass `type`, `start_date`, `end_date`, `content`) |
 
 ## Workflow
 
@@ -60,18 +60,21 @@ Task Progress:
 ### Step 1: Detect Missing Summaries via Bitmap
 
 Call `summary_read`:
+
 - Arguments: `{ "mode": "missing" }` (or `{ "mode": "missing", "type": "weekly" }` if the user only asked for a specific tier).
 - If no missing summaries are found: inform the user that all completed periods are up to date, and offer to use `/summary-repair` if they want to fix an existing summary.
 
 ### Step 2: Confirm with the User
 
 Call `companion_ask` (in the user's language):
+
 - In `question`, concisely list the count and date ranges of the detected missing summaries.
 - When 2 or more missing periods are detected, pass `multiple: true` on `companion_ask` and make each option a single period item (for example `["2026年第34周（8月17日—8月23日）", "2026年第39周（9月21日—9月27日）"]`). Do **not** prefix options with "Only..." / "只补..." or mix "Both / All of them" / "两份都补" into a multi-select option list, because the user can directly check one or more periods.
 
 ### Step 3: Read Source Material
 
 Read the sources corresponding to the target summary type:
+
 - **Weekly (`weekly`)**:
   1. `diary_list(start_date: Monday, end_date: Sunday)` to list all diary dates in that week.
   2. `diary_read(dates: [...])` to read the full text of those diaries.
@@ -88,64 +91,78 @@ Read the sources corresponding to the target summary type:
 Follow the section structure below, **localizing all headings and labels into the user's language** (unless the user requested a custom format):
 
 #### Weekly Template (`weekly`)
+
 ```markdown
 ##### Week {week} Summary — {month}/{year} (localize title to user's language, e.g. "{year}年{month}月第{week}周总结")
 
 ###### 📅 Period
+
 - **Date range**: {start} to {end}
 
 ###### 🎯 Core Keywords
+
 **Keyword 1**, **Keyword 2**, **Keyword 3**
 
 ---
 
 ###### 👥 Key People & Relationship Progress
+
 - **(Person)**: Key interactions and progress
 
 ---
 
 ###### 🎞️ Key Events (Timeline)
+
 - **[Event Title]**
-    - **Details**: Concrete facts and key conversations
-    - **Significance**: Why decisions were made or follow-up impact
+  - **Details**: Concrete facts and key conversations
+  - **Significance**: Why decisions were made or follow-up impact
 
 ---
 
 ###### 💡 Reflections & Mindset Shifts
+
 - **Work / Technology**:
 - **Life / Self**:
 
 ---
 
 ###### 📊 State Check-in
+
 - **Energy & Well-being**:
 - **Regrets This Week**:
 - **Next Week Focus**:
 
 ---
+
 ###### 🍵 Capsule for Monthly Summary
+
 > (One sentence capturing the most memorable anchor of the week)
 ```
 
 #### Monthly Template (`monthly`)
+
 ```markdown
 ##### {month}/{year} Monthly Summary (localize title to user's language, e.g. "{year}年{month}月度总结")
 
 ###### 📅 Date Range
+
 - **Range**: {start} to {end}
 
 ###### 🎯 Core Themes This Month
+
 **Theme 1**, **Theme 2**
 
 ---
 
 ###### 📈 Key Progress & Achievements
+
 - **Work / Technology**:
 - **Life / Personal**:
 
 ---
 
 ###### 👥 Relationship Dynamics
+
 - **(Person)**:
 
 ---
@@ -155,19 +172,24 @@ Follow the section structure below, **localizing all headings and labels into th
 ---
 
 ###### 📊 State Check-in (0–10)
+
 - **State**:
 - **Satisfaction**:
 
 ---
+
 ###### 🔮 Next Month Outlook
+
 - **Focus**:
 ```
 
 #### Quarterly (`quarterly`) & Yearly (`yearly`) Templates
+
 - **Quarterly (`quarterly`)**: Start with a localized H5 quarter title (e.g. `##### Q{quarter} {year} Quarterly Summary` / `##### {year}年第{quarter}季度总结`), covering date range, core themes, quarterly milestones, relationship threads, mindset shifts, and next quarter outlook.
 - **Yearly (`yearly`)**: Start with a localized H5 year title (e.g. `##### {year} Yearly Summary` / `##### {year}年度总结`), covering period, yearly keywords, seasonal/major chapters review, key people of the year, growth & transformation, and a note to next year's self.
 
 Once drafted, call `summary_write`:
+
 - `type`: `"weekly"` | `"monthly"` | `"quarterly"` | `"yearly"`
 - `start_date`: Period start date `YYYY-MM-DD`
 - `end_date`: Period end date `YYYY-MM-DD`

@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const diaryEditorStyles = StyleSheet.create({
   container: { flex: 1 },
@@ -36,18 +36,18 @@ export const diaryEditorStyles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   favBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: sharedTokens.radius.sm,
+    width: mobileControlTokens.height,
+    height: mobileControlTokens.height,
+    borderRadius: mobileControlTokens.radius,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0
   },
   ttsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: sharedTokens.radius.sm,
+    width: mobileControlTokens.height,
+    height: mobileControlTokens.height,
+    borderRadius: mobileControlTokens.radius,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

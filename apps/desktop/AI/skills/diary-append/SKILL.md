@@ -33,14 +33,14 @@ Keep following the persona rules when speaking to the user. This skill governs *
 
 ## Tool Usage
 
-| Scenario                                    | Tool (Built-in / MCP)                                                                                                  |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Check current local date & time             | `current_time` / `baishou_current_time` (use the local timezone of the personal diary)                             |
-| Check if a date already has a diary         | `diary_list` / `baishou_diary_list` or `diary_read` / `baishou_diary_read`                                     |
-| Create a new diary for a date               | `diary_write` / `baishou_diary_write`                                                                              |
-| Append at the end (only when order allows)  | `diary_edit` / `baishou_diary_edit` with `mode: "append"`                                                        |
-| Insert or append in time order (default)    | `diary_edit` / `baishou_diary_edit` with `mode: "overwrite"`, keeping **every existing paragraph verbatim**      |
-| Check whether an event was already recorded | `diary_search` / `baishou_diary_search`                                                                            |
+| Scenario                                    | Tool (Built-in / MCP)                                                                                       |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Check current local date & time             | `current_time` / `baishou_current_time` (use the local timezone of the personal diary)                      |
+| Check if a date already has a diary         | `diary_list` / `baishou_diary_list` or `diary_read` / `baishou_diary_read`                                  |
+| Create a new diary for a date               | `diary_write` / `baishou_diary_write`                                                                       |
+| Append at the end (only when order allows)  | `diary_edit` / `baishou_diary_edit` with `mode: "append"`                                                   |
+| Insert or append in time order (default)    | `diary_edit` / `baishou_diary_edit` with `mode: "overwrite"`, keeping **every existing paragraph verbatim** |
+| Check whether an event was already recorded | `diary_search` / `baishou_diary_search`                                                                     |
 
 - Target date already has a diary → Use `diary_edit` only, defaulting to `mode: "overwrite"`; do not call `diary_write`. Every newly added event must have its own H6 time heading.
 - Target date has no diary yet and has events to record → Use `diary_write` to create it, giving each event its own H6 time heading; if more events are added later, use `overwrite` while preserving all existing text.
@@ -88,7 +88,7 @@ A diary is a long-term memory to revisit months or years later, not a delivery c
 - **Code and document diff details**: Record only the goal, key decision, and outcome. **Do not** list page-by-page, field-by-field, or file-by-file diffs.
 - **Technical implementation minutiae**: Record whether the feature or bug was resolved, not the debugging steps or function names.
 - **File trees, config keys, parameters**: Those live in the codebase or docs; repeating them in the diary adds no value.
-- **Anything directly inspectable from the artifact itself**: Record *why* it was changed and *what happened after*, not a mechanical inventory of edits.
+- **Anything directly inspectable from the artifact itself**: Record _why_ it was changed and _what happened after_, not a mechanical inventory of edits.
 
 **Rule of thumb**: **Keep what people said in detail; keep technical edits to conclusions.**
 

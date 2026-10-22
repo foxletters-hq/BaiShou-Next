@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { resolveAgentToolActionLabel, type AssistantDisplayTimelineItem } from '@baishou/shared'
 import { formatToolDurationMs } from '../agent-tool-chain/agent-tool-chain.util'
 import { parseRedactedThinking } from '../chat-bubble/redacted-thinking'
@@ -5,53 +6,185 @@ import { parseRedactedThinking } from '../chat-bubble/redacted-thinking'
 export const AGENT_PROCESS_ROTATE_INTERVAL_MS = 8000
 
 export const AGENT_PROCESS_ACTIVE_PHRASES = [
-  { key: 'agent.chat.process_active_phrase_0', fallback: '伙伴正在喝茶…' },
-  { key: 'agent.chat.process_active_phrase_1', fallback: '伙伴正在打盹…' },
-  { key: 'agent.chat.process_active_phrase_2', fallback: '伙伴正在托腮沉思…' },
-  { key: 'agent.chat.process_active_phrase_3', fallback: '伙伴正在翻阅记忆…' },
-  { key: 'agent.chat.process_active_phrase_4', fallback: '伙伴正在伸懒腰…' },
-  { key: 'agent.chat.process_active_phrase_5', fallback: '伙伴正在整理思绪…' },
-  { key: 'agent.chat.process_active_phrase_6', fallback: '伙伴正在翻小本本…' },
-  { key: 'agent.chat.process_active_phrase_7', fallback: '伙伴正在揉眼睛…' },
-  { key: 'agent.chat.process_active_phrase_8', fallback: '伙伴正在慢悠悠泡茶…' },
-  { key: 'agent.chat.process_active_phrase_9', fallback: '伙伴正在歪头思考…' },
-  { key: 'agent.chat.process_active_phrase_10', fallback: '伙伴正在轻敲桌面…' },
-  { key: 'agent.chat.process_active_phrase_11', fallback: '伙伴正在组织语言…' },
-  { key: 'agent.chat.process_active_phrase_12', fallback: '伙伴正在睡觉…' },
-  { key: 'agent.chat.process_active_phrase_13', fallback: '伙伴正在转笔发呆…' },
-  { key: 'agent.chat.process_active_phrase_14', fallback: '伙伴正在晒太阳…' },
-  { key: 'agent.chat.process_active_phrase_15', fallback: '伙伴正在吹凉热茶…' },
-  { key: 'agent.chat.process_active_phrase_16', fallback: '伙伴正在翻箱倒柜找灵感…' },
-  { key: 'agent.chat.process_active_phrase_17', fallback: '伙伴正在趴桌小憩…' },
-  { key: 'agent.chat.process_active_phrase_18', fallback: '伙伴正在认真记笔记…' },
-  { key: 'agent.chat.process_active_phrase_19', fallback: '伙伴正在数星星…' },
-  { key: 'agent.chat.process_active_phrase_20', fallback: '伙伴正在挠头苦想…' },
-  { key: 'agent.chat.process_active_phrase_21', fallback: '伙伴正在擦拭眼镜…' },
-  { key: 'agent.chat.process_active_phrase_22', fallback: '伙伴正在哼着小曲思考…' },
-  { key: 'agent.chat.process_active_phrase_23', fallback: '伙伴正在捧着茶杯发呆…' },
-  { key: 'agent.chat.process_active_phrase_24', fallback: '伙伴正在脑海里画地图…' },
-  { key: 'agent.chat.process_active_phrase_25', fallback: '伙伴正在拍拍脸颊打起精神…' },
-  { key: 'agent.chat.process_active_phrase_26', fallback: '伙伴正在翻找旧时光…' },
-  { key: 'agent.chat.process_active_phrase_27', fallback: '伙伴正在小声嘀咕着什么…' }
+  {
+    key: 'agent.chat.process_active_phrase_0',
+    fallback: i18n.t('agent.chat.process_active_phrase_0', '伙伴正在喝茶…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_1',
+    fallback: i18n.t('agent.chat.process_active_phrase_1', '伙伴正在打盹…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_2',
+    fallback: i18n.t('agent.chat.process_active_phrase_2', '伙伴正在托腮沉思…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_3',
+    fallback: i18n.t('agent.chat.process_active_phrase_3', '伙伴正在翻阅记忆…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_4',
+    fallback: i18n.t('agent.chat.process_active_phrase_4', '伙伴正在伸懒腰…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_5',
+    fallback: i18n.t('agent.chat.process_active_phrase_5', '伙伴正在整理思绪…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_6',
+    fallback: i18n.t('agent.chat.process_active_phrase_6', '伙伴正在翻小本本…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_7',
+    fallback: i18n.t('agent.chat.process_active_phrase_7', '伙伴正在揉眼睛…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_8',
+    fallback: i18n.t('agent.chat.process_active_phrase_8', '伙伴正在慢悠悠泡茶…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_9',
+    fallback: i18n.t('agent.chat.process_active_phrase_9', '伙伴正在歪头思考…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_10',
+    fallback: i18n.t('agent.chat.process_active_phrase_10', '伙伴正在轻敲桌面…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_11',
+    fallback: i18n.t('agent.chat.process_active_phrase_11', '伙伴正在组织语言…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_12',
+    fallback: i18n.t('agent.chat.process_active_phrase_12', '伙伴正在睡觉…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_13',
+    fallback: i18n.t('agent.chat.process_active_phrase_13', '伙伴正在转笔发呆…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_14',
+    fallback: i18n.t('agent.chat.process_active_phrase_14', '伙伴正在晒太阳…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_15',
+    fallback: i18n.t('agent.chat.process_active_phrase_15', '伙伴正在吹凉热茶…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_16',
+    fallback: i18n.t('agent.chat.process_active_phrase_16', '伙伴正在翻箱倒柜找灵感…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_17',
+    fallback: i18n.t('agent.chat.process_active_phrase_17', '伙伴正在趴桌小憩…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_18',
+    fallback: i18n.t('agent.chat.process_active_phrase_18', '伙伴正在认真记笔记…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_19',
+    fallback: i18n.t('agent.chat.process_active_phrase_19', '伙伴正在数星星…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_20',
+    fallback: i18n.t('agent.chat.process_active_phrase_20', '伙伴正在挠头苦想…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_21',
+    fallback: i18n.t('agent.chat.process_active_phrase_21', '伙伴正在擦拭眼镜…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_22',
+    fallback: i18n.t('agent.chat.process_active_phrase_22', '伙伴正在哼着小曲思考…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_23',
+    fallback: i18n.t('agent.chat.process_active_phrase_23', '伙伴正在捧着茶杯发呆…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_24',
+    fallback: i18n.t('agent.chat.process_active_phrase_24', '伙伴正在脑海里画地图…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_25',
+    fallback: i18n.t('agent.chat.process_active_phrase_25', '伙伴正在拍拍脸颊打起精神…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_26',
+    fallback: i18n.t('agent.chat.process_active_phrase_26', '伙伴正在翻找旧时光…')
+  },
+  {
+    key: 'agent.chat.process_active_phrase_27',
+    fallback: i18n.t('agent.chat.process_active_phrase_27', '伙伴正在小声嘀咕着什么…')
+  }
 ] as const
 
 export const AGENT_PROCESS_COMPLETED_PHRASES = [
-  { key: 'agent.chat.process_done_phrase_0', fallback: '伙伴喝完茶回来啦' },
-  { key: 'agent.chat.process_done_phrase_1', fallback: '伙伴整理好思绪啦' },
-  { key: 'agent.chat.process_done_phrase_2', fallback: '伙伴合上了小本本' },
-  { key: 'agent.chat.process_done_phrase_3', fallback: '伙伴伸了个懒腰，想好啦' },
-  { key: 'agent.chat.process_done_phrase_4', fallback: '伙伴翻完记忆回来啦' },
-  { key: 'agent.chat.process_done_phrase_5', fallback: '伙伴揉揉眼睛醒来啦' },
-  { key: 'agent.chat.process_done_phrase_6', fallback: '伙伴灵光一闪' },
-  { key: 'agent.chat.process_done_phrase_7', fallback: '伙伴组织好语言啦' },
-  { key: 'agent.chat.process_done_phrase_8', fallback: '伙伴放下茶杯准备开口啦' },
-  { key: 'agent.chat.process_done_phrase_9', fallback: '伙伴睡醒一觉，精神百倍' },
-  { key: 'agent.chat.process_done_phrase_10', fallback: '伙伴找到了藏起来的灵感' },
-  { key: 'agent.chat.process_done_phrase_11', fallback: '伙伴拍拍手，大功告成' },
-  { key: 'agent.chat.process_done_phrase_12', fallback: '伙伴推了推眼镜，成竹在胸' },
-  { key: 'agent.chat.process_done_phrase_13', fallback: '伙伴收起笔，准备和你细说' },
-  { key: 'agent.chat.process_done_phrase_14', fallback: '伙伴满载记忆归来啦' },
-  { key: 'agent.chat.process_done_phrase_15', fallback: '伙伴微笑着看向了你' }
+  {
+    key: 'agent.chat.process_done_phrase_0',
+    fallback: i18n.t('agent.chat.process_done_phrase_0', '伙伴喝完茶回来啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_1',
+    fallback: i18n.t('agent.chat.process_done_phrase_1', '伙伴整理好思绪啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_2',
+    fallback: i18n.t('agent.chat.process_done_phrase_2', '伙伴合上了小本本')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_3',
+    fallback: i18n.t('agent.chat.process_done_phrase_3', '伙伴伸了个懒腰，想好啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_4',
+    fallback: i18n.t('agent.chat.process_done_phrase_4', '伙伴翻完记忆回来啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_5',
+    fallback: i18n.t('agent.chat.process_done_phrase_5', '伙伴揉揉眼睛醒来啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_6',
+    fallback: i18n.t('agent.chat.process_done_phrase_6', '伙伴灵光一闪')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_7',
+    fallback: i18n.t('agent.chat.process_done_phrase_7', '伙伴组织好语言啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_8',
+    fallback: i18n.t('agent.chat.process_done_phrase_8', '伙伴放下茶杯准备开口啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_9',
+    fallback: i18n.t('agent.chat.process_done_phrase_9', '伙伴睡醒一觉，精神百倍')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_10',
+    fallback: i18n.t('agent.chat.process_done_phrase_10', '伙伴找到了藏起来的灵感')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_11',
+    fallback: i18n.t('agent.chat.process_done_phrase_11', '伙伴拍拍手，大功告成')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_12',
+    fallback: i18n.t('agent.chat.process_done_phrase_12', '伙伴推了推眼镜，成竹在胸')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_13',
+    fallback: i18n.t('agent.chat.process_done_phrase_13', '伙伴收起笔，准备和你细说')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_14',
+    fallback: i18n.t('agent.chat.process_done_phrase_14', '伙伴满载记忆归来啦')
+  },
+  {
+    key: 'agent.chat.process_done_phrase_15',
+    fallback: i18n.t('agent.chat.process_done_phrase_15', '伙伴微笑着看向了你')
+  }
 ] as const
 
 /** 随机抽取趣味文案下标；传入 previous 时自动避开上一句，保证轮播每次都有变化 */
@@ -133,27 +266,45 @@ export function formatAgentProcessTitle({
       const name = resolveAgentToolActionLabel(activeToolName, (key, fallback) =>
         translate(key, fallback)
       )
-      return translate('agent.chat.tool_running', '正在执行：{{name}}…', { name })
+      return translate(
+        'agent.chat.tool_running',
+        i18n.t('agent.chat.tool_running', '正在执行：{{name}}…'),
+        { name }
+      )
     }
     if (isThinkLoading || hasReasoning) {
-      return translate('agent.chat.thinking_active', '深度思考中…')
+      return translate(
+        'agent.chat.thinking_active',
+        i18n.t('agent.chat.thinking_active', '深度思考中…')
+      )
     }
-    return translate('agent.chat.process_active', '正在处理中…')
+    return translate(
+      'agent.chat.process_active',
+      i18n.t('agent.chat.process_active', '正在处理中…')
+    )
   }
 
   if (hasReasoning && completedToolsCount > 0) {
-    return translate('agent.chat.process_thought_and_tools', '思考完成，完成{{count}}项操作', {
-      count: completedToolsCount
-    })
+    return translate(
+      'agent.chat.process_thought_and_tools',
+      i18n.t('agent.chat.process_thought_and_tools', '思考完成，完成{{count}}项操作'),
+      {
+        count: completedToolsCount
+      }
+    )
   }
 
   if (completedToolsCount > 0) {
-    return translate('agent.chat.process_tools_only', '完成{{count}}项操作', {
-      count: completedToolsCount
-    })
+    return translate(
+      'agent.chat.process_tools_only',
+      i18n.t('agent.chat.process_tools_only', '完成{{count}}项操作'),
+      {
+        count: completedToolsCount
+      }
+    )
   }
 
-  return translate('agent.chat.thought_process', '思考完成')
+  return translate('agent.chat.thought_process', i18n.t('agent.chat.thought_process', '思考完成'))
 }
 
 export type CoalescedProcessStep =

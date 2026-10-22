@@ -178,11 +178,7 @@ export function resolveCompanionAskPresentation(
   const hasMatchedSelection =
     selectedOptionIds.length > 0 &&
     selectedOptionIds.every((id) => displayOptions.some((option) => option.id === id))
-  if (
-    answer &&
-    !hasMatchedSelection &&
-    !displayOptions.some((option) => option.label === answer)
-  ) {
+  if (answer && !hasMatchedSelection && !displayOptions.some((option) => option.label === answer)) {
     displayOptions.push({
       id: selectedOptionIds[0] ?? 'custom',
       label: answer

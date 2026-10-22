@@ -22,7 +22,7 @@ describe('useMobileExternalVaultPaths chrome', () => {
     expect(src).toContain('storage.external_pick_continue')
 
     // 确认在 openDirectoryPicker 中是在 pickUserDirectory 之前调用 dialog.confirm
-    const noticeIdx = src.indexOf('dialog.confirm(t(noticeKey')
+    const noticeIdx = src.indexOf('dialog.confirm(notice')
     const pickIdx = src.indexOf('pickUserDirectory()')
     expect(noticeIdx).toBeGreaterThan(0)
     expect(pickIdx).toBeGreaterThan(noticeIdx)

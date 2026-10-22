@@ -285,20 +285,22 @@ export function useMobileExternalVaultPaths() {
 
   const openDirectoryPicker = useCallback(
     async (target: ExternalVaultPathPickerTarget) => {
-      const noticeKey =
+      const notice =
         target === 'journals'
-          ? 'storage.external_journals_pick_notice'
-          : 'storage.external_summaries_pick_notice'
-      const defaultNotice =
-        target === 'journals'
-          ? '自定义日记目录用于将日记单独保存在设备上的指定文件夹中（便于配合 Obsidian 等外部工具管理），应用将直接读写该目录下的 Markdown 日记。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
-          : '自定义总结目录用于将周记、月记、季报和年记保存在指定的外部文件夹中，应用将直接读写该目录下的总结文件（该目录下需具备 Weekly/Monthly/Quarterly/Yearly 结构）。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
+          ? t(
+              'storage.external_journals_pick_notice',
+              '自定义日记目录用于将日记单独保存在设备上的指定文件夹中（便于配合 Obsidian 等外部工具管理），应用将直接读写该目录下的 Markdown 日记。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
+            )
+          : t(
+              'storage.external_summaries_pick_notice',
+              '自定义总结目录用于将周记、月记、季报和年记保存在指定的外部文件夹中，应用将直接读写该目录下的总结文件（该目录下需具备 Weekly/Monthly/Quarterly/Yearly 结构）。若无特殊需求，建议保持默认设置。\n\n是否继续选择自定义目录？'
+            )
       const noticeTitle =
         target === 'journals'
           ? t('storage.external_journals_pick', '自定义日记目录')
           : t('storage.external_summaries_pick', '自定义总结目录')
 
-      const confirmed = await dialog.confirm(t(noticeKey, defaultNotice), {
+      const confirmed = await dialog.confirm(notice, {
         title: noticeTitle,
         confirmText: t('storage.external_pick_continue', '继续选择'),
         cancelText: t('common.cancel', '取消')

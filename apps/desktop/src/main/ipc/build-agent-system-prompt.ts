@@ -20,7 +20,10 @@ import {
 import { resolveWorkspaceGitMetaLight } from '../services/workspace-chat-git-meta'
 import { listAgentSkillsCatalogForWorkspace } from '../services/agent-skills.service'
 import { readSessionMountedNotebookIds } from '../services/session-mounted-notebooks'
-import { createDesktopSkillsReader, createDesktopSkillsWriter } from '../services/desktop-skills-writer'
+import {
+  createDesktopSkillsReader,
+  createDesktopSkillsWriter
+} from '../services/desktop-skills-writer'
 import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
 import { AgentGateProfileId, resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'

@@ -193,6 +193,18 @@ describe('graphDiaryInstant', () => {
     expect(r.shardMonth).toBe('2024-07')
     expect(r.dateStr).toBe('2024-07-01')
   })
+
+  it('does not join the YYYY/MM folders with the file year', () => {
+    const r = graphDiaryInstant('Journals/2026/07/2026-07-09.md')
+    expect(r.dateStr).toBe('2026-07-09')
+    expect(r.shardMonth).toBe('2026-07')
+    expect(r.validFrom).toBe(new Date(2026, 6, 9).getTime())
+  })
+
+  it('does not truncate a date that is followed by more digits', () => {
+    expect(graphDiaryInstant('Journals/2026/07/2026-07-09.md').dateStr).not.toBe('2026-07-20')
+    expect(graphDiaryInstant('2024-07-012').dateStr).not.toBe('2024-07-01')
+  })
 })
 
 describe('GRAPH_GLOBAL_MAX_NODES', () => {
