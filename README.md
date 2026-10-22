@@ -14,6 +14,12 @@
 
 > **请注意**：此前基于 Flutter 的客户端（[Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)）**已不再维护**；后续所有功能更新与版本发布均在本仓库 **BaiShou-Next** 进行（桌面 Electron + 移动 Expo 的 monorepo）。请 Star / Watch 本仓库以获取最新动态。
 
+#### 给 AI 编码工具
+
+第一次进入本仓库时，先读 [`docs/1-AI-Code/0-README.md`](./docs/1-AI-Code/0-README.md)，按其中的「首次接入」安装提示词和 skills，并核对「版本」表。已安装副本与表中版本一致时，不需要每次重读；版本不一致时按该 README 更新。
+
+新增或更新提示词、skill 时，必须同步更新 `docs/1-AI-Code/0-README.md` 的版本日期。
+
 ---
 
 #### 看板娘：Latte

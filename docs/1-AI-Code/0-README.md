@@ -1,15 +1,43 @@
 # AI 协作规则入口
 
-动手前先读本文件。这里只说明**当前工作该打开哪一份**，不要通读全部文档。零件清单、主题数值、测试与提交细则都写在对应文件里。表里对不上时，先列出本目录下的文件，按文件名判断该打开哪一份。不要把这些规则再抄到某个编辑器或 AI 工具的专用配置里。
+动手前先读本文件。这里只说明**当前工作该打开哪一份**，不要通读全部文档。零件清单、主题数值、工程准则、测试与提交细则都写在对应文件里。表里对不上时，先列出本目录下的文件，按文件名判断该打开哪一份。
+
+规则本体始终留在 `docs/1-AI-Code/`。工具专用目录里只放两类东西：本文件给出的**长期提示词**，以及从 [skills/](./skills/) 复制过去的**项目技能**；不要把规则再抄一份进工具配置。
+
+**首次使用**：把本文件路径交给你的 AI 编码工具，并对它说「按 `docs/1-AI-Code/0-README.md` 的『首次接入』安装提示词和 skills」。
+
+## 版本
+
+当前版本统一用日期 `YYYY-MM-DD` 表示。**本表是版本 SSOT**：新增 skill 时，在它的 `SKILL.md` frontmatter 写 `version: YYYY-MM-DD`，并在本表加一行；改动 `3-AI-Prompt.md` 的提示词正文或任一 `skills/<name>/` 后，把对应版本改成当天日期，并同步本表。
+
+| 项目              | 源文件                                                               | 当前版本   |
+| ----------------- | -------------------------------------------------------------------- | ---------- |
+| 长期提示词        | [3-AI-Prompt.md](./3-AI-Prompt.md)                                   | 2026-10-23 |
+| `agy-cli`         | [skills/agy-cli/SKILL.md](./skills/agy-cli/SKILL.md)                 | 2026-10-23 |
+| `baishou-release` | [skills/baishou-release/SKILL.md](./skills/baishou-release/SKILL.md) | 2026-10-23 |
+| `code-review`     | [skills/code-review/SKILL.md](./skills/code-review/SKILL.md)         | 2026-10-23 |
+| `design-scenes`   | [skills/design-scenes/SKILL.md](./skills/design-scenes/SKILL.md)     | 2026-10-23 |
+| `todo-review`     | [skills/todo-review/SKILL.md](./skills/todo-review/SKILL.md)         | 2026-10-23 |
+
+**核对方式**：
+
+- 提示词：读当前工具已安装的指令文件（如 `AGENTS.md`），找 `本提示词版本：YYYY-MM-DD`。
+- skill：读已安装副本的 `SKILL.md` frontmatter，找 `version: YYYY-MM-DD`。
+- 与上表不一致：按下方「首次接入」重新复制对应项。
+- 与上表一致：跳过，不要重复安装。
 
 ## 按工作打开
 
 | 当前工作                                       | 打开这一份                                                         |
 | ---------------------------------------------- | ------------------------------------------------------------------ |
+| 首次接入、更新本工具的提示词与 skills          | 本文件 [§首次接入](#首次接入)                                      |
+| 核对提示词与 skills 版本                       | 本文件 [§版本](#版本)                                              |
+| 查看或新增项目 skills 源文件                   | [skills/](./skills/)                                               |
 | 写界面、找现成组件、新增或重命名或删除公开组件 | [../../packages/ui/COMPONENTS.md](../../packages/ui/COMPONENTS.md) |
 | 改颜色、顶栏、卡片、表单描边、页面布局         | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)                         |
 | 写逻辑、测试、包边界、文件拆分                 | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)                           |
 | 设计模块、修 Bug、性能优化、实现新功能         | [4-Engineering-Rule.md](./4-Engineering-Rule.md)                   |
+| 审查改动、检查 PR、找回归问题                  | [skills/code-review/](./skills/code-review/)                       |
 | 提交、PR                                       | [../2-Submit/1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)       |
 | 给自己的 AI 编码工具配置长期指令               | [3-AI-Prompt.md](./3-AI-Prompt.md)                                 |
 
@@ -21,3 +49,88 @@
 | 2    | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)       | UI 语义色、边框、Glass 政策、页面顶栏与设置区布局约定（Token SSOT） |
 | 3    | [3-AI-Prompt.md](./3-AI-Prompt.md)               | 贡献者粘贴到自己 AI 编码工具里的长期指令，与工具无关                |
 | 4    | [4-Engineering-Rule.md](./4-Engineering-Rule.md) | 工程准则：根因分析、方案对比、失败路径、性能取舍与验证方式          |
+| 5    | [skills/](./skills/)                             | 项目 skills 源目录，由 AI 复制到当前工具的项目技能目录              |
+
+## 首次接入
+
+> 本节写给 AI 助手。用户第一次把本仓库交给你时，按下面步骤把提示词和 skills 安装到当前工具能读取的位置。如果你已经能读到本段提示词，说明提示词已安装，跳过第 3 步；但仍按第 2 步核对版本，只重装不一致的项。
+
+### 1. 判断当前工具
+
+先确认你运行在哪个 AI 编码工具里：看系统提示、可用工具名、项目里已有的配置目录。无法判断时直接问用户，不要猜。
+
+### 2. 核对版本
+
+读上方的 [§版本](#版本) 表，再检查当前工具里已经安装的副本：
+
+- 提示词：在已安装的指令文件里找 `本提示词版本：YYYY-MM-DD`。
+- skill：在已安装副本的 `SKILL.md` frontmatter 里找 `version: YYYY-MM-DD`。
+- 全部一致：跳过第 3、4 步，直接汇报「已是最新」。
+- 有缺失或日期不一致：只重装对应的项。
+
+### 3. 安装长期提示词
+
+1. 打开 [3-AI-Prompt.md](./3-AI-Prompt.md)。
+2. 复制「提示词正文（整段复制）」代码块里的全部内容。
+3. 写入当前工具默认会读取的项目指令文件：
+
+| 工具        | 写入位置                                                    |
+| ----------- | ----------------------------------------------------------- |
+| OpenCode    | 项目根 `AGENTS.md`（或全局 `~/.config/opencode/AGENTS.md`） |
+| Cursor      | `.cursor/rules/ai.mdc`，文件头加 `alwaysApply: true`        |
+| Claude Code | 项目根 `CLAUDE.md`                                          |
+| 其他工具    | 查它文档里的「项目规则 / 自定义指令 / instructions」文件    |
+
+4. 目标文件已存在时先读一遍：
+   - 已经包含本仓库提示词：跳过。
+   - 是用户自己的内容：追加到末尾并用注释分隔，不要覆盖。
+5. 写入后确认文件里保留了 `本提示词版本：YYYY-MM-DD` 这一行；被工具改写或截断时重新复制。
+6. 这些文件已被 `.gitignore` 忽略，属于本机安装产物，不要提交。
+
+### 4. 安装项目 skills
+
+1. [skills/](./skills/) 是项目 skills 的唯一来源。
+2. 对 `skills/` 下的每个 `<name>/`，把**整个目录**复制到当前工具的项目级技能目录：
+
+| 工具        | 复制到                                                 |
+| ----------- | ------------------------------------------------------ |
+| OpenCode    | `.opencode/skills/<name>/`                             |
+| Cursor      | `.cursor/skills/<name>/`                               |
+| Claude Code | `.claude/skills/<name>/`                               |
+| 其他工具    | 查它文档里的 project skills 目录；没有就跳过并告诉用户 |
+
+3. 只复制，不要改动 `docs/1-AI-Code/skills/` 里的源文件。
+4. 目标目录已有同名 skill 时先比较内容：相同就跳过；不同就问用户是否覆盖，不要静默覆盖用户自建的技能。
+5. 复制后按当前工具的实际能力做最小适配：
+   - 技能里出现的提问工具按本工具替换（如 `AskQuestion` → 本工具的提问工具）；没有专用提问工具时，用编号选项让用户回复。
+   - 依赖本工具不存在的功能（如 Cursor Canvas）时，改写那一步或直接跳过；如果整个技能都绑定在不支持的功能上，跳过这个 skill 并在汇报里说明，不要复制一个明知跑不起来的技能。
+6. 复制后确认每个已安装 `SKILL.md` 的 frontmatter 里有源文件的 `version: YYYY-MM-DD`。
+7. 目标目录已被 `.gitignore` 忽略，不要提交。
+
+### 5. 更新
+
+`docs/1-AI-Code/skills/` 或 `3-AI-Prompt.md` 更新后：
+
+1. 先按第 2 步核对版本。
+2. 只重装版本不一致的项。
+3. 用源目录覆盖之前复制过去的同名目录；用户自建的同名 skill 仍然先问再覆盖。
+4. 更新完成后再次核对，确保已安装副本的版本与版本表一致。
+
+### 6. 汇报
+
+安装或更新完成后，用一段话告诉用户：
+
+- 识别到的工具；
+- 提示词写到了哪个文件、版本是多少；
+- 哪些 skills 复制到了哪里、版本是多少、哪些被跳过及原因；
+- 哪些步骤需要用户手动确认。
+
+## skills 源目录
+
+| skill             | 用途                                                           | 工具依赖                                    |
+| ----------------- | -------------------------------------------------------------- | ------------------------------------------- |
+| `agy-cli`         | 调用本机 `agy` CLI 执行任务                                    | 需要本机已安装并登录 `agy`                  |
+| `baishou-release` | 本地 CI、升版本、写 Release 说明、提交打 tag                   | 需要提问工具（如 `AskQuestion`）            |
+| `code-review`     | 逐项审查改动的正确性、数据一致性、并发、性能、安全、范围与测试 | 无                                          |
+| `design-scenes`   | 用真实使用场景推演和比较设计方案                               | 需要提问工具（如 `AskQuestion`）            |
+| `todo-review`     | 对照当前代码与测试，核查计划/待办是否真的落地                  | 原生于 Cursor Canvas；其他工具需改写第 4 步 |
