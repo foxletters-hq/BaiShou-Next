@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-22T18:23:48.303Z',
+  syncedAt: '2026-10-22T21:25:35.346Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -712,8 +712,6 @@ export const VISION_MODELS_SNAPSHOT = {
       'sakana/fugu-ultra',
       'sakana/fugu-ultra-v2',
       'sakana/namazu',
-      'spacexai/grok-4.1-fast-non-reasoning',
-      'spacexai/grok-4.1-fast-reasoning',
       'spacexai/grok-4.20-multi-agent',
       'spacexai/grok-4.20-multi-agent-beta',
       'spacexai/grok-4.20-non-reasoning',
@@ -1256,8 +1254,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'scaledown/extract',
     'scaledown/summarize',
     'space-bunny',
-    'spacexai/grok-4.1-fast-non-reasoning',
-    'spacexai/grok-4.1-fast-reasoning',
     'spacexai/grok-4.20-multi-agent',
     'spacexai/grok-4.20-multi-agent-beta',
     'spacexai/grok-4.20-non-reasoning',
