@@ -29,7 +29,7 @@ function resolveApiKey(config: AiProviderModel): string {
   return sanitizeApiKeyForHttp(getRotatedApiKey(config) || config.apiKey)
 }
 
-function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)) {
+function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch) {
   return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const nextInit = { ...init }
     const urlStr = typeof url === 'string' ? url : url.toString()
@@ -67,11 +67,10 @@ function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.
   }
 }
 
-export function createOpenCodeGoFetch(
-  sessionId?: string,
-  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
-): typeof fetch {
+export function createOpenCodeGoFetch(sessionId?: string, fetchImpl?: typeof fetch): typeof fetch {
   const resolvedSessionId = resolveOpenCodeGoSessionId(sessionId)
+  // 不要在这里默认 globalThis.fetch：React Native 下它没有 response.body 流式能力。
+  // 保持 fetchImpl 为 undefined，让 createSanitizedFetch 选用 expo/fetch。
   const sanitized = createSanitizedFetch(fetchImpl, { forceOpenCodeSession: true })
   const withDeepSeek = createOpenCodeGoOpenAiFetch(sanitized)
   return async (url, init) => withDeepSeek(url, withOpenCodeGoHeaders(init, resolvedSessionId))
