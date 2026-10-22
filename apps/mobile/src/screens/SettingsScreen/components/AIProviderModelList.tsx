@@ -21,7 +21,6 @@ export function AIProviderModelList(props: {
   showAllLoadedHint: boolean
   onLoadMore: () => void
   onToggleModel: (modelId: string, nextEnabled?: boolean) => void
-  onEnableDialogueModels: () => void
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -60,14 +59,6 @@ export function AIProviderModelList(props: {
               '当前未开启任何模型，该供应商不会显示在模型切换列表中'
             )}
           </Text>
-          <TouchableOpacity
-            style={[styles.enableAllBtn, { backgroundColor: colors.primary }]}
-            onPress={props.onEnableDialogueModels}
-          >
-            <Text style={[styles.enableAllBtnText, { color: colors.textOnPrimary }]}>
-              {t('ai_config.enable_dialogue_models', '启用所有对话模型')}
-            </Text>
-          </TouchableOpacity>
         </View>
       )}
       <View style={styles.modelList}>

@@ -1,4 +1,4 @@
-import { generateText, type LanguageModel } from 'ai'
+import { generateText, streamText, type LanguageModel } from 'ai'
 import { extractApiErrorMessage, isBenignConnectionTestLimitError } from './provider-api-error.util'
 import { buildSmallTaskReasoningOptions } from './reasoning'
 import { runWithOpenAiThinkingInjectAsync } from './reasoning/openai-thinking-inject'
@@ -15,6 +15,11 @@ export type ProbeProviderConnectionParams = {
   modelId?: string
   providerType?: string
   baseUrl?: string
+  /**
+   * 走流式探活（与真实聊天一致）。
+   * 部分 React Native fetch 实现无法可靠读取非流式 JSON 响应，流式可避开该路径。
+   */
+  streaming?: boolean
 }
 
 /**
@@ -40,15 +45,25 @@ export async function probeProviderConnection(
         })
       : undefined
 
-    await runWithOpenAiThinkingInjectAsync(built?.openAiThinkingInject, async () =>
-      generateText({
+    await runWithOpenAiThinkingInjectAsync(built?.openAiThinkingInject, async () => {
+      const options = {
         model: params.model,
         prompt: CONNECTION_TEST_PROMPT,
         maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
         ...(built?.providerOptions ? { providerOptions: built.providerOptions as never } : {})
-      })
-    )
+      }
+
+      if (params.streaming) {
+        for await (const part of streamText(options).fullStream) {
+          // streamText 不会在 API 错误时 reject，而是把错误作为流事件发出
+          if (part.type === 'error') throw part.error
+        }
+        return
+      }
+
+      await generateText(options)
+    })
   } catch (e: unknown) {
     const detail = extractApiErrorMessage(e)
     if (isBenignConnectionTestLimitError(detail)) {

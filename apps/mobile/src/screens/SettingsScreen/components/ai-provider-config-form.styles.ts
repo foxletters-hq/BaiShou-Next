@@ -69,15 +69,6 @@ export const aiProviderConfigFormStyles = StyleSheet.create({
     fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center'
   },
-  enableAllBtn: {
-    paddingVertical: sharedTokens.spacing.xs,
-    paddingHorizontal: sharedTokens.spacing.md,
-    borderRadius: sharedTokens.radius.sm
-  },
-  enableAllBtnText: {
-    fontSize: mobileTypography.secondary.fontSize,
-    fontWeight: '600'
-  },
   modelList: {
     marginTop: sharedTokens.spacing.xs
   },

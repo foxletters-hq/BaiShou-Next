@@ -35,7 +35,6 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
     handleResetConfig,
     handleToggleEnable,
     handleFetchModels,
-    handleEnableDialogueModels,
     handleTestConnection,
     handleDeleteProvider,
     sortedDisplayModels,
@@ -167,7 +166,6 @@ export const AIProviderConfigForm: React.FC<AIProviderConfigFormProps> = (props)
         showAllLoadedHint={showAllLoadedHint}
         onLoadMore={loadMoreModels}
         onToggleModel={toggleModelEnabled}
-        onEnableDialogueModels={handleEnableDialogueModels}
       />
 
       {!activeConfig.isSystem && (
