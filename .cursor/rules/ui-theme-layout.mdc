@@ -1,7 +1,0 @@
----
-description: 写界面时去项目规则目录找规范，不要在本文件复制
-globs: packages/ui/src/**/*.{css,tsx},apps/desktop/src/renderer/**/*.{css,tsx},apps/mobile/src/**/*.{tsx,ts}
-alwaysApply: false
----
-
-不要在本文件维护主题或布局摘要。写界面、改颜色或布局时，打开 `docs/1-AI-Code/0-README.md`，按表读取 `packages/ui/COMPONENTS.md` 或 `docs/1-AI-Code/2-UI-Theme-Rule.md`。
