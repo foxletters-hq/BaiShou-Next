@@ -10,7 +10,7 @@ import type { SyncConfig } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from '../../services/mobile-app-paths'
 import { checkpointAgentDatabaseForExport } from '../../services/mobile-agent-db-checkpoint.util'
 import { MOBILE_AGENT_DB_NAME } from '../../services/mobile-agent-db-recovery.service'
-import { emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
+import { emitSyncMutation, emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
 import { attachMobileRagVaultScope } from '../../services/mobile-rag-vault-scope'
 import { setMobileDiaryEmbeddingDeps } from '../../services/mobile-diary-embedding.service'
 import { createMobileRagService } from '../../services/mobile-rag.service'
@@ -224,6 +224,7 @@ export function createArchiveDbBridge(deps: {
         }
       }
       refs.archiveRestoreEpochPublishedRef.current = true
+      emitSyncMutation('resync-complete', 'archive-restore')
       if (isMounted()) {
         setValue((prev) => ({
           ...prev,
@@ -232,6 +233,7 @@ export function createArchiveDbBridge(deps: {
           services: prev.services
             ? {
                 ...prev.services,
+                diaryService: stack.diaryService,
                 ragService: ctx.ragServiceRef.current,
                 summaryManager: summaryPipeline.summaryManager,
                 summaryGenerator: summaryPipeline.summaryGenerator,

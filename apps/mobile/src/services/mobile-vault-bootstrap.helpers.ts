@@ -126,11 +126,15 @@ export async function preferActiveVaultWithJournalsOnDisk(deps: {
   for (const vault of vaults) {
     const externalJournals = await deps.pathService.getExternalJournalsDirectory(vault.name)
     const externalSummaries = await deps.pathService.getExternalSummariesDirectory(vault.name)
-    const journalsDir = externalJournals ?? path.join(vault.path, 'Journals')
+    const hasValidExternalJournals =
+      Boolean(externalJournals) && (await deps.fileSystem.exists(externalJournals!))
+    const journalsDir = hasValidExternalJournals
+      ? externalJournals!
+      : path.join(vault.path, 'Journals')
     const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
 
     let archiveCount = 0
-    if (externalSummaries) {
+    if (externalSummaries && (await deps.fileSystem.exists(externalSummaries))) {
       archiveCount = await countSummaryMarkdownInArchivesTree(deps.fileSystem, externalSummaries)
     } else {
       archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)

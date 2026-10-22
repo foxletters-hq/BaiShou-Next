@@ -502,4 +502,20 @@ export class ShadowIndexUpsertOps {
       }
     }
   }
+
+  /** 清空全局影子索引库中的所有日记与 FTS 记录（全量归档恢复前使用） */
+  async deleteAllRecords(): Promise<void> {
+    return this.withWriteLock(async () => {
+      await this.database.delete(shadowJournalIndexTable)
+      try {
+        await this.database.run(sql`DELETE FROM journals_fts`)
+      } catch (e: any) {
+        console.warn(
+          '[ShadowIndex] FTS 全表清空失败 (非阻塞):',
+          e?.message,
+          e?.cause?.message ?? e?.cause ?? ''
+        )
+      }
+    })
+  }
 }
