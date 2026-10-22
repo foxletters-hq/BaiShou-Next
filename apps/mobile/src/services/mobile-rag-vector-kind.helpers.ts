@@ -73,6 +73,40 @@ function graphRepo(): GraphRepository | null {
   return drizzleDb ? new GraphRepository(drizzleDb) : null
 }
 
+export async function countEmbeddedGraphEntries(
+  vaultId: string,
+  keyword?: string
+): Promise<number> {
+  const repo = graphRepo()
+  if (!repo) return 0
+  return repo.countEmbeddedLiveNodes(vaultId, keyword)
+}
+
+export async function listEmbeddedGraphEntriesByIds(
+  vaultId: string,
+  ids: string[]
+): Promise<Map<string, ReturnType<typeof graphNodeToMobileEntry>>> {
+  const map = new Map<string, ReturnType<typeof graphNodeToMobileEntry>>()
+  if (ids.length === 0) return map
+  const repo = graphRepo()
+  if (!repo) return map
+  const rows = await repo.getNodesByIds(vaultId, ids)
+  for (const row of rows) {
+    if (row.deletedAt != null) continue
+    map.set(
+      row.id,
+      graphNodeToMobileEntry({
+        id: row.id,
+        name: row.name,
+        summary: row.summary ?? '',
+        modelId: row.modelId ?? '',
+        updatedAt: row.updatedAt
+      })
+    )
+  }
+  return map
+}
+
 export async function listEmbeddedGraphEntries(
   vaultId: string,
   options: { keyword?: string; limit: number; offset: number }

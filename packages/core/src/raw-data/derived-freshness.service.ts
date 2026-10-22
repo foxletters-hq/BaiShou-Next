@@ -20,8 +20,34 @@ export interface PendingReextractCollaborators {
   writeExtractState: (filePath: string, contentHash: string) => Promise<void>
 }
 
+const JOURNAL_DATE_IN_PATH = /(?:^|\/)(\d{4}-\d{2}-\d{2})\.md$/i
+
 function normalizeFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\/+/, '')
+}
+
+function extractJournalDateFromPath(filePath: string): string | null {
+  const m = JOURNAL_DATE_IN_PATH.exec(normalizeFilePath(filePath))
+  return m?.[1] ?? null
+}
+
+function lookupExtractedHash(
+  extractHashes: Map<string, string>,
+  filePath: string,
+  date?: string
+): string | null {
+  const key = normalizeFilePath(filePath)
+  const direct = extractHashes.get(key)
+  if (direct !== undefined) return direct
+  const resolvedDate =
+    date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : extractJournalDateFromPath(key)
+  if (!resolvedDate) return null
+  const byDate = extractHashes.get(`date:${resolvedDate}`)
+  if (byDate !== undefined) return byDate
+  const canonical = `Journals/${resolvedDate.slice(0, 4)}/${resolvedDate.slice(5, 7)}/${resolvedDate}.md`
+  const byCanonical = extractHashes.get(canonical)
+  if (byCanonical !== undefined) return byCanonical
+  return extractHashes.get(`Journals/${resolvedDate}.md`) ?? null
 }
 
 /**
@@ -92,7 +118,7 @@ export class DerivedFreshnessService {
     for (const j of journals) {
       const key = normalizeFilePath(j.filePath)
       if (!key) continue
-      const last = extractHashes.get(key) ?? null
+      const last = lookupExtractedHash(extractHashes, key, j.date)
       const bits = resolveDiaryExtractBits({
         contentHash: j.contentHash,
         extractedHash: last
@@ -110,13 +136,13 @@ export class DerivedFreshnessService {
     const stale: string[] = []
     for (const [filePath, contentHash] of marks) {
       const key = normalizeFilePath(filePath)
-      const last = extractHashes.get(key) ?? null
+      const existing = byPath.get(key)
+      const last = lookupExtractedHash(extractHashes, key, existing?.date)
       const bits = resolveDiaryExtractBits({ contentHash, extractedHash: last })
       if (!bits.needsReextract) {
         stale.push(key)
         continue
       }
-      const existing = byPath.get(key)
       byPath.set(key, {
         filePath: key,
         contentHash,
@@ -138,5 +164,13 @@ export class DerivedFreshnessService {
     }
     await this.collaborators.writeExtractState(key, contentHash)
     this.reextractMarks.delete(key)
+    const dateKey = extractJournalDateFromPath(key)
+    if (dateKey) {
+      for (const markKey of [...this.reextractMarks.keys()]) {
+        if (extractJournalDateFromPath(markKey) === dateKey) {
+          this.reextractMarks.delete(markKey)
+        }
+      }
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
   type RagVectorKindFilter
 } from '@baishou/shared'
 import { MobileRagAbortError } from '../../../../services/mobile-rag.service'
+import { notifyMobilePendingEmbedCountsChanged } from '../../../../services/mobile-pending-embed-counts'
 import { clampMobileRagConfig } from './rag-memory-section.constants'
 import { confirmMobileRagClearKinds } from './rag-memory-clear.util'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
@@ -305,6 +306,7 @@ export function useRagMemoryActions(
       paused: true,
       cancelling: false
     }))
+    notifyMobilePendingEmbedCountsChanged()
   }, [services?.ragService, setRagState])
 
   const handleResumeBatchEmbed = useCallback(async () => {
@@ -417,14 +419,21 @@ export function useRagMemoryActions(
 
     const snapshotEntries = entries
     const snapshotTotal = totalCount
-    const snapshotStatsTotal = stats.totalCount
+    const snapshotStats = stats
+    const deletedEntry = entries.find((entry) => entry.embeddingId === id)
     const remainingOnPage = entries.filter((entry) => entry.embeddingId !== id)
 
     setEntries(remainingOnPage)
     setTotalCount((prev) => Math.max(0, prev - 1))
     setStats((prev) => ({
       ...prev,
-      totalCount: Math.max(0, prev.totalCount - 1)
+      totalCount: Math.max(0, prev.totalCount - 1),
+      vaultTotalCount:
+        prev.vaultTotalCount != null ? Math.max(0, prev.vaultTotalCount - 1) : prev.vaultTotalCount,
+      diaryCountForVault:
+        prev.diaryCountForVault != null && deletedEntry?.sourceType === 'diary'
+          ? Math.max(0, prev.diaryCountForVault - 1)
+          : prev.diaryCountForVault
     }))
 
     try {
@@ -439,7 +448,7 @@ export function useRagMemoryActions(
     } catch (e: unknown) {
       setEntries(snapshotEntries)
       setTotalCount(snapshotTotal)
-      setStats((prev) => ({ ...prev, totalCount: snapshotStatsTotal }))
+      setStats(snapshotStats)
       toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
     }
   }

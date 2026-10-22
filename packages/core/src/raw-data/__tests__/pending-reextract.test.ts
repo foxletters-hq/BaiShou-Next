@@ -105,6 +105,25 @@ describe('pending-reextract + extract-state', () => {
     const pending = await freshness.listPendingReextract()
     expect(pending.map((p) => p.filePath)).toEqual(['Journals/2026-07-03.md'])
   })
+
+  it('matches desktop external Obsidian journal path (e.g. 2.日记/...) against mobile Journals/ layout by date', async () => {
+    journals = [
+      {
+        filePath: 'Journals/2026/07/2026-07-01.md',
+        contentHash: 'hash-a',
+        date: '2026-07-01'
+      },
+      {
+        filePath: 'Journals/2026/07/2026-07-02.md',
+        contentHash: 'hash-b',
+        date: '2026-07-02'
+      }
+    ]
+    await freshness.commitReextract('2.日记/2026/07/2026-07-01.md', 'hash-a')
+    freshness.markPendingReextract('Journals/2026/07/2026-07-01.md', 'hash-a')
+    const pending = await freshness.listPendingReextract()
+    expect(pending.map((p) => p.filePath)).toEqual(['Journals/2026/07/2026-07-02.md'])
+  })
 })
 
 describe('DerivedFreshnessService listPendingReextract source', () => {

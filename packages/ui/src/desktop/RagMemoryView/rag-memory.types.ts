@@ -22,6 +22,8 @@ export interface RagStats {
   totalSizeText: string
   /** 当前工作空间下的日记向量块数 */
   diaryCountForVault?: number
+  /** 当前工作空间下的总向量片段数（memory_embeddings + graph_nodes） */
+  vaultTotalCount?: number
   activeVaultName?: string
 }
 

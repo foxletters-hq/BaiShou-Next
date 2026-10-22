@@ -21,6 +21,7 @@ export interface RagStats {
   currentDimension: number
   totalSizeText: string
   diaryCountForVault?: number
+  vaultTotalCount?: number
   activeVaultName?: string
 }
 

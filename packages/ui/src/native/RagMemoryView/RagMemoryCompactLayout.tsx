@@ -47,7 +47,14 @@ export const RagMemoryCompactLayout: React.FC<RagMemoryViewProps> = ({
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const count = stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount
+  const count =
+    totalCount != null && !searchQuery.trim() && sourceKind === 'all'
+      ? totalCount
+      : stats.vaultTotalCount != null
+        ? stats.vaultTotalCount
+        : stats.diaryCountForVault != null
+          ? stats.diaryCountForVault
+          : stats.totalCount
   const dimLine =
     stats.currentDimension > 0
       ? t('settings.rag_meta_dimension', '{{dim}} 维', { dim: stats.currentDimension })

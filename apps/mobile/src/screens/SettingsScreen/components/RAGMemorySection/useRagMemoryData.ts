@@ -145,6 +145,12 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           })
         )
         setTotalCount(res.total)
+        if (!q.trim() && stateRef.current.sourceKind === 'all') {
+          setStats((prev) => ({
+            ...prev,
+            vaultTotalCount: res.total
+          }))
+        }
       } catch (e: unknown) {
         if (isQueryStale(generation)) return
         toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
@@ -161,6 +167,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
       stateRef,
       setEntries,
       setTotalCount,
+      setStats,
       setCurrentPage,
       setIsSearching,
       t,
@@ -207,6 +214,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           currentDimension: ragStats.currentDimension,
           totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`,
           diaryCountForVault: ragStats.diaryCountForVault,
+          vaultTotalCount: ragStats.vaultTotalCount,
           activeVaultName: ragStats.activeVaultName
         })
 

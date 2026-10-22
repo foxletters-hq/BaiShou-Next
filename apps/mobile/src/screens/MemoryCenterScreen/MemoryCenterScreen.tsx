@@ -21,7 +21,11 @@ import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { RAGMemorySection } from '../SettingsScreen/components/RAGMemorySection'
 import { useMobileSuspectCount } from '@/src/hooks/useMobileSuspectCount'
-import { MemoryOrganizeFabHost, MemoryOrganizeProgressHost } from './MemoryOrganizeChrome'
+import {
+  MemoryOnboardingHost,
+  MemoryOrganizeFabHost,
+  MemoryOrganizeProgressHost
+} from './MemoryOrganizeChrome'
 import {
   MemoryReadinessConfigModal,
   MemoryReadinessSettingsBody
@@ -111,12 +115,18 @@ export function MemoryCenterScreen() {
   )
 
   const onboardingCard = showOnboarding ? (
-    <MemoryCenterOnboardingCard
-      onboarding={onboarding}
-      onConfigure={() => openModelPicker('embedding')}
-      onStartOrganize={onOrganizePress}
-      onDismiss={dismissOnboarding}
-    />
+    <MemoryOnboardingHost
+      pendingEmbedParts={pendingEmbedParts}
+      pendingGraphCount={pendingGraphCount}
+      organizeSnapshotReady={organizeSnapshotReady}
+    >
+      <MemoryCenterOnboardingCard
+        onboarding={onboarding}
+        onConfigure={() => openModelPicker('embedding')}
+        onStartOrganize={onOrganizePress}
+        onDismiss={dismissOnboarding}
+      />
+    </MemoryOnboardingHost>
   ) : null
 
   return (

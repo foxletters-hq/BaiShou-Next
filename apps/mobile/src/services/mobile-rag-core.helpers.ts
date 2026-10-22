@@ -262,7 +262,7 @@ export async function loadEmbeddedDiaryIndex(
   }
 
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ? AND vault_id = ?`,
+    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND (group_id = ? OR group_id LIKE 'diary:%') AND vault_id = ?`,
     args: [DIARY_EMBED_GROUP_ID, vaultId]
   })
 

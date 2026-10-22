@@ -10,7 +10,10 @@ import {
   getMemoryRawManager,
   getRawDataSourceManager
 } from '../services/raw-data-source.runtime'
-import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
+import {
+  countAllMemoryEmbeddingsForVault,
+  countDiaryEmbeddingsForVault
+} from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import {
   buildMemoryMetadataJson,
@@ -82,11 +85,24 @@ export function registerRagBuildIPC() {
     const count = countRes[0]?.count || 0
     const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
     const activeVaultId = resolveActiveVaultId()
-    const diaryCountForVault = await countDiaryEmbeddingsForVault(activeVaultId)
+    let vaultGraphCount = 0
+    try {
+      vaultGraphCount = await requireGraphRepo().countEmbeddedLiveNodes(activeVaultId)
+    } catch {
+      vaultGraphCount = 0
+    }
+    const [diaryCountForVault, vaultMemoryCount] = await Promise.all([
+      countDiaryEmbeddingsForVault(activeVaultId),
+      countAllMemoryEmbeddingsForVault(activeVaultId)
+    ])
+    const rawVaultTotal = vaultMemoryCount + vaultGraphCount
+    const vaultTotalCount =
+      rawVaultTotal > 0 ? rawVaultTotal : diaryCountForVault > 0 ? diaryCountForVault : 0
 
     return {
       totalCount: count,
       diaryCountForVault,
+      vaultTotalCount,
       activeVaultName,
       currentDimension: config.getGlobalEmbeddingDimension(),
       totalSizeText: `${(count * 2.5).toFixed(1)} KB` // Mock size calc for UI

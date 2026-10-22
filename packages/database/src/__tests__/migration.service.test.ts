@@ -453,5 +453,29 @@ describe('MigrationService', () => {
       await (service as any)._markSchemaCompatCurrent()
       expect(await (service as any)._isSchemaCompatCurrent()).toBe(true)
     })
+
+    it('_ensureCompatSchema should normalize legacy diary:<vault> and memory:<vault> group_ids even when vault_id is already populated', async () => {
+      const db = dbManager.getDb()
+      await (service as any)._ensureMemoryEmbeddingsTable()
+      await db.run(sql`
+        INSERT INTO memory_embeddings (
+          embedding_id, source_type, source_id, group_id, vault_id,
+          chunk_index, chunk_text, metadata_json, embedding, dimension, model_id, created_at
+        ) VALUES
+          ('e-1', 'diary', 'Personal#1', 'diary:Personal', 'vlt_personal', 0, 'chunk1', '{}', X'00', 3, 'm', 1),
+          ('e-2', 'memory', 'mem-1', 'memory:Personal', 'vlt_personal', 0, 'chunk2', '{}', X'00', 3, 'm', 1)
+      `)
+
+      await (service as any)._ensureCompatSchema()
+
+      const rows = (await db.all(
+        sql`SELECT embedding_id, group_id, vault_id FROM memory_embeddings ORDER BY embedding_id`
+      )) as Array<{ embedding_id: string; group_id: string; vault_id: string }>
+
+      expect(rows).toEqual([
+        { embedding_id: 'e-1', group_id: 'diary', vault_id: 'vlt_personal' },
+        { embedding_id: 'e-2', group_id: 'memory', vault_id: 'vlt_personal' }
+      ])
+    })
   })
 })

@@ -28,7 +28,12 @@ export const RagMemoryStatusStrip: React.FC<RagMemoryStatusStripProps> = ({
   onDetectDimension
 }) => {
   const { t } = useTranslation()
-  const count = stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount
+  const count =
+    stats.vaultTotalCount != null
+      ? stats.vaultTotalCount
+      : stats.diaryCountForVault != null
+        ? stats.diaryCountForVault
+        : stats.totalCount
 
   const ragEnabledLabel = t('settings.rag_enable_short', '向量记忆')
   const startupReminderLabel = t('settings.rag_startup_embed_reminder', '启动时检查待嵌入')
