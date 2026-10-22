@@ -29,8 +29,11 @@ export interface MobileBaishouInitRefs {
   notifyArchiveRestoreCompleteRef: MutableRefObject<(result: ImportResult) => void>
   notifyVersionMigrationCompleteRef: MutableRefObject<() => void>
   resyncAfterMigrationRef: MutableRefObject<() => Promise<void>>
-  reloadAgentDatabaseRef: MutableRefObject<() => Promise<void>>
+  reloadAgentDatabaseRef: MutableRefObject<
+    (options?: { preserveExistingFile?: boolean }) => Promise<void>
+  >
   archiveFullRestoreDoneRef: MutableRefObject<boolean>
+  archiveRestoreEpochPublishedRef: MutableRefObject<boolean>
   vaultBootstrapCtxRef: MutableRefObject<{
     pathService: MobileStoragePathService
     vaultService: VaultService

@@ -1,7 +1,8 @@
 import i18n from 'i18next'
 import {
   releaseExpoAgentDatabaseInstall,
-  ensureExpoAgentDatabaseInstalled
+  ensureExpoAgentDatabaseInstalled,
+  verifyExpoAgentDatabaseIntegrity
 } from '@baishou/database/expo'
 import { createAgentDbRuntime } from '../../services/mobile-agent-db-runtime'
 import {
@@ -70,7 +71,7 @@ export function assignReloadAgentDatabaseHandler(
     getDiarySearcher,
     diaryServiceProxy
   } = deps
-  refs.reloadAgentDatabaseRef.current = async () => {
+  refs.reloadAgentDatabaseRef.current = async (options?: { preserveExistingFile?: boolean }) => {
     const vaultCtx = refs.vaultBootstrapCtxRef.current
     if (!vaultCtx) {
       throw new Error(
@@ -91,11 +92,42 @@ export function assignReloadAgentDatabaseHandler(
     await stopVaultWatchers()
 
     await releaseExpoAgentDatabaseInstall()
-    await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
 
-    const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } = await ensureExpoAgentDatabaseInstalled(
-      (options) => openAgentDatabase({ ...options, useNewConnection: true })
-    )
+    let newDrizzleDb: import('@baishou/database').AppDatabase
+    let newExpoDb: import('@baishou/database/expo').ExpoSqliteDatabase
+
+    if (options?.preserveExistingFile) {
+      try {
+        const installed = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+          openAgentDatabase({ ...openOptions, useNewConnection: true })
+        )
+        const integrity = await verifyExpoAgentDatabaseIntegrity(installed.expoDb)
+        if (!integrity.ok) {
+          throw new Error(integrity.detail ?? 'Restored agent database failed integrity check')
+        }
+        newDrizzleDb = installed.drizzleDb
+        newExpoDb = installed.expoDb
+      } catch (restoreOpenError) {
+        logger.warn(
+          '[AgentDbRecovery] Restored agent DB failed to open or verify, falling back to quarantine & rebuild:',
+          restoreOpenError as Error
+        )
+        await releaseExpoAgentDatabaseInstall()
+        await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
+        const rebuilt = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+          openAgentDatabase({ ...openOptions, useNewConnection: true })
+        )
+        newDrizzleDb = rebuilt.drizzleDb
+        newExpoDb = rebuilt.expoDb
+      }
+    } else {
+      await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
+      const installed = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+        openAgentDatabase({ ...openOptions, useNewConnection: true })
+      )
+      newDrizzleDb = installed.drizzleDb
+      newExpoDb = installed.expoDb
+    }
 
     const diaryRepoAdapter =
       refs.diaryStackRef.current?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
@@ -134,7 +166,7 @@ export function assignReloadAgentDatabaseHandler(
     vaultCtx.watcherDeps.summarySyncService = newRuntime.summarySyncService
 
     const stack = refs.diaryStackRef.current
-    if (stack) {
+    if (stack && !options?.preserveExistingFile) {
       registerVaultBootstrapDeps(stack, vaultCtx.bootstrapDeps)
       await restartVaultWatchers(stack, vaultService, vaultCtx.watcherDeps)
     }
