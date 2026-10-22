@@ -270,6 +270,20 @@ export async function backfillAgentMessagesOrderIndex(
     const hasOrderIndex = tableInfo.rows.some((c: { name?: string }) => c.name === 'order_index')
     if (!hasOrderIndex) return
 
+    const nullCheck = await executeSql(
+      `SELECT 1 FROM agent_messages WHERE order_index IS NULL LIMIT 1`
+    )
+    if (nullCheck.rows.length === 0) {
+      const zeroDupCheck = await executeSql(`
+        SELECT 1
+        FROM agent_messages
+        GROUP BY session_id
+        HAVING COUNT(*) > 1 AND MIN(order_index) = 0 AND MAX(order_index) = 0
+        LIMIT 1
+      `)
+      if (zeroDupCheck.rows.length === 0) return
+    }
+
     await executeSql(`
         WITH ordered AS (
           SELECT

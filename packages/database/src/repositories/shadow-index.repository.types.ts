@@ -21,8 +21,9 @@ export interface ShadowJournalRecord {
   hasMedia: boolean
 }
 
-/** 全量扫描脏检测用的轻量指纹（hash + mtime/size） */
+/** 全量扫描脏检测用的轻量指纹（hash + mtime/size + filePath） */
 export interface ShadowSyncFingerprint {
+  filePath?: string
   contentHash: string
   fileMtimeMs: number | null
   fileSize: number | null

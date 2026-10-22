@@ -7,6 +7,9 @@ import { segmentChinese } from './shadow-index.repository.text'
 type IdPathMaps = {
   idByPath: Map<string, number>
   pathById: Map<number, string>
+  idByDate: Map<string, number>
+  dateById: Map<number, string>
+  foreignVaultIds: Set<number>
 }
 
 type UpsertDb = Pick<AppDatabase, 'insert' | 'update' | 'select' | 'run' | 'transaction'>
@@ -24,18 +27,43 @@ export function normalizeShadowFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/')
 }
 
-function buildMapsFromRows(rows: Array<{ id: number; filePath: string }>): IdPathMaps {
-  const idByPath = new Map<string, number>()
-  const pathById = new Map<number, string>()
-  for (const row of rows) {
-    const normalized = normalizeShadowFilePath(row.filePath)
-    idByPath.set(normalized, Number(row.id))
-    pathById.set(Number(row.id), normalized)
-  }
-  return { idByPath, pathById }
+function normalizeDayKey(dateStr: string): string {
+  return String(dateStr).split('T')[0] ?? String(dateStr)
 }
 
-function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): void {
+function buildMapsFromRows(
+  rows: Array<{ id: number; vaultId?: string; filePath: string; date?: string }>,
+  vaultId: string
+): IdPathMaps {
+  const idByPath = new Map<string, number>()
+  const pathById = new Map<number, string>()
+  const idByDate = new Map<string, number>()
+  const dateById = new Map<number, string>()
+  const foreignVaultIds = new Set<number>()
+  for (const row of rows) {
+    const numId = Number(row.id)
+    if (row.vaultId !== undefined && row.vaultId !== vaultId) {
+      foreignVaultIds.add(numId)
+      continue
+    }
+    const normalized = normalizeShadowFilePath(row.filePath)
+    idByPath.set(normalized, numId)
+    pathById.set(numId, normalized)
+    if (row.date) {
+      const dayKey = normalizeDayKey(row.date)
+      idByDate.set(dayKey, numId)
+      dateById.set(numId, dayKey)
+    }
+  }
+  return { idByPath, pathById, idByDate, dateById, foreignVaultIds }
+}
+
+function trackAssignedId(
+  maps: IdPathMaps,
+  filePath: string,
+  dateStr: string,
+  rowId: number
+): void {
   const normalizedPath = normalizeShadowFilePath(filePath)
   const previousPath = maps.pathById.get(rowId)
   if (previousPath != null && previousPath !== normalizedPath) {
@@ -43,18 +71,26 @@ function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): voi
   }
   maps.idByPath.set(normalizedPath, rowId)
   maps.pathById.set(rowId, normalizedPath)
+  const dayKey = normalizeDayKey(dateStr)
+  const previousDay = maps.dateById.get(rowId)
+  if (previousDay != null && previousDay !== dayKey) {
+    maps.idByDate.delete(previousDay)
+  }
+  maps.idByDate.set(dayKey, rowId)
+  maps.dateById.set(rowId, dayKey)
 }
 
 async function loadIdPathMaps(database: UpsertDb, vaultId: string): Promise<IdPathMaps> {
   const existing = await database
     .select({
       id: shadowJournalIndexTable.id,
-      filePath: shadowJournalIndexTable.filePath
+      vaultId: shadowJournalIndexTable.vaultId,
+      filePath: shadowJournalIndexTable.filePath,
+      date: shadowJournalIndexTable.date
     })
     .from(shadowJournalIndexTable)
-    .where(eq(shadowJournalIndexTable.vaultId, vaultId))
 
-  return buildMapsFromRows(existing)
+  return buildMapsFromRows(existing, vaultId)
 }
 
 async function loadIdPathMapsForSingle(
@@ -63,26 +99,30 @@ async function loadIdPathMapsForSingle(
   payload: UpsertShadowIndexPayload
 ): Promise<IdPathMaps> {
   const normalizedPath = normalizeShadowFilePath(payload.filePath)
+  const dayKey = normalizeDayKey(payload.date)
+  const sameVaultCondition = and(
+    eq(shadowJournalIndexTable.vaultId, vaultId),
+    or(
+      eq(shadowJournalIndexTable.filePath, normalizedPath),
+      eq(shadowJournalIndexTable.filePath, payload.filePath),
+      like(shadowJournalIndexTable.date, `${dayKey}%`)
+    )
+  )
   const targetCondition =
     payload.id !== undefined
-      ? or(
-          eq(shadowJournalIndexTable.filePath, normalizedPath),
-          eq(shadowJournalIndexTable.filePath, payload.filePath),
-          eq(shadowJournalIndexTable.id, payload.id)
-        )
-      : or(
-          eq(shadowJournalIndexTable.filePath, normalizedPath),
-          eq(shadowJournalIndexTable.filePath, payload.filePath)
-        )
+      ? or(sameVaultCondition, eq(shadowJournalIndexTable.id, payload.id))
+      : sameVaultCondition
   const existing = await database
     .select({
       id: shadowJournalIndexTable.id,
-      filePath: shadowJournalIndexTable.filePath
+      vaultId: shadowJournalIndexTable.vaultId,
+      filePath: shadowJournalIndexTable.filePath,
+      date: shadowJournalIndexTable.date
     })
     .from(shadowJournalIndexTable)
-    .where(and(eq(shadowJournalIndexTable.vaultId, vaultId), targetCondition))
+    .where(targetCondition)
 
-  return buildMapsFromRows(existing)
+  return buildMapsFromRows(existing, vaultId)
 }
 
 function buildUpsertSet(
@@ -91,12 +131,14 @@ function buildUpsertSet(
     'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultId'
   >,
   vaultId: string,
+  filePath: string,
   rawContent: string,
   tags: string,
   tagColors: string | null
 ) {
   return {
     vaultId,
+    filePath,
     date: indexData.date,
     createdAt: indexData.createdAt,
     updatedAt: indexData.updatedAt,
@@ -170,12 +212,13 @@ async function upsertOne(
   } = payload
 
   const serializedTagColors = tagColors ?? null
+  const dayKey = normalizeDayKey(indexData.date)
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     await db
       .update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
@@ -183,15 +226,20 @@ async function upsertOne(
         )
       )
 
-    trackAssignedId(maps, filePath, existingId)
+    trackAssignedId(maps, filePath, indexData.date, existingId)
     return existingId
   }
 
   let insertId: number | undefined
   if (requestedId != null && requestedId > 0) {
-    const ownerPath = maps.pathById.get(Number(requestedId))
-    if (ownerPath == null || ownerPath === filePath) {
-      insertId = Number(requestedId)
+    const numRequestedId = Number(requestedId)
+    const ownerPath = maps.pathById.get(numRequestedId)
+    const ownerDay = maps.dateById.get(numRequestedId)
+    if (
+      !maps.foreignVaultIds.has(numRequestedId) &&
+      (ownerPath == null || ownerPath === filePath || ownerDay === dayKey)
+    ) {
+      insertId = numRequestedId
     }
   }
 
@@ -204,18 +252,22 @@ async function upsertOne(
     tagColors: serializedTagColors
   }
 
-  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 关键：用 ON CONFLICT DO UPDATE 原子处理 PK / (vault_id, file_path) 冲突。
   // 之前用 try/catch + 第二次 INSERT 会在 SQLite 事务中产生
   // "Failed to run the query 'commit'"：一旦首条 INSERT 失败，
   // 整个事务进入 needs-rollback 状态，即便异常被 catch 接住，
   // 事务也已经中毒，后续 COMMIT 必然失败。
   // ON CONFLICT 是单条原子语句，根本不会让事务中毒。
+  const conflictTarget =
+    insertId != null
+      ? shadowJournalIndexTable.id
+      : [shadowJournalIndexTable.vaultId, shadowJournalIndexTable.filePath]
   const result = await db
     .insert(shadowJournalIndexTable)
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
-      target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors)
+      target: conflictTarget,
+      set: buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
 
@@ -224,7 +276,7 @@ async function upsertOne(
     throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
 
-  trackAssignedId(maps, filePath, rowId)
+  trackAssignedId(maps, filePath, indexData.date, rowId)
   return rowId
 }
 
@@ -246,11 +298,12 @@ function upsertOneSync(
   } = payload
 
   const serializedTagColors = tagColors ?? null
+  const dayKey = normalizeDayKey(indexData.date)
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     tx.update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
@@ -259,15 +312,20 @@ function upsertOneSync(
       )
       .run()
 
-    trackAssignedId(maps, filePath, existingId)
+    trackAssignedId(maps, filePath, indexData.date, existingId)
     return existingId
   }
 
   let insertId: number | undefined
   if (requestedId != null && requestedId > 0) {
-    const ownerPath = maps.pathById.get(Number(requestedId))
-    if (ownerPath == null || ownerPath === filePath) {
-      insertId = Number(requestedId)
+    const numRequestedId = Number(requestedId)
+    const ownerPath = maps.pathById.get(numRequestedId)
+    const ownerDay = maps.dateById.get(numRequestedId)
+    if (
+      !maps.foreignVaultIds.has(numRequestedId) &&
+      (ownerPath == null || ownerPath === filePath || ownerDay === dayKey)
+    ) {
+      insertId = numRequestedId
     }
   }
 
@@ -280,15 +338,19 @@ function upsertOneSync(
     tagColors: serializedTagColors
   }
 
-  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 关键：用 ON CONFLICT DO UPDATE 原子处理 PK / (vault_id, file_path) 冲突。
   // 同步版本（better-sqlite3）同样不能在事务中吞掉 INSERT 异常后
   // 再发第二条语句——SQLite 事务已经中毒，commit 必然挂。
+  const conflictTarget =
+    insertId != null
+      ? shadowJournalIndexTable.id
+      : [shadowJournalIndexTable.vaultId, shadowJournalIndexTable.filePath]
   const result = tx
     .insert(shadowJournalIndexTable)
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
-      target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors)
+      target: conflictTarget,
+      set: buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
     .all() as any
@@ -298,7 +360,7 @@ function upsertOneSync(
     throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
 
-  trackAssignedId(maps, filePath, rowId)
+  trackAssignedId(maps, filePath, indexData.date, rowId)
   return rowId
 }
 
@@ -430,14 +492,26 @@ export class ShadowIndexUpsertOps {
   }
 
   /**
-   * 仅更新物理文件 mtime/size 指纹（内容未变、元数据漂移时的轻量写路径）。
+   * 仅更新物理文件 mtime/size/filePath 指纹（内容未变、元数据或挂载路径漂移时的轻量写路径）。
    */
-  async updateFileStat(dateStr: string, fileMtimeMs: number, fileSize: number): Promise<void> {
+  async updateFileStat(
+    dateStr: string,
+    fileMtimeMs: number | null,
+    fileSize: number | null,
+    filePath?: string
+  ): Promise<void> {
     if (!dateStr) return
     return this.withWriteLock(async () => {
+      const patch: { fileMtimeMs?: number | null; fileSize?: number | null; filePath?: string } = {}
+      if (fileMtimeMs != null) patch.fileMtimeMs = fileMtimeMs
+      if (fileSize != null) patch.fileSize = fileSize
+      if (filePath != null && filePath.trim() !== '') {
+        patch.filePath = normalizeShadowFilePath(filePath)
+      }
+      if (Object.keys(patch).length === 0) return
       await this.database
         .update(shadowJournalIndexTable)
-        .set({ fileMtimeMs, fileSize })
+        .set(patch)
         .where(
           and(
             eq(shadowJournalIndexTable.vaultId, this.vaultId),

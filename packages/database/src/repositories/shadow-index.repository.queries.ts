@@ -82,6 +82,7 @@ export class ShadowIndexQueryOps {
     const rows = await this.ctx.database
       .select({
         date: shadowJournalIndexTable.date,
+        filePath: shadowJournalIndexTable.filePath,
         contentHash: shadowJournalIndexTable.contentHash,
         fileMtimeMs: shadowJournalIndexTable.fileMtimeMs,
         fileSize: shadowJournalIndexTable.fileSize
@@ -94,6 +95,7 @@ export class ShadowIndexQueryOps {
       const day = row.date.split('T')[0] ?? row.date
       if (row.contentHash) {
         map.set(day, {
+          filePath: row.filePath,
           contentHash: row.contentHash,
           fileMtimeMs: row.fileMtimeMs ?? null,
           fileSize: row.fileSize ?? null

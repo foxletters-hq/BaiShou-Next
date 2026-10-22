@@ -169,6 +169,7 @@ describe('ShadowIndexRepository', () => {
 
       const map = await repo.getHashesByDates([day])
       expect(map.get(day)).toEqual({
+        filePath: 'journals/2026-07-01.md',
         contentHash: 'abc123',
         fileMtimeMs: 1_700_000_000_000,
         fileSize: 42
@@ -188,10 +189,55 @@ describe('ShadowIndexRepository', () => {
 
       const map = await repo.getHashesByDates([day])
       expect(map.get(day)).toEqual({
+        filePath: 'journals/2026-07-02.md',
         contentHash: 'keep-hash',
         fileMtimeMs: 999,
         fileSize: 20
       })
+    })
+
+    it('updateFileStat 支持同步更新挂载迁移后的 filePath', async () => {
+      const day = '2026-10-19'
+      await repo.upsert({
+        ...generateDummyPayload(day, 'external diary'),
+        filePath: '2.日记/2026/10/2026-10-19.md',
+        contentHash: 'same-hash',
+        fileMtimeMs: 100,
+        fileSize: 10
+      })
+
+      await repo.updateFileStat(day, 200, 10, 'Journals/2026/10/2026-10-19.md')
+
+      const map = await repo.getHashesByDates([day])
+      expect(map.get(day)).toEqual({
+        filePath: 'Journals/2026/10/2026-10-19.md',
+        contentHash: 'same-hash',
+        fileMtimeMs: 200,
+        fileSize: 10
+      })
+    })
+
+    it('跨 Vault 相同 frontmatter id 不会互相覆盖或劫持', async () => {
+      const conn = manager.getDb()
+      const repoVaultB = new ShadowIndexRepository(conn, 'vault-b')
+
+      const idA = await repo.upsert({
+        ...generateDummyPayload('2026-10-01T00:00:00.000Z', 'vault A diary'),
+        id: 1,
+        filePath: 'Journals/2026/10/2026-10-01.md'
+      })
+      const idB = await repoVaultB.upsert({
+        ...generateDummyPayload('2026-10-01T00:00:00.000Z', 'vault B diary'),
+        id: 1,
+        filePath: 'Journals/2026/10/2026-10-01.md'
+      })
+
+      expect(idA).toBe(1)
+      expect(idB).not.toBe(1)
+      expect(await repo.count()).toBe(1)
+      expect(await repoVaultB.count()).toBe(1)
+      expect((await repo.findById(idA))?.rawContent).toBe('vault A diary')
+      expect((await repoVaultB.findById(idB))?.rawContent).toBe('vault B diary')
     })
   })
 
