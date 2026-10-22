@@ -201,6 +201,7 @@ export async function syncMemoryPendingIndex(options: {
   vaultId?: string
   vaultName?: string
   embedMissing?: boolean
+  onBeforeItem?: () => Promise<void>
 }): Promise<{ shards: number; upserted: number; deleted: number }> {
   const memoryManager = options.memoryManager ?? ensureRawDataRuntime().memoryManager
   const { hsRepo, embeddingAdapter } = options
@@ -212,7 +213,8 @@ export async function syncMemoryPendingIndex(options: {
   return sync.syncPendingIndex({
     vaultId: options.vaultId,
     vaultName: options.vaultName,
-    embedMissing: options.embedMissing
+    embedMissing: options.embedMissing,
+    onBeforeItem: options.onBeforeItem
   })
 }
 

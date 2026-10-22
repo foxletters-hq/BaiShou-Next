@@ -313,7 +313,7 @@ export async function runMobileManualPendingEmbedFill(
       const graphRepo = new GraphRepository(drizzleDb)
       graphResult = await backfillUnembeddedGraphNodes({
         vaultId,
-        concurrency: 10,
+        concurrency: 4,
         listUnembeddedLiveNodes: async () => liveUnembedded,
         updateNodeEmbedding: (id, vid, embedding, modelId) =>
           graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
@@ -322,7 +322,7 @@ export async function runMobileManualPendingEmbedFill(
         embedBatch:
           typeof adapter.embedBatch === 'function'
             ? async (texts) => {
-                const maxRetries = 3
+                const maxRetries = 1
                 let lastErr: unknown
                 for (let attempt = 0; attempt <= maxRetries; attempt++) {
                   try {
@@ -340,7 +340,7 @@ export async function runMobileManualPendingEmbedFill(
               }
             : undefined,
         embedQuery: async (text) => {
-          const maxRetries = 3
+          const maxRetries = 1
           let lastErr: unknown
           for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
@@ -372,9 +372,6 @@ export async function runMobileManualPendingEmbedFill(
               { completed, total: nodeTotal }
             )
           )
-          if (completed % 8 === 0) {
-            invalidateMobilePendingEmbedCountsCache()
-          }
         }
       })
     }

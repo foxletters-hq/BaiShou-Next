@@ -8,6 +8,7 @@ import {
 } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { DesktopEmbeddingStorage } from '../ipc/rag.storage'
+import { isBatchEmbedSessionActive } from './batch-embed-control.service'
 
 /** 删除旧版 numeric sourceId 与新版 scoped sourceId，避免重复向量残留 */
 export async function deleteDiaryEmbeddingAliases(
@@ -34,21 +35,27 @@ export async function purgeLegacyDiaryEmbeddingsForVault(
   if (numericIds.length === 0) return 0
 
   const db = getAppDb()
-  const result = await db
-    .delete(memoryEmbeddingsTable)
-    .where(
-      and(
-        eq(memoryEmbeddingsTable.sourceType, 'diary'),
-        inArray(memoryEmbeddingsTable.sourceId, numericIds),
-        inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
+  const BATCH_SIZE = 400
+  let purgedCount = 0
+  for (let i = 0; i < numericIds.length; i += BATCH_SIZE) {
+    const chunk = numericIds.slice(i, i + BATCH_SIZE)
+    const result = await db
+      .delete(memoryEmbeddingsTable)
+      .where(
+        and(
+          eq(memoryEmbeddingsTable.sourceType, 'diary'),
+          inArray(memoryEmbeddingsTable.sourceId, chunk),
+          inArray(memoryEmbeddingsTable.groupId, [...LEGACY_DIARY_EMBED_GROUP_IDS])
+        )
       )
-    )
-    .returning({ id: memoryEmbeddingsTable.id })
-
-  if (result.length > 0) {
-    console.info(`[DiaryEmbed] purged ${result.length} legacy diary vectors for vault ${vaultId}`)
+      .returning({ id: memoryEmbeddingsTable.id })
+    purgedCount += result.length
   }
-  return result.length
+
+  if (purgedCount > 0) {
+    console.info(`[DiaryEmbed] purged ${purgedCount} legacy diary vectors for vault ${vaultId}`)
+  }
+  return purgedCount
 }
 
 /** 一次性清理所有旧格式日记向量（numeric sourceId / 旧 groupId），避免多工作空间混用 */
@@ -104,8 +111,10 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
   const diaries = await diaryManager.listForEmbedDetection()
   if (diaries.length === 0) return 0
 
-  const storage = new DesktopEmbeddingStorage()
-  await storage.reconcileEmbedLedger({ vaultId, sourceType: 'diary' })
+  if (!isBatchEmbedSessionActive()) {
+    const storage = new DesktopEmbeddingStorage()
+    await storage.reconcileEmbedLedger({ vaultId, sourceType: 'diary' })
+  }
 
   const db = getAppDb()
   const existingRows = await db

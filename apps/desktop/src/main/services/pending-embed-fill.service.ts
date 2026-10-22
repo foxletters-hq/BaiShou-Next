@@ -141,7 +141,8 @@ export async function runManualPendingEmbedFill(options?: {
       hsRepo,
       embeddingAdapter: adapter,
       vaultId,
-      embedMissing: true
+      embedMissing: true,
+      onBeforeItem: () => assertBatchEmbedCanContinue()
     })
   } catch (error) {
     if (isBatchEmbedAbortedError(error)) throw error
@@ -282,7 +283,7 @@ export async function runManualPendingEmbedFill(options?: {
     }
     graphResult = await backfillUnembeddedGraphNodes({
       vaultId,
-      concurrency: 10,
+      concurrency: 4,
       listUnembeddedLiveNodes: async () => liveUnembedded,
       updateNodeEmbedding: (id, vid, embedding, modelId) =>
         graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
@@ -291,7 +292,7 @@ export async function runManualPendingEmbedFill(options?: {
       embedBatch:
         typeof adapter.embedBatch === 'function'
           ? async (texts) => {
-              const maxRetries = 3
+              const maxRetries = 1
               let lastErr: unknown
               for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
@@ -309,7 +310,7 @@ export async function runManualPendingEmbedFill(options?: {
             }
           : undefined,
       embedQuery: async (text) => {
-        const maxRetries = 3
+        const maxRetries = 1
         let lastErr: unknown
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
@@ -341,9 +342,6 @@ export async function runManualPendingEmbedFill(options?: {
             { completed, total: nodeTotal }
           )
         )
-        if (completed % 8 === 0) {
-          invalidatePendingEmbedCountsCache()
-        }
       }
     })
   } catch (error) {

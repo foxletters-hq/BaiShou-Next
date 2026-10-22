@@ -6,7 +6,6 @@ import {
   clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
   formatAiApiCallError,
-  hashEmbedSourceContent,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
@@ -32,10 +31,7 @@ import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
 import { vaultService } from '../ipc/vault.ipc'
 import { getDiaryManagerForVault } from './diary-vault.factory'
-import {
-  deleteDiaryEmbeddingAliases,
-  purgeLegacyDiaryEmbeddingsForVault
-} from './diary-embedding.util'
+import { purgeLegacyDiaryEmbeddingsForVault } from './diary-embedding.util'
 import { probeEmbeddingApi } from './embed-api-probe.util'
 
 export type ControlledDiaryBatchEmbedProgress = {
@@ -360,10 +356,12 @@ async function embedVaultDiaries(
   let failed = 0
   let lastError: string | undefined
   let abortAfterRetryExhausted = false
+  // 限制同时进入文件读取/分词/SQLite 写入的日记篇数，与全局嵌入槽位上限（12）匹配，兼顾高吞吐与低排队延迟。
+  const effectiveConcurrency = Math.max(1, Math.min(ctx.batchConcurrency, 10))
 
   await limitExecute(
     diariesToEmbed,
-    ctx.batchConcurrency,
+    effectiveConcurrency,
     async (meta) => {
       if (abortAfterRetryExhausted) return
       if ((await checkpointBatchEmbed()) === 'aborted') return
@@ -394,43 +392,21 @@ async function embedVaultDiaries(
 
       let itemFailed = false
       try {
-        const maxRetries = 3
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-          try {
-            await deleteDiaryEmbeddingAliases(vaultId, diary.id)
-            await ctx.embeddingService.reEmbedText(
-              buildDesktopDiaryReEmbedArgs({
-                content: diary.content ?? '',
-                date: diary.date,
-                vaultId,
-                diaryId: diary.id,
-                updatedAt: diary.updatedAt ?? Date.now(),
-                skipIndexPrep: true
-              })
-            )
-            break
-          } catch (embedError) {
-            if (isBatchEmbedAbortRequested() || attempt >= maxRetries) {
-              throw embedError
-            }
-          }
-        }
+        await ctx.embeddingService.reEmbedText(
+          buildDesktopDiaryReEmbedArgs({
+            content: diary.content ?? '',
+            date: diary.date,
+            vaultId,
+            diaryId: diary.id,
+            updatedAt: diary.updatedAt ?? Date.now(),
+            skipIndexPrep: true
+          })
+        )
         if (!diary.content?.trim()) {
           loadSkipped++
           return
         }
         embedded++
-        try {
-          const { scheduleDiaryGraphAfterEmbed } =
-            await import('./diary-graph-follow-after-embed.service')
-          await scheduleDiaryGraphAfterEmbed({
-            vaultId,
-            diaryId: diary.id,
-            contentHash: hashEmbedSourceContent(diary.content ?? '')
-          })
-        } catch (followError) {
-          logger.warn('[ControlledDiaryBatchEmbed] 向量完成后自动接抽图失败', followError as Error)
-        }
       } catch (error) {
         itemFailed = true
         failed++

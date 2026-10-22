@@ -367,9 +367,11 @@ export async function runControlledDiaryBatchEmbedCore(
                 )
               : new Map()
 
+        const effectiveConcurrency = Math.max(1, Math.min(batchConcurrency, 10))
+
         await limitExecute(
           diariesToEmbed,
-          batchConcurrency,
+          effectiveConcurrency,
           async (meta) => {
             if (abortAfterRetryExhausted) return
             await assertMobileRagCanContinue()
@@ -413,14 +415,7 @@ export async function runControlledDiaryBatchEmbedCore(
                 skipRagEnabledCheck: true,
                 contentHash: meta.contentHash
               }
-              for (let attempt = 0; attempt <= 3; attempt++) {
-                try {
-                  await embedDiaryEntry(deps, entryArgs, entryOpts)
-                  break
-                } catch (embedError) {
-                  if (mobileRagOperationControl.isAborted || attempt >= 3) throw embedError
-                }
-              }
+              await embedDiaryEntry(deps, entryArgs, entryOpts)
 
               if (!content?.trim()) {
                 progress.loadSkipped++

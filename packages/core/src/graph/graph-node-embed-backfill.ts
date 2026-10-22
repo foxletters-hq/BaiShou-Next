@@ -91,7 +91,7 @@ export async function backfillUnembeddedGraphNodes(options: {
     }
     computedByText.set(text, vec)
   }
-  const batchSize = options.embedBatch ? 10 : Math.min(20, Math.max(4, concurrency * 2))
+  const batchSize = options.embedBatch ? 24 : Math.min(20, Math.max(4, concurrency * 2))
 
   for (let start = 0; start < nodes.length; start += batchSize) {
     if (start > 0 && Math.floor(start / batchSize) % 5 === 0) {

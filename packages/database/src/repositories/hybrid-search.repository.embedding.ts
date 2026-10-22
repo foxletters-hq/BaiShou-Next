@@ -116,6 +116,94 @@ export class HybridSearchEmbeddingStore {
     }
   }
 
+  async replaceSourceEmbeddings(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    groupId: string
+    modelId: string
+    dimension: number
+    contentHash: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    replaceExisting?: boolean
+    recordLedger?: boolean
+    chunks: Array<{
+      id: string
+      chunkIndex: number
+      chunkText: string
+      embedding: number[]
+    }>
+  }): Promise<void> {
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('replaceSourceEmbeddings: vaultId is required')
+    }
+    if (params.replaceExisting) {
+      await this.db.execute({
+        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
+        args: [params.sourceType, params.sourceId, params.sourceId]
+      })
+    }
+    const createdAtSec = Math.floor(Date.now() / 1000)
+    const srcVal = params.sourceCreatedAt || Date.now()
+    const sourceCreatedAtSec = srcVal > 100000000000 ? Math.floor(srcVal / 1000) : srcVal
+    const metadataJson = params.metadataJson || '{}'
+
+    const BATCH_SIZE = 25
+    for (let i = 0; i < params.chunks.length; i += BATCH_SIZE) {
+      const slice = params.chunks.slice(i, i + BATCH_SIZE)
+      const placeholders = slice.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const args: Array<string | number | Uint8Array> = []
+      for (const chunk of slice) {
+        args.push(
+          chunk.id,
+          params.sourceType,
+          params.sourceId,
+          params.groupId,
+          vaultId,
+          chunk.chunkIndex,
+          chunk.chunkText,
+          metadataJson,
+          embeddingVectorToBytes(chunk.embedding),
+          chunk.embedding.length,
+          params.modelId,
+          createdAtSec,
+          sourceCreatedAtSec
+        )
+      }
+      await this.db.execute({
+        sql: `
+          INSERT INTO ${HYBRID_SEARCH_TABLE}
+          (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
+           metadata_json, embedding, dimension, model_id, created_at, source_created_at)
+          VALUES ${placeholders}
+          ON CONFLICT(embedding_id) DO UPDATE SET
+            chunk_text = excluded.chunk_text,
+            embedding = excluded.embedding,
+            dimension = excluded.dimension,
+            model_id = excluded.model_id,
+            metadata_json = excluded.metadata_json,
+            vault_id = excluded.vault_id,
+            group_id = excluded.group_id
+        `,
+        args
+      })
+    }
+
+    if (params.recordLedger) {
+      await this.ledger.recordEmbedded({
+        vaultId,
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        contentHash: params.contentHash,
+        chunkCount: params.chunks.length,
+        modelId: params.modelId,
+        dimension: params.dimension
+      })
+    }
+  }
+
   listLedgerBySource(...args: Parameters<HybridSearchLedgerStore['listLedgerBySource']>) {
     return this.ledger.listLedgerBySource(...args)
   }

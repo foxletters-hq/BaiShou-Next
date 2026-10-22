@@ -166,8 +166,48 @@ export async function alignEntityPool(
   if (unresolved.length === 0) return out
 
   const vectors = new Map<string, number[]>()
-  if (lookup.embedQuery) {
-    const EMBED_CONCURRENCY = 10
+  if (lookup.embedBatch && unresolved.length > 1) {
+    const BATCH_SIZE = 24
+    const batches: Array<Array<{ key: string; entity: AlignableEntity }>> = []
+    for (let i = 0; i < unresolved.length; i += BATCH_SIZE) {
+      batches.push(unresolved.slice(i, i + BATCH_SIZE))
+    }
+    let batchCursor = 0
+    const batchWorkers = Array.from({ length: Math.min(2, batches.length) }, async () => {
+      while (batchCursor < batches.length) {
+        const slice = batches[batchCursor++]!
+        const texts = slice.map((item) => embedText(item.entity))
+        try {
+          const batchVectors = await lookup.embedBatch!(texts)
+          for (let i = 0; i < slice.length; i++) {
+            const vec = batchVectors?.[i]
+            if (vec?.length) {
+              vectors.set(slice[i]!.key, vec)
+            } else if (lookup.embedQuery) {
+              const single = await lookup.embedQuery(texts[i]!)
+              if (single?.length) vectors.set(slice[i]!.key, single)
+            }
+          }
+        } catch (error) {
+          if (lookup.embedQuery) {
+            for (let i = 0; i < slice.length; i++) {
+              try {
+                const single = await lookup.embedQuery(texts[i]!)
+                if (single?.length) vectors.set(slice[i]!.key, single)
+              } catch (singleErr) {
+                if (lookup.requireEmbedQuery) throw singleErr
+              }
+            }
+          } else if (lookup.requireEmbedQuery) {
+            throw error
+          }
+        }
+      }
+    })
+    await Promise.all(batchWorkers)
+  } else if (lookup.embedQuery) {
+    // 限制单批对齐内的嵌入并发，配合全局 withEmbeddingSlot 避免与日记/节点嵌入争抢把连接池打满
+    const EMBED_CONCURRENCY = 6
     let cursor = 0
     const workers = Array.from(
       { length: Math.min(EMBED_CONCURRENCY, unresolved.length) },
@@ -201,8 +241,16 @@ export async function alignEntityPool(
           chunks.push(group.slice(i, i + MAX_SINGLE_ALIGN_BATCH))
         }
       }
-      const chunkResults = await Promise.all(
-        chunks.map((chunk) => alignWithLlm(chunk, vectors, lookup, out))
+      const chunkResults: boolean[] = new Array(chunks.length).fill(false)
+      let chunkCursor = 0
+      const alignChunkConcurrency = Math.min(2, chunks.length)
+      await Promise.all(
+        Array.from({ length: alignChunkConcurrency }, async () => {
+          while (chunkCursor < chunks.length) {
+            const idx = chunkCursor++
+            chunkResults[idx] = await alignWithLlm(chunks[idx]!, vectors, lookup, out)
+          }
+        })
       )
       if (chunkResults.every(Boolean)) return out
     } else {
@@ -236,12 +284,12 @@ async function alignWithLlm(
   const existingById = new Map<string, AlignedEntityHit & { nodeType: string; distance?: number }>()
   const similarityByIncomingExisting = new Map<string, Map<string, number>>()
   if (lookup.searchByVector) {
-    const recalled = await Promise.all(
-      unresolved.map(async ({ key, entity }) => {
-        const vector = vectors.get(key)
-        if (!vector) return [] as Array<AlignedEntityHit & { distance: number; nodeType: string }>
+    for (let i = 0; i < unresolved.length; i++) {
+      const { key, entity } = unresolved[i]!
+      const vector = vectors.get(key)
+      if (vector) {
         try {
-          const hits = await lookup.searchByVector!(vector, entity.nodeType, VECTOR_CANDIDATE_TOP_K)
+          const hits = await lookup.searchByVector(vector, entity.nodeType, VECTOR_CANDIDATE_TOP_K)
           const kept = hits.filter(
             (hit) =>
               (!hit.nodeType || hit.nodeType === entity.nodeType) &&
@@ -250,17 +298,17 @@ async function alignWithLlm(
           const byPeer = new Map<string, number>()
           for (const hit of kept) {
             byPeer.set(hit.id, graphCosineDistanceToSimilarity(hit.distance))
+            if (!existingById.has(hit.id)) {
+              existingById.set(hit.id, { ...hit, nodeType: entity.nodeType })
+            }
           }
           similarityByIncomingExisting.set(key, byPeer)
-          return kept.map((hit) => ({ ...hit, nodeType: entity.nodeType }))
         } catch {
-          return []
+          // ignore
         }
-      })
-    )
-    for (const hits of recalled) {
-      for (const hit of hits) {
-        if (!existingById.has(hit.id)) existingById.set(hit.id, hit)
+      }
+      if ((i + 1) % 8 === 0 && i + 1 < unresolved.length) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
       }
     }
   }

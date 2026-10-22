@@ -264,7 +264,13 @@ export async function flushPendingAgentSessionsBeforeSync(
     })
 
     // 规划路径不做会话水合（慢且易触发二次确认）；同步结束后再补缺库会话
-    return (result.flushed ?? 0) + (result.pendingFlushed ?? 0)
+    const pendingCount =
+      typeof result.pendingFlushed === 'number'
+        ? result.pendingFlushed
+        : result.pendingFlushed
+          ? 1
+          : 0
+    return (result.flushed ?? 0) + pendingCount
   } catch (e) {
     logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
     return 0

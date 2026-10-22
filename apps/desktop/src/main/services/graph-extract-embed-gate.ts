@@ -19,6 +19,7 @@ export async function resolveDesktopGraphExtractAlignDeps(
   const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
   const configured = Boolean(embeddingProvider && embeddingModelId)
   let embedQuery: GraphExtractAlignDeps['embedQuery']
+  let embedBatch: GraphExtractAlignDeps['embedBatch']
   let modelId: string | undefined
   const embeddedSourceIds = new Set<string>()
   const diaryIdByPath = new Map<string, string>()
@@ -31,6 +32,7 @@ export async function resolveDesktopGraphExtractAlignDeps(
     const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
     if (adapter.isConfigured) {
       embedQuery = (text) => adapter.embedQuery(text)
+      embedBatch = (texts) => adapter.embedBatch(texts)
       modelId = adapter.embeddingModelId
     }
     const sourceIds = await hsRepo.listSourceIdsByType('diary', {
@@ -83,6 +85,7 @@ export async function resolveDesktopGraphExtractAlignDeps(
 
   return {
     embedQuery,
+    embedBatch,
     modelId,
     isEmbeddingConfigured: () => Boolean(configured && embedQuery),
     isDiaryEmbedded: async (filePath) => {

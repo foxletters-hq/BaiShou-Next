@@ -30,7 +30,7 @@ import {
   MigrationAbortError,
   abortableDelay
 } from './migration-control'
-import { withEmbeddingSlot } from './embedding-concurrency'
+import { withEmbeddingSlot, yieldMainThreadIfNeeded } from './embedding-concurrency'
 import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
 
 /** Migration path uses createMigrationBackup, clearAndReinitEmbeddings, doReEmbedFromBackup (embedding-migration.ts). */
@@ -64,10 +64,12 @@ export class EmbeddingService {
       if (!provider) return 0
 
       const model = provider.getEmbeddingModel(modelId)
-      const { embedding } = await embed({
-        model,
-        value: 'hi'
-      })
+      const { embedding } = await withEmbeddingSlot(() =>
+        embed({
+          model,
+          value: 'hi'
+        })
+      )
       const dimension = embedding.length
       await this.config.setGlobalEmbeddingDimension(dimension)
       logger.debug(`EmbeddingService: Detected dimension ${dimension} (${modelId})`)
@@ -106,10 +108,12 @@ export class EmbeddingService {
 
       for (const chunk of chunks) {
         await this.retryEmbed(async () => {
-          const { embedding } = await embed({
-            model: aiModel,
-            value: chunk.text
-          })
+          const { embedding } = await withEmbeddingSlot(() =>
+            embed({
+              model: aiModel,
+              value: chunk.text
+            })
+          )
 
           await this.db.insertEmbedding({
             id: uuidv4(),
@@ -139,10 +143,12 @@ export class EmbeddingService {
       }
 
       const aiModel = provider.getEmbeddingModel(modelId)
-      const { embedding } = await embed({
-        model: aiModel,
-        value: query
-      })
+      const { embedding } = await withEmbeddingSlot(() =>
+        embed({
+          model: aiModel,
+          value: query
+        })
+      )
 
       return this.normalize(embedding)
     } catch (e) {
@@ -185,10 +191,12 @@ export class EmbeddingService {
     const vaultId = isVaultId(rawVault) ? rawVault : deriveLegacyVaultId(rawVault)
 
     await this.retryEmbed(async () => {
-      const { embedding } = await embed({
-        model: aiModel,
-        value: params.newText
-      })
+      const { embedding } = await withEmbeddingSlot(() =>
+        embed({
+          model: aiModel,
+          value: params.newText
+        })
+      )
 
       await this.db.insertEmbedding({
         id: params.entry.embedding_id,
@@ -225,6 +233,8 @@ export class EmbeddingService {
     /** Skip dimension detect / index init when batch caller already ran prepareEmbeddingIndex(). */
     skipIndexPrep?: boolean
     contentHash?: string
+    /** 为 true 时在全部分块向量就绪后原子替换旧向量，避免先删后等网络请求造成空窗 */
+    replaceExisting?: boolean
   }): Promise<void> {
     if (!this.isConfigured) return
     const vaultId = params.vaultId.trim()
@@ -233,15 +243,35 @@ export class EmbeddingService {
     }
     const contentHash = params.contentHash?.trim() || hashEmbedSourceContent(params.text)
     if (!params.text.trim()) {
-      await this.writeEmbedLedgerSuccess({
-        vaultId,
-        sourceType: params.sourceType,
-        sourceId: params.sourceId,
-        contentHash,
-        chunkCount: 0,
-        modelId: this.config.getGlobalEmbeddingModelId() || '',
-        dimension: this.config.getGlobalEmbeddingDimension() || 0
-      })
+      const modelId = this.config.getGlobalEmbeddingModelId() || ''
+      const dimension = this.config.getGlobalEmbeddingDimension() || 0
+      if (this.db.replaceSourceEmbeddings) {
+        await this.db.replaceSourceEmbeddings({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          groupId: params.groupId,
+          modelId,
+          dimension,
+          contentHash,
+          replaceExisting: params.replaceExisting,
+          recordLedger: this.isLedgerSourceType(params.sourceType),
+          chunks: []
+        })
+      } else {
+        if (params.replaceExisting) {
+          await this.db.deleteEmbeddingsBySource(params.sourceType, params.sourceId)
+        }
+        await this.writeEmbedLedgerSuccess({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          contentHash,
+          chunkCount: 0,
+          modelId,
+          dimension
+        })
+      }
       return
     }
 
@@ -257,10 +287,13 @@ export class EmbeddingService {
         await this.prepareEmbeddingIndex()
       }
 
+      await yieldMainThreadIfNeeded()
       const chunks = this.splitIntoChunks(params.text)
+      await yieldMainThreadIfNeeded()
       // 批量路径（skipIndexPrep）不再叠加分块并发，避免「日记并发 × 分块并发」把主进程/API 打满。
       const chunkParallel = params.skipIndexPrep ? 1 : 3
 
+      const preparedChunks: Array<{ index: number; text: string; vector: number[] }> = []
       const futures: Promise<void>[] = []
 
       for (const chunk of chunks) {
@@ -268,28 +301,19 @@ export class EmbeddingService {
           ? `${params.chunkPrefix}${chunk.text}`
           : chunk.text
 
-        const future = withEmbeddingSlot(() =>
-          this.retryEmbed(async () => {
-            const { embedding } = await embed({
+        const future = this.retryEmbed(async () => {
+          const { embedding } = await withEmbeddingSlot(() =>
+            embed({
               model: aiModel,
               value: embeddingInput
             })
-
-            await this.db.insertEmbedding({
-              id: uuidv4(),
-              sourceType: params.sourceType,
-              sourceId: params.sourceId,
-              groupId: params.groupId,
-              vaultId,
-              chunkIndex: chunk.index,
-              chunkText: embeddingInput,
-              metadataJson,
-              embedding: this.normalize(embedding),
-              modelId,
-              sourceCreatedAt: params.sourceCreatedAt
-            })
-          }, `embedText chunk ${chunk.index}`)
-        )
+          )
+          preparedChunks.push({
+            index: chunk.index,
+            text: embeddingInput,
+            vector: this.normalize(embedding)
+          })
+        }, `embedText chunk ${chunk.index}`)
 
         futures.push(future)
 
@@ -303,15 +327,60 @@ export class EmbeddingService {
         await Promise.all(futures)
       }
 
-      await this.writeEmbedLedgerSuccess({
-        vaultId,
-        sourceType: params.sourceType,
-        sourceId: params.sourceId,
-        contentHash,
-        chunkCount: chunks.length,
-        modelId,
-        dimension: this.config.getGlobalEmbeddingDimension() || 0
-      })
+      preparedChunks.sort((a, b) => a.index - b.index)
+      const actualDimension =
+        preparedChunks[0]?.vector.length || this.config.getGlobalEmbeddingDimension() || 0
+
+      if (this.db.replaceSourceEmbeddings) {
+        await this.db.replaceSourceEmbeddings({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          groupId: params.groupId,
+          modelId,
+          dimension: actualDimension,
+          contentHash,
+          metadataJson,
+          sourceCreatedAt: params.sourceCreatedAt,
+          replaceExisting: params.replaceExisting,
+          recordLedger: this.isLedgerSourceType(params.sourceType),
+          chunks: preparedChunks.map((item) => ({
+            id: uuidv4(),
+            chunkIndex: item.index,
+            chunkText: item.text,
+            embedding: item.vector
+          }))
+        })
+      } else {
+        if (params.replaceExisting) {
+          await this.db.deleteEmbeddingsBySource(params.sourceType, params.sourceId)
+        }
+        for (const item of preparedChunks) {
+          await this.db.insertEmbedding({
+            id: uuidv4(),
+            sourceType: params.sourceType,
+            sourceId: params.sourceId,
+            groupId: params.groupId,
+            vaultId,
+            chunkIndex: item.index,
+            chunkText: item.text,
+            metadataJson,
+            embedding: item.vector,
+            modelId,
+            sourceCreatedAt: params.sourceCreatedAt
+          })
+        }
+
+        await this.writeEmbedLedgerSuccess({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          contentHash,
+          chunkCount: chunks.length,
+          modelId,
+          dimension: actualDimension
+        })
+      }
     } catch (e) {
       logger.error('embedText failed', { error: e })
       await this.writeEmbedLedgerFailure({
@@ -336,8 +405,7 @@ export class EmbeddingService {
     skipIndexPrep?: boolean
     contentHash?: string
   }): Promise<void> {
-    await this.db.deleteEmbeddingsBySource(params.sourceType, params.sourceId)
-    await this.embedText(params)
+    await this.embedText({ ...params, replaceExisting: true })
   }
 
   public async reEmbedMessage(params: {
