@@ -9,13 +9,15 @@
 | 写界面、找现成组件、新增或重命名或删除公开组件 | [../../packages/ui/COMPONENTS.md](../../packages/ui/COMPONENTS.md) |
 | 改颜色、顶栏、卡片、表单描边、页面布局         | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)                         |
 | 写逻辑、测试、包边界、文件拆分                 | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)                           |
+| 设计模块、修 Bug、性能优化、实现新功能         | [4-Engineering-Rule.md](./4-Engineering-Rule.md)                   |
 | 提交、PR                                       | [../2-Submit/1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)       |
 | 给自己的 AI 编码工具配置长期指令               | [3-AI-Prompt.md](./3-AI-Prompt.md)                                 |
 
 ## 本目录文档
 
-| 序号 | 文档                                       | 说明                                                                |
-| ---- | ------------------------------------------ | ------------------------------------------------------------------- |
-| 1    | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)   | AI 协作者准则：流程、测试、模块边界、500 行 warn 等                 |
-| 2    | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md) | UI 语义色、边框、Glass 政策、页面顶栏与设置区布局约定（Token SSOT） |
-| 3    | [3-AI-Prompt.md](./3-AI-Prompt.md)         | 贡献者粘贴到自己 AI 编码工具里的长期指令，与工具无关                |
+| 序号 | 文档                                             | 说明                                                                |
+| ---- | ------------------------------------------------ | ------------------------------------------------------------------- |
+| 1    | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)         | AI 协作者准则：流程、测试、模块边界、500 行 warn 等                 |
+| 2    | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)       | UI 语义色、边框、Glass 政策、页面顶栏与设置区布局约定（Token SSOT） |
+| 3    | [3-AI-Prompt.md](./3-AI-Prompt.md)               | 贡献者粘贴到自己 AI 编码工具里的长期指令，与工具无关                |
+| 4    | [4-Engineering-Rule.md](./4-Engineering-Rule.md) | 工程准则：根因分析、方案对比、失败路径、性能取舍与验证方式          |
