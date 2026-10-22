@@ -54,12 +54,18 @@ class MockShadowIndexRepository {
   async getHashesByDates(dateIsos: string[]) {
     const map = new Map<
       string,
-      { contentHash: string; fileMtimeMs: number | null; fileSize: number | null }
+      {
+        filePath?: string
+        contentHash: string
+        fileMtimeMs: number | null
+        fileSize: number | null
+      }
     >()
     for (const dateIso of dateIsos) {
       const rec = this.records.find((r) => r.date === dateIso || r.date.startsWith(dateIso))
       if (rec?.contentHash) {
         map.set(dateIso, {
+          filePath: rec.filePath,
           contentHash: rec.contentHash,
           fileMtimeMs: rec.fileMtimeMs ?? null,
           fileSize: rec.fileSize ?? null
@@ -69,11 +75,17 @@ class MockShadowIndexRepository {
     return map
   }
 
-  async updateFileStat(dateStr: string, fileMtimeMs: number, fileSize: number) {
+  async updateFileStat(
+    dateStr: string,
+    fileMtimeMs: number | null,
+    fileSize: number | null,
+    filePath?: string
+  ) {
     for (const rec of this.records) {
       if (rec.date === dateStr || String(rec.date).startsWith(dateStr)) {
-        rec.fileMtimeMs = fileMtimeMs
-        rec.fileSize = fileSize
+        if (fileMtimeMs != null) rec.fileMtimeMs = fileMtimeMs
+        if (fileSize != null) rec.fileSize = fileSize
+        if (filePath != null) rec.filePath = filePath
       }
     }
   }
@@ -396,6 +408,43 @@ describe('ShadowIndexSyncService', () => {
     await service.fullScanVault(true)
 
     expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
+  it('Journals 目录存在但暂无物理文件时不应清空已有影子索引', async () => {
+    await mockRepo.upsert({
+      filePath: '2.日记/2026/10/2026-10-19.md',
+      date: '2026-10-19',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      contentHash: 'external-hash',
+      weather: null,
+      mood: null,
+      location: null,
+      locationDetail: null,
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: 'external diary body',
+      tags: ''
+    })
+    expect(mockRepo._getRecordCount()).toBe(1)
+
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
+  it('外部日记路径记录在迁入 Journals 目录且内容未变时应对齐 filePath 而不被误删', async () => {
+    await writeJournal('2026-10-19', '跨端同步日记正文')
+    await service.syncJournal('2026-10-19')
+    const rec = mockRepo._getRecord('2026-10-19')
+    expect(rec).toBeTruthy()
+    // 模拟桌面端导出的数据库记录中保存了外部目录相对路径
+    rec.filePath = '2.日记/2026/10/2026-10-19.md'
+
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+    expect(mockRepo._getRecord('2026-10-19')?.filePath).toBe('Journals/2026/10/2026-10-19.md')
   })
 
   // ── 8. 同步禁用 ──

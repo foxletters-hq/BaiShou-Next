@@ -7,10 +7,13 @@ import { SettingsRepository, UserProfileRepository, executeRawSql } from '@baish
 import { logger } from '@baishou/shared'
 import {
   assertArchiveExportOutputPathSafe,
+  collectArchiveExternalMountDirs,
   createArchiveExportScanContext,
+  isArchiveExternalMountSkipDir,
   isArchiveRecursiveSkipDir,
   isArchiveRootSkipEntry,
   shouldIncludeArchivePath,
+  shouldIncludeExternalMountArchivePath,
   shouldSkipArchiveFile,
   type ArchiveExportScanContext
 } from '@baishou/core-desktop'
@@ -98,6 +101,15 @@ export class ZipExporter {
       throw new Error('Archive export scan context is not initialized')
     }
 
+    const addedEntryNames = new Set<string>()
+    const addArchiveFile = (fullPath: string, zipEntryName: string, fileName: string) => {
+      const normalizedEntry = zipEntryName.replace(/\\/g, '/')
+      if (addedEntryNames.has(normalizedEntry)) return
+      addedEntryNames.add(normalizedEntry)
+      const store = shouldStoreWithoutCompression(fileName)
+      archive.file(fullPath, { name: normalizedEntry, store } as any)
+    }
+
     const addDirectory = async (dirPath: string, relativePath: string) => {
       if (!(await shouldIncludeArchivePath(dirPath, ctx))) return
 
@@ -113,12 +125,41 @@ export class ZipExporter {
           } else if (dirent.isFile()) {
             if (shouldSkipArchiveFile(dirent.name, ctx)) continue
             if (!(await shouldIncludeArchivePath(fullPath, ctx))) continue
-            const store = shouldStoreWithoutCompression(dirent.name)
-            archive.file(fullPath, { name: curRelative, store } as any)
+            addArchiveFile(fullPath, curRelative, dirent.name)
           }
         }
       } catch (e: unknown) {
         logger.error(`Failed to pack dir ${dirPath}`, e as Error)
+      }
+    }
+
+    const addExternalMountDirectory = async (
+      dirPath: string,
+      relativePath: string,
+      mountRealPath: string,
+      kind: 'journals' | 'summaries'
+    ) => {
+      if (!(await shouldIncludeExternalMountArchivePath(dirPath, mountRealPath, ctx))) return
+
+      try {
+        const list = await fsp.readdir(dirPath, { withFileTypes: true })
+        for (const dirent of list) {
+          const fullPath = path.join(dirPath, dirent.name)
+          const curRelative = path.join(relativePath, dirent.name).replace(/\\/g, '/')
+
+          if (dirent.isDirectory()) {
+            if (isArchiveExternalMountSkipDir(dirent.name, kind)) continue
+            await addExternalMountDirectory(fullPath, curRelative, mountRealPath, kind)
+          } else if (dirent.isFile()) {
+            if (shouldSkipArchiveFile(dirent.name, ctx)) continue
+            if (!(await shouldIncludeExternalMountArchivePath(fullPath, mountRealPath, ctx))) {
+              continue
+            }
+            addArchiveFile(fullPath, curRelative, dirent.name)
+          }
+        }
+      } catch (e: unknown) {
+        logger.error(`Failed to pack external mount dir ${dirPath}`, e as Error)
       }
     }
 
@@ -134,9 +175,18 @@ export class ZipExporter {
         } else if (dirent.isFile()) {
           if (shouldSkipArchiveFile(dirent.name, ctx)) continue
           if (!(await shouldIncludeArchivePath(fullPath, ctx))) continue
-          const store = shouldStoreWithoutCompression(dirent.name)
-          archive.file(fullPath, { name: dirent.name, store } as any)
+          addArchiveFile(fullPath, dirent.name, dirent.name)
         }
+      }
+
+      const externalMounts = await collectArchiveExternalMountDirs(rootDir)
+      for (const mount of externalMounts) {
+        await addExternalMountDirectory(
+          mount.absDir,
+          mount.zipRelativePrefix,
+          mount.realDir,
+          mount.kind
+        )
       }
     }
 

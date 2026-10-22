@@ -283,10 +283,26 @@ export async function runArchiveImportFromZip(
 
   let extractDir: string | undefined
   try {
-    extractDir = joinStoragePath(
-      stripFileScheme(getAppCacheDirectory()),
-      `baishou_archive_extract_${Date.now()}`
-    )
+    const cacheDir = stripFileScheme(getAppCacheDirectory())
+    const normalizedInputZip = stripFileScheme(zipFilePath)
+    try {
+      const cacheEntries = await ctx.fileSystem.readdir(cacheDir)
+      for (const entryName of cacheEntries) {
+        if (
+          entryName.startsWith('baishou_archive_extract_') ||
+          entryName.startsWith('baishou_import_') ||
+          entryName.startsWith('lan_sync_payload_')
+        ) {
+          const candidatePath = joinStoragePath(cacheDir, entryName)
+          if (candidatePath === normalizedInputZip) continue
+          await ctx.fileSystem.rm(candidatePath, { recursive: true, force: true }).catch(() => {})
+        }
+      }
+    } catch {
+      // ignore cache sweep failures
+    }
+
+    extractDir = joinStoragePath(cacheDir, `baishou_archive_extract_${Date.now()}`)
     await ctx.fileSystem.mkdir(extractDir, { recursive: true })
 
     reportArchiveImportStage(onProgress, 'unpacking')

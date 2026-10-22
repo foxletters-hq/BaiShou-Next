@@ -299,6 +299,11 @@ internal class BaishouHttpServer(
         if (dispatchMcpRequest == null && session.method == Method.POST && session.uri == "/upload") {
             var destFile: File? = null
             try {
+                context.cacheDir.listFiles()?.forEach { file ->
+                    if (file.name.startsWith("lan_sync_payload_") && file.name.endsWith(".zip")) {
+                        runCatching { file.delete() }
+                    }
+                }
                 val targetFile = File(
                     context.cacheDir,
                     "lan_sync_payload_${System.currentTimeMillis()}.zip"
