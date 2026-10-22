@@ -40,6 +40,8 @@ import { clipNameCandidateSourceContext } from '../graph/graph-entity-align'
 import { commitAlignedWindows, writeAlignedEmbeddings } from './knowledge-graph-extraction.align'
 import { runKnowledgeGraphWindowPool } from './knowledge-graph-window-pool'
 
+const NOTEBOOK_WINDOW_ALIGN_POOL_SIZE = Math.min(10, GRAPH_EXTRACT_ALIGN_POOL_SIZE)
+
 async function runKnowledgeGraphStep<T>(
   step: KnowledgeGraphStep,
   run: () => Promise<T>
@@ -203,7 +205,7 @@ export class KnowledgeGraphExtractionService {
         await runKnowledgeGraphWindowPool({
           items: windows.filter((win) => !doneIndexes.has(win.index)),
           concurrency: input.windowConcurrency ?? GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
-          alignPoolSize: GRAPH_EXTRACT_ALIGN_POOL_SIZE,
+          alignPoolSize: NOTEBOOK_WINDOW_ALIGN_POOL_SIZE,
           run: async (win) => {
             // 界面按这一窗盖住的页码报进度；检查点 windowsDone 仍只在解析成功后写入
             await reportProgress(win.index + 1)
@@ -242,8 +244,8 @@ export class KnowledgeGraphExtractionService {
     }
 
     const pendingAlign = extractedWindows.filter((win) => win.aligned !== true)
-    for (let i = 0; i < pendingAlign.length; i += GRAPH_EXTRACT_ALIGN_POOL_SIZE) {
-      await commitBatch(pendingAlign.slice(i, i + GRAPH_EXTRACT_ALIGN_POOL_SIZE))
+    for (let i = 0; i < pendingAlign.length; i += NOTEBOOK_WINDOW_ALIGN_POOL_SIZE) {
+      await commitBatch(pendingAlign.slice(i, i + NOTEBOOK_WINDOW_ALIGN_POOL_SIZE))
     }
 
     await persist(true, Math.max(extractedWindows.length, windows.length))

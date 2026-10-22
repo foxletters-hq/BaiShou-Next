@@ -176,6 +176,7 @@ export async function persistGraphExtractDraft(
 ): Promise<{
   nodeIds: string[]
   embeddings: Array<{ id: string; embedding: number[]; text: string }>
+  removedFromShard?: boolean
 }> {
   const { vaultId, vaultName, filePath, hash, dateStr, shardMonth, validFrom } = draft
   const sourceRef = dateStr || filePath
@@ -309,8 +310,10 @@ export async function persistGraphExtractDraft(
       await ctx.graphManager.writeRecord(record, { collection: 'nodes' })
     }
   }
+  let removedFromShard = false
   const existingLegacy = await ctx.repo.getNodeById(legacyEntryId, vaultId)
   if (existingLegacy && legacyEntryId !== entryCreated.id) {
+    removedFromShard = true
     const listEdges = ctx.repo.listEdgesTouching
     if (typeof listEdges === 'function') {
       const touching = await listEdges.call(ctx.repo, vaultId, legacyEntryId)
@@ -386,7 +389,7 @@ export async function persistGraphExtractDraft(
       shardMonth
     })
   }
-  return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings }
+  return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings, removedFromShard }
 }
 
 /** 抽空或端点全解析失败时，不得把该日旧 AI 边标成失效。 */

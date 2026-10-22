@@ -45,7 +45,7 @@ export class GraphQueryOps {
     if (typed) nameConditions.push(eq(graphNodesTable.nodeType, typed))
 
     const byName = await this.database
-      .select()
+      .select(GRAPH_NODE_ROW_COLUMNS)
       .from(graphNodesTable)
       .where(and(...nameConditions))
 
@@ -106,7 +106,7 @@ export class GraphQueryOps {
         : undefined
 
     const byName = await this.database
-      .select()
+      .select(GRAPH_NODE_ROW_COLUMNS)
       .from(graphNodesTable)
       .where(
         and(
@@ -344,28 +344,14 @@ export class GraphQueryOps {
   async getNodesByIds(vaultId: string, ids: string[]): Promise<GraphNodeRow[]> {
     const unique = uniqueNonEmptyIds(ids)
     if (unique.length === 0) return []
-    const out: GraphNodeRow[] = []
-    for (const part of chunkIds(unique)) {
-      const rows = await this.database
-        .select()
-        .from(graphNodesTable)
-        .where(
-          and(
-            eq(graphNodesTable.vaultId, vaultId),
-            isNull(graphNodesTable.deletedAt),
-            inArray(graphNodesTable.id, part)
-          )
-        )
-      out.push(...rows.map(mapNode))
-    }
-    return out
+    return selectGraphNodesByIds(this.database, vaultId, unique)
   }
 
   async getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null> {
     const conditions = [eq(graphNodesTable.id, id), isNull(graphNodesTable.deletedAt)]
     if (vaultId) conditions.push(eq(graphNodesTable.vaultId, vaultId))
     const rows = await this.database
-      .select()
+      .select(GRAPH_NODE_ROW_COLUMNS)
       .from(graphNodesTable)
       .where(and(...conditions))
       .limit(1)
@@ -460,7 +446,7 @@ export class GraphQueryOps {
     const limit = Math.max(1, options?.limit ?? 20)
     const offset = Math.max(0, options?.offset ?? 0)
     const rows = await this.database
-      .select()
+      .select(GRAPH_NODE_ROW_COLUMNS)
       .from(graphNodesTable)
       .where(and(...filters))
       .orderBy(

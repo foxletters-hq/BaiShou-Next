@@ -19,7 +19,7 @@ import {
 } from '../graph-extract-batch.util'
 
 describe('resolveGraphExtractConcurrency', () => {
-  it('defaults to 5 and clamps to 1–10', () => {
+  it('defaults to 10 and clamps to 1–20', () => {
     expect(resolveGraphExtractConcurrency(undefined)).toBe(GRAPH_EXTRACT_CONCURRENCY_DEFAULT)
     expect(resolveGraphExtractConcurrency(5)).toBe(5)
     expect(resolveGraphExtractConcurrency(0)).toBe(1)
@@ -35,8 +35,8 @@ describe('graph extract window timeout', () => {
 })
 
 describe('graph extract pool and distance', () => {
-  it('keeps the align pool at 10 and converts cosine distance', () => {
-    expect(GRAPH_EXTRACT_ALIGN_POOL_SIZE).toBe(10)
+  it('keeps the align pool at 30 and converts cosine distance', () => {
+    expect(GRAPH_EXTRACT_ALIGN_POOL_SIZE).toBe(30)
     expect(graphCosineDistanceToSimilarity(0.49)).toBeCloseTo(0.51)
     expect(graphCosineDistanceToSimilarity(0.5)).toBeCloseTo(0.5)
   })

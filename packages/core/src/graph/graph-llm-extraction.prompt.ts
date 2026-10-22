@@ -211,11 +211,13 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
       providerId: deps.provider.config?.id,
       modelId: deps.modelId
     })
+    const normalizedEffort = normalizeReasoningEffortSetting(deps.reasoningEffort)
     const builtReasoning = buildDefaultReasoningOptions({
       modelId: deps.modelId,
       providerType: deps.provider.config?.type || 'openai',
       baseUrl: deps.provider.config?.baseUrl,
-      effort: normalizeReasoningEffortSetting(deps.reasoningEffort)
+      effort: normalizedEffort,
+      small: normalizedEffort === 'auto'
     })
     return runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () => {
       const abortController = new AbortController()

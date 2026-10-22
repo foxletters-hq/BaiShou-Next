@@ -72,6 +72,8 @@ export interface UpsertNodeInput {
   reviewStatus?: 'approved' | 'pending' | 'rejected'
   /** When true, skip name/vector disambiguation and upsert by id */
   forceId?: boolean
+  /** Optional pre-fetched node by id to avoid redundant SELECT in sync paths */
+  existingById?: GraphNodeRow | null
   createdAt?: number
   updatedAt?: number
   deletedAt?: number | null

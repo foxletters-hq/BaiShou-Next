@@ -500,4 +500,52 @@ describe('GraphExtractQueueEngine', () => {
     expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/b.md', contentHash: 'h2' }])).toBe(1)
     engine.stop()
   })
+
+  it('automatically retries a failing task up to 3 times and succeeds if a retry passes', async () => {
+    let attempts = 0
+    const engine = createEngine(async () => {
+      attempts++
+      if (attempts <= 3) {
+        throw new Error('transient model error')
+      }
+      return { done: 1, failed: 0, errors: [] }
+    })
+    engine.enqueue([{ filePath: 'Journal/a.md' }])
+    const state = await engine.waitUntilIdle({ pollMs: 0 })
+    expect(attempts).toBe(4)
+    expect(state.completedCount).toBe(1)
+    expect(state.errorCount).toBe(0)
+    expect(state.lastError).toBeUndefined()
+  })
+
+  it('halts remaining queue items after 3 failed retries instead of running through the rest, and clears error on retry', async () => {
+    const calledPaths: string[] = []
+    const engine = createEngine(async ({ filePath }) => {
+      calledPaths.push(filePath)
+      throw new Error('upstream 502')
+    })
+    engine.enqueue([
+      { filePath: 'Journal/a.md' },
+      { filePath: 'Journal/b.md' },
+      { filePath: 'Journal/c.md' }
+    ])
+    const state = await engine.waitUntilIdle({ pollMs: 0 })
+    // 1 initial + 3 retries for a.md = 4 calls; b.md and c.md must NOT be executed
+    expect(calledPaths).toEqual(['Journal/a.md', 'Journal/a.md', 'Journal/a.md', 'Journal/a.md'])
+    expect(engine.isRunning).toBe(false)
+    expect(state.errorCount).toBe(1)
+    expect(state.completedCount).toBe(0)
+    expect(state.pendingCount).toBe(0)
+    expect(state.lastError).toBe('upstream 502')
+    expect(state.overallProgress).toBe(0)
+
+    // Re-enqueueing (user retry) clears previous error state
+    engine.setRunner(async () => ({ done: 1, failed: 0, errors: [] }))
+    engine.enqueue([{ filePath: 'Journal/a.md' }])
+    expect(engine.getQueueState().lastError).toBeUndefined()
+    expect(engine.getQueueState().errorCount).toBe(0)
+    const retried = await engine.waitUntilIdle({ pollMs: 0 })
+    expect(retried.completedCount).toBe(1)
+    expect(retried.lastError).toBeUndefined()
+  })
 })

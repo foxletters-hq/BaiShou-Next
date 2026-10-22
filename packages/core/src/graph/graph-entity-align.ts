@@ -130,6 +130,7 @@ export async function alignEntityPool(
       hits: await lookup.findCandidatesByNameOrAlias(entity.name, entity.nodeType)
     }))
   )
+  const multiHits: Array<{ key: string; entity: AlignableEntity; hits: AlignedEntityHit[] }> = []
   for (const { key, entity, hits } of nameHits) {
     if (hits.length === 0) {
       unresolved.push({ key, entity })
@@ -140,36 +141,74 @@ export async function alignEntityPool(
       out.set(key, reuseNameHit(key, entity, hit, 'name', false))
       continue
     }
+    multiHits.push({ key, entity, hits })
+  }
 
-    const picked = await pickNameCandidate(entity, hits, lookup)
-    if (picked) {
-      out.set(key, reuseNameHit(key, entity, picked, 'llm', false))
-      continue
+  if (multiHits.length > 0) {
+    const pickedResults = await Promise.all(
+      multiHits.map(async ({ key, entity, hits }) => ({
+        key,
+        entity,
+        hits,
+        picked: await pickNameCandidate(entity, hits, lookup)
+      }))
+    )
+    for (const { key, entity, hits, picked } of pickedResults) {
+      if (picked) {
+        out.set(key, reuseNameHit(key, entity, picked, 'llm', false))
+        continue
+      }
+      const hit = hits[0]!
+      out.set(key, reuseNameHit(key, entity, hit, 'name', true))
     }
-
-    const hit = hits[0]!
-    out.set(key, reuseNameHit(key, entity, hit, 'name', true))
   }
 
   if (unresolved.length === 0) return out
 
   const vectors = new Map<string, number[]>()
   if (lookup.embedQuery) {
-    await Promise.all(
-      unresolved.map(async ({ key, entity }) => {
-        try {
-          const vector = await lookup.embedQuery!(embedText(entity))
-          if (vector?.length) vectors.set(key, vector)
-        } catch (error) {
-          if (lookup.requireEmbedQuery) throw error
+    const EMBED_CONCURRENCY = 10
+    let cursor = 0
+    const workers = Array.from(
+      { length: Math.min(EMBED_CONCURRENCY, unresolved.length) },
+      async () => {
+        while (cursor < unresolved.length) {
+          const current = unresolved[cursor++]!
+          try {
+            const vector = await lookup.embedQuery!(embedText(current.entity))
+            if (vector?.length) vectors.set(current.key, vector)
+          } catch (error) {
+            if (lookup.requireEmbedQuery) throw error
+          }
         }
-      })
+      }
     )
+    await Promise.all(workers)
   }
 
   if (lookup.judgeMerges) {
-    const judged = await alignWithLlm(unresolved, vectors, lookup, out)
-    if (judged) return out
+    const MAX_SINGLE_ALIGN_BATCH = 35
+    if (unresolved.length > MAX_SINGLE_ALIGN_BATCH) {
+      const byType = new Map<string, Array<{ key: string; entity: AlignableEntity }>>()
+      for (const item of unresolved) {
+        const list = byType.get(item.entity.nodeType) ?? []
+        list.push(item)
+        byType.set(item.entity.nodeType, list)
+      }
+      const chunks: Array<Array<{ key: string; entity: AlignableEntity }>> = []
+      for (const group of byType.values()) {
+        for (let i = 0; i < group.length; i += MAX_SINGLE_ALIGN_BATCH) {
+          chunks.push(group.slice(i, i + MAX_SINGLE_ALIGN_BATCH))
+        }
+      }
+      const chunkResults = await Promise.all(
+        chunks.map((chunk) => alignWithLlm(chunk, vectors, lookup, out))
+      )
+      if (chunkResults.every(Boolean)) return out
+    } else {
+      const judged = await alignWithLlm(unresolved, vectors, lookup, out)
+      if (judged) return out
+    }
   }
 
   for (const item of unresolved) {
@@ -235,8 +274,19 @@ async function alignWithLlm(
     summary: hit.summary ?? ''
   }))
 
-  if (incoming.length === 1 && existing.length === 0) {
-    assignCreate(unresolved[0]!, lookup, out, vectors)
+  const hasSameTypeIncomingPair = (() => {
+    const seenTypes = new Set<string>()
+    for (const item of incoming) {
+      if (seenTypes.has(item.nodeType)) return true
+      seenTypes.add(item.nodeType)
+    }
+    return false
+  })()
+
+  if (existing.length === 0 && !hasSameTypeIncomingPair) {
+    for (const item of unresolved) {
+      assignCreate(item, lookup, out, vectors)
+    }
     return true
   }
 

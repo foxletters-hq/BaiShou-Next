@@ -1,6 +1,6 @@
 import { ToolEmbeddingService } from '../agent.tool'
 import { IAIProvider } from '../../providers/provider.interface'
-import { embed } from 'ai'
+import { embed, embedMany } from 'ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
 import {
   hashEmbedSourceContent,
@@ -34,6 +34,8 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     return this.modelId
   }
 
+  private batchUnsupported = false
+
   async embedQuery(text: string): Promise<number[] | null> {
     try {
       // 整理/对齐会复用这条路径；15 秒是语义搜索的墙钟，不能套在嵌入请求上。
@@ -46,6 +48,32 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
       logger.warn('[EmbeddingAdapter] 查询特征抽取失败', { error: e })
       throw toSerializableAiError(e)
     }
+  }
+
+  /**
+   * 批量嵌入多条短文本（如图谱节点名片）。优先使用单次 HTTP embedMany 请求，
+   * 若供应商不支持数组输入则自动降级为并发单条 embedQuery。
+   */
+  async embedBatch(texts: string[]): Promise<Array<number[] | null>> {
+    if (texts.length === 0) return []
+    if (texts.length === 1) {
+      return [await this.embedQuery(texts[0]!)]
+    }
+    if (!this.batchUnsupported) {
+      try {
+        const { embeddings } = await embedMany({
+          model: this.provider.getEmbeddingModel(this.modelId),
+          values: texts
+        })
+        if (Array.isArray(embeddings) && embeddings.length === texts.length) {
+          return embeddings.map((vec) => (vec?.length ? normalizeEmbeddingVector(vec) : null))
+        }
+      } catch (e) {
+        this.batchUnsupported = true
+        logger.warn('[EmbeddingAdapter] embedMany fallback to concurrent embedQuery', { error: e })
+      }
+    }
+    return Promise.all(texts.map((t) => this.embedQuery(t)))
   }
 
   private async embedQueryWithRetry(text: string, label: string): Promise<number[] | null> {
