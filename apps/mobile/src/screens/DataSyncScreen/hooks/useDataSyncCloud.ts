@@ -260,6 +260,9 @@ export function useDataSyncCloud() {
         )
         if (result.success) {
           reportArchiveImportStage(setCloudRestoreProgress, 'succeeded', { percent: 100 })
+          await new Promise((resolve) => setTimeout(resolve, 900))
+          setIsRestoring(false)
+          setCloudRestoreProgress(null)
           applyArchiveImportFeedback(
             {
               fileCount: -1,
@@ -270,7 +273,6 @@ export function useDataSyncCloud() {
             notifyArchiveRestoreComplete,
             { successMessage: result.message }
           )
-          await new Promise((resolve) => setTimeout(resolve, 900))
         } else {
           setCloudRestoreProgress(
             buildArchiveImportProgress('failed', { percent: 100, detail: result.message })

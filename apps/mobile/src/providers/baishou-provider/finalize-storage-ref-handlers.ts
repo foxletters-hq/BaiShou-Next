@@ -237,10 +237,11 @@ export async function finalizeStorageRefHandlers(
         if (isMounted()) {
           const ragRef = refs.vaultBootstrapCtxRef.current?.ragServiceRef ?? ragServiceRef
           const stack = refs.diaryStackRef.current
+          const alreadyPublishedRestore = refs.archiveFullRestoreDoneRef.current
           ctx.setValue((prev) => ({
             ...prev,
             vaultSwitching: false,
-            vaultRevision: prev.vaultRevision + 1,
+            vaultRevision: alreadyPublishedRestore ? prev.vaultRevision : prev.vaultRevision + 1,
             services: prev.services
               ? {
                   ...prev.services,

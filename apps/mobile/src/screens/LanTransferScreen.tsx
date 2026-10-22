@@ -126,6 +126,7 @@ export const LanTransferScreen: React.FC = () => {
       lanSyncService.onFileReceived((zipPath) => {
         void (async () => {
           setReceiveProgress(100)
+          setIsReceiving(false)
           let sizeBytes = 0
           try {
             const stat = await services?.fileSystem.stat(zipPath)
@@ -141,11 +142,9 @@ export const LanTransferScreen: React.FC = () => {
             }
           )
           if (!restore || !archiveService) {
-            setIsReceiving(false)
             void services?.fileSystem.unlink(zipPath).catch(() => {})
             return
           }
-          setIsReceiving(false)
           setIsRestoring(true)
           setImportProgress(buildArchiveImportProgress('preparing'))
           try {
@@ -153,8 +152,10 @@ export const LanTransferScreen: React.FC = () => {
               setImportProgress(progress)
             )
             reportArchiveImportStage(setImportProgress, 'succeeded', { percent: 100 })
-            applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
             await new Promise((resolve) => setTimeout(resolve, 900))
+            setIsRestoring(false)
+            setImportProgress(null)
+            applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
           } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e)
             setImportProgress(buildArchiveImportProgress('failed', { percent: 100, detail: msg }))

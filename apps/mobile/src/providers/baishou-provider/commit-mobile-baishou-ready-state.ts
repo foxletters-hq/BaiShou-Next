@@ -70,6 +70,10 @@ export async function commitMobileBaishouReadyState(
   if (isMounted()) {
     refs.notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {
       if (!isMounted() || !shouldRefreshVaultAfterArchiveImport(result)) return
+      if (refs.archiveRestoreEpochPublishedRef.current) {
+        refs.archiveRestoreEpochPublishedRef.current = false
+        return
+      }
       ctx.setValue((prev) => ({
         ...prev,
         vaultRevision: prev.vaultRevision + 1,

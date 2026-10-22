@@ -93,8 +93,10 @@ export function useArchiveImportExport() {
       )
 
       reportArchiveImportStage(setImportProgress, 'succeeded', { percent: 100 })
-      applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
       await new Promise((resolve) => setTimeout(resolve, IMPORT_SUCCESS_DISMISS_MS))
+      setIsImporting(false)
+      setImportProgress(null)
+      applyArchiveImportFeedback(result, t, toast, notifyArchiveRestoreComplete)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       setImportProgress(

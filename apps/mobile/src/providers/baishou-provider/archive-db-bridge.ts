@@ -108,10 +108,11 @@ export function createArchiveDbBridge(deps: {
         }
       }
       await fileSystem.copyFile(sourceUri, destBase)
-      await refs.reloadAgentDatabaseRef.current()
+      await refs.reloadAgentDatabaseRef.current({ preserveExistingFile: true })
     },
     runArchiveImportQuiesced: async (fn) => {
       refs.archiveFullRestoreDoneRef.current = false
+      refs.archiveRestoreEpochPublishedRef.current = false
       enterAgentMigrationArchiveImport()
       try {
         return await refs.runWithStorageQuiescedRef.current(fn)
@@ -123,6 +124,7 @@ export function createArchiveDbBridge(deps: {
     rebootstrapAfterArchiveRestore: async (options) => {
       const ctx = refs.vaultBootstrapCtxRef.current
       if (!ctx) return
+      const blockingResync = options?.blockingResync ?? true
       // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
       refs.diaryStackRef.current = null
       emitVaultSwitchMutation(undefined, 'archive-restore')
@@ -134,7 +136,7 @@ export function createArchiveDbBridge(deps: {
           bootstrapDeps: ctx.bootstrapDeps,
           watcherDeps: ctx.watcherDeps
         },
-        { blockingResync: options?.blockingResync ?? true }
+        { blockingResync }
       )
       refs.diaryStackRef.current = stack
       refs.archiveFullRestoreDoneRef.current = true
@@ -174,21 +176,23 @@ export function createArchiveDbBridge(deps: {
         missingSummaryDetector: summaryPipeline.missingSummaryDetector,
         summarySyncService: summaryPipeline.summarySyncService
       }
-      if (options?.deferSummaryScan) {
-        void summaryPipeline.summarySyncService.fullScanArchives().catch((e: unknown) => {
-          logger.warn(
-            '[BaishouProvider] deferred summary fullScanArchives after archive restore failed:',
-            e as Error
-          )
-        })
-      } else {
-        try {
-          await summaryPipeline.summarySyncService.fullScanArchives()
-        } catch (e) {
-          logger.warn(
-            '[BaishouProvider] summary fullScanArchives after archive restore failed:',
-            e as Error
-          )
+      if (!blockingResync) {
+        if (options?.deferSummaryScan) {
+          void summaryPipeline.summarySyncService.fullScanArchives().catch((e: unknown) => {
+            logger.warn(
+              '[BaishouProvider] deferred summary fullScanArchives after archive restore failed:',
+              e as Error
+            )
+          })
+        } else {
+          try {
+            await summaryPipeline.summarySyncService.fullScanArchives()
+          } catch (e) {
+            logger.warn(
+              '[BaishouProvider] summary fullScanArchives after archive restore failed:',
+              e as Error
+            )
+          }
         }
       }
 
@@ -210,13 +214,16 @@ export function createArchiveDbBridge(deps: {
       )
       setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: runtime.drizzleDb })
       ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
-      try {
-        const { notifyMobilePendingEmbedCountsChanged } =
-          await import('../../services/mobile-pending-embed-counts')
-        notifyMobilePendingEmbedCountsChanged()
-      } catch {
-        // ignore
+      if (!blockingResync) {
+        try {
+          const { notifyMobilePendingEmbedCountsChanged } =
+            await import('../../services/mobile-pending-embed-counts')
+          notifyMobilePendingEmbedCountsChanged()
+        } catch {
+          // ignore
+        }
       }
+      refs.archiveRestoreEpochPublishedRef.current = true
       if (isMounted()) {
         setValue((prev) => ({
           ...prev,

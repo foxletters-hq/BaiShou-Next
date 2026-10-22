@@ -35,8 +35,11 @@ export function BaishouProvider({ children }: BaishouProviderProps) {
   const notifyArchiveRestoreCompleteRef = useRef<(result: ImportResult) => void>(() => {})
   const notifyVersionMigrationCompleteRef = useRef<() => void>(() => {})
   const resyncAfterMigrationRef = useRef<() => Promise<void>>(async () => {})
-  const reloadAgentDatabaseRef = useRef<() => Promise<void>>(async () => {})
+  const reloadAgentDatabaseRef = useRef<
+    (options?: { preserveExistingFile?: boolean }) => Promise<void>
+  >(async () => {})
   const archiveFullRestoreDoneRef = useRef(false)
+  const archiveRestoreEpochPublishedRef = useRef(false)
   const vaultBootstrapCtxRef =
     useRef<
       import('./baishou-provider/init-context').MobileBaishouInitRefs['vaultBootstrapCtxRef']['current']
@@ -127,6 +130,7 @@ export function BaishouProvider({ children }: BaishouProviderProps) {
         resyncAfterMigrationRef,
         reloadAgentDatabaseRef,
         archiveFullRestoreDoneRef,
+        archiveRestoreEpochPublishedRef,
         vaultBootstrapCtxRef,
         migrationRuntimeRef,
         diaryStackRef
