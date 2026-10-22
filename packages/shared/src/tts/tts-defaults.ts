@@ -209,8 +209,17 @@ export function resolveTtsSynthesisSettings(
     return ''
   }
 
-  const refAudioPath = pickString(globalSettings.refAudioPath, providerEntry.refAudioPath)
-  const refAudioBase64 = pickString(globalSettings.refAudioBase64, providerEntry.refAudioBase64)
+  const pickByPriority = (
+    globalVal: string | undefined,
+    providerVal: string | undefined,
+    fallback?: string
+  ): string =>
+    isActiveGlobal
+      ? pickString(globalVal, providerVal, fallback)
+      : pickString(providerVal, globalVal, fallback)
+
+  const refAudioPath = pickByPriority(globalSettings.refAudioPath, providerEntry.refAudioPath)
+  const refAudioBase64 = pickByPriority(globalSettings.refAudioBase64, providerEntry.refAudioBase64)
   const candidateModelId = pickString(
     isActiveGlobal ? globalModels?.globalTtsModelId : undefined,
     providerEntry.modelId
@@ -221,15 +230,19 @@ export function resolveTtsSynthesisSettings(
       providerId === 'mimo-tts'
         ? resolveMimoTtsSynthesisModelId(candidateModelId, refAudioPath, refAudioBase64)
         : candidateModelId || undefined,
-    voice: pickString(globalSettings.voice, providerEntry.voice),
-    speed: globalSettings.speed ?? providerEntry.speed ?? 1,
-    responseFormat: pickString(globalSettings.responseFormat, providerEntry.responseFormat),
+    voice: pickByPriority(globalSettings.voice, providerEntry.voice),
+    speed: isActiveGlobal
+      ? (globalSettings.speed ?? providerEntry.speed ?? 1)
+      : (providerEntry.speed ?? globalSettings.speed ?? 1),
+    responseFormat: pickByPriority(globalSettings.responseFormat, providerEntry.responseFormat),
     refAudioPath,
     refAudioBase64,
-    promptText: pickString(globalSettings.promptText, providerEntry.promptText),
-    promptLang: pickString(globalSettings.promptLang, providerEntry.promptLang, 'zh'),
-    textLang: pickString(globalSettings.textLang, providerEntry.textLang, 'zh'),
-    stream: globalSettings.stream ?? providerEntry.stream
+    promptText: pickByPriority(globalSettings.promptText, providerEntry.promptText),
+    promptLang: pickByPriority(globalSettings.promptLang, providerEntry.promptLang, 'zh'),
+    textLang: pickByPriority(globalSettings.textLang, providerEntry.textLang, 'zh'),
+    stream: isActiveGlobal
+      ? (globalSettings.stream ?? providerEntry.stream)
+      : (providerEntry.stream ?? globalSettings.stream)
   }
 }
 

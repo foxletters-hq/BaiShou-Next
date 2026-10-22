@@ -93,10 +93,9 @@ function resolveEffectiveTtsModelId(
   globalModels: GlobalModelsConfig | null | undefined,
   overrideModelId?: string
 ): string {
-  const candidate =
-    providerId === 'mimo-tts'
-      ? mergedSettings.modelId || overrideModelId || globalModels?.globalTtsModelId || ''
-      : overrideModelId || mergedSettings.modelId || globalModels?.globalTtsModelId || ''
+  const isActiveGlobal = globalModels?.globalTtsProviderId === providerId
+  const fallbackGlobalModel = isActiveGlobal ? globalModels?.globalTtsModelId : undefined
+  const candidate = overrideModelId || mergedSettings.modelId || fallbackGlobalModel || ''
 
   if (providerId === 'mimo-tts') {
     return resolveMimoTtsSynthesisModelId(

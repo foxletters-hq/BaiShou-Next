@@ -220,10 +220,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               : ''
             const match = /language-(\w+)/.exec(codeClassName)
             return (
-              <pre
-                className={[styles.codeWrapper, className].filter(Boolean).join(' ')}
-                {...props}
-              >
+              <pre className={[styles.codeWrapper, className].filter(Boolean).join(' ')} {...props}>
                 <div className={styles.codeHeader}>
                   {match?.[1] ? <span>{match[1]}</span> : null}
                   {showCodeCopy ? (
@@ -244,10 +241,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           },
           code({ node: _node, className, children, ...props }: any) {
             return (
-              <code
-                className={[styles.inlineCode, className].filter(Boolean).join(' ')}
-                {...props}
-              >
+              <code className={[styles.inlineCode, className].filter(Boolean).join(' ')} {...props}>
                 {children}
               </code>
             )

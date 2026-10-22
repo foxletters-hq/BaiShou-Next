@@ -167,6 +167,34 @@ describe('tts-defaults', () => {
     })
   })
 
+  it('resolveTtsSynthesisSettings prefers target provider config over globalSettings when provider is not active global', () => {
+    const settings = resolveTtsSynthesisSettings(
+      {
+        globalTtsProviderId: 'openai-tts',
+        globalTtsModelId: 'tts-1',
+        globalTtsSettings: { voice: 'alloy', speed: 1.5, responseFormat: 'mp3', stream: false },
+        globalTtsProviderConfigs: {
+          'mimo-tts': {
+            modelId: 'mimo-v2.5-tts',
+            voice: '冰糖',
+            speed: 1.1,
+            responseFormat: 'wav',
+            stream: true
+          }
+        }
+      },
+      'mimo-tts'
+    )
+
+    expect(settings).toMatchObject({
+      modelId: 'mimo-v2.5-tts',
+      voice: '冰糖',
+      speed: 1.1,
+      responseFormat: 'wav',
+      stream: true
+    })
+  })
+
   it('buildTtsSettingsInitialConfig uses persisted defaults for non-global provider', () => {
     const config = buildTtsSettingsInitialConfig({
       activeProviderId: 'mimo-tts',
