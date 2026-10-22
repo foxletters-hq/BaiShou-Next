@@ -184,10 +184,15 @@ export const DiaryCard: React.FC<DiaryCardProps> = React.memo(
             {previewBlocks.map((block, index) =>
               block.kind === 'quote' ? (
                 <div key={`quote-${index}`} className="diary-card-quote-line">
-                  <MarkdownRenderer content={block.text} basePath={basePath} />
+                  <MarkdownRenderer content={block.text} basePath={basePath} showCodeCopy={false} />
                 </div>
               ) : (
-                <MarkdownRenderer key={`md-${index}`} content={block.text} basePath={basePath} />
+                <MarkdownRenderer
+                  key={`md-${index}`}
+                  content={block.text}
+                  basePath={basePath}
+                  showCodeCopy={false}
+                />
               )
             )}
           </div>
