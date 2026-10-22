@@ -189,9 +189,7 @@ export class MigrationService {
       }
 
       await this._ensureCompatSchema()
-      if (!isAgentMigrationArchiveImport()) {
-        await this._markSchemaCompatCurrent()
-      }
+      await this._markSchemaCompatCurrent()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -219,6 +217,10 @@ export class MigrationService {
   }
 
   private async _backfillAgentMessagesFts(): Promise<void> {
+    const existing = await this._executeSql(`SELECT rowid FROM agent_messages_fts LIMIT 1`)
+    if (existing.rows.length > 0) {
+      return
+    }
     await this._executeSql(`
       INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
       SELECT
@@ -231,9 +233,6 @@ export class MigrationService {
         AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
         AND json_extract(p.data, '$.text') IS NOT NULL
         AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM agent_messages_fts f WHERE f.part_id = p.id
-        )
     `)
   }
 
