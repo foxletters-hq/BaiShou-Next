@@ -208,7 +208,8 @@
 
 .diary-grid-inner {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0, 1fr)：允许长代码行等不可断内容收缩，避免撑宽整列 */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-lg);
   max-width: 1600px;
   margin: 0 auto;
@@ -216,7 +217,7 @@
 
 @media (min-width: 1080px) {
   .diary-grid-inner {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -463,6 +464,8 @@
 .diary-card-content-text pre {
   background: var(--bg-code-block);
   border: none;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .diary-card-content-text pre code {
