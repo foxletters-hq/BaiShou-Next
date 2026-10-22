@@ -1,5 +1,6 @@
 import { normalizeGraphFilePath } from './graph-identity.util'
 import { isDiaryGraphFollowCancelled } from './diary-graph-follow-after-embed.util'
+import { isBatchEmbedAbortRequested } from './batch-embed-control'
 import {
   GRAPH_EXTRACT_ALIGN_POOL_SIZE,
   GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
@@ -156,6 +157,8 @@ export abstract class GraphExtractQueueEngineBase {
   enqueueAfterEmbed(
     items: Array<{ filePath: string; date?: string; contentHash?: string }>
   ): number {
+    // 整理被取消后，仍在收尾的日记嵌入不应再自动接抽图，否则取消后队列会重新跑起来。
+    if (isBatchEmbedAbortRequested()) return 0
     return this.enqueueItems(items, { afterEmbed: true })
   }
 

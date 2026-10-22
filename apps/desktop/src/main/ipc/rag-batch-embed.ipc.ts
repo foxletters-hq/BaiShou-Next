@@ -96,6 +96,14 @@ export function registerRagBatchEmbedIpc(): void {
 
   ipcMain.handle('rag:cancel-batch-embed', async () => {
     requestBatchEmbedCancel()
+    try {
+      // 统一整理里抽图队列与嵌入是两条流水，取消时必须一起停，
+      // 否则嵌入停了、抽图还在后台跑，界面会一直显示「正在整理记忆」。
+      const { GraphExtractQueueService } = await import('../services/graph-extract-queue.service')
+      GraphExtractQueueService.getInstance().stop()
+    } catch (error) {
+      console.warn('Failed to stop graph extract queue on batch embed cancel:', error)
+    }
     replayLastBatchProgress(i18n.t('settings.rag_batch_embed_cancelling', '正在取消索引…'))
     return { ok: true }
   })

@@ -48,6 +48,7 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
   const { t } = useTranslation()
   const running = isOrganizeRunning(ragState, graphExtract, graphExtractWaiting)
   const leftover = incomplete && !running
+  const embedRunning = ragState.isRunning && ragState.type === 'batchEmbed'
   const title = leftover
     ? t('memory.organize_incomplete', '整理未完成')
     : running
@@ -74,6 +75,14 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
     >
       {running || leftover ? (
         <>
+          {leftover ? (
+            <p className={styles.migDesc}>
+              {t(
+                'memory.organize_phase_hint',
+                '日记先补齐向量，再抽取关系图谱；伙伴记忆是对话里提炼出的长期记忆，单独嵌入。'
+              )}
+            </p>
+          ) : null}
           <RagMemoryAlerts
             surface="organize"
             ragState={leftoverState}
@@ -81,10 +90,18 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
             onPauseBatchEmbed={leftover ? undefined : onPauseBatchEmbed}
             onResumeBatchEmbed={leftover ? undefined : onResumeBatchEmbed}
             onCancelBatchEmbed={leftover ? undefined : onCancelBatchEmbed}
+            onCollapseOrganize={leftover ? undefined : onClose}
             graphExtract={leftover ? null : graphExtract}
             graphExtractWaiting={leftover ? false : graphExtractWaiting}
             pendingGraphCount={pendingGraphCount}
           />
+          {running && !leftover && !embedRunning ? (
+            <div className={styles.organizeDoneActions}>
+              <Button type="button" variant="outlined" onClick={onClose}>
+                {t('memory.organize_collapse', '收起')}
+              </Button>
+            </div>
+          ) : null}
           {leftover && onContinue ? (
             <div className={styles.organizeDoneActions}>
               <Button

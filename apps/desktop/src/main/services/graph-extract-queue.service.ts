@@ -25,13 +25,13 @@ type PersistedQueue = {
 
 /**
  * Main-process background queue for graph diary extraction.
- * Pending list persists under app userData; unfinished items are re-queued on restart.
+ * Pending list is persisted while running, then discarded on startup. Unfinished items are NOT
+ * re-queued automatically after a restart: the user must trigger memory organize again manually.
  * Explicit stop aborts in-flight model streams and drops the queue.
  */
 export class GraphExtractQueueService {
   private static instance: GraphExtractQueueService
   private readonly engine: GraphExtractQueueEngine
-  private restored = false
 
   private flushDrafts: GraphExtractQueueFlushDrafts | null = null
 
@@ -84,26 +84,18 @@ export class GraphExtractQueueService {
     })
   }
 
-  /** Restore pending jobs from userData (call once after setRunner). */
-  restoreFromDisk(): number {
-    if (this.restored) return 0
-    this.restored = true
+  /** 启动时丢弃上次未完成的待办，避免自动续跑；待整理项仍会从数据库重新统计。 */
+  private discardPersistedQueue(): void {
     try {
-      const file = this.persistPath()
-      if (!fs.existsSync(file)) return 0
-      const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as PersistedQueue
-      const items = Array.isArray(raw?.pending) ? raw.pending : []
-      if (items.length === 0) return 0
-      return this.enqueue(items)
+      fs.rmSync(this.persistPath(), { force: true })
     } catch (e) {
-      logger.warn('[GraphExtractQueue] restore failed:', e as Error)
-      return 0
+      logger.warn('[GraphExtractQueue] discard persisted queue failed:', e as Error)
     }
   }
 
   setRunner(runner: GraphExtractQueueRunner) {
     this.engine.setRunner(runner)
-    if (this.flushDrafts) this.restoreFromDisk()
+    this.discardPersistedQueue()
   }
 
   setFlushDrafts(flushDrafts: GraphExtractQueueFlushDrafts) {

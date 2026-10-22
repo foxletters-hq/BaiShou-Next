@@ -36,11 +36,7 @@ import { DiaryGrid } from './components/DiaryGrid'
 import { DiaryStatusBar } from './components/DiaryStatusBar'
 import { PendingEmbedNotice } from './components/PendingEmbedNotice'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
-import {
-  getCachedRagActiveState,
-  patchCachedRagActiveState,
-  subscribeRagRuntime
-} from '../settings/rag-runtime-cache'
+import { getCachedRagActiveState, subscribeRagRuntime } from '../settings/rag-runtime-cache'
 import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
 import { prefetchWorkbenchHome } from '../../lib/prefetch-workbench-home'
 import './DiaryPage.css'
@@ -452,31 +448,6 @@ export const DiaryPage: React.FC = () => {
         indexing={indexing}
         onPendingExtractClick={() => navigate('/memory/graph')}
         onPendingEmbedClick={() => navigate('/memory/vectors')}
-        onPauseIndexing={() => {
-          patchCachedRagActiveState({ paused: true, cancelling: false })
-          void (window as any).api?.rag?.pauseBatchEmbed?.()
-        }}
-        onResumeIndexing={() => {
-          patchCachedRagActiveState({ paused: false, cancelling: false })
-          void (window as any).api?.rag?.resumeBatchEmbed?.()
-        }}
-        onCancelIndexing={() => {
-          void (async () => {
-            if (
-              !(await dialog.confirm(
-                t(
-                  'settings.rag_batch_embed_cancel_confirm',
-                  '取消后将停止尚未开始的嵌入，已经写入的向量会保留。确定取消？'
-                ),
-                t('common.warning', '警告')
-              ))
-            ) {
-              return
-            }
-            patchCachedRagActiveState({ cancelling: true, paused: false })
-            await (window as any).api?.rag?.cancelBatchEmbed?.()
-          })()
-        }}
       />
 
       {embedNotice && !indexing ? (

@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { logger, type MemoryClearKind, type RagVectorKindFilter } from '@baishou/shared'
 import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
+import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
 import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
 import {
   chainRagProgressCallback,
@@ -151,6 +152,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
     requestOperationAbort(): void {
       mobileRagOperationControl.requestAbort()
+      // 抽图队列独立于嵌入流水，取消整理时要一起停，否则会继续在后台跑。
+      mobileGraphExtractQueue.stop()
     },
 
     requestOperationPause(): void {

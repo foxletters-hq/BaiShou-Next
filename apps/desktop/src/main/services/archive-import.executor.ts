@@ -28,6 +28,30 @@ export type ArchiveImportDeps = {
   scheduleBootstrapResyncAfterImport: () => void
 }
 
+/**
+ * 恢复备份会整体替换数据根和日记 id。旧数据上的整理任务必须停掉，
+ * 否则抽图队列会拿恢复前的 id/路径继续跑，整批报「日记还没有向量」。
+ */
+async function stopOrganizeWorkBeforeRestore(): Promise<void> {
+  try {
+    const { isBatchEmbedSessionActive, requestBatchEmbedCancel } =
+      await import('./batch-embed-control.service')
+    if (isBatchEmbedSessionActive()) requestBatchEmbedCancel()
+  } catch (error) {
+    logger.warn('[ArchiveService] Failed to cancel batch embed before restore:', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  try {
+    const { GraphExtractQueueService } = await import('./graph-extract-queue.service')
+    GraphExtractQueueService.getInstance().stop()
+  } catch (error) {
+    logger.warn('[ArchiveService] Failed to stop graph extract queue before restore:', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
 async function restoreUserAvatarsFromExtract(
   pathService: DesktopStoragePathService,
   extractDir: string
@@ -95,6 +119,8 @@ export async function executeArchiveImportFromZip(
   const migrator = new MetadataMigrator()
   const CURRENT_FORMAT_VERSION = 1
   migrator.validateManifest(manifest, CURRENT_FORMAT_VERSION)
+
+  await stopOrganizeWorkBeforeRestore()
 
   const rootDir = await deps.pathService.getRootDirectory()
   const globalShadowDir = await deps.pathService.getGlobalShadowIndexDirectory()
@@ -358,6 +384,14 @@ export async function executeArchiveImportFromZip(
     resetRawDataRuntime()
   } catch (e: any) {
     logger.error('Failed to reset raw data runtime after import:', e)
+  }
+
+  try {
+    const { clearDesktopDiaryGraphFollowPendingCache } =
+      await import('./diary-graph-follow-after-embed.service')
+    clearDesktopDiaryGraphFollowPendingCache()
+  } catch (e: any) {
+    logger.error('Failed to reset diary graph follow cache after import:', e)
   }
 
   try {

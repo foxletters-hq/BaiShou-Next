@@ -45,7 +45,8 @@ const STORAGE_KEY = 'baishou.graph.extractQueue.v1'
 
 /**
  * Module-level queue so extract keeps running when GraphScreen unmounts.
- * Pending list persists in AsyncStorage (app data, not Vault).
+ * Pending list is persisted in AsyncStorage (app data, not Vault) while running, but is discarded
+ * when the queue first gets a context after an app restart; the user must trigger organize again.
  */
 class MobileGraphExtractQueue {
   private readonly engine: GraphExtractQueueEngine
@@ -157,21 +158,18 @@ class MobileGraphExtractQueue {
 
   setContext(ctx: MobileGraphExtractContext) {
     this.context = ctx
-    void this.restoreFromStorage()
+    if (this.restored) return
+    this.restored = true
+    // 重启后不自动续跑上次未完成的整理，丢弃旧待办；待整理项会从数据库重新统计，
+    // 由用户在记忆中心手动点击「继续整理」触发。
+    void this.discardPersistedQueue()
   }
 
-  private async restoreFromStorage(): Promise<void> {
-    if (this.restored || !this.context) return
-    this.restored = true
+  private async discardPersistedQueue(): Promise<void> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as { pending?: Array<{ filePath: string; date?: string }> }
-      const items = Array.isArray(parsed?.pending) ? parsed.pending : []
-      if (items.length === 0) return
-      await this.enqueue({ filePaths: items.map((i) => i.filePath) })
+      await AsyncStorage.removeItem(STORAGE_KEY)
     } catch {
-      // ignore
+      // 丢弃失败时内存队列仍为空，不影响手动触发
     }
   }
 
