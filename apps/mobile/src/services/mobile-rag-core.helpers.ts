@@ -262,17 +262,42 @@ export async function loadEmbeddedDiaryIndex(
   }
 
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND (group_id = ? OR group_id LIKE 'diary:%') AND vault_id = ?`,
+    sql: `
+      SELECT
+        source_id AS sourceId,
+        MAX(CAST(json_extract(metadata_json, '$.updated_at') AS INTEGER)) AS maxUpdatedAt,
+        MAX(COALESCE(json_extract(metadata_json, '$.content_hash'), '')) AS contentHash
+      FROM ${HYBRID_SEARCH_TABLE}
+      WHERE source_type = 'diary'
+        AND (group_id = ? OR group_id LIKE 'diary:%')
+        AND vault_id = ?
+      GROUP BY source_id
+    `,
     args: [DIARY_EMBED_GROUP_ID, vaultId]
   })
 
   for (const row of (result.rows || []) as Array<{
     sourceId?: string | number
+    maxUpdatedAt?: number | string | null
+    contentHash?: string | null
     metadataJson?: string
   }>) {
     if (row.sourceId == null) continue
     const sourceId = String(row.sourceId)
     embeddedIds.add(sourceId)
+    if (row.maxUpdatedAt !== undefined || row.contentHash !== undefined) {
+      const maxUpdatedAt = Number(row.maxUpdatedAt)
+      if (Number.isFinite(maxUpdatedAt) && maxUpdatedAt > 0) {
+        const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
+        if (maxUpdatedAt > currentMax) {
+          embeddedUpdatedAtMap.set(sourceId, maxUpdatedAt)
+        }
+      }
+      if (typeof row.contentHash === 'string' && row.contentHash.trim()) {
+        embeddedContentHashMap.set(sourceId, row.contentHash.trim())
+      }
+      continue
+    }
     if (!row.metadataJson) continue
     try {
       const meta = JSON.parse(row.metadataJson) as {
