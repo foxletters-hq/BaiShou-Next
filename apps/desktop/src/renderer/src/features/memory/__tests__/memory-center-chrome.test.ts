@@ -240,8 +240,14 @@ describe('memory center chrome', () => {
 
   it('B8: DiaryPage status bar jumps to memory tabs', () => {
     const src = readSrc('features/diary/DiaryPage.tsx')
+    const bar = readSrc('features/diary/components/DiaryStatusBar.tsx')
     expect(src).toContain("navigate('/memory/graph')")
     expect(src).toContain("navigate('/memory/vectors')")
+    expect(bar).toContain('formatRagIndexingStatus')
+    expect(bar).toContain('onPendingEmbedClick')
+    expect(bar).not.toContain('onPauseIndexing')
+    expect(bar).not.toContain('onResumeIndexing')
+    expect(bar).not.toContain('onCancelIndexing')
   })
 
   it('keeps the wrapping readiness bar at the top and does not render the onboarding card', () => {

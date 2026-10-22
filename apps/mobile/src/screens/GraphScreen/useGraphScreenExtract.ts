@@ -99,7 +99,7 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         setStatusRef.current(
           tRef.current(
             'graph.extract_done',
-            i18n.t('graph.extract_done', '完成 {{done}}，失败 {{failed}}'),
+            i18n.t('graph.extract_done', '关系整理：完成 {{done}}，失败 {{failed}}'),
             {
               done: state.completedCount,
               failed: state.errorCount

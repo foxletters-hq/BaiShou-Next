@@ -9,6 +9,7 @@ import {
 } from '@baishou/shared'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { refreshMemoryReadiness } from '../memory/useMemoryReadiness'
+import { getRagRuntimeSnapshot, subscribeRagRuntime } from '../settings/rag-runtime-cache'
 import {
   graphCancelQueueItem,
   graphGetQueueState,
@@ -52,6 +53,7 @@ export function useGraphPageExtract(deps: ExtractDeps) {
   const [queueModalOpen, setQueueModalOpen] = useState(false)
   const queueUnsubRef = useRef<(() => void) | null>(null)
   const wasRunningRef = useRef(false)
+  const wasBatchEmbeddingRef = useRef(false)
   const depsRef = useRef(deps)
   depsRef.current = deps
 
@@ -79,7 +81,7 @@ export function useGraphPageExtract(deps: ExtractDeps) {
       )
     } else if (state.completedCount > 0 || state.errorCount > 0) {
       d.setStatus(
-        d.t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
+        d.t('graph.extract_batch_result', '关系整理：完成 {{done}}，失败 {{failed}}', {
           done: state.completedCount,
           failed: state.errorCount
         })
@@ -123,6 +125,21 @@ export function useGraphPageExtract(deps: ExtractDeps) {
       queueUnsubRef.current = null
     }
   }, [applyQueueSnapshot])
+
+  useEffect(() => {
+    // 新一轮嵌入开始时清掉上一轮抽图的完成/失败文案，
+    // 避免「正在嵌入日记」旁边一直挂着旧的「完成 0，失败 74」。
+    const apply = () => {
+      const state = getRagRuntimeSnapshot().activeRagState
+      const embedding = state.isRunning && state.type === 'batchEmbed'
+      if (embedding && !wasBatchEmbeddingRef.current) {
+        depsRef.current.setStatus('')
+      }
+      wasBatchEmbeddingRef.current = embedding
+    }
+    apply()
+    return subscribeRagRuntime(apply)
+  }, [])
 
   useEffect(() => {
     void graphSetExtractConcurrency(extractConcurrency).catch(() => undefined)

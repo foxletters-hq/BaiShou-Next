@@ -34,6 +34,16 @@ describe('mobile pending embed fill graph extract', () => {
     expect(queueSrc).toContain('alignPoolSize: MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE')
   })
 
+  it('should not auto-resume unfinished graph extract after an app restart', () => {
+    const queueSrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-graph-extract-queue.service.ts'),
+      'utf8'
+    )
+    expect(queueSrc).toContain('discardPersistedQueue')
+    expect(queueSrc).not.toContain('restoreFromStorage')
+    expect(queueSrc).not.toContain('await this.enqueue({ filePaths: items')
+  })
+
   it('should skip inline GraphSyncService embedder during extract commit and report graph_node progress', () => {
     const extractSrc = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile-graph-extract.ts'),

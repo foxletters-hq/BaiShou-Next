@@ -6,6 +6,7 @@ import {
 } from './graph-extract-batch.util'
 import { GraphExtractQueueEngineBase } from './graph-extract-queue-engine.base'
 import type { GraphExtractQueuedDraft } from './graph-extract-queue-engine.types'
+import { logger } from './logger'
 
 export abstract class GraphExtractQueueEngineFlushMixin extends GraphExtractQueueEngineBase {
   protected uncommittedCount(): number {
@@ -90,6 +91,10 @@ export abstract class GraphExtractQueueEngineFlushMixin extends GraphExtractQueu
           task.progress = 100
           task.phase = undefined
           task.phaseDetail = undefined
+          logger.warn('[GraphExtractQueue] flush item failed', {
+            filePath: task.filePath,
+            error: result.error
+          })
         } else {
           task.status = 'completed'
           task.progress = 100
@@ -100,6 +105,10 @@ export abstract class GraphExtractQueueEngineFlushMixin extends GraphExtractQueu
     } catch (e: unknown) {
       if (this.flushGeneration !== flushGeneration || this.stopped || ac.signal.aborted) return
       const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[GraphExtractQueue] flush batch failed', {
+        drafts: batch.length,
+        error: message
+      })
       for (const item of batch) {
         const task = this.queue.find(
           (q) => normalizeGraphFilePath(q.filePath) === normalizeGraphFilePath(item.filePath)

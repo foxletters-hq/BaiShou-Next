@@ -412,7 +412,7 @@
 }
 
 .organizeModal {
-  width: min(32em, 92vw);
+  width: min(38em, 92vw);
 }
 
 .organizeModal .migrationAlert {
@@ -1085,7 +1085,7 @@
 
 .phaseRow {
   display: grid;
-  grid-template-columns: 5.5em minmax(64px, 1fr) max-content;
+  grid-template-columns: 6.5em minmax(64px, 1fr) max-content;
   align-items: center;
   gap: var(--spacing-sm);
   font-size: var(--ui-fs-md);

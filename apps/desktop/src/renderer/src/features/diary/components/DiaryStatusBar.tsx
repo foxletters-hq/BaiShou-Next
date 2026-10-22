@@ -15,9 +15,6 @@ export interface DiaryStatusBarProps {
   onPendingExtractClick?: () => void
   onPendingEmbedClick?: () => void
   indexing?: RagIndexingSnapshot | null
-  onPauseIndexing?: () => void
-  onResumeIndexing?: () => void
-  onCancelIndexing?: () => void
   /** false = 只读展示（移动端） */
   interactive?: boolean
 }
@@ -32,9 +29,6 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
   onPendingExtractClick,
   onPendingEmbedClick,
   indexing = null,
-  onPauseIndexing,
-  onResumeIndexing,
-  onCancelIndexing,
   interactive = true
 }) => {
   const { t } = useTranslation()
@@ -51,6 +45,12 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
         })
       ].join(' · ')
     : ''
+  const embedText = indexing
+    ? formatRagIndexingStatus(t, indexing)
+    : t('diary.status_pending_embed', '待嵌入：{{count}}个', {
+        count: pendingEmbedCount
+      })
+  const embedPartsText = !indexing && partsLabel ? `（${partsLabel}）` : ''
 
   return (
     <div className="diary-status-bar" role="status">
@@ -74,59 +74,19 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
         )
       ) : null}
       {showPendingEmbed || indexing ? (
-        interactive && onPendingEmbedClick && !indexing ? (
+        interactive && onPendingEmbedClick ? (
           <button
             type="button"
             className="diary-status-bar-item diary-status-bar-item--action"
             onClick={onPendingEmbedClick}
           >
-            {t('diary.status_pending_embed', '待嵌入：{{count}}个', {
-              count: pendingEmbedCount
-            })}
-            {partsLabel ? `（${partsLabel}）` : ''}
+            {embedText}
+            {embedPartsText}
           </button>
         ) : (
-          <span className="diary-status-bar-item diary-status-bar-indexing">
-            <span>
-              {indexing
-                ? formatRagIndexingStatus(t, indexing)
-                : t('diary.status_pending_embed', '待嵌入：{{count}}个', {
-                    count: pendingEmbedCount
-                  })}
-              {!indexing && partsLabel ? `（${partsLabel}）` : ''}
-            </span>
-            {indexing && interactive && !indexing.cancelling ? (
-              <>
-                {indexing.paused
-                  ? onResumeIndexing && (
-                      <button
-                        type="button"
-                        className="diary-status-bar-item--action"
-                        onClick={onResumeIndexing}
-                      >
-                        {t('settings.rag_batch_embed_resume', '继续')}
-                      </button>
-                    )
-                  : onPauseIndexing && (
-                      <button
-                        type="button"
-                        className="diary-status-bar-item--action"
-                        onClick={onPauseIndexing}
-                      >
-                        {t('settings.rag_batch_embed_pause', '暂停')}
-                      </button>
-                    )}
-                {onCancelIndexing ? (
-                  <button
-                    type="button"
-                    className="diary-status-bar-item--action"
-                    onClick={onCancelIndexing}
-                  >
-                    {t('settings.rag_batch_embed_cancel', '取消')}
-                  </button>
-                ) : null}
-              </>
-            ) : null}
+          <span className="diary-status-bar-item">
+            {embedText}
+            {embedPartsText}
           </span>
         )
       ) : null}

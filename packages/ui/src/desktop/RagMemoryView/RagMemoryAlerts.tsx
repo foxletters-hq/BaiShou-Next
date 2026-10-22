@@ -22,6 +22,8 @@ interface RagMemoryAlertsProps {
   onPauseBatchEmbed?: () => Promise<void>
   onResumeBatchEmbed?: () => Promise<void>
   onCancelBatchEmbed?: () => Promise<void>
+  /** 整理进行中时收起弹窗，后台继续整理 */
+  onCollapseOrganize?: () => void
   onRestoreMigration?: () => Promise<void>
   onResumeMigration?: () => Promise<void>
   graphExtract?: { current: number; total: number; percent: number } | null
@@ -43,6 +45,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   onPauseBatchEmbed,
   onResumeBatchEmbed,
   onCancelBatchEmbed,
+  onCollapseOrganize,
   onRestoreMigration,
   onResumeMigration,
   graphExtract = null,
@@ -94,10 +97,15 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
     surface !== 'organize' || ragState.cancelling || Boolean(ragState.paused)
 
   const batchEmbedActionButtons =
-    onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed ? (
+    onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed || onCollapseOrganize ? (
       <div
         className={surface === 'organize' ? styles.organizeDoneActions : styles.batchEmbedActions}
       >
+        {onCollapseOrganize ? (
+          <Button type="button" variant="outlined" size="small" onClick={onCollapseOrganize}>
+            {t('memory.organize_collapse', '收起')}
+          </Button>
+        ) : null}
         {ragState.paused && !ragState.cancelling
           ? onResumeBatchEmbed && (
               <Button

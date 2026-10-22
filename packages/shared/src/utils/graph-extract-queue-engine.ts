@@ -1,5 +1,6 @@
 import { graphExtractPhaseProgress, isGraphExtractBusyStatus } from './graph-extract-batch.util'
 import { GraphExtractQueueEngineFlushMixin } from './graph-extract-queue-engine.flush'
+import { logger } from './logger'
 import type { GraphExtractQueueItem } from './graph-extract-queue-engine.types'
 
 export type {
@@ -114,6 +115,10 @@ export class GraphExtractQueueEngine extends GraphExtractQueueEngineFlushMixin {
         task.progress = 100
         task.phase = undefined
         task.phaseDetail = undefined
+        logger.warn('[GraphExtractQueue] task failed', {
+          filePath: task.filePath,
+          error: task.error
+        })
         this.broadcast()
         return
       }
@@ -124,6 +129,10 @@ export class GraphExtractQueueEngine extends GraphExtractQueueEngineFlushMixin {
         task.progress = 100
         task.phase = undefined
         task.phaseDetail = undefined
+        logger.warn('[GraphExtractQueue] task skipped', {
+          filePath: task.filePath,
+          error: task.error
+        })
         this.broadcast()
         return
       }
@@ -152,6 +161,10 @@ export class GraphExtractQueueEngine extends GraphExtractQueueEngineFlushMixin {
         task.error = err?.message || String(e)
         task.phase = undefined
         task.phaseDetail = undefined
+        logger.warn('[GraphExtractQueue] task threw', {
+          filePath: task.filePath,
+          error: task.error
+        })
       }
       this.broadcast()
     } finally {

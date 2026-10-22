@@ -238,8 +238,14 @@ export async function runMobileManualPendingEmbedFill(
         }
       })
     }
+    // 取消后 waitUntilIdle 会直接返回而不抛错，这里补一次检查，
+    // 让下面的 catch 停掉仍在后台跑的抽图队列。
+    await assertMobileRagCanContinue()
   } catch (error) {
-    if (error instanceof MobileRagAbortError) throw error
+    if (error instanceof MobileRagAbortError) {
+      mobileGraphExtractQueue.stop()
+      throw error
+    }
     logger.warn('[PendingEmbedFill] mobile graph extract phase failed', error as Error)
   }
   phases = markPhaseDone(phases, 'graph_extract')

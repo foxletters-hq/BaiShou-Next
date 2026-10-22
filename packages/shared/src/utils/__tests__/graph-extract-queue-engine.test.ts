@@ -4,6 +4,11 @@ import {
   type GraphExtractQueueRunner
 } from '../graph-extract-queue-engine'
 import type { GraphExtractQueuePhase } from '../graph-extract-batch.util'
+import {
+  beginBatchEmbedControl,
+  endBatchEmbedControl,
+  requestBatchEmbedCancel
+} from '../batch-embed-control'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -481,5 +486,18 @@ describe('GraphExtractQueueEngine', () => {
     expect(engine.getQueueState().pendingCount).toBe(0)
     expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h2' }])).toBe(1)
     hold.resolve({ done: 1, failed: 0, errors: [] })
+  })
+
+  it('should not auto-enqueue after embed while batch embed is cancelled', () => {
+    const engine = createEngine(async () => ({ done: 1, failed: 0, errors: [] }))
+    try {
+      beginBatchEmbedControl()
+      requestBatchEmbedCancel()
+      expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h1' }])).toBe(0)
+    } finally {
+      endBatchEmbedControl()
+    }
+    expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/b.md', contentHash: 'h2' }])).toBe(1)
+    engine.stop()
   })
 })

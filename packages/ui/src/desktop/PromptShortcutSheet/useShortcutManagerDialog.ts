@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CREATE_SKILL_MANAGER_ID,
   CREATE_SKILL_SLASH_COMMAND,
@@ -65,10 +65,17 @@ export function useShortcutManagerDialog(
   const managerShortcuts = useMemo(() => buildManagerList(shortcuts, t), [shortcuts, t])
 
   const totalPages = Math.max(1, Math.ceil(managerShortcuts.length / pageSize))
+  // 删除条目后总页数可能变小，夹紧当前页避免停留在空白页
+  const safePage = Math.min(currentPage, totalPages)
+
+  useEffect(() => {
+    if (currentPage !== safePage) setCurrentPage(safePage)
+  }, [currentPage, safePage])
+
   const paginatedShortcuts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize
+    const startIndex = (safePage - 1) * pageSize
     return managerShortcuts.slice(startIndex, startIndex + pageSize)
-  }, [managerShortcuts, currentPage, pageSize])
+  }, [managerShortcuts, safePage, pageSize])
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page)
@@ -153,7 +160,7 @@ export function useShortcutManagerDialog(
     setDraftCommand,
     draftContent,
     setDraftContent,
-    currentPage,
+    currentPage: safePage,
     pageSize,
     totalPages,
     managerShortcuts,
