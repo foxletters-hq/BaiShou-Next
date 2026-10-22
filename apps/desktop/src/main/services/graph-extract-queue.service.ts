@@ -29,6 +29,8 @@ type PersistedQueue = {
  * re-queued automatically after a restart: the user must trigger memory organize again manually.
  * Explicit stop aborts in-flight model streams and drops the queue.
  */
+const DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30
+
 export class GraphExtractQueueService {
   private static instance: GraphExtractQueueService
   private readonly engine: GraphExtractQueueEngine
@@ -38,6 +40,7 @@ export class GraphExtractQueueService {
   private constructor() {
     this.engine = new GraphExtractQueueEngine({
       concurrency: GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
+      alignPoolSize: DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE,
       persist: (pending) => this.writePending(pending),
       broadcast: (state) => this.sendState(state),
       messages: () => ({
@@ -126,6 +129,10 @@ export class GraphExtractQueueService {
 
   stop() {
     this.engine.stop()
+  }
+
+  clearError() {
+    this.engine.clearError()
   }
 
   cancelItem(filePath: string): boolean {

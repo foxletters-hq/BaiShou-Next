@@ -75,6 +75,7 @@ export type ControlledDiaryBatchEmbedResult = {
   total: number
   skipped: boolean
   skipReason?: string
+  lastError?: string
 }
 
 function defaultVaultScope(): MobileRagVaultScope {
@@ -119,6 +120,7 @@ function broadcastRagProgress(
     phases?: RagBatchEmbedPhaseCounts
   }
 ): void {
+  if (mobileRagOperationControl.isAborted) return
   patchCachedMobileRagState({
     isRunning: true,
     type,
@@ -224,7 +226,9 @@ export async function resolveEmbeddingAdapter(
 
   if (!embeddingProviderId || !embeddingModelId) return null
 
-  const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
+  const embeddingProviderConfig = providers.find(
+    (p: any) => p.id === embeddingProviderId && p.isEnabled !== false
+  )
   if (!embeddingProviderConfig) return null
 
   const embeddingProvider = deps.registry.getOrUpdateProvider(embeddingProviderConfig)

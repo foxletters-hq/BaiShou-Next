@@ -107,12 +107,14 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       if (result && result.ok === false) return 'failed'
       return 'ok'
     } catch (error) {
+      const friendlyError = localizeAiApiErrorMessage(error, t)
       patchCachedRagActiveState({
         isRunning: false,
         type: 'idle',
-        statusText: ''
+        statusText: '',
+        error: friendlyError
       })
-      toast.showError(localizeAiApiErrorMessage(error, t))
+      toast.showError(friendlyError)
       return 'failed'
     }
   }, [t, toast])

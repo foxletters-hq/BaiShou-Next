@@ -113,8 +113,10 @@ export function memoryOrganizeCardKind(input: {
   running: boolean
   pendingCount: number
   interrupted?: boolean
+  hasError?: boolean
 }): 'hidden' | 'running' | 'incomplete' {
   if (input.running) return 'running'
+  if (input.hasError) return 'incomplete'
   if (input.interrupted && input.pendingCount > 0) return 'incomplete'
   return 'hidden'
 }

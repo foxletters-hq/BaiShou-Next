@@ -38,8 +38,8 @@ export type MobileGraphExtractContext = {
 
 type Listener = (state: GraphExtractQueueSnapshot) => void
 
-/** 移动端图谱抽取候选池大小：优化为 4（桌面端为 10），加快批次对齐与落盘频率，消除长时停滞感 */
-export const MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 4
+/** 移动端图谱抽取候选池大小：与桌面端统一为 30，配合重叠流水线与实时单篇进度提升吞吐 */
+export const MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30
 
 const STORAGE_KEY = 'baishou.graph.extractQueue.v1'
 
@@ -175,6 +175,10 @@ class MobileGraphExtractQueue {
 
   stop() {
     this.engine.stop()
+  }
+
+  clearError() {
+    this.engine.clearError()
   }
 
   /** 停队列并丢掉持久化待办，避免清空图谱后恢复旧抽取再写出待确认节点。 */

@@ -35,4 +35,17 @@ describe('desktop pending embed fill stays on the memory system', () => {
       indexOfCall("report('finishing', phases)")
     )
   })
+
+  it('should report active item date/title and extraction phase in status text and use align pool size 4', () => {
+    expect(src).toContain('describeGraphExtractPhase')
+    expect(src).toContain('resolveGraphExtractItemDateOrTitle')
+    expect(src).toContain('graph.extract_item_detail')
+    expect(src).not.toContain('completed === lastReportedCompleted')
+    const queueSrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'graph-extract-queue.service.ts'),
+      'utf8'
+    )
+    expect(queueSrc).toContain('DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30')
+    expect(queueSrc).toContain('alignPoolSize: DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE')
+  })
 })

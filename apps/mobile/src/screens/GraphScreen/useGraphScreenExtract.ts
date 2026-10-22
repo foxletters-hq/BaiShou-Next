@@ -7,7 +7,8 @@ import {
   GRAPH_EXTRACT_CONCURRENCY_MIN,
   emptyGraphExtractQueueSnapshot,
   formatLocalDate,
-  graphExtractOverallProgress
+  graphExtractOverallProgress,
+  localizeAiApiErrorMessage
 } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
@@ -16,6 +17,11 @@ import {
   mobileGraphExtractQueue,
   type GraphExtractQueueSnapshot
 } from '@/src/services/mobile-graph-extract-queue.service'
+import {
+  getCachedMobileRagState,
+  patchCachedMobileRagState
+} from '@/src/services/mobile-rag-runtime-cache'
+import { writeMemoryOrganizeInterrupted } from '../MemoryCenterScreen/memory-center-organize.storage'
 import { ensureMobileGraphSelfName } from '../DiaryScreen/ensure-graph-self-name'
 import {
   buildGraphQueueByPath,
@@ -68,6 +74,9 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
   tRef.current = deps.t
   const setStatusRef = useRef(deps.setStatus)
   setStatusRef.current = deps.setStatus
+  const toastRef = useRef(deps.toast)
+  toastRef.current = deps.toast
+  const wasRunningRef = useRef(false)
 
   const applyQueueSnapshot = useCallback(
     (state: GraphExtractQueueSnapshot) => {
@@ -76,6 +85,7 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         state.pendingCount > 0 || state.runningCount > 0 || (state.aligningCount ?? 0) > 0
       setExtractRunning(running)
       if (running) {
+        wasRunningRef.current = true
         const total = state.items.length
         const current = Math.min(
           state.completedCount + state.runningCount + (state.aligningCount ?? 0),
@@ -106,6 +116,17 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
             }
           )
         )
+        if (wasRunningRef.current) {
+          wasRunningRef.current = false
+          if (state.lastError && !getCachedMobileRagState().isRunning) {
+            const friendlyError = localizeAiApiErrorMessage(state.lastError, (key, fallback) =>
+              tRef.current(key, fallback)
+            )
+            patchCachedMobileRagState({ error: friendlyError })
+            void writeMemoryOrganizeInterrupted(true)
+            toastRef.current.showError(friendlyError)
+          }
+        }
         void deps.refreshRef.current()
       }
     },
@@ -168,17 +189,6 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
     deps.setSelfNameReady(true)
     deps.setDismissGuide(true)
     try {
-      const pendingCounts = await deps.services.ragService.getPendingEmbedCounts?.()
-      if ((pendingCounts?.diaries ?? 0) > 0) {
-        const message = deps.t(
-          'graph.extract_blocked_pending_embed',
-          '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系',
-          { count: pendingCounts!.diaries }
-        )
-        deps.toast.showInfo(message)
-        deps.setStatus(message)
-        return
-      }
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), deps.vaultId)
       const result = await mobileGraphExtractQueue.enqueue(
         { filePaths, concurrency: extractConcurrency },
@@ -192,6 +202,22 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
           settingsManager: deps.services.settingsManager as never
         }
       )
+      if (
+        result.totalPending === 0 &&
+        (result.skippedNotEmbedded?.length ?? 0) > 0 &&
+        !filePaths?.length
+      ) {
+        const pendingCounts = await deps.services.ragService.getPendingEmbedCounts?.()
+        const blockedCount = pendingCounts?.diaries || result.skippedNotEmbedded.length
+        const message = deps.t(
+          'graph.extract_blocked_pending_embed',
+          '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系',
+          { count: blockedCount }
+        )
+        deps.toast.showInfo(message)
+        deps.setStatus(message)
+        return
+      }
       if (result.skippedNotEmbedded?.length) {
         deps.toast.showInfo(
           deps.t('graph.extract_skipped_not_embedded', '有 {{count}} 篇日记尚未嵌入，已跳过', {
@@ -217,6 +243,7 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         }
         return
       }
+      patchCachedMobileRagState({ error: undefined })
       setExtractRunning(true)
       const queued = deps.t(
         'graph.extract_queued',

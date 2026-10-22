@@ -13,7 +13,7 @@ export type RagMemoryOrganizeModalProps = {
   onPauseBatchEmbed?: () => Promise<void>
   onResumeBatchEmbed?: () => Promise<void>
   onCancelBatchEmbed?: () => Promise<void>
-  graphExtract?: { current: number; total: number; percent: number } | null
+  graphExtract?: { current: number; total: number; percent: number; statusText?: string } | null
   graphExtractWaiting?: boolean
   pendingGraphCount?: number
   incomplete?: boolean
@@ -47,7 +47,7 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const running = isOrganizeRunning(ragState, graphExtract, graphExtractWaiting)
-  const leftover = incomplete && !running
+  const leftover = (incomplete || Boolean(ragState.error)) && !running
   const embedRunning = ragState.isRunning && ragState.type === 'batchEmbed'
   const title = leftover
     ? t('memory.organize_incomplete', '整理未完成')
@@ -83,6 +83,11 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
               )}
             </p>
           ) : null}
+          {leftover && ragState.error ? (
+            <div className={styles.dangerAlert} role="alert">
+              <p className={styles.dangerDesc}>{ragState.error}</p>
+            </div>
+          ) : null}
           <RagMemoryAlerts
             surface="organize"
             ragState={leftoverState}
@@ -104,13 +109,7 @@ export const RagMemoryOrganizeModal: React.FC<RagMemoryOrganizeModalProps> = ({
           ) : null}
           {leftover && onContinue ? (
             <div className={styles.organizeDoneActions}>
-              <Button
-                type="button"
-                onClick={() => {
-                  onClose()
-                  onContinue()
-                }}
-              >
+              <Button type="button" onClick={() => onContinue()}>
                 {t('memory.organize_continue', '继续整理')}
               </Button>
               <Button type="button" variant="outlined" onClick={onClose}>

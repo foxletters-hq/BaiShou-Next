@@ -83,6 +83,29 @@ export function MemoryOrganizeProgressCard(props: {
         </View>
       </View>
 
+      {incomplete && props.ragState.error ? (
+        <View
+          style={{
+            marginTop: tokens.spacing.sm,
+            paddingHorizontal: tokens.spacing.smPlus,
+            paddingVertical: tokens.spacing.xsPlus,
+            borderRadius: tokens.radius.sm,
+            borderWidth: 1,
+            borderColor: colors.error,
+            backgroundColor: colors.bgSurfaceNormal
+          }}
+        >
+          <Text
+            style={{
+              color: colors.error,
+              fontSize: mobileTypography.secondary.fontSize
+            }}
+          >
+            {props.ragState.error}
+          </Text>
+        </View>
+      ) : null}
+
       {isRunning && detailText ? (
         <View
           style={{

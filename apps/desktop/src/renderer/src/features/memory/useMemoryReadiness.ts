@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
+import i18n from 'i18next'
 import {
   buildMemoryReadinessRows,
+  describeGraphExtractPhase,
   EMPTY_PENDING_EMBED_COUNTS,
   isEmbeddingConfiguredForMemory,
   type GlobalModelsConfig,
@@ -17,6 +19,7 @@ export type MemoryGraphExtractingSnapshot = {
   current: number
   total: number
   percent: number
+  statusText?: string
 }
 
 export type MemoryOrganizePipeline = 'idle' | 'embed' | 'graph'
@@ -119,21 +122,46 @@ function applyGraphQueueToReadiness(state: GraphExtractQueueSnapshot) {
   if (busy) {
     graphQueueWasBusy = true
     const total = state.items.length
-    const current = Math.min(
-      state.completedCount + state.runningCount + (state.aligningCount ?? 0),
-      total
+    const current = Math.min(state.completedCount + (state.aligningCount ?? 0), total)
+    const activeItems = state.items.filter(
+      (it) => it.status === 'running' || it.status === 'aligning'
     )
+    const activeItem =
+      activeItems.find(
+        (it) =>
+          it.phase === 'recalling' ||
+          it.phase === 'waiting_align' ||
+          it.phase === 'aligning' ||
+          it.phase === 'writing'
+      ) ??
+      activeItems.find((it) => it.status === 'running') ??
+      activeItems[0]
+    let statusText: string | undefined
+    if (activeItem) {
+      const itemLabel =
+        activeItem.date?.trim() ||
+        activeItem.filePath.match(/(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/)?.[1] ||
+        (activeItem.filePath.split(/[/\\]/).pop() || activeItem.filePath).replace(/\.md$/i, '')
+      const phaseDesc = describeGraphExtractPhase(activeItem)
+      const phaseLabel = i18n.t(phaseDesc.key, phaseDesc.defaultValue, phaseDesc.params)
+      statusText = i18n.t('graph.extract_item_detail', '正在整理 {{item}} · {{phase}}', {
+        item: itemLabel,
+        phase: phaseLabel
+      })
+    }
     const next: MemoryGraphExtractingSnapshot = {
       current,
       total,
-      percent: state.overallProgress ?? 0
+      percent: state.overallProgress ?? 0,
+      statusText
     }
     const prev = cachedSnapshot.graphExtracting
     if (
       prev &&
       prev.current === next.current &&
       prev.total === next.total &&
-      prev.percent === next.percent
+      prev.percent === next.percent &&
+      prev.statusText === next.statusText
     ) {
       return
     }

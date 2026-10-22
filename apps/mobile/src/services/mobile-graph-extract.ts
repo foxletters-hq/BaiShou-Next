@@ -4,6 +4,7 @@ import {
   bindPendingReextractCollaborators,
   createDefaultGraphExtractLlm,
   estimateExtractionCost,
+  resolveGraphExtractDiaryPath,
   type GraphExtractAlignDeps,
   type GraphExtractDraft,
   type IFileSystem,
@@ -23,6 +24,7 @@ import {
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   getUserProfileFromSettings,
+  graphDiaryInstant,
   isDiaryEmbeddingPresent,
   normalizeGraphFilePath,
   resolveGlobalGraphModelIds,
@@ -82,8 +84,9 @@ async function resolveChatLlm(settingsManager: SettingsManagerService): Promise<
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
     if (!providerId || !modelId) return null
-    const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
-    const cfg = providers.find((p) => p.id === providerId)
+    const providers =
+      (await settingsManager.get<Array<{ id: string; isEnabled?: boolean }>>('ai_providers')) || []
+    const cfg = providers.find((p) => p.id === providerId && p.isEnabled !== false)
     if (!cfg) return null
     const provider = AIProviderRegistry.getInstance().getOrUpdateProvider(cfg as never)
     return {
@@ -139,13 +142,12 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
 }): Promise<GraphExtractAlignDeps> {
   let embedQuery: GraphExtractAlignDeps['embedQuery']
   let modelId: string | undefined
+  let hsRepo: SqliteHybridSearchRepository | null = null
   const embeddedSourceIds = new Set<string>()
   try {
     const { EmbeddingAdapter } = await import('@baishou/ai')
     const emb = await resolveMobileEmbeddingForHydration(options.settingsManager)
-    const hsRepo = new SqliteHybridSearchRepository(
-      createSqlExecutorFromDrizzleDb(options.drizzleDb)
-    )
+    hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(options.drizzleDb))
     if (emb.embeddingProvider && emb.embeddingModelId) {
       const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId, hsRepo)
       if (adapter.isConfigured) {
@@ -163,22 +165,52 @@ export async function resolveMobileGraphExtractAlignDeps(options: {
   }
 
   const diaryIdByPath = new Map<string, string>()
-  try {
-    const records = await options.shadowRepo.getAllRecords()
-    for (const row of records) {
-      diaryIdByPath.set(normalizeGraphFilePath(row.filePath), String(row.id))
+  let lastShadowRefreshAt = 0
+  let lastEmbedRefreshAt = 0
+  const REFRESH_COOLDOWN_MS = 1500
+  const reloadDiaryIdByPath = async (force = false) => {
+    const now = Date.now()
+    if (!force && now - lastShadowRefreshAt < REFRESH_COOLDOWN_MS) return
+    lastShadowRefreshAt = now
+    try {
+      const records = await options.shadowRepo.getAllRecords()
+      for (const row of records) {
+        diaryIdByPath.set(normalizeGraphFilePath(row.filePath), String(row.id))
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
   }
+  await reloadDiaryIdByPath(true)
 
   return {
     embedQuery,
     modelId,
     isEmbeddingConfigured: () => Boolean(embedQuery),
-    isDiaryEmbedded: (filePath) => {
-      const diaryId = diaryIdByPath.get(normalizeGraphFilePath(filePath))
+    isDiaryEmbedded: async (filePath) => {
+      const normalizedPath = normalizeGraphFilePath(filePath)
+      let diaryId = diaryIdByPath.get(normalizedPath)
+      if (!diaryId) {
+        await reloadDiaryIdByPath()
+        diaryId = diaryIdByPath.get(normalizedPath)
+      }
       if (!diaryId) return false
+      if (isDiaryEmbeddingPresent(options.vaultId, diaryId, embeddedSourceIds)) {
+        return true
+      }
+      const now = Date.now()
+      if (hsRepo && now - lastEmbedRefreshAt >= REFRESH_COOLDOWN_MS) {
+        lastEmbedRefreshAt = now
+        try {
+          const sourceIds = await hsRepo.listSourceIdsByType('diary', {
+            vaultId: options.vaultId,
+            groupId: DIARY_EMBED_GROUP_ID
+          })
+          for (const id of sourceIds) embeddedSourceIds.add(id)
+        } catch {
+          // ignore
+        }
+      }
       return isDiaryEmbeddingPresent(options.vaultId, diaryId, embeddedSourceIds)
     }
   }
@@ -306,17 +338,19 @@ export async function mobileEstimateExtraction(options: {
   fileSystem: IFileSystem
 }) {
   const pending = await mobileListPendingReextract(options)
-  const vault = await options.pathService.getActiveVaultPath()
   const charCounts: number[] = []
-  if (vault) {
-    for (const item of pending) {
-      try {
-        const full = `${vault.replace(/[/\\]+$/, '')}/${item.filePath.replace(/^[/\\]+/, '')}`
-        const text = await options.fileSystem.readFile(full, 'utf8')
-        charCounts.push(typeof text === 'string' ? text.length : 0)
-      } catch {
-        charCounts.push(0)
-      }
+  for (const item of pending) {
+    try {
+      const full = await resolveGraphExtractDiaryPath({
+        filePath: item.filePath,
+        pathService: options.pathService,
+        fs: options.fileSystem,
+        dateStr: item.date || graphDiaryInstant(item.filePath).dateStr
+      })
+      const text = await options.fileSystem.readFile(full, 'utf8')
+      charCounts.push(typeof text === 'string' ? text.length : 0)
+    } catch {
+      charCounts.push(0)
     }
   }
   return estimateExtractionCost(pending.length, { charCounts })

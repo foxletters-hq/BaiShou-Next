@@ -1,12 +1,13 @@
 import { ipcMain } from 'electron'
-import * as nodePath from 'node:path'
 import {
   clearLifeGraphData,
   estimateExtractionCost,
+  resolveGraphExtractDiaryPath,
   type GraphExtractDraft
 } from '@baishou/core-desktop'
 import {
   GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
+  graphDiaryInstant,
   resolveGraphExtractConcurrency
 } from '@baishou/shared'
 import { fileSystem, pathService } from './vault.ipc'
@@ -33,17 +34,19 @@ export function registerGraphExtractIpc(): void {
   ipcMain.handle('graph:estimate-extraction', async () => {
     ensureRawDataRuntime()
     const pending = await getDerivedFreshness().listPendingReextract()
-    const vault = await pathService.getActiveVaultPath()
     const charCounts: number[] = []
-    if (vault) {
-      for (const item of pending) {
-        try {
-          const full = nodePath.join(vault, item.filePath.replace(/^[/\\]+/, ''))
-          const text = await fileSystem.readFile(full, 'utf8')
-          charCounts.push(typeof text === 'string' ? text.length : 0)
-        } catch {
-          charCounts.push(0)
-        }
+    for (const item of pending) {
+      try {
+        const full = await resolveGraphExtractDiaryPath({
+          filePath: item.filePath,
+          pathService,
+          fs: fileSystem,
+          dateStr: item.date || graphDiaryInstant(item.filePath).dateStr
+        })
+        const text = await fileSystem.readFile(full, 'utf8')
+        charCounts.push(typeof text === 'string' ? text.length : 0)
+      } catch {
+        charCounts.push(0)
       }
     }
     return estimateExtractionCost(pending.length, { charCounts })
