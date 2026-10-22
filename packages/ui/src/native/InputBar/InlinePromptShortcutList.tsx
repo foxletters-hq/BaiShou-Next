@@ -26,6 +26,19 @@ export const INLINE_SHORTCUT_EXIT_MS = 150
 /** 退场动画结束后再释放占位，留一点余量避免 JS 定时器抢在 UI 线程动画前触发 */
 const INLINE_SHORTCUT_HEIGHT_RESET_MS = INLINE_SHORTCUT_EXIT_MS + 32
 
+const listHeightForCount = (count: number): number => {
+  if (count === 0) return EMPTY_LIST_HEIGHT
+  return Math.min(count * ROW_HEIGHT, LIST_MAX_HEIGHT)
+}
+
+/**
+ * 面板打开时父级需要预留的高度（含面板与输入区之间的间距）。
+ * 必须在渲染面板的同一帧算出，不能等子组件 layout 回调，否则首帧会先叠在输入区上再跳上去。
+ */
+export function resolveInlinePromptShortcutPanelHeight(shortcutCount: number): number {
+  return HEADER_BLOCK_HEIGHT + listHeightForCount(shortcutCount) + INLINE_SHORTCUT_PANEL_GAP
+}
+
 const shortcutEnter = new Keyframe({
   0: {
     opacity: 0
@@ -139,10 +152,10 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
   const { shortcuts: displayShortcuts, selectedIndex: displaySelectedIndex } = snapshotRef.current
   const listRef = useRef<FlatList<PromptShortcut>>(null)
 
-  const listHeight = useMemo(() => {
-    if (displayShortcuts.length === 0) return EMPTY_LIST_HEIGHT
-    return Math.min(displayShortcuts.length * ROW_HEIGHT, LIST_MAX_HEIGHT)
-  }, [displayShortcuts.length])
+  const listHeight = useMemo(
+    () => listHeightForCount(displayShortcuts.length),
+    [displayShortcuts.length]
+  )
 
   const panelBodyHeight = HEADER_BLOCK_HEIGHT + listHeight
 

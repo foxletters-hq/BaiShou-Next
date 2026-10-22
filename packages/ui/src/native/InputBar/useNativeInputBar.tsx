@@ -43,6 +43,7 @@ import {
   TOOLBAR_ANIM_MS
 } from './input-bar-height.util'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
+import { resolveInlinePromptShortcutPanelHeight } from './InlinePromptShortcutList'
 
 const EXPAND_HEIGHT_EASING = Easing.out(Easing.cubic)
 
@@ -99,7 +100,8 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     draftSyncSuspended: isSending
   })
   const [showToolbar, setShowToolbar] = useState(true)
-  const [shortcutPanelHeight, setShortcutPanelHeight] = useState(0)
+  /** 退场动画期间保留打开时的高度，避免输入区上跳；打开时的高度在渲染阶段同步算出 */
+  const [retainedShortcutPanelHeight, setShortcutPanelHeight] = useState(0)
   const toolbarProgress = useSharedValue(1)
   const inputHeightSv = useSharedValue(INPUT_MIN_HEIGHT)
   const inputMaxHeight = isExpanded
@@ -110,6 +112,14 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
   }, [shortcuts, t])
   const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
+
+  /**
+   * 与面板同帧预留高度：不能依赖子组件 layout 回调，否则首帧面板会先叠在输入区上再跳上去。
+   * 面板关闭后继续沿用退场期间的高度，等退场动画结束由子组件回调清零。
+   */
+  const shortcutPanelHeight = shortcutHandlers.shortcutModeActive
+    ? resolveInlinePromptShortcutPanelHeight(shortcutHandlers.filteredShortcuts.length)
+    : retainedShortcutPanelHeight
 
   const applyComposerShortcut = useCallback(
     (shortcut: PromptShortcut) => {
