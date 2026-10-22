@@ -21,6 +21,8 @@ export interface MarkdownRendererProps {
   basePath?: string
   /** 纯文本模式：跳过 remarkCjkFriendly，避免在 CJK/ASCII 之间插入空格 */
   plainText?: boolean
+  /** 是否显示围栏代码块的复制按钮（卡片预览等只读场景可关闭） */
+  showCodeCopy?: boolean
 }
 
 function remarkBrToBreak() {
@@ -48,7 +50,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   isStreaming = false,
   basePath,
-  plainText: _plainText = false
+  plainText: _plainText = false,
+  showCodeCopy = true
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -211,31 +214,42 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               controls
             />
           ),
-          pre: ({ children }) => <>{children}</>,
-          code({ node: _node, className, children, inline, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '')
-            if (inline) {
-              return (
-                <code className={styles.inlineCode} {...props}>
-                  {children}
-                </code>
-              )
-            }
+          pre({ node: _node, className, children, ...props }: any) {
+            const codeClassName = React.isValidElement(children)
+              ? ((children.props as { className?: string }).className ?? '')
+              : ''
+            const match = /language-(\w+)/.exec(codeClassName)
             return (
-              <pre className={styles.codeWrapper}>
+              <pre
+                className={[styles.codeWrapper, className].filter(Boolean).join(' ')}
+                {...props}
+              >
                 <div className={styles.codeHeader}>
                   {match?.[1] ? <span>{match[1]}</span> : null}
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard.writeText(String(children))}
-                  >
-                    {t('markdown.copy', '复制')}
-                  </button>
+                  {showCodeCopy ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        const code = event.currentTarget.closest('pre')?.querySelector('code')
+                        void navigator.clipboard.writeText(code?.textContent ?? '')
+                      }}
+                    >
+                      {t('markdown.copy', '复制')}
+                    </button>
+                  ) : null}
                 </div>
-                <code className={className} {...props}>
-                  {children}
-                </code>
+                {children}
               </pre>
+            )
+          },
+          code({ node: _node, className, children, ...props }: any) {
+            return (
+              <code
+                className={[styles.inlineCode, className].filter(Boolean).join(' ')}
+                {...props}
+              >
+                {children}
+              </code>
             )
           },
           table({ children }) {
