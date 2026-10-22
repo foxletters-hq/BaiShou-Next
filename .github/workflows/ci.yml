@@ -1,23 +1,9 @@
-# push 到 main 与所有 PR 上运行
+# 仅在 PR 与手动触发时运行
 # 本地等价：pnpm ci:check
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'docs/**'
-      - 'legal/**'
-      - 'Latte/**'
-      - 'releases/notes/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'CONTRIBUTING.md'
-      - 'LICENSE'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
-      - '.github/CLA.md'
+  workflow_dispatch:
   pull_request:
     paths-ignore:
       - 'docs/**'
