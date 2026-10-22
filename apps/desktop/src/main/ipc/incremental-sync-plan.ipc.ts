@@ -231,7 +231,7 @@ export async function ensureVaultsForIncrementalSync(
 
 export async function flushPendingAgentSessionsBeforeSync(
   mode: 'full' | 'pending-only' = 'full'
-): Promise<void> {
+): Promise<number> {
   try {
     const { getAgentManagers } = await import('./agent-helpers')
     const { sessionManager } = getAgentManagers()
@@ -264,8 +264,10 @@ export async function flushPendingAgentSessionsBeforeSync(
     })
 
     // 规划路径不做会话水合（慢且易触发二次确认）；同步结束后再补缺库会话
+    return (result.flushed ?? 0) + (result.pendingFlushed ?? 0)
   } catch (e) {
     logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
+    return 0
   }
 }
 
@@ -312,8 +314,9 @@ export function registerIncrementalSyncPlanIPC(): void {
         preview = { ...preview, prunedRegistryVaults: pruned }
       }
       return preview
-    } finally {
+    } catch (err) {
       service.clearPreparedManifestCache()
+      throw err
     }
   })
 
@@ -340,6 +343,7 @@ export function registerIncrementalSyncPlanIPC(): void {
       const service = await getSyncService()
       const local = await service.buildLocalManifest()
       const remote = await service.getRemoteManifest()
+      service.setPlanManifestCache(local, remote)
       return evaluateIncrementalSyncPlanDrift(baseline, local, remote)
     }
   )
@@ -356,9 +360,11 @@ export function registerIncrementalSyncPlanIPC(): void {
         total: 1,
         statusText: 'data_sync.progress_registering_vaults'
       })
-      await flushPendingAgentSessionsBeforeSync('full')
+      const flushedCount = await flushPendingAgentSessionsBeforeSync('pending-only')
       const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
-      ;(await getSyncService()).clearPreparedManifestCache()
+      if (flushedCount > 0 || autoRegisteredVaults.length > 0) {
+        ;(await getSyncService()).clearPreparedManifestCache()
+      }
       const result = await (
         await getOrchestrator()
       ).sync((progress) => {

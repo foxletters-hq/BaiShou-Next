@@ -48,13 +48,14 @@ export async function resolveMobileEmbeddingForHydration(
       globalEmbeddingProviderId?: string
       globalEmbeddingModelId?: string
     }>('global_models')
-    const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
+    const providers =
+      (await settingsManager.get<Array<{ id: string; isEnabled?: boolean }>>('ai_providers')) || []
     const embeddingProviderId = globalModels?.globalEmbeddingProviderId
     const embeddingModelId = globalModels?.globalEmbeddingModelId
     if (!embeddingProviderId || !embeddingModelId || embeddingModelId === 'off') {
       return { embeddingProvider: null, embeddingModelId: null }
     }
-    const embConfig = providers.find((p) => p.id === embeddingProviderId)
+    const embConfig = providers.find((p) => p.id === embeddingProviderId && p.isEnabled !== false)
     if (!embConfig) return { embeddingProvider: null, embeddingModelId: null }
     const embeddingProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(
       embConfig as never
@@ -226,6 +227,8 @@ export async function runMobileDerivedIndexHydration(options: {
   embeddingModelId?: string | null
   reason: string
   deletedShardPaths?: string[]
+  syncMemory?: boolean
+  syncGraph?: boolean
 }): Promise<void> {
   if (!runtime) {
     logger.warn(`[RawData] mobile skip hydration (${options.reason}): runtime not ready`)
@@ -245,82 +248,89 @@ export async function runMobileDerivedIndexHydration(options: {
       )
     }
 
-    const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
-    const chatChunks = await hsRepo.listEmbeddingChunksByType('chat', { vaultId: options.vaultId })
-    const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory', {
-      vaultId: options.vaultId
-    })
-    const manualChunks = await hsRepo.listEmbeddingChunksByType('manual', {
-      vaultId: options.vaultId
-    })
-    const vaultName = options.vaultName ?? options.vaultId
-    const chatBackfill = await backfill.backfillFromChunks(chatChunks, vaultName)
-    const memoryBackfill = await backfill.backfillFromChunks(memoryChunks, vaultName)
-    await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
-      normalizeManualToMemory: (params) =>
-        hsRepo.normalizeManualToMemory({
-          vaultId: options.vaultId,
-          sourceIds: 'sourceIds' in params ? params.sourceIds : undefined
-        }),
-      updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
-        hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
-    })
-    if (manualChunks.length === 0 && (chatBackfill.written > 0 || memoryBackfill.written > 0)) {
-      await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
-        hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
-      )
-    }
-    await hsRepo.normalizeManualToMemory({ vaultId: options.vaultId })
-
-    // V1.6：遗留手动记忆复制到各仓库
-    const vaults =
-      options.vaults && options.vaults.length > 0
-        ? options.vaults
-        : [{ id: options.vaultId, name: vaultName }]
-    const activeId = options.vaultId
-    const legacyCopy = await new LegacyManualMemoryCopyService().copyToOtherVaults({
-      vaults,
-      getManager: (vault) => {
-        if (vault.id === activeId) return runtime!.memoryManager
-        return createVaultScopedMemoryManager(vault.name)
-      },
-      afterWrite: async (vault, manager) => {
-        if (!embeddingAdapter?.isConfigured) return
-        const memorySync = new MemorySyncService(
-          manager,
-          createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+    let legacyCopy = { copied: 0, skipped: 0 }
+    if (options.syncMemory !== false) {
+      const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
+      const chatChunks = await hsRepo.listEmbeddingChunksByType('chat', {
+        vaultId: options.vaultId
+      })
+      const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory', {
+        vaultId: options.vaultId
+      })
+      const manualChunks = await hsRepo.listEmbeddingChunksByType('manual', {
+        vaultId: options.vaultId
+      })
+      const vaultName = options.vaultName ?? options.vaultId
+      const chatBackfill = await backfill.backfillFromChunks(chatChunks, vaultName)
+      const memoryBackfill = await backfill.backfillFromChunks(memoryChunks, vaultName)
+      await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
+        normalizeManualToMemory: (params) =>
+          hsRepo.normalizeManualToMemory({
+            vaultId: options.vaultId,
+            sourceIds: 'sourceIds' in params ? params.sourceIds : undefined
+          }),
+        updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
+          hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+      })
+      if (manualChunks.length === 0 && (chatBackfill.written > 0 || memoryBackfill.written > 0)) {
+        await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
+          hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
         )
-        await memorySync.syncPendingIndex({
-          vaultId: vault.id,
-          vaultName: vault.name,
-          embedMissing: false
-        })
       }
-    })
+      await hsRepo.normalizeManualToMemory({ vaultId: options.vaultId })
 
-    const memorySync = new MemorySyncService(
-      runtime.memoryManager,
-      createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
-    )
-    await memorySync.syncPendingIndex({
-      vaultId: options.vaultId,
-      vaultName: options.vaultName,
-      embedMissing: false
-    })
+      // V1.6：遗留手动记忆复制到各仓库
+      const vaults =
+        options.vaults && options.vaults.length > 0
+          ? options.vaults
+          : [{ id: options.vaultId, name: vaultName }]
+      const activeId = options.vaultId
+      legacyCopy = await new LegacyManualMemoryCopyService().copyToOtherVaults({
+        vaults,
+        getManager: (vault) => {
+          if (vault.id === activeId) return runtime!.memoryManager
+          return createVaultScopedMemoryManager(vault.name)
+        },
+        afterWrite: async (vault, manager) => {
+          if (!embeddingAdapter?.isConfigured) return
+          const memorySync = new MemorySyncService(
+            manager,
+            createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+          )
+          await memorySync.syncPendingIndex({
+            vaultId: vault.id,
+            vaultName: vault.name,
+            embedMissing: false
+          })
+        }
+      })
 
-    // 同步下载后图谱节点照常入库，但不调用嵌入接口；缺向量的节点计入待嵌入项目，由手动补齐处理
-    const embedMissing = false
-    const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
-      embedQuery:
-        embedMissing && embeddingAdapter?.isConfigured
-          ? (text) => embeddingAdapter.embedQuery(text)
-          : undefined,
-      modelId: embedMissing ? embeddingAdapter?.embeddingModelId : undefined
-    })
-    await graphSync.syncPendingIndex({
-      vaultId: options.vaultId,
-      deletedShardPaths: options.deletedShardPaths
-    })
+      const memorySync = new MemorySyncService(
+        runtime.memoryManager,
+        createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+      )
+      await memorySync.syncPendingIndex({
+        vaultId: options.vaultId,
+        vaultName: options.vaultName,
+        embedMissing: false
+      })
+    }
+
+    if (options.syncGraph !== false) {
+      // 同步下载后图谱节点照常入库，但不调用嵌入接口；缺向量的节点计入待嵌入项目，由手动补齐处理
+      const embedMissing = false
+      const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
+        embedQuery:
+          embedMissing && embeddingAdapter?.isConfigured
+            ? (text) => embeddingAdapter.embedQuery(text)
+            : undefined,
+        modelId: embedMissing ? embeddingAdapter?.embeddingModelId : undefined
+      })
+      await graphSync.syncPendingIndex({
+        vaultId: options.vaultId,
+        deletedShardPaths: options.deletedShardPaths
+      })
+    }
 
     logger.info(
       `[RawData] mobile derived hydration done (${options.reason}): legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped}`

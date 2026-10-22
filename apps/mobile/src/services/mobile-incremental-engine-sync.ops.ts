@@ -400,7 +400,31 @@ export async function runSyncThreeWay(
 
   client.setTransferProgressCallback(undefined)
   client.setTransferActivityCallback(undefined)
-  const scanned = await worker.buildLocalManifest()
+  // 保留未变更文件的本机 mtimeMs，并用 workingManifest 覆盖本轮下载文件的最新元数据，避免收尾全量重算 MD5
+  const postSyncCacheFiles: Record<string, SyncManifest['files'][string]> = {
+    ...localManifest.files
+  }
+  for (const [relPath, entry] of Object.entries(workingManifest.files)) {
+    const localEntry = localManifest.files[relPath]
+    if (!localEntry || localEntry.hash !== entry.hash || localEntry.size !== entry.size) {
+      postSyncCacheFiles[relPath] = entry
+    }
+  }
+  for (const relPath of downloadedPaths) {
+    if (workingManifest.files[relPath]) {
+      postSyncCacheFiles[relPath] = workingManifest.files[relPath]
+    }
+  }
+  worker.host.pendingSyncLocalManifest = {
+    ...workingManifest,
+    files: postSyncCacheFiles
+  }
+  let scanned: SyncManifest
+  try {
+    scanned = await worker.buildLocalManifest()
+  } finally {
+    worker.host.pendingSyncLocalManifest = null
+  }
   const finalManifest = finalizeIncrementalSyncManifest({
     scanned,
     baselineRemote: remoteManifest,

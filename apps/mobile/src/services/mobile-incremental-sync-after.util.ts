@@ -186,7 +186,9 @@ export async function runMobileIncrementalAfterSync(
               embeddingProvider: emb.embeddingProvider,
               embeddingModelId: emb.embeddingModelId,
               reason: 'incremental-sync',
-              deletedShardPaths: outcome.deletedLocalPaths
+              deletedShardPaths: outcome.deletedLocalPaths,
+              syncMemory: cls.memory,
+              syncGraph: cls.graph
             })
           }
         }

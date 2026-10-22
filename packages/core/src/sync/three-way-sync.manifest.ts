@@ -37,6 +37,7 @@ import {
 import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
 import type { SyncRecord } from '../network/cloud-sync.interface'
 import { ThreeWaySyncCore } from './three-way-sync.core'
+import { limitExecute } from './three-way-sync.utils'
 
 export type ManifestFileProgressCallback = (
   current: number,
@@ -55,6 +56,9 @@ export interface PreparedSyncManifests {
 
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   private static readonly MANIFEST_CACHE_TTL_MS = 120_000
+  /** Git-style racy-clean window: only trust size+mtime hash reuse for files older than 2s */
+  private static readonly HASH_REUSE_MIN_AGE_MS = 2_000
+  private static readonly LOCAL_HASH_CONCURRENCY = 16
 
   private preparedManifests: PreparedSyncManifests | null = null
 
@@ -62,6 +66,11 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     local: SyncManifest
     remote: SyncManifest
   } | null = null
+
+  private readonly fileHashCache = new Map<
+    string,
+    { size: number; mtimeMs: number; ctimeMs: number; hash: string }
+  >()
 
   protected invalidatePreparedManifests(): void {
     this.preparedManifests = null
@@ -175,37 +184,93 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   async buildLocalManifest(onFileProgress?: ManifestFileProgressCallback): Promise<SyncManifest> {
     const files = await this.scanLocalFiles()
+    const now = Date.now()
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
-      updatedAt: Date.now(),
+      updatedAt: now,
       deviceId: this.deviceId,
       files: {},
       capabilities: [...SYNC_MANIFEST_CAPABILITIES]
     }
 
+    let prevFiles: Record<string, ManifestEntry> = {}
+    try {
+      const prev = await this.getLocalManifest()
+      prevFiles = prev.files ?? {}
+    } catch {
+      prevFiles = {}
+    }
+
     const total = files.length
     let hashFailures = 0
+    let completed = 0
     onFileProgress?.(0, total, '')
 
-    for (let index = 0; index < files.length; index++) {
-      const relPath = files[index]!
-      const fullPath = await this.resolveSyncFullPath(relPath)
-      try {
-        const hash = await this.computeFileHash(fullPath)
-        const stat = await fs.promises.stat(fullPath)
-        manifest.files[relPath] = {
-          hash,
-          size: stat.size,
-          lastModified: stat.mtimeMs
+    const entries = await limitExecute(
+      files,
+      ThreeWaySyncManifestMixin.LOCAL_HASH_CONCURRENCY,
+      async (relPath) => {
+        const fullPath = await this.resolveSyncFullPath(relPath)
+        try {
+          const stat = await fs.promises.stat(fullPath)
+          const isStableAge = now - stat.mtimeMs > ThreeWaySyncManifestMixin.HASH_REUSE_MIN_AGE_MS
+          const memCached = this.fileHashCache.get(relPath)
+          let hash: string | undefined
+          if (
+            isStableAge &&
+            memCached &&
+            memCached.size === stat.size &&
+            memCached.mtimeMs === stat.mtimeMs &&
+            memCached.ctimeMs === stat.ctimeMs
+          ) {
+            hash = memCached.hash
+          } else {
+            const diskPrev = prevFiles[relPath]
+            if (
+              isStableAge &&
+              diskPrev &&
+              diskPrev.hash &&
+              diskPrev.size === stat.size &&
+              diskPrev.lastModified === stat.mtimeMs
+            ) {
+              hash = diskPrev.hash
+            } else {
+              hash = await this.computeFileHash(fullPath)
+            }
+            this.fileHashCache.set(relPath, {
+              size: stat.size,
+              mtimeMs: stat.mtimeMs,
+              ctimeMs: stat.ctimeMs,
+              hash
+            })
+          }
+          completed++
+          onFileProgress?.(completed, total, relPath)
+          return {
+            relPath,
+            entry: {
+              hash,
+              size: stat.size,
+              lastModified: stat.mtimeMs
+            } satisfies ManifestEntry
+          }
+        } catch (e) {
+          hashFailures++
+          completed++
+          console.warn(
+            `[ThreeWaySync] skip unreadable sync file during manifest build: ${relPath}`,
+            e instanceof Error ? e.message : e
+          )
+          onFileProgress?.(completed, total, relPath)
+          return null
         }
-      } catch (e) {
-        hashFailures++
-        console.warn(
-          `[ThreeWaySync] skip unreadable sync file during manifest build: ${relPath}`,
-          e instanceof Error ? e.message : e
-        )
       }
-      onFileProgress?.(index + 1, total, relPath)
+    )
+
+    for (const item of entries) {
+      if (item) {
+        manifest.files[item.relPath] = item.entry
+      }
     }
 
     if (hashFailures > 0) {
