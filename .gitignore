@@ -121,9 +121,13 @@ _agent/
 .gemini/
 .claude/
 .cursor/
+.opencode/
 .antigravitycli/
 opencode.json
+opencode.jsonc
 AGENTS.md
+CLAUDE.md
+GEMINI.md
 SCOPE.md
 
 # ─── 临时文件 ──────────────────────────────────────────────
