@@ -10,6 +10,7 @@ export function GraphScreenSimilarTab(props: {
   pairs: GraphSimilarPendingPair[]
   busy: boolean
   onMerge: (pair: GraphSimilarPendingPair) => void
+  onMergeAll: () => void
   onKeepApart: (pair: GraphSimilarPendingPair) => void
   onLocateNode: (id: string) => void
   listPad: { padding: number; paddingBottom: number }
@@ -33,7 +34,7 @@ export function GraphScreenSimilarTab(props: {
           {
             backgroundColor: colors.bgSurface,
             borderColor: colors.borderControl,
-            marginBottom: sharedTokens.spacing.md
+            marginBottom: sharedTokens.spacing.sm
           }
         ]}
       >
@@ -43,6 +44,17 @@ export function GraphScreenSimilarTab(props: {
             '以下节点名称或语义相近，请确认是否指向同一对象；若相同可合并，不同则分开保留。'
           )}
         </Text>
+      </View>
+      <View style={styles.fullRowButtonWrap}>
+        <Button
+          size="sm"
+          className="w-full"
+          style={styles.fullRowButton}
+          isDisabled={props.busy}
+          onPress={props.onMergeAll}
+        >
+          {t('graph.similar_merge_all', '一键合并全部')}
+        </Button>
       </View>
       {props.pairs.map((pair) => (
         <View

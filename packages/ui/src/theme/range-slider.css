@@ -3,10 +3,12 @@
  * 填充进度：可在元素上设 style={{ backgroundSize: `${pct}% 100%` }}
  */
 input[type='range'] {
+  --range-track-height: 3px;
+  --range-thumb-size: 14px;
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 3px;
+  height: var(--range-track-height);
   border-radius: var(--radius-full);
   outline: none;
   cursor: pointer;
@@ -22,18 +24,18 @@ input[type='range']:disabled {
 }
 
 input[type='range']::-webkit-slider-runnable-track {
-  height: 3px;
+  height: var(--range-track-height);
   border-radius: var(--radius-full);
 }
 
 input[type='range']::-moz-range-track {
-  height: 3px;
+  height: var(--range-track-height);
   border-radius: var(--radius-full);
   background: rgba(var(--color-primary-rgb), 0.18);
 }
 
 input[type='range']::-moz-range-progress {
-  height: 3px;
+  height: var(--range-track-height);
   border-radius: var(--radius-full);
   background: var(--color-primary);
 }
@@ -41,9 +43,9 @@ input[type='range']::-moz-range-progress {
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: calc((3px - 14px) / 2);
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
+  margin-top: calc((var(--range-track-height) - var(--range-thumb-size)) / 2);
   border-radius: 50%;
   background: var(--color-primary);
   cursor: pointer;
@@ -53,8 +55,8 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 input[type='range']::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: var(--range-thumb-size);
+  height: var(--range-thumb-size);
   border: none;
   border-radius: 50%;
   background: var(--color-primary);

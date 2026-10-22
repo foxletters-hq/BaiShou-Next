@@ -46,6 +46,14 @@ export const listStyles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: sharedTokens.spacing.sm
   },
+  fullRowButtonWrap: {
+    width: '100%',
+    marginBottom: sharedTokens.spacing.md
+  },
+  fullRowButton: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
   pendingSelectAllGroup: {
     flexDirection: 'row',
     alignItems: 'center',

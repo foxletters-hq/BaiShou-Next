@@ -173,10 +173,7 @@ export function registerSettingsAppIPC() {
       if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
         throw new Error('workspaceId is required')
       }
-      const saved = await setWorkspaceExternalDirectoryEnabled(
-        workspaceId.trim(),
-        enabled === true
-      )
+      const saved = await setWorkspaceExternalDirectoryEnabled(workspaceId.trim(), enabled === true)
       return saved
     }
   )
@@ -215,8 +212,12 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
-    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-    invalidateMcpToolContextCache()
+    const { emitDomainMutation } = await import('@baishou/core-desktop')
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: 'mcp_server_config' }
+    })
     return nextConfig
   })
 
@@ -230,8 +231,12 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
-    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
-    invalidateMcpToolContextCache()
+    const { emitDomainMutation } = await import('@baishou/core-desktop')
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: 'mcp_server_config' }
+    })
     return nextConfig
   })
 

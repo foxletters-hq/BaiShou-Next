@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
+import { settingsTypography } from '@baishou/ui/theme/tokens'
 import { useMobileMcpClientServers } from '../../../hooks/useMobileMcpClientServers'
 import { McpClientAddServerForm } from './McpClientAddServerForm'
 import { McpClientServerCard } from './McpClientServerCard'
@@ -75,7 +76,7 @@ export function McpClientServersSection() {
             </View>
             <Text
               style={{
-                fontSize: 15,
+                fontSize: settingsTypography.section.fontSize,
                 fontWeight: '600',
                 color: colors.textPrimary,
                 textAlign: 'center'
@@ -114,7 +115,7 @@ export function McpClientServersSection() {
             <Plus size={18} color={colors.primary} strokeWidth={2.5} />
             <Text
               style={{
-                fontSize: 14,
+                fontSize: settingsTypography.row.fontSize,
                 fontWeight: '600',
                 color: colors.primary
               }}

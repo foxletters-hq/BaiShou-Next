@@ -39,6 +39,13 @@ export type GraphSimilarPendingPair = {
   createdAt: string
 }
 
+export type GraphSimilarMergeGroup = {
+  /** 合并后保留的节点 */
+  survivorId: string
+  /** 并入 survivor 的节点 */
+  loserIds: string[]
+}
+
 export function parseGraphNodePropsRecord(
   propsJson: string | null | undefined
 ): Record<string, unknown> {
@@ -178,6 +185,78 @@ export function collectSimilarPendingPairs(
         createdAt: pending.createdAt
       })
     }
+  }
+  return out
+}
+
+/**
+ * 把「相似待合并」对按连通簇分组，供一键合并使用。
+ * 单条合并方向固定为 nodeId 并入 peerId；同一簇内优先选择从未作为 nodeId 的节点作为 survivor，
+ * 避免顺序合并时先删掉后面还要用到的节点。
+ */
+export function groupSimilarPendingPairsForMerge(
+  pairs: ReadonlyArray<Pick<GraphSimilarPendingPair, 'nodeId' | 'peerId'>>
+): GraphSimilarMergeGroup[] {
+  const parent = new Map<string, string>()
+  const appearance: string[] = []
+  const peerRank = new Map<string, number>()
+  const everLoser = new Set<string>()
+
+  const ensure = (id: string) => {
+    if (parent.has(id)) return
+    parent.set(id, id)
+    appearance.push(id)
+  }
+  const find = (id: string): string => {
+    let root = id
+    while (parent.get(root) !== root) root = parent.get(root) as string
+    while (parent.get(id) !== root) {
+      const next = parent.get(id) as string
+      parent.set(id, root)
+      id = next
+    }
+    return root
+  }
+  const union = (a: string, b: string) => {
+    const rootA = find(a)
+    const rootB = find(b)
+    if (rootA !== rootB) parent.set(rootB, rootA)
+  }
+
+  for (const pair of pairs) {
+    const nodeId = typeof pair.nodeId === 'string' ? pair.nodeId.trim() : ''
+    const peerId = typeof pair.peerId === 'string' ? pair.peerId.trim() : ''
+    if (!nodeId || !peerId || nodeId === peerId) continue
+    ensure(nodeId)
+    ensure(peerId)
+    if (!peerRank.has(peerId)) peerRank.set(peerId, peerRank.size)
+    everLoser.add(nodeId)
+    union(nodeId, peerId)
+  }
+
+  const byRoot = new Map<string, string[]>()
+  for (const id of appearance) {
+    const root = find(id)
+    const ids = byRoot.get(root)
+    if (ids) ids.push(id)
+    else byRoot.set(root, [id])
+  }
+
+  const rankOf = (id: string) => peerRank.get(id) ?? Number.POSITIVE_INFINITY
+  const pickSurvivor = (ids: string[]): string => {
+    const candidates = ids.filter((id) => !everLoser.has(id))
+    const pool = candidates.length > 0 ? candidates : ids
+    return pool.reduce((best, id) => (rankOf(id) < rankOf(best) ? id : best))
+  }
+
+  const out: GraphSimilarMergeGroup[] = []
+  for (const ids of byRoot.values()) {
+    if (ids.length < 2) continue
+    const survivorId = pickSurvivor(ids)
+    out.push({
+      survivorId,
+      loserIds: ids.filter((id) => id !== survivorId)
+    })
   }
   return out
 }

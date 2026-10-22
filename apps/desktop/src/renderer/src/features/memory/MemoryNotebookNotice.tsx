@@ -3,9 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import styles from './MemoryHelpButton.module.css'
 
+const KNOWLEDGE_ENTRY_ENABLED = false
+
 export const MemoryNotebookNotice: React.FC<{ onOpen?: () => void }> = ({ onOpen }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
+  if (!KNOWLEDGE_ENTRY_ENABLED) return null
 
   return (
     <p className={styles.notice}>

@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Alert } from 'react-native'
-import { graphPendingItemKey, splitGraphReviewSelection } from '@baishou/shared'
+import {
+  graphPendingItemKey,
+  groupSimilarPendingPairsForMerge,
+  splitGraphReviewSelection
+} from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
   mobileDismissSimilarPair,
@@ -183,16 +187,26 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     confirmLabel: string
     destructive?: boolean
   }): Promise<boolean> =>
-    new Promise((resolve) => {
-      Alert.alert(opts.title, opts.message, [
-        { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
-        {
-          text: opts.confirmLabel,
-          style: opts.destructive ? 'destructive' : 'default',
-          onPress: () => resolve(true)
-        }
-      ])
-    })
+    deps.dialog
+      ? deps.dialog.confirm(opts.message, {
+          title: opts.title,
+          confirmText: opts.confirmLabel,
+          destructive: opts.destructive
+        })
+      : new Promise((resolve) => {
+          Alert.alert(opts.title, opts.message, [
+            {
+              text: deps.t('common.cancel', '取消'),
+              style: 'cancel',
+              onPress: () => resolve(false)
+            },
+            {
+              text: opts.confirmLabel,
+              style: opts.destructive ? 'destructive' : 'default',
+              onPress: () => resolve(true)
+            }
+          ])
+        })
 
   const applyPendingReviews = async (opts: {
     reviewStatus: 'approved' | 'rejected'
@@ -284,6 +298,86 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     })
   }
 
+  const mergeAllSimilarPairs = async () => {
+    if (!deps.services) return
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    const groups = groupSimilarPendingPairsForMerge(deps.similarPairs || [])
+    if (groups.length === 0) return
+    const loserIds = groups.flatMap((group) => group.loserIds)
+    if (loserIds.length === 0) return
+
+    const title = deps.t('graph.similar_merge_all', '一键合并全部')
+    const message = deps.t(
+      'graph.confirm_merge_all_similar',
+      '将合并全部 {{count}} 个相似待合并节点（共 {{groups}} 组）。合并不可撤销，被合并节点的关系会改挂到保留节点。',
+      { count: loserIds.length, groups: groups.length }
+    )
+    const ok = await confirmPendingBatch({
+      title,
+      message,
+      confirmLabel: deps.t('common.confirm', '确定')
+    })
+    if (!ok) return
+
+    const selectedId = deps.selectedId
+    const selectedGroup = selectedId
+      ? groups.find((group) => group.loserIds.includes(selectedId))
+      : undefined
+    const failures: string[] = []
+    deps.setBusy(true)
+    try {
+      for (const group of groups) {
+        try {
+          await mobileMergeGraphNodeGroup({
+            drizzleDb: runtime.drizzleDb,
+            pathService: deps.services.pathService as never,
+            fileSystem: deps.services.fileSystem as never,
+            vaultId: deps.vaultId,
+            vaultName: deps.vaultName,
+            survivorId: group.survivorId,
+            loserIds: group.loserIds,
+            reason: 'merge-all-similar'
+          })
+        } catch (e: any) {
+          failures.push(e?.message || String(e))
+        }
+      }
+      setMergeConfirm(null)
+      setMergeSearchOpen(false)
+      await deps.refresh()
+      if (selectedGroup) {
+        deps.setSelectedId(selectedGroup.survivorId)
+        try {
+          const updatedSurvivor = await mobileGetNode(
+            runtime.drizzleDb,
+            deps.vaultId,
+            selectedGroup.survivorId
+          )
+          deps.setSelectedNode(updatedSurvivor)
+        } catch {
+          deps.setSelectedNode(null)
+        }
+      }
+      if (failures.length > 0) {
+        deps.toast.showError(
+          deps.t('graph.similar_merge_all_failed', '有 {{count}} 组相似节点合并失败：{{message}}', {
+            count: failures.length,
+            message: failures[0]
+          })
+        )
+        return
+      }
+      deps.toast.showSuccess(
+        deps.t('graph.similar_merged_all', '已合并 {{count}} 个相似节点', {
+          count: loserIds.length
+        })
+      )
+    } finally {
+      deps.setBusy(false)
+    }
+  }
+
   const dismissSimilarPair = async (
     nodeId: string,
     peerId: string,
@@ -319,17 +413,11 @@ export function useGraphScreenReview(deps: ReviewDeps) {
           )
         : deps.t('graph.confirm_keep_apart', '确定不是同一人？确认后将分开保留，不再提示合并。')
 
-    let ok = false
-    if (deps.dialog) {
-      ok = await deps.dialog.confirm(message, { title })
-    } else {
-      ok = await new Promise<boolean>((resolve) => {
-        Alert.alert(title, message, [
-          { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
-          { text: deps.t('common.confirm', '确定'), onPress: () => resolve(true) }
-        ])
-      })
-    }
+    const ok = await confirmPendingBatch({
+      title,
+      message,
+      confirmLabel: deps.t('common.confirm', '确定')
+    })
     if (!ok) return
 
     deps.setBusy(true)
@@ -421,6 +509,7 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     toggleSelectAllPending,
     applyPendingReviews,
     mergeSimilarPair,
+    mergeAllSimilarPairs,
     dismissSimilarPair,
     runConfirmedMerge
   }

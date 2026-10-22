@@ -235,6 +235,7 @@ export function GraphScreen({ embedded = false, onUnifiedOrganize }: GraphScreen
                   onMerge={(pair) =>
                     review.mergeSimilarPair(pair.peerId, pair.nodeId, pair.peerName, pair.nodeName)
                   }
+                  onMergeAll={() => void review.mergeAllSimilarPairs()}
                   onKeepApart={(pair) => void review.dismissSimilarPair(pair.nodeId, pair.peerId)}
                   onLocateNode={(id) => void search.onSelectNode(id)}
                   listPad={listPad}
@@ -245,6 +246,7 @@ export function GraphScreen({ embedded = false, onUnifiedOrganize }: GraphScreen
                 <GraphScreenReextractTab
                   pending={data.pending}
                   queueByPath={extract.queueByPath}
+                  busy={m.busy}
                   onRunExtract={(filePaths) => void extract.runExtract(filePaths)}
                   onCancelQueueItem={extract.cancelQueueItem}
                   onOpenSource={(date) => void m.openSource(date)}

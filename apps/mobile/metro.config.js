@@ -33,6 +33,7 @@ let config = getDefaultConfig(projectRoot)
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
 
 const workletsDir = resolveWorkletsWatchDir()
+fs.mkdirSync(workletsDir, { recursive: true })
 if (!config.watchFolders.includes(workletsDir)) {
   config.watchFolders.push(workletsDir)
 }
@@ -62,12 +63,33 @@ config.serializer.getPolyfills = (ctx) => {
 const nodeBuiltinPrefixes = ['crypto', 'fs', 'os', 'stream', 'buffer', 'util', 'zlib', 'path']
 const mockPath = path.resolve(projectRoot, 'mocks/node-modules.js')
 
+const defaultBlockList = Array.isArray(config.resolver.blockList)
+  ? config.resolver.blockList
+  : config.resolver.blockList
+    ? [config.resolver.blockList]
+    : []
+
 config.resolver.blockList = [
-  ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : []),
+  ...defaultBlockList,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]streamableHttp\.(js|cjs|mjs|ts)$/,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]sse\.(js|cjs|mjs|ts)$/,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]examples[/\\]/,
+  /[/\\]node_modules[/\\](?:@lobehub|@ant-design|antd|@rc-component|@fontsource|@base-ui|electron|electron-builder|app-builder-bin|dugite)[/\\]/,
   new RegExp(`${path.resolve(workspaceRoot, 'apps/desktop').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages/core-desktop').replace(/[/\\]/g, '[/\\\\]')}.*`
+  ),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages/database-desktop').replace(/[/\\]/g, '[/\\\\]')}.*`
+  ),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages').replace(/[/\\]/g, '[/\\\\]')}[/\\\\][^/\\\\]+[/\\\\]dist[/\\\\].*`
+  ),
+  new RegExp(`${path.resolve(workspaceRoot, '.turbo').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, '.expo').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/.gradle').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/build').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/app/build').replace(/[/\\]/g, '[/\\\\]')}.*`),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/index.desktop.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),

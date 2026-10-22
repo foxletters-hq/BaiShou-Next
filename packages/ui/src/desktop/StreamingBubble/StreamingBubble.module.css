@@ -83,13 +83,8 @@
 
 /* 自定义背景：气泡半透明度与移动端 StreamingBubble 保持一致 */
 :global(.chat-over-background) .bubbleCard {
-  background: rgba(255, 255, 255, 0.88);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-:global([data-theme='dark']) :global(.chat-over-background) .bubbleCard {
-  background: rgba(32, 33, 37, 0.85);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--chat-bubble-over-bg);
+  border-color: var(--chat-bubble-over-border);
 }
 
 .dotsWrap {

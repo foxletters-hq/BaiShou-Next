@@ -18,15 +18,8 @@ import { AgentTool } from './agent.tool'
 import type { ToolContext, ToolConfigParam } from './agent.tool'
 
 const memoryStoreParams = z.object({
-  content: z
-    .string()
-    .describe(
-      'Self-contained text content to store as a long-term memory.'
-    ),
-  tags: z
-    .string()
-    .optional()
-    .describe('Optional comma-separated category tags.')
+  content: z.string().describe('Self-contained text content to store as a long-term memory.'),
+  tags: z.string().optional().describe('Optional comma-separated category tags.')
 })
 
 function newMemoryId(): string {

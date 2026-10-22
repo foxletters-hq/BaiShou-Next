@@ -104,7 +104,6 @@ export function AgentGateProfileCard(props: {
         onChange={onWorkspaceMode}
         options={[
           { value: 'full_access', label: t('settings.agent_security_full_access', '完全访问') },
-          { value: 'auto_review', label: t('settings.agent_security_auto_review', '自动审核') },
           { value: 'allow_list', label: t('settings.agent_security_allow_list', '白名单') }
         ]}
       />

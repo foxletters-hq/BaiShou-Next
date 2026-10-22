@@ -97,7 +97,7 @@ export class SystemPromptBuilder {
     const hasSkillsCatalog = Boolean(
       (skillsInstruction &&
         (skillsInstruction.catalog.length > 0 || skillsInstruction.deltas.length > 0)) ||
-        (skillsCatalog && skillsCatalog.length > 0)
+      (skillsCatalog && skillsCatalog.length > 0)
     )
     const hasDiaryWriteTools =
       availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')

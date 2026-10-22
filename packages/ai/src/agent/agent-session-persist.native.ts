@@ -104,7 +104,10 @@ export async function persistResult(params: PersistResultParams): Promise<{
     try {
       // 整轮总计：streamResult.usage 仅为最后一步，多步工具调用时会少算
       const u = await streamResult.totalUsage
-      logger.info('[AgentSessionService Debug] streamResult.totalUsage resolved to:', JSON.stringify(u))
+      logger.info(
+        '[AgentSessionService Debug] streamResult.totalUsage resolved to:',
+        JSON.stringify(u)
+      )
       if (u) {
         streamUsage = mergeStreamUsageFromSdk(accumulator.usage, u as Record<string, unknown>)
         finalUsage = {

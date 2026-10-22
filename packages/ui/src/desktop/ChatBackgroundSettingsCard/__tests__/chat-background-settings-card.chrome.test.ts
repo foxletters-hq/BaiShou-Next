@@ -11,6 +11,7 @@ const streamingCss = readFileSync(
   join(here, '../../StreamingBubble/StreamingBubble.module.css'),
   'utf8'
 )
+const themeTokens = readFileSync(join(here, '../../../theme/css-variables.css'), 'utf8')
 
 describe('desktop ChatBackgroundSettingsCard chrome', () => {
   it('opens a modal instead of expanding inline with SettingsExpansionTile', () => {
@@ -27,8 +28,10 @@ describe('desktop ChatBackgroundSettingsCard chrome', () => {
 
   it('matches mobile bubble opacity over a custom background', () => {
     for (const css of [bubbleCss, streamingCss]) {
-      expect(css).toContain('rgba(255, 255, 255, 0.88)')
-      expect(css).toContain('rgba(32, 33, 37, 0.85)')
+      expect(css).toContain('var(--chat-bubble-over-bg)')
+      expect(css).toContain('var(--chat-bubble-over-border)')
     }
+    expect(themeTokens).toContain('--chat-bubble-over-bg: rgba(255, 255, 255, 0.88)')
+    expect(themeTokens).toContain('--chat-bubble-over-bg: rgba(32, 33, 37, 0.85)')
   })
 })

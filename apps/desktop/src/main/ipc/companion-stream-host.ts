@@ -80,9 +80,8 @@ export async function buildCompanionStreamHost(params: {
   let notebookNames: Record<string, string> | undefined
   if (notebookIds.length > 0) {
     try {
-      const { KnowledgeRepository, knowledgeConnectionManager } = await import(
-        '@baishou/database-desktop'
-      )
+      const { KnowledgeRepository, knowledgeConnectionManager } =
+        await import('@baishou/database-desktop')
       if (knowledgeConnectionManager.isConnected()) {
         const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
         const rows = await repo.listNotebooks({ vaultId: resolveActiveVaultId() })

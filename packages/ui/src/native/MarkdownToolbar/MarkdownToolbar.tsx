@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   View,
   TouchableOpacity,
@@ -6,10 +6,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   type NativeScrollEvent
 } from 'react-native'
 import { Code, Image, List, Quote, Redo2, SlidersHorizontal, Undo2 } from 'lucide-react-native'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -72,11 +74,47 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
+  const [showScrollFade, setShowScrollFade] = useState(false)
   const isScrollingRef = useRef(false)
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollMetricsRef = useRef({ viewportWidth: 0, contentWidth: 0, offsetX: 0 })
+  const fadeGradientId = `markdown-toolbar-fade-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   const iconColor = colors.textSecondary
   const disabledIcon = colors.textTertiary
+
+  const syncScrollFade = useCallback(() => {
+    const { viewportWidth, contentWidth, offsetX } = scrollMetricsRef.current
+    const next =
+      viewportWidth > 0 &&
+      contentWidth > viewportWidth &&
+      offsetX + viewportWidth < contentWidth - 1
+    setShowScrollFade((prev) => (prev === next ? prev : next))
+  }, [])
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollMetricsRef.current.offsetX = event.nativeEvent.contentOffset.x
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
+
+  const handleLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetricsRef.current.viewportWidth = event.nativeEvent.layout.width
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
+
+  const handleContentSizeChange = useCallback(
+    (width: number) => {
+      scrollMetricsRef.current.contentWidth = width
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
 
   const markScrollStart = useCallback(() => {
     isScrollingRef.current = true
@@ -352,6 +390,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           borderTopColor: colors.borderSubtle
         }
       ]}
+      onLayout={handleLayout}
     >
       <ScrollView
         horizontal
@@ -363,9 +402,26 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={scheduleScrollEnd}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={16}
       >
         {toolbarContent}
       </ScrollView>
+
+      {showScrollFade ? (
+        <View style={styles.scrollFade} pointerEvents="none">
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id={fadeGradientId} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor={colors.bgSurface} stopOpacity={0} />
+                <Stop offset="1" stopColor={colors.bgSurface} stopOpacity={1} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${fadeGradientId})`} />
+          </Svg>
+        </View>
+      ) : null}
 
       {onToolOrderChange ? (
         <MarkdownToolbarSettingsSheet
@@ -382,6 +438,13 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1
+  },
+  scrollFade: {
+    position: 'absolute',
+    top: 1,
+    right: 0,
+    bottom: 0,
+    width: 28
   },
   scrollContent: {
     flexDirection: 'row',

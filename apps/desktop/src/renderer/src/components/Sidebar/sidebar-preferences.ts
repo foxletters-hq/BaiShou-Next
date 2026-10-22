@@ -53,7 +53,7 @@ export function migrateSidebarNavIdsToMemory(input: {
 }
 
 /** 仅从日记区侧边栏移除；仍可通过系统设置访问 */
-const REMOVED_SIDEBAR_NAV_IDS = new Set(['legacy-migration'])
+const REMOVED_SIDEBAR_NAV_IDS = new Set(['legacy-migration', 'workbench'])
 
 const ALL_NAV_ID_SET = new Set<string>(ALL_SIDEBAR_NAV_IDS)
 
@@ -78,7 +78,13 @@ export function loadHiddenNavItems(): string[] {
   try {
     const parsed = JSON.parse(saved) as unknown
     if (!Array.isArray(parsed)) return [...getDefaultHiddenNavIds()]
-    return parsed.filter((id): id is string => typeof id === 'string' && ALL_NAV_ID_SET.has(id))
+    const filtered = parsed.filter(
+      (id): id is string => typeof id === 'string' && ALL_NAV_ID_SET.has(id)
+    )
+    if (!filtered.includes('workbench')) {
+      filtered.push('workbench')
+    }
+    return filtered
   } catch {
     return [...getDefaultHiddenNavIds()]
   }
@@ -94,7 +100,7 @@ export function resetSidebarNavToDefaults(): {
   navOrder: string[]
 } {
   const hiddenItems = [...getDefaultHiddenNavIds()]
-  const navOrder = [...ALL_SIDEBAR_NAV_IDS]
+  const navOrder = stripRemovedSidebarNavIds([...ALL_SIDEBAR_NAV_IDS])
   markSidebarVisibilityConfigured()
   persistHiddenNavItems(hiddenItems)
   localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(navOrder))

@@ -109,10 +109,7 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
           } else if (row.state === 'ready' && pendingGraphCount <= 0) {
             value = t('memory.readiness_vector_done', '已全部整理')
           } else if (row.state === 'pending' || pendingGraphCount > 0) {
-            value = formatVectorPendingValue(
-              { embedPending: row.count ?? 0, pendingGraphCount },
-              t
-            )
+            value = formatVectorPendingValue({ embedPending: row.count ?? 0, pendingGraphCount }, t)
             onAction = onOpenOrganize
               ? () => onOpenOrganize()
               : pendingEmbedParts

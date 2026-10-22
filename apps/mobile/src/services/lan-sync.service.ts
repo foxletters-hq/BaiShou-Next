@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 局域网发现、mDNS 广播与 MCP 共享 HTTP server 的生命周期集中管理，拆分易引入竞态 */
 import i18n from 'i18next'
 import { Platform } from 'react-native'
 import * as Network from 'expo-network'
@@ -216,6 +217,23 @@ export class MobileLanSyncService implements ILanSyncService {
     })
   }
 
+  private getNativeServerPort(): number {
+    try {
+      return BaishouServer.getServerPort()
+    } catch {
+      return 0
+    }
+  }
+
+  private isMcpClaimRunning(): boolean {
+    try {
+      return this.isMcpServerRunning?.() === true
+    } catch {
+      // MCP 服务销毁过程中不阻塞局域网降级
+      return false
+    }
+  }
+
   /**
    * 移动端 MCP 与局域网传输共用同一个原生 HTTP server。
    * LAN 只作为“乘客”复用 MCP server，避免 startServer 把 MCP 顶掉。
@@ -365,21 +383,19 @@ export class MobileLanSyncService implements ILanSyncService {
 
     this.ensureServerPortSubscription()
 
-    let mcpRunning = false
-    try {
-      mcpRunning = this.isMcpServerRunning?.() === true
-    } catch {
-      // MCP 服务销毁过程中不阻塞局域网降级
+    let mcpRunning = this.isMcpClaimRunning()
+    let nativePort = this.getNativeServerPort()
+
+    // MCP 启停过程中原生端口可能短暂为 0。先给它一个很短的窗口；
+    // 仍不可用就回退到 LAN 自有 server，绝不能因此让整个传输页停止。
+    for (let attempt = 0; mcpRunning && nativePort <= 0 && attempt < 5; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      mcpRunning = this.isMcpClaimRunning()
+      nativePort = this.getNativeServerPort()
     }
 
-    if (mcpRunning) {
-      const mcpPort = BaishouServer.getServerPort()
-      if (mcpPort <= 0) {
-        throw new Error(
-          i18n.t('lan_transfer.mcp_not_ready', 'MCP 服务已启用但尚未就绪，请稍后重试')
-        )
-      }
-      this.currentPort = mcpPort
+    if (mcpRunning && nativePort > 0) {
+      this.currentPort = nativePort
       this.ownsHttpServer = false
     } else {
       this.currentPort = BaishouServer.startServer(0)
@@ -455,7 +471,12 @@ export class MobileLanSyncService implements ILanSyncService {
     }
     this.publishedServiceName = null
     if (this.ownsHttpServer) {
-      BaishouServer.stopServer()
+      const nativePort = this.getNativeServerPort()
+      // 端口变化事件可能还没送达：只要 MCP 已接管或原生端口已不是 LAN 启动的那个，
+      // 就不能由 LAN 页面退出时顺手 stopServer，否则会把 MCP 一起停掉。
+      if (nativePort === this.currentPort && !this.isMcpClaimRunning()) {
+        BaishouServer.stopServer()
+      }
     }
     this.ownsHttpServer = false
     if (this.serverEventSub) {

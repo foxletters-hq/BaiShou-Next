@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 消息分页与流式刷新共享同一组闭包状态，拆分易引入依赖漂移 */
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,

@@ -37,6 +37,22 @@ function stopGradleDaemon() {
   if (result.status === 0) {
     console.log('  ✓ 已停止 Gradle daemon')
   }
+  if (process.platform !== 'win32') {
+    spawnSync('pkill', ['-f', '[o]rg.gradle.launcher.daemon.bootstrap.GradleDaemon'], {
+      stdio: 'ignore'
+    })
+  }
+}
+
+/** 检查 .worklets 目录是否已有生成的模块文件 */
+function hasWorkletsCacheFiles() {
+  const workletsDir = path.join(workspaceRoot, 'node_modules', 'react-native-worklets', '.worklets')
+  if (!fs.existsSync(workletsDir)) return false
+  try {
+    return fs.readdirSync(workletsDir).some((name) => name.endsWith('.js'))
+  } catch {
+    return false
+  }
 }
 
 /** worklets 编译缓存与 Metro 不同步时会 ENOENT；清空后需保留空目录供 Metro 重建 */
@@ -95,7 +111,7 @@ function clearAllMobileCaches() {
   console.log('\n完成。\n')
 }
 
-export { resetWorkletsCache, rmMetroTmpCaches, rm, clearAllMobileCaches }
+export { hasWorkletsCacheFiles, resetWorkletsCache, rmMetroTmpCaches, rm, clearAllMobileCaches }
 
 const isMain = path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)
 if (isMain) {

@@ -70,6 +70,9 @@ export function resolveInvalidatedCacheKeys(event: DomainMutationEvent): CacheKe
     if (settingsKey === 'tts_settings' || settingsKey === 'tts_config') {
       return ['tts.synthesis']
     }
+    if (settingsKey === 'mcp_server_config') {
+      return ['mcp.toolContext']
+    }
     if (
       settingsKey === 'ai_providers' ||
       settingsKey === 'global_models' ||

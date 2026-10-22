@@ -264,6 +264,7 @@ describe('GraphScreen chrome - navigation and action layout', () => {
     expect(reviewHookSrc).toContain('mobileGetNode(runtime.drizzleDb, deps.vaultId, survivorId)')
     expect(reviewHookSrc).toContain('deps.setSelectedNode(updatedSurvivor)')
     expect(reviewHookSrc).toContain("deps.t('graph.similar_keep_apart', '不是同一人')")
-    expect(reviewHookSrc).toContain('deps.dialog.confirm(message, { title })')
+    expect(reviewHookSrc).toContain('deps.dialog.confirm(opts.message, {')
+    expect(reviewHookSrc).toContain('title: opts.title')
   })
 })

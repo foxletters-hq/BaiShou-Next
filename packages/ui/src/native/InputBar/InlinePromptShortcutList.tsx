@@ -23,6 +23,8 @@ const EMPTY_LIST_HEIGHT = 48
 export const INLINE_SHORTCUT_PANEL_GAP = 8
 export const INLINE_SHORTCUT_ENTER_MS = 180
 export const INLINE_SHORTCUT_EXIT_MS = 150
+/** 退场动画结束后再释放占位，留一点余量避免 JS 定时器抢在 UI 线程动画前触发 */
+const INLINE_SHORTCUT_HEIGHT_RESET_MS = INLINE_SHORTCUT_EXIT_MS + 32
 
 const shortcutEnter = new Keyframe({
   0: {
@@ -152,7 +154,7 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
     // 退场期间先保留占位，避免关闭时输入区上跳；打开时高度在 layout 阶段同步，面板直接锚在输入区上方
     const timer = setTimeout(() => {
       onHeightChangeRef.current?.(0)
-    }, INLINE_SHORTCUT_EXIT_MS)
+    }, INLINE_SHORTCUT_HEIGHT_RESET_MS)
     return () => clearTimeout(timer)
   }, [visible, panelBodyHeight])
 
@@ -202,10 +204,10 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
         style={{ height: listHeight }}
         contentContainerStyle={styles.listContent}
         nestedScrollEnabled
-        scrollEnabled={displayShortcuts.length * ROW_HEIGHT > LIST_MAX_HEIGHT}
+        scrollEnabled={true}
         bounces={Platform.OS === 'ios'}
-        overScrollMode="never"
-        showsVerticalScrollIndicator={displayShortcuts.length > 4}
+        overScrollMode="auto"
+        showsVerticalScrollIndicator={displayShortcuts.length * ROW_HEIGHT > LIST_MAX_HEIGHT}
         getItemLayout={(_, index) => ({
           length: ROW_HEIGHT,
           offset: ROW_HEIGHT * index,
@@ -243,11 +245,11 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
 
 const styles = StyleSheet.create({
   overlay: {
+    // 面板绝对定位在外层预留的 paddingTop 区域内，关闭时父级布局不变，避免退场动画被一起带下去
     position: 'absolute',
+    top: 0,
     left: 14,
     right: 14,
-    bottom: '100%',
-    marginBottom: INLINE_SHORTCUT_PANEL_GAP,
     zIndex: 30,
     borderRadius: sharedTokens.radius.md,
     borderWidth: StyleSheet.hairlineWidth,
@@ -260,7 +262,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 16
       },
-      default: {}
+      default: {
+        elevation: 8
+      }
     })
   },
   header: {
@@ -306,7 +310,7 @@ const styles = StyleSheet.create({
     borderRadius: sharedTokens.radius.xs
   },
   builtinBadgeText: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   name: {

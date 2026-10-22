@@ -44,6 +44,7 @@ export function useGraphScreenInventory(deps: {
   }, [deps.query, deps.searchMode])
 
   const load = useCallback(async () => {
+    const requestRevision = deps.revision
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb || !deps.dbReady || !deps.vaultId) return
     const seq = ++seqRef.current
@@ -63,7 +64,7 @@ export function useGraphScreenInventory(deps: {
         mobileCountLiveNodes(runtime.drizzleDb, deps.vaultId),
         mobileCountLiveCurrentEdges(runtime.drizzleDb, deps.vaultId)
       ])
-      if (seq !== seqRef.current) return
+      if (seq !== seqRef.current || requestRevision !== deps.revision) return
       setPageItems(nodes.map(toGraphInventoryNode))
       setTotal(filteredTotal)
       setNodeCount(liveNodes)

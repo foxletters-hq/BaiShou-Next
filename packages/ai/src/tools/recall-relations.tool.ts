@@ -10,9 +10,7 @@ import type { ToolContext } from './agent.tool'
 const params = z.object({
   entity: z
     .string()
-    .describe(
-      'Person, place, event, topic, or multi-entity query to look up in the memory graph.'
-    ),
+    .describe('Person, place, event, topic, or multi-entity query to look up in the memory graph.'),
   mode: z
     .enum(['network', 'timeline', 'neighbors', 'search'])
     .optional()

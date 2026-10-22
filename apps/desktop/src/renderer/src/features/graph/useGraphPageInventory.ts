@@ -41,6 +41,7 @@ export function useGraphPageInventory(deps: {
   }, [debouncedQuery, searchMode])
 
   const load = useCallback(async () => {
+    const requestRevision = deps.revision
     const seq = ++seqRef.current
     setLoading(true)
     try {
@@ -55,7 +56,7 @@ export function useGraphPageInventory(deps: {
         window.api.graph.countLiveNodes(),
         window.api.graph.countLiveEdges()
       ])
-      if (seq !== seqRef.current) return
+      if (seq !== seqRef.current || requestRevision !== deps.revision) return
       setPageItems((nodes || []).map(toGraphInventoryNode))
       setTotal(Number(filteredTotal) || 0)
       setNodeCount(Number(liveNodes) || 0)
@@ -66,7 +67,7 @@ export function useGraphPageInventory(deps: {
           limit: pageSize,
           mode: 'semantic'
         })
-        if (seq !== seqRef.current) return
+        if (seq !== seqRef.current || requestRevision !== deps.revision) return
         setSearchHits((hits || []).map(toGraphInventoryNode))
       } else {
         setSearchHits([])
@@ -81,7 +82,7 @@ export function useGraphPageInventory(deps: {
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
-  }, [deps.revision, page, pageSize, query, searchMode])
+  }, [deps.revision, page, pageSize, query, searchMode, debouncedQuery])
 
   useEffect(() => {
     void load()

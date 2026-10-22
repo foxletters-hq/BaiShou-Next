@@ -29,7 +29,7 @@ import { FULL_BACKUP_SCOPE_I18N_KEYS } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { SyncModeComparisonHelp } from '../SyncModeComparisonNotice'
 import { CollapsibleHeight } from '../CollapsibleHeight'
-import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { mobileTypography, sharedTokens, uiTypography } from '../../theme/tokens'
 
 export interface BackupScopeListProps {
   /** 默认是否展开完整范围说明，默认为 true */
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   },
   introText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: uiTypography.sm,
     lineHeight: 18
   },
   sectionBlock: {
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     gap: sharedTokens.spacing.xsPlus
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: uiTypography.md,
     fontWeight: '600'
   },
   sectionDivider: {
@@ -430,14 +430,14 @@ const styles = StyleSheet.create({
     gap: 2
   },
   itemPrimaryText: {
-    fontSize: 13,
+    fontSize: uiTypography.md,
     lineHeight: 19
   },
   itemPrimaryBold: {
     fontWeight: '600'
   },
   itemSecondaryText: {
-    fontSize: 12,
+    fontSize: uiTypography.sm,
     lineHeight: 17
   },
   excludedCard: {
@@ -453,12 +453,12 @@ const styles = StyleSheet.create({
     gap: sharedTokens.spacing.xsPlus
   },
   excludedBullet: {
-    fontSize: 12,
+    fontSize: uiTypography.sm,
     lineHeight: 18
   },
   excludedText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: uiTypography.sm,
     lineHeight: 18
   },
   noticeBox: {
@@ -475,11 +475,11 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   noticeTitle: {
-    fontSize: 12,
+    fontSize: uiTypography.sm,
     fontWeight: '600'
   },
   noticeText: {
-    fontSize: 12,
+    fontSize: uiTypography.sm,
     lineHeight: 17
   },
   noticeDivider: {

@@ -352,10 +352,8 @@ export function useWorkbenchHomeWorkspace({
       setSending(true)
       try {
         let workspace = selectedWorkspace
-        let createdScratch = false
         if (!workspace) {
           workspace = await ensureScratchWorkspace()
-          createdScratch = true
           setSelectedWorkspaceId(workspace.id)
           await refresh()
         }
@@ -414,14 +412,12 @@ export function useWorkbenchHomeWorkspace({
       currentProviderId,
       dialog,
       ensureScratchWorkspace,
-      gateConfig,
       navigate,
       refresh,
       securityMode,
       selectWorkspace,
       selectedAssistantId,
       selectedWorkspace,
-      selectedWorkspaceId,
       sending,
       setFolderRoot,
       t

@@ -62,7 +62,9 @@ describe('ContextEpoch knowledge mount', () => {
       )
     })
 
-    expect(afterMount.systemPrompt).toContain('Mounted knowledge notebooks (2/3): 日记归档, 阅读笔记.')
+    expect(afterMount.systemPrompt).toContain(
+      'Mounted knowledge notebooks (2/3): 日记归档, 阅读笔记.'
+    )
     expect(afterMount.systemPrompt).not.toContain('No knowledge notebook is mounted')
     expect(afterMount.updates.some((update) => update.sourceId === 'knowledge/mount')).toBe(true)
   })

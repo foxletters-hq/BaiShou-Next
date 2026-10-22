@@ -8,6 +8,7 @@ export function GraphPageSimilarPane(props: {
   pairs: GraphSimilarPendingPair[]
   busy: boolean
   onMerge: (pair: GraphSimilarPendingPair) => void
+  onMergeAll?: () => void
   onKeepApart: (pair: GraphSimilarPendingPair) => void
   onLocateNode: (id: string) => void
 }): React.ReactElement {
@@ -21,6 +22,13 @@ export function GraphPageSimilarPane(props: {
   }
   return (
     <>
+      {props.onMergeAll ? (
+        <div className={styles.similarToolbar}>
+          <Button size="small" disabled={props.busy} onClick={props.onMergeAll}>
+            {t('graph.similar_merge_all', '一键合并全部')}
+          </Button>
+        </div>
+      ) : null}
       <p className={styles.pendingHint}>
         {t(
           'graph.similar_hint',

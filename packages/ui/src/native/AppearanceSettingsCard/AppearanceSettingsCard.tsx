@@ -46,6 +46,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const [selectedLanguage, setSelectedLanguage] = useState(language)
   const resolvedFontSizeLevel = normalizeUiFontSizeLevel(fontSizeLevel)
   const [draftFontSizeLevel, setDraftFontSizeLevel] = useState(resolvedFontSizeLevel)
+  const previewFontScale = UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1
 
   useEffect(() => {
     console.log('[AppearanceLang] card:prop', {
@@ -285,10 +286,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               <Text
                 disableGlobalFontScale
                 style={{
-                  fontSize: Math.round(
-                    mobileTypography.secondary.fontSize *
-                      (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
-                  ),
+                  fontSize: Math.round(mobileTypography.secondary.fontSize * previewFontScale),
                   color: colors.textSecondary,
                   marginBottom: sharedTokens.spacing.xs
                 }}
@@ -298,12 +296,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               <Text
                 disableGlobalFontScale
                 style={{
-                  fontSize: Math.round(
-                    mobileTypography.body.fontSize * (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
-                  ),
+                  fontSize: Math.round(mobileTypography.body.fontSize * previewFontScale),
                   lineHeight: Math.round(
-                    (mobileTypography.body.lineHeight ?? 24) *
-                      (UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1)
+                    (mobileTypography.body.lineHeight ?? 24) * previewFontScale
                   ),
                   color: colors.textPrimary
                 }}

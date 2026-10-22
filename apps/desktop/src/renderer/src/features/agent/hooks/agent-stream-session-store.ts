@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 多会话流状态与 IPC 桥接集中管理，拆分模块会引入循环依赖 */
 import {
   appendTimelineReasoning,
   appendTimelineText,

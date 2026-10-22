@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { PdfPageBitmap, PdfPageBitmapRenderer } from '@baishou/core-mobile'
 
 export const MOBILE_PDF_RENDER_DEFAULT_DPI = 200
@@ -42,11 +43,21 @@ export function createMobilePdfPageBitmapRenderer(
     const native = getNative()
     if (!native?.isAvailable()) {
       throw new Error(
-        'PDF 页图需要把原生模块编进开发构建。请执行 pnpm dev:mobile:clear 重编后再识图。'
+        i18n.t(
+          'auto.apps.mobile.src.utils.mobile.pdf.page.render.util.L45',
+          'PDF 页图需要把原生模块编进开发构建。请执行 pnpm dev:mobile:clear 重编后再识图。'
+        )
       )
     }
     const filePath = normalizePdfFilePath(opts.absolutePath)
-    if (!filePath) throw new Error('PDF 路径为空，无法渲染页图')
+    if (!filePath) {
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.utils.mobile.pdf.page.render.util.L49',
+          'PDF 路径为空，无法渲染页图'
+        )
+      )
+    }
     const dpi = clampMobilePdfRenderDpi(opts.dpi)
     const pageNumbers = opts.pageNumbers?.filter((page) => page >= 1) ?? []
     return enqueue(async () => {

@@ -40,6 +40,9 @@
   --bg-overlay: rgba(0, 0, 0, 0.35);
   --bg-glass-surface: rgba(255, 255, 255, 0.48);
   --bg-glass-inset: rgba(255, 255, 255, 0.24);
+  /* 自定义聊天背景上的半透气泡 */
+  --chat-bubble-over-bg: rgba(255, 255, 255, 0.88);
+  --chat-bubble-over-border: rgba(0, 0, 0, 0.1);
   --blur-overlay: blur(20px) saturate(200%);
   --blur-glass: blur(28px) saturate(200%);
   --glass-blur: 24px;
@@ -301,6 +304,8 @@
   --bg-overlay: rgba(0, 0, 0, 0.55);
   --bg-glass-surface: rgba(30, 30, 34, 0.4);
   --bg-glass-inset: rgba(255, 255, 255, 0.06);
+  --chat-bubble-over-bg: rgba(32, 33, 37, 0.85);
+  --chat-bubble-over-border: rgba(255, 255, 255, 0.16);
   /* 深色外圈磨砂罩 */
   --bg-window-shell: color-mix(in srgb, var(--bg-app) 72%, transparent);
 

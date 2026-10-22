@@ -162,6 +162,8 @@ function sameRouteLocation(
   return a.pathname === b.pathname && (a.search || '') === (b.search || '')
 }
 
+const WORKBENCH_ENTRY_ENABLED = false
+
 const AppRoutes = () => {
   const location = useLocation()
   const { closeAll } = useDialog()
@@ -252,9 +254,20 @@ const AppRoutes = () => {
             <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
             <Route
               path="/agent-workspace/knowledge/:notebookId"
-              element={<KnowledgeDetailPage />}
+              element={
+                WORKBENCH_ENTRY_ENABLED ? <KnowledgeDetailPage /> : <Navigate to="/diary" replace />
+              }
             />
-            <Route path="/agent-workspace/*" element={<CachedRoutePlaceholder />} />
+            <Route
+              path="/agent-workspace/*"
+              element={
+                WORKBENCH_ENTRY_ENABLED ? (
+                  <CachedRoutePlaceholder />
+                ) : (
+                  <Navigate to="/diary" replace />
+                )
+              }
+            />
             <Route path="/sessions" element={<SessionManagementScreen />} />
             <Route path="/assistants" element={<AssistantManagementScreen />} />
             <Route path="/assistants/:id" element={<AssistantEditScreen />} />

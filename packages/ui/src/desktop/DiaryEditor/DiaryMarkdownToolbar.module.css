@@ -133,7 +133,7 @@
 
 .shortcutTriggerBtn {
   margin-left: auto;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   padding: 0 var(--spacing-sm-plus);
   font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
@@ -193,7 +193,7 @@
 .shortcutSection {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .shortcutSectionTitle {
@@ -206,7 +206,7 @@
 .shortcutList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .shortcutRow {
@@ -215,7 +215,7 @@
   justify-content: space-between;
   gap: var(--spacing-md);
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-xs, 6px);
   background: var(--bg-surface-low);
 }
@@ -228,7 +228,7 @@
 .shortcutKeys {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
 }
 
@@ -243,8 +243,8 @@
   justify-content: center;
   min-width: 22px;
   height: 22px;
-  padding: 0 6px;
-  border-radius: 4px;
+  padding: 0 var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-secondary);

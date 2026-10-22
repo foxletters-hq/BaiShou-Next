@@ -19,6 +19,7 @@ export function DiaryEditorChrome(props: {
     warning: string
     bgSurface: string
     borderSubtle: string
+    borderControl: string
   }
   isSummaryMode: boolean
   selectedDate: Date
@@ -102,7 +103,7 @@ export function DiaryEditorChrome(props: {
                   {
                     opacity: pressed ? 0.85 : 1,
                     backgroundColor: props.isTtsPlaying ? colors.primaryLight : colors.bgSurface,
-                    borderColor: props.isTtsPlaying ? colors.primary : colors.borderSubtle
+                    borderColor: props.isTtsPlaying ? colors.primary : colors.borderControl
                   }
                 ]}
                 onPress={props.onReadAloud}
@@ -127,7 +128,7 @@ export function DiaryEditorChrome(props: {
               {
                 opacity: pressed ? 0.85 : 1,
                 backgroundColor: props.isFavorite ? colors.primaryLight : colors.bgSurface,
-                borderColor: props.isFavorite ? colors.warning : colors.borderSubtle
+                borderColor: props.isFavorite ? colors.warning : colors.borderControl
               }
             ]}
             onPress={() => props.onFavoriteChange?.(!props.isFavorite)}

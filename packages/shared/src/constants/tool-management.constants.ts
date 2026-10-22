@@ -34,9 +34,7 @@ export function publishPlayfulProcessStatus(enabled: boolean | undefined): void 
   }
 }
 
-export function subscribePlayfulProcessStatus(
-  listener: PlayfulProcessStatusListener
-): () => void {
+export function subscribePlayfulProcessStatus(listener: PlayfulProcessStatusListener): () => void {
   playfulProcessStatusListeners.add(listener)
   listener(sharedPlayfulProcessStatus)
   return () => {

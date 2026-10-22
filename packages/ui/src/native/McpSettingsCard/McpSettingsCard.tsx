@@ -59,11 +59,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
 
   const handleToggle = (value: boolean) => {
     setLocalEnabled(value)
-    if (value) {
-      setLocalApplying(true)
-    } else {
-      setLocalApplying(false)
-    }
+    setLocalApplying(value)
     onChange({ ...config, mcpEnabled: value })
   }
 
@@ -90,8 +86,13 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     )
   }
 
+  const displayPort = activePort ?? config.mcpPort
   const subtitle = localEnabled
-    ? t('settings.mcp_running', '运行中 · 端口 $port').replace('$port', String(config.mcpPort))
+    ? localApplying
+      ? t('settings.mcp_starting', '正在启停服务...')
+      : isRunning
+        ? t('settings.mcp_running', '运行中 · 端口 $port').replace('$port', String(displayPort))
+        : t('settings.mcp_stopped', '已停止')
     : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')
 
   const effectiveToken = authEnabled ? config.mcpAuthToken : undefined

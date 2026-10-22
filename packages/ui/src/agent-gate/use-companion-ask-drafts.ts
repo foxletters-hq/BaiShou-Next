@@ -47,9 +47,7 @@ export function useCompanionAskDrafts(questions: AgentGateQuestion[]) {
       setSelectedIdsById((prev) => {
         const current = prev[questionId] ?? []
         const exists = current.includes(optionId)
-        const rawNext = exists
-          ? current.filter((id) => id !== optionId)
-          : [...current, optionId]
+        const rawNext = exists ? current.filter((id) => id !== optionId) : [...current, optionId]
         const order = new Map(question.options.map((opt, idx) => [opt.id, idx]))
         const nextIds = [...rawNext].sort(
           (a, b) =>

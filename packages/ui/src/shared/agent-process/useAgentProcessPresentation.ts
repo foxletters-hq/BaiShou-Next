@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  getSharedPlayfulProcessStatus,
-  subscribePlayfulProcessStatus
-} from '@baishou/shared'
+import { getSharedPlayfulProcessStatus, subscribePlayfulProcessStatus } from '@baishou/shared'
 import {
   AGENT_PROCESS_ACTIVE_PHRASES,
   AGENT_PROCESS_COMPLETED_PHRASES,

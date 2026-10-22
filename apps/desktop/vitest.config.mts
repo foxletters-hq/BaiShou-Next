@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url'
 
 const configDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(configDir, '../..')
+const isWinOrWsl =
+  process.platform === 'win32' || Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP)
 
 const workspaceAliases = {
   '@baishou/ai': resolve(repoRoot, 'packages/ai'),
@@ -24,8 +26,8 @@ export default defineConfig({
   },
   test: {
     pool: 'threads',
-    maxWorkers: process.platform === 'win32' ? 2 : undefined,
-    fileParallelism: process.platform !== 'win32',
+    maxWorkers: isWinOrWsl ? 2 : undefined,
+    fileParallelism: !isWinOrWsl,
     // ci:check 下 turbo 并行跑所有包测试，冷启动动态 import 在高负载时可能超过默认 5s
     testTimeout: 30000,
     hookTimeout: 30000,

@@ -209,15 +209,15 @@ export function findLastMatchingLayeredRule(
 ): FindLastMatchingLayeredRuleResult | undefined {
   const resources = input.resources ?? []
   const direct = findLastMatchingSingleLayeredRule(input.action, resources, input.layers)
-  if (direct?.rule.effect === AgentGateEffect.Deny || direct?.rule.effect === AgentGateEffect.Allow) {
+  if (
+    direct?.rule.effect === AgentGateEffect.Deny ||
+    direct?.rule.effect === AgentGateEffect.Allow
+  ) {
     return direct
   }
 
   const shellResources = resources.filter((r) => r.kind === 'shell_command')
-  if (
-    shellResources.length > 0 &&
-    shellResources.every((r) => !isDangerousShellCommand(r.value))
-  ) {
+  if (shellResources.length > 0 && shellResources.every((r) => !isDangerousShellCommand(r.value))) {
     const segments = shellResources.flatMap((r) => splitShellChainCommands(r.value))
     if (segments.length > 1) {
       const nonShellResources = resources.filter((r) => r.kind !== 'shell_command')

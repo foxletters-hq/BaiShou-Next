@@ -33,11 +33,7 @@ describe('useChatScroll session switch', () => {
     const previousSessionMessages = [{ id: 'old-1', role: 'assistant', sessionId: 's1' }]
 
     const { rerender } = render(
-      <Harness
-        {...baseParams}
-        sessionId="s1"
-        messages={previousSessionMessages}
-      />
+      <Harness {...baseParams} sessionId="s1" messages={previousSessionMessages} />
     )
 
     const pane = screen.getByTestId('pane')
@@ -45,13 +41,7 @@ describe('useChatScroll session switch', () => {
     pane.scrollTop = 0
 
     // 切换会话但消息还没来得及清空：这一帧仍是上一会话的消息
-    rerender(
-      <Harness
-        {...baseParams}
-        sessionId="s2"
-        messages={previousSessionMessages}
-      />
-    )
+    rerender(<Harness {...baseParams} sessionId="s2" messages={previousSessionMessages} />)
     expect(pane.scrollTop).toBe(1200)
 
     // 新会话消息清空后，容器回到顶部（空容器贴底即顶部）

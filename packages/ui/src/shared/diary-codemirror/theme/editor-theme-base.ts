@@ -151,6 +151,8 @@ export const editorThemeBase = {
     display: 'inline-block',
     width: '0',
     overflow: 'hidden',
+    // width:0 会让多个字符换行，把灰底撑成两行高；保留单行以只锚定基线。
+    whiteSpace: 'nowrap',
     visibility: 'hidden',
     userSelect: 'none',
     pointerEvents: 'none'

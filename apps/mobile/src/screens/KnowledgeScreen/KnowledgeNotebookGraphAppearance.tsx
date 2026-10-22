@@ -25,7 +25,7 @@ export function KnowledgeNotebookGraphAppearance(props: {
   onReplayLayout?: () => void
   onResetGraphSettings?: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { colors, tokens } = useNativeTheme()
   const sectionTitle = {
     color: colors.textPrimary,
@@ -87,11 +87,19 @@ export function KnowledgeNotebookGraphAppearance(props: {
       />
       {(
         [
-          ['textOpacity', 'graph.text_opacity', '文本透明度'],
-          ['nodeSize', 'graph.node_size', '节点大小'],
-          ['lineThickness', 'graph.line_thickness', '连线粗细'],
-          ['hubLabelMinDegree', 'graph.hub_label_degree', '显名边数'],
-          ['hubLabelMinMentions', 'graph.hub_label_mentions', '显名提及']
+          ['textOpacity', 'graph.text_opacity', i18n.t('graph.text_opacity', '文本透明度')],
+          ['nodeSize', 'graph.node_size', i18n.t('graph.node_size', '节点大小')],
+          ['lineThickness', 'graph.line_thickness', i18n.t('graph.line_thickness', '连线粗细')],
+          [
+            'hubLabelMinDegree',
+            'graph.hub_label_degree',
+            i18n.t('graph.hub_label_degree', '显名边数')
+          ],
+          [
+            'hubLabelMinMentions',
+            'graph.hub_label_mentions',
+            i18n.t('graph.hub_label_mentions', '显名提及')
+          ]
         ] as const
       ).map(([key, i18nKey, fallback]) => {
         const range = GRAPH_APPEARANCE_RANGES[key]
@@ -123,10 +131,14 @@ export function KnowledgeNotebookGraphAppearance(props: {
       <Text style={sectionTitle}>{t('graph.forces', '力度')}</Text>
       {(
         [
-          ['centerStrength', 'graph.force_center', '图谱向心力'],
-          ['chargeStrength', 'graph.force_charge', '节点排斥力'],
-          ['linkStrength', 'graph.force_link', '相连吸引力'],
-          ['linkDistance', 'graph.force_link_distance', '连线长度']
+          ['centerStrength', 'graph.force_center', i18n.t('graph.force_center', '图谱向心力')],
+          ['chargeStrength', 'graph.force_charge', i18n.t('graph.force_charge', '节点排斥力')],
+          ['linkStrength', 'graph.force_link', i18n.t('graph.force_link', '相连吸引力')],
+          [
+            'linkDistance',
+            'graph.force_link_distance',
+            i18n.t('graph.force_link_distance', '连线长度')
+          ]
         ] as const
       ).map(([key, i18nKey, fallback]) => {
         const range = GRAPH_FORCE_RANGES[key]
