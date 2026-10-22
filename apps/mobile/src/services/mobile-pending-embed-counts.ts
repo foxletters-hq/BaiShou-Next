@@ -27,6 +27,14 @@ export function invalidateMobilePendingEmbedCountsCache(): void {
   cache.invalidate()
 }
 
+export function clearMobileOrganizePendingSnapshot(): void {
+  lastOrganizeSnapshot = null
+  cache.invalidate()
+  void AsyncStorage.removeItem(ORGANIZE_PENDING_SNAPSHOT_KEY).catch(() => {
+    // 忽略本地快照清理失败
+  })
+}
+
 export function subscribeMobilePendingEmbedCountsChanged(listener: () => void): () => void {
   changeListeners.add(listener)
   return () => {

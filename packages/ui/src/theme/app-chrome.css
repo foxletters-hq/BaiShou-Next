@@ -6,7 +6,7 @@
  * 全窗沉浸（如大图预览）不要挂此类。
  */
 .baishou-app-content-overlay {
-  top: var(--app-titlebar-height, 52px) !important;
+  top: var(--app-titlebar-height, 40px) !important;
   left: var(--app-content-inset-inline, 8px) !important;
   right: var(--app-content-inset-inline, 8px) !important;
   bottom: var(--app-content-inset-bottom, 8px) !important;

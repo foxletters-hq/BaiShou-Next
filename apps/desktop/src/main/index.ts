@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import './app-identity'
 import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
 import { app, shell, BrowserWindow, dialog, ipcMain, Menu, net } from 'electron'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { registerLocalProtocolHandler, registerLocalProtocolScheme } from './local-protocol-handler'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -79,9 +80,18 @@ registerLocalProtocolScheme()
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
 
+function resolveAppIconPath(rawIcon: string): string {
+  if (/app\.asar[\\/]/i.test(rawIcon) && !/app\.asar\.unpacked[\\/]/i.test(rawIcon)) {
+    const unpacked = rawIcon.replace(/app\.asar([\\/])/i, 'app.asar.unpacked$1')
+    if (existsSync(unpacked)) return unpacked
+  }
+  return rawIcon
+}
+
 function createWindow(needsOnboarding: boolean): void {
   const isWin = process.platform === 'win32'
   const isMac = process.platform === 'darwin'
+  const resolvedIcon = resolveAppIconPath(icon)
 
   /**
    * Win11：勿开 transparent。transparent 会关掉系统圆角，Acrylic 仍按直角矩形铺满，
@@ -97,7 +107,7 @@ function createWindow(needsOnboarding: boolean): void {
     frame: false,
     autoHideMenuBar: true,
     hasShadow: true,
-    icon,
+    icon: resolvedIcon,
     ...(isWin
       ? {
           // 勿设 transparent / 带 alpha 的 backgroundColor：会关掉系统圆角或盖住 Acrylic

@@ -1,7 +1,10 @@
-import { Bonjour, Browser } from 'bonjour-service'
+import * as os from 'os'
+import { Bonjour, Browser, Service } from 'bonjour-service'
 import { DiscoveredDevice } from '@baishou/core-desktop'
 import {
+  buildLanMdnsHost,
   getLanDeviceDedupKey,
+  isExcludedLanIpv4,
   lanDevicesEquivalent,
   LAN_DISCOVERY_REQUERY_MS,
   normalizeLanDeviceType,
@@ -16,11 +19,60 @@ type DiscoveryCallbacks = {
   onDeviceLost: (deviceId: string) => void
 }
 
+export interface LanPublishOptions {
+  host?: string
+  interfaceIp?: string | null
+  ips?: string[]
+}
+
+function ensurePreferredLanAddressRecordsPatch(): void {
+  const proto = Service?.prototype as unknown as
+    | {
+        records?: () => Array<{ type?: string }>
+        RecordA?: (
+          service: unknown,
+          ip: string
+        ) => { type: string; name: string; ttl: number; data: string }
+        __baishouPatchedRecords?: boolean
+      }
+    | undefined
+  if (!proto || typeof proto.records !== 'function' || proto.__baishouPatchedRecords) {
+    return
+  }
+
+  const originalRecords = proto.records
+  proto.__baishouPatchedRecords = true
+  proto.records = function (this: {
+    txt?: Record<string, unknown>
+    RecordA?: (
+      service: unknown,
+      ip: string
+    ) => { type: string; name: string; ttl: number; data: string }
+  }) {
+    const baseRecords = originalRecords.call(this)
+    const rawTxtIp = typeof this.txt?.ip === 'string' ? this.txt.ip : ''
+    const preferredIps = rawTxtIp
+      .split(',')
+      .map((ip) => ip.trim())
+      .filter((ip) => ip && !isExcludedLanIpv4(ip))
+    if (preferredIps.length === 0 || typeof this.RecordA !== 'function') {
+      return baseRecords
+    }
+
+    const nonAddressRecords = baseRecords.filter(
+      (record) => record?.type !== 'A' && record?.type !== 'AAAA'
+    )
+    const aRecords = preferredIps.map((ip) => this.RecordA!(this, ip))
+    return [...nonAddressRecords, ...aRecords]
+  }
+}
+
 /**
  * 负责局域网 mDNS (Bonjour) 服务的广播发布与局域网伙伴嗅探发现。
  */
 export class LanDiscovery {
   private bonjour: Bonjour | null = null
+  private bonjourInterfaceIp: string | null = null
   private browser: Browser | null = null
   private publishedService: any = null
   private activeDevices = new Map<string, DiscoveredDevice>()
@@ -28,21 +80,61 @@ export class LanDiscovery {
   private requeryTimer: ReturnType<typeof setInterval> | null = null
   private discoveryCallbacks: DiscoveryCallbacks | null = null
 
-  private getBonjour(): Bonjour {
+  private getBonjour(interfaceIp?: string | null): Bonjour {
+    ensurePreferredLanAddressRecordsPatch()
+    const targetInterface =
+      interfaceIp && !isExcludedLanIpv4(interfaceIp) ? interfaceIp.trim() : null
+
+    if (
+      this.bonjour &&
+      targetInterface &&
+      this.bonjourInterfaceIp !== targetInterface &&
+      !this.publishedService &&
+      !this.browser
+    ) {
+      this.bonjour.destroy()
+      this.bonjour = null
+      this.bonjourInterfaceIp = null
+    }
+
     if (!this.bonjour) {
-      this.bonjour = new Bonjour()
+      this.bonjourInterfaceIp = targetInterface
+      this.bonjour = targetInterface
+        ? new Bonjour({ interface: targetInterface, bind: '0.0.0.0' } as Record<string, unknown>)
+        : new Bonjour()
     }
     return this.bonjour
   }
 
-  public publish(name: string, port: number, txt: Record<string, unknown>) {
+  public publish(
+    name: string,
+    port: number,
+    txt: Record<string, unknown>,
+    options?: LanPublishOptions
+  ) {
     this.unpublish()
-    const bj = this.getBonjour()
     const normalizedTxt = Object.fromEntries(
       Object.entries(txt).map(([key, value]) => [key, String(value ?? '')])
     )
+    const preferredIps = (options?.ips ?? String(normalizedTxt.ip ?? '').split(','))
+      .map((ip) => ip.trim())
+      .filter((ip) => ip && !isExcludedLanIpv4(ip))
+    if (preferredIps.length > 0 && !normalizedTxt.ip) {
+      normalizedTxt.ip = preferredIps.slice(0, 4).join(',')
+    }
+
+    const deviceId = String(normalizedTxt.device_id ?? normalizedTxt.deviceId ?? '').trim()
+    const host = options?.host || buildLanMdnsHost(os.hostname(), deviceId)
+    const interfaceIp = options?.interfaceIp ?? preferredIps[0] ?? null
+
+    if (this.discoveryCallbacks) {
+      this.discoveryCallbacks.publishedServiceName = name
+    }
+
+    const bj = this.getBonjour(interfaceIp)
     this.publishedService = bj.publish({
       name,
+      host,
       type: 'baishou',
       protocol: 'tcp',
       port,
@@ -153,7 +245,32 @@ export class LanDiscovery {
     }
   }
 
+  private reannouncePublishedService() {
+    if (!this.bonjour || !this.publishedService) return
+    if (!this.publishedService.activated || this.publishedService.destroyed) return
+    try {
+      const mdns = (
+        this.bonjour as unknown as {
+          server?: { mdns?: { respond?: (records: unknown[]) => void } }
+        }
+      ).server?.mdns
+      const records =
+        typeof this.publishedService.records === 'function' ? this.publishedService.records() : null
+      if (
+        mdns &&
+        typeof mdns.respond === 'function' &&
+        Array.isArray(records) &&
+        records.length > 0
+      ) {
+        mdns.respond(records)
+      }
+    } catch (e) {
+      console.warn('[LanDiscovery] reannounce failed:', e)
+    }
+  }
+
   private triggerDiscoveryRequery() {
+    this.reannouncePublishedService()
     if (!this.browser) return
     try {
       this.browser.update()
@@ -179,12 +296,13 @@ export class LanDiscovery {
   public startDiscovery(
     publishedServiceName: string | null,
     onDeviceFound: (device: DiscoveredDevice) => void,
-    onDeviceLost: (deviceId: string) => void
+    onDeviceLost: (deviceId: string) => void,
+    interfaceIp?: string | null
   ) {
     this.stopDiscovery()
     this.discoveryCallbacks = { publishedServiceName, onDeviceFound, onDeviceLost }
 
-    const bj = this.getBonjour()
+    const bj = this.getBonjour(interfaceIp)
     this.browser = bj.find({ type: 'baishou', protocol: 'tcp' }, (service) => {
       this.handleDiscoveredService(service)
     })
@@ -225,6 +343,7 @@ export class LanDiscovery {
       this.bonjour.destroy()
       this.bonjour = null
     }
+    this.bonjourInterfaceIp = null
   }
 
   public hasPublishedService(): boolean {

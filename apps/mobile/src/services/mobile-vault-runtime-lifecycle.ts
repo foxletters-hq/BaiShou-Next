@@ -246,6 +246,15 @@ export async function rebootstrapAfterStorageRootChange(
         pathService: deps.pathService as unknown as MobileExternalPathService
       })
     }
+
+    const { resetMobileRawDataRuntime, ensureMobileRawDataRuntime } =
+      await import('./mobile-raw-data-source.runtime')
+    resetMobileRawDataRuntime()
+    ensureMobileRawDataRuntime({
+      pathService: deps.pathService,
+      fileSystem: deps.fileSystem
+    })
+
     await connectGlobalShadowDb(deps)
     if (blockingResync) {
       await clearAllVaultShadowIndexes(deps.vaultService)

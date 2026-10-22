@@ -44,7 +44,57 @@ type RagRuntimeSnapshot = {
 let cachedStats: RagRuntimeStats = { ...DEFAULT_STATS }
 let cachedActiveState: RagRuntimeActiveState = { ...DEFAULT_ACTIVE_STATE }
 const listeners = new Set<() => void>()
-let emitRafId: number | null = null
+let emitTimerId: ReturnType<typeof setTimeout> | null = null
+
+function isSamePhaseItem(
+  a?: { completed: number; total: number; done?: boolean },
+  b?: { completed: number; total: number; done?: boolean }
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return a.completed === b.completed && a.total === b.total && Boolean(a.done) === Boolean(b.done)
+}
+
+function isSamePhases(a?: RagBatchEmbedPhaseCounts, b?: RagBatchEmbedPhaseCounts): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    isSamePhaseItem(a.diaries, b.diaries) &&
+    isSamePhaseItem(a.memories, b.memories) &&
+    isSamePhaseItem(a.graphNodes, b.graphNodes) &&
+    isSamePhaseItem(a.knowledgeSources, b.knowledgeSources) &&
+    isSamePhaseItem(a.graphExtract, b.graphExtract) &&
+    isSamePhaseItem(a.graphDisambiguate, b.graphDisambiguate)
+  )
+}
+
+function isSameRagStats(a: RagRuntimeStats, b: RagRuntimeStats): boolean {
+  return (
+    a === b ||
+    (a.totalCount === b.totalCount &&
+      a.currentDimension === b.currentDimension &&
+      a.totalSizeText === b.totalSizeText)
+  )
+}
+
+function isSameRagActiveState(a: RagRuntimeActiveState, b: RagRuntimeActiveState): boolean {
+  return (
+    a === b ||
+    (a.isRunning === b.isRunning &&
+      a.type === b.type &&
+      a.progress === b.progress &&
+      a.total === b.total &&
+      a.statusText === b.statusText &&
+      a.statusKey === b.statusKey &&
+      a.error === b.error &&
+      Boolean(a.aborted) === Boolean(b.aborted) &&
+      Boolean(a.rollbackApplied) === Boolean(b.rollbackApplied) &&
+      a.phase === b.phase &&
+      isSamePhases(a.phases, b.phases) &&
+      Boolean(a.paused) === Boolean(b.paused) &&
+      Boolean(a.cancelling) === Boolean(b.cancelling))
+  )
+}
 
 function emit() {
   for (const listener of listeners) {
@@ -57,11 +107,11 @@ function scheduleEmit(): void {
     emit()
     return
   }
-  if (emitRafId != null) return
-  emitRafId = window.requestAnimationFrame(() => {
-    emitRafId = null
+  if (emitTimerId != null) return
+  emitTimerId = setTimeout(() => {
+    emitTimerId = null
     emit()
-  })
+  }, 16)
 }
 
 export function getRagRuntimeSnapshot(): RagRuntimeSnapshot {
@@ -77,22 +127,28 @@ export function getCachedRagActiveState(): RagRuntimeActiveState {
 }
 
 export function setCachedRagStats(stats: RagRuntimeStats): void {
+  if (isSameRagStats(cachedStats, stats)) return
   cachedStats = stats
-  emit()
+  scheduleEmit()
 }
 
 export function patchCachedRagStats(patch: Partial<RagRuntimeStats>): void {
-  cachedStats = { ...cachedStats, ...patch }
+  const next = { ...cachedStats, ...patch }
+  if (isSameRagStats(cachedStats, next)) return
+  cachedStats = next
   scheduleEmit()
 }
 
 export function setCachedRagActiveState(state: RagRuntimeActiveState): void {
+  if (isSameRagActiveState(cachedActiveState, state)) return
   cachedActiveState = state
-  emit()
+  scheduleEmit()
 }
 
 export function patchCachedRagActiveState(patch: Partial<RagRuntimeActiveState>): void {
-  cachedActiveState = { ...cachedActiveState, ...patch }
+  const next = { ...cachedActiveState, ...patch }
+  if (isSameRagActiveState(cachedActiveState, next)) return
+  cachedActiveState = next
   scheduleEmit()
 }
 

@@ -218,6 +218,8 @@ export async function executeArchiveImportFromZip(
         const { getAppDbPath } = await import('../db')
         const actualDbPath =
           getAppDbPath() || path.join(app.getPath('userData'), 'baishou_agent.db')
+        await fsp.rm(`${actualDbPath}-wal`, { force: true }).catch(() => {})
+        await fsp.rm(`${actualDbPath}-shm`, { force: true }).catch(() => {})
         await fsp.copyFile(extractedDbPath, actualDbPath)
       }
 
@@ -231,6 +233,12 @@ export async function executeArchiveImportFromZip(
       resetAppDb()
       const restoredDb = getAppDb()
       connectionManager.setDb(restoredDb)
+      try {
+        const { invalidateAgentManagers } = await import('../ipc/agent-helpers')
+        invalidateAgentManagers()
+      } catch {
+        // ignore
+      }
 
       const client = (restoredDb as any)?.session?.client
       if (client) {
@@ -346,10 +354,24 @@ export async function executeArchiveImportFromZip(
   }
 
   try {
+    const { resetRawDataRuntime } = await import('./raw-data-source.runtime')
+    resetRawDataRuntime()
+  } catch (e: any) {
+    logger.error('Failed to reset raw data runtime after import:', e)
+  }
+
+  try {
     const { rebindSummaryCacheForActiveVault } = await import('../ipc/summary.ipc')
     await rebindSummaryCacheForActiveVault()
   } catch (e: any) {
     logger.error('Failed to rebind summary cache after import:', e)
+  }
+
+  try {
+    const { notifyPendingEmbedCountsChanged } = await import('./pending-embed-counts.service')
+    notifyPendingEmbedCountsChanged()
+  } catch {
+    // ignore
   }
 
   deps.scheduleBootstrapResyncAfterImport()

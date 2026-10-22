@@ -121,11 +121,17 @@ export function isVirtualLanInterfaceName(name: string): boolean {
     'virtualbox',
     'vbox',
     'clash',
+    'mihomo',
+    'sing-box',
+    'nekoray',
+    'v2ray',
     'meta',
     'tun',
+    'tap',
     'wintun',
     'wireguard',
     'tailscale',
+    'zerotier',
     'vpn',
     'virtual',
     'npcap',
@@ -280,6 +286,30 @@ export function buildLanServiceName(nickname: string, deviceId: string): string 
   const safeNickname = nickname.replace(/[^\w\u4e00-\u9fa5]/g, '').substring(0, 10) || 'Device'
   const suffix = deviceId.replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'lan'
   return `BaiShou-${safeNickname}-${suffix}`
+}
+
+/**
+ * 生成合法的 mDNS `.local` 主机名（仅含 ASCII 字母、数字与连字符）。
+ * Windows 下 os.hostname() 不带 `.local`，会导致 Android DNSSD / Apple mDNSResponder
+ * 将 SRV target 当作单播域名（IsLocalDomain=false），拒绝组播 A 记录并卡死在 queryRecords()。
+ */
+export function buildLanMdnsHost(hostname: string, deviceId?: string): string {
+  const stripped = String(hostname ?? '')
+    .trim()
+    .replace(/\.local\.?$/i, '')
+    .replace(/\.+$/g, '')
+  const safeBase =
+    stripped
+      .replace(/[^a-zA-Z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40)
+      .replace(/-$/g, '') || 'baishou-device'
+  const suffix = String(deviceId ?? '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(-8)
+  const label = suffix ? `${safeBase}-${suffix}` : safeBase
+  return `${label}.local`
 }
 
 /** 与原版 Flutter 一致：局域网备份包大小（MB，保留两位小数） */

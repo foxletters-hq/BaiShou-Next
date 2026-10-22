@@ -51,46 +51,47 @@ export function useGraphPageExtract(deps: ExtractDeps) {
   const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
   const [queueModalOpen, setQueueModalOpen] = useState(false)
   const queueUnsubRef = useRef<(() => void) | null>(null)
+  const wasRunningRef = useRef(false)
   const depsRef = useRef(deps)
   depsRef.current = deps
 
-  const applyQueueSnapshot = useCallback(
-    (state: GraphExtractQueueSnapshot) => {
-      const d = depsRef.current
-      setExtractQueue(state)
-      const running =
-        state.pendingCount > 0 || state.runningCount > 0 || (state.aligningCount ?? 0) > 0
-      setExtractRunning(running)
-      if (running) {
-        const done = state.completedCount
-        const total = state.items.length
-        const current = Math.min(done + state.runningCount + (state.aligningCount ?? 0), total)
-        d.setStatus(
-          d.t(
-            'graph.extract_queue_progress',
-            '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
-            {
-              current,
-              total,
-              percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
-            }
-          )
+  const applyQueueSnapshot = useCallback((state: GraphExtractQueueSnapshot) => {
+    const d = depsRef.current
+    setExtractQueue(state)
+    const running =
+      state.pendingCount > 0 || state.runningCount > 0 || (state.aligningCount ?? 0) > 0
+    setExtractRunning(running)
+    if (running) {
+      wasRunningRef.current = true
+      const done = state.completedCount
+      const total = state.items.length
+      const current = Math.min(done + state.runningCount + (state.aligningCount ?? 0), total)
+      d.setStatus(
+        d.t(
+          'graph.extract_queue_progress',
+          '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
+          {
+            current,
+            total,
+            percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
+          }
         )
-      } else if (state.completedCount > 0 || state.errorCount > 0) {
-        d.setStatus(
-          d.t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
-            done: state.completedCount,
-            failed: state.errorCount
-          })
-        )
+      )
+    } else if (state.completedCount > 0 || state.errorCount > 0) {
+      d.setStatus(
+        d.t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
+          done: state.completedCount,
+          failed: state.errorCount
+        })
+      )
+      if (wasRunningRef.current) {
+        wasRunningRef.current = false
         void d.refreshRef.current().finally(() => {
           void refreshMemoryReadiness()
         })
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyQueueSnapshot 只读翻译入口
-    [deps.t]
-  )
+    }
+  }, [])
 
   const queueByPath = useMemo(
     () => buildGraphQueueByPath(extractQueue?.items ?? []),

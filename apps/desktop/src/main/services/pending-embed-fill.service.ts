@@ -156,6 +156,8 @@ export async function runManualPendingEmbedFill(options?: {
         )
       }
       if (extractQueue.isRunning || queued.queued > 0) {
+        let lastReportedCompleted = -1
+        let lastReportedTotal = -1
         await extractQueue.waitUntilIdle({
           shouldContinue: async () => {
             try {
@@ -167,11 +169,17 @@ export async function runManualPendingEmbedFill(options?: {
           },
           onProgress: (state) => {
             const completed = extractDone + state.completedCount + state.errorCount
+            const nextTotal = Math.max(extractTotal, extractDone + state.items.length)
+            if (completed === lastReportedCompleted && nextTotal === lastReportedTotal) {
+              return
+            }
+            lastReportedCompleted = completed
+            lastReportedTotal = nextTotal
             report(
               'graph_extract',
               patchPhaseCounts(phases, 'graph_extract', {
                 completed,
-                total: Math.max(extractTotal, extractDone + state.items.length)
+                total: nextTotal
               })
             )
           }

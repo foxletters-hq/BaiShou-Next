@@ -210,6 +210,13 @@ export function createArchiveDbBridge(deps: {
       )
       setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: runtime.drizzleDb })
       ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
+      try {
+        const { notifyMobilePendingEmbedCountsChanged } =
+          await import('../../services/mobile-pending-embed-counts')
+        notifyMobilePendingEmbedCountsChanged()
+      } catch {
+        // ignore
+      }
       if (isMounted()) {
         setValue((prev) => ({
           ...prev,

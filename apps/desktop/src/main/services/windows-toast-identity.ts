@@ -10,12 +10,34 @@ import {
 let ensured = false
 let iconPath: string | undefined
 
+function resolveUnpackedIconPath(rawPath: string | undefined): string | undefined {
+  if (!rawPath) return undefined
+  if (/app\.asar[\\/]/i.test(rawPath) && !/app\.asar\.unpacked[\\/]/i.test(rawPath)) {
+    const unpacked = rawPath.replace(/app\.asar([\\/])/i, 'app.asar.unpacked$1')
+    if (existsSync(unpacked)) return unpacked
+  }
+  return existsSync(rawPath) ? rawPath : undefined
+}
+
+function resolveWindowsShortcutIconPath(
+  execPath: string,
+  packaged: boolean,
+  rawIconPath: string | undefined
+): string {
+  if (packaged) return execPath
+  const resolved = resolveUnpackedIconPath(rawIconPath)
+  if (resolved && /\.(?:ico|exe|dll)$/i.test(resolved)) {
+    return resolved
+  }
+  return execPath
+}
+
 export function setWindowsToastIconPath(path: string | undefined): void {
   iconPath = path
 }
 
 export function getWindowsToastIconPath(): string | undefined {
-  return iconPath && existsSync(iconPath) ? iconPath : undefined
+  return resolveUnpackedIconPath(iconPath)
 }
 
 export function desktopToastAppUserModelId(): string {
@@ -40,7 +62,7 @@ export function ensureWindowsToastShortcut(): void {
       packaged: app.isPackaged,
       argv: process.argv,
       appUserModelId: desktopToastAppUserModelId(),
-      iconPath: getWindowsToastIconPath(),
+      iconPath: resolveWindowsShortcutIconPath(process.execPath, app.isPackaged, iconPath),
       description: app.getName()
     })
     const operation = existsSync(shortcutPath) ? 'replace' : 'create'
