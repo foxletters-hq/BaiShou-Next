@@ -94,8 +94,6 @@ export async function buildAgentSessionToolsAndPrompt(input: {
       systemModels.embeddingModelId,
       hsRepo
     )
-  } else if (provider && modelId && userConfig?.['hasEmbeddingModel']) {
-    embAdapter = new EmbeddingAdapter(provider, modelId, hsRepo)
   }
 
   let dedupService: any = undefined

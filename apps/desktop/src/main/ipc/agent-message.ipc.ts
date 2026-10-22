@@ -8,7 +8,9 @@ import {
 } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import {
+  type GlobalModelsConfig,
   isAutoInjectCurrentTimeEnabled,
+  resolveDialogueModelSelection,
   resolveWebSearchEnabled,
   sessionBelongsToActiveVaultId,
   logger
@@ -92,21 +94,20 @@ export function registerMessageIPC() {
       const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
       const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
       const webSearchEnabled = resolveWebSearchEnabled(searchMode, storedSearchMode)
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const resolvedDialogue = resolveDialogueModelSelection({
+        requestedProviderId: session?.providerId,
+        requestedModelId: session?.modelId,
+        globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+        globalDialogueModelId: globalModels?.globalDialogueModelId
+      })
 
       const { provider, userConfig } = await buildStreamConfig(
-        session?.providerId ?? undefined,
-        session?.modelId ?? undefined,
+        resolvedDialogue.providerId ?? undefined,
+        resolvedDialogue.modelId ?? undefined,
         webSearchEnabled,
         prefs.assistantContextWindow,
         prefs.assistantEmojiPrefs
-      ).catch(() =>
-        buildStreamConfig(
-          undefined,
-          undefined,
-          webSearchEnabled,
-          prefs.assistantContextWindow,
-          prefs.assistantEmojiPrefs
-        )
       )
 
       const recentCount =
@@ -114,9 +115,10 @@ export function registerMessageIPC() {
 
       const { buildAgentSystemPrompt } = await import('./build-agent-system-prompt')
       const systemPrompt = await buildAgentSystemPrompt(sessionId, webSearchEnabled)
+      const effectiveModelId = resolvedDialogue.modelId || ''
       const effectiveProviderType = resolveEffectiveProviderType(
         provider?.config?.type || 'openai',
-        session?.modelId || ''
+        effectiveModelId
       )
 
       return ContextAtMessageService.getContextAtMessage(
@@ -126,7 +128,7 @@ export function registerMessageIPC() {
         realSnapshotRepo,
         {
           recentCount,
-          modelId: session?.modelId,
+          modelId: effectiveModelId || undefined,
           providerType: effectiveProviderType,
           systemPrompt,
           wrapMessageTime: isAutoInjectCurrentTimeEnabled(
@@ -147,15 +149,22 @@ export function registerMessageIPC() {
       return { ok: false, error: 'Session not found' }
     }
 
-    const providerId = session.providerId ?? undefined
-    const modelId = session.modelId ?? undefined
-    const { provider } = await buildStreamConfig(providerId, modelId, false)
-    const resolvedModelId =
-      modelId || (await settingsManager.get<any>('global_models'))?.globalDialogueModelId
-
-    if (!resolvedModelId) {
+    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+    const resolvedDialogue = resolveDialogueModelSelection({
+      requestedProviderId: session.providerId,
+      requestedModelId: session.modelId,
+      globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+      globalDialogueModelId: globalModels?.globalDialogueModelId
+    })
+    if (!resolvedDialogue.providerId || !resolvedDialogue.modelId) {
       return { ok: false, error: 'No model configured for this session' }
     }
+    const { provider } = await buildStreamConfig(
+      resolvedDialogue.providerId,
+      resolvedDialogue.modelId,
+      false
+    )
+    const resolvedModelId = resolvedDialogue.modelId
 
     const userConfig = await buildAgentUserConfigFromSettings()
     const wrapMessageTime = isAutoInjectCurrentTimeEnabled(

@@ -220,4 +220,37 @@ describe('buildExternalMcpVercelTools', () => {
     )
     expect(allowedMeta.riskLevel).toBe('safe')
   })
+
+  it('should not ask the app before an external MCP write tool runs', async () => {
+    const { AgentGateEffect } = await import('@baishou/shared')
+    const callTool = vi.fn(async () => ({
+      content: [{ type: 'text', text: 'edited' }]
+    }))
+    const assert = vi.fn()
+    const probeEffect = vi.fn(() => AgentGateEffect.Ask)
+    const gate = {
+      assert,
+      assertWithResolution: vi.fn(),
+      ask: vi.fn(),
+      reply: vi.fn(),
+      get: vi.fn(),
+      listPending: vi.fn(() => []),
+      cancelSession: vi.fn(),
+      probeEffect
+    }
+    const tools = buildExternalMcpVercelTools({
+      tools: [{ serverId: 'files', serverName: 'Files', name: 'edit_file' }],
+      callTool,
+      context: { agentGate: gate } as unknown as ToolContext
+    })
+    const vercelTool = tools[EXTERNAL_MCP_GATEWAY_TOOL_ID] as {
+      execute: (args: Record<string, unknown>) => Promise<string>
+    }
+
+    await expect(
+      vercelTool.execute({ tool: 'edit_file', arguments: { path: 'a.md' } })
+    ).resolves.toBe('edited')
+    expect(callTool).toHaveBeenCalledWith('files', 'edit_file', { path: 'a.md' })
+    expect(assert).not.toHaveBeenCalled()
+  })
 })

@@ -43,4 +43,16 @@ describe('provider slot binding', () => {
       /new MemoryDeduplicationServiceImpl\(\s*embAdapter,\s*dbAdapter,\s*embeddingProvider/
     )
   })
+
+  it('should resolve session and global dialogue slots as a pair in system prompt and message IPC', () => {
+    const sysPrompt = read('../../ipc/build-agent-system-prompt.ts')
+    expect(sysPrompt).toContain('resolveDialogueModelSelection')
+    expect(sysPrompt).not.toContain("'deepseek-chat'")
+
+    const msgIpc = read('../../ipc/agent-message.ipc.ts')
+    expect(msgIpc).toContain('resolveDialogueModelSelection')
+
+    const settingsIpc = read('../../ipc/settings-models.ipc.ts')
+    expect(settingsIpc).toContain('globalGraphProviderId')
+  })
 })

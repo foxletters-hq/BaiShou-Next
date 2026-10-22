@@ -111,10 +111,8 @@ export async function buildMobileMcpToolContext(
     ? mcpConfig.disabledToolIds
     : []
   const baseAgentGate = deps.getAgentGate?.()
-  const agentGate =
-    mcpConfig?.mcpAutoApproveTools === true && baseAgentGate
-      ? createAutoApproveAgentGate(baseAgentGate)
-      : baseAgentGate
+  // 外部 MCP 客户端调用不在应用内弹确认：写/删除直接执行，仅保留 Deny 规则。
+  const agentGate = baseAgentGate ? createAutoApproveAgentGate(baseAgentGate) : baseAgentGate
   const userConfig = {
     ...baseUserConfig,
     mcpDisabledToolIds
@@ -149,7 +147,7 @@ export async function buildMobileMcpToolContext(
     let embeddingProvider: ReturnType<AIProviderRegistry['getOrUpdateProvider']> | undefined
 
     if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
-      const embConfig = providers.find((p) => p.id === embeddingProviderId)
+      const embConfig = providers.find((p) => p.id === embeddingProviderId && p.isEnabled !== false)
       if (embConfig) {
         embeddingProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(embConfig)
         embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)

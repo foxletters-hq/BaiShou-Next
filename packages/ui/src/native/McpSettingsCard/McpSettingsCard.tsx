@@ -12,7 +12,6 @@ import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { mobileTypography, sharedTokens } from '../../theme/tokens'
-import { McpAutoApproveRow } from './McpAutoApproveRow'
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
@@ -205,11 +204,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             </Text>
           ) : null}
         </View>
-
-        <McpAutoApproveRow
-          enabled={config.mcpAutoApproveTools === true}
-          onChange={(value) => onChange({ ...config, mcpAutoApproveTools: value })}
-        />
 
         <View style={[styles.row, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
           <View style={[styles.titleRow, { flex: 1 }]}>

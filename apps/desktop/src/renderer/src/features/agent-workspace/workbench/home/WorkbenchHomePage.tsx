@@ -265,9 +265,7 @@ export const WorkbenchHomePage: React.FC = () => {
           currentProviderId={chrome.model.currentProviderId}
           currentModelId={chrome.model.currentModelId}
           onSelect={(providerId, modelId) => {
-            chrome.model.userManuallySetModelRef.current = true
-            chrome.model.setCurrentProviderId(providerId)
-            chrome.model.setCurrentModelId(modelId)
+            void chrome.model.selectDialogueModel(providerId, modelId)
           }}
           onManageProviders={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)}
           reasoningEffort={reasoningEffort}

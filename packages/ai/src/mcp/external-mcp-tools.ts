@@ -10,6 +10,7 @@ import {
 import type { ToolContext } from '../tools/agent.tool'
 import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
+import { createAutoApproveAgentGate } from '../baishou-agent-gate/baishou-agent-gate-auto-approve'
 import { unwrapBaishouMcpToolName } from '../tools/mcp-tool.util'
 import { getBaishouMcpToolDescription } from './baishou-mcp-tools'
 
@@ -306,6 +307,11 @@ export function buildExternalMcpVercelTools(params: {
   }
 
   const description = buildExternalMcpCatalogDescription(params.tools)
+  // MCP 无非交互的审批通道：外部服务的写/编辑/删除直接执行，不再在应用内弹确认。
+  const gate = params.context.agentGate
+    ? createAutoApproveAgentGate(params.context.agentGate)
+    : undefined
+  const gateContext = gate ? { ...params.context, agentGate: gate } : params.context
 
   const gatewayTool = tool({
     description,
@@ -354,7 +360,7 @@ export function buildExternalMcpVercelTools(params: {
           target.description,
           target.alwaysAllow
         ),
-        params.context,
+        gateContext,
         runExecute
       )
       return gatedExecute(callArgs)

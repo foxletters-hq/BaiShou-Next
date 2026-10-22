@@ -174,7 +174,11 @@ export const WorkbenchSkillsPage: React.FC = () => {
           providerId: chrome.model.currentProviderId,
           modelId: chrome.model.currentModelId
         })
-        stashWorkspaceInitMeta(sessionId, payload)
+        stashWorkspaceInitMeta(sessionId, {
+          ...payload,
+          providerId: chrome.model.currentProviderId,
+          modelId: chrome.model.currentModelId
+        })
         navigate(`/agent-workspace/${sessionId}?init=${encodeURIComponent(payload.text)}`)
       } catch (error) {
         console.error('[WorkbenchSkillsPage] launch skill failed:', error)
@@ -233,7 +237,14 @@ export const WorkbenchSkillsPage: React.FC = () => {
           content: resolveSkillBody(skill)
         })
         // 伙伴页用草稿会话 id 消费 sessionStorage 中的技能引用与展示文案
-        sessionStorage.setItem(`baishou:chat-init-meta:${draftSessionId}`, JSON.stringify(payload))
+        sessionStorage.setItem(
+          `baishou:chat-init-meta:${draftSessionId}`,
+          JSON.stringify({
+            ...payload,
+            providerId: chrome.model.currentProviderId,
+            modelId: chrome.model.currentModelId
+          })
+        )
         const params = new URLSearchParams({ init: payload.text })
         if (chrome.selectedAssistantId) params.set('assistantId', chrome.selectedAssistantId)
         navigate(`/chat/${encodeURIComponent(draftSessionId)}?${params.toString()}`)
@@ -247,7 +258,14 @@ export const WorkbenchSkillsPage: React.FC = () => {
         )
       }
     },
-    [chrome.selectedAssistantId, dialog, navigate, t]
+    [
+      chrome.model.currentModelId,
+      chrome.model.currentProviderId,
+      chrome.selectedAssistantId,
+      dialog,
+      navigate,
+      t
+    ]
   )
 
   const handleUseSkillInProject = useCallback(

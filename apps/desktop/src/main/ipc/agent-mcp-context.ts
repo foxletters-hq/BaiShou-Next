@@ -72,7 +72,6 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
     ? mcpConfig.disabledToolIds
     : []
-  const autoApproveTools = mcpConfig?.mcpAutoApproveTools === true
   const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
 
   const drizzleDb = connectionManager.getDb()
@@ -134,7 +133,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     mcpDisabledToolIds
   }
 
-  const effectiveAgentGate = autoApproveTools ? createAutoApproveAgentGate(agentGate) : agentGate
+  // 外部 MCP 客户端的调用不在应用内弹确认：编辑/写入/删除都直接执行，
+  // 只保留 Deny 规则（禁用工具、策略拒绝等）。
+  const effectiveAgentGate = createAutoApproveAgentGate(agentGate)
   const context = syncMcpToolUserConfig({
     sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultId: activeVault?.id || deriveLegacyVaultId(vaultName),

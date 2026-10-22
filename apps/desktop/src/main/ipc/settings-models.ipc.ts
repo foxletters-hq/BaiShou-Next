@@ -93,6 +93,11 @@ export function registerSettingsModelsIPC() {
       globalModels.globalDialogueModelId = ''
       changed = true
     }
+    if (!isValid(globalModels.globalGraphProviderId || '', globalModels.globalGraphModelId || '')) {
+      globalModels.globalGraphProviderId = ''
+      globalModels.globalGraphModelId = ''
+      changed = true
+    }
     if (!isValid(globalModels.globalNamingProviderId, globalModels.globalNamingModelId)) {
       globalModels.globalNamingProviderId = ''
       globalModels.globalNamingModelId = ''

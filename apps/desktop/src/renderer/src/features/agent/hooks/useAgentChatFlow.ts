@@ -291,6 +291,8 @@ export function useAgentChatFlow() {
 
       const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {
         displayText,
+        providerId: model.currentProviderId,
+        modelId: model.currentModelId,
         skillRefs
       })
       if ('error' in saveResult) {

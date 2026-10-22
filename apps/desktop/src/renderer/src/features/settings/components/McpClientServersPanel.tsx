@@ -341,9 +341,6 @@ export const McpClientServersPanel: React.FC = () => {
                 onToggleEnabled={(enabled) => {
                   void patchServer(server.id, { enabled })
                 }}
-                onToggleAlwaysAllow={(alwaysAllow) => {
-                  void patchServer(server.id, { alwaysAllow })
-                }}
                 onRetry={() => {
                   void (async () => {
                     setTestingId(server.id)

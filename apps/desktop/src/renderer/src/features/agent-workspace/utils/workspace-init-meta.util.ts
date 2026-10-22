@@ -4,6 +4,8 @@ const memoryStash = new Map<string, WorkspaceInitSendMeta>()
 export type WorkspaceInitSendMeta = {
   text: string
   displayText?: string
+  providerId?: string
+  modelId?: string
   skillRefs?: Array<{ command: string; content: string }>
   fileRefs?: Array<{
     relativePath: string
@@ -41,6 +43,8 @@ export function stashWorkspaceInitMeta(sessionId: string, meta: WorkspaceInitSen
       JSON.stringify({
         text: meta.text,
         displayText: meta.displayText,
+        providerId: meta.providerId,
+        modelId: meta.modelId,
         skillRefs: meta.skillRefs,
         fileRefs: meta.fileRefs,
         attachments: toPersistableAttachments(meta.attachments)
@@ -48,6 +52,19 @@ export function stashWorkspaceInitMeta(sessionId: string, meta: WorkspaceInitSen
     )
   } catch {
     // ignore quota / private mode
+  }
+}
+
+export function peekWorkspaceInitMeta(sessionId: string): WorkspaceInitSendMeta | null {
+  const fromMemory = memoryStash.get(sessionId)
+  if (fromMemory) return fromMemory
+  try {
+    const raw = sessionStorage.getItem(storageKey(sessionId))
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    return isValidInitMeta(parsed) ? parsed : null
+  } catch {
+    return null
   }
 }
 

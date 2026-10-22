@@ -23,8 +23,7 @@ import {
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   resolveReasoningEffortForSlot,
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
+  resolveDialogueModelSelection,
   clampRagSimilarityThreshold,
   clampRagTopK,
   type DiaryTemplateConfig
@@ -133,7 +132,7 @@ export async function buildMobileStreamUserConfig(
     Boolean(embeddingProviderId) &&
     Boolean(embeddingModelId) &&
     embeddingModelId !== 'off' &&
-    providers.some((p) => p.id === embeddingProviderId)
+    providers.some((p) => p.id === embeddingProviderId && p.isEnabled !== false)
 
   const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
   const featureSettings =
@@ -258,21 +257,29 @@ export async function loadContextAtMessage(
   const session = await deps.sessionRepo.getSessionById(sessionId)
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
   const globalModels = await deps.settingsManager.get<any>('global_models')
-  const providerId = isConfiguredProviderId(session?.providerId)
-    ? session?.providerId
-    : isConfiguredProviderId(globalModels?.globalDialogueProviderId)
-      ? globalModels.globalDialogueProviderId
-      : ''
+  const resolvedDialogue = resolveDialogueModelSelection({
+    requestedProviderId: session?.providerId,
+    requestedModelId: session?.modelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+  const providerId = resolvedDialogue.providerId || ''
   const providerConfig = providerId
     ? providers.find((p) => p.id === providerId && p.isEnabled !== false)
     : undefined
   const registry = AIProviderRegistry.getInstance()
   const provider = providerConfig ? registry.getOrUpdateProvider(providerConfig) : undefined
-  const modelId = isConfiguredDialogueModelId(session?.modelId)
-    ? session?.modelId
-    : isConfiguredDialogueModelId(globalModels?.globalDialogueModelId)
-      ? globalModels.globalDialogueModelId
-      : ''
+  const modelId = resolvedDialogue.modelId || ''
+
+  const embeddingProviderId = globalModels?.globalEmbeddingProviderId
+  const embeddingModelId = globalModels?.globalEmbeddingModelId
+  const embConfig =
+    embeddingProviderId && embeddingModelId && embeddingModelId !== 'off'
+      ? providers.find((p) => p.id === embeddingProviderId && p.isEnabled !== false)
+      : undefined
+  const embeddingProvider = embConfig ? registry.getOrUpdateProvider(embConfig) : undefined
+  const systemModels =
+    embeddingProvider && embeddingModelId ? { embeddingProvider, embeddingModelId } : undefined
 
   const { createMobileSkillsReader, createMobileSkillsWriter, mobileListSkillsCatalog } =
     await import('./mobile-agent-skills.service')
@@ -288,6 +295,7 @@ export async function loadContextAtMessage(
         userConfig,
         provider,
         modelId,
+        systemModels: systemModels as any,
         toolRegistry: deps.toolRegistry,
         diarySearcher: deps.diarySearcher,
         webSearchResultFetcher: deps.webSearchResultFetcher,

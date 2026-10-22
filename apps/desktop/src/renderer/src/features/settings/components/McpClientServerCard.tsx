@@ -27,7 +27,6 @@ export function McpClientServerCard({
   onDraftToken,
   onCommitToken,
   onToggleEnabled,
-  onToggleAlwaysAllow,
   onRetry,
   onDelete
 }: {
@@ -44,7 +43,6 @@ export function McpClientServerCard({
   onDraftToken: (authToken: string) => void
   onCommitToken: (authToken: string) => void
   onToggleEnabled: (enabled: boolean) => void
-  onToggleAlwaysAllow?: (alwaysAllow: boolean) => void
   onRetry: () => void
   onDelete: () => void
 }) {
@@ -150,21 +148,6 @@ export function McpClientServerCard({
                   checked={server.enabled}
                   onChange={(event) => onToggleEnabled(event.target.checked)}
                   aria-label={t('settings.mcp_custom_enable', '启用')}
-                />
-              </label>
-              <label
-                className={styles.enableRow}
-                title={t(
-                  'settings.mcp_custom_always_allow_desc',
-                  '开启后伙伴调用该服务的所有工具（包括写操作）自动执行，无需弹窗确认'
-                )}
-              >
-                <span>{t('settings.mcp_custom_always_allow', '始终允许（写操作免确认）')}</span>
-                <Switch
-                  size="sm"
-                  checked={Boolean(server.alwaysAllow)}
-                  onChange={(event) => onToggleAlwaysAllow?.(event.target.checked)}
-                  aria-label={t('settings.mcp_custom_always_allow', '始终允许（写操作免确认）')}
                 />
               </label>
             </div>

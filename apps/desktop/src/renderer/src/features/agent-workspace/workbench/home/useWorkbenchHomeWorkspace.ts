@@ -382,6 +382,8 @@ export function useWorkbenchHomeWorkspace({
         stashWorkspaceInitMeta(sessionId, {
           text: trimmed,
           displayText: meta?.displayText?.trim() || undefined,
+          providerId: currentProviderId,
+          modelId: currentModelId,
           skillRefs: meta?.skillRefs,
           fileRefs: meta?.fileRefs,
           attachments: normalizeWorkspaceSendAttachments(

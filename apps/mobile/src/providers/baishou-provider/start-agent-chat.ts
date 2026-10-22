@@ -5,6 +5,7 @@ import {
   isConfiguredProviderId,
   logger,
   parseMountedNotebookIds,
+  resolveDialogueModelSelection,
   resolveReasoningEffortForSlot,
   resolveVaultIdentity
 } from '@baishou/shared'
@@ -84,11 +85,13 @@ export function createStartAgentChat(deps: {
       const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
       const globalModels = await runtime.settingsManager.get<any>('global_models')
 
-      const providerId = isConfiguredProviderId(overrides?.providerId)
-        ? overrides!.providerId
-        : isConfiguredProviderId(globalModels?.globalDialogueProviderId)
-          ? globalModels.globalDialogueProviderId
-          : ''
+      const resolvedDialogue = resolveDialogueModelSelection({
+        requestedProviderId: overrides?.providerId,
+        requestedModelId: overrides?.modelId,
+        globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+        globalDialogueModelId: globalModels?.globalDialogueModelId
+      })
+      const providerId = resolvedDialogue.providerId || ''
       const config = providerId
         ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)
         : undefined
@@ -115,7 +118,9 @@ export function createStartAgentChat(deps: {
       const embeddingModelId = globalModels?.globalEmbeddingModelId
       let embeddingProvider: IAIProvider | undefined
       if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
-        const embConfig = providers.find((p: any) => p.id === embeddingProviderId)
+        const embConfig = providers.find(
+          (p: any) => p.id === embeddingProviderId && p.isEnabled !== false
+        )
         if (embConfig) {
           embeddingProvider = registry.getOrUpdateProvider(embConfig)
         }
@@ -136,11 +141,7 @@ export function createStartAgentChat(deps: {
         }
       }
 
-      const modelId = isConfiguredDialogueModelId(overrides?.modelId)
-        ? overrides!.modelId
-        : isConfiguredDialogueModelId(globalModels?.globalDialogueModelId)
-          ? globalModels.globalDialogueModelId
-          : ''
+      const modelId = resolvedDialogue.modelId || ''
       if (!modelId) throw new Error('No dialogue model configured')
 
       const systemModels = {
