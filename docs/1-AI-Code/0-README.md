@@ -13,11 +13,8 @@
 | 项目              | 源文件                                                               | 当前版本   |
 | ----------------- | -------------------------------------------------------------------- | ---------- |
 | 长期提示词        | [3-AI-Prompt.md](./3-AI-Prompt.md)                                   | 2026-10-23 |
-| `agy-cli`         | [skills/agy-cli/SKILL.md](./skills/agy-cli/SKILL.md)                 | 2026-10-23 |
 | `baishou-release` | [skills/baishou-release/SKILL.md](./skills/baishou-release/SKILL.md) | 2026-10-23 |
 | `code-review`     | [skills/code-review/SKILL.md](./skills/code-review/SKILL.md)         | 2026-10-23 |
-| `design-scenes`   | [skills/design-scenes/SKILL.md](./skills/design-scenes/SKILL.md)     | 2026-10-23 |
-| `todo-review`     | [skills/todo-review/SKILL.md](./skills/todo-review/SKILL.md)         | 2026-10-23 |
 
 **核对方式**：
 
@@ -127,10 +124,7 @@
 
 ## skills 源目录
 
-| skill             | 用途                                                           | 工具依赖                                    |
-| ----------------- | -------------------------------------------------------------- | ------------------------------------------- |
-| `agy-cli`         | 调用本机 `agy` CLI 执行任务                                    | 需要本机已安装并登录 `agy`                  |
-| `baishou-release` | 本地 CI、升版本、写 Release 说明、提交打 tag                   | 需要提问工具（如 `AskQuestion`）            |
-| `code-review`     | 逐项审查改动的正确性、数据一致性、并发、性能、安全、范围与测试 | 无                                          |
-| `design-scenes`   | 用真实使用场景推演和比较设计方案                               | 需要提问工具（如 `AskQuestion`）            |
-| `todo-review`     | 对照当前代码与测试，核查计划/待办是否真的落地                  | 原生于 Cursor Canvas；其他工具需改写第 4 步 |
+| skill             | 用途                                                           | 工具依赖                         |
+| ----------------- | -------------------------------------------------------------- | -------------------------------- |
+| `baishou-release` | 本地 CI、升版本、写 Release 说明、提交打 tag                   | 需要提问工具（如 `AskQuestion`） |
+| `code-review`     | 逐项审查改动的正确性、数据一致性、并发、性能、安全、范围与测试 | 无                               |
