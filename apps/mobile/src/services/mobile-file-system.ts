@@ -338,11 +338,19 @@ export class MobileFileSystem implements IFileSystem {
       externalDeleteSafe(targetPath, force)
       return
     }
+    try {
+      await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
+      if (!(await this.exists(targetPath))) {
+        return
+      }
+    } catch (e) {
+      if (!options?.recursive) {
+        throw e
+      }
+    }
     if (options?.recursive) {
       await this.rmRecursive(targetPath, force)
-      return
     }
-    await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
   }
 
   private async rmRecursive(targetPath: string, force: boolean): Promise<void> {

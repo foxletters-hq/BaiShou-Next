@@ -197,7 +197,12 @@ export class ShadowIndexSyncService {
       const parsedDiaries: ParsedJournal[] = []
       const events: JournalSyncEvent[] = []
       const idsToDelete: { id: number; dateStr: string }[] = []
-      const fileStatUpdates: { dateStr: string; fileMtimeMs: number; fileSize: number }[] = []
+      const fileStatUpdates: {
+        dateStr: string
+        fileMtimeMs: number | null
+        fileSize: number | null
+        filePath?: string
+      }[] = []
       const existingFingerprints = await this.shadowRepo.getHashesByDates(chunk)
 
       await Promise.all(
@@ -228,6 +233,10 @@ export class ShadowIndexSyncService {
             return
           }
 
+          const relFilePath = normalizeShadowFilePath(
+            path.relative(path.dirname(journalBase), filePath)
+          )
+
           // ── 2. Obsidian 风格 mtime/size 快路径（跳过读盘/哈希/解析） ──
           const fileStat = await this.fileSystem.stat(filePath)
           const fileMtimeMs =
@@ -239,6 +248,10 @@ export class ShadowIndexSyncService {
               ? Math.round(fileStat.size)
               : null
           const existing = existingFingerprints.get(dateKey) ?? null
+          const existingPathNormalized =
+            existing?.filePath != null ? normalizeShadowFilePath(existing.filePath) : null
+          const pathNeedsUpdate =
+            existingPathNormalized !== null && existingPathNormalized !== relFilePath
 
           const canSkipByStat =
             existing != null &&
@@ -250,6 +263,9 @@ export class ShadowIndexSyncService {
             existing.fileSize === fileSize
 
           if (canSkipByStat) {
+            if (pathNeedsUpdate) {
+              fileStatUpdates.push({ dateStr, fileMtimeMs, fileSize, filePath: relFilePath })
+            }
             results.push({ meta: null, isChanged: false })
             return
           }
@@ -260,9 +276,14 @@ export class ShadowIndexSyncService {
           const existingHash = existing?.contentHash ?? null
 
           if (existingHash !== null && existingHash === currentHash) {
-            // 内容未变但 mtime/size 漂移：轻量回写指纹
-            if (fileMtimeMs != null && fileSize != null) {
-              fileStatUpdates.push({ dateStr, fileMtimeMs, fileSize })
+            // 内容未变但 mtime/size 或挂载相对路径漂移：轻量回写指纹与路径
+            if ((fileMtimeMs != null && fileSize != null) || pathNeedsUpdate) {
+              fileStatUpdates.push({
+                dateStr,
+                fileMtimeMs,
+                fileSize,
+                ...(pathNeedsUpdate ? { filePath: relFilePath } : {})
+              })
             }
             results.push({ meta: null, isChanged: false })
             return
@@ -275,11 +296,9 @@ export class ShadowIndexSyncService {
             return
           }
 
-          const relFilePath = path.relative(path.dirname(journalBase), filePath)
-
           payloads.push({
             id: diary.id || undefined,
-            filePath: normalizeShadowFilePath(relFilePath),
+            filePath: relFilePath,
             date: diary.date,
             createdAt: diary.createdAt.toISOString(),
             updatedAt: diary.updatedAt.toISOString(),
@@ -315,10 +334,19 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // ── 5b. 内容未变时的 mtime/size 指纹回写 ──
+      // ── 5b. 内容未变时的 mtime/size/filePath 指纹回写 ──
       for (const update of fileStatUpdates) {
         try {
-          await this.shadowRepo.updateFileStat(update.dateStr, update.fileMtimeMs, update.fileSize)
+          if (update.filePath !== undefined) {
+            await this.shadowRepo.updateFileStat(
+              update.dateStr,
+              update.fileMtimeMs,
+              update.fileSize,
+              update.filePath
+            )
+          } else {
+            await this.shadowRepo.updateFileStat(update.dateStr, update.fileMtimeMs, update.fileSize)
+          }
         } catch (e: any) {
           logger.warn(`[ShadowSync] 更新文件指纹失败 (${update.dateStr}):`, e?.message ?? e)
         }
@@ -439,37 +467,43 @@ export class ShadowIndexSyncService {
       if (!journalsDirExists) {
         logger.info('[ShadowSync] Journals 目录不可用，跳过孤立清理')
       } else {
-        const validRelativePaths = new Set(
-          [...pathsByDate.values()].map((absPath) =>
-            normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
-          )
-        )
         const allRecords = await this.shadowRepo.getAllRecords()
-
-        for (const record of allRecords) {
-          const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
-          const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
-          const pathStillValid = validRelativePaths.has(normalizedRecordPath)
-
-          if (!underSkippedDir && pathStillValid) continue
-
-          await this.shadowRepo.deleteById(record.id)
-
-          if (this.embeddingCallback) {
-            try {
-              await this.embeddingCallback.deleteEmbeddingsBySource(
-                'diary',
-                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, record.id)
-              )
-            } catch (e: any) {
-              logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
-            }
-          }
-
-          const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
+        if (pathsByDate.size === 0 && allRecords.length > 0) {
           logger.info(
-            `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
+            `[ShadowSync] Journals 目录暂无物理文件，保留现有影子索引记录 (${allRecords.length} 条)`
           )
+        } else {
+          const validRelativePaths = new Set(
+            [...pathsByDate.values()].map((absPath) =>
+              normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
+            )
+          )
+
+          for (const record of allRecords) {
+            const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
+            const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
+            const pathStillValid = validRelativePaths.has(normalizedRecordPath)
+
+            if (!underSkippedDir && pathStillValid) continue
+
+            await this.shadowRepo.deleteById(record.id)
+
+            if (this.embeddingCallback) {
+              try {
+                await this.embeddingCallback.deleteEmbeddingsBySource(
+                  'diary',
+                  buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, record.id)
+                )
+              } catch (e: any) {
+                logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
+              }
+            }
+
+            const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
+            logger.info(
+              `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
+            )
+          }
         }
       }
     } finally {

@@ -271,10 +271,11 @@ export class DiaryService {
     const dateStr = String(shadow.date).split('T')[0]!
     const date = parseDateStr(dateStr)
 
-    // HEALING: Lazily trigger sync to heal any out-of-sync local file editing
-    this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
-
     const fromDisk = await this.fileSync.readJournal(date, shadow.filePath)
+    if (fromDisk) {
+      // HEALING: 仅在磁盘正本存在时触发异步对账，避免跨端仅含影子库时误删记录
+      this.shadowSync.syncJournal(dateStr, true).catch((e) => console.warn('Lazy sync failed', e))
+    }
     if (fromDisk?.content?.trim()) {
       if (!fromDisk.id) fromDisk.id = shadow.id
       return fromDisk

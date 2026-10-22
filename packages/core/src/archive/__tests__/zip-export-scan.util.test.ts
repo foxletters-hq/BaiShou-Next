@@ -1,6 +1,11 @@
+import * as fsp from 'node:fs/promises'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   assertArchiveExportOutputPathSafe,
+  collectArchiveExternalMountDirs,
+  estimateArchiveExportSize,
   isArchiveRecursiveSkipDir,
   isArchiveRootSkipEntry,
   isExcludedArchiveOutputPath,
@@ -52,5 +57,35 @@ describe('zip-export-scan.util', () => {
     expect(() =>
       assertArchiveExportOutputPathSafe('D:\\Desktop\\backup.zip', 'D:\\Vaults')
     ).not.toThrow()
+  })
+
+  it('collects and estimates external journalsDirectory configured in .baishou/external_paths.json', async () => {
+    const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'baishou-zip-scan-root-'))
+    const tmpExt = await fsp.mkdtemp(path.join(os.tmpdir(), 'baishou-zip-scan-ext-'))
+    try {
+      const vaultSysDir = path.join(tmpRoot, 'DefaultVault', '.baishou')
+      await fsp.mkdir(vaultSysDir, { recursive: true })
+      await fsp.writeFile(
+        path.join(vaultSysDir, 'external_paths.json'),
+        JSON.stringify({ journalsDirectory: tmpExt }),
+        'utf8'
+      )
+      const extDiaryDir = path.join(tmpExt, '2026', '10')
+      await fsp.mkdir(extDiaryDir, { recursive: true })
+      await fsp.writeFile(path.join(extDiaryDir, '2026-10-19.md'), '# hello external diary', 'utf8')
+
+      const mounts = await collectArchiveExternalMountDirs(tmpRoot)
+      expect(mounts).toHaveLength(1)
+      expect(mounts[0]?.vaultName).toBe('DefaultVault')
+      expect(mounts[0]?.kind).toBe('journals')
+      expect(mounts[0]?.zipRelativePrefix).toBe('DefaultVault/Journals')
+
+      const estimate = await estimateArchiveExportSize(tmpRoot)
+      expect(estimate.fileCount).toBe(1)
+      expect(estimate.totalBytes).toBeGreaterThan(0)
+    } finally {
+      await fsp.rm(tmpRoot, { recursive: true, force: true })
+      await fsp.rm(tmpExt, { recursive: true, force: true })
+    }
   })
 })
