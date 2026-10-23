@@ -172,6 +172,10 @@ export class ZipExporter {
         if (dirent.isDirectory()) {
           if (isArchiveRecursiveSkipDir(dirent.name)) continue
           await addDirectory(fullPath, dirent.name)
+          const vaultMetaPath = path.join(fullPath, '.baishou', 'vault.json')
+          if (fs.existsSync(vaultMetaPath)) {
+            addArchiveFile(vaultMetaPath, `${dirent.name}/.baishou/vault.json`, 'vault.json')
+          }
         } else if (dirent.isFile()) {
           if (shouldSkipArchiveFile(dirent.name, ctx)) continue
           if (!(await shouldIncludeArchivePath(fullPath, ctx))) continue

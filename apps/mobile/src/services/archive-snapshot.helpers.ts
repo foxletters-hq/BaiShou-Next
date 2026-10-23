@@ -8,6 +8,29 @@ import {
 } from './archive-guards.util'
 import type { ArchiveImportContext } from './archive-import.helpers'
 
+export async function sweepStaleArchiveImportCache(
+  ctx: ArchiveImportContext,
+  cacheDir: string,
+  normalizedInputZip: string
+): Promise<void> {
+  try {
+    const cacheEntries = await ctx.fileSystem.readdir(cacheDir)
+    for (const entryName of cacheEntries) {
+      if (
+        entryName.startsWith('baishou_archive_extract_') ||
+        entryName.startsWith('baishou_import_') ||
+        entryName.startsWith('lan_sync_payload_')
+      ) {
+        const candidatePath = joinStoragePath(cacheDir, entryName)
+        if (candidatePath === normalizedInputZip) continue
+        await ctx.fileSystem.rm(candidatePath, { recursive: true, force: true }).catch(() => {})
+      }
+    }
+  } catch {
+    // ignore cache sweep failures
+  }
+}
+
 export async function wipeStorageRootPreservingSnapshots(
   ctx: ArchiveImportContext,
   rootDir: string
@@ -35,6 +58,11 @@ export async function selectiveCopyArchiveTree(
     if (!itemName || itemName === '.' || itemName === '..') continue
     if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) continue
     if (itemName.endsWith('-wal') || itemName.endsWith('-shm') || itemName.endsWith('-journal'))
+      continue
+    if (
+      itemName === 'external_paths.json' &&
+      sourceDirPath.replace(/\\/g, '/').endsWith('/.baishou')
+    )
       continue
 
     const fullSourcePath = joinStoragePath(sourceDirPath, itemName)

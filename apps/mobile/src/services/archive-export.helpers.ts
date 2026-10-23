@@ -10,7 +10,7 @@ import {
   ARCHIVE_USER_AVATARS_ZIP_PREFIX,
   type MobileArchiveDbBridge
 } from './mobile-archive-db.bridge'
-import { SNAPSHOT_STORAGE_DIR_NAMES } from './archive-guards.util'
+import { ARCHIVE_RUNTIME_SQLITE_DB_NAMES, SNAPSHOT_STORAGE_DIR_NAMES } from './archive-guards.util'
 
 export type ArchiveExportContext = {
   pathService: IStoragePathService
@@ -37,6 +37,7 @@ export async function exportArchiveToTempFileDirectZip(
       for (const itemName of entries) {
         if (!itemName || itemName === '.' || itemName === '..') continue
         if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
+        if (ARCHIVE_RUNTIME_SQLITE_DB_NAMES.has(itemName.toLowerCase())) continue
         if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) {
           continue
         }
