@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { SystemPromptBuilder } from '../agent/system-prompt.builder'
 import { formatHostTimezoneOffset, MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
 
@@ -23,6 +23,7 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain(`[Host timezone]: ${formatHostTimezoneOffset()}`)
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
+    expect(prompt).not.toContain('Host metadata. Same order')
     expect(prompt).toContain('[Forbidden in user-visible text]')
     expect(prompt).toContain('<reply>')
     expect(prompt).toContain('<response>')
@@ -131,6 +132,24 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('<tool_usage_guidelines>')
   })
 
+  it('keeps user_identity in workspace prompts when personal memory tools are absent', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      userProfileBlock: 'Name: Alice',
+      tools: {
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(prompt).toContain('<user_identity>')
+    expect(prompt).toContain('Name: Alice')
+    expect(prompt).toContain('are NOT available—do not claim to access them.')
+  })
+
   it('places user_identity after context_encoding and before capabilities', () => {
     const prompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
@@ -149,5 +168,170 @@ describe('SystemPromptBuilder', () => {
       expect(order[i]).toBeGreaterThan(order[i - 1]!)
     }
     expect(prompt).toContain('Name: Alice')
+  })
+
+  it('describes workspace personal memory from the actual tool list', () => {
+    const withMemory = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      locale: 'en',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      tools: {
+        diary_read: { description: 'Read diary' },
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(withMemory).toContain('Workspace session.')
+    expect(withMemory).toContain('Read-only diary')
+    expect(withMemory).not.toContain('are NOT available—do not claim to access them.')
+
+    const withoutMemory = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      locale: 'en',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      tools: {
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(withoutMemory).toContain('Workspace session.')
+    expect(withoutMemory).toContain('are NOT available—do not claim to access them.')
+  })
+
+  it('injects workspace_env for workspace sessions and keeps companion clean', () => {
+    const workspacePrompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32',
+        isGitRepo: true,
+        gitBranch: 'main',
+        gitChangesCount: 2,
+        notebookIds: ['nb-1'],
+        commandRuntimeLabel: 'Windows PowerShell',
+        commandRuntimeFamily: 'win_powershell'
+      }
+    })
+    expect(workspacePrompt).toContain('<workspace_env>')
+    expect(workspacePrompt).toContain('Working directory: D:/proj')
+    expect(workspacePrompt).toContain('Command environment: Windows PowerShell')
+    expect(workspacePrompt).toContain('inner command')
+    expect(workspacePrompt).toContain('Is git repo: yes')
+    expect(workspacePrompt).toContain('Git branch: main')
+    expect(workspacePrompt).toContain('Mounted knowledge notebooks (1/3): nb-1')
+
+    const companionPrompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    expect(companionPrompt).not.toContain('<workspace_env>')
+    expect(companionPrompt).not.toContain('D:/proj')
+  })
+
+  it('keeps top-level system prompt identical across minutes on the same calendar day', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 22, 10, 1, 0))
+    const morning = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    vi.setSystemTime(new Date(2026, 7, 22, 23, 59, 0))
+    const evening = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    vi.useRealTimers()
+
+    expect(morning).toBe(evening)
+    expect(morning).toContain('[Host timezone]: UTC')
+    expect(morning).not.toContain('[System Current Date / Time]')
+    expect(morning).not.toMatch(/\d{2}:\d{2}:\d{2}/)
+  })
+
+  it('injects skills_catalog when provided', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      skillsCatalog: [{ name: 'summarize', description: 'Summarize text' }]
+    })
+    expect(prompt).toContain('<skills_catalog>')
+    expect(prompt).toContain('summarize: Summarize text')
+    expect(prompt).toContain('skill_read')
+  })
+
+  it('prefers a frozen skills instruction baseline and appends deltas separately', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      skillsInstruction: {
+        catalog: ['- alpha: 旧描述'],
+        deltas: ['The available skills have changed.', 'New skills:', '- beta: 新技能']
+      }
+    })
+    expect(prompt).toContain('<skills_catalog>')
+    expect(prompt).toContain('- alpha: 旧描述')
+    expect(prompt).toContain('<skills_catalog_update>')
+    expect(prompt).toContain('- beta: 新技能')
+  })
+
+  it('does not repeat the enabled tool ID list in available_tools', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'companion',
+      tools: {
+        diary_read: { description: 'Very long multi-paragraph diary_read description' },
+        mcp_call: { description: 'Invoke a tool on a connected external MCP server.' }
+      }
+    })
+    expect(prompt).toContain('<available_tools>')
+    expect(prompt).toContain('2 tools are enabled for this session')
+    expect(prompt).not.toContain('Enabled Tools: diary_read, mcp_call')
+    expect(prompt).not.toContain('Very long multi-paragraph diary_read description')
+    expect(prompt).toContain('<tool_usage_guidelines>')
+    expect(prompt).toContain('外部扩展工具（MCP）调用规范')
+    expect(prompt).toContain('mcp_call')
+  })
+
+  it('omits skill_read usage guideline when skills_catalog is absent', () => {
+    const withoutCatalog = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {
+        skill_read: { description: 'Read skill' }
+      }
+    })
+    expect(withoutCatalog).not.toContain('选用技能时先读正文')
+
+    const withCatalog = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {
+        skill_read: { description: 'Read skill' }
+      },
+      skillsCatalog: [{ name: 'test-skill', description: 'Test' }]
+    })
+    expect(withCatalog).toContain('选用技能时先读正文')
+  })
+
+  it('filters out built-in placeholder customGuidelines', () => {
+    const promptWithPlaceholder = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      customGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。'
+    })
+    expect(promptWithPlaceholder).not.toContain('<behavior_guidelines>')
+
+    const promptWithCustom = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      customGuidelines: '回答尽量精炼。'
+    })
+    expect(promptWithCustom).toContain('<behavior_guidelines>')
+    expect(promptWithCustom).toContain('回答尽量精炼。')
   })
 })

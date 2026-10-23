@@ -1,6 +1,6 @@
 export type McpClientJsonTransport = 'streamableHttp' | 'sse'
 
-/** Cursor / MCP 客户端 mcp.json 配置示例 */
+/** Cursor / MCP 客户端 mcp.json 配置示例（url + 可选 Bearer 令牌） */
 export function buildMcpClientJsonExample(
   endpointUrl: string,
   authToken?: string,

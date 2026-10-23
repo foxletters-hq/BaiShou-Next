@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { StoragePermissionPrompt, useNativeTheme } from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface FullFileAccessGateProps {
   /** undefined = 检测中 */
@@ -41,11 +42,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   gate: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20
+    padding: sharedTokens.spacing.mdPlus
   }
 })

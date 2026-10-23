@@ -8,6 +8,10 @@ export type SettingsStackPathname =
   | '/settings/version-migration'
   | '/incremental-sync'
   | '/settings/tts'
+  | '/graph'
+  | '/knowledge'
+  | '/memory'
+  | '/settings/help-docs'
 
 export type SettingsHubRoute =
   | { type: 'section'; section: string }
@@ -25,6 +29,8 @@ export interface SettingsHubGroup {
   titleKey: string
   items: SettingsHubItem[]
 }
+
+const KNOWLEDGE_ENTRY_ENABLED = false
 
 /** 与桌面端 SettingsPage / 旧版 BaiShou 移动枢纽分组对齐 */
 export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
@@ -44,16 +50,10 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'ai-models' }
       },
       {
-        id: 'assistants',
-        titleKey: 'agent.assistant.settings_entry',
-        icon: 'assistants',
-        route: { type: 'stack', pathname: '/settings/assistants' }
-      },
-      {
-        id: 'rag',
-        titleKey: 'agent.rag.title',
-        icon: 'rag',
-        route: { type: 'section', section: 'rag' }
+        id: 'memory',
+        titleKey: 'memory.title',
+        icon: 'memory',
+        route: { type: 'stack', pathname: '/memory' }
       },
       {
         id: 'web-search',
@@ -68,16 +68,33 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'mcp' }
       },
       {
-        id: 'agent-tools',
-        titleKey: 'settings.agent_tools_title',
-        icon: 'agent-tools',
-        route: { type: 'stack', pathname: '/settings/agent-tools' }
-      },
-      {
         id: 'tts',
         titleKey: 'settings.tts_settings',
         icon: 'tts',
         route: { type: 'stack', pathname: '/settings/tts' }
+      }
+    ]
+  },
+  {
+    titleKey: 'settings.nav_group_companion',
+    items: [
+      {
+        id: 'assistants',
+        titleKey: 'agent.assistant.settings_entry',
+        icon: 'assistants',
+        route: { type: 'stack', pathname: '/settings/assistants' }
+      },
+      {
+        id: 'latte',
+        titleKey: 'settings.latte_settings_title',
+        icon: 'latte',
+        route: { type: 'section', section: 'latte' }
+      },
+      {
+        id: 'agent-tools',
+        titleKey: 'settings.companion_chat_tools_title',
+        icon: 'agent-tools',
+        route: { type: 'stack', pathname: '/settings/agent-tools' }
       }
     ]
   },
@@ -95,7 +112,17 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'settings.summary_settings_title',
         icon: 'summary-settings',
         route: { type: 'section', section: 'summary' }
-      }
+      },
+      ...(KNOWLEDGE_ENTRY_ENABLED
+        ? [
+            {
+              id: 'knowledge',
+              titleKey: 'knowledge.title',
+              icon: 'knowledge' as const,
+              route: { type: 'stack' as const, pathname: '/knowledge' as const }
+            }
+          ]
+        : [])
     ]
   },
   {
@@ -136,6 +163,12 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'version_migration.title',
         icon: 'version-migration',
         route: { type: 'stack', pathname: '/settings/version-migration' }
+      },
+      {
+        id: 'help-docs',
+        titleKey: 'settings.help_docs',
+        icon: 'general',
+        route: { type: 'stack', pathname: '/settings/help-docs' }
       }
     ]
   }

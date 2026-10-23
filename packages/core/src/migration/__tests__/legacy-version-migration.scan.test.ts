@@ -5,6 +5,7 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import { createNodeFileSystem } from '../../fs/create-node-file-system'
 import { scanLegacyVersionMigration } from '../legacy-version-migration.scan'
+import { isBetterSqlite3Available } from './better-sqlite3-available'
 
 async function executeRawSql(
   client: unknown,
@@ -23,7 +24,7 @@ async function executeRawSql(
   return { rows: [] }
 }
 
-describe('legacy-version-migration.scan', () => {
+describe.skipIf(!isBetterSqlite3Available())('legacy-version-migration.scan', () => {
   let tempDir: string
   const fileSystem = createNodeFileSystem()
   let db: Database.Database

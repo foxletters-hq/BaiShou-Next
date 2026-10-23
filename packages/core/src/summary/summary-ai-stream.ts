@@ -1,0 +1,309 @@
+import { streamText, type LanguageModel } from 'ai'
+import {
+  createAgentStreamAbortError,
+  isAgentStreamAbortError,
+  toSerializableAiError
+} from '@baishou/shared'
+
+export const SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME = 'TimeoutError'
+
+export type SummaryStreamReaderSource = {
+  getReader: () => {
+    read: () => Promise<{ done: boolean; value?: unknown }>
+    releaseLock: () => void
+  }
+}
+
+export function createSummaryFirstOutputTimeoutError(timeoutMs: number): Error {
+  const error = new Error(
+    `AI generation timeout: timed out after ${timeoutMs / 1000} seconds waiting for first output.`
+  )
+  error.name = SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME
+  return error
+}
+
+export function isSummaryFirstOutputTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error ? String(error.message) : ''
+  return message.includes('waiting for first output')
+}
+
+export function createSummaryIdleTimeoutError(timeoutMs: number): Error {
+  const error = new Error(
+    `AI generation timeout: timed out after ${timeoutMs / 1000} seconds without further output.`
+  )
+  error.name = SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME
+  return error
+}
+
+export function isSummaryIdleTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const message = 'message' in error ? String(error.message) : ''
+  return message.includes('without further output')
+}
+
+export function isSummaryUserAbortError(error: unknown, userSignal?: AbortSignal): boolean {
+  if (userSignal?.aborted) return true
+  if (isSummaryFirstOutputTimeoutError(error) || isSummaryIdleTimeoutError(error)) return false
+  return Boolean(
+    error && typeof error === 'object' && 'name' in error && error.name === 'AbortError'
+  )
+}
+
+export function suppressUnusedSummaryStreamSettlements(streamResult: {
+  text?: PromiseLike<unknown>
+  usage?: PromiseLike<unknown>
+  response?: PromiseLike<unknown>
+}): void {
+  void Promise.resolve(streamResult.text).catch(() => undefined)
+  void Promise.resolve(streamResult.usage).catch(() => undefined)
+  void Promise.resolve(streamResult.response).catch(() => undefined)
+}
+
+export function isSummaryModelOutputPart(part: {
+  type?: string
+  textDelta?: string
+  text?: string
+}): boolean {
+  if (part.type !== 'text-delta' && part.type !== 'reasoning-delta' && part.type !== 'reasoning') {
+    return false
+  }
+  return Boolean((part.textDelta ?? part.text ?? '').length)
+}
+
+function readPartText(part: { textDelta?: string; text?: string }): string {
+  return part.textDelta ?? part.text ?? ''
+}
+
+/**
+ * 首个输出前按 firstOutputTimeoutMs 计时。
+ * 之后每次增量重置空闲计时；读流始终与 abort 赛跑，避免首个 token 后挂死。
+ */
+export async function collectSummaryStreamText(options: {
+  fullStream?: SummaryStreamReaderSource
+  textStream?: AsyncIterable<string>
+  abortController: AbortController
+  firstOutputTimeoutMs: number
+  idleTimeoutMs?: number
+  onFirstOutput?: () => void
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (reasoning: string) => void
+}): Promise<string> {
+  const { abortController, firstOutputTimeoutMs, idleTimeoutMs, onFirstOutput } = options
+  if (abortController.signal.aborted) {
+    throw createAgentStreamAbortError()
+  }
+
+  let firstOutputSeen = false
+  let timedOut = false
+  let idleTimedOut = false
+  let firstOutputTimeoutId: ReturnType<typeof setTimeout> | undefined
+  let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
+  let rejectPending: ((error: Error) => void) | undefined
+  const pendingAbort = new Promise<never>((_, reject) => {
+    rejectPending = reject
+  })
+
+  const fail = (error: Error) => {
+    rejectPending?.(error)
+  }
+
+  firstOutputTimeoutId = setTimeout(() => {
+    if (firstOutputSeen) return
+    timedOut = true
+    abortController.abort()
+    fail(createSummaryFirstOutputTimeoutError(firstOutputTimeoutMs))
+  }, firstOutputTimeoutMs)
+
+  const clearIdleTimeout = () => {
+    if (idleTimeoutId !== undefined) {
+      clearTimeout(idleTimeoutId)
+      idleTimeoutId = undefined
+    }
+  }
+
+  const resetIdleTimeout = () => {
+    if (!idleTimeoutMs || idleTimeoutMs <= 0) return
+    clearIdleTimeout()
+    idleTimeoutId = setTimeout(() => {
+      idleTimedOut = true
+      abortController.abort()
+      fail(createSummaryIdleTimeoutError(idleTimeoutMs))
+    }, idleTimeoutMs)
+  }
+
+  const onAbort = () => {
+    if (timedOut || idleTimedOut) return
+    fail(createAgentStreamAbortError())
+  }
+  abortController.signal.addEventListener('abort', onAbort, { once: true })
+
+  const markOutput = () => {
+    if (!firstOutputSeen) {
+      firstOutputSeen = true
+      if (firstOutputTimeoutId !== undefined) {
+        clearTimeout(firstOutputTimeoutId)
+        firstOutputTimeoutId = undefined
+      }
+      onFirstOutput?.()
+    }
+    resetIdleTimeout()
+  }
+
+  const awaitRead = async <T>(operation: Promise<T>): Promise<T> => {
+    if (abortController.signal.aborted && !timedOut && !idleTimedOut) {
+      throw createAgentStreamAbortError()
+    }
+    return Promise.race([operation, pendingAbort])
+  }
+
+  try {
+    if (options.fullStream) {
+      return await collectFromFullStream(
+        options.fullStream,
+        awaitRead,
+        markOutput,
+        options.onTextDelta,
+        options.onReasoningDelta
+      )
+    }
+    if (options.textStream) {
+      return await collectFromTextStream(
+        options.textStream,
+        awaitRead,
+        markOutput,
+        options.onTextDelta
+      )
+    }
+    throw new Error('Summary stream is missing both fullStream and textStream')
+  } catch (error) {
+    if (timedOut) throw createSummaryFirstOutputTimeoutError(firstOutputTimeoutMs)
+    if (idleTimedOut && idleTimeoutMs) throw createSummaryIdleTimeoutError(idleTimeoutMs)
+    throw error
+  } finally {
+    abortController.signal.removeEventListener('abort', onAbort)
+    if (firstOutputTimeoutId !== undefined) {
+      clearTimeout(firstOutputTimeoutId)
+    }
+    clearIdleTimeout()
+  }
+}
+
+async function collectFromFullStream(
+  fullStream: SummaryStreamReaderSource,
+  awaitBeforeFirstOutput: <T>(operation: Promise<T>) => Promise<T>,
+  markFirstOutput: () => void,
+  onTextDelta?: (text: string) => void,
+  onReasoningDelta?: (reasoning: string) => void
+): Promise<string> {
+  const reader = fullStream.getReader()
+  let text = ''
+  let reasoning = ''
+  try {
+    while (true) {
+      const readPromise = reader.read()
+      void readPromise.catch(() => undefined)
+      const { done, value } = await awaitBeforeFirstOutput(readPromise)
+      if (done) break
+
+      const part = (value ?? {}) as {
+        type?: string
+        textDelta?: string
+        text?: string
+        error?: unknown
+      }
+      if (part.type === 'error') {
+        throw part.error instanceof Error
+          ? part.error
+          : new Error(String(part.error ?? 'Summary stream error'))
+      }
+      if (part.type === 'abort') {
+        throw createAgentStreamAbortError()
+      }
+      if (!isSummaryModelOutputPart(part)) continue
+
+      markFirstOutput()
+      const piece = readPartText(part)
+      if (part.type === 'reasoning-delta' || part.type === 'reasoning') {
+        reasoning += piece
+        onReasoningDelta?.(reasoning)
+        continue
+      }
+      if (part.type === 'text-delta') {
+        text += piece
+        onTextDelta?.(text)
+      }
+    }
+    return text
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+async function collectFromTextStream(
+  textStream: AsyncIterable<string>,
+  awaitBeforeFirstOutput: <T>(operation: Promise<T>) => Promise<T>,
+  markFirstOutput: () => void,
+  onTextDelta?: (text: string) => void
+): Promise<string> {
+  const iterator = textStream[Symbol.asyncIterator]()
+  let text = ''
+  while (true) {
+    const nextPromise = iterator.next()
+    void nextPromise.catch(() => undefined)
+    const { done, value } = await awaitBeforeFirstOutput(nextPromise)
+    if (done) break
+    if (!value) continue
+    markFirstOutput()
+    text += value
+    onTextDelta?.(text)
+  }
+  return text
+}
+
+export async function generateSummaryTextFromModel(options: {
+  model: LanguageModel
+  prompt: string
+  system?: string
+  abortController: AbortController
+  firstOutputTimeoutMs: number
+  idleTimeoutMs?: number
+  onFirstOutput?: () => void
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (reasoning: string) => void
+  providerOptions?: Record<string, Record<string, unknown>>
+}): Promise<string> {
+  const streamResult = streamText({
+    model: options.model,
+    ...(options.system ? { system: options.system } : {}),
+    prompt: options.prompt,
+    maxSteps: 1,
+    abortSignal: options.abortController.signal,
+    experimental_telemetry: { isEnabled: false },
+    onError: () => {},
+    ...(options.providerOptions ? { providerOptions: options.providerOptions } : {})
+  } as never)
+
+  suppressUnusedSummaryStreamSettlements(streamResult)
+
+  try {
+    return await collectSummaryStreamText({
+      fullStream: streamResult.fullStream,
+      abortController: options.abortController,
+      firstOutputTimeoutMs: options.firstOutputTimeoutMs,
+      idleTimeoutMs: options.idleTimeoutMs,
+      onFirstOutput: options.onFirstOutput,
+      onTextDelta: options.onTextDelta,
+      onReasoningDelta: options.onReasoningDelta
+    })
+  } catch (error) {
+    if (
+      isSummaryFirstOutputTimeoutError(error) ||
+      isSummaryIdleTimeoutError(error) ||
+      isAgentStreamAbortError(error)
+    ) {
+      throw error
+    }
+    throw toSerializableAiError(error)
+  }
+}

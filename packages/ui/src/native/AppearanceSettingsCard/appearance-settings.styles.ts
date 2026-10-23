@@ -1,63 +1,85 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
 import { NATIVE_SLIDER_HEIGHT } from '../Slider/native-slider.utils'
+import { iconSizes, mobileTypography, uiTypography, sharedTokens } from '../../theme/tokens'
 
 const GRADIENT_BAR_HEIGHT = 20
 
 export const appearanceSettingsStyles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    marginBottom: 16,
-    marginHorizontal: 16,
+    borderRadius: sharedTokens.radius.lg,
+    marginBottom: sharedTokens.spacing.md,
+    marginHorizontal: sharedTokens.spacing.md,
     overflow: 'hidden'
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
-  icon: { fontSize: 24, marginRight: 16 },
+  icon: { fontSize: iconSizes.lg, marginRight: sharedTokens.spacing.md },
   headerBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '500' },
-  subtitle: { fontSize: 14, marginTop: 4 },
-  arrow: { fontSize: 12 },
-  content: { paddingHorizontal: 16, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderRadius: 16,
-    overflow: 'hidden'
+  title: { fontSize: mobileTypography.primary.fontSize, fontWeight: '500' },
+  subtitle: { fontSize: mobileTypography.secondary.fontSize, marginTop: sharedTokens.spacing.xs },
+  arrow: { fontSize: uiTypography.sm },
+  content: { paddingHorizontal: sharedTokens.spacing.md, paddingBottom: sharedTokens.spacing.md },
+  label: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500',
+    marginBottom: sharedTokens.spacing.sm
   },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRightWidth: 1
-  },
-  segmentText: { fontSize: 14 },
   colorPalette: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   colorOption: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  checkIcon: { fontSize: 20 },
-  divider: { height: 1, marginVertical: 16 },
-  langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  checkIcon: { fontSize: iconSizes.md },
+  divider: { height: 1, marginVertical: sharedTokens.spacing.md },
+  langWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: sharedTokens.spacing.sm },
   langChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1
   },
-  langText: { fontSize: 14 },
+  langText: { fontSize: mobileTypography.secondary.fontSize },
+  fontSizeBlock: { marginTop: 0 },
+  fontSizeSliderWrap: {
+    justifyContent: 'center',
+    minHeight: NATIVE_SLIDER_HEIGHT,
+    height: NATIVE_SLIDER_HEIGHT,
+    marginTop: sharedTokens.spacing.xs
+  },
+  fontSizeTicks: {
+    position: 'relative',
+    height: 8,
+    marginTop: sharedTokens.spacing.xxs,
+    marginHorizontal: sharedTokens.spacing.sm
+  },
+  fontSizeTick: {
+    position: 'absolute',
+    top: 0,
+    width: 1,
+    height: 8,
+    marginLeft: -0.5
+  },
+  fontSizeLabels: {
+    position: 'relative',
+    height: 22,
+    marginTop: sharedTokens.spacing.sm,
+    marginHorizontal: sharedTokens.spacing.sm
+  },
+  fontSizeLabel: {
+    position: 'absolute',
+    top: '50%'
+  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -65,35 +87,41 @@ export const appearanceSettingsStyles = StyleSheet.create({
   },
   modalBox: {
     width: '85%',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: sharedTokens.radius.xl,
+    padding: sharedTokens.spacing.lg,
     alignItems: 'center'
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.mdPlus
   },
   colorPreview: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginBottom: 20,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    marginBottom: sharedTokens.spacing.mdPlus,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12
+      },
+      default: {}
+    })
   },
   sliderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   sliderLabel: {
     width: 40,
-    fontSize: 14,
-    fontWeight: 'bold'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   sliderTrackWrap: {
     flex: 1,
@@ -108,7 +136,7 @@ export const appearanceSettingsStyles = StyleSheet.create({
     top: (NATIVE_SLIDER_HEIGHT - GRADIENT_BAR_HEIGHT) / 2,
     height: GRADIENT_BAR_HEIGHT,
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     overflow: 'hidden'
   },
   hueSegment: {
@@ -118,16 +146,16 @@ export const appearanceSettingsStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     width: '100%',
-    marginTop: 24,
-    gap: 12
+    marginTop: sharedTokens.spacing.lg,
+    gap: sharedTokens.spacing.mdTight
   },
   modalBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.lgPlus,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  modalBtnTextGray: { fontWeight: 'bold' },
-  modalBtnTextWhite: { fontWeight: 'bold' }
+  modalBtnTextGray: { fontWeight: '600' },
+  modalBtnTextWhite: { fontWeight: '600' }
 })

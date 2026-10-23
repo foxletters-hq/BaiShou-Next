@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
 import type { AgentSession } from './agent-session-list.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface AgentSessionActionSheetProps {
   session: AgentSession | null
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24
+    paddingHorizontal: sharedTokens.spacing.lg
   },
   backdrop: {
     backgroundColor: 'rgba(0,0,0,0.45)'
@@ -169,34 +170,34 @@ const styles = StyleSheet.create({
     maxWidth: 360
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: sharedTokens.spacing.mdTight,
     lineHeight: 22
   },
   list: {
     width: '100%'
   },
   item: {
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    paddingHorizontal: sharedTokens.spacing.sm,
     alignItems: 'center',
-    borderRadius: 8
+    borderRadius: sharedTokens.radius.sm
   },
   itemLabel: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   cancelBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
+    marginTop: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     alignItems: 'center'
   },
   cancelText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   }
 })

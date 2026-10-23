@@ -1,35 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Platform,
   Animated,
   Easing,
-  type LayoutRectangle
+  useWindowDimensions,
+  type LayoutRectangle,
+  type LayoutChangeEvent
 } from 'react-native'
-import type { LucideIcon } from 'lucide-react-native'
-import { Monitor, Radar, Smartphone, TabletSmartphone } from 'lucide-react-native'
+import { Radar, Wifi } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
-import { getLanDeviceDedupKey, normalizeLanDeviceType } from '@baishou/shared'
+import { getLanDeviceDedupKey } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
+import { styles, CORE_SIZE } from './LanTransferRadarView.styles'
+import { LanTransferBubble } from './LanTransferBubble'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
 
-/** 与 Flutter RadarPainter 一致：固定三圈半径（逻辑像素） */
+/** 固定三圈雷达基准半径（逻辑像素） */
 const RING_RADII = [100, 200, 300] as const
 
-const BUBBLE_OFFSETS = [
-  { dx: -0.6, dy: -0.6 },
-  { dx: 0.6, dy: -0.4 },
-  { dx: 0.0, dy: 0.6 },
-  { dx: -0.5, dy: 0.5 },
-  { dx: 0.5, dy: 0.5 }
-] as const
-
-const PULSE_DURATION_MS = 2000
-const FLOAT_DURATION_MS = 4000
+const PULSE_DURATION_MS = 2400
 
 export interface LanTransferRadarViewProps {
   devices: DiscoveredDevice[]
@@ -37,112 +33,159 @@ export interface LanTransferRadarViewProps {
   sendingTo: string | null
   sendProgress: number
   onDevicePress: (device: DiscoveredDevice) => void
+  localIp?: string | null
+  localPort?: number | null
 }
 
-function deviceIcon(device: DiscoveredDevice): LucideIcon {
-  const deviceType = normalizeLanDeviceType({
-    deviceType: device.deviceType,
-    deviceId: device.deviceId,
-    nickname: device.nickname
-  })
-  if (deviceType === 'mobile') return Smartphone
-  if (deviceType === 'desktop') return Monitor
-  return TabletSmartphone
-}
-
-const FloatingBubble: React.FC<{
-  device: DiscoveredDevice
-  index: number
-  zone: LayoutRectangle
+/** 动态向外扩散的雷达波纹 */
+const RadarRipples: React.FC<{
+  center: { x: number; y: number }
   colors: ThemeColors
-  isSending: boolean
-  sendProgress: number
-  onPress: () => void
-}> = ({ device, index, zone, colors, isSending, sendProgress, onPress }) => {
-  const float = useRef(new Animated.Value(0)).current
-  const delayMs = index * 500
-  const DeviceIcon = deviceIcon(device)
+  isActive: boolean
+}> = ({ center, colors, isActive }) => {
+  const anim1 = useRef(new Animated.Value(0)).current
+  const anim2 = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, {
+    if (!isActive) return
+
+    const createRipple = (val: Animated.Value) =>
+      Animated.loop(
+        Animated.timing(val, {
           toValue: 1,
-          duration: FLOAT_DURATION_MS / 2,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
-        }),
-        Animated.timing(float, {
-          toValue: 0,
-          duration: FLOAT_DURATION_MS / 2,
-          easing: Easing.inOut(Easing.ease),
+          duration: 3200,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true
         })
-      ])
-    )
-    const timer = setTimeout(() => loop.start(), delayMs)
+      )
+
+    const loop1 = createRipple(anim1)
+    let loop2: Animated.CompositeAnimation | null = null
+
+    loop1.start()
+    const timer = setTimeout(() => {
+      loop2 = createRipple(anim2)
+      loop2.start()
+    }, 1600)
+
     return () => {
+      loop1.stop()
+      if (loop2) loop2.stop()
       clearTimeout(timer)
-      loop.stop()
+      anim1.setValue(0)
+      anim2.setValue(0)
     }
-  }, [delayMs, float])
+  }, [isActive, anim1, anim2])
 
-  const translateY = float.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [10, -10, 10]
-  })
+  if (!isActive) return null
 
-  const off = BUBBLE_OFFSETS[index % BUBBLE_OFFSETS.length]
-  const cx = zone.width / 2
-  const cy = zone.height / 2
-  const left = cx + off.dx * (zone.width * 0.35) - 110
-  const top = cy + off.dy * (zone.height * 0.35) - 28
+  const baseSize = 80
+
+  const renderWave = (val: Animated.Value, key: string) => {
+    const scale = val.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.7, 3.4]
+    })
+    const opacity = val.interpolate({
+      inputRange: [0, 0.2, 0.75, 1],
+      outputRange: [0, 0.32, 0.12, 0]
+    })
+
+    return (
+      <Animated.View
+        key={key}
+        style={[
+          styles.rippleWave,
+          {
+            left: center.x - baseSize / 2,
+            top: center.y - baseSize / 2,
+            width: baseSize,
+            height: baseSize,
+            borderRadius: baseSize / 2,
+            borderColor: colors.primary,
+            opacity,
+            transform: [{ scale }]
+          }
+        ]}
+      />
+    )
+  }
 
   return (
-    <Animated.View
-      style={[
-        styles.bubbleWrap,
-        {
-          left,
-          top,
-          transform: [{ translateY }]
-        }
-      ]}
-    >
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        style={[
-          styles.bubble,
-          {
-            backgroundColor: colors.bgSurface,
-            borderColor: isSending ? colors.warning : colors.primary
-          },
-          isSending && styles.bubbleSending
-        ]}
-      >
-        <View style={[styles.bubbleIcon, { backgroundColor: colors.primaryLight }]}>
-          <DeviceIcon size={20} color={colors.primary} strokeWidth={2} />
-        </View>
-        <View style={styles.bubbleInfo}>
-          <Text style={[styles.bubbleName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {isSending ? `${sendProgress}%` : device.nickname}
-          </Text>
-          {!isSending ? (
-            <Text style={[styles.bubbleIp, { color: colors.textSecondary }]} numberOfLines={1}>
-              {device.ip}
-            </Text>
-          ) : null}
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {renderWave(anim1, 'wave-1')}
+      {renderWave(anim2, 'wave-2')}
+    </View>
   )
 }
 
-const PulseCore: React.FC<{ colors: ThemeColors }> = ({ colors }) => {
+/** 雷达十字准星与外环刻度 */
+const RadarReticle: React.FC<{
+  center: { x: number; y: number }
+  radius: number
+  colors: ThemeColors
+}> = ({ center, radius, colors }) => {
+  const lineSpan = radius * 2
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View
+        style={[
+          styles.reticleLineH,
+          {
+            left: center.x - radius,
+            top: center.y,
+            width: lineSpan,
+            backgroundColor: colors.borderSubtle
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.reticleLineV,
+          {
+            left: center.x,
+            top: center.y - radius,
+            height: lineSpan,
+            backgroundColor: colors.borderSubtle
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.reticleTick,
+          { left: center.x - 2, top: center.y - radius - 2, backgroundColor: colors.borderMuted }
+        ]}
+      />
+      <View
+        style={[
+          styles.reticleTick,
+          { left: center.x - 2, top: center.y + radius - 2, backgroundColor: colors.borderMuted }
+        ]}
+      />
+      <View
+        style={[
+          styles.reticleTick,
+          { left: center.x - radius - 2, top: center.y - 2, backgroundColor: colors.borderMuted }
+        ]}
+      />
+      <View
+        style={[
+          styles.reticleTick,
+          { left: center.x + radius - 2, top: center.y - 2, backgroundColor: colors.borderMuted }
+        ]}
+      />
+    </View>
+  )
+}
+
+const PulseCore: React.FC<{ colors: ThemeColors; isDiscovering: boolean }> = ({
+  colors,
+  isDiscovering
+}) => {
   const pulse = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
+    if (!isDiscovering) return
     const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -161,23 +204,33 @@ const PulseCore: React.FC<{ colors: ThemeColors }> = ({ colors }) => {
     )
     anim.start()
     return () => anim.stop()
-  }, [pulse])
+  }, [pulse, isDiscovering])
 
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] })
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] })
 
   return (
     <Animated.View
       style={[
-        styles.pulseOuter,
+        styles.pulseCore,
         {
-          backgroundColor: colors.primaryLight,
-          transform: [{ scale }]
+          backgroundColor: colors.primary,
+          transform: [{ scale }],
+          ...Platform.select({
+            ios: {
+              shadowColor: colors.primary,
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 }
+            },
+            android: {
+              elevation: 4
+            },
+            default: {}
+          })
         }
       ]}
     >
-      <View style={[styles.pulseInner, { backgroundColor: colors.primary }]}>
-        <Radar size={22} color={colors.textOnPrimary} strokeWidth={2} />
-      </View>
+      <Radar size={24} color={colors.textOnPrimary} strokeWidth={2.2} />
     </Animated.View>
   )
 }
@@ -187,155 +240,181 @@ export const LanTransferRadarView: React.FC<LanTransferRadarViewProps> = ({
   isDiscovering,
   sendingTo,
   sendProgress,
-  onDevicePress
+  onDevicePress,
+  localIp,
+  localPort
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
-  const [zone, setZone] = useState<LayoutRectangle | null>(null)
+  const { colors, isDark } = useNativeTheme()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
 
-  const scale = zone != null ? Math.min(zone.width, zone.height) / (RING_RADII[2] * 2 + 40) : 1
+  const containerRef = useRef<View>(null)
+  const [zone, setZone] = useState<LayoutRectangle | null>(null)
+  const [containerPageY, setContainerPageY] = useState<number | null>(null)
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    const layout = e.nativeEvent.layout
+    setZone(layout)
+    containerRef.current?.measureInWindow((_x, pageY) => {
+      if (typeof pageY === 'number' && !Number.isNaN(pageY) && pageY > 0) {
+        setContainerPageY(pageY)
+      }
+    })
+  }, [])
+
+  // 手机整屏中心点在容器局部坐标系中的 Y 坐标
+  const screenCenterY = windowHeight / 2
+  const topOffset =
+    containerPageY ?? (zone != null ? Math.max(0, windowHeight - zone.height) : insets.top + 48)
+  const screenCenterInZoneY = screenCenterY - topOffset
+
+  const cx = zone != null ? zone.width / 2 : windowWidth / 2
+  const cy =
+    zone != null
+      ? Math.round(Math.max(120, Math.min(zone.height - 130, screenCenterInZoneY)))
+      : Math.round(screenCenterInZoneY)
+
+  const center = { x: cx, y: cy }
+  const scale = zone != null ? Math.min(zone.width, zone.height) / (RING_RADII[2] * 2 + 50) : 1
+  const maxRadius = RING_RADII[2] * scale
 
   return (
     <View
+      ref={containerRef}
       style={[styles.root, { backgroundColor: colors.bgApp }]}
-      onLayout={(e) => setZone(e.nativeEvent.layout)}
+      onLayout={handleLayout}
     >
       {zone != null && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {RING_RADII.map((r) => {
-            const diameter = r * 2 * scale
-            return (
-              <View
-                key={r}
-                style={[
-                  styles.ring,
-                  {
-                    width: diameter,
-                    height: diameter,
-                    borderRadius: diameter / 2,
-                    borderColor: colors.borderSubtle,
-                    left: zone.width / 2 - diameter / 2,
-                    top: zone.height / 2 - diameter / 2
-                  }
-                ]}
-              />
-            )
-          })}
-        </View>
+        <>
+          <RadarReticle center={center} radius={maxRadius} colors={colors} />
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {RING_RADII.map((r, index) => {
+              const diameter = r * 2 * scale
+              const isMiddle = index === 1
+              return (
+                <View
+                  key={r}
+                  style={[
+                    styles.ring,
+                    {
+                      width: diameter,
+                      height: diameter,
+                      borderRadius: diameter / 2,
+                      borderColor: colors.borderSubtle,
+                      backgroundColor: 'transparent',
+                      opacity: index === 0 ? 0.45 : isMiddle ? 0.8 : 0.6,
+                      left: cx - diameter / 2,
+                      top: cy - diameter / 2
+                    }
+                  ]}
+                />
+              )
+            })}
+          </View>
+        </>
       )}
 
-      <View style={styles.coreWrap} pointerEvents="none">
-        <PulseCore colors={colors} />
+      <RadarRipples center={center} colors={colors} isActive={isDiscovering} />
+
+      <View
+        style={[
+          styles.coreWrap,
+          {
+            left: cx - CORE_SIZE / 2,
+            top: cy - CORE_SIZE / 2,
+            width: CORE_SIZE,
+            height: CORE_SIZE
+          }
+        ]}
+        pointerEvents="none"
+      >
+        <PulseCore colors={colors} isDiscovering={isDiscovering} />
       </View>
-
-      {isDiscovering && devices.length === 0 && (
-        <View style={styles.scanHint} pointerEvents="none">
-          <Text style={[styles.scanTitle, { color: colors.textPrimary }]}>
-            {t('lan_transfer.scanning_nearby')}
-          </Text>
-          <Text style={[styles.scanSubtitle, { color: colors.textSecondary }]}>
-            {t('lan_transfer.scan_hint')}
-          </Text>
-        </View>
-      )}
 
       {zone != null &&
         devices
           .slice(0, 5)
           .map((device, index) => (
-            <FloatingBubble
+            <LanTransferBubble
               key={getLanDeviceDedupKey(device)}
               device={device}
               index={index}
               zone={zone}
+              center={center}
               colors={colors}
+              isDark={isDark}
               isSending={sendingTo === getLanDeviceDedupKey(device)}
               sendProgress={sendProgress}
               onPress={() => onDevicePress(device)}
             />
           ))}
+
+      <View
+        style={[
+          styles.statusCardWrap,
+          {
+            bottom: Math.max(insets.bottom, sharedTokens.spacing.md) + sharedTokens.spacing.xs
+          }
+        ]}
+        pointerEvents="box-none"
+      >
+        <View
+          style={[
+            styles.statusCard,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle
+            }
+          ]}
+        >
+          <View style={styles.statusHeaderRow}>
+            <View
+              style={[
+                styles.statusIconBox,
+                {
+                  backgroundColor: colors.primaryLight
+                }
+              ]}
+            >
+              {devices.length > 0 ? (
+                <Wifi size={17} color={colors.primary} strokeWidth={2.2} />
+              ) : (
+                <Radar size={17} color={colors.primary} strokeWidth={2.2} />
+              )}
+            </View>
+            <View style={styles.statusTextWrap}>
+              <Text style={[styles.statusTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                {devices.length > 0
+                  ? t('lan_transfer.devices_found_count', '已发现 {{count}} 台设备', {
+                      count: devices.length
+                    })
+                  : t('lan_transfer.scanning_nearby')}
+              </Text>
+              <Text
+                style={[styles.statusSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {devices.length > 0
+                  ? t('lan_transfer.devices_found_hint', '点击上方设备卡片即可发起备份传输')
+                  : t('lan_transfer.scan_hint')}
+              </Text>
+            </View>
+          </View>
+
+          {localIp ? (
+            <View style={[styles.localIpRow, { borderTopColor: colors.borderSubtle }]}>
+              <Text style={[styles.localIpLabel, { color: colors.textTertiary }]}>
+                {t('lan_transfer.local_device_ip', '本机 IP:')}{' '}
+                <Text style={[styles.localIpValue, { color: colors.textSecondary }]}>
+                  {localIp}
+                  {localPort ? `:${localPort}` : ''}
+                </Text>
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  ring: {
-    position: 'absolute',
-    borderWidth: 1
-  },
-  coreWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  pulseOuter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  pulseInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4
-  },
-  scanHint: {
-    position: 'absolute',
-    bottom: 120,
-    left: 24,
-    right: 24,
-    alignItems: 'center'
-  },
-  scanTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  scanSubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  bubbleWrap: {
-    position: 'absolute',
-    zIndex: 10
-  },
-  bubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-    paddingLeft: 10,
-    paddingRight: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    minWidth: 140,
-    maxWidth: 220,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }
-  },
-  bubbleSending: {
-    shadowOpacity: 0.2
-  },
-  bubbleIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  bubbleInfo: {
-    flex: 1,
-    minWidth: 0
-  },
-  bubbleName: {
-    fontSize: 14,
-    fontWeight: '700',
-    maxWidth: 120
-  },
-  bubbleIp: {
-    fontSize: 11,
-    marginTop: 2,
-    fontFamily: 'monospace'
-  }
-})

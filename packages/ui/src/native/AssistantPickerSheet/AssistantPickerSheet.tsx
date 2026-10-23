@@ -6,8 +6,7 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator
+  ScrollView
 } from 'react-native'
 import { Plus, Settings, Sparkles, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
@@ -15,11 +14,11 @@ import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AssistantAvatar } from '../AssistantAvatar'
 import { AssistantKindBadge } from '../AssistantKindBadge'
+import { Button } from '../Button'
+import { modalActionsStyle } from '../Modal/Modal'
 import { AssistantPickerMemoryPanel } from './AssistantPickerMemoryPanel'
-import type {
-  AssistantPickerSheetAssistant,
-  AssistantPickerSheetProps
-} from './assistant-picker-sheet.types'
+import type { AssistantPickerSheetProps } from './assistant-picker-sheet.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type {
   AssistantPickerSheetAssistant,
@@ -38,7 +37,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
   onCreatePress
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, maxModalWidth } = useNativeTheme()
   const [selectedId, setSelectedId] = useState<string | null>(currentAssistantId ?? null)
   const [isSavingMemory, setIsSavingMemory] = useState(false)
 
@@ -203,28 +202,20 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
           </ScrollView>
 
           {assistants.length > 0 ? (
-            <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  {
-                    backgroundColor: selectedAssistant ? colors.primary : colors.bgSurfaceNormal,
-                    opacity: selectedAssistant ? 1 : 0.6
-                  }
-                ]}
-                disabled={!selectedAssistant}
-                onPress={handleConfirmSelect}
-                activeOpacity={0.9}
-              >
-                <Text
-                  style={[
-                    styles.confirmBtnText,
-                    { color: selectedAssistant ? colors.textOnPrimary : colors.textSecondary }
-                  ]}
-                >
-                  {t('agent.assistant.use_selected', '使用此伙伴')}
-                </Text>
-              </TouchableOpacity>
+            <View
+              style={[
+                modalActionsStyle,
+                {
+                  paddingHorizontal: sharedTokens.spacing.md,
+                  paddingVertical: sharedTokens.spacing.sm,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Button size="sm" isDisabled={!selectedAssistant} onPress={handleConfirmSelect}>
+                {t('agent.assistant.use_selected', '使用此伙伴')}
+              </Button>
             </View>
           ) : null}
         </View>
@@ -241,30 +232,30 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxHeight: '88%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: sharedTokens.radius.lgPlus,
+    borderTopRightRadius: sharedTokens.radius.lgPlus,
     overflow: 'hidden'
   },
   handle: {
     alignItems: 'center',
-    paddingTop: 10
+    paddingTop: sharedTokens.spacing.smPlus
   },
   handleBar: {
     width: 40,
     height: 4,
-    borderRadius: 2
+    borderRadius: sharedTokens.radius.xxs
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '700'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
   },
   headerSpacer: {
     flex: 1
@@ -274,65 +265,65 @@ const styles = StyleSheet.create({
     flexShrink: 1
   },
   bodyContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 16
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.md
   },
   assistantRow: {
-    gap: 10,
-    paddingBottom: 4
+    gap: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.xs
   },
   assistantChip: {
     width: 148,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: 14,
+    gap: sharedTokens.spacing.sm,
+    padding: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1
   },
   chipTextWrap: {
     flex: 1,
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   chipTitle: {
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   emptyWrap: {
     alignItems: 'center',
-    paddingVertical: 32,
-    gap: 16
+    paddingVertical: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.md
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     textAlign: 'center'
   },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control
   },
   createBtnText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 16,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.smPlus,
+    paddingBottom: sharedTokens.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   confirmBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: sharedTokens.radius.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     alignItems: 'center'
   },
   confirmBtnText: {
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
   }
 })

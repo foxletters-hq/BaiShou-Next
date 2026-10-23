@@ -1,5 +1,5 @@
 import React from 'react'
-import { normalizeAssistantKind } from '@baishou/shared'
+import { isSystemLatteAssistantId, normalizeAssistantKind } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
 import { ResizableMarkdownEditor } from '../ResizableMarkdownEditor'
@@ -48,11 +48,12 @@ export function AssistantPickerPromptTab({
     setShowModelSwitcher,
     providers,
     globalEmojiEnabled,
-    emojiGroups,
+    emojiConfig,
     editingEmojiEnabled,
     editingSelectedEmojiGroupIds,
     handleEmojiEnabledChange,
-    handleToggleEmojiGroup
+    handleToggleEmojiGroup,
+    handleEmojiConfigChange
   } = vm
   const { isDark } = useTheme()
 
@@ -75,21 +76,24 @@ export function AssistantPickerPromptTab({
 
   return (
     <>
-      <div className={styles.partnerKindSection}>
-        <AssistantKindTabBar
-          activeKind={normalizeAssistantKind(activeAssistant.assistantKind)}
-          onKindChange={(kind) => {
-            void updateAssistantAPI(activeAssistant.id, { assistantKind: kind })
-          }}
-        />
-      </div>
+      {!isSystemLatteAssistantId(activeAssistant.id) ? (
+        <div className={styles.partnerKindSection}>
+          <AssistantKindTabBar
+            activeKind={normalizeAssistantKind(activeAssistant.assistantKind)}
+            onKindChange={(kind) => {
+              void updateAssistantAPI(activeAssistant.id, { assistantKind: kind })
+            }}
+          />
+        </div>
+      ) : null}
 
       <SectionHeader
-        icon={<AlignLeft size={18} color="var(--color-primary)" />}
+        icon={<AlignLeft size={14} color="var(--color-primary)" />}
         title={t('agent.assistant.description_label', '简介')}
         hint={descriptionHint}
       />
       <ResizableMarkdownEditor
+        variant="formField"
         content={editingDescription}
         onChange={(value) => setEditingDescription(value || '')}
         onBlur={() => void saveDescription()}
@@ -100,11 +104,12 @@ export function AssistantPickerPromptTab({
       />
 
       <SectionHeader
-        icon={<Command size={18} color="var(--color-primary)" />}
+        icon={<Command size={14} color="var(--color-primary)" />}
         title={t('agent.assistant.prompt_label', '系统提示词')}
         hint={promptHint}
       />
       <ResizableMarkdownEditor
+        variant="formField"
         content={editingPrompt}
         onChange={(value) => setEditingPrompt(value || '')}
         onBlur={() => saveConfig()}
@@ -117,17 +122,18 @@ export function AssistantPickerPromptTab({
       {globalEmojiEnabled ? (
         <div className={styles.emojiGroupSection}>
           <AssistantEditEmojiGroupSection
-            emojiGroups={emojiGroups}
+            emojiConfig={emojiConfig}
             emojiEnabled={editingEmojiEnabled}
             selectedGroupIds={editingSelectedEmojiGroupIds}
             onEmojiEnabledChange={handleEmojiEnabledChange}
             onToggleGroup={handleToggleEmojiGroup}
+            onEmojiConfigChange={handleEmojiConfigChange}
           />
         </div>
       ) : null}
 
       <SectionHeader
-        icon={<Sparkles size={18} color="var(--color-primary)" />}
+        icon={<Sparkles size={14} color="var(--color-primary)" />}
         title={t('agent.assistant.bind_model_label', '绑定模型')}
         hint={t(
           'agent.assistant.bind_model_desc',
@@ -139,7 +145,7 @@ export function AssistantPickerPromptTab({
           {providerIconSrc ? (
             <img src={providerIconSrc} alt={providerId || ''} />
           ) : (
-            <Sparkles size={22} color="var(--color-primary)" />
+            <Sparkles size={16} color="var(--color-primary)" />
           )}
         </div>
         <div className={styles.modelSelectorInfo}>

@@ -1,0 +1,60 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+const dir = dirname(fileURLToPath(import.meta.url))
+const querySrc = readFileSync(join(dir, '../mobile-graph-query.ts'), 'utf8')
+const reviewSrc = readFileSync(join(dir, '../mobile-graph-review.ts'), 'utf8')
+const fillSrc = readFileSync(join(dir, '../mobile-pending-embed-fill.ts'), 'utf8')
+
+describe('mobile graph suspect', () => {
+  it('should expose listSuspectNodes and persist suspectReason as pending', () => {
+    expect(querySrc).toContain('export async function mobileListSuspectNodes')
+    expect(querySrc).toContain('listSuspectNodes')
+    expect(reviewSrc).toContain('writeMobileNodeSuspectReason')
+    expect(reviewSrc).toContain("reviewStatus: 'pending'")
+    expect(reviewSrc).toContain('applySuspectReasonToProps')
+    expect(reviewSrc).toContain('removeSuspectReasonFromProps')
+  })
+
+  it('should not run the structural suspect scan in pending fill', () => {
+    expect(fillSrc).not.toContain('runMobileGraphSuspectScan')
+  })
+
+  it('should fill memory then diary extract then diary graph nodes', () => {
+    expect(fillSrc).not.toContain('consumeMobileKnowledgeIngestJobs')
+    expect(fillSrc).not.toContain('consumeMobileKnowledgeGraphJobs')
+    expect(fillSrc).not.toContain('NotebookGraphRepository')
+    expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'memory')")).toBeLessThan(
+      fillSrc.indexOf('await mobileGraphExtractQueue.enqueue')
+    )
+    expect(fillSrc.indexOf("phases = markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
+      fillSrc.indexOf('await backfillUnembeddedGraphNodes')
+    )
+    expect(fillSrc).toMatch(/const report = \(\s*phase: RagBatchEmbedPhaseKind/)
+    expect(fillSrc).toContain('bindGraphExtractQueueContext')
+    expect(fillSrc).toContain('mobileGraphExtractQueue.setContext')
+  })
+
+  it('should not count structural-disambiguate leftovers as organize pending work', () => {
+    const counts = readFileSync(join(dir, '../mobile-pending-embed-counts.ts'), 'utf8')
+    expect(counts).not.toContain('isOpenSuspectHit')
+    expect(counts).not.toContain('collectSuspectSignals')
+    expect(counts).toContain('graphDisambiguate: 0')
+  })
+
+  it('should send the graph provider into generateContent instead of the summary slot', () => {
+    const extract = readFileSync(join(dir, '../mobile-knowledge-graph-extract.ts'), 'utf8')
+    expect(extract).toContain('const { providerId, modelId } = resolveGlobalGraphModelIds')
+    expect(extract).toContain(
+      'abortSignal: createAbortTimeoutSignal(GRAPH_EXTRACT_WINDOW_TIMEOUT_MS)'
+    )
+    expect(extract).not.toContain('AbortSignal.timeout(')
+    expect(extract).toContain('graph-extract-window-timeout')
+    expect(extract).toMatch(/generateContent\([\s\S]*?providerId/)
+    const suspect = readFileSync(join(dir, '../mobile-graph-suspect-scan.ts'), 'utf8')
+    expect(suspect).toContain('const { providerId, modelId } = resolveGlobalGraphModelIds')
+    expect(suspect).toMatch(/generateContent\([\s\S]*?providerId/)
+  })
+})

@@ -62,6 +62,28 @@ describe('AttachmentManagerService', () => {
     expect(orphanGroup!.files[0]!.name).toBe('orphan.pdf')
   })
 
+  it('should keep emojis pool out of session attachment groups and batch delete', async () => {
+    const sessionId = 'session-active-id'
+    const sessionDir = path.join(tempDir, sessionId)
+    const emojisDir = path.join(tempDir, 'emojis')
+    await fs.mkdir(sessionDir, { recursive: true })
+    await fs.mkdir(emojisDir, { recursive: true })
+    await fs.writeFile(path.join(sessionDir, 'chat.png'), 'chat')
+    await fs.writeFile(path.join(emojisDir, 'cat.png'), 'sticker')
+
+    mockPathService.getEmojisDirectory = vi.fn().mockResolvedValue(emojisDir)
+
+    const groups = await service.listSessionGroups(new Set([sessionId]))
+    expect(groups.map((group) => group.sessionId)).toEqual([sessionId])
+
+    await service.deleteBatch(['emojis', sessionId])
+    expect(existsSync(path.join(emojisDir, 'cat.png'))).toBe(true)
+    expect(existsSync(sessionDir)).toBe(false)
+
+    const files = await service.listEmojiAttachmentFiles()
+    expect(files.map((file) => file.relativePath)).toEqual(['emojis/cat.png'])
+  })
+
   it('should auto nuke empty attachment directories during scanning', async () => {
     const emptySessionId = 'empty-session-id'
     const emptyDir = path.join(tempDir, emptySessionId)

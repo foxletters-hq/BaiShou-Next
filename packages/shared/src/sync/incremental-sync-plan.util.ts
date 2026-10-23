@@ -8,29 +8,47 @@ import type { SyncManifest } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
 const ROOT_SCOPE = '__root__'
+/** 存储根下 `.baishou/settings/`（主题 / 语言 / AI 等全局设置） */
+export const INCREMENTAL_SYNC_GLOBAL_SCOPE = 'global' as const
+
+/** 远端 manifest 由旧端写入（无能力标记）；用于提示混用风险 */
+export function isLegacyRemoteManifest(
+  manifest: Pick<SyncManifest, 'files' | 'capabilities'>
+): boolean {
+  return Object.keys(manifest.files ?? {}).length > 0 && (manifest.capabilities?.length ?? 0) === 0
+}
 const UNKNOWN_SCOPE = '__unknown__'
 const ROOT_FILES = new Set(['vault_registry.json'])
+const GLOBAL_SETTINGS_PREFIX = '.baishou/settings/'
+
+function isNonVaultSyncScope(scope: string): boolean {
+  return scope === ROOT_SCOPE || scope === INCREMENTAL_SYNC_GLOBAL_SCOPE || scope === UNKNOWN_SCOPE
+}
 
 export function resolveIncrementalSyncVaultScope(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
+  if (normalized === '.baishou/settings' || normalized.startsWith(GLOBAL_SETTINGS_PREFIX)) {
+    return INCREMENTAL_SYNC_GLOBAL_SCOPE
+  }
   if (ROOT_FILES.has(normalized)) return ROOT_SCOPE
   const slash = normalized.indexOf('/')
   if (slash === -1) return ROOT_SCOPE
   return normalized.slice(0, slash)
 }
 
-/** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录 */
+/** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录（大小写不敏感） */
 export function isRegistryVaultOnDisk(
   vaultName: string,
   diskVaultNames: readonly string[]
 ): boolean {
-  const diskSet = new Set(diskVaultNames)
-  if (diskSet.has(vaultName)) return true
   const sanitized = vaultName.replace(/[\\/:%#?*\x00-\x1f]/g, '_').trim() || 'vault'
-  return diskSet.has(sanitized)
+  const targets = new Set(
+    [vaultName, sanitized].map((name) => name.trim().toLocaleLowerCase()).filter(Boolean)
+  )
+  return diskVaultNames.some((diskName) => targets.has(diskName.trim().toLocaleLowerCase()))
 }
 
-/** 汇总 manifest 中出现的工作区作用域（不含 __root__ / __unknown__） */
+/** 汇总 manifest 中出现的工作区作用域（不含 __root__ / global / __unknown__） */
 export function collectManifestVaultScopes(
   ...manifests: Array<Pick<SyncManifest, 'files'>>
 ): Set<string> {
@@ -38,7 +56,7 @@ export function collectManifestVaultScopes(
   for (const manifest of manifests) {
     for (const filePath of Object.keys(manifest.files)) {
       const scope = resolveIncrementalSyncVaultScope(filePath)
-      if (scope !== ROOT_SCOPE && scope !== UNKNOWN_SCOPE) {
+      if (!isNonVaultSyncScope(scope)) {
         scopes.add(scope)
       }
     }
@@ -54,9 +72,7 @@ export function buildIncrementalSyncBoundaryIssues(options: {
 }): IncrementalSyncBoundaryIssues {
   const registered = new Set(options.registeredVaults)
   const planVaultScopes = new Set(
-    options.planItems
-      .map((item) => item.vaultScope)
-      .filter((scope) => scope !== ROOT_SCOPE && scope !== UNKNOWN_SCOPE)
+    options.planItems.map((item) => item.vaultScope).filter((scope) => !isNonVaultSyncScope(scope))
   )
 
   const unknownVaultPaths = [...planVaultScopes].filter((scope) => !registered.has(scope))
@@ -120,6 +136,44 @@ export function buildIncrementalSyncBoundaryHints(
   return hints
 }
 
+function normalizeSizeBytes(size: number | undefined): number {
+  if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) return 0
+  return size
+}
+
+/**
+ * 将计划项字节归入上传/下载。
+ * 删除不产生传输；冲突按 direction 归类；无 direction 的冲突不计流量。
+ */
+export function resolveIncrementalSyncTransferBytes(
+  item: Pick<IncrementalSyncPlanItem, 'action' | 'sizeBytes' | 'direction'>
+): { uploadBytes: number; downloadBytes: number } {
+  const sizeBytes = normalizeSizeBytes(item.sizeBytes)
+  switch (item.action) {
+    case 'upload':
+      return { uploadBytes: sizeBytes, downloadBytes: 0 }
+    case 'download':
+      return { uploadBytes: 0, downloadBytes: sizeBytes }
+    case 'conflict-resolved':
+      if (item.direction === 'upload') return { uploadBytes: sizeBytes, downloadBytes: 0 }
+      if (item.direction === 'download') return { uploadBytes: 0, downloadBytes: sizeBytes }
+      return { uploadBytes: 0, downloadBytes: 0 }
+    case 'delete-local':
+    case 'delete-remote':
+    default:
+      return { uploadBytes: 0, downloadBytes: 0 }
+  }
+}
+
+/** 人类可读字节（如 `12.4 MB`），供确认弹窗流量摘要使用 */
+export function formatIncrementalSyncPlanBytes(bytes: number): string {
+  const value = normalizeSizeBytes(bytes)
+  if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`
+  if (value >= 1024) return `${Math.round(value / 1024)} KB`
+  return `${Math.round(value)} B`
+}
+
 function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   if (decision.type === 'skip') return null
   const action =
@@ -127,7 +181,9 @@ function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   return {
     filePath: decision.filePath,
     action,
-    vaultScope: resolveIncrementalSyncVaultScope(decision.filePath)
+    vaultScope: resolveIncrementalSyncVaultScope(decision.filePath),
+    sizeBytes: normalizeSizeBytes(decision.size),
+    ...(decision.direction ? { direction: decision.direction } : {})
   }
 }
 
@@ -144,7 +200,9 @@ function summarizeByVault(items: IncrementalSyncPlanItem[]): IncrementalSyncVaul
       deleteLocal: 0,
       deleteRemote: 0,
       conflict: 0,
-      samplePaths: []
+      samplePaths: [],
+      uploadBytes: 0,
+      downloadBytes: 0
     }
     map.set(vaultName, created)
     return created
@@ -169,6 +227,9 @@ function summarizeByVault(items: IncrementalSyncPlanItem[]): IncrementalSyncVaul
         summary.conflict += 1
         break
     }
+    const transfer = resolveIncrementalSyncTransferBytes(item)
+    summary.uploadBytes += transfer.uploadBytes
+    summary.downloadBytes += transfer.downloadBytes
     if (summary.samplePaths.length < 5) {
       summary.samplePaths.push(item.filePath)
     }
@@ -191,6 +252,8 @@ export function buildIncrementalSyncPlanPreview(options: {
   blockedDeleteCount?: number
   blockedDeleteDirection?: 'local' | 'remote'
   extraWarnings?: string[]
+  /** V2.5 rename pass 文件数（模拟或实际） */
+  renamedFileCount?: number
 }): IncrementalSyncPlanPreview {
   const skippedCount = options.decisions.filter((d) => d.type === 'skip').length
   const items = options.decisions
@@ -220,14 +283,24 @@ export function buildIncrementalSyncPlanPreview(options: {
     warnings.push('data_sync.plan_warning_delete_blocked')
   }
 
+  const vaultSummaries = summarizeByVault(items)
+  let totalUploadBytes = 0
+  let totalDownloadBytes = 0
+  for (const summary of vaultSummaries) {
+    totalUploadBytes += summary.uploadBytes
+    totalDownloadBytes += summary.downloadBytes
+  }
+
   return {
     activeVaultName: options.activeVaultName,
     registeredVaults: [...options.registeredVaults],
-    vaultSummaries: summarizeByVault(items),
+    vaultSummaries,
     items,
     warnings,
     changeCount: items.length,
     skippedCount,
+    totalUploadBytes,
+    totalDownloadBytes,
     boundaryIssues,
     requiresHighDivergenceConfirm: options.requiresHighDivergenceConfirm ?? false,
     divergencePercent: options.divergencePercent,
@@ -236,6 +309,9 @@ export function buildIncrementalSyncPlanPreview(options: {
     deletePropagationReason: options.deletePropagationReason,
     requiresDeletePropagationChoice: options.deletePropagationBlocked ?? false,
     blockedDeleteCount: options.blockedDeleteCount,
-    blockedDeleteDirection: options.blockedDeleteDirection
+    blockedDeleteDirection: options.blockedDeleteDirection,
+    ...(typeof options.renamedFileCount === 'number' && options.renamedFileCount > 0
+      ? { renamedFileCount: options.renamedFileCount }
+      : {})
   }
 }

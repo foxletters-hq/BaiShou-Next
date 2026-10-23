@@ -11,14 +11,17 @@ describe('SessionSyncService', () => {
   beforeEach(() => {
     mockFileService = {
       listAllSessions: vi.fn().mockResolvedValue([]),
+      listSessionsAcrossVaults: vi.fn().mockResolvedValue([]),
       readSession: vi.fn(),
       getSessionFileByteSize: vi.fn(),
+      getSessionFileMtimeMs: vi.fn(),
       writeSession: vi.fn(),
       deleteSession: vi.fn()
     } as any
 
     mockRepo = {
       findAllSessions: vi.fn().mockResolvedValue([]),
+      findAllSessionsAcrossVaults: vi.fn().mockResolvedValue([]),
       upsertAggregate: vi.fn(),
       deleteSessions: vi.fn()
     } as any
@@ -26,9 +29,23 @@ describe('SessionSyncService', () => {
     service = new SessionSyncService(mockRepo, mockFileService)
   })
 
-  it('fullScanArchives deletes active-vault ghosts without disk files', async () => {
+  it('fullScanArchives skips ghost cleanup when the scan finds no session files', async () => {
     mockFileService.listAllSessions.mockResolvedValue([])
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'gone', vaultName: 'Work' },
+      { id: 'other', vaultName: 'Personal' }
+    ] as any)
+
+    await service.fullScanArchives({ activeVaultName: 'Work' })
+
+    expect(mockRepo.deleteSessions).not.toHaveBeenCalled()
+  })
+
+  it('fullScanArchives still deletes ghosts when at least one session file was found', async () => {
+    mockFileService.listAllSessions.mockResolvedValue([{ id: 'kept' }] as any)
+    mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'kept', vaultName: 'Work' },
       { id: 'gone', vaultName: 'Work' },
       { id: 'other', vaultName: 'Personal' }
     ] as any)
@@ -39,8 +56,10 @@ describe('SessionSyncService', () => {
   })
 
   it('fullScanArchives preserves dirty / unflushed session ids', async () => {
-    mockFileService.listAllSessions.mockResolvedValue([])
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockFileService.listAllSessions.mockResolvedValue([{ id: 'kept' }] as any)
+    mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'kept', vaultName: 'Work' },
       { id: 'mid-chat', vaultName: 'Work' },
       { id: 'stale', vaultName: 'Work' }
     ] as any)
@@ -56,7 +75,7 @@ describe('SessionSyncService', () => {
   it('fullScanArchives skips other vaults even without preserve list', async () => {
     mockFileService.listAllSessions.mockResolvedValue([{ id: 'a' }] as any)
     mockFileService.readSession.mockResolvedValue({ session: { id: 'a' }, messages: [] } as any)
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultName: 'Work' },
       { id: 'b', vaultName: 'Personal' }
     ] as any)
@@ -81,7 +100,9 @@ describe('SessionSyncService', () => {
         messages: []
       })
     )
-    mockRepo.findAllSessions.mockResolvedValue([{ id: 'from-work', vaultName: 'Work' }] as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'from-work', vaultName: 'Work' }
+    ] as any)
 
     await service.fullScanArchives({
       activeVaultName: 'Work',
@@ -100,7 +121,7 @@ describe('SessionSyncService', () => {
       .fn()
       .mockResolvedValue([{ id: 'kept', fullPath: '/Work/Sessions/kept.json', vaultName: 'Work' }])
     mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'kept', vaultName: 'Work' },
       { id: 'ghost-work', vaultName: 'Work' },
       { id: 'other-vault', vaultName: 'Archive' }
@@ -112,5 +133,66 @@ describe('SessionSyncService', () => {
     })
 
     expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-work'])
+  })
+
+  it('fullScanArchives preserves a scanned vault that yielded no session files', async () => {
+    mockFileService.listSessionsAcrossVaults = vi.fn().mockResolvedValue([
+      {
+        id: 'kept-personal',
+        fullPath: '/Personal/Sessions/kept.json',
+        vaultName: 'Personal'
+      }
+    ])
+    mockFileService.readSession.mockResolvedValue({
+      session: { id: 'kept-personal' },
+      messages: []
+    } as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'kept-personal', vaultName: 'Personal' },
+      { id: 'ghost-personal', vaultName: 'Personal' },
+      { id: 'ghost-work', vaultName: 'Work' }
+    ] as any)
+
+    await service.fullScanArchives({
+      activeVaultName: 'Personal',
+      diskVaultNames: ['Personal', 'Work']
+    })
+
+    expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-personal'])
+    expect(mockRepo.deleteSessions).not.toHaveBeenCalledWith(['ghost-work'])
+  })
+
+  it('reconcileFromDisks skips read when disk mtime is not newer than DB updatedAt', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'unchanged', fullPath: '/Work/Sessions/unchanged.json', vaultName: 'Work' },
+      { id: 'newer', fullPath: '/Work/Sessions/newer.json', vaultName: 'Work' },
+      { id: 'missing', fullPath: '/Work/Sessions/missing.json', vaultName: 'Work' }
+    ])
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'unchanged', vaultName: 'Work', updatedAt: dbUpdatedAt },
+      { id: 'newer', vaultName: 'Work', updatedAt: dbUpdatedAt },
+      { id: 'ghost', vaultName: 'Work', updatedAt: dbUpdatedAt }
+    ] as any)
+    mockFileService.getSessionFileMtimeMs.mockImplementation(async (id: string) => {
+      if (id === 'unchanged') return dbUpdatedAt.getTime()
+      if (id === 'newer') return dbUpdatedAt.getTime() + 5_000
+      return undefined
+    })
+    mockFileService.readSession.mockImplementation(async (id: string) => ({
+      session: { id },
+      messages: []
+    }))
+
+    await service.reconcileFromDisks({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Work']
+    })
+
+    expect(mockFileService.readSession).not.toHaveBeenCalledWith('unchanged', 'Work')
+    expect(mockFileService.readSession).toHaveBeenCalledWith('newer', 'Work')
+    expect(mockFileService.readSession).toHaveBeenCalledWith('missing', 'Work')
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(2)
+    expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost'])
   })
 })

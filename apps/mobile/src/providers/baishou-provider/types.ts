@@ -13,7 +13,7 @@ import type {
 } from '@baishou/core-mobile'
 import type { SettingsRepository, UserProfileRepository } from '@baishou/database'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
-import type { StreamChatCallbacks } from '@baishou/ai'
+import type { IBaishouAgentGate, StreamChatCallbacks } from '@baishou/ai'
 import type {
   SessionRepository as SessionRepositoryType,
   SnapshotRepository as SnapshotRepositoryType
@@ -88,6 +88,16 @@ export interface BaishouContextValue {
     vaultFileWatcher: VaultFileWatcherService
     switchVault: (vaultName: string) => Promise<void>
     deleteVault: (vaultName: string) => Promise<void>
+    renameVault: (
+      oldNameOrId: string,
+      newName: string
+    ) => Promise<{
+      id: string
+      oldName: string
+      newName: string
+      estimatedUploadBytes: number
+    }>
+    estimateVaultRenameBytes: (vaultNameOrId: string) => Promise<number>
     createDemoVault: () => Promise<{ vaultName: string; diaryCount: number; summaryCount: number }>
     memorySearch: (
       query: string,
@@ -122,6 +132,8 @@ export interface BaishouContextValue {
     callbacks: StreamChatCallbacks,
     overrides?: StartAgentChatOverrides
   ) => Promise<void>
+  agentGate?: IBaishouAgentGate
+  reloadAgentGateConfig?: () => Promise<void>
 }
 
 export interface BaishouProviderProps {

@@ -1,11 +1,11 @@
 .card {
   background: var(--bg-surface);
-  border-radius: 24px;
-  border: 1px solid rgba(128, 128, 128, 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  padding: 24px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-control);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -13,35 +13,26 @@
   font-family: var(--font-family-main);
 }
 
-[data-theme='dark'] .card {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  border-color: rgba(255, 255, 255, 0.05);
-}
-
 .card.hovered {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
-}
-
-[data-theme='dark'] .card.hovered {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .dateBlock {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .day {
-  font-size: 32px;
+  font-size: var(--icon-fs-xl);
   font-weight: 800;
   color: var(--color-text-main);
   line-height: 1;
@@ -50,23 +41,23 @@
 .metaCol {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .weekday {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
 .yearMonthBadge {
-  padding: 2px 6px;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
   background: transparent;
   border: 0.5px solid var(--color-primary);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 900;
+  border-radius: var(--radius-xs);
+  font-size: var(--icon-fs-xs);
+  font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
 }
@@ -90,10 +81,10 @@
 }
 
 .tagsArea {
-  margin-top: 20px;
+  margin-top: var(--spacing-md-plus);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-sm);
   max-height: 52px;
   overflow: hidden;
   flex-shrink: 0;
@@ -105,63 +96,46 @@
   justify-content: center;
   box-sizing: border-box;
   min-height: 20px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   line-height: 1;
 }
 
 /* 4 distinct tag color sets based on modulo hashing */
 .tagColor0 {
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
 }
 .tagColor1 {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
 }
 .tagColor2 {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
 }
 .tagColor3 {
-  background: rgba(139, 92, 246, 0.15);
-  color: #8b5cf6;
+  background: color-mix(in srgb, var(--color-accent-purple) 15%, transparent);
+  color: var(--color-accent-purple);
 }
 
 .tagOverflow {
-  background: rgba(148, 163, 184, 0.18);
-  color: var(--color-text-secondary);
-}
-
-[data-theme='dark'] .tagColor0 {
-  background: rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
-}
-[data-theme='dark'] .tagColor1 {
-  background: rgba(16, 185, 129, 0.25);
-  color: #34d399;
-}
-[data-theme='dark'] .tagColor2 {
-  background: rgba(245, 158, 11, 0.25);
-  color: #fbbf24;
-}
-[data-theme='dark'] .tagColor3 {
-  background: rgba(139, 92, 246, 0.25);
-  color: #a78bfa;
+  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
+  color: var(--text-secondary);
 }
 
 .actionBar {
   display: flex;
   flex-direction: column;
-  margin-top: 20px;
+  margin-top: var(--spacing-md-plus);
   opacity: 0;
   max-height: 0;
   overflow: hidden;
   transition:
-    opacity 0.2s,
-    max-height 0.2s;
+    opacity var(--duration-swift),
+    max-height var(--duration-swift);
 }
 
 .actionVisible {
@@ -179,25 +153,25 @@
 
 .actionDivider {
   height: 1px;
-  background: var(--color-glass-border);
-  margin-bottom: 12px;
+  background: var(--border-muted);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .actionBtns {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .actionBtn {
   background: transparent;
   border: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-xs-plus);
   display: flex;
   align-items: center;
   transition: all var(--animation-micro);
@@ -208,9 +182,9 @@
 }
 
 .deleteBtn {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .deleteBtn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(var(--color-error-rgb), 0.1);
 }

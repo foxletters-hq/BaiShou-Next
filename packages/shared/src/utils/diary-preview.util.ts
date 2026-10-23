@@ -41,7 +41,7 @@ export function formatSemanticChunkSnippet(text: string | null | undefined): str
   if (!text) return ''
   const stripped = text
     .replace(/^\[标签:[^\]]*\]\s*/, '')
-    .replace(/^\[\d{4}-\d{2}-\d{2} 日记:\]\s*\n?/, '')
+    .replace(/^\[\d{4}-\d{2}-\d{2}\s*日记:\]\s*\n?/, '')
   return formatDiaryPreviewText(stripped)
 }
 

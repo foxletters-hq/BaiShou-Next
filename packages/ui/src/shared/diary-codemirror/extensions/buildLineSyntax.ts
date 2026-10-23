@@ -1,10 +1,21 @@
 import type { EditorState } from '@codemirror/state'
-import { blockquoteLineStyle, hideSyntaxReplaceSpec } from './styles'
+import {
+  blockquoteLineStyle,
+  headingLineStyles,
+  headingMarkStyle,
+  hideSyntaxReplaceSpec,
+  hrLineStyle,
+  hrWidgetReplaceSpec,
+  inlineCodeMark
+} from './styles'
 import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
-const ATX_HEADING_PREFIX_RE = /^(#{1,6})\s?/
+/** CommonMark ATX 标题需要 `#` 后有空白；`#标签` 是日记标签，不能当标题吃掉首个 `#` */
+const ATX_HEADING_PREFIX_RE = /^(#{1,6})(?:\s+|$)/
 const BLOCKQUOTE_PREFIX_RE = /^(\s*>\s?)/
+/** CommonMark 风格 thematic break：至少 3 个相同 `-` / `*` / `_`，允许中间空格 */
+const HR_LINE_RE = /^\s*([-*_])(?:\s*\1){2,}\s*$/
 const STRONG_WRAPPER_RE = /\*\*(.+?)\*\*/g
 const EMPHASIS_WRAPPER_RE = /(?<!\*)\*([^*]+)\*(?!\*)/g
 const INLINE_CODE_WRAPPER_RE = /`([^`]+)`/g
@@ -15,6 +26,17 @@ function selectionIntersectsRange(state: EditorState, from: number, to: number):
     if (range.from < to && range.to > from) return true
   }
   return false
+}
+
+/** 引用块末尾的空 `>` 行：后面没有紧邻的引用行 */
+function isTrailingEmptyBlockquoteLine(
+  doc: EditorState['doc'],
+  lineNumber: number,
+  content: string
+): boolean {
+  if (content.trim().length > 0) return false
+  if (lineNumber >= doc.lines) return true
+  return !BLOCKQUOTE_PREFIX_RE.test(doc.line(lineNumber + 1).text)
 }
 
 function hideDelimiterRuns(
@@ -61,6 +83,42 @@ function hideDelimiterRuns(
   }
 }
 
+/** 行内代码：编辑时反引号留在灰底内，光标离开后隐藏反引号 */
+function styleInlineCodeRuns(
+  marks: DecorationMark[],
+  doc: EditorState['doc'],
+  hideSpec: Parameters<typeof import('@codemirror/view').Decoration.replace>[0],
+  lineFrom: number,
+  text: string,
+  state: EditorState
+): void {
+  INLINE_CODE_WRAPPER_RE.lastIndex = 0
+  let match = INLINE_CODE_WRAPPER_RE.exec(text)
+  while (match) {
+    const full = match[0]
+    const inner = match[1] ?? ''
+    const openLen = full.indexOf(inner)
+    const closeLen = full.length - openLen - inner.length
+    const from = lineFrom + match.index
+    const to = from + full.length
+    const innerFrom = from + openLen
+    const innerTo = innerFrom + inner.length
+    const editing = selectionIntersectsRange(state, from, to)
+
+    // 灰底包住整段（含反引号）；chip 用固定行高，显示 ` 时不会撑高
+    if (from < to) marks.push(inlineCodeMark.range(from, to))
+    if (!editing) {
+      if (openLen > 0) {
+        pushReplaceDecoration(marks, doc, from, from + openLen, hideSpec)
+      }
+      if (closeLen > 0) {
+        pushReplaceDecoration(marks, doc, innerTo, to, hideSpec)
+      }
+    }
+    match = INLINE_CODE_WRAPPER_RE.exec(text)
+  }
+}
+
 export function collectLineSyntaxDecorations(
   state: EditorState,
   activeLines: Set<number>,
@@ -79,22 +137,43 @@ export function collectLineSyntaxDecorations(
 
     const heading = text.match(ATX_HEADING_PREFIX_RE)
     if (heading) {
+      const lineStyle = headingLineStyles[heading[1].length]
+      if (lineStyle) pushLineDecoration(marks, lineStyle, line.from)
+      const markTo = line.from + heading[0].length
       if (!isActiveLine) {
-        pushReplaceDecoration(marks, doc, line.from, line.from + heading[0].length, hideSpec)
+        pushReplaceDecoration(marks, doc, line.from, markTo, hideSpec)
+      } else if (line.from < markTo) {
+        marks.push(headingMarkStyle.range(line.from, markTo))
+      }
+      continue
+    }
+
+    // 表格分隔行含 `|`，不当作分割线
+    if (!text.includes('|') && HR_LINE_RE.test(text)) {
+      pushLineDecoration(marks, hrLineStyle, line.from)
+      if (!isActiveLine && line.from < line.to) {
+        pushReplaceDecoration(marks, doc, line.from, line.to, hrWidgetReplaceSpec)
       }
       continue
     }
 
     const quote = text.match(BLOCKQUOTE_PREFIX_RE)
-    if (quote && !isActiveLine) {
-      pushReplaceDecoration(marks, doc, line.from, line.from + quote[0].length, hideSpec)
-      pushLineDecoration(marks, blockquoteLineStyle, line.from)
+    if (quote) {
+      if (!isActiveLine) {
+        pushReplaceDecoration(marks, doc, line.from, line.from + quote[0].length, hideSpec)
+      }
+      // 光标不在末尾空引用行时收起竖线，避免续行产生的空 `>` 把引用块看成两行高。
+      // 光标落在该行时仍保留竖线，便于确认当前仍在引用内。
+      const quoteContent = text.slice(quote[0].length)
+      if (isActiveLine || !isTrailingEmptyBlockquoteLine(doc, lineNum, quoteContent)) {
+        pushLineDecoration(marks, blockquoteLineStyle, line.from)
+      }
     }
 
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, STRONG_WRAPPER_RE, 1, state)
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, STRIKETHROUGH_WRAPPER_RE, 1, state)
     if (!text.includes('```')) {
-      hideDelimiterRuns(marks, doc, hideSpec, line.from, text, INLINE_CODE_WRAPPER_RE, 1, state)
+      styleInlineCodeRuns(marks, doc, hideSpec, line.from, text, state)
     }
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, EMPHASIS_WRAPPER_RE, 1, state)
   }

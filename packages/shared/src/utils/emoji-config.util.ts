@@ -1,6 +1,31 @@
-import type { EmojiGroup, EmojiItem, EmojiToolConfig } from '../types/settings.types'
+import type {
+  EmojiGroup,
+  EmojiItem,
+  EmojiSendFrequency,
+  EmojiToolConfig
+} from '../types/settings.types'
 
 export const DEFAULT_EMOJI_GROUP_ID = 'default'
+
+/** 默认发送频率：适中（保持原有行为，不鼓励每条都发） */
+export const DEFAULT_EMOJI_SEND_FREQUENCY: EmojiSendFrequency = 'normal'
+
+export const EMOJI_SEND_FREQUENCIES: readonly EmojiSendFrequency[] = [
+  'low',
+  'normal',
+  'high',
+  'always'
+] as const
+
+/** 将任意输入归一化为合法的发送频率 */
+export function normalizeEmojiSendFrequency(value: unknown): EmojiSendFrequency {
+  return typeof value === 'string' && (EMOJI_SEND_FREQUENCIES as readonly string[]).includes(value)
+    ? (value as EmojiSendFrequency)
+    : DEFAULT_EMOJI_SEND_FREQUENCY
+}
+
+/** 伙伴页等处改完表情包组后，通知设置内存态同步，避免整包回写覆盖 */
+export const EMOJI_TOOL_CONFIG_UPDATED_EVENT = 'baishou:emoji-config-updated'
 
 export type AssistantEmojiPrefs = {
   /** 伙伴是否启用表情包（默认关闭） */
@@ -13,6 +38,8 @@ export type AssistantEmojiPrefs = {
 
 export type ResolvedAssistantEmojiConfig = {
   enabled: boolean
+  /** 发送频率（始终有值，缺省为 normal） */
+  frequency: EmojiSendFrequency
   emojis: EmojiItem[]
   groupIds?: string[]
   groupName?: string
@@ -30,10 +57,12 @@ export function normalizeEmojiToolConfig(
   config?: EmojiToolConfig | null
 ): NormalizedEmojiToolConfig {
   const enabled = config?.enabled === true
+  const frequency = normalizeEmojiSendFrequency(config?.frequency)
 
   if (config?.groups && config.groups.length > 0) {
     return {
       enabled,
+      frequency,
       groups: config.groups.map((group) => ({
         id: group.id,
         name: group.name?.trim() || '未命名组',
@@ -45,6 +74,7 @@ export function normalizeEmojiToolConfig(
   const legacyEmojis = Array.isArray(config?.emojis) ? config!.emojis : []
   return {
     enabled,
+    frequency,
     groups: legacyEmojis.length
       ? [
           {
@@ -88,13 +118,45 @@ export function upsertEmojiGroup(config: EmojiToolConfig, group: EmojiGroup): Em
 
 export function removeEmojiGroup(config: EmojiToolConfig, groupId: string): EmojiToolConfig {
   const normalized = normalizeEmojiToolConfig(config)
-  if (normalized.groups.length <= 1) {
-    return normalized
-  }
   return {
     ...normalized,
     groups: normalized.groups.filter((group) => group.id !== groupId)
   }
+}
+
+function emojiRelativeKey(relativePath: string): string {
+  const normalized = relativePath
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^local:\/\/+\//i, '')
+  const idx = normalized.toLowerCase().lastIndexOf('emojis/')
+  if (idx >= 0) return normalized.slice(idx)
+  const name = normalized.split('/').pop()
+  return name ? `emojis/${name}` : normalized
+}
+
+/** 按相对路径从所有组里拿掉表情包条目（删文件后同步配置） */
+export function removeEmojisByRelativePaths(
+  config: EmojiToolConfig | null | undefined,
+  relativePaths: readonly string[]
+): NormalizedEmojiToolConfig {
+  const keys = new Set(relativePaths.map(emojiRelativeKey).filter(Boolean))
+  const normalized = normalizeEmojiToolConfig(config)
+  if (keys.size === 0) return normalized
+  return {
+    ...normalized,
+    groups: normalized.groups.map((group) => ({
+      ...group,
+      emojis: group.emojis.filter((emoji) => !keys.has(emojiRelativeKey(emoji.relativePath)))
+    }))
+  }
+}
+
+export function emojiGroupMatchesQuery(group: EmojiGroup, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  if (group.name.toLowerCase().includes(q)) return true
+  return (group.emojis ?? []).some((emoji) => emoji.name.toLowerCase().includes(q))
 }
 
 export function findEmojiGroup(
@@ -170,17 +232,18 @@ export function resolveAssistantEmojiConfig(
   prefs?: AssistantEmojiPrefs | null
 ): ResolvedAssistantEmojiConfig {
   const normalized = normalizeEmojiToolConfig(config)
+  const frequency = normalized.frequency ?? DEFAULT_EMOJI_SEND_FREQUENCY
   if (!normalized.enabled) {
-    return { enabled: false, emojis: [] }
+    return { enabled: false, frequency, emojis: [] }
   }
 
   const { emojiEnabled, emojiGroupIds } = normalizeAssistantEmojiPrefs(prefs)
   if (!emojiEnabled) {
-    return { enabled: false, emojis: [] }
+    return { enabled: false, frequency, emojis: [] }
   }
 
   if (emojiGroupIds.length === 0) {
-    return { enabled: true, emojis: [] }
+    return { enabled: true, frequency, emojis: [] }
   }
 
   const emojis = mergeEmojiItemsFromGroups(normalized, emojiGroupIds)
@@ -190,6 +253,7 @@ export function resolveAssistantEmojiConfig(
 
   return {
     enabled: true,
+    frequency,
     emojis,
     groupIds: emojiGroupIds,
     groupName: names.length > 0 ? names.join('、') : undefined

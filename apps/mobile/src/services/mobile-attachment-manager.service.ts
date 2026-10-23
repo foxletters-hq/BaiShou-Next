@@ -1,6 +1,8 @@
-import i18n from 'i18next'
-import * as ImagePicker from 'expo-image-picker'
-import { extractReferencedFileNames, collectSessionAttachmentFileNames } from '@baishou/shared'
+import {
+  extractReferencedFileNames,
+  collectSessionAttachmentFileNames,
+  isAttachmentPoolFolderName
+} from '@baishou/shared'
 import type {
   IAttachmentManager,
   AttachmentItem,
@@ -18,8 +20,13 @@ import {
 } from '../utils/mobile-attachment-image-resolver'
 import { importUriToPath, inferImageExtension } from './mobile-uri-import'
 import { toFileUri } from './android-external-fs'
-
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'])
+import {
+  deleteMobileEmoji,
+  importMobileEmoji,
+  listMobileEmojiAttachmentFiles,
+  listMobileEmojis,
+  resolveMobileEmojiPath
+} from './mobile-attachment-manager.emoji'
 
 /**
  * 移动端附件管理，所有 vault 读写经 IFileSystem。
@@ -29,6 +36,10 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     private readonly pathService: IStoragePathService,
     private readonly fileSystem: IFileSystem
   ) {}
+
+  private emojiDeps() {
+    return { pathService: this.pathService, fileSystem: this.fileSystem }
+  }
 
   private async listAvatarCandidateDirs(relativePath: string): Promise<string[]> {
     if (isUserAvatarRelativePath(relativePath)) {
@@ -129,7 +140,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const out: SessionAttachmentGroup[] = []
 
     for (const sessionId of sessionIds) {
-      if (sessionId === 'avatars') continue
+      if (isAttachmentPoolFolderName(sessionId)) continue
 
       const sessionDir = joinPath(attDir, sessionId)
       const dirStat = await this.fileSystem.stat(sessionDir).catch(() => null)
@@ -139,6 +150,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
       let total = 0
       const items = []
       for (const name of files) {
+        if (name === '.nomedia') continue
         const fp = joinPath(sessionDir, name)
         const st = await this.fileSystem.stat(fp).catch(() => null)
         if (!st?.isFile) continue
@@ -173,11 +185,12 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const safeSessionId = sessionId.replace(/[/\\]/g, '')
     const safeFileName = fileName.replace(/[/\\]/g, '')
     if (
-      safeSessionId === 'avatars' ||
+      isAttachmentPoolFolderName(safeSessionId) ||
       safeSessionId.trim() === '' ||
       safeFileName.trim() === '' ||
       safeFileName === '.' ||
-      safeFileName === '..'
+      safeFileName === '..' ||
+      safeFileName === '.nomedia'
     ) {
       return
     }
@@ -217,7 +230,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     const attDir = await this.pathService.getAttachmentsBaseDirectory()
     for (const id of ids) {
       const safeId = id.replace(/[/\\]/g, '')
-      if (safeId === 'avatars' || safeId.trim() === '') continue
+      if (isAttachmentPoolFolderName(safeId) || safeId.trim() === '') continue
       const fp = joinPath(attDir, safeId)
       await this.fileSystem.rm(fp, { recursive: true, force: true })
     }
@@ -247,16 +260,21 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
         if (!(await this.fileSystem.exists(attachDir))) continue
 
         const attachEntries = await this.fileSystem.readdir(attachDir)
-        const monthFiles: string[] = []
-        for (const name of attachEntries) {
-          const fp = joinPath(attachDir, name)
-          const st = await this.fileSystem.stat(fp).catch(() => null)
-          if (st?.isFile) monthFiles.push(name)
-        }
-        if (monthFiles.length === 0) continue
+        const monthFileStats = (
+          await Promise.all(
+            attachEntries.map(async (name) => {
+              const fullFilePath = joinPath(attachDir, name)
+              const st = await this.fileSystem.stat(fullFilePath).catch(() => null)
+              return st?.isFile ? { name, fullFilePath, size: st.size ?? 0 } : null
+            })
+          )
+        ).filter((item): item is { name: string; fullFilePath: string; size: number } =>
+          Boolean(item)
+        )
+        if (monthFileStats.length === 0) continue
 
         const referencedNames = new Set<string>()
-        const diaryPlainTexts: string[] = []
+        const diaryLowerTexts: string[] = []
         const siblingFiles = await this.fileSystem.readdir(monthPath)
         const diaryFiles = siblingFiles.filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
 
@@ -264,7 +282,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
           diaryFiles.map(async (df) => {
             try {
               const content = await this.fileSystem.readFile(joinPath(monthPath, df))
-              diaryPlainTexts.push(content)
+              diaryLowerTexts.push(content.toLowerCase())
               for (const ref of extractReferencedFileNames(content)) {
                 referencedNames.add(ref)
               }
@@ -274,28 +292,22 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
           })
         )
 
-        for (const name of monthFiles) {
-          const fullFilePath = joinPath(attachDir, name)
-          const st = await this.fileSystem.stat(fullFilePath).catch(() => null)
-          if (!st?.isFile) continue
-
+        for (const { name, fullFilePath, size } of monthFileStats) {
           const relativePath = fullFilePath
             .slice(journalsDir.length)
             .replace(/^[/\\]/, '')
             .replace(/\\/g, '/')
           const lowerFileName = name.toLowerCase()
           let isOrphan = !referencedNames.has(lowerFileName)
-          if (isOrphan && diaryPlainTexts.length > 0) {
-            isOrphan = !diaryPlainTexts.some((content) =>
-              content.toLowerCase().includes(lowerFileName)
-            )
+          if (isOrphan && diaryLowerTexts.length > 0) {
+            isOrphan = !diaryLowerTexts.some((lowerContent) => lowerContent.includes(lowerFileName))
           }
 
           list.push({
             name,
             path: fullFilePath,
             relativePath,
-            sizeMB: (st.size ?? 0) / (1024 * 1024),
+            sizeMB: size / (1024 * 1024),
             birthtime: new Date().toISOString(),
             yearMonth: `${year}-${month}`,
             isOrphan
@@ -379,6 +391,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   static async pickAndImportAvatar(
     manager: MobileAttachmentManagerService
   ): Promise<string | null> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return null
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -393,6 +406,7 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   static async pickAndImportBackground(
     manager: MobileAttachmentManagerService
   ): Promise<string | null> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return null
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -408,131 +422,30 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
   // ===== Emoji operations =====
 
   async importEmoji(absoluteSourcePath: string): Promise<EmojiImportResult> {
-    if (!absoluteSourcePath || absoluteSourcePath.trim() === '') {
-      return {
-        relativePath: '',
-        originalName: '',
-        error: i18n.t(
-          'auto.apps.mobile.src.services.mobile.attachment.manager.service.L360',
-          '源路径为空'
-        )
-      }
-    }
-    if (absoluteSourcePath.startsWith('emojis/')) {
-      return { relativePath: absoluteSourcePath, originalName: '', error: null }
-    }
-
-    try {
-      const emojisDir = await this.pathService.getEmojisDirectory()
-
-      // Handle data URLs
-      if (absoluteSourcePath.startsWith('data:image/')) {
-        const matches = absoluteSourcePath.match(/^data:image\/([^;]+);base64,(.+)$/)
-        if (matches && matches.length === 3) {
-          const extension =
-            matches[1] === 'jpeg' ? '.jpg' : `.${matches[1]!.replace(/[^a-zA-Z0-9]/g, '')}`
-          const generatedName = `emoji_${Date.now()}${extension}`
-          const dest = joinPath(emojisDir, generatedName)
-          await importUriToPath(absoluteSourcePath, dest, this.fileSystem)
-          return {
-            relativePath: `emojis/${generatedName}`,
-            originalName: generatedName.replace(/\.[^.]+$/, ''),
-            error: null
-          }
-        }
-      }
-
-      // Handle URI-style sources (file://, content://, etc.)
-      const sourceUri =
-        absoluteSourcePath.startsWith('file://') || absoluteSourcePath.startsWith('content://')
-          ? absoluteSourcePath
-          : toFileUri(absoluteSourcePath)
-
-      const originalBasename = basename(absoluteSourcePath.split('?')[0])
-      const originalNameWithoutExt = originalBasename.replace(/\.[^.]+$/, '')
-      const targetFileName = originalBasename
-      const targetPath = joinPath(emojisDir, targetFileName)
-
-      // Check name conflict
-      if (await this.fileSystem.exists(targetPath)) {
-        // File already exists — skip import
-        return {
-          relativePath: `emojis/${targetFileName}`,
-          originalName: originalNameWithoutExt,
-          error: null
-        }
-      }
-
-      await importUriToPath(sourceUri, targetPath, this.fileSystem)
-      return {
-        relativePath: `emojis/${targetFileName}`,
-        originalName: originalNameWithoutExt,
-        error: null
-      }
-    } catch (e: any) {
-      console.error('[MobileAttachmentManager] Failed to import emoji:', e)
-      return {
-        relativePath: '',
-        originalName: '',
-        error: `导入失败: ${e?.message || String(e)}`
-      }
-    }
+    return importMobileEmoji(this.emojiDeps(), absoluteSourcePath)
   }
 
   async resolveEmojiPath(relativePath: string): Promise<string> {
-    if (!relativePath || !relativePath.startsWith('emojis/')) {
-      return relativePath
-    }
-    const filename = basename(relativePath)
-    const emojisDir = await this.pathService.getEmojisDirectory()
-    const absPath = joinPath(emojisDir, filename)
+    return resolveMobileEmojiPath(this.emojiDeps(), relativePath)
+  }
 
-    if (!(await this.fileSystem.exists(absPath))) {
-      console.warn(`[MobileAttachmentManager] Emoji file not found: ${relativePath}`)
-      throw new Error('EMOJI_FILE_NOT_FOUND')
-    }
-    return toFileUri(absPath)
+  async listEmojiAttachmentFiles() {
+    return listMobileEmojiAttachmentFiles(this.emojiDeps())
   }
 
   async listEmojis(): Promise<string[]> {
-    const emojisDir = await this.pathService.getEmojisDirectory()
-    try {
-      if (!(await this.fileSystem.exists(emojisDir))) return []
-      const entries = await this.fileSystem.readdir(emojisDir)
-      return entries
-        .filter((name) => {
-          const ext = name.substring(name.lastIndexOf('.')).toLowerCase()
-          return IMAGE_EXTENSIONS.has(ext)
-        })
-        .map((name) => `emojis/${name}`)
-    } catch {
-      return []
-    }
+    return listMobileEmojis(this.emojiDeps())
   }
 
   async deleteEmoji(relativePath: string): Promise<boolean> {
-    if (!relativePath || !relativePath.startsWith('emojis/')) {
-      return false
-    }
-    const filename = basename(relativePath)
-    const emojisDir = await this.pathService.getEmojisDirectory()
-    const absPath = joinPath(emojisDir, filename)
-
-    try {
-      if (await this.fileSystem.exists(absPath)) {
-        await this.fileSystem.unlink(absPath)
-        return true
-      }
-      return false
-    } catch {
-      return false
-    }
+    return deleteMobileEmoji(this.emojiDeps(), relativePath)
   }
 
   /** 从相册选取表情包图片并导入（支持多选） */
   static async pickAndImportEmojis(
     manager: MobileAttachmentManagerService
   ): Promise<EmojiImportResult[]> {
+    const ImagePicker = await import('expo-image-picker')
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!perm.granted) return []
 

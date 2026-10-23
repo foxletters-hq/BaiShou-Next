@@ -11,6 +11,8 @@ export interface WorkspaceNameValidationResult {
   ok: boolean
 }
 
+// Windows 文件名禁止 0x00-0x1f 控制字符，此处必须显式匹配
+// eslint-disable-next-line no-control-regex
 const INVALID_WORKSPACE_NAME_PATTERN = /[<>:"/\\|?*\u0000-\u001f]/
 const RESERVED_WINDOWS_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 

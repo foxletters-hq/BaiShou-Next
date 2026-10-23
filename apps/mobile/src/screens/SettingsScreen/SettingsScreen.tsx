@@ -8,6 +8,7 @@ import {
   SettingsListLeadingIcon
 } from '@baishou/ui/native'
 import { useTranslation } from 'react-i18next'
+import { iconSizes, mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import { CompactTabHeader } from '../../components/CompactTabHeader'
 import {
   SETTINGS_HUB_GROUPS,
@@ -83,7 +84,7 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.hub}>
           <View style={styles.groupBlock}>
             <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>
-              {t('settings.hub_group_quick', '快捷设置')}
+              {t('settings.hub_group_quick', '个人资料')}
             </Text>
             <QuickSettingsGroup groupCardStyle={groupCardStyle} />
           </View>
@@ -114,21 +115,21 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingBottom: 32
+    paddingBottom: sharedTokens.spacing.xl
   },
   hub: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    gap: 20
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.mdPlus
   },
   groupBlock: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   groupTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
     letterSpacing: 0.3,
-    marginLeft: 4,
+    marginLeft: sharedTokens.spacing.xs,
     textTransform: 'uppercase'
   },
   groupCard: {
@@ -137,17 +138,17 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.mdTight
   },
   listItemTitle: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '500'
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight
   },
   chevron: {
-    fontSize: 20,
+    fontSize: iconSizes.md,
     lineHeight: 20
   }
 })

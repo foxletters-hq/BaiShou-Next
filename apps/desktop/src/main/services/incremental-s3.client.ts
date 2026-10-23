@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as Minio from 'minio'
-import { shouldUseS3PathStyle, listAllS3Objects } from '@baishou/shared'
+import { shouldUseS3PathStyle, listAllS3Objects, assertSafeSyncRelPath } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 import { downloadS3ObjectWithRetry } from './s3-stream-download.util'
 
@@ -250,8 +250,10 @@ export class IncrementalS3Client implements ICloudSyncClient {
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldObjectName = this.basePath + oldFilename
-    const newObjectName = this.basePath + newFilename
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldObjectName = this.basePath + oldSafe
+    const newObjectName = this.basePath + newSafe
     // S3 rename = copy + delete
     await this.client.copyObject(
       this.bucket,
@@ -259,6 +261,15 @@ export class IncrementalS3Client implements ICloudSyncClient {
       `/${this.bucket}/${oldObjectName}`,
       undefined
     )
-    await this.client.removeObject(this.bucket, oldObjectName)
+    try {
+      await this.client.removeObject(this.bucket, oldObjectName)
+    } catch (error) {
+      try {
+        await this.client.removeObject(this.bucket, newObjectName)
+      } catch {
+        // best-effort rollback of the copied object
+      }
+      throw error
+    }
   }
 }

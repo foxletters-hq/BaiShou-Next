@@ -3,14 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-
 import { ChevronLeft } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
+import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeaderAction } from './StackScreenHeaderAction'
 import type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
 export interface StackScreenHeaderProps {
   title: string
+  titleAddon?: React.ReactNode
   showBack?: boolean
   onBack?: () => void
   headerRight?: StackScreenHeaderActionConfig
@@ -22,6 +24,7 @@ export interface StackScreenHeaderProps {
 
 export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
   title,
+  titleAddon,
   showBack = true,
   onBack,
   headerRight,
@@ -30,7 +33,7 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
   transparent = false
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const router = useRouter()
 
   const handleBack = onBack ?? (() => router.back())
@@ -46,19 +49,11 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
     : {
         backgroundColor: colors.bgSurface,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: colors.borderSubtle
+        borderBottomColor: colors.borderMuted
       }
 
   return (
-    <View
-      style={[
-        styles.header,
-        barStyle,
-        !transparent && styles.headerElevated,
-        !transparent && getNativeElevationStyle(isDark, 'subtle'),
-        style
-      ]}
-    >
+    <View style={[styles.header, barStyle, style]}>
       <View style={styles.sideStart}>
         {showBack ? (
           <TouchableOpacity
@@ -81,9 +76,12 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
         ) : null}
       </View>
 
-      <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-        {title}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {titleAddon}
+      </View>
 
       <View style={styles.sideEnd}>{resolvedRight}</View>
     </View>
@@ -94,15 +92,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
     minHeight: 44
-  },
-  headerElevated: {
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2
   },
   sideStart: {
     width: 88,
@@ -122,21 +114,29 @@ const styles = StyleSheet.create({
   backHit: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 8,
-    paddingVertical: 4
+    paddingRight: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs
   },
   backArrow: {
     marginLeft: -4,
     marginRight: -2
   },
   backLabel: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '500'
   },
-  headerTitle: {
+  titleRow: {
     flex: 1,
     minWidth: 0,
-    fontSize: 17,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sharedTokens.spacing.xs
+  },
+  headerTitle: {
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     textAlign: 'center'
   }

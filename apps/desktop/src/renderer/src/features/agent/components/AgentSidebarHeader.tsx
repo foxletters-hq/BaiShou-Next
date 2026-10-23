@@ -1,7 +1,12 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
+import {
+  resolveDesktopAssistantAvatarSrc,
+  AssistantKindBadge,
+  Input,
+  uiTypography
+} from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import {
@@ -10,6 +15,7 @@ import {
 } from '../../settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../../lib/prefetch-settings-entry'
 import { ChevronsUpDown, ListChecks, Plus, Settings } from 'lucide-react'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface AssistantAvatarProps {
   assistant: AgentAssistant
@@ -52,16 +58,21 @@ export interface CurrentAssistantSlotProps {
   onShowPicker?: () => void
   onAssistantSwitched: (assistant: AgentAssistant) => void
   wrapperClassName?: string
+  /** 顶栏等窄位：不展示描述，卡片更紧凑 */
+  compact?: boolean
 }
 
-/** 侧边栏顶部的当前伙伴选择槽位 */
+/** 当前伙伴选择槽位（侧栏 / 聊天顶栏复用） */
 export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
   currentAssistant,
   onShowPicker,
   onAssistantSwitched,
-  wrapperClassName
+  wrapperClassName,
+  compact = false
 }) => (
-  <div className={`${styles.currentAssistantWrapper} ${wrapperClassName ?? ''}`.trim()}>
+  <div
+    className={`${styles.currentAssistantWrapper} ${compact ? styles.compact : ''} ${wrapperClassName ?? ''}`.trim()}
+  >
     <div
       className={styles.currentAssistantCard}
       onClick={() => {
@@ -71,24 +82,32 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
     >
       {currentAssistant ? (
         <>
-          <AssistantAvatar assistant={currentAssistant} size={36} />
+          <AssistantAvatar assistant={currentAssistant} size={compact ? 24 : 36} />
           <div className={styles.assistantInfo}>
             <div className={styles.assistantNameRow}>
               <div className={styles.assistantName}>{currentAssistant.name}</div>
               <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
             </div>
-            {currentAssistant.description && (
+            {!compact && currentAssistant.description ? (
               <div className={styles.assistantDesc}>{currentAssistant.description}</div>
-            )}
+            ) : null}
           </div>
           <ChevronsUpDown className={styles.unfoldIcon} />
         </>
       ) : (
         <>
-          <div className={styles.avatarSkeleton} />
+          <div
+            className={styles.avatarSkeleton}
+            style={compact ? { width: 24, height: 24 } : undefined}
+          />
           <div className={styles.assistantInfo}>
             <div className={styles.skeletonLine} style={{ width: 80 }} />
-            <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
+            {!compact ? (
+              <div
+                className={styles.skeletonLine}
+                style={{ width: 60, marginTop: sharedTokens.spacing.xs }}
+              />
+            ) : null}
           </div>
           <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
         </>
@@ -133,8 +152,8 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
         {pinnedAssistants.length === 0 && (
           <div
             style={{
-              fontSize: 12,
-              color: 'var(--text-secondary, #94a3b8)',
+              fontSize: uiTypography.sm,
+              color: 'var(--text-secondary)',
               flex: 1,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -195,27 +214,32 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           >
             <ListChecks
               size={16}
-              color={
-                isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'
-              }
+              color={isMultiSelect ? 'var(--color-error)' : 'var(--text-secondary)'}
             />
           </button>
         )}
       </div>
 
       <div className={styles.searchWrapper}>
-        <input
-          className={styles.searchInput}
+        <Input
+          fieldSize="small"
           type="text"
-          placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
+          inputClassName={styles.searchInput}
+          placeholder={t('agent.sidebar.search_hint', '搜索标题和对话内容')}
           value={searchQuery}
           onChange={(e) => onSearchQueryChanged(e.target.value)}
+          trailing={
+            searchQuery ? (
+              <button
+                type="button"
+                className={styles.searchClearBtn}
+                onClick={() => onSearchQueryChanged('')}
+              >
+                ✕
+              </button>
+            ) : null
+          }
         />
-        {searchQuery && (
-          <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>
-            ✕
-          </button>
-        )}
       </div>
     </>
   )

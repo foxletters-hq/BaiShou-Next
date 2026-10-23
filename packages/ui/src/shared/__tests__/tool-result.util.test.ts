@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   getToolDisplayName,
+  getToolInvocationSubtitle,
+  getToolRowSubtitle,
+  localizeToolResultText,
   normalizeToolResultPlainText,
   resolveActiveToolDisplayName,
   resolveToolResultPresentation,
   unwrapPlainToolResultText
 } from '../tool-result.util'
+
+const passthroughT = (
+  key: string,
+  fallbackOrOptions?: string | { defaultValue?: string; [key: string]: unknown }
+) => {
+  if (typeof fallbackOrOptions === 'string') return fallbackOrOptions
+  return fallbackOrOptions?.defaultValue ?? key
+}
 
 describe('normalizeToolResultPlainText', () => {
   it('removes empty lines and collapses excessive blank space', () => {
@@ -17,6 +28,68 @@ describe('normalizeToolResultPlainText', () => {
 describe('unwrapPlainToolResultText', () => {
   it('unwraps vercel text output objects', () => {
     expect(unwrapPlainToolResultText({ type: 'text', value: 'hello' })).toBe('hello')
+  })
+})
+
+describe('getToolInvocationSubtitle', () => {
+  it('uses the file name from path arguments', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'workspace_write',
+        args: { path: 'apps/desktop/SKILL.md', content: 'x' }
+      })
+    ).toBe('SKILL.md')
+  })
+
+  it('shows rename as from → to', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'workspace_rename',
+        args: { from: 'a/old.md', to: 'b/new.md' }
+      })
+    ).toBe('old.md → new.md')
+  })
+
+  it('uses query text for search tools', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'web_search',
+        args: { query: 'rust async' }
+      })
+    ).toBe('rust async')
+  })
+
+  it('parses JSON string arguments', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'workspace_read',
+        args: '{"path":"notes/draft.md"}'
+      })
+    ).toBe('draft.md')
+  })
+
+  it('uses skill name for skill_write instead of the long description', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'skill_write',
+        args: {
+          name: 'daily-news',
+          description: '当用户要求搜索并整理当天新闻、生成新闻简报时使用'
+        }
+      })
+    ).toBe('daily-news')
+  })
+
+  it('unwraps nested tool and arguments for mcp_call gateway invocations', () => {
+    expect(
+      getToolInvocationSubtitle({
+        toolName: 'mcp_call',
+        args: {
+          tool: 'baishou_diary_list',
+          arguments: { start_date: '2026-03-01', end_date: '2026-03-07' }
+        }
+      })
+    ).toBe('2026-03-01 ~ 2026-03-07')
   })
 })
 
@@ -32,6 +105,47 @@ describe('getToolDisplayName', () => {
       )
     ).toBe('日记搜索')
   })
+
+  it('strips mcp server prefix before looking up the display name', () => {
+    expect(getToolDisplayName({ toolCallId: 'c1', toolName: 'mcp__fs__read_file' }, t)).toBe(
+      'MCP · read_file'
+    )
+  })
+
+  it('hides UUID server ids and keeps the baishou_ tool name', () => {
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c2',
+          toolName: 'mcp_401e4719_6331_42be_a21c__baishou_summary_read'
+        },
+        t
+      )
+    ).toBe('baishou_summary_read')
+  })
+
+  it('unwraps mcp_call target tool name for display', () => {
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c3',
+          toolName: 'mcp_call',
+          args: { tool: 'baishou_diary_list', arguments: {} }
+        },
+        t
+      )
+    ).toBe('baishou_diary_list')
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c4',
+          toolName: 'mcp_call',
+          args: { tool: 'read_file', arguments: {} }
+        },
+        t
+      )
+    ).toBe('MCP · read_file')
+  })
 })
 
 describe('resolveActiveToolDisplayName', () => {
@@ -45,6 +159,163 @@ describe('resolveActiveToolDisplayName', () => {
     expect(resolveActiveToolDisplayName({ name: 'web_search' }, t, 'exa-mcp')).toBe(
       '网络搜索 (Exa MCP)'
     )
+  })
+})
+
+describe('resolveCompanionAskPresentation', () => {
+  it('turns companion_ask JSON into question and selected option', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: {
+        question: '新建一个文件夹是指？',
+        options: ['按模板初始化完整写作目录结构', '只创建一个空文件夹']
+      },
+      result: JSON.stringify({
+        approved: true,
+        question: '新建一个文件夹是指？',
+        answer: '按模板初始化完整写作目录结构',
+        selectedOptionIds: ['0']
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.question).toBe('新建一个文件夹是指？')
+    expect(presentation.answer).toBe('按模板初始化完整写作目录结构')
+    expect(presentation.declined).toBe(false)
+    expect(presentation.options.map((option) => option.label)).toEqual([
+      '按模板初始化完整写作目录结构',
+      '只创建一个空文件夹'
+    ])
+    expect(presentation.selectedOptionIds).toEqual(['0'])
+  })
+
+  it('preserves original options without adding a fake combined option on multi-select', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: {
+        question: '要检查哪几篇总结？',
+        options: ['2026-03-02 周总结', '2026-03-09 周总结', '2026-03 月度总结'],
+        multiple: true
+      },
+      result: JSON.stringify({
+        approved: true,
+        question: '要检查哪几篇总结？',
+        answer: '2026-03-02 周总结、2026-03 月度总结',
+        selectedOptionIds: ['0', '2']
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.answer).toBe('2026-03-02 周总结、2026-03 月度总结')
+    expect(presentation.options.map((option) => option.label)).toEqual([
+      '2026-03-02 周总结',
+      '2026-03-09 周总结',
+      '2026-03 月度总结'
+    ])
+    expect(presentation.selectedOptionIds).toEqual(['0', '2'])
+  })
+
+  it('turns a multi-question companion_ask result into stacked items', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: {
+        questions: [
+          { question: '放在哪个文件夹？', options: ['当前根目录下新建', '先不创建'] },
+          { question: '文件夹叫什么？', options: ['写作-3'] }
+        ]
+      },
+      result: JSON.stringify({
+        approved: true,
+        answers: [
+          { question: '放在哪个文件夹？', answer: '当前根目录下新建', selectedOptionIds: ['0'] },
+          { question: '文件夹叫什么？', answer: '写作-3', selectedOptionIds: ['0'] }
+        ]
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.items).toHaveLength(2)
+    expect(presentation.items?.[1]?.answer).toBe('写作-3')
+  })
+
+  it('treats the cancelled notice as declined', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？' },
+      result: '用户取消了这一次操作'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+    expect(presentation.answer).toBeNull()
+  })
+
+  it('localizes the cancelled notice', () => {
+    expect(localizeToolResultText('用户取消了这一次操作', passthroughT)).toBe(
+      '用户取消了这一次操作'
+    )
+    expect(localizeToolResultText('The user cancelled this operation.', passthroughT)).toBe(
+      '用户取消了这一次操作'
+    )
+  })
+
+  it('treats declined JSON as declined, not a success answer', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？', options: ['写作-2'] },
+      result: JSON.stringify({
+        approved: false,
+        declined: true,
+        question: '文件夹叫什么名字？'
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+    expect(presentation.answer).toBeNull()
+  })
+
+  it('treats a rejected companion_ask failure string as declined', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？' },
+      result: '工具执行失败 (companion_ask): 用户拒绝了本次操作。'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+  })
+
+  it('treats User declined to answer as declined, not raw English', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '继续吗？', options: ['是', '否'] },
+      result: 'User declined to answer.'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+    expect(presentation.answer).toBeNull()
+  })
+
+  it('uses custom feedback text as the answer', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '选哪个？', options: ['A', 'B'] },
+      result: '我想两个都要'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.answer).toBe('我想两个都要')
+    expect(presentation.options.some((option) => option.label === '我想两个都要')).toBe(true)
   })
 })
 
@@ -70,5 +341,105 @@ describe('resolveToolResultPresentation', () => {
     })
 
     expect(presentation.mode).toBe('structured')
+  })
+
+  it('treats Tool execution failed without a colon as an error', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'skill_write',
+      result: 'Tool execution failed'
+    })
+    expect(presentation.mode).toBe('error')
+    if (presentation.mode !== 'error') return
+    expect(presentation.text).toBe('Tool execution failed')
+  })
+})
+
+describe('localizeToolResultText', () => {
+  it('translates a companion_ask decline', () => {
+    expect(localizeToolResultText('User declined to answer.', passthroughT)).toBe('没有作答')
+  })
+
+  it('translates a bare execution failure', () => {
+    expect(localizeToolResultText('Tool execution failed', passthroughT)).toBe('工具执行失败')
+  })
+
+  it('translates an execution failure with detail', () => {
+    expect(localizeToolResultText('Tool execution failed: network down', passthroughT)).toBe(
+      '工具执行失败：network down'
+    )
+  })
+
+  it('translates skill save success lines', () => {
+    expect(
+      localizeToolResultText(
+        'Saved skill "daily-news".\nLocation: AI/skills/daily-news/SKILL.md\nDescription: 整理新闻',
+        passthroughT
+      )
+    ).toBe('已保存技能「daily-news」。\n位置：AI/skills/daily-news/SKILL.md\n说明：整理新闻')
+  })
+})
+
+describe('getToolRowSubtitle', () => {
+  it('shows the selected companion_ask answer as subtitle', () => {
+    expect(
+      getToolRowSubtitle(
+        {
+          toolName: 'companion_ask',
+          args: { question: '新建一个文件夹是指？', options: ['按模板初始化', '只建空目录'] },
+          result: JSON.stringify({
+            approved: true,
+            question: '新建一个文件夹是指？',
+            answer: '按模板初始化',
+            selectedOptionIds: ['0']
+          })
+        },
+        'success',
+        passthroughT
+      )
+    ).toBe('按模板初始化')
+  })
+
+  it('shows the cancelled notice when the user rejected the ask', () => {
+    expect(
+      getToolRowSubtitle(
+        {
+          toolName: 'companion_ask',
+          args: { question: '文件夹叫什么名字？' },
+          result: 'The user cancelled this operation.'
+        },
+        'success',
+        passthroughT
+      )
+    ).toBe('用户取消了这一次操作')
+  })
+
+  it('shows localized error text when the tool failed', () => {
+    expect(
+      getToolRowSubtitle(
+        {
+          toolName: 'skill_write',
+          args: { name: 'daily-news', description: '很长的技能说明' },
+          result: 'Tool execution failed'
+        },
+        'error',
+        passthroughT
+      )
+    ).toBe('工具执行失败')
+  })
+})
+
+describe('knowledge_search presentation', () => {
+  it('unwraps formatted text from citation JSON', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'knowledge_search',
+      result: JSON.stringify({
+        text: '## 知识库检索\n\n[1] 手册 · 视听语言（偏移 12）',
+        citations: [{ notebookName: '手册', title: '视听语言', offset: 12 }]
+      })
+    })
+    expect(presentation.mode).toBe('plain')
+    if (presentation.mode !== 'plain') return
+    expect(presentation.renderAsMarkdown).toBe(true)
+    expect(presentation.text).toContain('视听语言')
   })
 })

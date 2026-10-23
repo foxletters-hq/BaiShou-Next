@@ -1,9 +1,5 @@
 import { EditorView } from '@codemirror/view'
-import {
-  blurActiveTableCellInput,
-  dismissEditorKeyboardForChrome,
-  dismissNativeKeyboard
-} from './tableChromeKeyboard'
+import { dismissEditorKeyboardForChrome, dismissNativeKeyboard } from './tableChromeKeyboard'
 
 import { isNativeTableSheetOpen } from './tableNativeSheet'
 

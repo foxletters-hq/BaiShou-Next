@@ -1,102 +1,65 @@
-import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
+import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
 import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
-import { DesktopEmbeddingStorage } from './rag.storage'
-import { settingsManager } from './settings.ipc'
-import { vaultService } from './vault.ipc'
-import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
-import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
-import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
+import { vaultService, resolveActiveVaultId } from './vault.ipc'
 import {
-  buildMigrationStreamResult,
+  ensureRawDataRuntime,
+  getMemoryRawManager,
+  getRawDataSourceManager
+} from '../services/raw-data-source.runtime'
+import {
+  countAllMemoryEmbeddingsForVault,
+  countDiaryEmbeddingsForVault
+} from '../services/diary-embedding.util'
+import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
+import {
+  buildMemoryMetadataJson,
   logger,
+  MEMORY_EMBED_GROUP_ID,
+  MEMORY_SOURCE_TYPE,
   RAG_MIGRATION_STATUS,
   toSerializableAiError,
-  type RagMigrationStatusKey,
-  type RagMigrationStreamResult
+  memoryClearVectorKindsOf,
+  parseMemoryClearKinds,
+  shouldTombstoneMemoryRecord,
+  type MemoryClearKind
 } from '@baishou/shared'
+import { newMemoryId } from './rag-build.util'
+import { registerRagBatchEmbedIpc } from './rag-batch-embed.ipc'
+import { requestBatchEmbedCancel } from '../services/batch-embed-control.service'
+import { GraphExtractQueueService } from '../services/graph-extract-queue.service'
+import { clearLifeGraphData } from '@baishou/core-desktop'
+import { requireGraphRepo, requireVaultId } from './graph-ipc.context'
+import {
+  resolveRollbackConfig,
+  restoreInterruptedMigration,
+  runMigrationStream
+} from './rag-migration.runtime'
 
-async function restoreInterruptedMigration(): Promise<number> {
-  const config = getEmbeddingConfig()
-  const storage = new DesktopEmbeddingStorage()
-  const stateService = getEmbeddingMigrationStateService()
-  const state = await stateService.getState()
-
-  if (!state.canRestore) {
-    throw new Error('No migration rollback snapshot available')
-  }
-
-  await config.load()
-  const count = await storage.restoreRollbackSnapshot()
-  if (state.rollbackConfig && config.restoreEmbeddingModelConfig) {
-    await config.restoreEmbeddingModelConfig(state.rollbackConfig)
-  }
-  await storage.dropMigrationBackup()
-  await storage.dropRollbackSnapshot()
-  await stateService.markIdle()
-  await config.load()
-  return count
-}
-
-async function runMigrationStream(
-  event: IpcMainInvokeEvent,
-  generator: AsyncGenerator<any, void, unknown>
-): Promise<RagMigrationStreamResult> {
-  const config = getEmbeddingConfig()
-  let lastStatusKey: RagMigrationStatusKey | undefined
-  let lastStatusParams: Record<string, string | number> | undefined
-  let aborted = false
-  for await (const state of generator) {
-    if (state.statusKey) {
-      lastStatusKey = state.statusKey as RagMigrationStatusKey
-      lastStatusParams = state.statusParams
-    }
-    if (state.aborted) aborted = true
-    event.sender.send('agent:rag-progress', {
-      isRunning: !state.aborted,
-      type: state.aborted ? 'idle' : 'migration',
-      progress: state.completed,
-      total: state.total,
-      statusKey: state.statusKey,
-      statusParams: state.statusParams,
-      aborted: state.aborted,
-      rollbackApplied: state.rollbackApplied
+/** Rewrite Memory shards as collapsed tombstones so selected clear cannot revive. */
+async function tombstoneMemoryShards(kinds: readonly MemoryClearKind[]): Promise<void> {
+  if (!kinds.includes('partner') && !kinds.includes('manual')) return
+  const memoryMgr = getMemoryRawManager()
+  const now = Date.now()
+  for (const shard of await memoryMgr.listShards()) {
+    const rows = await memoryMgr.readCollapsedShard(shard.shardMonth)
+    if (rows.length === 0) continue
+    let changed = false
+    const next = rows.map((row) => {
+      if (row.deletedAt != null || !shouldTombstoneMemoryRecord(kinds, row)) return row
+      changed = true
+      return {
+        ...row,
+        updatedAt: now,
+        deletedAt: now
+      }
     })
-  }
-  event.sender.send('agent:rag-progress', {
-    isRunning: false,
-    progress: 0,
-    total: 0,
-    type: 'idle'
-  })
-  await config.load()
-
-  const result = buildMigrationStreamResult(aborted, lastStatusKey, lastStatusParams)
-  logger.info('[RAG] Migration stream finished', {
-    outcome: result.outcome,
-    statusKey: result.statusKey,
-    statusParams: result.statusParams
-  })
-  return result
-}
-
-async function resolveRollbackConfig(
-  explicit?: EmbeddingMigrationRollbackConfig
-): Promise<EmbeddingMigrationRollbackConfig | undefined> {
-  if (explicit?.globalEmbeddingModelId) return explicit
-
-  const storage = new DesktopEmbeddingStorage()
-  const meta = await storage.getCurrentEmbeddingMeta()
-  if (!meta?.modelId) return undefined
-
-  const globalModels = (await settingsManager.get<any>('global_models')) || {}
-  return {
-    globalEmbeddingProviderId: globalModels.globalEmbeddingProviderId || '',
-    globalEmbeddingModelId: meta.modelId,
-    globalEmbeddingDimension: meta.dimension || globalModels.globalEmbeddingDimension || 0
+    if (!changed) continue
+    const content = `${next.map((row) => JSON.stringify(row)).join('\n')}\n`
+    await memoryMgr.replaceShardContent(shard.shardMonth, content)
   }
 }
 
@@ -121,11 +84,25 @@ export function registerRagBuildIPC() {
     const countRes = await db.select({ count: sql<number>`count(*)` }).from(memoryEmbeddingsTable)
     const count = countRes[0]?.count || 0
     const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
-    const diaryCountForVault = await countDiaryEmbeddingsForVault(activeVaultName)
+    const activeVaultId = resolveActiveVaultId()
+    let vaultGraphCount = 0
+    try {
+      vaultGraphCount = await requireGraphRepo().countEmbeddedLiveNodes(activeVaultId)
+    } catch {
+      vaultGraphCount = 0
+    }
+    const [diaryCountForVault, vaultMemoryCount] = await Promise.all([
+      countDiaryEmbeddingsForVault(activeVaultId),
+      countAllMemoryEmbeddingsForVault(activeVaultId)
+    ])
+    const rawVaultTotal = vaultMemoryCount + vaultGraphCount
+    const vaultTotalCount =
+      rawVaultTotal > 0 ? rawVaultTotal : diaryCountForVault > 0 ? diaryCountForVault : 0
 
     return {
       totalCount: count,
       diaryCountForVault,
+      vaultTotalCount,
       activeVaultName,
       currentDimension: config.getGlobalEmbeddingDimension(),
       totalSizeText: `${(count * 2.5).toFixed(1)} KB` // Mock size calc for UI
@@ -143,65 +120,109 @@ export function registerRagBuildIPC() {
     const storage = new DesktopEmbeddingStorage()
     await storage.clearEmbeddings()
     await config.setGlobalEmbeddingDimension(0)
+    const { invalidatePendingEmbedCountsCache } =
+      await import('../services/pending-embed-counts.service')
+    invalidatePendingEmbedCountsCache()
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })
+    }
     return true
   })
 
-  ipcMain.handle('rag:clear-all', async () => {
+  ipcMain.handle('rag:clear-all', async (_event, opts?: { kinds?: unknown }) => {
     await config.load()
+    const kinds = parseMemoryClearKinds(opts?.kinds)
+    requestBatchEmbedCancel()
+    const extractQueue = GraphExtractQueueService.getInstance()
+    extractQueue.stop()
+    const vectorKinds = memoryClearVectorKindsOf(kinds)
+    await tombstoneMemoryShards(kinds)
     const { DesktopEmbeddingStorage } = await import('./rag.storage')
     const storage = new DesktopEmbeddingStorage()
-    await storage.clearEmbeddings()
-    await config.setGlobalEmbeddingDimension(0)
+    if (vectorKinds.length > 0) {
+      await storage.clearEmbeddingsByKinds(vectorKinds)
+    }
+    if ((await storage.countEmbeddings()) === 0) {
+      await config.setGlobalEmbeddingDimension(0)
+    }
+    if (kinds.includes('life_graph')) {
+      const { graphManager, freshness } = ensureRawDataRuntime()
+      await clearLifeGraphData({
+        vaultId: requireVaultId(),
+        graphRepo: requireGraphRepo(),
+        graphManager,
+        freshness,
+        stopExtract: () => extractQueue.stop()
+      })
+    }
+    const { invalidatePendingEmbedCountsCache } =
+      await import('../services/pending-embed-counts.service')
+    invalidatePendingEmbedCountsCache()
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })
+    }
     return true
   })
 
-  ipcMain.handle('rag:trigger-batch-embed', async (event) => {
-    await config.load()
-    try {
-      await runControlledDiaryBatchEmbed({
-        groupId: 'diary_batch',
-        onProgress: ({ completed, total, statusText }) => {
-          event.sender.send('agent:rag-progress', {
-            isRunning: true,
-            type: 'batchEmbed',
-            progress: completed,
-            total,
-            statusText
-          })
-        }
-      })
-      event.sender.send('agent:rag-progress', {
-        isRunning: false,
-        progress: 0,
-        total: 0,
-        type: 'idle'
-      })
-      return true
-    } catch (e: unknown) {
-      console.error('Batch Embed failed:', e)
-      const err = toSerializableAiError(e, 'Batch embed failed')
-      event.sender.send('agent:rag-progress', {
-        isRunning: false,
-        type: 'idle',
-        progress: 0,
-        total: 0,
-        error: err.message
-      })
-      throw err
-    }
+  registerRagBatchEmbedIpc()
+
+  ipcMain.handle('rag:embed-jobs-pending-count', async () => {
+    const { getDiaryEmbedJobsPendingCount } =
+      await import('../services/diary-embed-jobs-consumer.service')
+    return getDiaryEmbedJobsPendingCount()
+  })
+
+  /** 当前活跃仓待嵌入日记篇数（底栏「待嵌入」用） */
+  ipcMain.handle('rag:unindexed-diary-count', async () => {
+    const { getPendingEmbedCountsForActiveVault } =
+      await import('../services/pending-embed-counts.service')
+    const counts = await getPendingEmbedCountsForActiveVault()
+    return counts.diaries
+  })
+
+  ipcMain.handle('rag:pending-embed-counts', async () => {
+    const { getPendingEmbedCountsForActiveVault } =
+      await import('../services/pending-embed-counts.service')
+    return getPendingEmbedCountsForActiveVault()
   })
 
   ipcMain.handle('rag:add-manual-memory', async (_, text: string) => {
     await config.load()
     if (!text || !text.trim()) return false
 
+    const now = Date.now()
+    const id = newMemoryId()
+    const vaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+    const vaultId = resolveActiveVaultId()
+    const content = text.trim()
+    const record: MemoryRawRecord = {
+      id,
+      schemaVersion: 1,
+      vaultId,
+      vaultName,
+      content,
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    }
+
+    const rawManager = getRawDataSourceManager()
+    const written = await rawManager.writeRecord('memory', record)
     await embeddingService.embedText({
-      text,
-      sourceType: 'manual',
-      sourceId: `manual_${Date.now()}`,
-      groupId: 'manual',
-      sourceCreatedAt: Date.now()
+      text: content,
+      sourceType: MEMORY_SOURCE_TYPE,
+      sourceId: id,
+      groupId: MEMORY_EMBED_GROUP_ID,
+      vaultId,
+      metadataJson: buildMemoryMetadataJson(record),
+      sourceCreatedAt: now
     })
+    const memoryMgr = rawManager.getMemoryManager()
+    if (memoryMgr) {
+      await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
+    }
     return true
   })
 

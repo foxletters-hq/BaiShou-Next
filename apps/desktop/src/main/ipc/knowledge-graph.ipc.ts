@@ -1,0 +1,309 @@
+import { BrowserWindow } from 'electron'
+import { listLiveGraphSourceIds, NotebookGraphRawManager } from '@baishou/core-desktop'
+import { runGraphModeSearch } from '@baishou/shared'
+import { fileSystem } from '../services/node-file-system'
+import {
+  reviewNotebookGraphBatch,
+  reviewNotebookGraphEdge,
+  reviewNotebookGraphNode
+} from '../services/notebook-graph-review'
+import {
+  dismissDesktopNotebookSimilarPair,
+  listDesktopNotebookSimilarPairs,
+  mergeDesktopNotebookGraphNodeGroup,
+  mergeDesktopNotebookGraphNodes
+} from '../services/notebook-graph-mutate'
+import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
+import { knowledgeConnectionManager } from '@baishou/database-desktop'
+import {
+  getKnowledgeIngestService,
+  handleKnowledgeIpc,
+  requireActiveVaultId,
+  requireKnowledgeRepo
+} from './knowledge-ipc.context'
+import { getEmbeddingConfig, getEmbeddingService } from './rag.ipc'
+import { pathService } from './vault.ipc'
+import {
+  readGraphWindowProgress,
+  resolveListedGraphJobStatus,
+  resolveListedGraphWindowProgress
+} from '../services/graph-window-progress'
+
+function mapNotebookGraphViewForIpc(view: {
+  nodes: Array<{
+    id: string
+    name: string
+    nodeType: string
+    mentionCount?: number
+    reviewStatus?: string
+    summary?: string
+  }>
+  edges: Array<{
+    id: string
+    fromId: string
+    toId: string
+    edgeType: string
+    reviewStatus?: string
+    confidence?: number
+    sourceRef?: string | null
+    sourceExcerpt?: string
+  }>
+}) {
+  return {
+    nodes: view.nodes.map((n) => ({
+      id: n.id,
+      name: n.name,
+      nodeType: n.nodeType,
+      mentionCount: n.mentionCount,
+      reviewStatus: n.reviewStatus,
+      summary: n.summary
+    })),
+    edges: view.edges.map((e) => ({
+      id: e.id,
+      fromId: e.fromId,
+      toId: e.toId,
+      edgeType: e.edgeType,
+      reviewStatus: e.reviewStatus,
+      confidence: e.confidence,
+      sourceRef: e.sourceRef,
+      sourceExcerpt: e.reviewStatus === 'pending' ? e.sourceExcerpt : undefined
+    }))
+  }
+}
+
+function mapNotebookGraphSearchHit(row: {
+  id: string
+  name: string
+  nodeType: string
+  summary?: string
+  reviewStatus?: string
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    nodeType: row.nodeType,
+    summary: row.summary,
+    reviewStatus: row.reviewStatus
+  }
+}
+
+export function registerKnowledgeGraphIpc(): void {
+  handleKnowledgeIpc('knowledge:list-graph-jobs', async (_e, notebookId: string) => {
+    const id = String(notebookId || '').trim()
+    if (!id) throw new Error('notebookId required')
+    const repo = requireKnowledgeRepo()
+    const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
+    const live = new Set(listLiveGraphSourceIds())
+    const sources = await repo.listSources(id)
+    const titleById = new Map(sources.map((row) => [row.id, row.title]))
+    const items: Array<{
+      sourceId: string
+      title: string
+      status: 'pending' | 'failed' | 'running'
+      lastError: string | null
+      windowsDone?: number
+      windowsTotal?: number
+      pageFrom?: number
+      pageTo?: number
+      pageTotal?: number
+    }> = []
+    const rawManager = new NotebookGraphRawManager(pathService, fileSystem)
+    for (const job of jobs) {
+      const status = resolveListedGraphJobStatus(job.status, live.has(job.sourceId))
+      let checkpoint: { windowsDone: number; windowsTotal: number } | null = null
+      try {
+        const state = await rawManager.getExtractState(id, job.sourceId)
+        if (state && Number(state.windowsTotal) > 0) {
+          checkpoint = {
+            windowsDone: Number(state.windowsDone) || 0,
+            windowsTotal: Number(state.windowsTotal)
+          }
+        }
+      } catch {
+        /* 检查点读不到时仍返回任务计数 */
+      }
+      const resolved = resolveListedGraphWindowProgress({
+        running: status === 'running',
+        checkpoint,
+        live: readGraphWindowProgress(id, job.sourceId)
+      })
+      items.push({
+        sourceId: job.sourceId,
+        title: titleById.get(job.sourceId) || job.sourceId,
+        status,
+        lastError: job.lastError,
+        windowsDone: resolved?.windowsDone,
+        windowsTotal: resolved?.windowsTotal,
+        pageFrom: resolved?.pageFrom,
+        pageTo: resolved?.pageTo,
+        pageTotal: resolved?.pageTotal
+      })
+    }
+    const leftoverIngestJobs = [
+      ...(await repo.listIngestJobs({ notebookId: id, stage: 'extract' })),
+      ...(await repo.listIngestJobs({ notebookId: id, stage: 'embed' }))
+    ]
+    const leftoverIngestSourceIds = [
+      ...new Set(
+        leftoverIngestJobs
+          .filter(
+            (job) => job.status === 'pending' || job.status === 'failed' || job.status === 'running'
+          )
+          .map((job) => job.sourceId)
+          .filter(Boolean)
+      )
+    ]
+    const running = items.find((item) => item.status === 'running')
+    const failedItem = items.find((item) => item.status === 'failed')
+    const focus = running || items.find((item) => item.status === 'pending') || failedItem
+    return {
+      pending: items.filter((item) => item.status === 'pending' || item.status === 'running')
+        .length,
+      running: items.filter((item) => item.status === 'running').length,
+      failed: items.filter((item) => item.status === 'failed').length,
+      currentSourceId: running?.sourceId ?? null,
+      currentSourceTitle: running?.title ?? null,
+      lastError: failedItem?.lastError ?? null,
+      failedSourceTitle: failedItem?.title ?? null,
+      windowsDone: focus?.windowsDone,
+      windowsTotal: focus?.windowsTotal,
+      pageFrom: focus?.pageFrom,
+      pageTo: focus?.pageTo,
+      pageTotal: focus?.pageTotal,
+      leftoverIngestSourceIds,
+      items
+    }
+  })
+
+  handleKnowledgeIpc(
+    'knowledge:get-graph-view',
+    async (_e, input: { notebookId: string; maxNodes?: number }) => {
+      const notebookId = String(input?.notebookId || '').trim()
+      if (!notebookId) throw new Error('notebookId required')
+      requireKnowledgeRepo()
+      const { NotebookGraphRepository } = await import('@baishou/database-desktop')
+      const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+      const view = await repo.getView({
+        vaultId: requireActiveVaultId(),
+        notebookId,
+        maxNodes: input.maxNodes
+      })
+      return mapNotebookGraphViewForIpc(view)
+    }
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:graph-search',
+    async (
+      _e,
+      input: { notebookId: string; query: string; limit?: number; mode?: string }
+    ): Promise<Array<{ id: string; name: string; nodeType: string; summary?: string }>> => {
+      const notebookId = String(input?.notebookId || '').trim()
+      if (!notebookId) throw new Error('notebookId required')
+      requireKnowledgeRepo()
+      const { NotebookGraphRepository } = await import('@baishou/database-desktop')
+      const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+      const vaultId = requireActiveVaultId()
+      const query = String(input.query || '')
+      const limit = input.limit
+      const embeddingService = getEmbeddingService()
+      const embeddingConfig = getEmbeddingConfig()
+      await embeddingConfig.load()
+      const rows = await runGraphModeSearch({
+        mode: input.mode,
+        query,
+        embedQuery: embeddingService.isConfigured
+          ? (text) => embeddingService.embedQuery(text)
+          : null,
+        modelId: embeddingConfig.getGlobalEmbeddingModelId() || undefined,
+        searchName: async () => {
+          const hits = await repo.searchNodes({
+            vaultId,
+            notebookId,
+            query,
+            limit
+          })
+          return hits.map(mapNotebookGraphSearchHit)
+        },
+        searchVector: async (vector, modelId) => {
+          const hits = await repo.searchNodesByVector(vaultId, notebookId, vector, limit ?? 20, {
+            modelId
+          })
+          return hits.map(mapNotebookGraphSearchHit)
+        }
+      })
+      return rows.filter((row) => row.reviewStatus !== 'rejected').map(mapNotebookGraphSearchHit)
+    }
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:set-graph-node-review',
+    async (
+      _e,
+      input: { notebookId: string; nodeId: string; reviewStatus: 'approved' | 'rejected' }
+    ) => reviewNotebookGraphNode(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:set-graph-edge-review',
+    async (
+      _e,
+      input: { notebookId: string; edgeId: string; reviewStatus: 'approved' | 'rejected' }
+    ) => reviewNotebookGraphEdge(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:set-graph-reviews-batch',
+    async (
+      _e,
+      input: {
+        notebookId: string
+        reviewStatus: 'approved' | 'rejected'
+        nodeIds?: string[]
+        edgeIds?: string[]
+        allPending?: boolean
+      }
+    ) => reviewNotebookGraphBatch(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:merge-graph-nodes',
+    async (
+      _e,
+      input: { notebookId: string; survivorId: string; loserId: string; reason?: string }
+    ) => mergeDesktopNotebookGraphNodes(input)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:merge-graph-nodes-batch',
+    async (
+      _e,
+      input: { notebookId: string; survivorId: string; loserIds: string[]; reason?: string }
+    ) => mergeDesktopNotebookGraphNodeGroup(input)
+  )
+
+  handleKnowledgeIpc('knowledge:list-graph-similar-pairs', async (_e, notebookId: string) =>
+    listDesktopNotebookSimilarPairs(notebookId)
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:dismiss-graph-similar-pair',
+    async (_e, input: { notebookId: string; nodeId: string; peerId: string }) =>
+      dismissDesktopNotebookSimilarPair(input)
+  )
+
+  handleKnowledgeIpc('knowledge:rebuild-graph', async (_e, notebookId: string) => {
+    const svc = getKnowledgeIngestService()
+    await svc.rebuildNotebookGraph(String(notebookId || ''))
+    scheduleConsumeKnowledgeIngestJobs('after-rebuild-graph')
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.isDestroyed()) continue
+      try {
+        win.webContents.send('knowledge:graph-progress', { at: Date.now() })
+      } catch {
+        /* ignore */
+      }
+    }
+    return { ok: true }
+  })
+}

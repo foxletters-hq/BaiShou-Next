@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { SummaryConfig } from '@baishou/shared'
+import { useTranslation } from 'react-i18next'
+import { normalizeSharedMemoryCopyPrefix, type SummaryConfig } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 
 export function usePersistedSharedMemoryCopyPrefix() {
   const { services } = useBaishou()
-  const [copyPrefix, setCopyPrefixState] = useState('')
+  const { t } = useTranslation()
+  const defaultPrefix = t('summary.copy_prefix_default', '这是我们的回忆')
+  const [copyPrefix, setCopyPrefixState] = useState(defaultPrefix)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -17,7 +20,8 @@ export function usePersistedSharedMemoryCopyPrefix() {
       try {
         const config = (await settingsManager.get<SummaryConfig>('summary_config')) || {}
         if (!cancelled) {
-          setCopyPrefixState(config.sharedMemoryCopyPrefix?.trim() ?? '')
+          const stored = normalizeSharedMemoryCopyPrefix(config.sharedMemoryCopyPrefix)
+          setCopyPrefixState(stored || defaultPrefix)
         }
       } catch {
         /* 读取失败时保留默认值 */
@@ -29,7 +33,7 @@ export function usePersistedSharedMemoryCopyPrefix() {
     return () => {
       cancelled = true
     }
-  }, [services?.settingsManager])
+  }, [services?.settingsManager, defaultPrefix])
 
   const setCopyPrefix = useCallback(
     (value: string) => {

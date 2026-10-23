@@ -12,20 +12,20 @@
 .headerTitleGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .labelRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .checkboxRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: var(--spacing-sm);
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -34,7 +34,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .headerRow {
@@ -42,20 +42,21 @@
   top: 0;
   left: 0;
   right: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 20px 32px 16px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 var(--spacing-xl);
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
+  line-height: 28px;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.5px;
@@ -65,46 +66,47 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 80px 32px 48px 32px;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-2xl)
+    var(--spacing-xl);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--spacing-md);
   height: 100%;
   box-sizing: border-box;
 }
 
 .scrollArea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: var(--spacing-lg);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .hint {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-tertiary);
   line-height: 1.4;
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .sliderHeader {
@@ -114,7 +116,7 @@
 }
 
 .sliderValue {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--color-primary);
 }
@@ -125,38 +127,15 @@
   height: 38px; /* Match standard input height */
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .rangeInput {
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg-surface-normal);
-  outline: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.rangeInput::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.1s ease,
-    background-color 0.1s ease;
-}
-
-.rangeInput::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
-  background-color: var(--color-primary-dark);
 }
 
 .testRow {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  gap: var(--spacing-md-tight);
+  align-items: center;
 }
 
 .testInput {
@@ -164,7 +143,7 @@
 }
 
 .actions {
-  margin-top: 32px;
+  margin-top: var(--spacing-xl);
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
@@ -172,14 +151,14 @@
 
 .modelInputRow {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  gap: var(--spacing-sm);
+  align-items: center;
   width: 100%;
 }
 
 .refAudioInputRow {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-items: stretch;
   width: 100%;
 }
@@ -197,20 +176,20 @@
   height: 38px;
   flex-shrink: 0;
   border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  border-radius: var(--radius-md, 12px);
-  background: var(--bg-surface-low, #f6f7f8);
+  border-radius: var(--radius-md, var(--radius-md));
+  background: var(--bg-surface-low);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .refAudioPickBtn:hover {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-primary);
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .refAudioPickBtn:active {
@@ -223,19 +202,17 @@
 
 .fetchModelsBtn {
   flex-shrink: 0;
-  height: 38px;
-  min-width: 110px;
 }
 
 .comboboxContainer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
 }
 
 .comboboxLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -246,13 +223,19 @@
   min-width: 0;
 }
 
+.comboboxWrapper:has(.comboboxDropdown) {
+  z-index: 20;
+}
+
 .comboboxInput {
-  background-color: var(--bg-surface-low, #f6f7f8);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  border-radius: var(--radius-md, 12px);
-  padding: 10px 36px 10px 14px;
-  font-size: 14px;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-md, var(--radius-md));
+  height: 42px;
+  padding: 0 var(--spacing-xl-plus) 0 var(--spacing-md-snug);
+  font-size: var(--settings-font-row-size);
+  line-height: 1.2;
   font-family: var(--font-family);
   width: 100%;
   box-sizing: border-box;
@@ -261,9 +244,9 @@
 }
 
 .comboboxInput:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .comboboxInput::placeholder {
@@ -303,10 +286,10 @@
   top: calc(100% + 4px);
   left: 0;
   width: 100%;
-  background-color: var(--bg-surface-raised);
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  background-color: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 100;
   overflow: hidden;
   animation: slideDown var(--duration-fast) var(--ease-out-cubic) forwards;
@@ -315,56 +298,49 @@
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .comboboxOptionsList {
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: var(--spacing-xs);
   max-height: 280px;
   overflow-y: auto;
 }
 
 .comboboxOptionsList::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .comboboxOptionsList::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .comboboxOptionItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .comboboxOptionItem:hover {
-  background-color: var(--bg-surface-high);
+  background-color: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .selected {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  font-weight: 500;
-}
-
-[data-theme='dark'] .selected {
-  background-color: rgba(91, 168, 245, 0.15);
-  color: var(--color-primary);
+  background-color: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
+  color: var(--text-primary);
+  font-weight: 400;
 }
 
 .optionText {
@@ -379,7 +355,7 @@
   justify-content: center;
   color: var(--color-primary);
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 /* Responsive columns */
@@ -395,8 +371,6 @@
 
 .testBtn {
   flex-shrink: 0;
-  height: 38px;
-  min-width: 110px;
 }
 
 .passwordInputWrapper {
@@ -405,12 +379,13 @@
 }
 
 .passwordInput {
-  background-color: var(--bg-surface-low, #f6f7f8);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  border-radius: var(--radius-md, 12px);
-  padding: 10px 36px 10px 14px;
-  font-size: 14px;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-md, var(--radius-md));
+  padding: var(--spacing-sm-plus) var(--spacing-xl-plus) var(--spacing-sm-plus)
+    var(--spacing-md-snug);
+  font-size: var(--settings-font-row-size);
   font-family: var(--font-family);
   width: 100%;
   box-sizing: border-box;
@@ -419,9 +394,9 @@
 }
 
 .passwordInput:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .passwordInput::placeholder {
@@ -430,17 +405,12 @@
 }
 
 .passwordToggle {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
   transition: color var(--duration-fast) ease;
-  z-index: 2;
   width: 20px;
   height: 20px;
 }
@@ -449,10 +419,25 @@
   color: var(--text-primary);
 }
 
-.cardSection {
+.pageCard {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.blockSection {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  border-radius: 0;
+  padding: var(--spacing-lg);
+}
+
+.pageCard > .blockSection:last-child {
+  border-bottom: none;
 }

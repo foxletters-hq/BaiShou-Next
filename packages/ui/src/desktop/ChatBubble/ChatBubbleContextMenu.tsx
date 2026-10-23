@@ -9,7 +9,7 @@ interface ChatBubbleContextMenuProps {
   isUser: boolean
   onDismiss: () => void
   onCopy: (e?: React.MouseEvent) => void
-  onStartEdit: () => void
+  onStartEdit?: () => void
   onResend?: () => void
   onRegenerate?: () => void
   onDelete?: () => void
@@ -69,29 +69,33 @@ export const ChatBubbleContextMenu: React.FC<ChatBubbleContextMenuProps> = ({
                 {t('common.retry', '重新发送')}
               </button>
             )}
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onDismiss()
-                onStartEdit()
-              }}
-            >
-              {t('common.edit', '编辑')}
-            </button>
+            {onStartEdit ? (
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onDismiss()
+                  onStartEdit()
+                }}
+              >
+                {t('common.edit', '编辑')}
+              </button>
+            ) : null}
           </>
         ) : (
           <>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onDismiss()
-                onStartEdit()
-              }}
-            >
-              {t('common.edit', '编辑')}
-            </button>
+            {onStartEdit ? (
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onDismiss()
+                  onStartEdit()
+                }}
+              >
+                {t('common.edit', '编辑')}
+              </button>
+            ) : null}
             {onRegenerate && (
               <button
                 type="button"

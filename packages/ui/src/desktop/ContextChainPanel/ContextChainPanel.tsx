@@ -1,8 +1,10 @@
 import i18n from 'i18next'
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
 import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { withAppContentOverlay } from '../overlay'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ContextChainCompressionHelpButton } from './ContextChainCompressionHelpButton'
 import {
@@ -13,11 +15,10 @@ import {
 } from './useContextChainView'
 import { usePanelTransition } from './usePanelTransition'
 import { usePanelResize } from './usePanelResize'
-import { ContextChainRecompressBar } from './ContextChainRecompressBar'
-import { CompressionActivityBar } from '../CompressionActivityBar'
-import { ContextChainAttachments } from './ContextChainAttachments'
 import { RoundUsageFooterStats } from './RoundUsageFooterStats'
 import { hasTokenUsageStats } from '../../shared/token-usage-display'
+import { ContextChainListPane } from './ContextChainListPane'
+import { ContextChainDetailPane } from './ContextChainDetailPane'
 import panelStyles from './ContextChainPanel.module.css'
 
 export interface ContextChainPanelProps {
@@ -48,7 +49,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   compressedContent,
   systemPrompt,
   sessionId,
-  onCompressionSummaryUpdated,
+  onCompressionSummaryUpdated: _onCompressionSummaryUpdated,
   recompressBusy = false,
   recompressError = null,
   recompressStreamText = '',
@@ -108,7 +109,6 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
   const detailScrollKey = compressionSelected ? 'compression' : view.selectedMessageKey
 
-  // 选中条目后详情区从顶部开始展示（而非滚到底部）
   React.useLayoutEffect(() => {
     if (!panelActive) return
     const pane = detailContentRef.current
@@ -132,6 +132,8 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
       const targetTop = header.offsetTop + header.offsetHeight - pane.clientHeight + 8
       pane.scrollTop = Math.max(0, targetTop)
     }
+    // view 每轮都是新对象，只跟 resolveDefaultActiveRound 走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelActive, view.resolveDefaultActiveRound])
 
   React.useLayoutEffect(() => {
@@ -152,89 +154,8 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
 
   const messageCount = view.messageEntries.length
 
-  const renderMetaChip = (opts: {
-    label: string
-    badgeClass: string
-    itemClass: string
-    selected: boolean
-    onSelect: () => void
-    key: string
-  }) => (
-    <div
-      key={opts.key}
-      role="button"
-      tabIndex={0}
-      className={`${panelStyles.metaChip} ${opts.itemClass} ${
-        opts.selected ? panelStyles.metaChipSelected : ''
-      }`}
-      onClick={opts.onSelect}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          opts.onSelect()
-        }
-      }}
-    >
-      <span className={`${panelStyles.msgRole} ${opts.badgeClass}`}>{opts.label}</span>
-    </div>
-  )
-
-  const hasSystemPromptCard = Boolean(view.systemPromptEntry?.item)
-  const hasCompressionCard = Boolean(effectiveCompressionSummary?.trim())
-  const systemPromptId = view.systemPromptEntry?.item?.id ?? null
-
-  const renderChainMessage = (entry: (typeof view.messageEntries)[number], idx: number) => {
-    if (!entry.item) return null
-    const msg = entry.item
-    const selected = view.selectedMessageKey === msg.id
-    const label = view.getMessageLabel(msg)
-    const isSystemPrompt =
-      entry.kind === 'system-prompt' ||
-      msg.label ===
-        i18n.t(
-          'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L190',
-          '系统提示词'
-        )
-
-    const itemKey = msg.id ?? `msg-${idx}`
-
-    return (
-      <div
-        key={itemKey}
-        ref={(el) => {
-          if (el && msg.id) listItemRefs.current.set(msg.id, el)
-          else if (msg.id) listItemRefs.current.delete(msg.id)
-        }}
-        className={`${panelStyles.messageItem} ${
-          selected ? panelStyles.messageItemSelected : ''
-        } ${isSystemPrompt ? panelStyles.messageItemSystem : ''}`}
-        onClick={() => view.setSelectedMessageKey(msg.id ?? null)}
-      >
-        <span className={`${panelStyles.msgRole} ${view.getLabelBadgeClass(msg.label)}`}>
-          {label}
-        </span>
-        {msg.attachments && msg.attachments.length > 0 && (
-          <ContextChainAttachments attachments={msg.attachments} compact />
-        )}
-        <div className={panelStyles.msgPreview}>
-          {msg.label ===
-          i18n.t(
-            'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L213',
-            '工具调用'
-          )
-            ? view.formatToolPreview(msg.content)
-            : msg.content
-              ? view.formatPreview(msg.content)
-              : !msg.attachments?.length
-                ? view.t('agent.chat.empty_content', '[空文本]')
-                : null}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
+  return createPortal(
+    <div className={withAppContentOverlay(panelStyles.shell)}>
       <div
         className={`${panelStyles.backdrop} ${transition.active ? panelStyles.backdropActive : ''}`}
         onClick={onClose}
@@ -296,191 +217,29 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
         <div className={panelStyles.body}>
           {view.activeTab === 'context' && (
             <div className={panelStyles.splitBody}>
-              <div className={panelStyles.listPane} ref={listPaneRef}>
-                {view.flatEntries.length === 0 ? (
-                  <div className={panelStyles.emptyHint}>
-                    {view.t('agent.chat.no_context_messages', '暂无发送给 AI 的上下文记录')}
-                  </div>
-                ) : (
-                  <>
-                    {(hasSystemPromptCard || hasCompressionCard) && (
-                      <div className={panelStyles.metaRow}>
-                        {hasSystemPromptCard &&
-                          renderMetaChip({
-                            key: 'chain-system-prompt',
-                            label: view.getMessageLabel(view.systemPromptEntry!.item!),
-                            badgeClass: panelStyles.roleSystem,
-                            itemClass: panelStyles.messageItemSystem,
-                            selected: Boolean(
-                              systemPromptId && view.selectedMessageKey === systemPromptId
-                            ),
-                            onSelect: () => view.setSelectedMessageKey(systemPromptId)
-                          })}
-                        {hasCompressionCard &&
-                          renderMetaChip({
-                            key: 'chain-compression',
-                            label: view.t('agent.chat.compaction_summary', '对话压缩'),
-                            badgeClass: panelStyles.roleCompaction,
-                            itemClass: panelStyles.messageItemCompression,
-                            selected: compressionSelected,
-                            onSelect: () =>
-                              view.setSelectedMessageKey(COMPRESSION_SUMMARY_SELECTION_KEY)
-                          })}
-                      </div>
-                    )}
-                    {hasCompressionCard && (
-                      <p className={panelStyles.compressionListHint}>
-                        {view.t(
-                          'agent.chat.compaction_between_rounds',
-                          '已压缩更早轮次，以下从第 1 轮重新计数'
-                        )}
-                      </p>
-                    )}
-                    {hasCompressionCard && view.roundGroups.length > 0 && (
-                      <hr className={panelStyles.chainMetaDivider} aria-hidden />
-                    )}
-                    {view.roundGroups.map((group) => {
-                      const expanded = view.isRoundExpanded(group.roundIndex)
-                      const isActiveRound =
-                        group.roundIndex ===
-                        (view.meta?.activeRoundIndex ?? view.resolveDefaultActiveRound())
-                      const visibleMessages = view.getVisibleMessages(group)
-
-                      return (
-                        <div key={`round-wrap-${group.roundIndex}`}>
-                          <button
-                            type="button"
-                            ref={(el) => {
-                              if (el) roundHeaderRefs.current.set(group.roundIndex, el)
-                              else roundHeaderRefs.current.delete(group.roundIndex)
-                            }}
-                            className={`${panelStyles.roundHeaderBtn} ${
-                              isActiveRound ? panelStyles.roundHeaderActive : ''
-                            }`}
-                            onClick={() => view.toggleRound(group.roundIndex)}
-                            aria-expanded={expanded}
-                          >
-                            <span
-                              className={`${panelStyles.roundChevron} ${
-                                expanded ? panelStyles.roundChevronExpanded : ''
-                              }`}
-                              aria-hidden
-                            >
-                              ▶
-                            </span>
-                            <span className={panelStyles.roundHeaderLabel}>
-                              {view.t('agent.chat.round_label', '第 {{n}} 轮', {
-                                n: group.roundIndex
-                              })}
-                              {isActiveRound
-                                ? `（${view.t('agent.chat.current_round', '当前')}）`
-                                : ''}
-                            </span>
-                            <span className={panelStyles.roundHeaderMeta}>
-                              {group.messages.length}
-                              {view.t('agent.chat.round_items', ' 条')}
-                            </span>
-                          </button>
-                          {expanded && (
-                            <div className={panelStyles.roundBody}>
-                              <div className={panelStyles.roundBodyInner}>
-                                {visibleMessages.map((entry, idx) =>
-                                  renderChainMessage(entry, idx)
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-              </div>
-
-              <div className={panelStyles.detailPane}>
-                {compressionSelected ? (
-                  <>
-                    <div className={panelStyles.detailHeader}>
-                      <div className={panelStyles.detailHeaderRow}>
-                        <span className={`${panelStyles.msgRole} ${panelStyles.roleCompaction}`}>
-                          {view.t('agent.chat.compaction_summary', '对话压缩')}
-                        </span>
-                        {sessionId && onRecompress && (
-                          <ContextChainRecompressBar
-                            busy={recompressBusy}
-                            error={recompressError}
-                            onRecompress={onRecompress}
-                            onDismissError={onRecompressDismissError}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className={panelStyles.detailContent} ref={detailContentRef}>
-                      {recompressBusy ? (
-                        <CompressionActivityBar
-                          phase="manual"
-                          embedded
-                          summary={recompressStreamText}
-                          reasoning={recompressStreamReasoning}
-                          isActive
-                        />
-                      ) : (
-                        <CompressionActivityBar
-                          phase="auto"
-                          embedded
-                          summary={effectiveCompressionSummary}
-                          reasoning={effectiveCompressionReasoning}
-                          isActive={false}
-                          thoughtDurationMs={
-                            flatEntries.find((e) => e.kind === 'compression-summary')
-                              ?.thoughtDurationMs
-                          }
-                          summaryDurationMs={
-                            flatEntries.find((e) => e.kind === 'compression-summary')
-                              ?.summaryDurationMs
-                          }
-                        />
-                      )}
-                    </div>
-                  </>
-                ) : view.selected ? (
-                  <>
-                    <div className={panelStyles.detailHeader}>
-                      <span
-                        className={`${panelStyles.msgRole} ${view.getLabelBadgeClass(view.selected.label)}`}
-                      >
-                        {view.getMessageLabel(view.selected)}
-                      </span>
-                    </div>
-                    <div className={panelStyles.detailContent} ref={detailContentRef}>
-                      {view.selected.attachments && view.selected.attachments.length > 0 && (
-                        <ContextChainAttachments attachments={view.selected.attachments} />
-                      )}
-                      {view.selected.content ? (
-                        <AgentMarkdownRenderer
-                          content={view.selected.content}
-                          plainText={
-                            view.selected.label ===
-                            i18n.t(
-                              'auto.packages.ui.src.desktop.ContextChainPanel.ContextChainPanel.L448',
-                              '系统提示词'
-                            )
-                          }
-                        />
-                      ) : !view.selected.attachments?.length ? (
-                        view.t('agent.chat.no_content', '[无内容]')
-                      ) : null}
-                    </div>
-                  </>
-                ) : (
-                  <div className={panelStyles.detailPlaceholder}>
-                    {view.t(
-                      'agent.chat.select_chain_item',
-                      '在左侧选择一条消息，查看发送给 AI 的完整内容'
-                    )}
-                  </div>
-                )}
-              </div>
+              <ContextChainListPane
+                view={view}
+                compressionSelected={compressionSelected}
+                effectiveCompressionSummary={effectiveCompressionSummary}
+                listPaneRef={listPaneRef}
+                listItemRefs={listItemRefs}
+                roundHeaderRefs={roundHeaderRefs}
+              />
+              <ContextChainDetailPane
+                view={view}
+                compressionSelected={compressionSelected}
+                effectiveCompressionSummary={effectiveCompressionSummary}
+                effectiveCompressionReasoning={effectiveCompressionReasoning}
+                flatEntries={flatEntries}
+                sessionId={sessionId}
+                recompressBusy={recompressBusy}
+                recompressError={recompressError}
+                recompressStreamText={recompressStreamText}
+                recompressStreamReasoning={recompressStreamReasoning}
+                onRecompress={onRecompress}
+                onRecompressDismissError={onRecompressDismissError}
+                detailContentRef={detailContentRef}
+              />
             </div>
           )}
 
@@ -505,7 +264,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
                   <span className={panelStyles.estimateTitle}>
                     {view.t('agent.chat.next_request_estimate', '下次请求预计')}
                   </span>
-                  <ContextChainCompressionHelpButton size={15} />
+                  <ContextChainCompressionHelpButton size={14} />
                 </div>
                 <div className={panelStyles.footerRow}>
                   <span className={panelStyles.footerStat}>
@@ -542,6 +301,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
           </div>
         )}
       </aside>
-    </>
+    </div>,
+    document.body
   )
 }

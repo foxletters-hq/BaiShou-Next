@@ -1,5 +1,6 @@
 import type { AIProviderConfig } from '../types/settings.types'
 import { isEmbeddingModel, isTtsModel } from './embedding.utils'
+import { isVisionModel } from './model-capabilities'
 
 export interface ModelSwitcherProvider {
   id: string
@@ -9,7 +10,7 @@ export interface ModelSwitcherProvider {
   models?: string[]
 }
 
-export type ModelSwitcherFilterMode = 'dialogue' | 'embedding' | 'tts'
+export type ModelSwitcherFilterMode = 'dialogue' | 'embedding' | 'tts' | 'vision'
 
 /**
  * 用户显式配置的启用模型列表。
@@ -27,6 +28,7 @@ export function resolveEnabledModelPool(
 /**
  * 过滤可用于模型选择弹窗的供应商与模型列表。
  * 仅保留已启用的供应商，且模型须在用户启用的 enabledModels 中。
+ * `vision` 只保留具备识图能力的对话模型。
  */
 export function filterProvidersForModelSwitcher(
   providers: AIProviderConfig[],
@@ -41,7 +43,9 @@ export function filterProvidersForModelSwitcher(
         const isTts = isTtsModel(modelId)
         if (mode === 'embedding') return isEmbed
         if (mode === 'tts') return isTts
-        return !isEmbed && !isTts
+        if (isEmbed || isTts) return false
+        if (mode === 'vision') return isVisionModel(modelId, p.type || p.id)
+        return true
       })
       return {
         id: p.id,

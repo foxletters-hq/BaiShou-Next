@@ -36,11 +36,13 @@ import {
 } from './archive-guards.util'
 import {
   MOBILE_ARCHIVE_DB_ZIP_NAME,
+  MOBILE_ARCHIVE_KNOWLEDGE_DB_ZIP_NAME,
   ARCHIVE_USER_AVATARS_ZIP_PREFIX,
   type MobileArchiveDbBridge,
   type ArchiveRestoreRebootstrapOptions
 } from './mobile-archive-db.bridge'
 import {
+  sweepStaleArchiveImportCache,
   wipeStorageRootPreservingSnapshots,
   selectiveCopyArchiveTree
 } from './archive-snapshot.helpers'
@@ -282,10 +284,10 @@ export async function runArchiveImportFromZip(
 
   let extractDir: string | undefined
   try {
-    extractDir = joinStoragePath(
-      stripFileScheme(getAppCacheDirectory()),
-      `baishou_archive_extract_${Date.now()}`
-    )
+    const cacheDir = stripFileScheme(getAppCacheDirectory())
+    await sweepStaleArchiveImportCache(ctx, cacheDir, stripFileScheme(zipFilePath))
+
+    extractDir = joinStoragePath(cacheDir, `baishou_archive_extract_${Date.now()}`)
     await ctx.fileSystem.mkdir(extractDir, { recursive: true })
 
     reportArchiveImportStage(onProgress, 'unpacking')
@@ -387,15 +389,15 @@ export async function runArchiveImportFromZip(
         }
 
         await ctx.vaultService.initRegistry()
-        const globalShadowDir = await ctx.pathService.getGlobalShadowIndexDirectory()
+        // Mobile 的全局 shadow_index_v2.db 由 ExpoShadowIndexConnectionManager 进程内常驻持有，
+        // 不可直接 unlink 底层文件（会导致 WAL/文件描述符失效、重建写入失败），改由 rebootstrap 时通过 SQL 清表。
         await purgeImportedShadowIndexCaches(ctx.fileSystem, {
-          workspaceRoot: rootDir,
-          globalShadowDir
+          workspaceRoot: rootDir
         })
 
         reportArchiveImportStage(onProgress, 'rebuilding_index')
         const rebootstrapOptions: ArchiveRestoreRebootstrapOptions = {
-          blockingResync: false,
+          blockingResync: true,
           deferSummaryScan: true
         }
         if (ctx.dbBridge?.rebootstrapAfterArchiveRestore) {
@@ -463,6 +465,34 @@ export async function runArchiveImportFromZip(
         await ctx.dbBridge!.replaceAgentDatabaseFrom(dbPath)
       }
 
+      // K1.4：恢复 knowledge.db（损坏则隔离删除，启动时会重建）
+      try {
+        const knowledgeSrc = joinStoragePath(payloadDir, MOBILE_ARCHIVE_KNOWLEDGE_DB_ZIP_NAME)
+        if (await ctx.fileSystem.exists(knowledgeSrc)) {
+          const knowledgeDest = joinStoragePath(rootDir, 'knowledge.db')
+          const { expoKnowledgeConnectionManager } = await import('@baishou/database/expo')
+          if (expoKnowledgeConnectionManager.isConnected()) {
+            await expoKnowledgeConnectionManager.disconnect()
+          }
+          try {
+            await ctx.fileSystem.copyFile(knowledgeSrc, knowledgeDest)
+            await expoKnowledgeConnectionManager.connect(rootDir)
+          } catch (e) {
+            console.warn('[MobileArchive] knowledge.db restore failed, isolating rebuild', e)
+            await ctx.fileSystem.unlink(knowledgeDest).catch(() => undefined)
+            await ctx.fileSystem.unlink(`${knowledgeDest}-wal`).catch(() => undefined)
+            await ctx.fileSystem.unlink(`${knowledgeDest}-shm`).catch(() => undefined)
+            try {
+              await expoKnowledgeConnectionManager.connect(rootDir)
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[MobileArchive] knowledge.db restore skipped', e)
+      }
+
       const configPath = joinStoragePath(payloadDir, 'config/device_preferences.json')
       if (await ctx.fileSystem.exists(configPath)) {
         const raw = await ctx.fileSystem.readFile(configPath)
@@ -490,10 +520,8 @@ export async function runArchiveImportFromZip(
       }
 
       await ctx.vaultService.initRegistry()
-      const globalShadowDir = await ctx.pathService.getGlobalShadowIndexDirectory()
       await purgeImportedShadowIndexCaches(ctx.fileSystem, {
-        workspaceRoot: rootDir,
-        globalShadowDir
+        workspaceRoot: rootDir
       })
       reportArchiveImportStage(onProgress, 'rebuilding_index')
       if (ctx.dbBridge?.rebootstrapAfterArchiveRestore) {

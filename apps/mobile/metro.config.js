@@ -33,6 +33,7 @@ let config = getDefaultConfig(projectRoot)
 config.watchFolders = [...(config.watchFolders || []), workspaceRoot]
 
 const workletsDir = resolveWorkletsWatchDir()
+fs.mkdirSync(workletsDir, { recursive: true })
 if (!config.watchFolders.includes(workletsDir)) {
   config.watchFolders.push(workletsDir)
 }
@@ -62,12 +63,33 @@ config.serializer.getPolyfills = (ctx) => {
 const nodeBuiltinPrefixes = ['crypto', 'fs', 'os', 'stream', 'buffer', 'util', 'zlib', 'path']
 const mockPath = path.resolve(projectRoot, 'mocks/node-modules.js')
 
+const defaultBlockList = Array.isArray(config.resolver.blockList)
+  ? config.resolver.blockList
+  : config.resolver.blockList
+    ? [config.resolver.blockList]
+    : []
+
 config.resolver.blockList = [
-  ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : []),
+  ...defaultBlockList,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]streamableHttp\.(js|cjs|mjs|ts)$/,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]server[/\\]sse\.(js|cjs|mjs|ts)$/,
   /[/\\]@modelcontextprotocol[/\\]sdk[/\\].*[/\\]examples[/\\]/,
+  /[/\\]node_modules[/\\](?:@lobehub|@ant-design|antd|@rc-component|@fontsource|@base-ui|electron|electron-builder|app-builder-bin|dugite)[/\\]/,
   new RegExp(`${path.resolve(workspaceRoot, 'apps/desktop').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages/core-desktop').replace(/[/\\]/g, '[/\\\\]')}.*`
+  ),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages/database-desktop').replace(/[/\\]/g, '[/\\\\]')}.*`
+  ),
+  new RegExp(
+    `${path.resolve(workspaceRoot, 'packages').replace(/[/\\]/g, '[/\\\\]')}[/\\\\][^/\\\\]+[/\\\\]dist[/\\\\].*`
+  ),
+  new RegExp(`${path.resolve(workspaceRoot, '.turbo').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, '.expo').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/.gradle').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/build').replace(/[/\\]/g, '[/\\\\]')}.*`),
+  new RegExp(`${path.resolve(projectRoot, 'android/app/build').replace(/[/\\]/g, '[/\\\\]')}.*`),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/index.desktop.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),
@@ -77,8 +99,17 @@ config.resolver.blockList = [
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/fs/create-node-file-system.ts').replace(/[/\\]/g, '[/\\\\]')}`
   ),
+  // index.shared 会导出少量 sync 文件；其余 Git / Node 同步实现留在桌面端。
+  // 新增共享导出时，把文件名加进 mobileSyncModules，否则 Metro 会当成缺失模块。
   new RegExp(
-    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}[/\\\\](?!incremental-sync-external-mounts\\.ts$).+`
+    `${path.resolve(workspaceRoot, 'packages/core/src/sync').replace(/[/\\]/g, '[/\\\\]')}[/\\\\](?!(?:${[
+      'incremental-sync-external-mounts',
+      'version-manager.interface',
+      'version-manager.fs.service',
+      'sync.errors'
+    ]
+      .map((name) => `${name}\\.ts`)
+      .join('|')})$).+`
   ),
   new RegExp(
     `${path.resolve(workspaceRoot, 'packages/core/src/import/legacy-import.service.ts').replace(/[/\\]/g, '[/\\\\]')}`
@@ -103,7 +134,7 @@ const workspacePackageEntries = {
   '@baishou/ui/native': path.resolve(workspaceRoot, 'packages/ui/src/native/index.ts'),
   '@baishou/ui': path.resolve(workspaceRoot, 'packages/ui/src/index.ts'),
   '@baishou/shared': path.resolve(workspaceRoot, 'packages/shared/src/index.ts'),
-  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.ts'),
+  '@baishou/ai': path.resolve(workspaceRoot, 'packages/ai/src/index.native.ts'),
   '@baishou/core-mobile': path.resolve(workspaceRoot, 'packages/core-mobile/src/index.ts'),
   '@baishou/database': databaseNativeEntry,
   '@baishou/store': path.resolve(workspaceRoot, 'packages/store/src/index.ts')

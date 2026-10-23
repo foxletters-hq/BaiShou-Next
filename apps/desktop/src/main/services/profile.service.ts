@@ -1,7 +1,7 @@
 import i18n from 'i18next'
 import { dialog } from 'electron'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
-import { USER_DEFAULT_AVATAR_SENTINEL } from '@baishou/shared'
+import { USER_DEFAULT_AVATAR_SENTINEL, isBuiltinUserAvatarPath } from '@baishou/shared'
 import { DesktopStoragePathService } from './path.service'
 
 /**
@@ -40,8 +40,8 @@ export class ProfileService {
   }
 
   /**
-   * 唤起系统文件选择框，让用户选择聊天背景图
-   * 复用头像导入的压缩与路径解析逻辑，但存储到 backgrounds/ 子目录。
+   * 唤起系统文件选择框，让用户选择聊天背景图。
+   * 背景图保留原图质量，仅复制到 backgrounds/ 子目录，不走头像压缩。
    *
    * @returns 新背景图的 local:// 绝对路径。如果用户取消选择，则返回 null。
    */
@@ -68,7 +68,7 @@ export class ProfileService {
       typeof input.avatarPath === 'string' &&
       input.avatarPath.trim() !== ''
     ) {
-      if (!input.avatarPath.startsWith('avatars/')) {
+      if (!input.avatarPath.startsWith('avatars/') && !isBuiltinUserAvatarPath(input.avatarPath)) {
         input.avatarPath = await this.attachmentManager.importAvatar(
           input.avatarPath,
           'user_avatar'

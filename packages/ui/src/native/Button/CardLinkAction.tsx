@@ -1,7 +1,7 @@
 import React from 'react'
 import { type StyleProp, type ViewStyle } from 'react-native'
 import { Button } from './Button'
-import type { CardLinkActionVariant } from './card-link-action.styles'
+import { cardLinkActionStyles, type CardLinkActionVariant } from './card-link-action.styles'
 
 export interface CardLinkActionProps {
   onPress: () => void
@@ -13,7 +13,7 @@ export interface CardLinkActionProps {
   style?: StyleProp<ViewStyle>
 }
 
-/** 设置页卡片内统一的 HeroUI 全宽操作按钮 */
+/** 设置页卡片内统一的描边操作按钮，支持 card（通栏居中平放）与 footer（居中） */
 export const CardLinkAction: React.FC<CardLinkActionProps> = ({
   onPress,
   children,
@@ -23,15 +23,14 @@ export const CardLinkAction: React.FC<CardLinkActionProps> = ({
   style
 }) => {
   const mergedDisabled = Boolean(disabled ?? isDisabled)
-  const buttonVariant = variant === 'footer' ? 'ghost' : 'primary'
+  const variantStyle = cardLinkActionStyles[variant]
 
   return (
     <Button
-      variant={buttonVariant}
-      className="w-full"
+      variant="outlined"
       onPress={onPress}
       isDisabled={mergedDisabled}
-      style={style}
+      style={[variantStyle, style]}
     >
       {children}
     </Button>

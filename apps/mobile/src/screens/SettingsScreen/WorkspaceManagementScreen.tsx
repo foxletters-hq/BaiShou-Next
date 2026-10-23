@@ -10,9 +10,11 @@ import {
   Pagination,
   type VaultInfo
 } from '@baishou/ui/native'
+import { formatIncrementalSyncPlanBytes } from '@baishou/shared'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const PAGE_SIZE = 10
 
@@ -55,6 +57,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
       const active = await services.vaultService.getActiveVault()
       setVaults(
         allVaults.map((v) => ({
+          id: v.id,
           name: v.name,
           path: v.path,
           createdAt: v.createdAt,
@@ -64,6 +67,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
       setActiveVault(
         active
           ? {
+              id: active.id,
               name: active.name,
               path: active.path,
               createdAt: active.createdAt,
@@ -130,6 +134,57 @@ export const WorkspaceManagementScreen: React.FC = () => {
     }
   }
 
+  const handleRename = async (vault: VaultInfo) => {
+    if (!services?.renameVault) return
+    const name = await dialog.prompt(
+      t('workspace.rename_prompt', '将「{{name}}」重命名为：', { name: vault.name }),
+      vault.name
+    )
+    if (name === null) return
+    const next = name.trim()
+    if (!next) {
+      toast.showWarning(
+        t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+      )
+      return
+    }
+    if (next === vault.name) return
+    const conflict = vaults.some(
+      (v) => v.name !== vault.name && v.name.toLowerCase() === next.toLowerCase()
+    )
+    if (conflict) {
+      toast.showWarning(t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。'))
+      return
+    }
+
+    let bytesLabel = t('workspace.rename_bytes_unknown', '该工作空间的全部文件')
+    try {
+      const bytes = await services.estimateVaultRenameBytes?.(vault.id || vault.name)
+      if (typeof bytes === 'number' && bytes > 0) {
+        bytesLabel = formatIncrementalSyncPlanBytes(bytes)
+      }
+    } catch {
+      // keep fallback
+    }
+
+    const confirmed = await dialog.confirm(
+      t(
+        'workspace.rename_confirm',
+        '确定将「{{oldName}}」重命名为「{{newName}}」吗？\n\n下次同步将按朴素路径重新上传约 {{bytes}}（旧路径删除 + 新路径上传）。其它设备同步前请先完成本机同步。',
+        { oldName: vault.name, newName: next, bytes: bytesLabel }
+      )
+    )
+    if (!confirmed) return
+
+    try {
+      await services.renameVault(vault.id || vault.name, next)
+      await loadVaults()
+      toast.showSuccess(t('workspace.rename_success', '已重命名'))
+    } catch {
+      toast.showError(t('workspace.rename_failed', '重命名失败'))
+    }
+  }
+
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
       t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
@@ -183,7 +238,9 @@ export const WorkspaceManagementScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t('workspace.search_empty', '没有匹配的工作空间')}
             </Text>
           </View>
@@ -193,14 +250,14 @@ export const WorkspaceManagementScreen: React.FC = () => {
           const isActive = activeVault?.name === vault.name
           return (
             <View
-              key={vault.name}
+              key={vault.id || vault.name}
               style={[
                 styles.flatCard,
                 styles.vaultCard,
                 { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
               ]}
             >
-              <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flex: 1, gap: sharedTokens.spacing.xxs }}>
                 <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{vault.name}</Text>
                 <Text style={[styles.sub, { color: colors.textSecondary }]}>
                   {t('workspace.last_accessed', '上次访问: {{time}}', {
@@ -211,24 +268,31 @@ export const WorkspaceManagementScreen: React.FC = () => {
                   })}
                 </Text>
               </View>
-              {isActive ? (
-                <Text style={[styles.badge, { color: colors.primary }]}>
-                  {t('workspace.current_short', '当前')}
-                </Text>
-              ) : (
-                <View style={styles.actions}>
+              <View style={styles.actions}>
+                {isActive ? (
+                  <Text style={[styles.badge, { color: colors.primary }]}>
+                    {t('workspace.current_short', '当前')}
+                  </Text>
+                ) : (
                   <Pressable onPress={() => void handleSwitch(vault.name)}>
                     <Text style={[styles.action, { color: colors.primary }]}>
                       {t('workspace.switch', '切换')}
                     </Text>
                   </Pressable>
+                )}
+                <Pressable onPress={() => void handleRename(vault)}>
+                  <Text style={[styles.action, { color: colors.primary }]}>
+                    {t('workspace.rename', '重命名')}
+                  </Text>
+                </Pressable>
+                {!isActive ? (
                   <Pressable onPress={() => void handleDelete(vault.name)}>
-                    <Text style={[styles.action, { color: '#ef4444' }]}>
+                    <Text style={[styles.action, { color: colors.error }]}>
                       {t('workspace.delete', '删除')}
                     </Text>
                   </Pressable>
-                </View>
-              )}
+                ) : null}
+              </View>
             </View>
           )
         })}
@@ -275,7 +339,9 @@ export const WorkspaceManagementScreen: React.FC = () => {
           <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
             {t('workspace.create_new', '创建新空间')}
           </Text>
-          <Text style={{ color: colors.primary, fontSize: 20 }}>+</Text>
+          <Text style={{ color: colors.primary, fontSize: mobileTypography.title.fontSize }}>
+            +
+          </Text>
         </Pressable>
       </ScrollView>
     </StackScreenLayout>
@@ -286,62 +352,65 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 12
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.mdTight
   },
   flatCard: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    paddingHorizontal: 14,
-    paddingVertical: 12
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   emptyRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20
+    paddingVertical: sharedTokens.spacing.mdPlus
   },
   vaultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   createCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   rowTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '500'
   },
   sub: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   badge: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   actions: {
     flexDirection: 'row',
-    gap: 12
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.mdTight,
+    alignItems: 'center',
+    justifyContent: 'flex-end'
   },
   action: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   paginationWrap: {
-    paddingVertical: 4,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   paginationScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 4
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   pageInfo: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   }
 })

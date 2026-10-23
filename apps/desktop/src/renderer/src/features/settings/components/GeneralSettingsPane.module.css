@@ -1,32 +1,87 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 32px 32px;
-  background: var(--bg-app);
+  gap: var(--spacing-md-plus);
+  padding: 0;
+  background: transparent;
   width: 100%;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
+/* 卡外标题 + 卡片（大分割） */
+.stackGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-xs);
+  min-width: 0;
+}
+
+.sectionLabel {
+  margin: 0;
+  padding: 0;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-section-weight);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  user-select: none;
+}
+
+/* 常规设置：多组 sibling 卡（勿 overflow:hidden，否则 Select 下拉被裁切） */
 .cardSection {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+/* 遗留：单层大卡（新页优先用 sibling cardSection + sectionLabel） */
+.pageCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.pageSection {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-muted);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.pageCard > .pageSection:last-child {
+  border-bottom: none;
 }
 
 .cardHeader {
-  padding: 16px 16px 8px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
 }
 
 .cardTitle {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
+  font-family: var(--font-family);
 }
 
 .cardBody {
@@ -35,8 +90,28 @@
   padding-bottom: 0;
 }
 
+/* 卡内行分隔（小分割） */
 .divider {
   height: 1px;
-  background-color: var(--color-outline-variant, var(--border-subtle));
+  background-color: var(--border-muted);
   margin: 0;
+}
+
+/* 多板块堆叠（门控等试点页）— 略收紧组间距，避免标题与卡片「飘」 */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.selectControl {
+  width: 176px;
+  flex-shrink: 0;
+}
+
+.kindTabs {
+  display: flex;
+  align-items: center;
 }

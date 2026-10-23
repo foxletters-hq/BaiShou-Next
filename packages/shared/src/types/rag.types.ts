@@ -19,6 +19,7 @@ export interface ISearchQueryOptions {
   similarityThreshold?: number // 如果纯余弦距离低于阈值，抛弃不再参与 RRF 排位
   ftsWeight?: number // RRF 合成时关键词权重，默认 0.3
   vectorWeight?: number // RRF 合成时向量占比，默认 0.7
+  filter?: VectorSearchQueryFilter
 }
 
 /** 向量/FTS 检索可选过滤（先按时间收窄候选，再做语义/关键词排序）。 */
@@ -27,6 +28,11 @@ export interface VectorSearchQueryFilter {
   sourceType?: string
   startMs?: number
   endMs?: number
+  /**
+   * 工作空间稳定 ID。检索必须传入；空 vault_id 行一律不返回。
+   * 未传时 SQL 层 fail-closed（不返回任何行），避免静默跨仓库泄漏。
+   */
+  vaultId?: string
 }
 
 /**
@@ -46,7 +52,7 @@ export interface IHybridSearchStorage {
   queryFTS(
     keyword: string,
     limit: number,
-    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs'>
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultId'>
   ): Promise<ISearchResult[]>
 
   /**
@@ -103,6 +109,36 @@ export interface EmbeddingSnapshotMeta {
  * 为了与 Beta 提供的数据存储解耦而抽象的数据接口
  * (原版 AgentDatabase 中关于 Embedding 的部分)
  */
+export interface EmbedLedgerRecordParams {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  contentHash: string
+  chunkCount: number
+  modelId: string
+  dimension: number
+}
+
+export interface EmbedLedgerFailureParams {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  lastError: string
+}
+
+export interface EmbedLedgerReconcileParams {
+  vaultId?: string
+  sourceType?: string
+  /** 重建完成后的回调；不传则走全局监听（记忆侧作废已索引哈希） */
+  onRebuilt?: () => Promise<void>
+}
+
+export interface EmbedLedgerReconcileResult {
+  rebuilt: boolean
+  ledgerChunkSum: number
+  vectorCount: number
+}
+
 export interface IEmbeddingStorage {
   initVectorIndex(dimension: number): Promise<void>
 
@@ -111,6 +147,8 @@ export interface IEmbeddingStorage {
     sourceType: string
     sourceId: string
     groupId: string
+    /** 工作空间稳定 ID；写入必填，检索按此列过滤 */
+    vaultId: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
@@ -120,6 +158,34 @@ export interface IEmbeddingStorage {
   }): Promise<void>
 
   deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void>
+  /** 单事务原子替换/写入指定来源的全部切片并同步更新账本，避免逐块独立事务与中间态失配 */
+  replaceSourceEmbeddings?(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    groupId: string
+    modelId: string
+    dimension: number
+    contentHash: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    replaceExisting?: boolean
+    recordLedger?: boolean
+    chunks: Array<{
+      id: string
+      chunkIndex: number
+      chunkText: string
+      embedding: number[]
+    }>
+  }): Promise<void>
+  /** 一个来源的全部切片写完后记一行；按来源覆盖，不按切片累加 */
+  recordEmbedded?(params: EmbedLedgerRecordParams): Promise<void>
+  /** 嵌入失败时记 failed 并累加 attempts，不改 chunk_count */
+  recordEmbedFailure?(params: EmbedLedgerFailureParams): Promise<void>
+  /** 比较账本 SUM(chunk_count) 与向量表 COUNT(*)，不相等则从向量表重建账本 */
+  reconcileEmbedLedger?(params?: EmbedLedgerReconcileParams): Promise<EmbedLedgerReconcileResult>
+  /** 从向量表按 source_id 聚合重建账本（换模型迁移后必须调用） */
+  rebuildEmbedLedger?(params?: EmbedLedgerReconcileParams): Promise<void>
   clearEmbeddings(): Promise<void>
 
   // --- 迁移用的 ---

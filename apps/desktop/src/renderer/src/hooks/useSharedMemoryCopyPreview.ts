@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
+import {
+  getSummaryDashboardCacheVersion,
+  subscribeSummaryDashboardCache
+} from '../lib/summary-dashboard-cache'
 
 async function fetchSharedMemoryCopyPreview(
   lookbackMonths: number,
@@ -21,6 +25,10 @@ export function useSharedMemoryCopyPreview(
   const [loading, setLoading] = useState(false)
   const userCopyPrefix = options?.userCopyPrefix ?? ''
   const locale = options?.locale
+  const cacheVersion = useSyncExternalStore(
+    subscribeSummaryDashboardCache,
+    getSummaryDashboardCacheVersion
+  )
 
   useEffect(() => {
     if (!enabled) {
@@ -49,7 +57,7 @@ export function useSharedMemoryCopyPreview(
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [lookbackMonths, enabled, userCopyPrefix, locale])
+  }, [lookbackMonths, enabled, userCopyPrefix, locale, cacheVersion])
 
   return { preview, loading }
 }

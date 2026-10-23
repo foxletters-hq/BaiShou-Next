@@ -2,11 +2,13 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { CheckSquare, ChevronDown, Folder, Share2, Trash2, ZoomIn } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { Checkbox } from '../Checkbox'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
 import { formatSize, getFileIcon, isImageFile } from './attachment-management.utils'
 import { AttachmentImageThumb } from './AttachmentImageThumb'
+import { sharedTokens } from '../../theme/tokens'
 
 type Vm = Pick<
   AttachmentManagementViewModel,
@@ -86,17 +88,10 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                 onPress={() => toggleSelect(group.sessionId, !isChecked)}
                 hitSlop={8}
               >
-                <View
-                  style={[
-                    styles.checkbox,
-                    { borderColor: colors.borderSubtle },
-                    isChecked && { backgroundColor: colors.primary, borderColor: colors.primary }
-                  ]}
-                >
-                  {isChecked && (
-                    <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
-                  )}
-                </View>
+                <Checkbox
+                  selected={isChecked}
+                  style={{ marginRight: sharedTokens.spacing.smPlus }}
+                />
               </TouchableOpacity>
 
               <View
@@ -217,7 +212,10 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                           {file.name}
                         </Text>
                         <Text
-                          style={[styles.fileSize, { color: colors.textSecondary, marginTop: 2 }]}
+                          style={[
+                            styles.fileSize,
+                            { color: colors.textSecondary, marginTop: sharedTokens.spacing.xxs }
+                          ]}
                         >
                           {formatSize(file.sizeMB)}
                         </Text>

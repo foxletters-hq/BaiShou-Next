@@ -63,6 +63,58 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.deleteEmbeddingsBySource(...args)
   }
 
+  replaceSourceEmbeddings(
+    ...args: Parameters<HybridSearchEmbeddingStore['replaceSourceEmbeddings']>
+  ) {
+    return this.embeddingStore.replaceSourceEmbeddings(...args)
+  }
+
+  recordEmbedded(...args: Parameters<HybridSearchEmbeddingStore['recordEmbedded']>) {
+    return this.embeddingStore.recordEmbedded(...args)
+  }
+
+  listLedgerBySource(...args: Parameters<HybridSearchEmbeddingStore['listLedgerBySource']>) {
+    return this.embeddingStore.listLedgerBySource(...args)
+  }
+
+  recordEmbedFailure(...args: Parameters<HybridSearchEmbeddingStore['recordEmbedFailure']>) {
+    return this.embeddingStore.recordEmbedFailure(...args)
+  }
+
+  reconcileEmbedLedger(...args: Parameters<HybridSearchEmbeddingStore['reconcileEmbedLedger']>) {
+    return this.embeddingStore.reconcileEmbedLedger(...args)
+  }
+
+  rebuildEmbedLedger(...args: Parameters<HybridSearchEmbeddingStore['rebuildEmbedLedger']>) {
+    return this.embeddingStore.rebuildEmbedLedger(...args)
+  }
+
+  getBySource(...args: Parameters<HybridSearchEmbeddingStore['getBySource']>) {
+    return this.embeddingStore.getBySource(...args)
+  }
+
+  listSourceIdsByType(...args: Parameters<HybridSearchEmbeddingStore['listSourceIdsByType']>) {
+    return this.embeddingStore.listSourceIdsByType(...args)
+  }
+
+  listEmbeddingChunksByType(
+    ...args: Parameters<HybridSearchEmbeddingStore['listEmbeddingChunksByType']>
+  ) {
+    return this.embeddingStore.listEmbeddingChunksByType(...args)
+  }
+
+  normalizeManualToMemory(
+    ...args: Parameters<HybridSearchEmbeddingStore['normalizeManualToMemory']>
+  ) {
+    return this.embeddingStore.normalizeManualToMemory(...args)
+  }
+
+  updateMetadataBySource(
+    ...args: Parameters<HybridSearchEmbeddingStore['updateMetadataBySource']>
+  ) {
+    return this.embeddingStore.updateMetadataBySource(...args)
+  }
+
   clearEmbeddings(...args: Parameters<HybridSearchEmbeddingStore['clearEmbeddings']>) {
     return this.embeddingStore.clearEmbeddings(...args)
   }

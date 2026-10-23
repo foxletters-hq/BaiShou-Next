@@ -13,6 +13,20 @@ export function sessionBelongsToActiveVault(
   return false
 }
 
+/**
+ * 会话 IDOR 防护：按稳定 vault_id 比对。
+ * 缺任一侧 → fail-closed（拒绝访问）。
+ */
+export function sessionBelongsToActiveVaultId(
+  sessionVaultId: string | null | undefined,
+  activeVaultId: string | null | undefined
+): boolean {
+  const sessionId = String(sessionVaultId ?? '').trim()
+  const activeId = String(activeVaultId ?? '').trim()
+  if (!sessionId || !activeId) return false
+  return sessionId === activeId
+}
+
 /** 会话落盘目标工作区：优先会话自身 vault（且磁盘存在），否则活跃 vault */
 export function resolveSessionFlushTargetVault(
   sessionVaultName: string | null | undefined,

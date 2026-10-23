@@ -9,10 +9,16 @@ describe('mcp-exposable-tool-ids.constants', () => {
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('web_search')
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('url_read')
     expect(MCP_EXPOSABLE_TOOL_IDS).toContain('current_time')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('session_list')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('message_search')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('summary_write')
+    expect(MCP_EXPOSABLE_TOOL_IDS).toContain('skill_read')
   })
 
   it('does not expose internal-only or app-specific tools', () => {
     expect(isMcpExposableToolId('emoji_send')).toBe(false)
     expect(isMcpExposableToolId('compress_context_upstream')).toBe(false)
+    expect(isMcpExposableToolId('skill_write')).toBe(false)
+    expect(isMcpExposableToolId('skill_read')).toBe(true)
   })
 })

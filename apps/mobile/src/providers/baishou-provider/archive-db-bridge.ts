@@ -10,7 +10,7 @@ import type { SyncConfig } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from '../../services/mobile-app-paths'
 import { checkpointAgentDatabaseForExport } from '../../services/mobile-agent-db-checkpoint.util'
 import { MOBILE_AGENT_DB_NAME } from '../../services/mobile-agent-db-recovery.service'
-import { emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
+import { emitSyncMutation, emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
 import { attachMobileRagVaultScope } from '../../services/mobile-rag-vault-scope'
 import { setMobileDiaryEmbeddingDeps } from '../../services/mobile-diary-embedding.service'
 import { createMobileRagService } from '../../services/mobile-rag.service'
@@ -22,7 +22,7 @@ import {
 } from '../../services/mobile-vault-runtime.service'
 import { runMobileLegacyZipMigration } from '../../services/mobile-legacy-migration.service'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import type { MobileArchiveDbBridge } from '../../services/mobile-archive-db.bridge'
 import type { MobileBaishouInitRefs } from './init-context'
 import type { BaishouContextValue } from './types'
@@ -108,10 +108,11 @@ export function createArchiveDbBridge(deps: {
         }
       }
       await fileSystem.copyFile(sourceUri, destBase)
-      await refs.reloadAgentDatabaseRef.current()
+      await refs.reloadAgentDatabaseRef.current({ preserveExistingFile: true })
     },
     runArchiveImportQuiesced: async (fn) => {
       refs.archiveFullRestoreDoneRef.current = false
+      refs.archiveRestoreEpochPublishedRef.current = false
       enterAgentMigrationArchiveImport()
       try {
         return await refs.runWithStorageQuiescedRef.current(fn)
@@ -123,6 +124,7 @@ export function createArchiveDbBridge(deps: {
     rebootstrapAfterArchiveRestore: async (options) => {
       const ctx = refs.vaultBootstrapCtxRef.current
       if (!ctx) return
+      const blockingResync = options?.blockingResync ?? true
       // 数据根已被覆盖，旧 diary stack 指向已删除路径，不可再用于 prepareVaultSwitch
       refs.diaryStackRef.current = null
       emitVaultSwitchMutation(undefined, 'archive-restore')
@@ -134,7 +136,7 @@ export function createArchiveDbBridge(deps: {
           bootstrapDeps: ctx.bootstrapDeps,
           watcherDeps: ctx.watcherDeps
         },
-        { blockingResync: options?.blockingResync ?? true }
+        { blockingResync }
       )
       refs.diaryStackRef.current = stack
       refs.archiveFullRestoreDoneRef.current = true
@@ -156,7 +158,13 @@ export function createArchiveDbBridge(deps: {
         pathService: ctx.pathService,
         fileSystem: ctx.fileSystem,
         settingsManager: runtime.settingsManager,
-        diaryRepoAdapter: stack.diaryRepoAdapter
+        diaryRepoAdapter: stack.diaryRepoAdapter,
+        resolveVaultId: () => {
+          const active = ctx.vaultService.getActiveVault()
+          if (active?.id) return active.id
+          const name = active?.name?.trim() || 'Personal'
+          return deriveLegacyVaultId(name)
+        }
       })
       ctx.bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
       ctx.watcherDeps.summarySyncService = summaryPipeline.summarySyncService
@@ -168,21 +176,23 @@ export function createArchiveDbBridge(deps: {
         missingSummaryDetector: summaryPipeline.missingSummaryDetector,
         summarySyncService: summaryPipeline.summarySyncService
       }
-      if (options?.deferSummaryScan) {
-        void summaryPipeline.summarySyncService.fullScanArchives().catch((e: unknown) => {
-          logger.warn(
-            '[BaishouProvider] deferred summary fullScanArchives after archive restore failed:',
-            e as Error
-          )
-        })
-      } else {
-        try {
-          await summaryPipeline.summarySyncService.fullScanArchives()
-        } catch (e) {
-          logger.warn(
-            '[BaishouProvider] summary fullScanArchives after archive restore failed:',
-            e as Error
-          )
+      if (!blockingResync) {
+        if (options?.deferSummaryScan) {
+          void summaryPipeline.summarySyncService.fullScanArchives().catch((e: unknown) => {
+            logger.warn(
+              '[BaishouProvider] deferred summary fullScanArchives after archive restore failed:',
+              e as Error
+            )
+          })
+        } else {
+          try {
+            await summaryPipeline.summarySyncService.fullScanArchives()
+          } catch (e) {
+            logger.warn(
+              '[BaishouProvider] summary fullScanArchives after archive restore failed:',
+              e as Error
+            )
+          }
         }
       }
 
@@ -202,8 +212,19 @@ export function createArchiveDbBridge(deps: {
         pathService,
         vaultService
       )
-      setMobileDiaryEmbeddingDeps(nextRagDeps)
+      setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: runtime.drizzleDb })
       ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
+      if (!blockingResync) {
+        try {
+          const { notifyMobilePendingEmbedCountsChanged } =
+            await import('../../services/mobile-pending-embed-counts')
+          notifyMobilePendingEmbedCountsChanged()
+        } catch {
+          // ignore
+        }
+      }
+      refs.archiveRestoreEpochPublishedRef.current = true
+      emitSyncMutation('resync-complete', 'archive-restore')
       if (isMounted()) {
         setValue((prev) => ({
           ...prev,
@@ -212,6 +233,7 @@ export function createArchiveDbBridge(deps: {
           services: prev.services
             ? {
                 ...prev.services,
+                diaryService: stack.diaryService,
                 ragService: ctx.ragServiceRef.current,
                 summaryManager: summaryPipeline.summaryManager,
                 summaryGenerator: summaryPipeline.summaryGenerator,

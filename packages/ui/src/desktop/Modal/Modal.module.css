@@ -1,12 +1,16 @@
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
-  backdrop-filter: var(--blur-overlay, blur(4px));
-  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
+  /* Defaults match content card; .baishou-app-content-overlay reinforces with !important */
+  top: var(--app-titlebar-height, 40px);
+  left: var(--app-content-inset-inline, 8px);
+  right: var(--app-content-inset-inline, 8px);
+  bottom: var(--app-content-inset-bottom, 8px);
+  border-radius: var(--app-content-radius, var(--radius-md));
+  overflow: hidden;
+  box-sizing: border-box;
+  background-color: var(--bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -14,31 +18,52 @@
   animation: fadeIn var(--duration-fast) ease-out;
 }
 
+.overlayFullWindow {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+}
+
 .modal {
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  color: var(--text-primary, #1a1a1a);
-  border-radius: var(--radius-xl, 20px);
-  padding: 24px 28px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  color: var(--text-primary);
+  border-radius: var(--radius-xl, var(--radius-lg-plus));
+  padding: var(--spacing-lg) var(--spacing-lg);
   min-width: 400px;
   max-width: 90vw;
   max-height: 90vh;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-  font-family: var(--font-family, sans-serif);
-  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-family);
+  animation: scaleUp var(--duration-moderate) cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
 }
 
+.modalFade {
+  animation: fadeIn var(--duration-fast, var(--duration-fast)) ease-out;
+}
+
+.overlayStatic,
+.modalStatic {
+  animation: none;
+}
+
 .header {
-  font-size: 18px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
-  margin-bottom: 16px;
-  color: var(--text-primary, #1a1a1a);
+  line-height: 1.35;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
 }
 
 .body {
-  font-size: 15px;
-  color: var(--text-secondary, #475569);
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-lg);
+  font-weight: 400;
+  color: var(--text-primary);
 }
 
 @keyframes fadeIn {
@@ -53,10 +78,8 @@
 @keyframes scaleUp {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }

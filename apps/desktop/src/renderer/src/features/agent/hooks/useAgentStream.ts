@@ -1,7 +1,17 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
+import {
+  isAgentGateNotFoundError,
+  type AgentGateQuestionAnswer,
+  type AgentGateReply,
+  type AgentGateRequest,
+  type AgentGateSurface
+} from '@baishou/shared'
+import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
+import { ensureDesktopAgentGateInboxBridge } from '../agent-gate-inbox-bridge'
 import {
   ensureGlobalStreamIpcListeners,
+  hydrateSessionStreamFromMain,
   sessionListeners,
   updateSessionState,
   resetStreamDisplayBuffers,
@@ -10,14 +20,17 @@ import {
   resetCompressionDisplayBuffers,
   clearCompressionStreamState,
   clearStreamBridgeState,
+  finishStreamingSession,
   getOrCreateSessionState,
   markAgentStreamUserStopped,
   type ToolExecution,
   type PendingEmoji
 } from './agent-stream-session-store'
+import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
 export {
   clearStreamBridgeForSession,
+  finishStreamingSession,
   __resetAgentStreamIpcForTests
 } from './agent-stream-session-store'
 export type { ToolExecution, PendingEmoji } from './agent-stream-session-store'
@@ -25,15 +38,17 @@ export type { ToolExecution, PendingEmoji } from './agent-stream-session-store'
 export interface UseAgentStreamResult {
   text: string
   reasoning: string
+  /** 流式时间线：思考 → 工具 → 思考 → 正文，按发生顺序 */
+  timeline: import('@baishou/shared').AgentStreamTimelineItem[]
   isStreaming: boolean
   isCompressing: boolean
   compressionPhase: 'auto' | 'manual'
   compressionText: string
   compressionReasoning: string
   compressionTriggerMessageId: string | null
-  activeTool: { name: string; args: any } | null
+  activeTool: { name: string; args: any; callId?: string } | null
   completedTools: ToolExecution[]
-  /** 流式期间收到的 emoji_send 表情包，即时显示为图片 */
+  /** 流式期间收到的 emoji_send 表情包，流结束后显示为图片 */
   pendingEmojis: PendingEmoji[]
   error: string | null
   /** 流已结束、DB 消息尚未刷新时，继续展示 StreamingBubble 避免闪断或重复气泡 */
@@ -41,7 +56,19 @@ export interface UseAgentStreamResult {
   saveUserMessage: (
     sessionId: string,
     text: string,
-    attachments?: any[]
+    attachments?: any[],
+    meta?: {
+      displayText?: string
+      providerId?: string
+      modelId?: string
+      skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: Array<{
+        relativePath: string
+        selection?: { startLine: number; endLine: number }
+        comment?: string
+        origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+      }>
+    }
   ) => Promise<{ userMessageId: string; attachments?: any[] } | { error: string }>
   startChat: (
     sessionId: string,
@@ -70,16 +97,36 @@ export interface UseAgentStreamResult {
   ) => Promise<void>
   stopChat: () => void
   reset: () => void
+  beginStreaming: (sessionId: string) => void
+  pendingAgentGate: AgentGateRequest | null
+  isAgentGateReplying: boolean
+  replyAgentGate: (input: {
+    requestId: string
+    reply: AgentGateReply
+    message?: string
+    selectedOptionIds?: string[]
+    questionAnswers?: AgentGateQuestionAnswer[]
+  }) => Promise<void>
 }
 
-export function useAgentStream(currentSessionId?: string): UseAgentStreamResult {
+export function useAgentStream(
+  currentSessionId?: string,
+  surface: AgentGateSurface = 'companion'
+): UseAgentStreamResult {
   const [, setVersion] = useState(0)
   const sessionIdRef = useRef(currentSessionId)
   const isPageActive = useContext(MainPageCacheActiveContext)
+  const pendingAgentGate = useAgentGateInboxStore((state) =>
+    selectActivePendingForSession(state, currentSessionId, surface)
+  )
 
   useEffect(() => {
     sessionIdRef.current = currentSessionId
   }, [currentSessionId])
+
+  useEffect(() => {
+    ensureDesktopAgentGateInboxBridge()
+  }, [])
 
   // 订阅当前活动会话的更新，并在其变化时强制 React 重新渲染
   useEffect(() => {
@@ -94,6 +141,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     }
     sessionListeners[currentSessionId].add(forceUpdate)
     forceUpdate()
+    void hydrateSessionStreamFromMain(currentSessionId)
 
     return () => {
       if (sessionListeners[currentSessionId]) {
@@ -118,12 +166,29 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     async (
       sessionId: string,
       userText: string,
-      attachments?: any[]
+      attachments?: any[],
+      meta?: {
+        displayText?: string
+        providerId?: string
+        modelId?: string
+        skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath: string
+          selection?: { startLine: number; endLine: number }
+          comment?: string
+          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+        }>
+      }
     ): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {
       const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', {
         sessionId,
         text: userText,
-        attachments
+        providerId: meta?.providerId,
+        modelId: meta?.modelId,
+        attachments,
+        displayText: meta?.displayText,
+        skillRefs: meta?.skillRefs,
+        fileRefs: meta?.fileRefs
       })
       return result
     },
@@ -151,19 +216,26 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke('agent:chat', {
-        sessionId,
-        text: userText,
-        providerId,
-        modelId,
-        attachments,
-        searchMode,
-        userMsgId
-      })
+      try {
+        await window.electron.ipcRenderer.invoke('agent:chat', {
+          sessionId,
+          text: userText,
+          providerId,
+          modelId,
+          attachments,
+          searchMode,
+          userMsgId,
+          reasoningEffort: getSessionReasoningEffortOverride()
+        })
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
   )
@@ -189,20 +261,27 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke(
-        'agent:edit-message',
-        sessionId,
-        messageId,
-        userText,
-        providerId,
-        modelId,
-        attachments,
-        searchMode
-      )
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:edit-message',
+          sessionId,
+          messageId,
+          userText,
+          providerId,
+          modelId,
+          attachments,
+          searchMode,
+          getSessionReasoningEffortOverride()
+        )
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
   )
@@ -226,20 +305,93 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
 
-      await window.electron.ipcRenderer.invoke(
-        'agent:resend',
-        sessionId,
-        messageId,
-        searchMode,
-        providerId,
-        modelId
-      )
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:resend',
+          sessionId,
+          messageId,
+          searchMode,
+          providerId,
+          modelId,
+          getSessionReasoningEffortOverride()
+        )
+      } catch (error) {
+        finishStreamingSession(sessionId)
+        throw error
+      }
     },
     []
+  )
+
+  const beginStreaming = useCallback((sessionId: string): void => {
+    resetStreamDisplayBuffers(sessionId)
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true
+      state.isBridgeActive = false
+      state.isCompressing = false
+      state.error = null
+      state.activeTool = null
+      state.completedTools = []
+      state.pendingEmojis = []
+      state.text = ''
+      state.reasoning = ''
+      state.timeline = []
+      state.activeToolStartTime = undefined
+      state.pendingAgentGate = null
+      state.isAgentGateReplying = false
+      clearCompressionStreamState(state)
+    })
+  }, [])
+
+  const replyAgentGate = useCallback(
+    async (input: {
+      requestId: string
+      reply: AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+      questionAnswers?: AgentGateQuestionAnswer[]
+    }): Promise<void> => {
+      const sessionId = currentSessionId ?? sessionIdRef.current
+      if (sessionId) {
+        updateSessionState(sessionId, (state) => {
+          state.isAgentGateReplying = true
+        })
+      }
+
+      try {
+        useAgentGateInboxStore.getState().removeReplied(input.requestId, {
+          requestId: input.requestId,
+          reply: input.reply,
+          message: input.message,
+          selectedOptionIds: input.selectedOptionIds,
+          questionAnswers: input.questionAnswers,
+          resolvedAt: Date.now()
+        })
+        await window.api.agentGate.reply(input)
+        if (sessionId) {
+          updateSessionState(sessionId, (state) => {
+            if (state.pendingAgentGate?.id === input.requestId) {
+              state.pendingAgentGate = null
+            }
+            state.isAgentGateReplying = false
+          })
+        }
+      } catch (error) {
+        if (sessionId) {
+          updateSessionState(sessionId, (state) => {
+            state.isAgentGateReplying = false
+          })
+        }
+        if (isAgentGateNotFoundError(error)) return
+        throw error
+      }
+    },
+    [currentSessionId]
   )
 
   const stopChat = useCallback(() => {
@@ -248,15 +400,16 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       markAgentStreamUserStopped(sessionId)
       flushStreamDisplayBuffers(sessionId)
       flushCompressionDisplayBuffers(sessionId)
-      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = false
-        state.isBridgeActive = false
         state.isCompressing = false
         state.error = null
         state.activeTool = null
         clearCompressionStreamState(state)
-        clearStreamBridgeState(state)
+        const hasContent = Boolean(
+          state.text.trim() || state.reasoning.trim() || state.timeline.length > 0
+        )
+        state.isBridgeActive = hasContent
       })
     }
     if (typeof window !== 'undefined' && window.electron) {
@@ -276,6 +429,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       state.compressionText = ''
       state.compressionReasoning = ''
       state.compressionTriggerMessageId = null
+      state.pendingAgentGate = null
+      state.isAgentGateReplying = false
       clearStreamBridgeState(state)
     })
   }, [currentSessionId])
@@ -285,6 +440,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     : {
         text: '',
         reasoning: '',
+        timeline: [],
         isStreaming: false,
         isCompressing: false,
         compressionPhase: 'auto' as const,
@@ -295,12 +451,15 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         completedTools: [],
         pendingEmojis: [],
         error: null,
-        isBridgeActive: false
+        isBridgeActive: false,
+        pendingAgentGate: null,
+        isAgentGateReplying: false
       }
 
   return {
     text: activeState.text,
     reasoning: activeState.reasoning,
+    timeline: activeState.timeline,
     isStreaming: activeState.isStreaming,
     isBridgeActive: activeState.isBridgeActive,
     isCompressing: activeState.isCompressing,
@@ -312,11 +471,15 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     completedTools: activeState.completedTools,
     pendingEmojis: activeState.pendingEmojis,
     error: activeState.error,
+    pendingAgentGate,
+    isAgentGateReplying: activeState.isAgentGateReplying,
     saveUserMessage,
     startChat,
     editChat,
     resendChat,
     stopChat,
-    reset
+    reset,
+    beginStreaming,
+    replyAgentGate
   }
 }

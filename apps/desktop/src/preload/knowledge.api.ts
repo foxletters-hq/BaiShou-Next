@@ -1,0 +1,233 @@
+import { ipcRenderer } from 'electron'
+
+export type KnowledgeSourceFilePreview = {
+  kind: 'pdf' | 'epub' | 'text' | 'url' | 'unsupported'
+  fileName: string
+  localUrl: string | null
+  fileBytes: Uint8Array | null
+  textContent: string | null
+  /** EPUB 按目录拆开的章节正文 */
+  pages?: string[] | null
+  originUrl: string | null
+}
+
+export type KnowledgeOcrProgress = {
+  sourceId: string
+  page: number
+  total: number
+  phase?: 'ocr' | 'vision' | 'render' | 'parse' | 'recognize'
+}
+
+export const knowledgeApi = {
+  knowledge: {
+    createNotebook: (input: {
+      name: string
+      description?: string
+      coverTone?: string
+      coverIcon?: string
+    }) => ipcRenderer.invoke('knowledge:create-notebook', input),
+    listNotebooks: () => ipcRenderer.invoke('knowledge:list-notebooks'),
+    listMountSummaries: () => ipcRenderer.invoke('knowledge:list-mount-summaries'),
+    getNotebook: (notebookId: string) => ipcRenderer.invoke('knowledge:get-notebook', notebookId),
+    updateNotebook: (input: {
+      notebookId: string
+      name?: string
+      description?: string
+      coverTone?: string | null
+      coverIcon?: string | null
+      coverImage?: string | null
+    }) => ipcRenderer.invoke('knowledge:update-notebook', input),
+    setCoverImage: (input: { notebookId: string; absolutePath: string }) =>
+      ipcRenderer.invoke('knowledge:set-cover-image', input),
+    reorderNotebooks: (orderedIds: string[]) =>
+      ipcRenderer.invoke('knowledge:reorder-notebooks', orderedIds),
+    deleteNotebook: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:delete-notebook', notebookId) as Promise<{ deleted: true }>,
+    listNotebookStats: () => ipcRenderer.invoke('knowledge:list-notebook-stats'),
+    importSource: (input: {
+      notebookId: string
+      title: string
+      kind: 'file' | 'text' | 'url' | 'note'
+      absolutePath?: string
+      textContent?: string
+      fileName?: string
+      originUrl?: string
+      extractEngine?: 'simple' | 'ocr' | 'vision'
+      importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
+    }) => ipcRenderer.invoke('knowledge:import-source', input),
+    probeExtractHint: (input: { absolutePath?: string; sourceId?: string }) =>
+      ipcRenderer.invoke('knowledge:probe-extract-hint', input),
+    retrySource: (sourceId: string) => ipcRenderer.invoke('knowledge:retry-source', sourceId),
+    reprocessSource: (input: { sourceId: string; target: 'embed' | 'graph' }) =>
+      ipcRenderer.invoke('knowledge:reprocess-source', input),
+    deleteSource: (sourceId: string) => ipcRenderer.invoke('knowledge:delete-source', sourceId),
+    rebuildIndex: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
+    organizeNotebook: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:organize-notebook', notebookId) as Promise<{ queued: number }>,
+    manageData: (input: {
+      notebookId: string
+      action: 'clear' | 'reprocess'
+      vector?: boolean
+      graph?: boolean
+    }) =>
+      ipcRenderer.invoke('knowledge:manage-data', input) as Promise<{
+        action: 'clear' | 'reprocess'
+        vector: boolean
+        graph: boolean
+        sourceCount: number
+        vectorQueued: number
+        graphQueued: number
+      }>,
+    getStats: (notebookId?: string) => ipcRenderer.invoke('knowledge:get-stats', notebookId),
+    hasModelMismatch: (notebookIds?: string[]) =>
+      ipcRenderer.invoke('knowledge:has-model-mismatch', notebookIds),
+    listSources: (notebookId: string) => ipcRenderer.invoke('knowledge:list-sources', notebookId),
+    listChunks: (input: { notebookId: string; limit?: number; offset?: number; query?: string }) =>
+      ipcRenderer.invoke('knowledge:list-chunks', input),
+    search: (input: { notebookId: string; query: string; topK?: number }) =>
+      ipcRenderer.invoke('knowledge:search', input),
+    listGraphJobs: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:list-graph-jobs', notebookId),
+    ocrMissingPages: (input: {
+      sourceId: string
+      engine?: 'simple' | 'ocr' | 'vision'
+      pageNumbers?: number[]
+    }) => ipcRenderer.invoke('knowledge:ocr-missing-pages', input) as Promise<{ queued: true }>,
+    cancelExtract: (sourceId: string) =>
+      ipcRenderer.invoke('knowledge:cancel-extract', sourceId) as Promise<{
+        cancelled: true
+        status: string
+      }>,
+    recoverStale: () =>
+      ipcRenderer.invoke('knowledge:recover-stale') as Promise<{
+        resetSources: number
+        reclaimedEmbedJobs: number
+        droppedExtractJobs: number
+      }>,
+    probeExtractSample: (input: {
+      notebookId?: string
+      sourceId: string
+      engine: 'simple' | 'ocr' | 'vision'
+      ocrLanguage?: string
+      ocrConcurrency?: number
+      visionProviderId?: string | null
+      visionModelId?: string | null
+    }) =>
+      ipcRenderer.invoke('knowledge:probe-extract-sample', input) as Promise<{
+        sourceId: string
+        title: string
+        engine: 'simple' | 'ocr' | 'vision'
+        pageCount: number
+        sampledPages: number[]
+        pages: Array<{ page: number; text: string }>
+      }>,
+    getCapabilities: () => ipcRenderer.invoke('knowledge:get-capabilities'),
+    getConfig: () => ipcRenderer.invoke('knowledge:get-config'),
+    setConfig: (patch: {
+      defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+      importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
+      ocrLanguage?: string
+      ocrDpi?: number
+      ocrConcurrency?: number
+      multiQueryAsk?: boolean
+      visionProviderId?: string | null
+      visionModelId?: string | null
+    }) => ipcRenderer.invoke('knowledge:set-config', patch),
+    getExtractedPreview: (input: { notebookId: string; sourceId: string; maxChars?: number }) =>
+      ipcRenderer.invoke('knowledge:get-extracted-preview', input),
+    getExtractedWindows: (input: {
+      notebookId: string
+      windows: Array<{ sourceId: string; windowIndex: number }>
+    }) =>
+      ipcRenderer.invoke('knowledge:get-extracted-windows', input) as Promise<{
+        items: Array<{
+          sourceId: string
+          sourceTitle: string
+          windowIndex: number
+          sourceRef: string
+          text: string | null
+        }>
+      }>,
+    getSourceFile: (input: { sourceId: string }) =>
+      ipcRenderer.invoke('knowledge:get-source-file', input) as Promise<KnowledgeSourceFilePreview>,
+    getGraphView: (input: { notebookId: string; maxNodes?: number }) =>
+      ipcRenderer.invoke('knowledge:get-graph-view', input),
+    graphSearch: (input: { notebookId: string; query: string; limit?: number; mode?: string }) =>
+      ipcRenderer.invoke('knowledge:graph-search', input),
+    setGraphNodeReview: (input: {
+      notebookId: string
+      nodeId: string
+      reviewStatus: 'approved' | 'rejected'
+    }) => ipcRenderer.invoke('knowledge:set-graph-node-review', input),
+    setGraphEdgeReview: (input: {
+      notebookId: string
+      edgeId: string
+      reviewStatus: 'approved' | 'rejected'
+    }) => ipcRenderer.invoke('knowledge:set-graph-edge-review', input),
+    setGraphReviewsBatch: (input: {
+      notebookId: string
+      reviewStatus: 'approved' | 'rejected'
+      nodeIds?: string[]
+      edgeIds?: string[]
+      allPending?: boolean
+    }) => ipcRenderer.invoke('knowledge:set-graph-reviews-batch', input),
+    mergeGraphNodes: (input: {
+      notebookId: string
+      survivorId: string
+      loserId: string
+      reason?: string
+    }) => ipcRenderer.invoke('knowledge:merge-graph-nodes', input),
+    mergeGraphNodesBatch: (input: {
+      notebookId: string
+      survivorId: string
+      loserIds: string[]
+      reason?: string
+    }) => ipcRenderer.invoke('knowledge:merge-graph-nodes-batch', input),
+    listGraphSimilarPairs: (notebookId: string) =>
+      ipcRenderer.invoke('knowledge:list-graph-similar-pairs', notebookId),
+    dismissGraphSimilarPair: (input: { notebookId: string; nodeId: string; peerId: string }) =>
+      ipcRenderer.invoke('knowledge:dismiss-graph-similar-pair', input),
+    rebuildGraph: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-graph', notebookId),
+    onGraphProgress: (
+      callback: (progress: {
+        at: number
+        notebookId?: string
+        sourceId?: string
+        windowsDone?: number
+        windowsTotal?: number
+        pageFrom?: number
+        pageTo?: number
+        pageTotal?: number
+      }) => void
+    ) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        progress: {
+          at: number
+          notebookId?: string
+          sourceId?: string
+          windowsDone?: number
+          windowsTotal?: number
+          pageFrom?: number
+          pageTo?: number
+          pageTotal?: number
+        }
+      ) => {
+        callback(progress)
+      }
+      ipcRenderer.on('knowledge:graph-progress', handler)
+      return () => {
+        ipcRenderer.removeListener('knowledge:graph-progress', handler)
+      }
+    },
+    onOcrProgress: (callback: (progress: KnowledgeOcrProgress) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: KnowledgeOcrProgress) => {
+        callback(progress)
+      }
+      ipcRenderer.on('knowledge:ocr-progress', handler)
+      return () => {
+        ipcRenderer.removeListener('knowledge:ocr-progress', handler)
+      }
+    }
+  }
+}

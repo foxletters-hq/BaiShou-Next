@@ -1,0 +1,226 @@
+import { app, dialog, BrowserWindow } from 'electron'
+import * as fs from 'fs/promises'
+import * as path from 'path'
+import * as crypto from 'crypto'
+import type { AgentWorkspaceEntry, AgentWorkspaceEntryUpdate } from '@baishou/shared'
+import { listWorkspaceSessions } from './agent-workspace-session.store'
+import {
+  dedupeAgentWorkspacesByFolder,
+  folderDisplayName,
+  normalizeWorkspaceFolderKey,
+  reconcileRegistryFromSessionBindings,
+  resolveValidLastActiveWorkspaceId
+} from './agent-workspace-registry.util'
+
+interface WorkspaceRegistryFile {
+  workspaces: AgentWorkspaceEntry[]
+  lastActiveWorkspaceId?: string
+  /** 被用户移除的目录 key，避免会话绑定把它们重新加回列表 */
+  removedFolderKeys?: string[]
+}
+
+const STORE_FILE = 'agent-workspace-registry.json'
+
+let cache: WorkspaceRegistryFile | null = null
+
+function storePath(): string {
+  return path.join(app.getPath('userData'), STORE_FILE)
+}
+
+async function loadRegistry(): Promise<WorkspaceRegistryFile> {
+  if (cache) return cache
+  try {
+    const raw = await fs.readFile(storePath(), 'utf-8')
+    cache = JSON.parse(raw) as WorkspaceRegistryFile
+  } catch {
+    cache = { workspaces: [] }
+  }
+  if (!cache.workspaces) {
+    cache.workspaces = []
+  }
+  return cache
+}
+
+async function saveRegistry(): Promise<void> {
+  if (!cache) return
+  await fs.mkdir(path.dirname(storePath()), { recursive: true })
+  await fs.writeFile(storePath(), JSON.stringify(cache, null, 2), 'utf-8')
+}
+
+function findWorkspaceByFolder(
+  workspaces: AgentWorkspaceEntry[],
+  folderRoot: string
+): AgentWorkspaceEntry | undefined {
+  const key = normalizeWorkspaceFolderKey(folderRoot)
+  return workspaces.find((entry) => normalizeWorkspaceFolderKey(entry.folderRoot) === key)
+}
+
+/** 按目录解析稳定 workspaceId；不存在则自动注册 */
+export async function resolveOrCreateWorkspaceIdByFolder(folderRoot: string): Promise<string> {
+  const entry = await addAgentWorkspace(folderRoot)
+  return entry.id
+}
+
+export async function findWorkspaceIdByFolder(folderRoot: string): Promise<string | null> {
+  const workspaces = await listAgentWorkspaces()
+  return findWorkspaceByFolder(workspaces, folderRoot)?.id ?? null
+}
+
+async function syncFromSessionBindings(
+  registry: WorkspaceRegistryFile,
+  workspaces: AgentWorkspaceEntry[]
+): Promise<AgentWorkspaceEntry[]> {
+  const bindings = (await listWorkspaceSessions()).map((binding) => ({
+    folderRoot: path.resolve(binding.folderRoot),
+    folderDisplayName: binding.folderDisplayName
+  }))
+  const merged = reconcileRegistryFromSessionBindings(
+    workspaces,
+    bindings,
+    () => crypto.randomUUID(),
+    new Date().toISOString(),
+    new Set(registry.removedFolderKeys ?? [])
+  )
+  registry.lastActiveWorkspaceId = resolveValidLastActiveWorkspaceId(
+    registry.lastActiveWorkspaceId,
+    merged
+  )
+  return merged
+}
+
+export async function getAgentWorkspaceById(
+  workspaceId: string
+): Promise<AgentWorkspaceEntry | null> {
+  const registry = await loadRegistry()
+  return registry.workspaces.find((item) => item.id === workspaceId) ?? null
+}
+
+export async function listAgentWorkspaces(): Promise<AgentWorkspaceEntry[]> {
+  const registry = await loadRegistry()
+  const merged = await syncFromSessionBindings(registry, [...registry.workspaces])
+  registry.workspaces = merged
+  await saveRegistry()
+  return merged
+}
+
+export async function addAgentWorkspace(folderRoot: string): Promise<AgentWorkspaceEntry> {
+  const resolved = path.resolve(folderRoot)
+  const registry = await loadRegistry()
+  registry.workspaces = dedupeAgentWorkspacesByFolder(registry.workspaces)
+  const resolvedKey = normalizeWorkspaceFolderKey(resolved)
+  if (registry.removedFolderKeys?.length) {
+    registry.removedFolderKeys = registry.removedFolderKeys.filter((key) => key !== resolvedKey)
+  }
+  const existing = findWorkspaceByFolder(registry.workspaces, resolved)
+  if (existing) {
+    existing.updatedAt = new Date().toISOString()
+    await saveRegistry()
+    return existing
+  }
+
+  const now = new Date().toISOString()
+  const entry: AgentWorkspaceEntry = {
+    id: crypto.randomUUID(),
+    folderRoot: resolved,
+    displayName: folderDisplayName(resolved),
+    avatarPath: null,
+    createdAt: now,
+    updatedAt: now
+  }
+  registry.workspaces.push(entry)
+  await saveRegistry()
+  return entry
+}
+
+export async function updateAgentWorkspace(
+  workspaceId: string,
+  patch: AgentWorkspaceEntryUpdate
+): Promise<AgentWorkspaceEntry | null> {
+  const registry = await loadRegistry()
+  const entry = registry.workspaces.find((item) => item.id === workspaceId)
+  if (!entry) return null
+
+  if (patch.displayName !== undefined) {
+    entry.displayName = patch.displayName.trim() || folderDisplayName(entry.folderRoot)
+  }
+  if (patch.avatarPath !== undefined) {
+    entry.avatarPath = patch.avatarPath
+  }
+  if (patch.kind !== undefined) {
+    entry.kind = patch.kind
+  }
+  if (patch.folderRoot !== undefined) {
+    const previousKey = normalizeWorkspaceFolderKey(entry.folderRoot)
+    const nextRoot = path.resolve(patch.folderRoot)
+    const nextKey = normalizeWorkspaceFolderKey(nextRoot)
+    entry.folderRoot = nextRoot
+    if (previousKey !== nextKey) {
+      registry.removedFolderKeys = [
+        ...new Set([...(registry.removedFolderKeys ?? []), previousKey])
+      ].filter((key) => key !== nextKey)
+    }
+  }
+  if (patch.pinnedAt !== undefined) {
+    entry.pinnedAt = patch.pinnedAt
+  }
+  // 仅改置顶状态时不刷新 updatedAt，避免打乱「最近」排序
+  if (
+    patch.displayName !== undefined ||
+    patch.avatarPath !== undefined ||
+    patch.kind !== undefined ||
+    patch.folderRoot !== undefined
+  ) {
+    entry.updatedAt = new Date().toISOString()
+  }
+  await saveRegistry()
+  return entry
+}
+
+/** 从列表移除工作目录（不删除磁盘文件/会话；稿纸也可移除，下次 ensureScratch 会重建） */
+export async function removeAgentWorkspace(workspaceId: string): Promise<boolean> {
+  const registry = await loadRegistry()
+  const entry = registry.workspaces.find((item) => item.id === workspaceId)
+  if (!entry) {
+    // 已不在注册表：视为成功（兼容前端幽灵残留）
+    return true
+  }
+
+  const removedKey = normalizeWorkspaceFolderKey(entry.folderRoot)
+  registry.workspaces = registry.workspaces.filter((item) => item.id !== workspaceId)
+  // 记入 removedFolderKeys，避免会话绑定立刻把目录加回列表；稿纸在下次 ensureScratch 时会清掉该 key
+  registry.removedFolderKeys = [...new Set([...(registry.removedFolderKeys ?? []), removedKey])]
+  if (registry.lastActiveWorkspaceId === workspaceId) {
+    registry.lastActiveWorkspaceId = undefined
+  }
+  await saveRegistry()
+  return true
+}
+
+export async function getLastActiveWorkspaceId(): Promise<string | undefined> {
+  const registry = await loadRegistry()
+  return registry.lastActiveWorkspaceId
+}
+
+export async function setLastActiveWorkspaceId(workspaceId: string | null): Promise<void> {
+  const registry = await loadRegistry()
+  registry.lastActiveWorkspaceId = workspaceId ?? undefined
+  await saveRegistry()
+}
+
+export async function pickWorkspaceAvatarImage(
+  parentWindow?: BrowserWindow | null
+): Promise<string | null> {
+  const result = parentWindow
+    ? await dialog.showOpenDialog(parentWindow, {
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+      })
+    : await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+      })
+
+  if (result.canceled || !result.filePaths[0]) return null
+  const filePath = result.filePaths[0]
+  return `file://${filePath.replace(/\\/g, '/')}`
+}

@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListChecks, ArrowDownToLine, Trash2 } from 'lucide-react'
+import { Button } from '../Button/Button'
 import styles from './SessionManagementPage.module.css'
 
 interface SessionManagementAppBarProps {
@@ -29,43 +30,28 @@ export const SessionManagementAppBar: React.FC<SessionManagementAppBarProps> = (
         {t('agent.sessions.management_title', '会话管理')}
       </span>
       <div className={styles.appBarActions}>
-        <button
-          className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
-          title={t('common.export', '导出')}
-        >
+        <Button type="button" title={t('common.export', '导出')}>
           <ArrowDownToLine size={16} /> {t('common.export', '导出')}
-        </button>
+        </Button>
 
         {isMultiSelect ? (
           <>
-            <button
-              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
-              onClick={onSelectAll}
-            >
+            <Button type="button" onClick={onSelectAll}>
               {t('agent.chat.select_all', '全选')}
-            </button>
-            <button
-              className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
-              onClick={onClearSelection}
-            >
+            </Button>
+            <Button type="button" onClick={onClearSelection}>
               {t('common.cancel', '取消')}
-            </button>
+            </Button>
             {selectedCount > 0 && (
-              <button
-                className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                onClick={onDeleteMultiple}
-              >
+              <Button type="button" onClick={onDeleteMultiple}>
                 <Trash2 size={16} /> {t('common.delete', '删除')} ({selectedCount})
-              </button>
+              </Button>
             )}
           </>
         ) : (
-          <button
-            className={`${styles.actionBtn} ${styles.actionBtnOutline}`}
-            onClick={onStartMultiSelect}
-          >
+          <Button type="button" onClick={onStartMultiSelect}>
             <ListChecks size={16} /> {t('agent.sessions.batch_manage', '批量管理')}
-          </button>
+          </Button>
         )}
       </div>
     </div>

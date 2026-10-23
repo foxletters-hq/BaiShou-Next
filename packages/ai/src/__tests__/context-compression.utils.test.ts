@@ -15,6 +15,7 @@ import {
   usableContextTokens,
   resolveCompressionTrigger,
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   readCompressTokenThreshold,
   computeTailStartMessageId,
   DEFAULT_MODEL_CONTEXT_WINDOW
@@ -241,19 +242,21 @@ describe('context-compression.utils', () => {
     expect(content).toContain('旧摘要：讨论了 Legacy Mode')
     expect(content).toContain('<message-time>2026-06-15 10:00</message-time>')
     expect(content).toContain('<message-content>')
+    expect(content).not.toContain('<conversation_time>')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content).toContain('【用户】')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content!.indexOf('<previous-summary>')).toBeLessThan(content!.indexOf('【用户】'))
   })
 
-  it('buildCompressionUserMessageContent omits message-time when wrapMessageTime is false', () => {
+  it('buildCompressionUserMessageContent omits message-time wrappers when wrapMessageTime is false', () => {
     const sentAt = new Date(2026, 5, 15, 10, 0)
     const messages = [
       msg('1', 'user', 1, '但是感觉会很慢喵', sentAt),
       msg('2', 'assistant', 2, '确实会慢', sentAt)
     ]
     const content = buildCompressionUserMessageContent(messages, null, { wrapMessageTime: false })
+    expect(content).not.toContain('<conversation_time>')
     expect(content).not.toContain('<message-time>')
     expect(content).toContain('但是感觉会很慢喵')
     expect(content).toContain('【用户】')
@@ -271,7 +274,9 @@ describe('context-compression.utils', () => {
   })
 
   it('getModelContextWindow maps known models and defaults otherwise', () => {
-    expect(getModelContextWindow('deepseek-chat')).toBe(64_000)
+    expect(getModelContextWindow('deepseek-v4-flash')).toBe(1_000_000)
+    expect(getModelContextWindow('deepseek-flash')).toBe(1_000_000)
+    expect(getModelContextWindow('deepseek-chat')).toBe(128_000)
     expect(getModelContextWindow('claude-3-5-sonnet')).toBe(200_000)
     expect(getModelContextWindow('gpt-4o-mini')).toBe(128_000)
     expect(getModelContextWindow('some-unknown-model')).toBe(DEFAULT_MODEL_CONTEXT_WINDOW)
@@ -324,6 +329,37 @@ describe('context-compression.utils', () => {
     // disabled → never (unless force)
     expect(resolveCompressionTrigger(999_999, { threshold: 0, keepTurns: 3 })).toBe(false)
     expect(resolveCompressionTrigger(0, { threshold: 0, keepTurns: 3, force: true })).toBe(true)
+  })
+
+  it('should count only messages after the last snapshot when estimating resend increment', () => {
+    const snapshot = {
+      id: 1,
+      sessionId: 's1',
+      summaryText: 'long summary '.repeat(400),
+      coveredUpToMessageId: '1',
+      tailStartMessageId: '3',
+      messageCount: 2,
+      tokenCount: null,
+      createdAt: new Date()
+    }
+    const afterSnapshot = [msg('3', 'user', 3, 'new'), msg('4', 'assistant', 4, 'new reply')]
+    const messages = [
+      msg('1', 'user', 1, 'old '.repeat(80)),
+      msg('2', 'assistant', 2, 'old reply '.repeat(80)),
+      ...afterSnapshot
+    ]
+
+    const increment = estimateTokensSinceLastSnapshot(messages, snapshot)
+    const windowTokens = estimateContextTokensForTrigger(messages, snapshot, {
+      recentCount: 1,
+      systemPrompt: 'system prompt '.repeat(200)
+    })
+
+    expect(increment).toBe(estimateMessagesTokens(afterSnapshot, true))
+    expect(increment).toBeLessThan(windowTokens)
+    expect(estimateTokensSinceLastSnapshot(messages, { ...snapshot, summaryText: 'x' })).toBe(
+      increment
+    )
   })
 
   it('estimateContextTokensForTrigger ignores stale usage after snapshot', () => {

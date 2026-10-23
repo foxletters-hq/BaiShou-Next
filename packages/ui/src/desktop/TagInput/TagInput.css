@@ -1,10 +1,10 @@
 .tag-input-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
   background-color: var(--bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   min-height: 48px;
   align-items: center;
 }
@@ -13,11 +13,11 @@
   display: flex;
   align-items: center;
   background-color: var(--color-primary);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 16px;
-  font-size: 14px;
-  gap: 4px;
+  color: var(--text-on-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-lg);
+  font-size: var(--ui-fs-lg);
+  gap: var(--spacing-xs);
 }
 
 .tag-remove {
@@ -32,7 +32,7 @@
 }
 
 .tag-remove:hover {
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .tag-input {
@@ -42,5 +42,5 @@
   background: transparent;
   outline: none;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
 }

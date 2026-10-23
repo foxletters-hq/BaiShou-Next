@@ -16,9 +16,12 @@ export const OPENCODE_GO_ANTHROPIC_WIRE_MODEL_IDS: ReadonlySet<string> = new Set
   'claude-haiku-5-5',
   'minimax-m3',
   'minimax-m2.7',
+  'minimax-m2.5',
   'qwen3.8-max',
   'qwen3.8-flash',
-  'qwen3.7-plus'
+  'qwen3.7-max',
+  'qwen3.7-plus',
+  'qwen3.6-plus'
 ])
 
 /**

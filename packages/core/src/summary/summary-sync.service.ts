@@ -1,7 +1,7 @@
 import { MissingSummaryDetector } from './missing-summary-detector.service'
 import { SummaryGeneratorService } from './summary-generator.service'
 import { SummaryRepository } from '@baishou/database'
-import { MissingSummary, SummaryType } from '@baishou/shared'
+import { deriveLegacyVaultId, isVaultId, MissingSummary, SummaryType } from '@baishou/shared'
 import { SummaryFileService } from '../vault/summary-file.service'
 import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
@@ -11,6 +11,44 @@ export interface SummarySyncCallbacks {
   onError?: (error: any) => void
 }
 
+export type SyncSummaryFileOptions = {
+  /** 冷启动 reconcile：盘 mtime 未新于 DB 时跳过读文件 */
+  skipUnchangedByMtime?: boolean
+  /** listAllSummaries 已解析的路径，避免重复搜盘 */
+  diskPath?: string
+  /** 写入/查找时的 vault_id（跨仓扫描时必传） */
+  vaultId?: string
+}
+
+function toEpochMs(value: unknown): number | undefined {
+  if (value instanceof Date) {
+    const ms = value.getTime()
+    return Number.isFinite(ms) ? ms : undefined
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const ms = Date.parse(value)
+    return Number.isFinite(ms) ? ms : undefined
+  }
+  return undefined
+}
+
+function dbRecordTimeMs(record: {
+  updatedAt?: unknown
+  generatedAt?: unknown
+  endDate?: unknown
+}): number | undefined {
+  return toEpochMs(record.updatedAt) ?? toEpochMs(record.generatedAt) ?? toEpochMs(record.endDate)
+}
+
+function normalizeVaultId(raw: string | null | undefined): string | null {
+  const value = String(raw ?? '').trim()
+  if (!value) return null
+  return isVaultId(value) ? value : deriveLegacyVaultId(value)
+}
+
 export class SummarySyncService {
   private isSyncing = false
 
@@ -18,8 +56,23 @@ export class SummarySyncService {
     private readonly detector: MissingSummaryDetector | null,
     private readonly generator: SummaryGeneratorService | null,
     private readonly summaryRepo: SummaryRepository,
-    private readonly fileService: SummaryFileService
+    private readonly fileService: SummaryFileService,
+    private readonly resolveVaultId?: () => string | null | undefined
   ) {}
+
+  private requireVaultId(override?: string | null): string {
+    const id = normalizeVaultId(override) ?? normalizeVaultId(this.resolveVaultId?.())
+    if (!id) {
+      throw new Error('SummarySyncService: vault_id is required')
+    }
+    return id
+  }
+
+  private resolveVaultIdForName(vaultName: string, options?: DiskResyncOptions): string {
+    const mapped = normalizeVaultId(options?.vaultIdByName?.[vaultName])
+    if (mapped) return mapped
+    return deriveLegacyVaultId(vaultName)
+  }
 
   /**
    * 自动发现所有遗失的总结并调用 AI 补全。
@@ -41,14 +94,11 @@ export class SummarySyncService {
           if (chunk.startsWith('STATUS:')) {
             callbacks?.onProgress?.(missing, chunk.replace('STATUS:', ''))
           } else {
-            // 在实际的业务中如果 AI 服务返回的是一段段的 token stream，
-            // 那么这就是拼接的过程，若是整块，那么只会有一次有效合并。
             finalContent += chunk
           }
         }
 
         if (finalContent.trim().length > 0) {
-          // 在自动生成后，必须先保存物理文件，才能触发同步！！不能再走后门写库了
           await this.fileService.writeSummary(missing.type, missing.startDate, finalContent)
           await this.syncSummaryFile(missing.type, missing.startDate, missing.endDate)
         }
@@ -68,17 +118,37 @@ export class SummarySyncService {
    * 查找记录时不能只依赖 endDate 毫秒级相等：UI 常把周日 23:59:59 收成午夜，
    * 精确 getByDateRange 会失败，导致删文件后幽灵行残留、缺失检测仍认为「已有」。
    */
-  async syncSummaryFile(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
-    const fileContent = await this.fileService.readSummary(type, startDate)
-    let existingDb = await this.summaryRepo.getByDateRange(type, startDate, endDate)
+  async syncSummaryFile(
+    type: SummaryType,
+    startDate: Date,
+    endDate: Date,
+    options?: SyncSummaryFileOptions
+  ): Promise<void> {
+    const vaultId = this.requireVaultId(options?.vaultId)
+    let existingDb = await this.summaryRepo.getByDateRange(type, startDate, endDate, vaultId)
     if (!existingDb) {
-      const sameDay = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate)
+      const sameDay = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate, vaultId)
       existingDb = sameDay[0] ?? null
     }
 
+    if (options?.skipUnchangedByMtime && existingDb) {
+      const diskMtimeMs = await this.fileService.getSummaryFileMtimeMs(
+        type,
+        startDate,
+        options.diskPath
+      )
+      const dbMs = dbRecordTimeMs(existingDb)
+      if (diskMtimeMs != null && dbMs != null && diskMtimeMs <= dbMs) {
+        return
+      }
+    }
+
+    const fileContent = options?.diskPath?.trim()
+      ? await this.fileService.readSummaryAtAbsolutePath(options.diskPath.trim())
+      : await this.fileService.readSummary(type, startDate)
+
     if (fileContent == null) {
-      // 物理文件已不在：清掉同 type + 起始日的全部缓存行（含 endDate 不一致的幽灵）
-      const ghosts = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate)
+      const ghosts = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate, vaultId)
       for (const ghost of ghosts) {
         if (ghost.id != null) {
           await this.summaryRepo.delete(ghost.id)
@@ -87,13 +157,13 @@ export class SummarySyncService {
       return
     }
 
-    // 存在物理文件，比对数据库是否有记录或记录是否陈旧
     if (!existingDb) {
       await this.summaryRepo.upsert({
         type,
         startDate,
         endDate,
-        content: fileContent
+        content: fileContent,
+        vaultId
       })
       return
     }
@@ -102,13 +172,13 @@ export class SummarySyncService {
       existingDb.endDate instanceof Date ? existingDb.endDate.getTime() !== endDate.getTime() : true
     if (existingDb.content !== fileContent || endMismatch) {
       if (endMismatch && existingDb.id != null) {
-        // endDate 不一致时 unique(type,start,end) 无法 onConflict 更新，先删再写
         await this.summaryRepo.delete(existingDb.id)
         await this.summaryRepo.upsert({
           type,
           startDate,
           endDate,
-          content: fileContent
+          content: fileContent,
+          vaultId
         })
       } else if (existingDb.id != null) {
         await this.summaryRepo.update(existingDb.id, { content: fileContent })
@@ -117,30 +187,20 @@ export class SummarySyncService {
           type,
           startDate,
           endDate,
-          content: fileContent
+          content: fileContent,
+          vaultId
         })
       }
     }
   }
 
-  /**
-   * 网盘启动、重建全库或者数据漫游使用的主动补齐。
-   */
-  async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
-    const allFiles = await this.fileService.listAllSummaries()
-
-    for (const f of allFiles) {
-      await this.syncSummaryFile(f.type, f.startDate, f.endDate)
-    }
-
-    // 普通冷启动路径未就绪时不做跨库 ghost 清理；明确 active vault resync 时，
-    // summaries 表作为当前 vault 的热缓存，可删除磁盘不存在的旧记录。
-    if (!options?.activeVaultName) return
-
-    const allDb = await this.summaryRepo.getSummaries()
+  private async pruneGhostsForVault(
+    vaultId: string,
+    allFiles: ReadonlyArray<{ type: SummaryType; startDate: Date }>
+  ): Promise<void> {
+    const allDb = await this.summaryRepo.getSummaries({ vaultId })
     if (allDb.length === 0) return
 
-    // 顺向孤立检查（找出 DB 中有但 File 中没有的文件）
     for (const record of allDb) {
       const isFileExist = allFiles.some(
         (f) => f.type === record.type && f.startDate.getTime() === record.startDate.getTime()
@@ -149,6 +209,62 @@ export class SummarySyncService {
         await this.summaryRepo.delete(record.id)
       }
     }
+  }
+
+  /**
+   * 网盘启动、重建全库或者数据漫游使用的主动补齐。
+   * 传入 diskVaultNames 时跨仓水合；ghost 清理仅限本仓/已扫仓。
+   */
+  async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
+    const vaultNames = [
+      ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
+    ]
+    const syncOptsBase: SyncSummaryFileOptions | undefined = options?.skipUnchangedByMtime
+      ? { skipUnchangedByMtime: true }
+      : undefined
+
+    if (vaultNames.length > 0) {
+      const allFiles = await this.fileService.listSummariesAcrossVaults(vaultNames)
+      const byVault = new Map<string, typeof allFiles>()
+      for (const f of allFiles) {
+        const vaultId = this.resolveVaultIdForName(f.vaultName, options)
+        const list = byVault.get(vaultId) ?? []
+        list.push(f)
+        byVault.set(vaultId, list)
+      }
+
+      for (const [vaultId, files] of byVault) {
+        for (const f of files) {
+          await this.syncSummaryFile(f.type, f.startDate, f.endDate, {
+            ...syncOptsBase,
+            diskPath: f.fullPath,
+            vaultId
+          })
+        }
+        await this.pruneGhostsForVault(vaultId, files)
+      }
+      return
+    }
+
+    const vaultId =
+      normalizeVaultId(options?.activeVaultId) ??
+      (options?.activeVaultName
+        ? this.resolveVaultIdForName(options.activeVaultName, options)
+        : normalizeVaultId(this.resolveVaultId?.()))
+
+    const allFiles = await this.fileService.listAllSummaries()
+    for (const f of allFiles) {
+      await this.syncSummaryFile(f.type, f.startDate, f.endDate, {
+        ...syncOptsBase,
+        diskPath: f.fullPath,
+        ...(vaultId ? { vaultId } : {})
+      })
+    }
+
+    // 仅在明确指定活跃仓时做本仓 ghost 清理（避免无参冷启动误清）
+    if (!options?.activeVaultId && !options?.activeVaultName) return
+    if (!vaultId) return
+    await this.pruneGhostsForVault(vaultId, allFiles)
   }
 
   isCurrentlySyncing(): boolean {

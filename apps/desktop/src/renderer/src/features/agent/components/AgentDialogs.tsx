@@ -1,26 +1,30 @@
-import React from 'react'
-import { useOutletContext } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
-  ChatCostDialog,
   AssistantPickerSheet,
   ShortcutManagerDialog,
   RecallDialog,
-  ModelSwitcherPopup,
+  SessionModelMenu,
   AgentToolsDialog,
   toast
 } from '@baishou/ui'
-import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import { AssistantCreateModal } from './AssistantCreateModal'
+import {
+  isEmbeddingModel,
+  isTtsModel,
+  type ReasoningControl,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
 import { usePersistedSharedMemoryCopyPrefix } from '../../../hooks/usePersistedSharedMemoryCopyPrefix'
 import type { AgentOutletContext } from '../agent-outlet-context'
 import { useSettingsStore } from '@baishou/store'
+import { SETTINGS_HUB_PREFIX } from '../../settings/settings-route.util'
 
 interface AgentDialogsProps {
   t: any
   i18n: any
   // 状态控制
-  showCostDialog: boolean
-  setShowCostDialog: (v: boolean) => void
   showAssistantPicker: boolean
   setShowAssistantPicker: (v: boolean) => void
   showShortcutManager: boolean
@@ -43,13 +47,6 @@ interface AgentDialogsProps {
     selectDialogueModel: (providerId: string, modelId: string) => Promise<void>
     userManuallySetModelRef: React.MutableRefObject<boolean>
   }
-  tokens: {
-    totalInputTokens: number
-    totalOutputTokens: number
-    totalCacheReadInputTokens: number
-    totalCacheWriteInputTokens: number
-    estimatedCost: number
-  }
   assistants: any[]
   fetchAssistants: () => Promise<void>
   shortcuts: any[]
@@ -64,11 +61,14 @@ interface AgentDialogsProps {
     toggleRecallSearchMode: () => void
   }
   toolConfig: any
-  pricingLastUpdated: Date | null
-  handleRefreshPricing: () => Promise<any>
   currentAssistant: any
   providers: any[]
   inputBarRef: React.RefObject<any>
+  reasoningEffort: ReasoningEffortSetting
+  onReasoningEffortChange: (value: ReasoningEffortSetting) => void
+  reasoningControl?: ReasoningControl | null
+  modelReasoningPreviews?: Record<string, { effort: ReasoningEffortSetting }>
+  modelMenuAnchorRect?: DOMRect | null
 }
 
 /**
@@ -77,8 +77,6 @@ interface AgentDialogsProps {
 export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   t,
   i18n,
-  showCostDialog,
-  setShowCostDialog,
   showAssistantPicker,
   setShowAssistantPicker,
   showShortcutManager,
@@ -92,7 +90,6 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   recallLookbackMonths,
   setRecallLookbackMonths,
   model,
-  tokens,
   assistants,
   fetchAssistants,
   shortcuts,
@@ -101,12 +98,16 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   removeShortcut,
   recall,
   toolConfig,
-  pricingLastUpdated,
-  handleRefreshPricing,
   currentAssistant: _currentAssistant,
   providers,
-  inputBarRef
+  inputBarRef,
+  reasoningEffort,
+  onReasoningEffortChange,
+  reasoningControl,
+  modelReasoningPreviews,
+  modelMenuAnchorRect
 }) => {
+  const navigate = useNavigate()
   const { onAssistantSwitched } = useOutletContext<AgentOutletContext>()
   const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
   const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
@@ -114,29 +115,10 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
       userCopyPrefix: copyPrefix,
       locale: i18n.language
     })
+  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
 
   return (
     <>
-      {/* 计费详情对话框 */}
-      <ChatCostDialog
-        isOpen={showCostDialog}
-        onClose={() => setShowCostDialog(false)}
-        details={{
-          modelName:
-            model.currentModelId === 'unknown'
-              ? t('agent.no_model_selected', '暂未选择模型')
-              : model.currentModelId,
-          promptTokens: tokens.totalInputTokens,
-          completionTokens: tokens.totalOutputTokens,
-          cacheReadTokens: tokens.totalCacheReadInputTokens,
-          cacheWriteTokens: tokens.totalCacheWriteInputTokens,
-          totalTokens: tokens.totalInputTokens + tokens.totalOutputTokens,
-          estimatedCost: `$${tokens.estimatedCost.toFixed(6)}`
-        }}
-        pricingLastUpdated={pricingLastUpdated}
-        onRefreshPricing={handleRefreshPricing}
-      />
-
       {/* 助手切换器抽屉 */}
       <AssistantPickerSheet
         isOpen={showAssistantPicker}
@@ -169,9 +151,21 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
             })
           }
         }}
+        onCreateNew={() => {
+          setShowAssistantPicker(false)
+          setIsCreateAssistantOpen(true)
+        }}
       />
 
-      {/* 快捷指令配置弹窗 */}
+      <AssistantCreateModal
+        isOpen={isCreateAssistantOpen}
+        assistantCount={assistants.length}
+        onClose={() => setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => setShowAssistantPicker(true)}
+        onCreated={fetchAssistants}
+      />
+
+      {/* Skill 管理弹窗（原快捷指令） */}
       <ShortcutManagerDialog
         isOpen={showShortcutManager}
         onClose={() => setShowShortcutManager(false)}
@@ -181,7 +175,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         onDelete={removeShortcut}
         onSelect={(shortcut) => {
           setShowShortcutManager(false)
-          inputBarRef.current?.insertShortcutContent(shortcut.content)
+          inputBarRef.current?.applySkillRef(shortcut)
         }}
       />
 
@@ -229,9 +223,9 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         }}
       />
 
-      {/* 模型选择浮层 */}
+      {/* 会话模型菜单（思考强度 + 模型） */}
       {showModelSwitcher && (
-        <ModelSwitcherPopup
+        <SessionModelMenu
           onClose={() => setShowModelSwitcher(false)}
           providers={providers
             .map((p) => {
@@ -251,8 +245,13 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
           currentModelId={model.currentModelId}
           onSelect={(pid, mid) => {
             void model.selectDialogueModel(pid, mid)
-            setShowModelSwitcher(false)
           }}
+          onManageProviders={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={onReasoningEffortChange}
+          reasoningControl={reasoningControl}
+          modelReasoningPreviews={modelReasoningPreviews}
+          anchorRect={modelMenuAnchorRect}
         />
       )}
 

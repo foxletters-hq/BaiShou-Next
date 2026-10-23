@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import styles from './AgentSessionList.module.css'
+import { Input } from '../Input/Input'
 import { useTranslation } from 'react-i18next'
 import { Search, Plus, Ghost } from 'lucide-react'
 import { SessionData, SessionListItem } from '../SessionListItem'
@@ -117,9 +118,11 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           <span className={styles.searchIcon}>
             <Search size={14} />
           </span>
-          <input
+          <Input
             type="text"
+            fieldSize="small"
             className={styles.searchInput}
+            inputClassName="baishou-form-field--embed"
             placeholder={t('common.search', '搜索历史记录 ...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

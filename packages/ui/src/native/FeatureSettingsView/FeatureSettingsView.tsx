@@ -1,7 +1,9 @@
 import React from 'react'
-import { View, Text, Switch, StyleSheet, type ViewProps } from 'react-native'
+import { View, Text, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Switch } from '../Switch'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface FeatureItem {
   id: string
@@ -21,7 +23,7 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
   style,
   ...props
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const { t } = useTranslation()
 
   const handleToggle = (id: string) => {
@@ -71,40 +73,40 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: 1
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug
   },
   featureInfo: {
     flex: 1,
-    marginRight: 16
+    marginRight: sharedTokens.spacing.md
   },
   featureName: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   featureDesc: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs,
     lineHeight: 16
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40
+    paddingVertical: sharedTokens.spacing.xlPlus
   },
   emptyText: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   }
 })

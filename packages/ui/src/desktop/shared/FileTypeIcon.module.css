@@ -1,0 +1,35 @@
+.fileTypeIcon {
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconImage {
+  color: var(--color-success);
+}
+
+.iconVideo {
+  color: var(--color-accent-purple);
+}
+
+.iconPdf {
+  color: var(--color-error);
+}
+
+.iconText {
+  color: var(--color-primary);
+}
+
+.iconCode {
+  color: var(--color-primary);
+}
+
+.iconArchive {
+  color: var(--color-warning);
+}
+
+.iconAudio {
+  color: var(--color-warning);
+}

@@ -1,7 +1,11 @@
 import React, { useState } from 'react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
-import { isCustomUserAvatar, resolveDesktopUserAvatarSrc } from '../user-avatar.util'
+import {
+  isCustomUserAvatar,
+  resolveDesktopUserAvatarSrc,
+  WEB_APP_BRAND_ICON_SRC
+} from '../user-avatar.util'
 
 export interface NavItem {
   id: string
@@ -66,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Header / Logo */}
       <div className={styles.header}>
         <div className={styles.logoBox}>
-          <img src="/assets/icon/icon.png" alt="Logo" className={styles.logoImg} />
+          <img src={WEB_APP_BRAND_ICON_SRC} alt="Logo" className={styles.logoImg} />
         </div>
         <div className={styles.headerText}>
           <h2 className={styles.appName}>{t('common.app_title', 'BaiShou')}</h2>

@@ -1,9 +1,11 @@
 import React from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
+import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import type { RagState } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
+import { sharedTokens } from '../../theme/tokens'
 
 interface RagMemoryAlertsProps {
   ragState: RagState
@@ -11,6 +13,13 @@ interface RagMemoryAlertsProps {
   migrationCancelBusy?: boolean
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
+  onPauseBatchEmbed?: () => Promise<void>
+  onResumeBatchEmbed?: () => Promise<void>
+  onCancelBatchEmbed?: () => Promise<void>
+  suspectCount?: number
+  onReviewSuspects?: () => void
+  /** 记忆中心用独立整理弹层，这里不再叠一张补齐嵌入卡 */
+  hideBatchProgress?: boolean
 }
 
 export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
@@ -18,59 +27,84 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
   hasMismatchModel,
   migrationCancelBusy = false,
   onTriggerMigration,
-  onCancelMigration
+  onCancelMigration,
+  onPauseBatchEmbed,
+  onResumeBatchEmbed,
+  onCancelBatchEmbed,
+  suspectCount = 0,
+  onReviewSuspects,
+  hideBatchProgress = false
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
-  const isLongRunning =
-    ragState.isRunning &&
-    (ragState.type === 'reembed' || ragState.type === 'migration' || ragState.type === 'batchEmbed')
-  const isAborting = migrationCancelBusy || ragState.statusKey === 'settings.rag_migration_aborting'
-  const showEmbedError = !isLongRunning && !!ragState.error
+  const isBatchEmbedding = ragState.isRunning && ragState.type === 'batchEmbed'
+  const isMigrating =
+    ragState.isRunning && (ragState.type === 'reembed' || ragState.type === 'migration')
+  const isAborting =
+    migrationCancelBusy ||
+    ragState.cancelling ||
+    ragState.statusKey === 'settings.rag_migration_aborting'
+  const showEmbedError = !ragState.isRunning && !!ragState.error
+  const batchTitle = isAborting
+    ? t('settings.rag_batch_embed_cancelling', '正在取消索引…')
+    : ragState.paused
+      ? t('settings.rag_batch_embed_paused', '索引已暂停')
+      : t('settings.rag_indexing', '正在补齐嵌入…')
 
   return (
     <>
-      {isLongRunning && (
+      {isBatchEmbedding && !hideBatchProgress && (
         <View
           style={[
             styles.alertBox,
             {
-              backgroundColor: colors.primaryLight,
-              borderColor: colors.primaryTrackMuted
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
             }
           ]}
         >
           <View style={styles.migrationRow}>
-            <Text style={[styles.alertTitle, { color: colors.primary, flex: 1 }]}>
-              {isAborting
-                ? t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
-                : t('settings.rag_migrating', '知识库正在迁移中...')}
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
+              {batchTitle}
             </Text>
-            {onCancelMigration ? (
-              <TouchableOpacity
-                onPress={() => void onCancelMigration()}
-                disabled={isAborting}
-                activeOpacity={0.7}
-                style={[
-                  styles.alertAction,
-                  {
-                    backgroundColor: colors.bgSurface,
-                    borderColor: colors.primaryTrackMuted,
-                    marginTop: 0,
-                    paddingVertical: 6,
-                    paddingHorizontal: 10,
-                    opacity: isAborting ? 0.5 : 1
-                  }
-                ]}
-              >
-                <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 12 }}>
-                  {isAborting
-                    ? t('settings.rag_migration_cancelling', '取消中...')
-                    : t('settings.rag_migration_cancel', '取消')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
+            {(onPauseBatchEmbed || onResumeBatchEmbed || onCancelBatchEmbed) && (
+              <View style={styles.batchEmbedActions}>
+                {ragState.paused && !isAborting
+                  ? onResumeBatchEmbed && (
+                      <Button
+                        variant="outlined"
+                        size="sm"
+                        onPress={() => void onResumeBatchEmbed()}
+                      >
+                        {t('settings.rag_batch_embed_resume', '继续')}
+                      </Button>
+                    )
+                  : onPauseBatchEmbed && (
+                      <Button
+                        variant="outlined"
+                        size="sm"
+                        disabled={isAborting}
+                        onPress={() => void onPauseBatchEmbed()}
+                      >
+                        {t('settings.rag_batch_embed_pause', '暂停')}
+                      </Button>
+                    )}
+                {onCancelBatchEmbed && (
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    disabled={isAborting}
+                    isLoading={isAborting}
+                    onPress={() => void onCancelBatchEmbed()}
+                  >
+                    {t('settings.rag_batch_embed_cancel', '取消')}
+                  </Button>
+                )}
+              </View>
+            )}
           </View>
           {ragState.statusText ? (
             <Text style={[styles.alertDesc, { color: colors.textSecondary }]}>
@@ -81,7 +115,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             <View
               style={[
                 styles.progressBar,
-                { backgroundColor: colors.bgSurfaceNormal, marginTop: 8 }
+                { backgroundColor: colors.bgSurfaceNormal, marginTop: sharedTokens.spacing.sm }
               ]}
             >
               <View
@@ -94,6 +128,46 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
                 ]}
               />
             </View>
+          ) : null}
+        </View>
+      )}
+
+      {isMigrating && (
+        <View
+          style={[
+            styles.alertBox,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
+            }
+          ]}
+        >
+          <View style={styles.migrationRow}>
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
+              {isAborting
+                ? t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
+                : t('settings.rag_migrating', '知识库正在迁移中...')}
+            </Text>
+            {onCancelMigration ? (
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isAborting}
+                isLoading={isAborting}
+                onPress={() => void onCancelMigration()}
+              >
+                {isAborting
+                  ? t('settings.rag_migration_cancelling', '取消中...')
+                  : t('settings.rag_migration_cancel', '取消')}
+              </Button>
+            ) : null}
+          </View>
+          {ragState.statusText ? (
+            <Text style={[styles.alertDesc, { color: colors.textSecondary }]}>
+              {ragState.statusText}
+            </Text>
           ) : null}
         </View>
       )}
@@ -117,7 +191,34 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
         </View>
       )}
 
-      {!isLongRunning && hasMismatchModel && (
+      {!ragState.isRunning && !showEmbedError && suspectCount > 0 ? (
+        <View
+          style={[
+            styles.alertBox,
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
+            }
+          ]}
+        >
+          <View style={styles.migrationRow}>
+            <Text
+              style={[styles.alertTitle, { color: colors.textPrimary, flex: 1, marginBottom: 0 }]}
+            >
+              {t('memory.suspects_need_review', '有 {{count}} 个待确认节点', {
+                count: suspectCount
+              })}
+            </Text>
+            {onReviewSuspects ? (
+              <Button variant="outlined" size="sm" onPress={onReviewSuspects}>
+                {t('memory.review_suspects', '去检查')}
+              </Button>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {!ragState.isRunning && hasMismatchModel && (
         <View
           style={[
             styles.alertBox,
@@ -134,22 +235,14 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
             {t('settings.rag_model_mismatch_desc')}
           </Text>
           {onTriggerMigration ? (
-            <TouchableOpacity
-              style={[
-                styles.alertAction,
-                {
-                  backgroundColor: colors.primaryLight,
-                  borderColor: colors.primaryTrackMuted
-                }
-              ]}
+            <Button
+              variant="outlined"
+              size="sm"
               onPress={() => void onTriggerMigration()}
               disabled={ragState.isRunning}
-              activeOpacity={0.7}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
-                {t('settings.rag_trigger_migration')}
-              </Text>
-            </TouchableOpacity>
+              {t('settings.rag_trigger_migration')}
+            </Button>
           ) : null}
         </View>
       )}

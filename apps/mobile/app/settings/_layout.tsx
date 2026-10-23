@@ -28,6 +28,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="workspaces" />
       <Stack.Screen name="identity-cards" />
       <Stack.Screen name="version-migration" />
+      <Stack.Screen name="help-docs" />
     </Stack>
   )
 }

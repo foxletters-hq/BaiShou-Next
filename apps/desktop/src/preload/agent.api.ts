@@ -14,6 +14,33 @@ export type TtsSynthesizeSpeechResult =
 export const agentApi = {
   agentChat: (params: { sessionId: string; text: string }) =>
     ipcRenderer.invoke('agent:chat', params),
+  admit: (params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+    attachments?: unknown[]
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }> => ipcRenderer.invoke('agent:admit', params),
+  listPendingInputs: (sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]> =>
+    ipcRenderer.invoke('agent:list-pending-inputs', sessionId),
+  cancelPendingInput: (
+    inputId: string
+  ): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent:cancel-pending-input', inputId),
+  updatePendingInput: (params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent:update-pending-input', params),
   saveUserMessage: (params: { sessionId: string; text: string; attachments?: any[] }) =>
     ipcRenderer.invoke('agent:save-user-message', params),
   getMessages: (sessionId: string) => ipcRenderer.invoke('agent:get-messages', sessionId),
@@ -93,6 +120,10 @@ export const agentApi = {
 
   // Sessions
   getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
+  getMountedNotebooks: (sessionId: string) =>
+    ipcRenderer.invoke('agent:get-mounted-notebooks', sessionId) as Promise<string[]>,
+  setMountedNotebooks: (sessionId: string, notebookIds: string[]) =>
+    ipcRenderer.invoke('agent:set-mounted-notebooks', sessionId, notebookIds) as Promise<string[]>,
   deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
   pinSession: (id: string, isPinned: boolean) =>
     ipcRenderer.invoke('agent:pin-session', id, isPinned),
@@ -102,13 +133,123 @@ export const agentApi = {
   createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
   updateAssistant: (id: string, input: any) =>
     ipcRenderer.invoke('agent:update-assistant', id, input),
-  deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
+  deleteAssistant: (id: string) =>
+    ipcRenderer.invoke('agent:delete-assistant', id) as Promise<
+      { success: true } | { success: false; errorCode: string }
+    >,
   reorderAssistants: (orderedIds: string[]) =>
     ipcRenderer.invoke('agent:reorder-assistants', orderedIds),
   syncDefaultLatteLocale: (locale?: string) =>
     ipcRenderer.invoke('agent:sync-default-latte-locale', locale),
   ensureDefaultLatteAssistant: (locale?: string) =>
     ipcRenderer.invoke('agent:ensure-default-latte-assistant', locale),
+  ensureSystemLatteAssistant: (locale?: string) =>
+    ipcRenderer.invoke('agent:ensure-system-latte-assistant', locale) as Promise<{
+      created: boolean
+      assistantId: string
+    }>,
+
+  agentGate: {
+    reply: (input: {
+      requestId: string
+      reply: import('@baishou/shared').AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+      questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
+    }) => ipcRenderer.invoke('agent-gate:reply', input),
+    listPending: (sessionId?: string) =>
+      ipcRenderer.invoke('agent-gate:list-pending', sessionId) as Promise<
+        import('@baishou/shared').AgentGateRequest[]
+      >,
+    getNotificationPrefs: () =>
+      ipcRenderer.invoke('agent-gate:get-notification-prefs') as Promise<
+        import('@baishou/shared').AgentGateNotificationPrefs
+      >,
+    setNotificationPrefs: (prefs: Partial<import('@baishou/shared').AgentGateNotificationPrefs>) =>
+      ipcRenderer.invoke('agent-gate:set-notification-prefs', prefs) as Promise<
+        import('@baishou/shared').AgentGateNotificationPrefs
+      >,
+    notifyAsked: (request: import('@baishou/shared').AgentGateRequest) =>
+      ipcRenderer.invoke('agent-gate:notify-asked', request),
+    previewNotification: () =>
+      ipcRenderer.invoke('agent-gate:preview-notification') as Promise<
+        import('@baishou/shared').AgentGateNotificationPreviewResult
+      >,
+    getConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
+      ipcRenderer.invoke('agent-gate:get-config', scope),
+    removeAllowlistEntry: (
+      entryId: string,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => ipcRenderer.invoke('agent-gate:remove-allowlist-entry', entryId, scope),
+    onAsked: (callback: (request: import('@baishou/shared').AgentGateRequest) => void) => {
+      const handler = (_: unknown, request: import('@baishou/shared').AgentGateRequest) =>
+        callback(request)
+      ipcRenderer.on('agent-gate:asked', handler)
+      return () => ipcRenderer.removeListener('agent-gate:asked', handler)
+    },
+    onReplied: (
+      callback: (payload: {
+        sessionId: string
+        requestId: string
+        reply: import('@baishou/shared').AgentGateReply
+        message?: string
+        selectedOptionIds?: string[]
+        questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
+      }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:replied', handler)
+      return () => ipcRenderer.removeListener('agent-gate:replied', handler)
+    },
+    onCancelled: (
+      callback: (payload: { sessionId: string; requestIds: string[]; reason?: string }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:cancelled', handler)
+      return () => ipcRenderer.removeListener('agent-gate:cancelled', handler)
+    },
+    onAllowlistChanged: (
+      callback: (
+        allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],
+        scope?: import('@baishou/shared').AgentGateConfigScope
+      ) => void
+    ) => {
+      const handler = (
+        _: unknown,
+        payload:
+          | import('@baishou/shared').AgentGateAllowlistEntry[]
+          | {
+              allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]
+              scope?: import('@baishou/shared').AgentGateConfigScope
+            }
+      ) => {
+        if (Array.isArray(payload)) {
+          callback(payload)
+          return
+        }
+        callback(payload.allowlist, payload.scope)
+      }
+      ipcRenderer.on('agent-gate:allowlist-changed', handler)
+      return () => ipcRenderer.removeListener('agent-gate:allowlist-changed', handler)
+    },
+    onFocusCheck: (callback: (request: import('@baishou/shared').AgentGateRequest) => void) => {
+      const handler = (_: unknown, request: import('@baishou/shared').AgentGateRequest) =>
+        callback(request)
+      ipcRenderer.on('agent-gate:focus-check', handler)
+      return () => ipcRenderer.removeListener('agent-gate:focus-check', handler)
+    },
+    onNavigate: (
+      callback: (payload: {
+        sessionId: string
+        requestId: string
+        scope?: import('@baishou/shared').AgentGateConfigScope
+      }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:navigate', handler)
+      return () => ipcRenderer.removeListener('agent-gate:navigate', handler)
+    }
+  },
 
   // RAG System
   rag: {
@@ -116,8 +257,15 @@ export const agentApi = {
     detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
     clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
+    getBatchEmbedState: () => ipcRenderer.invoke('rag:get-batch-embed-state'),
+    pauseBatchEmbed: () => ipcRenderer.invoke('rag:pause-batch-embed'),
+    resumeBatchEmbed: () => ipcRenderer.invoke('rag:resume-batch-embed'),
+    cancelBatchEmbed: () => ipcRenderer.invoke('rag:cancel-batch-embed'),
+    getEmbedJobsPendingCount: () => ipcRenderer.invoke('rag:embed-jobs-pending-count'),
+    getUnindexedDiaryCount: () => ipcRenderer.invoke('rag:unindexed-diary-count'),
+    getPendingEmbedCounts: () => ipcRenderer.invoke('rag:pending-embed-counts'),
     addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
-    clearAll: () => ipcRenderer.invoke('rag:clear-all'),
+    clearAll: (opts?: { kinds?: string[] }) => ipcRenderer.invoke('rag:clear-all', opts),
     triggerMigration: (options?: { rollbackConfig?: any }) =>
       ipcRenderer.invoke('rag:trigger-migration', options),
     cancelMigration: () => ipcRenderer.invoke('rag:cancel-migration'),

@@ -1,5 +1,6 @@
 import { memoryEmbeddingsTable } from '../schema/vectors'
 import { sql } from 'drizzle-orm'
+import { embeddingVectorToBytes } from '@baishou/shared'
 
 export interface InsertMemoryPayload {
   embeddingId: string
@@ -29,7 +30,8 @@ export class MemoryRepository {
    * 将浮点数组转化为 sqlite-vec 支持的 Float32 BLOB
    */
   private serializeVector(vector: number[]): Buffer {
-    return Buffer.from(new Float32Array(vector).buffer)
+    // 手机 JS 没有 Buffer，用 Uint8Array 视图
+    return embeddingVectorToBytes(vector) as unknown as Buffer
   }
 
   /**

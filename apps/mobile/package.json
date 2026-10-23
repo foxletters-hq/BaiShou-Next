@@ -1,7 +1,7 @@
 {
   "name": "@baishou/mobile",
   "main": "expo-router/entry",
-  "version": "1.2.25",
+  "version": "1.5.0",
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
     "rebuild:dev-artifacts": "node ./scripts/rebuild-dev-artifacts.mjs",
@@ -56,6 +56,8 @@
     "expo-intent-launcher": "~55.0.12",
     "expo-linking": "~55.0.15",
     "expo-network": "~55.0.14",
+    "expo-notifications": "~55.0.25",
+    "expo-pdf-page-render": "link:modules/expo-pdf-page-render",
     "expo-pdf-text-extract": "^1.1.0",
     "expo-router": "~55.0.16",
     "expo-sharing": "~55.0.20",

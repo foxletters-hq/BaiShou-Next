@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Check, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
+import { Search, X, ArrowUpCircle, Loader2, Copy } from 'lucide-react'
+import { Input } from '../Input/Input'
+import { withAppContentOverlay } from '../overlay'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './RecallDialog.module.css'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard'
 import { toast } from '../Toast/useToast'
 import { Pagination } from '../Pagination/index'
@@ -84,7 +88,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
     if (!isOpen || activeTab !== 'diary') return undefined
     onSearch('', 'diary')
     return undefined
-  }, [activeTab, isOpen])
+  }, [activeTab, isOpen, onSearch])
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -106,31 +110,22 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
 
   return (
     <>
-      <div className={styles.overlay}>
+      <div className={withAppContentOverlay(styles.overlay)}>
         <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
           <div className={styles.header}>
-            <div className={styles.tabs}>
-              <div
-                className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
-                onClick={() => {
-                  setActiveTab('diary')
-                  setSelectedIds(new Set())
-                  setSearchQuery('')
-                }}
-              >
-                {t('recall.tab_diary', '日记档案')}
-              </div>
-              <div
-                className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
-                onClick={() => {
-                  setActiveTab('memory')
-                  setSelectedIds(new Set())
-                  setSearchQuery('')
-                }}
-              >
-                {t('recall.tab_memory', '向量记忆')}
-              </div>
-            </div>
+            <SegmentedControl
+              value={activeTab}
+              aria-label={t('recall.tabs', '回忆类型')}
+              onChange={(tab) => {
+                setActiveTab(tab)
+                setSelectedIds(new Set())
+                setSearchQuery('')
+              }}
+              options={[
+                { value: 'diary', label: t('recall.tab_diary', '日记档案') },
+                { value: 'memory', label: t('recall.tab_memory', '向量记忆') }
+              ]}
+            />
             <button className={styles.closeBtn} onClick={onClose}>
               <X size={16} strokeWidth={3} />
             </button>
@@ -141,33 +136,31 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
             <div className={styles.ragSearchBar}>
               <div className={styles.ragSearchInner}>
                 <Search size={18} className={styles.ragSearchIcon} />
-                <input
+                <Input
                   type="text"
+                  fieldSize="small"
+                  className={styles.ragSearchInput}
+                  inputClassName="baishou-form-field--embed"
                   placeholder={
                     searchMode === 'semantic'
                       ? t('recall.search_semantic_hint', '语义搜索记忆内容...')
                       : t('recall.search_text_hint', '关键词搜索记忆内容...')
                   }
-                  className={styles.ragSearchInput}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <div className={styles.segmentedControl}>
-                  <button
-                    type="button"
-                    className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
-                    onClick={() => searchMode !== 'semantic' && onToggleSearchMode?.()}
-                  >
-                    {t('recall.search_semantic', '语义搜索')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
-                    onClick={() => searchMode !== 'text' && onToggleSearchMode?.()}
-                  >
-                    {t('recall.search_text', '文本搜索')}
-                  </button>
-                </div>
+                <SegmentedControl
+                  inline
+                  value={searchMode}
+                  aria-label={t('recall.search_mode', '搜索模式')}
+                  onChange={(mode) => {
+                    if (mode !== searchMode) onToggleSearchMode?.()
+                  }}
+                  options={[
+                    { value: 'semantic', label: t('recall.search_semantic', '语义搜索') },
+                    { value: 'text', label: t('recall.search_text', '文本搜索') }
+                  ]}
+                />
                 {searchQuery && (
                   <div className={styles.ragSearchClear} onClick={() => setSearchQuery('')}>
                     <X size={16} />
@@ -259,8 +252,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                     className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
                     onClick={() => toggleSelect(item.id)}
                   >
-                    <div className={styles.checkboxWrap}>
-                      {isSelected && <Check size={14} strokeWidth={4} />}
+                    <div className={styles.checkboxWrap} onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={isSelected} onChange={() => toggleSelect(item.id)} />
                     </div>
                     <div className={styles.cardInfo}>
                       <div className={styles.cardHeader}>

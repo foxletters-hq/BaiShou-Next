@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { CheckSquare, Trash2 } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { SegmentedContent, SegmentedControl } from '../SegmentedControl'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
@@ -57,54 +58,24 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
       />
 
       <View style={styles.toolbar}>
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: activeTab === 'all' ? colors.primary : 'transparent',
-                borderColor: activeTab === 'all' ? colors.primary : colors.borderSubtle
-              }
-            ]}
-            onPress={() => {
-              setActiveTab('all')
-              setSelectedIds(new Set())
-            }}
-          >
-            <Text
-              style={[
-                styles.actionBtnText,
-                { color: activeTab === 'all' ? colors.textOnPrimary : colors.textPrimary }
-              ]}
-            >
-              {t('settings.attachment_tab_all', '会话附件')} {attachments.length}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: activeTab === 'orphans' ? colors.primary : 'transparent',
-                borderColor: activeTab === 'orphans' ? colors.primary : colors.borderSubtle
-              }
-            ]}
-            onPress={() => {
-              setActiveTab('orphans')
-              setSelectedIds(new Set())
-            }}
-          >
-            <Text
-              style={[
-                styles.actionBtnText,
-                {
-                  color: activeTab === 'orphans' ? colors.textOnPrimary : colors.textPrimary
-                }
-              ]}
-            >
-              {t('settings.attachment_tab_orphans', '孤立残留')} {orphans.length}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <SegmentedControl
+          size="small"
+          value={activeTab}
+          onChange={(tab) => {
+            setActiveTab(tab)
+            setSelectedIds(new Set())
+          }}
+          options={[
+            {
+              value: 'all',
+              label: `${t('settings.attachment_tab_all', '会话附件')} ${attachments.length}`
+            },
+            {
+              value: 'orphans',
+              label: `${t('settings.attachment_tab_orphans', '孤立残留')} ${orphans.length}`
+            }
+          ]}
+        />
 
         <View style={styles.tabRow}>
           {displayList.length > 0 && selectedIds.size > 0 && (
@@ -127,7 +98,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
           )}
           {displayList.length > 0 && (
             <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.actionBtn, { borderColor: colors.borderControl }]}
               onPress={handleSelectAll}
             >
               <CheckSquare
@@ -145,27 +116,29 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
         </View>
       </View>
 
-      {displayList.length > 10 && (
-        <AttachmentPaginationBar
-          current={currentSessionPage}
-          total={totalSessionPages}
-          pageSize={sessionPageSize}
-          onPageChange={setCurrentSessionPage}
-          onPageSizeChange={setSessionPageSize}
-        />
-      )}
+      <SegmentedContent value={activeTab}>
+        {displayList.length > 10 && (
+          <AttachmentPaginationBar
+            current={currentSessionPage}
+            total={totalSessionPages}
+            pageSize={sessionPageSize}
+            onPageChange={setCurrentSessionPage}
+            onPageSizeChange={setSessionPageSize}
+          />
+        )}
 
-      <SessionAttachmentGroupList vm={vm} />
+        <SessionAttachmentGroupList vm={vm} />
 
-      {displayList.length > 10 && (
-        <AttachmentPaginationBar
-          current={currentSessionPage}
-          total={totalSessionPages}
-          pageSize={sessionPageSize}
-          onPageChange={setCurrentSessionPage}
-          onPageSizeChange={setSessionPageSize}
-        />
-      )}
+        {displayList.length > 10 && (
+          <AttachmentPaginationBar
+            current={currentSessionPage}
+            total={totalSessionPages}
+            pageSize={sessionPageSize}
+            onPageChange={setCurrentSessionPage}
+            onPageSizeChange={setSessionPageSize}
+          />
+        )}
+      </SegmentedContent>
     </View>
   )
 }

@@ -1,32 +1,40 @@
 .pagination {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
+  min-height: 32px;
   font-family: var(--font-family-main, sans-serif);
+  line-height: 1;
 }
 
 .pageBtn {
   min-width: 32px;
   height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
-  border-radius: 8px;
+  padding: 0 var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
-  background: var(--bg-surface-high, rgba(91, 168, 245, 0.08));
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .pageBtn:disabled {
@@ -35,89 +43,57 @@
 }
 
 .pageBtnActive {
-  background: var(--color-primary) !important;
-  border-color: var(--color-primary) !important;
-  color: #fff !important;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface)) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-control)) !important;
+  color: var(--color-primary) !important;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.3);
+  box-shadow: none;
   cursor: default;
 }
 
 .ellipsis {
-  min-width: 32px;
+  min-width: 28px;
   height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--text-tertiary);
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: var(--ui-fs-md);
+  letter-spacing: 1px;
   user-select: none;
 }
 
 .jumper {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  gap: var(--spacing-xs-plus);
+  margin-left: var(--spacing-xs);
+  height: 32px;
 }
 
-.jumperInput {
-  width: 48px;
+.jumper .jumperInput {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   height: 32px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 0 var(--spacing-xs-plus);
+  font-size: var(--ui-fs-md);
+  line-height: 1;
   text-align: center;
-  outline: none;
-  transition: all 0.15s ease;
+  display: inline-block;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .jumperInput::placeholder {
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
-.jumperInput:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.15);
-}
-
-.jumperInput:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  font-size: var(--ui-fs-sm);
 }
 
 .jumperSuffix {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
+  line-height: 32px;
   color: var(--text-tertiary);
   white-space: nowrap;
-}
-
-/* 深色模式适配 */
-[data-theme='dark'] .pageBtn {
-  background: var(--bg-surface);
-  border-color: var(--border-subtle);
-  color: var(--text-primary);
-}
-
-[data-theme='dark'] .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme='dark'] .pageBtnActive {
-  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.2);
-}
-
-[data-theme='dark'] .jumperInput {
-  background: var(--bg-surface);
-  border-color: var(--border-subtle);
-  color: var(--text-primary);
-}
-
-[data-theme='dark'] .jumperInput:focus {
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
 }

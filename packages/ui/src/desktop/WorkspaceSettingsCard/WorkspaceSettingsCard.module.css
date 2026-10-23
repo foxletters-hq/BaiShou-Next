@@ -1,11 +1,30 @@
 .workspaceCurrentBlock {
-  border: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
-  border-radius: 16px;
-  padding: 12px;
-  margin-bottom: 8px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-sm);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
+}
+
+.workspaceToggleCard {
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+}
+
+.workspaceToggleInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
 }
 
 .workspaceCurrentInfo {
@@ -13,46 +32,49 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .workspaceSectionLabel {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   letter-spacing: 0.2px;
 }
 
 .workspacePathText {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-family: 'Fira Code', 'Consolas', monospace;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.4;
   word-break: break-all;
 }
 
 .workspaceEmptyHint {
-  font-size: 13px;
-  color: var(--color-on-surface-variant);
+  font-size: var(--settings-font-desc-size);
+  color: var(--text-secondary);
 }
 
 .workspaceManageButton {
   flex-shrink: 0;
-  border: none;
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
-  font-size: 13px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   white-space: nowrap;
 }
 
 .workspaceManageButton:hover:not(:disabled) {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .workspaceManageButton:disabled {
@@ -63,24 +85,24 @@
 .workspaceRecentList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 4px;
+  gap: var(--spacing-md-tight);
+  margin-bottom: var(--spacing-xs);
 }
 
 .workspaceRecentCard {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-card);
   background: transparent;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
   color: inherit;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .workspaceRecentCard:hover {
@@ -88,9 +110,9 @@
 }
 
 .workspaceRecentTitle {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -99,7 +121,7 @@
 }
 
 .workspaceRecentAction {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--color-primary);
   flex-shrink: 0;

@@ -1,3 +1,8 @@
 export { ChatBubble } from './ChatBubble'
 export type { ChatBubbleProps } from './chat-bubble.types'
+export { ChatBubbleAttachments } from './ChatBubbleAttachments'
 export { clearChatAttachmentImageCaches } from './chat-attachment-thumbnail.util'
+export { UserMessageSkillContent } from './UserMessageSkillContent'
+export { SkillCitePreviewDialog } from './SkillCitePreviewDialog'
+export { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
+export { useChatBubbleEdit } from './useChatBubbleEdit'

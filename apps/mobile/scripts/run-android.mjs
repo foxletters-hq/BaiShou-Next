@@ -20,6 +20,7 @@ import {
   setupAdbReverse,
   startReverseKeeper
 } from './mobile-dev-env.mjs'
+import { applyAndroidPlainSplashPatch } from './plain-splash-patch.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const mobileRoot = path.resolve(__dirname, '..')
@@ -62,6 +63,25 @@ if (hasAdbDevice()) {
   setupAdbReverse(METRO_PORT)
   prepareAndroidInstall()
 }
+
+console.log('\n🔧 Expo prebuild（生成 android 工程）…\n')
+const prebuildResult = spawnSync(
+  'npx',
+  ['expo', 'prebuild', '--platform', 'android', '--no-install'],
+  {
+    cwd: mobileRoot,
+    env: devClientEnv(),
+    stdio: 'inherit',
+    shell: process.platform === 'win32'
+  }
+)
+if (prebuildResult.status !== 0) {
+  process.exit(prebuildResult.status ?? 1)
+}
+
+const androidDir = path.join(mobileRoot, 'android')
+applyAndroidPlainSplashPatch(androidDir)
+console.log('🎨 已写入纯色启动屏占位（splashscreen_logo）\n')
 
 console.log(`\n🔨 编译安装 Android 开发版，Metro 将用: http://${host}:${METRO_PORT}\n`)
 printDevConnectionHelp(host, METRO_PORT)

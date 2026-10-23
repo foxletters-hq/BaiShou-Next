@@ -7,7 +7,8 @@ import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   deriveSessionTitleFromUserText,
-  isAgentStreamAbortError
+  notebookMountPendingKey,
+  takePendingMountedNotebookIds
 } from '@baishou/shared'
 
 import { useBaishou } from '../providers/BaishouProvider'
@@ -15,6 +16,7 @@ import { isTransientNetworkError } from '../utils/transient-network-error.util'
 import { saveUserMessage } from '../services/mobile-agent-message.service'
 import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
 import { buildInsertSessionInput } from '../utils/session-input.util'
+import { resolveMobileActiveVaultId } from '../utils/mobile-session-vault.util'
 import { mapSavedAttachmentsForMobileUi } from '../utils/mobile-attachment-ui.util'
 import {
   STREAM_ZERO_OUTPUT_NETWORK_RETRIES,
@@ -38,8 +40,8 @@ interface UseAgentStreamChatOptions {
   setCompressionTriggerMessageId: (value: string | null) => void
   appendStreamingTextDelta: (chunk: string) => void
   appendStreamingReasoningDelta: (chunk: string) => void
-  handleToolCallStart: (toolName: string, args?: unknown) => void
-  handleToolCallResult: (toolName: string, result: unknown) => void
+  handleToolCallStart: (toolName: string, args?: unknown, toolCallId?: string) => void
+  handleToolCallResult: (toolName: string, result: unknown, toolCallId?: string) => void
   hasStreamOutput: () => boolean
   interruptActiveStream: (options?: { keepStreamingFlag?: boolean }) => void
   resetStreamingBuffers: () => void
@@ -131,11 +133,17 @@ export function useAgentStreamChat({
                 if (userStoppedStreamRef.current) return
                 appendStreamingReasoningDelta(chunk)
               },
-              onToolCallStart: handleToolCallStart,
-              onToolCallResult: handleToolCallResult,
+              onToolCallStart: (toolName, args, toolCallId) => {
+                if (userStoppedStreamRef.current) return
+                handleToolCallStart(toolName, args, toolCallId)
+              },
+              onToolCallResult: (toolName, result, toolCallId) => {
+                if (userStoppedStreamRef.current) return
+                handleToolCallResult(toolName, result, toolCallId)
+              },
               onFinish: () => {},
               onError: (err) => {
-                if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
+                if (userStoppedStreamRef.current) return
                 const msg = err.message || t('app.unknown_error', '未知网络或系统错误')
                 streamAttemptErrorRef.current = msg
                 onFail(msg)
@@ -145,7 +153,7 @@ export function useAgentStreamChat({
           )
         } catch (e) {
           thrownError = e
-          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) return
+          if (userStoppedStreamRef.current) return
           const msg = e instanceof Error ? e.message : String(e)
           streamAttemptErrorRef.current = msg
           onFail(msg)
@@ -185,7 +193,7 @@ export function useAgentStreamChat({
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         if (options?.retryReleaseEpoch !== undefined) {
           releaseRetryAction()
         }
@@ -198,7 +206,7 @@ export function useAgentStreamChat({
       }
 
       const fail = (errorMsg: string) => {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -233,22 +241,32 @@ export function useAgentStreamChat({
           },
           fail
         )
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
+          setStreamError(null)
+        }
         await finishStream(sessionId, {
-          waitForLatestUsage: true,
+          waitForLatestUsage: !stoppedByUser,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
-      } catch (e) {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+        if (stoppedByUser) {
           userStoppedStreamRef.current = false
+        }
+      } catch (e) {
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
           setStreamError(null)
         } else {
           const msg = e instanceof Error ? e.message : String(e)
           fail(msg)
         }
         await finishStream(sessionId, {
-          waitForLatestUsage: true,
+          waitForLatestUsage: !stoppedByUser,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
+        if (stoppedByUser) {
+          userStoppedStreamRef.current = false
+        }
       }
     },
     [
@@ -277,16 +295,26 @@ export function useAgentStreamChat({
   )
 
   const handleSend = useCallback(
-    async (text: string, attachments?: unknown[], sendSearchMode?: boolean): Promise<boolean> => {
+    async (
+      text: string,
+      attachments?: unknown[],
+      sendSearchMode?: boolean,
+      meta?: {
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: unknown[]
+      }
+    ): Promise<boolean> => {
       const hasText = Boolean(text.trim())
       const hasAttachments = Boolean(attachments?.length)
-      if ((!hasText && !hasAttachments) || !services) return false
+      const hasCites = Boolean(meta?.skillRefs?.length || meta?.fileRefs?.length)
+      if ((!hasText && !hasAttachments && !hasCites) || !services) return false
 
       if (
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return false
       }
 
@@ -303,9 +331,7 @@ export function useAgentStreamChat({
             firstAtt?.fileName ||
             firstAtt?.name ||
             t('agent.sessions.default_title', '新对话')
-          const vaultName = await services.pathService
-            .getActiveVaultNameForContext()
-            .catch(() => 'Personal')
+          const vaultId = resolveMobileActiveVaultId(services)
           await runMobileAgentDbWrite('upsertSession', async (runtime) => {
             await runtime.sessionManager.upsertSession(
               buildInsertSessionInput(
@@ -318,11 +344,23 @@ export function useAgentStreamChat({
                   providerId: currentProviderId || undefined,
                   modelId: currentModelId || undefined
                 },
-                vaultName
+                vaultId
               )
             )
           })
           sessionId = newSessionId
+          const pending = takePendingMountedNotebookIds(
+            notebookMountPendingKey({
+              sessionId: undefined,
+              assistantId: currentAssistant?.id,
+              scope: 'companion'
+            })
+          )
+          if (pending.length > 0) {
+            await runMobileAgentDbWrite('mountPendingNotebooks', async (runtime) => {
+              await runtime.sessionManager.updateMountedNotebookIds(newSessionId, pending)
+            })
+          }
         } catch (e) {
           console.error('Failed to create session', e)
           toast.showError(
@@ -344,7 +382,10 @@ export function useAgentStreamChat({
           text,
           attachments,
           modelId: currentModelId || undefined,
-          providerType: currentProviderId || undefined
+          providerType: currentProviderId || undefined,
+          displayText: meta?.displayText,
+          skillRefs: meta?.skillRefs,
+          fileRefs: meta?.fileRefs
         }
       )
       if ('error' in saveResult) {
@@ -367,8 +408,10 @@ export function useAgentStreamChat({
       addMessage({
         id: saveResult.userMessageId,
         role: 'user',
-        content: text,
+        content: meta?.displayText || text,
         timestamp: new Date(),
+        skillRefs: meta?.skillRefs,
+        fileRefs: meta?.fileRefs,
         attachments: mapSavedAttachmentsForMobileUi(
           saveResult.attachments,
           await services.pathService.getRootDirectory(),
@@ -382,7 +425,7 @@ export function useAgentStreamChat({
       resetStreamingBuffers()
 
       const failStream = (errorMsg: string) => {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -405,16 +448,26 @@ export function useAgentStreamChat({
             },
             failStream
           )
-          await finishStream(streamSessionId, { waitForLatestUsage: true })
-        } catch (e: unknown) {
-          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+          const stoppedByUser = userStoppedStreamRef.current
+          if (stoppedByUser) {
+            setStreamError(null)
+          }
+          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
+          if (stoppedByUser) {
             userStoppedStreamRef.current = false
+          }
+        } catch (e: unknown) {
+          const stoppedByUser = userStoppedStreamRef.current
+          if (stoppedByUser) {
             setStreamError(null)
           } else {
             const msg = e instanceof Error ? e.message : String(e)
             failStream(msg)
           }
-          await finishStream(streamSessionId, { waitForLatestUsage: true })
+          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
+          if (stoppedByUser) {
+            userStoppedStreamRef.current = false
+          }
         }
       })()
 

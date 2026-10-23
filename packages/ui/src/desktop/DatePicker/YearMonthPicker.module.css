@@ -1,52 +1,61 @@
 .wrapper {
   position: relative;
   display: inline-block;
-  font-family: var(--font-family-main, sans-serif);
+  font-family: var(--font-family);
 }
 
 .triggerBtn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid rgba(208, 208, 208, 0.4);
-  color: var(--color-on-surface, #1a1a1a);
-  font-size: 14px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-control);
+  color: var(--text-primary);
+  /* 原生 button 默认系统字体，须显式指定，否则与「写日记」等控件字面不一致 */
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  box-shadow: none;
 }
 
 .triggerBtn:hover {
-  background: rgba(91, 168, 245, 0.05);
-  border-color: rgba(91, 168, 245, 0.3);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .placeholderText {
-  color: var(--color-on-surface-variant, #64748b);
-  font-weight: 400;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  color: var(--text-primary);
 }
 
-.yearText {
-  font-weight: 600;
-}
-
+.yearText,
 .monthText {
-  color: var(--color-on-surface-variant, #64748b);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  color: inherit;
 }
 
 .icon {
   opacity: 0.6;
+  flex-shrink: 0;
 }
 
-/* Glassmorphism Dropdown */
 .flexBaseline {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .modalOverlay {
@@ -56,7 +65,7 @@
   right: 0;
   bottom: 0;
   z-index: 10000;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,10 +73,10 @@
 
 .modalContent {
   width: 420px;
-  background: var(--color-surface, #ffffff);
-  border-radius: 16px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  padding: 24px;
+  padding: var(--spacing-lg);
   overflow: hidden;
 }
 
@@ -75,171 +84,128 @@
 .twoPaneContainer {
   display: flex;
   height: 260px;
-  gap: 24px;
+  gap: var(--spacing-lg);
 }
 
 .yearPane {
   width: 100px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   overflow-y: auto;
-  padding-right: 8px;
-  border-right: 1px solid rgba(208, 208, 208, 0.4);
+  padding-right: var(--spacing-sm);
+  border-right: 1px solid var(--border-muted);
 }
 
 .yearPane::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 .yearPane::-webkit-scrollbar-thumb {
-  background: rgba(208, 208, 208, 0.5);
-  border-radius: 4px;
+  background: var(--border-muted);
+  border-radius: var(--radius-xs);
 }
 
 .monthPane {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
   align-content: start;
 }
 
 .paneItem {
-  padding: 8px 0;
-  border-radius: 8px;
+  padding: var(--spacing-sm) 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   text-align: center;
 }
 
 .paneItem:hover {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .paneItemActive {
-  background: rgba(91, 168, 245, 0.15);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .paneItemSelected {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .monthBtn {
-  padding: 10px 0;
-  border-radius: 10px;
+  padding: var(--spacing-sm-plus) 0;
+  border-radius: var(--radius-control);
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .monthBtn:hover {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .monthBtnSelected {
-  background: var(--color-primary, #5ba8f5) !important;
-  color: #ffffff !important;
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  box-shadow: none;
 }
 
 .monthBtnCurrent {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
-  border: 1px solid var(--color-primary, #5ba8f5);
+  border: 1px solid var(--color-primary);
 }
 
 .divider {
   height: 1px;
-  background: rgba(208, 208, 208, 0.4);
-  margin: 16px 0;
+  background: var(--border-muted);
+  margin: var(--spacing-md) 0;
 }
 
 /* Footer Actions */
 .footer {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .actionBtnSecondary,
 .actionBtnPrimary {
   flex: 1;
-  padding: 8px 0;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: var(--spacing-sm) 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-}
-
-.actionBtnSecondary {
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--color-on-surface-variant, #64748b);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .actionBtnSecondary:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: var(--color-on-surface, #1a1a1a);
-}
-
-.actionBtnPrimary {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .actionBtnPrimary:hover {
-  background: rgba(91, 168, 245, 0.15);
-}
-
-/* Dark mode adjustments */
-[data-theme='dark'] .triggerBtn {
-  background: var(--color-surface-dark, #121212);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .triggerBtn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-[data-theme='dark'] .modalContent {
-  background: var(--color-surface-dark, #1a1a1a);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .yearPane {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .paneItem,
-[data-theme='dark'] .monthBtn {
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .paneItem:hover,
-[data-theme='dark'] .monthBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .actionBtnSecondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
-}
-[data-theme='dark'] .actionBtnSecondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .divider {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }

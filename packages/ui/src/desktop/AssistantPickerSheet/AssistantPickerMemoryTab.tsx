@@ -1,11 +1,13 @@
 import React from 'react'
 import { History, Minimize2 } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
+import { Switch } from '../Switch/Switch'
 import {
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
   getDefaultCompressionSystemPrompt
 } from '@baishou/shared'
 import styles from './AssistantPickerSheet.module.css'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
 export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewModel }) {
@@ -31,12 +33,12 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: 8,
-          gap: 8
+          marginBottom: sharedTokens.spacing.sm,
+          gap: sharedTokens.spacing.sm
         }}
       >
-        <History size={16} color="var(--color-primary)" />
-        <h3 className={styles.sectionTitle} style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+        <History size={14} color="var(--color-primary)" />
+        <h3 className={styles.sectionTitle}>
           {t('agent.assistant.context_window_label', 'Context Turns')}
         </h3>
         <HelpTooltip
@@ -58,7 +60,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         >
           <span
             style={{
-              fontSize: 13,
+              fontSize: settingsTypography.label.fontSize,
               color: 'var(--text-secondary)'
             }}
           >
@@ -68,10 +70,10 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           {editingContextWindow >= 0 && (
             <span
               style={{
-                fontSize: 13,
-                fontWeight: 'bold',
+                fontSize: settingsTypography.label.fontSize,
+                fontWeight: '600',
                 color: 'var(--color-primary)',
-                marginRight: 4
+                marginRight: sharedTokens.spacing.xs
               }}
             >
               {editingContextWindow}
@@ -79,8 +81,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           )}
           <span
             style={{
-              fontSize: 13,
-              marginRight: 8,
+              fontSize: settingsTypography.label.fontSize,
+              marginRight: sharedTokens.spacing.sm,
               color: 'var(--text-primary)'
             }}
           >
@@ -88,18 +90,19 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               ? t('agent.assistant.context_unlimited', '无限制')
               : t('agent.assistant.context_limited', '轮转')}
           </span>
-          <label className={styles.toggleSwitch}>
-            <input
-              type="checkbox"
-              checked={editingContextWindow < 0}
-              onChange={(e) => {
-                const newVal = e.target.checked ? -1 : 20
-                setEditingContextWindow(newVal)
-                saveConfig({ contextWindow: newVal })
-              }}
-            />
-            <span className={styles.toggleSlider}></span>
-          </label>
+          <Switch
+            checked={editingContextWindow < 0}
+            aria-label={
+              editingContextWindow < 0
+                ? t('agent.assistant.context_unlimited', '无限制')
+                : t('agent.assistant.context_limited', '轮转')
+            }
+            onChange={(e) => {
+              const newVal = e.target.checked ? -1 : 20
+              setEditingContextWindow(newVal)
+              saveConfig({ contextWindow: newVal })
+            }}
+          />
         </div>
         {editingContextWindow >= 0 && (
           <input
@@ -129,12 +132,12 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         style={{
           display: 'flex',
           alignItems: 'center',
-          marginBottom: 8,
-          gap: 8
+          marginBottom: sharedTokens.spacing.sm,
+          gap: sharedTokens.spacing.sm
         }}
       >
-        <Minimize2 size={16} color="var(--color-primary)" />
-        <h3 className={styles.sectionTitle} style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+        <Minimize2 size={14} color="var(--color-primary)" />
+        <h3 className={styles.sectionTitle}>
           {t('agent.assistant.compress_label', 'Auto Compress')}
         </h3>
         <HelpTooltip
@@ -154,7 +157,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
         >
           <span
             style={{
-              fontSize: 13,
+              fontSize: settingsTypography.label.fontSize,
               color: 'var(--text-secondary)'
             }}
           >
@@ -164,10 +167,10 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           {editingCompressEnabled && (
             <span
               style={{
-                fontSize: 13,
-                fontWeight: 'bold',
+                fontSize: settingsTypography.label.fontSize,
+                fontWeight: '600',
                 color: 'var(--color-primary)',
-                marginRight: 8
+                marginRight: sharedTokens.spacing.sm
               }}
             >
               {editingCompressThreshold >= 10000
@@ -177,25 +180,22 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                 : editingCompressThreshold}
             </span>
           )}
-          <label className={styles.toggleSwitch}>
-            <input
-              type="checkbox"
-              checked={editingCompressEnabled}
-              onChange={(e) => {
-                const val = e.target.checked
-                setEditingCompressEnabled(val)
-                if (val && editingCompressThreshold <= 0) {
-                  setEditingCompressThreshold(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
-                  saveConfig({ compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD })
-                } else {
-                  saveConfig({
-                    compressTokenThreshold: val ? editingCompressThreshold : 0
-                  })
-                }
-              }}
-            />
-            <span className={styles.toggleSlider}></span>
-          </label>
+          <Switch
+            checked={editingCompressEnabled}
+            aria-label={t('agent.assistant.compress_label', 'Auto Compress')}
+            onChange={(e) => {
+              const val = e.target.checked
+              setEditingCompressEnabled(val)
+              if (val && editingCompressThreshold <= 0) {
+                setEditingCompressThreshold(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
+                saveConfig({ compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD })
+              } else {
+                saveConfig({
+                  compressTokenThreshold: val ? editingCompressThreshold : 0
+                })
+              }
+            }}
+          />
         </div>
         {editingCompressEnabled && (
           <>
@@ -230,12 +230,12 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                marginBottom: 12
+                marginBottom: sharedTokens.spacing.mdTight
               }}
             >
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: settingsTypography.label.fontSize,
                   color: 'var(--text-secondary)'
                 }}
               >
@@ -244,8 +244,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <div style={{ flex: 1 }}></div>
               <span
                 style={{
-                  fontSize: 13,
-                  fontWeight: 'bold',
+                  fontSize: settingsTypography.label.fontSize,
+                  fontWeight: '600',
                   color: 'var(--color-primary)'
                 }}
               >
@@ -286,11 +286,17 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                marginBottom: 8
+                gap: sharedTokens.spacing.sm,
+                marginBottom: sharedTokens.spacing.sm
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span
+                style={{
+                  fontSize: settingsTypography.label.fontSize,
+                  fontWeight: 600,
+                  color: 'var(--text-primary)'
+                }}
+              >
                 {t('agent.assistant.compress_system_prompt_label', '压缩提示词')}
               </span>
               <HelpTooltip content={t('agent.assistant.compress_system_prompt_desc')} />
@@ -298,7 +304,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <button
                 type="button"
                 style={{
-                  fontSize: 12,
+                  fontSize: settingsTypography.meta.fontSize,
                   color: 'var(--color-primary)',
                   background: 'none',
                   border: 'none',
@@ -315,7 +321,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             </div>
             <textarea
               className={styles.promptTextarea}
-              rows={8}
+              rows={6}
               value={editingCompressSystemPrompt}
               onChange={(e) => setEditingCompressSystemPrompt(e.target.value)}
               spellCheck={false}
@@ -324,20 +330,21 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                marginTop: 8
+                marginTop: sharedTokens.spacing.mdTight,
+                paddingBottom: sharedTokens.spacing.xs
               }}
             >
               <button
                 type="button"
                 disabled={isSaving}
                 style={{
-                  fontSize: 13,
+                  fontSize: settingsTypography.label.fontSize,
                   padding: '6px 16px',
-                  borderRadius: 8,
+                  borderRadius: sharedTokens.radius.sm,
                   border: 'none',
                   cursor: isSaving ? 'not-allowed' : 'pointer',
                   background: 'var(--color-primary)',
-                  color: 'var(--color-on-primary, #fff)',
+                  color: 'var(--text-on-primary)',
                   opacity: isSaving ? 0.6 : 1
                 }}
                 onClick={() => {

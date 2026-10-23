@@ -6,6 +6,7 @@ import { AssistantKindBadge } from '../AssistantKindBadge'
 import styles from './AssistantManagementPage.module.css'
 import type { AssistantInfo } from './index'
 import { GripVertical, Pin, Trash2 } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 type AssistantListRowProps = {
   assistant: AssistantInfo
@@ -56,8 +57,8 @@ export const AssistantListRow = forwardRef<HTMLDivElement, AssistantListRowProps
             {isPinned ? (
               <Pin
                 size={14}
-                color="var(--color-primary, #5BA8F5)"
-                style={{ marginLeft: 6, opacity: 0.8 }}
+                color="var(--color-primary)"
+                style={{ marginLeft: sharedTokens.spacing.xsPlus, opacity: 0.8 }}
               />
             ) : null}
           </div>
@@ -90,7 +91,7 @@ export function AssistantSortableListItem({
   assistant: AssistantInfo
   isPinned: boolean
   onEdit: (assistant: AssistantInfo) => void
-  onDelete: (assistantId: string) => void
+  onDelete?: (assistantId: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: assistant.id

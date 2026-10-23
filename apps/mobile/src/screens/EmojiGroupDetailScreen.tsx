@@ -15,6 +15,7 @@ import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { useEmojiToolSettings } from '../hooks/useEmojiToolSettings'
 import { useBaishou } from '../providers/BaishouProvider'
 import { MobileAttachmentManagerService } from '../services/mobile-attachment-manager.service'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const EmojiGroupDetailScreen: React.FC = () => {
   const { groupId: groupIdParam } = useLocalSearchParams<{ groupId: string | string[] }>()
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   }
 })

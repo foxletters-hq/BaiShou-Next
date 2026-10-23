@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  findConflictingVaultName,
+  normalizeVaultNameForCompare,
   sanitizeVaultDirectoryName,
   sanitizeVaultNameForPathSegment,
   validateVaultName,
@@ -49,5 +51,38 @@ describe('validateVaultName vs sanitizeVaultDirectoryName', () => {
   it('rejects chars that sanitization would rewrite', () => {
     expect(validateVaultName('foo/bar').ok).toBe(false)
     expect(sanitizeVaultDirectoryName('foo/bar')).toBe('foo_bar')
+  })
+})
+
+describe('findConflictingVaultName', () => {
+  it('detects exact match', () => {
+    expect(findConflictingVaultName('Work', ['Personal', 'Work'])).toEqual({
+      existing: 'Work',
+      kind: 'exact'
+    })
+  })
+
+  it('detects case-only conflict', () => {
+    expect(findConflictingVaultName('work', ['Personal', 'Work'])).toEqual({
+      existing: 'Work',
+      kind: 'case'
+    })
+  })
+
+  it('detects sanitized directory collision against legacy illegal name', () => {
+    expect(findConflictingVaultName('a_b', ['a:b'])).toEqual({
+      existing: 'a:b',
+      kind: 'directory'
+    })
+  })
+
+  it('returns null when no conflict', () => {
+    expect(findConflictingVaultName('Side', ['Personal', 'Work'])).toBeNull()
+  })
+})
+
+describe('normalizeVaultNameForCompare', () => {
+  it('folds case and trims', () => {
+    expect(normalizeVaultNameForCompare('  Work  ')).toBe('work')
   })
 })

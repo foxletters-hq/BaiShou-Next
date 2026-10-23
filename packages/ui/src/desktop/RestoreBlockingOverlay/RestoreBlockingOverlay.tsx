@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './RestoreBlockingOverlay.module.css'
 
 export interface RestoreBlockingOverlayProps {
@@ -36,7 +37,7 @@ export const RestoreBlockingOverlay: React.FC<RestoreBlockingOverlayProps> = ({
 
   return createPortal(
     <div
-      className={styles.overlay}
+      className={withAppContentOverlay(styles.overlay)}
       role="alertdialog"
       aria-modal="true"
       aria-busy="true"

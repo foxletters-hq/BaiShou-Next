@@ -105,17 +105,21 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
 
   return (
     <>
-      <View style={fieldWrapStyle}>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
+      <View style={[fieldWrapStyle, styles.inlineFieldRow, styles.providerRow]}>
+        <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
           {t('tts.settings.provider_label')}
         </Text>
-        <Select
-          variant="settings"
-          options={providerOptions}
-          value={config.id}
-          onValueChange={onProviderChange}
-          presentation="center"
-        />
+        <View style={styles.providerSelectWrap}>
+          <Select
+            variant="settings"
+            compact
+            options={providerOptions}
+            value={config.id}
+            onValueChange={onProviderChange}
+            presentation="center"
+            triggerStyle={styles.compactSelectTrigger}
+          />
+        </View>
       </View>
 
       <Section>
@@ -179,31 +183,38 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
       )}
 
       <Section>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.model_id_label')}
-        </Text>
-        <View style={styles.modelRow}>
-          <TtsModelCombobox
-            value={config.modelId}
-            placeholder={modelPlaceholder}
-            options={getModelOptions()}
-            isOpen={isModelDropdownOpen}
-            onChangeText={onModelTextChange}
-            onFocus={onModelDropdownOpen}
-            onToggleDropdown={onModelDropdownToggle}
-            onSelect={onSelectModel}
-          />
-          {canFetchModels && (
-            <Button
-              variant="outline"
-              onPress={onFetchModels}
-              isLoading={loadingModels}
-              isDisabled={loadingModels}
-              className="min-w-[72px] px-3.5"
-            >
-              {loadingModels ? t('tts.settings.fetching_models') : t('tts.settings.fetch_models')}
-            </Button>
-          )}
+        <View style={styles.modelInlineRow}>
+          <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+            {t('tts.settings.model_id_label')}
+          </Text>
+          <View style={styles.modelControlsWrap}>
+            <View style={styles.modelComboboxWrap}>
+              <TtsModelCombobox
+                value={config.modelId}
+                placeholder={modelPlaceholder}
+                options={getModelOptions()}
+                isOpen={isModelDropdownOpen}
+                onChangeText={onModelTextChange}
+                onFocus={onModelDropdownOpen}
+                onToggleDropdown={onModelDropdownToggle}
+                onSelect={onSelectModel}
+                compact
+                triggerStyle={styles.compactSelectTrigger}
+              />
+            </View>
+            {canFetchModels && (
+              <Button
+                variant="outline"
+                onPress={onFetchModels}
+                isLoading={loadingModels}
+                isDisabled={loadingModels}
+                className="px-2.5"
+                style={[styles.actionButton, styles.compactActionButton]}
+              >
+                {loadingModels ? t('tts.settings.fetching_models') : t('tts.settings.fetch_models')}
+              </Button>
+            )}
+          </View>
         </View>
       </Section>
 
@@ -280,16 +291,20 @@ export const TtsBasicFields: React.FC<TtsBasicFieldsProps> = ({
       )}
 
       <Section>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.format_label')}
-        </Text>
-        <Select
-          variant="settings"
-          options={formatOptions}
-          value={config.responseFormat}
-          onValueChange={(v) => onUpdate({ responseFormat: v })}
-          presentation="center"
-        />
+        <View style={styles.inlineFieldRow}>
+          <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+            {t('tts.settings.format_label')}
+          </Text>
+          <Select
+            variant="settings"
+            compact
+            options={formatOptions}
+            value={config.responseFormat}
+            onValueChange={(v) => onUpdate({ responseFormat: v })}
+            presentation="center"
+            triggerStyle={styles.compactSelectTrigger}
+          />
+        </View>
       </Section>
     </>
   )

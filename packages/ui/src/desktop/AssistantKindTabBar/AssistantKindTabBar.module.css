@@ -1,68 +1,62 @@
-.tabs {
-  position: relative;
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal);
-  padding: 6px;
-  border-radius: var(--radius-md);
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.indicator {
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc(50% - 10px);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateX(0);
-  pointer-events: none;
-}
-
-.tabs[data-active='work'] .indicator {
-  transform: translateX(calc(100% + 8px));
-}
-
-.tab {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  border: none;
-  background: transparent;
-  transition: color 0.2s var(--ease-in-out);
-  min-width: 0;
-}
-
-.tab:hover {
-  color: var(--text-primary);
-}
-
-.tab.active {
-  color: var(--color-primary);
-}
-
 .section {
   width: 100%;
 }
 
 .hint {
-  margin: 8px 0 0;
-  font-size: 13px;
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--ui-fs-md);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+}
+
+.kindCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-md-tight) var(--spacing-md);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kindCard + .kindCard {
+  border-top: 1px solid var(--border-muted);
+}
+
+.kindCard:hover {
+  background: var(--bg-surface-high);
+}
+
+.kindCardActive {
+  background: var(--bg-surface-high);
+}
+
+.kindCardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+}
+
+.kindCardActive .kindCardTitle {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.kindCardHint {
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   line-height: 1.45;
   color: var(--text-secondary);
 }

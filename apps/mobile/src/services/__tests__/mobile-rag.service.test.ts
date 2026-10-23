@@ -2,15 +2,40 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   createMobileRagService,
   embedDiaryEntry,
-  isDeferredPostSyncEmbedPending,
-  isMobileRagReembedInFlight,
   resetMobileRagBatchStateForTests,
   runControlledDiaryBatchEmbed,
   type MobileRagServiceDeps
 } from '../mobile-rag.service'
 import { EmbeddingAdapter } from '@baishou/ai'
+import { hashEmbedSourceContent } from '@baishou/shared'
 import { mobileRagOperationControl } from '../mobile-rag-operation-control'
-import { setMobileDiaryEmbeddingDeps } from '../mobile-diary-embedding.service'
+import { runMobileIncrementalAfterSync } from '../mobile-incremental-sync-after.util'
+import * as mobilePostSyncDiaryEmbed from '../mobile-post-sync-diary-embed.service'
+
+vi.mock('../mobile-pending-embed-fill', () => ({
+  runMobileManualPendingEmbedFill: vi.fn().mockResolvedValue({
+    graphUpdated: 0,
+    graphFailed: 0,
+    graphTotal: 0,
+    skippedReason: 'nothing-to-embed'
+  })
+}))
+
+vi.mock('../mobile-pending-embed-counts', () => ({
+  getOrganizePendingSnapshot: vi.fn().mockResolvedValue({
+    diaries: 0,
+    memories: 0,
+    graphNodes: 0,
+    knowledgeSources: 0,
+    notebookGraphNodes: 0,
+    total: 0,
+    graphExtract: 0,
+    graphDisambiguate: 0
+  }),
+  clearMobileOrganizePendingSnapshot: vi.fn(),
+  invalidateMobilePendingEmbedCountsCache: vi.fn(),
+  notifyMobilePendingEmbedCountsChanged: vi.fn()
+}))
 
 function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagServiceDeps {
   const settingsStore: Record<string, unknown> = {
@@ -46,6 +71,7 @@ function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagSer
     },
     diaryService: {
       listAll: vi.fn().mockResolvedValue([]),
+      listForEmbedDetection: vi.fn().mockResolvedValue([]),
       findByIdsForEmbedding: vi.fn().mockResolvedValue(new Map())
     },
     hsRepo: {
@@ -100,6 +126,39 @@ describe('embedDiaryEntry', () => {
     expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(2, 'diary', '42')
     expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(3, 'diary', 'Personal#42')
   })
+
+  it('embeds diary body with a date prefix and without tag metadata', async () => {
+    const deps = createDeps()
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const adapter = { embedText } as unknown as EmbeddingAdapter
+
+    await embedDiaryEntry(
+      deps,
+      {
+        diaryId: 7,
+        content: '开会纪要 #工作',
+        tags: ['工作'],
+        date: '2026-09-01',
+        updatedAt: new Date(2026, 8, 1, 12, 0, 0)
+      },
+      { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+    )
+
+    expect(embedText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: '开会纪要 #工作',
+        chunkPrefix: '[2026-09-01 日记:]\n',
+        sourceType: 'diary',
+        requireSuccess: true
+      })
+    )
+    expect(embedText.mock.calls[0]?.[0].chunkPrefix).not.toContain('标签')
+    expect(embedText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentHash: hashEmbedSourceContent('开会纪要 #工作')
+      })
+    )
+  })
 })
 
 describe('runControlledDiaryBatchEmbed', () => {
@@ -136,7 +195,7 @@ describe('runControlledDiaryBatchEmbed', () => {
     let calls = 0
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue([0.1, 0.2, 0.3])
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValueOnce([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
@@ -179,7 +238,7 @@ describe('runControlledDiaryBatchEmbed', () => {
     let calls = 0
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue([0.1, 0.2, 0.3])
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValue([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
@@ -217,7 +276,6 @@ describe('runControlledDiaryBatchEmbed', () => {
   })
 
   it('marks embed failure when prepare step fails', async () => {
-    vi.useFakeTimers()
     const settingsStore: Record<string, unknown> = {
       rag_config: { ragEnabled: true, ragTopK: 20, ragSimilarityThreshold: 0.4 },
       global_models: {
@@ -253,13 +311,10 @@ describe('runControlledDiaryBatchEmbed', () => {
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue(null)
 
-    const promise = runControlledDiaryBatchEmbed(deps)
-    await vi.runAllTimersAsync()
-    const result = await promise
-    vi.useRealTimers()
+    await expect(runControlledDiaryBatchEmbed(deps)).rejects.toThrow(
+      '嵌入接口不可用，没有写入任何向量'
+    )
 
-    expect(result.skipped).toBe(true)
-    expect(result.skipReason).toBe('prepare-failed')
     const saved = settingsStore.rag_config as {
       lastDiaryEmbedFailureAt?: number
       totalEmbeddings?: number
@@ -277,7 +332,7 @@ describe('createMobileRagService.reembedAll', () => {
 
   it('clears vectors and batch embeds without hitting migration-running guard', async () => {
     const deps = createDeps()
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValue([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
@@ -306,35 +361,91 @@ describe('createMobileRagService.reembedAll', () => {
     expect(count).toBe(1)
   })
 
-  it('defers post-sync scheduling during reembed and flushes afterward', async () => {
-    const deps = createDeps()
-    setMobileDiaryEmbeddingDeps(deps)
-    deps.diaryService.listAll = vi.fn().mockResolvedValue([])
+  it('does not auto-embed diaries after incremental sync', async () => {
+    const scheduleSpy = vi
+      .spyOn(mobilePostSyncDiaryEmbed, 'schedulePostSyncDiaryBatchEmbed')
+      .mockImplementation(() => undefined)
 
-    let releaseDetect!: () => void
-    const detectGate = new Promise<void>((resolve) => {
-      releaseDetect = resolve
+    await runMobileIncrementalAfterSync(
+      {
+        uploaded: 0,
+        downloaded: 1,
+        conflicts: 0,
+        skipped: 0,
+        deletedRemote: 0,
+        deletedLocal: 0,
+        failed: 0,
+        failedPaths: [],
+        uploadedPaths: [],
+        downloadedPaths: ['Personal/Journals/2026/07/14.md'],
+        deletedLocalPaths: [],
+        deletedRemotePaths: []
+      },
+      {
+        settingsManager: createDeps().settingsManager as never,
+        pathService: { getRootDirectory: async () => '/tmp' } as never,
+        fileSystem: {} as never,
+        reportPostSync: vi.fn(),
+        refreshCheckpointForPaths: vi.fn(async () => undefined),
+        resolveActiveUserProfileSyncRelPath: async () => null
+      }
+    )
+
+    expect(scheduleSpy).not.toHaveBeenCalled()
+    scheduleSpy.mockRestore()
+  })
+
+  it('returns vaultTotalCount combining memory_embeddings and graph_nodes and supports UNION ALL pagination in queryEntries', async () => {
+    const execute = vi.fn(async ({ sql }: { sql: string; args?: unknown[] }) => {
+      if (sql.includes("group_id LIKE 'diary:%'")) {
+        return { rows: [{ count: 52 }] }
+      }
+      if (sql.includes('UNION ALL')) {
+        return {
+          rows: [
+            { kind: 'graph', row_id: 'node-1', sort_ts: 2000 },
+            { kind: 'mem', row_id: 'emb-1', sort_ts: 1000 }
+          ]
+        }
+      }
+      if (sql.includes('WHERE embedding_id IN')) {
+        return {
+          rows: [
+            {
+              embedding_id: 'emb-1',
+              chunk_text: '[2026-03-14 日记:]\n老日记片段',
+              model_id: 'embed-model',
+              created_at: 1000,
+              source_created_at: 1000,
+              source_type: 'diary',
+              source_id: 'Personal#25',
+              metadata_json: '{}'
+            }
+          ]
+        }
+      }
+      if (sql.includes('WHERE vault_id = ?')) {
+        return { rows: [{ count: 52 }] }
+      }
+      return { rows: [{ count: 52 }] }
     })
 
-    vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockImplementation(async () => {
-      const { schedulePostSyncDiaryBatchEmbed } =
-        await import('../mobile-post-sync-diary-embed.service')
-      schedulePostSyncDiaryBatchEmbed()
-      expect(isMobileRagReembedInFlight()).toBe(true)
-      expect(isDeferredPostSyncEmbedPending()).toBe(true)
-      await detectGate
-      return [0.1, 0.2, 0.3]
+    const deps = createDeps({
+      rawSqlClient: { execute } as never
     })
-
     const service = createMobileRagService(deps)
-    const reembedPromise = service.reembedAll()
-    await Promise.resolve()
+    const stats = await service.getStats()
 
-    releaseDetect()
-    await reembedPromise
-    await new Promise((resolve) => setImmediate(resolve))
+    expect(stats.diaryCountForVault).toBe(52)
+    expect(stats.vaultTotalCount).toBe(52)
 
-    expect(isDeferredPostSyncEmbedPending()).toBe(false)
-    resetMobileRagBatchStateForTests()
+    const page = await service.queryEntries({
+      limit: 10,
+      offset: 0,
+      mode: 'text',
+      withTotal: true,
+      sourceKind: 'all'
+    })
+    expect(page.total).toBe(52)
   })
 })

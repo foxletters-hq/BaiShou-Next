@@ -1,5 +1,13 @@
-/** 工具管理页分类（内置工具 Tab） */
+import type { FallbackTranslateFn } from '../i18n/i18n.types'
+import { resolveMcpToolLookupName } from '../utils/mcp-client-url.util'
+
+/** 工具管理页分类（伙伴内置工具） */
 export type AgentToolCategory = 'diary' | 'summary' | 'memory' | 'search' | 'general'
+
+/** 工作台工具分类 */
+export type WorkspaceToolCategory = 'browse' | 'mutate' | 'command' | 'utility'
+
+export type AgentToolScene = 'companion' | 'workspace'
 
 export interface AgentToolConfigurableParamDef {
   key: string
@@ -22,8 +30,17 @@ export interface AgentToolUiDef {
   configurableParams?: AgentToolConfigurableParamDef[]
 }
 
+export interface WorkspaceToolUiDef {
+  id: string
+  category: WorkspaceToolCategory
+  nameKey: string
+  tooltipKey: string
+  canBeDisabled?: boolean
+  configurableParams?: AgentToolConfigurableParamDef[]
+}
+
 /**
- * 工具管理页「内置工具」完整列表（桌面 + 移动端共用）。
+ * 工具管理页「伙伴工具」完整列表（桌面 + 移动端共用）。
  * 顺序即页面展示顺序；分类内按数组顺序排列。
  */
 export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
@@ -81,10 +98,22 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.summary_read_tooltip'
   },
   {
+    id: 'summary_write',
+    category: 'summary',
+    nameKey: 'agent.tools.summary_write',
+    tooltipKey: 'agent.tools.summary_write_tooltip'
+  },
+  {
     id: 'message_search',
     category: 'memory',
     nameKey: 'agent.tools.message_search',
     tooltipKey: 'agent.tools.message_search_tooltip'
+  },
+  {
+    id: 'session_list',
+    category: 'memory',
+    nameKey: 'agent.tools.session_list',
+    tooltipKey: 'agent.tools.session_list_tooltip'
   },
   {
     id: 'vector_search',
@@ -105,6 +134,18 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.memory_delete_tooltip'
   },
   {
+    id: 'recall_relations',
+    category: 'memory',
+    nameKey: 'agent.tools.recall_relations',
+    tooltipKey: 'agent.tools.recall_relations_tooltip'
+  },
+  {
+    id: 'graph_upsert',
+    category: 'memory',
+    nameKey: 'agent.tools.graph_upsert',
+    tooltipKey: 'agent.tools.graph_upsert_tooltip'
+  },
+  {
     id: 'web_search',
     category: 'search',
     nameKey: 'agent.tools.web_search',
@@ -115,6 +156,19 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     category: 'search',
     nameKey: 'agent.tools.url_read',
     tooltipKey: 'agent.tools.url_read_tooltip'
+  },
+  {
+    id: 'skill_write',
+    category: 'general',
+    nameKey: 'agent.tools.skill_write',
+    tooltipKey: 'agent.tools.skill_write_tooltip'
+  },
+  {
+    id: 'skill_read',
+    category: 'general',
+    nameKey: 'agent.tools.skill_read',
+    tooltipKey: 'agent.tools.skill_read_tooltip',
+    canBeDisabled: false
   },
   {
     id: 'auto_inject_time',
@@ -131,6 +185,65 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
   }
 ] as const
 
+/** 工作台工具列表（按功能分类） */
+export const WORKSPACE_TOOL_UI_DEFS: readonly WorkspaceToolUiDef[] = [
+  {
+    id: 'workspace_list',
+    category: 'browse',
+    nameKey: 'agent.tools.workspace_list',
+    tooltipKey: 'agent.tools.workspace_list_tooltip'
+  },
+  {
+    id: 'workspace_read',
+    category: 'browse',
+    nameKey: 'agent.tools.workspace_read',
+    tooltipKey: 'agent.tools.workspace_read_tooltip'
+  },
+  {
+    id: 'workspace_write',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_write',
+    tooltipKey: 'agent.tools.workspace_write_tooltip'
+  },
+  {
+    id: 'workspace_patch',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_patch',
+    tooltipKey: 'agent.tools.workspace_patch_tooltip'
+  },
+  {
+    id: 'workspace_rename',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_rename',
+    tooltipKey: 'agent.tools.workspace_rename_tooltip'
+  },
+  {
+    id: 'workspace_delete',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_delete',
+    tooltipKey: 'agent.tools.workspace_delete_tooltip'
+  },
+  {
+    id: 'workspace_run',
+    category: 'command',
+    nameKey: 'agent.tools.workspace_run',
+    tooltipKey: 'agent.tools.workspace_run_tooltip'
+  },
+  {
+    id: 'companion_ask',
+    category: 'utility',
+    nameKey: 'agent.tools.companion_ask',
+    tooltipKey: 'agent.tools.companion_ask_tooltip'
+  },
+  {
+    id: 'current_time',
+    category: 'utility',
+    nameKey: 'agent.tools.current_time',
+    tooltipKey: 'agent.tools.current_time_tooltip',
+    canBeDisabled: false
+  }
+] as const
+
 /** 工具管理页分类展示顺序 */
 export const AGENT_TOOL_CATEGORY_ORDER: readonly AgentToolCategory[] = [
   'diary',
@@ -140,5 +253,32 @@ export const AGENT_TOOL_CATEGORY_ORDER: readonly AgentToolCategory[] = [
   'general'
 ] as const
 
+export const WORKSPACE_TOOL_CATEGORY_ORDER: readonly WorkspaceToolCategory[] = [
+  'browse',
+  'mutate',
+  'command',
+  'utility'
+] as const
+
 /** 仅 UI 使用的虚拟工具（非模型可调用） */
 export const AGENT_TOOL_UI_ONLY_IDS = ['auto_inject_time'] as const
+
+/** 门控 / 工具编号对应的显示名 i18n key；未知工具仍走 agent.tools.<action> */
+export function resolveAgentToolNameKey(action: string): string {
+  const lookupName = resolveMcpToolLookupName(action).lookupName
+  const def =
+    AGENT_TOOL_UI_DEFS.find((item) => item.id === lookupName) ??
+    WORKSPACE_TOOL_UI_DEFS.find((item) => item.id === lookupName)
+  return def?.nameKey ?? `agent.tools.${lookupName}`
+}
+
+/** 把存储用的工具编号转成当前语言的显示名；没有词条时回退为编号本身 */
+export function resolveAgentToolActionLabel(action: string, t: FallbackTranslateFn): string {
+  const trimmed = action.trim()
+  if (!trimmed) return action
+  const { isMcp, lookupName } = resolveMcpToolLookupName(trimmed)
+  if (isMcp && lookupName.startsWith('baishou_')) return lookupName
+  const label = t(resolveAgentToolNameKey(lookupName), lookupName)
+  if (!isMcp) return label
+  return `${t('agent.tools.mcp_prefix', 'MCP')} · ${label}`
+}

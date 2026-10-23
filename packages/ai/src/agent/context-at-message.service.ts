@@ -75,17 +75,22 @@ export class ContextAtMessageService {
       dbHistory,
       options.modelId,
       options.providerType,
-      { wrapMessageTime: options.wrapMessageTime }
+      { wrapMessageTime: options.wrapMessageTime !== false }
     )
 
     const { chain, compressedContent, systemPrompt } = ContextCallChainBuilder.build({
-      systemPrompt: options.systemPrompt,
+      systemPrompt: options.systemPrompt ?? '',
       modelMessages,
       target: target as any,
       allMessages: allMessages as any
     })
 
-    const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+    const { ensureSessionSnapshotsRestored } = await import('./session-snapshot-restore')
+    const latestSnapshot = await ensureSessionSnapshotsRestored(
+      sessionId,
+      snapshotRepo,
+      sessionRepo
+    )
     const compactionMeta = ContextAtMessageService.resolveCompactionMeta(
       allMessages as MessageWithParts[],
       latestSnapshot

@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { EmbeddingAdapter } from '../embedding.adapter'
-import type { IAIProvider } from '../../../providers/provider.interface'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import type { SqliteHybridSearchRepository } from '@baishou/database'
+import type { IAIProvider } from '../../../providers/provider.interface'
+import {
+  MAX_CHUNK_TOKENS,
+  normalizeEmbeddingVector,
+  splitTextIntoChunks
+} from '../../../rag/embedding-chunk'
+import { EmbeddingAdapter } from '../embedding.adapter'
 
 const { mockEmbed } = vi.hoisted(() => ({
   mockEmbed: vi.fn()
@@ -12,7 +18,7 @@ vi.mock('ai', () => ({
 }))
 
 function createLongText(chunks: number): string {
-  return 'x'.repeat(1024 * chunks)
+  return 'x '.repeat(MAX_CHUNK_TOKENS * chunks)
 }
 
 describe('EmbeddingAdapter', () => {
@@ -21,12 +27,50 @@ describe('EmbeddingAdapter', () => {
   } as unknown as IAIProvider
 
   const hybridRepo = {
-    insertEmbedding: vi.fn().mockResolvedValue(undefined)
+    insertEmbedding: vi.fn().mockResolvedValue(undefined),
+    recordEmbedded: vi.fn().mockResolvedValue(undefined),
+    recordEmbedFailure: vi.fn().mockResolvedValue(undefined)
   } as unknown as SqliteHybridSearchRepository
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockEmbed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
+  })
+
+  it('should keep embedQuery running after the 15s semantic search timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      let resolveEmbed: ((value: { embedding: number[] }) => void) | undefined
+      mockEmbed.mockImplementation(
+        () =>
+          new Promise<{ embedding: number[] }>((resolve) => {
+            resolveEmbed = resolve
+          })
+      )
+      const adapter = new EmbeddingAdapter(provider, 'Qwen/Qwen3-Embedding-4B')
+      const pending = adapter.embedQuery('记忆整理连通检查')
+
+      await vi.advanceTimersByTimeAsync(16_000)
+      resolveEmbed?.({ embedding: [0.1, 0.2, 0.3] })
+
+      await expect(pending).resolves.toEqual(normalizeEmbeddingVector([0.1, 0.2, 0.3]))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('should throw the provider balance message from embedQuery', async () => {
+    mockEmbed.mockRejectedValue({
+      message: 'Payment Required',
+      statusCode: 402,
+      responseBody:
+        '{"code":30001,"message":"Sorry, your account balance is insufficient","data":null}'
+    })
+    const adapter = new EmbeddingAdapter(provider, 'Qwen/Qwen3-Embedding-4B')
+
+    await expect(adapter.embedQuery('天气')).rejects.toThrow(
+      'Sorry, your account balance is insufficient'
+    )
   })
 
   it('throws when requireSuccess and all chunks fail', async () => {
@@ -39,9 +83,12 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '1',
         groupId: 'batch',
+        vaultId: deriveLegacyVaultId('Personal'),
         requireSuccess: true
       })
     ).rejects.toThrow(/Embedding API returned no vectors/)
+    expect(hybridRepo.recordEmbedFailure).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).not.toHaveBeenCalled()
   })
 
   it('throws when requireSuccess and only some chunks succeed', async () => {
@@ -60,22 +107,164 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '2',
         groupId: 'batch',
+        vaultId: deriveLegacyVaultId('Personal'),
         requireSuccess: true
       })
     ).rejects.toThrow(/incomplete vectors/)
+    expect(hybridRepo.recordEmbedFailure).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).not.toHaveBeenCalled()
   })
 
   it('succeeds when all chunks embed', async () => {
     const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+    const text = 'x '.repeat(MAX_CHUNK_TOKENS + 100)
+    const chunkCount = splitTextIntoChunks(text).length
 
     await adapter.embedText({
-      text: 'x'.repeat(1500),
+      text,
       sourceType: 'diary',
       sourceId: '3',
       groupId: 'batch',
+      vaultId: deriveLegacyVaultId('Personal'),
       requireSuccess: true
     })
 
-    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
+    expect(chunkCount).toBeGreaterThan(1)
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(chunkCount)
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: 'diary',
+        sourceId: '3',
+        chunkCount,
+        contentHash: expect.any(String),
+        modelId: 'text-embedding-3-small',
+        dimension: 3
+      })
+    )
+  })
+
+  it('prefixes each chunk with the date label and does not add tag metadata', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '开会纪要',
+      sourceType: 'diary',
+      sourceId: '4',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      chunkPrefix: '[2026-09-01 日记:]\n',
+      requireSuccess: true
+    })
+
+    expect(mockEmbed).toHaveBeenCalledWith(
+      expect.objectContaining({ value: '[2026-09-01 日记:]\n开会纪要' })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({ chunkText: '[2026-09-01 日记:]\n开会纪要' })
+    )
+  })
+
+  it('prefixes every chunk with the date label', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+    const prefix = '[2026-09-01 日记:]\n'
+    const text = 'x '.repeat(MAX_CHUNK_TOKENS + 100)
+    const chunkCount = splitTextIntoChunks(text).length
+
+    await adapter.embedText({
+      text,
+      sourceType: 'diary',
+      sourceId: '5',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      chunkPrefix: prefix,
+      requireSuccess: true
+    })
+
+    expect(chunkCount).toBeGreaterThan(1)
+    expect(mockEmbed).toHaveBeenCalledTimes(chunkCount)
+    expect(mockEmbed.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(mockEmbed.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(chunkCount)
+    expect(hybridRepo.insertEmbedding).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ chunkText: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ chunkText: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(
+      String((hybridRepo.insertEmbedding as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].chunkText)
+    ).not.toContain('[标签:')
+  })
+
+  it('records a zero ledger row when text is empty', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '   ',
+      sourceType: 'diary',
+      sourceId: 'vault-a#empty',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      contentHash: 'empty-hash'
+    })
+
+    expect(hybridRepo.insertEmbedding).not.toHaveBeenCalled()
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'vault-a#empty',
+        contentHash: 'empty-hash',
+        chunkCount: 0
+      })
+    )
+  })
+
+  it('writes content_hash into vector metadata_json', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '短日记',
+      sourceType: 'diary',
+      sourceId: 'vault-a#meta',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      metadataJson: JSON.stringify({ updated_at: 1 }),
+      contentHash: 'cafe',
+      requireSuccess: true
+    })
+
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadataJson: JSON.stringify({ updated_at: 1, content_hash: 'cafe' })
+      })
+    )
+  })
+
+  it('forwards contentHash to recordEmbedded when provided', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '短日记',
+      sourceType: 'diary',
+      sourceId: 'vault-a#8',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      contentHash: 'deadbeef',
+      requireSuccess: true
+    })
+
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'vault-a#8',
+        contentHash: 'deadbeef',
+        chunkCount: 1
+      })
+    )
   })
 })

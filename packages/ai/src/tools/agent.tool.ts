@@ -1,5 +1,19 @@
 import { z } from 'zod'
 import { tool } from 'ai'
+import {
+  isAgentGateRejectedError,
+  TOOL_EXECUTION_FAILED_PREFIX,
+  type AgentGateProfileId,
+  type AgentGateToolMetadata,
+  type AgentSessionKind,
+  type FileChangePartData,
+  type ToolRawDataSourceManager
+} from '@baishou/shared'
+import type { AgentRoundCheckpointService } from '../agent-workspace/agent-round-checkpoint.service'
+import type { WorkspaceFsAdapter } from '../agent-workspace/workspace-fs'
+import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
+import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 
 /**
  * 嵌入服务接口——工具不关心具体实现（DIP）
@@ -12,6 +26,12 @@ export interface ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultId: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    chunkPrefix?: string
+    /** 写入嵌入账本的内容哈希；不传时由实现按正文补算 */
+    contentHash?: string
   }): Promise<void>
 }
 
@@ -33,6 +53,15 @@ export interface VectorSearchResult {
 export interface VectorSearchTimeFilter {
   startMs?: number
   endMs?: number
+  vaultId?: string
+}
+
+export interface VectorSourceLookup {
+  sourceType: string
+  sourceId: string
+  chunkText: string
+  /** 向量表未记录来源时间时为 null */
+  createdAt?: number | null
 }
 
 export interface ToolVectorStore {
@@ -42,6 +71,12 @@ export interface ToolVectorStore {
     timeFilter?: VectorSearchTimeFilter
   ): Promise<VectorSearchResult[]>
   deleteBySource(sourceType: string, sourceId: string): Promise<void>
+  /** 按来源类型 + 唯一键读取一条嵌入，供精确删除核对。未传 vaultId 时应 fail-closed。 */
+  getBySource?(
+    sourceType: string,
+    sourceId: string,
+    vaultId?: string
+  ): Promise<VectorSourceLookup | null>
   /**
    * 将一个指定的日记文件从向量库中抹去
    */
@@ -60,6 +95,8 @@ export interface ToolVectorStore {
       sessionId: string
       snippet: string
       createdAt?: number
+      sourceType?: string
+      sourceId?: string
     }>
   >
 }
@@ -70,13 +107,44 @@ export interface ToolVectorStore {
 export interface ToolMessageSearcher {
   searchMessages(
     query: string,
-    limit: number
+    limit: number,
+    /** 活跃仓库 ID；缺省时由实现方 fail-closed */
+    vaultId?: string,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
   ): Promise<
     Array<{
       role: string
       snippet: string
       sessionTitle: string
       date: string
+    }>
+  >
+  listSessionsInDateRange?(
+    vaultId: string,
+    startDate: string,
+    endDate: string,
+    limit: number
+  ): Promise<
+    Array<{
+      sessionId: string
+      sessionTitle: string
+      firstDate: string
+      lastDate: string
+      messageCount: number
+      preview: string
+    }>
+  >
+  listMessagesInDateRange?(
+    vaultId: string,
+    limit: number,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
+  ): Promise<
+    Array<{
+      role: string
+      snippet: string
+      sessionTitle: string
+      date: string
+      sessionId?: string
     }>
   >
 }
@@ -94,6 +162,19 @@ export interface ToolSummaryReader {
     endDateIso: string
   } | null>
   getAvailableSummaries(type: string, limit?: number): Promise<string[]>
+  listAllSummaries?(): Promise<
+    Array<{
+      type: string
+      startDate: Date
+      endDate: Date
+    }>
+  >
+  writeSummary?(input: {
+    type: string
+    startDate: Date
+    endDate: Date
+    content: string
+  }): Promise<ToolDiaryMutationResult>
 }
 
 /**
@@ -103,6 +184,10 @@ export interface ToolDeduplicationService {
   checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    /** 稳定 vault id（写入/检索）；勿再用 name 派生 */
+    vaultId: string
+    /** 显示名快照（可选，仅日志/展示） */
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<{
@@ -137,12 +222,11 @@ export interface ToolDiarySearcher {
   ): Promise<Array<{ date: string; preview: string }>>
   /** 按日期读取日记全文（移动端经 DiaryService） */
   readByDates?(dates: string[]): Promise<Array<{ date: string; content: string | null }>>
-  writeEntry?(date: string, content: string, tags?: string): Promise<ToolDiaryMutationResult>
+  writeEntry?(date: string, content: string): Promise<ToolDiaryMutationResult>
   editEntry?(args: {
     date: string
     content: string
     mode?: 'append' | 'overwrite'
-    tags?: string
   }): Promise<ToolDiaryMutationResult>
   deleteEntry?(date: string): Promise<ToolDiaryMutationResult>
 }
@@ -152,6 +236,9 @@ export interface ToolDiarySearcher {
  */
 export interface ToolContext {
   sessionId: string
+  /** 稳定仓库身份（vlt_…）；embedding / graph / memory 写入与检索一律用此字段 */
+  vaultId: string
+  /** 显示名：仅供 system prompt / MCP / Gate UI；不得用于 DB 键或派生 id */
   vaultName: string
   embeddingService?: ToolEmbeddingService
   vectorStore?: ToolVectorStore
@@ -168,6 +255,74 @@ export interface ToolContext {
   contextCompressionRunner?: {
     run(phase: 'upstream' | 'downstream', options?: { force?: boolean }): Promise<string>
   }
+  /** Per-session BaishouAgentGate instance for mutating tool confirmation */
+  agentGate?: IBaishouAgentGate
+  /** Scene profile for Gate default rules (defaults from workspace.sessionKind) */
+  gateProfile?: AgentGateProfileId
+  /** Raw data source facade (Memory/Graph JSONL writes) */
+  rawDataSourceManager?: ToolRawDataSourceManager
+  /** After Graph JSONL write: pending-index → SQLite (optional host hook) */
+  syncGraphPendingIndex?: () => Promise<void>
+  /** Remove a life-graph node or edge from JSONL and SQLite together */
+  deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
+  /** Read-only GraphRAG for recall_relations */
+  graphReader?: import('@baishou/shared').ToolGraphReader
+  /** Exact name / id lookup for graph_upsert — not part of graphReader */
+  graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+  /** Existing-edge lookup for graph_upsert updates */
+  graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
+  /** Read-only knowledge notebook search for knowledge_search */
+  knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+  /** Read-only knowledge notebook graph for knowledge_graph_search */
+  knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
+  /** Skill 落盘（当前范围的 `.agents/skills`） */
+  skillsWriter?: {
+    writeSkill(input: {
+      name: string
+      description: string
+      content: string
+      previousName?: string
+    }): Promise<{ name: string; description: string; location: string }>
+  }
+  /** 按名读取 SKILL.md 正文，或列出所有可用 Skill */
+  skillsReader?: {
+    readSkill(name: string): Promise<{
+      name: string
+      description: string
+      content: string
+      location: string
+    } | null>
+    listSkills?(): Promise<
+      Array<{
+        name: string
+        description?: string
+      }>
+    >
+    /** 列出全部技能（含 autoinvoke:false），供用户显式选择 / MCP prompts 使用 */
+    listAllSkills?(): Promise<
+      Array<{
+        name: string
+        description?: string
+      }>
+    >
+    /** 列出技能目录下的资源文件（相对技能目录，最多约 10 个） */
+    listResources?(name: string): Promise<string[]>
+  }
+  /** Agent workspace session context (folder sandbox + round checkpoints) */
+  workspace?: {
+    folderRoot: string
+    sessionKind?: AgentSessionKind
+    /** 工作区策略作用域 ID（可选；用于 Gate scope） */
+    workspaceId?: string
+    /** 会话挂载的知识库笔记本（最多 3 本） */
+    notebookIds?: string[]
+    fs?: WorkspaceFsAdapter
+    roundCheckpointService?: AgentRoundCheckpointService
+    roundCheckpointId?: string
+    onFileChange?: (change: FileChangePartData) => void
+  }
+  /** Gate 拒绝时中断本轮 Drain（不伪装 tool error 续跑） */
+  interruptOnGateReject?: boolean
 }
 
 /**
@@ -225,6 +380,11 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
     return []
   }
 
+  /** Optional gate metadata; override per tool or rely on registry defaults */
+  get agentGateMetadata(): AgentGateToolMetadata | undefined {
+    return resolveAgentGateToolMetadata(this.name)
+  }
+
   /**
    * 工具的执行逻辑
    * @param args 强类型推导后的执行参数
@@ -237,23 +397,33 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
    * 将面向对象的 AgentTool 转化为 Vercel AI SDK 的 CoreTool 格式
    */
   toVercelTool(context: ToolContext): any {
+    const runExecute = async (args: z.infer<TArgs>) => {
+      try {
+        console.log(
+          `[AgentTool] Executing tool "${this.name}" with args:`,
+          JSON.stringify(args).slice(0, 200)
+        )
+        const result = await this.execute(args, context)
+        console.log(`[AgentTool] Tool "${this.name}" completed successfully`)
+        return result
+      } catch (e: any) {
+        if (isAgentGateRejectedError(e)) throw e
+        console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
+        return `${TOOL_EXECUTION_FAILED_PREFIX} (${this.name}): ${e?.message || String(e)}`
+      }
+    }
+
+    const execute = wrapVercelToolExecuteWithAgentGate(
+      this.name,
+      this.agentGateMetadata,
+      context,
+      runExecute
+    )
+
     return tool({
       description: this.description,
       inputSchema: this.parameters,
-      execute: async (args: z.infer<TArgs>) => {
-        try {
-          console.log(
-            `[AgentTool] Executing tool "${this.name}" with args:`,
-            JSON.stringify(args).slice(0, 200)
-          )
-          const result = await this.execute(args, context)
-          console.log(`[AgentTool] Tool "${this.name}" completed successfully`)
-          return result
-        } catch (e: any) {
-          console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
-          return `工具执行失败 (${this.name}): ${e?.message || String(e)}`
-        }
-      }
+      execute
     })
   }
 }

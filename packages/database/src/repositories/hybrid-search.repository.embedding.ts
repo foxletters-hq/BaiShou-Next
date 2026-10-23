@@ -1,14 +1,25 @@
-import { embeddingVectorToBytes, logger, mapMigrationBackupRow } from '@baishou/shared'
-import type { ISqlExecutor, EmbeddingSnapshotMeta } from '@baishou/shared'
+import { embeddingVectorToBytes, logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
+import type {
+  ISqlExecutor,
+  EmbedLedgerFailureParams,
+  EmbedLedgerReconcileParams,
+  EmbedLedgerRecordParams
+} from '@baishou/shared'
 import {
-  HYBRID_SEARCH_BACKUP_TABLE,
+  EMBED_LEDGER_TABLE,
   HYBRID_SEARCH_INDEX_NAME,
-  HYBRID_SEARCH_TABLE,
-  HYBRID_SEARCH_ROLLBACK_TABLE
+  HYBRID_SEARCH_TABLE
 } from './hybrid-search.repository.constants'
+import { HybridSearchLedgerStore } from './hybrid-search.repository.ledger'
+
+export { HybridSearchMigrationStore } from './hybrid-search.repository.migration'
 
 export class HybridSearchEmbeddingStore {
-  constructor(private readonly db: ISqlExecutor) {}
+  private readonly ledger: HybridSearchLedgerStore
+
+  constructor(private readonly db: ISqlExecutor) {
+    this.ledger = new HybridSearchLedgerStore(db)
+  }
 
   async initVectorIndex(dimension: number): Promise<void> {
     await this.initVectorTables(dimension, false)
@@ -17,7 +28,6 @@ export class HybridSearchEmbeddingStore {
   async initVectorTables(dimension: number, _forceRebuild = false): Promise<void> {
     if (dimension <= 0) return
 
-    // sqlite-vec（桌面 better-sqlite3 / 移动端 expo-sqlite）走 vec_distance_cosine，无需 libsql ANN 索引
     try {
       await this.db.execute('SELECT vec_version()')
       logger.info(`[VectorSearch] sqlite-vec 已就绪（dim=${dimension}, metric=cosine）`)
@@ -41,6 +51,7 @@ export class HybridSearchEmbeddingStore {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultId: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
@@ -48,25 +59,32 @@ export class HybridSearchEmbeddingStore {
     modelId: string
     sourceCreatedAt?: number
   }): Promise<void> {
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('insertEmbedding: vaultId is required')
+    }
     const vectorBuffer = embeddingVectorToBytes(params.embedding)
     await this.db.execute({
       sql: `
         INSERT INTO ${HYBRID_SEARCH_TABLE}
-        (embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+        (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
          metadata_json, embedding, dimension, model_id, created_at, source_created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(embedding_id) DO UPDATE SET
           chunk_text = excluded.chunk_text,
           embedding = excluded.embedding,
           dimension = excluded.dimension,
           model_id = excluded.model_id,
-          metadata_json = excluded.metadata_json
+          metadata_json = excluded.metadata_json,
+          vault_id = excluded.vault_id,
+          group_id = excluded.group_id
       `,
       args: [
         params.id,
         params.sourceType,
         params.sourceId,
         params.groupId,
+        vaultId,
         params.chunkIndex,
         params.chunkText,
         params.metadataJson || '{}',
@@ -84,179 +102,334 @@ export class HybridSearchEmbeddingStore {
 
   async deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void> {
     await this.db.execute({
-      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND source_id = ?`,
-      args: [sourceType, sourceId]
+      sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
+      args: [sourceType, sourceId, sourceId]
+    })
+    try {
+      await this.db.execute({
+        sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE source_type = ? AND source_id = ?`,
+        args: [sourceType, sourceId]
+      })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[VectorSearch] 删除 embed_ledger 行失败（非阻塞）:', message)
+    }
+  }
+
+  async replaceSourceEmbeddings(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    groupId: string
+    modelId: string
+    dimension: number
+    contentHash: string
+    metadataJson?: string
+    sourceCreatedAt?: number
+    replaceExisting?: boolean
+    recordLedger?: boolean
+    chunks: Array<{
+      id: string
+      chunkIndex: number
+      chunkText: string
+      embedding: number[]
+    }>
+  }): Promise<void> {
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('replaceSourceEmbeddings: vaultId is required')
+    }
+    if (params.replaceExisting) {
+      await this.db.execute({
+        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND (source_id = ? OR embedding_id = ?)`,
+        args: [params.sourceType, params.sourceId, params.sourceId]
+      })
+    }
+    const createdAtSec = Math.floor(Date.now() / 1000)
+    const srcVal = params.sourceCreatedAt || Date.now()
+    const sourceCreatedAtSec = srcVal > 100000000000 ? Math.floor(srcVal / 1000) : srcVal
+    const metadataJson = params.metadataJson || '{}'
+
+    const BATCH_SIZE = 25
+    for (let i = 0; i < params.chunks.length; i += BATCH_SIZE) {
+      const slice = params.chunks.slice(i, i + BATCH_SIZE)
+      const placeholders = slice.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const args: Array<string | number | Uint8Array> = []
+      for (const chunk of slice) {
+        args.push(
+          chunk.id,
+          params.sourceType,
+          params.sourceId,
+          params.groupId,
+          vaultId,
+          chunk.chunkIndex,
+          chunk.chunkText,
+          metadataJson,
+          embeddingVectorToBytes(chunk.embedding),
+          chunk.embedding.length,
+          params.modelId,
+          createdAtSec,
+          sourceCreatedAtSec
+        )
+      }
+      await this.db.execute({
+        sql: `
+          INSERT INTO ${HYBRID_SEARCH_TABLE}
+          (embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
+           metadata_json, embedding, dimension, model_id, created_at, source_created_at)
+          VALUES ${placeholders}
+          ON CONFLICT(embedding_id) DO UPDATE SET
+            chunk_text = excluded.chunk_text,
+            embedding = excluded.embedding,
+            dimension = excluded.dimension,
+            model_id = excluded.model_id,
+            metadata_json = excluded.metadata_json,
+            vault_id = excluded.vault_id,
+            group_id = excluded.group_id
+        `,
+        args
+      })
+    }
+
+    if (params.recordLedger) {
+      await this.ledger.recordEmbedded({
+        vaultId,
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        contentHash: params.contentHash,
+        chunkCount: params.chunks.length,
+        modelId: params.modelId,
+        dimension: params.dimension
+      })
+    }
+  }
+
+  listLedgerBySource(...args: Parameters<HybridSearchLedgerStore['listLedgerBySource']>) {
+    return this.ledger.listLedgerBySource(...args)
+  }
+
+  recordEmbedded(params: EmbedLedgerRecordParams) {
+    return this.ledger.recordEmbedded(params)
+  }
+
+  reconcileEmbedLedger(params?: EmbedLedgerReconcileParams) {
+    return this.ledger.reconcileEmbedLedger(params)
+  }
+
+  rebuildEmbedLedger(params?: EmbedLedgerReconcileParams) {
+    return this.ledger.rebuildEmbedLedger(params)
+  }
+
+  recordEmbedFailure(params: EmbedLedgerFailureParams) {
+    return this.ledger.recordEmbedFailure(params)
+  }
+
+  /** 按来源类型 + 唯一键读取一条嵌入。未传 vaultId 时 fail-closed。 */
+  async getBySource(
+    sourceType: string,
+    sourceId: string,
+    options?: { vaultId?: string }
+  ): Promise<{
+    sourceType: string
+    sourceId: string
+    chunkText: string
+    createdAt: number | null
+  } | null> {
+    const vaultId = options?.vaultId?.trim()
+    if (!vaultId) return null
+    const trimmedType = sourceType.trim()
+    const trimmedId = sourceId.trim()
+    if (!trimmedType || !trimmedId) return null
+
+    const result = await this.db.execute({
+      sql: `
+        SELECT source_type, source_id, chunk_text, source_created_at
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE source_type = ? AND (source_id = ? OR embedding_id = ?) AND vault_id = ?
+        ORDER BY chunk_index ASC
+        LIMIT 1
+      `,
+      args: [trimmedType, trimmedId, trimmedId, vaultId]
+    })
+    const row = result.rows[0] as Record<string, unknown> | undefined
+    if (!row) return null
+
+    const srcAt = row.source_created_at
+    let createdAt: number | null = null
+    if (typeof srcAt === 'number') {
+      createdAt = srcAt > 1e12 ? srcAt : srcAt * 1000
+    }
+    return {
+      sourceType: String(row.source_type ?? trimmedType),
+      sourceId: String(row.source_id ?? trimmedId),
+      chunkText: String(row.chunk_text ?? ''),
+      createdAt
+    }
+  }
+
+  /** Distinct source_id values for a source_type (optionally scoped by group_id / vault_id). */
+  async listSourceIdsByType(
+    sourceType: string,
+    options?: { groupId?: string; vaultId?: string }
+  ): Promise<string[]> {
+    const conditions = ['source_type = ?']
+    const args: (string | number)[] = [sourceType]
+    if (options?.groupId) {
+      if (options.groupId === 'diary' || options.groupId === 'memory') {
+        conditions.push(`(group_id = ? OR group_id LIKE ?)`)
+        args.push(options.groupId, `${options.groupId}:%`)
+      } else {
+        conditions.push('group_id = ?')
+        args.push(options.groupId)
+      }
+    }
+    if (options?.vaultId) {
+      conditions.push('vault_id = ?')
+      args.push(options.vaultId)
+    }
+    const result = await this.db.execute({
+      sql: `SELECT DISTINCT source_id AS source_id FROM ${HYBRID_SEARCH_TABLE} WHERE ${conditions.join(' AND ')}`,
+      args
+    })
+    return result.rows
+      .map((row) => String((row as { source_id?: unknown }).source_id ?? ''))
+      .filter((id) => id.length > 0)
+  }
+
+  /** Chunk rows for a source_type (backfill Memory JSONL from legacy chat/mem_*). */
+  async listEmbeddingChunksByType(
+    sourceType: string,
+    options?: { vaultId?: string }
+  ): Promise<
+    Array<{
+      sourceId: string
+      chunkText: string
+      groupId: string
+      chunkIndex: number
+      sourceCreatedAt: number | null
+    }>
+  > {
+    const vaultId = options?.vaultId?.trim()
+    // 未传 vaultId → fail-closed，避免冷启动回填把别仓记忆写入本仓 JSONL
+    if (!vaultId) {
+      return []
+    }
+    const result = await this.db.execute({
+      sql: `
+        SELECT source_id, chunk_text, group_id, chunk_index, source_created_at
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE source_type = ? AND vault_id = ?
+        ORDER BY source_id, chunk_index
+      `,
+      args: [sourceType, vaultId]
+    })
+    return result.rows.map((row) => {
+      const r = row as Record<string, unknown>
+      const srcAt = r.source_created_at
+      let sourceCreatedAt: number | null = null
+      if (typeof srcAt === 'number') {
+        sourceCreatedAt = srcAt > 1e12 ? srcAt : srcAt * 1000
+      }
+      return {
+        sourceId: String(r.source_id ?? ''),
+        chunkText: String(r.chunk_text ?? ''),
+        groupId: String(r.group_id ?? ''),
+        chunkIndex: Number(r.chunk_index ?? 0),
+        sourceCreatedAt
+      }
+    })
+  }
+
+  /**
+   * Flip source_type from manual → memory and align group_id, without re-embedding.
+   * Returns number of distinct source_id values that had at least one row updated.
+   */
+  async normalizeManualToMemory(params: {
+    vaultId: string
+    sourceIds?: string[]
+  }): Promise<number> {
+    const groupId = MEMORY_EMBED_GROUP_ID
+    const vaultId = params.vaultId.trim()
+    if (params.sourceIds && params.sourceIds.length > 0) {
+      const placeholders = params.sourceIds.map(() => '?').join(', ')
+      const before = await this.db.execute({
+        sql: `
+          SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE}
+          WHERE source_type = 'manual' AND source_id IN (${placeholders})
+        `,
+        args: [...params.sourceIds]
+      })
+      const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
+      if (count === 0) return 0
+      await this.db.execute({
+        sql: `
+          UPDATE ${HYBRID_SEARCH_TABLE}
+          SET source_type = 'memory',
+              vault_id = CASE
+                WHEN vault_id IS NOT NULL AND vault_id != '' THEN vault_id
+                ELSE ?
+              END,
+              group_id = CASE
+                WHEN group_id = ? OR group_id LIKE 'memory:%' THEN group_id
+                ELSE ?
+              END
+          WHERE source_type = 'manual' AND source_id IN (${placeholders})
+        `,
+        args: [vaultId, MEMORY_EMBED_GROUP_ID, groupId, ...params.sourceIds]
+      })
+      return count
+    }
+
+    const before = await this.db.execute({
+      sql: `SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'manual'`,
+      args: []
+    })
+    const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
+    if (count === 0) return 0
+    await this.db.execute({
+      sql: `
+        UPDATE ${HYBRID_SEARCH_TABLE}
+        SET source_type = 'memory',
+            vault_id = CASE
+              WHEN vault_id IS NOT NULL AND vault_id != '' THEN vault_id
+              ELSE ?
+            END,
+            group_id = CASE
+              WHEN group_id = ? OR group_id LIKE 'memory:%' THEN group_id
+              ELSE ?
+            END
+        WHERE source_type = 'manual'
+      `,
+      args: [vaultId, MEMORY_EMBED_GROUP_ID, groupId]
+    })
+    return count
+  }
+
+  async updateMetadataBySource(
+    sourceType: string,
+    sourceId: string,
+    metadataJson: string
+  ): Promise<void> {
+    await this.db.execute({
+      sql: `UPDATE ${HYBRID_SEARCH_TABLE} SET metadata_json = ? WHERE source_type = ? AND source_id = ?`,
+      args: [metadataJson, sourceType, sourceId]
     })
   }
 
   async clearEmbeddings(): Promise<void> {
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
+    // 账本必须跟着清，否则清空后账本仍声称全部已嵌入，要等下一次计数自检才纠正，
+    // 而那一次纠正是整本账的全量重建。
+    try {
+      await this.db.execute(`DELETE FROM ${EMBED_LEDGER_TABLE}`)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[VectorSearch] 清空 embed_ledger 失败（非阻塞）:', message)
+    }
   }
 
   async clearAndReinitEmbeddings(dimension: number): Promise<void> {
     await this.clearEmbeddings()
     await this.initVectorTables(dimension, false)
-  }
-}
-
-export class HybridSearchMigrationStore {
-  constructor(private readonly db: ISqlExecutor) {}
-
-  async hasPendingMigration(): Promise<boolean> {
-    if (!(await this.hasMigrationBackupTable())) return false
-
-    const countRow = await this.db.execute(
-      `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE} WHERE is_migrated = 0`
-    )
-    return Number(countRow.rows[0]?.c ?? 0) > 0
-  }
-
-  async hasMigrationBackupTable(): Promise<boolean> {
-    const checkTable = await this.db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [HYBRID_SEARCH_BACKUP_TABLE]
-    })
-    return checkTable.rows.length > 0
-  }
-
-  async hasMigrationRollbackTable(): Promise<boolean> {
-    const checkTable = await this.db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [HYBRID_SEARCH_ROLLBACK_TABLE]
-    })
-    return checkTable.rows.length > 0
-  }
-
-  async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_TABLE}'`
-    )
-    if (checkTable.rows.length === 0) return 0
-
-    const countRow = await this.db.execute({
-      sql: `SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE} WHERE model_id != ?`,
-      args: [currentModelId]
-    })
-    return Number(countRow.rows[0]?.c ?? 0)
-  }
-
-  async createMigrationBackup(): Promise<number> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_BACKUP_TABLE}`)
-    await this.db.execute(`
-      CREATE TABLE ${HYBRID_SEARCH_BACKUP_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
-             metadata_json, source_created_at, 0 as is_migrated
-      FROM ${HYBRID_SEARCH_TABLE}
-    `)
-    await this.db.execute(
-      `CREATE INDEX IF NOT EXISTS idx_mig_backup_migrated ON ${HYBRID_SEARCH_BACKUP_TABLE}(is_migrated)`
-    )
-    const count = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE}`)
-    return Number(count.rows[0]?.c ?? 0)
-  }
-
-  async dropMigrationBackup(): Promise<void> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_BACKUP_TABLE}`)
-  }
-
-  async getUnmigratedCount(): Promise<number> {
-    try {
-      const countRow = await this.db.execute(
-        `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE} WHERE is_migrated = 0`
-      )
-      return Number(countRow.rows[0]?.c ?? 0)
-    } catch {
-      return 0
-    }
-  }
-
-  async getUnmigratedBackupChunks(): Promise<any[]> {
-    try {
-      const res = await this.db.execute(`
-        SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
-               chunk_index as chunkIndex, chunk_text as chunkText, metadata_json as metadataJson,
-               source_created_at as sourceCreatedAt
-        FROM ${HYBRID_SEARCH_BACKUP_TABLE}
-        WHERE is_migrated = 0
-        LIMIT 50
-      `)
-      return Array.from(res.rows).map((row) =>
-        mapMigrationBackupRow(row as Record<string, unknown>)
-      )
-    } catch {
-      return []
-    }
-  }
-
-  async markBackupChunkMigrated(embeddingId: string): Promise<void> {
-    await this.db.execute({
-      sql: `UPDATE ${HYBRID_SEARCH_BACKUP_TABLE} SET is_migrated = 1 WHERE embedding_id = ?`,
-      args: [embeddingId]
-    })
-  }
-
-  async verifyMigrationComplete(modelId: string): Promise<[boolean, boolean]> {
-    const pending = await this.hasPendingMigration()
-    const mismatchedCount = await this.countHeterogeneousEmbeddings(modelId)
-    return [!pending, mismatchedCount === 0]
-  }
-
-  async getCurrentEmbeddingMeta(): Promise<EmbeddingSnapshotMeta | null> {
-    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    const count = Number(countRow.rows[0]?.c ?? 0)
-    if (count === 0) return null
-    const metaRow = await this.db.execute(`
-      SELECT model_id as modelId, dimension, count(*) as c FROM ${HYBRID_SEARCH_TABLE}
-      GROUP BY model_id, dimension ORDER BY c DESC LIMIT 1
-    `)
-    const row = metaRow.rows[0]
-    if (!row?.modelId) return null
-    return { modelId: String(row.modelId), dimension: Number(row.dimension ?? 0), count }
-  }
-
-  async createRollbackSnapshot(): Promise<number> {
-    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    const count = Number(countRow.rows[0]?.c ?? 0)
-    if (count === 0) return 0
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
-    await this.db.execute(`
-      CREATE TABLE ${HYBRID_SEARCH_ROLLBACK_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
-             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_TABLE}
-    `)
-    logger.info(`[RAG] Migration rollback snapshot created: ${count} rows`)
-    return count
-  }
-
-  async restoreRollbackSnapshot(): Promise<number> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
-    )
-    if (checkTable.rows.length === 0)
-      throw new Error(`Rollback snapshot table ${HYBRID_SEARCH_ROLLBACK_TABLE} does not exist`)
-    await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
-    await this.db.execute(`
-      INSERT INTO ${HYBRID_SEARCH_TABLE} (embedding_id, source_type, source_id, group_id, chunk_index,
-                                          chunk_text, metadata_json, embedding, dimension, model_id, created_at, source_created_at)
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
-             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}
-    `)
-    const restored = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    return Number(restored.rows[0]?.c ?? 0)
-  }
-
-  async dropRollbackSnapshot(): Promise<void> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
-  }
-
-  async hasRollbackSnapshot(): Promise<boolean> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
-    )
-    if (checkTable.rows.length === 0) return false
-    const countRow = await this.db.execute(
-      `SELECT count(*) as c FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}`
-    )
-    return Number(countRow.rows[0]?.c ?? 0) > 0
   }
 }

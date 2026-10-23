@@ -12,6 +12,7 @@ import { Check, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type AttachmentFilterMode = 'year' | 'month' | 'orphan'
 
@@ -139,7 +140,10 @@ export const AttachmentFilterSheet: React.FC<AttachmentFilterSheetProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={sheetStyles.overlay} onPress={onClose}>
+      <Pressable
+        style={[sheetStyles.overlay, { backgroundColor: colors.bgOverlay }]}
+        onPress={onClose}
+      >
         <Pressable
           style={[sheetStyles.sheet, { backgroundColor: colors.bgSurface }]}
           onPress={(e) => e.stopPropagation()}
@@ -150,7 +154,13 @@ export const AttachmentFilterSheet: React.FC<AttachmentFilterSheetProps> = ({
               <X size={22} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
             </TouchableOpacity>
           </View>
-          <ScrollView style={sheetStyles.list}>{renderOptions()}</ScrollView>
+          <ScrollView
+            style={sheetStyles.list}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}
+          >
+            {renderOptions()}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -164,14 +174,14 @@ const FilterOption: React.FC<{
   colors: ReturnType<typeof useNativeTheme>['colors']
 }> = ({ label, active, onPress, colors }) => (
   <TouchableOpacity
-    style={[sheetStyles.option, active && { backgroundColor: colors.primary + '18' }]}
+    style={[sheetStyles.option, active && { backgroundColor: colors.bgSurfaceHigh }]}
     onPress={onPress}
   >
     <Text
       style={{
         color: active ? colors.primary : colors.textPrimary,
-        fontSize: 15,
-        fontWeight: active ? '700' : '400'
+        fontSize: mobileTypography.body.fontSize,
+        fontWeight: active ? '600' : '400'
       }}
     >
       {label}
@@ -183,34 +193,33 @@ const FilterOption: React.FC<{
 const sheetStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end'
   },
   sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: sharedTokens.radius.lg,
+    borderTopRightRadius: sharedTokens.radius.lg,
     maxHeight: '70%'
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: 1
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
   },
   list: {
-    paddingVertical: 8
+    paddingVertical: sharedTokens.spacing.sm
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug
   }
 })

@@ -1,33 +1,36 @@
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
 }
 
 .settings-section-header {
-  padding-bottom: 8px;
+  padding-bottom: var(--spacing-sm);
   border-bottom: 1px solid var(--bg-surface-highlight);
 }
 
 .settings-section-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   margin: 0;
 }
 
 .settings-section-desc {
-  font-size: 14px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
-  margin: 4px 0 0 0;
+  margin: var(--spacing-xs) 0 0 0;
 }
 
 .settings-section-content {
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-radius: 12px;
-  overflow: hidden;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  /* 勿 hidden：卡内 Select 下拉为绝对定位，会被裁切 */
+  overflow: visible;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }

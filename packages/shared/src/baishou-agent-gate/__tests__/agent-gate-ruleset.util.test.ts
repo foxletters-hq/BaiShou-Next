@@ -1,0 +1,320 @@
+import { describe, expect, it } from 'vitest'
+import { AgentGateEffect } from '../agent-gate.enums'
+import {
+  agentGateActionPatternMatch,
+  agentGateGlobMatch,
+  agentGateResourcePatternMatch,
+  allowlistEntriesToPermissionRules,
+  combineAgentGateRuleEffects,
+  evaluateAgentGatePermissionRules,
+  evaluateLayeredRules,
+  resolveAgentGatePermissionRules
+} from '../agent-gate-ruleset.util'
+import { clampAgentGateEffect } from '../agent-gate-clamp.util'
+import { AgentGateRiskLevel } from '../agent-gate.enums'
+
+describe('agent-gate-ruleset.util', () => {
+  describe('agentGateGlobMatch', () => {
+    it('matches exact paths', () => {
+      expect(agentGateGlobMatch('src/foo.ts', 'src/foo.ts')).toBe(true)
+      expect(agentGateGlobMatch('src/foo.ts', 'src/bar.ts')).toBe(false)
+    })
+
+    it('matches single-segment wildcards', () => {
+      expect(agentGateGlobMatch('src/*.ts', 'src/foo.ts')).toBe(true)
+      expect(agentGateGlobMatch('src/*.ts', 'src/nested/foo.ts')).toBe(false)
+    })
+
+    it('matches recursive wildcards', () => {
+      expect(agentGateGlobMatch('**/*.ts', 'src/foo.ts')).toBe(true)
+      expect(agentGateGlobMatch('**/*.ts', 'deep/nested/foo.ts')).toBe(true)
+    })
+  })
+
+  describe('agentGateActionPatternMatch', () => {
+    it('matches action wildcards', () => {
+      expect(agentGateActionPatternMatch('workspace_*', 'workspace_write')).toBe(true)
+      expect(agentGateActionPatternMatch('workspace_*', 'diary_write')).toBe(false)
+      expect(agentGateActionPatternMatch('*', 'any_action')).toBe(true)
+    })
+  })
+
+  describe('combineAgentGateRuleEffects', () => {
+    it('prefers deny over ask over allow', () => {
+      expect(
+        combineAgentGateRuleEffects([
+          AgentGateEffect.Allow,
+          AgentGateEffect.Ask,
+          AgentGateEffect.Deny
+        ])
+      ).toBe(AgentGateEffect.Deny)
+
+      expect(combineAgentGateRuleEffects([AgentGateEffect.Allow, AgentGateEffect.Ask])).toBe(
+        AgentGateEffect.Ask
+      )
+    })
+  })
+
+  describe('evaluateAgentGatePermissionRules', () => {
+    const resources = [{ kind: 'workspace_path' as const, value: 'src/foo.ts' }]
+
+    it('returns undefined when no rule matches', () => {
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'workspace_write',
+          resources,
+          rules: [{ action: 'diary_*', effect: AgentGateEffect.Allow }]
+        })
+      ).toBeUndefined()
+    })
+
+    it('matches action-only rules without resources', () => {
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'diary_edit',
+          resources: [],
+          rules: [{ action: 'diary_edit', effect: AgentGateEffect.Allow }]
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('matches pattern rules against resources', () => {
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'workspace_write',
+          resources,
+          rules: [{ action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }]
+        })
+      ).toBe(AgentGateEffect.Allow)
+
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'workspace_write',
+          resources: [{ kind: 'workspace_path', value: 'docs/readme.md' }],
+          rules: [{ action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }]
+        })
+      ).toBeUndefined()
+    })
+
+    it('applies deny > ask > allow precedence across matches', () => {
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'workspace_write',
+          resources,
+          rules: [
+            { action: 'workspace_*', pattern: '**/*', effect: AgentGateEffect.Allow },
+            { action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Ask },
+            { action: 'workspace_write', pattern: 'src/*.ts', effect: AgentGateEffect.Deny }
+          ]
+        })
+      ).toBe(AgentGateEffect.Deny)
+    })
+
+    it('clamps allow to ask for force-excluded actions', () => {
+      expect(
+        evaluateAgentGatePermissionRules({
+          action: 'workspace_delete',
+          resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }],
+          rules: [{ action: 'workspace_delete', pattern: '**/*', effect: AgentGateEffect.Allow }],
+          forceExcluded: true
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+  })
+
+  describe('resolveAgentGatePermissionRules', () => {
+    it('derives actionRules when permissionRules are absent', () => {
+      expect(
+        resolveAgentGatePermissionRules({
+          actionRules: { diary_edit: AgentGateEffect.Allow }
+        })
+      ).toEqual([{ action: 'diary_edit', effect: AgentGateEffect.Allow }])
+    })
+
+    it('prefers explicit permissionRules over derived actionRules', () => {
+      expect(
+        resolveAgentGatePermissionRules({
+          actionRules: { diary_edit: AgentGateEffect.Allow },
+          permissionRules: [{ action: 'diary_edit', effect: AgentGateEffect.Ask }]
+        })
+      ).toEqual([{ action: 'diary_edit', effect: AgentGateEffect.Ask }])
+    })
+  })
+
+  describe('agentGateResourcePatternMatch', () => {
+    it('matches any provided resource value', () => {
+      expect(
+        agentGateResourcePatternMatch('src/**', [
+          { kind: 'workspace_path', value: 'docs/readme.md' },
+          { kind: 'workspace_path', value: 'src/foo.ts' }
+        ])
+      ).toBe(true)
+    })
+  })
+
+  describe('evaluateLayeredRules', () => {
+    it('last matching rule wins (specific Allow after broad Ask)', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_run',
+          resources: [{ kind: 'shell_command', value: 'git status -s' }],
+          layers: [
+            [
+              { action: 'workspace_run', effect: AgentGateEffect.Ask },
+              {
+                action: 'workspace_run',
+                pattern: 'git status *',
+                effect: AgentGateEffect.Allow
+              }
+            ]
+          ]
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('reversed order keeps broad Ask when it is last', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_run',
+          resources: [{ kind: 'shell_command', value: 'git status -s' }],
+          layers: [
+            [
+              {
+                action: 'workspace_run',
+                pattern: 'git status *',
+                effect: AgentGateEffect.Allow
+              },
+              { action: 'workspace_run', effect: AgentGateEffect.Ask }
+            ]
+          ]
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('later layer overrides earlier layer', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_write',
+          resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+          layers: [
+            [{ action: 'workspace_write', effect: AgentGateEffect.Ask }],
+            [{ action: 'workspace_write', effect: AgentGateEffect.Allow }]
+          ]
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('returns undefined when nothing matches', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_write',
+          layers: [[{ action: 'diary_*', effect: AgentGateEffect.Allow }]]
+        })
+      ).toBeUndefined()
+    })
+  })
+
+  describe('skill resources', () => {
+    it('matches skill names and allows a bare wildcard for skills', () => {
+      expect(
+        agentGateResourcePatternMatch('summary-write', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(true)
+      expect(
+        agentGateResourcePatternMatch('summary-*', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(true)
+      expect(agentGateResourcePatternMatch('*', [{ kind: 'skill', value: 'summary-write' }])).toBe(
+        true
+      )
+      expect(
+        agentGateResourcePatternMatch('daily-*', [{ kind: 'skill', value: 'summary-write' }])
+      ).toBe(false)
+    })
+  })
+
+  describe('allowlistEntriesToPermissionRules', () => {
+    it('maps entries to Allow rules', () => {
+      expect(
+        allowlistEntriesToPermissionRules([
+          { action: 'diary_write' },
+          { action: 'workspace_run', pattern: 'git status *' }
+        ])
+      ).toEqual([
+        { action: 'diary_write', effect: AgentGateEffect.Allow },
+        {
+          action: 'workspace_run',
+          pattern: 'git status *',
+          effect: AgentGateEffect.Allow
+        }
+      ])
+    })
+  })
+
+  describe('clampAgentGateEffect', () => {
+    it('downgrades Allow to Ask for exclusion list', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          exclusionList: ['workspace_delete']
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('preserves Deny on excluded actions', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Deny, {
+          action: 'workspace_delete',
+          exclusionList: ['workspace_delete']
+        })
+      ).toBe(AgentGateEffect.Deny)
+    })
+
+    it('downgrades Allow for destructive risk unless explicitAllow', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          riskLevel: AgentGateRiskLevel.Destructive
+        })
+      ).toBe(AgentGateEffect.Ask)
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          riskLevel: AgentGateRiskLevel.Destructive,
+          explicitAllow: true
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('downgrades Allow for truncated preview', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_write',
+          preview: {
+            type: 'file_change',
+            path: 'a.ts',
+            kind: 'modify',
+            additions: 1,
+            deletions: 0,
+            truncated: true
+          }
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('should keep session Once Allow when the next preview is truncated', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_write',
+          skipTruncatedPreviewClamp: true,
+          preview: {
+            type: 'file_change',
+            path: 'a.ts',
+            kind: 'modify',
+            additions: 1,
+            deletions: 0,
+            truncated: true
+          }
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+  })
+})

@@ -28,6 +28,30 @@ export type ArchiveImportDeps = {
   scheduleBootstrapResyncAfterImport: () => void
 }
 
+/**
+ * 恢复备份会整体替换数据根和日记 id。旧数据上的整理任务必须停掉，
+ * 否则抽图队列会拿恢复前的 id/路径继续跑，整批报「日记还没有向量」。
+ */
+async function stopOrganizeWorkBeforeRestore(): Promise<void> {
+  try {
+    const { isBatchEmbedSessionActive, requestBatchEmbedCancel } =
+      await import('./batch-embed-control.service')
+    if (isBatchEmbedSessionActive()) requestBatchEmbedCancel()
+  } catch (error) {
+    logger.warn('[ArchiveService] Failed to cancel batch embed before restore:', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  try {
+    const { GraphExtractQueueService } = await import('./graph-extract-queue.service')
+    GraphExtractQueueService.getInstance().stop()
+  } catch (error) {
+    logger.warn('[ArchiveService] Failed to stop graph extract queue before restore:', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
 async function restoreUserAvatarsFromExtract(
   pathService: DesktopStoragePathService,
   extractDir: string
@@ -95,6 +119,8 @@ export async function executeArchiveImportFromZip(
   const migrator = new MetadataMigrator()
   const CURRENT_FORMAT_VERSION = 1
   migrator.validateManifest(manifest, CURRENT_FORMAT_VERSION)
+
+  await stopOrganizeWorkBeforeRestore()
 
   const rootDir = await deps.pathService.getRootDirectory()
   const globalShadowDir = await deps.pathService.getGlobalShadowIndexDirectory()
@@ -180,15 +206,50 @@ export async function executeArchiveImportFromZip(
 
     try {
       const extractedDbPath = path.join(rootDir, 'database', 'baishou_agent.db')
+      const extractedKnowledgePath = path.join(rootDir, 'database', 'knowledge.db')
+
+      if (fs.existsSync(extractedKnowledgePath)) {
+        try {
+          const { pathService, connectKnowledgeDb } = await import('../ipc/vault.ipc')
+          const { knowledgeConnectionManager } = await import('@baishou/database-desktop')
+          if (knowledgeConnectionManager.isConnected()) {
+            knowledgeConnectionManager.disconnect()
+          }
+          const storageRoot = await pathService.getRootDirectory()
+          const dest = path.join(storageRoot, 'knowledge.db')
+          await fsp.mkdir(storageRoot, { recursive: true })
+          await fsp.copyFile(extractedKnowledgePath, dest)
+          await connectKnowledgeDb()
+        } catch (e: any) {
+          logger.warn('Failed to restore knowledge.db from archive (will rebuild on demand):', e)
+          try {
+            const { pathService, connectKnowledgeDb } = await import('../ipc/vault.ipc')
+            const { knowledgeConnectionManager } = await import('@baishou/database-desktop')
+            if (knowledgeConnectionManager.isConnected()) {
+              knowledgeConnectionManager.disconnect()
+            }
+            const storageRoot = await pathService.getRootDirectory()
+            const dest = path.join(storageRoot, 'knowledge.db')
+            await fsp.rm(dest, { force: true }).catch(() => {})
+            await fsp.rm(`${dest}-wal`, { force: true }).catch(() => {})
+            await fsp.rm(`${dest}-shm`, { force: true }).catch(() => {})
+            await connectKnowledgeDb()
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
       if (fs.existsSync(extractedDbPath)) {
         const { getAppDbPath } = await import('../db')
         const actualDbPath =
           getAppDbPath() || path.join(app.getPath('userData'), 'baishou_agent.db')
+        await fsp.rm(`${actualDbPath}-wal`, { force: true }).catch(() => {})
+        await fsp.rm(`${actualDbPath}-shm`, { force: true }).catch(() => {})
         await fsp.copyFile(extractedDbPath, actualDbPath)
-        await fsp
-          .rm(path.join(rootDir, 'database'), { recursive: true, force: true })
-          .catch(() => {})
       }
+
+      await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {})
     } catch (e: any) {
       logger.error('Failed to restore database from archive', e)
     }
@@ -198,6 +259,12 @@ export async function executeArchiveImportFromZip(
       resetAppDb()
       const restoredDb = getAppDb()
       connectionManager.setDb(restoredDb)
+      try {
+        const { invalidateAgentManagers } = await import('../ipc/agent-helpers')
+        invalidateAgentManagers()
+      } catch {
+        // ignore
+      }
 
       const client = (restoredDb as any)?.session?.client
       if (client) {
@@ -313,10 +380,32 @@ export async function executeArchiveImportFromZip(
   }
 
   try {
+    const { resetRawDataRuntime } = await import('./raw-data-source.runtime')
+    resetRawDataRuntime()
+  } catch (e: any) {
+    logger.error('Failed to reset raw data runtime after import:', e)
+  }
+
+  try {
+    const { clearDesktopDiaryGraphFollowPendingCache } =
+      await import('./diary-graph-follow-after-embed.service')
+    clearDesktopDiaryGraphFollowPendingCache()
+  } catch (e: any) {
+    logger.error('Failed to reset diary graph follow cache after import:', e)
+  }
+
+  try {
     const { rebindSummaryCacheForActiveVault } = await import('../ipc/summary.ipc')
     await rebindSummaryCacheForActiveVault()
   } catch (e: any) {
     logger.error('Failed to rebind summary cache after import:', e)
+  }
+
+  try {
+    const { notifyPendingEmbedCountsChanged } = await import('./pending-embed-counts.service')
+    notifyPendingEmbedCountsChanged()
+  } catch {
+    // ignore
   }
 
   deps.scheduleBootstrapResyncAfterImport()

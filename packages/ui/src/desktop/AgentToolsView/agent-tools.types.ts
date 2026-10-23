@@ -1,16 +1,27 @@
 import React from 'react'
 
-import type { EmojiToolConfig, ToolManagementConfig } from '@baishou/shared'
+import type {
+  AgentToolScene,
+  EmojiToolConfig,
+  ToolManagementConfig,
+  WorkspaceToolManagementConfig
+} from '@baishou/shared'
 
-export type { EmojiToolConfig, ToolManagementConfig }
+export type { AgentToolScene, EmojiToolConfig, ToolManagementConfig, WorkspaceToolManagementConfig }
+
+export type AgentToolsConfig = ToolManagementConfig | WorkspaceToolManagementConfig
 
 export interface AgentToolsViewProps {
-  config: ToolManagementConfig
-  onChange: (config: ToolManagementConfig) => void
+  config: AgentToolsConfig
+  onChange: (config: AgentToolsConfig) => void
+  /** 伙伴或工作台工具目录 */
+  scene?: AgentToolScene
   /** 全页设置区（默认）或桌面弹窗 */
   presentation?: 'page' | 'dialog'
   /** 弹窗模式下右上角关闭 */
   onClose?: () => void
+  /** 进入表情包等子页时通知外层隐藏分段顶栏 */
+  onSubpageActiveChange?: (active: boolean) => void
 }
 
 export interface ToolConfigParam {

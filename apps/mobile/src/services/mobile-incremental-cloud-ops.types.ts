@@ -54,10 +54,10 @@ export type IncrementalSyncRecord = {
   managed: boolean
 }
 
-/** 超过此大小的文件走分片下载，以便 UI 有字节进度 */
-export const MOBILE_SYNC_PROGRESS_CHUNK_THRESHOLD = 256 * 1024
-/** 中等文件分片下载粒度（小于 S3 正式分片上限） */
-export const MOBILE_SYNC_DOWNLOAD_PART_SIZE = 256 * 1024
+/** 超过此大小的文件走分片下载；8MB 以内走原生 downloadAsync 直写磁盘，避免 JS Base64 分块拼接开销 */
+export const MOBILE_SYNC_PROGRESS_CHUNK_THRESHOLD = 8 * 1024 * 1024
+/** 大文件分片下载粒度 */
+export const MOBILE_SYNC_DOWNLOAD_PART_SIZE = 2 * 1024 * 1024
 
 export function mobileSyncDownloadPartSize(fileSize: number, chunkMax: number): number {
   if (fileSize <= MOBILE_SYNC_PROGRESS_CHUNK_THRESHOLD) return fileSize

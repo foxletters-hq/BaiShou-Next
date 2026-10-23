@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 
 /** 设置卡片内部全宽分隔线 */
 export const SettingsCardDivider: React.FC = () => {
@@ -11,6 +12,6 @@ export const SettingsCardDivider: React.FC = () => {
 const styles = StyleSheet.create({
   divider: {
     height: 1,
-    marginVertical: 14
+    marginVertical: sharedTokens.spacing.mdSnug
   }
 })

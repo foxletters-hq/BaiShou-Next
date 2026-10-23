@@ -11,26 +11,29 @@
 
 .update-action-group {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .update-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--bg-surface-normal);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  background-color: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .update-action-btn:hover:not(:disabled) {
-  background-color: var(--bg-surface-highest);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-action-btn:disabled {
@@ -39,22 +42,25 @@
 }
 
 .update-action-btn.primary {
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
 }
 
 .update-action-btn.primary:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-action-btn.secondary {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
 }
 
 .update-action-btn.secondary:hover:not(:disabled) {
-  background-color: var(--color-primary-container);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-status-icon {
@@ -74,11 +80,11 @@
 }
 
 .update-status-icon.downloaded {
-  color: var(--color-success, #4caf50);
+  color: var(--color-success);
 }
 
 .update-status-icon.error {
-  color: var(--color-error, #f44336);
+  color: var(--color-error);
 }
 
 @keyframes spin {
@@ -95,7 +101,7 @@
   width: 120px;
   height: 32px;
   background-color: var(--bg-surface-normal);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -105,7 +111,7 @@
   left: 0;
   height: 100%;
   background-color: var(--color-primary);
-  transition: width 0.3s ease;
+  transition: width var(--duration-moderate) ease;
 }
 
 .update-progress-text {
@@ -113,55 +119,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   color: var(--text-primary);
-}
-
-/* Toggle Switch */
-.update-toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.update-toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.update-toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-surface-highest);
-  transition: 0.2s;
-  border-radius: 24px;
-}
-
-.update-toggle-slider:before {
-  position: absolute;
-  content: '';
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--text-secondary);
-  transition: 0.2s;
-  border-radius: 50%;
-}
-
-.update-toggle-switch input:checked + .update-toggle-slider {
-  background-color: var(--color-primary);
-}
-
-.update-toggle-switch input:checked + .update-toggle-slider:before {
-  transform: translateX(20px);
-  background-color: var(--color-on-primary);
 }

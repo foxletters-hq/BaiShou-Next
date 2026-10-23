@@ -1,5 +1,4 @@
 import type { EditorState } from '@codemirror/state'
-import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import { ImageWidget } from '../widgets/ImageWidget'
 import { ImagePlaceholderWidget } from '../widgets/ImagePlaceholderWidget'

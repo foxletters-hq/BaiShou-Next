@@ -4,11 +4,7 @@ import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { reconcileCompressionStateAfterTruncate } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
-import {
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
-  isAgentStreamAbortError
-} from '@baishou/shared'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import { abortAgentStreamSession } from '@baishou/ai'
 
 import { useBaishou } from '../providers/BaishouProvider'
@@ -25,9 +21,7 @@ interface UseAgentStreamActionsOptions {
   setCompressionText: (value: string) => void
   setCompressionReasoning: (value: string) => void
   setCompressionTriggerMessageId: (value: string | null) => void
-  flushStreamingDisplayBuffers: () => void
-  stopStreamingUiImmediately: () => void
-  resetStreamingBuffers: () => void
+  keepPartialOutputAfterUserStop: () => void
   resetCompressionBuffers: () => void
   interruptActiveStream: () => void
   finishStream: (
@@ -66,9 +60,7 @@ export function useAgentStreamActions({
   setCompressionText,
   setCompressionReasoning,
   setCompressionTriggerMessageId,
-  flushStreamingDisplayBuffers,
-  stopStreamingUiImmediately,
-  resetStreamingBuffers,
+  keepPartialOutputAfterUserStop,
   resetCompressionBuffers,
   interruptActiveStream,
   finishStream,
@@ -159,9 +151,7 @@ export function useAgentStreamActions({
     userStoppedStreamRef.current = true
     finishStreamPassRef.current += 1
     setStreamError(null)
-    flushStreamingDisplayBuffers()
-    stopStreamingUiImmediately()
-    resetStreamingBuffers()
+    keepPartialOutputAfterUserStop()
     if (sessionId) {
       abortAgentStreamSession(sessionId)
     }
@@ -173,16 +163,14 @@ export function useAgentStreamActions({
     }
 
     if (sessionId) {
-      void finishStream(sessionId, { waitForLatestUsage: true })
+      void finishStream(sessionId, { waitForLatestUsage: false })
     }
   }, [
     currentSessionIdRef,
     userStoppedStreamRef,
     finishStreamPassRef,
     setStreamError,
-    flushStreamingDisplayBuffers,
-    stopStreamingUiImmediately,
-    resetStreamingBuffers,
+    keepPartialOutputAfterUserStop,
     retryActionInFlightRef,
     pendingRetryReleaseEpochRef,
     releaseRetryAction,
@@ -216,7 +204,7 @@ export function useAgentStreamActions({
         !isConfiguredProviderId(currentProviderId) ||
         !isConfiguredDialogueModelId(currentModelId)
       ) {
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+        toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
         return
       }
 
@@ -225,7 +213,7 @@ export function useAgentStreamActions({
 
       const failRegenerate = (errorMsg: string) => {
         if (epoch !== retryEpochRef.current) return
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(errorMsg)) return
+        if (userStoppedStreamRef.current) return
         setStreamError(errorMsg)
       }
 
@@ -265,7 +253,7 @@ export function useAgentStreamActions({
           { retryReleaseEpoch: epoch }
         )
       } catch (e) {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+        if (userStoppedStreamRef.current) {
           userStoppedStreamRef.current = false
           setStreamError(null)
         } else {

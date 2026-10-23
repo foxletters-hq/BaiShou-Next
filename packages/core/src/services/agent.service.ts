@@ -1,5 +1,6 @@
 import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database'
 import { AIProviderRegistry, ToolRegistry } from '@baishou/ai'
+import { resolveVaultIdentity } from '@baishou/shared'
 import { streamText, ModelMessage, stepCountIs } from 'ai'
 import { SessionNotFoundError } from '../errors/agent.errors'
 
@@ -55,18 +56,25 @@ export class AgentService {
 
     // 3. 构建 tools 环境
     // Vercel 会在生成过程中自动匹配对应的 tools 并执行
+    const vaultIdentity = resolveVaultIdentity({
+      vaultId: session.vaultId,
+      vaultName: session.vaultName
+    })
     const vercelTools = this.toolRegistry.getEnabledToolsAsVercel({
       sessionId: input.sessionId,
-      vaultName: session.vaultName
+      vaultId: vaultIdentity.id,
+      vaultName: vaultIdentity.name
     })
 
     // 4. 调用流式生成接口
     const result = streamText({
       model,
       system: session.systemPrompt ?? undefined,
+      allowSystemInMessages: true,
       messages,
       tools: Object.keys(vercelTools).length > 0 ? vercelTools : undefined,
-      stopWhen: stepCountIs(input.maxSteps ?? 10), // 自动代理工具的递归调用次数限制
+      stopWhen: stepCountIs(input.maxSteps ?? Number.POSITIVE_INFINITY),
+      experimental_telemetry: { isEnabled: false },
       onFinish: async (event) => {
         // [完成] 当所有步骤（包含工具调用）完成后，同步回写 DB
 

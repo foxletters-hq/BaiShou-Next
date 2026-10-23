@@ -45,13 +45,15 @@ export interface DeduplicationEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultId: string
   }): Promise<void>
 }
 
 export interface DeduplicationVectorStore {
   searchSimilar(
     queryEmbedding: number[],
-    topK: number
+    topK: number,
+    filter?: { vaultId?: string }
   ): Promise<
     Array<{
       embeddingId: string
@@ -100,6 +102,8 @@ export class MemoryDeduplicationService {
   async checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -114,6 +118,8 @@ export class MemoryDeduplicationService {
   private async doCheckAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -125,10 +131,13 @@ export class MemoryDeduplicationService {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
     }
 
+    const vaultId = options.vaultId
+
     // 2. 在向量数据库中做 top-K 相似度检索
     const candidates = await this.vectorStore.searchSimilar(
       queryVec,
-      MemoryDeduplicationService.TOP_K
+      MemoryDeduplicationService.TOP_K,
+      { vaultId }
     )
     if (candidates.length === 0) {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
@@ -166,6 +175,8 @@ export class MemoryDeduplicationService {
       return this.llmMergeJudgment({
         newMemoryContent: options.newMemoryContent,
         sessionId: options.sessionId,
+        vaultId: options.vaultId,
+        vaultName: options.vaultName,
         candidates: relevantMemories,
         highestSimilarity: best.similarity,
         sourceType,
@@ -187,6 +198,8 @@ export class MemoryDeduplicationService {
   private async llmMergeJudgment(params: {
     newMemoryContent: string
     sessionId: string
+    vaultId: string
+    vaultName?: string
     candidates: ScoredMemory[]
     highestSimilarity: number
     sourceType: string
@@ -258,7 +271,8 @@ ${params.newMemoryContent}
             text: parsed.mergedContent,
             sourceType,
             sourceId: params.sourceId ?? `mem_${Date.now()}`,
-            groupId: params.sessionId
+            groupId: params.sessionId,
+            vaultId: params.vaultId
           })
 
           return {

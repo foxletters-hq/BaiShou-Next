@@ -1,4 +1,4 @@
-import { Dimensions, Keyboard, ScrollView, TextInput } from 'react-native'
+import { Dimensions, ScrollView, TextInput } from 'react-native'
 import type { RefObject } from 'react'
 import { readEffectiveKeyboardHeight } from './scroll-node-into-view.util'
 

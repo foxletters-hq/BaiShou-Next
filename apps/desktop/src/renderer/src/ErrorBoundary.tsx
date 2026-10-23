@@ -1,4 +1,5 @@
 import React from 'react'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export class ErrorBoundary extends React.Component<any, any> {
   constructor(props: any) {
@@ -13,7 +14,7 @@ export class ErrorBoundary extends React.Component<any, any> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 20, color: 'red' }}>
+        <div style={{ padding: sharedTokens.spacing.mdPlus, color: 'red' }}>
           <h1>React Error</h1>
           <pre>{this.state.error?.stack}</pre>
         </div>

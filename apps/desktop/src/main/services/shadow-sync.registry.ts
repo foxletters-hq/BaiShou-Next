@@ -2,6 +2,11 @@ import { BrowserWindow } from 'electron'
 import { ShadowIndexSyncService } from '@baishou/core-desktop'
 import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService } from '../ipc/vault.ipc'
 import { embeddingCallback } from '../ipc/diary-embedding.callback'
+import {
+  ensureRawDataRuntime,
+  getDerivedFreshness,
+  rebindPendingReextractCollaborators
+} from './raw-data-source.runtime'
 
 let cachedShadowSync: ShadowIndexSyncService | null = null
 let cachedVaultName: string | null = null
@@ -15,6 +20,15 @@ function wireScanProgressBroadcast(shadowScout: ShadowIndexSyncService): void {
         total: progress.total
       })
     })
+  })
+}
+
+function wirePendingReextractHook(shadowScout: ShadowIndexSyncService): void {
+  ensureRawDataRuntime()
+  rebindPendingReextractCollaborators()
+  shadowScout.setPendingReextractHook((filePath, contentHash) => {
+    ensureRawDataRuntime()
+    getDerivedFreshness().markPendingReextract(filePath, contentHash)
   })
 }
 
@@ -33,6 +47,7 @@ export function getSharedShadowSync(): ShadowIndexSyncService {
     )
     wireScanProgressBroadcast(cachedShadowSync)
     cachedVaultName = vaultName
+    wirePendingReextractHook(cachedShadowSync)
   }
   return cachedShadowSync
 }

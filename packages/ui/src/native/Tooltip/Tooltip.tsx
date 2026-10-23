@@ -1,10 +1,22 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, Pressable, ViewProps, Modal, ScrollView, StyleSheet } from 'react-native'
+import {
+  View,
+  Text,
+  Pressable,
+  ViewProps,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  type Insets
+} from 'react-native'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeTooltipProps extends ViewProps {
   content: React.ReactNode
   position?: 'top' | 'bottom' | 'center'
+  hitSlop?: Insets | number
 }
 
 export const Tooltip: React.FC<NativeTooltipProps> = ({
@@ -12,11 +24,12 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
   children,
   position = 'center',
   style,
+  hitSlop = { top: 8, bottom: 8, left: 8, right: 8 },
   ...props
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
   const [isVisible, setIsVisible] = useState(false)
-  const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
 
   const handlePress = useCallback(() => {
     setIsVisible(true)
@@ -31,12 +44,6 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
     setLayout({ x, y, width, height })
   }, [])
 
-  const isDark =
-    colors.textPrimary === '#ffffff' ||
-    colors.bgApp === '#000000' ||
-    colors.bgApp === '#121212' ||
-    colors.bgSurface === '#1e1e1e'
-
   const solidBg = colors.bgSurface
   const solidBorder = colors.borderSubtle
   const shadowColor = '#000'
@@ -49,7 +56,13 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 
   return (
     <>
-      <Pressable onPress={handlePress} onLayout={handleLayout} style={style} {...props}>
+      <Pressable
+        onPress={handlePress}
+        onLayout={handleLayout}
+        hitSlop={hitSlop}
+        style={style}
+        {...props}
+      >
         {children}
       </Pressable>
 
@@ -62,7 +75,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
               alignItems: 'center',
               paddingBottom: position === 'bottom' ? 120 : 20,
               paddingTop: position === 'top' ? 120 : 20,
-              paddingHorizontal: 20
+              paddingHorizontal: sharedTokens.spacing.mdPlus
             }}
           >
             {/* 背景遮罩层：同级并列，点击关闭弹窗 */}
@@ -83,11 +96,15 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
                 maxWidth: '92%',
                 width: 320,
                 maxHeight: 360,
-                elevation: 5,
-                shadowColor: shadowColor,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: isDark ? 0.35 : 0.12,
-                shadowRadius: 8
+                ...Platform.select({
+                  ios: {
+                    shadowColor: shadowColor,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: isDark ? 0.35 : 0.12,
+                    shadowRadius: 8
+                  },
+                  default: {}
+                })
               }}
             >
               <ScrollView
@@ -99,7 +116,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
                   <Text
                     style={{
                       color: colors.textPrimary,
-                      fontSize: 14,
+                      fontSize: mobileTypography.secondary.fontSize,
                       lineHeight: 21
                     }}
                   >

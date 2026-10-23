@@ -26,6 +26,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         source_type     TEXT NOT NULL,
         source_id       TEXT NOT NULL,
         group_id        TEXT NOT NULL,
+        vault_id      TEXT,
         chunk_index     INTEGER NOT NULL,
         chunk_text      TEXT NOT NULL,
         metadata_json   TEXT NOT NULL DEFAULT '{}',
@@ -68,6 +69,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'fallback_group',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'Match node',
         embedding: [0.9, 0.1, 0],
@@ -79,6 +81,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'fallback_group',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'Non match node',
         embedding: [0, 1, 0],
@@ -90,7 +93,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       repo.supportsNativeVectorSearch = () => false
 
       const target = [1, 0, 0]
-      const results = await repo.queryNativeVector(target, 2)
+      const results = await repo.queryNativeVector(target, 2, { vaultId: 'Personal' })
 
       expect(results.length).toBe(2)
       expect(results[0]!.messageId).toBe('f1')
@@ -126,6 +129,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src_test',
         groupId: 'sessionA',
+        vaultId: 'Personal',
         chunkIndex: 1,
         chunkText: 'Memory context hello',
         embedding: [0.1, 0.2, 0.3],
@@ -150,6 +154,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'The quick brown fox jumps over the lazy dog',
         embedding: [1, 0, 0],
@@ -160,13 +165,14 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultId: 'Personal',
         chunkIndex: 1,
         chunkText: 'A completely unrelated sentence',
         embedding: [0, 1, 0],
         modelId: 'x'
       })
 
-      const res = await repo.queryFTS('fox', 5)
+      const res = await repo.queryFTS('fox', 5, { vaultId: 'Personal' })
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts1')
     })
@@ -180,6 +186,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'march fox diary',
         embedding: [1, 0, 0],
@@ -191,6 +198,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultId: 'Personal',
         chunkIndex: 1,
         chunkText: 'june fox diary',
         embedding: [0, 1, 0],
@@ -200,10 +208,39 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
       const startMs = new Date(2024, 2, 1).getTime()
       const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
-      const res = await repo.queryFTS('fox', 5, { startMs, endMs })
+      const res = await repo.queryFTS('fox', 5, { startMs, endMs, vaultId: 'Personal' })
 
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts-march')
+    })
+
+    it('queryFTS splits whitespace-separated terms and ranks fuller matches first', async () => {
+      await repo.insertEmbedding({
+        id: 'fts-all-terms',
+        sourceType: 'memory',
+        sourceId: 'mem-tools',
+        groupId: 'memory',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '工具测试 记忆 日记：今天把所有工具过了一遍',
+        embedding: [1, 0, 0],
+        modelId: 'x'
+      })
+      await repo.insertEmbedding({
+        id: 'fts-one-term',
+        sourceType: 'memory',
+        sourceId: 'mem-other',
+        groupId: 'memory',
+        vaultId: 'Personal',
+        chunkIndex: 0,
+        chunkText: '这里只有记忆两个字',
+        embedding: [0, 1, 0],
+        modelId: 'x'
+      })
+
+      const res = await repo.queryFTS('工具测试 记忆 日记', 5, { vaultId: 'Personal' })
+
+      expect(res.map((row) => row.messageId)).toEqual(['fts-all-terms', 'fts-one-term'])
     })
   })
 
@@ -217,6 +254,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'range_group',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'March match',
         embedding: [0.2, 0.9, 0],
@@ -228,6 +266,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'range_group',
+        vaultId: 'Personal',
         chunkIndex: 0,
         chunkText: 'June best match',
         embedding: [0.95, 0.1, 0],
@@ -240,12 +279,70 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
       const startMs = new Date(2024, 2, 1).getTime()
       const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
-      const results = await repo.queryNativeVector([1, 0, 0], 5, { startMs, endMs })
+      const results = await repo.queryNativeVector([1, 0, 0], 5, {
+        startMs,
+        endMs,
+        vaultId: 'Personal'
+      })
 
       expect(results).toHaveLength(1)
       expect(results[0]!.messageId).toBe('vec-march')
 
       repo.supportsNativeVectorSearch = originalSupport
+    })
+  })
+
+  describe('getBySource', () => {
+    it('returns the row in the requested vault and fail-closes without vaultId', async () => {
+      const createdAt = Date.parse('2026-08-01T12:00:00Z')
+      await repo.insertEmbedding({
+        id: 'emb-1',
+        sourceType: 'memory',
+        sourceId: 'mem-1',
+        groupId: 'memory',
+        vaultId: 'vault-a',
+        chunkIndex: 0,
+        chunkText: 'dark theme',
+        embedding: [1, 0, 0],
+        modelId: 'm',
+        sourceCreatedAt: createdAt
+      })
+      await repo.insertEmbedding({
+        id: 'emb-2',
+        sourceType: 'memory',
+        sourceId: 'mem-1',
+        groupId: 'memory',
+        vaultId: 'vault-b',
+        chunkIndex: 0,
+        chunkText: 'other vault',
+        embedding: [0, 1, 0],
+        modelId: 'm',
+        sourceCreatedAt: createdAt
+      })
+
+      const hit = await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-a' })
+      expect(hit).toEqual(
+        expect.objectContaining({
+          sourceType: 'memory',
+          sourceId: 'mem-1',
+          chunkText: 'dark theme'
+        })
+      )
+      // 按 embedding_id (emb-1) 也应能命中，并返回原始 source_id (mem-1)
+      const hitByEmbId = await repo.getBySource('memory', 'emb-1', { vaultId: 'vault-a' })
+      expect(hitByEmbId).toEqual(
+        expect.objectContaining({
+          sourceType: 'memory',
+          sourceId: 'mem-1',
+          chunkText: 'dark theme'
+        })
+      )
+      expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-missing' })).toBeNull()
+      expect(await repo.getBySource('memory', 'mem-1')).toBeNull()
+
+      // 按 embedding_id 删除测试
+      await repo.deleteEmbeddingsBySource('memory', 'emb-1')
+      expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-a' })).toBeNull()
     })
   })
 })

@@ -1,16 +1,24 @@
-import { generateText } from 'ai'
 import { settingsManager } from './settings.ipc'
+import i18n from 'i18next'
 import {
+  createAgentStreamAbortError,
   GlobalModelsConfig,
   canUseProviderModel,
   logger,
+  normalizeReasoningEffortSetting,
+  resolveReasoningEffortForSlot,
   prepareProviderConfigForRuntime,
   resolveSummaryConfigFromSettings,
   type AIProviderConfig
 } from '@baishou/shared'
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-desktop'
-import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core/shared'
-import { AIProviderRegistry } from '@baishou/ai'
+import {
+  SUMMARY_AI_GENERATION_TIMEOUT_MS,
+  SUMMARY_AI_IDLE_TIMEOUT_MS,
+  generateSummaryTextFromModel,
+  isSummaryFirstOutputTimeoutError
+} from '@baishou/core/shared'
+import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
 
 function resolveProviderById(
   providers: AIProviderConfig[],
@@ -58,7 +66,12 @@ export function buildSummaryAiClient(): SummaryAiClient {
             )
           }
           if (resolution.reason === 'no_model') {
-            throw new Error('No summary model configured')
+            throw new Error(
+              i18n.t(
+                'settings.summary_model_missing',
+                'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+              )
+            )
           }
           throw new Error('No active AI provider configured for summary generation')
         }
@@ -84,46 +97,47 @@ export function buildSummaryAiClient(): SummaryAiClient {
       const onUserAbort = () => abortController.abort()
       if (userSignal) {
         if (userSignal.aborted) {
-          const err = new DOMException('The operation was aborted', 'AbortError')
+          const err = createAgentStreamAbortError()
           throw err
         }
         userSignal.addEventListener('abort', onUserAbort, { once: true })
       }
 
       const timeoutSeconds = SUMMARY_AI_GENERATION_TIMEOUT_MS / 1000
-      let timeoutId: ReturnType<typeof setTimeout>
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          abortController.abort()
-          const err = new Error(
-            `AI generation timed out after ${timeoutSeconds} seconds (Promise level force-abort).`
-          )
-          err.name = 'AbortError'
-          reject(err)
-        }, SUMMARY_AI_GENERATION_TIMEOUT_MS)
-      })
 
       try {
         logger.info(
-          `[SummaryAI] Invoking Vercel AI SDK generateText with ${timeoutSeconds}s Promise-race timeout...`
+          `[SummaryAI] Invoking streamText with ${timeoutSeconds}s first-output timeout...`
         )
 
-        const generatePromise = (async () => {
-          const { text } = await generateText({
-            model,
-            ...(options?.system ? { system: options.system } : {}),
-            prompt,
-            maxSteps: 1,
-            abortSignal: abortController.signal
-          } as any)
-          return text
-        })()
-
-        const text = await Promise.race([generatePromise, timeoutPromise])
+        const providerOptions = buildReasoningProviderOptions({
+          modelId: finalModelId,
+          providerType: providerConfig.type || providerConfig.id,
+          effort: normalizeReasoningEffortSetting(
+            options?.reasoningEffort ??
+              resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'summary')
+          )
+        })
+        const text = await generateSummaryTextFromModel({
+          model,
+          prompt,
+          system: options?.system,
+          abortController,
+          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS,
+          idleTimeoutMs: SUMMARY_AI_IDLE_TIMEOUT_MS,
+          providerOptions,
+          onFirstOutput: () => {
+            logger.info(
+              `[SummaryAI] First model output received after ${Date.now() - startTime}ms; generation timeout cleared.`
+            )
+          },
+          onTextDelta: options?.onTextDelta,
+          onReasoningDelta: options?.onReasoningDelta
+        })
         const duration = Date.now() - startTime
 
         logger.info(
-          `[SummaryAI] generateText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
+          `[SummaryAI] streamText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
         )
 
         return text
@@ -133,24 +147,19 @@ export function buildSummaryAiClient(): SummaryAiClient {
 
         if (userCancelled) {
           logger.info(`[SummaryAI] Generation aborted by user after ${duration}ms.`)
-        } else if (
-          err.name === 'AbortError' ||
-          err.message?.includes('aborted') ||
-          err.message?.includes('timeout')
-        ) {
+        } else if (isSummaryFirstOutputTimeoutError(err)) {
           logger.error(
-            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the 120 seconds limit.`
+            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the ${timeoutSeconds} seconds first-output limit.`
           )
         } else {
           logger.error(
-            `[SummaryAI] generateText request failed in ${duration}ms. Error name: ${err.name}, message: ${err.message}`,
+            `[SummaryAI] streamText request failed in ${duration}ms. Error name: ${err.name}, message: ${err.message}`,
             err
           )
         }
 
         throw err
       } finally {
-        clearTimeout(timeoutId!)
         userSignal?.removeEventListener('abort', onUserAbort)
       }
     }

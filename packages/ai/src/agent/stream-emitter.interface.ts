@@ -15,7 +15,7 @@ export interface StreamFinishPayload {
 export interface IStreamEmitter {
   sendChunk(sessionId: string, chunk: string): void
   sendReasoningChunk(sessionId: string, chunk: string): void
-  sendToolStart(sessionId: string, name: string, args: unknown): void
-  sendToolResult(sessionId: string, name: string, result: unknown): void
+  sendToolStart(sessionId: string, name: string, args: unknown, toolCallId?: string): void
+  sendToolResult(sessionId: string, name: string, result: unknown, toolCallId?: string): void
   sendFinish(sessionId: string, payload: StreamFinishPayload): void
 }

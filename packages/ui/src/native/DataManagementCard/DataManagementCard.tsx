@@ -7,6 +7,7 @@ import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.sty
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
 import { SettingsListLeadingIcon } from '../settings/SettingsListLeadingIcon'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { mobileTypography, settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export interface NativeDataManagementCardProps {
   onExport: () => Promise<void>
@@ -87,7 +88,7 @@ export const DataManagementCard: React.FC<NativeDataManagementCardProps> = ({
           color={colors.textSecondary}
         />
       </SettingsListLeadingIcon>
-      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+      <View style={{ flex: 1, gap: sharedTokens.spacing.xxs, minWidth: 0 }}>
         <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>{row.title}</Text>
         <Text style={[styles.sub, { color: colors.textSecondary }]}>{row.subtitle}</Text>
       </View>
@@ -126,18 +127,18 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   sub: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   chevron: {
-    fontSize: 18,
-    marginTop: 2
+    fontSize: settingsIcons.trailing,
+    marginTop: sharedTokens.spacing.xxs
   },
   loader: {
-    marginTop: 2
+    marginTop: sharedTokens.spacing.xxs
   }
 })

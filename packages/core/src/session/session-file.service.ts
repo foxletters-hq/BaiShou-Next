@@ -5,7 +5,8 @@ import { IStoragePathService } from '../vault/storage-path.types'
 export class SessionFileService {
   constructor(
     private readonly pathProvider: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async getDirectory(vaultName?: string | null): Promise<string> {
@@ -31,11 +32,15 @@ export class SessionFileService {
     try {
       const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
       // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
-      if (JSON.stringify(JSON.parse(prevRaw)) === JSON.stringify(JSON.parse(next))) {
+      if (prevRaw === next || JSON.stringify(JSON.parse(prevRaw)) === next) {
         return fullPath
       }
     } catch {
       // 文件不存在或损坏时继续写入
+    }
+    if (this.rawDataSourceManager) {
+      await this.rawDataSourceManager.writeFile('session', `${sessionId}.json`, next)
+      return fullPath
     }
     await this.fileSystem.writeFile(fullPath, next, 'utf8')
     return fullPath
@@ -63,6 +68,22 @@ export class SessionFileService {
       const stat = await this.fileSystem.stat(fullPath)
       if (!stat.isFile) return undefined
       return stat.size
+    } catch {
+      return undefined
+    }
+  }
+
+  /** 会话 JSON 的磁盘 mtime（ms）；文件不存在或不可读时返回 undefined */
+  async getSessionFileMtimeMs(
+    sessionId: string,
+    vaultName?: string | null
+  ): Promise<number | undefined> {
+    const dir = await this.getDirectory(vaultName)
+    const fullPath = path.join(dir, `${sessionId}.json`)
+    try {
+      const stat = await this.fileSystem.stat(fullPath)
+      if (!stat.isFile || stat.mtimeMs == null) return undefined
+      return stat.mtimeMs
     } catch {
       return undefined
     }

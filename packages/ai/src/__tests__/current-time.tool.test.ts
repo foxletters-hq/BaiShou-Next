@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { CurrentTimeTool } from '../tools/current-time.tool'
 
 describe('CurrentTimeTool', () => {
@@ -15,7 +16,10 @@ describe('CurrentTimeTool', () => {
   })
 
   it('should return formatted date and timezone info', async () => {
-    const result = await tool.execute({}, { sessionId: 's1', vaultName: '/tmp' })
+    const result = await tool.execute(
+      {},
+      { sessionId: 's1', vaultId: deriveLegacyVaultId('/tmp'), vaultName: '/tmp' }
+    )
 
     expect(result).toContain('Current Date and Time:')
     expect(result).toContain('Timezone: UTC')
@@ -26,7 +30,11 @@ describe('CurrentTimeTool', () => {
   })
 
   it('should produce a valid Vercel CoreTool via toVercelTool', () => {
-    const coreTool = tool.toVercelTool({ sessionId: 's1', vaultName: '/tmp' })
+    const coreTool = tool.toVercelTool({
+      sessionId: 's1',
+      vaultId: deriveLegacyVaultId('/tmp'),
+      vaultName: '/tmp'
+    })
     expect(coreTool).toBeDefined()
   })
 })

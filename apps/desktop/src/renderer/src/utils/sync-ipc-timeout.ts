@@ -6,9 +6,6 @@ export const SYNC_IPC_PLAN_TIMEOUT_MS = 60_000
 export const SYNC_IPC_PROGRESS_STALL_MS = 30_000
 export const SYNC_IPC_MAX_RETRIES = 3
 
-/** @deprecated 使用 SYNC_IPC_PLAN_TIMEOUT_MS */
-export const SYNC_IPC_TIMEOUT_MS = SYNC_IPC_PLAN_TIMEOUT_MS
-
 export class SyncIpcTimeoutError extends Error {
   readonly timeoutMs: number
 

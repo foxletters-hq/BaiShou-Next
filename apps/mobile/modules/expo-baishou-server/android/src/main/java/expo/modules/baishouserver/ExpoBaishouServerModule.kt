@@ -26,17 +26,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+
 
 private const val MCP_INFO_JSON =
     "{\"name\":\"BaiShou MCP Server\",\"version\":\"1.0.0\",\"protocolVersion\":\"2024-11-05\",\"description\":\"BaiShou AI Companion Diary - MCP Interface\"}"
 
 /** 局域网备份可能较大，默认 5s 读超时会导致传输中断 */
 private const val LAN_SOCKET_READ_TIMEOUT_MS = 10 * 60 * 1000
-private const val LAN_HTTP_TIMEOUT_MS = 10 * 60 * 1000L
 
 /** MCP 工具调用可能较慢；GET SSE 等待流式响应头 */
 private const val MCP_BUFFERED_TIMEOUT_SEC = 120L
@@ -61,6 +57,7 @@ private data class ActiveMcpStream(
 
 internal data class McpHttpRequest(
     val method: String,
+    /** 含 query 的路径，如 `/mcp`、`/sse`、`/message?sessionId=...` */
     val path: String,
     val headers: Map<String, String>,
     val body: String
@@ -130,7 +127,8 @@ internal class BaishouHttpServer(
     private val context: Context,
     private val authToken: String?,
     private val emitEvent: (String, Map<String, Any>) -> Unit,
-    private val dispatchMcpRequest: (McpHttpRequest) -> NanoHTTPD.Response
+    /** MCP server 传入分发器；LAN server 传 null，避免 LAN 端口暴露 MCP 路由 */
+    private val dispatchMcpRequest: ((McpHttpRequest) -> NanoHTTPD.Response)? = null
 ) : NanoHTTPD(port) {
 
     private fun isAuthorized(session: IHTTPSession): Boolean {
@@ -189,7 +187,32 @@ internal class BaishouHttpServer(
         return if (totalRead > 0) String(buffer, 0, totalRead) else ""
     }
 
+    private fun buildMcpPath(session: IHTTPSession): String {
+        val uri = session.uri ?: "/"
+        val query = session.queryParameterString
+        if (!query.isNullOrEmpty()) return "$uri?$query"
+        val parms = session.parms
+        if (!parms.isNullOrEmpty()) {
+            val rebuilt = parms.entries.joinToString("&") { "${it.key}=${it.value}" }
+            if (rebuilt.isNotEmpty()) return "$uri?$rebuilt"
+        }
+        return uri
+    }
+
+    private fun isMcpRoute(uri: String?): Boolean {
+        if (uri.isNullOrEmpty()) return false
+        return uri == "/mcp" ||
+            uri == "/mcp/" ||
+            uri == "/sse" ||
+            uri == "/sse/" ||
+            uri == "/message" ||
+            uri.startsWith("/message?")
+    }
+
     private fun handleMcp(session: IHTTPSession): Response {
+        val dispatch = dispatchMcpRequest
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Endpoint Not Found")
+
         if (session.method == Method.OPTIONS) {
             return corsResponse(Response.Status.OK, MIME_PLAINTEXT, "")
         }
@@ -200,18 +223,13 @@ internal class BaishouHttpServer(
 
         return try {
             val method = session.method.name
+            val path = buildMcpPath(session)
             val headers = collectHeaders(session)
-            val queryString = session.queryParameterString?.takeIf { it.isNotBlank() }
-            val path = if (queryString != null) {
-                "${session.uri}?$queryString"
-            } else {
-                session.uri
-            }
             val body = when (session.method) {
                 Method.POST -> readRequestBody(session)
                 else -> ""
             }
-            dispatchMcpRequest(McpHttpRequest(method, path, headers, body))
+            dispatch(McpHttpRequest(method, path, headers, body))
         } catch (e: Exception) {
             e.printStackTrace()
             corsResponse(
@@ -269,11 +287,7 @@ internal class BaishouHttpServer(
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri ?: ""
-        if (
-            uri == "/mcp" || uri == "/mcp/" ||
-            uri == "/sse" || uri == "/sse/" ||
-            uri == "/message" || uri.startsWith("/message?")
-        ) {
+        if (dispatchMcpRequest != null && isMcpRoute(uri)) {
             return handleMcp(session)
         }
 
@@ -281,12 +295,20 @@ internal class BaishouHttpServer(
             return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}")
         }
 
-        if (session.method == Method.POST && session.uri == "/upload") {
+        // 上传/接收事件只属于 LAN server；MCP 端口不处理备份包上传
+        if (dispatchMcpRequest == null && session.method == Method.POST && session.uri == "/upload") {
+            var destFile: File? = null
             try {
-                val destFile = File(
+                context.cacheDir.listFiles()?.forEach { file ->
+                    if (file.name.startsWith("lan_sync_payload_") && file.name.endsWith(".zip")) {
+                        runCatching { file.delete() }
+                    }
+                }
+                val targetFile = File(
                     context.cacheDir,
                     "lan_sync_payload_${System.currentTimeMillis()}.zip"
                 )
+                destFile = targetFile
                 val totalBytes = session.headers["content-length"]?.toLongOrNull() ?: 0L
                 if (totalBytes > 0L) {
                     emitEvent(
@@ -294,7 +316,7 @@ internal class BaishouHttpServer(
                         mapOf("totalBytes" to totalBytes)
                     )
                 }
-                val bytesWritten = streamRequestBodyToFile(session, destFile) { written, total ->
+                val bytesWritten = streamRequestBodyToFile(session, targetFile) { written, total ->
                     emitEvent(
                         "onLanUploadProgress",
                         mapOf("writtenBytes" to written, "totalBytes" to total)
@@ -302,6 +324,8 @@ internal class BaishouHttpServer(
                 }
 
                 if (bytesWritten <= 0L) {
+                    targetFile.delete()
+                    emitEvent("onLanUploadFailed", mapOf("reason" to "No file content"))
                     return newFixedLengthResponse(
                         Response.Status.BAD_REQUEST,
                         "application/json",
@@ -310,7 +334,8 @@ internal class BaishouHttpServer(
                 }
 
                 if (totalBytes > 0L && bytesWritten < totalBytes) {
-                    destFile.delete()
+                    targetFile.delete()
+                    emitEvent("onLanUploadFailed", mapOf("reason" to "Incomplete upload"))
                     return newFixedLengthResponse(
                         Response.Status.BAD_REQUEST,
                         "application/json",
@@ -318,7 +343,7 @@ internal class BaishouHttpServer(
                     )
                 }
 
-                val savedPath = destFile.absolutePath
+                val savedPath = targetFile.absolutePath
                 val response = newFixedLengthResponse(
                     Response.Status.OK,
                     "application/json",
@@ -331,6 +356,8 @@ internal class BaishouHttpServer(
                 return response
             } catch (e: Exception) {
                 e.printStackTrace()
+                destFile?.delete()
+                emitEvent("onLanUploadFailed", mapOf("reason" to (e.message ?: "Internal Error")))
                 return newFixedLengthResponse(
                     Response.Status.INTERNAL_ERROR,
                     MIME_PLAINTEXT,
@@ -346,17 +373,11 @@ internal class BaishouHttpServer(
 private const val OPEN_DIRECTORY_TREE_CODE = 8842
 
 class ExpoBaishouServerModule : Module() {
-    private var server: BaishouHttpServer? = null
+    private var mcpServer: BaishouHttpServer? = null
+    private var lanServer: BaishouHttpServer? = null
     private val pendingMcpRequests = ConcurrentHashMap<String, PendingMcpRequest>()
     private val activeMcpStreams = ConcurrentHashMap<String, ActiveMcpStream>()
     private var pendingDirectoryPromise: Promise? = null
-    private val lanHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(LAN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-            .writeTimeout(LAN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-            .build()
-    }
 
     private fun parseMcpResponseHeaders(json: org.json.JSONObject): Map<String, String> {
         val headers = mutableMapOf<String, String>()
@@ -439,10 +460,71 @@ class ExpoBaishouServerModule : Module() {
         }
     }
 
+    private fun closePendingMcpRequests(statusCode: Int) {
+        pendingMcpRequests.values.forEach { pending ->
+            pending.dispatchMeta.set(McpDispatchMeta.Fixed(statusCode, emptyMap(), ""))
+            closeQuietly(pending.pipeOut)
+            pending.latch.countDown()
+        }
+        pendingMcpRequests.clear()
+        activeMcpStreams.values.forEach { stream ->
+            closeQuietly(stream.pipeOut)
+            closeQuietly(stream.pipeIn)
+        }
+        activeMcpStreams.clear()
+    }
+
+    private fun stopServerInstance(target: String) {
+        when (target) {
+            "mcp" -> {
+                mcpServer?.stop()
+                mcpServer = null
+                closePendingMcpRequests(503)
+            }
+            "lan" -> {
+                lanServer?.stop()
+                lanServer = null
+            }
+        }
+        sendEvent("onHttpServerPortChanged", mapOf("port" to 0, "server" to target))
+    }
+
+    private fun startServerInstance(target: String, port: Int, authToken: String?): Int {
+        stopServerInstance(target)
+        return try {
+            val context = appContext.reactContext ?: throw Exception("React context is null")
+            val mcpDispatcher: ((McpHttpRequest) -> NanoHTTPD.Response)? =
+                if (target == "mcp") ({ request -> dispatchMcpRequestToJs(request) }) else null
+            val instance = BaishouHttpServer(
+                port,
+                context,
+                authToken,
+                { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
+                mcpDispatcher
+            )
+            instance.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
+            if (target == "mcp") {
+                mcpServer = instance
+            } else {
+                lanServer = instance
+            }
+            val boundPort = instance.listeningPort
+            sendEvent(
+                "onHttpServerPortChanged",
+                mapOf("port" to boundPort, "requestedPort" to port, "server" to target)
+            )
+            boundPort
+        } catch (e: Exception) {
+            e.printStackTrace()
+            sendEvent("onHttpServerPortChanged", mapOf("port" to 0, "server" to target))
+            -1
+        }
+    }
+
     override fun definition() = ModuleDefinition {
         Name("ExpoBaishouServer")
 
-        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onStorageRootCopyProgress", "onArchiveImportProgress", "onSyncHttpTransferProgress")
+        Events("onFileReceived", "onMcpHttpRequest", "onLanUploadStarted", "onLanUploadProgress", "onLanUploadFailed", "onLanSendProgress", "onHttpServerPortChanged", "onStorageRootCopyProgress", "onArchiveImportProgress", "onSyncHttpTransferProgress")
 
         Function("resolveMcpHttpResponse") { requestId: String, responseBody: String ->
             val pending = pendingMcpRequests[requestId] ?: return@Function false
@@ -505,42 +587,32 @@ class ExpoBaishouServerModule : Module() {
             true
         }
 
+        Function("getServerPort") {
+            mcpServer?.listeningPort ?: 0
+        }
+
+        Function("getLanServerPort") {
+            lanServer?.listeningPort ?: 0
+        }
+
+        Function("hasIndependentLanServer") {
+            true
+        }
+
         Function("startServer") { port: Int, authToken: String? ->
-            if (server != null) {
-                server?.stop()
-                server = null
-            }
-            try {
-                val context = appContext.reactContext ?: throw Exception("React context is null")
-                server = BaishouHttpServer(
-                    port,
-                    context,
-                    authToken,
-                    { evt, payload -> this@ExpoBaishouServerModule.sendEvent(evt, payload) },
-                    { request -> dispatchMcpRequestToJs(request) }
-                )
-                server?.start(LAN_SOCKET_READ_TIMEOUT_MS, false)
-                return@Function server?.listeningPort ?: port
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return@Function -1
-            }
+            startServerInstance("mcp", port, authToken)
+        }
+
+        Function("startLanServer") { port: Int ->
+            startServerInstance("lan", port, null)
         }
 
         Function("stopServer") {
-            server?.stop()
-            server = null
-            pendingMcpRequests.values.forEach { pending ->
-                pending.dispatchMeta.set(McpDispatchMeta.Fixed(503, emptyMap(), ""))
-                closeQuietly(pending.pipeOut)
-                pending.latch.countDown()
-            }
-            pendingMcpRequests.clear()
-            activeMcpStreams.values.forEach { stream ->
-                closeQuietly(stream.pipeOut)
-                closeQuietly(stream.pipeIn)
-            }
-            activeMcpStreams.clear()
+            stopServerInstance("mcp")
+        }
+
+        Function("stopLanServer") {
+            stopServerInstance("lan")
         }
 
         AsyncFunction("uploadLanFileAsync") { url: String, filePath: String, promise: Promise ->
@@ -552,19 +624,18 @@ class ExpoBaishouServerModule : Module() {
                     return@AsyncFunction
                 }
 
-                val body = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
-                val request = Request.Builder()
-                    .url(url)
-                    .post(body)
-                    .header(
-                        "Content-Disposition",
-                        "attachment; filename=\"${file.name}\""
+                val status = HttpFileTransfer.uploadFile(
+                    url,
+                    normalizedPath,
+                    "POST",
+                    mapOf("Content-Disposition" to "attachment; filename=\"${file.name}\"")
+                ) { writtenBytes, totalBytes ->
+                    sendEvent(
+                        "onLanSendProgress",
+                        mapOf("writtenBytes" to writtenBytes, "totalBytes" to totalBytes)
                     )
-                    .build()
-
-                lanHttpClient.newCall(request).execute().use { response ->
-                    promise.resolve(mapOf("status" to response.code))
                 }
+                promise.resolve(mapOf("status" to status))
             } catch (e: Exception) {
                 e.printStackTrace()
                 promise.reject("E_LAN_UPLOAD", e.message ?: "Upload failed", e)

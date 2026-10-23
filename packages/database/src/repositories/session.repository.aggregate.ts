@@ -1,9 +1,30 @@
 import { eq } from 'drizzle-orm'
+import {
+  deriveLegacyVaultId,
+  isVaultId,
+  parseMountedNotebookIds,
+  resolveAggregateSnapshots,
+  serializeMountedNotebookIds
+} from '@baishou/shared'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
+import { compressionSnapshotsTable } from '../schema/compression-snapshots'
+
+function resolveSessionVaultId(session: {
+  vaultId?: string | null
+  vaultName?: string | null
+  vault_id?: string | null
+  vault_name?: string | null
+}): string {
+  const raw = String(
+    session.vaultId ?? session.vault_id ?? session.vaultName ?? session.vault_name ?? ''
+  )
+  if (!raw) return deriveLegacyVaultId('default')
+  return isVaultId(raw) ? raw : deriveLegacyVaultId(raw)
+}
 
 export class SessionAggregateSync {
   private static writeMutex: Promise<void> = Promise.resolve()
@@ -17,7 +38,12 @@ export class SessionAggregateSync {
       .where(eq(agentSessionsTable.id, sessionId))
       .limit(1)
     if (!sessionDoc.length) return null
-    const session = sessionDoc[0]
+    const row = sessionDoc[0]
+    if (!row) return null
+    const session = {
+      ...row,
+      mountedNotebookIds: parseMountedNotebookIds(row.mountedNotebookIds)
+    }
 
     const messages = await this.db
       .select()
@@ -26,13 +52,38 @@ export class SessionAggregateSync {
     messages.sort((a, b) => a.orderIndex - b.orderIndex)
 
     const parts = await this.db.select().from(partsTbl).where(eq(partsTbl.sessionId, sessionId))
+    const partsByMessageId = new Map<string, typeof parts>()
+    for (const p of parts) {
+      let bucket = partsByMessageId.get(p.messageId)
+      if (!bucket) {
+        bucket = []
+        partsByMessageId.set(p.messageId, bucket)
+      }
+      bucket.push(p)
+    }
 
     const enrichedMessages = messages.map((m) => ({
       ...m,
-      parts: parts.filter((p) => p.messageId === m.id)
+      parts: partsByMessageId.get(m.id) ?? []
     }))
 
-    return { session, messages: enrichedMessages }
+    const snapshotRows = await this.db
+      .select()
+      .from(compressionSnapshotsTable)
+      .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+    const snapshots = resolveAggregateSnapshots({
+      snapshots: snapshotRows.map((row) => ({
+        coveredUpToMessageId: row.coveredUpToMessageId,
+        tailStartMessageId: row.tailStartMessageId ?? null,
+        summaryText: row.summaryText,
+        messageCount: row.messageCount,
+        tokenCount: row.tokenCount ?? null,
+        createdAt: row.createdAt instanceof Date ? row.createdAt.getTime() : Number(row.createdAt)
+      })),
+      messages: enrichedMessages
+    })
+
+    return { session, messages: enrichedMessages, snapshots }
   }
 
   async upsertAggregate(aggregate: any): Promise<void> {
@@ -101,6 +152,7 @@ export class SessionAggregateSync {
 
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
     const { session, messages } = aggregate
+    const snapshots = resolveAggregateSnapshots(aggregate)
     const rawClient = (this.db as any).$client || (this.db as any).session?.client
 
     const toUnixSec = (ts: any): number => {
@@ -126,18 +178,19 @@ export class SessionAggregateSync {
 
     stmts.push({
       sql: `INSERT INTO agent_sessions
-              (id, title, vault_name, assistant_id, is_pinned, system_prompt,
-               provider_id, model_id, total_input_tokens, total_output_tokens,
+              (id, title, vault_id, assistant_id, is_pinned, system_prompt,
+               mounted_notebook_ids, provider_id, model_id, total_input_tokens, total_output_tokens,
                total_cache_read_input_tokens, total_cache_write_input_tokens,
                total_cost_micros, created_at, updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
         session.id,
         session.title ?? null,
-        session.vaultName ?? null,
+        resolveSessionVaultId(session),
         session.assistantId ?? null,
         session.isPinned ? 1 : 0,
         session.systemPrompt ?? null,
+        serializeMountedNotebookIds(session.mountedNotebookIds ?? session.mounted_notebook_ids),
         session.providerId ?? null,
         session.modelId ?? null,
         session.totalInputTokens ?? null,
@@ -175,13 +228,41 @@ export class SessionAggregateSync {
       }
     }
 
+    stmts.push({
+      sql: 'DELETE FROM compression_snapshots WHERE session_id = ?',
+      args: [session.id]
+    })
+    for (const snap of snapshots) {
+      stmts.push({
+        sql: `INSERT INTO compression_snapshots
+                (session_id, summary_text, covered_up_to_message_id, tail_start_message_id,
+                 message_count, token_count, created_at)
+                VALUES (?,?,?,?,?,?,?)`,
+        args: [
+          session.id,
+          snap.summaryText,
+          snap.coveredUpToMessageId,
+          snap.tailStartMessageId,
+          snap.messageCount,
+          snap.tokenCount,
+          toUnixSec(snap.createdAt)
+        ]
+      })
+    }
+
     if (rawClient && typeof rawClient.batch === 'function') {
       await runWithSqliteBusyRetry(() => rawClient.batch(stmts))
     } else if (rawClient && typeof rawClient.transaction === 'function') {
       await runWithSqliteBusyRetry(async () => {
         const runTx = rawClient.transaction((statements: typeof stmts) => {
+          const stmtCache = new Map<string, any>()
           for (const stmt of statements) {
-            rawClient.prepare(stmt.sql).run(...(stmt.args || []))
+            let prepared = stmtCache.get(stmt.sql)
+            if (!prepared) {
+              prepared = rawClient.prepare(stmt.sql)
+              stmtCache.set(stmt.sql, prepared)
+            }
+            prepared.run(...(stmt.args || []))
           }
         })
         runTx(stmts)

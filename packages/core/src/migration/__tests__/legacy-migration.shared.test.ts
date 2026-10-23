@@ -16,6 +16,7 @@ import {
   resolveAgentDbPath,
   resolveLegacyImportVaultNames,
   resolveLegacyAgentDbPathsForVault,
+  scanLegacyDatabases,
   MIN_AGENT_SQLITE_BYTES_FOR_IMPORT,
   writeMigrationStatus,
   writeNextVaultRegistry
@@ -59,6 +60,19 @@ describe('legacy-migration.shared', () => {
       '# nested'
     )
     expect(await isLegacyAppRoot(fileSystem, nestedJournals)).toBe(true)
+  })
+
+  it('should not walk Journals when scanning for legacy sqlite files', async () => {
+    const root = path.join(tempDir, 'skip-journals')
+    const realDb = path.join(root, 'Personal', '.baishou', 'agent.sqlite')
+    const decoyDb = path.join(root, 'Personal', 'Journals', 'agent.sqlite')
+    await fs.mkdir(path.dirname(realDb), { recursive: true })
+    await fs.mkdir(path.dirname(decoyDb), { recursive: true })
+    await fs.writeFile(realDb, 'legacy-db')
+    await fs.writeFile(decoyDb, 'not-a-db')
+
+    const { agentDbs } = await scanLegacyDatabases(fileSystem, root)
+    expect(agentDbs.map(normalizeStorageRoot)).toEqual([normalizeStorageRoot(realDb)])
   })
 
   it('writes next vault registry with remapped paths', async () => {
@@ -181,6 +195,26 @@ describe('legacy-migration.shared', () => {
 
     expect(staged).not.toContain('file:')
     expect(await fileSystem.exists(staged)).toBe(true)
+    await fs.rm(root, { recursive: true, force: true })
+  })
+
+  it('should copy sqlite wal and shm sidecars when staging for attach', async () => {
+    const { stageLegacySqliteForAttach } = await import('../legacy-migration.shared')
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'legacy-sqlite-wal-'))
+    const legacyDb = path.join(root, '.baishou', 'agent.sqlite')
+    await fs.mkdir(path.dirname(legacyDb), { recursive: true })
+    await fs.writeFile(legacyDb, 'sqlite-bytes')
+    await fs.writeFile(`${legacyDb}-wal`, 'wal-bytes')
+    await fs.writeFile(`${legacyDb}-shm`, 'shm-bytes')
+
+    const staged = await stageLegacySqliteForAttach(
+      fileSystem,
+      legacyDb,
+      path.join(root, 'staging')
+    )
+
+    expect(await fileSystem.exists(`${staged}-wal`)).toBe(true)
+    expect(await fileSystem.exists(`${staged}-shm`)).toBe(true)
     await fs.rm(root, { recursive: true, force: true })
   })
 

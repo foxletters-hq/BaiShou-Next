@@ -11,6 +11,7 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { AboutSettingsAboutContent, useAboutSettingsEasterEggs } from '@baishou/ui/native'
 import { APP_VERSION_NUMBER } from '../../app-version'
 import { shareDiagnosticLogAsTxt } from '../../services/mobile-diagnostic-log.service'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const HERO_IMAGE = require('@baishou/shared/assets/images/Next-1.0.0-banner.jpg')
@@ -104,22 +105,22 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 16
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.md
   },
   diagnosticCard: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    padding: 16,
-    gap: 10
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.smPlus
   },
   diagnosticTitle: {
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
   },
   diagnosticDesc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 19
   }
 })

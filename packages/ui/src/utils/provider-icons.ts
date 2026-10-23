@@ -1,5 +1,6 @@
 /**
  * 供应商图标（桌面端）：本地打包的 LobeHub static-svg，见 pnpm sync:provider-icons
+ * 对齐 OpenCode：模型行使用所属供应商 icon，不做 model→品牌推断。
  */
 import {
   PROVIDER_ICON_IDS,

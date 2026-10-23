@@ -1,18 +1,31 @@
 import React, { useMemo } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import {
+  assistantStreamTimelineSignature,
+  collectKnowledgeCitationsFromInvocations,
+  groupStreamTimelineForDisplay,
+  type AgentStreamTimelineItem
+} from '@baishou/shared'
 import { parseRedactedThinking } from '../../shared/chat-bubble/redacted-thinking'
 import { useNativeTheme } from '../theme'
 import { AgentThinkSection } from '../AgentThinkSection'
+import { AgentProcessSection } from '../AgentProcessSection'
 import type { NativeStreamingBubbleProps } from './streaming-bubble.types'
 import { createStreamingBubbleStyles } from './streaming-bubble.styles'
 import { ChatBubbleAvatar } from '../ChatBubble/ChatBubbleAvatar'
 import { chatBubbleStyles } from '../ChatBubble/chat-bubble.styles'
-import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
+import {
+  getChatBubbleOverBackgroundStyle,
+  getChatOverBackgroundMetaTextStyle
+} from '../../shared/chat-over-background-meta.style'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
 import { StreamingBubbleBouncingDots } from './StreamingBubbleBouncingDots'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { NativeChatBubbleAttachments } from '../ChatBubble/NativeChatBubbleAttachments'
+import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
+import { AssistantDisplayTimeline } from '../AssistantDisplayTimeline/AssistantDisplayTimeline'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type { ToolExecution, NativeStreamingBubbleProps } from './streaming-bubble.types'
 
@@ -24,18 +37,40 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   isTextStreaming = true,
   activeToolName = null,
   completedTools = [],
+  timeline,
+  gateParts = [],
   aiProfile = { name: 'AI' },
   error = null,
   onRetry,
   invertMetaOverBackground = false,
+  hasChatBackground = false,
   reserveActionBarSpace = false,
   attachments = []
 }: NativeStreamingBubbleProps) {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
+  const hasBackground = Boolean(hasChatBackground || invertMetaOverBackground)
+  const metaTone = invertMetaOverBackground || (hasBackground ? 'dark' : false)
+  const metaTextStyle = getChatOverBackgroundMetaTextStyle(metaTone)
   const auxStyles = useMemo(() => createStreamingBubbleStyles(colors, tokens), [colors, tokens])
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
+  const liveTimeline = timeline ?? []
+  const timelineKey = assistantStreamTimelineSignature(liveTimeline)
+  const timelineItems = useMemo(
+    () => groupStreamTimelineForDisplay(liveTimeline, gateParts),
+    // 用内容签名代替 timeline 引用，避免父组件每次传入新数组打穿分组
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timelineKey 已覆盖内容
+    [gateParts, timelineKey]
+  )
+  const useTimeline = timelineItems.length > 0
+  const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
+    liveTimeline
+      .filter(
+        (item): item is Extract<AgentStreamTimelineItem, { kind: 'tool' }> => item.kind === 'tool'
+      )
+      .map((item) => ({ toolName: item.name, result: item.result }))
+  )
 
   const { cleanContent: cleanText, cleanReasoning } = useMemo(
     () => parseRedactedThinking(text, reasoning),
@@ -46,6 +81,8 @@ export const StreamingBubble = React.memo(function StreamingBubble({
   const hasText = cleanText.length > 0
   const hasTools = completedTools.length > 0 || !!activeToolName
   const hasAttachments = attachments.length > 0
+  const showStickerAttachments = hasAttachments && !isTextStreaming
+  const hasBody = useTimeline || hasText || hasReasoning || hasTools || showStickerAttachments
 
   return (
     <View style={[chatBubbleStyles.container, chatBubbleStyles.containerAssistant]}>
@@ -54,7 +91,7 @@ export const StreamingBubble = React.memo(function StreamingBubble({
         emoji={aiProfile.emoji}
         avatarPath={aiProfile.avatarPath}
         resolvedAvatarUri={aiProfile.resolvedAvatarUri}
-        style={{ marginRight: 8 }}
+        style={{ marginRight: sharedTokens.spacing.sm }}
       />
 
       <View
@@ -64,6 +101,131 @@ export const StreamingBubble = React.memo(function StreamingBubble({
           chatBubbleStyles.bubbleWrapperEditing
         ]}
       >
+        {hasBody ? (
+          <>
+            <View
+              collapsable={false}
+              style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}
+            >
+              <Text
+                style={[
+                  chatBubbleStyles.nameLabel,
+                  chatBubbleStyles.nameLabelAssistant,
+                  { color: colors.textSecondary },
+                  metaTextStyle
+                ]}
+              >
+                {aiName}
+              </Text>
+            </View>
+            <View
+              collapsable={false}
+              style={[
+                chatBubbleStyles.bubble,
+                chatBubbleStyles.bubbleEditing,
+                getChatBubbleOverBackgroundStyle(hasBackground, isDark, colors),
+                { borderBottomLeftRadius: sharedTokens.radius.xs }
+              ]}
+            >
+              <KnowledgeCitationBlock citations={knowledgeCitations} anchorKey="streaming">
+                {useTimeline ? (
+                  <AssistantDisplayTimeline
+                    items={timelineItems}
+                    isStreaming={!error}
+                    isThinkLoading={isReasoning && !error}
+                    isThinkStreaming={(isThinkStreaming || isReasoning) && !error}
+                    isTextStreaming={isTextStreaming && !error}
+                    error={error}
+                    knowledgeCitations={knowledgeCitations}
+                    citationAnchorKey="streaming"
+                  />
+                ) : (
+                  <>
+                    {hasReasoning || hasTools ? (
+                      <View
+                        style={{
+                          marginBottom: hasText ? tokens.spacing.sm : 0,
+                          alignSelf: 'stretch',
+                          width: '100%'
+                        }}
+                      >
+                        <AgentProcessSection
+                          reasoningContent={hasReasoning ? cleanReasoning : undefined}
+                          isReasoningLoading={isReasoning}
+                          isReasoningStreaming={isThinkStreaming || isReasoning}
+                          streamingCompletedTools={completedTools.map((tool, idx) => ({
+                            name: tool.name,
+                            durationMs: tool.durationMs ?? 0,
+                            toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
+                            result: tool.result,
+                            args: tool.args
+                          }))}
+                          activeToolName={error ? null : activeToolName}
+                          isStreaming={!error}
+                          hasAnswerText={hasText}
+                        >
+                          {hasReasoning && (
+                            <View
+                              style={{
+                                marginBottom: hasTools ? tokens.spacing.sm : 0,
+                                alignSelf: 'stretch',
+                                width: '100%'
+                              }}
+                            >
+                              <AgentThinkSection
+                                content={cleanReasoning}
+                                isLoading={isReasoning}
+                                isMarkdownStreaming={isThinkStreaming || isReasoning}
+                              />
+                            </View>
+                          )}
+
+                          {hasTools ? (
+                            <View style={{ alignSelf: 'stretch', width: '100%' }}>
+                              <ToolResultGroupCard
+                                completedTools={completedTools.map((tool, idx) => ({
+                                  name: tool.name,
+                                  durationMs: tool.durationMs ?? 0,
+                                  toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
+                                  startTime: tool.toolCallId ?? idx,
+                                  result: tool.result,
+                                  args: tool.args
+                                }))}
+                                activeToolName={error ? null : activeToolName}
+                              />
+                            </View>
+                          ) : null}
+                        </AgentProcessSection>
+                      </View>
+                    ) : null}
+
+                    {hasText && (
+                      <View style={chatBubbleStyles.markdownSlot}>
+                        <AgentMarkdownRenderer
+                          content={cleanText}
+                          isStreaming={isTextStreaming && !error}
+                          variant="chat"
+                        />
+                      </View>
+                    )}
+                  </>
+                )}
+                {showStickerAttachments ? (
+                  <NativeChatBubbleAttachments
+                    attachments={attachments}
+                    display="sticker"
+                    placement="after"
+                  />
+                ) : null}
+              </KnowledgeCitationBlock>
+              {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
+            </View>
+          </>
+        ) : error ? null : (
+          <View style={auxStyles.dotsWrap}>
+            <StreamingBubbleBouncingDots />
+          </View>
+        )}
         {error ? (
           <View style={auxStyles.errorBox}>
             <Text style={auxStyles.errorText}>⚠ {error}</Text>
@@ -79,91 +241,19 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                   alignSelf: 'flex-start'
                 })}
               >
-                <Text style={{ fontSize: 14, color: colors.onError, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    fontSize: mobileTypography.secondary.fontSize,
+                    color: colors.onError,
+                    fontWeight: '600'
+                  }}
+                >
                   {t('common.retry', '重试')}
                 </Text>
               </Pressable>
             )}
           </View>
-        ) : hasText || hasReasoning || hasTools || hasAttachments ? (
-          <>
-            <View style={[chatBubbleStyles.nameTimeRow, chatBubbleStyles.nameTimeRowAssistant]}>
-              <Text
-                style={[
-                  chatBubbleStyles.nameLabel,
-                  chatBubbleStyles.nameLabelAssistant,
-                  { color: colors.textSecondary },
-                  invertMetaOverBackground ? chatOverBackgroundMetaTextStyle : null
-                ]}
-              >
-                {aiName}
-              </Text>
-            </View>
-            <View
-              collapsable={false}
-              style={[
-                chatBubbleStyles.bubble,
-                chatBubbleStyles.bubbleEditing,
-                {
-                  backgroundColor: colors.bgSurface,
-                  borderBottomLeftRadius: 4
-                }
-              ]}
-            >
-              {hasAttachments ? (
-                <NativeChatBubbleAttachments attachments={attachments} isUserBubble={false} />
-              ) : null}
-              {hasReasoning && (
-                <View
-                  style={{
-                    marginBottom: hasText || hasTools ? 8 : 0,
-                    alignSelf: 'stretch',
-                    width: '100%'
-                  }}
-                >
-                  <AgentThinkSection
-                    content={cleanReasoning}
-                    isLoading={isReasoning || isThinkStreaming}
-                    isMarkdownStreaming={false}
-                  />
-                </View>
-              )}
-
-              {hasTools ? (
-                <View
-                  style={{ marginBottom: hasText ? 8 : 0, alignSelf: 'stretch', width: '100%' }}
-                >
-                  <ToolResultGroupCard
-                    completedTools={completedTools.map((tool, idx) => ({
-                      name: tool.name,
-                      durationMs: tool.durationMs ?? 0,
-                      toolCallId: tool.toolCallId ?? `streaming-${tool.name}-${idx}`,
-                      startTime: tool.toolCallId ?? idx,
-                      result: tool.result,
-                      args: tool.args
-                    }))}
-                    activeToolName={activeToolName}
-                  />
-                </View>
-              ) : null}
-
-              {hasText && (
-                <View style={chatBubbleStyles.markdownSlot}>
-                  <AgentMarkdownRenderer
-                    content={cleanText}
-                    isStreaming={isTextStreaming}
-                    variant="chat"
-                  />
-                </View>
-              )}
-              {reserveActionBarSpace ? <View style={auxStyles.actionBarSpacer} /> : null}
-            </View>
-          </>
-        ) : (
-          <View style={auxStyles.dotsWrap}>
-            <StreamingBubbleBouncingDots />
-          </View>
-        )}
+        ) : null}
       </View>
     </View>
   )

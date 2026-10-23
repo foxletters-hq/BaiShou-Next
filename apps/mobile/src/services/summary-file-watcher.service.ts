@@ -107,7 +107,7 @@ export class SummaryFileWatcherService {
         this.pausedForDeadDb
       )
         return
-      await summarySync.fullScanArchives()
+      await summarySync.fullScanArchives({ skipUnchangedByMtime: true })
     } catch (e) {
       if (generation !== this.generation) return
       if (looksLikeAgentDatabaseDead(e)) {

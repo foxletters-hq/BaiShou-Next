@@ -1,4 +1,6 @@
 import React from 'react'
+import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { RefreshCw } from 'lucide-react'
 
@@ -14,51 +16,60 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
     setCommitMessage,
     handleManualCommit,
     handleCommitAndPush,
-    canCommit
+    canCommit,
+    isCommitActionInFlight
   } = vm
 
   if (!isInitialized) return null
 
   return (
     <div className="gmp-commit-area">
-      <input
-        className="gmp-input gmp-commit-input"
+      <Input
+        fieldSize="small"
+        className="gmp-commit-input"
         type="text"
         value={commitMessage}
         onChange={(e) => setCommitMessage(e.target.value)}
-        placeholder={t('version_control.commit_placeholder', '输入提交消息，留空将使用时间戳')}
+        placeholder={t('version_control.commit_placeholder', '提交变更 (留空自动生成快照)')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            if (canCommit && !isCommitActionInFlight) {
+              void handleManualCommit()
+            }
+          }
+        }}
       />
-      <button
-        className="gmp-btn gmp-btn-primary"
-        onClick={handleManualCommit}
-        disabled={!canCommit}
-      >
-        {t('version_control.commit_local', '提交')}
-      </button>
-      <button
-        className="gmp-btn gmp-btn-primary"
-        onClick={handleCommitAndPush}
-        disabled={!canCommit}
-      >
-        {t('version_control.commit_push', '提交并推送')}
-      </button>
-      <button
-        className="gmp-btn"
-        onClick={() => {
-          vm.handleLoadHistory()
-          vm.handleRefreshStatus()
-          vm.handleLoadRecentPulls()
-        }}
-        title={t('common.refresh', '刷新')}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px'
-        }}
-      >
-        <RefreshCw size={18} />
-      </button>
+      <div className="gmp-commit-actions">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleManualCommit}
+          disabled={!canCommit || isCommitActionInFlight}
+          style={{ flex: 1 }}
+        >
+          {t('version_control.commit_local', '提交')}
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleCommitAndPush}
+          disabled={!canCommit || isCommitActionInFlight}
+        >
+          {t('version_control.commit_push', '提交并推送')}
+        </Button>
+        <button
+          type="button"
+          className="gmp-btn gmp-icon-btn"
+          onClick={() => {
+            void vm.handleLoadHistory()
+            void vm.handleRefreshStatus({ fetch: true })
+          }}
+          title={t('common.refresh', '刷新状态')}
+        >
+          <RefreshCw size={13} />
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,0 +1,342 @@
+import { logger, deriveLegacyVaultId, waitForIdle } from '@baishou/shared'
+import { expoKnowledgeConnectionManager, KnowledgeRepository } from '@baishou/database/expo'
+import { KnowledgeEmbeddingStorage } from '@baishou/ai'
+import {
+  KnowledgeIngestService,
+  markEmbedJobLive,
+  markExtractJobLive,
+  markGraphJobLive,
+  unmarkEmbedJobLive,
+  unmarkExtractJobLive,
+  unmarkGraphJobLive
+} from '@baishou/core-mobile'
+import { createMobileFileSystem } from './create-mobile-file-system'
+import { MobileStoragePathService } from './path.service'
+import {
+  ensureMobileRawDataRuntime,
+  getMobileNotebookRawManager,
+  resolveMobileEmbeddingForHydration
+} from './mobile-raw-data-source.runtime'
+import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { ensureMobileKnowledgeConnected } from './mobile-knowledge-repo'
+import {
+  emitMobileKnowledgeExtractProgress,
+  emitMobileKnowledgeIngestLive,
+  resolveMobileKnowledgeExtractConfig
+} from './mobile-knowledge-extract-config'
+
+type ConsumeResult = { processed: number; failed: number; skipped?: string }
+
+/** 本进程第一次整理时，把上次退出留下的 running 任务收回。 */
+let reclaimedDeadProcessWork = false
+
+/** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队。 */
+const INDEX_STAGES = ['extract', 'embed'] as const
+/** 抽图单独车道：避免图谱模型堵住其他资料的嵌入，不再与同一资料的 embed 并行。 */
+const GRAPH_STAGES = ['graph'] as const
+
+let ingestInFlight: Promise<ConsumeResult> | null = null
+let graphInFlight: Promise<ConsumeResult> | null = null
+
+async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestService | null> {
+  try {
+    await ensureMobileKnowledgeConnected()
+  } catch {
+    return null
+  }
+
+  const runtime = agentDbRuntimeRef.current
+  if (!runtime?.settingsManager || !runtime.pathService) return null
+
+  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+  if (!emb.embeddingProvider || !emb.embeddingModelId) return null
+
+  const fileSystem = createMobileFileSystem()
+  const pathService =
+    (runtime.pathService as MobileStoragePathService) || new MobileStoragePathService(fileSystem)
+  ensureMobileRawDataRuntime({ pathService, fileSystem })
+  const notebookManager = getMobileNotebookRawManager()
+  if (!notebookManager) return null
+
+  const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+  const storage = new KnowledgeEmbeddingStorage(() => repo)
+  const embeddingProvider = emb.embeddingProvider
+  const embeddingModelId = emb.embeddingModelId
+  const vaultId =
+    (await runtime.pathService.getLocalActiveVaultId()) ||
+    deriveLegacyVaultId(
+      (await runtime.pathService.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+        'Personal'
+    )
+
+  return new KnowledgeIngestService({
+    repo,
+    notebookManager,
+    fs: fileSystem,
+    getVaultId: () => vaultId,
+    embedding: {
+      isConfigured: true,
+      getModelId: () => embeddingModelId,
+      getProviderInstance: async () => embeddingProvider
+    },
+    insertChunk: async (params) => {
+      await storage.insertEmbedding({
+        id: params.chunkId,
+        sourceType: 'knowledge',
+        sourceId: params.sourceId,
+        groupId: params.notebookId,
+        vaultId: params.vaultId,
+        chunkIndex: params.chunkIndex,
+        chunkText: params.chunkText,
+        metadataJson: params.metadataJson,
+        embedding: params.embedding,
+        modelId: params.modelId
+      })
+    },
+    deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
+    getExtractConfig: resolveMobileKnowledgeExtractConfig,
+    onExtractProgress: emitMobileKnowledgeExtractProgress,
+    extractNotebookGraph: (
+      await import('./mobile-knowledge-graph-extract')
+    ).createMobileKnowledgeGraphExtractFn()
+  })
+}
+
+/**
+ * 消费知识库 embed 欠账（移动端消费端：只跑 embed，一般不跑 extract）。
+ * 同一资料顺序是 extract → embed → graph；图谱仍单独车道，以免堵住其他资料的嵌入。
+ */
+export async function consumeMobileKnowledgeIngestJobs(options?: {
+  limit?: number
+  reason?: string
+}): Promise<ConsumeResult> {
+  return consumeMobileKnowledgeLane('index', options)
+}
+
+export async function consumeMobileKnowledgeGraphJobs(options?: {
+  limit?: number
+  reason?: string
+}): Promise<ConsumeResult> {
+  return consumeMobileKnowledgeLane('graph', options)
+}
+
+async function consumeMobileKnowledgeLane(
+  lane: 'index' | 'graph',
+  options?: {
+    limit?: number
+    reason?: string
+  }
+): Promise<ConsumeResult> {
+  const existing = lane === 'index' ? ingestInFlight : graphInFlight
+  if (existing) return existing
+
+  const stages = lane === 'index' ? [...INDEX_STAGES] : [...GRAPH_STAGES]
+  const run = (async () => {
+    try {
+      await ensureMobileKnowledgeConnected()
+    } catch {
+      return { processed: 0, failed: 0, skipped: 'db-not-connected' }
+    }
+
+    const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+    const runtime = agentDbRuntimeRef.current
+    try {
+      const recoverSvc = await buildMobileKnowledgeIngestService()
+      if (recoverSvc) {
+        const recovered = await recoverSvc.recoverStaleIngestState(
+          reclaimedDeadProcessWork ? undefined : { olderThanMs: 0 }
+        )
+        reclaimedDeadProcessWork = true
+        if (
+          recovered.resetSources ||
+          recovered.droppedExtractJobs ||
+          recovered.reclaimedEmbedJobs
+        ) {
+          logger.info('[MobileKnowledgeIngestJobs] recovered stale state', {
+            lane,
+            reason: options?.reason ?? 'unspecified',
+            ...recovered
+          })
+        }
+      }
+    } catch (e) {
+      logger.warn('[MobileKnowledgeIngestJobs] recover stale state failed', {
+        lane,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
+    const vaultId =
+      (await runtime?.pathService?.getLocalActiveVaultId()) ||
+      deriveLegacyVaultId(
+        (await runtime?.pathService?.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+          'Personal'
+      )
+    const pending = await repo.countIngestJobs({ vaultId, stages, claimableOnly: true })
+    if (pending === 0) {
+      logger.info('[MobileKnowledgeIngestJobs] skip', {
+        lane,
+        reason: options?.reason ?? 'unspecified',
+        skipped: 'empty'
+      })
+      return { processed: 0, failed: 0, skipped: 'empty' }
+    }
+
+    const svc = await buildMobileKnowledgeIngestService()
+    if (!svc) {
+      logger.warn('[MobileKnowledgeIngestJobs] skip', {
+        lane,
+        reason: options?.reason ?? 'unspecified',
+        skipped: 'embedding-not-configured',
+        pending
+      })
+      return { processed: 0, failed: 0, skipped: 'embedding-not-configured' }
+    }
+
+    const limit = options?.limit ?? 8
+    const jobs = await repo.claimIngestJobs(limit, { vaultId, stages })
+    for (const job of jobs) {
+      if (job.stage === 'extract') markExtractJobLive(job.sourceId)
+      if (job.stage === 'embed') markEmbedJobLive(job.sourceId)
+      if (job.stage === 'graph') markGraphJobLive(job.sourceId)
+      emitMobileKnowledgeIngestLive({ sourceId: job.sourceId, stage: job.stage, live: true })
+    }
+    logger.info('[MobileKnowledgeIngestJobs] consuming', {
+      reason: options?.reason ?? 'unspecified',
+      claimed: jobs.length,
+      pendingBefore: pending
+    })
+
+    let processed = 0
+    let failed = 0
+
+    try {
+      for (const job of jobs) {
+        await waitForIdle()
+        try {
+          // 移动端是消费端：优先 embed；若误排了 extract 则跳过并标失败提示
+          if (job.stage === 'extract') {
+            await svc.processExtractJob(job.sourceId)
+            await repo.completeIngestJob(job.id)
+            processed++
+            continue
+          }
+          if (job.stage === 'graph') {
+            await svc.processGraphJob(job.sourceId)
+            await repo.completeIngestJob(job.id)
+            processed++
+            continue
+          }
+          await svc.processEmbedJob(job.sourceId)
+          await repo.completeIngestJob(job.id)
+          processed++
+          void consumeMobileKnowledgeLane('graph', { reason: 'after-embed' }).catch((e) => {
+            logger.warn('[MobileKnowledgeIngestJobs] after-embed graph lane failed', {
+              error: e instanceof Error ? e.message : String(e)
+            })
+          })
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e)
+          logger.warn('[MobileKnowledgeIngestJobs] job-failed', {
+            lane,
+            sourceId: job.sourceId,
+            stage: job.stage,
+            error: message
+          })
+          if (
+            message === 'embedding-not-configured' ||
+            message === 'graph-extract-not-configured'
+          ) {
+            await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
+            failed++
+            continue
+          }
+          await repo.failIngestJob(job.id, message, {
+            backoffMs: Math.min(30 * 60_000, 15_000 * Math.max(1, job.attempts))
+          })
+          failed++
+        }
+      }
+    } finally {
+      for (const job of jobs) {
+        if (job.stage === 'extract') unmarkExtractJobLive(job.sourceId)
+        if (job.stage === 'embed') unmarkEmbedJobLive(job.sourceId)
+        if (job.stage === 'graph') unmarkGraphJobLive(job.sourceId)
+        emitMobileKnowledgeIngestLive({ sourceId: job.sourceId, stage: job.stage, live: false })
+      }
+    }
+
+    return { processed, failed }
+  })().finally(() => {
+    if (lane === 'index') ingestInFlight = null
+    else graphInFlight = null
+  })
+
+  if (lane === 'index') ingestInFlight = run
+  else graphInFlight = run
+  const result = await run
+  logger.info('[MobileKnowledgeIngestJobs] done', {
+    lane,
+    reason: options?.reason ?? 'unspecified',
+    processed: result.processed,
+    failed: result.failed,
+    skipped: result.skipped
+  })
+  try {
+    if (expoKnowledgeConnectionManager.isConnected()) {
+      const drainRepo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+      const runtime = agentDbRuntimeRef.current
+      const drainVaultId =
+        (await runtime?.pathService?.getLocalActiveVaultId()) ||
+        deriveLegacyVaultId(
+          (await runtime?.pathService?.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+            'Personal'
+        )
+      const remaining = await drainRepo.countIngestJobs({
+        vaultId: drainVaultId,
+        stages,
+        claimableOnly: true
+      })
+      if (remaining > 0) {
+        setTimeout(() => {
+          void consumeMobileKnowledgeLane(lane, { reason: 'drain' }).catch((e) => {
+            logger.warn('[MobileKnowledgeIngestJobs] drain failed', {
+              lane,
+              error: e instanceof Error ? e.message : String(e)
+            })
+          })
+        }, 0)
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return result
+}
+
+export function scheduleConsumeMobileKnowledgeIngestJobs(reason: string): void {
+  const kick = (lane: 'index' | 'graph') => {
+    void consumeMobileKnowledgeLane(lane, { reason }).catch((e) => {
+      logger.warn('[MobileKnowledgeIngestJobs] schedule failed:', {
+        lane,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    })
+  }
+  kick('index')
+  kick('graph')
+}
+
+/** 启动只回收被中断的 running，不自动重试失败嵌入；失败等用户点重新尝试。 */
+export async function recoverMobileKnowledgeIngestOnStartup(): Promise<void> {
+  try {
+    await ensureMobileKnowledgeConnected()
+  } catch {
+    return
+  }
+  const svc = await buildMobileKnowledgeIngestService()
+  if (!svc) return
+  const recovered = await svc.recoverStaleIngestState({ olderThanMs: 0 })
+  if (recovered.resetSources || recovered.droppedExtractJobs || recovered.reclaimedEmbedJobs) {
+    logger.info('[MobileKnowledgeIngestJobs] recovered stale state on startup', recovered)
+  }
+}

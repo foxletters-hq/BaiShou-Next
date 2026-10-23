@@ -1,48 +1,19 @@
 import React, { useMemo } from 'react'
-import { View, StyleSheet } from 'react-native'
-import { StreamdownText } from 'react-native-streamdown'
-import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
-import { useNativeTheme } from '../theme'
 import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
-import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
-  buildStreamdownMarkdownStyle,
-  markdownNeedsLegacyImageRenderer,
   prepareNativeStreamdownMarkdown,
   preserveChatDisplayNewlines
 } from './streamdown-markdown.util'
-import { useMarkdownLinkPress } from './useMarkdownLinkPress'
 
 export type MarkdownRendererVariant = 'default' | 'chat' | 'ancillary' | 'preview'
-
-const STATIC_MD4C_FLAGS = { latexMath: true, underline: false } as const
-const STATIC_STREAMING_CONFIG = { tableMode: 'progressive' as const }
-
-function StaticStreamdownText({
-  markdown,
-  containerStyle,
-  preferSyncRemend = false,
-  ...props
-}: React.ComponentProps<typeof EnrichedMarkdownText> & {
-  preferSyncRemend?: boolean
-}) {
-  const processedMarkdown = useStableStreamdownMarkdown(markdown, undefined, { preferSyncRemend })
-  return (
-    <EnrichedMarkdownText
-      markdown={processedMarkdown}
-      md4cFlags={STATIC_MD4C_FLAGS}
-      streamingConfig={STATIC_STREAMING_CONFIG}
-      containerStyle={containerStyle}
-      {...props}
-    />
-  )
-}
 
 export interface MarkdownRendererProps {
   content: string
   style?: object
   /** 流式进行中：commonmark + 稳定 selectable，减轻块级重排闪烁 */
   isStreaming?: boolean
+  /** Gemini 风格流式尾部渐显字符窗口长度 */
+  streamingTailFadeChars?: number
   /** chat：气泡正文；ancillary：思考块等附属内容 */
   variant?: MarkdownRendererVariant
   /** 主线程同步 remend，避免首帧高度与点击后布局突变 */
@@ -56,32 +27,13 @@ export interface MarkdownRendererProps {
   onImagePress?: (src: string, resolvedUri: string) => void
 }
 
+/**
+ * 移动端 Markdown 全程走 Legacy。
+ * 日记卡片预览若走另一套原生渲染，会在卡片挂载时抛 Property 'Platform' doesn't exist，
+ * 并少报高度裁切正文。
+ */
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
-  const {
-    content,
-    style,
-    variant = 'default',
-    isStreaming = false,
-    preferSyncRemend: preferSyncRemendProp,
-    selectable: selectableProp,
-    resolveImageUri,
-    loadImageUri
-  } = props
-  const preferSyncRemend = preferSyncRemendProp ?? variant === 'preview'
-  const selectable = selectableProp ?? variant !== 'preview'
-  const { colors } = useNativeTheme()
-  const { handleLinkPress } = useMarkdownLinkPress()
-
-  const useLegacy = useMemo(
-    () => markdownNeedsLegacyImageRenderer(content, resolveImageUri, loadImageUri),
-    [content, resolveImageUri, loadImageUri]
-  )
-
-  const markdownStyle = useMemo(
-    () => buildStreamdownMarkdownStyle(colors, variant),
-    [colors, variant]
-  )
-
+  const { content, variant = 'default', resolveImageUri } = props
   const useTrailingMargin = variant === 'chat' || variant === 'ancillary'
 
   const displayContent = useMemo(() => {
@@ -92,90 +44,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     return useTrailingMargin ? preserveChatDisplayNewlines(prepared) : prepared
   }, [content, resolveImageUri, useTrailingMargin, variant])
 
-  const streamFlavor: 'github' | 'commonmark' =
-    variant === 'chat' || isStreaming || variant === 'ancillary' ? 'commonmark' : 'github'
-  const markdownContainerStyle =
-    variant === 'preview'
-      ? [styles.containerPreview, style]
-      : variant === 'chat' || variant === 'ancillary'
-        ? [styles.containerCompact, style]
-        : [variant === 'default' ? styles.containerDefault : styles.containerCompact, style]
-  const nativeContainerStyle =
-    variant === 'preview'
-      ? styles.markdownPreviewNative
-      : variant === 'chat'
-        ? styles.markdownChatNative
-        : variant === 'ancillary'
-          ? styles.markdownAncillaryNative
-          : styles.markdownFill
-
-  if (useLegacy) {
-    return <LegacyMarkdownRenderer {...props} content={displayContent} />
-  }
-
   if (!displayContent) return null
 
-  // default / chat / ancillary 全程 Legacy：RN 测高稳定，避免
-  // 1) Enriched 少报裁切末行（总结详情白卡片底部半行裁切）
-  // 2) HeightGuard 估高留白  3) 流式→落盘切换渲染器高度闪动
-  // preview 仍走 Enriched（卡片固定高度 + overflow hidden）
-  if (variant === 'default' || variant === 'chat' || variant === 'ancillary') {
-    return <LegacyMarkdownRenderer {...props} content={displayContent} />
-  }
-
-  const streamdownCommonProps = {
-    allowTrailingMargin: useTrailingMargin,
-    flavor: streamFlavor,
-    markdown: displayContent,
-    markdownStyle,
-    md4cFlags: STATIC_MD4C_FLAGS,
-    onLinkPress: handleLinkPress,
-    selectable,
-    containerStyle: nativeContainerStyle
-  }
-
-  return (
-    <View style={markdownContainerStyle}>
-      {isStreaming ? (
-        <StreamdownText {...streamdownCommonProps} streamingConfig={{ tableMode: 'hidden' }} />
-      ) : (
-        <StaticStreamdownText {...streamdownCommonProps} preferSyncRemend={preferSyncRemend} />
-      )}
-    </View>
-  )
+  return <LegacyMarkdownRenderer {...props} content={displayContent} />
 }
-
-const styles = StyleSheet.create({
-  /** ScrollView 内勿用 flex:1，否则测高/测宽异常导致正文被裁切 */
-  containerDefault: {
-    alignSelf: 'stretch',
-    width: '100%',
-    minWidth: 0
-  },
-  containerCompact: {
-    alignSelf: 'stretch',
-    width: '100%'
-  },
-  containerPreview: {
-    alignSelf: 'stretch',
-    width: '100%',
-    overflow: 'hidden'
-  },
-  markdownFill: {
-    alignSelf: 'stretch',
-    width: '100%'
-  },
-  markdownPreviewNative: {
-    alignSelf: 'stretch',
-    width: '100%'
-  },
-  /** 聊天气泡：allowTrailingMargin + 槽位 guard 双保险 */
-  markdownChatNative: {
-    alignSelf: 'stretch',
-    width: '100%'
-  },
-  markdownAncillaryNative: {
-    alignSelf: 'stretch',
-    width: '100%'
-  }
-})

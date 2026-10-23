@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
 import styles from './AssistantEditPage.module.css'
+import { Button } from '../Button/Button'
 import { ChevronRight, Sparkles } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 interface AssistantEditModelBindingProps {
   providerId?: string
@@ -54,14 +56,14 @@ export const AssistantEditModelBinding: React.FC<AssistantEditModelBindingProps>
             </span>
           )}
         </div>
-        <ChevronRight size={20} color="var(--text-secondary, #64748B)" />
+        <ChevronRight size={20} color="var(--text-secondary)" />
       </div>
       {providerId ? (
-        <button type="button" className={styles.restoreDefaultBtn} onClick={onClearBinding}>
+        <Button type="button" variant="outlined" size="small" onClick={onClearBinding}>
           {t('common.restore_default', '恢复默认')}
-        </button>
+        </Button>
       ) : null}
-      <div className={styles.descText} style={{ marginTop: 8 }}>
+      <div className={styles.descText} style={{ marginTop: sharedTokens.spacing.sm }}>
         {t('agent.assistant.bind_model_desc', '绑定后，和伙伴创建对话时，会默认优先使用选择的模型')}
       </div>
     </>

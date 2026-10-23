@@ -5,15 +5,26 @@
 
 export type AiApiErrorKind = 'balance' | 'auth' | 'rate_limit' | 'network' | 'unknown'
 
+function readProviderErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  if (!value || typeof value !== 'object') return undefined
+  const rec = value as Record<string, unknown>
+  if (typeof rec.message === 'string' && rec.message.trim()) return rec.message.trim()
+  const nested = rec.error
+  if (nested && typeof nested === 'object') {
+    const msg = (nested as Record<string, unknown>).message
+    if (typeof msg === 'string' && msg.trim()) return msg.trim()
+  }
+  if (typeof nested === 'string' && nested.trim()) return nested.trim()
+  return undefined
+}
+
 function readResponseBody(error: Record<string, unknown>): string | undefined {
   const body =
     error.responseBody ?? (error.cause as Record<string, unknown> | undefined)?.responseBody
   if (typeof body !== 'string' || !body.trim()) return undefined
   try {
-    const parsed = JSON.parse(body) as { message?: unknown }
-    if (typeof parsed?.message === 'string' && parsed.message.trim()) {
-      return parsed.message.trim()
-    }
+    return readProviderErrorMessage(JSON.parse(body))
   } catch {
     // ignore invalid JSON
   }
@@ -29,10 +40,8 @@ export function formatAiApiCallError(error: unknown): string {
   const fromBody = readResponseBody(e)
   if (fromBody) return fromBody
 
-  const data = e.data as { message?: unknown } | undefined
-  if (typeof data?.message === 'string' && data.message.trim()) {
-    return data.message.trim()
-  }
+  const fromData = readProviderErrorMessage(e.data)
+  if (fromData) return fromData
 
   const message = typeof e.message === 'string' ? e.message : String(error)
   if (message && message !== '[object Object]') return message
@@ -84,4 +93,56 @@ export function toSerializableAiError(error: unknown, prefix?: string): Error {
   const detail = formatAiApiCallError(error)
   const message = prefix ? `${prefix}: ${detail}` : detail
   return new Error(message)
+}
+
+type LocalizeFn = (key: string, fallback: string) => string
+
+function stripIpcErrorPrefixes(message: string): string {
+  return message
+    .replace(/^Error invoking remote method '[^']+':\s*(?:Error:\s*)?/i, '')
+    .replace(/^(Batch embed failed|Migration failed|Migration resume failed):\s*/i, '')
+    .trim()
+}
+
+/** 把服务商 HTTP 错误收成界面文案；余额不足不再说成「没配置模型」。 */
+export function localizeAiApiErrorMessage(error: unknown, t: LocalizeFn): string {
+  const rawMessage = stripIpcErrorPrefixes(
+    typeof error === 'string' ? error : formatAiApiCallError(error)
+  )
+  switch (rawMessage) {
+    case 'GRAPH_EXTRACT_EMPTY_RESPONSE':
+    case 'LLM returned empty response':
+      return t('graph.extract_empty_response', '模型没有返回正文')
+    case 'GRAPH_EXTRACT_PARSE_JSON':
+    case 'Failed to parse LLM JSON':
+      return t('graph.extract_parse_failed', '模型返回的内容无法解析为抽取结果')
+    case 'GRAPH_EXTRACT_EMBEDDING_REQUIRED':
+      return t(
+        'graph.extract_embedding_required',
+        '请先配置嵌入模型，并完成本篇日记的向量化后再抽取'
+      )
+    case 'GRAPH_EXTRACT_DIARY_NOT_EMBEDDED':
+      return t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取')
+    case 'GRAPH_SELF_NAME_REQUIRED':
+      return t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取')
+    case 'graph-extract-not-configured':
+      return t('memory.need_extract_to_organize', '请先配置图抽取模型，才能开始整理记忆')
+  }
+  const classified = typeof error === 'string' ? { message: error, responseBody: error } : error
+  const kind = classifyAiApiCallError(classified)
+  switch (kind) {
+    case 'balance':
+      return t('agent.error.quota', '模型服务商提示账号额度不足。')
+    case 'auth':
+      return t(
+        'ai_config.error_no_model',
+        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
+      )
+    case 'rate_limit':
+      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
+    case 'network':
+      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
+    default:
+      return rawMessage
+  }
 }

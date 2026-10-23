@@ -1,5 +1,8 @@
 import {
   logger,
+  buildSummaryIdentitySystemPrompt,
+  formatUserCardFromProfile,
+  getUserProfileFromSettings,
   resolveSummaryGenerationRuntime,
   resolveSummaryTemplatesForGeneration,
   withSummaryPromptLocaleFromUi,
@@ -12,6 +15,7 @@ import type { SummaryGenerateOptions } from '@baishou/core-mobile'
 import type { SettingsManagerService, AssistantManagerService } from '@baishou/core-mobile'
 import { resolveSummaryConfig } from './mobile-summary-config.util'
 import { resolveAppUiLanguage } from '../lib/device-locale'
+import i18n from 'i18next'
 
 export async function resolveMobileSummaryGenerateOptions(deps: {
   settingsManager: SettingsManagerService
@@ -63,6 +67,30 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     )
   }
 
+  let companionName = assistant?.name?.trim()
+  if (!companionName) {
+    try {
+      const list = await assistantManager.findAll()
+      const primary = list.find((item) => item.isDefault) ?? list[0]
+      companionName = primary?.name?.trim()
+    } catch (e) {
+      logger.warn('[MobileSummaryQueue] Failed to resolve companion name:', e as Error)
+    }
+  }
+
+  let identitySystemPrompt: string | undefined
+  try {
+    const profile = await getUserProfileFromSettings(settingsManager)
+    identitySystemPrompt = buildSummaryIdentitySystemPrompt({
+      userName: profile.nickname,
+      userCard: formatUserCardFromProfile(profile),
+      companionName,
+      locale: promptLocale
+    })
+  } catch (e) {
+    logger.warn('[MobileSummaryQueue] Failed to build summary identity context:', e as Error)
+  }
+
   let sharedContextText: string | undefined
   if (runtime.injectSharedMemoryBeforeGenerate) {
     try {
@@ -96,14 +124,21 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
         })`
       )
     }
-    throw new Error('No summary model configured')
+    throw new Error(
+      i18n.t(
+        'settings.summary_model_missing',
+        'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+      )
+    )
   }
 
   return {
     generateOptions: {
       modelId: resolution.modelId,
       providerId: resolution.providerConfig.id,
-      systemPrompt: runtime.systemPrompt,
+      systemPrompt:
+        [runtime.systemPrompt?.trim(), identitySystemPrompt].filter(Boolean).join('\n\n') ||
+        undefined,
       customTemplates,
       promptLocale,
       sharedContextText,

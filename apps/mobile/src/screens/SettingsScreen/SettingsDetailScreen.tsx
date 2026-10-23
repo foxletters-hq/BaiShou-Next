@@ -11,11 +11,15 @@ import { AIModelsSection } from './components/AIModelsSection'
 import { RAGMemorySection } from './components/RAGMemorySection'
 import { WebSearchSection } from './components/WebSearchSection'
 import { AgentToolsSection } from './components/AgentToolsSection'
+import { AgentGateSettingsSection } from './components/AgentGateSettingsSection'
 import { SummarySettingsSection } from './components/SummarySettingsSection'
 import { DiaryTemplateSettingsSection } from './components/DiaryTemplateSettingsSection'
 import { AttachmentManagementSection } from './components/AttachmentManagementSection'
 import { DeveloperSettingsSection } from './components/DeveloperSettingsSection'
 import { McpSettingsSection } from './components/McpSettingsSection'
+import { AgentBehaviorSection } from './components/AgentBehaviorSection'
+import { LatteSettingsSection } from './components/LatteSettingsSection'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 export interface SettingsDetailScreenProps {
   section: string
 }
@@ -46,6 +50,12 @@ export const SettingsDetailScreen: React.FC<SettingsDetailScreenProps> = ({ sect
         return <McpSettingsSection />
       case 'agent-tools':
         return <AgentToolsSection />
+      case 'agent-behavior':
+        return <AgentBehaviorSection />
+      case 'latte':
+        return <LatteSettingsSection />
+      case 'agent-gate':
+        return <AgentGateSettingsSection />
       case 'diary-template':
       case 'diary-ai-writing':
         return <DiaryTemplateSettingsSection />
@@ -84,12 +94,12 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   },
   selfScrollHost: {
     flex: 1,
-    paddingBottom: 16,
+    paddingBottom: sharedTokens.spacing.md,
     minHeight: 0
   }
 })

@@ -1,0 +1,31 @@
+.root {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+}
+
+.root :global(.cm-editor) {
+  height: 100%;
+}
+
+.root :global(.cm-mergeView) {
+  height: 100%;
+  overflow: auto;
+}
+
+.root :global(.cm-mergeViewEditors) {
+  height: 100%;
+}
+
+.root :global(.cm-mergeView .cm-editor) {
+  height: 100%;
+}
+
+.root :global(.cm-mergeViewEditor) {
+  overflow: auto;
+}

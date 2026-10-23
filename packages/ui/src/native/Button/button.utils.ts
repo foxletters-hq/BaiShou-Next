@@ -14,23 +14,10 @@ export function mapLegacyButtonVariant(
   destructive: boolean
 ): MappedButtonVariant {
   if (destructive) {
-    if (variant === 'elevated') {
-      return { variant: 'danger' }
-    }
-    if (variant === 'text') {
-      return { variant: 'ghost', labelClassName: 'text-danger' }
-    }
     return { variant: 'outline', labelClassName: 'text-danger' }
   }
 
-  switch (variant) {
-    case 'elevated':
-      return { variant: 'primary' }
-    case 'outlined':
-      return { variant: 'outline' }
-    case 'text':
-      return { variant: 'ghost' }
-  }
+  return { variant: 'outline' }
 }
 
 export function resolveNativeButtonVariant(
@@ -39,6 +26,10 @@ export function resolveNativeButtonVariant(
 ): MappedButtonVariant {
   if (variant === 'elevated' || variant === 'text' || variant === 'outlined') {
     return mapLegacyButtonVariant(variant, destructive)
+  }
+  // 主 CTA 与桌面一致：描边表面，不用品牌实心
+  if (variant === 'primary' && !destructive) {
+    return { variant: 'outline' }
   }
   if (destructive && (variant === 'primary' || variant === 'secondary')) {
     return { variant: 'danger' }

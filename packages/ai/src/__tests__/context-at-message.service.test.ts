@@ -129,7 +129,11 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)
@@ -144,9 +148,11 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     )
 
     expect(result.systemPrompt).toBe('test prompt')
-    expect(result.viewModel.systemPrompt).toBe('test prompt')
+    expect(result.viewModel.systemPrompt).toContain('test prompt')
     expect(result.viewModel.flatEntries.some((e) => e.kind === 'system-prompt')).toBe(true)
     expect(result.messages.map((m) => m.role)).toContain('user')
+    expect(result.messages.some((m) => m.content.includes('<message-time>'))).toBe(true)
+    expect(result.systemPrompt).not.toContain('<conversation_time>')
     const lastUser = [...result.messages].reverse().find((m) => m.role === 'user')
     expect(String(lastUser?.content)).not.toContain('[System Current Date / Time]')
   })

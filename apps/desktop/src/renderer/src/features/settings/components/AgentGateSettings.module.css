@@ -1,0 +1,194 @@
+.cardTitle {
+  margin: 0;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
+  line-height: 1.35;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.cardDesc {
+  margin: var(--spacing-xs-plus) 0 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+}
+
+.cardDescOnly {
+  margin: 0;
+}
+
+/* 卡片内容区：水平边距交给 list-tile / matrixRow，避免双重 padding 错位 */
+.paddedBody {
+  padding: 0;
+  font-family: var(--font-family);
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md-tight);
+  flex-wrap: wrap;
+}
+
+.formRow .textInput {
+  flex: 1;
+  min-width: 140px;
+  width: auto;
+}
+
+.presetSelect {
+  width: 188px;
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+
+.ruleEffectSelect {
+  width: 96px;
+  flex: 0 0 auto;
+}
+
+:global(.settings-list-tile) .compactNumberInput {
+  width: 64px;
+  max-width: 64px;
+  flex: 0 0 64px;
+}
+
+.compactNumberInputField {
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.compactNumberInputField::-webkit-outer-spin-button,
+.compactNumberInputField::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.profileBlock {
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
+}
+
+.profileTitle {
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-meta-weight);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.profileList {
+  margin: 0;
+  padding-left: var(--spacing-md);
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.sectionLabel {
+  padding: var(--spacing-sm-plus) var(--spacing-md) var(--spacing-2xs);
+  margin: 0;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-section-weight);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.emptyHint {
+  margin: 0;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md-snug);
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+}
+
+/* 与 settings-list-tile 同水平边距 / 行高 */
+.matrixRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-height: 54px;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.matrixText {
+  flex: 1;
+  min-width: 160px;
+}
+
+.matrixTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.matrixHint {
+  margin-top: var(--spacing-2xs);
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+}
+
+.subBlock {
+  padding: 0 0 var(--spacing-xs);
+  margin: 0;
+}
+
+.disclosureStatic {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-height: 54px;
+  box-sizing: border-box;
+}
+
+.inlineBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-full);
+  font-size: var(--settings-font-micro-size);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.subpageBack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
+  font-family: var(--font-family);
+  cursor: pointer;
+  text-align: left;
+}
+
+.subpageBack:hover {
+  color: var(--color-primary);
+}

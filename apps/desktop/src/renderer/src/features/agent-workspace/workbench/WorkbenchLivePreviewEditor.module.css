@@ -1,0 +1,27 @@
+.editor {
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* 版心留白放在 CM 容器外，避免计入 posAtCoords / heightmap */
+  padding: var(--spacing-xl) var(--spacing-xl-plus) 0;
+}
+
+.editor :global(.cm-editor) {
+  height: 100%;
+}
+
+.editor :global(.cm-editor.cm-focused) {
+  outline: none;
+}
+
+.editor :global(.cm-scroller) {
+  scrollbar-gutter: stable;
+}
+
+/* 盖过主题里 .cm-line { padding: 0 }，避免引用竖线贴字 */
+.editor :global(.cm-line.cm-rendered-blockquote),
+.editor :global(.cm-line.cm-rendered-blockquote-content) {
+  border-left: 3px solid var(--color-primary);
+  padding: 0 0 0 var(--spacing-md-tight) !important;
+  color: var(--text-secondary);
+}

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
+import { subscribeMobileSessionChanged } from '../services/mobile-session-events'
 
 /** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
 export const SESSION_PAGE_SIZE = 10
@@ -65,11 +67,20 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       }
 
       try {
+        const activeVault = services.vaultService?.getActiveVault?.()
+        const activeVaultId =
+          activeVault?.id ??
+          deriveLegacyVaultId(
+            (await services.pathService
+              ?.getActiveVaultNameForContext?.()
+              .catch(() => 'Personal')) || 'Personal'
+          )
         const sessionList = await services.sessionManager.list(
           SESSION_PAGE_SIZE + 1,
           offset,
           targetAssistantId.trim(),
-          undefined
+          undefined,
+          activeVaultId
         )
 
         if (reqId !== lastLoadRequestId.current) return
@@ -164,6 +175,14 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
 
     return () => clearTimeout(timer)
   }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, dbReady, loadSessions])
+
+  // 监听会话变更（如命名模型生成新标题并落盘）实时刷新列表
+  useEffect(() => {
+    return subscribeMobileSessionChanged(() => {
+      sessionsLoadedFromDbRef.current = 0
+      void loadSessions(true, assistantIdRef.current)
+    })
+  }, [loadSessions])
 
   return {
     sessions,

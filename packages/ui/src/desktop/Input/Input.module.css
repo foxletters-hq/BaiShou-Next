@@ -1,51 +1,51 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: 100%;
+  min-width: 0;
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--settings-font-label-size, var(--ui-fs-md));
+  font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-secondary);
 }
 
 .inputWrapper {
   position: relative;
   width: 100%;
+  min-width: 0;
 }
 
-.input {
-  background-color: var(--bg-surface-low, #f6f7f8);
-  color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  border-radius: var(--radius-md, 12px);
-  padding: 10px 14px;
-  font-size: 14px;
-  font-family: var(--font-family);
-  width: 100%;
-  box-sizing: border-box;
-  outline: none;
-  transition: all var(--duration-fast) ease;
+.leading,
+.trailing {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
 }
 
-.input:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
-}
-
-.input::placeholder {
+.leading {
+  left: 12px;
   color: var(--text-secondary);
-  opacity: 0.6;
+  pointer-events: none;
 }
 
-.hasError {
-  border-color: #ff4d4f;
+.leading svg {
+  width: 16px;
+  height: 16px;
+}
+
+.trailing {
+  right: 8px;
+  color: var(--text-tertiary);
 }
 
 .errorText {
-  color: #ff4d4f;
-  font-size: 12px;
+  color: var(--color-error);
+  font-size: var(--ui-fs-sm);
 }

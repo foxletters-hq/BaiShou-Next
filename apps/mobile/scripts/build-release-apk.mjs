@@ -6,6 +6,7 @@
  * 环境变量：
  * - CI=true（GitHub Actions 自动设置）：跳过全量清缓存、启用 Gradle 构建缓存
  * - SKIP_SYNC=1：跳过 sync（workflow 已执行时）
+ * - SKIP_DIARY_EDITOR_BUILD=1：跳过 diary-editor 打包（workflow 已执行时，仅校验产物）
  * - BAISHOU_RELEASE_FULL_CLEAN=1：强制全量清缓存 + --no-build-cache（排查陈旧产物时用）
  * - ANDROID_*：CI 在 prebuild 清除 android/ 后，可由 setup-android-signing 从环境变量恢复签名
  *
@@ -36,6 +37,7 @@ const gradlew = path.join(androidDir, process.platform === 'win32' ? 'gradlew.ba
 const isCi = process.env.CI === 'true'
 const forceFullClean = process.env.BAISHOU_RELEASE_FULL_CLEAN === '1'
 const skipSync = process.env.SKIP_SYNC === '1'
+const skipDiaryEditorBuild = process.env.SKIP_DIARY_EDITOR_BUILD === '1'
 
 /** expo prebuild 在 android/ 不完整时会清空目录，需备份签名配置并在 prebuild 后恢复 */
 function backupAndroidSigning() {
@@ -176,7 +178,12 @@ if (forceFullClean || !isCi) {
   console.log('\n🧹 CI：跳过全量清缓存（干净 checkout，保留 Gradle 缓存加速）')
 }
 
-buildDiaryEditorBundle()
+if (skipDiaryEditorBuild) {
+  console.log('\n📦 跳过 diary-editor 打包（已由上层步骤执行），校验产物…')
+  assertDiaryEditorBundleReady()
+} else {
+  buildDiaryEditorBundle()
+}
 
 console.log('\n🔧 Expo prebuild（注入 release 签名配置）…')
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], mobileRoot, {
@@ -204,7 +211,8 @@ if (forceFullClean) {
   gradleArgs.push('--no-build-cache')
   console.log(`\n🔨 assembleRelease（强制全量，无构建缓存，ABI=${RELEASE_ABIS}）…`)
 } else if (isCi) {
-  console.log(`\n🔨 assembleRelease（CI：启用 Gradle 构建缓存，ABI=${RELEASE_ABIS}）…`)
+  gradleArgs.push('--build-cache', '--parallel')
+  console.log(`\n🔨 assembleRelease（CI：启用 Gradle 构建缓存与并行构建，ABI=${RELEASE_ABIS}）…`)
 } else {
   console.log(`\n🔨 assembleRelease（ABI=${RELEASE_ABIS}）…`)
 }

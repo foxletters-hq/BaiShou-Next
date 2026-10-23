@@ -1,7 +1,7 @@
 .sidebar {
-  width: 280px;
-  background-color: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  width: 240px;
+  background-color: transparent;
+  border-right: 1px solid var(--border-muted);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -12,7 +12,7 @@
 }
 
 .brandRow {
-  padding: 24px;
+  padding: var(--spacing-lg);
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -21,13 +21,15 @@
 .logoBox {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
-  margin-right: 16px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-md);
   overflow: hidden;
-  background-color: var(--color-primary-container);
+  background-color: var(--color-primary-light);
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .brandLogo {
@@ -42,24 +44,24 @@
 }
 
 .brandName {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: var(--ui-fs-xl);
+  font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text-primary);
 }
 
 .brandSlogan {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .menuContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+  padding-top: var(--spacing-sm);
   min-height: 0;
   overflow: hidden;
 }
@@ -72,7 +74,7 @@
 }
 
 .navScrollArea::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .navScrollArea::-webkit-scrollbar-track {
@@ -81,49 +83,65 @@
 
 .navScrollArea::-webkit-scrollbar-thumb {
   background-color: var(--border-muted);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .navList {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-sm-plus);
 }
 
 .navItemWrapper {
-  padding: 0 12px;
+  padding: 0;
 }
 
 .dragging {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
   background-color: var(--bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   z-index: 10;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  padding: 12px;
-  border-radius: 10px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   cursor: pointer;
-  transition: background-color 0.2s;
-  color: var(--text-secondary);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+  color: var(--text-primary);
   background-color: transparent;
   position: relative;
+  border: none;
+  outline: none;
+  text-align: left;
+  font-family: inherit;
 }
 
 .navItem:hover:not(.selected) {
-  background-color: rgba(var(--text-primary-rgb), 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .selected {
-  background-color: rgba(91, 168, 245, 0.15); /* primaryContainer ~0.4 */
+  background-color: var(--bg-surface-high);
   color: var(--color-primary);
-  font-weight: bold;
 }
 
 .selected:hover {
-  background-color: rgba(91, 168, 245, 0.15);
+  background-color: var(--bg-surface-high);
+}
+
+.selected .navLabel {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.selected .navIcon {
+  color: var(--color-primary);
 }
 
 .dragHandle {
@@ -131,46 +149,51 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 4px;
+  margin-right: var(--spacing-xs);
   cursor: grab;
-  transition: opacity 0.15s;
-  color: var(--color-outline);
+  transition: opacity var(--duration-fast);
+  color: var(--text-secondary);
 }
 
 .navItem:hover .dragHandle {
-  opacity: 0.5;
+  opacity: 0.85;
 }
 
 .navIcon {
   width: 18px;
   height: 18px;
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
+  color: var(--text-secondary);
 }
 
 .navIcon svg {
-  width: 18px;
-  height: 18px;
+  width: 1em;
+  height: 1em;
 }
 
 .navLabel {
-  font-size: 14px;
-  font-weight: inherit;
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .fixedNav {
-  padding: 0 12px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
 }
 
 .dividerWrapper {
-  padding: 0 16px;
-  margin: 4px 0 8px 0;
+  padding: 0 var(--spacing-md);
+  margin: var(--spacing-xs) 0 var(--spacing-sm) 0;
   flex-shrink: 0;
 }
 
@@ -180,8 +203,8 @@
 }
 
 .userCard {
-  padding: 20px;
-  border-top: 1px solid var(--border-subtle);
+  padding: var(--spacing-md-plus);
+  border-top: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);
@@ -194,13 +217,13 @@
   border-radius: 50%;
   background-color: transparent;
   border: 1px solid var(--border-subtle);
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  margin-right: 12px;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  margin-right: var(--spacing-md-tight);
 }
 
 .userInfo {
@@ -210,8 +233,8 @@
 }
 
 .userName {
-  font-size: 14px;
-  font-weight: bold;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -221,8 +244,8 @@
 .checkboxIcon {
   width: 20px;
   height: 20px;
-  font-size: 20px;
-  margin-right: 12px;
+  font-size: var(--icon-fs-md);
+  margin-right: var(--spacing-md-tight);
   display: flex;
   align-items: center;
   color: var(--text-secondary);
@@ -238,25 +261,25 @@
 }
 
 .managingActive {
-  background-color: rgba(91, 168, 245, 0.15) !important;
+  background-color: var(--bg-surface-high) !important;
   color: var(--color-primary) !important;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .hiddenSectionToggle {
-  margin: 4px 12px 0;
-  padding: 6px 8px 6px 12px;
+  margin: var(--spacing-xs) var(--spacing-md-tight) 0;
+  padding: var(--spacing-xs-plus) var(--spacing-sm) var(--spacing-xs-plus) var(--spacing-md-tight);
   border: 1px dashed var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: rgba(var(--text-primary-rgb), 0.03);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   cursor: pointer;
   width: calc(100% - 24px);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   box-sizing: border-box;
 }
 
@@ -277,13 +300,13 @@
   width: 22px;
   height: 22px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background-color: rgba(var(--text-primary-rgb), 0.06);
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   transition:
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.2s ease;
+    transform var(--duration-moderate) cubic-bezier(0.4, 0, 0.2, 1),
+    color var(--duration-swift) ease;
 }
 
 .hiddenSectionExpandBtn svg {
@@ -303,14 +326,14 @@
   overflow: hidden;
   pointer-events: none;
   transition:
-    grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.22s ease,
-    margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    grid-template-rows var(--duration-moderate) cubic-bezier(0.4, 0, 0.2, 1),
+    opacity var(--duration-swift) ease,
+    margin-top var(--duration-moderate) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hiddenSectionCollapsibleOpen {
   grid-template-rows: 1fr;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   opacity: 1;
   pointer-events: auto;
 }

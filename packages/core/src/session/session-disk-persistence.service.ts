@@ -1,5 +1,5 @@
 import type { SessionRepository } from '@baishou/database'
-import { sanitizeSessionAggregateForDisk } from '@baishou/shared'
+import { isVaultId, sanitizeSessionAggregateForDisk } from '@baishou/shared'
 import type { SessionFileService } from './session-file.service'
 
 export type SessionDiskFlushUrgency = 'immediate' | 'debounced'
@@ -7,6 +7,13 @@ export type SessionDiskFlushUrgency = 'immediate' | 'debounced'
 export type SessionDiskPersistenceHooks = {
   /** 写入 JSON 前回调（桌面端可用于抑制 watcher 回环） */
   onBeforeWrite?: (sessionId: string, filePath: string) => void
+  /**
+   * 会话 JSON 的 vaultName 快照。
+   * 普通 flush 没有显式目标仓库时，先按 vaultId 查注册表，再回退当前活跃仓库；
+   * 旧端依赖该字段导入。
+   */
+  resolveVaultName?: (vaultId: string) => Promise<string | null> | string | null
+  resolveActiveVaultName?: () => Promise<string | null> | string | null
 }
 
 /**
@@ -157,12 +164,48 @@ export class SessionDiskPersistenceService {
       return
     }
 
+    // V2-D4: 新写入 dual-write vaultId + vaultName（名字快照）；不发明假 id
+    const sessionObj =
+      cleaned?.session && typeof cleaned.session === 'object'
+        ? ({ ...(cleaned.session as Record<string, unknown>) } as Record<string, unknown>)
+        : undefined
+    if (sessionObj) {
+      const rawId = String(sessionObj.vaultId ?? sessionObj.vault_id ?? '').trim()
+      let fallbackVaultName: string | null = null
+      if (!options?.vaultName?.trim() && !sessionObj.vaultName && !sessionObj.vault_name) {
+        try {
+          if (rawId) {
+            fallbackVaultName = (await this.hooks?.resolveVaultName?.(rawId)) ?? null
+          }
+          if (!fallbackVaultName) {
+            fallbackVaultName = (await this.hooks?.resolveActiveVaultName?.()) ?? null
+          }
+        } catch {
+          fallbackVaultName = null
+        }
+      }
+      const nameSnapshot =
+        options?.vaultName?.trim() ||
+        String(sessionObj.vaultName ?? sessionObj.vault_name ?? '').trim() ||
+        fallbackVaultName?.trim() ||
+        undefined
+      if (rawId) {
+        sessionObj.vaultId = isVaultId(rawId) ? rawId : rawId
+        delete sessionObj.vault_id
+      }
+      if (nameSnapshot) {
+        sessionObj.vaultName = nameSnapshot
+        delete sessionObj.vault_name
+      }
+    }
+    const enriched = sessionObj ? { ...cleaned, session: sessionObj } : cleaned
+
     this.hooks?.onBeforeWrite?.(sessionId, sessionId)
     const targetVault = options?.vaultName?.trim()
     if (targetVault) {
-      await this.fileService.writeSession(sessionId, cleaned, targetVault)
+      await this.fileService.writeSession(sessionId, enriched, targetVault)
     } else {
-      await this.fileService.writeSession(sessionId, cleaned)
+      await this.fileService.writeSession(sessionId, enriched)
     }
     this.dirty.delete(sessionId)
   }

@@ -1,37 +1,62 @@
 .itemWrapper {
-  padding-bottom: 2px;
+  padding: 0 var(--spacing-sm) var(--spacing-2xs);
   position: relative;
 }
 
 .container {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 10px 12px;
-  border-radius: 0;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   background-color: transparent;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
   user-select: none;
 }
 
-.selected {
-  background-color: var(--bg-surface-normal);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.container:hover {
+  background-color: var(--bg-surface-high);
 }
 
-/* Header Line (Title & Time) */
+.selected {
+  background-color: var(--bg-surface-high);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.selected:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.checked {
+  background-color: var(--bg-surface-high);
+}
+
+.checked:hover {
+  background-color: var(--bg-surface-high);
+}
+
+/* Header Line (Title & Time / Actions) */
 .headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  gap: var(--spacing-sm-plus);
+  min-width: 0;
 }
 
 .titleArea {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -39,12 +64,14 @@
   color: var(--color-primary);
   display: flex;
   align-items: center;
-  opacity: 0.8;
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--ui-fs-lg);
+  font-weight: 400;
+  line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -55,32 +82,44 @@
   color: var(--color-primary);
 }
 
-.timeLabel {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
+.metaRight {
+  position: relative;
   flex-shrink: 0;
-  margin-left: 8px;
+  min-width: 64px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.timeLabel {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+  transition: opacity var(--duration-fast) ease;
 }
 
 /* Body Line (Avatar & Snippet) */
 .bodyRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  padding-right: var(--spacing-2xs);
 }
 
 .avatarBox {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-surface-lowest);
+  background-color: var(--bg-surface-high);
   color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-micro-size);
   overflow: hidden;
 }
 
@@ -91,43 +130,42 @@
 }
 
 .snippet {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
   line-height: 1.4;
 }
 
-/* Hover Action Bar */
+/* Hover Action Bar — 与时间同位，避免遮挡摘要 */
 .actionsBox {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
-  background: rgba(var(--bg-surface-highest-rgb, 255, 255, 255), 0.9);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  padding: 2px 4px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  justify-content: flex-end;
+  gap: var(--spacing-2xs);
   opacity: 0;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
 }
 
-/* Show actions on hover */
+.container:hover .timeLabel {
+  opacity: 0;
+}
+
 .container:hover .actionsBox {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .actionBtn {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -135,24 +173,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .actionBtn:hover {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  background-color: rgba(var(--text-primary-rgb), 0.08);
   color: var(--text-primary);
 }
 
 .actionBtnDanger:hover {
-  background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
+  background-color: rgba(var(--color-error-rgb), 0.12) !important;
   color: var(--color-error) !important;
-}
-
-/* Selection / Checkbox mode */
-.checkbox {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  cursor: pointer;
-  accent-color: var(--color-primary);
 }

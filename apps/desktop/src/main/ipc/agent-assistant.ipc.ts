@@ -1,5 +1,10 @@
 import { ipcMain } from 'electron'
-import { ensureDefaultLatteAssistant, syncDefaultLatteAssistantLocale } from '@baishou/core-desktop'
+import {
+  ensureDefaultLatteAssistant,
+  ensureSystemLatteAssistant,
+  syncDefaultLatteAssistantLocale
+} from '@baishou/core-desktop'
+import { SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE, isSystemLatteAssistantId } from '@baishou/shared'
 import { getAgentManagers } from './agent-helpers'
 
 export function registerAssistantIPC() {
@@ -28,8 +33,20 @@ export function registerAssistantIPC() {
   })
 
   ipcMain.handle('agent:delete-assistant', async (_, id) => {
+    if (isSystemLatteAssistantId(id)) {
+      return { success: false as const, errorCode: SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE }
+    }
     const { assistantManager } = getAgentManagers()
-    await assistantManager.delete(id)
+    try {
+      await assistantManager.delete(id)
+      return { success: true as const }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message === SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE) {
+        return { success: false as const, errorCode: SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE }
+      }
+      throw error
+    }
   })
 
   ipcMain.handle('agent:pin-assistant', async (_, id: string, isPinned: boolean) => {
@@ -52,5 +69,10 @@ export function registerAssistantIPC() {
     const { assistantManager } = getAgentManagers()
     await ensureDefaultLatteAssistant(assistantManager, locale)
     return true
+  })
+
+  ipcMain.handle('agent:ensure-system-latte-assistant', async (_, locale?: string) => {
+    const { assistantManager } = getAgentManagers()
+    return await ensureSystemLatteAssistant(assistantManager, locale)
   })
 }

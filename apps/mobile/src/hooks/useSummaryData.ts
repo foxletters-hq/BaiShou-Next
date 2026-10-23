@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaishou } from '../providers/BaishouProvider'
-import {
-  logger,
-  type MissingSummary as DetectedMissingSummary,
-  formatLocalDate
-} from '@baishou/shared'
+import { logger, type MissingSummary as DetectedMissingSummary } from '@baishou/shared'
 import {
   commitSummaryDashboardCache,
   getSummaryDashboardCacheVersion,
@@ -265,8 +261,8 @@ export function useSummaryData(selectedYear: number) {
       const mapped = summaryList.map((s) => ({
         id: String(s.id),
         type: s.type,
-        startDate: s.startDate instanceof Date ? formatLocalDate(s.startDate) : s.startDate,
-        endDate: s.endDate instanceof Date ? formatLocalDate(s.endDate) : s.endDate,
+        startDate: summaryDateToStorageKey(s.startDate),
+        endDate: summaryDateToStorageKey(s.endDate),
         content: s.content,
         generatedAt:
           s.generatedAt instanceof Date

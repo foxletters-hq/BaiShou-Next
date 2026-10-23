@@ -17,9 +17,11 @@ const basePreview: IncrementalSyncPlanPreview = {
   vaultSummaries: [],
   changeCount: 1,
   skippedCount: 0,
+  totalUploadBytes: 0,
+  totalDownloadBytes: 0,
   deletePropagationBlocked: false,
   requiresHighDivergenceConfirm: false,
-  items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }],
+  items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }],
   warnings: [],
   boundaryIssues: {
     unknownVaultPaths: [],

@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as Minio from 'minio'
-import { shouldUseS3PathStyle, listAllS3Objects } from '@baishou/shared'
+import { shouldUseS3PathStyle, listAllS3Objects, assertSafeSyncRelPath } from '@baishou/shared'
 import { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -207,8 +207,10 @@ export class S3SyncClient implements ICloudSyncClient {
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldObjectName = this.basePath + oldFilename
-    const newObjectName = this.basePath + newFilename
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldObjectName = this.basePath + oldSafe
+    const newObjectName = this.basePath + newSafe
 
     // S3 不支持原子 rename，只能 copy + delete
     const conditions = new Minio.CopyConditions()
@@ -218,6 +220,16 @@ export class S3SyncClient implements ICloudSyncClient {
       `/${this.bucket}/${oldObjectName}`,
       conditions
     )
-    await this.client.removeObject(this.bucket, oldObjectName)
+    try {
+      await this.client.removeObject(this.bucket, oldObjectName)
+    } catch (error) {
+      // Delete 失败：删掉新 key，避免双份残留；再抛出原错误
+      try {
+        await this.client.removeObject(this.bucket, newObjectName)
+      } catch {
+        // best-effort rollback
+      }
+      throw error
+    }
   }
 }

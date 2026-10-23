@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import '../shared/SettingsListTile.css'
+import { Switch } from '../Switch/Switch'
 import { ChevronDown, Keyboard, Pencil } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface HotkeyConfig {
   hotkeyEnabled: boolean
@@ -177,16 +179,13 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   return (
     <div>
       <div
-        className="settings-list-tile"
+        className="settings-list-tile settings-list-tile-no-row-hover settings-list-tile-expandable"
         onClick={() => {
-          if (config.hotkeyEnabled) {
-            setCollapsed(!collapsed)
-          }
+          setCollapsed(!collapsed)
         }}
-        style={{ cursor: config.hotkeyEnabled ? 'pointer' : 'default' }}
       >
         <div className="settings-list-tile-leading">
-          <Keyboard size={24} />
+          <Keyboard size={20} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">
@@ -201,51 +200,45 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
           </span>
         </div>
 
-        <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={config.hotkeyEnabled}
-            onChange={(e) => {
-              const checked = e.target.checked
-              onChange({ ...config, hotkeyEnabled: checked })
-              if (checked) {
-                setCollapsed(false) // Auto expand when turned ON
-              }
-            }}
-          />
-          <span className="settings-switch-slider" />
-        </label>
+        <Switch
+          checked={config.hotkeyEnabled}
+          aria-label={t('hotkey.enable_global', '启用全局快捷键唤出')}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const checked = e.target.checked
+            onChange({ ...config, hotkeyEnabled: checked })
+            if (checked) {
+              setCollapsed(false)
+            }
+          }}
+        />
 
-        {config.hotkeyEnabled && (
-          <ChevronDown
-            size={24}
-            style={{
-              color: 'var(--color-on-surface-variant)',
-              transition: 'transform 0.25s',
-              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-              marginLeft: 12,
-              flexShrink: 0
-            }}
-          />
-        )}
+        <span
+          className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
+          style={{ marginLeft: sharedTokens.spacing.mdTight }}
+          aria-hidden="true"
+        >
+          <ChevronDown className="settings-expansion-arrow" size={16} />
+        </span>
       </div>
 
       {/* 录入快捷组合键 — 用 CSS grid 动画实现平滑展开/收起 */}
-      <div
-        className={`settings-expansion-grid-wrapper ${config.hotkeyEnabled && !collapsed ? 'expanded' : ''}`}
-      >
+      <div className={`settings-expansion-grid-wrapper ${!collapsed ? 'expanded' : ''}`}>
         <div className="settings-expansion-grid-item">
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Pencil size={22} />
+              <Pencil size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
                 {t('hotkey.record_combo', '录入快捷组合键')}
               </span>
               {isConflict && (
-                <span className="settings-list-tile-subtitle" style={{ color: '#ef4444' }}>
+                <span
+                  className="settings-list-tile-subtitle"
+                  style={{ color: 'var(--color-error)' }}
+                >
                   ⚠ {t('hotkey.warning', '警告：可能会产生按键冲突')}
                 </span>
               )}
@@ -254,13 +247,15 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
             <button
               className="settings-text-btn"
               style={{
-                background: isRecording ? 'rgba(91, 168, 245, 0.1)' : 'rgba(0,0,0,0.05)',
-                color: isConflict && !isRecording ? '#ef4444' : 'inherit',
+                background: isRecording
+                  ? 'rgba(var(--color-primary-rgb), 0.1)'
+                  : 'rgba(0,0,0,0.05)',
+                color: isConflict && !isRecording ? 'var(--color-error)' : 'inherit',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: sharedTokens.spacing.xsPlus,
                 padding: '6px 12px',
-                borderRadius: 20
+                borderRadius: sharedTokens.radius.lgPlus
               }}
               onClick={() => setIsRecording(!isRecording)}
             >

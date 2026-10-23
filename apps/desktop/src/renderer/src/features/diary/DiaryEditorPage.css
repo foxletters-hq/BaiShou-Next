@@ -1,15 +1,183 @@
 /* =========================================================
-   DIARY EDITOR PAGE - SYNCHING STATE VIBE
+   DIARY EDITOR PAGE
    ========================================================= */
 
 .diary-editor-page-container {
   height: 100%;
   position: relative;
-  background-color: var(--bg-surface-lowest, #f8fafc);
+  background-color: transparent;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-bottom: 0;
+}
+
+/* 打开编辑器时的骨架屏：对齐 DiaryEditor 实际结构（顶栏 / 元数据 / 通栏正文 / 底栏工具） */
+.diary-editor-skeleton {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  box-sizing: border-box;
+  min-height: 0;
+  animation: diary-editor-skeleton-enter var(--duration-moderate) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes diary-editor-skeleton-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.diary-editor-skeleton-appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-appbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.diary-editor-skeleton-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: var(--spacing-md-tight);
+  background: var(--bg-surface-low);
+}
+
+.diary-editor-skeleton-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md);
+  margin-bottom: var(--spacing-md-tight);
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-meta-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.diary-editor-skeleton-meta-spacer {
+  flex: 1;
+}
+
+.diary-editor-skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-muted);
+}
+
+.diary-editor-skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md-snug);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  min-height: 0;
+}
+
+.diary-editor-skeleton-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  height: 44px;
+  padding: 0 var(--spacing-md);
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+}
+
+.diary-editor-skeleton-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface-high);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-square {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-square--sm {
+  width: 28px;
+  height: 28px;
+}
+
+.diary-editor-skeleton-pill {
+  height: 36px;
+  width: 108px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-pill--title {
+  width: 148px;
+  height: 28px;
+  border-radius: var(--radius-full);
+}
+
+.diary-editor-skeleton-pill--action {
+  width: 72px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+
+.diary-editor-skeleton-line {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.diary-editor-skeleton-line:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.diary-editor-skeleton-line:nth-child(3) {
+  animation-delay: var(--duration-fast);
+}
+.diary-editor-skeleton-line:nth-child(4) {
+  animation-delay: 0.24s;
+}
+.diary-editor-skeleton-line:nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+@keyframes diary-editor-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .diary-editor-page-container .diary-editor-scaffold {
@@ -24,21 +192,21 @@
   right: 50%;
   transform: translateX(50%);
   z-index: 1000;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-lg-plus);
+  background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent) inset;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  gap: var(--spacing-sm);
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .toast-icon {
@@ -49,11 +217,11 @@
 
 .toast-spin {
   animation: spin 1s linear infinite;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .toast-success {
-  color: var(--color-secondary, #10b981);
+  color: var(--color-success);
 }
 
 @keyframes spin {
@@ -66,6 +234,6 @@
 }
 
 .dd-btn-confirm-danger {
-  background: var(--color-error, #ef4444);
-  color: var(--text-on-error, #ffffff);
+  background: var(--color-error);
+  color: var(--text-on-primary);
 }

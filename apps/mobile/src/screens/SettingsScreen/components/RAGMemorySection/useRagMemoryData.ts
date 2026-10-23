@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagEntry } from '@baishou/ui/native'
-import type { AIProviderConfig, RagConfig as SharedRagConfig } from '@baishou/shared'
-import { MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY } from '@baishou/shared'
+import {
+  MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+  runAfterIdle,
+  type AIProviderConfig,
+  type RagConfig as SharedRagConfig
+} from '@baishou/shared'
 import { appendDiagnosticBreadcrumb } from '../../../../services/mobile-diagnostic-log.service'
+import { subscribeMobilePendingEmbedCountsChanged } from '../../../../services/mobile-pending-embed-counts'
 import {
   DEFAULT_RAG_CONFIG,
   buildEmbeddingProviders,
@@ -32,6 +37,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     setEmbeddingModelId,
     setProviders,
     setShowModelSwitcher,
+    setIsSearching,
     stateRef,
     checkModelMismatch,
     config,
@@ -46,8 +52,20 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     modelId: String(raw.modelId ?? fallbackModelId ?? ''),
     createdAt: Number(raw.createdAt ?? Date.now()),
     sourceType: raw.sourceType != null ? String(raw.sourceType) : undefined,
-    similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined
+    similarity: typeof raw.similarity === 'number' ? raw.similarity : undefined,
+    sourceId: raw.sourceId != null ? String(raw.sourceId) : undefined,
+    isManual: raw.isManual === true,
+    sourceSessionId:
+      raw.sourceSessionId === null
+        ? null
+        : raw.sourceSessionId != null
+          ? String(raw.sourceSessionId)
+          : undefined,
+    tags: Array.isArray(raw.tags) ? raw.tags.map((tag) => String(tag)) : undefined
   })
+
+  const queryGenerationRef = useRef(0)
+  const isQueryStale = (generation: number) => generation !== queryGenerationRef.current
 
   const refreshEntriesOnly = useCallback(
     async (
@@ -56,9 +74,17 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
       page: number = stateRef.current.currentPage,
       size: number = stateRef.current.pageSize
     ) => {
-      if (!services?.ragService || !dbReady) return
-      if (storageIndexing) return
+      if (!services?.ragService || !dbReady) {
+        setIsSearching(false)
+        return
+      }
+      if (storageIndexing) {
+        setIsSearching(false)
+        return
+      }
 
+      const generation = ++queryGenerationRef.current
+      setIsSearching(true)
       try {
         const globalModels =
           (await services.settingsManager.get<{
@@ -75,11 +101,13 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           offset: number
           mode: 'semantic' | 'text'
           withTotal: boolean
+          sourceKind: typeof stateRef.current.sourceKind
         } = {
           limit,
           offset,
           mode,
-          withTotal: true
+          withTotal: true,
+          sourceKind: stateRef.current.sourceKind
         }
 
         if (q.trim()) {
@@ -91,6 +119,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         }
 
         const res = await services.ragService.queryEntries(params)
+        if (isQueryStale(generation)) return
 
         if (q.trim() && mode === 'semantic') {
           const sliced = res.entries.slice((page - 1) * size, page * size)
@@ -116,8 +145,19 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           })
         )
         setTotalCount(res.total)
+        if (!q.trim() && stateRef.current.sourceKind === 'all') {
+          setStats((prev) => ({
+            ...prev,
+            vaultTotalCount: res.total
+          }))
+        }
       } catch (e: unknown) {
+        if (isQueryStale(generation)) return
         toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+      } finally {
+        if (!isQueryStale(generation)) {
+          setIsSearching(false)
+        }
       }
     },
     [
@@ -127,7 +167,9 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
       stateRef,
       setEntries,
       setTotalCount,
+      setStats,
       setCurrentPage,
+      setIsSearching,
       t,
       toast
     ]
@@ -140,12 +182,18 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
       page: number = stateRef.current.currentPage,
       size: number = stateRef.current.pageSize
     ) => {
-      if (!services?.ragService || !dbReady) return
+      if (!services?.ragService || !dbReady) {
+        setIsSearching(false)
+        return
+      }
       if (storageIndexing) {
         appendDiagnosticBreadcrumb('RAG loadRagData skipped: storage indexing')
+        setIsSearching(false)
         return
       }
 
+      const generation = ++queryGenerationRef.current
+      setIsSearching(true)
       appendDiagnosticBreadcrumb(`RAG loadRagData start mode=${mode} page=${page}`)
 
       try {
@@ -166,6 +214,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           currentDimension: ragStats.currentDimension,
           totalSizeText: `${(ragStats.totalCount * 2.5).toFixed(1)} KB`,
           diaryCountForVault: ragStats.diaryCountForVault,
+          vaultTotalCount: ragStats.vaultTotalCount,
           activeVaultName: ragStats.activeVaultName
         })
 
@@ -177,11 +226,13 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           offset: number
           mode: 'semantic' | 'text'
           withTotal: boolean
+          sourceKind: typeof stateRef.current.sourceKind
         } = {
           limit,
           offset,
           mode,
-          withTotal: true
+          withTotal: true,
+          sourceKind: stateRef.current.sourceKind
         }
 
         if (q.trim()) {
@@ -197,6 +248,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         )
         const res = await services.ragService.queryEntries(params)
         appendDiagnosticBreadcrumb(`RAG queryEntries done total=${res.total}`)
+        if (isQueryStale(generation)) return
         const fallbackModel = globalModels.globalEmbeddingModelId
 
         if (q.trim() && mode === 'semantic') {
@@ -225,8 +277,16 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         appendDiagnosticBreadcrumb(
           `RAG loadRagData failed: ${e instanceof Error ? e.message : String(e)}`
         )
-        toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+        if (!isQueryStale(generation)) {
+          toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+        }
+      } finally {
+        if (!isQueryStale(generation)) {
+          setIsSearching(false)
+        }
       }
+
+      if (isQueryStale(generation)) return
 
       try {
         appendDiagnosticBreadcrumb('RAG checkModelMismatch start')
@@ -252,10 +312,24 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
       setCurrentPage,
       checkModelMismatch,
       refreshEntriesOnly,
+      setIsSearching,
       t,
       toast
     ]
   )
+
+  const loadRagDataRef = useRef(loadRagData)
+  loadRagDataRef.current = loadRagData
+  const toastRef = useRef(toast)
+  toastRef.current = toast
+  const tRef = useRef(t)
+  tRef.current = t
+
+  useEffect(() => {
+    return subscribeMobilePendingEmbedCountsChanged(() => {
+      void loadRagDataRef.current()
+    })
+  }, [])
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -290,17 +364,19 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         }
         if (cancelled) return
         appendDiagnosticBreadcrumb('RAG init config loaded')
-        await loadRagData('', 'text', 1, 10)
+        await loadRagDataRef.current('', 'text', 1, 10)
         appendDiagnosticBreadcrumb('RAG init loadRagData finished')
       } catch (e: unknown) {
         if (!cancelled) {
-          toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
+          toastRef.current.showError(
+            e instanceof Error ? e.message : tRef.current('settings.rag_operation_failed')
+          )
         }
       }
     }
 
     if (Platform.OS === 'android') {
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runAfterIdle(() => {
         void runInit()
       })
       return () => {
@@ -313,17 +389,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     return () => {
       cancelled = true
     }
-  }, [
-    dbReady,
-    services,
-    storageIndexing,
-    ecosystemResyncEpoch,
-    loadRagData,
-    setConfig,
-    setProviders,
-    t,
-    toast
-  ])
+  }, [dbReady, services, storageIndexing, ecosystemResyncEpoch, setConfig, setProviders])
 
   const embeddingProviders = useMemo(() => buildEmbeddingProviders(providers), [providers])
 
@@ -343,9 +409,15 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
     setShowModelSwitcher(true)
   }, [embeddingProviders.length, dialog, router, t, setShowModelSwitcher])
 
+  const invalidateInFlightQuery = useCallback(() => {
+    queryGenerationRef.current += 1
+    setIsSearching(true)
+  }, [setIsSearching])
+
   return {
     loadRagData,
     refreshEntriesOnly,
+    invalidateInFlightQuery,
     openModelSwitcher,
     semanticAvailable,
     embeddingProviders

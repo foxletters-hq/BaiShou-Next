@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { View, StyleSheet, ScrollView, useWindowDimensions, StatusBar } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
 import {
   DashboardHeroBanner,
@@ -10,6 +15,7 @@ import {
   ActivityHeatmap,
   useNativeTheme,
   useNativeToast,
+  useDialog,
   scrollIndicatorStyle
 } from '@baishou/ui/native'
 import { logger } from '@baishou/shared'
@@ -21,25 +27,32 @@ import { SummaryTabBar } from './components/SummaryTabBar'
 import { SummaryMissingSection } from './components/SummaryMissingSection'
 import { SummaryGalleryView } from './components/SummaryGalleryView'
 import { resolveSummaryConfig } from '../../services/mobile-summary-config.util'
+import { buildSummaryTaskKey } from './utils/summary-detail.helpers'
 import { peekSummaryDashboardCache } from '@/src/lib/summary-dashboard-cache'
 import { emitSyncMutation } from '@/src/cache/mobile-cache-coordinator'
 import { usePersistedSharedMemoryLookback } from '@/src/hooks/usePersistedSharedMemoryLookback'
 import { usePersistedSharedMemoryCopyPrefix } from '@/src/hooks/usePersistedSharedMemoryCopyPrefix'
 import { useSharedMemoryCopyPreview } from '@/src/hooks/useSharedMemoryCopyPreview'
 import { preloadDiaryEditorWebViewSource } from '@/src/hooks/useDiaryEditorWebViewSource'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const SummaryScreen: React.FC = () => {
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
+  const dialog = useDialog()
+  const router = useRouter()
   const { services, storageIndexing, vaultRevision } = useBaishou()
   const [activeTab, setActiveTab] = useState<'panel' | 'gallery'>('panel')
   const slideOffset = useSharedValue(0)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
-    slideOffset.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
+    slideOffset.value = withTiming(activeTab === 'gallery' ? 1 : 0, {
+      duration: sharedTokens.animation.swift,
+      easing: Easing.out(Easing.cubic)
+    })
   }, [activeTab, slideOffset])
 
   const animatedContainerStyle = useAnimatedStyle(
@@ -48,6 +61,8 @@ export const SummaryScreen: React.FC = () => {
     }),
     [width]
   )
+  const panelFadeStyle = useAnimatedStyle(() => ({ opacity: 1 - slideOffset.value }))
+  const galleryFadeStyle = useAnimatedStyle(() => ({ opacity: slideOffset.value }))
   const { lookbackMonths, setLookbackMonths } = usePersistedSharedMemoryLookback()
   const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
   const { preview: copyPreview, loading: copyPreviewLoading } = useSharedMemoryCopyPreview(
@@ -124,12 +139,38 @@ export const SummaryScreen: React.FC = () => {
     try {
       const resolution = await resolveSummaryConfig(services.settingsManager)
       if (!resolution.ok) {
-        toast.showError(t('summary.model_not_configured'))
+        const confirmed = await dialog.confirm(
+          t(
+            'summary.model_not_configured_desc',
+            '你还没有配置 AI 模型，无法生成总结。\n是否跳转到设置页面进行配置？'
+          ),
+          {
+            title: t('summary.model_not_configured', '模型未配置'),
+            confirmText: t('vision_model_goto_global', '去配置全局默认模型'),
+            cancelText: t('common.cancel', '取消')
+          }
+        )
+        if (confirmed) {
+          router.push('/settings/ai-models' as any)
+        }
         return false
       }
       return true
     } catch (e) {
-      toast.showError(t('summary.model_not_configured'))
+      const confirmed = await dialog.confirm(
+        t(
+          'summary.model_not_configured_desc',
+          '你还没有配置 AI 模型，无法生成总结。\n是否跳转到设置页面进行配置？'
+        ),
+        {
+          title: t('summary.model_not_configured', '模型未配置'),
+          confirmText: t('vision_model_goto_global', '去配置全局默认模型'),
+          cancelText: t('common.cancel', '取消')
+        }
+      )
+      if (confirmed) {
+        router.push('/settings/ai-models' as any)
+      }
       return false
     }
   }
@@ -199,7 +240,7 @@ export const SummaryScreen: React.FC = () => {
     setIsBatchGenerating(true)
 
     const pendingTasks = missingSummaries.filter((mp) => {
-      const uKey = `${mp.type}_${new Date(mp.startDate).getTime()}`
+      const uKey = buildSummaryTaskKey(mp.type, mp.startDate)
       const state = generationStates[uKey]
       return !state || state.status === 'pending' || state.status === 'error'
     })
@@ -254,31 +295,35 @@ export const SummaryScreen: React.FC = () => {
             <Animated.View
               style={[styles.sliderTrack, { width: width * 2 }, animatedContainerStyle]}
             >
-              <View style={[styles.sliderPage, { width }, styles.panelPage]}>
+              <Animated.View
+                style={[styles.sliderPage, { width }, styles.panelPage, panelFadeStyle]}
+              >
                 <ScrollView
                   contentContainerStyle={[styles.panelContent, styles.panelScrollContent]}
                   indicatorStyle={scrollIndicatorStyle(isDark)}
                   showsVerticalScrollIndicator={false}
                 >
-                  <DashboardHeroBanner />
-                  <View style={isWide ? styles.wideLayout : styles.narrowLayout}>
-                    <View style={styles.flex1}>
-                      <DashboardSharedMemoryCard
-                        lookbackMonths={lookbackMonths}
-                        onMonthsChanged={setLookbackMonths}
-                        onCopyContext={handleCopyContext}
-                        copyPreview={copyPreview}
-                        copyPreviewLoading={copyPreviewLoading}
-                        copyPrefix={copyPrefix}
-                        onCopyPrefixChange={setCopyPrefix}
-                      />
-                    </View>
-                    <View style={styles.flex1}>
-                      <DashboardStatsCard
-                        {...stats}
-                        onRescan={() => void handleRescan()}
-                        rescanning={isRescanning || storageIndexing}
-                      />
+                  <View style={styles.dashboardSection}>
+                    <DashboardHeroBanner />
+                    <View style={isWide ? styles.wideLayout : styles.narrowLayout}>
+                      <View style={styles.flex1}>
+                        <DashboardSharedMemoryCard
+                          lookbackMonths={lookbackMonths}
+                          onMonthsChanged={setLookbackMonths}
+                          onCopyContext={handleCopyContext}
+                          copyPreview={copyPreview}
+                          copyPreviewLoading={copyPreviewLoading}
+                          copyPrefix={copyPrefix}
+                          onCopyPrefixChange={setCopyPrefix}
+                        />
+                      </View>
+                      <View style={styles.flex1}>
+                        <DashboardStatsCard
+                          {...stats}
+                          onRescan={() => void handleRescan()}
+                          rescanning={isRescanning || storageIndexing}
+                        />
+                      </View>
                     </View>
                   </View>
 
@@ -308,15 +353,15 @@ export const SummaryScreen: React.FC = () => {
                     onDetectMissing={() => void refreshMissing()}
                   />
                 </ScrollView>
-              </View>
-              <View style={[styles.sliderPage, { width }]}>
+              </Animated.View>
+              <Animated.View style={[styles.sliderPage, { width }, galleryFadeStyle]}>
                 <SummaryGalleryView
                   summaries={summaries}
                   loading={galleryLoading}
                   onRefreshData={refreshData}
                   onSummaryDeleted={removeSummaryLocally}
                 />
-              </View>
+              </Animated.View>
             </Animated.View>
           </View>
         </View>
@@ -341,18 +386,18 @@ const styles = StyleSheet.create({
     flex: 1
   },
   panelPage: {
-    paddingTop: 12
+    paddingTop: sharedTokens.spacing.mdTight
   },
   panelScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: sharedTokens.spacing.md,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
   content: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.mdTight,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
@@ -364,16 +409,19 @@ const styles = StyleSheet.create({
     minHeight: 0
   },
   panelContent: {
-    gap: 32,
-    paddingBottom: 40
+    gap: sharedTokens.spacing.xl,
+    paddingBottom: sharedTokens.spacing.xlPlus
+  },
+  dashboardSection: {
+    gap: sharedTokens.spacing.mdTight
   },
   wideLayout: {
     flexDirection: 'row',
-    gap: 24
+    gap: sharedTokens.spacing.lg
   },
   narrowLayout: {
     flexDirection: 'column',
-    gap: 24
+    gap: sharedTokens.spacing.lg
   },
   flex1: {
     flex: 1,

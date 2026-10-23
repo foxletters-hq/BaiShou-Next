@@ -16,7 +16,7 @@ export const NUM_COLUMNS = 3
 export const getWeekNumber = getSummaryWeekNumber
 
 /** 画廊日期：YYYY-MM-DD 必须走本地解析，禁止 new Date('YYYY-MM-DD') */
-function parseGalleryDate(value: string | Date): Date {
+export function parseGalleryDate(value: string | Date): Date {
   if (value instanceof Date) return value
   if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
     try {

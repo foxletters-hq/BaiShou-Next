@@ -2,16 +2,16 @@
   display: flex;
   background: rgba(251, 191, 36, 0.05); /* Amber tint */
   border: 1px solid rgba(251, 191, 36, 0.2);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   font-family: var(--font-family-main);
-  gap: 16px;
+  gap: var(--spacing-md);
   max-width: 500px;
 }
 
 .iconBox {
-  font-size: 24px;
-  padding-top: 2px;
+  font-size: var(--icon-fs-lg);
+  padding-top: var(--spacing-2xs);
 }
 
 .content {
@@ -21,32 +21,32 @@
 }
 
 .content h4 {
-  margin: 0 0 4px 0;
-  font-size: 14px;
-  font-weight: 700;
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
   color: #d97706; /* Amber */
 }
 
 .content p {
-  margin: 0 0 12px 0;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-md-tight) 0;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .generateBtn {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.2));
   border: 1px solid rgba(245, 158, 11, 0.3);
   color: #b45309;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 8px;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--animation-micro);
 }
@@ -63,11 +63,11 @@
 .skipBtn {
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 

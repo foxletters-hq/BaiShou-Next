@@ -5,7 +5,9 @@ import { formatAppVersion } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
 import '../AboutSettingsCard/AboutSettingsCard.css'
 import './VersionManager.css'
-import { CheckCircle, CircleX, Download, ExternalLink, Hourglass, RefreshCw } from 'lucide-react'
+import { Switch } from '../Switch/Switch'
+import { Button } from '../Button/Button'
+import { CheckCircle, CircleX, Download, Hourglass } from 'lucide-react'
 
 export interface VersionManagerProps {
   version: string
@@ -96,38 +98,30 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
   const renderPrimaryAction = () => {
     if (status === UpdateStatus.AVAILABLE) {
       return (
-        <button type="button" className="version-primary-btn" onClick={() => downloadUpdate()}>
-          <Download size={18} />
+        <Button type="button" variant="outlined" size="small" onClick={() => downloadUpdate()}>
           {t('updater.download', 'Download update')}
-        </button>
+        </Button>
       )
     }
     if (status === UpdateStatus.DOWNLOADED) {
       return (
-        <button type="button" className="version-primary-btn" onClick={() => quitAndInstall()}>
-          <CheckCircle size={18} />
+        <Button type="button" variant="outlined" size="small" onClick={() => quitAndInstall()}>
           {t('updater.install', 'Install now')}
-        </button>
+        </Button>
       )
     }
     return (
-      <button
+      <Button
         type="button"
-        className="version-outline-btn"
+        variant="outlined"
+        size="small"
         onClick={handleCheckUpdate}
-        disabled={isChecking || status === UpdateStatus.CHECKING}
+        isLoading={isChecking || status === UpdateStatus.CHECKING}
       >
-        {isChecking || status === UpdateStatus.CHECKING ? (
-          <Hourglass size={18} className="version-spin" />
-        ) : (
-          <RefreshCw size={18} />
-        )}
-        {isChecking || status === UpdateStatus.CHECKING
-          ? t('updater.checking_short', 'Checking…')
-          : hasCheckedOnce
-            ? t('updater.check_again', 'Check again')
-            : t('updater.check', 'Check for updates')}
-      </button>
+        {hasCheckedOnce
+          ? t('updater.check_again', 'Check again')
+          : t('updater.check', 'Check for updates')}
+      </Button>
     )
   }
 
@@ -214,22 +208,18 @@ export const VersionManager: React.FC<VersionManagerProps> = ({
               {t('updater.auto_check_desc', 'Check when the app starts')}
             </span>
           </div>
-          <label className="version-toggle-switch">
-            <input
-              type="checkbox"
-              checked={autoCheck}
-              onChange={(e) => setAutoCheck(e.target.checked)}
-            />
-            <span className="version-toggle-slider" />
-          </label>
+          <Switch
+            checked={autoCheck}
+            aria-label={t('updater.auto_check', 'Check for updates automatically')}
+            onChange={(e) => setAutoCheck(e.target.checked)}
+          />
         </div>
       </div>
 
       {onOpenGithubRepo && (
-        <button type="button" className="about-github-btn" onClick={openGithub}>
-          <ExternalLink size={18} />
+        <Button type="button" variant="outlined" size="small" onClick={openGithub}>
           {t('updater.view_github', 'View GitHub repository')}
-        </button>
+        </Button>
       )}
     </div>
   )

@@ -38,6 +38,7 @@ import {
   isSameSummaryDetail
 } from './utils/summary-detail.helpers'
 import { SummaryDetailEditorPane } from './components/SummaryDetailEditorPane'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface SummaryDetailScreenProps {
   summaryId: string
@@ -442,71 +443,71 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   loadingText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderBottomWidth: 1
   },
   backButton: {
-    padding: 8
+    padding: sharedTokens.spacing.sm
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm
   },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   content: {
     flex: 1
   },
   contentScroll: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.xl
   },
   metaCard: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   contentCard: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   typeBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 12
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.md,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   typeBadgeText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   dateContainer: {
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   dateContainerLast: {
     marginBottom: 0
@@ -515,13 +516,13 @@ const styles = StyleSheet.create({
     height: 20
   },
   dateLabel: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   },
   dateText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   contentText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     lineHeight: 24
   }
 })

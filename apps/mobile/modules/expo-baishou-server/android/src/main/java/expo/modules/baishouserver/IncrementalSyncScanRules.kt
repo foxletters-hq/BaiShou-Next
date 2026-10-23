@@ -4,6 +4,18 @@ package expo.modules.baishouserver
 object IncrementalSyncScanRules {
     private val SYNC_SKIP_DIR_NAMES = setOf("node_modules", "snapshots", "temp", ".snapshots")
     private const val BAISHOU_SETTINGS_PREFIX = ".baishou/settings/"
+    private const val ROOT_AGENTS_SKILLS_PREFIX = ".agents/skills/"
+    private const val VAULT_IDENTITY_META_FILENAME = "vault.json"
+    private val CONFLICT_BACKUP_REGEX = Regex("""\.conflict-\d+""")
+    private val KNOWN_RUNTIME_SQLITE_DB_NAMES = setOf(
+        "baishou_agent.db",
+        "knowledge.db",
+        "shadow_index.db",
+        "shadow_index_v2.db",
+        "agent.db",
+        "baishou.db"
+    )
+    private val USER_CONTENT_SYNC_DIR_REGEX = Regex("""(^|/)(Notebooks|Attachments)/""", RegexOption.IGNORE_CASE)
 
     private fun normalizeRel(relativePath: String): String =
         relativePath.replace('\\', '/').trimStart('/')
@@ -14,12 +26,19 @@ object IncrementalSyncScanRules {
     }
 
     private fun isSqliteRuntimeSyncPath(relativePath: String): Boolean {
-        val base = basenameFromRel(relativePath).lowercase()
-        return base.endsWith(".db") ||
-            base.endsWith(".db-shm") ||
+        val rel = normalizeRel(relativePath)
+        val base = basenameFromRel(rel).lowercase()
+        if (base.endsWith(".db-shm") ||
             base.endsWith(".db-wal") ||
             base.endsWith(".db-journal") ||
             base.endsWith(".probe")
+        ) {
+            return true
+        }
+        if (!base.endsWith(".db")) return false
+        if (USER_CONTENT_SYNC_DIR_REGEX.containsMatchIn(rel)) return false
+        if (rel.contains("/.baishou/") || rel.startsWith(".baishou/")) return true
+        return KNOWN_RUNTIME_SQLITE_DB_NAMES.contains(base)
     }
 
     private fun isBaishouSettingsTree(rel: String): Boolean {
@@ -29,15 +48,45 @@ object IncrementalSyncScanRules {
             rel.startsWith(BAISHOU_SETTINGS_PREFIX)
     }
 
-    private fun isRootSyncMetaDirectory(rel: String, entryName: String): Boolean {
+    /** 存储根下的 `.baishou/`：允许下降以扫描 `.baishou/settings/` */
+    private fun isRootBaishouDirectory(rel: String, entryName: String): Boolean {
         return entryName == ".baishou" && (rel == ".baishou" || rel == "")
+    }
+
+    /** 存储根 `.agents/skills/`：用户技能跨端共享，仅放行这一棵子树 */
+    private fun isRootAgentsSkillsTree(rel: String): Boolean {
+        return rel == ".agents/skills" || rel.startsWith(ROOT_AGENTS_SKILLS_PREFIX)
+    }
+
+    /** `<vault>/.baishou/vault.json` — 仓库稳定 ID 锚点，须纳入增量同步 */
+    fun isVaultIdentityMetaRelPath(relativePath: String): Boolean {
+        val rel = normalizeRel(relativePath)
+        return rel.endsWith("/.baishou/$VAULT_IDENTITY_META_FILENAME")
+    }
+
+    fun isIncrementalSyncConflictBackupPath(relativePath: String): Boolean {
+        return CONFLICT_BACKUP_REGEX.containsMatchIn(basenameFromRel(relativePath))
+    }
+
+    fun isIncrementalSyncChatBackgroundPath(relativePath: String): Boolean {
+        val rel = normalizeRel(relativePath)
+        return rel == "Attachments/backgrounds" ||
+            rel.endsWith("/Attachments/backgrounds") ||
+            rel.startsWith("Attachments/backgrounds/") ||
+            rel.contains("/Attachments/backgrounds/")
     }
 
     fun shouldScanDirectory(entryName: String, relativePath: String): Boolean {
         if (SYNC_SKIP_DIR_NAMES.contains(entryName)) return false
         val rel = normalizeRel(relativePath)
 
-        if (isRootSyncMetaDirectory(rel, entryName)) return false
+        if (isIncrementalSyncChatBackgroundPath(rel)) return false
+
+        if (isRootAgentsSkillsTree(rel)) return !entryName.startsWith(".")
+        if (entryName == ".agents" && (rel == ".agents" || rel == "")) return true
+        if (rel.startsWith(".agents/") && !isRootAgentsSkillsTree(rel)) return false
+
+        if (isRootBaishouDirectory(rel, entryName)) return true
         if (isBaishouSettingsTree(rel)) return !SYNC_SKIP_DIR_NAMES.contains(entryName)
         if (entryName == ".baishou" && rel.endsWith("/.baishou")) return true
         if (rel.contains("/.baishou/") && !isBaishouSettingsTree(rel)) return false
@@ -46,9 +95,21 @@ object IncrementalSyncScanRules {
         return true
     }
 
+    private fun isJsonlShardsManifestSyncPath(relativePath: String): Boolean =
+        basenameFromRel(relativePath) == "shards.manifest.json"
+
     fun shouldIncludeFile(entryName: String, relativePath: String): Boolean {
         val rel = normalizeRel(relativePath)
-        if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) return false
+        if (isIncrementalSyncChatBackgroundPath(rel) || isIncrementalSyncChatBackgroundPath(entryName)) {
+            return false
+        }
+        if (isSqliteRuntimeSyncPath(rel)) return false
+        if (isJsonlShardsManifestSyncPath(rel) || isJsonlShardsManifestSyncPath(entryName)) return false
+        if (isIncrementalSyncConflictBackupPath(rel) || isIncrementalSyncConflictBackupPath(entryName)) {
+            return false
+        }
+        if (isRootAgentsSkillsTree(rel)) return !entryName.startsWith(".")
+        if (rel.startsWith(".agents/") || rel.contains("/.agents/")) return false
         if (isBaishouSettingsTree(rel)) {
             return if (rel.contains("/.baishou/settings/") || rel.startsWith(BAISHOU_SETTINGS_PREFIX)) {
                 rel.endsWith(".json") && !entryName.endsWith(".tmp")
@@ -56,6 +117,7 @@ object IncrementalSyncScanRules {
                 false
             }
         }
+        if (isVaultIdentityMetaRelPath(rel)) return true
         if (rel.contains("/.baishou/") || rel.startsWith(".baishou/")) return false
         if (entryName.startsWith(".")) return false
         return true

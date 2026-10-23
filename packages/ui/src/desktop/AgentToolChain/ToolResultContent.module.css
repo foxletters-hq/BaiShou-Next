@@ -1,15 +1,13 @@
 .resultViewport {
-  max-height: min(320px, 42vh);
   overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
+  overflow-y: visible;
+  padding-right: var(--spacing-2xs);
 }
 
 .sourceUrl {
   display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
   line-height: 1.4;
   color: var(--color-primary);
   text-decoration: none;
@@ -22,8 +20,10 @@
 
 .markdownBody:global(.x-markdown) {
   width: 100% !important;
-  font-size: 13px !important;
+  font-family: var(--font-family) !important;
+  font-size: var(--ui-fs-md) !important;
   line-height: 1.55 !important;
+  color: var(--text-secondary);
 }
 
 .markdownBody :global(.x-markdown p) {
@@ -36,12 +36,23 @@
 
 .resultTextLog {
   margin: 0;
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
+}
+
+.resultStatus {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-md);
+  font-weight: 400;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 20px;
 }
 
 .errorText {
@@ -51,23 +62,23 @@
 .structDataGrid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .structItem {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .structTitle {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .structLink {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--color-primary);
   text-decoration: none;
   word-break: break-all;
@@ -78,7 +89,7 @@
 }
 
 .structSnippet {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -86,9 +97,9 @@
 .structValueRow {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  padding: 2px 0;
+  gap: var(--spacing-md-tight);
+  font-size: var(--ui-fs-sm);
+  padding: var(--spacing-2xs) 0;
   border-bottom: 1px dashed var(--border-subtle);
 }
 
@@ -104,7 +115,7 @@
 
 .structVal {
   color: var(--text-secondary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-mono);
   text-align: right;
   word-break: break-all;
 }

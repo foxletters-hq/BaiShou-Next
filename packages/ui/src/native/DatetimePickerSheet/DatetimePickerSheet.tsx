@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, Modal, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface DatetimePickerSheetProps extends ViewProps {
   visible: boolean
@@ -34,7 +35,7 @@ interface StepperProps {
 
 const Stepper: React.FC<StepperProps> = ({
   label,
-  value,
+  value: _value,
   displayValue,
   onIncrement,
   onDecrement,
@@ -68,7 +69,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
   value,
   onChange,
   mode = 'datetime',
-  style,
+  style: _style,
   ...props
 }) => {
   const { colors, tokens } = useNativeTheme()
@@ -229,60 +230,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: 1
   },
   cancelText: {
-    fontSize: 15
+    fontSize: mobileTypography.body.fontSize
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   confirmText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   pickerContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingVertical: sharedTokens.spacing.mdPlus
   },
   stepperRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   stepperColumn: {
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flex: 1,
     maxWidth: 80
   },
   stepperBtn: {
     width: 44,
     height: 36,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
   stepperBtnText: {
-    fontSize: 20,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   stepperValue: {
     width: 56,
     height: 40,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
   stepperValueText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
     fontVariant: ['tabular-nums']
   },
   stepperLabel: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   }
 })

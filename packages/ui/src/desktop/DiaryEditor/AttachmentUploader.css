@@ -1,40 +1,40 @@
 .attachment-uploader {
-  border: 1px dashed var(--border-color, #e0e0e0);
-  border-radius: 8px;
-  padding: 8px;
-  margin-top: 8px;
-  transition: all 0.2s ease;
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  transition: all var(--duration-swift) ease;
 }
 
 .attachment-uploader.dragging {
-  border-color: var(--primary-color, #4f46e5);
-  background-color: var(--primary-color-light, rgba(79, 70, 229, 0.05));
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .attachment-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
 .attachment-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 6px;
-  background: var(--bg-secondary, #f5f5f5);
-  color: var(--text-primary, #333);
+  gap: var(--spacing-xs-plus);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-xs-plus);
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
+  font-size: var(--ui-fs-md);
+  transition: all var(--duration-swift) ease;
 }
 
 .attachment-btn:hover {
-  background: var(--bg-hover, #e8e8e8);
-  border-color: var(--primary-color, #4f46e5);
+  background: var(--bg-surface-highest);
+  border-color: var(--color-primary);
 }
 
 .attachment-btn:disabled {
@@ -43,42 +43,42 @@
 }
 
 .attachment-status {
-  font-size: 12px;
-  color: var(--text-secondary, #666);
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
 }
 
 .attachment-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .attachment-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-secondary, #f5f5f5);
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #e0e0e0);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  background: var(--bg-surface-high);
+  border-radius: var(--radius-xs-plus);
+  border: 1px solid var(--border-control);
 }
 
 .attachment-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1;
   min-width: 0;
 }
 
 .attachment-icon {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   flex-shrink: 0;
 }
 
 .attachment-name {
-  font-size: 13px;
-  color: var(--text-primary, #333);
+  font-size: var(--ui-fs-md);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -87,7 +87,7 @@
 .attachment-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
 }
 
@@ -98,19 +98,19 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
 }
 
 .attachment-action-btn:hover {
-  background: var(--bg-hover, #e8e8e8);
-  color: var(--text-primary, #333);
+  background: var(--bg-surface-highest);
+  color: var(--text-primary);
 }
 
 .attachment-action-btn.delete:hover {
   background: var(--error-color-light, rgba(239, 68, 68, 0.1));
-  color: var(--error-color, #ef4444);
+  color: var(--color-error);
 }

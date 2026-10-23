@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { mapMigrationBackupRow, assertMigrationBackupRow } from '../migration-backup.util'
+import {
+  mapMigrationBackupRow,
+  assertMigrationBackupRow,
+  inferVaultNameFromEmbeddingRefs
+} from '../migration-backup.util'
 
 describe('mapMigrationBackupRow', () => {
   it('maps drizzle camelCase aliases', () => {
@@ -45,5 +49,58 @@ describe('mapMigrationBackupRow', () => {
         })
       )
     ).toThrow(/missing id or text/i)
+  })
+})
+
+describe('inferVaultNameFromEmbeddingRefs', () => {
+  it('prefers explicit vaultName', () => {
+    expect(
+      inferVaultNameFromEmbeddingRefs({
+        groupId: 'memory:Other',
+        sourceType: 'memory',
+        sourceId: 'x',
+        vaultName: 'Personal'
+      })
+    ).toBe('Personal')
+  })
+
+  it('parses memory: prefix without off-by-one', () => {
+    expect(
+      inferVaultNameFromEmbeddingRefs({
+        groupId: 'memory:Personal',
+        sourceType: 'memory',
+        sourceId: 'm1'
+      })
+    ).toBe('Personal')
+  })
+
+  it('parses diary: prefix', () => {
+    expect(
+      inferVaultNameFromEmbeddingRefs({
+        groupId: 'diary:Work',
+        sourceType: 'diary',
+        sourceId: 'Work#42'
+      })
+    ).toBe('Work')
+  })
+
+  it('falls back to diary source_id prefix', () => {
+    expect(
+      inferVaultNameFromEmbeddingRefs({
+        groupId: 'legacy',
+        sourceType: 'diary',
+        sourceId: 'Personal#99'
+      })
+    ).toBe('Personal')
+  })
+
+  it('returns empty when no clue', () => {
+    expect(
+      inferVaultNameFromEmbeddingRefs({
+        groupId: 'manual',
+        sourceType: 'manual',
+        sourceId: 'manual_1'
+      })
+    ).toBe('')
   })
 })

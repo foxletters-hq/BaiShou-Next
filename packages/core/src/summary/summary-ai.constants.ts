@@ -1,2 +1,7 @@
-/** AI 建议补全 / 周期总结生成超时（移动端网络与长上下文场景需要更宽裕） */
-export const SUMMARY_AI_GENERATION_TIMEOUT_MS = 120_000
+import { AI_FIRST_OUTPUT_TIMEOUT_MS } from '@baishou/shared'
+
+/** 等待模型首个输出（正文或推理增量）的超时 */
+export const SUMMARY_AI_GENERATION_TIMEOUT_MS = AI_FIRST_OUTPUT_TIMEOUT_MS
+
+/** 已有输出后，连续这么久没有新增量则中止，避免首个 token 后挂死 */
+export const SUMMARY_AI_IDLE_TIMEOUT_MS = AI_FIRST_OUTPUT_TIMEOUT_MS

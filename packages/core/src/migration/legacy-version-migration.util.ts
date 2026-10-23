@@ -111,7 +111,9 @@ const ALLOWED_LEGACY_PART_TYPES = new Set([
   'compaction',
   'image',
   'attachment',
-  'context_snapshot'
+  'context_snapshot',
+  'agent_gate',
+  'file_change'
 ])
 
 /** 将旧版 agent_parts.type 规范为新版 schema 枚举值 */

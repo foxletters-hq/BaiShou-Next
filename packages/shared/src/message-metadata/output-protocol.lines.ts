@@ -1,4 +1,4 @@
-import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from './constants'
+import { CONVERSATION_TIME_TAG, MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from './constants'
 
 /**
  * Short, hard rules for what the model may put in the user-visible reply.
@@ -18,7 +18,7 @@ export function buildOutputProtocolSystemPromptLines(): string[] {
     'Do NOT wrap the reply in XML/HTML tags or invent structural markers.',
     '',
     '[Forbidden in user-visible text]',
-    `Never emit host protocol tags: <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, </time>.`,
+    `Never emit host protocol tags: <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, <${CONVERSATION_TIME_TAG}>, </time>.`,
     'Never emit thinking wrappers: <think>, </think>, <thinking>, </thinking>, <redacted_thinking>, </redacted_thinking>.',
     'Never invent reply wrappers such as: <response>, </response>, <reply>, </reply>, <answer>, </answer>, <final>, </final>, or similar.',
     '',

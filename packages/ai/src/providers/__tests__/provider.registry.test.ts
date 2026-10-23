@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ProviderType } from '@baishou/shared'
+import { ProviderType, type AIProviderConfig } from '@baishou/shared'
 // 注意：以下类型还在实现过程中，我们遵循 TDD 先测试再跑码
 import { AIProviderRegistry } from '../provider.registry'
 
@@ -26,5 +26,45 @@ describe('AIProviderRegistry', () => {
     expect(registry.hasProvider('openai')).toBe(true)
     registry.removeProvider('openai')
     expect(registry.hasProvider('openai')).toBe(false)
+  })
+
+  it('should reuse the same instance when provider config is unchanged', () => {
+    const config: AIProviderConfig = {
+      id: 'siliconflow',
+      name: 'siliconflow',
+      type: ProviderType.SiliconFlow,
+      apiKey: 'sk-test',
+      baseUrl: 'https://example.test',
+      models: [],
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: '',
+      isEnabled: true,
+      isSystem: false,
+      sortOrder: 0
+    }
+    const first = registry.getOrUpdateProvider(config)
+    const second = registry.getOrUpdateProvider({ ...config, models: [] })
+    expect(second).toBe(first)
+  })
+
+  it('should rebuild when api key or base url changes', () => {
+    const config: AIProviderConfig = {
+      id: 'siliconflow',
+      name: 'siliconflow',
+      type: ProviderType.SiliconFlow,
+      apiKey: 'sk-old',
+      baseUrl: 'https://example.test',
+      models: [],
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: '',
+      isEnabled: true,
+      isSystem: false,
+      sortOrder: 0
+    }
+    const first = registry.getOrUpdateProvider(config)
+    const second = registry.getOrUpdateProvider({ ...config, apiKey: 'sk-new' })
+    expect(second).not.toBe(first)
   })
 })

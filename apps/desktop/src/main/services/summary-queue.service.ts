@@ -1,7 +1,11 @@
 import i18n from 'i18next'
 import { BrowserWindow } from 'electron'
 import { MissingSummary, logger } from '@baishou/shared'
-import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core-desktop'
+import {
+  SummaryGeneratorService,
+  SummaryManagerService,
+  isSummaryUserAbortError
+} from '@baishou/core-desktop'
 import { resolveDesktopSummaryGenerateOptions } from './summary-generate-options'
 
 export interface QueueItem {
@@ -261,7 +265,7 @@ export class SummaryQueueService {
         throw new Error('Generated content was empty.')
       }
     } catch (e: any) {
-      if (signal?.aborted || e?.name === 'AbortError') {
+      if (isSummaryUserAbortError(e, signal)) {
         task.status = 'error'
         task.error = i18n.t(
           'auto.apps.desktop.src.main.services.summary.queue.service.L159',

@@ -1,75 +1,79 @@
-import React, { useMemo, useState } from 'react'
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
+import React, { useMemo } from 'react'
+import { Linking, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import {
+  localizeToolResultText,
   resolveToolResultPresentation,
+  type ToolCopyTranslate,
   type ToolInvocationLike
 } from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useNativeTheme } from '../theme'
-
-const RESULT_MAX_HEIGHT = 320
+import { CompanionAskResultCard } from './CompanionAskResultCard'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const ToolResultContent = React.memo(function ToolResultContent({
   invocation
 }: {
   invocation: ToolInvocationLike
 }) {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const presentation = useMemo(() => resolveToolResultPresentation(invocation), [invocation])
   const isError = presentation.mode === 'error'
-  const [contentHeight, setContentHeight] = useState(0)
-  const viewportHeight = Math.min(contentHeight || RESULT_MAX_HEIGHT, RESULT_MAX_HEIGHT)
-  const scrollEnabled = contentHeight > RESULT_MAX_HEIGHT
+  const displayText = useMemo(
+    () =>
+      presentation.mode === 'structured' || presentation.mode === 'companion_ask'
+        ? ''
+        : // i18next 的 t 键类型是收窄的泛型，与接受任意字符串键的 ToolCopyTranslate 无法结构赋值
+          localizeToolResultText(presentation.text, t as unknown as ToolCopyTranslate),
+    [presentation, t]
+  )
+
+  if (presentation.mode === 'companion_ask') {
+    return <CompanionAskResultCard data={presentation} />
+  }
 
   return (
     <View
       style={[
         styles.viewport,
         {
-          height: viewportHeight,
           backgroundColor: isError ? 'rgba(244, 67, 54, 0.06)' : colors.bgSurfaceNormal,
           borderColor: isError ? 'rgba(244, 67, 54, 0.3)' : colors.borderSubtle
         }
       ]}
     >
-      <ScrollView
-        style={{ height: viewportHeight }}
-        contentContainerStyle={styles.scrollInner}
-        nestedScrollEnabled
-        scrollEnabled={scrollEnabled}
-        showsVerticalScrollIndicator={scrollEnabled}
-        onContentSizeChange={(_, height) => {
-          if (height !== contentHeight) setContentHeight(height)
-        }}
-      >
-        {presentation.mode === 'structured' ? (
-          <StructuredToolResult data={presentation.data} colors={colors} />
-        ) : (
-          <>
-            {presentation.mode === 'plain' && presentation.sourceUrl ? (
-              <Text
-                style={[styles.sourceUrl, { color: colors.primary }]}
-                onPress={() => {
-                  const url = presentation.sourceUrl
-                  if (url) void Linking.openURL(url).catch(() => {})
-                }}
-              >
-                {presentation.sourceUrl}
-              </Text>
-            ) : null}
-            {presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
-              <AgentMarkdownRenderer content={presentation.text} variant="ancillary" />
-            ) : (
-              <Text
-                style={[styles.plainText, { color: isError ? colors.error : colors.textSecondary }]}
-                selectable
-              >
-                {presentation.text}
-              </Text>
-            )}
-          </>
-        )}
-      </ScrollView>
+      {presentation.mode === 'structured' ? (
+        <StructuredToolResult data={presentation.data} colors={colors} />
+      ) : (
+        <>
+          {presentation.mode === 'plain' && presentation.sourceUrl ? (
+            <Text
+              style={[styles.sourceUrl, { color: colors.primary }]}
+              onPress={() => {
+                const url = presentation.sourceUrl
+                if (url) void Linking.openURL(url).catch(() => {})
+              }}
+            >
+              {presentation.sourceUrl}
+            </Text>
+          ) : null}
+          {presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
+            <AgentMarkdownRenderer content={displayText} variant="ancillary" />
+          ) : (
+            <Text
+              style={[
+                isError ? styles.statusText : styles.plainText,
+                { color: isError ? colors.error : colors.textSecondary }
+              ]}
+              selectable
+            >
+              {displayText}
+            </Text>
+          )}
+        </>
+      )}
     </View>
   )
 })
@@ -167,57 +171,59 @@ function StructuredToolResult({
 const styles = StyleSheet.create({
   viewport: {
     borderWidth: 1,
-    borderRadius: 8,
-    overflow: 'hidden'
-  },
-  scrollInner: {
-    padding: 10
+    borderRadius: sharedTokens.radius.sm,
+    overflow: 'hidden',
+    padding: sharedTokens.spacing.smPlus
   },
   sourceUrl: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
+  },
+  statusText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20
   },
   plainText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17,
     fontFamily: 'monospace'
   },
   structGrid: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   structItem: {
     borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 4
+    borderRadius: sharedTokens.radius.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xs
   },
   structTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   structLink: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   structSnippet: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 17
   },
   structValueRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
-    paddingVertical: 2,
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   structKey: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   structVal: {
     flex: 1,
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontFamily: 'monospace',
     textAlign: 'right'
   }

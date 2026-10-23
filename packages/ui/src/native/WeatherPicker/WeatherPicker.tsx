@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useState, useCallback } from 'react'
 import {
   View,
@@ -14,6 +15,7 @@ import { WEATHER_IDS, weatherI18nKey, normalizeWeatherId, type WeatherId } from 
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { WeatherEmoji } from '../WeatherIcon'
+import { iconSizes, mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeWeatherPickerProps {
   value: string
@@ -21,17 +23,16 @@ export interface NativeWeatherPickerProps {
 }
 
 const weatherLabelFallback: Record<WeatherId, string> = {
-  sunny: '晴',
-  cloudy: '多云',
-  overcast: '阴',
-  light_rain: '小雨',
-  heavy_rain: '大雨',
-  snow: '雪',
-  fog: '雾',
-  windy: '风'
+  sunny: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L24', '晴'),
+  cloudy: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L25', '多云'),
+  overcast: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L26', '阴'),
+  light_rain: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L27', '小雨'),
+  heavy_rain: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L28', '大雨'),
+  snow: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L29', '雪'),
+  fog: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L30', '雾'),
+  windy: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L31', '风')
 }
 
-const TRIGGER_HEIGHT = 38
 const ICON_SIZE = 18
 
 export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onChange }) => {
@@ -68,17 +69,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
           {
             opacity: pressed ? 0.9 : 1,
             backgroundColor: colors.bgSurface,
-            borderColor: open || selectedId ? colors.primary : colors.borderSubtle,
-            shadowColor: open ? colors.primary : 'transparent',
-            ...(open
-              ? {
-                  borderWidth: 1.5,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 8,
-                  elevation: 3
-                }
-              : { borderWidth: 1 })
+            borderColor: open || selectedId ? colors.primary : colors.borderControl
           }
         ]}
       >
@@ -158,7 +149,12 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
                 { backgroundColor: colors.bgSurfaceHighest, borderTopColor: colors.borderSubtle }
               ]}
             >
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+              <Text
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: mobileTypography.secondary.fontSize
+                }}
+              >
                 {t('diary.clear_filter')}
               </Text>
             </Pressable>
@@ -173,35 +169,36 @@ const styles = StyleSheet.create({
   trigger: {
     alignSelf: 'flex-start',
     maxWidth: 176,
-    height: TRIGGER_HEIGHT,
+    height: mobileControlTokens.height,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 6
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    borderRadius: mobileControlTokens.radius,
+    borderWidth: 1,
+    gap: sharedTokens.spacing.xsPlus
   },
   triggerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flexShrink: 1
   },
   triggerLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     flexShrink: 1,
     lineHeight: 16
   },
   chevron: {
-    fontSize: 10,
+    fontSize: iconSizes.xs,
     lineHeight: 12
   },
   overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   dropdownPanel: {
     borderWidth: 1,
@@ -212,13 +209,13 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    minHeight: TRIGGER_HEIGHT,
-    paddingHorizontal: 14
+    gap: sharedTokens.spacing.smPlus,
+    minHeight: mobileControlTokens.height,
+    paddingHorizontal: sharedTokens.spacing.mdSnug
   },
   optionLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     lineHeight: 18
   },
@@ -227,7 +224,7 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderTopWidth: 1
   }
 })

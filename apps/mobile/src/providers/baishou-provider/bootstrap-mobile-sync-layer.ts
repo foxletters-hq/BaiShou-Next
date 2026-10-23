@@ -6,6 +6,7 @@ import { MobileArchiveService } from '../../services/archive.service'
 import { MobileLanSyncService } from '../../services/lan-sync.service'
 import { MobileCloudSyncService } from '../../services/cloud-sync.service'
 import { MobileIncrementalSyncService } from '../../services/mobile-incremental-sync.service'
+import { getMobileRawDataSourceManager } from '../../services/mobile-raw-data-source.runtime'
 import { MobileMcpService } from '../../services/mobile-mcp.service'
 import {
   buildMobileMcpToolContext,
@@ -31,7 +32,7 @@ import type {
   IFileSystem
 } from '@baishou/core-mobile'
 import type { AgentSessionService } from '@baishou/ai'
-import type { SqliteHybridSearchRepository } from '@baishou/database'
+import type { AppDatabase, SqliteHybridSearchRepository } from '@baishou/database'
 import type { HybridSearchService, ToolDiarySearcher } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
 import type { MobileAttachmentManagerService } from '../../services/mobile-attachment-manager.service'
@@ -40,6 +41,7 @@ import type { SummarySyncService } from '@baishou/core-mobile'
 import { createArchiveDbBridge } from './archive-db-bridge'
 import { createMemorySearch } from './memory-search'
 import { createStartAgentChat } from './start-agent-chat'
+import { createMobileAgentGateRuntime } from './agent-gate-runtime'
 import { assignReloadAgentDatabaseHandler } from './reload-agent-database'
 import { createGetContextAtMessage } from './get-context-at-message'
 import type { MobileBaishouInitContext } from './init-context'
@@ -96,7 +98,12 @@ export async function bootstrapMobileSyncLayer(
     fileSystem,
     archiveDbBridge
   )
-  const lanSyncService = new MobileLanSyncService(archiveService, fileSystem, syncDeviceId)
+  const lanSyncService = new MobileLanSyncService(
+    archiveService,
+    fileSystem,
+    syncDeviceId,
+    () => ctx.mobileMcpServiceHolder.current?.isServerRunning() ?? false
+  )
   const cloudSyncService = new MobileCloudSyncService(archiveService, fileSystem)
   const incrementalSyncService = new MobileIncrementalSyncService(
     settingsManager,
@@ -113,7 +120,9 @@ export async function bootstrapMobileSyncLayer(
       }))
     },
     assistantManager,
-    sessionManager
+    sessionManager,
+    () => getMobileRawDataSourceManager(),
+    vaultService
   )
 
   const updaterService = new MobileUpdaterService(settingsManager)
@@ -137,6 +146,7 @@ export async function bootstrapMobileSyncLayer(
       return buildMobileMcpToolContext({
         settingsManager: runtime?.settingsManager ?? settingsManager,
         pathService,
+        vaultService,
         getDiarySearcher,
         drizzleDb: runtime?.drizzleDb ?? drizzleDb,
         webSearchResultFetcher: webFetchContent,
@@ -146,7 +156,8 @@ export async function bootstrapMobileSyncLayer(
     () =>
       buildMobileMcpToolListContext({
         settingsManager: agentDbRuntimeRef.current?.settingsManager ?? settingsManager,
-        pathService
+        pathService,
+        vaultService
       })
   )
 
@@ -162,18 +173,26 @@ export async function bootstrapMobileSyncLayer(
     pathService,
     vaultService
   )
-  setMobileDiaryEmbeddingDeps(ragServiceDeps)
+  setMobileDiaryEmbeddingDeps(ragServiceDeps, { agentDb: drizzleDb as AppDatabase })
   const ragServiceRef = {
     current: createMobileRagService(ragServiceDeps)
   }
 
-  const memorySearch = createMemorySearch({ pathService, registry, agentDbRuntimeRef })
+  const memorySearch = createMemorySearch({
+    pathService,
+    registry,
+    agentDbRuntimeRef,
+    vaultService
+  })
+  const agentGateRuntime = createMobileAgentGateRuntime(settingsManager)
   const startAgentChat = createStartAgentChat({
     agentService,
     toolRegistry,
     registry,
     agentDbRuntimeRef,
-    getDiarySearcher
+    getDiarySearcher,
+    getAgentGate: agentGateRuntime.getAgentGate,
+    persistBaishouAgentGateConfig: agentGateRuntime.persistBaishouAgentGateConfig
   })
   ensureMobileCompressionBridge()
 
@@ -190,10 +209,24 @@ export async function bootstrapMobileSyncLayer(
     settingsManager,
     summarySyncService: summarySyncService as SummarySyncService,
     getActiveVaultName: () => pathService.getActiveVaultNameForContext(),
+    getActiveVaultId: async () => {
+      await vaultService.initRegistry()
+      return vaultService.getActiveVault()?.id ?? null
+    },
     getDiskVaultNames: async () => {
       const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
       const syncRoot = await pathService.getRootDirectory()
       return listDiskVaultFolderNames(fileSystem, syncRoot)
+    },
+    getVaultIdByName: async () => {
+      await vaultService.initRegistry()
+      const map: Record<string, string> = {}
+      for (const v of vaultService.getAllVaults()) {
+        if (v.name?.trim() && v.id?.trim()) {
+          map[v.name.trim()] = v.id.trim()
+        }
+      }
+      return map
     }
   }
 
@@ -234,8 +267,23 @@ export async function bootstrapMobileSyncLayer(
   const getContextAtMessage = createGetContextAtMessage({
     toolRegistry,
     agentDbRuntimeRef,
-    getDiarySearcher
+    getDiarySearcher,
+    getAgentGate: agentGateRuntime.getAgentGate
   })
+
+  // 静默预热已启用的外部 MCP 服务连接，避免首次发送消息冷启动延迟
+  void (async () => {
+    try {
+      const { getMobileMcpClientRuntime } = await import('../../services/mobile-mcp-client-runtime')
+      const mcpRt = getMobileMcpClientRuntime()
+      const conf = await mcpRt.ensureLoaded()
+      if (conf.servers.some((s) => s.enabled)) {
+        await mcpRt.toVercelTools({} as any)
+      }
+    } catch {
+      // 静默预热失败不影响主流程
+    }
+  })()
   return {
     ...state,
     mobileMcpService,
@@ -251,6 +299,8 @@ export async function bootstrapMobileSyncLayer(
     ragServiceRef,
     memorySearch,
     startAgentChat,
+    agentGate: agentGateRuntime.getAgentGate(),
+    reloadAgentGateConfig: agentGateRuntime.reloadAgentGateConfig,
     getContextAtMessage,
     bootstrapDeps,
     watcherDeps,

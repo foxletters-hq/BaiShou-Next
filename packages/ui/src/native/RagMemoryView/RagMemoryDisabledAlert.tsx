@@ -5,6 +5,7 @@ import { TriangleAlert } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
+import { sharedTokens } from '../../theme/tokens'
 
 interface RagMemoryDisabledAlertProps {
   ragEnabled: boolean
@@ -22,7 +23,7 @@ export const RagMemoryDisabledAlert: React.FC<RagMemoryDisabledAlertProps> = ({ 
         styles.disabledAlert,
         {
           backgroundColor: colors.errorContainer,
-          marginTop: 12
+          marginTop: sharedTokens.spacing.mdTight
         }
       ]}
     >

@@ -39,6 +39,7 @@ describe('useSettingsStore', () => {
       themeMode: 'system',
       useGlassmorphism: true,
       locale: 'zh',
+      fontSizeLevel: 1,
       providers: [],
       globalModels: null,
       agentBehavior: null,
@@ -60,6 +61,17 @@ describe('useSettingsStore', () => {
     expect(state.providers).toEqual([])
     expect(state.ragConfig).toBeNull()
     expect(state.isLoading).toBe(false)
+  })
+
+  it('setFontSizeLevel normalizes and keeps the level in UI preference state', () => {
+    useSettingsStore.getState().setFontSizeLevel(4)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(4)
+
+    useSettingsStore.getState().setFontSizeLevel(99)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(5)
+
+    useSettingsStore.getState().setFontSizeLevel(-3)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(0)
   })
 
   it('should load all domain configs when loadConfig is called explicitly', async () => {
@@ -126,6 +138,72 @@ describe('useSettingsStore', () => {
     await useSettingsStore.getState().loadConfig()
 
     expect((globalThis as any).window.api.settings.getProviders).not.toHaveBeenCalled()
+  })
+
+  it('loadConfig({ force: true }) should re-fetch already loaded keys', async () => {
+    useSettingsStore.setState({
+      loadedConfigKeys: [
+        'providers',
+        'globalModels',
+        'agentBehavior',
+        'ragConfig',
+        'webSearchConfig',
+        'summaryConfig',
+        'toolManagementConfig',
+        'mcpServerConfig',
+        'hotkeyConfig',
+        'cloudSyncConfig'
+      ],
+      ragConfig: {
+        ragEnabled: true,
+        ragTopK: 20,
+        ragSimilarityThreshold: 0.4,
+        lastDiaryEmbedFailureAt: 123,
+        lastDiaryEmbedFailureMessage: 'stale'
+      },
+      configHydrated: true
+    })
+    ;(globalThis as any).window.api.settings.getConfigSnapshot = vi.fn().mockResolvedValue({
+      providers: [],
+      globalModels: null,
+      agentBehavior: null,
+      ragConfig: { ragEnabled: true, ragTopK: 20, ragSimilarityThreshold: 0.4 },
+      webSearchConfig: null,
+      summaryConfig: null,
+      toolManagementConfig: null,
+      mcpServerConfig: null,
+      hotkeyConfig: null,
+      cloudSyncConfig: null
+    })
+
+    await useSettingsStore.getState().loadConfig({ force: true })
+
+    expect((globalThis as any).window.api.settings.getConfigSnapshot).toHaveBeenCalled()
+    expect(useSettingsStore.getState().ragConfig?.lastDiaryEmbedFailureAt).toBeUndefined()
+  })
+
+  it('reloadConfigKeys should refresh only requested keys', async () => {
+    useSettingsStore.setState({
+      loadedConfigKeys: ['ragConfig', 'providers'],
+      ragConfig: {
+        ragEnabled: true,
+        ragTopK: 20,
+        ragSimilarityThreshold: 0.4,
+        lastDiaryEmbedFailureAt: 999,
+        lastDiaryEmbedFailureMessage: 'old'
+      }
+    })
+    ;(globalThis as any).window.api.settings.getConfigSnapshot = vi.fn().mockResolvedValue({
+      ragConfig: { ragEnabled: true, ragTopK: 15, ragSimilarityThreshold: 0.3 }
+    })
+
+    await useSettingsStore.getState().reloadConfigKeys(['ragConfig'])
+
+    const state = useSettingsStore.getState()
+    expect(state.ragConfig?.ragTopK).toBe(15)
+    expect(state.ragConfig?.lastDiaryEmbedFailureAt).toBeUndefined()
+    expect(state.loadedConfigKeys).toContain('ragConfig')
+    expect(state.loadedConfigKeys).toContain('providers')
   })
 
   it('should load only segment-specific config keys', async () => {

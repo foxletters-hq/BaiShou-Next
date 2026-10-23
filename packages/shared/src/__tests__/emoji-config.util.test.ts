@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_EMOJI_GROUP_ID,
+  DEFAULT_EMOJI_SEND_FREQUENCY,
+  emojiGroupMatchesQuery,
+  normalizeEmojiSendFrequency,
   normalizeEmojiToolConfig,
+  removeEmojisByRelativePaths,
   resolveAssistantEmojiConfig
 } from '../utils/emoji-config.util'
 
@@ -22,9 +26,20 @@ describe('emoji-config.util', () => {
     expect(normalizeEmojiToolConfig({ enabled: false, groups: [] }).enabled).toBe(false)
   })
 
+  it('defaults send frequency to normal and preserves valid values', () => {
+    expect(normalizeEmojiToolConfig(null).frequency).toBe(DEFAULT_EMOJI_SEND_FREQUENCY)
+    expect(normalizeEmojiToolConfig({ enabled: true, groups: [] }).frequency).toBe('normal')
+    expect(
+      normalizeEmojiToolConfig({ enabled: true, frequency: 'high', groups: [] }).frequency
+    ).toBe('high')
+    expect(normalizeEmojiSendFrequency('always')).toBe('always')
+    expect(normalizeEmojiSendFrequency('unexpected')).toBe('normal')
+  })
+
   it('resolves assistant emoji groups when enabled', () => {
     const config = normalizeEmojiToolConfig({
       enabled: true,
+      frequency: 'always',
       groups: [
         {
           id: 'work',
@@ -44,14 +59,28 @@ describe('emoji-config.util', () => {
       emojiGroupIds: ['life']
     })
     expect(resolved.enabled).toBe(true)
+    expect(resolved.frequency).toBe('always')
     expect(resolved.emojis).toHaveLength(1)
     expect(resolved.emojis[0]?.id).toBe('b.png')
     expect(resolved.groupName).toBe('日常')
   })
 
+  it('matches emoji groups by name or sticker name', () => {
+    const group = {
+      id: 'life',
+      name: '日常',
+      emojis: [{ id: 'cat.png', name: '困困猫', relativePath: 'emojis/cat.png' }]
+    }
+    expect(emojiGroupMatchesQuery(group, '')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '日常')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '困困')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '工作')).toBe(false)
+  })
+
   it('returns disabled when companion emoji switch is off', () => {
     const config = normalizeEmojiToolConfig({
       enabled: true,
+      frequency: 'high',
       groups: [{ id: 'life', name: '日常', emojis: [] }]
     })
 
@@ -60,6 +89,27 @@ describe('emoji-config.util', () => {
       emojiGroupIds: ['life']
     })
     expect(resolved.enabled).toBe(false)
+    expect(resolved.frequency).toBe('high')
     expect(resolved.emojis).toHaveLength(0)
+  })
+
+  it('should drop sticker entries from every group when files are deleted', () => {
+    const next = removeEmojisByRelativePaths(
+      {
+        enabled: true,
+        groups: [
+          {
+            id: 'life',
+            name: '日常',
+            emojis: [
+              { id: 'cat.png', name: 'cat', relativePath: 'emojis/cat.png' },
+              { id: 'dog.png', name: 'dog', relativePath: 'emojis/dog.png' }
+            ]
+          }
+        ]
+      },
+      ['emojis/cat.png']
+    )
+    expect(next.groups[0]?.emojis.map((item) => item.id)).toEqual(['dog.png'])
   })
 })

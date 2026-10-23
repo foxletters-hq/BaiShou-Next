@@ -1,5 +1,7 @@
+import i18n from 'i18next'
 import React from 'react'
 import { ListTree } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ContextChainDialog.module.css'
 import { MockChatMessage } from '@baishou/shared'
 import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
@@ -65,7 +67,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   const systemPromptInChain = contextMessages.some(
     (m) =>
       m.role === 'system' &&
-      m.label === t('auto.packages.ui.src.desktop.ContextChainDialog.index.L66', '系统提示词')
+      m.label === i18n.t('auto.packages.ui.src.desktop.ContextChainDialog.index.L66', '系统提示词')
   )
 
   const getRoleColorClass = (role: string) => {
@@ -102,7 +104,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   ]
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={withAppContentOverlay(styles.overlay)} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleRow}>

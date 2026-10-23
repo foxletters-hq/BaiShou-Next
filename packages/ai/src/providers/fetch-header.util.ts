@@ -83,9 +83,88 @@ function resolvePlatformFetch(): typeof fetch {
   return globalThis.fetch.bind(globalThis)
 }
 
-export function createSanitizedFetch(fetchImpl?: typeof fetch): typeof fetch {
+const DEFAULT_OPENCODE_SESSION_ID = `sess-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
+
+function hashStringHex(input: string): string {
+  let h1 = 0x811c9dc5
+  let h2 = 0x811c9dc5 ^ 0x9e3779b9
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 0x01000193)
+    h2 = Math.imul(h2 ^ (c + (i & 0xff)), 0x01000193)
+  }
+  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0')
+}
+
+export function resolveOpenCodeSessionIdFromBody(body?: unknown): string {
+  if (typeof body !== 'string' || !body.trim()) {
+    return DEFAULT_OPENCODE_SESSION_ID
+  }
+  try {
+    const parsed = JSON.parse(body) as {
+      system?: unknown
+      messages?: Array<{ role?: string; content?: unknown }>
+    }
+    if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+      const firstUser =
+        parsed.messages.find((m) => m && m.role === 'user') ??
+        parsed.messages.find((m) => m && m.role !== 'system') ??
+        parsed.messages[0]
+      const seed = firstUser
+        ? JSON.stringify(firstUser.content ?? '')
+            .slice(0, 512)
+            .trim()
+        : ''
+      if (seed && seed !== '""') {
+        return `sess-${hashStringHex(seed)}`
+      }
+    }
+  } catch {
+    // ignore JSON parse errors
+  }
+  return DEFAULT_OPENCODE_SESSION_ID
+}
+
+export function isOpenCodeGoUrl(url: RequestInfo | URL): boolean {
+  const urlStr = typeof url === 'string' ? url : url.toString()
+  return /https?:\/\/([^/]+\.)?opencode\.ai(\/|$)/i.test(urlStr)
+}
+
+export function ensureOpenCodeSessionHeaders(
+  init?: RequestInit,
+  options?: { force?: boolean; url?: RequestInfo | URL }
+): RequestInit | undefined {
+  const safeInit = sanitizeRequestInit(init)
+  const shouldApply = options?.force || (options?.url != null && isOpenCodeGoUrl(options.url))
+  if (!shouldApply) {
+    return safeInit
+  }
+  const headers = new Headers(safeInit?.headers)
+  if (!headers.get('x-opencode-session')?.trim()) {
+    headers.set('x-opencode-session', resolveOpenCodeSessionIdFromBody(safeInit?.body))
+  }
+  if (!headers.get('user-agent')?.trim()) {
+    headers.set('user-agent', 'baishou-agent/1.0')
+  }
+  return {
+    ...(safeInit ?? {}),
+    headers
+  }
+}
+
+export function createSanitizedFetch(
+  fetchImpl?: typeof fetch,
+  options?: { forceOpenCodeSession?: boolean }
+): typeof fetch {
   const impl = fetchImpl || resolvePlatformFetch()
-  return async (url, init) => impl(url, sanitizeRequestInit(init))
+  return async (url, init) =>
+    impl(
+      url,
+      ensureOpenCodeSessionHeaders(init, {
+        force: options?.forceOpenCodeSession,
+        url
+      })
+    )
 }
 
 export function sanitizeApiKeyForHttp(apiKey: string): string {

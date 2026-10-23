@@ -1,0 +1,20 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--ui-fs-sm);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-family);
+}
+
+.add {
+  color: #1a7f37;
+}
+
+.del {
+  color: #cf222e;
+}
+
+.neutral {
+  color: var(--text-secondary);
+}

@@ -1,14 +1,15 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListOrdered, Minus, Plus } from 'lucide-react'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
-import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
+import type { AgentToolDef, AgentToolsConfig, ToolConfigParam } from './agent-tools.types'
 import styles from './AgentToolsView.module.css'
 
 interface AgentToolCardProps {
   tool: AgentToolDef
-  config: ToolManagementConfig
+  config: AgentToolsConfig
   onToggle: (toolId: string) => void
   getToolParam: (toolId: string, param: ToolConfigParam) => unknown
   setToolParam: (toolId: string, key: string, value: unknown) => void
@@ -29,7 +30,7 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
   return (
     <div className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
       <div className={styles.cardMain}>
-        <div className={styles.toolIconWrapper}>
+        <div className={styles.toolIconWrapper} aria-hidden>
           <span className={styles.toolEmoji}>{tool.icon}</span>
         </div>
         <div className={styles.toolInfo}>
@@ -72,8 +73,10 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
                       >
                         <Minus size={14} />
                       </button>
-                      <input
-                        className={styles.stepperInput}
+                      <Input
+                        className={styles.stepperInputHost}
+                        inputClassName={styles.stepperInput}
+                        fieldSize="small"
                         type="number"
                         value={val}
                         onChange={(e) => {

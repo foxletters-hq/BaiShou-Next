@@ -12,6 +12,8 @@ export interface UseChatScrollParams {
   streamingReasoning: string
   isStreaming: boolean
   activeTool: { name: string; args: any } | null
+  /** 额外流式信号（如 timeline 长度），变化时在跟随模式下贴底 */
+  streamFollowKey?: string | number
 }
 
 export interface UseChatScrollResult {
@@ -78,16 +80,34 @@ function smoothScrollToBottom(
  * 退出 following：向上滚轮一次、滚动离开底部区域
  */
 export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult {
-  const { sessionId, messages, streamingText, streamingReasoning, isStreaming, activeTool } = params
+  const {
+    sessionId,
+    messages,
+    streamingText,
+    streamingReasoning,
+    isStreaming,
+    activeTool,
+    streamFollowKey
+  } = params
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const followModeRef = useRef<ScrollFollowMode>('following')
   const [followMode, setFollowMode] = useState<ScrollFollowMode>('following')
   const [showScrollButton, setShowScrollButton] = useState(false)
-  const pendingInstantBottomRef = useRef(false)
-  const prevSessionIdRef = useRef<string | undefined>(sessionId)
+  const pendingInstantBottomRef = useRef(true)
+  const prevSessionIdRef = useRef<string | undefined>(undefined)
   const suppressInterruptRef = useRef(0)
   const isSmoothScrollingRef = useRef(false)
+
+  if (prevSessionIdRef.current !== sessionId) {
+    prevSessionIdRef.current = sessionId
+    pendingInstantBottomRef.current = true
+    followModeRef.current = 'following'
+    if (followMode !== 'following') {
+      setFollowMode('following')
+      setShowScrollButton(false)
+    }
+  }
 
   const setFollowModeState = useCallback((mode: ScrollFollowMode) => {
     followModeRef.current = mode
@@ -104,14 +124,6 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     setFollowModeState('idle')
   }, [setFollowModeState])
 
-  useEffect(() => {
-    if (prevSessionIdRef.current !== sessionId) {
-      prevSessionIdRef.current = sessionId
-      pendingInstantBottomRef.current = true
-      enterFollowing()
-    }
-  }, [sessionId, enterFollowing])
-
   const jumpToBottomInstant = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
@@ -126,10 +138,29 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
   }, [])
 
   useLayoutEffect(() => {
-    if (!pendingInstantBottomRef.current || messages.length === 0) return
+    if (!pendingInstantBottomRef.current) return
     jumpToBottomInstant()
+    if (messages.length === 0) return
+
+    // 切换会话后的首帧可能还挂着上一个会话的消息：
+    // 此时不能消费待贴底标记，否则新会话消息真正到达时就不会再滚到底部。
+    const ownerSessionId = (messages[messages.length - 1] as { sessionId?: unknown } | undefined)
+      ?.sessionId
+    if (
+      typeof ownerSessionId === 'string' &&
+      ownerSessionId.length > 0 &&
+      sessionId &&
+      ownerSessionId !== sessionId
+    ) {
+      return
+    }
+
     pendingInstantBottomRef.current = false
     enterFollowing()
+    requestAnimationFrame(() => {
+      jumpToBottomInstant()
+      requestAnimationFrame(jumpToBottomInstant)
+    })
   }, [sessionId, messages, jumpToBottomInstant, enterFollowing])
 
   useEffect(() => {
@@ -230,7 +261,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
       streamFollowRafRef.current = null
       jumpToBottomInstant()
     })
-  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
+  }, [isStreaming, streamingText, streamingReasoning, streamFollowKey, jumpToBottomInstant])
 
   useEffect(() => {
     return () => {

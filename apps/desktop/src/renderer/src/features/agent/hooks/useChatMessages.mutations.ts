@@ -3,7 +3,8 @@ import type { MockChatAttachment } from '@baishou/shared'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,
-  expandRoundWindowStart,
+  cacheNeedsMoreForRoundWindow,
+  enrichCacheForRoundWindow,
   groupMessagesIntoRounds
 } from '../utils/chat-round-pagination'
 import { chatSessionMessageCache } from '../utils/chat-session-message-cache'
@@ -51,40 +52,55 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
   const loadMore = useCallback(async () => {
     if (!sessionId) return
 
-    if (roundWindowStartRef.current > 0) {
-      roundWindowStartRef.current = expandRoundWindowStart(roundWindowStartRef.current)
-      syncFromCache(roundWindowStartRef.current)
-      return
-    }
+    const currentRounds = groupMessagesIntoRounds(messageCacheRef.current)
+    const currentVisibleRounds = Math.max(
+      CHAT_ROUNDS_PER_PAGE,
+      currentRounds.length - roundWindowStartRef.current
+    )
+    const targetVisibleRounds = currentVisibleRounds + CHAT_ROUNDS_PER_PAGE
 
-    if (!fetchHasMoreRef.current) {
+    if (
+      !cacheNeedsMoreForRoundWindow(
+        messageCacheRef.current,
+        targetVisibleRounds,
+        fetchHasMoreRef.current
+      )
+    ) {
+      if (roundWindowStartRef.current > 0) {
+        roundWindowStartRef.current = Math.max(0, currentRounds.length - targetVisibleRounds)
+        syncFromCache(roundWindowStartRef.current)
+        persistSessionCache(sessionId)
+        return
+      }
       setHasMore(false)
       return
     }
 
     try {
-      const fetched = await fetchMessagesFromIpc(
-        sessionId,
-        CHAT_MESSAGE_FETCH_LIMIT,
-        loadedFromEndRef.current
-      )
-      if (!fetched?.length) {
+      const enriched = await enrichCacheForRoundWindow({
+        cache: messageCacheRef.current,
+        loadedFromEnd: loadedFromEndRef.current,
+        fetchHasMore: fetchHasMoreRef.current,
+        targetVisibleRounds,
+        fetchPage: (limit, offset) => fetchMessagesFromIpc(sessionId, limit, offset),
+        pageLimit: CHAT_MESSAGE_FETCH_LIMIT
+      })
+      if (
+        enriched.loadedFromEnd === loadedFromEndRef.current &&
+        !enriched.fetchHasMore &&
+        roundWindowStartRef.current === 0
+      ) {
         fetchHasMoreRef.current = false
         setHasMore(false)
         return
       }
 
-      fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
-      loadedFromEndRef.current += fetched.length
+      messageCacheRef.current = enriched.cache
+      loadedFromEndRef.current = enriched.loadedFromEnd
+      fetchHasMoreRef.current = enriched.fetchHasMore
 
-      const oldStart = roundWindowStartRef.current
-      const prependedRoundCount = groupMessagesIntoRounds(fetched).length
-      messageCacheRef.current = [...fetched, ...messageCacheRef.current]
-
-      roundWindowStartRef.current = Math.max(
-        0,
-        oldStart + prependedRoundCount - CHAT_ROUNDS_PER_PAGE
-      )
+      const nextRounds = groupMessagesIntoRounds(enriched.cache)
+      roundWindowStartRef.current = Math.max(0, nextRounds.length - targetVisibleRounds)
       syncFromCache(roundWindowStartRef.current)
       persistSessionCache(sessionId)
     } catch (e) {
@@ -176,6 +192,7 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
       id: string
       content: string
       attachments?: MockChatAttachment[]
+      skillRefs?: Array<{ command: string; content: string }>
       createdAt?: Date
     }) => {
       if (messageCacheRef.current.some((m) => m.id === payload.id)) return
@@ -185,11 +202,13 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
         0
       )
       const createdAt = payload.createdAt ?? new Date()
+      const skillRefs = payload.skillRefs?.length ? payload.skillRefs : undefined
       const msg = {
         id: payload.id,
         role: 'user',
         content: payload.content,
         attachments: payload.attachments,
+        skillRefs,
         orderIndex: maxOrder + 1,
         createdAt,
         parts: payload.content
@@ -198,7 +217,10 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
                 id: `${payload.id}-text`,
                 messageId: payload.id,
                 type: 'text',
-                data: { text: payload.content }
+                data: {
+                  text: payload.content,
+                  ...(skillRefs ? { displayText: payload.content, skillRefs } : {})
+                }
               }
             ]
           : []

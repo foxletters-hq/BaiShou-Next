@@ -13,10 +13,9 @@ import {
   resolveDiaryNewEntryContent,
   composeDiaryEditorContent,
   parseDiaryEditorContent,
-  mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
-import { useToast } from '@baishou/ui'
+import { useDialog, useToast } from '@baishou/ui'
 
 type DiaryEditorInitialState = {
   content: string
@@ -37,6 +36,7 @@ export function useDiaryEditorPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
+  const dialog = useDialog()
 
   const isAppendMode = searchParams.get('append') === '1'
 
@@ -56,7 +56,6 @@ export function useDiaryEditorPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [diaryId, setDiaryId] = useState<number | null>(null)
   const [mediaPaths, setMediaPaths] = useState<string[]>([])
-  const originalTagsRef = useRef<string[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
   const [attachmentBasePath, setAttachmentBasePath] = useState('')
@@ -162,21 +161,20 @@ export function useDiaryEditorPage() {
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
-            originalTagsRef.current = parsedTags
             initialWeather = parsedWeather
             initialMood = parsedMood
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
+            const composedExisting = composeDiaryEditorContent(diary.content || '', parsedTags)
             if (isAppendMode) {
               const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-              initialContent = joinDiaryContentWithAppendBlock(diary.content || '', timeMark)
+              initialContent = joinDiaryContentWithAppendBlock(composedExisting, timeMark)
             } else {
-              initialContent = composeDiaryEditorContent(diary.content || '', parsedTags)
+              initialContent = composedExisting
             }
           } else {
             initialContent = resolveDiaryNewEntryContent(templateConfig, now)
-            originalTagsRef.current = []
           }
 
           setContent(initialContent)
@@ -253,10 +251,7 @@ export function useDiaryEditorPage() {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
           const selectedDateStr = formatLocalDate(selectedDate)
-          const { tags: parsedTags, body } = parseDiaryEditorContent(newContent)
-          const mergedTags = isAppendMode
-            ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
-            : parsedTags.join(',')
+          const { body } = parseDiaryEditorContent(newContent)
 
           const payload = {
             date: selectedDateStr,
@@ -265,7 +260,6 @@ export function useDiaryEditorPage() {
               .replace(/^#{1,6}\s*/gm, '')
               .split('\n')[0]
               .substring(0, 50),
-            tags: mergedTags,
             weather,
             mood,
             isFavorite,
@@ -276,6 +270,15 @@ export function useDiaryEditorPage() {
           if (saved?.id && saved.id !== diaryId) {
             setDiaryId(saved.id)
           }
+          setIsDirty(false)
+          initialStateRef.current = {
+            content: newContent,
+            selectedDate,
+            weather,
+            mood,
+            isFavorite,
+            mediaPaths: [...mediaPaths]
+          }
           return saved
         }
         setIsDirty(false)
@@ -285,14 +288,14 @@ export function useDiaryEditorPage() {
           weather,
           mood,
           isFavorite,
-          mediaPaths
+          mediaPaths: [...mediaPaths]
         }
       } catch (e: unknown) {
         logger.error('Diary save failed', { error: e })
         throw e
       }
     },
-    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths, isAppendMode]
+    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths]
   )
 
   const handleContentChange = (newContent: string) => {
@@ -328,8 +331,8 @@ export function useDiaryEditorPage() {
     return false
   }
 
-  const [showExitConfirm, setShowExitConfirm] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  /** idle → saving → leaving（退场动画）→ 导航 */
+  const [savePhase, setSavePhase] = useState<'idle' | 'saving' | 'leaving'>('idle')
 
   const goBackToSidebar = useCallback(() => {
     const lastNav = sessionStorage.getItem('desktop_last_nav')
@@ -340,27 +343,52 @@ export function useDiaryEditorPage() {
     }
   }, [navigate])
 
-  const handleBack = () => {
+  const handleBack = async () => {
+    if (savePhase !== 'idle') return
     if (checkIsReallyDirty()) {
-      setShowExitConfirm(true)
-    } else {
-      goBackToSidebar()
+      const ok = await dialog.confirm(
+        t(
+          'diary.editor_leave_confirm',
+          '当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？'
+        ),
+        t('common.confirm_leave', '确认离开')
+      )
+      if (!ok) return
     }
+    goBackToSidebar()
   }
 
   const handleSave = async () => {
-    if (isSaving) return
-    setIsSaving(true)
+    if (savePhase !== 'idle') return
+    setSavePhase('saving')
     try {
       await autoSave(content)
-      await new Promise((resolve) => setTimeout(resolve, 180))
+      toast.showSuccess(t('common.saved', '已保存'))
+      setSavePhase('leaving')
+      await new Promise((resolve) => setTimeout(resolve, 320))
       goBackToSidebar()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : undefined
       toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
-      setIsSaving(false)
+      setSavePhase('idle')
     }
   }
+
+  const handleQuickSave = async () => {
+    if (savePhase !== 'idle') return
+    setSavePhase('saving')
+    try {
+      await autoSave(content)
+      toast.showSuccess(t('common.saved', '已保存'))
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : undefined
+      toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
+    } finally {
+      setSavePhase('idle')
+    }
+  }
+
+  const hasUnsavedChanges = !isLoading && (isDirty || checkIsReallyDirty())
 
   return {
     t,
@@ -372,13 +400,13 @@ export function useDiaryEditorPage() {
     mood,
     isFavorite,
     mediaPaths,
-    isDirty,
-    isSaving,
-    showExitConfirm,
-    setShowExitConfirm,
+    isDirty: hasUnsavedChanges,
+    isSaving: savePhase !== 'idle',
+    savePhase,
     handleContentChange,
     handleBack,
     handleSave,
+    handleQuickSave,
     goBackToSidebar,
     setSelectedDate,
     setWeather,

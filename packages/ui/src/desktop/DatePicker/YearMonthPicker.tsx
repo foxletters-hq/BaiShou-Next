@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { smoothScrollToCenter } from '../../utils/scroll'
 import { getPickerYearRange } from '../../utils/date'
+import { Button } from '../Button/Button'
+import { withAppContentOverlay } from '../overlay'
 import styles from './YearMonthPicker.module.css'
 
 export interface YearMonthPickerProps {
@@ -122,7 +124,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
           <AnimatePresence>
             {isOpen && (
               <motion.div
-                className={styles.modalOverlay}
+                className={withAppContentOverlay(styles.modalOverlay)}
                 ref={overlayRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -184,12 +186,12 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
 
                   {/* Quick Actions */}
                   <div className={styles.footer}>
-                    <button className={styles.actionBtnSecondary} onClick={handleClear}>
+                    <Button type="button" onClick={handleClear}>
                       {t('common.view_all', '查看全部')}
-                    </button>
-                    <button className={styles.actionBtnPrimary} onClick={handleThisMonth}>
+                    </Button>
+                    <Button type="button" onClick={handleThisMonth}>
                       {t('common.this_month', '跳转本月')}
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               </motion.div>

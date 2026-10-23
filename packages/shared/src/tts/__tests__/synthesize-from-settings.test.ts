@@ -288,4 +288,21 @@ describe('synthesizeTtsFromSettings', () => {
       })
     )
   })
+
+  it('does not leak globalTtsModelId to a different overridden provider when modelId is omitted', async () => {
+    const result = await synthesizeTtsFromSettings(registry, {
+      globalModels: {
+        globalTtsProviderId: 'minimax-tts',
+        globalTtsModelId: 'speech-2.8-hd',
+        globalTtsProviderConfigs: {
+          'openai-tts': { baseUrl: '', apiKey: 'test-key' }
+        },
+        globalTtsSettings: { voice: 'male-qn-qingse', responseFormat: 'mp3' }
+      } as any,
+      text: '你好',
+      providerId: 'openai-tts'
+    })
+
+    expect(result).toEqual({ success: false, errorCode: 'tts_not_configured' })
+  })
 })

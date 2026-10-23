@@ -1,12 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { resolveAgentToolActionLabel } from '@baishou/shared'
 import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
-import { getToolDisplayName, type ToolInvocationLike } from '../../shared/tool-result.util'
+import {
+  getToolDisplayName,
+  getToolRowSubtitle,
+  resolveCompanionAskPresentation,
+  type ToolCopyTranslate,
+  type ToolInvocationLike
+} from '../../shared/tool-result.util'
 import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIcon'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { useNativeTheme } from '../theme'
+import {
+  companionAskWaitingSubtitle,
+  isCompanionAskAwaitingAnswer
+} from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
+
+const COLLAPSE_DURATION_MS = 250
 
 export interface AgentToolThinkItemProps {
   model: AgentToolChainItemModel
@@ -20,75 +34,118 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [expanded, setExpanded] = useState(false)
-  const [contentMounted, setContentMounted] = useState(false)
+  const [keepMounted, setKeepMounted] = useState(expanded)
+
+  useEffect(() => {
+    if (expanded) {
+      setKeepMounted(true)
+      return
+    }
+    const timer = setTimeout(() => setKeepMounted(false), COLLAPSE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [expanded])
 
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as ToolInvocationLike | undefined
-  const hasContent = model.hasContent
+  const askPresentation = useMemo(() => {
+    if (!invocation || model.status === 'error') return null
+    return resolveCompanionAskPresentation(invocation)
+  }, [invocation, model.status])
+  const hasAskResult =
+    invocation?.result !== undefined && invocation.result !== null && invocation.result !== ''
+  const awaitingAsk =
+    model.toolName === 'companion_ask' &&
+    isLoading &&
+    (askPresentation == null ||
+      isCompanionAskAwaitingAnswer(askPresentation, { hasResult: hasAskResult }))
+  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !awaitingAsk)
 
   useEffect(() => {
-    if (autoExpand) {
-      setContentMounted(true)
+    if (autoExpand && canExpand) {
       setExpanded(true)
     }
-  }, [autoExpand])
+  }, [autoExpand, canExpand])
 
   const displayTitle = useMemo(() => {
+    if (awaitingAsk) {
+      return String(t('agent.tools.companion_ask_asking', { defaultValue: '正在提问...' }))
+    }
     if (invocation != null) {
       return getToolDisplayName(invocation, (key, fallback) =>
         String(t(key, { defaultValue: fallback ?? key }))
       )
     }
-    return t(`agent.tools.${model.toolName}`, model.toolName)
-  }, [invocation, model.toolName, t])
+    return resolveAgentToolActionLabel(model.toolName, (key, fallback) =>
+      String(t(key, { defaultValue: fallback ?? key }))
+    )
+  }, [awaitingAsk, invocation, model.toolName, t])
+
+  const subtitle = useMemo(
+    () =>
+      awaitingAsk
+        ? companionAskWaitingSubtitle(askPresentation)
+        : getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
+    [askPresentation, awaitingAsk, invocation, model.status, t]
+  )
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => {
-      const next = !prev
-      if (next) setContentMounted(true)
-      return next
-    })
-  }, [])
+    if (!canExpand) return
+    setExpanded((prev) => !prev)
+  }, [canExpand])
+
+  const showContent = Boolean(canExpand && invocation && (expanded || keepMounted))
 
   return (
     <View style={styles.root}>
       <Pressable
         style={styles.statusRow}
-        onPress={hasContent ? handleToggle : undefined}
-        disabled={!hasContent}
+        onPress={canExpand ? handleToggle : undefined}
+        disabled={!canExpand}
         accessibilityRole="button"
-        accessibilityState={{ expanded: hasContent ? expanded : undefined }}
+        accessibilityState={{ expanded: canExpand ? expanded : undefined }}
       >
         <ToolStatusIcon
-          loading={isLoading}
+          loading={isLoading || awaitingAsk}
           status={model.status}
           color={colors.textSecondary}
           errorColor={colors.error}
         />
-        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={2}>
+        <Text style={[styles.statusText, { color: colors.textSecondary }]} numberOfLines={1}>
           {displayTitle}
         </Text>
-        {model.durationMs != null ? (
+        {subtitle ? (
+          <>
+            <Text style={[styles.sep, { color: colors.textTertiary }]}>·</Text>
+            <Text style={[styles.subtitle, { color: colors.textTertiary }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </>
+        ) : (
+          <View style={styles.spacer} />
+        )}
+        {model.durationMs != null && model.durationMs > 0 ? (
           <Text style={[styles.duration, { color: colors.textTertiary }]}>
             {formatToolDurationMs(model.durationMs)}
           </Text>
         ) : null}
-        {hasContent ? <ThinkChevron expanded={expanded} color={colors.textTertiary} /> : null}
+        {canExpand ? <ThinkChevron expanded={expanded} color={colors.textTertiary} /> : null}
       </Pressable>
 
-      {hasContent && invocation && contentMounted ? (
-        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={250}>
-          <View
-            style={[
-              styles.content,
-              {
-                borderLeftColor: colors.borderMuted,
-                paddingTop: 8
-              }
-            ]}
-          >
-            <ToolResultContent invocation={invocation} />
-          </View>
+      {canExpand && invocation ? (
+        <CollapsibleHeight expanded={expanded} animation="ease" durationMs={COLLAPSE_DURATION_MS}>
+          {showContent ? (
+            <View
+              style={[
+                styles.content,
+                {
+                  borderLeftColor: colors.borderMuted,
+                  paddingTop: sharedTokens.spacing.sm
+                }
+              ]}
+            >
+              <ToolResultContent invocation={invocation} />
+            </View>
+          ) : null}
         </CollapsibleHeight>
       ) : null}
     </View>
@@ -102,24 +159,39 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.xsPlus,
     alignSelf: 'stretch',
-    width: '100%'
+    width: '100%',
+    minHeight: 22
   },
   statusText: {
-    flex: 1,
-    flexShrink: 1,
-    fontSize: 14,
-    lineHeight: 22,
+    flexShrink: 0,
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20,
     fontWeight: '400'
   },
+  sep: {
+    flexShrink: 0,
+    fontSize: mobileTypography.caption.fontSize,
+    lineHeight: 20
+  },
+  subtitle: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20
+  },
+  spacer: {
+    flex: 1
+  },
   duration: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontVariant: ['tabular-nums']
   },
   content: {
     width: '100%',
-    paddingLeft: 12,
+    paddingLeft: sharedTokens.spacing.mdTight,
     borderLeftWidth: 2
   }
 })

@@ -14,7 +14,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ANDROID_DEV_PACKAGE_ID, hasAdbDevice } from './mobile-dev-env.mjs'
+import { ANDROID_DEV_PACKAGE_ID, hasAdbDevice, resolveAdbSerial } from './mobile-dev-env.mjs'
+import { withAdbSerialArgs } from './adb-device.util.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const mobileRoot = join(__dirname, '..')
@@ -35,7 +36,7 @@ function warn(msg) {
 }
 
 function adb(args, opts = {}) {
-  return execFileSync('adb', args, {
+  return execFileSync('adb', withAdbSerialArgs(args, resolveAdbSerial()), {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
     ...opts

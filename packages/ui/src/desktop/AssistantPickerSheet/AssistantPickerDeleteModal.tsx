@@ -1,5 +1,7 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
 export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetViewModel }) {
@@ -8,6 +10,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
 
   return (
     <div
+      className={withAppContentOverlay()}
       style={{
         position: 'fixed',
         inset: 0,
@@ -15,15 +18,14 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(4px)'
+        backgroundColor: 'var(--bg-overlay)'
       }}
       onClick={() => setDeleteTargetId(null)}
     >
       <div
         style={{
           width: '360px',
-          background: 'var(--bg-surface, #fff)',
+          background: 'var(--bg-surface)',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
@@ -50,15 +52,15 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 20
+              marginBottom: sharedTokens.spacing.mdPlus
             }}
           >
-            <Trash2 size={32} color="#ef4444" />
+            <Trash2 size={32} color="var(--color-error)" />
           </div>
           <h3
             style={{
               margin: '0 0 12px 0',
-              fontSize: '18px',
+              fontSize: settingsTypography.pageTitle.fontSize,
               fontWeight: 600,
               color: 'var(--text-primary)'
             }}
@@ -68,7 +70,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
           <p
             style={{
               margin: 0,
-              fontSize: '14px',
+              fontSize: settingsTypography.row.fontSize,
               color: 'var(--text-secondary)',
               lineHeight: 1.5
             }}
@@ -81,8 +83,8 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
             display: 'flex',
             padding: '16px 24px',
             gap: '12px',
-            background: 'var(--bg-surface-highlight, #f8fafc)',
-            borderTop: '1px solid rgba(148,163,184,0.1)'
+            background: 'var(--bg-surface-highlight)',
+            borderTop: '1px solid var(--border-muted)'
           }}
         >
           <button
@@ -93,7 +95,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               border: 'none',
               background: 'transparent',
               color: 'var(--text-secondary)',
-              fontSize: '15px',
+              fontSize: settingsTypography.section.fontSize,
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'background 0.2s'
@@ -108,13 +110,13 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               padding: '10px',
               borderRadius: '10px',
               border: 'none',
-              background: '#ef4444',
-              color: '#fff',
-              fontSize: '15px',
+              background: 'var(--color-error)',
+              color: 'var(--text-on-primary)',
+              fontSize: settingsTypography.section.fontSize,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.2s',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+              boxShadow: '0 4px 12px rgba(var(--color-error-rgb), 0.3)'
             }}
             onClick={() => void confirmDelete()}
           >

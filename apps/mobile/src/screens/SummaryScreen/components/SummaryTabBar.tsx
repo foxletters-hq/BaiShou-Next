@@ -1,103 +1,39 @@
-import React, { useEffect } from 'react'
-import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
-import { useIsFocused } from '@react-navigation/native'
+import React from 'react'
+import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, Layers } from 'lucide-react-native'
-import { useNativeTheme } from '@baishou/ui/native'
+import { SegmentedControl, useNativeTheme } from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface SummaryTabBarProps {
   activeTab: 'panel' | 'gallery'
   onTabChange: (tab: 'panel' | 'gallery') => void
 }
 
-const TAB_PADDING = 6
-const TAB_GAP = 8
-
+/** 回忆页顶部标签 — 与桌面分段滑块同款：描边轨道 + 表面选中块 */
 export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabChange }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const { width: screenWidth } = useWindowDimensions()
-  const slideAnim = useSharedValue(0)
-  const isFocused = useIsFocused()
-
-  const tabsContainerWidth = screenWidth - 24
-  const tabWidth = (tabsContainerWidth - TAB_PADDING * 2 - TAB_GAP) / 2
-
-  useEffect(() => {
-    slideAnim.value = withTiming(activeTab === 'gallery' ? 1 : 0, { duration: 280 })
-  }, [activeTab, slideAnim])
-
-  const indicatorStyle = useAnimatedStyle(
-    () => ({
-      transform: [{ translateX: slideAnim.value * (tabWidth + TAB_GAP) }]
-    }),
-    [tabWidth]
-  )
 
   return (
     <View
       style={[
         styles.header,
         {
-          backgroundColor: colors.bgGlassSurface ?? colors.bgSurface,
+          backgroundColor: colors.bgSurface,
           borderBottomColor: colors.borderMuted
         }
       ]}
     >
-      <View style={[styles.tabs, { backgroundColor: colors.bgSurfaceNormal }]}>
-        <Animated.View
-          style={[
-            styles.indicator,
-            {
-              width: tabWidth,
-              backgroundColor: colors.bgSurface,
-              borderColor: colors.borderMuted,
-              ...(isFocused
-                ? Platform.select({
-                    ios: {
-                      shadowColor: '#000',
-                      shadowOpacity: 0.06,
-                      shadowRadius: 4,
-                      shadowOffset: { width: 0, height: 1 }
-                    },
-                    default: {}
-                  })
-                : { shadowOpacity: 0, elevation: 0 })
-            },
-            indicatorStyle
+      <View style={styles.tabs}>
+        <SegmentedControl
+          value={activeTab}
+          onChange={onTabChange}
+          accessibilityLabel={t('summary.dashboard_title', '回忆')}
+          options={[
+            { value: 'panel', label: t('summary.panel_tab', '面板') },
+            { value: 'gallery', label: t('summary.memory_gallery', '记忆画廊') }
           ]}
         />
-        <Pressable style={styles.tab} onPress={() => onTabChange('panel')}>
-          <LayoutDashboard
-            size={18}
-            color={activeTab === 'panel' ? colors.primary : colors.textSecondary}
-            strokeWidth={2}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'panel' ? colors.primary : colors.textSecondary }
-            ]}
-          >
-            {t('summary.panel_tab')}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.tab} onPress={() => onTabChange('gallery')}>
-          <Layers
-            size={18}
-            color={activeTab === 'gallery' ? colors.primary : colors.textSecondary}
-            strokeWidth={2}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'gallery' ? colors.primary : colors.textSecondary }
-            ]}
-          >
-            {t('summary.memory_gallery')}
-          </Text>
-        </Pressable>
       </View>
     </View>
   )
@@ -105,39 +41,15 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: TAB_GAP,
-    padding: TAB_PADDING,
-    borderRadius: 12,
-    alignSelf: 'stretch',
-    width: '100%',
-    overflow: 'hidden'
-  },
-  indicator: {
-    position: 'absolute',
-    top: TAB_PADDING,
-    bottom: TAB_PADDING,
-    left: TAB_PADDING,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '700'
+  tabs: {
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center'
   }
 })

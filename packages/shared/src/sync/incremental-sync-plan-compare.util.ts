@@ -58,6 +58,10 @@ export function hasIncrementalSyncPlanReconfirmWorthyChange(
   for (const item of after.items) {
     const key = planItemKey(item)
     if (beforeKeys.has(key)) continue
+    // 后台图谱/记忆整理在确认弹窗期间新产生的派生 JSONL/manifest 上传，直接随本次重规划一并上传，不打断用户二次确认
+    if (item.action === 'upload' && /^(?:[^/]+\/)?(?:Graph|Memory)\//i.test(item.filePath)) {
+      continue
+    }
     // 任意新增条目（含新的上传/下载/删除）都视为用户未见过的规划，需再确认
     return true
   }

@@ -2,11 +2,11 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex-shrink: 0;
   /* hide by default, shown by parent hover */
   opacity: 0;
-  transition: all 0.2s ease;
+  transition: all var(--duration-swift) ease;
 }
 
 .alignLeft {
@@ -26,30 +26,37 @@
 .iconBtn {
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   border: none;
   background: transparent;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 :global(.chat-over-background) .iconBtn {
-  color: #fff;
-  mix-blend-mode: difference;
+  color: var(--text-on-primary);
+}
+
+:global(.chat-over-background-light) .iconBtn {
+  color: rgb(0, 0, 0);
+}
+
+:global(.chat-over-background-light) .iconBtn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 :global(.chat-over-background) .iconBtn:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: color-mix(in srgb, var(--text-on-primary) 14%, transparent);
 }
 
 :global(.chat-over-background) .dangerBtn:hover {
   mix-blend-mode: normal;
-  background-color: rgba(239, 68, 68, 0.22) !important;
-  color: var(--color-error, #ef4444) !important;
+  background-color: rgba(var(--color-error-rgb), 0.22) !important;
+  color: var(--color-error) !important;
 }
 
 :global(.chat-over-background) .copiedIcon,
@@ -58,8 +65,8 @@
 }
 
 .iconBtn:hover {
-  background-color: var(--bg-surface-normal, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary, #1e293b);
+  background-color: var(--bg-surface-normal);
+  color: var(--text-primary);
 }
 
 .iconBtn:active {
@@ -68,11 +75,11 @@
 
 .dangerBtn:hover {
   background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
-  color: var(--color-error, #ef4444) !important;
+  color: var(--color-error) !important;
 }
 
 .copiedIcon {
-  color: var(--color-success, #10b981);
+  color: var(--color-success);
 }
 
 @keyframes ttsSpin {
@@ -85,7 +92,7 @@
 }
 
 .ttsPlaying {
-  color: var(--color-primary, #3b82f6);
+  color: var(--color-primary);
 }
 
 .ttsSpinner {
@@ -93,6 +100,6 @@
 }
 
 .contextChainIcon {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
   line-height: 1;
 }

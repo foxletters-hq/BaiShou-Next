@@ -1,30 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { classifyAiApiCallError, resolveMigrationStatusText } from '@baishou/shared'
+import { localizeAiApiErrorMessage, resolveMigrationStatusText } from '@baishou/shared'
 import {
   getCachedRagActiveState,
   patchCachedRagStats,
   setCachedRagActiveState
 } from '../rag-runtime-cache'
-
-function localizeRagEmbedError(raw: string, t: (key: string, fallback: string) => string): string {
-  const kind = classifyAiApiCallError({ message: raw, responseBody: raw })
-  switch (kind) {
-    case 'balance':
-      return t('agent.error.quota', '模型服务商提示账号额度不足。')
-    case 'auth':
-      return t(
-        'ai_config.error_no_model',
-        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-      )
-    case 'rate_limit':
-      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
-    case 'network':
-      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
-    default:
-      return raw
-  }
-}
 
 function extractIpcErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -48,8 +29,9 @@ async function refreshRagStats(): Promise<void> {
 }
 
 /**
- * 在设置页可见时监听 RAG 进度，避免切换 Tab 后状态丢失。
- * `active=false` 时不注册 IPC，防止 overlay 隐藏后仍占用内存。
+ * 监听主进程 RAG 进度并写入运行时缓存。
+ * 应用根节点会常驻订阅；设置页 / 向量页也可再订阅，重复写入同一份缓存。
+ * `active=false` 时不注册 IPC。
  */
 export function useRagRuntimeBridge(active: boolean): void {
   const { t } = useTranslation()
@@ -73,25 +55,40 @@ export function useRagRuntimeBridge(active: boolean): void {
       }, delayMs)
     }
 
-    const cleanup = api.rag.onRagProgress((state: any) => {
+    const applyRagProgress = (state: any, options?: { hydrate?: boolean }) => {
       const translate = (key: string, fallback: string) => tRef.current(key, fallback)
       const statusText = state.statusKey
         ? resolveMigrationStatusText(tRef.current, state.statusKey, state.statusParams)
         : state.statusText || ''
       const errorText =
         typeof state.error === 'string' && state.error.trim()
-          ? localizeRagEmbedError(
-              extractIpcErrorMessage({ message: state.error.trim() }),
+          ? localizeAiApiErrorMessage(
+              extractIpcErrorMessage(new Error(state.error.trim())),
               translate
             )
           : undefined
 
+      const previous = getCachedRagActiveState()
+      const keepBatchProgress = state.type === 'batchEmbed' || previous.type === 'batchEmbed'
+      // 刚点「开始整理」时本地已标 running，回问若还是 idle 不要盖掉
+      if (
+        options?.hydrate &&
+        previous.isRunning &&
+        previous.type === 'batchEmbed' &&
+        !state.isRunning
+      ) {
+        return
+      }
       setCachedRagActiveState({
-        ...getCachedRagActiveState(),
+        ...previous,
         ...state,
         statusText,
         statusKey: state.statusKey,
-        error: errorText
+        error: errorText,
+        phase: state.phase ?? (keepBatchProgress ? previous.phase : undefined),
+        phases: state.phases ?? (keepBatchProgress ? previous.phases : undefined),
+        paused: Boolean(state.isRunning && state.paused),
+        cancelling: Boolean(state.isRunning && state.cancelling)
       })
 
       if (state.isRunning) {
@@ -104,7 +101,13 @@ export function useRagRuntimeBridge(active: boolean): void {
         statsRefreshTimerRef.current = null
       }
       void refreshRagStats()
+    }
+
+    void api.rag.getBatchEmbedState?.().then((state: any) => {
+      if (state) applyRagProgress(state, { hydrate: true })
     })
+
+    const cleanup = api.rag.onRagProgress((state: any) => applyRagProgress(state))
 
     return () => {
       cleanup?.()

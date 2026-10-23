@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react
 import { useNativeTheme } from '../theme'
 import { NativeSlider } from '../Slider'
 import { Input } from '../Input/Input'
+import { iconSizes, mobileTypography, uiTypography, sharedTokens } from '../../theme/tokens'
 
 export interface AgentBehaviorSettingsCardProps {
   config: {
@@ -112,36 +113,40 @@ export const AgentBehaviorSettingsCard: React.FC<AgentBehaviorSettingsCardProps>
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    marginBottom: 16,
-    marginHorizontal: 16,
+    borderRadius: sharedTokens.radius.lg,
+    marginBottom: sharedTokens.spacing.md,
+    marginHorizontal: sharedTokens.spacing.md,
     overflow: 'hidden'
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
-  icon: { fontSize: 24, marginRight: 16 },
+  icon: { fontSize: iconSizes.lg, marginRight: sharedTokens.spacing.md },
   headerBody: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '500' },
-  subtitle: { fontSize: 13, marginTop: 4 },
-  arrow: { fontSize: 12 },
-  content: { paddingHorizontal: 16, paddingBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
+  title: { fontSize: mobileTypography.primary.fontSize, fontWeight: '500' },
+  subtitle: { fontSize: mobileTypography.secondary.fontSize, marginTop: sharedTokens.spacing.xs },
+  arrow: { fontSize: uiTypography.sm },
+  content: { paddingHorizontal: sharedTokens.spacing.md, paddingBottom: sharedTokens.spacing.md },
+  label: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500',
+    marginBottom: sharedTokens.spacing.sm
+  },
   promptInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    fontSize: mobileTypography.secondary.fontSize,
     minHeight: 140,
     lineHeight: 20
   },
-  divider: { height: 1, marginVertical: 16 },
-  slider: { width: '100%', paddingVertical: 8 },
+  divider: { height: 1, marginVertical: sharedTokens.spacing.md },
+  slider: { width: '100%', paddingVertical: sharedTokens.spacing.sm },
   rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: -4
   },
-  rangeLabel: { fontSize: 11 }
+  rangeLabel: { fontSize: mobileTypography.caption.fontSize }
 })

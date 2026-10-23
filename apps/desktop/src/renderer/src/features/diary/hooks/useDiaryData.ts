@@ -99,6 +99,7 @@ export function useDiaryData(query: DiaryPageQuery) {
   const [entries, setEntries] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const queryRef = useRef(query)
   queryRef.current = query
   const entriesRef = useRef<any[]>([])
@@ -180,6 +181,7 @@ export function useDiaryData(query: DiaryPageQuery) {
       logger.error('Failed to load diary entries:', err)
     } finally {
       setLoading(false)
+      setHasLoadedOnce(true)
     }
   }, [])
 
@@ -224,5 +226,5 @@ export function useDiaryData(query: DiaryPageQuery) {
     }
   }, [loadEntries, isListPageActive])
 
-  return { entries, totalCount, loading, loadEntries }
+  return { entries, totalCount, loading, loadEntries, hasLoadedOnce }
 }

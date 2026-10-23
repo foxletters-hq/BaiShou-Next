@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
+import { AgentGateEffect, AgentGateProfileId } from '@baishou/shared'
 import { ToolRegistry } from '../tools/tool-registry'
 import { AgentTool, ToolContext } from '../tools/agent.tool'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import { z } from 'zod'
 
 class ToolA extends AgentTool<z.ZodObject<{ msg: z.ZodString }>> {
@@ -31,6 +34,7 @@ describe('ToolRegistry', () => {
 
     const mockCtx: ToolContext = {
       sessionId: 'test-session',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default'
     }
     const toolMap = registry.getEnabledToolsAsVercel(mockCtx)
@@ -41,5 +45,62 @@ describe('ToolRegistry', () => {
   it('should return undefined for non-existent tool', () => {
     const registry = new ToolRegistry()
     expect(registry.get('nonexistent')).toBeUndefined()
+  })
+
+  it('registers graph_upsert, recall_relations and knowledge_search tools', () => {
+    const registry = new ToolRegistry()
+    expect(registry.get('graph_upsert')?.name).toBe('graph_upsert')
+    expect(registry.get('recall_relations')?.name).toBe('recall_relations')
+    expect(registry.get('knowledge_search')?.name).toBe('knowledge_search')
+    expect(registry.get('knowledge_graph_search')?.name).toBe('knowledge_graph_search')
+  })
+
+  it('hides tools denied by gate profile when hideDeniedTools is on', () => {
+    const registry = new ToolRegistry()
+    const probeEffect = vi.fn((input: { action: string }) =>
+      input.action.startsWith('workspace_') ? AgentGateEffect.Deny : AgentGateEffect.Ask
+    )
+    const gate = { probeEffect } as unknown as IBaishouAgentGate
+
+    const ctx: ToolContext = {
+      sessionId: 's1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      agentGate: gate,
+      gateProfile: AgentGateProfileId.Companion,
+      userConfig: {
+        baishou_agent_gate_config: { hideDeniedTools: true }
+      },
+      workspace: {
+        folderRoot: 'D:/proj',
+        sessionKind: 'companion'
+      }
+    }
+
+    // companion session with folderRoot still must not expose workspace tools if gate denies
+    expect(registry.isToolEnabled('workspace_write', ctx)).toBe(false)
+    expect(probeEffect).toHaveBeenCalled()
+  })
+
+  it('respects per-workspace disabledToolIds for workspace tools only', () => {
+    const registry = new ToolRegistry()
+    const ctx: ToolContext = {
+      sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      userConfig: {
+        disabledToolIds: ['workspace_run', 'diary_write']
+      },
+      workspace: {
+        folderRoot: 'D:/proj',
+        sessionKind: 'workspace'
+      }
+    }
+
+    expect(registry.isToolEnabled('workspace_list', ctx)).toBe(true)
+    expect(registry.isToolEnabled('workspace_run', ctx)).toBe(false)
+    // diary tools are hard-filtered out of workspace sessions regardless of disabled list
+    expect(registry.isToolEnabled('diary_write', ctx)).toBe(false)
+    expect(registry.isToolEnabled('companion_ask', ctx)).toBe(true)
   })
 })

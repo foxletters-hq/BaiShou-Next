@@ -81,8 +81,19 @@ export class SessionManagerService {
     await this.persistence.flushNow(sessionId)
   }
 
-  async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
-    return this.findAllSessions(limit, offset, assistantId, searchQuery)
+  async updateMountedNotebookIds(sessionId: string, notebookIds: string[]): Promise<void> {
+    await this.sessionRepo.updateMountedNotebookIds(sessionId, notebookIds)
+    await this.persistence.flushNow(sessionId)
+  }
+
+  async list(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string,
+    vaultId?: string
+  ) {
+    return this.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -103,9 +114,20 @@ export class SessionManagerService {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
+    searchQuery?: string,
+    vaultId?: string
+  ) {
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
+  }
+
+  /** 跨仓全表（同步 / 迁移专用）；日常列表请传 vaultId */
+  async findAllSessionsAcrossVaults(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
     searchQuery?: string
   ) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
+    return this.sessionRepo.findAllSessionsAcrossVaults(limit, offset, assistantId, searchQuery)
   }
 
   async getSessionById(sessionId: string) {
@@ -204,7 +226,7 @@ export class SessionManagerService {
     }
 
     // 全库会话（按伙伴列表可见的全部），不按活跃 vault 过滤
-    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const dbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const diskSessions =
       diskVaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
@@ -219,26 +241,16 @@ export class SessionManagerService {
     let skippedUnresolvedVault = 0
 
     for (const session of missing) {
-      const targetVault = resolveSessionFlushTargetVault(
-        session.vaultName,
-        activeVaultName,
-        diskVaultNames
-      )
+      // V2.2: DB stores vaultId; disk paths still use vault name — flush to active vault.
+      const targetVault = resolveSessionFlushTargetVault(undefined, activeVaultName, diskVaultNames)
       if (!targetVault) {
         skippedUnresolvedVault++
         console.warn('[IncrementalSync][SessionFlush] skip-unresolved-vault', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          vaultName: session.vaultName ?? null
+          vaultId: session.vaultId ?? null
         })
         continue
-      }
-      const remapped =
-        Boolean(session.vaultName?.trim()) &&
-        session.vaultName !== 'default' &&
-        session.vaultName !== targetVault
-      if (remapped) {
-        remappedVaultSamples.push(`${session.id}:${session.vaultName}->${targetVault}`)
       }
       try {
         await this.persistence.flushNow(session.id, { vaultName: targetVault })
@@ -246,9 +258,8 @@ export class SessionManagerService {
         console.warn('[IncrementalSync][SessionFlush] wrote-missing-json', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          sessionVaultName: session.vaultName ?? null,
+          sessionVaultId: session.vaultId ?? null,
           targetVault,
-          remapped,
           title: session.title ?? null
         })
       } catch (e) {
@@ -256,7 +267,7 @@ export class SessionManagerService {
         console.warn('[IncrementalSync][SessionFlush] write-missing-json-failed', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          sessionVaultName: session.vaultName ?? null,
+          sessionVaultId: session.vaultId ?? null,
           targetVault,
           error: e instanceof Error ? e.message : String(e)
         })
@@ -338,7 +349,7 @@ export class SessionManagerService {
       }
     }
 
-    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const dbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const diskSessions =
       diskVaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
@@ -411,7 +422,7 @@ export class SessionManagerService {
       }
     }
 
-    const afterDb = (await this.sessionRepo.findAllSessions(-1)).length
+    const afterDb = (await this.sessionRepo.findAllSessionsAcrossVaults(-1)).length
     console.warn('[IncrementalSync][SessionHydrate] done', {
       dbCountBefore: dbCount,
       diskCount,
@@ -474,6 +485,27 @@ export class SessionManagerService {
       ...(options?.preserveSessionIds ?? [])
     ])
     await this.syncService.fullScanArchives({
+      ...options,
+      preserveSessionIds: preserve.size > 0 ? preserve : options?.preserveSessionIds
+    })
+  }
+
+  /**
+   * 冷启动 reconcile：mtime 比对后仅灌入缺失/更新的会话，并清理已扫 vault 幽灵。
+   */
+  async reconcileFromDisks(
+    options?: import('../vault/disk-resync.types').DiskResyncOptions
+  ): Promise<void> {
+    try {
+      await this.persistence.flushPending()
+    } catch (e) {
+      console.warn('[SessionManager] flushPending before reconcile failed:', e)
+    }
+    const preserve = new Set<string>([
+      ...this.persistence.getDirtySessionIds(),
+      ...(options?.preserveSessionIds ?? [])
+    ])
+    await this.syncService.reconcileFromDisks({
       ...options,
       preserveSessionIds: preserve.size > 0 ? preserve : options?.preserveSessionIds
     })

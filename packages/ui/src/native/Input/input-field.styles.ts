@@ -1,21 +1,26 @@
 import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import type { lightColors } from '../../theme'
+import { mobileControlTokens, sharedTokens } from '../../theme/tokens'
 
 type ThemeColors = typeof lightColors
 
 /** HeroUI Input 默认场域外观（rounded-2xl + 1px 边框），不依赖 Uniwind 是否生效 */
 export function getHeroInputFieldStyle(
   colors: ThemeColors,
-  options?: { multiline?: boolean; compact?: boolean }
+  options?: { multiline?: boolean; compact?: boolean; height?: number }
 ): TextStyle {
   return {
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 16,
+    borderColor: colors.borderControl,
+    borderRadius: sharedTokens.radius.lg,
     borderCurve: 'continuous',
-    minHeight: options?.multiline || options?.compact ? undefined : 48,
-    paddingHorizontal: 12,
+    minHeight:
+      options?.multiline || options?.compact
+        ? undefined
+        : (options?.height ?? mobileControlTokens.height),
+    width: options?.compact ? undefined : '100%',
+    paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
     color: colors.textPrimary
   }
 }

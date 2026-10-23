@@ -1,8 +1,8 @@
 .dashboard-stats-card {
-  padding: 20px;
-  background: var(--bg-surface, #fff);
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.5); /* outlineVariant */
+  padding: var(--spacing-md-plus);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-control);
   display: flex;
   flex-direction: column;
 }
@@ -10,30 +10,30 @@
 .stats-header {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .stats-header-icon {
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
   display: flex;
   align-items: center;
 }
 
 .stats-header-title {
-  font-weight: bold;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: var(--ui-fs-lg);
   color: var(--text-primary);
 }
 
 .stats-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .stats-row {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .stats-row.full > div {
@@ -42,11 +42,11 @@
 
 .stats-tile {
   flex: 1;
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .stats-tile:hover {
@@ -54,7 +54,7 @@
 }
 
 .stats-icon {
-  margin-right: 10px;
+  margin-right: var(--spacing-sm-plus);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,48 +67,48 @@
 }
 
 .stats-count {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: var(--icon-fs-md);
+  font-weight: 600;
 }
 
 .stats-label {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
   opacity: 0.8;
 }
 
-/* Color Variants exactly mirroring Flutter withValues(alpha: 0.08) */
+/* Color Variants: 采用语义 Token 与动态透明度，确保暗色模式下纯净高对比、绝不发脏 */
 .color-green {
-  background: rgba(76, 175, 80, 0.08);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
 }
 .color-green .stats-count {
-  color: #4caf50;
+  color: var(--color-success);
 }
 
 .color-indigo {
-  background: rgba(63, 81, 181, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 .color-indigo .stats-count {
-  color: #3f51b5;
+  color: var(--color-primary);
 }
 
 .color-blue {
-  background: rgba(33, 150, 243, 0.08);
+  background: color-mix(in srgb, var(--color-accent-blue) 10%, transparent);
 }
 .color-blue .stats-count {
-  color: #2196f3;
+  color: var(--color-accent-blue);
 }
 
 .color-amber {
-  background: rgba(251, 192, 45, 0.08);
-} /* amber.shade700 in flutter is roughly #FBC02D */
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
 .color-amber .stats-count {
-  color: #fbc02d;
+  color: var(--color-warning);
 }
 
 .color-orange {
-  background: rgba(255, 152, 0, 0.08);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
 }
 .color-orange .stats-count {
-  color: #ff9800;
+  color: var(--color-warning);
 }

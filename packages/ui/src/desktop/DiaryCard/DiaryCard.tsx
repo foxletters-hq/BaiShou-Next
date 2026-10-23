@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { limitDiaryPreviewTags } from '@baishou/shared'
@@ -54,18 +55,18 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
     t('diary.weekday_sat', '周六')
   ]
   const MONTH_NAMES = [
-    t('diary.month_jan', '一月'),
-    t('diary.month_feb', '二月'),
-    t('diary.month_mar', '三月'),
-    t('diary.month_apr', '四月'),
-    t('diary.month_may', '五月'),
-    t('diary.month_jun', '六月'),
-    t('diary.month_jul', '七月'),
-    t('diary.month_aug', '八月'),
-    t('diary.month_sep', '九月'),
-    t('diary.month_oct', '十月'),
-    t('diary.month_nov', '十一月'),
-    t('diary.month_dec', '十二月')
+    t('diary.month_jan', '1月'),
+    t('diary.month_feb', '2月'),
+    t('diary.month_mar', '3月'),
+    t('diary.month_apr', '4月'),
+    t('diary.month_may', '5月'),
+    t('diary.month_jun', '6月'),
+    t('diary.month_jul', '7月'),
+    t('diary.month_aug', '8月'),
+    t('diary.month_sep', '9月'),
+    t('diary.month_oct', '10月'),
+    t('diary.month_nov', '11月'),
+    t('diary.month_dec', '12月')
   ]
   const weekday = WEEKDAYS[createdAt.getDay()]
 
@@ -145,7 +146,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             }}
           >
             ✏️{' '}
-            {t('common.edit') || t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L147', '编辑')}
+            {t('common.edit') ||
+              i18n.t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L147', '编辑')}
           </button>
           <button
             className="action-btn delete-btn"
@@ -156,7 +158,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           >
             🗑️{' '}
             {t('common.delete') ||
-              t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L156', '删除')}
+              i18n.t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L156', '删除')}
           </button>
         </div>
       </div>

@@ -1,51 +1,62 @@
 .container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   position: relative;
 }
 
 .syncButton {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border: 1px solid var(--border-muted);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
+  justify-content: center;
+  gap: var(--spacing-xs-plus);
+  height: 32px;
+  padding: 0 var(--spacing-sm-plus);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  box-sizing: border-box;
+  -webkit-app-region: no-drag;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
-.syncButton:hover:not(.disabled) {
-  background: var(--bg-surface-high);
-  border-color: var(--color-primary);
+.syncButton:hover:not(:disabled) {
+  background: rgba(var(--text-primary-rgb), 0.05);
+  color: var(--text-primary);
 }
 
-.syncButton:active:not(.disabled) {
-  background: var(--bg-surface-normal);
+.syncButton:active:not(:disabled) {
+  background: rgba(var(--text-primary-rgb), 0.08);
+}
+
+.syncButton:focus-visible {
+  outline: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .syncButton.syncing {
   cursor: wait;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
-.syncButton.disabled {
-  opacity: 0.4;
+.syncButton.disabled:not(.syncing),
+.syncButton:disabled:not(.syncing) {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .syncIcon {
   width: 14px;
   height: 14px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  transition: transform 0.2s ease;
+  color: inherit;
+  transition: transform var(--duration-swift) ease;
   flex-shrink: 0;
 }
 
@@ -69,14 +80,14 @@
 .lastSync {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   padding: 0;
   border: none;
   background: none;
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) ease;
 }
 
 .lastSync:hover {
@@ -97,12 +108,12 @@
   border-radius: 50%;
   background: var(--bg-surface);
   color: var(--text-tertiary);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 600;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    color 0.15s ease;
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .historyBtn:hover {
@@ -128,12 +139,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .dialogHeader h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--settings-font-section-size);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -145,13 +156,13 @@
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: none;
   color: var(--text-tertiary);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .closeBtn:hover {
@@ -168,13 +179,13 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md);
   background: var(--bg-surface);
   border: 1px solid var(--color-error);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   z-index: 1100;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
@@ -187,12 +198,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: var(--spacing-2xs);
   border: none;
   background: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
 }
 
 .errorClose:hover {
@@ -205,12 +216,12 @@
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
   width: 240px;
   background: var(--bg-surface-high, var(--bg-surface));
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   box-shadow: var(
     --shadow-lg,
     0 10px 25px -5px rgba(0, 0, 0, 0.08),
@@ -225,21 +236,21 @@
 .progressTrack {
   height: 4px;
   background: var(--bg-surface-low);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   overflow: hidden;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-xs-plus);
   width: 100%;
 }
 
 .progressFill {
   height: 100%;
   background: var(--color-primary);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-2xs);
+  transition: width var(--duration-moderate) ease;
 }
 
 .progressText {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -259,40 +270,40 @@
   max-width: 90vw;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-subtle);
-  padding: 20px 24px;
+  padding: var(--spacing-md-plus) var(--spacing-lg);
   z-index: 1000;
   overflow-y: auto;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.06);
 }
 
 .historyPanel .dialogHeader {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .emptyHistory {
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   text-align: center;
-  padding: 32px 0;
+  padding: var(--spacing-xl) 0;
 }
 
 .historyList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .historyItem {
-  padding: 10px 12px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   background: var(--bg-surface-low);
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
 }
 
 .historyItemHeader {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: var(--spacing-xs-plus);
+  margin-bottom: var(--spacing-xs);
 }
 
 .successIcon {
@@ -305,26 +316,26 @@
 
 .historyTime {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
 }
 
 .historyDuration {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
 .historySummary {
   display: flex;
-  gap: 10px;
-  font-size: 12px;
+  gap: var(--spacing-sm-plus);
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
 }
 
 .historyError {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--color-error);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .warnText {

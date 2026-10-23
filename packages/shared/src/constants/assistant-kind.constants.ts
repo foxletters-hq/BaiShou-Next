@@ -1,3 +1,5 @@
+import type { AgentSessionKind } from '../agent-workspace/workspace.types'
+
 /** 伙伴类型：亲密伙伴拥有日记与记忆工具；工作伙伴仅协助知识与工作 */
 export type AssistantKind = 'companion' | 'work'
 
@@ -12,10 +14,14 @@ export const WORK_ASSISTANT_DISABLED_TOOL_IDS = [
   'diary_list',
   'diary_search',
   'summary_read',
+  'summary_write',
   'memory_store',
   'memory_delete',
   'vector_search',
-  'message_search'
+  'message_search',
+  'session_list',
+  'recall_relations',
+  'graph_upsert'
 ] as const
 
 export function getAssistantDisabledToolIds(kind?: AssistantKind | string | null): string[] {
@@ -28,6 +34,16 @@ export function mergeDisabledToolIds(
   assistantKind?: AssistantKind | string | null
 ): string[] {
   return [...new Set([...globalDisabled, ...getAssistantDisabledToolIds(assistantKind)])]
+}
+
+/** 工作台以工作区策略为准，不追加伙伴类型禁用列表 */
+export function resolveSessionDisabledToolIds(
+  disabledToolIds: string[],
+  assistantKind?: AssistantKind | string | null,
+  sessionKind?: AgentSessionKind
+): string[] {
+  if (sessionKind === 'workspace') return [...new Set(disabledToolIds)]
+  return mergeDisabledToolIds(disabledToolIds, assistantKind)
 }
 
 export function normalizeAssistantKind(kind?: string | null): AssistantKind {

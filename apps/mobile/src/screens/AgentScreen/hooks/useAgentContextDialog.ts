@@ -158,7 +158,7 @@ export function useAgentContextDialog(deps: {
 
   const handleRefreshPricing = useCallback(async () => {
     if (!services?.pricingService) {
-      return { success: false, error: t('agent.chat.pricing_refresh_failed', '刷新失败') }
+      return { success: false, error: t('agent.chat.pricing_refresh_failed', '请检查网络环境') }
     }
     try {
       const result = await services.pricingService.refresh()
@@ -170,11 +170,14 @@ export function useAgentContextDialog(deps: {
       }
       return {
         success: result.success,
-        error: result.success ? undefined : t('agent.chat.pricing_refresh_failed', '刷新失败')
+        error: result.success ? undefined : t('agent.chat.pricing_refresh_failed', '请检查网络环境')
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      return { success: false, error: msg }
+      return {
+        success: false,
+        error: msg || t('agent.chat.pricing_refresh_failed', '请检查网络环境')
+      }
     }
   }, [services, t, toast])
   return {

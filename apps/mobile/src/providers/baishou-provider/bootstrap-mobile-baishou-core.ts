@@ -4,6 +4,7 @@ import { Platform } from 'react-native'
 import {
   ensureExpoAgentDatabaseInstalled,
   verifyExpoAgentDatabaseIntegrity,
+  expoKnowledgeConnectionManager,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
@@ -19,10 +20,11 @@ import {
   SummaryFileService,
   VaultService
 } from '@baishou/core-mobile'
-import { AgentSessionService } from '@baishou/ai'
+import { AgentSessionService, TitleGeneratorService } from '@baishou/ai'
 import {
   resolveSummaryTemplatesForGeneration,
   logger,
+  deriveLegacyVaultId,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import {
@@ -41,6 +43,7 @@ import { createMobileFileSystem } from '../../services/create-mobile-file-system
 import { setupMobileLocalFileReader } from '../../services/mobile-local-file-reader.service'
 import { setupMobileImageCompressor } from '../../services/mobile-image-compressor.service'
 import { setupMobileTtsRefAudioReader } from '../../services/mobile-tts-ref-audio.service'
+import { notifyMobileSessionChanged } from '../../services/mobile-session-events'
 import { MobileStoragePathService } from '../../services/path.service'
 import { MobileAttachmentManagerService } from '../../services/mobile-attachment-manager.service'
 import { createMobileSessionDiskPersistenceHooks } from '../../services/session-file-watcher.service'
@@ -98,6 +101,15 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     setupMobileLocalFileReader(fileSystem)
     setupMobileImageCompressor()
     setupMobileTtsRefAudioReader(fileSystem)
+    const { registerMobilePdfExtractor } =
+      await import('../../services/register-mobile-pdf-extractor')
+    const { registerMobilePdfPageBitmapRenderer } =
+      await import('../../services/register-mobile-pdf-bitmap-renderer')
+    const { registerMobileVisionPageRecognizer } =
+      await import('../../services/register-mobile-vision-ocr')
+    registerMobilePdfExtractor()
+    registerMobilePdfPageBitmapRenderer()
+    registerMobileVisionPageRecognizer()
     const pathService = new MobileStoragePathService(fileSystem) as any
 
     const startupIntegrity = await verifyExpoAgentDatabaseIntegrity(install.expoDb)
@@ -123,11 +135,45 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       )
     }
 
-    // 3. 构建 Repositories
+    // 1b. 异步连接独立 knowledge.db（第二连接单独 loadSqliteVec，不阻塞主库就绪链路）
+    void (async () => {
+      try {
+        const knowledgeDbDir = await pathService.getRootDirectory()
+        await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
+        await expoKnowledgeConnectionManager.connect(knowledgeDbDir)
+        const { recoverMobileKnowledgeIngestOnStartup } =
+          await import('../../services/mobile-knowledge-ingest-jobs.consumer')
+        void recoverMobileKnowledgeIngestOnStartup().catch((e) => {
+          logger.warn('[BaishouProvider] recover knowledge ingest on startup failed:', e as Error)
+        })
+        if (expoKnowledgeConnectionManager.isSqliteVecLoaded()) {
+          logger.info('[BaishouProvider] Native sqlite-vec active on knowledge database.')
+        } else {
+          logger.warn(
+            '[BaishouProvider] knowledge db sqlite-vec not active:',
+            expoKnowledgeConnectionManager.getSqliteVecLoadReason()
+          )
+        }
+      } catch (knowledgeDbError) {
+        logger.warn(
+          '[BaishouProvider] knowledge db connect failed (Ask/检索将不可用):',
+          knowledgeDbError as Error
+        )
+      }
+    })()
+
+    // 3. 构建 Repositories（vault id 解析器自动对齐活跃仓，未初始化前兜底）
+    let vaultService: VaultService | null = null
+    const resolveActiveVaultId = (): string => {
+      const active = vaultService?.getActiveVault()
+      if (active?.id) return active.id
+      const name = active?.name?.trim() || 'Personal'
+      return deriveLegacyVaultId(name)
+    }
     const sessionRepo = new SessionRepository(drizzleDb)
-    const assistantRepo = new AssistantRepository(drizzleDb)
+    const assistantRepo = new AssistantRepository(drizzleDb, () => resolveActiveVaultId())
     const settingsRepo = new SettingsRepository(drizzleDb)
-    const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+    const summaryRepo = new SummaryRepositoryImpl(drizzleDb, () => resolveActiveVaultId())
     const profileRepo = new UserProfileRepository(drizzleDb)
     const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
 
@@ -186,7 +232,10 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const snapshotRepo = new SnapshotRepository(drizzleDb)
 
     // 4. 构建 Core Services并进行依赖注入
-    const sessionFileService = new SessionFileService(pathService, fileSystem)
+    const { ensureMobileRawDataRuntime } =
+      await import('../../services/mobile-raw-data-source.runtime')
+    const rawDataManager = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+    const sessionFileService = new SessionFileService(pathService, fileSystem, rawDataManager)
     const sessionSyncService = new RecoveryAwareSessionSyncService(
       sessionRepo,
       sessionFileService,
@@ -196,18 +245,25 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       sessionRepo,
       sessionFileService,
       sessionSyncService,
-      createMobileSessionDiskPersistenceHooks()
+      createMobileSessionDiskPersistenceHooks({
+        resolveVaultName: (vaultId) =>
+          vaultService?.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null,
+        resolveActiveVaultName: () =>
+          vaultService?.getActiveVault()?.name ??
+          pathService.getActiveVaultNameForContext?.() ??
+          null
+      })
     )
 
     const assistantFileService = new AssistantFileService(pathService, fileSystem)
     const assistantManager = new AssistantManagerService(
       assistantRepo,
       assistantFileService,
-      attachmentManager
+      attachmentManager,
+      () => resolveActiveVaultId()
     )
 
-    const vaultService = new VaultService(pathService, fileSystem)
-
+    vaultService = new VaultService(pathService, fileSystem)
     const settingsFileService = new SettingsFileService(pathService, fileSystem)
     const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
     const vaultRuntimeDeps = { pathService, vaultService, fileSystem, settingsManager }
@@ -249,7 +305,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const diaryServiceProxy = createVaultDiaryServiceProxy(refs.diaryStackRef)
     const diarySearcher = diaryStack?.diarySearcher ?? EMPTY_DIARY_SEARCHER
 
-    const summaryFileService = new SummaryFileService(pathService, fileSystem)
+    const summaryFileService = new SummaryFileService(pathService, fileSystem, rawDataManager)
     const diaryRepoAdapter = diaryStack?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
     const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
     const promptLocale = (summaryConfig?.promptLocale ?? 'zh') as SummaryPromptLocale
@@ -270,7 +326,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       summaryGenerator,
       summaryRepo,
       summaryFileService,
-      mobileAgentDbRecovery
+      mobileAgentDbRecovery,
+      () => resolveActiveVaultId()
     )
     const summaryManager = new SummaryManagerService(
       summaryRepo,
@@ -292,6 +349,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     agentDbRuntimeRef.current = {
       expoDb,
       drizzleDb,
+      pathService,
       sessionRepo,
       assistantRepo,
       settingsRepo,
@@ -309,6 +367,22 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       sqlExecutor,
       hsRepo,
       hybridSearchService
+    }
+
+    // 绑定自动命名成功后的回调：落盘到 JSON 文件并通知移动端前端刷新会话列表
+    TitleGeneratorService.onTitleUpdated = async (sessionId, newTitle) => {
+      try {
+        const runtime = agentDbRuntimeRef.current
+        if (runtime) {
+          await runtime.sessionManager.flushSessionToDisk(sessionId)
+        }
+        notifyMobileSessionChanged(sessionId, newTitle)
+        logger.info(
+          `[AutoTitler Mobile] Title update flushed and broadcasted for ${sessionId}: ${newTitle}`
+        )
+      } catch (e: any) {
+        logger.error('[AutoTitler Mobile] Failed to flush or notify title update:', e)
+      }
     }
 
     const state: MobileBaishouCoreState = {

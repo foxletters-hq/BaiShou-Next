@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDialog, toast } from '@baishou/ui'
+import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
 interface UseMessageActionsOptions {
   t: any
@@ -86,7 +87,8 @@ export function useMessageActions({
         model.currentProviderId,
         model.currentModelId,
         undefined,
-        searchMode
+        searchMode,
+        getSessionReasoningEffortOverride()
       )
       await chat.refreshMessages()
     }

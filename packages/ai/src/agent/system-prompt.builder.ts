@@ -4,9 +4,14 @@ import {
   formatHostTimezoneOffset,
   getAssistantKindLabelKey,
   translateMain,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
   type AssistantKind
 } from '@baishou/shared'
 import { buildToolUsageGuidelines } from './tool-usage-guidelines.util'
+import { buildKnowledgeMountPromptLines } from '@baishou/shared'
+import { buildWorkspaceEnvLines, type WorkspaceEnvInfo } from './workspace-env.util'
+
+export type { WorkspaceEnvInfo }
 
 export interface SystemPromptBuilderOptions {
   vaultName: string
@@ -18,10 +23,23 @@ export interface SystemPromptBuilderOptions {
   diaryAiWritingPrompt?: string
   /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
   assistantKind?: AssistantKind
-  /** 是否启用消息发送时刻加壳，并在 runtime_context 写入稳定时区（不含具体时刻） */
+  /** 是否为历史消息加发送时刻壳，并在 runtime_context 写入稳定时区（不含墙上时钟「现在」） */
+
   injectCurrentTime?: boolean
+
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
   locale?: string
+  /** 工作台会话环境（仅 workspace profile 注入） */
+  workspaceEnv?: WorkspaceEnvInfo
+  /** 伙伴会话挂载的笔记本（工作台已写在 workspace_env 里） */
+  knowledgeMount?: { notebookIds: string[]; notebookNames?: Record<string, string> }
+  /** Skills 目录（仅名+描述，正文不灌入）。用于预览/无会话状态的场景 */
+  skillsCatalog?: Array<{ name: string; description?: string }>
+  /**
+   * 会话级增量 skills instruction（由 instruction-state 计算）。
+   * 提供时优先于 `skillsCatalog`：`catalog` 是冻结基线，`deltas` 只追加在基线之后。
+   */
+  skillsInstruction?: { catalog: string[]; deltas: string[] }
 }
 
 function pushSection(buffer: string[], tag: string, lines: string[]): void {
@@ -32,6 +50,11 @@ function pushSection(buffer: string[], tag: string, lines: string[]): void {
   buffer.push('')
 }
 
+const BUILTIN_PLACEHOLDER_GUIDELINES = new Set([
+  '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
+  '请使用工具查阅日记内容，不要编造。引用时注明日期。'
+])
+
 function resolveLocale(locale?: string): string | undefined {
   if (!locale || locale.trim() === '' || locale === 'system') return undefined
   return locale
@@ -41,12 +64,15 @@ function resolveLocale(locale?: string): string | undefined {
  * 构建带有当前环境、输出协议、生效工具以及自定义教条的最终提示词。
  *
  * 固定分区顺序：
- * persona → output_protocol → runtime_context → context_encoding(条件) →
+ * persona → output_protocol → runtime_context → workspace_env(条件) →
+ * skills_catalog(条件) → context_encoding(条件) →
  * user_identity → assistant_capabilities → available_tools →
  * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
  *
- * 「现在几点」只写在各条消息的 <message-time> 上。
- * system 里只保留稳定时区，避免分钟跳动破坏前缀缓存。
+ * 「现在几点」只写在各条消息的 <message-time> 上，不再写入 system。
+ * 历史发送时刻来自落盘 createdAt，按条包在消息正文外。
+ * system 前缀只保留稳定时区，避免分钟跳动破坏前缀缓存。
+
  */
 export class SystemPromptBuilder {
   public static build(options: SystemPromptBuilderOptions): string {
@@ -59,12 +85,27 @@ export class SystemPromptBuilder {
       diaryAiWritingPrompt,
       assistantKind = 'companion',
       injectCurrentTime = true,
-      locale
+      locale,
+      workspaceEnv,
+      knowledgeMount,
+      skillsCatalog,
+      skillsInstruction
     } = options
 
     const buffer: string[] = []
     const availableToolIds = Object.keys(tools)
-    const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds)
+    const hasSkillsCatalog = Boolean(
+      (skillsInstruction &&
+        (skillsInstruction.catalog.length > 0 || skillsInstruction.deltas.length > 0)) ||
+      (skillsCatalog && skillsCatalog.length > 0)
+    )
+    const hasDiaryWriteTools =
+      availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
+    const hasDiaryWritingGuidelines = Boolean(hasDiaryWriteTools && diaryAiWritingPrompt?.trim())
+    const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds, {
+      hasSkillsCatalog,
+      hasDiaryWritingGuidelines
+    })
     const promptLocale = resolveLocale(locale)
     const kindLabel = translateMain(
       promptLocale,
@@ -93,7 +134,33 @@ export class SystemPromptBuilder {
     }
     pushSection(buffer, 'runtime_context', runtimeLines)
 
-    // 4. context_encoding（仅在会给历史加壳时）
+    // 3b. workspace_env（工作台）
+    if (workspaceEnv?.folderRoot) {
+      pushSection(buffer, 'workspace_env', buildWorkspaceEnvLines(workspaceEnv))
+    } else if (knowledgeMount) {
+      pushSection(buffer, 'knowledge_mount', buildKnowledgeMountPromptLines(knowledgeMount))
+    }
+
+    // 3c. skills_catalog（冻结基线 + 增量说明，保证前缀稳定）
+    if (skillsInstruction) {
+      if (skillsInstruction.catalog.length > 0) {
+        pushSection(buffer, 'skills_catalog', skillsInstruction.catalog)
+      }
+      if (skillsInstruction.deltas.length > 0) {
+        pushSection(buffer, 'skills_catalog_update', skillsInstruction.deltas)
+      }
+    } else if (skillsCatalog && skillsCatalog.length > 0) {
+      const skillLines = [
+        'Available skills (name + description only). Call skill_read with the skill name to load the full body when you decide to use one. The user may also attach a skill with /name.',
+        ...skillsCatalog.map((s) => {
+          const desc = s.description?.trim() || 'No description'
+          return `- ${s.name}: ${desc}`
+        })
+      ]
+      pushSection(buffer, 'skills_catalog', skillLines)
+    }
+
+    // 4. context_encoding（仅在为历史消息加发送时刻壳时）
     if (injectCurrentTime) {
       pushSection(buffer, 'context_encoding', buildContextEncodingSystemPromptLines())
     }
@@ -106,8 +173,18 @@ export class SystemPromptBuilder {
       ])
     }
 
-    // 6. assistant_capabilities（稳定枚举 + 本地化展示名，无硬编码中文）
-    if (assistantKind === 'work') {
+    // 6. assistant_capabilities：能力边界跟实际启用的工具走，避免工作台只读记忆与 work 文案冲突
+    const hasPersonalMemoryRead = availableToolIds.some((id) =>
+      (WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS as readonly string[]).includes(id)
+    )
+    if (workspaceEnv?.folderRoot) {
+      pushSection(buffer, 'assistant_capabilities', [
+        `Partner type: ${assistantKind === 'work' ? 'work' : 'companion'} (${kindLabel}).`,
+        hasPersonalMemoryRead
+          ? 'Workspace session. Read-only diary, recaps, vector memory, and cross-session search may be available—follow the tool usage guidelines. Do not write or delete diary or memory.'
+          : 'Workspace session. Personal diary, memory, structured summaries, and cross-session search are NOT available—do not claim to access them.'
+      ])
+    } else if (assistantKind === 'work') {
       pushSection(buffer, 'assistant_capabilities', [
         `Partner type: work (${kindLabel}).`,
         'Scope: knowledge lookup, web search, and work assistance only. ' +
@@ -122,23 +199,16 @@ export class SystemPromptBuilder {
       ])
     }
 
-    // 7. available_tools
+    // 7. available_tools（不再重复列举工具 ID：API tools 定义里已有完整名称与描述）
     if (availableToolIds.length > 0) {
       const toolLines: string[] = [
-        'Available Tools:',
-        'Use a tool when it improves accuracy or when the tool usage guidelines below mark it as required. ' +
-          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.',
-        ''
+        `${availableToolIds.length} tools are enabled for this session. Their names, descriptions, and parameter schemas are provided in the API tools definition. ` +
+          'Use a tool when it improves accuracy or when required by the tool usage guidelines below. ' +
+          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.'
       ]
-      for (const id of availableToolIds) {
-        const toolObj = tools[id]
-        const hint = toolObj?.description || 'No description provided.'
-        toolLines.push(`- **${id}**: ${hint}`)
-      }
-      toolLines.push('')
 
       const hasDiaryOrSummaryTools = availableToolIds.some(
-        (id) => id.startsWith('diary_') || id === 'summary_read'
+        (id) => id.startsWith('diary_') || id === 'summary_read' || id === 'summary_write'
       )
       if (
         hasDiaryOrSummaryTools &&
@@ -149,7 +219,6 @@ export class SystemPromptBuilder {
             'For storing and retrieving information, use the diary/summary tools instead. ' +
             'Do NOT attempt to call memory_store or vector_search.'
         )
-        toolLines.push('')
       }
 
       if (!availableToolIds.includes('web_search')) {
@@ -163,7 +232,6 @@ export class SystemPromptBuilder {
             'If the user asks about recent events or current information that requires web search, ' +
             `reply with exactly: "${webSearchNotEnabled}"`
         )
-        toolLines.push('')
       }
 
       pushSection(buffer, 'available_tools', toolLines)
@@ -177,15 +245,14 @@ export class SystemPromptBuilder {
     }
 
     // 9. diary_writing_guidelines
-    const hasDiaryWriteTools =
-      availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
-    if (hasDiaryWriteTools && diaryAiWritingPrompt?.trim()) {
+    if (hasDiaryWritingGuidelines && diaryAiWritingPrompt) {
       pushSection(buffer, 'diary_writing_guidelines', [diaryAiWritingPrompt.trim()])
     }
 
-    // 10. behavior_guidelines
-    if (customGuidelines && customGuidelines.trim().length > 0) {
-      pushSection(buffer, 'behavior_guidelines', [customGuidelines.trim()])
+    // 10. behavior_guidelines（过滤掉内置默认占位文案与旧版重复教条）
+    const trimmedGuidelines = customGuidelines?.trim()
+    if (trimmedGuidelines && !BUILTIN_PLACEHOLDER_GUIDELINES.has(trimmedGuidelines)) {
+      pushSection(buffer, 'behavior_guidelines', [trimmedGuidelines])
     }
 
     return buffer.join('\n').trimEnd() + '\n'

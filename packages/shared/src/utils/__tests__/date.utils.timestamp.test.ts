@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  coerceDiaryCalendarDate,
   diaryDateToSourceCreatedSeconds,
   formatRecallDiaryDate,
   formatRecallTimestamp,
@@ -11,6 +12,7 @@ import {
   formatRagEntryTimestamp,
   formatStoredTimestamp,
   getSummaryWeekNumber,
+  isRealLocalCalendarDate,
   normalizeUnixToSeconds,
   timestampToMillis
 } from '../date.utils'
@@ -31,6 +33,29 @@ describe('normalizeUnixToSeconds', () => {
   it('converts milliseconds to seconds for storage', () => {
     const ms = new Date(2025, 4, 11).getTime()
     expect(normalizeUnixToSeconds(ms)).toBe(Math.floor(ms / 1000))
+  })
+})
+
+describe('isRealLocalCalendarDate', () => {
+  it('should accept a real local calendar day and reject overflow dates', () => {
+    expect(isRealLocalCalendarDate('2026-09-07')).toBe(true)
+    expect(isRealLocalCalendarDate('2026-02-31')).toBe(false)
+    expect(isRealLocalCalendarDate('2026-13-40')).toBe(false)
+    expect(isRealLocalCalendarDate('09-01')).toBe(false)
+  })
+})
+
+describe('coerceDiaryCalendarDate', () => {
+  it('parses YYYY-MM-DD as a local calendar day', () => {
+    const d = coerceDiaryCalendarDate('2026-09-01')
+    expect(d?.getFullYear()).toBe(2026)
+    expect(d?.getMonth()).toBe(8)
+    expect(d?.getDate()).toBe(1)
+  })
+
+  it('keeps an already valid Date', () => {
+    const input = new Date(2026, 8, 1)
+    expect(coerceDiaryCalendarDate(input)?.getTime()).toBe(input.getTime())
   })
 })
 

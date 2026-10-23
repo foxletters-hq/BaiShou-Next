@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest'
+import { classifyKnowledgeSourceFile, knowledgeSourceFileExt } from '../knowledge-source-file.util'
+
+describe('classifyKnowledgeSourceFile', () => {
+  it('should mark missing relative path as unsupported', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: false, sourceKind: 'file', ext: '.pdf' })
+    ).toBe('unsupported')
+  })
+
+  it('should classify pdf by extension', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.pdf' })
+    ).toBe('pdf')
+  })
+
+  it('should classify url kind as url and note as text', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'url', ext: '.md' })
+    ).toBe('url')
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'note', ext: '.bin' })
+    ).toBe('text')
+  })
+
+  it('should classify epub by extension', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.epub' })
+    ).toBe('epub')
+  })
+
+  it('should mark unknown binary as unsupported', () => {
+    expect(
+      classifyKnowledgeSourceFile({ hasRelativePath: true, sourceKind: 'file', ext: '.bin' })
+    ).toBe('unsupported')
+  })
+})
+
+describe('knowledgeSourceFileExt', () => {
+  it('should take the last extension from a path', () => {
+    expect(knowledgeSourceFileExt('C:\\docs\\scan.PDF')).toBe('.pdf')
+    expect(knowledgeSourceFileExt('notes.md')).toBe('.md')
+    expect(knowledgeSourceFileExt('noext')).toBe('')
+  })
+})

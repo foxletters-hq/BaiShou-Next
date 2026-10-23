@@ -522,17 +522,35 @@ object ExternalStorageFiles {
         }
     }
 
+    private val ARCHIVE_RUNTIME_SQLITE_DB_NAMES = setOf(
+        "baishou_agent.db",
+        "knowledge.db",
+        "shadow_index.db",
+        "shadow_index_v2.db",
+        "agent.db",
+        "baishou.db"
+    )
+
     private val ARCHIVE_SKIP_TOP_LEVEL =
-        setOf("database", "config", "manifest.json", "user-data")
+        setOf("database", "config", "manifest.json", "user-data") + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 
     private val ARCHIVE_SKIP_DIR_NAMES = setOf("snapshots", "temp", ".snapshots")
+
+    private val ARCHIVE_JOURNAL_EXTERNAL_SKIP_DIR_NAMES = setOf(
+        "Archives",
+        "Summaries",
+        "Weekly",
+        "Monthly",
+        "Quarterly",
+        "Yearly"
+    )
 
     private val ARCHIVE_EXCLUDED_ROOT_NAMES = setOf(
         ".baishou",
         ".baishou-s3.json",
         ".git",
         ".baishou-git.json"
-    )
+    ) + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 
     private val STORE_EXTENSIONS = setOf(
         ".png", ".jpg", ".jpeg", ".gif", ".webp",
@@ -540,7 +558,11 @@ object ExternalStorageFiles {
         ".zip", ".gz", ".tar", ".rar", ".7z", ".pdf", ".epub"
     )
 
-    private data class ArchiveZipStats(var entryCount: Int = 0, var uncompressedBytes: Long = 0L)
+    private data class ArchiveZipStats(
+        var entryCount: Int = 0,
+        var uncompressedBytes: Long = 0L,
+        val addedEntries: MutableSet<String> = mutableSetOf()
+    )
 
     private fun shouldStoreWithoutCompression(fileName: String): Boolean {
         val dot = fileName.lastIndexOf('.')
@@ -588,10 +610,51 @@ object ExternalStorageFiles {
             for (entry in children) {
                 val name = entry.name
                 if (name == "." || name == "..") continue
-                if (name in ARCHIVE_EXCLUDED_ROOT_NAMES) continue
+                if (name in ARCHIVE_EXCLUDED_ROOT_NAMES || name.lowercase() in ARCHIVE_RUNTIME_SQLITE_DB_NAMES) continue
                 if (name in ARCHIVE_SKIP_DIR_NAMES) continue
                 if (name == "snapshots" || name == "temp" || name == ".snapshots") continue
                 addArchiveEntryToZip(zipFile, entry, name, stats)
+            }
+
+            for (entry in children) {
+                if (!entry.isDirectory) continue
+                val vaultName = entry.name
+                if (vaultName == "." || vaultName == ".." || vaultName in ARCHIVE_EXCLUDED_ROOT_NAMES || vaultName in ARCHIVE_SKIP_DIR_NAMES) continue
+                val extConfigFile = File(entry, ".baishou/external_paths.json")
+                if (!extConfigFile.isFile) continue
+                try {
+                    val json = org.json.JSONObject(extConfigFile.readText(StandardCharsets.UTF_8))
+                    val journalsDirRaw = json.optString("journalsDirectory", "").trim()
+                    if (journalsDirRaw.isNotEmpty()) {
+                        val extJournalsDir = resolveAnyFile(journalsDirRaw)
+                        val internalJournalsDir = File(entry, "Journals")
+                        if (extJournalsDir.isDirectory && extJournalsDir.canonicalPath != internalJournalsDir.canonicalPath) {
+                            addExternalMountEntryToZip(
+                                zipFile,
+                                extJournalsDir,
+                                "$vaultName/Journals",
+                                stats,
+                                skipJournalArchiveDirs = true
+                            )
+                        }
+                    }
+                    val summariesDirRaw = json.optString("summariesDirectory", "").trim()
+                    if (summariesDirRaw.isNotEmpty()) {
+                        val extSummariesDir = resolveAnyFile(summariesDirRaw)
+                        val internalArchivesDir = File(entry, "Archives")
+                        if (extSummariesDir.isDirectory && extSummariesDir.canonicalPath != internalArchivesDir.canonicalPath) {
+                            addExternalMountEntryToZip(
+                                zipFile,
+                                extSummariesDir,
+                                "$vaultName/Archives",
+                                stats,
+                                skipJournalArchiveDirs = false
+                            )
+                        }
+                    }
+                } catch (_: Exception) {
+                    // ignore malformed external_paths.json
+                }
             }
 
             if (!supplementRootUri.isNullOrBlank()) {
@@ -615,6 +678,32 @@ object ExternalStorageFiles {
         )
     }
 
+    private fun addExternalMountEntryToZip(
+        zipFile: ZipFile,
+        source: File,
+        zipPath: String,
+        stats: ArchiveZipStats,
+        skipJournalArchiveDirs: Boolean
+    ) {
+        if (!source.exists()) return
+        if (source.isDirectory) {
+            if (source.name in ARCHIVE_SKIP_DIR_NAMES || source.name == ".baishou" || source.name == ".git") return
+            if (skipJournalArchiveDirs && source.name in ARCHIVE_JOURNAL_EXTERNAL_SKIP_DIR_NAMES) return
+            val children = source.listFiles() ?: return
+            for (child in children) {
+                addExternalMountEntryToZip(
+                    zipFile,
+                    child,
+                    "$zipPath/${child.name}",
+                    stats,
+                    skipJournalArchiveDirs
+                )
+            }
+            return
+        }
+        addArchiveEntryToZip(zipFile, source, zipPath, stats)
+    }
+
     private fun addArchiveEntryToZip(
         zipFile: ZipFile,
         source: File,
@@ -633,8 +722,10 @@ object ExternalStorageFiles {
 
         val fileName = source.name
         if (shouldSkipJournalFile(fileName)) return
+        if (fileName == "external_paths.json" && source.parentFile?.name == ".baishou") return
 
         val normalizedZipPath = zipPath.replace('\\', '/')
+        if (!stats.addedEntries.add(normalizedZipPath)) return
         val params = net.lingala.zip4j.model.ZipParameters().apply {
             fileNameInZip = normalizedZipPath
             compressionMethod = if (shouldStoreWithoutCompression(fileName)) {
@@ -691,7 +782,7 @@ object ExternalStorageFiles {
         val children = extractDir.listFiles() ?: return
         for (entry in children) {
             val name = entry.name
-            if (name == "." || name == ".." || name in ARCHIVE_SKIP_TOP_LEVEL) continue
+            if (name == "." || name == ".." || name in ARCHIVE_SKIP_TOP_LEVEL || name.lowercase() in ARCHIVE_RUNTIME_SQLITE_DB_NAMES) continue
             copyArchiveEntrySelective(entry, File(rootDir, name))
         }
     }
@@ -708,6 +799,9 @@ object ExternalStorageFiles {
             return
         }
         val fileName = source.name
+        if (fileName == "external_paths.json" && source.parentFile?.name == ".baishou") {
+            return
+        }
         if (
             fileName.endsWith("-wal") ||
             fileName.endsWith("-shm") ||

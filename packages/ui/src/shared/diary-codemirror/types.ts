@@ -11,6 +11,8 @@ export interface DiaryCmPlatform {
     payload: { from: number; to: number; src: string; srcRaw: string }
   ): void
   onExternalImagePreview?(resolvedSrc: string): void
+  /** 点击已渲染的 http(s) 链接时，在系统浏览器打开 */
+  onOpenExternalLink?(url: string): void
   /** mobile: 点击图片后将光标移到 Markdown 行之后 */
   onImageTap?(payload: { from: number; to: number }): void
   /** mobile: touch 宽度调整; desktop: mouse */
@@ -21,6 +23,8 @@ export interface DiaryCmPlatform {
   scrollMode?: 'viewport' | 'document'
   /** CM 内嵌 UI（如 ckant 表格菜单）文案；key 为 i18n 路径，defaultValue 为英文回退 */
   translate?: (key: string, defaultValue: string) => string
+  /** 将文件开头的 name:/description: 当作 properties 元信息，而不是正文或分割线 */
+  documentProperties?: boolean
 }
 
 export type DiaryCmInteractionMode = DiaryCmPlatform['interactionMode']
@@ -35,6 +39,7 @@ export interface DiaryCmTheme {
   primary: string
   /** 标签四色前景，与 DiaryCard 配色槽一致 */
   tagColors: [string, string, string, string]
+  fontScale?: number
 }
 
 export interface DiaryCmInitPayload {

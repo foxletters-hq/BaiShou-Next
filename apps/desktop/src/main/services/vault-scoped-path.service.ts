@@ -16,6 +16,14 @@ export class VaultScopedStoragePathService implements IStoragePathService {
     return this.base.getGlobalRegistryDirectory()
   }
 
+  getLocalActiveVaultId(): Promise<string | null> {
+    return this.base.getLocalActiveVaultId()
+  }
+
+  setLocalActiveVaultId(vaultId: string): Promise<void> {
+    return this.base.setLocalActiveVaultId(vaultId)
+  }
+
   getActiveVaultPath(): Promise<string | null> {
     return this.base.getVaultDirectory(this.vaultName)
   }
@@ -30,6 +38,10 @@ export class VaultScopedStoragePathService implements IStoragePathService {
 
   getActiveVaultSettingsDirectory(): Promise<string> {
     return this.base.getVaultSystemDirectory(this.vaultName)
+  }
+
+  getGlobalSettingsDirectory(): Promise<string> {
+    return this.base.getGlobalSettingsDirectory()
   }
 
   getGlobalShadowIndexDirectory(): Promise<string> {
@@ -76,6 +88,18 @@ export class VaultScopedStoragePathService implements IStoragePathService {
     return dir
   }
 
+  async getMemoryBaseDirectory(): Promise<string> {
+    const dir = join(await this.vaultDir(), 'Memory')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  async getGraphBaseDirectory(): Promise<string> {
+    const dir = join(await this.vaultDir(), 'Graph')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
   async getAssistantsBaseDirectory(): Promise<string> {
     const dir = join(await this.vaultDir(), 'Assistants')
     await fs.mkdir(dir, { recursive: true })
@@ -83,7 +107,13 @@ export class VaultScopedStoragePathService implements IStoragePathService {
   }
 
   async getAttachmentsBaseDirectory(): Promise<string> {
-    const dir = join(await this.vaultDir(), 'attachments')
+    const dir = join(await this.vaultDir(), 'Attachments')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  async getNotebooksBaseDirectory(): Promise<string> {
+    const dir = join(await this.vaultDir(), 'Notebooks')
     await fs.mkdir(dir, { recursive: true })
     return dir
   }

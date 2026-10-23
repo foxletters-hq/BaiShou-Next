@@ -75,7 +75,7 @@ function dispatchNavigation(
   tableFrom: number,
   activeCell: CellLocation,
   anchorCell: CellLocation,
-  section: TableSection
+  _section: TableSection
 ): void {
   view.dispatch({
     effects: [
@@ -166,7 +166,7 @@ function moveUp(
   ctx: TableNavigateContext,
   options: { createRow: boolean }
 ): void {
-  const { table, tableFrom, tableTo, activeCell } = ctx
+  const { tableFrom, tableTo, activeCell } = ctx
   if (activeCell.row === firstRowIndex()) {
     if (!options.createRow) {
       placeCursorAfterTable(view, findTableToByFrom(view.state, tableFrom) ?? tableTo)

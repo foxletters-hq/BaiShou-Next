@@ -85,7 +85,7 @@ export function resolveProviderConfig(
   providers: AIProviderConfig[],
   providerId: string
 ): AiProviderModel {
-  const raw = providers.find((p) => p.id === providerId)
+  const raw = providers.find((p) => p.id === providerId && p.isEnabled !== false)
   if (!raw) {
     throw new EmbeddingProviderConfigError(
       'provider_not_found',

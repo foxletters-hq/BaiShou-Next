@@ -1,0 +1,94 @@
+.modal {
+  width: min(640px, calc(100vw - 48px)) !important;
+  max-height: min(88vh, 720px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding-bottom: var(--spacing-md-plus) !important;
+  box-sizing: border-box !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Modal 把 children 包在 .body 里，需参与纵向 flex，避免底部操作栏被裁切 */
+.modal > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  gap: var(--spacing-md-tight);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchClear {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--ui-fs-sm);
+  padding: var(--spacing-xs);
+}
+
+.multiSelectBtn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.multiSelectBtnActive {
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
+}
+
+.listWrap {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-muted);
+}
+
+.listWrap > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  padding: var(--spacing-xs) 0 0;
+}
+
+.batchDeleteBtn {
+  color: var(--color-error);
+}
+
+.spacer {
+  flex: 1;
+}

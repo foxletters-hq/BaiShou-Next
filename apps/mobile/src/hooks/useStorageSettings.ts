@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
+import { waitForIdle } from '@baishou/shared'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import {
@@ -263,9 +264,7 @@ export function useStorageSettings() {
       }
 
       await waitMs(OVERLAY_DISMISS_MS)
-      await new Promise<void>((resolve) => {
-        InteractionManager.runAfterInteractions(() => resolve())
-      })
+      await waitForIdle()
 
       const switchNow = await dialog.confirm(t('storage.migrate_switch_prompt'), {
         title: t('storage.migrate_complete', '迁移完成'),

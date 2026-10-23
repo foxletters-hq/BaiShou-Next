@@ -1,4 +1,7 @@
+import type { Location } from 'react-router-dom'
+
 const SETTINGS_RETURN_PATH_KEY = 'desktop_settings_return_path'
+const SETTINGS_OVERLAY_IDLE_PATH = '/__settings-idle__'
 
 /** 记住离开设置前的完整路径（含 search），避免返回时丢掉 assistantId 导致伙伴页重载闪烁 */
 export function rememberSettingsReturnPath(pathWithSearch: string) {
@@ -25,4 +28,19 @@ export function resolveSettingsReturnPath(): string {
 
 export function locationToReturnPath(location: { pathname: string; search?: string }): string {
   return `${location.pathname}${location.search || ''}`
+}
+
+/**
+ * 全屏设置关闭后不再匹配 /settings/*，避免 SettingsPage 留在 DOM 里
+ * （下拉/弹层 portal 会继续挡笔记本里的返回和系统设置）。
+ */
+export function settingsOverlayRoutesLocation<T extends Pick<Location, 'pathname'>>(
+  visible: boolean,
+  settingsLocation: T
+): T {
+  if (visible) return settingsLocation
+  return {
+    ...settingsLocation,
+    pathname: SETTINGS_OVERLAY_IDLE_PATH
+  }
 }

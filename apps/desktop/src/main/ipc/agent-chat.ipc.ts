@@ -4,7 +4,7 @@ import { AgentChatActionRunner } from './AgentChatActionRunner'
 
 export function registerChatIPC() {
   // ==========================================
-  // API: AI对话 (流式流式输出)
+  // API: AI对话 (流式输出)
   // ==========================================
   ipcMain.handle(
     'agent:chat',
@@ -18,9 +18,50 @@ export function registerChatIPC() {
         attachments?: any[]
         searchMode?: boolean
         userMsgId?: string
+        reasoningEffort?: string
       }
     ) => {
-      return AgentChatService.chat(event, args)
+      const result = await AgentChatService.chat(event, args)
+      // 渲染侧仍期望 boolean；abort 视为成功结束（不 drain 已在 service 内处理）
+      return result !== false
+    }
+  )
+
+  // ==========================================
+  // API: Session Runtime admit（默认 queue；idle 时 drain）
+  // ==========================================
+  ipcMain.handle(
+    'agent:admit',
+    async (
+      event,
+      args: {
+        sessionId: string
+        text: string
+        delivery?: 'steer' | 'queue'
+        userMessageId?: string
+        providerId?: string
+        modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
+        attachments?: unknown[]
+      }
+    ) => {
+      return AgentChatService.admit(event, args)
+    }
+  )
+
+  ipcMain.handle('agent:list-pending-inputs', async (_event, sessionId: string) => {
+    return AgentChatService.listPendingInputs(sessionId)
+  })
+
+  ipcMain.handle('agent:cancel-pending-input', async (_event, inputId: string) => {
+    return AgentChatService.cancelPendingInput(inputId)
+  })
+
+  ipcMain.handle(
+    'agent:update-pending-input',
+    async (event, params: { inputId: string; text?: string; delivery?: 'steer' | 'queue' }) => {
+      return AgentChatService.updatePendingInput(event, params)
     }
   )
 
@@ -35,7 +76,8 @@ export function registerChatIPC() {
       messageId?: string,
       searchMode?: boolean,
       requestedProviderId?: string,
-      requestedModelId?: string
+      requestedModelId?: string,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.regenerate(
         event,
@@ -43,7 +85,8 @@ export function registerChatIPC() {
         messageId,
         searchMode,
         requestedProviderId,
-        requestedModelId
+        requestedModelId,
+        reasoningEffort
       )
     }
   )
@@ -53,6 +96,10 @@ export function registerChatIPC() {
   // ==========================================
   ipcMain.handle('agent:stop-stream', async (_, sessionId?: string) => {
     return AgentChatService.stopStream(sessionId)
+  })
+
+  ipcMain.handle('agent:get-active-stream', async (_, sessionId: string) => {
+    return AgentChatService.getActiveStreamSnapshot(sessionId)
   })
 
   // ==========================================
@@ -68,7 +115,8 @@ export function registerChatIPC() {
       requestedProviderId?: string,
       requestedModelId?: string,
       attachments?: any[],
-      searchMode?: boolean
+      searchMode?: boolean,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.editMessage(
         event,
@@ -78,7 +126,8 @@ export function registerChatIPC() {
         requestedProviderId,
         requestedModelId,
         attachments,
-        searchMode
+        searchMode,
+        reasoningEffort
       )
     }
   )
@@ -94,7 +143,8 @@ export function registerChatIPC() {
       messageId: string,
       searchMode?: boolean,
       requestedProviderId?: string,
-      requestedModelId?: string
+      requestedModelId?: string,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.resend(
         event,
@@ -102,7 +152,8 @@ export function registerChatIPC() {
         messageId,
         searchMode,
         requestedProviderId,
-        requestedModelId
+        requestedModelId,
+        reasoningEffort
       )
     }
   )

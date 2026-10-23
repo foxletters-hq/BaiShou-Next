@@ -6,7 +6,12 @@ import type {
   SummarySyncService
 } from '@baishou/core-mobile'
 import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
-import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  DEFAULT_USER_PROFILE,
+  USER_PROFILE_SETTINGS_KEY,
+  logger
+} from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 
@@ -19,8 +24,12 @@ export interface MobileBootstrapperDeps {
   settingsManager: SettingsManagerService
   summarySyncService: SummarySyncService
   getActiveVaultName?: () => Promise<string>
-  /** 磁盘上全部工作区名；会话 fullScan 需跨 vault 水合 */
+  /** 活跃工作空间稳定 ID（V1.4） */
+  getActiveVaultId?: () => Promise<string | null>
+  /** 磁盘上全部工作区名；会话/助手/总结 fullScan 需跨 vault 水合 */
   getDiskVaultNames?: () => Promise<string[]>
+  /** 目录名 → vault_id */
+  getVaultIdByName?: () => Promise<Record<string, string>>
 }
 
 /**
@@ -104,6 +113,11 @@ export class MobileDataBootstrapper {
     const activeVaultName = deps.getActiveVaultName
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
+    const activeVaultId = deps.getActiveVaultId
+      ? await deps.getActiveVaultId().catch(() => null)
+      : activeVaultName
+        ? deriveLegacyVaultId(activeVaultName)
+        : null
     let diskVaultNames: string[] = []
     if (deps.getDiskVaultNames) {
       try {
@@ -112,10 +126,15 @@ export class MobileDataBootstrapper {
         diskVaultNames = []
       }
     }
+    const vaultIdByName = deps.getVaultIdByName
+      ? await deps.getVaultIdByName().catch(() => ({}) as Record<string, string>)
+      : {}
     const resyncOptions = {
       ...(activeVaultName ? { activeVaultName } : {}),
+      ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
-      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
+      ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }
 
     const tasks: Promise<unknown>[] = []
@@ -159,14 +178,27 @@ export class MobileDataBootstrapper {
       const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
       const locale = await resolveMobileBootstrapUiLocale(settings.language)
       if (locale) {
-        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+        const activeVaultId = deps.getActiveVaultId
+          ? await deps.getActiveVaultId().catch(() => null)
+          : deps.getActiveVaultName
+            ? deriveLegacyVaultId(await deps.getActiveVaultName().catch(() => 'Personal'))
+            : null
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale, activeVaultId ?? undefined)
       }
+    }
+
+    try {
+      const { notifyMobilePendingEmbedCountsChanged } =
+        await import('./mobile-pending-embed-counts')
+      notifyMobilePendingEmbedCountsChanged()
+    } catch {
+      // ignore
     }
   }
 
   async runWhenVaultReady(
     deps: MobileBootstrapperDeps,
-    options?: { force?: boolean }
+    options?: { force?: boolean; forceFullRestore?: boolean; resyncMode?: string }
   ): Promise<void> {
     this.registeredDeps = deps
     if (this.running) {
@@ -186,6 +218,12 @@ export class MobileDataBootstrapper {
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
 
+    const activeVaultId = deps.getActiveVaultId
+      ? await deps.getActiveVaultId().catch(() => null)
+      : activeVaultName
+        ? deriveLegacyVaultId(activeVaultName)
+        : null
+
     let diskVaultNames: string[] = []
     if (deps.getDiskVaultNames) {
       try {
@@ -198,10 +236,17 @@ export class MobileDataBootstrapper {
       }
     }
 
+    const vaultIdByName = deps.getVaultIdByName
+      ? await deps.getVaultIdByName().catch(() => ({}) as Record<string, string>)
+      : {}
+
     const resyncOptions = {
       ...(activeVaultName ? { activeVaultName } : {}),
+      ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
-      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+      skipUnchangedByMtime: !options?.forceFullRestore,
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
+      ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }
 
     logger.info('[MobileBootstrapper] session resync options', {
@@ -223,8 +268,12 @@ export class MobileDataBootstrapper {
         logger.warn('[MobileBootstrapper] assistant fullResyncFromDisks failed:', e as Error)
       })
 
-      const sessionScan = deps.sessionManager.fullResyncFromDisks(resyncOptions).catch((e) => {
-        logger.warn('[MobileBootstrapper] session fullResyncFromDisks failed:', e as Error)
+      const sessionScan = (
+        !options?.forceFullRestore && typeof deps.sessionManager.reconcileFromDisks === 'function'
+          ? deps.sessionManager.reconcileFromDisks(resyncOptions)
+          : deps.sessionManager.fullResyncFromDisks(resyncOptions)
+      ).catch((e) => {
+        logger.warn('[MobileBootstrapper] session resync failed:', e as Error)
       })
 
       const settingsScan = deps.settingsManager.fullResyncFromDisk().catch((e) => {
@@ -236,7 +285,7 @@ export class MobileDataBootstrapper {
       const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
       const locale = await resolveMobileBootstrapUiLocale(settings.language)
       if (locale) {
-        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale, activeVaultId ?? undefined)
         logger.info('[MobileBootstrapper] Ensured default assistant Latte')
       } else {
         logger.info('[MobileBootstrapper] Skipped Latte until onboarding language is chosen')
@@ -247,6 +296,50 @@ export class MobileDataBootstrapper {
       if (!userProfile?.personas || Object.keys(userProfile.personas).length === 0) {
         await deps.settingsManager.set(USER_PROFILE_SETTINGS_KEY, DEFAULT_USER_PROFILE)
         logger.info('[MobileBootstrapper] Created default identity card')
+      }
+
+      try {
+        const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =
+          await import('./mobile-raw-data-source.runtime')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        const vaultName = activeVaultName ?? (await deps.getActiveVaultName?.().catch(() => null))
+        const vaultId = activeVaultId ?? (vaultName ? deriveLegacyVaultId(vaultName) : null)
+        if (runtime?.drizzleDb && vaultId) {
+          const emb = await resolveMobileEmbeddingForHydration(deps.settingsManager)
+          // V1.6：传全仓列表，遗留手动记忆才能复制到其它仓（单仓时退化为空操作）
+          const vaults =
+            diskVaultNames.length > 0
+              ? diskVaultNames.map((name) => ({
+                  id: vaultIdByName[name] ?? deriveLegacyVaultId(name),
+                  name
+                }))
+              : [
+                  {
+                    id: vaultId,
+                    name: vaultName ?? vaultId
+                  }
+                ]
+          await runMobileDerivedIndexHydration({
+            drizzleDb: runtime.drizzleDb,
+            vaultId,
+            vaultName: vaultName ?? undefined,
+            vaults,
+            embeddingProvider: emb.embeddingProvider,
+            embeddingModelId: emb.embeddingModelId,
+            reason: 'vault-ecosystem-resync'
+          })
+        }
+      } catch (e) {
+        logger.warn('[MobileBootstrapper] derived index hydration failed:', e as Error)
+      }
+
+      try {
+        const { notifyMobilePendingEmbedCountsChanged } =
+          await import('./mobile-pending-embed-counts')
+        notifyMobilePendingEmbedCountsChanged()
+      } catch {
+        // ignore
       }
 
       logger.info('[MobileBootstrapper] Ecosystem resync complete')

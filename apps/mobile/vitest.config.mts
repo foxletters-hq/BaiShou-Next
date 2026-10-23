@@ -4,19 +4,25 @@ import { defineConfig } from 'vitest/config'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(rootDir, '../..')
+const isWinOrWsl =
+  process.platform === 'win32' || Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP)
 
 export default defineConfig({
   resolve: {
     alias: {
       '@baishou/core/shared': path.resolve(repoRoot, 'packages/core/src/index.shared.ts'),
       expo: path.resolve(rootDir, 'src/test-stubs/expo.ts'),
-      'expo-sqlite': path.resolve(rootDir, 'src/test-stubs/expo-sqlite.ts')
+      'expo-sqlite': path.resolve(rootDir, 'src/test-stubs/expo-sqlite.ts'),
+      'expo-crypto': path.resolve(rootDir, 'src/test-stubs/expo-crypto.ts'),
+      'react-native': path.resolve(rootDir, 'src/test-stubs/react-native.ts')
     }
   },
   test: {
+    maxWorkers: isWinOrWsl ? 2 : undefined,
     globals: true,
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.ts']
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
+    testTimeout: 30_000
   }
 })

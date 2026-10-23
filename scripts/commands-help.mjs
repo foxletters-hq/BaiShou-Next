@@ -35,6 +35,10 @@ const sections = [
     id: 'desktop',
     title: '桌面端 · 构建',
     commands: [
+      [
+        'pnpm setup:desktop',
+        '首次克隆或 Git 报错时：下载 dugite 内置 Git（dev:desktop 的 predev 也会自动检查）'
+      ],
       ['pnpm build:desktop', '构建 Electron 桌面应用（开发用 out/）'],
       ['pnpm release:desktop:win', '★ 官方发版：Windows 安装包 → apps/desktop/dist'],
       ['pnpm release:desktop:linux', '自行编译 Linux AppImage（非官方发版）→ apps/desktop/dist']
@@ -64,7 +68,9 @@ const sections = [
       ['pnpm typecheck', '全仓 TypeScript 检查'],
       ['pnpm test', '全仓单元测试'],
       ['pnpm lint', '全仓 ESLint（与 ci:check 相同；warning 有基线上限）'],
+      ['pnpm lint:css', '全仓 Stylelint 样式检查（ci:check 内含）'],
       ['pnpm lint:baseline', '统计 warning 数；加 -- --write 可更新基线文件'],
+      ['pnpm audit:cache-invalidation', '缓存失效规范审计（ci:check 内含）'],
       ['pnpm format', 'Prettier 格式化'],
       ['pnpm format:check', 'Prettier 检查（ci:check 内含）']
     ]
@@ -73,9 +79,12 @@ const sections = [
     id: 'sync',
     title: '同步生成物',
     commands: [
-      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉模型快照（manifest 未变时快速跳过）'],
+      ['pnpm sync', '★ 同步图标、版本号、供应商图标、视觉/思考快照（manifest 未变时快速跳过）'],
       ['pnpm sync:check', '校验生成物是否最新（ci:check 内含）'],
-      ['pnpm sync --only=providers', '仅同步单项（icons / version / providers / vision）']
+      [
+        'pnpm sync --only=providers',
+        '仅同步单项（icons / version / providers / vision / reasoning）'
+      ]
     ]
   },
   {

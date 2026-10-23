@@ -1,15 +1,71 @@
-import { eq, desc, asc, and, or, sql, inArray } from 'drizzle-orm'
+import { eq, desc, asc, and, sql, inArray, gte, lte, min, max } from 'drizzle-orm'
 import { AgentMessageRepository } from './agent.repository'
-import { AgentMessage, AgentPart } from '@baishou/shared'
+import {
+  AgentMessage,
+  AgentPart,
+  isRealLocalCalendarDate,
+  sortAgentMessageParts
+} from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentMessagesTable } from '../schema/agent-messages'
 import { agentPartsTable } from '../schema/agent-parts'
+import { agentSessionsTable } from '../schema/agent-sessions'
+import {
+  DATE_RANGE_LIST_DEFAULT_LIMIT,
+  DATE_RANGE_LIST_FETCH_MAX_LIMIT,
+  DATE_RANGE_LIST_MAX_LIMIT,
+  DATE_RANGE_PREVIEW_MAX_CHARS,
+  DATE_RANGE_SNIPPET_MAX_CHARS,
+  clampDateListFetchLimit,
+  clampDateListLimit,
+  resolveLocalCalendarDayRange,
+  type MessageInDateRangeRow,
+  type SessionInDateRangeRow
+} from './message.repository.date-range'
+import { MessageSearchOps, isNonReasoningTextPart } from './message.repository.search'
+
+export {
+  DATE_RANGE_LIST_DEFAULT_LIMIT,
+  DATE_RANGE_LIST_FETCH_MAX_LIMIT,
+  DATE_RANGE_LIST_MAX_LIMIT,
+  DATE_RANGE_PREVIEW_MAX_CHARS,
+  DATE_RANGE_SNIPPET_MAX_CHARS,
+  clampDateListFetchLimit,
+  clampDateListLimit,
+  resolveLocalCalendarDayRange
+}
+export type { MessageInDateRangeRow, SessionInDateRangeRow }
 
 export type InsertAgentMessageInput = Omit<AgentMessage, 'createdAt'>
 export type InsertAgentPartInput = Omit<AgentPart, 'createdAt'>
 
+function toMessageDate(value: unknown): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return new Date(0)
+  return new Date(n < 1e12 ? n * 1000 : n)
+}
+
+function extractTextPartBody(data: unknown): string {
+  if (!data || typeof data !== 'object') return ''
+  const text = (data as { text?: unknown }).text
+  return typeof text === 'string' ? text.trim() : ''
+}
+
+function truncatePreview(text: string, max = DATE_RANGE_PREVIEW_MAX_CHARS): string {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (cleaned.length <= max) return cleaned
+  return `${cleaned.slice(0, max)}...`
+}
+
 export class MessageRepository implements AgentMessageRepository {
-  constructor(private readonly db: AppDatabase) {}
+  private readonly db: AppDatabase
+  private readonly search: MessageSearchOps
+
+  constructor(db: AppDatabase) {
+    this.db = db
+    this.search = new MessageSearchOps(db)
+  }
 
   async findBySessionId(
     sessionId: string,
@@ -61,10 +117,29 @@ export class MessageRepository implements AgentMessageRepository {
       .where(inArray(agentPartsTable.messageId, messageIds))
       .orderBy(asc(agentPartsTable.createdAt))
 
-    return rows.map((r) => ({
+    const mapped = rows.map((r) => ({
       ...r,
       type: r.type as AgentPart['type']
     }))
+    // 按 messageId 分组后再按 seq / 类型兜底排序，避免同秒 createdAt 打乱时间线
+    const byMessage = new Map<string, typeof mapped>()
+    for (const part of mapped) {
+      const bucket = byMessage.get(part.messageId)
+      if (bucket) bucket.push(part)
+      else byMessage.set(part.messageId, [part])
+    }
+    const ordered: typeof mapped = []
+    const seen = new Set<string>()
+    for (const id of messageIds) {
+      const bucket = byMessage.get(id)
+      if (!bucket) continue
+      seen.add(id)
+      ordered.push(...sortAgentMessageParts(bucket))
+    }
+    for (const [id, bucket] of byMessage) {
+      if (!seen.has(id)) ordered.push(...sortAgentMessageParts(bucket))
+    }
+    return ordered
   }
 
   async create(input: InsertAgentMessageInput): Promise<AgentMessage> {
@@ -123,156 +198,180 @@ export class MessageRepository implements AgentMessageRepository {
     }
   }
 
-  async searchMessagesByKeyword(keyword: string, limit: number = 10): Promise<any[]> {
-    const trimmed = keyword.trim()
-    if (!trimmed) return []
-
-    const [ftsResults, likeResults] = await Promise.all([
-      this.searchMessagesViaFts(trimmed, limit),
-      this.searchMessagesViaLike(trimmed, limit)
-    ])
-
-    const seen = new Set<string>()
-    const merged: any[] = []
-
-    for (const r of [...ftsResults, ...likeResults]) {
-      const key = `${r.sessionTitle}_${r.role}_${r.content}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      merged.push(r)
-    }
-
-    merged.sort((a, b) => {
-      const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : Number(a.createdAt || 0)
-      const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : Number(b.createdAt || 0)
-      return timeB - timeA
-    })
-
-    return merged.slice(0, limit)
+  /**
+   * 跨会话关键词搜索。必须带 vaultId（fail-closed），JOIN agent_sessions 过滤本仓。
+   */
+  async searchMessagesByKeyword(
+    keyword: string,
+    limit: number = 10,
+    vaultId?: string | null,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
+  ): Promise<any[]> {
+    return this.search.searchMessagesByKeyword(keyword, limit, vaultId, options)
   }
 
-  private escapeLikePattern(value: string): string {
-    return `%${value.replace(/[%_\\]/g, '\\$&')}%`
-  }
-
-  private isNonReasoningTextPart() {
-    return and(
-      eq(agentPartsTable.type, 'text'),
-      or(
-        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') IS NULL`,
-        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') = 0`,
-        sql`json_extract(${agentPartsTable.data}, '$.isReasoning') = false`
-      ),
-      sql`LENGTH(TRIM(COALESCE(json_extract(${agentPartsTable.data}, '$.text'), ''))) > 0`
-    )
-  }
-
-  private async searchMessagesViaFts(keyword: string, limit: number): Promise<any[]> {
-    const cleanedQuery = keyword.replace(/"/g, ' ').trim()
-    if (!cleanedQuery) return []
-
-    try {
-      const ftsMatch = sql`
-        SELECT
-          fts.message_id as message_id,
-          snippet(agent_messages_fts, 3, '', '', '...', 160) as snippet
-        FROM agent_messages_fts fts
-        WHERE agent_messages_fts MATCH ${`"${cleanedQuery}"`}
-        ORDER BY rank
-        LIMIT ${limit * 3}
-      `
-      const ftsRows = (await this.db.all(ftsMatch)) as Array<{
-        message_id: string
-        snippet: string
-      }>
-      if (ftsRows.length === 0) return []
-
-      const seen = new Set<string>()
-      const results: any[] = []
-
-      for (const row of ftsRows) {
-        if (seen.has(row.message_id)) continue
-        seen.add(row.message_id)
-
-        const [messageRow] = await this.db
-          .select({
-            role: agentMessagesTable.role,
-            createdAt: agentMessagesTable.createdAt,
-            sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
-          })
-          .from(agentMessagesTable)
-          .where(eq(agentMessagesTable.id, row.message_id))
-          .limit(1)
-
-        if (!messageRow) continue
-
-        results.push({
-          role: messageRow.role,
-          content: row.snippet?.replace(/<\/?b>/g, '') || '',
-          sessionTitle: messageRow.sessionTitle,
-          createdAt: messageRow.createdAt
-        })
-
-        if (results.length >= limit) break
-      }
-
-      return results
-    } catch {
+  /**
+   * 按消息 created_at 聚合该时段有过用户/助手正文的会话。缺 vault 或日期非法时 fail-closed。
+   */
+  async listSessionsInDateRange(
+    vaultId: string | null | undefined,
+    startDate: string,
+    endDate: string,
+    limit: number = DATE_RANGE_LIST_DEFAULT_LIMIT
+  ): Promise<SessionInDateRangeRow[]> {
+    const scopedVaultId = String(vaultId ?? '').trim()
+    const dateRange = resolveLocalCalendarDayRange(startDate, endDate)
+    if (!scopedVaultId || !dateRange || dateRange.start.getTime() > dateRange.end.getTime()) {
       return []
     }
-  }
+    if (!isRealLocalCalendarDate(startDate) || !isRealLocalCalendarDate(endDate)) {
+      return []
+    }
 
-  private async searchMessagesViaLike(keyword: string, limit: number): Promise<any[]> {
-    const pattern = this.escapeLikePattern(keyword)
-    const rows = await this.db
+    const capped = clampDateListFetchLimit(limit)
+    const grouped = await this.db
       .select({
-        messageId: agentMessagesTable.id,
-        role: agentMessagesTable.role,
-        content: agentPartsTable.data,
-        partType: agentPartsTable.type,
-        createdAt: agentMessagesTable.createdAt,
-        sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
+        sessionId: agentMessagesTable.sessionId,
+        sessionTitle: agentSessionsTable.title,
+        firstCreatedAt: min(agentMessagesTable.createdAt),
+        lastCreatedAt: max(agentMessagesTable.createdAt),
+        messageCount: sql<number>`count(distinct ${agentMessagesTable.id})`
       })
       .from(agentMessagesTable)
       .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
-      .where(
-        or(
-          and(
-            this.isNonReasoningTextPart(),
-            sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
-          ),
-          and(
-            eq(agentPartsTable.type, 'attachment'),
-            sql`json_extract(${agentPartsTable.data}, '$.textContent') LIKE ${pattern} ESCAPE '\\'`
-          )
-        )
-      )
+      .innerJoin(agentSessionsTable, eq(agentMessagesTable.sessionId, agentSessionsTable.id))
+      .where(this.dateRangeTextWhere(scopedVaultId, dateRange))
+      .groupBy(agentMessagesTable.sessionId, agentSessionsTable.title)
+      .orderBy(desc(sql`max(${agentMessagesTable.createdAt})`))
+      .limit(capped)
+
+    const previews = await this.loadSessionPreviews(
+      scopedVaultId,
+      dateRange,
+      grouped.map((row) => ({
+        sessionId: row.sessionId,
+        firstCreatedAt: toMessageDate(row.firstCreatedAt)
+      }))
+    )
+
+    return grouped.map((row) => ({
+      sessionId: row.sessionId,
+      sessionTitle: row.sessionTitle,
+      firstCreatedAt: toMessageDate(row.firstCreatedAt),
+      lastCreatedAt: toMessageDate(row.lastCreatedAt),
+      messageCount: Number(row.messageCount) || 0,
+      preview: previews.get(row.sessionId) ?? ''
+    }))
+  }
+
+  /**
+   * 按消息 created_at 列出压缩前正文片段。至少要有一个合法日期；缺 vault 时 fail-closed。
+   */
+  async listMessagesInDateRange(
+    vaultId: string | null | undefined,
+    limit: number = DATE_RANGE_LIST_DEFAULT_LIMIT,
+    options?: { startDate?: string; endDate?: string; sessionId?: string }
+  ): Promise<MessageInDateRangeRow[]> {
+    const scopedVaultId = String(vaultId ?? '').trim()
+    const startDate = options?.startDate?.trim()
+    const endDate = options?.endDate?.trim()
+    const sessionId = options?.sessionId?.trim()
+    if (startDate && !isRealLocalCalendarDate(startDate)) return []
+    if (endDate && !isRealLocalCalendarDate(endDate)) return []
+    const dateRange = resolveLocalCalendarDayRange(startDate, endDate)
+    if (!scopedVaultId || !dateRange || dateRange.start.getTime() > dateRange.end.getTime()) {
+      return []
+    }
+
+    const capped = clampDateListFetchLimit(limit)
+    const rows = await this.db
+      .select({
+        messageId: agentMessagesTable.id,
+        sessionId: agentMessagesTable.sessionId,
+        role: agentMessagesTable.role,
+        content: agentPartsTable.data,
+        createdAt: agentMessagesTable.createdAt,
+        sessionTitle: agentSessionsTable.title
+      })
+      .from(agentMessagesTable)
+      .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
+      .innerJoin(agentSessionsTable, eq(agentMessagesTable.sessionId, agentSessionsTable.id))
+      .where(this.dateRangeTextWhere(scopedVaultId, dateRange, sessionId))
       .orderBy(desc(agentMessagesTable.createdAt))
-      .limit(limit * 4)
+      .limit(capped * 4)
 
     const seen = new Set<string>()
-    const results: any[] = []
-
-    for (const r of rows) {
-      if (seen.has(r.messageId)) continue
-      seen.add(r.messageId)
-
-      const data = r.content as any
-      const snippet =
-        r.partType === 'attachment'
-          ? (data?.textContent as string) || ''
-          : (data?.text as string) || ''
-
+    const results: MessageInDateRangeRow[] = []
+    for (const row of rows) {
+      if (seen.has(row.messageId)) continue
+      const text = extractTextPartBody(row.content)
+      if (!text) continue
+      seen.add(row.messageId)
       results.push({
-        role: r.role,
-        content: snippet,
-        sessionTitle: r.sessionTitle,
-        createdAt: r.createdAt
+        role: row.role,
+        content: truncatePreview(text, DATE_RANGE_SNIPPET_MAX_CHARS),
+        sessionId: row.sessionId,
+        sessionTitle: row.sessionTitle,
+        createdAt: toMessageDate(row.createdAt)
       })
-
-      if (results.length >= limit) break
+      if (results.length >= capped) break
     }
 
     return results
+  }
+
+  private dateRangeTextWhere(
+    vaultId: string,
+    dateRange: { start: Date; end: Date },
+    sessionId?: string
+  ) {
+    return and(
+      eq(agentSessionsTable.vaultId, vaultId),
+      inArray(agentMessagesTable.role, ['user', 'assistant']),
+      gte(agentMessagesTable.createdAt, dateRange.start),
+      lte(agentMessagesTable.createdAt, dateRange.end),
+      isNonReasoningTextPart(),
+      ...(sessionId ? [eq(agentMessagesTable.sessionId, sessionId)] : [])
+    )
+  }
+
+  private async loadSessionPreviews(
+    vaultId: string,
+    dateRange: { start: Date; end: Date },
+    sessions: Array<{ sessionId: string; firstCreatedAt: Date }>
+  ): Promise<Map<string, string>> {
+    const previews = new Map<string, string>()
+    if (sessions.length === 0) return previews
+
+    const rows = await this.db
+      .select({
+        sessionId: agentMessagesTable.sessionId,
+        content: agentPartsTable.data
+      })
+      .from(agentMessagesTable)
+      .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
+      .innerJoin(agentSessionsTable, eq(agentMessagesTable.sessionId, agentSessionsTable.id))
+      .where(
+        and(
+          this.dateRangeTextWhere(vaultId, dateRange),
+          inArray(
+            agentMessagesTable.sessionId,
+            sessions.map((session) => session.sessionId)
+          ),
+          inArray(
+            agentMessagesTable.createdAt,
+            sessions.map((session) => session.firstCreatedAt)
+          )
+        )
+      )
+      .orderBy(asc(agentMessagesTable.createdAt))
+
+    for (const row of rows) {
+      if (previews.has(row.sessionId)) continue
+      const text = extractTextPartBody(row.content)
+      if (!text) continue
+      previews.set(row.sessionId, truncatePreview(text))
+    }
+    return previews
   }
 }

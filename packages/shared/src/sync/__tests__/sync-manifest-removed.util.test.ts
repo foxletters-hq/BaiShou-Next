@@ -42,6 +42,32 @@ describe('sync-manifest-removed.util', () => {
     expect(m.removed?.['new.md']).toBeDefined()
   })
 
+  it('finalize keeps legacy vault settings from baseline remote', () => {
+    const legacyPath = 'Personal/.baishou/settings/user_profile.json'
+    const finalized = finalizeIncrementalSyncManifest({
+      scanned: manifest({}),
+      baselineRemote: manifest({ [legacyPath]: entry }),
+      decisions: [],
+      deviceId: 'd'
+    })
+    expect(finalized.files[legacyPath]).toEqual(entry)
+  })
+
+  it('finalize does not resurrect tombstoned legacy vault settings', () => {
+    const legacyPath = 'Personal/.baishou/settings/user_profile.json'
+    const baseline = manifest({ [legacyPath]: entry })
+    baseline.removed = {
+      [legacyPath]: { hash: 'h1', size: 10, removedAt: 200, deviceId: 'old' }
+    }
+    const finalized = finalizeIncrementalSyncManifest({
+      scanned: manifest({}),
+      baselineRemote: baseline,
+      decisions: [],
+      deviceId: 'd'
+    })
+    expect(finalized.files[legacyPath]).toBeUndefined()
+  })
+
   it('pruneSyncManifestRemoved caps to max entries keeping newest', () => {
     const now = Date.now()
     const removed: NonNullable<SyncManifest['removed']> = {}

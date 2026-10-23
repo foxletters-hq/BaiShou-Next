@@ -1,22 +1,40 @@
 const BRACKET_TIME_PREFIX = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*/
 const BRACKET_TIME_GLOBAL = /\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*/g
-const TAG_TIME_LINE = /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}<\/(?:message-time|time)>\s*/gi
-const TAG_TIME_GLOBAL = /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}<\/message-time>\s*/g
+/** 闭合或未闭合：模型常只吐出 <message-time>YYYY-MM-DD HH:mm 后直接接正文 */
+const TAG_TIME = /<message-time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?:<\/(?:message-time|time)>)?\s*/gi
 const TAG_CONTENT_BLOCK = /<message-content>\s*([\s\S]*?)\s*<\/message-content>/gi
 const ORPHAN_MESSAGE_CONTENT_TAG = /<\/?message-content>/gi
+const ORPHAN_MESSAGE_TIME_TAG = /<\/?message-time>/gi
+const ORPHAN_TIME_CLOSE_TAG = /<\/time>/gi
 const ORPHAN_THINKING_TAG = /<\/?thinking>/gi
 const ORPHAN_REDACTED_THINKING_TAG = /<\/?redacted_thinking>/gi
 const ORPHAN_THINK_TAG = /<\/?think>/gi
+const TAG_CONVERSATION_TIME_BLOCK = /<conversation_time>\s*[\s\S]*?<\/conversation_time>\s*/gi
+const ORPHAN_CONVERSATION_TIME_TAG = /<\/?conversation_time>/gi
+const CLOSED_FUNCTION_CALLS_BLOCK = /<function_calls>[\s\S]*?<\/function_calls>/gi
+const CLOSED_INVOKE_BLOCK = /<invoke\s+name=["'][^"']+["'][^>]*>[\s\S]*?<\/invoke>/gi
+const UNCLOSED_TOOL_MARKUP = /<function_calls>|<invoke\s+name=/i
 
 function stripOrphanMetadataTags(text: string): string {
   return text
-    .replace(TAG_TIME_LINE, '')
-    .replace(TAG_TIME_GLOBAL, '')
+    .replace(TAG_TIME, '')
+    .replace(TAG_CONVERSATION_TIME_BLOCK, '')
     .replace(BRACKET_TIME_GLOBAL, '')
     .replace(ORPHAN_MESSAGE_CONTENT_TAG, '')
+    .replace(ORPHAN_MESSAGE_TIME_TAG, '')
+    .replace(ORPHAN_CONVERSATION_TIME_TAG, '')
+    .replace(ORPHAN_TIME_CLOSE_TAG, '')
     .replace(ORPHAN_THINKING_TAG, '')
     .replace(ORPHAN_REDACTED_THINKING_TAG, '')
     .replace(ORPHAN_THINK_TAG, '')
+}
+
+/** 模型把工具调用写成 XML 正文时，展示和落盘都要拿掉，避免半截标签卡在气泡里。 */
+function stripLeakedToolCallMarkup(text: string): string {
+  let rest = text.replace(CLOSED_FUNCTION_CALLS_BLOCK, '').replace(CLOSED_INVOKE_BLOCK, '')
+  const unclosed = rest.search(UNCLOSED_TOOL_MARKUP)
+  if (unclosed >= 0) rest = rest.slice(0, unclosed)
+  return rest.replace(/\n{3,}/g, '\n\n')
 }
 
 function unwrapMessageContentBlocks(text: string): string {
@@ -45,6 +63,7 @@ function unwrapMessageContentBlocks(text: string): string {
  */
 export function sanitizeAssistantGeneratedText(text: string): string {
   let rest = unwrapMessageContentBlocks(text ?? '')
+  rest = stripLeakedToolCallMarkup(rest)
   rest = stripOrphanMetadataTags(rest)
 
   let changed = true
@@ -60,9 +79,29 @@ export function sanitizeAssistantGeneratedText(text: string): string {
       changed = true
       continue
     }
-    if (TAG_TIME_LINE.test(rest)) {
-      TAG_TIME_LINE.lastIndex = 0
-      rest = rest.replace(TAG_TIME_LINE, '')
+    if (TAG_TIME.test(rest)) {
+      TAG_TIME.lastIndex = 0
+      rest = rest.replace(TAG_TIME, '')
+      changed = true
+      continue
+    }
+    if (rest.startsWith('<message-time>')) {
+      rest = rest.replace(/^<message-time>\s*/, '')
+      changed = true
+      continue
+    }
+    if (rest.startsWith('</message-time>') || rest.startsWith('</time>')) {
+      rest = rest.replace(/^<\/(?:message-time|time)>\s*/, '')
+      changed = true
+      continue
+    }
+    if (rest.startsWith('<conversation_time>')) {
+      rest = rest.replace(/^<conversation_time>\s*/, '')
+      changed = true
+      continue
+    }
+    if (rest.startsWith('</conversation_time>')) {
+      rest = rest.replace(/^<\/conversation_time>\s*/, '')
       changed = true
       continue
     }
@@ -83,7 +122,11 @@ export function sanitizeAssistantGeneratedText(text: string): string {
 /** 聊天 UI 展示用：若正文误含 message 元数据标签则脱壳（不落库逻辑） */
 export function unwrapMessageMetadataForDisplay(text: string): string {
   const raw = text ?? ''
-  if (!raw.includes('<message-content>') && !raw.includes('<message-time>')) {
+  if (
+    !raw.includes('<message-content>') &&
+    !raw.includes('<message-time>') &&
+    !raw.includes('<conversation_time>')
+  ) {
     return raw
   }
   return sanitizeAssistantGeneratedText(raw)

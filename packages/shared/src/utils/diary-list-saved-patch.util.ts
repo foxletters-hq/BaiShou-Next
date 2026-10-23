@@ -1,5 +1,5 @@
 import type { DiaryListSavedPatch } from '../cache/diary-list-cache'
-import { normalizeDiaryTags } from './diary-tags.util'
+import { resolveDiaryTagsFromSources } from './diary-content-tags.util'
 import {
   normalizeDiaryPreviewMarkdown,
   prepareDiaryCardPreviewMarkdown
@@ -27,7 +27,7 @@ export function buildDiaryListSavedPatch(
   return {
     id: diary.id,
     preview,
-    tags: normalizeDiaryTags(diary.tags ?? []),
+    tags: resolveDiaryTagsFromSources(diary.tags ?? [], diary.content ?? ''),
     weather: diary.weather ?? undefined,
     mood: diary.mood ?? undefined,
     isFavorite: diary.isFavorite ?? undefined,

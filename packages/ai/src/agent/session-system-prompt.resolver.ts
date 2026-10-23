@@ -1,4 +1,9 @@
-import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import {
+  AgentGateProfileId,
+  isAutoInjectCurrentTimeEnabled,
+  resolveVaultIdentity,
+  type AgentSessionKind
+} from '@baishou/shared'
 import {
   MessageRepository,
   SqliteHybridSearchRepository,
@@ -7,23 +12,31 @@ import {
 import type { IAIProvider } from '../providers/provider.interface'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
+import { detectProcessCommandRuntime } from '../agent-workspace/workspace-host-process'
 import { SystemPromptBuilder } from './system-prompt.builder'
+import { resolveSkillsInstructionSection } from './instruction-state.util'
 import { resolveSessionAssistantContext } from './session-assistant-context.util'
 
 export interface AgentToolsContextParams {
   sessionId: string
   sessionRepo: {
-    getSessionById?: (id: string) => Promise<{ vaultName?: string; assistantId?: string } | null>
+    getSessionById?: (
+      id: string
+    ) => Promise<{ vaultId?: string; vaultName?: string; assistantId?: string } | null>
+    getSessionInstructionState?: (id: string) => Promise<string | null>
     db?: unknown
     database?: unknown
   }
   assistantRepo?: {
-    findById: (
-      id: string
-    ) => Promise<{ systemPrompt?: string | null; assistantKind?: string | null } | null>
+    findById: (id: string) => Promise<{
+      systemPrompt?: string | null
+      customSystemPrompt?: string | null
+      assistantKind?: string | null
+    } | null>
   }
   userConfig: Record<string, unknown>
   provider: IAIProvider
@@ -36,6 +49,35 @@ export interface AgentToolsContextParams {
   diarySearcher?: unknown
   webSearchResultFetcher?: unknown
   fetchSearchPage?: unknown
+  rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
+  syncGraphPendingIndex?: () => Promise<void>
+  deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
+  graphReader?: import('@baishou/shared').ToolGraphReader
+  graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+  graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
+  knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+  knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
+  skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+  skillsReader?: import('../tools/agent.tool').ToolContext['skillsReader']
+  skillsCatalog?: Array<{ name: string; description?: string }>
+  extraVercelToolsFactory?: (
+    context: ToolContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  /** Optional Gate instance so hideDeniedTools / profile match streamChat filtering */
+  agentGate?: IBaishouAgentGate
+  gateProfile?: AgentGateProfileId
+  resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
+  workspace?: {
+    folderRoot?: string
+    sessionKind?: AgentSessionKind
+    notebookIds?: string[]
+    env?: {
+      platform?: string
+      isGitRepo?: boolean
+      gitBranch?: string | null
+      gitChangesCount?: number | null
+    }
+  }
 }
 
 async function buildToolExecutionContext(
@@ -51,7 +93,13 @@ async function buildToolExecutionContext(
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
   const msgRepo = new MessageRepository(drizzleDb)
-  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
+  const vaultIdentity = resolveVaultIdentity({
+    vaultId: sessionObj?.vaultId,
+    vaultName: sessionObj?.vaultName,
+    resolveNameById: params.resolveVaultDisplayName,
+    defaultName: 'Personal'
+  })
+  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb, () => vaultIdentity.id)
 
   let embAdapter: any
   if (params.systemModels?.embeddingProvider && params.systemModels?.embeddingModelId) {
@@ -60,28 +108,29 @@ async function buildToolExecutionContext(
       params.systemModels.embeddingModelId,
       hsRepo
     )
-  } else if (params.provider && params.modelId && params.userConfig?.hasEmbeddingModel) {
-    embAdapter = new EmbeddingAdapter(params.provider, params.modelId, hsRepo)
   }
 
   let dedupService: any
-  if (
-    embAdapter &&
-    params.systemModels?.embeddingProvider &&
-    params.systemModels?.embeddingModelId
-  ) {
+  if (embAdapter && params.provider && params.modelId) {
     dedupService = new MemoryDeduplicationServiceImpl(
       embAdapter,
       dbAdapter,
-      params.systemModels.embeddingProvider,
-      params.systemModels.embeddingModelId
+      params.provider,
+      params.modelId
     )
   }
+
+  const gateProfile =
+    params.gateProfile ??
+    (params.workspace?.sessionKind === 'workspace'
+      ? AgentGateProfileId.Workspace
+      : AgentGateProfileId.Companion)
 
   return {
     userConfig: mergedUserConfig,
     sessionId: params.sessionId,
-    vaultName: sessionObj?.vaultName || 'default',
+    vaultId: vaultIdentity.id,
+    vaultName: vaultIdentity.name,
     embeddingService: embAdapter,
     vectorStore: dbAdapter,
     messageSearcher: dbAdapter,
@@ -89,16 +138,50 @@ async function buildToolExecutionContext(
     deduplicationService: dedupService,
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
-    fetchSearchPage: params.fetchSearchPage as any
+    fetchSearchPage: params.fetchSearchPage as any,
+    rawDataSourceManager: params.rawDataSourceManager,
+    syncGraphPendingIndex: params.syncGraphPendingIndex,
+    deleteGraphRecord: params.deleteGraphRecord,
+    graphReader: params.graphReader,
+    graphNodeLookup: params.graphNodeLookup,
+    graphEdgeLookup: params.graphEdgeLookup,
+    knowledgeReader: params.knowledgeReader,
+    knowledgeGraphReader: params.knowledgeGraphReader,
+    skillsWriter: params.skillsWriter,
+    skillsReader: params.skillsReader,
+    agentGate: params.agentGate,
+    gateProfile,
+    workspace:
+      params.workspace?.folderRoot ||
+      params.workspace?.sessionKind ||
+      (params.workspace?.notebookIds && params.workspace.notebookIds.length > 0)
+        ? {
+            folderRoot: params.workspace.folderRoot ?? '',
+            sessionKind: params.workspace.sessionKind,
+            notebookIds: params.workspace.notebookIds
+          }
+        : undefined
   }
 }
 
 export async function resolveEnabledToolsForSession(
   params: AgentToolsContextParams
 ): Promise<Record<string, unknown>> {
-  const { mergedUserConfig } = await resolveSessionAssistantContext(params)
+  const { mergedUserConfig } = await resolveSessionAssistantContext({
+    ...params,
+    sessionKind: params.workspace?.sessionKind
+  })
   const toolContext = await buildToolExecutionContext(params, mergedUserConfig)
-  return params.toolRegistry.getEnabledToolsAsVercel(toolContext)
+  const enabledTools = params.toolRegistry.getEnabledToolsAsVercel(toolContext)
+  if (params.extraVercelToolsFactory) {
+    try {
+      const extra = await params.extraVercelToolsFactory(toolContext)
+      Object.assign(enabledTools, extra)
+    } catch (error) {
+      console.warn('[SessionSystemPrompt] extra vercel tools failed', error)
+    }
+  }
+  return enabledTools
 }
 
 export async function buildSystemPromptForSession(
@@ -107,7 +190,10 @@ export async function buildSystemPromptForSession(
   const enabledTools = await resolveEnabledToolsForSession(params)
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
   const { effectiveSystemPrompt, assistantKind, mergedUserConfig } =
-    await resolveSessionAssistantContext(params)
+    await resolveSessionAssistantContext({
+      ...params,
+      sessionKind: params.workspace?.sessionKind
+    })
 
   const customGuidelines =
     typeof params.userConfig?.agentGuidelines === 'string'
@@ -121,8 +207,24 @@ export async function buildSystemPromptForSession(
   const localeFromParams =
     typeof params.userConfig?.locale === 'string' ? params.userConfig.locale : undefined
 
+  let skillsInstruction: { catalog: string[]; deltas: string[] } | undefined
+  if (params.skillsCatalog && typeof params.sessionRepo.getSessionInstructionState === 'function') {
+    try {
+      const storedRaw = await params.sessionRepo.getSessionInstructionState(params.sessionId)
+      const section = resolveSkillsInstructionSection(params.skillsCatalog, storedRaw)
+      skillsInstruction = { catalog: section.catalog, deltas: section.deltas }
+    } catch {
+      skillsInstruction = undefined
+    }
+  }
+
   return SystemPromptBuilder.build({
-    vaultName: sessionObj?.vaultName || 'default',
+    vaultName: resolveVaultIdentity({
+      vaultId: sessionObj?.vaultId,
+      vaultName: sessionObj?.vaultName,
+      resolveNameById: params.resolveVaultDisplayName,
+      defaultName: 'Personal'
+    }).name,
     tools: enabledTools as any,
     customPersona: effectiveSystemPrompt,
     assistantKind,
@@ -138,6 +240,28 @@ export async function buildSystemPromptForSession(
         : undefined
     ),
     customGuidelines,
-    locale: localeFromMerged ?? localeFromParams
+    locale: localeFromMerged ?? localeFromParams,
+    workspaceEnv:
+      params.workspace?.sessionKind === 'workspace' && params.workspace.folderRoot
+        ? (() => {
+            const runtime = detectProcessCommandRuntime()
+            return {
+              folderRoot: params.workspace.folderRoot,
+              platform: params.workspace.env?.platform ?? process.platform,
+              commandRuntimeBinary: runtime.binary,
+              commandRuntimeFamily: runtime.family,
+              commandRuntimeLabel: runtime.label,
+              isGitRepo: params.workspace.env?.isGitRepo,
+              gitBranch: params.workspace.env?.gitBranch,
+              gitChangesCount: params.workspace.env?.gitChangesCount,
+              notebookIds: params.workspace.notebookIds
+            }
+          })()
+        : undefined,
+    knowledgeMount: {
+      notebookIds: params.workspace?.notebookIds ?? []
+    },
+    skillsCatalog: params.skillsCatalog,
+    skillsInstruction
   })
 }

@@ -9,7 +9,9 @@ import type {
 import {
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
+  SYNC_MANIFEST_CAPABILITIES,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_STORAGE_ID_FILENAME,
   getIncrementalSyncStorageId,
   resolveIncrementalSyncStorageHistory,
@@ -19,10 +21,23 @@ import {
   reconcileSyncManifestRemovedWithRemoteFiles,
   reconcileAncestorWithRemoteTruth,
   countUnverifiedAncestorEntries,
-  isIncrementalSyncRemoteFileNotFoundError
+  isIncrementalSyncRemoteFileNotFoundError,
+  parseLastRemoteVaultsSnapshot,
+  serializeLastRemoteVaultsSnapshot,
+  parseVaultIdToNameMap,
+  createEmptyLastRemoteVaultsSnapshot,
+  type LastRemoteVaultsSnapshot
 } from '@baishou/shared'
-import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
+import {
+  isIncrementalSyncConflictBackupPath,
+  isIncrementalSyncProtectedRemotePath,
+  isJsonlShardsManifestSyncPath,
+  isSqliteRuntimeSyncPath
+} from '@baishou/shared'
+import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
+import type { SyncRecord } from '../network/cloud-sync.interface'
 import { ThreeWaySyncCore } from './three-way-sync.core'
+import { limitExecute } from './three-way-sync.utils'
 
 export type ManifestFileProgressCallback = (
   current: number,
@@ -41,6 +56,9 @@ export interface PreparedSyncManifests {
 
 export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   private static readonly MANIFEST_CACHE_TTL_MS = 120_000
+  /** Git-style racy-clean window: only trust size+mtime hash reuse for files older than 2s */
+  private static readonly HASH_REUSE_MIN_AGE_MS = 2_000
+  private static readonly LOCAL_HASH_CONCURRENCY = 16
 
   private preparedManifests: PreparedSyncManifests | null = null
 
@@ -48,6 +66,11 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     local: SyncManifest
     remote: SyncManifest
   } | null = null
+
+  private readonly fileHashCache = new Map<
+    string,
+    { size: number; mtimeMs: number; ctimeMs: number; hash: string }
+  >()
 
   protected invalidatePreparedManifests(): void {
     this.preparedManifests = null
@@ -161,36 +184,93 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
 
   async buildLocalManifest(onFileProgress?: ManifestFileProgressCallback): Promise<SyncManifest> {
     const files = await this.scanLocalFiles()
+    const now = Date.now()
     const manifest: SyncManifest = {
       version: SYNC_MANIFEST_VERSION,
-      updatedAt: Date.now(),
+      updatedAt: now,
       deviceId: this.deviceId,
-      files: {}
+      files: {},
+      capabilities: [...SYNC_MANIFEST_CAPABILITIES]
+    }
+
+    let prevFiles: Record<string, ManifestEntry> = {}
+    try {
+      const prev = await this.getLocalManifest()
+      prevFiles = prev.files ?? {}
+    } catch {
+      prevFiles = {}
     }
 
     const total = files.length
     let hashFailures = 0
+    let completed = 0
     onFileProgress?.(0, total, '')
 
-    for (let index = 0; index < files.length; index++) {
-      const relPath = files[index]!
-      const fullPath = await this.resolveSyncFullPath(relPath)
-      try {
-        const hash = await this.computeFileHash(fullPath)
-        const stat = await fs.promises.stat(fullPath)
-        manifest.files[relPath] = {
-          hash,
-          size: stat.size,
-          lastModified: stat.mtimeMs
+    const entries = await limitExecute(
+      files,
+      ThreeWaySyncManifestMixin.LOCAL_HASH_CONCURRENCY,
+      async (relPath) => {
+        const fullPath = await this.resolveSyncFullPath(relPath)
+        try {
+          const stat = await fs.promises.stat(fullPath)
+          const isStableAge = now - stat.mtimeMs > ThreeWaySyncManifestMixin.HASH_REUSE_MIN_AGE_MS
+          const memCached = this.fileHashCache.get(relPath)
+          let hash: string | undefined
+          if (
+            isStableAge &&
+            memCached &&
+            memCached.size === stat.size &&
+            memCached.mtimeMs === stat.mtimeMs &&
+            memCached.ctimeMs === stat.ctimeMs
+          ) {
+            hash = memCached.hash
+          } else {
+            const diskPrev = prevFiles[relPath]
+            if (
+              isStableAge &&
+              diskPrev &&
+              diskPrev.hash &&
+              diskPrev.size === stat.size &&
+              diskPrev.lastModified === stat.mtimeMs
+            ) {
+              hash = diskPrev.hash
+            } else {
+              hash = await this.computeFileHash(fullPath)
+            }
+            this.fileHashCache.set(relPath, {
+              size: stat.size,
+              mtimeMs: stat.mtimeMs,
+              ctimeMs: stat.ctimeMs,
+              hash
+            })
+          }
+          completed++
+          onFileProgress?.(completed, total, relPath)
+          return {
+            relPath,
+            entry: {
+              hash,
+              size: stat.size,
+              lastModified: stat.mtimeMs
+            } satisfies ManifestEntry
+          }
+        } catch (e) {
+          hashFailures++
+          completed++
+          console.warn(
+            `[ThreeWaySync] skip unreadable sync file during manifest build: ${relPath}`,
+            e instanceof Error ? e.message : e
+          )
+          onFileProgress?.(completed, total, relPath)
+          return null
         }
-      } catch (e) {
-        hashFailures++
-        console.warn(
-          `[ThreeWaySync] skip unreadable sync file during manifest build: ${relPath}`,
-          e instanceof Error ? e.message : e
-        )
       }
-      onFileProgress?.(index + 1, total, relPath)
+    )
+
+    for (const item of entries) {
+      if (item) {
+        manifest.files[item.relPath] = item.entry
+      }
     }
 
     if (hashFailures > 0) {
@@ -261,6 +341,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
           }
         }
         manifest.files = cleanFiles
+        await this.recoverProtectedRemoteManifestEntries(manifest, remoteFiles, actualFilesSet)
         return reconcileSyncManifestRemovedWithRemoteFiles(manifest, actualFilesSet)
       }
 
@@ -269,6 +350,54 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       try {
         fs.unlinkSync(tempPath)
       } catch {}
+    }
+  }
+
+  /**
+   * 旧端扫描不到、但实际仍存在的保护路径（global settings / vault.json / registry / 用户技能）。
+   * 旧端会从自己的 manifest 里丢掉这些条目；新端需要从实际远端对象补回来，
+   * 否则新装设备会误以为远端没有，从而用本地默认值覆盖云端。
+   */
+  private async recoverProtectedRemoteManifestEntries(
+    manifest: SyncManifest,
+    remoteFiles: readonly SyncRecord[],
+    actualFilesSet: ReadonlySet<string>
+  ): Promise<void> {
+    const missing = remoteFiles.filter((file) => {
+      const rel = file.filename.replace(/\\/g, '/')
+      if (!actualFilesSet.has(rel)) return false
+      if (manifest.files[rel] || manifest.removed?.[rel]) return false
+      return isIncrementalSyncProtectedRemotePath(rel)
+    })
+    if (missing.length === 0) return
+
+    const metaDir = await this.getSyncMetaDirectory()
+    await fs.promises.mkdir(metaDir, { recursive: true })
+    for (const file of missing) {
+      const rel = file.filename.replace(/\\/g, '/')
+      const tempPath = path.join(
+        metaDir,
+        `temp-recover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`
+      )
+      try {
+        await this.cloudClient.downloadFile(rel, tempPath)
+        const stat = await fs.promises.stat(tempPath)
+        manifest.files[rel] = {
+          hash: await this.computeFileHash(tempPath),
+          size: stat.size,
+          lastModified: file.lastModified?.getTime() || stat.mtimeMs
+        }
+        console.warn(`[ThreeWaySync] Recovered protected remote manifest entry: ${rel}`)
+      } catch (e) {
+        console.warn(
+          `[ThreeWaySync] Failed to recover protected remote entry ${rel}:`,
+          e instanceof Error ? e.message : e
+        )
+      } finally {
+        try {
+          fs.unlinkSync(tempPath)
+        } catch {}
+      }
     }
   }
 
@@ -351,9 +480,65 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     await fs.promises.writeFile(storageIdPath, getIncrementalSyncStorageId(this.config), 'utf8')
   }
 
+  /** 读取本机 vault_registry.json → id→目录名（rename pass 输入） */
+  protected async loadLocalVaultIdToNameMap(): Promise<Record<string, string>> {
+    const root = await this.getSyncRoot()
+    const registryPath = path.join(root, 'vault_registry.json')
+    try {
+      const raw = await fs.promises.readFile(registryPath, 'utf8')
+      return parseVaultIdToNameMap(JSON.parse(raw))
+    } catch {
+      return {}
+    }
+  }
+
+  protected async getLastRemoteVaultsSnapshot(): Promise<LastRemoteVaultsSnapshot> {
+    await this.loadConfig()
+    const metaDir = await this.getSyncMetaDirectory()
+    const vaultsPath = path.join(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
+    const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
+    const empty = createEmptyLastRemoteVaultsSnapshot(0)
+
+    if (!fs.existsSync(vaultsPath)) return empty
+
+    if (fs.existsSync(storageIdPath)) {
+      try {
+        const savedId = (await fs.promises.readFile(storageIdPath, 'utf8')).trim()
+        if (savedId !== getIncrementalSyncStorageId(this.config)) {
+          return empty
+        }
+      } catch {
+        return empty
+      }
+    } else {
+      return empty
+    }
+
+    try {
+      const raw = await fs.promises.readFile(vaultsPath, 'utf8')
+      return parseLastRemoteVaultsSnapshot(JSON.parse(raw))
+    } catch {
+      return empty
+    }
+  }
+
+  /**
+   * 与祖先快照同时提交：写入上次同步时的 id→目录名。
+   * `vaults` 缺省时从本机注册表读取（一致点提交用当前本机映射）。
+   */
+  protected async saveLastRemoteVaultsSnapshot(vaults?: Record<string, string>): Promise<void> {
+    await this.loadConfig()
+    const metaDir = await this.getSyncMetaDirectory()
+    const vaultsPath = path.join(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
+    const map = vaults ?? (await this.loadLocalVaultIdToNameMap())
+    const snapshot = serializeLastRemoteVaultsSnapshot(map)
+    await fs.promises.mkdir(metaDir, { recursive: true })
+    await fs.promises.writeFile(vaultsPath, JSON.stringify(snapshot, null, 2), 'utf8')
+  }
+
   protected async uploadFile(relPath: string): Promise<void> {
-    if (isSqliteRuntimeSyncPath(relPath)) {
-      console.warn(`[ThreeWaySync] Skipping SQLite runtime file upload: ${relPath}`)
+    if (isSqliteRuntimeSyncPath(relPath) || isJsonlShardsManifestSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping local-only sync file upload: ${relPath}`)
       return
     }
     const fullPath = await this.resolveSyncFullPath(relPath)
@@ -363,14 +548,17 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async downloadFile(relPath: string): Promise<boolean> {
-    if (isSqliteRuntimeSyncPath(relPath)) {
-      console.warn(`[ThreeWaySync] Skipping SQLite runtime file download: ${relPath}`)
+    if (isSqliteRuntimeSyncPath(relPath) || isJsonlShardsManifestSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping local-only sync file download: ${relPath}`)
       return false
     }
     const fullPath = await this.resolveSyncFullPath(relPath)
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
     try {
       await this.cloudClient.downloadFile(relPath, fullPath)
+      if (isMonthlyJsonlRawPath(relPath)) {
+        await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
+      }
       return true
     } catch (err: unknown) {
       if (isIncrementalSyncRemoteFileNotFoundError(err)) {
@@ -382,6 +570,15 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       throw err
     }
   }
+
+  /**
+   * Invalidate pending-index after an out-of-band Memory/Graph monthly shard write.
+   * Implemented on ThreeWaySyncService (needs MonthlyJsonlStore).
+   */
+  protected abstract markMonthlyJsonlPendingAfterExternalWrite(
+    relPath: string,
+    absoluteShardPath: string
+  ): Promise<void>
 
   protected async deleteRemoteFile(relPath: string): Promise<void> {
     await this.cloudClient.deleteFile(relPath)
@@ -407,6 +604,10 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
         }
       }
       fs.unlinkSync(fullPath)
+    }
+    // File gone: refresh sets contentHash to md5('') while keeping indexedHash → orphan scan clears DB
+    if (isMonthlyJsonlRawPath(relPath)) {
+      await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
     }
   }
 

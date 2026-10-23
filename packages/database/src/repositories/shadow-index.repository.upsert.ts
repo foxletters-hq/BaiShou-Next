@@ -1,4 +1,4 @@
-import { eq, sql, and } from 'drizzle-orm'
+import { eq, sql, and, or, like } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
 import type { UpsertShadowIndexPayload } from './shadow-index.repository.types'
@@ -7,6 +7,9 @@ import { segmentChinese } from './shadow-index.repository.text'
 type IdPathMaps = {
   idByPath: Map<string, number>
   pathById: Map<number, string>
+  idByDate: Map<string, number>
+  dateById: Map<number, string>
+  foreignVaultIds: Set<number>
 }
 
 type UpsertDb = Pick<AppDatabase, 'insert' | 'update' | 'select' | 'run' | 'transaction'>
@@ -24,18 +27,38 @@ export function normalizeShadowFilePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+/g, '/')
 }
 
-function buildMapsFromRows(rows: Array<{ id: number; filePath: string }>): IdPathMaps {
-  const idByPath = new Map<string, number>()
-  const pathById = new Map<number, string>()
-  for (const row of rows) {
-    const normalized = normalizeShadowFilePath(row.filePath)
-    idByPath.set(normalized, Number(row.id))
-    pathById.set(Number(row.id), normalized)
-  }
-  return { idByPath, pathById }
+function normalizeDayKey(dateStr: string): string {
+  return String(dateStr).split('T')[0] ?? String(dateStr)
 }
 
-function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): void {
+function buildMapsFromRows(
+  rows: Array<{ id: number; vaultId?: string; filePath: string; date?: string }>,
+  vaultId: string
+): IdPathMaps {
+  const idByPath = new Map<string, number>()
+  const pathById = new Map<number, string>()
+  const idByDate = new Map<string, number>()
+  const dateById = new Map<number, string>()
+  const foreignVaultIds = new Set<number>()
+  for (const row of rows) {
+    const numId = Number(row.id)
+    if (row.vaultId !== undefined && row.vaultId !== vaultId) {
+      foreignVaultIds.add(numId)
+      continue
+    }
+    const normalized = normalizeShadowFilePath(row.filePath)
+    idByPath.set(normalized, numId)
+    pathById.set(numId, normalized)
+    if (row.date) {
+      const dayKey = normalizeDayKey(row.date)
+      idByDate.set(dayKey, numId)
+      dateById.set(numId, dayKey)
+    }
+  }
+  return { idByPath, pathById, idByDate, dateById, foreignVaultIds }
+}
+
+function trackAssignedId(maps: IdPathMaps, filePath: string, dateStr: string, rowId: number): void {
   const normalizedPath = normalizeShadowFilePath(filePath)
   const previousPath = maps.pathById.get(rowId)
   if (previousPath != null && previousPath !== normalizedPath) {
@@ -43,36 +66,80 @@ function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): voi
   }
   maps.idByPath.set(normalizedPath, rowId)
   maps.pathById.set(rowId, normalizedPath)
+  const dayKey = normalizeDayKey(dateStr)
+  const previousDay = maps.dateById.get(rowId)
+  if (previousDay != null && previousDay !== dayKey) {
+    maps.idByDate.delete(previousDay)
+  }
+  maps.idByDate.set(dayKey, rowId)
+  maps.dateById.set(rowId, dayKey)
 }
 
-async function loadIdPathMaps(database: UpsertDb, vaultName: string): Promise<IdPathMaps> {
+async function loadIdPathMaps(database: UpsertDb, vaultId: string): Promise<IdPathMaps> {
   const existing = await database
     .select({
       id: shadowJournalIndexTable.id,
-      filePath: shadowJournalIndexTable.filePath
+      vaultId: shadowJournalIndexTable.vaultId,
+      filePath: shadowJournalIndexTable.filePath,
+      date: shadowJournalIndexTable.date
     })
     .from(shadowJournalIndexTable)
-    .where(eq(shadowJournalIndexTable.vaultName, vaultName))
 
-  return buildMapsFromRows(existing)
+  return buildMapsFromRows(existing, vaultId)
+}
+
+async function loadIdPathMapsForSingle(
+  database: UpsertDb,
+  vaultId: string,
+  payload: UpsertShadowIndexPayload
+): Promise<IdPathMaps> {
+  const normalizedPath = normalizeShadowFilePath(payload.filePath)
+  const dayKey = normalizeDayKey(payload.date)
+  const sameVaultCondition = and(
+    eq(shadowJournalIndexTable.vaultId, vaultId),
+    or(
+      eq(shadowJournalIndexTable.filePath, normalizedPath),
+      eq(shadowJournalIndexTable.filePath, payload.filePath),
+      like(shadowJournalIndexTable.date, `${dayKey}%`)
+    )
+  )
+  const targetCondition =
+    payload.id !== undefined
+      ? or(sameVaultCondition, eq(shadowJournalIndexTable.id, payload.id))
+      : sameVaultCondition
+  const existing = await database
+    .select({
+      id: shadowJournalIndexTable.id,
+      vaultId: shadowJournalIndexTable.vaultId,
+      filePath: shadowJournalIndexTable.filePath,
+      date: shadowJournalIndexTable.date
+    })
+    .from(shadowJournalIndexTable)
+    .where(targetCondition)
+
+  return buildMapsFromRows(existing, vaultId)
 }
 
 function buildUpsertSet(
   indexData: Omit<
     UpsertShadowIndexPayload,
-    'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultName'
+    'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultId'
   >,
-  vaultName: string,
+  vaultId: string,
+  filePath: string,
   rawContent: string,
   tags: string,
   tagColors: string | null
 ) {
   return {
-    vaultName,
+    vaultId,
+    filePath,
     date: indexData.date,
     createdAt: indexData.createdAt,
     updatedAt: indexData.updatedAt,
     contentHash: indexData.contentHash,
+    fileMtimeMs: indexData.fileMtimeMs ?? null,
+    fileSize: indexData.fileSize ?? null,
     weather: indexData.weather ?? null,
     mood: indexData.mood ?? null,
     location: indexData.location ?? null,
@@ -125,7 +192,7 @@ async function syncFtsRowAsync(
 async function upsertOne(
   db: UpsertDb,
   payload: UpsertShadowIndexPayload,
-  vaultName: string,
+  vaultId: string,
   maps: IdPathMaps
 ): Promise<number> {
   const filePath = normalizeShadowFilePath(payload.filePath)
@@ -135,38 +202,44 @@ async function upsertOne(
     tagColors = null,
     id: requestedId,
     filePath: _path,
-    vaultName: _vault,
+    vaultId: _vault,
     ...indexData
   } = payload
 
   const serializedTagColors = tagColors ?? null
+  const dayKey = normalizeDayKey(indexData.date)
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     await db
       .update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
-          eq(shadowJournalIndexTable.vaultName, vaultName)
+          eq(shadowJournalIndexTable.vaultId, vaultId)
         )
       )
 
-    trackAssignedId(maps, filePath, existingId)
+    trackAssignedId(maps, filePath, indexData.date, existingId)
     return existingId
   }
 
   let insertId: number | undefined
   if (requestedId != null && requestedId > 0) {
-    const ownerPath = maps.pathById.get(Number(requestedId))
-    if (ownerPath == null || ownerPath === filePath) {
-      insertId = Number(requestedId)
+    const numRequestedId = Number(requestedId)
+    const ownerPath = maps.pathById.get(numRequestedId)
+    const ownerDay = maps.dateById.get(numRequestedId)
+    if (
+      !maps.foreignVaultIds.has(numRequestedId) &&
+      (ownerPath == null || ownerPath === filePath || ownerDay === dayKey)
+    ) {
+      insertId = numRequestedId
     }
   }
 
   const baseValues = {
-    vaultName,
+    vaultId,
     ...indexData,
     filePath,
     rawContent,
@@ -174,18 +247,22 @@ async function upsertOne(
     tagColors: serializedTagColors
   }
 
-  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 关键：用 ON CONFLICT DO UPDATE 原子处理 PK / (vault_id, file_path) 冲突。
   // 之前用 try/catch + 第二次 INSERT 会在 SQLite 事务中产生
   // "Failed to run the query 'commit'"：一旦首条 INSERT 失败，
   // 整个事务进入 needs-rollback 状态，即便异常被 catch 接住，
   // 事务也已经中毒，后续 COMMIT 必然失败。
   // ON CONFLICT 是单条原子语句，根本不会让事务中毒。
+  const conflictTarget =
+    insertId != null
+      ? shadowJournalIndexTable.id
+      : [shadowJournalIndexTable.vaultId, shadowJournalIndexTable.filePath]
   const result = await db
     .insert(shadowJournalIndexTable)
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
-      target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
+      target: conflictTarget,
+      set: buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
 
@@ -194,14 +271,14 @@ async function upsertOne(
     throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
 
-  trackAssignedId(maps, filePath, rowId)
+  trackAssignedId(maps, filePath, indexData.date, rowId)
   return rowId
 }
 
 function upsertOneSync(
   tx: UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
   payload: UpsertShadowIndexPayload,
-  vaultName: string,
+  vaultId: string,
   maps: IdPathMaps
 ): number {
   const filePath = normalizeShadowFilePath(payload.filePath)
@@ -211,38 +288,44 @@ function upsertOneSync(
     tagColors = null,
     id: requestedId,
     filePath: _path,
-    vaultName: _vault,
+    vaultId: _vault,
     ...indexData
   } = payload
 
   const serializedTagColors = tagColors ?? null
+  const dayKey = normalizeDayKey(indexData.date)
 
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     tx.update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
-          eq(shadowJournalIndexTable.vaultName, vaultName)
+          eq(shadowJournalIndexTable.vaultId, vaultId)
         )
       )
       .run()
 
-    trackAssignedId(maps, filePath, existingId)
+    trackAssignedId(maps, filePath, indexData.date, existingId)
     return existingId
   }
 
   let insertId: number | undefined
   if (requestedId != null && requestedId > 0) {
-    const ownerPath = maps.pathById.get(Number(requestedId))
-    if (ownerPath == null || ownerPath === filePath) {
-      insertId = Number(requestedId)
+    const numRequestedId = Number(requestedId)
+    const ownerPath = maps.pathById.get(numRequestedId)
+    const ownerDay = maps.dateById.get(numRequestedId)
+    if (
+      !maps.foreignVaultIds.has(numRequestedId) &&
+      (ownerPath == null || ownerPath === filePath || ownerDay === dayKey)
+    ) {
+      insertId = numRequestedId
     }
   }
 
   const baseValues = {
-    vaultName,
+    vaultId,
     ...indexData,
     filePath,
     rawContent,
@@ -250,15 +333,19 @@ function upsertOneSync(
     tagColors: serializedTagColors
   }
 
-  // 关键：用 ON CONFLICT (id) DO UPDATE 原子处理 PK 冲突。
+  // 关键：用 ON CONFLICT DO UPDATE 原子处理 PK / (vault_id, file_path) 冲突。
   // 同步版本（better-sqlite3）同样不能在事务中吞掉 INSERT 异常后
   // 再发第二条语句——SQLite 事务已经中毒，commit 必然挂。
+  const conflictTarget =
+    insertId != null
+      ? shadowJournalIndexTable.id
+      : [shadowJournalIndexTable.vaultId, shadowJournalIndexTable.filePath]
   const result = tx
     .insert(shadowJournalIndexTable)
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
-      target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
+      target: conflictTarget,
+      set: buildUpsertSet(indexData, vaultId, filePath, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
     .all() as any
@@ -268,7 +355,7 @@ function upsertOneSync(
     throw new Error('[ShadowIndex] insert 返回了空 ID')
   }
 
-  trackAssignedId(maps, filePath, rowId)
+  trackAssignedId(maps, filePath, indexData.date, rowId)
   return rowId
 }
 
@@ -282,11 +369,11 @@ export class ShadowIndexUpsertOps {
 
   constructor(
     private readonly database: AppDatabase,
-    private readonly vaultName: string
+    private readonly vaultId: string
   ) {}
 
-  private resolveVaultName(payload: UpsertShadowIndexPayload): string {
-    return payload.vaultName ?? this.vaultName
+  private resolveVaultId(payload: UpsertShadowIndexPayload): string {
+    return payload.vaultId ?? this.vaultId
   }
 
   private async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -305,9 +392,9 @@ export class ShadowIndexUpsertOps {
   }
 
   async upsert(payload: UpsertShadowIndexPayload): Promise<number> {
-    const vaultName = this.resolveVaultName(payload)
-    const maps = await loadIdPathMaps(this.database, vaultName)
-    const rowId = await upsertOne(this.database, payload, vaultName, maps)
+    const vaultId = this.resolveVaultId(payload)
+    const maps = await loadIdPathMapsForSingle(this.database, vaultId, payload)
+    const rowId = await upsertOne(this.database, payload, vaultId, maps)
 
     await syncFtsRowAsync(
       this.database,
@@ -323,21 +410,21 @@ export class ShadowIndexUpsertOps {
     if (payloads.length === 0) return []
 
     return this.withWriteLock(async () => {
-      const maps = await loadIdPathMaps(this.database, this.vaultName)
+      const maps = await loadIdPathMaps(this.database, this.vaultId)
       const rowIds: number[] = []
       const driver = detectSqliteDriver(this.database)
 
       // 关键：FTS 同步必须在主事务 COMMIT 之后执行。
       // SQLite 在事务内任一语句失败后会把整个事务置为 needs-rollback 状态，
       // 即便用 try/catch 接住异常，事务也已经中毒，后续 COMMIT 必然失败。
-      // 把 FTS 挪到事务外（自带 try/catch 兜底）就能让索引写入与 FTS 同步真正解耦，
-      // FTS 不可用（最常见于 Android 系统 SQLite 未编译 FTS5）也不会影响保存。
+      // 把 FTS 挪到主事务外独立执行（优先单次批量事务，失败时回退逐条容错），
+      // 就能让索引写入与 FTS 同步真正解耦，FTS 不可用也不会影响保存。
       if (driver === 'better-sqlite' || driver === 'expo-sync') {
         // expo-sqlite 的 Drizzle transaction 是同步 API：async 回调会在 await 前 commit，
         // 必须走 upsertOneSync，否则并发写同一连接会导致 Android 原生崩溃。
         await this.database.transaction(async (tx) => {
           for (const payload of payloads) {
-            const itemVault = this.resolveVaultName(payload)
+            const itemVault = this.resolveVaultId(payload)
             const rowId = upsertOneSync(
               tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
               payload,
@@ -347,28 +434,32 @@ export class ShadowIndexUpsertOps {
             rowIds.push(rowId)
           }
         })
-        for (let i = 0; i < payloads.length; i++) {
-          if (driver === 'better-sqlite') {
+        try {
+          await this.database.transaction(async (tx) => {
+            const syncTx = tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void }
+            for (let i = 0; i < payloads.length; i++) {
+              const rowId = rowIds[i]!
+              const item = payloads[i]!
+              syncTx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`)
+              syncTx.run(
+                sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(item.rawContent)}, ${segmentChinese(item.tags)})`
+              )
+            }
+          })
+        } catch {
+          for (let i = 0; i < payloads.length; i++) {
             syncFtsRowSync(
               this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
               rowIds[i]!,
               payloads[i]!.rawContent,
               payloads[i]!.tags
             )
-          } else {
-            await syncFtsRowAsync(
-              this.database,
-              rowIds[i]!,
-              payloads[i]!.rawContent,
-              payloads[i]!.tags,
-              `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
-            )
           }
         }
       } else {
         await this.database.transaction(async (tx) => {
           for (const payload of payloads) {
-            const itemVault = this.resolveVaultName(payload)
+            const itemVault = this.resolveVaultId(payload)
             const rowId = await upsertOne(tx, payload, itemVault, maps)
             rowIds.push(rowId)
           }
@@ -388,14 +479,41 @@ export class ShadowIndexUpsertOps {
     })
   }
 
+  /**
+   * 仅更新物理文件 mtime/size/filePath 指纹（内容未变、元数据或挂载路径漂移时的轻量写路径）。
+   */
+  async updateFileStat(
+    dateStr: string,
+    fileMtimeMs: number | null,
+    fileSize: number | null,
+    filePath?: string
+  ): Promise<void> {
+    if (!dateStr) return
+    return this.withWriteLock(async () => {
+      const patch: { fileMtimeMs?: number | null; fileSize?: number | null; filePath?: string } = {}
+      if (fileMtimeMs != null) patch.fileMtimeMs = fileMtimeMs
+      if (fileSize != null) patch.fileSize = fileSize
+      if (filePath != null && filePath.trim() !== '') {
+        patch.filePath = normalizeShadowFilePath(filePath)
+      }
+      if (Object.keys(patch).length === 0) return
+      await this.database
+        .update(shadowJournalIndexTable)
+        .set(patch)
+        .where(
+          and(
+            eq(shadowJournalIndexTable.vaultId, this.vaultId),
+            like(shadowJournalIndexTable.date, `${dateStr}%`)
+          )
+        )
+    })
+  }
+
   async deleteById(id: number): Promise<void> {
     const deleted = await this.database
       .delete(shadowJournalIndexTable)
       .where(
-        and(
-          eq(shadowJournalIndexTable.id, id),
-          eq(shadowJournalIndexTable.vaultName, this.vaultName)
-        )
+        and(eq(shadowJournalIndexTable.id, id), eq(shadowJournalIndexTable.vaultId, this.vaultId))
       )
       .returning({ id: shadowJournalIndexTable.id })
 
@@ -413,29 +531,53 @@ export class ShadowIndexUpsertOps {
   }
 
   /** 删除指定 vault 的全部影子索引（含 FTS），供删除工作空间时使用 */
-  async deleteAllForVault(vaultName?: string): Promise<void> {
-    const targetVault = vaultName ?? this.vaultName
+  async deleteAllForVault(vaultId?: string): Promise<void> {
+    const targetVault = vaultId ?? this.vaultId
     const rows = await this.database
       .select({ id: shadowJournalIndexTable.id })
       .from(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.vaultName, targetVault))
+      .where(eq(shadowJournalIndexTable.vaultId, targetVault))
 
     if (rows.length === 0) return
 
     await this.database
       .delete(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.vaultName, targetVault))
+      .where(eq(shadowJournalIndexTable.vaultId, targetVault))
 
-    for (const { id } of rows) {
+    const ids = rows.map((r) => r.id)
+    const CHUNK = 400
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK)
       try {
-        await this.database.run(sql`DELETE FROM journals_fts WHERE rowid = ${id}`)
+        await this.database.run(
+          sql`DELETE FROM journals_fts WHERE rowid IN (${sql.join(
+            chunk.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        )
       } catch (e: any) {
         console.warn(
-          `[ShadowIndex] FTS 批量删除失败 (非阻塞) [ID=${id}]:`,
+          `[ShadowIndex] FTS 批量删除失败 (非阻塞):`,
           e?.message,
           e?.cause?.message ?? e?.cause ?? ''
         )
       }
     }
+  }
+
+  /** 清空全局影子索引库中的所有日记与 FTS 记录（全量归档恢复前使用） */
+  async deleteAllRecords(): Promise<void> {
+    return this.withWriteLock(async () => {
+      await this.database.delete(shadowJournalIndexTable)
+      try {
+        await this.database.run(sql`DELETE FROM journals_fts`)
+      } catch (e: any) {
+        console.warn(
+          '[ShadowIndex] FTS 全表清空失败 (非阻塞):',
+          e?.message,
+          e?.cause?.message ?? e?.cause ?? ''
+        )
+      }
+    })
   }
 }

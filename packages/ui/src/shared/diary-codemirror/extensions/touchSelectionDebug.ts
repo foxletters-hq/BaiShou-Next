@@ -64,7 +64,6 @@ export function captureSelectionSnapshot(
     posAtCoordsPrecise = view.posAtCoords({ x: touch.clientX, y: touch.clientY }, true as false)
   }
 
-  const anchorPos = posAtCoords ?? cmFromDomAnchor ?? cmHead
   const mismatch =
     domText.length > 0 &&
     (domText !== cmText ||

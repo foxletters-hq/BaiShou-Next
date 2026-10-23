@@ -14,6 +14,12 @@
 
 > **请注意**：此前基于 Flutter 的客户端（[Anson-Trio/BaiShou](https://github.com/Anson-Trio/BaiShou)）**已不再维护**；后续所有功能更新与版本发布均在本仓库 **BaiShou-Next** 进行（桌面 Electron + 移动 Expo 的 monorepo）。请 Star / Watch 本仓库以获取最新动态。
 
+#### 给 AI 编码工具
+
+第一次进入本仓库时，先读 [`docs/1-AI-Code/0-README.md`](./docs/1-AI-Code/0-README.md)，按其中的「首次接入」安装提示词和 skills，并核对「版本」表。已安装副本与表中版本一致时，不需要每次重读；版本不一致时按该 README 更新。
+
+新增或更新提示词、skill 时，必须同步更新 `docs/1-AI-Code/0-README.md` 的版本日期。
+
 ---
 
 #### 看板娘：Latte
@@ -134,11 +140,13 @@ pnpm ci:check
 
 <!-- CONTRIBUTORS-WALL:START -->
 <!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。展示 80px / 源图 240px。勿手改；运行: pnpm sync:contributors -->
+
 <a href="https://github.com/Anson-Trio" title="Anson-Trio"><img src="https://avatars.githubusercontent.com/u/107763915?v=4&s=240" width="80" height="80" alt="Anson-Trio" style="border-radius:50%;"/></a>
 <a href="https://github.com/Ratman463" title="Ratman463"><img src="https://avatars.githubusercontent.com/u/187963490?v=4&s=240" width="80" height="80" alt="Ratman463" style="border-radius:50%;"/></a>
 <a href="https://github.com/ctnilpp" title="ctnilpp"><img src="https://avatars.githubusercontent.com/u/49940531?v=4&s=240" width="80" height="80" alt="ctnilpp" style="border-radius:50%;"/></a>
 <a href="https://github.com/fisHarly0" title="fisHarly0"><img src="https://avatars.githubusercontent.com/u/188205924?v=4&s=240" width="80" height="80" alt="fisHarly0" style="border-radius:50%;"/></a>
 <a href="https://github.com/david082321" title="david082321"><img src="https://avatars.githubusercontent.com/u/7046617?v=4&s=240" width="80" height="80" alt="david082321" style="border-radius:50%;"/></a>
+
 <!-- CONTRIBUTORS-WALL:END -->
 
 [查看完整贡献者列表](https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors)

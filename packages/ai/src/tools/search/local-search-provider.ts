@@ -1,4 +1,4 @@
-import { logger, limitExecute } from '@baishou/shared'
+import { logger, limitExecute, truncateTextSafe } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_LIMITS, WEB_SEARCH_MAX_RESULTS_LIMIT } from './web-search-config.util'
 
 /** 与桌面端 SearchService 窗口池并发一致 */
@@ -159,6 +159,6 @@ export abstract class LocalSearchProvider {
     if (content.length <= maxLength) {
       return content
     }
-    return content.substring(0, maxLength) + '... (truncated)'
+    return truncateTextSafe(content, maxLength, '... (truncated)')
   }
 }

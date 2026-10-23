@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { isVisionModel } from '../model-capabilities'
+import { isOpenAiStyleReasoningModel, isVisionModel } from '../model-capabilities'
 import { isProviderListedVisionModel } from '../provider-vision-models'
 import { isVisionModelInSnapshot, VISION_MODELS_SNAPSHOT } from '../vision-models.snapshot'
 import { resetVisionModelsRuntimeOverlayForTests } from '../vision-models.runtime'
@@ -8,11 +8,30 @@ beforeEach(() => {
   resetVisionModelsRuntimeOverlayForTests()
 })
 
+describe('isOpenAiStyleReasoningModel', () => {
+  it('matches o-series and gpt-5 reasoning models', () => {
+    expect(isOpenAiStyleReasoningModel('o1')).toBe(true)
+    expect(isOpenAiStyleReasoningModel('o3-mini')).toBe(true)
+    expect(isOpenAiStyleReasoningModel('o4-mini')).toBe(true)
+    expect(isOpenAiStyleReasoningModel('gpt-5')).toBe(true)
+    expect(isOpenAiStyleReasoningModel('gpt-5.6-sol')).toBe(true)
+    expect(isOpenAiStyleReasoningModel('openai/gpt-5.2')).toBe(true)
+  })
+
+  it('excludes gpt-5-chat and non-reasoning models', () => {
+    expect(isOpenAiStyleReasoningModel('gpt-5-chat-latest')).toBe(false)
+    expect(isOpenAiStyleReasoningModel('gpt-5.1-chat-latest')).toBe(false)
+    expect(isOpenAiStyleReasoningModel('gpt-4o')).toBe(false)
+    expect(isOpenAiStyleReasoningModel('deepseek-chat')).toBe(false)
+    expect(isOpenAiStyleReasoningModel('')).toBe(false)
+  })
+})
+
 describe('VISION_MODELS_SNAPSHOT', () => {
   it('includes opencodego kimi vision models from models.dev', () => {
     const opencode = VISION_MODELS_SNAPSHOT.byProvider.opencodego
     expect(opencode).toContain('kimi-k2.7-code')
-    expect(opencode).toContain('kimi-k2.6')
+    expect(opencode).toContain('kimi-k3')
   })
 
   it('includes current Claude Haiku and GPT Luna vision ids', () => {

@@ -1,7 +1,8 @@
 import React from 'react'
-import { Database, History } from 'lucide-react'
+import { Archive, Database, Folder, History } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
+import { settingsTypography } from '../../theme/tokens'
 
 export interface CloudSyncStatCardsProps {
   vm: CloudSyncPanelViewModel
@@ -9,8 +10,25 @@ export interface CloudSyncStatCardsProps {
 
 export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) => {
   const { t, config, activeTab, records, sizeString, getTargetIcon, getTargetColor } = vm
+  const isLocalTab = activeTab === 'local'
+  const isSnapshotTab = activeTab === 'snapshot'
 
-  if (activeTab === 'local') return null
+  const targetColor =
+    isLocalTab || isSnapshotTab ? 'var(--color-primary)' : getTargetColor(config.target)
+  const targetIconBg =
+    isLocalTab || isSnapshotTab
+      ? 'rgba(var(--color-primary-rgb), 0.1)'
+      : `${getTargetColor(config.target)}1a`
+
+  const targetLabel = isSnapshotTab
+    ? t('data_sync.storage_target', '存储目标')
+    : t('data_sync.sync_target', '备份目标 (Target)')
+
+  const targetValue = isLocalTab
+    ? t('data_sync.local_zip_target', 'ZIP')
+    : isSnapshotTab
+      ? t('data_sync.target_local_short', '本地')
+      : config.target.toUpperCase()
 
   return (
     <div className={styles.statCardsRow}>
@@ -18,15 +36,21 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
         <div
           className={styles.statIconWrapper}
           style={{
-            backgroundColor: `${getTargetColor(config.target)}15`,
-            color: getTargetColor(config.target)
+            backgroundColor: targetIconBg,
+            color: targetColor
           }}
         >
-          {getTargetIcon(config.target)}
+          {isLocalTab ? (
+            <Archive size={18} strokeWidth={2} />
+          ) : isSnapshotTab ? (
+            <Folder size={18} strokeWidth={2} />
+          ) : (
+            getTargetIcon(config.target, 18)
+          )}
         </div>
         <div className={styles.statInfo}>
-          <div className={styles.statLabel}>{t('data_sync.sync_target', '备份目标 (Target)')}</div>
-          <div className={styles.statValue}>{config.target.toUpperCase()}</div>
+          <div className={styles.statLabel}>{targetLabel}</div>
+          <div className={styles.statValue}>{targetValue}</div>
         </div>
       </div>
 
@@ -38,15 +62,19 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
             color: '#10b981'
           }}
         >
-          <Database size={20} strokeWidth={1.5} />
+          <Database size={18} strokeWidth={2} />
         </div>
         <div className={styles.statInfo}>
           <div className={styles.statLabel}>
-            {activeTab === 'snapshot'
-              ? t('data_sync.total_snapshot_size', '总快照大小')
-              : t('data_sync.total_backup_size', '总备份大小')}
+            {isLocalTab
+              ? t('data_sync.local_zip_size_label', '导出方式')
+              : isSnapshotTab
+                ? t('data_sync.total_snapshot_size', '总快照大小')
+                : t('data_sync.total_backup_size', '总备份大小')}
           </div>
-          <div className={styles.statValue}>{sizeString}</div>
+          <div className={styles.statValue}>
+            {isLocalTab ? t('data_sync.local_zip_size_value', '按需导出') : sizeString}
+          </div>
         </div>
       </div>
 
@@ -58,19 +86,27 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
             color: '#a855f7'
           }}
         >
-          <History size={20} strokeWidth={1.5} />
+          <History size={18} strokeWidth={2} />
         </div>
         <div className={styles.statInfo}>
           <div className={styles.statLabel}>
-            {activeTab === 'snapshot'
-              ? t('data_sync.snapshot_count', '快照数量')
-              : t('data_sync.backup_count', '备份数量')}
+            {isLocalTab
+              ? t('data_sync.local_zip_count_label', '存放位置')
+              : isSnapshotTab
+                ? t('data_sync.snapshot_count', '快照数量')
+                : t('data_sync.backup_count', '备份数量')}
           </div>
           <div className={styles.statValue}>
-            {records.length}{' '}
-            <span style={{ fontSize: 13, fontWeight: 'normal' }}>
-              {t('common.copies_unit', '份')}
-            </span>
+            {isLocalTab ? (
+              t('data_sync.local_zip_count_value', '本机文件')
+            ) : (
+              <>
+                {records.length}{' '}
+                <span style={{ fontSize: settingsTypography.label.fontSize, fontWeight: 600 }}>
+                  {t('common.copies_unit', '份')}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

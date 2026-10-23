@@ -1,78 +1,143 @@
-.container {
+.page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 32px;
-  padding-bottom: 32px;
-  background: var(--bg-app);
+  height: 100%;
   width: 100%;
+  background: var(--bg-app);
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.headerRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 var(--spacing-xl);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 10;
+}
+
+.title {
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
+  line-height: 28px;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
   box-sizing: border-box;
 }
 
-/* Flutter Card with Elevation 0 + Border */
-.cardSection {
+.scrollArea::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: var(--radius-xs);
+}
+
+.pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  overflow: hidden;
+}
+
+/* 大卡内部分块（不再各自成卡） */
+.cardSection {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.pageCard > .cardSection:last-child {
+  border-bottom: none;
 }
 
 .cardHeader {
-  padding: 16px 16px 8px 16px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm) var(--spacing-md);
 }
 
 .cardTitleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .cardTitle {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   margin: 0;
 }
 
 .cardDesc {
-  font-size: 12px;
-  color: var(--text-primary);
-  margin-top: 8px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-sm);
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
-  padding-bottom: 4px;
+  padding-bottom: var(--spacing-xs);
 }
 
 .engineGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-  padding: 8px 16px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
 }
 
 /* Radio List Tile */
 .radioListTile {
   display: flex;
-  align-items: flex-start;
-  padding: 10px 12px;
+  align-items: center;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
   margin: 0;
+  /* 始终占位，避免选中/悬停换边框时布局跳动闪烁 */
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   background-color: transparent;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .radioListTile:hover {
   background-color: var(--bg-surface-high);
-  transform: translateY(-1px);
 }
 
 .radioSelected {
@@ -85,12 +150,12 @@
 }
 
 .radioCustomContainer {
-  margin-right: 10px;
-  margin-top: 1px;
+  margin-right: var(--spacing-sm-plus);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
 }
 
 .radioCustomRing {
@@ -101,7 +166,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-swift);
 }
 
 .radioSelected .radioCustomRing {
@@ -113,7 +178,7 @@
   height: 10px;
   border-radius: 50%;
   background-color: var(--color-primary);
-  animation: popIn 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  animation: popIn var(--duration-swift) cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
 .radioContent {
@@ -126,48 +191,50 @@
 
 .radioTitleRow {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 20px;
 }
 
 .radioTitle {
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: var(--settings-font-desc-size);
+  line-height: 20px;
   color: var(--text-primary);
 }
 
 .radioSubtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-primary);
 }
 
 /* API Config Card */
 .apiConfigBody {
-  padding: 16px;
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
 }
 
 .textFieldWrapper {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: flex;
   align-items: center;
-  border: 1px solid var(--color-outline);
-  border-radius: 12px;
-  padding: 4px 8px;
-  transition: border-color 0.2s;
-  background-color: transparent;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  transition:
+    border-color var(--duration-swift),
+    box-shadow var(--duration-swift);
+  background-color: var(--form-field-bg, var(--bg-surface));
 }
 
 .textFieldWrapper:focus-within {
-  border-color: var(--color-primary);
-  border-width: 2px;
-  padding: 3px 7px; /* compensate for border-width */
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .textFieldIcon {
   color: var(--text-primary);
-  margin: 0 8px;
+  margin: 0 var(--spacing-sm);
 }
 
 .textFieldInput {
@@ -175,23 +242,25 @@
   border: none;
   outline: none;
   background: transparent;
-  padding: 8px 0;
-  font-size: 14px;
+  padding: var(--spacing-sm) 0;
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
 }
 
 .iconIconButton {
   background: transparent;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .iconIconButton:hover {
@@ -200,10 +269,10 @@
 
 /* Slider Row */
 .sliderRow {
-  padding: 14px 16px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .sliderRowHeader {
@@ -214,9 +283,9 @@
 .sliderIcon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   color: var(--text-primary);
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   opacity: 0.8;
   flex-shrink: 0;
 }
@@ -228,80 +297,54 @@
 }
 
 .sliderTitle {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
 }
 
 .sliderDesc {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-primary);
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 .sliderControlRow {
   display: flex;
   align-items: center;
-  padding-left: 32px;
+  padding-left: var(--spacing-xl);
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .sliderInput {
   flex: 1;
-  -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg-surface-normal);
-  outline: none;
-  cursor: pointer;
-  margin: 0 16px 0 0;
-  transition: background 0.2s;
-}
-
-.sliderInput:hover {
-  background: var(--bg-surface-highest);
-}
-
-.sliderInput::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  transition: transform 0.15s cubic-bezier(0.17, 0.89, 0.32, 1.15);
-}
-
-.sliderInput::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  margin: 0 var(--spacing-md) 0 0;
 }
 
 .sliderValue {
   min-width: 48px;
   text-align: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
   color: var(--color-primary);
   background: var(--color-primary-light);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
 }
 
 /* Switch Tile */
 .switchTile {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md);
 }
 
 .switchIcon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   color: var(--text-primary);
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   flex-shrink: 0;
 }
 
@@ -309,54 +352,6 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-}
-
-.switchControl {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.switchControl input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.switchSlider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-surface);
-  transition: 0.2s;
-  border-radius: 24px;
-  border: 2px solid transparent;
-}
-
-.switchSlider:before {
-  position: absolute;
-  content: '';
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: var(--color-outline);
-  transition: 0.2s;
-  border-radius: 50%;
-}
-
-.switchControl input:checked + .switchSlider {
-  background-color: var(--color-primary);
-}
-
-.switchControl input:checked + .switchSlider:before {
-  transform: translateX(24px);
-  background-color: var(--color-on-primary);
 }
 
 .divider {

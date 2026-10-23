@@ -1,65 +1,57 @@
 .card {
   background: var(--bg-surface);
-  border: 1px solid rgba(128, 128, 128, 0.15);
-  border-radius: 16px;
-  padding: 24px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
   font-family: var(--font-family-main);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-md);
   transition: all var(--animation-micro);
   max-width: 800px;
-  margin-bottom: 20px;
-}
-
-[data-theme='dark'] .card {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  margin-bottom: var(--spacing-md-plus);
 }
 
 .highlighted {
-  border-color: rgba(91, 168, 245, 0.4);
-  box-shadow: 0 8px 32px rgba(91, 168, 245, 0.1);
-  background: linear-gradient(180deg, rgba(91, 168, 245, 0.02) 0%, transparent 100%);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  box-shadow: none;
+  background: linear-gradient(180deg, rgba(var(--color-primary-rgb), 0.02) 0%, transparent 100%);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed rgba(128, 128, 128, 0.15);
+  margin-bottom: var(--spacing-md-plus);
+  padding-bottom: var(--spacing-md-tight);
+  border-bottom: 1px dashed var(--border-control);
 }
 
 .dateBadge {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--color-text-main);
-  background: var(--color-surface-highest-light);
-  padding: 6px 12px;
-  border-radius: 8px;
-}
-
-[data-theme='dark'] .dateBadge {
-  background: var(--color-surface-highest-dark);
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface-highest);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
 }
 
 .metaInfo {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--spacing-xs-plus);
+  font-size: var(--settings-font-micro-size);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(128, 128, 128, 0.05);
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-lg-plus);
 }
 
 .icon {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .body {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
-  color: var(--color-text-main);
+  color: var(--text-primary);
 }

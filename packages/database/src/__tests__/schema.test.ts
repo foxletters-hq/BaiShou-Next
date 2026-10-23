@@ -14,6 +14,7 @@ describe('Database Schema', () => {
     sqlite.exec(`
       CREATE TABLE summaries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vault_id TEXT NOT NULL,
         type TEXT NOT NULL,
         start_date INTEGER NOT NULL,
         end_date INTEGER NOT NULL,
@@ -21,7 +22,7 @@ describe('Database Schema', () => {
         source_ids TEXT,
         generated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
         updated_at INTEGER,
-        UNIQUE(type, start_date, end_date)
+        UNIQUE(vault_id, type, start_date, end_date)
       );
     `)
   })

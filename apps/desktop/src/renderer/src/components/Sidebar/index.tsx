@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
-import { useUserProfileStore } from '@baishou/store'
-import { useToast } from '@baishou/ui'
+import { useSettingsStore, useUserProfileStore } from '@baishou/store'
+import { ImagePreview, useToast, resolveDesktopUserAvatarSrc } from '@baishou/ui'
+import { resolveCompanionReturnPath } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
-import { isCustomUserAvatar } from '@baishou/shared'
 import {
   isSidebarVisibilityConfigured,
   loadHiddenNavItems,
   loadSidebarNavOrder,
   markSidebarVisibilityConfigured,
-  persistHiddenNavItems
+  persistHiddenNavItems,
+  resetSidebarNavToDefaults
 } from './sidebar-preferences'
 import {
   ALL_SIDEBAR_NAV_IDS,
@@ -29,10 +30,14 @@ import {
 } from '../../features/settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../lib/prefetch-settings-entry'
 import { isSettingsOverlayPath } from '../../features/settings/settings-route.util'
+import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
   const { profile, loadProfile } = useUserProfileStore()
+  const restoreLastSessionOnReturn = useSettingsStore(
+    (s) => s.agentBehavior?.restoreLastSessionOnReturn !== false
+  )
   const toast = useToast()
 
   const navigate = useNavigate()
@@ -78,6 +83,12 @@ export const Sidebar: React.FC = () => {
       return next
     })
   }
+
+  const restoreSidebarDefaults = useCallback(() => {
+    const { hiddenItems: nextHidden, navOrder: nextOrder } = resetSidebarNavToDefaults()
+    setHiddenItems(nextHidden)
+    setNavOrder(nextOrder)
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder))
@@ -126,12 +137,27 @@ export const Sidebar: React.FC = () => {
     setNavOrder(newOrder)
   }
 
-  const isAgentMode =
-    location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent')
+  const navigateToNavId = (id: SidebarNavId, path: string) => {
+    if (id === 'companion') {
+      navigate(
+        resolveCompanionReturnPath({
+          restoreLastSessionOnReturn,
+          snapshot: readActiveVaultNavigationSnapshot()
+        })
+      )
+      return
+    }
+    navigate(path)
+  }
+
+  // 工作台主场隐藏日记侧栏；伙伴页保留侧栏
+  const isWorkbenchMode = location.pathname.startsWith('/agent-workspace')
+  const isLegacyAgentMode =
+    location.pathname.startsWith('/agent') && !location.pathname.startsWith('/agent-workspace')
 
   const isInSettings = isSettingsOverlayPath(location.pathname)
 
-  if (isAgentMode) return null
+  if (isWorkbenchMode || isLegacyAgentMode) return null
 
   return (
     <>
@@ -143,7 +169,13 @@ export const Sidebar: React.FC = () => {
       >
         <div className={styles.brandRow}>
           <div className={styles.logoBox}>
-            <img src={appIcon} alt="Logo" className={styles.brandLogo} />
+            <ImagePreview
+              src={appIcon}
+              alt={t('common.app_title', 'BaiShou')}
+              title={t('sidebar.view_brand_icon', '查看图标')}
+              className={styles.brandLogo}
+              downloadFileName={t('sidebar.brand_icon_filename', '白守.png')}
+            />
           </div>
           <div className={styles.brandText}>
             <div className={styles.brandName}>{t('common.app_title', 'BaiShou')}</div>
@@ -182,7 +214,7 @@ export const Sidebar: React.FC = () => {
                                   if (!isSidebarNavSelected(location.pathname, item.path)) {
                                     sessionStorage.setItem('desktop_last_nav', location.pathname)
                                   }
-                                  navigate(item.path)
+                                  navigateToNavId(id as SidebarNavId, item.path)
                                 }}
                               >
                                 <div {...provided.dragHandleProps} className={styles.dragHandle}>
@@ -225,9 +257,7 @@ export const Sidebar: React.FC = () => {
               onClick={() => {
                 setManageModalOpen(false)
                 rememberSettingsReturnPath(locationToReturnPath(location))
-                startTransition(() => {
-                  navigate('/settings/general')
-                })
+                navigate('/settings/general')
               }}
             >
               <span className={styles.navIcon}>
@@ -241,15 +271,7 @@ export const Sidebar: React.FC = () => {
         <div className={styles.userCard}>
           <div className={styles.avatar}>
             <img
-              src={
-                isCustomUserAvatar(profile?.avatarPath)
-                  ? profile!.avatarPath!.startsWith('http') ||
-                    profile.avatarPath.startsWith('data:') ||
-                    profile.avatarPath.startsWith('local://')
-                    ? profile.avatarPath
-                    : `local://${profile.avatarPath}`
-                  : appIcon
-              }
+              src={resolveDesktopUserAvatarSrc(profile?.avatarPath)}
               alt="avatar"
               style={{
                 width: '100%',
@@ -262,7 +284,7 @@ export const Sidebar: React.FC = () => {
           </div>
           <div className={styles.userInfo}>
             <div className={styles.userName}>
-              {profile?.nickname || t('profile.default_nickname', '白守用户')}
+              {profile?.nickname || t('profile.default_nickname', '用户')}
             </div>
           </div>
         </div>
@@ -273,6 +295,7 @@ export const Sidebar: React.FC = () => {
         hiddenItems={hiddenItems}
         onClose={() => setManageModalOpen(false)}
         onToggle={toggleItemVisibility}
+        onRestoreDefaults={restoreSidebarDefaults}
       />
     </>
   )

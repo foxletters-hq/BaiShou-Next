@@ -1,8 +1,12 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { ChatBubble, CompressionActivityBar, CompressionDivider } from '@baishou/ui/native'
+import {
+  ChatBubble,
+  CompressionActivityBar,
+  CompressionDivider,
+  type NativeChatLiveStream
+} from '@baishou/ui/native'
 import type { CompactionMarkerData } from '@baishou/ai'
-import type { MockChatAttachment } from '@baishou/shared'
 
 type ChatMessage = {
   id: string
@@ -12,12 +16,15 @@ type ChatMessage = {
   timestamp?: Date
   toolInvocations?: unknown[]
   attachments?: any[]
+  skillRefs?: Array<{ command: string; content: string }>
+  fileRefs?: unknown[]
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
   cacheWriteInputTokens?: number
   costMicros?: number
   compactionRecord?: CompactionMarkerData | null
+  parts?: Array<{ type?: string; id?: string; data?: unknown }>
 }
 
 export interface AgentMessageRowProps {
@@ -51,25 +58,49 @@ export interface AgentMessageRowProps {
   onShowContext?: () => void
   onBranch?: () => void
   onBubbleEditingChange?: (editing: boolean, messageId?: string) => void
-  invertMetaOverBackground?: boolean
+  invertMetaOverBackground?: 'light' | 'dark' | boolean
+  hasChatBackground?: boolean
   retryDisabled?: boolean
-  liveStream?: {
-    content?: string
-    reasoning?: string
-    isTextStreaming?: boolean
-    isThinkLoading?: boolean
-    isThinkStreaming?: boolean
-    activeToolName?: string | null
-    completedTools?: Array<{
-      name: string
-      durationMs: number
-      toolCallId?: string
-      result?: unknown
-      args?: unknown
-    }>
-    attachments?: MockChatAttachment[]
-  }
+  liveStream?: NativeChatLiveStream
+  error?: string | null
   deferAssistantChrome?: boolean
+}
+
+function areAgentMessageRowPropsEqual(
+  prev: AgentMessageRowProps,
+  next: AgentMessageRowProps
+): boolean {
+  if (prev.liveStream !== next.liveStream) return false
+  if (prev.deferAssistantChrome !== next.deferAssistantChrome) return false
+  if (prev.isLiveCompressionAnchor !== next.isLiveCompressionAnchor) return false
+  if (prev.liveCompression !== next.liveCompression) return false
+  if (prev.isTtsPlaying !== next.isTtsPlaying) return false
+  if (prev.invertMetaOverBackground !== next.invertMetaOverBackground) return false
+  if (prev.hasChatBackground !== next.hasChatBackground) return false
+  if (prev.retryDisabled !== next.retryDisabled) return false
+  if (prev.error !== next.error) return false
+  if (prev.chatUserProfile !== next.chatUserProfile) return false
+  if (prev.chatAiProfile !== next.chatAiProfile) return false
+
+  if (prev.item === next.item) return true
+
+  return (
+    prev.item.id === next.item.id &&
+    prev.item.role === next.item.role &&
+    prev.item.content === next.item.content &&
+    prev.item.reasoning === next.item.reasoning &&
+    prev.item.inputTokens === next.item.inputTokens &&
+    prev.item.outputTokens === next.item.outputTokens &&
+    prev.item.cacheReadInputTokens === next.item.cacheReadInputTokens &&
+    prev.item.cacheWriteInputTokens === next.item.cacheWriteInputTokens &&
+    prev.item.costMicros === next.item.costMicros &&
+    (prev.item.parts?.length ?? 0) === (next.item.parts?.length ?? 0) &&
+    (prev.item.toolInvocations?.length ?? 0) === (next.item.toolInvocations?.length ?? 0) &&
+    (prev.item.attachments?.length ?? 0) === (next.item.attachments?.length ?? 0) &&
+    prev.item.compactionRecord?.status === next.item.compactionRecord?.status &&
+    prev.item.compactionRecord?.streamTranscript === next.item.compactionRecord?.streamTranscript &&
+    prev.item.compactionRecord?.streamReasoning === next.item.compactionRecord?.streamReasoning
+  )
 }
 
 export const AgentMessageRow = React.memo(function AgentMessageRow({
@@ -90,9 +121,11 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
   onBranch,
   onBubbleEditingChange,
   invertMetaOverBackground = false,
+  hasChatBackground = false,
   retryDisabled = false,
   liveStream,
-  deferAssistantChrome = false
+  deferAssistantChrome = false,
+  error = null
 }: AgentMessageRowProps) {
   const persistedCompaction =
     item.role === 'user' && item.compactionRecord ? item.compactionRecord : null
@@ -132,11 +165,14 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
           timestamp: item.timestamp,
           toolInvocations: item.toolInvocations,
           attachments: item.attachments,
+          skillRefs: item.skillRefs,
+          fileRefs: item.fileRefs as any,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
           cacheReadInputTokens: item.cacheReadInputTokens,
           cacheWriteInputTokens: item.cacheWriteInputTokens,
-          costMicros: item.costMicros
+          costMicros: item.costMicros,
+          parts: item.parts
         }}
         userProfile={chatUserProfile}
         aiProfile={chatAiProfile}
@@ -151,10 +187,12 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
         onShowContext={onShowContext}
         onBranch={onBranch}
         onEditingChange={onBubbleEditingChange}
-        invertMetaOverBackground={invertMetaOverBackground}
+        invertMetaOverBackground={invertMetaOverBackground || hasChatBackground}
+        hasChatBackground={Boolean(hasChatBackground || invertMetaOverBackground)}
         retryDisabled={retryDisabled}
         liveStream={liveStream}
         deferAssistantChrome={deferAssistantChrome}
+        error={error}
       />
 
       {(showLiveCompression || showPersistedCompression) && (
@@ -172,7 +210,7 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
       )}
     </View>
   )
-})
+}, areAgentMessageRowPropsEqual)
 
 const styles = StyleSheet.create({
   row: {

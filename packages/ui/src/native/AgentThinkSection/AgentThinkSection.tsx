@@ -5,6 +5,7 @@ import { useNativeTheme } from '../theme'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { ThinkChevron, ThinkStatusIcon } from './ThinkStatusIcon'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 const COLLAPSE_DURATION_MS = 250
 
@@ -47,23 +48,19 @@ export function AgentThinkSection({
   if (!thinkExpanded && !body && !loading) return null
 
   const showBody = Boolean(body) && (thinkExpanded || keepBodyMounted)
-  const thinkBody = showBody ? (
-    <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={isMarkdownStreaming} />
-  ) : null
-
-  const bodyChrome = (
+  const bodyChrome = showBody ? (
     <View
       style={[
         styles.content,
         {
           borderLeftColor: colors.borderMuted,
-          paddingTop: showBody ? 8 : 0
+          paddingTop: 8
         }
       ]}
     >
-      {thinkBody}
+      <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={isMarkdownStreaming} />
     </View>
-  )
+  ) : null
 
   return (
     <View style={styles.root}>
@@ -104,20 +101,20 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     alignSelf: 'stretch',
     width: '100%'
   },
   statusText: {
     flex: 1,
     flexShrink: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22,
     fontWeight: '400'
   },
   content: {
     width: '100%',
-    paddingLeft: 12,
+    paddingLeft: sharedTokens.spacing.mdTight,
     borderLeftWidth: 2,
     overflow: 'hidden'
   }

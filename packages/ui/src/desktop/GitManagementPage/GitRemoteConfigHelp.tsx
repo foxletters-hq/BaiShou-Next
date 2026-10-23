@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
-import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
+import { SettingsHelpIconButton } from '../HelpTooltip/SettingsHelpIconButton'
 import styles from './GitRemoteConfigHelp.module.css'
-import { CircleHelp } from 'lucide-react'
 
 export const GitRemoteConfigHelp: React.FC = () => {
   const { t } = useTranslation()
@@ -11,14 +10,11 @@ export const GitRemoteConfigHelp: React.FC = () => {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.helpBtn}
+      <SettingsHelpIconButton
         aria-label={t('version_control.remote_config_help_aria', '远程仓库配置说明')}
-        {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
-      >
-        <CircleHelp size={14} className={styles.helpIcon} aria-hidden />
-      </button>
+        size={14}
+        onActivate={() => setOpen(true)}
+      />
       <Modal
         isOpen={open}
         onClose={() => setOpen(false)}

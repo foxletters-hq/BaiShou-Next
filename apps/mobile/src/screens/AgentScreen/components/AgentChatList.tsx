@@ -1,132 +1,130 @@
-import React from 'react'
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  ImageBackground,
-  ScrollView,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent
-} from 'react-native'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { View, StyleSheet, TouchableOpacity, Text, ImageBackground, ScrollView } from 'react-native'
 import { InputBar } from '@baishou/ui/native'
+import {
+  collectAgentGatePartDataForSurface,
+  collectUnresolvedAgentGateRequestsForSurface
+} from '@baishou/shared'
+import { selectResolvedLiveForSession, useAgentGateInboxStore } from '@baishou/store'
+import { listPendingMobileAgentGate } from '../../../services/mobile-agent-gate.service'
 
-type ComposerOnSend = (
-  text: string,
-  attachments?: unknown[],
-  searchMode?: boolean
-) => boolean | Promise<boolean>
 import { mobileComposerDraftStorage } from '../../../lib/mobile-composer-draft.storage'
-import Animated from 'react-native-reanimated'
+import {
+  loadChatBackgroundLuminance,
+  peekChatBackgroundLuminance,
+  resolveChatBackgroundMetaTone
+} from '../../../lib/chat-background-luminance.util'
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { ChevronDown } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { AgentChatAppBar } from '../../../components/AgentChatAppBar'
 import { AgentMessageRow } from '../../../components/AgentMessageRow'
 import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
-import { LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
+import { INPUT_DOCK_HEIGHT, LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
+import { MobileNotebookMountSheet } from './MobileNotebookMountSheet'
+import { KnowledgeMountHintBar } from './KnowledgeMountHintBar'
+import { useSessionReasoningEffort } from './useSessionReasoningEffort'
+import type { AgentChatListProps } from './agent-chat-list.types'
 
-export type AgentChatListProps = {
-  colors: any
-  isDark: boolean
-  t: (key: string, fallback?: string) => string
-  resolvedChatBackgroundUri: string | null | undefined
-  chatBackgroundBlur: number
-  chatBackgroundOverlay: number
-  userProfile: { chatBackgroundPath?: string | null }
-  displayModelName: string | null
-  currentProviderId: string | null
-  currentProviderType: string | undefined
-  totalCostMicros: number
-  setDrawerOpen: (open: boolean) => void
-  setShowModelSwitcher: (v: boolean) => void
-  setShowCostDialog: (v: boolean) => void
-  drawerSwipeEnabled: boolean
-  flatListRef: React.RefObject<ScrollView | null>
-  listContentStyle: any
-  handleListScroll: (event: any) => void
-  handleScrollBeginDrag: () => void
-  handleScrollEndDrag: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
-  handleMomentumScrollBegin: () => void
-  handleMomentumScrollEnd: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
-  handleListContentSizeChange: (width: number, height: number) => void
-  handleListIntrinsicContentHeightChange: (height: number) => void
-  listViewportHeight: number
-  setListViewportHeight: React.Dispatch<React.SetStateAction<number>>
-  layoutReadyRef: React.RefObject<boolean>
-  messages: any[]
-  hasMore: boolean
-  showLoadMoreBanner: boolean
-  handleLoadMore: () => Promise<void> | void
-  isStreaming: boolean
-  isStreamBridgeActive: boolean
-  renderEmptyState: () => React.ReactNode
-  chatRows: Array<{ kind: 'message'; item: any } | { kind: 'stream-tail' }>
-  hasStreamingBody: boolean
-  renderStreamingDots: () => React.ReactNode
-  streamingText: string
-  streamingReasoning: string
-  chatUserProfile: any
-  chatAiProfile: any
-  hasChatBackground: boolean
-  liveStreamProps: any
-  compressionPhase: string
-  compressionTriggerMessageId: string | null | undefined
-  isCompressing: boolean
-  compressionText: string
-  compressionReasoning: string
-  IDLE_LIVE_COMPRESSION: any
-  lastMessage: any
-  liveAssistantActive: boolean
-  keepLiveRowAfterHold: boolean
-  markdownPresentationActive: boolean
-  bubbleTextStreaming: boolean
-  streamingThinkLoading: boolean
-  activeToolDisplayName: string | null
-  streamingCompletedTools: any[]
-  editingMessageId: string | null
-  editingRowRef: React.RefObject<View | null>
-  handleRegenerate: (id: string) => void
-  handleResend: (id: string) => Promise<void> | void
-  handleEditMessage: (id: string, content: string) => void
-  handleSaveAssistantEdit: (id: string, content: string) => void
-  handleDeleteMessage: (id: string) => void
-  handleTtsReadAloud: (content: string, id: string) => void
-  ttsPlayingMsgId: string | null
-  handleShowContext: (message: any) => void
-  handleBranch: (id: string) => void
-  handleBubbleEditingChange: (editing: boolean, messageId?: string) => void
-  isRetryActionBusy: boolean
-  listFooter: React.ReactNode
-  showScrollButton: boolean
-  isBubbleEditing: boolean
-  scrollButtonAnimatedStyle: any
-  scrollToBottom: (ref: React.RefObject<ScrollView | null>, animated: boolean) => void
-  inputDockHeight: number
-  setInputDockHeight: React.Dispatch<React.SetStateAction<number>>
-  inputDockAnimatedStyle: any
-  inputBarRef: React.RefObject<any>
-  handleSendWithScroll: ComposerOnSend
-  isLoading: boolean
-  handleStop: () => void
-  hasConfiguredDialogueModel: boolean
-  toast: { showInfo: (msg: string) => void }
-  composerDraftKey: string
-  handleInputBarFocus: () => void
-  shortcuts: any[]
-  assistantDisplayName: string
-  setShowShortcutSheet: (v: boolean) => void
-  setShowRecallSheet: (v: boolean) => void
-  router: { push: (href: '/settings/agent-tools') => void }
-  searchMode: boolean
-  toggleSearchMode: () => void
-  ttsMode: 'manual' | 'always'
-  toggleTtsMode: () => void
-}
+export type { AgentChatListProps } from './agent-chat-list.types'
+
+const KNOWLEDGE_ENTRY_ENABLED = false
 
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
+  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
+  const dockHeightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentDockHeightRef = useRef(p.inputDockHeight)
+  currentDockHeightRef.current = p.inputDockHeight
+  const streamTailTimestampRef = useRef<Date>(new Date())
+  const prevHasStreamTailRef = useRef(false)
+  const hasStreamTailRow = p.chatRows[p.chatRows.length - 1]?.kind === 'stream-tail'
+  if (hasStreamTailRow && !prevHasStreamTailRef.current) {
+    streamTailTimestampRef.current = new Date()
+  }
+  prevHasStreamTailRef.current = hasStreamTailRow
+
+  const [bgLuminance, setBgLuminance] = useState<number | null>(() =>
+    peekChatBackgroundLuminance(p.resolvedChatBackgroundUri)
+  )
+
+  useEffect(() => {
+    if (!p.resolvedChatBackgroundUri) {
+      setBgLuminance(null)
+      return
+    }
+    const cached = peekChatBackgroundLuminance(p.resolvedChatBackgroundUri)
+    if (cached !== null) {
+      setBgLuminance(cached)
+      return
+    }
+    let cancelled = false
+    void loadChatBackgroundLuminance(p.resolvedChatBackgroundUri).then((lum) => {
+      if (!cancelled) {
+        setBgLuminance(lum)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [p.resolvedChatBackgroundUri])
+
+  const chatBackgroundMetaTone = useMemo(() => {
+    if (!p.hasChatBackground) return false as const
+    return resolveChatBackgroundMetaTone({
+      luminance: bgLuminance,
+      overlayOpacity: p.chatBackgroundOverlay,
+      isDarkTheme: p.isDark
+    })
+  }, [p.hasChatBackground, bgLuminance, p.chatBackgroundOverlay, p.isDark])
+
+  useEffect(() => {
+    return () => {
+      if (dockHeightDebounceRef.current) {
+        clearTimeout(dockHeightDebounceRef.current)
+      }
+    }
+  }, [])
+  const reasoningEffort = useSessionReasoningEffort({
+    sessionId: p.currentSessionId ?? null,
+    providerId: p.currentProviderId,
+    providerType: p.currentProviderType,
+    modelId: p.currentModelId ?? null
+  })
+  const resolvedLive = useAgentGateInboxStore((state) =>
+    selectResolvedLiveForSession(state, p.currentSessionId, 'companion')
+  )
+  useEffect(() => {
+    const liveIds = new Set(
+      listPendingMobileAgentGate(p.currentSessionId ?? undefined).map((item) => item.id)
+    )
+    for (const msg of p.messages ?? []) {
+      for (const request of collectUnresolvedAgentGateRequestsForSurface(msg.parts, 'companion')) {
+        if (!liveIds.has(request.id)) continue
+        useAgentGateInboxStore.getState().upsertAsked(request, { respectTombstone: true })
+      }
+    }
+  }, [p.messages, p.currentSessionId])
+  const liveGateParts = useMemo(() => {
+    const persisted = new Set<string>()
+    for (const msg of p.messages ?? []) {
+      for (const data of collectAgentGatePartDataForSurface(msg.parts, 'companion')) {
+        persisted.add(data.request.id)
+      }
+    }
+    return resolvedLive.filter((item) => !persisted.has(item.request.id))
+  }, [p.messages, resolvedLive])
+  const scrollButtonVisible = p.showScrollButton && !p.isBubbleEditing
+  const scrollButtonOpacity = useSharedValue(scrollButtonVisible ? 1 : 0)
+  useEffect(() => {
+    scrollButtonOpacity.value = scrollButtonVisible ? 1 : 0
+  }, [scrollButtonOpacity, scrollButtonVisible])
+  const scrollButtonVisibilityStyle = useAnimatedStyle(() => ({
+    opacity: scrollButtonOpacity.value,
+    display: scrollButtonOpacity.value <= 0.001 ? ('none' as const) : ('flex' as const)
+  }))
   const ChatBackgroundWrapper = (
     p.resolvedChatBackgroundUri ? ImageBackground : View
   ) as typeof View
@@ -135,7 +133,8 @@ export function AgentChatList(props: AgentChatListProps) {
         source: { uri: p.resolvedChatBackgroundUri },
         resizeMode: 'cover' as const,
         imageStyle: styles.backgroundImageInner,
-        blurRadius: p.chatBackgroundBlur
+        blurRadius: p.chatBackgroundBlur,
+        fadeDuration: 0
       }
     : {}
 
@@ -156,12 +155,13 @@ export function AgentChatList(props: AgentChatListProps) {
       ) : null}
       <View style={styles.container}>
         <AgentChatAppBar
-          modelName={p.displayModelName || ''}
-          providerId={p.currentProviderId}
-          providerType={p.currentProviderType}
+          title={p.assistantDisplayName || p.t('nav.agent', '伙伴')}
+          avatarUri={p.assistantAvatarUri ?? p.chatAiProfile?.resolvedAvatarUri}
+          avatarPath={p.assistantAvatarPath}
+          avatarEmoji={p.assistantEmoji}
           costMicros={p.totalCostMicros}
+          hasChatBackground={p.hasChatBackground}
           onMenuPress={() => p.setDrawerOpen(true)}
-          onModelPress={() => p.setShowModelSwitcher(true)}
           onCostPress={() => p.setShowCostDialog(true)}
         />
 
@@ -203,8 +203,9 @@ export function AgentChatList(props: AgentChatListProps) {
             <View
               collapsable={false}
               onLayout={(event) => {
-                const height = Math.ceil(event.nativeEvent.layout.height)
-                if (height > 0) p.handleListIntrinsicContentHeightChange(height)
+                const { y, height } = event.nativeEvent.layout
+                const totalHeight = Math.ceil(y + height)
+                if (totalHeight > 0) p.handleListIntrinsicContentHeightChange(totalHeight)
               }}
             >
               {p.hasMore && p.showLoadMoreBanner ? (
@@ -213,7 +214,7 @@ export function AgentChatList(props: AgentChatListProps) {
                     styles.loadMore,
                     {
                       borderColor: p.colors.borderSubtle,
-                      backgroundColor: p.colors.bgGlassSurface ?? p.colors.bgSurface
+                      backgroundColor: p.colors.bgSurface
                     }
                   ]}
                   onPress={() => void p.handleLoadMore()}
@@ -226,13 +227,13 @@ export function AgentChatList(props: AgentChatListProps) {
               ) : null}
 
               {!p.isStreaming && !p.isStreamBridgeActive && p.messages.length === 0
-                ? p.renderEmptyState()
+                ? p.renderEmptyState(chatBackgroundMetaTone)
                 : null}
 
               {p.chatRows.map((row) => {
                 if (row.kind === 'stream-tail') {
                   if (!p.hasStreamingBody) {
-                    return p.renderStreamingDots()
+                    return p.renderStreamingDots(chatBackgroundMetaTone)
                   }
                 }
 
@@ -242,22 +243,25 @@ export function AgentChatList(props: AgentChatListProps) {
                     id: LIVE_ASSISTANT_STREAM_KEY,
                     role: 'assistant' as const,
                     content: p.streamingText,
-                    reasoning: p.streamingReasoning
+                    reasoning: p.streamingReasoning,
+                    timestamp: streamTailTimestampRef.current
                   }
                   return (
-                    <View key={LIVE_ASSISTANT_STREAM_KEY} style={styles.bubble}>
+                    <View key={LIVE_ASSISTANT_STREAM_KEY} collapsable={false} style={styles.bubble}>
                       <AgentMessageRow
                         item={tailItem as any}
                         chatUserProfile={p.chatUserProfile}
                         chatAiProfile={p.chatAiProfile}
                         isLiveCompressionAnchor={false}
                         liveCompression={p.IDLE_LIVE_COMPRESSION}
-                        liveStream={p.liveStreamProps}
+                        liveStream={{ ...p.liveStreamProps, gateParts: liveGateParts }}
                         deferAssistantChrome
                         onRegenerate={() => {}}
                         onCopy={() => {}}
                         onDelete={() => {}}
-                        invertMetaOverBackground={p.hasChatBackground}
+                        invertMetaOverBackground={chatBackgroundMetaTone}
+                        hasChatBackground={p.hasChatBackground}
+                        error={p.streamError ?? null}
                         retryDisabled
                       />
                     </View>
@@ -296,10 +300,14 @@ export function AgentChatList(props: AgentChatListProps) {
                         : item.reasoning || '',
                       isTextStreaming: p.markdownPresentationActive && p.bubbleTextStreaming,
                       isThinkLoading: p.markdownPresentationActive && p.streamingThinkLoading,
-                      isThinkStreaming: false,
+                      isThinkStreaming:
+                        p.markdownPresentationActive && Boolean(p.streamingReasoning.trim()),
+                      timeline: p.liveStreamProps.timeline,
+                      gateParts: liveGateParts,
                       activeToolName: p.markdownPresentationActive ? p.activeToolDisplayName : null,
-                      completedTools: p.markdownPresentationActive ? p.streamingCompletedTools : [],
-                      attachments: p.liveStreamProps.attachments
+                      completedTools: p.liveStreamProps.completedTools,
+                      attachments: p.liveStreamProps.attachments,
+                      error: p.streamError ?? p.liveStreamProps.error ?? null
                     }
                   : undefined
 
@@ -349,8 +357,15 @@ export function AgentChatList(props: AgentChatListProps) {
                         item.role === 'assistant' ? () => p.handleBranch(item.id) : undefined
                       }
                       onBubbleEditingChange={p.handleBubbleEditingChange}
-                      invertMetaOverBackground={p.hasChatBackground}
-                      retryDisabled={p.isRetryActionBusy || p.isStreaming || p.isCompressing}
+                      invertMetaOverBackground={chatBackgroundMetaTone}
+                      hasChatBackground={p.hasChatBackground}
+                      retryDisabled={
+                        p.isRetryActionBusy ||
+                        p.isStreaming ||
+                        p.isCompressing ||
+                        p.markdownPresentationActive
+                      }
+                      error={isLastAssistant ? (p.streamError ?? null) : null}
                     />
                   </View>
                 )
@@ -361,49 +376,107 @@ export function AgentChatList(props: AgentChatListProps) {
           </ScrollView>
         </AgentDrawerSwipeZone>
 
-        {p.showScrollButton && !p.isBubbleEditing ? (
-          <Animated.View
-            pointerEvents="box-none"
-            style={[styles.scrollBtnWrap, p.scrollButtonAnimatedStyle]}
+        <Animated.View
+          pointerEvents={scrollButtonVisible ? 'box-none' : 'none'}
+          style={[styles.scrollBtnWrap, p.scrollButtonAnimatedStyle, scrollButtonVisibilityStyle]}
+        >
+          <TouchableOpacity
+            activeOpacity={0.78}
+            style={[
+              styles.scrollBtn,
+              {
+                backgroundColor: p.hasChatBackground
+                  ? p.isDark
+                    ? 'rgba(38, 39, 44, 0.94)'
+                    : 'rgba(255, 255, 255, 0.96)'
+                  : p.isDark
+                    ? p.colors.bgSurfaceHigh
+                    : p.colors.bgSurface,
+                borderColor: p.hasChatBackground
+                  ? p.isDark
+                    ? 'rgba(255, 255, 255, 0.24)'
+                    : 'rgba(0, 0, 0, 0.14)'
+                  : p.colors.borderStrong
+              }
+            ]}
+            onPress={() => p.scrollToBottom(p.flatListRef, true)}
+            accessibilityRole="button"
+            accessibilityLabel={p.t('agent.chat.scroll_to_bottom', '回到最新消息')}
+            accessible={scrollButtonVisible}
           >
-            <TouchableOpacity
-              style={[styles.scrollBtn, { backgroundColor: p.colors.bgSurface }]}
-              onPress={() => p.scrollToBottom(p.flatListRef, true)}
-              accessibilityLabel={p.t('agent.chat.scroll_to_bottom', '回到最新消息')}
-            >
-              <ChevronDown size={22} color={p.colors.textSecondary} strokeWidth={2} />
-            </TouchableOpacity>
-          </Animated.View>
-        ) : null}
+            <ChevronDown size={22} color={p.colors.textPrimary} strokeWidth={2.25} />
+          </TouchableOpacity>
+        </Animated.View>
 
         <Animated.View
           onLayout={(event) => {
             const next = Math.ceil(event.nativeEvent.layout.height)
-            if (next > 0 && next !== p.inputDockHeight) p.setInputDockHeight(next)
+            if (next <= 0 || Math.abs(next - currentDockHeightRef.current) < 2) return
+
+            // 初次挂载或重置高度时立即生效，避免初始布局跳动
+            if (currentDockHeightRef.current === INPUT_DOCK_HEIGHT) {
+              p.setInputDockHeight(next)
+              return
+            }
+
+            // 动画开合与尺寸频繁过渡期间防抖，避免逐帧触发根页面与消息流重渲染
+            if (dockHeightDebounceRef.current) {
+              clearTimeout(dockHeightDebounceRef.current)
+            }
+            dockHeightDebounceRef.current = setTimeout(() => {
+              if (Math.abs(next - currentDockHeightRef.current) >= 2) {
+                p.setInputDockHeight(next)
+              }
+            }, 60)
           }}
           style={[styles.inputDock, p.inputDockAnimatedStyle]}
           pointerEvents={p.isBubbleEditing ? 'none' : 'auto'}
         >
+          {KNOWLEDGE_ENTRY_ENABLED ? (
+            <KnowledgeMountHintBar
+              sessionId={p.currentSessionId}
+              assistantId={p.assistantId}
+              refreshToken={notebookMountOpen}
+              hasChatBackground={p.hasChatBackground}
+              onOpen={() => setNotebookMountOpen(true)}
+            />
+          ) : null}
           <InputBar
             ref={p.inputBarRef}
+            hasChatBackground={p.hasChatBackground}
             onSend={p.handleSendWithScroll}
             isLoading={p.isLoading || p.isStreaming}
             onStop={p.handleStop}
             composerBlocked={!p.hasConfiguredDialogueModel}
             onComposerBlocked={() =>
-              p.toast.showInfo(p.t('agent.error.no_model', '请先在顶部选择一个模型'))
+              p.toast.showInfo(p.t('agent.error.no_model', '请先在输入栏选择一个模型'))
             }
             composerDraftKey={p.composerDraftKey}
             composerDraftStorage={mobileComposerDraftStorage}
             composerEnabled={!p.isBubbleEditing}
+            reasoningEffort={reasoningEffort}
+            modelSelector={
+              p.handleSelectModel
+                ? {
+                    currentProviderId: p.currentProviderId,
+                    currentModelId: p.currentModelId,
+                    currentProviderType: p.currentProviderType,
+                    displayModelName: p.displayModelName,
+                    providers: p.dialogueProviders || [],
+                    onSelectModel: p.handleSelectModel,
+                    onManageProviders: () => (p.router as any).push('/settings/ai-services'),
+                    reasoningEffort
+                  }
+                : undefined
+            }
             onInputFocus={p.handleInputBarFocus}
-            onHeightChange={(height) => {
-              if (height > 0 && height !== p.inputDockHeight) p.setInputDockHeight(height)
-            }}
             shortcuts={p.shortcuts}
             assistantName={p.assistantDisplayName}
             onManageShortcuts={() => p.setShowShortcutSheet(true)}
             onRecall={() => p.setShowRecallSheet(true)}
+            onOpenNotebookMount={
+              KNOWLEDGE_ENTRY_ENABLED ? () => setNotebookMountOpen(true) : undefined
+            }
             onOpenTools={() => p.router.push('/settings/agent-tools')}
             searchMode={p.searchMode}
             onToggleSearchMode={p.toggleSearchMode}
@@ -411,6 +484,14 @@ export function AgentChatList(props: AgentChatListProps) {
             onToggleTtsMode={p.toggleTtsMode}
           />
         </Animated.View>
+        {KNOWLEDGE_ENTRY_ENABLED ? (
+          <MobileNotebookMountSheet
+            visible={notebookMountOpen}
+            sessionId={p.currentSessionId}
+            assistantId={p.assistantId}
+            onClose={() => setNotebookMountOpen(false)}
+          />
+        ) : null}
       </View>
     </ChatBackgroundWrapper>
   )

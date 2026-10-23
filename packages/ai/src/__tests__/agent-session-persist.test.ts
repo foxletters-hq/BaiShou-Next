@@ -48,6 +48,7 @@ describe('persistResult token estimation', () => {
       }
 
       const accumulator = {
+        timeline: [],
         text: 'AI response text',
         reasoning: '',
         toolCalls: [],
@@ -123,6 +124,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'cached reply',
       reasoning: '',
       toolCalls: [],
@@ -189,6 +191,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'new reply',
       reasoning: '',
       toolCalls: [],
@@ -243,6 +246,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'search summary',
       reasoning: '',
       toolCalls: [{ callId: 'call_1', name: 'web_search', arguments: '{"q":"news"}' }],
@@ -272,5 +276,92 @@ describe('persistResult token estimation', () => {
     })
 
     expect(sessionRepo.insertMessageWithParts).toHaveBeenCalled()
+  })
+  it('persists file_change parts on assistant message', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 1 }]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const provider = {
+      config: { id: 'mock', type: 'openai' }
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'update readme',
+      streamResult: { usage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }) } as any,
+      accumulator: {
+        timeline: [],
+        text: 'done',
+        reasoning: '',
+        toolCalls: [],
+        toolResults: [],
+        usage: { inputTokens: 1, outputTokens: 1 }
+      } as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: snapshotRepo as any,
+      provider: provider as any,
+      modelId: 'gpt-4',
+      streamError: null,
+      fileChangeParts: [
+        {
+          path: 'README.md',
+          kind: 'modify',
+          additions: 2,
+          deletions: 1,
+          diff: '@@'
+        }
+      ]
+    })
+
+    const parts = sessionRepo.insertMessageWithParts.mock.calls[0]![1] as Array<{ type: string }>
+    expect(parts.some((part) => part.type === 'file_change')).toBe(true)
+  })
+
+  it('should replace parts on the same assistant row when a checkpoint id is provided', async () => {
+    vi.spyOn(ModelPricingService.getInstance(), 'calculateCostMicros').mockResolvedValue(0)
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue([{ orderIndex: 1 }]),
+      insertMessageWithParts: vi.fn().mockResolvedValue(undefined),
+      replaceMessageParts: vi.fn().mockResolvedValue(undefined),
+      updateTokenUsage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    await persistResult({
+      sessionId: 's1',
+      rawUserText: 'hi',
+      streamResult: { usage: Promise.resolve({ inputTokens: 1, outputTokens: 2 }) } as any,
+      accumulator: {
+        timeline: [],
+        text: '最终回复',
+        reasoning: '',
+        toolCalls: [],
+        toolResults: [],
+        usage: { inputTokens: 1, outputTokens: 2 }
+      } as any,
+      sessionRepo: sessionRepo as any,
+      snapshotRepo: { getLatestSnapshot: vi.fn().mockResolvedValue(null) } as any,
+      provider: { config: { id: 'mock', type: 'openai' } } as any,
+      modelId: 'gpt-4',
+      streamError: null,
+      existingAssistantMessageId: 'asst-1'
+    })
+
+    expect(sessionRepo.insertMessageWithParts).not.toHaveBeenCalled()
+    expect(sessionRepo.replaceMessageParts).toHaveBeenCalledWith(
+      'asst-1',
+      's1',
+      expect.any(Array),
+      expect.objectContaining({ outputTokens: 2 })
+    )
   })
 })

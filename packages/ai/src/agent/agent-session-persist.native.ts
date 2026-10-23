@@ -1,15 +1,17 @@
 import { StreamTextResult } from 'ai'
 import { SessionRepository } from '@baishou/database'
-import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
+import { logger } from '@baishou/shared'
 import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
+import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
+import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import {
-  resolveAssistantParentOrderIndex,
-  buildEmojiImagePartsFromToolCalls
-} from './agent-session-persist.utils'
-import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
+  shouldReadStreamUsageAfterInterrupt,
+  shouldWarnLimitedPersist
+} from './persist-stream-interrupt.util'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -21,17 +23,10 @@ function generateUUID(): string {
   })
 }
 
-function resolveAssistantTextForStorage(accumulator: StreamAccumulator): string {
-  if (typeof accumulator.sanitizedText === 'string') {
-    return accumulator.sanitizedText
-  }
-  return sanitizeAssistantGeneratedText(accumulator.text)
-}
-
 export interface PersistResultParams {
   sessionId: string
   rawUserText: string
-  streamResult: StreamTextResult<any, any>
+  streamResult: StreamTextResult<any, any, any>
   accumulator: StreamAccumulator
   sessionRepo: SessionRepository
   snapshotRepo: SnapshotRepository
@@ -45,8 +40,14 @@ export interface PersistResultParams {
   namingModelConfigured?: boolean
   namingProvider?: IAIProvider
   namingModelId?: string
+  namingReasoningEffort?: import('@baishou/shared').ReasoningEffortSetting
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
+  agentGateParts?: import('@baishou/shared').AgentGatePartData[]
+  /** 流式中途已写入的助手消息：收尾时覆盖同一行，不要再插一条 */
+  existingAssistantMessageId?: string
+  /** 用户主动停止时不把 Abort 当成落盘失败 */
+  userAborted?: boolean
 }
 
 /**
@@ -72,7 +73,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
     modelId,
     skipUserMessageRecording,
     userMessageId,
-    streamError
+    streamError,
+    userAborted
   } = params
 
   const userOrderIndex = await resolveAssistantParentOrderIndex(sessionRepo, sessionId, {
@@ -80,65 +82,15 @@ export async function persistResult(params: PersistResultParams): Promise<{
     userMessageId
   })
 
-  // ======== 构建 assistant 消息 Parts ========
-  const assistantMsgId = generateUUID()
-  const partsToInsert: any[] = buildEmojiImagePartsFromToolCalls(
-    accumulator.toolCalls,
+  // ======== 构建 assistant 消息 Parts（按时间线，表情包排在正文之后）========
+  const assistantMsgId = params.existingAssistantMessageId || generateUUID()
+  const partsToInsert: any[] = assembleAssistantPersistParts({
+    accumulator,
     assistantMsgId,
     sessionId,
-    params.userConfig
-  )
-
-  // 推送文本 Part
-  const assistantText = resolveAssistantTextForStorage(accumulator)
-  if (assistantText) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'text',
-      data: { text: assistantText }
-    })
-  }
-
-  // 推送推理 Part (如果有)
-  if (accumulator.reasoning) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'text',
-      data: { text: accumulator.reasoning, isReasoning: true }
-    })
-  }
-
-  // 推送工具 Call & Result Part
-  for (const tc of accumulator.toolCalls) {
-    if (!tc?.callId || !tc?.name) {
-      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', JSON.stringify(tc))
-      continue
-    }
-    const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
-
-    if (tc.name === 'emoji_send') {
-      continue
-    }
-
-    const toolData = sanitizeToolPayloadForStorage({
-      callId: tc.callId,
-      name: tc.name,
-      arguments: tc.arguments,
-      result: resultObj ? resultObj.result : undefined,
-      status: resultObj ? 'completed' : 'failed'
-    })
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'tool',
-      data: toolData
-    })
-  }
+    userConfig: params.userConfig,
+    agentGateParts: params.agentGateParts
+  })
 
   // 从 Vercel AI SDK 获取最终 usage
   let streamUsage = mergeStreamUsageFromSdk(accumulator.usage, null)
@@ -148,11 +100,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
   }
   let costMicros = 0
 
-  if (!streamError) {
+  if (shouldReadStreamUsageAfterInterrupt(streamError, { userAborted }) && streamResult) {
     try {
       // 整轮总计：streamResult.usage 仅为最后一步，多步工具调用时会少算
       const u = await streamResult.totalUsage
-      logger.info('[AgentSessionService Debug] streamResult.totalUsage resolved to:', JSON.stringify(u))
+      logger.info(
+        '[AgentSessionService Debug] streamResult.totalUsage resolved to:',
+        JSON.stringify(u)
+      )
       if (u) {
         streamUsage = mergeStreamUsageFromSdk(accumulator.usage, u as Record<string, unknown>)
         finalUsage = {
@@ -161,15 +116,11 @@ export async function persistResult(params: PersistResultParams): Promise<{
         }
       }
     } catch (e: unknown) {
-      const isNoOutputError =
-        (e as { [key: symbol]: unknown } | null)?.[
-          Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
-        ] === true
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage read gracefully skipped (stream aborted by user).'
         )
-      } else if (isNoOutputError) {
+      } else if (isNoOutputGeneratedError(e)) {
         logger.info(
           '[AgentSessionService Debug] streamResult.usage skipped (no model output generated).'
         )
@@ -229,7 +180,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       logger.info(`提示: 计算费用为 0。可能模型是免费的，或未能从 models.dev 拉取到该模型价格。`)
     }
     logger.info('==============================================\n')
-  } else {
+  } else if (shouldWarnLimitedPersist(streamError, { userAborted })) {
     logger.warn(
       '[AgentSessionService] 流式过程发生错误，使用 Accumulator 中的有限数据落盘。错误:',
       streamError
@@ -239,22 +190,29 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
 
   if (partsToInsert.length > 0) {
-    await sessionRepo.insertMessageWithParts(
-      {
-        id: assistantMsgId,
-        sessionId,
-        role: 'assistant',
-        orderIndex: userOrderIndex + 1,
-        inputTokens: finalUsage.inputTokens,
-        outputTokens: finalUsage.outputTokens,
-        cacheReadInputTokens: streamUsage.cacheReadInputTokens,
-        cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
-        costMicros: costMicros,
-        providerId: provider?.config?.id ?? 'unknown',
-        modelId: modelId
-      },
-      partsToInsert
-    )
+    const billing = {
+      inputTokens: finalUsage.inputTokens,
+      outputTokens: finalUsage.outputTokens,
+      cacheReadInputTokens: streamUsage.cacheReadInputTokens,
+      cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
+      costMicros: costMicros,
+      providerId: provider?.config?.id ?? 'unknown',
+      modelId: modelId
+    }
+    if (params.existingAssistantMessageId) {
+      await sessionRepo.replaceMessageParts(assistantMsgId, sessionId, partsToInsert, billing)
+    } else {
+      await sessionRepo.insertMessageWithParts(
+        {
+          id: assistantMsgId,
+          sessionId,
+          role: 'assistant',
+          orderIndex: userOrderIndex + 1,
+          ...billing
+        },
+        partsToInsert
+      )
+    }
   }
 
   await sessionRepo.updateTokenUsage(
@@ -271,17 +229,22 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // ==========================================
   if (!streamError) {
     void (async () => {
-      await new Promise((r) => setTimeout(r, 500))
-      if (userOrderIndex <= 2) {
-        const { TitleGeneratorService } = await import('./title-generator.service')
-        await TitleGeneratorService.maybeUpdateSessionTitle({
-          sessionRepo,
-          sessionId,
-          userText: rawUserText,
-          namingModelConfigured: params.namingModelConfigured,
-          namingProvider: params.namingProvider,
-          namingModelId: params.namingModelId
-        })
+      try {
+        await new Promise((r) => setTimeout(r, 500))
+        if (userOrderIndex <= 2) {
+          const { TitleGeneratorService } = await import('./title-generator.service')
+          await TitleGeneratorService.maybeUpdateSessionTitle({
+            sessionRepo,
+            sessionId,
+            userText: rawUserText,
+            namingModelConfigured: params.namingModelConfigured,
+            namingProvider: params.namingProvider,
+            namingModelId: params.namingModelId,
+            namingReasoningEffort: params.namingReasoningEffort
+          })
+        }
+      } catch (e: unknown) {
+        logger.warn('[Persist Result] background title update failed:', e as Error)
       }
     })()
   }

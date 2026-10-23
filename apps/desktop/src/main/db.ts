@@ -2,8 +2,17 @@ import { app } from 'electron'
 import { resolveAgentDbPath as resolveSharedAgentDbPath } from '@baishou/core/shared'
 import { initNodeDatabase, AppDatabase } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
-import { renameSync, existsSync, mkdirSync } from 'fs'
+import {
+  renameSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync
+} from 'fs'
 import { dirname, join } from 'path'
+import { markStartup, startupElapsedMs } from './startup-trace.util'
 
 export function resolveAgentDbPath(workspaceRoot?: string | null): string {
   if (workspaceRoot && workspaceRoot.trim() !== '') {
@@ -29,9 +38,74 @@ let _appDbPath: string | null = null
 
 let _resetBlocker: (() => boolean) | null = null
 
+export interface AgentDbRecoveryNotice {
+  dbPath: string
+  backupPath: string | null
+  createdAt: number
+}
+
+const DB_RECOVERY_MARKER_FILENAME = 'baishou_agent_recovery.json'
+let _recoveryNotice: AgentDbRecoveryNotice | null = null
+
 /** 嵌入向量迁移进行中时阻止 resetAppDb，避免备份表丢失导致迁移卡死。 */
 export function setAppDbResetBlocker(checker: () => boolean): void {
   _resetBlocker = checker
+}
+
+/** 恢复提示属于本机状态，放 userData，避免跟着存储根/工作区同步到其他设备。 */
+function recoveryMarkerPath(): string {
+  return join(app.getPath('userData'), DB_RECOVERY_MARKER_FILENAME)
+}
+
+function writeRecoveryNotice(notice: AgentDbRecoveryNotice): void {
+  _recoveryNotice = notice
+  try {
+    const markerPath = recoveryMarkerPath()
+    mkdirSync(dirname(markerPath), { recursive: true })
+    writeFileSync(markerPath, JSON.stringify(notice), 'utf8')
+  } catch (e) {
+    logger.warn('[DB] 记录数据库恢复提示失败（非阻塞）:', e as any)
+  }
+}
+
+/** 读取指定数据库的恢复提示标记（损坏重建时写入）。 */
+export function readAgentDbRecoveryNoticeAt(dbPath: string): AgentDbRecoveryNotice | null {
+  try {
+    const markerPath = recoveryMarkerPath()
+    if (!existsSync(markerPath)) return null
+    const parsed = JSON.parse(readFileSync(markerPath, 'utf8')) as Partial<AgentDbRecoveryNotice>
+    if (typeof parsed.dbPath !== 'string' || parsed.dbPath !== dbPath) return null
+    if (typeof parsed.createdAt !== 'number') return null
+    return {
+      dbPath: parsed.dbPath,
+      backupPath: typeof parsed.backupPath === 'string' ? parsed.backupPath : null,
+      createdAt: parsed.createdAt
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 读取待展示的数据库恢复提示。
+ * 优先内存态；应用重启后仍可从 `.recovery.json` 标记恢复提示。
+ */
+export function getAgentDbRecoveryNotice(): AgentDbRecoveryNotice | null {
+  if (_recoveryNotice) return _recoveryNotice
+  return readAgentDbRecoveryNoticeAt(_appDbPath || resolveAgentDbPath())
+}
+
+/** 用户确认后清除恢复提示，避免每次启动重复弹窗。 */
+export function clearAgentDbRecoveryNotice(notice?: AgentDbRecoveryNotice | null): void {
+  const target = notice ?? _recoveryNotice
+  _recoveryNotice = null
+  if (!target) return
+  try {
+    const markerPath = recoveryMarkerPath()
+    if (existsSync(markerPath)) unlinkSync(markerPath)
+  } catch (e) {
+    logger.warn('[DB] 清除数据库恢复提示失败（非阻塞）:', e as any)
+  }
 }
 
 /**
@@ -45,10 +119,12 @@ function handleMalformedDb(dbPath: string, err: any) {
 
   const timestamp = Date.now()
   const corruptedPath = `${dbPath}.corrupted.${timestamp}`
+  let backupPath: string | null = null
 
   try {
     if (existsSync(dbPath)) {
       renameSync(dbPath, corruptedPath)
+      backupPath = corruptedPath
       logger.warn(`[DB] 已将损坏的数据库重命名为: ${corruptedPath}`)
     }
 
@@ -67,6 +143,12 @@ function handleMalformedDb(dbPath: string, err: any) {
   } catch (fsErr) {
     logger.error('[DB] 重命名损坏的数据库文件失败:', fsErr as any)
   }
+
+  writeRecoveryNotice({
+    dbPath,
+    backupPath,
+    createdAt: timestamp
+  })
 }
 
 export function getAppDb(customBasePath?: string): AppDatabase {
@@ -87,24 +169,48 @@ export function getAppDb(customBasePath?: string): AppDatabase {
 
   // 未初始化时创建新实例
   if (!_appDb) {
+    const started = performance.now()
+    let fileSizeMb: number | null = null
+    try {
+      if (existsSync(agentDbPath)) {
+        fileSizeMb = Math.round((statSync(agentDbPath).size / (1024 * 1024)) * 10) / 10
+      }
+    } catch {
+      fileSizeMb = null
+    }
     logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`)
+    markStartup('agentDb.init.begin', { path: agentDbPath, fileSizeMb })
     try {
       const dbDir = dirname(agentDbPath)
       if (!existsSync(dbDir)) {
         mkdirSync(dbDir, { recursive: true })
       }
+      const openStarted = performance.now()
       _appDb = initNodeDatabase(agentDbPath, (err) => {
         handleMalformedDb(agentDbPath, err)
       })
       _appDbPath = agentDbPath
+      markStartup('agentDb.initNodeDatabase', {
+        ms: startupElapsedMs(openStarted),
+        fileSizeMb
+      })
 
       // 运行一次快速完整性校验以发现损坏
       const client = (_appDb as any)?.session?.client
       if (client && typeof client.pragma === 'function') {
         try {
-          const rows = client.pragma('integrity_check')
-          if (rows && rows[0] && rows[0].integrity_check !== 'ok') {
-            throw new Error(`integrity_check returned: ${rows[0].integrity_check}`)
+          const checkStarted = performance.now()
+          const rows = client.pragma('quick_check(1)')
+          markStartup('agentDb.integrity_check', {
+            ms: startupElapsedMs(checkStarted)
+          })
+          const status = rows?.[0]?.quick_check ?? rows?.[0]?.integrity_check
+          if (rows && rows[0] && status !== 'ok') {
+            const corruptionError: NodeJS.ErrnoException = new Error(
+              `quick_check returned: ${status}`
+            )
+            corruptionError.code = 'SQLITE_CORRUPT'
+            throw corruptionError
           }
         } catch (pragmaErr: any) {
           if (pragmaErr.message?.includes('unknown function')) {
@@ -114,6 +220,7 @@ export function getAppDb(customBasePath?: string): AppDatabase {
           }
         }
       }
+      markStartup('agentDb.init.done', { ms: startupElapsedMs(started), fileSizeMb })
     } catch (err: any) {
       if (
         err?.message?.includes('malformed') ||

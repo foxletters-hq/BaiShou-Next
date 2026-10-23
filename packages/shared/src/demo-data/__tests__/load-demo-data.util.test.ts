@@ -18,6 +18,20 @@ describe('load-demo-data.util', () => {
     expect(offset.getDate()).toBe(27)
   })
 
+  it('resolveDemoDiaryDate treats date-only fixed dates as local calendar days', () => {
+    const prevTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const date = resolveDemoDiaryDate({ content: 'x', dateFixed: '2025-12-31' })
+      expect(date.getFullYear()).toBe(2025)
+      expect(date.getMonth()).toBe(11)
+      expect(date.getDate()).toBe(31)
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ
+      else process.env.TZ = prevTz
+    }
+  })
+
   it('loadDemoDiaries creates and appends on same day', async () => {
     const create = vi.fn()
     const update = vi.fn()

@@ -3,17 +3,40 @@ import {
   isAgentStreamAbortError,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
-  logger
+  logger,
+  parseMountedNotebookIds,
+  resolveDialogueModelSelection,
+  resolveReasoningEffortForSlot,
+  resolveVaultIdentity
 } from '@baishou/shared'
-import { AgentSessionService, type StreamChatCallbacks } from '@baishou/ai'
+import {
+  AgentSessionService,
+  EmbeddingAdapter,
+  GraphReaderAdapter,
+  createCompanionGraphLookups,
+  KnowledgeGraphReaderAdapter,
+  KnowledgeReaderAdapter,
+  type IBaishouAgentGate,
+  type StreamChatCallbacks
+} from '@baishou/ai'
+import { GraphRagService } from '@baishou/core-mobile'
+import { GraphRepository } from '@baishou/database'
+import type { BaishouAgentGateConfig } from '@baishou/shared'
 import {
   buildMobileStreamUserConfig,
   resolveAssistantContextWindow,
   resolveAssistantEmojiPrefs
 } from '../../services/mobile-context-at-message.service'
+import { pickBareGraphNameHit } from '../../services/graph-name-candidates.util'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry } from '@baishou/ai'
+import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry, IAIProvider } from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
+import {
+  createMobileSkillsReader,
+  createMobileSkillsWriter,
+  mobileListSkillsCatalog
+} from '../../services/mobile-agent-skills.service'
+import { applyMobileSessionReasoningEffort } from '../../services/mobile-reasoning-effort-session'
 
 export function createStartAgentChat(deps: {
   agentService: AgentSessionService
@@ -21,8 +44,17 @@ export function createStartAgentChat(deps: {
   registry: AIProviderRegistry
   agentDbRuntimeRef: typeof agentDbRuntimeRef
   getDiarySearcher: () => ToolDiarySearcher | undefined
+  getAgentGate?: () => IBaishouAgentGate | undefined
+  persistBaishouAgentGateConfig?: (config: BaishouAgentGateConfig) => Promise<void>
 }) {
-  const { agentService, toolRegistry, registry, getDiarySearcher } = deps
+  const {
+    agentService,
+    toolRegistry,
+    registry,
+    getDiarySearcher,
+    getAgentGate,
+    persistBaishouAgentGateConfig
+  } = deps
   return async (
     sessionId: string,
     userText: string,
@@ -31,6 +63,7 @@ export function createStartAgentChat(deps: {
       providerId?: string
       modelId?: string
       searchMode?: boolean
+      reasoningEffort?: string
       abortSignal?: AbortSignal
       userMessageId?: string
       skipUserMessageRecording?: boolean
@@ -52,11 +85,19 @@ export function createStartAgentChat(deps: {
       const providers = (await runtime.settingsManager.get<any[]>('ai_providers')) || []
       const globalModels = await runtime.settingsManager.get<any>('global_models')
 
-      const providerId = overrides?.providerId || globalModels?.globalDialogueProviderId
-      const config =
-        providers.find((p: any) => p.id === providerId) || providers.find((p: any) => p.isEnabled)
+      const resolvedDialogue = resolveDialogueModelSelection({
+        requestedProviderId: overrides?.providerId,
+        requestedModelId: overrides?.modelId,
+        globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+        globalDialogueModelId: globalModels?.globalDialogueModelId
+      })
+      const providerId = resolvedDialogue.providerId || ''
+      const config = providerId
+        ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)
+        : undefined
 
-      if (!config) throw new Error('No active provider configured')
+      if (!config)
+        throw new Error(`No active provider configured (provider: ${providerId || 'unset'})`)
 
       const provider = registry.getOrUpdateProvider(config)
 
@@ -65,16 +106,21 @@ export function createStartAgentChat(deps: {
         resolveAssistantContextWindow(sessionId, runtime.sessionRepo, runtime.assistantManager),
         resolveAssistantEmojiPrefs(sessionId, runtime.sessionRepo, runtime.assistantManager)
       ])
-      const userConfig = await buildMobileStreamUserConfig(runtime.settingsManager, searchMode, {
-        assistantContextWindow,
-        assistantEmojiPrefs
-      })
+      const userConfig = applyMobileSessionReasoningEffort(
+        (await buildMobileStreamUserConfig(runtime.settingsManager, searchMode, {
+          assistantContextWindow,
+          assistantEmojiPrefs
+        })) as Record<string, unknown>,
+        overrides?.reasoningEffort
+      ) as Awaited<ReturnType<typeof buildMobileStreamUserConfig>>
 
       const embeddingProviderId = globalModels?.globalEmbeddingProviderId
       const embeddingModelId = globalModels?.globalEmbeddingModelId
-      let embeddingProvider
+      let embeddingProvider: IAIProvider | undefined
       if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
-        const embConfig = providers.find((p: any) => p.id === embeddingProviderId)
+        const embConfig = providers.find(
+          (p: any) => p.id === embeddingProviderId && p.isEnabled !== false
+        )
         if (embConfig) {
           embeddingProvider = registry.getOrUpdateProvider(embConfig)
         }
@@ -87,7 +133,7 @@ export function createStartAgentChat(deps: {
       let namingModelId: string | undefined
       if (namingModelConfigured) {
         const namingConfig = providers.find(
-          (p: any) => p.id === globalModels.globalNamingProviderId
+          (p: any) => p.id === globalModels.globalNamingProviderId && p.isEnabled !== false
         )
         if (namingConfig) {
           namingProvider = registry.getOrUpdateProvider(namingConfig)
@@ -95,14 +141,15 @@ export function createStartAgentChat(deps: {
         }
       }
 
-      const modelId =
-        overrides?.modelId ||
-        globalModels?.globalDialogueModelId ||
-        config.defaultDialogueModel ||
-        config.models[0]
+      const modelId = resolvedDialogue.modelId || ''
+      if (!modelId) throw new Error('No dialogue model configured')
 
       const systemModels = {
         namingModelConfigured,
+        namingReasoningEffort: resolveReasoningEffortForSlot(
+          globalModels?.reasoningEffortBySlot,
+          'naming'
+        ),
         ...(namingProvider && namingModelId ? { namingProvider, namingModelId } : {}),
         ...(embeddingProvider && embeddingModelId ? { embeddingProvider, embeddingModelId } : {})
       }
@@ -127,7 +174,172 @@ export function createStartAgentChat(deps: {
           forceRecompress: overrides?.forceRecompress,
           streamClaimGeneration: overrides?.streamClaimGeneration,
           attachments: overrides?.attachments as any,
-          flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id)
+          flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id),
+          agentGate: getAgentGate?.(),
+          persistBaishouAgentGateConfig,
+          workspace: await (async () => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            return {
+              folderRoot: '',
+              sessionKind: 'companion' as const,
+              notebookIds: parseMountedNotebookIds(session?.mountedNotebookIds)
+            }
+          })(),
+          rawDataSourceManager:
+            (
+              await import('../../services/mobile-raw-data-source.runtime')
+            ).getMobileRawDataSourceManager() ?? undefined,
+          deleteGraphRecord: async ({ kind, id }) => {
+            const { getMobileGraphRawManager } =
+              await import('../../services/mobile-raw-data-source.runtime')
+            const { applyDiaryGraphSurgicalDelete } = await import('@baishou/core-mobile')
+            const graphManager = getMobileGraphRawManager()
+            if (!graphManager) {
+              throw new Error('Graph raw manager not ready')
+            }
+            await applyDiaryGraphSurgicalDelete({
+              kind,
+              id,
+              manager: graphManager,
+              repo: new GraphRepository(runtime.drizzleDb)
+            })
+          },
+          syncGraphPendingIndex: async () => {
+            const { syncMobileGraphPendingIndex } =
+              await import('../../services/mobile-raw-data-source.runtime')
+            await syncMobileGraphPendingIndex({
+              drizzleDb: runtime.drizzleDb,
+              embeddingProvider: embeddingProvider ?? null,
+              embeddingModelId: embeddingModelId ?? null
+            })
+          },
+          graphReader: new GraphReaderAdapter(async (opts) => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            const vaultId = resolveVaultIdentity({
+              vaultId: session?.vaultId,
+              vaultName: session?.vaultName || 'Personal'
+            }).id
+            const rag = new GraphRagService(new GraphRepository(runtime.drizzleDb))
+            let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
+            if (embeddingProvider && embeddingModelId) {
+              try {
+                const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId)
+                if (adapter.isConfigured) {
+                  embedQuery = (text) => adapter.embedQuery(text)
+                }
+              } catch {
+                embedQuery = undefined
+              }
+            }
+            const result = await rag.recallRelations({
+              vaultId,
+              entity: opts.entity,
+              mode: opts.mode,
+              depth: opts.depth,
+              nodeType: opts.nodeType,
+              limit: opts.limit,
+              embedQuery
+            })
+            return {
+              anchors: result.anchors.map((a) => ({
+                id: a.id,
+                name: a.name,
+                nodeType: a.nodeType,
+                summary: a.summary
+              })),
+              subgraph: result.subgraph.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom,
+                isCurrent: e.isCurrent
+              })),
+              timeline: result.timeline?.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom,
+                isCurrent: e.isCurrent
+              })),
+              nodes: result.nodes.map((n) => ({
+                id: n.id,
+                name: n.name,
+                nodeType: n.nodeType,
+                summary: n.summary
+              })),
+              paths: (result.paths ?? []).map((p) => ({
+                nodeIds: p.nodeIds,
+                nodeNames: p.nodeNames,
+                edges: p.edges.map((e) => ({
+                  id: e.id,
+                  fromId: e.fromId,
+                  toId: e.toId,
+                  edgeType: e.edgeType,
+                  sourceRef: e.sourceRef,
+                  sourceExcerpt: e.sourceExcerpt,
+                  validFrom: e.validFrom
+                })),
+                edgeDirections: p.edgeDirections
+              }))
+            }
+          }),
+          ...createCompanionGraphLookups(async () => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            const vaultId = resolveVaultIdentity({
+              vaultId: session?.vaultId,
+              vaultName: session?.vaultName || 'Personal'
+            }).id
+            const repo = new GraphRepository(runtime.drizzleDb)
+            return {
+              findByNameOrAlias: async (name, nodeType) => {
+                const hits = await repo.findNodesByNameOrAlias(vaultId, name, nodeType)
+                return pickBareGraphNameHit(hits).hit
+              },
+              findNodesByNameOrAlias: (name, nodeType) =>
+                repo.findNodesByNameOrAlias(vaultId, name, nodeType),
+              getNodeById: (id) => repo.getNodeById(id, vaultId),
+              getEdgeById: (id) => repo.getEdgeById(id, vaultId)
+            }
+          }),
+          knowledgeReader: new KnowledgeReaderAdapter(async (opts) => {
+            const { mobileSearchKnowledge } =
+              await import('../../services/mobile-knowledge.service')
+            return mobileSearchKnowledge({
+              query: opts.query,
+              notebookIds: opts.notebookIds,
+              limit: opts.limit,
+              limitPerNotebook: opts.limitPerNotebook
+            })
+          }),
+          knowledgeGraphReader: new KnowledgeGraphReaderAdapter(async (opts) => {
+            const { mobileSearchNotebookGraph } =
+              await import('../../services/mobile-knowledge.service')
+            return mobileSearchNotebookGraph({
+              query: opts.query,
+              notebookIds: opts.notebookIds,
+              limit: opts.limit
+            })
+          }),
+          skillsWriter: createMobileSkillsWriter(),
+          skillsReader: createMobileSkillsReader(),
+          skillsCatalog: await (async () => {
+            const { filterSkillsCatalogByGate } = await import('@baishou/ai')
+            return filterSkillsCatalogByGate(
+              (await mobileListSkillsCatalog().catch(() => undefined)) ?? [],
+              { agentGate: getAgentGate?.() }
+            )
+          })(),
+          extraVercelToolsFactory: async (toolContext) => {
+            const { mobileExtraVercelToolsFactory } =
+              await import('../../services/mobile-mcp-client-runtime')
+            return mobileExtraVercelToolsFactory(toolContext)
+          }
         },
         callbacks
       )

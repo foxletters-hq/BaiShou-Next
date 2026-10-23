@@ -1,7 +1,5 @@
 import type { ToolContext } from './agent.tool'
-import { mergeDiaryTags, resolveDiaryEditMode } from '@baishou/shared'
-
-export { mergeDiaryTags }
+import { resolveDiaryEditMode } from '@baishou/shared'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -32,7 +30,7 @@ export async function runDiaryReadViaDb(
 }
 
 export async function runDiaryWriteViaDb(
-  args: { date: string; content: string; tags?: string },
+  args: { date: string; content: string },
   context: ToolContext
 ): Promise<string> {
   if (!context.diarySearcher?.writeEntry) {
@@ -42,10 +40,9 @@ export async function runDiaryWriteViaDb(
     return `Error: Invalid date format "${args.date}". Expected YYYY-MM-DD.`
   }
 
-  const result = await context.diarySearcher.writeEntry(args.date, args.content, args.tags)
-  const tagNote = args.tags?.trim() ? ` Tags: ${args.tags.trim()}.` : ''
+  const result = await context.diarySearcher.writeEntry(args.date, args.content)
   if (result.ok === false) return result.message
-  return `Successfully created diary entry for ${args.date}.${tagNote}`
+  return `Successfully created diary entry for ${args.date}.`
 }
 
 export async function runDiaryEditViaDb(
@@ -53,7 +50,6 @@ export async function runDiaryEditViaDb(
     date: string
     content: string
     mode?: 'append' | 'overwrite'
-    tags?: string
   },
   context: ToolContext
 ): Promise<string> {
@@ -69,8 +65,7 @@ export async function runDiaryEditViaDb(
   const result = await context.diarySearcher.editEntry({
     date: args.date,
     content: args.content,
-    mode: editMode,
-    tags: args.tags
+    mode: editMode
   })
 
   if (result.ok === false) return result.message

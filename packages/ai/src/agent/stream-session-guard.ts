@@ -49,14 +49,22 @@ export function releaseAgentStreamSession(sessionId: string, generation: number)
   }
 }
 
-export function abortAgentStreamSession(sessionId: string): void {
+export function abortAgentStreamSession(sessionId: string, generation?: number): void {
   const claim = sessionClaims.get(sessionId)
   if (claim) {
+    if (generation !== undefined && claim.generation !== generation) return
     claim.abortController.abort()
     return
   }
+  // 过期代次的超时不要毒死下一轮 claim
+  if (generation !== undefined) return
   // claim 尚未建立（如仍在 buildStreamConfig）：登记 pending，待 claim 时立即 abort
   pendingStopSessionIds.add(sessionId)
+}
+
+/** 回滚/强制开流前清除：空闲 stop 留下的 pending 会毒死下一轮 claim */
+export function clearPendingAgentStreamStop(sessionId: string): void {
+  pendingStopSessionIds.delete(sessionId)
 }
 
 export function abortAllAgentStreamSessions(): void {
@@ -64,6 +72,11 @@ export function abortAllAgentStreamSessions(): void {
     claim.abortController.abort()
   }
   pendingStopSessionIds.clear()
+}
+
+/** 会话是否仍有活跃 stream claim（用于 admit / drain 忙闲判断） */
+export function isAgentStreamSessionBusy(sessionId: string): boolean {
+  return sessionClaims.has(sessionId)
 }
 
 /** 测试专用：重置全局状态 */

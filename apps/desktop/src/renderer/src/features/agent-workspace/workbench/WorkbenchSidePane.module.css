@@ -1,0 +1,152 @@
+.pane {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-muted);
+}
+
+.viewTabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2xs);
+  height: 35px;
+  min-height: 35px;
+  padding: 0 var(--spacing-xs);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-app);
+}
+
+.viewTab {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewTab:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.viewTabActive {
+  color: var(--color-primary);
+  background: var(--bg-surface-high);
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 var(--spacing-2xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: var(--ui-fs-sm);
+  line-height: 14px;
+  text-align: center;
+}
+
+.viewBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+/* 左下角设置项：与日记侧栏 / 工作台首页侧栏对齐 */
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+}
+
+.dividerWrapper {
+  padding: 0 var(--spacing-md);
+  margin: var(--spacing-xs) 0 var(--spacing-sm) 0;
+  flex-shrink: 0;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+}
+
+.fixedNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  padding: 0 var(--spacing-sm-plus);
+  margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-sizing: border-box;
+  outline: none;
+  position: relative;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.navItem:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+}
+
+.navItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.navIcon {
+  width: 18px;
+  height: 18px;
+  margin-right: var(--spacing-md-tight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: var(--ui-fs-xl);
+  color: var(--text-secondary);
+}
+
+.navIcon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.navLabel {
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

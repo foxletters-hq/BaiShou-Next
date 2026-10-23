@@ -1,116 +1,66 @@
-import { useState, useRef, useEffect } from 'react'
-import styles from './InputBar.module.css'
+import { useLayoutEffect, useState } from 'react'
 
+/** 与 InputBar.module.css 中 .textarea 的 line-height / padding 保持一致 */
+const TEXTAREA_LINE_HEIGHT = 22
+const TEXTAREA_VERTICAL_PADDING = 10
+const TEXTAREA_MAX_LINES = 8
+/** 单行布局时左右按钮+间隙大约占用的宽度（仅 + / 发送） */
+export const INPUT_BAR_SIDE_CONTROLS_RESERVE_PX = 88
+/** 单行布局且带有 bottomTrailing（如模型切换）时预留更宽 */
+export const INPUT_BAR_SIDE_CONTROLS_WITH_TRAILING_RESERVE_PX = 128
+
+export const INPUT_BAR_TEXTAREA_MAX_HEIGHT =
+  TEXTAREA_LINE_HEIGHT * TEXTAREA_MAX_LINES + TEXTAREA_VERTICAL_PADDING
+
+export function getInputBarTextareaMinHeight(minRows = 1): number {
+  const rows = Math.max(1, Math.min(minRows, TEXTAREA_MAX_LINES))
+  return TEXTAREA_LINE_HEIGHT * rows + TEXTAREA_VERTICAL_PADDING
+}
+
+export type UseInputBarExpandOptions = {
+  /** 单行布局下左右控件预估宽度，用于探针判断是否会软换行 */
+  sideControlsReservePx?: number
+}
+
+/**
+ * 判定是否进入多行布局（输入在上、按钮在下），与伙伴页一致：
+ * - 含硬换行；或
+ * - 按「单行可用宽度」测量时内容已软换行
+ *
+ * 实际增高由 InputBarSkillEditor 负责，此处只做布局切换判定。
+ */
 export function useInputBarExpand(
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>,
-  text: string
-) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const isResizing = useRef(false)
-  const startY = useRef(0)
-  const startHeight = useRef(0)
-  const expandedHeightRef = useRef(180)
+  editorRef: React.RefObject<HTMLElement | null>,
+  text: string,
+  minRows = 1,
+  options?: UseInputBarExpandOptions
+): boolean {
+  const minHeight = getInputBarTextareaMinHeight(minRows)
+  const sideReserve = options?.sideControlsReservePx ?? INPUT_BAR_SIDE_CONTROLS_RESERVE_PX
+  const [isMultiline, setIsMultiline] = useState(false)
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing.current) return
-    const deltaY = startY.current - e.clientY
-    const maxHeight = Math.max(180, window.innerHeight - 180)
-    const allowedMax = Math.min(600, maxHeight)
-    const newHeight = Math.max(140, Math.min(startHeight.current + deltaY, allowedMax))
-    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`) as HTMLElement
-    if (cardEl) {
-      cardEl.style.height = `${newHeight}px`
-      expandedHeightRef.current = newHeight
-    }
-  }
+  useLayoutEffect(() => {
+    const el = editorRef.current
+    if (!el) return
 
-  const handleMouseUp = () => {
-    isResizing.current = false
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isResizing.current = true
-    startY.current = e.clientY
-    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`)
-    if (cardEl) startHeight.current = cardEl.getBoundingClientRect().height
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    e.preventDefault()
-  }
-
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [])
-
-  const toggleExpand = () => {
-    const cardEl = textareaRef.current?.closest(`.${styles.inputCard}`) as HTMLElement
-    if (!cardEl) return
-    const expanding = !isExpanded
-    setIsAnimating(true)
-    if (expanding) {
-      const startH = cardEl.getBoundingClientRect().height
-      cardEl.style.height = `${startH}px`
-      cardEl.offsetHeight
-      setIsExpanded(true)
-      setTimeout(() => {
-        const maxHeight = Math.max(180, window.innerHeight - 180)
-        const safeHeight = Math.max(
-          140,
-          Math.min(expandedHeightRef.current, Math.min(600, maxHeight))
-        )
-        cardEl.style.height = `${safeHeight}px`
-        expandedHeightRef.current = safeHeight
-        if (textareaRef.current) textareaRef.current.style.height = '100%'
-      }, 30)
-      setTimeout(() => setIsAnimating(false), 700)
-    } else {
-      const currentHeight = cardEl.getBoundingClientRect().height
-      expandedHeightRef.current = currentHeight
-      setIsExpanded(false)
-      cardEl.classList.remove(styles.inputCardExpanded)
-      const parentEl = cardEl.parentElement
-      parentEl?.classList.remove(styles.constrainedBoxExpanded)
-      if (textareaRef.current) {
-        textareaRef.current.classList.remove(styles.textareaExpanded)
-        textareaRef.current.style.height = 'auto'
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`
-      }
-      cardEl.style.height = ''
-      const targetHeight = cardEl.getBoundingClientRect().height
-      cardEl.classList.add(styles.inputCardExpanded)
-      parentEl?.classList.add(styles.constrainedBoxExpanded)
-      if (textareaRef.current) {
-        textareaRef.current.classList.add(styles.textareaExpanded)
-        textareaRef.current.style.height = '100%'
-      }
-      cardEl.style.height = `${currentHeight}px`
-      cardEl.offsetHeight
-      setTimeout(() => {
-        cardEl.style.height = `${targetHeight}px`
-      }, 30)
-      setTimeout(() => {
-        setIsAnimating(false)
-        cardEl.style.height = ''
-      }, 700)
-    }
-  }
-
-  useEffect(() => {
-    if (isExpanded) {
-      if (textareaRef.current) textareaRef.current.style.height = '100%'
+    if (text.includes('\n')) {
+      setIsMultiline(true)
       return
     }
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`
-    }
-  }, [text, isExpanded, textareaRef])
 
-  return { isExpanded, isAnimating, handleMouseDown, toggleExpand }
+    // 用「单行布局可用宽度」探针：stacked 后编辑器变宽，直接量当前高度会误判回单行
+    const parentW = el.parentElement?.clientWidth || el.clientWidth
+    const narrowW = Math.max(80, parentW - (isMultiline ? sideReserve : 0))
+    const prevMaxWidth = el.style.maxWidth
+    const prevHeight = el.style.height
+    el.style.maxWidth = `${narrowW}px`
+    el.style.height = 'auto'
+    const narrowHeight = el.scrollHeight
+    el.style.maxWidth = prevMaxWidth
+    el.style.height = prevHeight
+
+    setIsMultiline(narrowHeight > minHeight + 1)
+  }, [text, editorRef, minHeight, isMultiline, sideReserve])
+
+  return isMultiline
 }

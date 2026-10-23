@@ -131,7 +131,7 @@ describe('MigrationService', () => {
         CREATE TABLE agent_sessions (
           id TEXT PRIMARY KEY NOT NULL,
           title TEXT NOT NULL DEFAULT '新对话',
-          vault_name TEXT NOT NULL,
+          vault_id TEXT NOT NULL,
           assistant_id TEXT,
           is_pinned INTEGER NOT NULL DEFAULT 0,
           system_prompt TEXT,
@@ -151,6 +151,7 @@ describe('MigrationService', () => {
       const names = cols.map((c: any) => c.name)
       expect(names).toContain('total_cache_read_input_tokens')
       expect(names).toContain('total_cache_write_input_tokens')
+      expect(names).toContain('mounted_notebook_ids')
     })
 
     it('_ensureAgentSchemaColumns should add missing order_index on legacy agent_messages', async () => {
@@ -253,13 +254,175 @@ describe('MigrationService', () => {
       expect(tables).toHaveLength(1)
     })
 
+    it('_retireDiaryEmbedJobsTable migrates leftover jobs into embed_ledger without file hashes then drops the table', async () => {
+      const db = dbManager.getDb()
+      await (service as any)._ensureEmbedLedgerTable()
+      await db.run(sql`
+        CREATE TABLE diary_embed_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          vault_id TEXT NOT NULL,
+          diary_id INTEGER NOT NULL,
+          content_hash TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          next_retry_at INTEGER,
+          updated_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL
+        )
+      `)
+      await db.run(sql`
+        INSERT INTO diary_embed_jobs
+          (vault_id, diary_id, content_hash, status, attempts, last_error, updated_at, created_at)
+        VALUES
+          ('vault-a', 12, 'file-md5-should-not-copy', 'pending', 2, 'old-error', 100, 100)
+      `)
+      await db.run(sql`
+        INSERT INTO embed_ledger
+          (vault_id, source_type, source_id, content_hash, chunk_count, model_id, dimension,
+           status, attempts, last_error, embedded_at, updated_at)
+        VALUES
+          ('vault-a', 'diary', 'vault-a#99', 'already', 1, 'm', 8, 'embedded', 0, NULL, 1, 1)
+      `)
+
+      await (service as any)._retireDiaryEmbedJobsTable()
+      await (service as any)._retireDiaryEmbedJobsTable()
+
+      const jobs = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='diary_embed_jobs'
+      `)
+      expect(jobs).toHaveLength(0)
+
+      const rows = (await db.all(sql`SELECT * FROM embed_ledger ORDER BY source_id`)) as Array<{
+        source_id: string
+        content_hash: string
+      }>
+      expect(rows).toHaveLength(2)
+      const migrated = rows.find((row) => row.source_id === 'vault-a#12')
+      expect(migrated).toMatchObject({
+        vault_id: 'vault-a',
+        source_type: 'diary',
+        source_id: 'vault-a#12',
+        content_hash: '',
+        status: 'failed',
+        attempts: 2
+      })
+      expect(String(migrated?.content_hash ?? '')).not.toBe('file-md5-should-not-copy')
+    })
+
+    it('_ensureEmbedLedgerTable should create table and indexes and stay idempotent', async () => {
+      await (service as any)._ensureEmbedLedgerTable()
+      await (service as any)._ensureEmbedLedgerTable()
+
+      const db = dbManager.getDb()
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='embed_ledger'
+      `)
+      expect(tables).toHaveLength(1)
+
+      const indexes = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='embed_ledger'
+      `)
+      const indexNames = indexes.map((row) => (row as { name: string }).name)
+      expect(indexNames).toContain('embed_ledger_source_unique')
+      expect(indexNames).toContain('embed_ledger_read_idx')
+    })
+
+    it('_ensureGraphTables should create graph_nodes_vault_embed_state index', async () => {
+      await (service as any)._ensureGraphTables()
+      await (service as any)._ensureGraphTables()
+
+      const db = dbManager.getDb()
+      const indexes = await db.all(sql`
+        SELECT name FROM sqlite_master
+        WHERE type='index' AND name='graph_nodes_vault_embed_state'
+      `)
+      expect(indexes).toHaveLength(1)
+    })
+
+    it('should accept two same-name people after upgrading an old live-name unique index', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE graph_nodes (
+          id TEXT PRIMARY KEY NOT NULL,
+          vault_id TEXT NOT NULL,
+          node_type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          name_normalized TEXT DEFAULT '' NOT NULL,
+          aliases TEXT DEFAULT '[]' NOT NULL,
+          summary TEXT DEFAULT '' NOT NULL,
+          props_json TEXT DEFAULT '{}' NOT NULL,
+          embedding BLOB,
+          dimension INTEGER,
+          model_id TEXT DEFAULT '' NOT NULL,
+          mention_count INTEGER DEFAULT 0 NOT NULL,
+          first_seen_at INTEGER,
+          last_seen_at INTEGER,
+          origin TEXT DEFAULT 'ai' NOT NULL,
+          shard_month TEXT DEFAULT '' NOT NULL,
+          review_status TEXT DEFAULT 'approved' NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          deleted_at INTEGER
+        )
+      `)
+      await db.run(sql`
+        CREATE UNIQUE INDEX graph_nodes_vault_type_name_live
+        ON graph_nodes(vault_id, node_type, name_normalized)
+        WHERE deleted_at IS NULL AND node_type != 'entry'
+      `)
+
+      await (service as any)._ensureGraphTables()
+      await (service as any)._ensureAgentSchemaColumns()
+
+      await db.run(sql`
+        INSERT INTO graph_nodes (
+          id, vault_id, node_type, name, name_normalized, discriminator, aliases, summary, props_json,
+          mention_count, origin, shard_month, review_status, created_at, updated_at
+        ) VALUES
+          ('n-bare', 'vault-a', 'person', '张三', '张三', '', '[]', '', '{}', 1, 'ai', '2026-09', 'approved', 1, 1),
+          ('n-split', 'vault-a', 'person', '张三', '张三', '同事', '[]', '', '{}', 1, 'ai', '2026-09', 'approved', 1, 1)
+      `)
+      const rows = await db.all(sql`SELECT id FROM graph_nodes ORDER BY id`)
+      expect(rows.map((row) => (row as { id: string }).id)).toEqual(['n-bare', 'n-split'])
+    })
+
+    it('_ensureEmbedLedgerTable should upgrade a legacy db that only has memory_embeddings', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE memory_embeddings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          embedding_id TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          source_id TEXT NOT NULL,
+          group_id TEXT NOT NULL,
+          vault_id TEXT,
+          chunk_index INTEGER DEFAULT 0 NOT NULL,
+          chunk_text TEXT NOT NULL,
+          metadata_json TEXT DEFAULT '{}' NOT NULL,
+          embedding BLOB NOT NULL,
+          dimension INTEGER NOT NULL,
+          model_id TEXT DEFAULT '' NOT NULL,
+          created_at INTEGER NOT NULL,
+          source_created_at INTEGER
+        )
+      `)
+
+      await expect((service as any)._ensureEmbedLedgerTable()).resolves.not.toThrow()
+
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='embed_ledger'
+      `)
+      expect(tables).toHaveLength(1)
+    })
+
     it('_ensureSystemSettingsTable should create missing settings table on legacy agent db', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
         CREATE TABLE agent_sessions (
           id TEXT PRIMARY KEY NOT NULL,
           title TEXT NOT NULL DEFAULT '新对话',
-          vault_name TEXT NOT NULL,
+          vault_id TEXT NOT NULL,
           provider_id TEXT NOT NULL,
           model_id TEXT NOT NULL,
           created_at INTEGER NOT NULL,
@@ -273,6 +436,46 @@ describe('MigrationService', () => {
         SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'
       `)
       expect(tables).toHaveLength(1)
+    })
+
+    it('should detect schema compat stamp and mark current', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE VIRTUAL TABLE agent_messages_fts USING fts5(
+          part_id UNINDEXED,
+          message_id UNINDEXED,
+          session_id UNINDEXED,
+          content,
+          tokenize='unicode61'
+        );
+      `)
+      expect(await (service as any)._isSchemaCompatCurrent()).toBe(false)
+      await (service as any)._markSchemaCompatCurrent()
+      expect(await (service as any)._isSchemaCompatCurrent()).toBe(true)
+    })
+
+    it('_ensureCompatSchema should normalize legacy diary:<vault> and memory:<vault> group_ids even when vault_id is already populated', async () => {
+      const db = dbManager.getDb()
+      await (service as any)._ensureMemoryEmbeddingsTable()
+      await db.run(sql`
+        INSERT INTO memory_embeddings (
+          embedding_id, source_type, source_id, group_id, vault_id,
+          chunk_index, chunk_text, metadata_json, embedding, dimension, model_id, created_at
+        ) VALUES
+          ('e-1', 'diary', 'Personal#1', 'diary:Personal', 'vlt_personal', 0, 'chunk1', '{}', X'00', 3, 'm', 1),
+          ('e-2', 'memory', 'mem-1', 'memory:Personal', 'vlt_personal', 0, 'chunk2', '{}', X'00', 3, 'm', 1)
+      `)
+
+      await (service as any)._ensureCompatSchema()
+
+      const rows = (await db.all(
+        sql`SELECT embedding_id, group_id, vault_id FROM memory_embeddings ORDER BY embedding_id`
+      )) as Array<{ embedding_id: string; group_id: string; vault_id: string }>
+
+      expect(rows).toEqual([
+        { embedding_id: 'e-1', group_id: 'diary', vault_id: 'vlt_personal' },
+        { embedding_id: 'e-2', group_id: 'memory', vault_id: 'vlt_personal' }
+      ])
     })
   })
 })

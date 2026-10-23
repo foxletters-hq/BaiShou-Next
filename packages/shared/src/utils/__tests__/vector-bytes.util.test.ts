@@ -19,4 +19,18 @@ describe('vector-bytes.util', () => {
     const decoded = hexToBytes(hex)
     expect(Array.from(decoded)).toEqual(Array.from(bytes))
   })
+
+  it('handles unaligned byteOffset without throwing RangeError', () => {
+    const vector = [1.5, 2.5, 3.5]
+    const original = embeddingVectorToBytes(vector)
+    // create unaligned buffer (e.g. byteOffset = 1)
+    const container = new Uint8Array(original.length + 5)
+    container.set(original, 1)
+    const unaligned = container.subarray(1, 1 + original.length)
+    expect(unaligned.byteOffset % 4).not.toBe(0)
+    const restored = Array.from(bytesToFloat32Array(unaligned, vector.length))
+    expect(restored[0]).toBeCloseTo(1.5)
+    expect(restored[1]).toBeCloseTo(2.5)
+    expect(restored[2]).toBeCloseTo(3.5)
+  })
 })

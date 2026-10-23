@@ -1,12 +1,12 @@
 import type { MutableRefObject } from 'react'
-import type { StreamingTextDisplayBuffer } from '@baishou/shared'
+import type { AgentStreamTimelineItem, StreamingTextDisplayBuffer } from '@baishou/shared'
 import type { useBaishou } from '../providers/BaishouProvider'
 
 export const MOBILE_AGENT_STREAM_DISPLAY_OPTIONS = {
   immediate: true
 } as const
 
-export const STREAM_PRESENTATION_LINGER_MS = 520
+export const STREAM_PRESENTATION_LINGER_MS = 180
 export const STREAM_BUFFER_HOLD_AFTER_LINGER_MS = 320
 export const STREAM_ZERO_OUTPUT_NETWORK_RETRIES = 2
 
@@ -51,6 +51,7 @@ export interface AgentStreamRefs {
   currentSessionIdRef: MutableRefObject<string | null>
   streamingTextDisplayRef: MutableRefObject<StreamingTextDisplayBuffer | null>
   streamingReasoningDisplayRef: MutableRefObject<StreamingTextDisplayBuffer | null>
+  timelineRef: MutableRefObject<AgentStreamTimelineItem[]>
   compressionTextDisplayRef: MutableRefObject<StreamingTextDisplayBuffer | null>
   compressionReasoningDisplayRef: MutableRefObject<StreamingTextDisplayBuffer | null>
   streamFinalizeLockRef: MutableRefObject<string | null>

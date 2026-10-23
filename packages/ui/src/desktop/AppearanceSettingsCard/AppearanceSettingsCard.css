@@ -9,26 +9,27 @@
 .settings-expansion-summary {
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: var(--spacing-md);
   cursor: pointer;
   user-select: none;
   list-style: none; /* Hide default arrow */
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-swift);
 }
 
 .settings-expansion-summary::-webkit-details-marker {
   display: none;
 }
 
-.settings-expansion-summary:hover {
-  background-color: rgba(var(--text-primary-rgb, 0, 0, 0), 0.02);
-}
-
 .settings-leading-icon {
-  margin-right: 16px;
-  color: var(--text-secondary, #475569);
+  margin-right: var(--spacing-md-tight);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
+}
+
+.settings-leading-icon svg.lucide {
+  width: var(--settings-icon-leading-size);
+  height: var(--settings-icon-leading-size);
 }
 
 .settings-title-group {
@@ -39,22 +40,23 @@
 
 .settings-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary, #1a1a1a);
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+  color: var(--text-primary);
 }
 
 .settings-subtitle {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: var(--text-secondary, #475569);
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
 }
 
 .settings-trailing-icon {
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
-  transition: transform 0.3s;
+  transition: transform var(--duration-moderate);
 }
 
 .settings-expansion-tile[open] .settings-trailing-icon {
@@ -63,17 +65,17 @@
 
 /* Scope strictly to avoid bleeding into other SettingsExpansionTile instances */
 .appearance-settings-wrapper .settings-expansion-content {
-  padding: 0 16px 16px 16px;
+  padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .settings-label {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
-  color: var(--text-primary, #1a1a1a);
-  margin-bottom: 8px;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
 }
 
 .appearance-row {
@@ -82,18 +84,18 @@
 }
 
 .color-dot-check {
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
+  color: var(--text-on-primary);
+  font-size: var(--settings-font-row-size);
+  font-weight: 600;
 }
 
 .theme-toggle-group {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: rgba(0, 0, 0, 0.04);
-  padding: 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  padding: var(--spacing-xs-plus);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-muted);
 }
 
 .theme-btn {
@@ -101,12 +103,12 @@
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  padding: 10px 0;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: var(--spacing-sm-plus) 0;
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .theme-btn:hover {
@@ -115,14 +117,14 @@
 
 .theme-btn.active {
   background: var(--bg-surface);
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .color-palette {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--spacing-md-snug);
   flex-wrap: wrap;
 }
 
@@ -132,7 +134,7 @@
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -143,21 +145,21 @@
 }
 
 .color-dot.active {
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: color-mix(in srgb, var(--text-on-primary) 80%, transparent);
   box-shadow: 0 0 12px var(--text-secondary);
 }
 
 .custom-color-picker {
-  border: 1px dashed rgba(255, 255, 255, 0.5);
-  color: #fff;
-  font-weight: bold;
+  border: 1px dashed color-mix(in srgb, var(--text-on-primary) 50%, transparent);
+  color: var(--text-on-primary);
+  font-weight: 600;
 }
 
 .color-native-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
-  animation: fadeIn 0.3s;
+  gap: var(--spacing-sm-plus);
+  animation: fadeIn var(--duration-moderate);
 }
 
 .color-native-wrapper input {
@@ -165,31 +167,31 @@
   height: 32px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs-plus);
   background: transparent;
   cursor: crosshair;
 }
 
 .color-hint {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
 }
 
 .lang-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .lang-chip {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-glass-surface);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 20px;
-  font-size: 13px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg-plus);
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .lang-chip:hover {
@@ -198,13 +200,126 @@
 }
 
 .lang-chip.active {
-  background: var(--color-primary-light, rgba(91, 168, 245, 0.18));
-  border-color: var(--color-primary, #5ba8f5);
-  color: var(--text-primary, #1a1a1a);
+  background: var(--color-primary-light, rgba(var(--color-primary-rgb), 0.18));
+  border-color: var(--color-primary);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
-[data-theme='dark'] .lang-chip.active {
-  background: var(--color-primary-light, rgba(91, 168, 245, 0.22));
-  border-color: var(--color-primary, #5ba8f5);
+/* 字体大小：离散刻度滑条（对齐常规设置示意） */
+.font-size-row {
+  margin-top: var(--spacing-sm);
+}
+
+.font-size-slider {
+  position: relative;
+  padding: var(--spacing-sm-plus) var(--spacing-2xs) 0;
+}
+
+/* 提高选择器优先级，覆盖 theme/range-slider.css 的主色填充轨 */
+input[type='range'].font-size-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+  background: var(--border-muted);
+  background-image: none;
+  background-size: auto;
+}
+
+input[type='range'].font-size-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border-muted);
+}
+
+input[type='range'].font-size-range::-moz-range-track {
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border-muted);
+}
+
+input[type='range'].font-size-range::-moz-range-progress {
+  background: transparent;
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  position: relative;
+  z-index: 2;
+  transition: box-shadow var(--duration-swift);
+}
+
+input[type='range'].font-size-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.06);
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb:active {
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.font-size-ticks {
+  pointer-events: none;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 10px;
+  height: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1;
+}
+
+.font-size-tick {
+  width: 1px;
+  height: 8px;
+  background: var(--border-control, var(--border-muted));
+  opacity: 0.9;
+}
+
+/* 与滑块拇指中心对齐：左右各留 8px（半拇指宽），标签绝对定位到对应刻度 */
+.font-size-labels {
+  position: relative;
+  height: 22px;
+  margin-top: var(--spacing-sm-plus);
+  margin-left: var(--spacing-sm);
+  margin-right: var(--spacing-sm);
+}
+
+.font-size-label {
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.font-size-label.active {
+  color: var(--text-primary);
+  font-weight: 500;
 }

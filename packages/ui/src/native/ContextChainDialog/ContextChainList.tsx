@@ -1,9 +1,12 @@
 import React from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { ChevronRight } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { MockChatMessage } from './context-chain-dialog.types'
 import { getRoleColor, getRoleLabel } from './context-chain-dialog.utils'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface ContextChainListProps {
   contextMessages: MockChatMessage[]
@@ -26,33 +29,35 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            padding: tokens.spacing.sm,
-            borderBottomWidth: 1,
+            paddingVertical: sharedTokens.spacing.smPlus,
+            paddingHorizontal: sharedTokens.spacing.xs,
+            borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colors.borderSubtle,
             gap: tokens.spacing.sm
           }}
         >
           <Text
             style={{
-              fontSize: 14,
+              fontSize: mobileTypography.caption.fontSize,
               fontWeight: '600',
-              color: colors.textSecondary,
-              width: 30
+              color: colors.textTertiary,
+              width: 24
             }}
           >
             {idx + 1}
           </Text>
           <View
             style={{
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: tokens.radius.full,
+              paddingHorizontal: sharedTokens.spacing.sm,
+              paddingVertical: sharedTokens.spacing.xxs,
+              borderRadius: sharedTokens.radius.xs,
               backgroundColor: getRoleColor(msg.role, colors) + '20'
             }}
           >
             <Text
               style={{
-                fontSize: 12,
+                fontSize: mobileTypography.caption.fontSize,
+                lineHeight: 16,
                 color: getRoleColor(msg.role, colors),
                 fontWeight: '600'
               }}
@@ -63,8 +68,9 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
           <Text
             style={{
               flex: 1,
-              fontSize: 14,
-              color: colors.textPrimary
+              fontSize: mobileTypography.secondary.fontSize,
+              lineHeight: 20,
+              color: colors.textSecondary
             }}
             numberOfLines={1}
           >
@@ -76,7 +82,11 @@ export const ContextChainList: React.FC<ContextChainListProps> = ({
                   )
                 : t('agent.chat.empty_content', '[空文本]'))}
           </Text>
-          <Text style={{ fontSize: 16, color: colors.textSecondary }}>›</Text>
+          <ChevronRight
+            size={iconSizes.sm}
+            color={colors.textTertiary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+          />
         </Pressable>
       ))}
     </View>
@@ -93,7 +103,7 @@ export const ContextChainTextContent: React.FC<ContextChainTextContentProps> = (
   return (
     <Text
       style={{
-        fontSize: 14,
+        fontSize: mobileTypography.secondary.fontSize,
         color: colors.textPrimary,
         lineHeight: 22,
         padding: tokens.spacing.sm,

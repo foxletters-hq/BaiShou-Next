@@ -1,27 +1,45 @@
 import React from 'react'
-import { View, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Edit3, CalendarCheck, Plus } from 'lucide-react-native'
 import { getNativeElevationStyle, useNativeTheme } from '@baishou/ui/native'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 const FAB_MARGIN_END = 28
-/** Tab 页内容区底部即底边栏上沿，只需留小间距 */
-const FAB_MARGIN_BOTTOM = 18
+/** Tab 页内容区底部默认间距 */
+const FAB_MARGIN_BOTTOM_DEFAULT = 24
+/** 当底部出现待整理状态栏时，自动向上抬升避让状态条（高度约 34px），避免重叠 */
+const FAB_MARGIN_BOTTOM_WITH_STATUS = 52
 
 export interface DiaryFabProps {
   todayEntry: { id: number } | null
   onEditToday: () => void
   onAddNew: () => void
+  hasPendingStatus?: boolean
+  bottomOffset?: number
 }
 
-export const DiaryFab: React.FC<DiaryFabProps> = ({ todayEntry, onEditToday, onAddNew }) => {
+export const DiaryFab: React.FC<DiaryFabProps> = ({
+  todayEntry,
+  onEditToday,
+  onAddNew,
+  hasPendingStatus = false,
+  bottomOffset
+}) => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const fabShadowSubtle = getNativeElevationStyle(isDark, 'subtle')
-  const fabShadowRaised = getNativeElevationStyle(isDark, 'raised')
+  const fabShadowSubtle =
+    Platform.OS === 'ios'
+      ? getNativeElevationStyle(isDark, 'subtle')
+      : { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderSubtle }
+  const fabShadowRaised =
+    Platform.OS === 'ios' ? getNativeElevationStyle(isDark, 'raised') : { elevation: 0 }
+
+  const resolvedBottom =
+    bottomOffset ?? (hasPendingStatus ? FAB_MARGIN_BOTTOM_WITH_STATUS : FAB_MARGIN_BOTTOM_DEFAULT)
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: FAB_MARGIN_BOTTOM }]}>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: resolvedBottom }]}>
       <TouchableOpacity
         onPress={onEditToday}
         style={[
@@ -68,12 +86,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: FAB_MARGIN_END,
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdSnug
   },
   fabSmall: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     alignItems: 'center',
     justifyContent: 'center'
   },

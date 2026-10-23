@@ -1,13 +1,23 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { diaryApi } from './diary.api'
 import { settingsApi } from './settings.api'
 import { syncApi } from './sync.api'
 import { agentApi } from './agent.api'
 import { systemApi } from './system.api'
-import { shortcutsApi } from './shortcuts.api'
+import { shortcutsApi, skillsApi } from './skills.api'
 import { legacyMigrationApi } from './legacy-migration.api'
 import { cacheApi } from './cache.api'
+import { agentWorkspaceApi } from './agent-workspace.api'
+import { graphApi } from './graph.api'
+import { knowledgeApi } from './knowledge.api'
+import { applyPersistedPageZoom } from './apply-persisted-page-zoom'
+
+const preloadStarted = performance.now()
+ipcRenderer.send('startup:mark', {
+  step: 'preload.begin',
+  navMs: Math.round(preloadStarted)
+})
 
 // Custom APIs for renderer
 
@@ -43,7 +53,11 @@ export const api = {
   ...systemApi,
   ...legacyMigrationApi,
   ...cacheApi,
-  shortcuts: shortcutsApi
+  ...graphApi,
+  ...knowledgeApi,
+  agentWorkspace: agentWorkspaceApi,
+  shortcuts: shortcutsApi,
+  skills: skillsApi
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
@@ -62,3 +76,14 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.api = api
 }
+
+applyPersistedPageZoom()
+
+ipcRenderer.send('startup:mark', {
+  step: 'preload.ready',
+  navMs: Math.round(performance.now()),
+  detail: {
+    ms: Math.round(performance.now() - preloadStarted),
+    contextIsolated: process.contextIsolated
+  }
+})

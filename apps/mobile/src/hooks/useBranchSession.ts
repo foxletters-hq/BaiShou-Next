@@ -1,8 +1,12 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { copyBranchCompressionSnapshots } from '@baishou/ai'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
-import { copyBranchCompressionSnapshots } from '@baishou/ai'
+import {
+  loadMobileSessionInActiveVault,
+  resolveMobileActiveVaultId
+} from '../utils/mobile-session-vault.util'
 
 export function useBranchSession() {
   const { t } = useTranslation()
@@ -26,10 +30,10 @@ export function useBranchSession() {
           throw new Error(t('agent.service_not_ready', '服务未就绪'))
         }
 
-        const sessions = await sessionManager.findAllSessions(1000)
-        const originalSession = sessions.find((s: any) => s.id === sessionId)
+        // 对齐桌面：按 id 取原会话，勿无 vault 过滤地扫全表
+        const originalSession = await loadMobileSessionInActiveVault(services, sessionId)
         if (!originalSession) {
-          throw new Error(t('agent.sessions.empty', '暂无会话记录...'))
+          throw new Error(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
         }
 
         const allMessages = await sessionManager.getMessagesBySession(sessionId, 9999)
@@ -41,6 +45,8 @@ export function useBranchSession() {
 
         const messagesToCopy = allMessages.slice(0, targetIndex + 1)
 
+        const vaultId = resolveMobileActiveVaultId(services)
+
         const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
         const branchTitle = `${assistantName || originalSession.title || t('agent.sessions.default_title', '新对话')} (${t('agent.chat.branch', '从此处创建分支')})`
 
@@ -50,8 +56,8 @@ export function useBranchSession() {
           assistantId: originalSession.assistantId || undefined,
           providerId: originalSession.providerId || 'default',
           modelId: originalSession.modelId || 'default',
-          vaultName: originalSession.vaultName || 'default'
-        } as any)
+          vaultId
+        })
 
         const oldToNewMessageId = new Map<string, string>()
         for (let i = 0; i < messagesToCopy.length; i++) {

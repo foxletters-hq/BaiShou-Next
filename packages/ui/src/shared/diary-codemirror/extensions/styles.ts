@@ -89,6 +89,13 @@ export const headingLineStyles: Record<number, Decoration> = {
   6: Decoration.line({ class: 'cm-rendered-h6' })
 }
 
+/** 光标在标题行时保留 #，但降成次要色，避免整行看起来像未渲染源码 */
+export const headingMarkStyle = Decoration.mark({ class: 'cm-heading-mark' })
+
+export const listNumberMark = Decoration.mark({ class: 'cm-list-number' })
+
+export const orderedListLineStyle = Decoration.line({ class: 'cm-rendered-ol' })
+
 /** @deprecated 使用 headingLineStyles */
 export const headingStyles = headingLineStyles
 
@@ -96,7 +103,46 @@ export const codeBlockMark = Decoration.mark({ class: 'cm-rendered-codeBlock' })
 export const codeMarkStyle = Decoration.mark({ class: 'cm-rendered-codeMark' })
 export const linkMark = Decoration.mark({ class: 'cm-rendered-link' })
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+
+export function renderedLinkMark(href: string): Decoration {
+  return Decoration.mark({
+    class: 'cm-rendered-link',
+    attributes: {
+      'data-href': href,
+      title: isMac ? `${href} (⌘ + 单击打开)` : `${href} (Ctrl + 单击打开)`
+    }
+  })
+}
+
 export const tableSeparatorLineStyle = Decoration.line({ class: 'cm-table-separator-line' })
+
+class HorizontalRuleWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement('span')
+    el.className = 'cm-wb-hr-widget'
+    el.setAttribute('aria-hidden', 'true')
+    return el
+  }
+
+  eq(): boolean {
+    return true
+  }
+
+  ignoreEvent(): boolean {
+    return true
+  }
+}
+
+const horizontalRuleWidget = new HorizontalRuleWidget()
+
+/** 将 `---` / `***` / `___` 行替换为视觉分割线（触摸端必须用 widget） */
+export const hrWidgetReplaceSpec = {
+  widget: horizontalRuleWidget,
+  inclusive: false as const
+}
+
+export const hrLineStyle = Decoration.line({ class: 'cm-wb-hr' })
 
 export const codeLineStyle = Decoration.line({ class: 'cm-code-line' })
 export const codeLineStyleTop = Decoration.line({

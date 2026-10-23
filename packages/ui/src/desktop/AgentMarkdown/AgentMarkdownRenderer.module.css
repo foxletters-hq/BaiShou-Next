@@ -1,15 +1,78 @@
 /* 覆盖 @ant-design/x-markdown 默认 width: 100%，让气泡随内容变宽 */
 .root:global(.x-markdown),
 .ancillary:global(.x-markdown) {
+  --font-size: var(--ui-fs-lg);
   width: fit-content !important;
   max-width: 100%;
-  font-size: 15px;
+  font-family: var(--font-family) !important;
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* 标题 UA 默认 700，未加载该字重时中文会落到系统黑体 */
+.root:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6),
+.ancillary:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit !important;
+  font-weight: 600;
+}
+
+.root:global(.x-markdown) :is(p, div, span, li, ul, ol, strong, em, a, td, th),
+.ancillary:global(.x-markdown) :is(p, div, span, li, ul, ol, strong, em, a, td, th) {
+  font-family: inherit !important;
+}
+
+/* 宽表只允许横向滚动，避免竖向滚轮被表格滚动口吃掉 */
+.root:global(.x-markdown) :global(table),
+.ancillary:global(.x-markdown) :global(table) {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .ancillary:global(.x-markdown) {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.7;
+  color: var(--text-secondary) !important;
+}
+
+/* 引用块、行内代码、代码块引用与正文同一套思源黑体和字号 */
+.root:global(.x-markdown) blockquote,
+.root:global(.x-markdown) blockquote :global(*),
+.ancillary:global(.x-markdown) blockquote,
+.ancillary:global(.x-markdown) blockquote :global(*),
+.root:global(.x-markdown) code,
+.ancillary:global(.x-markdown) code,
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  font-family: var(--font-family-main, var(--font-family)) !important;
+}
+
+.root:global(.x-markdown) blockquote,
+.ancillary:global(.x-markdown) blockquote,
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  font-size: calc(1em - 1px);
+  line-height: inherit;
+}
+
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  border: none;
+  box-shadow: none;
+}
+
+.root:global(.x-markdown):global(.x-markdown-light) pre code,
+.root:global(.x-markdown):global(.x-markdown-dark) pre code,
+.ancillary:global(.x-markdown):global(.x-markdown-light) pre code,
+.ancillary:global(.x-markdown):global(.x-markdown-dark) pre code {
+  font-family: var(--font-family-main, var(--font-family)) !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  display: block;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
 .plainText {
@@ -17,7 +80,8 @@
   max-width: 100%;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 14px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-primary);
 }

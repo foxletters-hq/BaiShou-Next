@@ -1,336 +1,176 @@
-import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
-import { IVaultService, VaultInfo } from './vault.types'
-import { IStoragePathService } from './storage-path.types'
+import { IVaultService, RenameVaultResult, VaultInfo } from './vault.types'
 import {
   VaultActiveDeleteError,
   VaultDeleteFilesystemError,
   VaultInvalidNameError,
-  VaultNameExistsError,
-  VaultNotFoundError
+  VaultNotFoundError,
+  VaultRenameFilesystemError
 } from './vault.errors'
-import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
 import {
-  discoverVaultNames,
-  readLegacyVaultRegistry,
-  writeNextVaultRegistry
-} from '../migration/legacy-migration.shared'
-import { listDiskVaultFolderNames } from './vault-disk.util'
+  findConflictingVaultName,
+  normalizeVaultNameForCompare,
+  sanitizeVaultDirectoryName,
+  validateVaultName
+} from './vault-name.util'
+import { deriveLegacyVaultId } from './vault-id.util'
+import {
+  SYNC_MANIFEST_FILENAME,
+  migrateSyncManifestVaultPrefix,
+  sumVaultFileBytes
+} from '@baishou/shared'
+import { normalizeRegistryPath } from './vault-registry.util'
+import { VaultRegistryMixin } from './vault.registry-mixin'
 
-function parseRegistryTimestamp(value: unknown, fallback: Date): Date {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    const parsed = new Date(value)
-    if (!Number.isNaN(parsed.getTime())) return parsed
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = new Date(value)
-    if (!Number.isNaN(parsed.getTime())) return parsed
-  }
-  return fallback
-}
-
-function normalizeRegistryPath(p: string): string {
-  return p
-    .replace(/^file:\/\//, '')
-    .replace(/\\/g, '/')
-    .replace(/\/$/, '')
-}
-
-async function discoverAllVaultNamesOnDisk(
-  fileSystem: IFileSystem,
-  rootDir: string
-): Promise<string[]> {
-  const [fromFolders, fromLegacy] = await Promise.all([
-    listDiskVaultFolderNames(fileSystem, rootDir),
-    discoverLegacyVaultNamesOnDisk(fileSystem, rootDir)
-  ])
-  return [...new Set([...fromFolders, ...fromLegacy])]
-}
-
-async function vaultDirectoryHasLegacyContent(
-  fileSystem: IFileSystem,
-  rootDir: string,
-  vaultName: string
-): Promise<boolean> {
-  const vaultDir = path.join(rootDir, vaultName)
-  return (
-    (await fileSystem.exists(path.join(vaultDir, 'Journals'))) ||
-    (await fileSystem.exists(path.join(vaultDir, 'Archives'))) ||
-    (await fileSystem.exists(path.join(vaultDir, '.baishou', 'agent.sqlite')))
-  )
-}
-
-async function discoverLegacyVaultNamesOnDisk(
-  fileSystem: IFileSystem,
-  rootDir: string
-): Promise<string[]> {
-  const names = await discoverVaultNames(fileSystem, rootDir)
-  const withContent: string[] = []
-  for (const name of names) {
-    if (await vaultDirectoryHasLegacyContent(fileSystem, rootDir, name)) {
-      withContent.push(name)
-    }
-  }
-  return withContent
-}
-
-export class VaultService implements IVaultService {
-  private _vaults: VaultInfo[] = []
-
-  constructor(
-    private readonly pathService: IStoragePathService,
-    private readonly fileSystem: IFileSystem
-  ) {}
-
-  public async initRegistry(): Promise<void> {
+export class VaultService extends VaultRegistryMixin implements IVaultService {
+  public async createVault(vaultName: string): Promise<void> {
+    const name = this.resolveVaultNameOrThrow(vaultName)
+    this.assertVaultNameAvailable(name)
+    await this.addNewVault(name, { idMode: 'random' })
     const rootDir = await this.pathService.getRootDirectory()
-    const registryFile = path.join(rootDir, 'vault_registry.json')
+    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+  }
 
-    let shouldSave = false
-    let content: string | null = null
+  public async renameVault(oldNameOrId: string, newName: string): Promise<RenameVaultResult> {
+    const vault = this.resolveVaultOrThrow(oldNameOrId)
+    const nextName = this.resolveVaultNameOrThrow(newName)
+    const oldName = vault.name
+
+    if (oldName === nextName) {
+      const estimatedUploadBytes = await this.estimateVaultLocalSyncBytes(vault.id)
+      return { id: vault.id, oldName, newName: nextName, estimatedUploadBytes }
+    }
+
+    this.assertVaultNameAvailable(nextName, { excludeVaultId: vault.id })
+
+    const rootDir = await this.pathService.getRootDirectory()
+    const oldDirName = sanitizeVaultDirectoryName(oldName)
+    const newDirName = sanitizeVaultDirectoryName(nextName)
+    const oldPath = path.join(rootDir, oldDirName)
+    const newPath = path.join(rootDir, newDirName)
+
+    const estimatedUploadBytes = await this.estimateBytesForVault(vault, oldName)
 
     try {
-      content = await this.fileSystem.readFile(registryFile, 'utf8')
-    } catch (e: any) {
-      if (e.code !== 'ENOENT') {
-        throw e
-      }
+      await this.renameVaultDirectoryOnDisk(oldPath, newPath, vault.id)
+    } catch (error) {
+      throw new VaultRenameFilesystemError(oldName, nextName, error)
     }
 
-    if (!content) {
-      const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
-      if (legacyEntries.length > 0) {
-        this._vaults = await writeNextVaultRegistry(
-          this.fileSystem,
-          rootDir,
-          legacyEntries.map((entry) => entry.name),
-          legacyEntries
-        )
-        shouldSave = false
-      } else {
-        const discovered = await discoverAllVaultNamesOnDisk(this.fileSystem, rootDir)
-        if (discovered.length > 0) {
-          this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
-          shouldSave = false
-        } else {
-          const defaultVaultName = 'Personal'
-          const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
+    vault.name = nextName
+    vault.path = newPath
+    await this.writeVaultIdentityMeta(vault)
+    await this.migrateLocalSyncManifestVaultPrefix(oldName, nextName)
+    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
 
-          this._vaults = [
-            {
-              name: defaultVaultName,
-              path: defaultVaultPath,
-              createdAt: new Date(),
-              lastAccessedAt: new Date()
-            }
-          ]
-          shouldSave = true
-        }
-      }
-    } else {
-      try {
-        const rawList = JSON.parse(content)
-        const fallbackNow = new Date()
-        this._vaults = rawList.map((item: any) => ({
-          name: item.name,
-          path: item.path,
-          createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
-          lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
-        }))
-
-        if (this._vaults.length === 0) {
-          const defaultVaultName = 'Personal'
-          const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
-          this._vaults = [
-            {
-              name: defaultVaultName,
-              path: defaultVaultPath,
-              createdAt: fallbackNow,
-              lastAccessedAt: fallbackNow
-            }
-          ]
-          shouldSave = true
-        }
-
-        for (let i = 0; i < this._vaults.length; i++) {
-          const vault = this._vaults[i]
-          if (!vault) continue
-          const expectedPath = path.join(rootDir, sanitizeVaultDirectoryName(vault.name))
-          if (normalizeRegistryPath(vault.path) !== normalizeRegistryPath(expectedPath)) {
-            vault.path = expectedPath
-            shouldSave = true
-          }
-        }
-
-        const diskWithContent = await discoverLegacyVaultNamesOnDisk(this.fileSystem, rootDir)
-        if (diskWithContent.length > this._vaults.length) {
-          const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
-          this._vaults = await writeNextVaultRegistry(
-            this.fileSystem,
-            rootDir,
-            diskWithContent,
-            legacyEntries
-          )
-          shouldSave = false
-        }
-
-        const active = this.getActiveVault()
-        if (
-          active &&
-          this._vaults.length === 1 &&
-          !(await vaultDirectoryHasLegacyContent(this.fileSystem, rootDir, active.name))
-        ) {
-          const legacyEntries = await readLegacyVaultRegistry(this.fileSystem, rootDir)
-          if (legacyEntries.length > 0) {
-            this._vaults = await writeNextVaultRegistry(
-              this.fileSystem,
-              rootDir,
-              legacyEntries.map((entry) => entry.name),
-              legacyEntries
-            )
-            shouldSave = false
-          } else {
-            const discovered = await discoverAllVaultNamesOnDisk(this.fileSystem, rootDir)
-            if (discovered.length > 0) {
-              this._vaults = await writeNextVaultRegistry(this.fileSystem, rootDir, discovered)
-              shouldSave = false
-            }
-          }
-        }
-      } catch {
-        const defaultVaultPath = await this.pathService.getVaultDirectory('Personal')
-        this._vaults = [
-          {
-            name: 'Personal',
-            path: defaultVaultPath,
-            createdAt: new Date(),
-            lastAccessedAt: new Date()
-          }
-        ]
-        shouldSave = true
-      }
-    }
-
-    if (shouldSave) {
-      await this.saveRegistry(registryFile)
-    }
-
-    await this.syncRegistryWithDisk()
-
-    const activeVault = this.getActiveVault()
-    if (activeVault) {
-      await this.fileSystem.mkdir(activeVault.path, { recursive: true })
-      try {
-        await this.fileSystem.mkdir(path.join(activeVault.path, 'config'), { recursive: true })
-      } catch {}
-    }
+    return { id: vault.id, oldName, newName: nextName, estimatedUploadBytes }
   }
 
-  public getActiveVault(): VaultInfo | null {
-    if (this._vaults.length === 0) return null
-
-    return (
-      [...this._vaults].sort(
-        (a, b) => b.lastAccessedAt.getTime() - a.lastAccessedAt.getTime()
-      )[0] || null
-    )
+  public async estimateVaultLocalSyncBytes(vaultNameOrId: string): Promise<number> {
+    const vault = this.resolveVaultOrThrow(vaultNameOrId)
+    return this.estimateBytesForVault(vault, vault.name)
   }
 
-  public getAllVaults(): VaultInfo[] {
-    return [...this._vaults]
-  }
+  private async renameVaultDirectoryOnDisk(
+    oldPath: string,
+    newPath: string,
+    vaultId: string
+  ): Promise<void> {
+    const oldNorm = normalizeRegistryPath(oldPath)
+    const newNorm = normalizeRegistryPath(newPath)
+    if (oldNorm === newNorm) return
 
-  public vaultExists(vaultName: string): boolean {
-    const result = validateVaultName(vaultName)
-    if (!result.ok) return false
-    return this._vaults.some((v) => v.name === result.name)
-  }
-
-  public async syncRegistryWithDisk(): Promise<string[]> {
-    const rootDir = await this.pathService.getRootDirectory()
-    const diskNames = await listDiskVaultFolderNames(this.fileSystem, rootDir)
-    const missing = diskNames.filter((name) => !this.registryCoversDiskFolder(name))
-    return this.ensureVaultsRegistered(missing)
-  }
-
-  private registryCoversDiskFolder(diskFolderName: string): boolean {
-    return this._vaults.some((vault) => this.vaultMatchesDiskFolder(vault, diskFolderName))
-  }
-
-  private vaultMatchesDiskFolder(vault: VaultInfo, diskFolderName: string): boolean {
-    if (vault.name === diskFolderName) return true
-    if (sanitizeVaultDirectoryName(vault.name) === diskFolderName) return true
-    const pathBase = normalizeRegistryPath(vault.path).split('/').pop()
-    return pathBase === diskFolderName
-  }
-
-  public async ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]> {
-    const rootDir = await this.pathService.getRootDirectory()
-    const registryFile = path.join(rootDir, 'vault_registry.json')
-    const added: string[] = []
-
-    for (const rawName of vaultNames) {
-      const result = validateVaultName(rawName)
-      if (!result.ok) continue
-      const name = result.name
-      if (this._vaults.some((v) => v.name === name)) continue
-
-      await this.addNewVault(name, { touchAccess: false })
-      added.push(name)
-    }
-
-    if (added.length > 0) {
-      await this.saveRegistry(registryFile)
-    }
-
-    return added
-  }
-
-  public async pruneOrphanRegistryVaults(
-    manifestVaultScopes: ReadonlySet<string>,
-    diskVaultNames: readonly string[]
-  ): Promise<string[]> {
-    const activeName = this.getActiveVault()?.name ?? null
-    const removed: string[] = []
-    const kept: VaultInfo[] = []
-
-    for (const vault of this._vaults) {
-      const onDisk = diskVaultNames.some((diskName) => this.vaultMatchesDiskFolder(vault, diskName))
-      const hasSyncData = manifestVaultScopes.has(vault.name)
-      const isActive = vault.name === activeName
-      if (isActive || onDisk || hasSyncData) {
-        kept.push(vault)
-      } else {
-        removed.push(vault.name)
-      }
-    }
-
-    if (removed.length === 0) return []
-
-    this._vaults = kept
-    if (this._vaults.length === 0) {
-      const personalPath = await this.pathService.getVaultDirectory('Personal')
-      this._vaults.push({
-        name: 'Personal',
-        path: personalPath,
-        createdAt: new Date(),
-        lastAccessedAt: new Date()
+    const oldExists = await this.fileSystem.exists(oldPath)
+    if (!oldExists) {
+      // 目录可能已由中断改名落到新路径；若新路径存在则视为已完成
+      if (await this.fileSystem.exists(newPath)) return
+      throw Object.assign(new Error(`Source vault directory missing: ${oldPath}`), {
+        code: 'ENOENT'
       })
     }
 
-    const rootDir = await this.pathService.getRootDirectory()
-    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
-    return removed
+    const samePathDifferentCase =
+      normalizeVaultNameForCompare(path.basename(oldPath)) ===
+        normalizeVaultNameForCompare(path.basename(newPath)) && oldNorm !== newNorm
+
+    if (samePathDifferentCase) {
+      const rootDir = path.dirname(oldPath)
+      const tempPath = path.join(rootDir, `.rename-tmp-${vaultId}`)
+      if (await this.fileSystem.exists(tempPath)) {
+        await this.fileSystem.rm(tempPath, { recursive: true, force: true })
+      }
+      await this.fileSystem.rename(oldPath, tempPath)
+      await this.fileSystem.rename(tempPath, newPath)
+      return
+    }
+
+    if (await this.fileSystem.exists(newPath)) {
+      throw Object.assign(new Error(`Target vault directory already exists: ${newPath}`), {
+        code: 'EEXIST'
+      })
+    }
+    await this.fileSystem.rename(oldPath, newPath)
   }
 
-  public async createVault(vaultName: string): Promise<void> {
-    const name = this.resolveVaultNameOrThrow(vaultName)
-    if (this._vaults.some((v) => v.name === name)) {
-      throw new VaultNameExistsError(name)
-    }
-    await this.addNewVault(name)
+  private async estimateBytesForVault(
+    vault: VaultInfo,
+    vaultNameForPrefix: string
+  ): Promise<number> {
+    const fromManifest = await this.readLocalManifestVaultBytes(vaultNameForPrefix)
+    if (fromManifest > 0) return fromManifest
+    return this.sumDirectoryBytes(vault.path)
+  }
+
+  private async readLocalManifestVaultBytes(vaultName: string): Promise<number> {
+    const manifest = await this.readLocalSyncManifest()
+    if (!manifest) return 0
+    return sumVaultFileBytes(manifest.files, vaultName)
+  }
+
+  private async migrateLocalSyncManifestVaultPrefix(
+    oldVaultName: string,
+    newVaultName: string
+  ): Promise<void> {
     const rootDir = await this.pathService.getRootDirectory()
-    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+    const manifestPath = path.join(rootDir, '.baishou', SYNC_MANIFEST_FILENAME)
+    const raw = await this.readLocalSyncManifest()
+    if (!raw) return
+
+    const { manifest, migratedKeyCount } = migrateSyncManifestVaultPrefix(
+      raw,
+      oldVaultName,
+      newVaultName
+    )
+    if (migratedKeyCount === 0 && oldVaultName === newVaultName) return
+
+    await this.fileSystem.mkdir(path.dirname(manifestPath), { recursive: true })
+    await this.fileSystem.writeFile(manifestPath, JSON.stringify(manifest), 'utf8')
+  }
+
+  private async sumDirectoryBytes(dirPath: string): Promise<number> {
+    if (!(await this.fileSystem.exists(dirPath))) return 0
+    let total = 0
+    const walk = async (current: string): Promise<void> => {
+      let names: string[]
+      try {
+        names = await this.fileSystem.readdir(current)
+      } catch {
+        return
+      }
+      for (const name of names) {
+        const full = path.join(current, name)
+        const stat = await this.fileSystem.stat(full).catch(() => null)
+        if (!stat) continue
+        if (stat.isDirectory) {
+          await walk(full)
+        } else if (stat.isFile) {
+          const size = typeof stat.size === 'number' && Number.isFinite(stat.size) ? stat.size : 0
+          if (size > 0) total += size
+        }
+      }
+    }
+    await walk(dirPath)
+    return total
   }
 
   public async switchVault(vaultName: string): Promise<void> {
@@ -339,46 +179,34 @@ export class VaultService implements IVaultService {
       throw new VaultInvalidNameError(vaultName, result.reason)
     }
     const name = result.name
-    const existingIndex = this._vaults.findIndex((v) => v.name === name)
+    const conflict = findConflictingVaultName(
+      name,
+      this._vaults.map((v) => v.name)
+    )
+    const existingIndex = conflict
+      ? this._vaults.findIndex((v) => v.name === conflict.existing)
+      : -1
     const rootDir = await this.pathService.getRootDirectory()
     const registryFile = path.join(rootDir, 'vault_registry.json')
 
+    let target: VaultInfo | undefined
     if (existingIndex !== -1) {
       const existing = this._vaults[existingIndex]
       if (existing) {
         existing.lastAccessedAt = new Date()
+        target = existing
       }
     } else {
       this.resolveVaultNameOrThrow(name)
-      await this.addNewVault(name)
+      await this.addNewVault(name, { idMode: 'random' })
+      target = this._vaults[this._vaults.length - 1]
+    }
+
+    if (target) {
+      await this.persistActiveVaultId(target.id)
     }
 
     await this.saveRegistry(registryFile)
-  }
-
-  private resolveVaultNameOrThrow(vaultName: string): string {
-    const result = validateVaultName(vaultName)
-    if (result.ok === false) {
-      throw new VaultInvalidNameError(vaultName, result.reason)
-    }
-    return result.name
-  }
-
-  private async addNewVault(vaultName: string, options?: { touchAccess?: boolean }): Promise<void> {
-    const newPath = await this.pathService.getVaultDirectory(vaultName)
-    await this.fileSystem.mkdir(newPath, { recursive: true })
-    await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {
-      recursive: true
-    })
-
-    const touchAccess = options?.touchAccess !== false
-    const newVault: VaultInfo = {
-      name: vaultName,
-      path: newPath,
-      createdAt: new Date(),
-      lastAccessedAt: touchAccess ? new Date() : new Date(0)
-    }
-    this._vaults.push(newVault)
   }
 
   public async deleteVault(vaultName: string): Promise<void> {
@@ -411,30 +239,19 @@ export class VaultService implements IVaultService {
 
     if (this._vaults.length === 0) {
       const p = await this.pathService.getVaultDirectory('Personal')
-      this._vaults.push({
+      const personal: VaultInfo = {
+        id: deriveLegacyVaultId('Personal'),
         name: 'Personal',
         path: p,
         createdAt: new Date(),
         lastAccessedAt: new Date()
-      })
+      }
+      this._vaults.push(personal)
+      await this.writeVaultIdentityMeta(personal)
+      await this.persistActiveVaultId(personal.id)
     }
 
     const registryFile = path.join(rootDir, 'vault_registry.json')
     await this.saveRegistry(registryFile)
-  }
-
-  private async saveRegistry(registryFile: string): Promise<void> {
-    await this.fileSystem.mkdir(path.dirname(registryFile), { recursive: true })
-
-    const jsonStr = JSON.stringify(
-      this._vaults.map((v) => ({
-        name: v.name,
-        path: v.path,
-        createdAt: v.createdAt.toISOString(),
-        lastAccessedAt: v.lastAccessedAt.toISOString()
-      }))
-    )
-
-    await this.fileSystem.writeFile(registryFile, jsonStr, 'utf8')
   }
 }

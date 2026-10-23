@@ -15,26 +15,16 @@ const webSearchParams = z.object({
     .array(z.string())
     .min(1)
     .max(3)
-    .describe(
-      'A list of 1-3 search queries with different angles/keywords. ' +
-        'Using multiple queries greatly improves result diversity and comprehensiveness. ' +
-        'Example: ["latest Flutter 4.0 features", "Flutter 4.0 migration guide"]'
-    )
+    .describe('1 to 3 search queries covering different angles or keywords for the topic.')
 })
 
 export class WebSearchTool extends AgentTool<typeof webSearchParams> {
   readonly name = 'web_search'
 
   readonly description =
-    'Search the internet for current information, news, and real-time data. ' +
-    'Use this when the user asks about recent events, current facts, or anything ' +
-    'that requires up-to-date information beyond your training data.\n\n' +
-    'IMPORTANT: This tool searches the PUBLIC INTERNET only. ' +
-    "Do NOT use this to search the user's personal diary entries — use diary_search for that.\n\n" +
-    'You may provide 2-3 search queries with different angles/keywords ' +
-    'to get comprehensive results. For example, if the user asks about "iPhone 16 vs Samsung S25", ' +
-    'you could search ["iPhone 16 specs review", "Samsung S25 specs review", "iPhone 16 vs Samsung S25 comparison"].\n\n' +
-    'Results include clickable [title](url) citations — use the url_read tool to read specific pages in detail.'
+    'Search the public internet for current information, news, and real-time data. ' +
+    'Do NOT use this to search personal diary entries (use diary_search instead). ' +
+    'Provide 1–3 queries with complementary keywords when broader coverage is needed, and use url_read to inspect specific returned URLs.'
 
   readonly parameters = webSearchParams
 
@@ -53,14 +43,14 @@ export class WebSearchTool extends AgentTool<typeof webSearchParams> {
         key: 'web_search_engine',
         label: 'Search Engine',
         type: 'enum',
-        defaultValue: 'local-bing',
+        defaultValue: 'exa-mcp',
         enumOptions: [
+          { label: 'Exa MCP (Free / No Key Required)', value: 'exa-mcp' },
           { label: 'Bing (Local Browser)', value: 'local-bing' },
           { label: 'Google (Local Browser)', value: 'local-google' },
           { label: 'DuckDuckGo (Free / No Key Required)', value: 'duckduckgo' },
           { label: 'Tavily (Requires API Key)', value: 'tavily' },
           { label: 'Exa (Requires API Key)', value: 'exa' },
-          { label: 'Exa MCP (Free / No Key Required)', value: 'exa-mcp' },
           { label: 'AnySearch (Requires API Key)', value: 'anysearch' }
         ]
       },

@@ -46,7 +46,9 @@ export function buildBootstrapDeps(
     settingsManager: bootstrapDeps.settingsManager,
     summarySyncService: bootstrapDeps.summarySyncService,
     getActiveVaultName: bootstrapDeps.getActiveVaultName,
-    getDiskVaultNames: bootstrapDeps.getDiskVaultNames
+    getActiveVaultId: bootstrapDeps.getActiveVaultId,
+    getDiskVaultNames: bootstrapDeps.getDiskVaultNames,
+    getVaultIdByName: bootstrapDeps.getVaultIdByName
   }
 }
 async function shouldDeferVaultResync(
@@ -124,11 +126,15 @@ export async function preferActiveVaultWithJournalsOnDisk(deps: {
   for (const vault of vaults) {
     const externalJournals = await deps.pathService.getExternalJournalsDirectory(vault.name)
     const externalSummaries = await deps.pathService.getExternalSummariesDirectory(vault.name)
-    const journalsDir = externalJournals ?? path.join(vault.path, 'Journals')
+    const hasValidExternalJournals =
+      Boolean(externalJournals) && (await deps.fileSystem.exists(externalJournals!))
+    const journalsDir = hasValidExternalJournals
+      ? externalJournals!
+      : path.join(vault.path, 'Journals')
     const journalCount = await countJournalMarkdownInTree(deps.fileSystem, journalsDir)
 
     let archiveCount = 0
-    if (externalSummaries) {
+    if (externalSummaries && (await deps.fileSystem.exists(externalSummaries))) {
       archiveCount = await countSummaryMarkdownInArchivesTree(deps.fileSystem, externalSummaries)
     } else {
       archiveCount = await countArchiveMarkdownInTree(deps.fileSystem, vault.path)
@@ -215,10 +221,11 @@ export async function runVaultBootstrap(
         logger.info(
           `[VaultRuntime] Shadow index aligned with disk (${probe.shadowCount} entries); skipping shadow resync`
         )
-        const activeVaultName = deps.vaultService.getActiveVault()?.name
+        const activeVault = deps.vaultService.getActiveVault()
+        const activeVaultName = activeVault?.name
         if (activeVaultName) {
-          await deps.bootstrapDeps.summarySyncService
-            .fullScanArchives({ activeVaultName })
+          void deps.bootstrapDeps.summarySyncService
+            .fullScanArchives({ activeVaultName, skipUnchangedByMtime: true })
             .catch((e) => {
               logger.warn(
                 '[VaultRuntime] summary fullScanArchives after skip-shadow-resync failed:',
@@ -227,6 +234,32 @@ export async function runVaultBootstrap(
             })
         }
         await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
+        if (activeVault) {
+          void (async () => {
+            try {
+              const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =
+                await import('./mobile-raw-data-source.runtime')
+              const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+              const runtime = agentDbRuntimeRef.current
+              if (runtime?.drizzleDb) {
+                const emb = await resolveMobileEmbeddingForHydration(
+                  deps.bootstrapDeps.settingsManager
+                )
+                await runMobileDerivedIndexHydration({
+                  drizzleDb: runtime.drizzleDb,
+                  vaultId: activeVault.id,
+                  vaultName: activeVault.name,
+                  vaults: deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name })),
+                  embeddingProvider: emb.embeddingProvider,
+                  embeddingModelId: emb.embeddingModelId,
+                  reason: 'cold-start-deferred'
+                })
+              }
+            } catch (e) {
+              logger.warn('[VaultRuntime] deferred derived index hydration failed:', e as Error)
+            }
+          })()
+        }
         options?.onResyncComplete?.()
         return
       }

@@ -14,6 +14,7 @@ interface IdentityFactEditModalProps {
   onValueChange: (value: string) => void
   onSave: () => void
   onClose: () => void
+  zIndex?: number
 }
 
 export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
@@ -24,7 +25,8 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
   onKeyChange,
   onValueChange,
   onSave,
-  onClose
+  onClose,
+  zIndex
 }) => {
   const { t } = useTranslation()
 
@@ -32,6 +34,7 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      zIndex={zIndex}
       title={
         editingKey
           ? t('settings.edit_identity_entry', '编辑条目')
@@ -60,10 +63,10 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
           />
         </div>
         <div className={styles.modalActions}>
-          <Button variant="text" onClick={onClose}>
+          <Button variant="outlined" size="small" onClick={onClose}>
             {t('common.cancel', '取消')}
           </Button>
-          <Button variant="elevated" onClick={onSave}>
+          <Button variant="outlined" size="small" onClick={onSave}>
             {t('common.save', '保存')}
           </Button>
         </div>

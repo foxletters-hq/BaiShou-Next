@@ -11,6 +11,7 @@ import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
 import { isUsingExternalVaultDirectory, logger, resolveBootstrapUiLocale } from '@baishou/shared'
 
 import { pathService, vaultService } from '../ipc/vault.ipc'
+import { resolveActiveVaultId } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { getAgentManagers } from '../ipc/agent.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -19,6 +20,8 @@ import { diaryWatcher } from './diary-watcher.service'
 import { summaryWatcher } from './summary-watcher.service'
 import { sessionWatcher } from './session-watcher.service'
 import { getSharedShadowSync } from './shadow-sync.registry'
+import { getRawDataSourceManager, runDerivedIndexHydration } from './raw-data-source.runtime'
+import { markStartup, startupElapsedMs, traceStartupStep } from '../startup-trace.util'
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -34,9 +37,25 @@ import { getSharedShadowSync } from './shadow-sync.registry'
 export class GlobalDataBootstrapper {
   private tryGetSummaryBootstrapper() {
     const db = connectionManager.getDb()
-    const summaryRepo = new SummaryRepositoryImpl(db)
-    const summaryFileService = new SummaryFileService(pathService, fileSystem)
-    return new SummarySyncService(null, null, summaryRepo, summaryFileService)
+    const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
+    const summaryFileService = new SummaryFileService(
+      pathService,
+      fileSystem,
+      getRawDataSourceManager()
+    )
+    return new SummarySyncService(null, null, summaryRepo, summaryFileService, () =>
+      resolveActiveVaultId()
+    )
+  }
+
+  private buildVaultIdByName(): Record<string, string> {
+    const map: Record<string, string> = {}
+    for (const v of vaultService.getAllVaults()) {
+      if (v.name?.trim() && v.id?.trim()) {
+        map[v.name.trim()] = v.id.trim()
+      }
+    }
+    return map
   }
 
   /**
@@ -58,12 +77,14 @@ export class GlobalDataBootstrapper {
     }
 
     try {
-      const gitService = getGitService()
-      const initialized = await gitService.isInitialized()
-      if (!initialized) {
-        await gitService.init()
-        logger.info('[Bootstrapper] Git 仓库已自动初始化')
-      }
+      await traceStartupStep('git.ensureInitialized', async () => {
+        const gitService = getGitService()
+        const initialized = await gitService.isInitialized()
+        if (!initialized) {
+          await gitService.init()
+          logger.info('[Bootstrapper] Git 仓库已自动初始化')
+        }
+      })
     } catch (e) {
       logger.warn('[Bootstrapper] Git 自动初始化失败:', e as any)
     }
@@ -91,11 +112,14 @@ export class GlobalDataBootstrapper {
       createIfMissing: !isExternalSummaries
     })
     sessionWatcher.start(activeVault.path)
+    markStartup('watchers.started', { vault: activeVault.name })
   }
 
   private async notifyRenderersAfterResync(): Promise<void> {
     const { emitSyncMutation } = await import('../cache/desktop-main-cache-coordinator')
     emitSyncMutation('resync-complete', 'global-bootstrapper')
+    const { notifyPendingEmbedCountsChanged } = await import('./pending-embed-counts.service')
+    notifyPendingEmbedCountsChanged()
     BrowserWindow.getAllWindows().forEach((w) => {
       w.webContents.send('session:file-changed')
       w.webContents.send('diary:sync-event', { type: 'vault-resync-complete' })
@@ -106,9 +130,17 @@ export class GlobalDataBootstrapper {
   /**
    * 将所有的漫游明文资产猛烈拍进本地缓存中
    * 必须在确保 Shadow DB 已连接（shadowConnectionManager.connect() 已调用）的状态下执行。
+   *
+   * @param options.mode `reconcile`：冷启动轻量对齐（session/summary 按 mtime 跳过未变文件）；
+   *   `full`：vault 切换等场景的全量扫盘（默认，保持旧行为）。
    */
-  async fullyResyncAllEcosystems(): Promise<void> {
-    logger.info('--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED. INITIATING ECOSYSTEM SSOT WATER-CYCLE ---')
+  async fullyResyncAllEcosystems(options?: { mode?: 'reconcile' | 'full' }): Promise<void> {
+    const mode = options?.mode ?? 'full'
+    logger.info(
+      `--- 🌊 GLOBAL BOOTSTRAPPER TRIGGERED (mode=${mode}). INITIATING ECOSYSTEM SSOT WATER-CYCLE ---`
+    )
+    markStartup('resync.begin', { mode })
+    const totalStarted = performance.now()
 
     try {
       await this.activateVaultRuntime()
@@ -119,23 +151,72 @@ export class GlobalDataBootstrapper {
 
       // 1. 日记层：从 shadow_index.db 同步影子索引（最海量的数据）
       logger.info('[Bootstrapper] 正在同步核心日记 (Diary Shadow Index)...')
-      const shadowScan = shadowScout.fullScanVault(true)
+      const timed = <T>(name: string, promise: Promise<T>): Promise<T> => {
+        const started = performance.now()
+        return promise.then(
+          (value) => {
+            markStartup(`resync.${name}`, { ms: startupElapsedMs(started) })
+            return value
+          },
+          (error) => {
+            markStartup(`resync.${name}.failed`, { ms: startupElapsedMs(started) })
+            throw error
+          }
+        )
+      }
+
+      // Shadow：reconcile / full 均走 fullScanVault（mtime skip 由 syncJournalsBatch 侧承接）
+      const shadowScan = timed('shadow.fullScanVault', shadowScout.fullScanVault(true))
 
       // 2–5. 其余层与日记扫描并行，缩短冷启动等待
       const activeVault = vaultService.getActiveVault()
-      const summaryResyncOptions = activeVault ? { activeVaultName: activeVault.name } : undefined
       const syncRoot = await pathService.getRootDirectory()
       const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
-      const sessionResyncOptions = {
-        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
-        diskVaultNames
+      const vaultIdByName = this.buildVaultIdByName()
+      const summaryResyncOptions = {
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName,
+        ...(mode === 'reconcile' ? { skipUnchangedByMtime: true } : {})
       }
-      const summaryScan = summaryScout.fullScanArchives(summaryResyncOptions)
-      const assistantScan = assistantManager.fullResyncFromDisks()
-      const sessionScan = sessionManager.fullResyncFromDisks(sessionResyncOptions)
-      const settingsScan = settingsManager.fullResyncFromDisk()
+      const sessionResyncOptions = {
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
+      }
+      const assistantResyncOptions = {
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
+      }
+      const summaryScan = timed(
+        mode === 'reconcile' ? 'summary.fullScanArchives.reconcile' : 'summary.fullScanArchives',
+        summaryScout.fullScanArchives(summaryResyncOptions)
+      )
+      const assistantScan = timed(
+        'assistant.fullResyncFromDisks',
+        assistantManager.fullResyncFromDisks(assistantResyncOptions)
+      )
+      const sessionScan = timed(
+        mode === 'reconcile' ? 'session.reconcileFromDisks' : 'session.fullResyncFromDisks',
+        mode === 'reconcile'
+          ? sessionManager.reconcileFromDisks(sessionResyncOptions)
+          : sessionManager.fullResyncFromDisks(sessionResyncOptions)
+      )
+      const settingsScan = timed(
+        'settings.fullResyncFromDisk',
+        settingsManager.fullResyncFromDisk()
+      )
 
-      await Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
+      await traceStartupStep('resync.parallelScans', () =>
+        Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
+      )
       const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
       const featureSettings =
         (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
@@ -154,10 +235,16 @@ export class GlobalDataBootstrapper {
       await pathService.backfillGlobalAgentAvatarsFromVaults()
       await pathService.mirrorGlobalAgentAvatarsIntoVaults()
 
+      await traceStartupStep('resync.derivedIndexHydration', () =>
+        runDerivedIndexHydration('fully-resync')
+      )
+
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
+      markStartup('resync.total', { ms: startupElapsedMs(totalStarted) })
       await this.notifyRenderersAfterResync()
     } catch (e) {
       logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e as any)
+      markStartup('resync.failed', { ms: startupElapsedMs(totalStarted) })
     }
   }
 
@@ -193,9 +280,13 @@ export class GlobalDataBootstrapper {
       const activeVault = vaultService.getActiveVault()
       const syncRoot = await pathService.getRootDirectory()
       const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
+      const vaultIdByName = this.buildVaultIdByName()
       const resyncOptions = {
-        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
-        diskVaultNames
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
       }
 
       const tasks: Promise<unknown>[] = []
@@ -208,11 +299,9 @@ export class GlobalDataBootstrapper {
       }
       if (options.summaries) {
         tasks.push(
-          summaryScout
-            .fullScanArchives(activeVault ? { activeVaultName: activeVault.name } : undefined)
-            .catch((e) => {
-              logger.warn('[Bootstrapper] selective summary scan failed:', e as Error)
-            })
+          summaryScout.fullScanArchives(resyncOptions).catch((e) => {
+            logger.warn('[Bootstrapper] selective summary scan failed:', e as Error)
+          })
         )
       }
       if (options.assistants) {
@@ -255,6 +344,8 @@ export class GlobalDataBootstrapper {
         await pathService.backfillGlobalAgentAvatarsFromVaults()
         await pathService.mirrorGlobalAgentAvatarsIntoVaults()
       }
+
+      await runDerivedIndexHydration('selective-post-sync')
 
       await this.notifyRenderersAfterResync()
       logger.info('[Bootstrapper] selective post-sync done')

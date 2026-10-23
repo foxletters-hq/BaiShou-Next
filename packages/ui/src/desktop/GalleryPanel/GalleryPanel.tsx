@@ -16,7 +16,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   onDelete,
   onSave
 }) => {
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
   const panel = useGalleryPanel({ summaries, onOpen, onSave })
 
   return (
@@ -45,6 +45,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
           items={panel.displayedSummaries}
           selectedSummary={panel.selectedSummary}
           language={i18n.language}
+          listRef={panel.listRef}
           onItemClick={panel.handleItemClick}
           onScroll={panel.handleScroll}
         />

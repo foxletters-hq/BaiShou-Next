@@ -4,7 +4,6 @@ declare global {
   interface Window {
     __diaryBridgeDebug?: boolean
   }
-  // eslint-disable-next-line no-var
   var __DEV__: boolean | undefined
 }
 

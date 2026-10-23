@@ -10,6 +10,7 @@ vi.mock('drizzle-orm', () => ({
 
 vi.mock('@baishou/database', () => ({
   summariesTable: {
+    vaultId: 'vaultId',
     type: 'type',
     startDate: 'startDate',
     endDate: 'endDate',
@@ -36,7 +37,7 @@ describe('DatabaseAdapter.readSummary', () => {
     const select = vi.fn().mockReturnValue({ from })
     const db = { select }
 
-    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
     const result = await adapter.readSummary('weekly', '2025-06-21')
 
     expect(select).toHaveBeenCalled()
@@ -49,6 +50,11 @@ describe('DatabaseAdapter.readSummary', () => {
     expect(targetDate.getFullYear()).toBe(2025)
     expect(targetDate.getMonth()).toBe(5)
     expect(targetDate.getDate()).toBe(21)
+  })
+
+  it('returns null when vault_id is missing (fail-closed)', async () => {
+    const adapter = new DatabaseAdapter({} as any, {} as any, { select: vi.fn() } as any)
+    expect(await adapter.readSummary('weekly', '2025-06-21')).toBeNull()
   })
 })
 
@@ -67,9 +73,15 @@ describe('DatabaseAdapter.searchMessages', () => {
       ])
     }
 
-    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
     const results = await adapter.searchMessages('噩梦', 10)
 
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith(
+      '噩梦',
+      10,
+      'vlt_test',
+      undefined
+    )
     expect(results).toHaveLength(1)
     // 与模型上下文 formatMessageTimestamp 一致：按本地日历日，避免凌晨消息被 UTC 标为前一天
     expect(results[0]!.date).toBe(formatRecallTimestamp(createdAt))
@@ -78,6 +90,140 @@ describe('DatabaseAdapter.searchMessages', () => {
     if (legacyUtcDate !== '2025-06-21') {
       expect(results[0]!.date).not.toContain(legacyUtcDate)
     }
+  })
+
+  it('fail-closed: missing vaultId returns empty without querying', async () => {
+    const messageRepo = {
+      searchMessagesByKeyword: vi.fn().mockResolvedValue([{ role: 'user', content: 'leak' }])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(await adapter.searchMessages('leak', 10)).toEqual([])
+    expect(messageRepo.searchMessagesByKeyword).not.toHaveBeenCalled()
+  })
+
+  it('prefers explicit vaultId argument over resolver', async () => {
+    const messageRepo = {
+      searchMessagesByKeyword: vi.fn().mockResolvedValue([])
+    }
+    const adapter = new DatabaseAdapter(
+      {} as any,
+      messageRepo as any,
+      {} as any,
+      () => 'vlt_resolver'
+    )
+    await adapter.searchMessages('q', 5, 'vlt_explicit')
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith(
+      'q',
+      5,
+      'vlt_explicit',
+      undefined
+    )
+  })
+
+  it('should format session list timestamps in local timezone', async () => {
+    const firstCreatedAt = new Date(2026, 8, 3, 10, 0)
+    const lastCreatedAt = new Date(2026, 8, 5, 16, 0)
+    const messageRepo = {
+      listSessionsInDateRange: vi.fn().mockResolvedValue([
+        {
+          sessionId: 's1',
+          sessionTitle: '日期会话',
+          firstCreatedAt,
+          lastCreatedAt,
+          messageCount: 2,
+          preview: '区间内原文'
+        }
+      ])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
+    const rows = await adapter.listSessionsInDateRange(
+      'vlt_explicit',
+      '2026-09-01',
+      '2026-09-07',
+      20
+    )
+    expect(messageRepo.listSessionsInDateRange).toHaveBeenCalledWith(
+      'vlt_explicit',
+      '2026-09-01',
+      '2026-09-07',
+      20
+    )
+    expect(rows[0]?.sessionId).toBe('s1')
+    expect(rows[0]?.firstDate).toBe(formatRecallTimestamp(firstCreatedAt))
+    expect(rows[0]?.lastDate).toBe(formatRecallTimestamp(lastCreatedAt))
+  })
+
+  it('should fail-closed when listing messages without vaultId', async () => {
+    const messageRepo = { listMessagesInDateRange: vi.fn() }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(
+      await adapter.listMessagesInDateRange('', 20, {
+        startDate: '2026-09-01',
+        endDate: '2026-09-07'
+      })
+    ).toEqual([])
+    expect(messageRepo.listMessagesInDateRange).not.toHaveBeenCalled()
+  })
+
+  it('should pass sessionId through when listing messages', async () => {
+    const createdAt = new Date(2026, 8, 3, 10, 0)
+    const messageRepo = {
+      listMessagesInDateRange: vi.fn().mockResolvedValue([
+        {
+          role: 'user',
+          content: '区间内原文',
+          sessionTitle: '日期会话',
+          sessionId: 'sess-date',
+          createdAt
+        }
+      ])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
+    const rows = await adapter.listMessagesInDateRange('vlt_explicit', 20, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07',
+      sessionId: 'sess-date'
+    })
+    expect(messageRepo.listMessagesInDateRange).toHaveBeenCalledWith('vlt_explicit', 20, {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07',
+      sessionId: 'sess-date'
+    })
+    expect(rows[0]?.sessionId).toBe('sess-date')
+    expect(rows[0]?.snippet).toBe('区间内原文')
+  })
+
+  it('should fail-closed when listing sessions without vaultId', async () => {
+    const messageRepo = { listSessionsInDateRange: vi.fn() }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(await adapter.listSessionsInDateRange('', '2026-09-01', '2026-09-07', 20)).toEqual([])
+    expect(messageRepo.listSessionsInDateRange).not.toHaveBeenCalled()
+  })
+})
+
+describe('DatabaseAdapter.getBySource', () => {
+  it('fail-closed: missing vaultId does not query', async () => {
+    const getBySource = vi.fn()
+    const adapter = new DatabaseAdapter({ getBySource } as any, {} as any, {} as any)
+    expect(await adapter.getBySource('memory', 'mem-1')).toBeNull()
+    expect(getBySource).not.toHaveBeenCalled()
+  })
+
+  it('passes explicit vaultId to the hybrid repository', async () => {
+    const getBySource = vi.fn().mockResolvedValue({
+      sourceType: 'memory',
+      sourceId: 'mem-1',
+      chunkText: 'ok',
+      createdAt: 1
+    })
+    const adapter = new DatabaseAdapter(
+      { getBySource } as any,
+      {} as any,
+      {} as any,
+      () => 'vlt_resolver'
+    )
+    await adapter.getBySource('memory', 'mem-1', 'vlt_explicit')
+    expect(getBySource).toHaveBeenCalledWith('memory', 'mem-1', { vaultId: 'vlt_explicit' })
   })
 })
 
@@ -93,7 +239,7 @@ describe('DatabaseAdapter.getAvailableSummaries', () => {
     const select = vi.fn().mockReturnValue({ from })
     const db = { select }
 
-    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
     const lines = await adapter.getAvailableSummaries('weekly', 5)
 
     expect(lines).toEqual([`- ${formatLocalDate(start)} ~ ${formatLocalDate(end)}`])

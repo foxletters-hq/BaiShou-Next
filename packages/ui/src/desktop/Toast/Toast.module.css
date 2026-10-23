@@ -5,53 +5,49 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   z-index: 999999;
   pointer-events: none;
 }
 
 .toast {
-  background-color: var(--color-surface, #ffffff);
-  color: var(--color-on-surface, #1a1a1a);
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 14px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  padding: var(--spacing-md-tight) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   max-width: 80vw;
-  animation: slideInFromRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: slideInFromRight var(--duration-slow) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   pointer-events: auto;
   cursor: pointer;
 }
 
 .exiting {
-  animation: fadeOutToRight 0.2s cubic-bezier(0.8, 0, 0.8, 1) forwards;
+  animation: fadeOutToRight var(--duration-swift) cubic-bezier(0.8, 0, 0.8, 1) forwards;
   pointer-events: none;
 }
 
 @keyframes slideInFromRight {
   from {
     opacity: 0;
-    transform: translateX(40px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
   }
 }
 
 @keyframes fadeOutToRight {
   from {
     opacity: 1;
-    transform: translateX(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateX(20px) scale(0.95);
   }
 }
 
@@ -64,11 +60,4 @@
 .message {
   flex: 1;
   word-break: break-word;
-}
-
-[data-theme='dark'] .toast {
-  background-color: var(--color-surface, #242424);
-  color: var(--color-on-surface, #e2e8f0);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.08);
 }

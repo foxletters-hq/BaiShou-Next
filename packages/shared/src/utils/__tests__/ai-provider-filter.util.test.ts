@@ -53,6 +53,37 @@ describe('filterProvidersForModelSwitcher', () => {
     expect(result[0]?.enabledModels).toEqual(['tts-1'])
   })
 
+  it('should keep only vision-capable models when mode is vision', () => {
+    const result = filterProvidersForModelSwitcher(
+      [
+        provider({
+          id: 'openai',
+          type: ProviderType.OpenAI,
+          models: ['gpt-4o', 'gpt-3.5-turbo', 'text-embedding-3-small'],
+          enabledModels: ['gpt-4o', 'gpt-3.5-turbo', 'text-embedding-3-small']
+        })
+      ],
+      'vision'
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0]?.enabledModels).toEqual(['gpt-4o'])
+  })
+
+  it('should drop providers that have no vision-capable enabled models', () => {
+    const result = filterProvidersForModelSwitcher(
+      [
+        provider({
+          id: 'openai',
+          type: ProviderType.OpenAI,
+          models: ['gpt-3.5-turbo'],
+          enabledModels: ['gpt-3.5-turbo']
+        })
+      ],
+      'vision'
+    )
+    expect(result).toHaveLength(0)
+  })
+
   it('excludes provider when enabledModels is explicitly empty', () => {
     const result = filterProvidersForModelSwitcher(
       [

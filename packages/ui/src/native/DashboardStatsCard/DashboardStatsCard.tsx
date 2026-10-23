@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native'
 import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface DashboardStatsCardProps {
   totalDiaryCount: number
@@ -181,16 +182,16 @@ export const DashboardStatsCard: React.FC<DashboardStatsCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     borderStyle: 'solid',
-    padding: 20
+    padding: sharedTokens.spacing.mdPlus
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20
+    marginBottom: sharedTokens.spacing.mdPlus
   },
   headerTitleRow: {
     flex: 1,
@@ -199,24 +200,24 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   headerIcon: {
-    marginRight: 8
+    marginRight: sharedTokens.spacing.sm
   },
   headerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
     flexShrink: 1
   },
   rescanButton: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: sharedTokens.spacing.sm,
     flexShrink: 0
   },
   grid: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   row: {
     flexDirection: 'row'
@@ -237,9 +238,9 @@ const styles = StyleSheet.create({
   tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.md
   },
   tileFull: {
     flex: 1,
@@ -247,17 +248,17 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch'
   },
   tileIcon: {
-    marginRight: 10
+    marginRight: sharedTokens.spacing.smPlus
   },
   info: {
     justifyContent: 'center'
   },
   count: {
-    fontSize: 20,
-    fontWeight: 'bold'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
   },
   label: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     opacity: 0.8
   }
 })

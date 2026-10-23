@@ -37,6 +37,10 @@ export class MigrationTargetStoragePathService implements IStoragePathService {
     return this.getVaultSystemDirectory(this.activeVaultName)
   }
 
+  async getGlobalSettingsDirectory(): Promise<string> {
+    return path.join(this.workspaceRoot, '.baishou', 'settings')
+  }
+
   async getGlobalShadowIndexDirectory(): Promise<string> {
     return path.join(await this.getGlobalRegistryDirectory(), 'shadow_index')
   }
@@ -66,12 +70,24 @@ export class MigrationTargetStoragePathService implements IStoragePathService {
     return path.join(await this.vaultDir(), 'Sessions')
   }
 
+  async getMemoryBaseDirectory(): Promise<string> {
+    return path.join(await this.vaultDir(), 'Memory')
+  }
+
+  async getGraphBaseDirectory(): Promise<string> {
+    return path.join(await this.vaultDir(), 'Graph')
+  }
+
   async getAssistantsBaseDirectory(): Promise<string> {
     return path.join(await this.vaultDir(), 'Assistants')
   }
 
   async getAttachmentsBaseDirectory(): Promise<string> {
     return path.join(await this.vaultDir(), 'Attachments')
+  }
+
+  async getNotebooksBaseDirectory(): Promise<string> {
+    return path.join(await this.vaultDir(), 'Notebooks')
   }
 
   async getAvatarsDirectory(): Promise<string> {

@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { FolderOpen } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { normalizeRefAudioPath, parseRefAudioPick } from '@baishou/shared'
@@ -70,20 +70,49 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
         </Text>
         {onPickRefAudio ? (
           <>
-            <Button variant="outline" onPress={() => void handlePickRefAudio()}>
-              <View style={styles.refAudioPickButtonContent}>
+            <TouchableOpacity
+              style={[
+                styles.refAudioCard,
+                {
+                  borderColor: refAudioPath ? colors.primary : colors.borderSubtle,
+                  backgroundColor: refAudioPath ? colors.primaryLight : colors.bgSurfaceNormal
+                }
+              ]}
+              onPress={() => void handlePickRefAudio()}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <View style={[styles.targetIcon, { backgroundColor: colors.bgSurface }]}>
                 <FolderOpen
-                  size={18}
-                  color={colors.textSecondary}
+                  size={24}
+                  color={refAudioPath ? colors.primary : colors.textSecondary}
                   strokeWidth={DEFAULT_STROKE_WIDTH}
                 />
-                <Text style={[styles.refAudioPickButtonText, { color: colors.textPrimary }]}>
+              </View>
+              <View style={styles.targetCardContent}>
+                <Text
+                  style={[
+                    styles.targetTitle,
+                    { color: refAudioPath ? colors.primary : colors.textPrimary }
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {refAudioName || t('tts.settings.pick_ref_audio_button', '选择参考音频')}
+                </Text>
+                <Text
+                  style={[styles.targetDesc, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
                   {refAudioPath
-                    ? t('tts.settings.pick_ref_audio_again_button', '重新选择参考音频')
-                    : t('tts.settings.pick_ref_audio_button', '选择参考音频')}
+                    ? t('tts.settings.pick_ref_audio_again_hint', '点击可重新选择或替换音频文件')
+                    : t(
+                        'tts.settings.mimo_ref_audio_mobile_hint',
+                        '点击选择 wav/mp3 参考音频，将保存到外部存储'
+                      )}
                 </Text>
               </View>
-            </Button>
+            </TouchableOpacity>
             {refAudioName ? (
               <Text
                 style={[styles.selectedRefAudioName, { color: colors.textSecondary }]}
@@ -96,12 +125,6 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
                 })}
               </Text>
             ) : null}
-            <Text style={[styles.helperText, { color: colors.textTertiary, marginBottom: 0 }]}>
-              {t(
-                'tts.settings.mimo_ref_audio_mobile_hint',
-                '点击按钮选择 wav/mp3 参考音频，将保存到外部存储'
-              )}
-            </Text>
           </>
         ) : (
           <Input
@@ -128,25 +151,35 @@ export const TtsGptSovitsFields: React.FC<TtsGptSovitsFieldsProps> = ({
       </Section>
 
       <Section>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.prompt_lang_label')}
-        </Text>
-        <Select
-          options={langOptions}
-          value={config.promptLang || 'zh'}
-          onValueChange={(v) => onUpdate({ promptLang: v })}
-        />
+        <View style={styles.inlineFieldRow}>
+          <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+            {t('tts.settings.prompt_lang_label')}
+          </Text>
+          <Select
+            variant="settings"
+            compact
+            options={langOptions}
+            value={config.promptLang || 'zh'}
+            onValueChange={(v) => onUpdate({ promptLang: v })}
+            triggerStyle={styles.compactSelectTrigger}
+          />
+        </View>
       </Section>
 
       <Section>
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
-          {t('tts.settings.text_lang_label')}
-        </Text>
-        <Select
-          options={langOptions}
-          value={config.textLang || 'zh'}
-          onValueChange={(v) => onUpdate({ textLang: v })}
-        />
+        <View style={styles.inlineFieldRow}>
+          <Text style={[styles.label, styles.labelInline, { color: colors.textPrimary }]}>
+            {t('tts.settings.text_lang_label')}
+          </Text>
+          <Select
+            variant="settings"
+            compact
+            options={langOptions}
+            value={config.textLang || 'zh'}
+            onValueChange={(v) => onUpdate({ textLang: v })}
+            triggerStyle={styles.compactSelectTrigger}
+          />
+        </View>
       </Section>
     </>
   )
@@ -202,6 +235,7 @@ export const TtsTestSection: React.FC<TtsTestSectionProps> = ({
               isLoading={testing}
               isDisabled={!canTest || testing}
               className="min-w-[72px] px-3.5"
+              style={styles.actionButton}
             >
               {testing ? t('tts.settings.testing') : t('tts.settings.test_button')}
             </Button>

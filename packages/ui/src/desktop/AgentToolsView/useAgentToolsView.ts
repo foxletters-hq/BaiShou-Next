@@ -1,19 +1,41 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
-import { buildAgentTools, buildCategoryMeta } from './agent-tools.constants'
+import { isEnablingAutoInjectTime, type AgentToolScene } from '@baishou/shared'
+import { useDialog } from '../Dialog'
+import type { AgentToolDef, AgentToolsConfig, ToolConfigParam } from './agent-tools.types'
+import {
+  AGENT_TOOL_CATEGORY_ORDER,
+  WORKSPACE_TOOL_CATEGORY_ORDER,
+  buildAgentTools,
+  buildCategoryMeta,
+  buildWorkspaceCategoryMeta,
+  buildWorkspaceTools
+} from './agent-tools.constants'
 
 interface UseAgentToolsViewOptions {
-  config: ToolManagementConfig
-  onChange: (config: ToolManagementConfig) => void
+  config: AgentToolsConfig
+  onChange: (config: AgentToolsConfig) => void
+  scene?: AgentToolScene
 }
 
-export function useAgentToolsView({ config, onChange }: UseAgentToolsViewOptions) {
+export function useAgentToolsView({
+  config,
+  onChange,
+  scene = 'companion'
+}: UseAgentToolsViewOptions) {
   const { t } = useTranslation()
-  const [showCommunity, setShowCommunity] = useState(false)
+  const dialog = useDialog()
 
-  const allTools = useMemo(() => buildAgentTools(t), [t])
-  const categoryMeta = useMemo(() => buildCategoryMeta(t), [t])
+  const allTools = useMemo(
+    () => (scene === 'workspace' ? buildWorkspaceTools(t) : buildAgentTools(t)),
+    [scene, t]
+  )
+  const categoryMeta = useMemo(
+    () => (scene === 'workspace' ? buildWorkspaceCategoryMeta(t) : buildCategoryMeta(t)),
+    [scene, t]
+  )
+  const categoryOrder =
+    scene === 'workspace' ? WORKSPACE_TOOL_CATEGORY_ORDER : AGENT_TOOL_CATEGORY_ORDER
 
   const toggleTool = async (toolId: string) => {
     const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : []
@@ -22,6 +44,16 @@ export function useAgentToolsView({ config, onChange }: UseAgentToolsViewOptions
     if (isCurrentlyEnabled) {
       disabledList.push(toolId)
     } else {
+      if (isEnablingAutoInjectTime(toolId, false)) {
+        const confirmed = await dialog.confirm(
+          t(
+            'agent.tools.auto_inject_time_enable_confirm',
+            '开启后，发送给伙伴的每条历史消息都会带上发送时间标签。部分模型可能把这些标签抄进回复，聊天气泡里会出现类似 <message-time> 的文字。确定开启？'
+          ),
+          t('agent.tools.auto_inject_time_enable_confirm_title', '开启当前时间？')
+        )
+        if (!confirmed) return
+      }
       const idx = disabledList.indexOf(toolId)
       if (idx > -1) disabledList.splice(idx, 1)
     }
@@ -55,13 +87,13 @@ export function useAgentToolsView({ config, onChange }: UseAgentToolsViewOptions
   )
 
   return {
-    showCommunity,
-    setShowCommunity,
     allTools,
     categoryMeta,
+    categoryOrder,
     groupedTools,
     toggleTool,
     setToolParam,
-    getToolParam
+    getToolParam,
+    showEmojiTools: scene === 'companion'
   }
 }

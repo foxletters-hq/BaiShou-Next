@@ -1,48 +1,86 @@
 .container {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: var(--font-mono, monospace);
-  color: var(--color-success);
-  background-color: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   cursor: pointer;
   user-select: none;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition:
+    background-color var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: none;
+  box-sizing: border-box;
+  justify-content: center;
 }
 
 .container:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.12);
-  background-color: rgba(16, 185, 129, 0.14);
+  box-shadow: none;
+  background-color: var(--bg-surface);
+  border-color: var(--border-control);
+  color: var(--text-primary);
 }
 
 .container:active {
   transform: translateY(0);
 }
 
-.iconWrap {
-  display: flex;
-  align-items: center;
+/**
+ * 顶栏变体：用复合选择器压过 .container 的 padding，
+ * 避免跨文件 CSS module 加载顺序把高度撑破。
+ */
+.container.toolbar {
+  height: var(--chrome-chip-height, 36px);
+  min-height: var(--chrome-chip-height, 36px);
+  max-height: var(--chrome-chip-height, 36px);
+  padding: 0 var(--spacing-sm-plus);
+  border-radius: var(--radius-control);
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: normal;
+  line-height: 1;
+  gap: var(--spacing-xs-plus);
+  box-shadow: none;
+  overflow: hidden;
+  transform: none;
+  justify-content: center;
+}
+
+.container.toolbar:hover,
+.container.toolbar:active {
+  transform: none;
+  box-shadow: none;
 }
 
 .tokenText {
   letter-spacing: -0.2px;
+  line-height: 1;
 }
 
 .costText {
   opacity: 0.8;
   font-weight: 500;
+  line-height: 1;
+  min-width: 9ch;
+  padding-inline: var(--spacing-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  box-sizing: content-box;
 }
 
 .divider {
   width: 1px;
-  height: 14px;
+  height: 12px;
   background-color: currentColor;
   opacity: 0.3;
+  flex-shrink: 0;
 }

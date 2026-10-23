@@ -1,5 +1,9 @@
 export const ONBOARDING_STORAGE_KEY = '@baishou/mobile_has_onboarded'
 export const ONBOARDING_UI_LANGUAGE_KEY = '@baishou/onboarding_ui_language'
+export const ONBOARDING_NICKNAME_KEY = '@baishou/onboarding_nickname'
+export const ONBOARDING_BIRTHDAY_KEY = '@baishou/onboarding_birthday'
+export const ONBOARDING_GENDER_KEY = '@baishou/onboarding_gender'
+export const ONBOARDING_CUSTOM_GENDER_KEY = '@baishou/onboarding_custom_gender'
 /** 迁移完成后待用户确认删除的旧版根目录 */
 export const FLUTTER_LEGACY_MIGRATED_SOURCE_KEY = '@baishou/flutter_legacy_migrated_source'
 /** 本机已完成旧版 Flutter → 新版目录迁移（与 installInstanceId 绑定） */

@@ -1,7 +1,11 @@
 import { ContextCompressorService, AIProviderRegistry } from '@baishou/ai'
 import type { SessionRepository, SnapshotRepository } from '@baishou/database'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { isConfiguredDialogueModelId, isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import {
+  isConfiguredDialogueModelId,
+  isAutoInjectCurrentTimeEnabled,
+  resolveDialogueModelSelection
+} from '@baishou/shared'
 import type { RecompressResult } from '@baishou/store'
 import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
 
@@ -25,18 +29,25 @@ export async function recompressSessionContext(
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
   const globalModels = await deps.settingsManager.get<any>('global_models')
 
-  const providerId = session.providerId ?? globalModels?.globalDialogueProviderId
-  const modelId = session.modelId ?? globalModels?.globalDialogueModelId
+  const resolvedDialogue = resolveDialogueModelSelection({
+    requestedProviderId: session.providerId,
+    requestedModelId: session.modelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+  const providerId = resolvedDialogue.providerId || ''
+  const modelId = resolvedDialogue.modelId || ''
 
-  const config =
-    providers.find((p: any) => p.id === providerId) || providers.find((p: any) => p.isEnabled)
+  const config = providerId
+    ? providers.find((p: any) => p.id === providerId && p.isEnabled !== false)
+    : undefined
 
   if (!config) {
     return { ok: false, error: 'No active provider configured' }
   }
 
   const provider = deps.registry.getOrUpdateProvider(config)
-  const resolvedModelId = modelId || config.defaultDialogueModel || config.models?.[0]
+  const resolvedModelId = modelId
 
   if (!resolvedModelId || !isConfiguredDialogueModelId(resolvedModelId)) {
     return { ok: false, error: 'No model configured for this session' }

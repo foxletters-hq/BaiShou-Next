@@ -4,19 +4,19 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.3); /* Lighter backdrop */
+  background-color: var(--bg-overlay);
   z-index: 1100;
   display: flex;
   justify-content: center;
   align-items: center;
-  backdrop-filter: blur(4px);
-  animation: cropFadeIn 0.2s ease-out forwards;
+  backdrop-filter: none;
+  animation: cropFadeIn var(--duration-swift) ease-out forwards;
 }
 
 .modalContent {
   width: 440px;
   background-color: var(--bg-surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -32,74 +32,78 @@
 }
 
 .controls {
-  padding: 16px 24px;
+  padding: var(--spacing-md) var(--spacing-lg);
   background: var(--bg-surface);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   border-top: 1px solid var(--color-border);
 }
 
 .sliderGroup {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .sliderGroup label {
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .sliderGroup input[type='range'] {
   flex: 1;
   margin: 0;
-  accent-color: var(--color-primary);
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .cancelBtn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: transparent;
+  padding: var(--spacing-sm) var(--spacing-md-plus);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .cancelBtn:hover {
-  background: var(--color-surface-variant);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .confirmBtn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: white;
+  padding: var(--spacing-sm) var(--spacing-md-plus);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 500;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .confirmBtn:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 @keyframes cropFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }

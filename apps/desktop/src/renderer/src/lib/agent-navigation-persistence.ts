@@ -3,6 +3,7 @@ import {
   parseAgentNavigationSnapshot,
   type AgentNavigationSnapshot
 } from '@baishou/shared'
+import { getDesktopVaultScopeKey } from '../cache/desktop-vault-scope'
 
 export function readAgentNavigationSnapshot(vaultKey: string): AgentNavigationSnapshot | null {
   if (typeof window === 'undefined') return null
@@ -34,8 +35,7 @@ export function writeAgentNavigationSnapshot(
 export function readActiveVaultNavigationSnapshot(): AgentNavigationSnapshot | null {
   if (typeof window === 'undefined') return null
   try {
-    const activeVault = window.localStorage.getItem('baishou_active_vault') || 'default'
-    return readAgentNavigationSnapshot(activeVault)
+    return readAgentNavigationSnapshot(getDesktopVaultScopeKey())
   } catch {
     return null
   }

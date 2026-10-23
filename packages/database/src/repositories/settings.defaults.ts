@@ -8,8 +8,10 @@ import type {
   DiaryTemplateConfig,
   ToolManagementConfig,
   McpServerConfig,
-  HotkeyConfig
+  HotkeyConfig,
+  BaishouAgentGateConfig
 } from '@baishou/shared'
+import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG as SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/shared'
 
 export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
   {
@@ -213,6 +215,8 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
 export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
   globalDialogueProviderId: 'gemini',
   globalDialogueModelId: 'off',
+  globalGraphProviderId: 'gemini',
+  globalGraphModelId: 'off',
   globalNamingProviderId: 'gemini',
   globalNamingModelId: 'off',
   globalSummaryProviderId: 'gemini',
@@ -226,7 +230,8 @@ export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
     speed: 1.0,
     responseFormat: 'mp3'
   },
-  monthlySummarySource: 'weeklies'
+  monthlySummarySource: 'weeklies',
+  reasoningEffortBySlot: {}
 }
 
 export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
@@ -235,14 +240,16 @@ export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
   companionTruncateTokens: 4000,
   agentPersona: '你是 AI 伙伴，帮助用户回顾日记和生活记录。',
   agentGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
-  pinnedAssistantIds: []
+  pinnedAssistantIds: [],
+  restoreLastSessionOnReturn: true,
+  reasoningEffortDefault: 'auto'
 }
 
 export const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: 3
+  batchEmbedConcurrency: 20
 }
 
 export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
@@ -271,14 +278,23 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
   customConfigs: {},
   emojiConfig: {
     enabled: false,
+    frequency: 'normal',
     groups: []
   }
+}
+
+export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
+  exclusionList: [...SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList],
+  allowlist: [],
+  hideDeniedTools: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.hideDeniedTools
 }
 
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: false
+  mcpAuthEnabled: false,
+  mcpAutoApproveTools: false,
+  disabledToolIds: []
 }
 
 export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {

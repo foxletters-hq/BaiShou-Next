@@ -26,3 +26,18 @@ export function parseAgentNavigationSnapshot(raw: unknown): AgentNavigationSnaps
   if (!assistantId && !sessionId) return null
   return { assistantId, sessionId }
 }
+
+/** 侧栏/返回伙伴页：按「返回后继续上次会话」决定是否带上 sessionId */
+export function resolveCompanionReturnPath(input: {
+  restoreLastSessionOnReturn: boolean
+  snapshot: AgentNavigationSnapshot | null
+}): string {
+  if (!input.snapshot) return '/chat'
+  if (input.restoreLastSessionOnReturn) {
+    return buildAgentChatNavigationPath(input.snapshot)
+  }
+  return buildAgentChatNavigationPath({
+    assistantId: input.snapshot.assistantId,
+    sessionId: null
+  })
+}

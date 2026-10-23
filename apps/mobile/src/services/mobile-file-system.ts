@@ -338,11 +338,19 @@ export class MobileFileSystem implements IFileSystem {
       externalDeleteSafe(targetPath, force)
       return
     }
+    try {
+      await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
+      if (!(await this.exists(targetPath))) {
+        return
+      }
+    } catch (e) {
+      if (!options?.recursive) {
+        throw e
+      }
+    }
     if (options?.recursive) {
       await this.rmRecursive(targetPath, force)
-      return
     }
-    await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
   }
 
   private async rmRecursive(targetPath: string, force: boolean): Promise<void> {
@@ -367,6 +375,11 @@ export class MobileFileSystem implements IFileSystem {
       await this.rm(childPath, { recursive: true, force })
     }
     await SandboxFS.deleteAsync(toFileUri(targetPath), { idempotent: force })
+  }
+
+  async md5Hex(filePath: string): Promise<string> {
+    const { md5HexForSyncFile } = await import('./mobile-sync-file-md5.util')
+    return md5HexForSyncFile(this, filePath)
   }
 }
 

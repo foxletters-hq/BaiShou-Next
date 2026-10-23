@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest'
+import { formatDiaryDateStr, mapDiaryListEntries } from '../diary-list-display.util'
+
+describe('formatDiaryDateStr', () => {
+  it('should format a date as YYYY-MM-DD when given a calendar day', () => {
+    expect(formatDiaryDateStr(new Date(2026, 8, 18))).toBe('2026-09-18')
+  })
+})
+
+describe('mapDiaryListEntries', () => {
+  it('should return an empty list when entries are missing', () => {
+    expect(mapDiaryListEntries(undefined)).toEqual([])
+    expect(mapDiaryListEntries([])).toEqual([])
+  })
+
+  it('should prefer the diary date and fall back to createdAt when mapping a row', () => {
+    const [row] = mapDiaryListEntries([
+      {
+        id: 1,
+        date: '2026-09-18',
+        content: 'hello world',
+        preview: 'hello'
+      }
+    ])
+    expect(row?.id).toBe(1)
+    expect(row?.preview).toBe('hello')
+    expect(row?.date.getFullYear()).toBe(2026)
+  })
+
+  it('should parse date-only strings as local calendar days instead of UTC days', () => {
+    const prevTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const [row] = mapDiaryListEntries([
+        {
+          id: 2,
+          date: '2026-01-01',
+          content: 'new year',
+          preview: 'new year'
+        }
+      ])
+      expect(row?.date.getFullYear()).toBe(2026)
+      expect(row?.date.getMonth()).toBe(0)
+      expect(row?.date.getDate()).toBe(1)
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ
+      else process.env.TZ = prevTz
+    }
+  })
+})

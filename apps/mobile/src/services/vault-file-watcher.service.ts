@@ -1,7 +1,7 @@
 import { AppState, type AppStateStatus } from 'react-native'
 import { collectJournalPathsByDateInTree } from '@baishou/core-mobile'
 import type { IFileSystem, ShadowIndexSyncService } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import { limitExecute, logger } from '@baishou/shared'
 
 const SCAN_INTERVAL_MS = 8000
 const DEBOUNCE_MS = 500
@@ -25,6 +25,7 @@ export class VaultFileWatcherService {
   private lastMtimes = new Map<string, number>()
   private pendingDates = new Set<string>()
   private isProcessing = false
+  private scanInFlight = false
 
   start(
     journalsBasePath: string,
@@ -94,7 +95,8 @@ export class VaultFileWatcherService {
   }
 
   private async scanOnce(): Promise<void> {
-    if (!this.journalsPath || !this.deps) return
+    if (!this.journalsPath || !this.deps || this.scanInFlight) return
+    this.scanInFlight = true
 
     const journalsPath = this.journalsPath
     const { fileSystem } = this.deps
@@ -114,15 +116,15 @@ export class VaultFileWatcherService {
 
       const { pathsByDate } = await collectJournalPathsByDateInTree(fileSystem, journalsPath)
 
-      for (const [dateStr, fullPath] of pathsByDate) {
+      await limitExecute([...pathsByDate.entries()], 16, async ([dateStr, fullPath]) => {
         try {
           const stat = await fileSystem.stat(fullPath)
-          if (!stat.isFile) continue
+          if (!stat.isFile) return
           const mtime = (stat as { mtimeMs?: number }).mtimeMs ?? 0
           const prev = this.lastMtimes.get(fullPath)
           if (prev === undefined) {
             this.lastMtimes.set(fullPath, mtime)
-            continue
+            return
           }
           if (mtime !== prev) {
             this.lastMtimes.set(fullPath, mtime)
@@ -132,13 +134,15 @@ export class VaultFileWatcherService {
           this.lastMtimes.delete(fullPath)
           this.pendingDates.add(dateStr)
         }
-      }
+      })
 
       if (this.pendingDates.size > 0) {
         this.scheduleProcess()
       }
     } catch (e) {
       logger.warn('[VaultFileWatcher] scan failed:', e as Error)
+    } finally {
+      this.scanInFlight = false
     }
   }
 

@@ -8,7 +8,8 @@
     "./stores/*": "./src/stores/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
     "@baishou/shared": "workspace:*",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/uuid": "^11.0.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   }
 }

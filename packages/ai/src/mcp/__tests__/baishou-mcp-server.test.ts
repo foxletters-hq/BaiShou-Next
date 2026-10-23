@@ -1,18 +1,31 @@
 import { describe, it, expect, vi } from 'vitest'
+import {
+  AgentGateDeniedError,
+  AgentGateEffect,
+  AgentGateProfileId,
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
+  deriveLegacyVaultId
+} from '@baishou/shared'
 import { z } from 'zod'
 import { ToolRegistry } from '../../tools/tool-registry'
 import {
   negotiateMcpProtocolVersion,
   buildBaishouMcpToolSchemas,
   executeBaishouMcpTool,
+  listBaishouMcpExposedTools,
+  listMcpPromptDescriptors,
+  readMcpPromptSkill,
   listBaishouMcpToolsForUi
 } from '../baishou-mcp-server'
 import { DEFAULT_NEGOTIATED_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js'
 import type { ToolContext } from '../../tools/agent.tool'
 import { MCP_EXTERNAL_SESSION_ID } from '../../tools/mcp-tool.util'
+import { createBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-gate.service'
 
 const baseContext: ToolContext = {
   sessionId: MCP_EXTERNAL_SESSION_ID,
+  vaultId: deriveLegacyVaultId('Personal'),
   vaultName: 'Personal',
   userConfig: {
     ragEnabled: true,
@@ -23,6 +36,45 @@ const baseContext: ToolContext = {
 }
 
 describe('baishou-mcp-server', () => {
+  it('lists skills as MCP prompts, including built-ins when disk returns none', async () => {
+    const prompts = await listMcpPromptDescriptors({
+      ...baseContext,
+      skillsReader: {
+        readSkill: vi.fn(),
+        listSkills: vi.fn().mockResolvedValue([{ name: 'daily-brief', description: '写早报' }])
+      }
+    })
+    const names = prompts.map((prompt) => prompt.name)
+    expect(names).toContain('daily-brief')
+    expect(names).toContain('summary-write')
+    expect(names).toContain('summary-repair')
+    expect(names).toContain('diary-append')
+  })
+
+  it('reads a skill prompt body and falls back to the built-in definition', async () => {
+    const fromDisk = await readMcpPromptSkill(
+      {
+        ...baseContext,
+        skillsReader: {
+          readSkill: vi.fn().mockResolvedValue({
+            name: 'daily-brief',
+            description: '写早报',
+            content: '读昨天日记。',
+            location: '/vault/.agents/skills/daily-brief/SKILL.md'
+          })
+        }
+      },
+      'daily-brief'
+    )
+    expect(fromDisk?.content).toBe('读昨天日记。')
+
+    const builtin = await readMcpPromptSkill(
+      { ...baseContext, skillsReader: { readSkill: vi.fn().mockResolvedValue(null) } },
+      'summary-write'
+    )
+    expect(builtin?.content).toContain('Period Summary Detection & Generation')
+  })
+
   it('negotiates supported client protocol versions', () => {
     expect(negotiateMcpProtocolVersion('2025-11-25')).toBe('2025-11-25')
     expect(negotiateMcpProtocolVersion('2024-11-05')).toBe('2024-11-05')
@@ -36,6 +88,7 @@ describe('baishou-mcp-server', () => {
   it('returns empty tool schemas when registry is missing', () => {
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {}
     }
@@ -46,6 +99,7 @@ describe('baishou-mcp-server', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -66,6 +120,7 @@ describe('baishou-mcp-server', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -113,10 +168,20 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools.some((tool) => tool.name === 'baishou_diary_list')).toBe(true)
   })
 
+  it('日记写入工具只通过 content 接收正文标签', () => {
+    const tools = buildBaishouMcpToolSchemas(new ToolRegistry(), baseContext)
+    for (const name of ['baishou_diary_write', 'baishou_diary_edit']) {
+      const schema = tools.find((tool) => tool.name === name)
+      expect(schema?.inputSchema.properties).toHaveProperty('content')
+      expect(schema?.inputSchema.properties).not.toHaveProperty('tags')
+    }
+  })
+
   it('exposes diary, memory, web, and utility tools via MCP', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -145,6 +210,10 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools).toContain('baishou_current_time')
     expect(mcpTools).toContain('baishou_diary_list')
     expect(mcpTools).toContain('baishou_vector_search')
+    expect(mcpTools).toContain('baishou_session_list')
+    expect(mcpTools).toContain('baishou_message_search')
+    expect(mcpTools).toContain('baishou_summary_write')
+    expect(mcpTools).toContain('baishou_skill_read')
   })
 
   it('does not expose emoji_send via MCP even when emoji config is enabled', () => {
@@ -204,6 +273,7 @@ describe('baishou-mcp-server', () => {
 
     const tools = buildBaishouMcpToolSchemas(registry, {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {}
     })
@@ -220,6 +290,7 @@ describe('baishou-mcp-server', () => {
         undefined,
         async () => ({
           sessionId: MCP_EXTERNAL_SESSION_ID,
+          vaultId: deriveLegacyVaultId('Personal'),
           vaultName: 'Personal',
           userConfig: {}
         }),
@@ -244,6 +315,7 @@ describe('baishou-mcp-server', () => {
       registry,
       async () => ({
         sessionId: MCP_EXTERNAL_SESSION_ID,
+        vaultId: deriveLegacyVaultId('Personal'),
         vaultName: 'Personal',
         userConfig: {}
       }),
@@ -252,5 +324,195 @@ describe('baishou-mcp-server', () => {
 
     expect(result.isError).toBe(false)
     expect(result.content[0]?.text).toBe('done')
+  })
+
+  it('hides baishou_memory_delete from MCP list when companion disabled it', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        hasEmbeddingModel: true,
+        disabledToolIds: ['memory_delete']
+      }
+    }
+
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(mcpTools).not.toContain('baishou_memory_delete')
+    expect(mcpTools).toContain('baishou_memory_store')
+  })
+
+  it('executeBaishouMcpTool rejects tools disabled by companion settings', async () => {
+    const execute = vi.fn()
+    const registry = {
+      get: () => ({ name: 'memory_delete', execute }),
+      isToolEnabled: () => false
+    } as unknown as ToolRegistry
+
+    await expect(
+      executeBaishouMcpTool(
+        registry,
+        async () => ({
+          sessionId: MCP_EXTERNAL_SESSION_ID,
+          vaultId: deriveLegacyVaultId('Personal'),
+          vaultName: 'Personal',
+          userConfig: { disabledToolIds: ['memory_delete'] }
+        }),
+        { name: 'baishou_memory_delete' }
+      )
+    ).rejects.toThrow('Tool not available: memory_delete')
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('executeBaishouMcpTool refuses denied memory_delete via agent gate', async () => {
+    const execute = vi.fn()
+    const registry = {
+      get: () => ({
+        name: 'memory_delete',
+        execute,
+        agentGateMetadata: { action: 'memory_delete' }
+      }),
+      isToolEnabled: () => true
+    } as unknown as ToolRegistry
+
+    const result = await executeBaishouMcpTool(
+      registry,
+      async () => ({
+        sessionId: MCP_EXTERNAL_SESSION_ID,
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        userConfig: {},
+        agentGate: {
+          assert: vi.fn().mockRejectedValue(new AgentGateDeniedError('memory_delete')),
+          probeEffect: () => AgentGateEffect.Deny
+        } as unknown as ToolContext['agentGate']
+      }),
+      { name: 'baishou_memory_delete', arguments: { memory_id: 'mem-1' } }
+    )
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(result.isError).toBe(true)
+    expect(result.content[0]?.text).toContain('已被禁用')
+  })
+
+  function workspaceStreamMcpContext(personalMemoryReadEnabled: boolean): ToolContext {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        ...DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+        hideDeniedTools: true
+      }
+    })
+    return {
+      sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      gateProfile: AgentGateProfileId.Workspace,
+      agentGate: gate,
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' },
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: true,
+        personalMemoryReadEnabled,
+        disabledToolIds: [],
+        baishou_agent_gate_config: { hideDeniedTools: true }
+      }
+    }
+  }
+
+  it('hides personal memory tools from MCP tools/list when the workspace switch is off', () => {
+    const registry = new ToolRegistry()
+    const context = workspaceStreamMcpContext(false)
+    const schemaNames = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const exposedNames = listBaishouMcpExposedTools(registry, context).map((tool) => tool.name)
+
+    for (const id of WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS) {
+      expect(schemaNames).not.toContain(`baishou_${id}`)
+      expect(exposedNames).not.toContain(`baishou_${id}`)
+    }
+    expect(schemaNames).not.toContain('baishou_diary_write')
+    expect(schemaNames).toContain('baishou_current_time')
+    expect(exposedNames).toContain('baishou_current_time')
+  })
+
+  it('exposes read-only personal memory tools via MCP when the workspace switch is on', () => {
+    const registry = new ToolRegistry()
+    const context = workspaceStreamMcpContext(true)
+    const schemaNames = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const exposedNames = listBaishouMcpExposedTools(registry, context).map((tool) => tool.name)
+
+    for (const id of WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS) {
+      expect(schemaNames).toContain(`baishou_${id}`)
+      expect(exposedNames).toContain(`baishou_${id}`)
+    }
+    expect(schemaNames).not.toContain('baishou_diary_write')
+    expect(schemaNames).not.toContain('baishou_diary_edit')
+    expect(schemaNames).not.toContain('baishou_memory_store')
+    expect(schemaNames).not.toContain('baishou_graph_upsert')
+    expect(exposedNames).not.toContain('baishou_diary_write')
+  })
+
+  it('hides web_search and url_read from MCP schemas when disabled via mcpDisabledToolIds', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search', 'url_read']
+      }
+    }
+
+    const schemas = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(schemas).not.toContain('baishou_web_search')
+    expect(schemas).not.toContain('baishou_url_read')
+    expect(schemas).toContain('baishou_diary_list')
+    expect(schemas).toContain('baishou_current_time')
+  })
+
+  it('rejects web_search execution when disabled via mcpDisabledToolIds', async () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search']
+      }
+    }
+
+    await expect(
+      executeBaishouMcpTool(registry, async () => context, {
+        name: 'baishou_web_search',
+        arguments: { query: 'test' }
+      })
+    ).rejects.toThrow('Tool disabled via MCP: web_search')
+  })
+
+  it('listBaishouMcpToolsForUi preserves disabled tools with enabled=false for UI toggling', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        web_search_enabled: true,
+        mcpDisabledToolIds: ['web_search', 'url_read']
+      }
+    }
+
+    const uiTools = listBaishouMcpToolsForUi(registry, context)
+    const webSearch = uiTools.find(
+      (t) => t.toolId === 'web_search' || t.name === 'baishou_web_search'
+    )
+    const urlRead = uiTools.find((t) => t.toolId === 'url_read' || t.name === 'baishou_url_read')
+    const diaryList = uiTools.find(
+      (t) => t.toolId === 'diary_list' || t.name === 'baishou_diary_list'
+    )
+
+    expect(webSearch).toBeDefined()
+    expect(webSearch?.enabled).toBe(false)
+    expect(urlRead).toBeDefined()
+    expect(urlRead?.enabled).toBe(false)
+    expect(diaryList).toBeDefined()
+    expect(diaryList?.enabled).toBe(true)
   })
 })

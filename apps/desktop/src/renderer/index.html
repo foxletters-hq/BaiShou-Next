@@ -13,6 +13,17 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // 早于 Vite 模块图：用于判断「HTML 已解析」到「main.tsx 执行」之间卡在哪
+      window.__BAISHOU_STARTUP__ = { marks: [] }
+      window.__BAISHOU_STARTUP__.marks.push({
+        step: 'html.inline',
+        navMs: Math.round(performance.now())
+      })
+      console.info(
+        '[Startup][renderer] ● html.inline (nav+' + Math.round(performance.now()) + 'ms)'
+      )
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import '../shared/SettingsListTile.css'
 import './StorageSettingsCard.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { Button } from '../Button/Button'
 import { Folder, FolderSync } from 'lucide-react'
 
 export interface StorageSettingsCardProps {
@@ -74,14 +75,14 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
-      icon={<FolderSync size={24} />}
+      icon={<FolderSync size={20} />}
       title={t('settings.storage_manager', '存储管理')}
       subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
     >
       <div className="storage-settings-root-block">
         <div className="settings-list-tile settings-list-tile-noclick">
           <div className="settings-list-tile-leading">
-            <Folder size={22} />
+            <Folder size={18} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
@@ -96,22 +97,24 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
         {(handleChangeDirectory || onMigrateDirectory) && (
           <div className="storage-settings-actions">
             {onMigrateDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn storage-settings-action-btn-secondary"
+                variant="outlined"
+                size="small"
                 onClick={() => void onMigrateDirectory()}
               >
                 {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
-              </button>
+              </Button>
             ) : null}
             {handleChangeDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn"
+                variant="outlined"
+                size="small"
                 onClick={() => void handleChangeDirectory()}
               >
                 {changeDirectoryLabel ?? t('storage.change_directory', '更换目录')}
-              </button>
+              </Button>
             ) : null}
           </div>
         )}
@@ -121,7 +124,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
         <div className="storage-settings-root-block">
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Folder size={22} />
+              <Folder size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -159,22 +162,24 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
 
           <div className="storage-settings-actions">
             {onChangeExternalJournalsDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn"
+                variant="outlined"
+                size="small"
                 onClick={() => void onChangeExternalJournalsDirectory()}
               >
-                {t('storage.external_journals_pick', '选择日记目录')}
-              </button>
+                {t('storage.external_journals_pick', '自定义日记目录')}
+              </Button>
             ) : null}
             {externalJournalsPath && onClearExternalJournalsDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn storage-settings-action-btn-secondary"
+                variant="outlined"
+                size="small"
                 onClick={() => void onClearExternalJournalsDirectory()}
               >
                 {t('storage.external_journals_clear', '恢复默认目录')}
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
@@ -184,7 +189,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
         <div className="storage-settings-root-block">
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Folder size={22} />
+              <Folder size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -236,31 +241,33 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
 
           <div className="storage-settings-actions">
             {onChangeExternalSummariesDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn"
+                variant="outlined"
+                size="small"
                 onClick={() => void onChangeExternalSummariesDirectory()}
               >
-                {t('storage.external_summaries_pick', '选择总结目录')}
-              </button>
+                {t('storage.external_summaries_pick', '自定义总结目录')}
+              </Button>
             ) : null}
             {externalSummariesPath && onClearExternalSummariesDirectory ? (
-              <button
+              <Button
                 type="button"
-                className="storage-settings-action-btn storage-settings-action-btn-secondary"
+                variant="outlined"
+                size="small"
                 onClick={() => void onClearExternalSummariesDirectory()}
               >
                 {t('storage.external_summaries_clear', '恢复默认目录')}
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
       )}
 
       {onNavigateToAttachments ? (
-        <button type="button" className="settings-text-btn" onClick={onNavigateToAttachments}>
+        <Button type="button" variant="outlined" size="small" onClick={onNavigateToAttachments}>
           {t('settings.attachment_management', '附件管理')}
-        </button>
+        </Button>
       ) : null}
     </SettingsExpansionTile>
   )

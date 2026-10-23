@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
-import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
+import { SettingsHelpIconButton } from '../HelpTooltip/SettingsHelpIconButton'
 import styles from './McpHelpButton.module.css'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { buildMcpSseUrl, buildMcpUrl } from './mcp-url'
-import { CircleHelp } from 'lucide-react'
 
 export interface McpHelpButtonProps {
   size?: number
@@ -28,21 +27,19 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
   const [open, setOpen] = useState(false)
   const endpointHost = lanHost?.trim() || '127.0.0.1'
   const mcpUrl = buildMcpUrl(mcpPort, endpointHost)
-  const sseUrl = buildMcpSseUrl(mcpPort, endpointHost)
-  const tokenForExample = mcpAuthEnabled ? mcpAuthToken : undefined
-  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, tokenForExample, 'streamableHttp')
-  const sseJsonExample = buildMcpClientJsonExample(sseUrl, tokenForExample, 'sse')
+  const mcpSseUrl = buildMcpSseUrl(mcpPort, endpointHost)
+  const effectiveToken = mcpAuthEnabled ? mcpAuthToken : undefined
+  const mcpJsonExample = buildMcpClientJsonExample(mcpUrl, effectiveToken, 'streamableHttp')
+  const mcpSseJsonExample = buildMcpClientJsonExample(mcpSseUrl, effectiveToken, 'sse')
 
   return (
     <>
-      <button
-        type="button"
-        className={`${styles.helpBtn} ${className}`.trim()}
+      <SettingsHelpIconButton
         aria-label={t('settings.mcp_help_aria', 'MCP 连接说明')}
-        {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
-      >
-        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
-      </button>
+        size={size}
+        className={className}
+        onActivate={() => setOpen(true)}
+      />
       <Modal
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -68,7 +65,7 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             <span className={styles.urlLabel}>
               {t('settings.mcp_sse_url_label', 'SSE 地址（兼容）')}
             </span>
-            <code className={styles.urlCode}>{sseUrl}</code>
+            <code className={styles.urlCode}>{mcpSseUrl}</code>
           </div>
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>{t('settings.mcp_help_cursor_title', 'Cursor')}</h3>
@@ -82,33 +79,40 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
               <li>
                 {t(
                   'settings.mcp_help_cursor_2',
-                  '将下方配置粘贴到 mcpServers 中（优先使用 /mcp；兼容客户端可用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
+                  '将下方配置粘贴到 mcpServers 中（推荐 /mcp；若客户端仅支持旧版 SSE，改用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
                 )}
               </li>
             </ol>
-            <p className={styles.exampleLabel}>
-              {t('settings.mcp_help_example_streamable', '推荐（Streamable HTTP /mcp）')}
+            <p className={styles.sectionHint}>
+              {t('settings.mcp_help_streamable_title', '推荐：Streamable HTTP（/mcp）')}
             </p>
             <pre className={styles.jsonExample}>{mcpJsonExample}</pre>
-            <p className={styles.exampleLabel}>
-              {t('settings.mcp_help_example_sse', '兼容（SSE /sse）')}
+            <p className={styles.sectionHint}>
+              {t('settings.mcp_help_sse_title', '兼容：SSE（/sse）')}
             </p>
-            <pre className={styles.jsonExample}>{sseJsonExample}</pre>
+            <pre className={styles.jsonExample}>{mcpSseJsonExample}</pre>
           </section>
-          {tokenForExample?.trim() ? (
+          {effectiveToken?.trim() ? (
             <p className={styles.note}>
               {t(
                 'settings.mcp_help_auth_note',
                 '若已开启鉴权并生成访问令牌，请在 headers.Authorization 中填写 Bearer <令牌>，否则无法获取工具列表。'
               )}
             </p>
-          ) : null}
+          ) : (
+            <p className={styles.note}>
+              {t(
+                'settings.mcp_help_auth_disabled_note',
+                '当前已关闭鉴权，配置中无需 Authorization 头。仅建议在受信网络使用。'
+              )}
+            </p>
+          )}
           <p className={styles.note}>
             {t(
               'settings.mcp_help_note',
               lanHost
-                ? '推荐使用 /mcp；旧版客户端可改用 /sse。启用后需保持白守桌面端运行，并确保客户端与电脑在同一局域网。'
-                : '推荐使用 /mcp；旧版客户端可改用 /sse。启用后需保持白守桌面端运行。'
+                ? '优先使用 /mcp；仅当客户端不支持 Streamable HTTP 时改用 /sse。启用后需保持白守桌面端运行，并确保客户端与电脑在同一局域网。'
+                : '优先使用 /mcp；仅当客户端不支持 Streamable HTTP 时改用 /sse。启用后需保持白守桌面端运行。'
             )}
           </p>
         </div>

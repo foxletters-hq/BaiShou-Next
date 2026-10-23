@@ -1,0 +1,10 @@
+{
+  "name": "expo-pdf-page-render",
+  "version": "1.0.0",
+  "description": "Render PDF pages to PNG for vision extract",
+  "main": "index.ts",
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*"
+  }
+}

@@ -6,7 +6,12 @@ import {
   isBuiltinAssistantAvatarPath,
   isDefaultAssistantAvatarPath,
   isAssistantCustomAvatar,
-  extractAvatarsRelativeKey
+  extractAvatarsRelativeKey,
+  deriveLegacyVaultId,
+  isVaultId,
+  isSystemLatteAssistantId,
+  SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE,
+  logger
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { emitDomainMutation } from '../events'
@@ -19,6 +24,14 @@ import {
 } from './assistant-persist.util'
 import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
+export type AssistantVaultIdResolver = () => string | null | undefined
+
+function normalizeVaultId(raw: string | null | undefined): string | null {
+  const value = String(raw ?? '').trim()
+  if (!value) return null
+  return isVaultId(value) ? value : deriveLegacyVaultId(value)
+}
+
 /**
  * AI 角色身份卡存储漫游总代理。
  * 防止 SQLite 脱网数据变孤岛，全量接入单向 SSOT 管线拦截体系。
@@ -27,8 +40,28 @@ export class AssistantManagerService {
   constructor(
     private readonly repo: AssistantRepository,
     private readonly fileService: AssistantFileService,
-    private readonly attachmentManager: IAttachmentManager
+    private readonly attachmentManager: IAttachmentManager,
+    private readonly resolveVaultId?: AssistantVaultIdResolver
   ) {}
+
+  private requireVaultId(override?: string | null): string {
+    const id = normalizeVaultId(override) ?? normalizeVaultId(this.resolveVaultId?.())
+    if (!id) {
+      throw new Error('AssistantManager: vault_id is required')
+    }
+    return id
+  }
+
+  private tryVaultId(override?: string | null): string | null {
+    return normalizeVaultId(override) ?? normalizeVaultId(this.resolveVaultId?.())
+  }
+
+  private resolveVaultIdForName(vaultName: string, options?: DiskResyncOptions): string {
+    const mapped = options?.vaultIdByName?.[vaultName]
+    const fromMap = normalizeVaultId(mapped)
+    if (fromMap) return fromMap
+    return deriveLegacyVaultId(vaultName)
+  }
 
   private async processAvatarInput(input: { avatarPath?: string | null }) {
     const raw = input.avatarPath?.trim()
@@ -66,7 +99,7 @@ export class AssistantManagerService {
   private async cleanupOrphanedCustomAvatar(
     oldAvatarPath: string | null | undefined,
     nextAvatarPath: string | null | undefined,
-    options?: { excludeAssistantId?: string }
+    options?: { excludeAssistantId?: string; vaultId?: string }
   ): Promise<void> {
     if (!isAssistantCustomAvatar(oldAvatarPath)) return
     const oldKey = this.toComparableAvatarKey(oldAvatarPath)
@@ -75,7 +108,8 @@ export class AssistantManagerService {
     const nextKey = this.toComparableAvatarKey(nextAvatarPath)
     if (nextKey && nextKey === oldKey) return
 
-    const others = await this.repo.findAll()
+    const vaultId = this.tryVaultId(options?.vaultId)
+    const others = vaultId ? await this.repo.findAll(vaultId) : []
     const stillReferenced = others.some((item) => {
       if (options?.excludeAssistantId && item.id === options.excludeAssistantId) return false
       return this.toComparableAvatarKey(item.avatarPath) === oldKey
@@ -100,11 +134,13 @@ export class AssistantManagerService {
     return item
   }
 
-  private async persistAssistantSnapshot(id: string): Promise<void> {
-    const full = await this.repo.findById(id)
+  private async persistAssistantSnapshot(id: string, vaultId?: string | null): Promise<void> {
+    const scoped = this.requireVaultId(vaultId)
+    const full = await this.repo.findById(id, scoped)
     if (!full) return
+    const { vaultId: _internalVaultId, ...cleanRecord } = full
     const snapshot = {
-      ...full,
+      ...cleanRecord,
       avatarPath: toPersistedAssistantAvatarPath(full.avatarPath),
       assistantKind: normalizeAssistantKind(full.assistantKind),
       sortOrder: full.sortOrder ?? 0
@@ -113,33 +149,37 @@ export class AssistantManagerService {
   }
 
   async create(input: InsertAssistantInput): Promise<void> {
-    await this.processAvatarInput(input)
-    if (input.sortOrder == null) {
-      const all = await this.repo.findAll()
-      input.sortOrder = all.reduce((max, a) => Math.max(max, a.sortOrder ?? 0), -1) + 1
+    const vaultId = this.requireVaultId(input.vaultId)
+    const withVault = { ...input, vaultId }
+    await this.processAvatarInput(withVault)
+    if (withVault.sortOrder == null) {
+      const all = await this.repo.findAll(vaultId)
+      withVault.sortOrder = all.reduce((max, a) => Math.max(max, a.sortOrder ?? 0), -1) + 1
     }
-    await this.repo.create(input)
-    await this.persistAssistantSnapshot(input.id)
+    await this.repo.create(withVault)
+    await this.persistAssistantSnapshot(withVault.id, vaultId)
     emitDomainMutation({
       domain: 'settings',
       action: 'update',
-      meta: { key: `assistant_${input.id}` },
+      meta: { key: `assistant_${withVault.id}` },
       reason: 'assistant-create'
     })
   }
 
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
-    const previous = await this.repo.findById(id)
+    const vaultId = this.requireVaultId()
+    const previous = await this.repo.findById(id, vaultId)
     const previousAvatar = previous?.avatarPath ?? null
     const avatarChanging = input.avatarPath !== undefined
 
     await this.processAvatarInput(input)
-    await this.repo.update(id, input)
-    await this.persistAssistantSnapshot(id)
+    await this.repo.update(id, input, vaultId)
+    await this.persistAssistantSnapshot(id, vaultId)
 
     if (avatarChanging) {
       await this.cleanupOrphanedCustomAvatar(previousAvatar, input.avatarPath ?? null, {
-        excludeAssistantId: id
+        excludeAssistantId: id,
+        vaultId
       })
     }
 
@@ -151,12 +191,19 @@ export class AssistantManagerService {
     })
   }
 
-  async delete(id: string): Promise<void> {
-    const previous = await this.repo.findById(id)
+  async delete(id: string, vaultIdOverride?: string | null): Promise<void> {
+    if (isSystemLatteAssistantId(id)) {
+      throw new Error(SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE)
+    }
+    const vaultId = this.requireVaultId(vaultIdOverride)
+    const previous = await this.repo.findById(id, vaultId)
     const previousAvatar = previous?.avatarPath ?? null
-    await this.repo.delete(id)
+    await this.repo.delete(id, vaultId)
     await this.fileService.deleteAssistant(id)
-    await this.cleanupOrphanedCustomAvatar(previousAvatar, null, { excludeAssistantId: id })
+    await this.cleanupOrphanedCustomAvatar(previousAvatar, null, {
+      excludeAssistantId: id,
+      vaultId
+    })
     emitDomainMutation({
       domain: 'settings',
       action: 'update',
@@ -166,27 +213,45 @@ export class AssistantManagerService {
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {
-    await this.repo.togglePin(id, isPinned)
-    await this.persistAssistantSnapshot(id)
+    const vaultId = this.requireVaultId()
+    await this.repo.togglePin(id, isPinned, vaultId)
+    await this.persistAssistantSnapshot(id, vaultId)
   }
 
   async reorderAssistants(orderedIds: string[]): Promise<void> {
+    const vaultId = this.requireVaultId()
     for (let index = 0; index < orderedIds.length; index++) {
       const id = orderedIds[index]!
-      await this.repo.update(id, { sortOrder: index })
-      await this.persistAssistantSnapshot(id)
+      await this.repo.update(id, { sortOrder: index }, vaultId)
+      await this.persistAssistantSnapshot(id, vaultId)
     }
   }
 
   // SQLite 是热缓存，当前工作区可见性以 Assistants 目录为准
-  async findAll() {
-    const items = await this.repo.findAll()
+  async findAll(vaultIdOverride?: string | null) {
+    const vaultId = this.tryVaultId(vaultIdOverride)
+    if (!vaultId) return []
+    const items = await this.repo.findAll(vaultId)
     const fileIds = new Set((await this.fileService.listAllAssistants()).map((f) => f.id))
+
+    // 兜底：Assistants 目录一个文件都没有、但库里有记录时，先按库返回。
+    // 常见于工作区目录未挂载 / 云盘尚未同步完成；否则 UI 会退回默认伙伴，
+    // 连带把旧会话按 assistantId 过滤掉，看起来像聊天记录和名字都丢了。
+    if (fileIds.size === 0 && items.length > 0) {
+      logger.warn('[AssistantManager] assistants directory is empty; falling back to SQLite rows', {
+        vaultId,
+        count: items.length
+      })
+      return Promise.all(items.map((i) => this.mapAvatarOutput(i)))
+    }
+
     return Promise.all(items.filter((i) => fileIds.has(i.id)).map((i) => this.mapAvatarOutput(i)))
   }
 
-  async findById(id: string) {
-    const item = await this.repo.findById(id)
+  async findById(id: string, vaultIdOverride?: string | null) {
+    const vaultId = this.tryVaultId(vaultIdOverride)
+    if (!vaultId) return undefined
+    const item = await this.repo.findById(id, vaultId)
     if (item) return this.mapAvatarOutput(item)
     return item
   }
@@ -203,9 +268,10 @@ export class AssistantManagerService {
     const onDisk = await this.fileService.readAssistant(input.id)
     if (onDisk?.id) return
 
-    const fromDb = await this.repo.findById(input.id)
+    const vaultId = this.requireVaultId(input.vaultId)
+    const fromDb = await this.repo.findById(input.id, vaultId)
     if (fromDb) {
-      await this.persistAssistantSnapshot(input.id)
+      await this.persistAssistantSnapshot(input.id, vaultId)
       return
     }
 
@@ -217,6 +283,7 @@ export class AssistantManagerService {
       description: input.description ?? null,
       avatarPath: toPersistedAssistantAvatarPath(input.avatarPath ?? null),
       systemPrompt: input.systemPrompt ?? null,
+      customSystemPrompt: input.customSystemPrompt ?? null,
       isDefault: input.isDefault ?? false,
       isPinned: input.isPinned ?? false,
       contextWindow: input.contextWindow ?? null,
@@ -232,46 +299,125 @@ export class AssistantManagerService {
     await this.fileService.writeAssistant(input.id, snapshot)
   }
 
+  private async upsertFromDiskFile(
+    fileId: string,
+    vaultId: string,
+    vaultName?: string | null
+  ): Promise<void> {
+    const raw = await this.fileService.readAssistant(fileId, vaultName)
+    const data = normalizeDiskAssistantRecord(raw)
+    if (!data?.id || typeof data.name !== 'string') {
+      return
+    }
+
+    if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
+    if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt)
+    if (data.avatarPath != null) {
+      data.avatarPath =
+        normalizePersistedAvatarPath(data.avatarPath) ??
+        normalizeAssistantAvatarPath(data.avatarPath)
+    }
+
+    const existing = await this.repo.findById(fileId, vaultId)
+    if (existing) {
+      if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
+        return
+      }
+      await this.repo.update(
+        fileId,
+        pickDefinedAssistantUpdate(data) as UpdateAssistantInput,
+        vaultId
+      )
+    } else {
+      await this.repo.create({ ...(data as InsertAssistantInput), vaultId })
+    }
+  }
+
   /**
-   * 启动拉取与云盘恢复阶段的调用
+   * 启动拉取与云盘恢复阶段的调用。
+   * 传入 diskVaultNames 时跨仓水合；ghost 清理仅限本仓（或已扫描仓）的行。
    */
-  async fullResyncFromDisks(_options?: DiskResyncOptions): Promise<void> {
+  async fullResyncFromDisks(options?: DiskResyncOptions): Promise<void> {
+    const vaultNames = [
+      ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
+    ]
+
+    if (vaultNames.length > 0) {
+      const allFiles = await this.fileService.listAssistantsAcrossVaults(vaultNames)
+      const scannedVaultIds = new Set<string>()
+
+      if (allFiles.length === 0) {
+        logger.warn(
+          '[AssistantManager] cross-vault rescan found 0 assistant files; skip ghost cleanup',
+          {
+            diskVaultNames: vaultNames
+          }
+        )
+      }
+
+      for (const f of allFiles) {
+        const vaultId = this.resolveVaultIdForName(f.vaultName, options)
+        scannedVaultIds.add(vaultId)
+        await this.upsertFromDiskFile(f.id, vaultId, f.vaultName)
+      }
+
+      for (const vaultId of scannedVaultIds) {
+        const fileIds = new Set(
+          allFiles
+            .filter((f) => this.resolveVaultIdForName(f.vaultName, options) === vaultId)
+            .map((f) => f.id)
+        )
+        const dbRows = await this.repo.findAll(vaultId)
+        for (const dbRecord of dbRows) {
+          if (!fileIds.has(dbRecord.id)) {
+            await this.repo.delete(dbRecord.id, vaultId)
+          }
+        }
+      }
+      return
+    }
+
+    // 仅活跃仓：只清本仓幽灵，不再整表当活跃仓缓存
+    const vaultId =
+      normalizeVaultId(options?.activeVaultId) ??
+      (options?.activeVaultName
+        ? this.resolveVaultIdForName(options.activeVaultName, options)
+        : this.tryVaultId())
+    if (!vaultId) return
+
     const allFiles = await this.fileService.listAllAssistants()
-    const allDb = await this.repo.findAll()
+    const allDb = await this.repo.findAll(vaultId)
+
+    // 兜底：一个伙伴 JSON 都没扫到但库里有记录时，先判定为目录/挂载异常，禁止清库。
+    if (allFiles.length === 0 && allDb.length > 0) {
+      logger.warn(
+        '[AssistantManager] active-vault rescan found 0 assistant files; skip ghost cleanup',
+        { vaultId, dbCount: allDb.length }
+      )
+      return
+    }
 
     for (const f of allFiles) {
-      const raw = await this.fileService.readAssistant(f.id)
-      const data = normalizeDiskAssistantRecord(raw)
-      if (!data?.id || typeof data.name !== 'string') {
-        continue
-      }
-
-      // JSON.parse turns Date into ISO string, needs to transform to Date object
-      // Otherwise Drizzle SQLiteTimestamp.mapToDriverValue will raise TypeError: value.getTime is not a function
-      if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
-      if (data.updatedAt != null) data.updatedAt = new Date(data.updatedAt)
-      if (data.avatarPath != null) {
-        data.avatarPath =
-          normalizePersistedAvatarPath(data.avatarPath) ??
-          normalizeAssistantAvatarPath(data.avatarPath)
-      }
-
-      const existing = await this.repo.findById(f.id)
-      if (existing) {
-        if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
-          continue
-        }
-        await this.repo.update(f.id, pickDefinedAssistantUpdate(data) as UpdateAssistantInput)
-      } else {
-        await this.repo.create(data as InsertAssistantInput)
-      }
+      await this.upsertFromDiskFile(f.id, vaultId)
     }
 
     const fileIds = new Set(allFiles.map((f) => f.id))
     for (const dbRecord of allDb) {
       if (!fileIds.has(dbRecord.id)) {
-        await this.repo.delete(dbRecord.id)
+        await this.repo.delete(dbRecord.id, vaultId)
       }
     }
+  }
+
+  /**
+   * 将会话关联的助手 ID 批量重绑定（用于出厂默认助手升级为官方系统助手）
+   */
+  async rebindSessionsAssistantId(
+    oldId: string,
+    newId: string,
+    vaultId?: string | null
+  ): Promise<void> {
+    const scoped = this.requireVaultId(vaultId)
+    await this.repo.rebindAssistantSessions(oldId, newId, scoped)
   }
 }

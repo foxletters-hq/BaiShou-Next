@@ -4,11 +4,14 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { Button } from '../Button/Button'
+import { Switch } from '../Switch/Switch'
 import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 import { pickRecentVaults } from './workspace-settings.utils'
 import { validateWorkspaceName } from './workspace-name.validation'
 import styles from './WorkspaceSettingsCard.module.css'
 import { CheckCircle, FolderOpen, Layers, Plus } from 'lucide-react'
+import { sharedTokens } from '../../theme/tokens'
 
 export { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 export type { WorkspaceScopeHelpTooltipProps } from './WorkspaceScopeHelpTooltip'
@@ -19,6 +22,8 @@ export type {
 } from './workspace-name.validation'
 
 export interface VaultInfo {
+  /** 稳定身份；旧调用方可能未传 */
+  id?: string
   name: string
   path: string
   createdAt: Date | string
@@ -36,6 +41,8 @@ export interface WorkspaceSettingsCardProps {
   embedded?: boolean
   isLast?: boolean
   onManageWorkspace?: () => void
+  showTopBarSwitcher?: boolean
+  onShowTopBarSwitcherChange?: (show: boolean) => void
 }
 
 export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
@@ -46,7 +53,9 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
   onCreate,
   embedded = false,
   isLast = false,
-  onManageWorkspace
+  onManageWorkspace,
+  showTopBarSwitcher = false,
+  onShowTopBarSwitcherChange
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -142,19 +151,44 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             </span>
           )}
         </div>
-        <button
+        <Button
           type="button"
-          className={styles.workspaceManageButton}
+          variant="outlined"
+          size="small"
           onClick={() => onManageWorkspace?.()}
           disabled={!onManageWorkspace}
         >
           {t('workspace.manage', '管理工作空间')}
-        </button>
+        </Button>
       </div>
+
+      {onShowTopBarSwitcherChange ? (
+        <div className={styles.workspaceToggleCard}>
+          <div className={styles.workspaceToggleInfo}>
+            <span className="settings-list-tile-title">
+              {t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+            </span>
+            <span className="settings-list-tile-subtitle">
+              {t(
+                'workspace.show_topbar_switcher_desc',
+                '开启后，可在顶部窗口栏快速切换当前工作空间。'
+              )}
+            </span>
+          </div>
+          <Switch
+            checked={Boolean(showTopBarSwitcher)}
+            aria-label={t('workspace.show_topbar_switcher', '在顶部栏显示工作空间切换')}
+            onChange={(e) => onShowTopBarSwitcherChange(e.target.checked)}
+          />
+        </div>
+      ) : null}
 
       {recentVaults.length > 0 ? (
         <>
-          <span className={styles.workspaceSectionLabel} style={{ marginBottom: 4, marginTop: 4 }}>
+          <span
+            className={styles.workspaceSectionLabel}
+            style={{ marginBottom: sharedTokens.spacing.xs, marginTop: sharedTokens.spacing.xs }}
+          >
             {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
           </span>
           <div className={styles.workspaceRecentList}>
@@ -187,7 +221,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
-        icon={<Layers size={24} />}
+        icon={<Layers size={20} />}
         title={t('workspace.title', '工作空间')}
         titleAddon={<WorkspaceScopeHelpTooltip />}
         subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -201,7 +235,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
   return (
     <SettingsExpansionTile
-      icon={<Layers size={24} />}
+      icon={<Layers size={20} />}
       title={t('workspace.title', '工作空间')}
       titleAddon={<WorkspaceScopeHelpTooltip />}
       subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -213,7 +247,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         return (
           <div key={vault.name} className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <FolderOpen size={22} />
+              <FolderOpen size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">{vault.name}</span>
@@ -225,16 +259,17 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             </div>
             {isActive ? (
               <CheckCircle
-                size={22}
+                size={18}
                 style={{
-                  color: 'var(--color-primary, #5BA8F5)',
+                  color: 'var(--color-primary)',
                   flexShrink: 0
                 }}
               />
             ) : (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button
-                  className="settings-text-btn"
+              <div style={{ display: 'flex', gap: sharedTokens.spacing.xs }}>
+                <Button
+                  variant="outlined"
+                  size="small"
                   onMouseEnter={() => {
                     if (typeof window !== 'undefined' && (window as any).api?.vault?.preload) {
                       void (window as any).api.vault.preload(vault.name)
@@ -243,14 +278,10 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                   onClick={() => onSwitch(vault.name)}
                 >
                   {t('workspace.switch', '切换')}
-                </button>
-                <button
-                  className="settings-text-btn"
-                  style={{ color: '#ef4444' }}
-                  onClick={() => handleDelete(vault.name)}
-                >
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => handleDelete(vault.name)}>
                   {t('workspace.delete', '删除')}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -261,7 +292,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
       <button className="settings-list-tile" onClick={handleCreate}>
         <div className="settings-list-tile-leading">
-          <Plus size={22} />
+          <Plus size={18} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">

@@ -1,18 +1,32 @@
 import React from 'react'
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Switch } from '../Switch'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface McpToolListItem {
   name: string
+  toolId?: string
   displayName?: string
   description: string
   category?: string
+  enabled?: boolean
 }
 
-export const McpToolsListContent: React.FC<{ tools: McpToolListItem[]; inline?: boolean }> = ({
+export interface McpToolsListContentProps {
+  tools: McpToolListItem[]
+  inline?: boolean
+  disabledToolIds?: string[]
+  onToggleTool?: (toolId: string) => void
+}
+
+export const McpToolsListContent: React.FC<McpToolsListContentProps> = ({
   tools,
-  inline = false
+  inline = false,
+  disabledToolIds,
+  onToggleTool
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -20,10 +34,36 @@ export const McpToolsListContent: React.FC<{ tools: McpToolListItem[]; inline?: 
   const listMaxHeight = inline ? undefined : Math.min(400, Math.round(screenHeight * 0.5))
 
   const items = tools.map((tool, index) => {
-    const cleanName = tool.displayName || tool.name.replace(/^baishou_/, '')
-    const localizedTitle = t(`agent.tools.${cleanName}`, cleanName)
-    const localizedDesc = t(`agent.tools.${cleanName}_desc`, tool.description)
+    const rawId = tool.toolId || tool.name.replace(/^baishou_/, '')
+    const fallbackTitle = tool.displayName && tool.displayName !== rawId ? tool.displayName : rawId
+    const localizedTitle = t(`agent.tools.${rawId}`, fallbackTitle)
+    const localizedDesc = t(
+      `agent.tools.${rawId}_desc`,
+      t(`agent.tools.${rawId}_tooltip`, tool.description)
+    )
+    const categoryKey = tool.category || 'general'
+    const localizedCategory = t(`settings.agent_tools_category_${categoryKey}`, categoryKey)
     const isLast = index === tools.length - 1
+    const isEnabled = disabledToolIds
+      ? !disabledToolIds.includes(rawId) && !disabledToolIds.includes(tool.name)
+      : tool.enabled !== false
+
+    const helpContent = (
+      <View style={styles.helpPopup}>
+        <View style={styles.helpHeader}>
+          <Text style={[styles.helpTitle, { color: colors.textPrimary }]}>{localizedTitle}</Text>
+          {tool.category ? (
+            <Text style={[styles.helpCategory, { color: colors.textTertiary }]}>
+              {localizedCategory}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={[styles.helpToolName, { color: colors.primary }]} selectable>
+          {tool.name}
+        </Text>
+        <Text style={[styles.helpDesc, { color: colors.textSecondary }]}>{localizedDesc}</Text>
+      </View>
+    )
 
     return (
       <View
@@ -33,19 +73,28 @@ export const McpToolsListContent: React.FC<{ tools: McpToolListItem[]; inline?: 
           !isLast && {
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colors.borderSubtle
-          }
+          },
+          !isEnabled && { opacity: 0.6 }
         ]}
       >
-        <View style={styles.titleRow}>
-          <Text style={[styles.toolName, { color: colors.primary }]}>{tool.name}</Text>
-          <Text style={[styles.localizedTitle, { color: colors.textPrimary }]}>
-            {localizedTitle}
-          </Text>
-          {tool.category ? (
-            <Text style={[styles.category, { color: colors.textTertiary }]}>{tool.category}</Text>
+        <View style={styles.itemMain}>
+          <View style={styles.infoCol}>
+            <View style={styles.titleRow}>
+              <Text
+                style={[styles.localizedTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {localizedTitle}
+              </Text>
+              <HelpTooltip content={helpContent} />
+            </View>
+          </View>
+          {onToggleTool ? (
+            <View style={styles.switchCol}>
+              <Switch value={isEnabled} onValueChange={() => onToggleTool(rawId)} />
+            </View>
           ) : null}
         </View>
-        <Text style={[styles.desc, { color: colors.textSecondary }]}>{localizedDesc}</Text>
       </View>
     )
   })
@@ -74,33 +123,58 @@ const styles = StyleSheet.create({
     flexGrow: 0
   },
   listContent: {
-    paddingBottom: 2
+    paddingBottom: sharedTokens.spacing.xxs
   },
   item: {
-    paddingVertical: 12
+    paddingVertical: sharedTokens.spacing.smPlus
+  },
+  itemMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: sharedTokens.spacing.mdTight
+  },
+  infoCol: {
+    flex: 1,
+    minWidth: 0
+  },
+  switchCol: {
+    flexShrink: 0
   },
   titleRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
-    gap: 6,
-    marginBottom: 6
-  },
-  toolName: {
-    fontFamily: 'monospace',
-    fontSize: 13,
-    fontWeight: '600'
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus,
+    minWidth: 0
   },
   localizedTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    flexShrink: 1
+  },
+  helpPopup: {
+    gap: sharedTokens.spacing.xsPlus
+  },
+  helpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.xsPlus
+  },
+  helpTitle: {
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
-  category: {
-    fontSize: 12,
+  helpCategory: {
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
-  desc: {
-    fontSize: 13,
+  helpToolName: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600'
+  },
+  helpDesc: {
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   }
 })

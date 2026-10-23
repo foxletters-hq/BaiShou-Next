@@ -7,20 +7,8 @@
 .headerRow {
   display: flex;
   align-items: center;
-  padding: 16px; /* Moved top/side padding to here */
-}
-
-.headerRowHover {
+  padding: var(--spacing-md); /* Moved top/side padding to here */
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.headerRowHover:hover {
-  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-}
-
-[data-theme='dark'] .headerRowHover:hover {
-  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .headerTitleGroup {
@@ -34,16 +22,16 @@
 }
 
 .headerText {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-on-surface);
+  font-size: var(--settings-font-row-size);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .headerFactCount {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 400;
   color: var(--text-tertiary);
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
 }
 
 .iconIconButton {
@@ -55,13 +43,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
 }
 
 .iconIconButton:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--bg-surface-high);
 }
 
 .dangerIcon {
@@ -73,11 +61,11 @@
 }
 
 .descriptionText {
-  font-size: 12px;
-  color: var(--color-on-surface-variant);
-  margin-top: 4px;
-  margin-bottom: 16px;
-  padding: 0 16px;
+  font-size: var(--settings-font-meta-size);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-md);
 }
 
 /* ─── 折叠/展开动画 (CSS Grid 技巧) ─── */
@@ -85,8 +73,8 @@
   display: grid;
   grid-template-rows: 0fr;
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s ease;
+    grid-template-rows var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1),
+    opacity var(--duration-moderate) ease;
   opacity: 0;
   overflow: hidden;
 }
@@ -103,28 +91,28 @@
 
 .chipsScrollArea {
   overflow: hidden;
-  margin-bottom: 16px;
-  padding: 0 16px;
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-md);
 }
 
 .embeddedQuickSwitchBlock {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-tight);
 }
 
 .embeddedQuickSwitchHint {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   letter-spacing: 0.2px;
 }
 
 .embeddedQuickSwitchRow {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .embeddedPersonaChips {
@@ -136,21 +124,24 @@
 
 .identityManageButton {
   flex-shrink: 0;
-  border: none;
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
-  font-size: 13px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
   white-space: nowrap;
 }
 
 .identityManageButton:hover:not(:disabled) {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .identityManageButton:disabled {
@@ -162,46 +153,63 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .inputChip {
   height: 32px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 12px;
-  border: 1px solid rgba(208, 208, 208, 0.5);
-  border-radius: 8px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md-tight);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--color-on-surface);
-  font-size: 14px;
+  color: var(--text-primary);
+  font-size: var(--settings-font-row-size);
+  font-family: inherit;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
+}
+
+.inputChipName,
+.inputChipMark {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.inputChipMark {
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-primary);
 }
 
 .inputChip:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
 }
 
 .inputChipActive {
   background-color: transparent;
-  border-width: 1.5px;
-  border-color: rgba(0, 0, 0, 0.24);
-  color: var(--color-on-surface);
+  border-width: 1px;
+  border-color: var(--border-control);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .inputChipActive:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .chipCloseBtn {
   background: transparent;
   border: none;
-  padding: 2px;
-  margin-left: 2px;
+  padding: var(--spacing-2xs);
+  margin-left: var(--spacing-2xs);
   margin-right: -4px;
   border-radius: 50%;
   display: flex;
@@ -212,96 +220,97 @@
 }
 
 .chipCloseBtn:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-surface-high);
 }
 
 .actionChip {
   height: 32px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px;
-  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-  border-radius: 8px;
-  color: var(--color-on-surface);
-  font-size: 14px;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md-tight);
+  background-color: var(--bg-surface-low);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
 }
 
 .actionChip:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: var(--bg-surface-high);
 }
 
 .emptyContainer {
   width: 100%;
-  padding: 24px 0;
-  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-  border-radius: 12px;
+  padding: var(--spacing-lg) 0;
+  background-color: var(--bg-surface-low);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--color-on-surface-variant);
-  font-size: 12px;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: var(--settings-font-meta-size);
   text-align: center;
 }
 
 .factsContainer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 16px 16px 16px;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+}
+
+.factsContainerCompact {
+  padding: 0;
+}
+
+.embeddedNav {
+  padding: var(--spacing-md-snug) var(--spacing-md-snug);
+  min-height: 0;
+}
+
+.factsDialogBody {
+  min-width: min(420px, 72vw);
+  max-height: min(60vh, 520px);
+  overflow: auto;
 }
 
 .factsHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .factsHeaderTitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .addFactButton {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   background: transparent;
-  border: 1px solid var(--color-outline-variant);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  border: 1px solid var(--border-control);
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-xs-plus);
+  font-size: var(--settings-font-meta-size);
   font-weight: 500;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .addFactButton:hover {
-  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-  border-color: var(--color-outline);
-}
-
-[data-theme='dark'] .factsHeaderTitle {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme='dark'] .addFactButton {
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme='dark'] .addFactButton:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--bg-surface-low);
+  border-color: var(--border-control);
 }
 
 .factsList {
@@ -313,7 +322,7 @@
   display: flex;
   align-items: center;
   min-height: 48px;
-  padding: 4px 0;
+  padding: var(--spacing-xs) 0;
 }
 
 .factLeading {
@@ -331,125 +340,77 @@
 }
 
 .factKey {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
 .factValue {
-  font-size: 14px;
-  color: var(--color-on-surface-variant);
+  font-size: var(--settings-font-row-size);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .factTrailing {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-[data-theme='dark'] .headerText,
-[data-theme='dark'] .inputChip,
-[data-theme='dark'] .actionChip,
-[data-theme='dark'] .factKey {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-[data-theme='dark'] .iconIconButton,
-[data-theme='dark'] .descriptionText,
-[data-theme='dark'] .emptyContainer,
-[data-theme='dark'] .factValue {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme='dark'] .inputChip {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-[data-theme='dark'] .iconIconButton:hover,
-[data-theme='dark'] .inputChip:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme='dark'] .inputChipActive {
-  border-color: rgba(255, 255, 255, 0.32);
-}
-
-[data-theme='dark'] .inputChipActive:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme='dark'] .actionChip,
-[data-theme='dark'] .emptyContainer {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-[data-theme='dark'] .actionChip:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  gap: var(--spacing-sm);
 }
 
 .factContentEditing {
   display: flex;
   align-items: center;
   flex: 1;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .factEditInput {
-  background: var(--color-surface-container-highest);
-  border: 1px solid var(--color-outline);
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 13px;
-  color: var(--color-on-surface);
+  background: var(--form-field-bg, var(--bg-surface));
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--settings-font-desc-size);
+  color: var(--text-primary);
   outline: none;
   flex: 1;
   min-width: 0;
+  transition: var(--form-field-transition);
 }
 
 .factEditInput:focus {
-  border-color: var(--color-primary);
-  background: var(--color-surface);
+  border-color: var(--form-field-border-focus);
+  background: var(--form-field-bg, var(--bg-surface));
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .factEditDivider {
-  color: var(--color-outline);
+  color: var(--border-control);
   font-weight: 500;
-}
-
-[data-theme='dark'] .factEditInput {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .modalBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   min-width: 320px;
 }
 
 .modalField {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .modalField label {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 500;
-  color: var(--color-on-surface);
-}
-
-[data-theme='dark'] .modalField label {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
 }
 
 .modalActions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
 }

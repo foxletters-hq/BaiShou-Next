@@ -1,24 +1,41 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Palette } from 'lucide-react-native'
-import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
+import {
+  APP_UI_LANGUAGE_ORDER,
+  normalizeUiFontSizeLevel,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
+  UI_FONT_SIZE_LEVEL_MAX,
+  UI_FONT_SIZE_LEVEL_MIN,
+  UI_FONT_SIZE_SCALES
+} from '@baishou/shared'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { SegmentedControl } from '../SegmentedControl'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
 import { PRESET_THEME_COLORS, isPresetThemeColor } from '../../theme/preset-theme-colors'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { appearanceSettingsStyles as styles } from './appearance-settings.styles'
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
+import { NativeSlider } from '../Slider'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+
+const FONT_SIZE_TICKS = Array.from(
+  { length: UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN + 1 },
+  (_, i) => i + UI_FONT_SIZE_LEVEL_MIN
+)
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
   seedColor,
   language,
+  fontSizeLevel = UI_FONT_SIZE_LEVEL_DEFAULT,
   onThemeModeChange,
   onSeedColorChange,
   onLanguageChange,
+  onFontSizeLevelChange,
   embedded = false,
   isLast = false
 }) => {
@@ -27,6 +44,9 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const [showColorModal, setShowColorModal] = useState(false)
   /** 点击后立刻切选中态，避免等父组件异步回写期间框停在旧项 */
   const [selectedLanguage, setSelectedLanguage] = useState(language)
+  const resolvedFontSizeLevel = normalizeUiFontSizeLevel(fontSizeLevel)
+  const [draftFontSizeLevel, setDraftFontSizeLevel] = useState(resolvedFontSizeLevel)
+  const previewFontScale = UI_FONT_SIZE_SCALES[draftFontSizeLevel] ?? 1
 
   useEffect(() => {
     console.log('[AppearanceLang] card:prop', {
@@ -34,7 +54,13 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       i18n: i18n.language
     })
     setSelectedLanguage(language)
+    // 只跟父组件传入的 language 同步，i18n.language 仅用于调试日志
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language])
+
+  useEffect(() => {
+    setDraftFontSizeLevel(resolvedFontSizeLevel)
+  }, [resolvedFontSizeLevel])
 
   const languageOptions = useMemo(
     () => [
@@ -69,44 +95,38 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     setShowColorModal(true)
   }
 
+  const fontSizeLabelForTick = (level: number) => {
+    if (level === UI_FONT_SIZE_LEVEL_MIN) return t('settings.font_size_small', '小')
+    if (level === UI_FONT_SIZE_LEVEL_DEFAULT) return t('settings.font_size_default', '默认')
+    if (level === UI_FONT_SIZE_LEVEL_MAX) return t('settings.font_size_large', '大')
+    return ''
+  }
+
+  const fontSizeTickLeftPct = (level: number): `${number}%` => {
+    const span = UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN
+    if (span <= 0) return '0%'
+    return `${((level - UI_FONT_SIZE_LEVEL_MIN) / span) * 100}%` as `${number}%`
+  }
+
   const content = (
     <>
       <Text style={[styles.label, { color: colors.textPrimary }]}>
         {t('settings.theme_mode', '主题模式')}
       </Text>
-      <View style={[styles.segmentedControl, { borderColor: colors.borderMuted }]}>
-        {(['system', 'light', 'dark'] as const).map((mode, index) => (
-          <TouchableOpacity
-            key={mode}
-            activeOpacity={0.6}
-            style={[
-              styles.segmentBtn,
-              { borderRightColor: colors.borderMuted },
-              themeMode === mode && {
-                backgroundColor: colors.primaryLight
-              },
-              index === 2 && { borderRightWidth: 0 }
-            ]}
-            onPress={() => onThemeModeChange(mode)}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                { color: colors.textPrimary },
-                themeMode === mode && { fontWeight: 'bold' }
-              ]}
-            >
-              {mode === 'system'
-                ? t('settings.theme_system', '跟随系统')
-                : mode === 'light'
-                  ? t('settings.theme_light', '浅色')
-                  : t('settings.theme_dark', '深色')}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SegmentedControl
+        size="small"
+        value={themeMode}
+        onChange={onThemeModeChange}
+        options={[
+          { value: 'system', label: t('settings.theme_system', '跟随系统') },
+          { value: 'light', label: t('settings.theme_light', '浅色') },
+          { value: 'dark', label: t('settings.theme_dark', '深色') }
+        ]}
+      />
 
-      <Text style={[styles.label, { color: colors.textPrimary, marginTop: 16 }]}>
+      <Text
+        style={[styles.label, { color: colors.textPrimary, marginTop: sharedTokens.spacing.md }]}
+      >
         {t('settings.theme_color', '基核种子色')}
       </Text>
       <View style={styles.colorPalette}>
@@ -172,7 +192,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                 style={[
                   styles.langText,
                   { color: colors.textPrimary },
-                  active && { fontWeight: 'bold', color: colors.primary }
+                  active && { fontWeight: '600', color: colors.primary }
                 ]}
               >
                 {lang.label}
@@ -181,6 +201,117 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
           )
         })}
       </View>
+
+      {onFontSizeLevelChange ? (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <View style={styles.fontSizeBlock}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('settings.font_size', '字体大小')}
+            </Text>
+            <View style={styles.fontSizeSliderWrap}>
+              <NativeSlider
+                value={draftFontSizeLevel}
+                minValue={UI_FONT_SIZE_LEVEL_MIN}
+                maxValue={UI_FONT_SIZE_LEVEL_MAX}
+                step={1}
+                commitOnChangeEnd
+                onChange={(next) => setDraftFontSizeLevel(normalizeUiFontSizeLevel(next))}
+                onChangeEnd={(next) => {
+                  const level = normalizeUiFontSizeLevel(next)
+                  setDraftFontSizeLevel(level)
+                  onFontSizeLevelChange(level)
+                }}
+              />
+            </View>
+            <View style={styles.fontSizeTicks} pointerEvents="none">
+              {FONT_SIZE_TICKS.map((level) => (
+                <View
+                  key={level}
+                  style={[
+                    styles.fontSizeTick,
+                    {
+                      left: fontSizeTickLeftPct(level),
+                      backgroundColor: colors.borderMuted
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+            <View style={styles.fontSizeLabels} pointerEvents="none">
+              {FONT_SIZE_TICKS.filter((level) => fontSizeLabelForTick(level)).map((level) => {
+                const scale = UI_FONT_SIZE_SCALES[level] ?? 1
+                const isFirst = level === UI_FONT_SIZE_LEVEL_MIN
+                const isLast = level === UI_FONT_SIZE_LEVEL_MAX
+                const labelWidth = 48
+                return (
+                  <View
+                    key={level}
+                    style={[
+                      styles.fontSizeLabel,
+                      {
+                        left: fontSizeTickLeftPct(level),
+                        width: labelWidth,
+                        marginLeft: isFirst ? 0 : isLast ? -labelWidth : -labelWidth / 2,
+                        alignItems: isFirst ? 'flex-start' : isLast ? 'flex-end' : 'center'
+                      }
+                    ]}
+                  >
+                    <Text
+                      disableGlobalFontScale
+                      style={{
+                        fontSize: Math.round(mobileTypography.caption.fontSize * scale),
+                        color:
+                          level === draftFontSizeLevel ? colors.textPrimary : colors.textSecondary,
+                        fontWeight: level === draftFontSizeLevel ? '500' : '400'
+                      }}
+                    >
+                      {fontSizeLabelForTick(level)}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+            <View
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                borderRadius: sharedTokens.radius.md,
+                borderWidth: 1,
+                paddingHorizontal: sharedTokens.spacing.md,
+                paddingVertical: sharedTokens.spacing.smPlus,
+                marginTop: sharedTokens.spacing.mdPlus
+              }}
+            >
+              <Text
+                disableGlobalFontScale
+                style={{
+                  fontSize: Math.round(mobileTypography.secondary.fontSize * previewFontScale),
+                  color: colors.textSecondary,
+                  marginBottom: sharedTokens.spacing.xs
+                }}
+              >
+                {t('settings.font_size_preview_title', '字阶实时预览')}
+              </Text>
+              <Text
+                disableGlobalFontScale
+                style={{
+                  fontSize: Math.round(mobileTypography.body.fontSize * previewFontScale),
+                  lineHeight: Math.round(
+                    (mobileTypography.body.lineHeight ?? 24) * previewFontScale
+                  ),
+                  color: colors.textPrimary
+                }}
+              >
+                {t(
+                  'settings.font_size_preview_text',
+                  '白守相伴，落笔生温。用心记录生活中的每一次灵感与温存。'
+                )}
+              </Text>
+            </View>
+          </View>
+        </>
+      ) : null}
 
       <AppearanceSettingsColorModal
         visible={showColorModal}

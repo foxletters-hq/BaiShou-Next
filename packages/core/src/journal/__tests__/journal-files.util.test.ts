@@ -7,6 +7,7 @@ import {
   collectJournalPathsByDateInTree,
   isJournalPathUnderSkippedDir,
   journalMarkdownExistsInTree,
+  resolveGraphExtractDiaryPath,
   resolveShadowJournalAbsolutePath
 } from '../journal-files.util'
 
@@ -89,5 +90,25 @@ describe('journal-files.util', () => {
         .resolve('D:\\life-book\\1.人生书', '2.日记', '2024', '06', '2024-06-01.md')
         .replace(/\\/g, '/')
     )
+  })
+
+  it('resolveGraphExtractDiaryPath resolves external Obsidian 2.日记 layout via getJournalsBaseDirectory', async () => {
+    const vaultDir = path.join(tempDir, 'Vaults', 'Personal')
+    const externalJournals = path.join(tempDir, 'Obsidian', '2.日记')
+    const targetFile = path.join(externalJournals, '2026', '10', '2026-10-19.md')
+    await fs.mkdir(path.dirname(targetFile), { recursive: true })
+    await fs.writeFile(targetFile, '# 2026-10-19')
+
+    const resolved = await resolveGraphExtractDiaryPath({
+      filePath: '2.日记/2026/10/2026-10-19.md',
+      pathService: {
+        getActiveVaultPath: async () => vaultDir,
+        getJournalsBaseDirectory: async () => externalJournals
+      },
+      fs: fileSystem,
+      dateStr: '2026-10-19'
+    })
+
+    expect(path.resolve(resolved)).toBe(path.resolve(targetFile))
   })
 })

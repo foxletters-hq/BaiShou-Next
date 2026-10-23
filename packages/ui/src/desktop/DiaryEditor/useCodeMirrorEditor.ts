@@ -1,11 +1,19 @@
 import { useImperativeHandle, useState } from 'react'
 import { undo, redo } from '@codemirror/commands'
 import { useTranslation } from 'react-i18next'
-import { toggleMarkdownMark } from '../../shared/diary-codemirror/extensions/keymap'
+import {
+  toggleMarkdownMark,
+  toggleLinePrefix,
+  insertFencedCodeBlock
+} from '../../shared/diary-codemirror/extensions/keymap'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import type { CodeMirrorEditorHandle, CodeMirrorEditorProps } from './codeMirrorEditor.types'
+import type {
+  CodeMirrorEditorHandle,
+  CodeMirrorEditorProps,
+  TextContextMenuState
+} from './codeMirrorEditor.types'
 import { useCodeMirrorEditorView } from './useCodeMirrorEditorView'
 import { useCodeMirrorImageCallbacks } from './useCodeMirrorImageCallbacks'
 import { useCodeMirrorFileTransfer } from './useCodeMirrorFileTransfer'
@@ -19,11 +27,7 @@ export function useCodeMirrorEditor(
   const dialog = useDialog()
 
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
-  const [textContextMenu, setTextContextMenu] = useState<{
-    x: number
-    y: number
-    hasSelection: boolean
-  } | null>(null)
+  const [textContextMenu, setTextContextMenu] = useState<TextContextMenuState | null>(null)
 
   const { containerRef, viewRef } = useCodeMirrorEditorView(
     props,
@@ -61,6 +65,18 @@ export function useCodeMirrorEditor(
           changes: { from, to, insert: prefix + selected + suffix },
           selection: { anchor: from + prefix.length, head: to + prefix.length }
         })
+        view.focus()
+      },
+      toggleLinePrefix: (prefix: string) => {
+        const view = viewRef.current
+        if (!view) return
+        toggleLinePrefix(view, prefix)
+        view.focus()
+      },
+      insertCodeBlock: () => {
+        const view = viewRef.current
+        if (!view) return
+        insertFencedCodeBlock(view)
         view.focus()
       },
       undo: () => {

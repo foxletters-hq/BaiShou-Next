@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, ViewProps } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 
 export interface NativeSettingsSectionProps extends ViewProps {
@@ -35,11 +36,13 @@ export const SettingsSection: React.FC<NativeSettingsSectionProps> = ({
           marginBottom: tokens.spacing.sm
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.xsPlus }}
+        >
           <Text
             style={{
-              fontSize: 18,
-              fontWeight: '600',
+              fontSize: mobileTypography.title.fontSize,
+              fontWeight: mobileTypography.title.fontWeight,
               color: colors.textPrimary
             }}
           >
@@ -50,9 +53,10 @@ export const SettingsSection: React.FC<NativeSettingsSectionProps> = ({
         {description && (
           <Text
             style={{
-              fontSize: 14,
+              fontSize: mobileTypography.secondary.fontSize,
+              fontWeight: mobileTypography.secondary.fontWeight,
               color: colors.textSecondary,
-              marginTop: 4
+              marginTop: sharedTokens.spacing.xs
             }}
           >
             {description}

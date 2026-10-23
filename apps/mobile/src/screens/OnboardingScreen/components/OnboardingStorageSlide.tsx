@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native'
 import { FolderOpen, MapPin } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { StoragePermissionPrompt, useNativeToast } from '@baishou/ui/native'
+import { StoragePermissionPrompt, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import {
   EXTERNAL_STORAGE_ROOT,
@@ -10,6 +10,7 @@ import {
 } from '../../../services/storage-permission.service'
 import { pickUserDirectory } from '../../../services/pick-directory.service'
 import { toFileUri } from '../../../services/android-external-fs'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 function displayPath(uri: string): string {
   return uri.replace(/^file:\/\//, '')
@@ -36,7 +37,8 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
 }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
-  const { dbReady, services } = useBaishou()
+  const { colors } = useNativeTheme()
+  const { dbReady, services, retryStorageSetup } = useBaishou()
   const [rootPath, setRootPath] = useState(displayPath(EXTERNAL_STORAGE_ROOT))
   const [changing, setChanging] = useState(false)
 
@@ -76,6 +78,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
       if (result.status === 'selected') {
         await services.pathService.updateRootDirectory(toFileUri(result.path))
         await refreshRootPath()
+        await retryStorageSetup()
       }
     } catch {
       toast.showError(t('onboarding.storage_permission_error'))
@@ -112,7 +115,9 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
               onPress={onRetryMount}
               activeOpacity={0.85}
             >
-              <Text style={styles.retryButtonText}>{t('common.retry', '重试')}</Text>
+              <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>
+                {t('common.retry', '重试')}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -126,8 +131,8 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
         {!showPath ? (
           <ActivityIndicator size="small" color="#D4924A" style={styles.loader} />
         ) : (
-          <View style={styles.pathValueWrap}>
-            <Text style={styles.pathValue} selectable>
+          <View style={[styles.pathValueWrap, { backgroundColor: colors.bgSurface }]}>
+            <Text style={[styles.pathValue, { color: colors.textSecondary }]} selectable>
               {rootPath}
             </Text>
           </View>
@@ -142,11 +147,13 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
           activeOpacity={0.85}
         >
           {changing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.textOnPrimary} />
           ) : (
             <>
-              <MapPin size={18} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.changeButtonText}>{t('onboarding.change_storage')}</Text>
+              <MapPin size={18} color={colors.textOnPrimary} strokeWidth={2} />
+              <Text style={[styles.changeButtonText, { color: colors.textOnPrimary }]}>
+                {t('onboarding.change_storage')}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -158,85 +165,81 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    gap: 20
+    gap: sharedTokens.spacing.mdPlus
   },
   pendingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   pendingText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     color: '#6B5B45'
   },
   failedBlock: {
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   failedText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     textAlign: 'center',
     color: '#B45309'
   },
   retryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.control,
     backgroundColor: '#FFB74D'
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   pathBlock: {
     width: '100%',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   pathHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   pathLabel: {
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     color: '#6B5B45'
   },
   pathValueWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF'
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   pathValue: {
     fontFamily: 'monospace',
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
-    textAlign: 'center',
-    color: '#6B7280'
+    textAlign: 'center'
   },
   loader: {
-    marginTop: 4,
+    marginTop: sharedTokens.spacing.xs,
     alignSelf: 'center'
   },
   changeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     alignSelf: 'center',
     backgroundColor: '#FFB74D',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   changeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   }
 })

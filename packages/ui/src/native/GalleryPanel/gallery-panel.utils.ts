@@ -3,6 +3,7 @@ export {
   TYPE_I18N_MAP,
   NUM_COLUMNS,
   getWeekNumber,
+  parseGalleryDate,
   formatDateRange,
   formatSummarySpan,
   formatGallerySavedAt,

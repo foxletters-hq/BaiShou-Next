@@ -21,7 +21,7 @@ describe.skip('MessageRepository - searchMessagesByKeyword', () => {
       CREATE TABLE agent_sessions (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL DEFAULT '新对话',
-        vault_name TEXT NOT NULL,
+        vault_id TEXT NOT NULL,
         assistant_id TEXT,
         is_pinned INTEGER NOT NULL DEFAULT 0,
         system_prompt TEXT,
@@ -75,7 +75,7 @@ describe.skip('MessageRepository - searchMessagesByKeyword', () => {
 
     // 插入一个会话
     sqlite.exec(`
-      INSERT INTO agent_sessions (id, title, vault_name, provider_id, model_id)
+      INSERT INTO agent_sessions (id, title, vault_id, provider_id, model_id)
       VALUES ('session-1', '测试会话 1', 'vault-1', 'provider-1', 'model-1')
     `)
   })
@@ -198,17 +198,17 @@ describe.skip('MessageRepository - searchMessagesByKeyword', () => {
     const sessionRepo = new SessionRepository(db as any)
 
     // 1. 根据会话标题查询 "测试会话"
-    const s1 = await sessionRepo.findAllSessions(10, 0, undefined, '测试会话')
+    const s1 = await sessionRepo.findAllSessions(10, 0, undefined, '测试会话', 'vault-1')
     expect(s1.length).toBeGreaterThan(0)
     expect(s1[0]!.id).toBe('session-1')
 
     // 2. 根据消息内容查询 "代码"
-    const s2 = await sessionRepo.findAllSessions(10, 0, undefined, '代码')
+    const s2 = await sessionRepo.findAllSessions(10, 0, undefined, '代码', 'vault-1')
     expect(s2.length).toBeGreaterThan(0)
     expect(s2[0]!.id).toBe('session-1')
 
     // 3. 查询不存在的词 "找不到我"
-    const s3 = await sessionRepo.findAllSessions(10, 0, undefined, '找不到我')
+    const s3 = await sessionRepo.findAllSessions(10, 0, undefined, '找不到我', 'vault-1')
     expect(s3.length).toBe(0)
   })
 })

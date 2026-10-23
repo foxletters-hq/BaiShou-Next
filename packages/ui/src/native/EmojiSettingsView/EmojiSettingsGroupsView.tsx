@@ -1,19 +1,22 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { ChevronRight, Plus, Smile, Trash2 } from 'lucide-react-native'
-import type { EmojiToolConfig } from '@baishou/shared'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react-native'
+import type { EmojiSendFrequency, EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
   isEmojiGroupNameTaken,
+  normalizeEmojiSendFrequency,
   normalizeEmojiToolConfig,
   removeEmojiGroup,
   upsertEmojiGroup
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { SegmentedControl } from '../SegmentedControl'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiSettingsGroupsViewProps {
   config: EmojiToolConfig
@@ -39,6 +42,19 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
   const { colors, tokens } = useNativeTheme()
   const normalized = normalizeEmojiToolConfig(config)
   const isEnabled = normalized.enabled === true
+  const frequency = normalizeEmojiSendFrequency(normalized.frequency)
+  const frequencyOptions: Array<{ value: EmojiSendFrequency; label: string }> = [
+    { value: 'low', label: t('agent.tools.emoji_frequency_low', '较少') },
+    { value: 'normal', label: t('agent.tools.emoji_frequency_normal', '适中') },
+    { value: 'high', label: t('agent.tools.emoji_frequency_high', '频繁') },
+    { value: 'always', label: t('agent.tools.emoji_frequency_always', '每条回复') }
+  ]
+  const frequencyHints: Record<EmojiSendFrequency, string> = {
+    low: t('agent.tools.emoji_frequency_hint_low', '仅在特别贴合语境时偶尔发送'),
+    normal: t('agent.tools.emoji_frequency_hint_normal', '语境合适时发送，不会每条都带'),
+    high: t('agent.tools.emoji_frequency_hint_high', '大多数回复都会配上表情包'),
+    always: t('agent.tools.emoji_frequency_hint_always', '每条回复都发送一个表情包（仍最多一个）')
+  }
 
   const handleToggle = () => {
     onChange({ ...normalized, enabled: !isEnabled })
@@ -82,9 +98,6 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
         ]}
       >
         <View style={styles.enableRow}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.primaryContainer }]}>
-            <Smile size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-          </View>
           <View style={styles.enableText}>
             <View style={styles.titleRow}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -104,69 +117,91 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
           </View>
           <Switch value={isEnabled} onValueChange={handleToggle} />
         </View>
+
+        {isEnabled ? (
+          <View style={[styles.frequencySection, { borderTopColor: colors.borderSubtle }]}>
+            <View style={styles.frequencyHeader}>
+              <Text style={[styles.frequencyLabel, { color: colors.textPrimary }]}>
+                {t('agent.tools.emoji_frequency_label', '发送频率')}
+              </Text>
+              <Text style={[styles.frequencyHint, { color: colors.textSecondary }]}>
+                {frequencyHints[frequency]}
+              </Text>
+            </View>
+            <SegmentedControl
+              size="small"
+              value={frequency}
+              options={frequencyOptions}
+              onChange={(nextFrequency) => onChange({ ...normalized, frequency: nextFrequency })}
+              accessibilityLabel={t('agent.tools.emoji_frequency_label', '发送频率')}
+            />
+          </View>
+        ) : null}
       </View>
 
       {isEnabled ? (
         <>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t('agent.tools.emoji_groups_title', '表情包组')}
-            </Text>
-            <TouchableOpacity style={styles.addGroupBtn} onPress={() => void handleAddGroup()}>
-              <Plus size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-              <Text style={[styles.addGroupText, { color: colors.primary }]}>
+          <View style={{ gap: sharedTokens.spacing.smPlus }}>
+            <TouchableOpacity style={styles.addGroupRow} onPress={() => void handleAddGroup()}>
+              <View
+                style={[
+                  styles.addGroupIcon,
+                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
+                ]}
+              >
+                <Plus size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              </View>
+              <Text style={[styles.groupName, { color: colors.textPrimary }]}>
                 {t('agent.tools.emoji_group_add', '新建组')}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            {normalized.groups.length === 0 ? (
-              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
-                {t('agent.tools.emoji_groups_empty', '暂无表情包组，点击「新建组」开始添加')}
-              </Text>
-            ) : (
-              normalized.groups.map((group) => (
-                <View
-                  key={group.id}
-                  style={[
-                    styles.groupCard,
-                    {
-                      backgroundColor: colors.bgSurface,
-                      borderColor: colors.borderSubtle,
-                      borderRadius: tokens.radius.lg
-                    }
-                  ]}
+            {normalized.groups.map((group) => (
+              <View
+                key={group.id}
+                style={[
+                  styles.groupCard,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle,
+                    borderRadius: tokens.radius.lg
+                  }
+                ]}
+              >
+                <TouchableOpacity style={styles.groupMain} onPress={() => onOpenGroup(group.id)}>
+                  <View style={[styles.groupTile, { backgroundColor: colors.primaryContainer }]}>
+                    <Text style={[styles.groupTileText, { color: colors.primary }]}>
+                      {group.name.trim().slice(0, 1) ||
+                        t(
+                          'auto.packages.ui.src.native.EmojiSettingsView.EmojiSettingsGroupsView.L137',
+                          '组'
+                        )}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.groupName, { color: colors.textPrimary }]}>
+                      {group.name}
+                    </Text>
+                    <Text style={[styles.groupMeta, { color: colors.textTertiary }]}>
+                      {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                        count: group.emojis?.length ?? 0
+                      })}
+                    </Text>
+                  </View>
+                  <ChevronRight
+                    size={18}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteGroupBtn}
+                  onPress={() => void handleDeleteGroup(group.id, group.name)}
+                  accessibilityLabel={t('common.delete')}
                 >
-                  <TouchableOpacity style={styles.groupMain} onPress={() => onOpenGroup(group.id)}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.groupName, { color: colors.textPrimary }]}>
-                        {group.name}
-                      </Text>
-                      <Text style={[styles.groupMeta, { color: colors.textTertiary }]}>
-                        {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                          count: group.emojis?.length ?? 0
-                        })}
-                      </Text>
-                    </View>
-                    <ChevronRight
-                      size={18}
-                      color={colors.textTertiary}
-                      strokeWidth={DEFAULT_STROKE_WIDTH}
-                    />
-                  </TouchableOpacity>
-                  {normalized.groups.length > 1 ? (
-                    <TouchableOpacity
-                      style={styles.deleteGroupBtn}
-                      onPress={() => void handleDeleteGroup(group.id, group.name)}
-                      accessibilityLabel={t('common.delete')}
-                    >
-                      <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              ))
-            )}
+                  <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
         </>
       ) : null}
@@ -175,39 +210,41 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 16 },
+  container: { gap: sharedTokens.spacing.md },
   enableCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   enableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
+  enableText: { flex: 1, gap: sharedTokens.spacing.xs },
+  frequencySection: {
+    marginTop: sharedTokens.spacing.mdTight,
+    paddingTop: sharedTokens.spacing.mdTight,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: sharedTokens.spacing.sm
   },
-  enableText: { flex: 1, gap: 4 },
+  frequencyHeader: { gap: sharedTokens.spacing.xxs },
+  frequencyLabel: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  frequencyHint: { fontSize: mobileTypography.secondary.fontSize, lineHeight: 18 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
-  title: { fontSize: 16, fontWeight: '600' },
-  subtitle: { fontSize: 13, lineHeight: 18 },
+  title: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
+  subtitle: { fontSize: mobileTypography.secondary.fontSize, lineHeight: 18 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3,
     textTransform: 'uppercase'
@@ -215,12 +252,34 @@ const styles = StyleSheet.create({
   addGroupBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 6
+    gap: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.xsPlus
   },
-  addGroupText: { fontSize: 14, fontWeight: '600' },
-  emptyHint: { fontSize: 14, paddingHorizontal: 4, lineHeight: 20 },
+  addGroupText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  addGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight
+  },
+  addGroupIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: sharedTokens.radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  groupTile: {
+    width: 32,
+    height: 32,
+    borderRadius: sharedTokens.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  groupTileText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
   groupCard: {
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
@@ -230,14 +289,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
-  groupName: { fontSize: 16, fontWeight: '600' },
-  groupMeta: { fontSize: 13, marginTop: 2 },
+  groupName: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
+  groupMeta: { fontSize: mobileTypography.secondary.fontSize, marginTop: sharedTokens.spacing.xxs },
   deleteGroupBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdSnug
   }
 })

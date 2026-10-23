@@ -1,31 +1,32 @@
 import { StyleSheet } from 'react-native'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const yearMonthPickerStyles = StyleSheet.create({
   triggerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     minWidth: 120
   },
   triggerText: {
-    fontSize: 14,
-    fontWeight: '600'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '500'
   },
   triggerArrow: {
-    fontSize: 10,
-    marginLeft: 8
+    fontSize: iconSizes.xs,
+    marginLeft: sharedTokens.spacing.sm
   },
   overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   modalContent: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     overflow: 'hidden',
     alignSelf: 'center',
     maxHeight: '85%'
@@ -34,37 +35,37 @@ export const yearMonthPickerStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: 1
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
   },
   closeBtn: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
-    padding: 4
+    padding: sharedTokens.spacing.xs
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 12,
+    padding: sharedTokens.spacing.mdTight,
     borderTopWidth: 1,
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   footerBtn: {
     flex: 1,
     minWidth: 0,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
   footerBtnText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   }
 })

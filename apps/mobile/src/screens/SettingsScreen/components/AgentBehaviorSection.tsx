@@ -5,6 +5,7 @@ import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baish
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const AgentBehaviorSection: React.FC = () => {
   const { t } = useTranslation()
@@ -75,6 +76,12 @@ export const AgentBehaviorSection: React.FC = () => {
 
   return (
     <View style={styles.section}>
+      <Text style={[styles.heading, { color: colors.textPrimary }]}>
+        {t('settings.agent_behavior', 'Agent 行为')}
+      </Text>
+      <Text style={[styles.headingHint, { color: colors.textTertiary }]}>
+        {t('settings.agent_behavior_desc', '配置全局 Agent 上下文、压缩阈值与人格设定')}
+      </Text>
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.context_window_size')}
@@ -168,10 +175,16 @@ export const AgentBehaviorSection: React.FC = () => {
       </View>
 
       <View style={styles.actions}>
-        <Button variant="outline" className="flex-1" onPress={handleResetDefaults}>
+        <Button size="sm" variant="outline" className="flex-1" onPress={handleResetDefaults}>
           {t('settings.reset_defaults')}
         </Button>
-        <Button variant="primary" className="flex-1" onPress={handleSave} isDisabled={!dirty}>
+        <Button
+          size="sm"
+          variant="primary"
+          className="flex-1"
+          onPress={handleSave}
+          isDisabled={!dirty}
+        >
           {t('common.save')}
         </Button>
       </View>
@@ -181,26 +194,37 @@ export const AgentBehaviorSection: React.FC = () => {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24
+    marginTop: sharedTokens.spacing.mdPlus,
+    marginBottom: sharedTokens.spacing.lg
+  },
+  heading: {
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.xs
+  },
+  headingHint: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 18,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   card: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   label: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   hint: {
-    fontSize: 12,
-    marginBottom: 10,
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.smPlus,
     lineHeight: 18
   },
   actions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8
+    gap: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.sm
   }
 })

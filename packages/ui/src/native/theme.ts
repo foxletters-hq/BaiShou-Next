@@ -3,6 +3,14 @@ import { buildNativeThemePalette, useNativeThemeContext } from './NativeThemePro
 
 export type { ThemeModePreference } from './NativeThemeProvider'
 export { NativeThemeProvider, useNativeThemeContext } from './NativeThemeProvider'
+export {
+  getGlobalFontScale,
+  setGlobalFontScale,
+  scaleFontStyle,
+  installNativeFontScaling,
+  type ScaledTextProps,
+  type ScaledTextInputProps
+} from './native-font-scale'
 
 function resolveSystemColorScheme(
   raw: ReturnType<typeof useColorScheme>
@@ -51,7 +59,7 @@ export function getNativeElevationStyle(isDark: boolean, level: 'subtle' | 'rais
 }
 
 export function useNativeTheme() {
-  const { themeMode, seedColor } = useNativeThemeContext()
+  const { themeMode, seedColor, contentFontScale } = useNativeThemeContext()
   const rawScheme = useColorScheme()
   const systemScheme = resolveSystemColorScheme(rawScheme)
   const { width, height } = useWindowDimensions()
@@ -69,6 +77,7 @@ export function useNativeTheme() {
     screenWidth: width,
     screenHeight: height,
     fontScale,
+    contentFontScale,
     maxModalWidth,
     themeMode
   }

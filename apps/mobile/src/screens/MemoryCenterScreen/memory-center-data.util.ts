@@ -1,0 +1,44 @@
+import { isMemoryCenterTab, type MemoryCenterTab, type RagConfig } from '@baishou/shared'
+
+export type MemoryCenterActiveVault = {
+  id?: string
+  name?: string
+}
+
+/**
+ * getActiveVault 是同步返回 VaultInfo | null，不能对返回值链式调用 .catch。
+ * 用 try/catch 保留「读失败当没有活动仓库」的原意。
+ */
+export function readActiveVaultSafely(vaultService: {
+  getActiveVault: () => MemoryCenterActiveVault | null
+}): MemoryCenterActiveVault | null {
+  try {
+    return vaultService.getActiveVault()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 配置缺 ragEnabled 时按同仓其它读取点视为开启。
+ * rag 整份缺失则保持 null，表示还没读到配置，而不是伪造一份开启态。
+ */
+export function normalizeMemoryCenterRagConfig(
+  rag: { ragEnabled?: boolean } | null | undefined
+): Pick<RagConfig, 'ragEnabled'> | null {
+  if (rag == null) return null
+  return { ragEnabled: rag.ragEnabled ?? true }
+}
+
+/** Expo Router 的 search param 可能是 string[]；用新数组当依赖会让 useEffect 每帧 setState。 */
+export function firstSearchParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? ''
+  return value ?? ''
+}
+
+export function resolveMemoryCenterTabParam(
+  value: string | string[] | undefined
+): MemoryCenterTab | null {
+  const next = firstSearchParam(value)
+  return isMemoryCenterTab(next) ? next : null
+}

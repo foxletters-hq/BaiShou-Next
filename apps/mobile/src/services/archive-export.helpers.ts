@@ -10,7 +10,7 @@ import {
   ARCHIVE_USER_AVATARS_ZIP_PREFIX,
   type MobileArchiveDbBridge
 } from './mobile-archive-db.bridge'
-import { SNAPSHOT_STORAGE_DIR_NAMES } from './archive-guards.util'
+import { ARCHIVE_RUNTIME_SQLITE_DB_NAMES, SNAPSHOT_STORAGE_DIR_NAMES } from './archive-guards.util'
 
 export type ArchiveExportContext = {
   pathService: IStoragePathService
@@ -37,6 +37,7 @@ export async function exportArchiveToTempFileDirectZip(
       for (const itemName of entries) {
         if (!itemName || itemName === '.' || itemName === '..') continue
         if (FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(itemName)) continue
+        if (ARCHIVE_RUNTIME_SQLITE_DB_NAMES.has(itemName.toLowerCase())) continue
         if (SNAPSHOT_STORAGE_DIR_NAMES.has(itemName)) {
           continue
         }
@@ -148,6 +149,19 @@ export async function buildArchiveSupplement(
         throw new Error(`打包数据库失败：${detail}`)
       }
     }
+  }
+
+  // K1.4：尽量打包 knowledge.db（存储根下）
+  try {
+    const rootDir = normalizeStoragePath(await ctx.pathService.getRootDirectory())
+    const knowledgeSrc = `${rootDir}/knowledge.db`
+    if (await ctx.fileSystem.exists(knowledgeSrc)) {
+      const dbDir = `${cacheDir}/database`
+      await ctx.fileSystem.mkdir(dbDir, { recursive: true })
+      await ctx.fileSystem.copyFile(knowledgeSrc, `${dbDir}/knowledge.db`)
+    }
+  } catch (e) {
+    console.warn('[MobileArchive] Failed to pack knowledge.db', e)
   }
 
   const manifest = {

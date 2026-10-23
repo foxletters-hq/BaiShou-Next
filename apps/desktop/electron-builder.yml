@@ -15,18 +15,39 @@ files:
   - '!dist-*/**'
   - '!.turbo/**'
   - '!{detect-debug.log,eslint-report.json,setup.iss}'
+  - '!*.tsbuildinfo'
+  - '!{vitest.config.mts,vitest.setup.ts}'
+  - '!inno-languages/**'
+  - '!scripts/**'
+  # 剔除体积巨大的 sourcemap、旧版冗余 pdf.js、C 源码与非 woff2 冗余字体
+  - '!**/*.map'
+  - '!out/renderer/assets/*.woff'
+  - '!node_modules/pdf-parse/lib/pdf.js/{v1.9.426,v1.10.88,v2.0.550}/**'
+  - '!node_modules/pdfjs-dist/{build,web}/**'
+  - '!node_modules/pdfjs-dist/legacy/web/**'
+  - '!node_modules/better-sqlite3/{deps,src}/**'
+  - '!node_modules/tesseract.js-core/*.wasm.js'
 asarUnpack:
   - resources/**
   - '**/*.node'
   - node_modules/better-sqlite3/**
   - node_modules/sqlite-vec/**
   - node_modules/dugite/**
+  # worker_threads 无法从 asar 加载 tesseract 的 worker-script
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
 extraResources:
   - from: resources/database
     to: database
 win:
   executableName: BaiShou
   icon: resources/icon.png
+  electronLanguages:
+    - en-US
+    - en-GB
+    - zh-CN
+    - zh-TW
+    - ja
 # 正式 Windows 安装包由 setup.iss + scripts/build-inno.mjs 生成（build:win）。
 # 下方 nsis 仅在使用 electron-builder --win 时生效，日常发布不经过此路径。
 nsis:

@@ -3,7 +3,7 @@ import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_PENDING_KEY
 } from '@baishou/core/shared'
-import { resolveWebSearchEnabled } from '@baishou/shared'
+import { GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -73,6 +73,111 @@ export function registerSettingsAppIPC() {
     return true
   })
 
+  ipcMain.handle(
+    'settings:get-baishou-agent-gate-config',
+    async (_, scope?: import('@baishou/shared').AgentGateConfigScope) => {
+      const { getScopedAgentGateConfig } = await import('../services/agent-gate.service')
+      const normalized =
+        scope?.kind === 'workspace' && scope.workspaceId
+          ? ({ kind: 'workspace', workspaceId: scope.workspaceId } as const)
+          : ({ kind: 'companion' } as const)
+      return getScopedAgentGateConfig(normalized)
+    }
+  )
+
+  ipcMain.handle(
+    'settings:set-baishou-agent-gate-config',
+    async (_, config: any, scope?: import('@baishou/shared').AgentGateConfigScope) => {
+      const { sanitizeBaishouAgentGateConfigPatch } = await import('@baishou/shared')
+      const { patchScopedAgentGateConfig } = await import('../services/agent-gate.service')
+      const normalized =
+        scope?.kind === 'workspace' && scope.workspaceId
+          ? ({ kind: 'workspace', workspaceId: scope.workspaceId } as const)
+          : ({ kind: 'companion' } as const)
+      const patch = sanitizeBaishouAgentGateConfigPatch(config)
+      const saved = await patchScopedAgentGateConfig(normalized, patch)
+      return saved
+    }
+  )
+
+  ipcMain.handle('settings:get-workspace-tool-management', async (_, workspaceId: string) => {
+    const { getWorkspaceToolManagement } = await import('../services/agent-workspace-policy.store')
+    if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+      throw new Error('workspaceId is required')
+    }
+    return getWorkspaceToolManagement(workspaceId.trim())
+  })
+
+  ipcMain.handle(
+    'settings:set-workspace-tool-management',
+    async (_, workspaceId: string, config: any) => {
+      const { setWorkspaceToolManagement } =
+        await import('../services/agent-workspace-policy.store')
+      const { cloneWorkspaceToolManagementConfig } = await import('@baishou/shared')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      const saved = await setWorkspaceToolManagement(
+        workspaceId.trim(),
+        cloneWorkspaceToolManagementConfig({
+          disabledToolIds: Array.isArray(config?.disabledToolIds) ? config.disabledToolIds : [],
+          customConfigs:
+            config?.customConfigs && typeof config.customConfigs === 'object'
+              ? config.customConfigs
+              : {}
+        })
+      )
+      return saved
+    }
+  )
+
+  ipcMain.handle('settings:get-workspace-personal-memory-read', async (_, workspaceId: string) => {
+    const { getWorkspacePersonalMemoryRead } =
+      await import('../services/agent-workspace-policy.store')
+    if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+      throw new Error('workspaceId is required')
+    }
+    return getWorkspacePersonalMemoryRead(workspaceId.trim())
+  })
+
+  ipcMain.handle(
+    'settings:set-workspace-personal-memory-read',
+    async (_, workspaceId: string, enabled: unknown) => {
+      const { setWorkspacePersonalMemoryRead } =
+        await import('../services/agent-workspace-policy.store')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      const saved = await setWorkspacePersonalMemoryRead(workspaceId.trim(), enabled !== false)
+      return saved
+    }
+  )
+
+  ipcMain.handle(
+    'settings:get-workspace-external-directory-allowed',
+    async (_, workspaceId: string) => {
+      const { getWorkspaceExternalDirectoryEnabled } =
+        await import('../services/agent-gate.service')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      return getWorkspaceExternalDirectoryEnabled(workspaceId.trim())
+    }
+  )
+
+  ipcMain.handle(
+    'settings:set-workspace-external-directory-allowed',
+    async (_, workspaceId: string, enabled: unknown) => {
+      const { setWorkspaceExternalDirectoryEnabled } =
+        await import('../services/agent-gate.service')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      const saved = await setWorkspaceExternalDirectoryEnabled(workspaceId.trim(), enabled === true)
+      return saved
+    }
+  )
+
   ipcMain.handle('settings:get-search-mode-enabled', async () => {
     const stored = await settingsManager.get<boolean>('search_mode_enabled')
     return resolveWebSearchEnabled(undefined, stored)
@@ -80,6 +185,15 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-search-mode-enabled', async (_, enabled: boolean) => {
     await settingsManager.set('search_mode_enabled', enabled)
+    return true
+  })
+
+  ipcMain.handle('settings:get-graph-self-name-configured', async () => {
+    return (await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)) === true
+  })
+
+  ipcMain.handle('settings:set-graph-self-name-configured', async (_, configured: boolean) => {
+    await settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, configured === true)
     return true
   })
 
@@ -98,6 +212,12 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
+    const { emitDomainMutation } = await import('@baishou/core-desktop')
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: 'mcp_server_config' }
+    })
     return nextConfig
   })
 
@@ -111,6 +231,12 @@ export function registerSettingsAppIPC() {
     await setDesktopMcpServerConfig(nextConfig, settingsRepo, () => settingsManager.flushToDisk())
     const { applyMcpServerConfig } = await import('../services/mcp-runtime')
     await applyMcpServerConfig(nextConfig)
+    const { emitDomainMutation } = await import('@baishou/core-desktop')
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: 'mcp_server_config' }
+    })
     return nextConfig
   })
 
@@ -121,17 +247,45 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
-    const { listBaishouMcpExposedTools } = await import('@baishou/ai')
+    const { listBaishouMcpToolsForUi } = await import('@baishou/ai')
     const { logger } = await import('@baishou/shared')
     if (!toolRegistry) return []
     try {
       const context = await buildMcpToolContext()
-      return listBaishouMcpExposedTools(toolRegistry, context)
+      return listBaishouMcpToolsForUi(toolRegistry, context)
     } catch (e) {
       logger.warn('[settings:get-mcp-tools] Failed to list MCP tools:', e as Error)
       return []
     }
   })
+
+  ipcMain.handle('settings:get-mcp-client-config', async () => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().ensureLoaded()
+  })
+
+  ipcMain.handle('settings:set-mcp-client-config', async (_, config: unknown) => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().saveConfig(
+      config as import('@baishou/shared').McpClientConfig
+    )
+  })
+
+  ipcMain.handle('settings:get-mcp-client-statuses', async () => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().listServerStatuses()
+  })
+
+  ipcMain.handle(
+    'settings:test-mcp-client',
+    async (_, payload: { url?: string; authToken?: string } | undefined) => {
+      const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+      return getDesktopMcpClientRuntime().testConnection(
+        String(payload?.url ?? ''),
+        payload?.authToken
+      )
+    }
+  )
 
   ipcMain.handle('settings:get-hotkey-config', async () => {
     const { getDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')

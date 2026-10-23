@@ -1,8 +1,8 @@
 .container {
   /* Adapting to BaiShou-Next's global theme variables, defaulting to light mode (dark text) */
   --theme-primary: var(--color-primary);
-  --theme-on-primary: var(--color-on-primary, #ffffff);
-  --theme-primary-container-50: rgba(91, 168, 245, 0.15);
+  --theme-on-primary: var(--text-on-primary);
+  --theme-primary-container-50: rgba(var(--color-primary-rgb), 0.12);
 
   --theme-on-surface: var(--text-primary);
   --theme-on-surface-variant: var(--text-secondary);
@@ -19,7 +19,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--bg-app);
+  min-height: 0;
+  background-color: transparent;
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
@@ -33,17 +34,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px 16px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  padding: var(--spacing-md-plus) var(--spacing-xl) var(--spacing-md);
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   color: var(--theme-on-surface);
   margin: 0;
   letter-spacing: -0.5px;
@@ -51,46 +50,53 @@
 
 .scrollArea {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 88px 32px 48px 32px;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-2xl);
   display: flex;
   flex-direction: column;
-  height: 100%;
   box-sizing: border-box;
 }
 
 .scrollArea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  border-radius: 4px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--theme-on-surface-variant);
-  margin: 0 0 16px 0;
+  border-radius: var(--radius-xs);
 }
 
 /* ── Dialog presentation (desktop modal) ── */
 
 .toolManagerOverlay {
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 80px 24px 40px;
+  padding: var(--spacing-lg);
   box-sizing: border-box;
+  min-height: 0;
 }
 
 .toolManagerModal {
   padding: 0 !important;
-  width: min(720px, 88vw) !important;
-  min-width: min(520px, 88vw) !important;
-  max-height: calc(100vh - 120px) !important;
+  width: min(720px, 100%) !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  max-height: 100% !important;
+  min-height: 0 !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  border-radius: 14px !important;
+  border-radius: var(--radius-md) !important;
+  box-sizing: border-box;
+}
+
+/* Modal.body 是 flex 子项，不收紧时工具列表会撑破遮罩 */
+.toolManagerModal > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .toolManagerModalBody {
@@ -102,17 +108,18 @@
 }
 
 .containerDialog {
-  height: min(600px, calc(100vh - 120px));
-  min-height: 440px;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   flex: 1;
   background-color: var(--bg-surface);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 .headerDialog {
   position: relative;
   flex-shrink: 0;
-  padding: 28px 20px 14px;
+  padding: var(--spacing-lg) var(--spacing-md-plus) var(--spacing-md-snug);
   animation: none;
 }
 
@@ -124,13 +131,13 @@
 .titleRow {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .titleIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -141,14 +148,15 @@
 
 .titleBlock {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
   min-width: 0;
 }
 
 .headerSubtitle {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   line-height: 1.45;
   color: var(--theme-on-surface-variant);
   font-weight: 400;
@@ -158,7 +166,7 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--theme-on-surface-variant);
   display: inline-flex;
@@ -167,224 +175,160 @@
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .dialogCloseBtn:hover {
-  background: var(--bg-surface-normal, var(--theme-surface-container-low-40));
+  background: var(--bg-surface-normal);
   color: var(--theme-on-surface);
 }
 
 .scrollAreaDialog {
-  padding: 8px 20px 20px;
+  padding: var(--spacing-sm) var(--spacing-md-plus) var(--spacing-md-plus);
 }
 
 .containerDialog .tabSwitcherWrapper {
   position: sticky;
   top: 0;
   z-index: 2;
-  margin-bottom: 16px;
-  padding-top: 2px;
+  margin-bottom: var(--spacing-md);
+  padding-top: var(--spacing-2xs);
   background: linear-gradient(to bottom, var(--bg-surface) 75%, transparent);
-}
-
-.containerDialog .categoryList {
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.containerDialog .toolCard {
-  border-radius: 10px;
 }
 
 .containerDialog .cardMain {
   align-items: center;
-  padding: 12px 12px 12px 14px;
+  padding: var(--spacing-md-tight) var(--spacing-xs);
 }
 
 .containerDialog .title {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .containerDialog .categoryHeader {
-  padding: 2px 0 8px 4px;
-  margin-bottom: 2px;
+  padding: 0 0 var(--spacing-sm);
+  margin-bottom: 0;
 }
 
-@media (max-width: 560px) {
-  .containerDialog .categoryList {
-    grid-template-columns: 1fr;
-  }
+.containerDialog .pageCard {
+  border-radius: var(--radius-control);
 }
 
 .tabSwitcherWrapper {
-  margin-bottom: 16px;
-}
-
-.tabSwitcher {
-  position: relative;
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal, var(--theme-surface-container-low));
-  border-radius: 12px;
-  padding: 6px;
-  overflow: hidden;
-}
-
-.tabIndicator {
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc((100% - 12px - 8px) / 2);
-  border-radius: 8px;
-  background: var(--bg-surface, var(--theme-surface));
-  border: 1px solid var(--border-muted, var(--border-subtle));
-  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.06));
-  transition: transform 0.28s ease;
-  pointer-events: none;
-}
-
-.tabIndicatorCommunity {
-  transform: translateX(calc(100% + 8px));
-}
-
-.tabBtn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  color: var(--text-secondary, var(--theme-on-surface-variant));
-  position: relative;
-  z-index: 1;
-  transition: color 0.2s ease;
-}
-
-.tabBtn:hover {
-  color: var(--text-primary, var(--theme-on-surface));
-}
-
-.tabBtnActive {
-  color: var(--color-primary, var(--theme-primary));
-}
-
-.tabActive {
-  /* legacy alias — prefer tabBtnActive */
-}
-
-.tabText {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.tabBadge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.06));
-  color: var(--text-secondary, var(--theme-outline));
-}
-
-.tabBtnActive .tabBadge {
-  background: color-mix(in srgb, var(--color-primary, var(--theme-primary)) 14%, transparent);
-  color: var(--color-primary, var(--theme-primary));
-  opacity: 1;
+  margin-bottom: var(--spacing-md);
 }
 
 .contentArea {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   min-height: 0;
 }
 
-.list {
+/* 单层大卡，分类作内部分块 */
+.pageCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
-  padding: 0 0 24px 0;
+  flex-shrink: 0;
 }
 
 .categoryGroup {
   display: flex;
   flex-direction: column;
-  margin-bottom: 16px;
+  padding: var(--spacing-md) var(--spacing-md-plus);
+  border-bottom: 1px solid var(--border-card);
+  background: transparent;
+}
+
+.pageCard > .categoryGroup:last-child {
+  border-bottom: none;
 }
 
 .categoryHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0 8px 8px;
-  margin-bottom: 8px;
-  color: var(--theme-primary);
+  gap: var(--spacing-sm);
+  padding: 0 0 var(--spacing-sm-plus);
+  margin: 0;
+  color: var(--text-primary);
 }
 
 .categoryIcon {
   display: flex;
   align-items: center;
+  color: var(--theme-primary);
 }
 
 .categoryLabel {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
+  letter-spacing: 0;
+  font-family: var(--font-family);
 }
 
 .categoryList {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.categoryListPadded {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--spacing-sm) var(--spacing-md-tight) var(--spacing-md-tight);
 }
 
 .toolCard {
-  border-radius: 12px;
-  border: 1px solid var(--theme-outline-variant-50);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-surface);
+  background-color: transparent;
 }
 
 .toolCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background-color: var(--bg-surface-high);
 }
 
 .toolCard.enabled {
   /* 仅保留正常状态，依靠 switch 判断是否开启 */
 }
 
-.toolCard.enabled:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
 .toolCard.disabled {
-  background-color: rgba(0, 0, 0, 0.02);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .cardMain {
   display: flex;
-  align-items: flex-start;
-  padding: 12px 8px 12px 16px;
-  gap: 12px;
+  align-items: center;
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
+  gap: var(--spacing-md-tight);
 }
 
 .toolIconWrapper {
-  padding: 8px;
-  border-radius: 8px;
+  padding: var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
 }
 
 .enabled .toolIconWrapper {
@@ -393,12 +337,13 @@
 }
 
 .disabled .toolIconWrapper {
-  background-color: var(--theme-surface-container-highest);
-  color: var(--theme-on-surface-variant);
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
+  opacity: 0.55;
 }
 
 .toolEmoji {
-  font-size: 20px;
+  font-size: var(--settings-font-shell-title-size);
   line-height: 1;
 }
 
@@ -413,42 +358,39 @@
 .toolNameRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex-wrap: nowrap;
   min-width: 0;
 }
 
 .toolName {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.enabled .toolName {
+.enabled .toolName,
+.disabled .toolName {
   color: var(--theme-on-surface);
 }
 
-.disabled .toolName {
-  color: var(--theme-on-surface-variant);
-}
-
 .toolIdTag {
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
   background-color: var(--theme-surface-container-highest);
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--theme-on-surface-variant);
-  font-family: monospace;
+  font-family: var(--font-family);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .toolMeta {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   color: var(--theme-on-surface-variant);
   line-height: 1.4;
-  margin-top: 2px;
+  margin-top: var(--spacing-2xs);
 }
 
 /* Parameters section */
@@ -459,12 +401,12 @@
 
 .paramsDivider {
   height: 1px;
-  margin: 0 16px;
+  margin: 0 var(--spacing-md);
   background-color: var(--theme-outline-variant-50);
 }
 
 .paramsConfigArea {
-  padding: 12px 16px 16px 16px;
+  padding: var(--spacing-md-tight) var(--spacing-md) var(--spacing-md) var(--spacing-md);
 }
 
 .paramItem {
@@ -476,12 +418,12 @@
 .paramLabelGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   color: var(--theme-on-surface-variant);
 }
 
 .paramLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface);
 }
 
@@ -489,8 +431,9 @@
   display: flex;
   align-items: center;
   height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--theme-outline-variant-50);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
 }
 
 .stepperBtn {
@@ -511,14 +454,28 @@
   cursor: not-allowed;
 }
 
+.stepperInputHost {
+  width: 44px !important;
+  height: 100%;
+}
+
+.stepperInputHost input:focus,
+.stepperInputHost input:focus-visible {
+  border: none;
+  border-left: 1px solid var(--border-muted);
+  border-right: 1px solid var(--border-muted);
+  box-shadow: none;
+  background: transparent;
+}
+
 .stepperInput {
   width: 44px;
   height: 100%;
   border: none;
-  border-left: 1px solid var(--theme-outline-variant-50);
-  border-right: 1px solid var(--theme-outline-variant-50);
+  border-left: 1px solid var(--border-muted);
+  border-right: 1px solid var(--border-muted);
   background: transparent;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   color: var(--theme-primary);
   text-align: center;
@@ -544,79 +501,23 @@
 
 .communityIcon {
   color: var(--theme-outline-30);
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .communityTitle {
-  font-size: 16px;
+  font-size: var(--settings-font-section-size);
   font-weight: 500;
   color: var(--theme-on-surface-variant);
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--spacing-sm) 0;
 }
 
 .communityDesc {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-outline);
   margin: 0;
 }
 
-/* Material Design Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 52px;
-  height: 32px;
-  margin-left: 12px;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--theme-surface-variant);
-  transition: 0.2s;
-  border-radius: 32px;
-  border: 2px solid var(--theme-outline);
-}
-.slider:before {
-  position: absolute;
-  content: '';
-  height: 16px;
-  width: 16px;
-  left: 6px;
-  bottom: 6px;
-  background-color: var(--theme-outline);
-  transition: 0.2s;
-  border-radius: 50%;
-}
-input:checked + .slider {
-  background-color: var(--theme-primary);
-  border-color: var(--theme-primary);
-}
-input:checked + .slider:before {
-  transform: translateX(20px);
-  background-color: var(--theme-on-primary);
-  height: 24px;
-  width: 24px;
-  left: 2px;
-  bottom: 2px;
-}
 @media (prefers-color-scheme: dark) {
-  .slider {
-    background-color: rgba(148, 163, 184, 0.2);
-    border-color: rgba(148, 163, 184, 0.4);
-  }
-  .slider:before {
-    background-color: rgba(148, 163, 184, 0.4);
-  }
-
   .toolCard.disabled {
     background-color: rgba(255, 255, 255, 0.05);
     opacity: 0.8;
@@ -631,12 +532,12 @@ input:checked + .slider:before {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
   flex-shrink: 0;
 }
 
@@ -650,12 +551,15 @@ input:checked + .slider:before {
 .emojiPopupModal {
   min-width: 480px !important;
   width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .emojiPopupContent {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
   height: 480px;
 }
 
@@ -664,13 +568,13 @@ input:checked + .slider:before {
 .emojiManageSection {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1;
   min-height: 0;
 }
 
 .emojiManageLabel {
-  font-size: 12px;
+  font-size: var(--settings-font-meta-size);
   font-weight: 600;
   color: var(--theme-on-surface-variant);
   text-transform: uppercase;
@@ -687,15 +591,15 @@ input:checked + .slider:before {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  padding-right: 4px;
+  padding-right: var(--spacing-xs);
 }
 
 .emojiCard {
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
-  border: 1px solid var(--theme-outline-variant-50);
-  transition: all 0.15s ease;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+  transition: all var(--duration-fast) ease;
   background: var(--bg-surface);
   width: 90px;
   height: 116px;
@@ -721,7 +625,7 @@ input:checked + .slider:before {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 4px;
+  padding: var(--spacing-xs);
 }
 
 .emojiPlaceholder {
@@ -731,20 +635,26 @@ input:checked + .slider:before {
 .emojiCardFooter {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  border-top: 1px solid var(--theme-outline-variant-50);
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  border-top: 1px solid var(--border-muted);
   flex-shrink: 0;
   height: 26px;
   min-height: 26px;
   box-sizing: border-box;
 }
 
+.emojiCardNameInputHost {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .emojiCardNameInput {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   line-height: 1.2;
   color: var(--theme-on-surface);
   outline: none;
@@ -764,12 +674,12 @@ input:checked + .slider:before {
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: none;
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
   flex-shrink: 0;
 }
 
@@ -783,15 +693,15 @@ input:checked + .slider:before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 90px;
   height: 116px;
-  border-radius: 8px;
-  border: 1.5px dashed var(--theme-outline-variant-50);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-control);
   background: transparent;
   color: var(--theme-on-surface-variant);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .emojiAddCard:hover:not(:disabled) {
@@ -810,7 +720,7 @@ input:checked + .slider:before {
 }
 
 .emojiAddText {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   font-weight: 500;
 }
 
@@ -819,15 +729,15 @@ input:checked + .slider:before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 8px;
-  gap: 8px;
+  padding: var(--spacing-md) var(--spacing-sm);
+  gap: var(--spacing-sm);
   width: 90px;
   height: 116px;
   border: none;
   background: none;
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
 }
 
 .emojiEmptyHint:hover {
@@ -844,7 +754,7 @@ input:checked + .slider:before {
 }
 
 .emojiEmptyText {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--theme-on-surface-variant);
   text-align: center;
   margin: 0;
@@ -852,11 +762,11 @@ input:checked + .slider:before {
 }
 
 .emojiPopupAuthor {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--theme-on-surface-variant);
   opacity: 0.6;
   text-align: center;
-  padding-top: 4px;
+  padding-top: var(--spacing-xs);
   flex-shrink: 0;
 }
 
@@ -865,7 +775,7 @@ input:checked + .slider:before {
 .emojiPopupContent {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md-plus);
   min-width: 360px;
 }
 
@@ -874,14 +784,44 @@ input:checked + .slider:before {
 .emojiBackBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   border: none;
   background: transparent;
   color: var(--theme-primary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  flex-shrink: 0;
+}
+
+/* 设置页内表情包子页：相对定位顶栏，避免被外层顶栏/分段栏挡住 */
+.emojiPageHeader {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md-tight);
+  height: 52px;
+  padding: 0 var(--spacing-lg);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
+  z-index: 5;
+  box-sizing: border-box;
+}
+
+.emojiPageTitle {
+  font-size: var(--settings-font-section-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emojiPageScroll {
+  padding-top: var(--spacing-md-plus);
 }
 
 .emojiSubHeader {
@@ -891,32 +831,249 @@ input:checked + .slider:before {
 .emojiSectionToolbar {
   display: flex;
   justify-content: flex-end;
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
 }
 
 .emojiSettingsPage {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-md);
+}
+
+.emojiInlinePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.emojiFrequencyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md-tight);
+  padding: 0 var(--spacing-sm);
+}
+
+.emojiInlineToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0 0;
+}
+
+.emojiSearchField {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  height: 32px;
+  padding: 0 var(--spacing-sm-plus);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-sm);
+  background: var(--form-field-bg, var(--bg-surface));
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiSearchInputHost {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.emojiSearchField input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--theme-on-surface);
+  font-size: var(--settings-font-row-size);
+  font-family: inherit;
+}
+
+.emojiInlineAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  height: 32px;
+  padding: 0 var(--spacing-sm-plus);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.emojiInlineAddBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.emojiInlineList {
+  display: flex;
+  flex-direction: column;
+}
+
+.emojiInlineRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm-plus) 0;
+}
+
+.emojiInlineRow + .emojiInlineRow {
+  border-top: 1px solid var(--border-muted);
+}
+
+.emojiManageBtn {
+  border: none;
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  flex-shrink: 0;
+}
+
+.emojiManageBtn:hover {
+  opacity: 0.8;
+}
+
+.emojiInlineEmpty {
+  padding: var(--spacing-md) var(--spacing-xs);
+  font-size: var(--settings-font-desc-size);
+  line-height: 1.5;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiInlinePager {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xs) 0 0;
+}
+
+.emojiManageModalTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+  width: 100%;
+}
+
+.emojiManageDeleteBtn {
+  border: none;
+  background: transparent;
+  color: var(--theme-error);
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.emojiDialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  min-height: 320px;
+  max-height: 56vh;
+  overflow: hidden;
+}
+
+.emojiDialogBody .emojiPopupGrid {
+  flex: 1;
+}
+
+.emojiDialogField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs-plus);
+}
+
+.emojiDialogToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.emojiGroupAddRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md-tight);
+  width: 100%;
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.emojiGroupAddRow:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.emojiGroupAddIcon,
+.emojiGroupTile {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.emojiGroupAddIcon {
+  border: 1px dashed var(--border-control);
+  background: transparent;
+  color: var(--theme-primary);
+}
+
+.emojiGroupAddRow:hover .emojiGroupAddIcon {
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.emojiGroupTile {
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.emojiGroupTileImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .emojiEnableCard {
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   background: var(--theme-surface-container-low);
 }
 
 .emojiEnableRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .emojiEnableIcon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -928,23 +1085,24 @@ input:checked + .slider:before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .emojiEnableTitleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 .emojiEnableTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--theme-on-surface);
 }
 
 .emojiEnableSubtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--theme-on-surface-variant);
   line-height: 1.4;
 }
@@ -954,11 +1112,11 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  padding: 0 var(--spacing-xs);
 }
 
 .emojiSectionTitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -968,28 +1126,28 @@ input:checked + .slider:before {
 .emojiAddGroupBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   border: none;
   background: transparent;
   color: var(--theme-primary);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
   margin-left: auto;
 }
 
 .emojiGroupList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 .emojiGroupCard {
   display: flex;
   align-items: center;
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
   background: var(--theme-surface-container-low);
   overflow: hidden;
 }
@@ -998,8 +1156,8 @@ input:checked + .slider:before {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 16px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-snug) var(--spacing-md);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -1008,13 +1166,13 @@ input:checked + .slider:before {
 
 .emojiGroupName {
   flex: 1;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--theme-on-surface);
 }
 
 .emojiGroupMeta {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface-variant);
 }
 
@@ -1023,8 +1181,8 @@ input:checked + .slider:before {
   background: transparent;
   color: var(--theme-error);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1038,10 +1196,10 @@ input:checked + .slider:before {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md-snug);
   border: none;
-  border-bottom: 1px solid var(--theme-outline-variant);
+  border-bottom: 1px solid var(--border-muted);
   background: transparent;
   cursor: pointer;
   text-align: left;
@@ -1050,7 +1208,7 @@ input:checked + .slider:before {
 .emojiEntryIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1062,17 +1220,17 @@ input:checked + .slider:before {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
 }
 
 .emojiEntryTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: 500;
   color: var(--theme-on-surface);
 }
 
 .emojiEntryMeta {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   color: var(--theme-on-surface-variant);
 }
 
@@ -1081,57 +1239,62 @@ input:checked + .slider:before {
 }
 
 .emojiNameCard {
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--theme-surface-container-low);
 }
 
 .emojiFieldLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--theme-on-surface-variant);
 }
 
 .emojiGroupNameInput {
   width: 100%;
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 16px;
-  background: var(--theme-surface);
+  height: 32px;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-sm);
+  padding: 0 var(--spacing-md-tight);
+  font-size: var(--settings-font-row-size);
+  background: var(--form-field-bg, var(--bg-surface));
   color: var(--theme-on-surface);
   box-sizing: border-box;
   outline: none;
+  font-family: inherit;
+  transition: var(--form-field-transition);
 }
 
 .emojiGroupNameInput:focus {
-  border-color: var(--theme-primary);
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+  outline: none;
 }
 
 .emojiStickerGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .emojiStickerCard {
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 12px;
-  padding: 10px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm-plus);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   background: var(--theme-surface-container-low);
 }
 
 .emojiStickerPreview {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1146,10 +1309,10 @@ input:checked + .slider:before {
 }
 
 .emojiStickerNameInput {
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 13px;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
+  font-size: var(--settings-font-desc-size);
   background: var(--theme-surface);
   color: var(--theme-on-surface);
 }
@@ -1167,16 +1330,16 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: center;
   min-height: 140px;
-  padding: 24px;
+  padding: var(--spacing-lg);
   text-align: center;
   color: var(--theme-on-surface-variant);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   white-space: nowrap;
 }
 
 .emojiSettingsEmpty {
-  padding: 24px;
+  padding: var(--spacing-lg);
   text-align: center;
   color: var(--theme-on-surface-variant);
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
 }

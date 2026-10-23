@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
   height: 56px;
   background: transparent;
   flex-shrink: 0;
@@ -21,7 +21,7 @@
 .de-icon-btn {
   background: transparent;
   border: none;
-  font-size: 20px;
+  font-size: var(--icon-fs-md);
   cursor: pointer;
   width: 48px;
   height: 48px;
@@ -29,7 +29,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background 0.2s;
+  transition: background var(--duration-swift);
   color: var(--text-primary);
   margin-left: -12px;
 }
@@ -47,26 +47,27 @@
 .de-app-bar-actions {
   display: flex;
   align-items: center;
-  margin-right: 8px;
+  margin-right: var(--spacing-sm);
 }
 
 .de-save-btn {
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
-  border-radius: 100px;
-  padding: 8px 24px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-sm) var(--spacing-lg);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   cursor: pointer;
   transition:
-    transform 0.2s,
-    background 0.2s,
-    opacity 0.2s;
+    transform var(--duration-swift),
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .de-save-btn:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .de-save-btn:active {
@@ -85,7 +86,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px 24px 0 24px;
+  /* 编辑区横向贴边；元数据栏自行留左右内边距 */
+  padding: var(--spacing-md-tight) 0 0;
   overflow: hidden;
   background: var(--bg-surface-low);
 }
@@ -94,15 +96,16 @@
 .de-meta-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md-tight);
+  padding: 0 var(--spacing-md);
   flex-shrink: 0;
 }
 
 .de-meta-pickers {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 0 0 auto;
   min-width: 0;
 }
@@ -119,23 +122,44 @@
   max-width: 148px;
 }
 
-.de-meta-fav-btn {
+.de-meta-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.de-meta-word-count {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  white-space: nowrap;
+  transition: color var(--duration-fast);
+}
+
+.de-meta-word-count.has-selection {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.de-meta-fav-btn {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
   width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   cursor: pointer;
   color: var(--text-tertiary);
   transition:
-    color 0.2s,
-    border-color 0.2s,
-    background 0.2s;
+    color var(--duration-swift),
+    border-color var(--duration-swift),
+    background var(--duration-swift);
   flex-shrink: 0;
 }
 
@@ -152,8 +176,8 @@
 
 .de-meta-tts-btn {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
   width: 36px;
   height: 36px;
   display: flex;
@@ -163,9 +187,9 @@
   color: var(--text-secondary);
   flex-shrink: 0;
   transition:
-    color 0.2s,
-    border-color 0.2s,
-    background 0.2s;
+    color var(--duration-swift),
+    border-color var(--duration-swift),
+    background var(--duration-swift);
 }
 
 .de-meta-tts-btn:hover:not(:disabled) {
@@ -198,21 +222,17 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  /* 横向占满：去掉左右圆角与侧边框，只保留顶部分割 */
+  border: none;
+  border-top: 1px solid var(--border-muted);
+  border-radius: 0;
   overflow: hidden;
-  --tag-0-fg: #3b82f6;
-  --tag-1-fg: #10b981;
-  --tag-2-fg: #f59e0b;
-  --tag-3-fg: #8b5cf6;
-}
-
-[data-theme='dark'] .de-content-section {
-  --tag-0-fg: #60a5fa;
-  --tag-1-fg: #34d399;
-  --tag-2-fg: #fbbf24;
-  --tag-3-fg: #a78bfa;
+  --tag-0-fg: var(--color-primary);
+  --tag-1-fg: var(--color-success);
+  --tag-2-fg: var(--color-warning);
+  --tag-3-fg: var(--color-accent-purple);
 }
 
 /* CodeMirror Editor Wrapper */
@@ -224,6 +244,32 @@
   height: 100%;
 }
 
+/* 覆盖全局隐藏滚动条，正文区需要可见滚动条 */
+.codemirror-editor-wrapper .cm-scroller {
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-muted) transparent !important;
+}
+
+.codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar-thumb {
+  background-color: var(--border-muted) !important;
+  border-radius: var(--radius-2xs) !important;
+}
+
+.codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong, var(--border-muted)) !important;
+}
+
 /* 选中文字后，文中相同片段的高亮底色（与选区颜色一致） */
 .codemirror-editor-wrapper .cm-selectionMatch {
   background-color: rgba(148, 163, 184, 0.2);
@@ -231,7 +277,7 @@
 
 /* 附件区域 */
 .de-attachment-section {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   flex-shrink: 0;
 }
 
@@ -239,9 +285,9 @@
 .diary-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .diary-content img:hover {
@@ -252,8 +298,8 @@
 .diary-content video,
 .diary-content audio {
   max-width: 100%;
-  border-radius: 8px;
-  margin: 8px 0;
+  border-radius: var(--radius-sm);
+  margin: var(--spacing-sm) 0;
 }
 
 /* 图片缩放组件样式 */
@@ -263,8 +309,8 @@
   vertical-align: middle;
   max-width: 100%;
   width: fit-content;
-  margin: 8px 8px;
-  border-radius: 8px;
+  margin: var(--spacing-sm) var(--spacing-sm);
+  border-radius: var(--radius-sm);
   overflow: visible;
 }
 
@@ -282,7 +328,7 @@
   max-width: 100%;
   width: auto;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -296,7 +342,7 @@
   border-radius: 50%;
   cursor: nwse-resize;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-swift);
 }
 
 .cm-image-container:hover .cm-image-resize-handle {
@@ -310,8 +356,8 @@
   right: 0;
   background: var(--bg-surface-highest);
   border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  padding: 4px 8px;
+  border-radius: var(--radius-xs-plus);
+  padding: var(--spacing-xs) var(--spacing-sm);
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -322,67 +368,79 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-family: 'Fira Code', 'Courier New', monospace;
   outline: none;
 }
 
+/* 与 ContextMenu.css / --menu-popup-* 对齐：同色 --bg-surface，避免比页面「更白」 */
 .cm-context-menu {
   position: fixed;
   z-index: 401;
-  min-width: 150px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  padding: 6px;
-  animation: cm-context-menu-appear 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 180px;
+  max-width: 280px;
+  padding: var(--menu-popup-padding, var(--spacing-xs));
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  animation: cm-context-menu-appear var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  font-family: var(--font-family);
 }
 
 @keyframes cm-context-menu-appear {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(-5px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }
 
 .cm-context-menu-item {
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm-plus);
   width: 100%;
-  padding: 6px 12px;
+  min-height: 28px;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
   background: transparent;
   color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--ui-fs-md);
+  font-weight: 400;
+  line-height: 1.3;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--duration-instant) ease;
   text-align: left;
 }
 
-.cm-context-menu-item:hover {
-  background: rgba(var(--color-primary-rgb), 0.08);
-  color: var(--color-primary);
+.cm-context-menu-item:hover:not(:disabled):not(.disabled) {
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
+  color: var(--text-primary);
+}
+
+.cm-context-menu-item:disabled,
+.cm-context-menu-item.disabled {
+  color: var(--text-tertiary);
+  opacity: 1;
+  cursor: default;
+}
+
+.cm-context-menu-item:disabled:hover,
+.cm-context-menu-item.disabled:hover {
+  background: transparent;
 }
 
 .cm-context-menu-item.danger {
   color: var(--color-error);
 }
 
-.cm-context-menu-item.danger:hover {
+.cm-context-menu-item.danger:hover:not(:disabled):not(.disabled) {
   background: var(--color-error-container);
   color: var(--color-error);
 }
@@ -390,7 +448,23 @@
 .cm-context-menu-divider {
   height: 1px;
   background: var(--border-subtle);
-  margin: 4px 0;
+  margin: var(--spacing-2xs) var(--spacing-xs-plus);
+}
+
+.cm-context-menu-item .context-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.cm-context-menu-item .context-menu-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.75;
 }
 
 .de-save-btn:disabled {
@@ -402,17 +476,73 @@
 .de-save-loading {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
+.de-save-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+}
+
+.de-save-dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.cm-code-copy-btn {
+  position: absolute;
+  z-index: 20;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs, 4px);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.85;
+  transition:
+    opacity var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    background var(--duration-fast);
+}
+
+.cm-code-copy-btn:hover {
+  opacity: 1;
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--border-muted));
+  background: var(--bg-surface-high);
+}
+
+.cm-code-copy-btn.copied {
+  opacity: 1;
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.de-save-spinner {
+  flex-shrink: 0;
+  color: currentColor;
+  animation: de-spin 0.6s linear infinite;
+}
+
+/* 兼容旧引用；与按钮文字同色，避免浅底上看不见 */
 .de-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: de-spin 0.6s linear infinite;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 @keyframes de-spin {

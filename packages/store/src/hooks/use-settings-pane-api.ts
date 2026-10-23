@@ -8,6 +8,8 @@ export function useSettingsPaneApi() {
       themeMode: s.themeMode,
       themeColor: s.themeColor,
       locale: s.locale,
+      fontSizeLevel: s.fontSizeLevel,
+      showTopBarVaultSwitcher: s.showTopBarVaultSwitcher,
       providers: s.providers,
       globalModels: s.globalModels,
       agentBehavior: s.agentBehavior,
@@ -21,6 +23,8 @@ export function useSettingsPaneApi() {
       setThemeMode: s.setThemeMode,
       setThemeColor: s.setThemeColor,
       setLocale: s.setLocale,
+      setFontSizeLevel: s.setFontSizeLevel,
+      setShowTopBarVaultSwitcher: s.setShowTopBarVaultSwitcher,
       setProviders: s.setProviders,
       patchProvider: s.patchProvider,
       updateProvider: s.updateProvider,
@@ -35,7 +39,8 @@ export function useSettingsPaneApi() {
       refreshMcpAuthToken: s.refreshMcpAuthToken,
       setHotkeyConfig: s.setHotkeyConfig,
       setCloudSyncConfig: s.setCloudSyncConfig,
-      loadConfig: s.loadConfig
+      loadConfig: s.loadConfig,
+      reloadConfigKeys: s.reloadConfigKeys
     }))
   )
 }

@@ -10,6 +10,7 @@ import {
   useOpenFeedbackChannel
 } from '@baishou/ui/native'
 import { UpdateSettingsSection } from './UpdateSettingsSection'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface SettingsAboutGroupProps {
   groupCardStyle: ViewStyle
@@ -44,13 +45,13 @@ export const SettingsAboutGroup: React.FC<SettingsAboutGroupProps> = ({ groupCar
 
 const styles = StyleSheet.create({
   groupBlock: {
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   groupTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     letterSpacing: 0.3,
-    marginLeft: 4,
+    marginLeft: sharedTokens.spacing.xs,
     textTransform: 'uppercase'
   },
   groupCard: {

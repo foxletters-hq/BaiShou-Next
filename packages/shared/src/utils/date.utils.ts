@@ -70,6 +70,27 @@ export function formatLocalTime(value: Date | number | undefined | null): string
 }
 
 /**
+ * 将日记日历日收成本地 Date。
+ * `YYYY-MM-DD` 走 parseDateStr，避免 `new Date('YYYY-MM-DD')` 被当成 UTC 零点。
+ */
+export function coerceDiaryCalendarDate(date: Date | string): Date | undefined {
+  if (date instanceof Date) {
+    return Number.isNaN(date.getTime()) ? undefined : date
+  }
+  const trimmed = String(date).trim()
+  if (!trimmed) return undefined
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    try {
+      return parseDateStr(trimmed)
+    } catch {
+      return undefined
+    }
+  }
+  const parsed = new Date(trimmed)
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed
+}
+
+/**
  * 将 YYYY-MM-DD 字符串解析为本地时区的 Date 对象（午夜 00:00:00 本地时间）
  *
  * ⚠️ 禁止使用 new Date('YYYY-MM-DD')，该写法会被 JS 引擎视作 UTC 零点，
@@ -81,6 +102,17 @@ export function parseDateStr(dateStr: string): Date {
     throw new RangeError(`[date.utils] 无效的日期字符串: "${dateStr}"，期望格式 YYYY-MM-DD`)
   }
   return new Date(parseInt(match[1]!, 10), parseInt(match[2]!, 10) - 1, parseInt(match[3]!, 10))
+}
+
+/** 本地日历日：必须是真实存在的 YYYY-MM-DD，拒绝 2026-02-31 这类溢出日。 */
+export function isRealLocalCalendarDate(value: string | undefined): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((value ?? '').trim())
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
 }
 
 /**

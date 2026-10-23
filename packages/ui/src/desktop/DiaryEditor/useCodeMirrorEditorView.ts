@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { EditorView } from '@codemirror/view'
 import {
   createDiaryCodeMirror,
+  editorContextMenuExtension,
   forceImageRefresh,
   type DiaryCmPlatform
 } from '../../shared/diary-codemirror'
@@ -22,13 +23,18 @@ function scheduleEditorMount(callback: () => void): () => void {
 }
 
 export function useCodeMirrorEditorView(
-  props: Pick<CodeMirrorEditorProps, 'content' | 'placeholder' | 'basePath' | 'onChange'>,
+  props: Pick<
+    CodeMirrorEditorProps,
+    'content' | 'placeholder' | 'basePath' | 'onChange' | 'onSelectionCountChange'
+  >,
   setPreviewSrc: (src: string | null) => void,
   setTextContextMenu: (menu: TextContextMenuState | null) => void
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
+  const onSelectionCountChangeRef = useRef(props.onSelectionCountChange)
+  const lastSelectedCountRef = useRef(0)
   const basePathRef = useRef(props.basePath)
   const contentRef = useRef(props.content)
   /** 程序化写入正文时不向上层回传 change，避免误判为「用户已修改」 */
@@ -39,6 +45,10 @@ export function useCodeMirrorEditorView(
   useEffect(() => {
     onChangeRef.current = props.onChange
   }, [props.onChange])
+
+  useEffect(() => {
+    onSelectionCountChangeRef.current = props.onSelectionCountChange
+  }, [props.onSelectionCountChange])
 
   useEffect(() => {
     translateRef.current = t
@@ -81,6 +91,12 @@ export function useCodeMirrorEditorView(
         interactionMode: 'mouse',
         tagLineMode: true,
         onExternalImagePreview: (src) => setPreviewSrc(src),
+        onOpenExternalLink: (url) => {
+          const shell = (
+            window as Window & { api?: { shell?: { openExternal?: (target: string) => void } } }
+          ).api?.shell
+          void shell?.openExternal?.(url)
+        },
         translate: (key, defaultValue) =>
           translateRef.current(key, { defaultValue: defaultValue || key })
       }
@@ -94,33 +110,22 @@ export function useCodeMirrorEditorView(
           onChangeRef.current(content)
         },
         extraExtensions: [
-          EditorView.domEventHandlers({
-            contextmenu: (event, view) => {
-              const rawTarget = event.target
-              const target =
-                rawTarget instanceof Element
-                  ? rawTarget
-                  : rawTarget instanceof Node
-                    ? rawTarget.parentElement
-                    : null
-              if (
-                target?.closest(
-                  '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer, .tbl-menu, .cm-tooltip.tbl-menu-tooltip'
-                )
-              ) {
-                return false
+          editorContextMenuExtension({
+            onOpen: (payload) => setTextContextMenu(payload)
+          }),
+          EditorView.updateListener.of((update) => {
+            if (!update.selectionSet && !update.docChanged) return
+            let selectedCount = 0
+            for (const range of update.state.selection.ranges) {
+              if (!range.empty) {
+                selectedCount += update.state
+                  .sliceDoc(range.from, range.to)
+                  .replace(/\s+/g, '').length
               }
-
-              event.preventDefault()
-              event.stopPropagation()
-
-              const { from, to } = view.state.selection.main
-              setTextContextMenu({
-                x: event.clientX,
-                y: event.clientY,
-                hasSelection: from !== to
-              })
-              return true
+            }
+            if (selectedCount !== lastSelectedCountRef.current) {
+              lastSelectedCountRef.current = selectedCount
+              onSelectionCountChangeRef.current?.(selectedCount)
             }
           })
         ]
@@ -153,6 +158,8 @@ export function useCodeMirrorEditorView(
       view?.destroy()
       viewRef.current = null
     }
+    // 编辑器只在挂载时创建一次，placeholder / resolveUrl 等经 ref 读取
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

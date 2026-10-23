@@ -1,22 +1,34 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Cloud, Globe, Settings } from 'lucide-react'
-import { useSyncStore } from '@baishou/store'
+import { Cloud, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 } from '@baishou/shared'
-import { Switch, useDialog, Select } from '@baishou/ui'
+import { Button, Switch, useDialog, Select, useToast, settingsTypography } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
+import styles from './SyncForms.module.css'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 type SyncTarget = 's3' | 'webdav'
 
-export const SyncConfigForm: React.FC = () => {
+export interface SyncConfigFormProps {
+  /** 放在「测试连接」右侧，如同步按钮 */
+  afterTestAction?: React.ReactNode
+  /** 按钮行下方的进度 / 结果区 */
+  syncStatusSlot?: React.ReactNode
+}
+
+export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
+  afterTestAction,
+  syncStatusSlot
+}) => {
   const { t } = useTranslation()
   const dialog = useDialog()
-  const { status, message, setStatus, setMessage } = useSyncStore()
+  const toast = useToast()
+  const [isTesting, setIsTesting] = useState(false)
 
   const [config, setConfig] = useState<any>({
     enabled: false,
@@ -187,16 +199,10 @@ export const SyncConfigForm: React.FC = () => {
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(next))
       notifyIncrementalSyncConfigChanged()
-      setMessage(t('data_sync.config_saved', 'Configuration saved'))
-      setStatus('success')
-      setTimeout(() => {
-        setStatus('idle')
-        setMessage('')
-      }, 2000)
+      toast.showSuccess(t('data_sync.config_saved', '配置已保存'))
     } catch (e: any) {
       setConfig((current: typeof config) => ({ ...current, enabled: prevEnabled }))
-      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
-      setStatus('error')
+      toast.showError(e?.message || t('data_sync.save_failed', '保存失败'))
     }
   }
 
@@ -204,21 +210,14 @@ export const SyncConfigForm: React.FC = () => {
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(config))
       notifyIncrementalSyncConfigChanged()
-      setMessage(t('data_sync.config_saved', 'Configuration saved'))
-      setStatus('success')
-      setTimeout(() => {
-        setStatus('idle')
-        setMessage('')
-      }, 2000)
+      toast.showSuccess(t('data_sync.config_saved', '配置已保存'))
     } catch (e: any) {
-      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
-      setStatus('error')
+      toast.showError(e?.message || t('data_sync.save_failed', '保存失败'))
     }
   }
 
   const handleTestConnection = async () => {
-    setStatus('connecting')
-    setMessage(t('data_sync.testing_connection', 'Testing connection...'))
+    setIsTesting(true)
     try {
       const ok = await (window as any).api?.incrementalSync?.testConnection({
         target: config.target,
@@ -232,51 +231,33 @@ export const SyncConfigForm: React.FC = () => {
         chunkConcurrency: config.chunkConcurrency,
         fileConcurrency: config.fileConcurrency
       })
-      setMessage(
-        ok
-          ? t('data_sync.connection_success', 'Connection successful')
-          : t(
-              'data_sync.connection_failed_check',
-              'Connection failed, please check your configuration'
-            )
-      )
-      setStatus(ok ? 'success' : 'error')
+      if (ok) {
+        toast.showSuccess(t('data_sync.connection_success', '连接成功'))
+      } else {
+        toast.showError(t('data_sync.connection_failed_check', '连接失败，请检查配置'))
+      }
     } catch (e: any) {
-      setMessage(
-        friendlyTestConnectionError(
-          e?.message || t('data_sync.connection_failed', 'Connection failed')
-        )
+      toast.showError(
+        friendlyTestConnectionError(e?.message || t('data_sync.connection_failed', '连接失败'))
       )
-      setStatus('error')
+    } finally {
+      setIsTesting(false)
     }
   }
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: '12px',
-        padding: '20px 24px',
-        marginBottom: '20px'
-      }}
-    >
-      <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
-        <Settings size={14} style={{ marginRight: 6 }} />
-        {t('data_sync.config_section', 'Configuration')}
-      </h3>
-
+    <div>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 16,
-          gap: 12
+          marginBottom: sharedTokens.spacing.md,
+          gap: sharedTokens.spacing.mdTight
         }}
       >
-        <span style={{ fontSize: '14px', fontWeight: 600 }}>
-          {t('data_sync.incremental_sync', 'File Sync')}
+        <span style={{ fontSize: settingsTypography.row.fontSize, fontWeight: 600 }}>
+          {t('data_sync.file_sync_toggle', '文件同步')}
         </span>
         <Switch
           checked={config.enabled === true}
@@ -284,39 +265,26 @@ export const SyncConfigForm: React.FC = () => {
         />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: sharedTokens.spacing.md }}>
         <label
           style={{
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-secondary)',
             display: 'block',
-            marginBottom: 6
+            marginBottom: sharedTokens.spacing.xsPlus
           }}
         >
           {t('data_sync.target_type', 'Target Type')}
         </label>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: sharedTokens.spacing.sm }}>
           {(['s3', 'webdav'] as SyncTarget[]).map((item) => (
             <button
               key={item}
+              type="button"
               onClick={() => handleConfigChange({ target: item })}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: `1px solid ${config.target === item ? 'var(--color-primary)' : 'var(--border-muted)'}`,
-                background:
-                  config.target === item ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
-                color: config.target === item ? 'var(--color-primary)' : 'var(--text-secondary)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: config.target === item ? 600 : 400
-              }}
+              className={`${styles.targetBtn}${config.target === item ? ` ${styles.targetBtnActive}` : ''}`}
             >
-              {item === 's3' ? (
-                <Cloud size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              ) : (
-                <Globe size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              )}
+              {item === 's3' ? <Cloud size={14} /> : <Globe size={14} />}
               {item === 's3' ? 'S3' : 'WebDAV'}
             </button>
           ))}
@@ -329,13 +297,13 @@ export const SyncConfigForm: React.FC = () => {
         <S3SyncForm config={config} onChange={handleConfigChange} />
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: sharedTokens.spacing.md }}>
         <label
           style={{
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-secondary)',
             display: 'block',
-            marginBottom: 6
+            marginBottom: sharedTokens.spacing.xsPlus
           }}
         >
           {t(
@@ -344,6 +312,7 @@ export const SyncConfigForm: React.FC = () => {
           )}
         </label>
         <Select
+          size="small"
           value={String(
             config.maxDivergencePercent === null || config.maxDivergencePercent === undefined
               ? 100
@@ -359,12 +328,11 @@ export const SyncConfigForm: React.FC = () => {
                 ? t('data_sync.max_divergence_remove_protection', '100 (remove protection)')
                 : t('data_sync.max_divergence_option', '{{percent}}%', { percent })
           }))}
-          size="small"
         />
         <p
           style={{
             margin: '8px 0 0',
-            fontSize: '12px',
+            fontSize: settingsTypography.meta.fontSize,
             color: 'var(--text-tertiary)',
             lineHeight: 1.5
           }}
@@ -376,57 +344,23 @@ export const SyncConfigForm: React.FC = () => {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-        <button onClick={handleSaveConfig} style={actionButtonStyle}>
+      <div className={styles.actionsRow}>
+        <Button type="button" variant="outlined" size="small" onClick={handleSaveConfig}>
           {t('data_sync.save_config', 'Save Config')}
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          variant="outlined"
+          size="small"
           onClick={handleTestConnection}
-          disabled={status === 'connecting'}
-          style={{ ...actionButtonStyle, opacity: status === 'connecting' ? 0.5 : 1 }}
+          disabled={isTesting}
         >
           {t('data_sync.test_connection', 'Test Connection')}
-        </button>
+        </Button>
+        {afterTestAction}
       </div>
 
-      {message && (status === 'error' || status === 'success' || status === 'connecting') && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            background:
-              status === 'error'
-                ? 'rgba(239, 68, 68, 0.1)'
-                : status === 'success'
-                  ? 'rgba(16, 185, 129, 0.1)'
-                  : 'var(--bg-surface-low)',
-            color:
-              status === 'error'
-                ? 'var(--color-error)'
-                : status === 'success'
-                  ? 'var(--color-success)'
-                  : 'var(--text-secondary)',
-            border: `1px solid ${status === 'error' ? 'var(--color-error)' : status === 'success' ? 'var(--color-success)' : 'var(--border-subtle)'}`
-          }}
-        >
-          {message}
-        </div>
-      )}
+      {syncStatusSlot}
     </div>
   )
-}
-
-const actionButtonStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '8px 16px',
-  border: '1px solid var(--border-muted)',
-  borderRadius: '6px',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  fontSize: '13px',
-  cursor: 'pointer'
 }

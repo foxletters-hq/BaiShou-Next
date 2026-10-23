@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { DateSelectField, DateSelectProps } from './date-select.types'
 import { DateSelectWheelColumn } from './DateSelectWheelColumn'
+import { sharedTokens } from '../../theme/tokens'
 import {
   clampDateParts,
   getDatePickerYears,
@@ -35,21 +36,29 @@ export const DateSelect: React.FC<DateSelectProps> = ({
   selectionBandColor
 }) => {
   const { t } = useTranslation()
-  const years = useMemo(() => getDatePickerYears(), [])
+  const years = useMemo(() => {
+    const startYear = minDate?.getFullYear()
+    const endYear = maxDate?.getFullYear()
+    if (startYear != null || endYear != null) {
+      return getDatePickerYears({
+        startYear: startYear ?? 2000,
+        endYear: endYear ?? new Date().getFullYear() + 30
+      })
+    }
+    return getDatePickerYears()
+  }, [minDate, maxDate])
   const monthLabels = useMemo(() => getMonthWheelLabels(t), [t])
 
   const showYear = fields.includes('year')
   const showMonth = fields.includes('month')
   const showDay = fields.includes('day')
 
-  const yearIndex = Math.max(0, years.indexOf(value.getFullYear()))
+  const valueYear = value.getFullYear()
+  const yearIndex = Math.max(0, years.indexOf(valueYear))
   const monthIndex = value.getMonth()
   const dayIndex = value.getDate() - 1
 
-  const dayLabels = useMemo(
-    () => getDayWheelLabels(value.getFullYear(), value.getMonth()),
-    [value.getFullYear(), value.getMonth()]
-  )
+  const dayLabels = useMemo(() => getDayWheelLabels(valueYear, monthIndex), [valueYear, monthIndex])
 
   const applyParts = useCallback(
     (year: number, month: number, day: number) => {
@@ -124,7 +133,7 @@ export const DateSelect: React.FC<DateSelectProps> = ({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 8
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.sm
   }
 })

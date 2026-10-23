@@ -1,15 +1,23 @@
-import { generateText } from 'ai'
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-mobile'
-import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core-mobile'
-import { AIProviderRegistry } from '@baishou/ai'
 import {
+  SUMMARY_AI_GENERATION_TIMEOUT_MS,
+  SUMMARY_AI_IDLE_TIMEOUT_MS,
+  generateSummaryTextFromModel
+} from '@baishou/core-mobile'
+import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
+import {
+  createAgentStreamAbortError,
   logger,
+  normalizeReasoningEffortSetting,
   prepareProviderConfigForRuntime,
   canUseProviderModel,
   readProviderApiKey,
-  type AIProviderConfig
+  resolveReasoningEffortForSlot,
+  type AIProviderConfig,
+  type GlobalModelsConfig
 } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
+import i18n from 'i18next'
 import { resolveSummaryConfig } from './mobile-summary-config.util'
 
 export function buildMobileSummaryAiClient(
@@ -49,7 +57,12 @@ export function buildMobileSummaryAiClient(
             )
           }
           if (resolution.reason === 'no_model') {
-            throw new Error('No summary model configured')
+            throw new Error(
+              i18n.t(
+                'settings.summary_model_missing',
+                'No summary model configured. 还没配置记忆总结模型。请先在设置里选好记忆总结模型。'
+              )
+            )
           }
           throw new Error('No active AI provider configured for summary generation')
         }
@@ -67,30 +80,37 @@ export function buildMobileSummaryAiClient(
       const onUserAbort = () => abortController.abort()
       if (userSignal) {
         if (userSignal.aborted) {
-          throw new DOMException('The operation was aborted', 'AbortError')
+          throw createAgentStreamAbortError()
         }
         userSignal.addEventListener('abort', onUserAbort, { once: true })
       }
-      const timeoutId = setTimeout(() => abortController.abort(), SUMMARY_AI_GENERATION_TIMEOUT_MS)
-
       try {
-        const { text } = await generateText({
+        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+        const providerOptions = buildReasoningProviderOptions({
+          modelId: finalModelId,
+          providerType: providerConfig.type || providerConfig.id,
+          effort: normalizeReasoningEffortSetting(
+            options?.reasoningEffort ??
+              resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'summary')
+          )
+        })
+        return await generateSummaryTextFromModel({
           model,
-          ...(options?.system ? { system: options.system } : {}),
           prompt,
-          maxSteps: 1,
-          abortSignal: abortController.signal
-        } as any)
-        return text
+          system: options?.system,
+          abortController,
+          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS,
+          idleTimeoutMs: SUMMARY_AI_IDLE_TIMEOUT_MS,
+          providerOptions
+        })
       } catch (e) {
         if (userSignal?.aborted) {
           logger.info('[MobileSummaryAI] Generation aborted by user')
         } else {
-          logger.error('[MobileSummaryAI] generateText failed:', e as Error)
+          logger.error('[MobileSummaryAI] streamText failed:', e as Error)
         }
         throw e
       } finally {
-        clearTimeout(timeoutId)
         userSignal?.removeEventListener('abort', onUserAbort)
       }
     }

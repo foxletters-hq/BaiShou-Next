@@ -45,6 +45,105 @@ export function resolveCustomGenerationSystemPrompt(
   return text || getDefaultCustomGenerationSystemPrompt(promptLocale)
 }
 
+export interface SummaryIdentityContextInput {
+  /** 用户昵称（日记作者） */
+  userName?: string | null
+  /** 用户身份卡 / persona 事实，明确标注为用户本人 */
+  userCard?: string | null
+  /** 当前 AI 伙伴名称 */
+  companionName?: string | null
+  locale?: SummaryPromptLocale | string
+}
+
+const SUMMARY_IDENTITY_FALLBACK: Record<
+  SummaryPromptLocale,
+  { user: string; companion: string; heading: string; userCard: string }
+> = {
+  zh: {
+    user: '用户（未设置昵称）',
+    companion: 'AI 伙伴（未命名）',
+    heading: '## 角色与称呼（必须遵守）',
+    userCard: '用户身份卡（只用于识别用户，不要当成 AI 伙伴的设定）'
+  },
+  'zh-TW': {
+    user: '使用者（未設定暱稱）',
+    companion: 'AI 夥伴（未命名）',
+    heading: '## 角色與稱呼（必須遵守）',
+    userCard: '使用者身份卡（只用於辨識使用者，不要當成 AI 夥伴的設定）'
+  },
+  en: {
+    user: 'the user (no nickname set)',
+    companion: 'the AI companion (unnamed)',
+    heading: '## Roles and names (must follow)',
+    userCard: 'User identity card (for identifying the user only; not the AI companion’s persona)'
+  },
+  ja: {
+    user: 'ユーザー（ニックネーム未設定）',
+    companion: 'AI パートナー（名前未設定）',
+    heading: '## 役割と呼称（必ず守る）',
+    userCard: 'ユーザーの identity card（ユーザー識別用。AI パートナーの設定ではない）'
+  }
+}
+
+const SUMMARY_IDENTITY_LINES: Record<SummaryPromptLocale, string[]> = {
+  zh: [
+    '素材中的第一人称「我」指用户本人，不是 AI 伙伴。',
+    '禁止把用户与 AI 伙伴的身份、情绪、行为对调。',
+    '不要给 AI 伙伴套用应用/系统默认名；应用名不是人物名。',
+    '素材里的其他人物按原文称呼保留；身份不确定时使用上面的称呼，不要臆测。',
+    '若共同回忆或旧总结与本角色对照冲突，以本角色对照为准，并在本期输出中纠正称呼，不要沿用旧错误。'
+  ],
+  'zh-TW': [
+    '素材中的第一人稱「我」指使用者本人，不是 AI 夥伴。',
+    '禁止把使用者與 AI 夥伴的身份、情緒、行為對調。',
+    '不要給 AI 夥伴套用應用程式/系統預設名；應用程式名不是人物名。',
+    '素材裡的其他人物按原文稱呼保留；身份不確定時使用上面的稱呼，不要臆測。',
+    '若共同回憶或舊總結與本角色對照衝突，以本角色對照為準，並在本期輸出中糾正稱呼，不要沿用舊錯誤。'
+  ],
+  en: [
+    'In the source material, first-person “I” refers to the user, never the AI companion.',
+    'Never swap the user’s and the AI companion’s identities, feelings, or actions.',
+    'Do not give the AI companion the application/default system name; the application name is not a character name.',
+    'Keep other people’s names as written. If a role is unclear, use the names above; do not guess.',
+    'If shared memory or an older summary conflicts with these roles, follow this role mapping and correct the names in this period’s output—do not carry the old mistake forward.'
+  ],
+  ja: [
+    '素材の一人称「私」はユーザー本人であり、AI パートナーではありません。',
+    'ユーザーと AI パートナーの身元・感情・行動を入れ替えないでください。',
+    'AI パートナーにアプリ/システムの既定名を付けないでください。アプリ名は人物名ではありません。',
+    '他の人物は素材の呼称をそのまま使う。役割が不明なときは上記の呼称を使い、推測しない。',
+    '共有の思い出や過去のまとめがこの役割と食い違う場合は、この役割を優先し、今期の出力で呼称を訂正してください。過去の誤りを引き継がないでください。'
+  ]
+}
+
+const SUMMARY_IDENTITY_LABELS: Record<SummaryPromptLocale, { user: string; companion: string }> = {
+  zh: { user: '日记作者 / 用户', companion: 'AI 伙伴' },
+  'zh-TW': { user: '日記作者 / 使用者', companion: 'AI 夥伴' },
+  en: { user: 'Diary author / user', companion: 'AI companion' },
+  ja: { user: '日記の書き手 / ユーザー', companion: 'AI パートナー' }
+}
+
+/** 生成总结时的角色对照块：明确用户与伙伴身份，避免「我」与默认名串位 */
+export function buildSummaryIdentitySystemPrompt(input: SummaryIdentityContextInput): string {
+  const locale = resolveSummaryPromptLocale(input.locale)
+  const fallback = SUMMARY_IDENTITY_FALLBACK[locale]
+  const labels = SUMMARY_IDENTITY_LABELS[locale]
+  const userName = input.userName?.trim() || fallback.user
+  const companionName = input.companionName?.trim() || fallback.companion
+  const colon = locale === 'en' ? ': ' : '：'
+  const lines = [
+    fallback.heading,
+    `- ${labels.user}${colon}${userName}`,
+    `- ${labels.companion}${colon}${companionName}`,
+    ...SUMMARY_IDENTITY_LINES[locale]
+  ]
+  const userCard = input.userCard?.trim()
+  if (userCard) {
+    lines.push('', `${fallback.userCard}${colon}`, userCard)
+  }
+  return lines.join('\n')
+}
+
 function promptModeRuntime(
   config: SummaryConfig | null | undefined,
   injectSharedMemoryBeforeGenerate: boolean,

@@ -1,0 +1,24 @@
+.preview {
+  margin: 0;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  border-top: none;
+  background: var(--bg-code);
+  font-size: var(--ui-fs-lg);
+  line-height: 1.5;
+  overflow: auto;
+  max-height: 200px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-family);
+}
+
+.preview code {
+  font-family: var(--font-family-mono);
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+}

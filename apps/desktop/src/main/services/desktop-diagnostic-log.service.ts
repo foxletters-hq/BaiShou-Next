@@ -11,8 +11,8 @@ import {
 
 export { buildDiagnosticExportFileName }
 
-const MAX_MEMORY_ENTRIES = 800
-const MAX_PERSISTED_BYTES = 512 * 1024
+const MAX_MEMORY_ENTRIES = 1500
+const MAX_PERSISTED_BYTES = 1024 * 1024
 const LOG_FILENAME = 'baishou_diagnostic.log'
 const LOG_VERSION_MARKER = '# BaiShouDiagnosticLogVersion: '
 const FLUSH_DEBOUNCE_MS = 250
@@ -249,6 +249,23 @@ export function installDesktopDiagnosticLogCapture(): void {
   consoleRef.warn = wrapConsoleMethod('warn', originalWarn)
   consoleRef.error = wrapConsoleMethod('error', originalError)
   consoleRef.debug = wrapConsoleMethod('debug', originalDebug)
+
+  process.on('uncaughtException', (error) => {
+    appendDiagnosticLog(
+      'error',
+      `Uncaught exception in main process: ${error?.message ?? String(error)}`,
+      error
+    )
+    void flushDiagnosticLogNow().catch(() => {})
+  })
+
+  process.on('unhandledRejection', (reason) => {
+    appendDiagnosticLog(
+      'warn',
+      `Unhandled rejection in main process: ${reason instanceof Error ? reason.message : String(reason)}`,
+      reason
+    )
+  })
 
   appendDiagnosticBreadcrumb('diagnostic log capture installed')
 }

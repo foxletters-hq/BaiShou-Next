@@ -1,9 +1,16 @@
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagConfig, type RagEntry } from '@baishou/ui/native'
-import { GlobalModelsConfig } from '@baishou/shared'
+import {
+  GlobalModelsConfig,
+  parseGraphNodeEmbeddingId,
+  type MemoryClearKind,
+  type RagVectorKindFilter
+} from '@baishou/shared'
 import { MobileRagAbortError } from '../../../../services/mobile-rag.service'
+import { notifyMobilePendingEmbedCountsChanged } from '../../../../services/mobile-pending-embed-counts'
 import { clampMobileRagConfig } from './rag-memory-section.constants'
+import { confirmMobileRagClearKinds } from './rag-memory-clear.util'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
 
 export function useRagMemoryActions(
@@ -21,6 +28,7 @@ export function useRagMemoryActions(
       page?: number,
       size?: number
     ) => Promise<void>
+    invalidateInFlightQuery: () => void
     openModelSwitcher: () => Promise<void>
     semanticAvailable: boolean
   }
@@ -28,7 +36,13 @@ export function useRagMemoryActions(
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { loadRagData, refreshEntriesOnly, openModelSwitcher, semanticAvailable } = data
+  const {
+    loadRagData,
+    refreshEntriesOnly,
+    invalidateInFlightQuery,
+    openModelSwitcher,
+    semanticAvailable
+  } = data
   const {
     services,
     dbReady,
@@ -48,6 +62,7 @@ export function useRagMemoryActions(
     searchQuery,
     pageSize,
     setSearchQuery,
+    setSourceKind,
     setCurrentPage,
     currentPage,
     setPageSize,
@@ -61,7 +76,8 @@ export function useRagMemoryActions(
     setTotalCount,
     stats,
     setStats,
-    handleReembedAfterModelChange
+    handleReembedAfterModelChange,
+    stateRef
   } = ctx
 
   const handleSelectEmbeddingModel = useCallback(
@@ -91,6 +107,21 @@ export function useRagMemoryActions(
       setEmbeddingProviderId(providerId)
       setEmbeddingModelId(modelId)
       setShowModelSwitcher(false)
+      const rag = (await services.settingsManager.get<RagConfig>('rag_config')) || config
+      if (rag.ragEnabled === false) {
+        const enabled = clampMobileRagConfig({ ...config, ragEnabled: true })
+        await services.settingsManager.set('rag_config', enabled)
+        setConfig(enabled)
+      }
+      try {
+        await services.ragService.detectDimension()
+      } catch (error) {
+        toast.showError(
+          error instanceof Error
+            ? error.message
+            : t('settings.rag.detect_failed', '检测失败，请检查模型配置')
+        )
+      }
       await checkModelMismatch()
       await loadRagData()
     },
@@ -101,6 +132,9 @@ export function useRagMemoryActions(
       embeddingModelId,
       dialog,
       t,
+      toast,
+      config,
+      setConfig,
       checkModelMismatch,
       loadRagData,
       setEmbeddingProviderId,
@@ -141,10 +175,20 @@ export function useRagMemoryActions(
   }, [ragState.isRunning, setRagCancelBusy])
 
   const handleSearch = (query: string, mode: 'semantic' | 'text') => {
+    invalidateInFlightQuery()
     setSearchQuery(query)
     setSearchMode(mode)
     setCurrentPage(1)
     void loadRagData(query, mode, 1, pageSize)
+  }
+
+  const handleSourceKindChange = (kind: RagVectorKindFilter) => {
+    if (kind === stateRef.current.sourceKind && stateRef.current.currentPage === 1) return
+    invalidateInFlightQuery()
+    setSourceKind(kind)
+    stateRef.current.sourceKind = kind
+    setCurrentPage(1)
+    void loadRagData(searchQuery, searchMode, 1, pageSize)
   }
 
   useEffect(() => {
@@ -154,6 +198,8 @@ export function useRagMemoryActions(
   }, [semanticAvailable, searchMode, setSearchMode])
 
   const handlePageChange = (page: number, size: number) => {
+    if (page === stateRef.current.currentPage && size === stateRef.current.pageSize) return
+    invalidateInFlightQuery()
     setCurrentPage(page)
     setPageSize(size)
     void refreshEntriesOnly(searchQuery, searchMode, page, size)
@@ -208,17 +254,21 @@ export function useRagMemoryActions(
       type: 'batchEmbed',
       progress: 0,
       total: 0,
-      statusText: t('settings.rag_batch_embed')
+      statusText: t('settings.rag_batch_embed'),
+      paused: false,
+      cancelling: false
     })
     try {
       const count = await services.ragService.batchEmbed((p) => {
-        setRagState({
+        setRagState((prev) => ({
           isRunning: true,
           type: 'batchEmbed',
           progress: p.current,
           total: p.total,
-          statusText: p.status || t('common.processing')
-        })
+          statusText: p.status || t('common.processing'),
+          paused: prev.paused,
+          cancelling: prev.cancelling
+        }))
       })
       toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
       await loadRagData()
@@ -246,6 +296,31 @@ export function useRagMemoryActions(
     }
   }
 
+  const handlePauseBatchEmbed = useCallback(async () => {
+    if (!services?.ragService) return
+    services.ragService.requestOperationPause()
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      type: prev.type || 'batchEmbed',
+      paused: true,
+      cancelling: false
+    }))
+    notifyMobilePendingEmbedCountsChanged()
+  }, [services?.ragService, setRagState])
+
+  const handleResumeBatchEmbed = useCallback(async () => {
+    if (!services?.ragService) return
+    services.ragService.requestOperationResume()
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      type: prev.type || 'batchEmbed',
+      paused: false,
+      cancelling: false
+    }))
+  }, [services?.ragService, setRagState])
+
   const handleCancelRagOperation = useCallback(async () => {
     if (!services?.ragService) return
     const confirmed = await dialog.confirm(
@@ -265,6 +340,8 @@ export function useRagMemoryActions(
     setRagState((prev) => ({
       ...prev,
       isRunning: true,
+      paused: false,
+      cancelling: true,
       statusKey: 'settings.rag_migration_aborting',
       statusText: t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
     }))
@@ -276,53 +353,87 @@ export function useRagMemoryActions(
     setPromptDefault('')
   }
 
-  const confirmClearAll = async (phrase: string) => {
-    if (!services?.ragService) return
-    const expected = t('settings.rag_clear_all_confirm_phrase')
-    if (phrase.trim() !== expected) {
-      toast.showError(t('settings.rag_clear_all_mismatch'))
-      return
-    }
+  const confirmClearKinds = async (kinds: MemoryClearKind[], phrase: string) => {
+    await confirmMobileRagClearKinds({
+      kinds,
+      phrase,
+      expectedPhrase: t('settings.rag_clear_all_confirm_phrase', '确认清除'),
+      services,
+      t,
+      toast,
+      loadRagData,
+      pageSize,
+      setCurrentPage,
+      onAccepted: () => setPromptMode(null)
+    })
+  }
+
+  const handleAddManualMemory = async () => {
+    const text = await dialog.prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true)
+    if (!text?.trim() || !services?.ragService) return
     try {
-      await services.ragService.clearAll()
-      setCurrentPage(1)
-      await loadRagData('', 'text', 1, pageSize)
-      toast.showSuccess(t('settings.rag_clear_all'))
+      await services.ragService.addManualMemory(text.trim())
+      toast.showSuccess(t('settings.rag_add_manual_success'))
+      await loadRagData()
+    } catch (e: unknown) {
+      toast.showError(e instanceof Error ? e.message : t('settings.rag_add_manual_failed'))
+    }
+  }
+
+  const handleEditEntry = async (entry: RagEntry) => {
+    const text = await dialog.prompt(
+      '',
+      entry.text,
+      t('settings.rag_edit_manual', '编辑记忆内容'),
+      true
+    )
+    if (!text?.trim() || !services?.ragService) return
+    try {
+      await services.ragService.editEntry(entry.embeddingId, text.trim())
+      toast.showSuccess(t('common.save_success'))
+      await loadRagData()
     } catch (e: unknown) {
       toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
     }
   }
 
-  const handleAddManualMemory = async () => {
-    setPromptMode('manual')
-    setPromptDefault('')
-  }
-
-  const handleEditEntry = async (entry: RagEntry) => {
-    editEntryRef.current = entry
-    setPromptMode('edit')
-    setPromptDefault(entry.text)
-  }
-
   const handleDeleteEntry = async (id: string) => {
     if (!services?.ragService) return
-    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-      title: t('common.delete'),
-      confirmText: t('common.delete'),
-      destructive: true
-    })
+    const isGraphNode = Boolean(parseGraphNodeEmbeddingId(id))
+    const confirmed = await dialog.confirm(
+      isGraphNode
+        ? t(
+            'settings.rag_clear_node_embed_confirm',
+            '只会清除这个节点上的向量，不会删除图谱里的实体。确定继续？'
+          )
+        : t('settings.rag_delete_entry_confirm', '确定删除这条向量片段？'),
+      {
+        title: t('common.delete'),
+        confirmText: isGraphNode
+          ? t('settings.rag_clear_node_embed', '清除节点向量')
+          : t('common.delete'),
+        destructive: true
+      }
+    )
     if (!confirmed) return
 
     const snapshotEntries = entries
     const snapshotTotal = totalCount
-    const snapshotStatsTotal = stats.totalCount
+    const snapshotStats = stats
+    const deletedEntry = entries.find((entry) => entry.embeddingId === id)
     const remainingOnPage = entries.filter((entry) => entry.embeddingId !== id)
 
     setEntries(remainingOnPage)
     setTotalCount((prev) => Math.max(0, prev - 1))
     setStats((prev) => ({
       ...prev,
-      totalCount: Math.max(0, prev.totalCount - 1)
+      totalCount: Math.max(0, prev.totalCount - 1),
+      vaultTotalCount:
+        prev.vaultTotalCount != null ? Math.max(0, prev.vaultTotalCount - 1) : prev.vaultTotalCount,
+      diaryCountForVault:
+        prev.diaryCountForVault != null && deletedEntry?.sourceType === 'diary'
+          ? Math.max(0, prev.diaryCountForVault - 1)
+          : prev.diaryCountForVault
     }))
 
     try {
@@ -337,7 +448,7 @@ export function useRagMemoryActions(
     } catch (e: unknown) {
       setEntries(snapshotEntries)
       setTotalCount(snapshotTotal)
-      setStats((prev) => ({ ...prev, totalCount: snapshotStatsTotal }))
+      setStats(snapshotStats)
       toast.showError(e instanceof Error ? e.message : t('settings.rag_operation_failed'))
     }
   }
@@ -375,7 +486,7 @@ export function useRagMemoryActions(
     }
 
     if (mode === 'clear') {
-      await confirmClearAll(value)
+      return
     }
   }
 
@@ -393,11 +504,15 @@ export function useRagMemoryActions(
     saveConfig,
     handleSemanticUnavailable,
     handleSearch,
+    handleSourceKindChange,
     handlePageChange,
     handleDetectDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
     handleCancelRagOperation,
     handleClearAll,
+    confirmClearKinds,
     handleAddManualMemory,
     handleEditEntry,
     handleDeleteEntry,

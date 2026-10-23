@@ -1,133 +1,134 @@
 import { StyleSheet } from 'react-native'
+import { sharedTokens, mobileTypography } from '../../theme/tokens'
 
 export const ragMemoryStyles = StyleSheet.create({
   root: {},
-  clearAllBtn: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderRadius: 20,
-    alignItems: 'center',
-    alignSelf: 'flex-start'
+  compactToolbar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center'
   },
-  clearAllText: {
-    fontSize: 13,
-    fontWeight: '600'
+  compactMeta: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
   },
   disabledAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12
+    gap: sharedTokens.spacing.sm,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   disabledAlertText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
     lineHeight: 18
   },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   statChip: {
     flexGrow: 1,
     flexBasis: '46%',
     minWidth: 132,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    borderRadius: sharedTokens.radius.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 4
+    gap: sharedTokens.spacing.xs
   },
-  statValue: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  statLabel: { fontSize: 11, textAlign: 'center' },
+  statValue: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    textAlign: 'center'
+  },
+  statLabel: { fontSize: mobileTypography.caption.fontSize, textAlign: 'center' },
   alertBox: {
-    marginTop: 12,
-    borderRadius: 12,
-    padding: 12,
+    marginTop: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.mdTight,
     borderWidth: 1
   },
   alertTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.xs
   },
   migrationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
   },
   alertDesc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
     lineHeight: 18
   },
   alertAction: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    marginTop: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1,
     alignSelf: 'flex-start'
   },
-  progressBox: {
-    marginBottom: 12
+  batchEmbedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    marginLeft: 'auto'
   },
-  statusText: { fontSize: 14, fontWeight: '500', marginBottom: 8 },
+  progressBox: {
+    marginBottom: sharedTokens.spacing.mdTight
+  },
+  statusText: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '500',
+    marginBottom: sharedTokens.spacing.sm
+  },
   progressBar: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: sharedTokens.radius.xxs,
     overflow: 'hidden'
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3
+    borderRadius: sharedTokens.radius.xxs
   },
-  progressLabel: { fontSize: 12, marginTop: 6, textAlign: 'right' },
+  progressLabel: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    marginTop: sharedTokens.spacing.xsPlus,
+    textAlign: 'right'
+  },
   actionRow: {
-    gap: 10
-  },
-  actionBtn: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1
-  },
-  actionBtnOutlined: {
-    borderWidth: 1
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '500',
-    flexShrink: 1,
-    textAlign: 'center'
+    gap: sharedTokens.spacing.sm
   },
   entryCard: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.mdSnug,
+    marginBottom: sharedTokens.spacing.sm,
     flexDirection: 'row',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   entryIconBlock: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 2
+    paddingTop: sharedTokens.spacing.xxs
   },
   entryBraces: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'monospace'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight
   },
   entryContent: {
     flex: 1
@@ -136,26 +137,94 @@ export const ragMemoryStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xsPlus
   },
-  entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
-  entryText: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  entryKindBadge: {
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.xs,
+    overflow: 'hidden'
+  },
+  entryKindBadgeText: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight
+  },
+  entryMenuTrigger: {
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight
+  },
+  entryMenuLabel: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight
+  },
+  entryModel: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    flex: 1
+  },
+  entryText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    lineHeight: 19,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  entryNodeLine: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    lineHeight: 19,
+    marginBottom: sharedTokens.spacing.xxs
+  },
+  entryViewLink: {
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.sm
+  },
+  entryPreviewScroll: { maxHeight: 360 },
+  entryPreviewContent: { paddingRight: sharedTokens.spacing.mdTight },
+  entryPreviewText: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: mobileTypography.primary.fontWeight,
+    lineHeight: 22
+  },
+  entryPreviewClose: {
+    alignSelf: 'flex-end',
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.xs
+  },
+  entryPreviewCloseLabel: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
+  },
+  entryMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.xsPlus
+  },
+  entryTag: { fontSize: mobileTypography.caption.fontSize },
   entryFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
   },
-  entryDate: { fontSize: 11 },
+  entryDate: { fontSize: mobileTypography.caption.fontSize },
   entrySimilarity: {
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   emptyBox: {
-    paddingVertical: 24,
+    paddingVertical: sharedTokens.spacing.lg,
     alignItems: 'center'
+  },
+  searchingBox: {
+    paddingVertical: sharedTokens.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -165,31 +234,31 @@ export const ragMemoryStyles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 28,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
-    paddingVertical: 4,
+    paddingVertical: sharedTokens.spacing.xs,
     minWidth: 120,
-    zIndex: 2,
-    elevation: 4
+    zIndex: 2
   },
   menuItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdSnug
   },
   paginationRow: {
-    paddingTop: 12,
-    gap: 10,
+    paddingTop: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.smPlus,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   paginationMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   paginationInfo: {
     flex: 1,
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
   },
   paginationNavScroll: {
     alignSelf: 'stretch'
@@ -198,7 +267,7 @@ export const ragMemoryStyles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 2
+    paddingVertical: sharedTokens.spacing.xxs
   },
   bottomSpacer: { height: 16 }
 })

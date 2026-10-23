@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
 import styles from './LanSyncCard.module.css'
 import { useTranslation } from 'react-i18next'
-import { Monitor, Radar, RefreshCw, Smartphone, TabletSmartphone } from 'lucide-react'
+import { Monitor, Radar, RefreshCw, Smartphone } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
+import { SettingsPageChrome } from '../shared/SettingsPageChrome'
+import { Button } from '../Button/Button'
 import {
   LAN_DEVICE_STALE_MS,
   formatLanReceivedBackupContent,
   getLanDeviceDedupKey,
+  lanDeviceIpCandidates,
   removeDiscoveredLanDevice,
   upsertDiscoveredLanDevice
 } from '@baishou/shared'
@@ -18,6 +21,7 @@ export interface DiscoveredDevice {
   deviceId: string
   nickname: string
   ip: string
+  ipCandidates?: string[]
   port: number
   deviceType: 'mobile' | 'desktop' | 'other'
   rawServiceId: string
@@ -251,7 +255,8 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
     markDeviceSeen(device)
     setSendingTo(deviceKey)
     setProgress(0)
-    const success = await onSendFile(device.ip, device.port, (p) => setProgress(p))
+    const hostCandidates = lanDeviceIpCandidates(device).join(',') || device.ip
+    const success = await onSendFile(hostCandidates, device.port, (p) => setProgress(p))
     setSendingTo(null)
     if (success) {
       toast.showSuccess(
@@ -271,17 +276,19 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   return (
     <>
       <RestoreBlockingOverlay visible={isRestoring} />
-      <div className={styles.container}>
-        <div className={styles.appBar}>
-          <div style={{ flex: 1 }} />
+      <SettingsPageChrome
+        title={t('settings.lan_transfer', '局域网传输')}
+        layout="stack"
+        titleAccessory={
           <HelpTooltip
             content={t(
               'lan_transfer.usage_tooltip',
               '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
             )}
-            size={20}
-            className={styles.helpBtn}
+            size={16}
           />
+        }
+        trailing={
           <button
             className={styles.refreshBtn}
             onClick={restartDualMode}
@@ -289,78 +296,76 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
           >
             <RefreshCw size={20} />
           </button>
-        </div>
-
-        <div className={styles.radarZone}>
-          {isActive && (
-            <div className={styles.radarRings}>
-              <div className={`${styles.ring} ${styles.ring1}`}></div>
-              <div className={`${styles.ring} ${styles.ring2}`}></div>
-              <div className={`${styles.ring} ${styles.ring3}`}></div>
-            </div>
-          )}
-
-          <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
-            <span className={styles.coreIcon}>
-              <Radar size={32} />
-            </span>
-          </div>
-
-          {isActive && devices.length === 0 && (
-            <div className={styles.scanHintWrapper}>
-              <div className={styles.scanTitle}>
-                {t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}
+        }
+      >
+        <div className={styles.container}>
+          <div className={styles.radarZone}>
+            {isActive && (
+              <div className={styles.radarRings}>
+                <div className={`${styles.ring} ${styles.ring1}`}></div>
+                <div className={`${styles.ring} ${styles.ring2}`}></div>
+                <div className={`${styles.ring} ${styles.ring3}`}></div>
               </div>
-              <div className={styles.scanSubtitle}>
-                {t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}
-              </div>
+            )}
+
+            <div className={`${styles.radarCore} ${isActive ? styles.corePulse : ''}`}>
+              <span className={styles.coreIcon}>
+                <Radar size={32} />
+              </span>
             </div>
-          )}
 
-          {isActive &&
-            devices.map((d, index) => {
-              const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length]
-              const deviceKey = getLanDeviceDedupKey(d)
-              const isSending = sendingTo === deviceKey
-              const delayStyle = { animationDelay: `${index * 0.5}s` }
-
-              return (
-                <div
-                  key={deviceKey}
-                  className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
-                  style={{ top: pos.top, left: pos.left, ...delayStyle }}
-                >
-                  <div className={styles.bubbleIcon}>
-                    {d.deviceType === 'mobile' ? (
-                      <Smartphone size={20} />
-                    ) : d.deviceType === 'desktop' ? (
-                      <Monitor size={20} />
-                    ) : (
-                      <TabletSmartphone size={20} />
-                    )}
-                  </div>
-                  <div className={styles.bubbleInfo}>
-                    <span className={styles.bubbleName} title={d.nickname}>
-                      {d.nickname}
-                    </span>
-                    <span className={styles.bubbleIp}>{d.ip}</span>
-                  </div>
-
-                  <button
-                    className={styles.sendOverlayBtn}
-                    disabled={sendingTo !== null}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleSend(d)
-                    }}
-                  >
-                    {isSending ? `${progress}%` : t('common.export', '发送')}
-                  </button>
+            {isActive && devices.length === 0 && (
+              <div className={styles.scanHintWrapper}>
+                <div className={styles.scanTitle}>
+                  {t('lan_transfer.scanning_nearby', '正在扫描附近设备...')}
                 </div>
-              )
-            })}
+                <div className={styles.scanSubtitle}>
+                  {t('lan_transfer.scan_hint', '请确保两台设备处于相同的 Wi-Fi 网络下')}
+                </div>
+              </div>
+            )}
+
+            {isActive &&
+              devices.map((d, index) => {
+                const pos = FIXED_POSITIONS[index % FIXED_POSITIONS.length]
+                const deviceKey = getLanDeviceDedupKey(d)
+                const isSending = sendingTo === deviceKey
+                const delayStyle = { animationDelay: `${index * 0.5}s` }
+
+                return (
+                  <div
+                    key={deviceKey}
+                    className={`${styles.deviceBubble} ${isSending ? styles.bubbleSending : ''}`}
+                    style={{ top: pos.top, left: pos.left, ...delayStyle }}
+                  >
+                    <div className={styles.bubbleIcon}>
+                      {d.deviceType === 'mobile' ? <Smartphone size={20} /> : <Monitor size={20} />}
+                    </div>
+                    <div className={styles.bubbleInfo}>
+                      <span className={styles.bubbleName} title={d.nickname}>
+                        {d.nickname}
+                      </span>
+                      <span className={styles.bubbleIp}>{d.ip}</span>
+                    </div>
+
+                    <Button
+                      className={styles.sendOverlayBtn}
+                      variant="outlined"
+                      size="small"
+                      disabled={sendingTo !== null}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleSend(d)
+                      }}
+                    >
+                      {isSending ? `${progress}%` : t('common.export', '发送')}
+                    </Button>
+                  </div>
+                )
+              })}
+          </div>
         </div>
-      </div>
+      </SettingsPageChrome>
     </>
   )
 }

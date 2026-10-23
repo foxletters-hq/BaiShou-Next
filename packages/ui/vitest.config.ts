@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
 
+const isWinOrWsl =
+  process.platform === 'win32' || Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP)
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -10,6 +13,7 @@ export default defineConfig({
     }
   },
   test: {
+    maxWorkers: isWinOrWsl ? 2 : undefined,
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],

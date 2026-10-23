@@ -1,53 +1,443 @@
-# UI 主题与组件样式规范
+# UI 主题与布局约定
 
 ## 1. 规范概述
 
-为确保 BaiShou-Next 的用户界面具备一致的视觉呈现质量，并实现深浅模式（Light/Dark Mode）的完美适配，所有前端 UI 代码的编写与修改均需严格遵循本标准作业程序（SOP）。本规范对颜色的使用、响应式变量的绑定及组件视觉一致性提出了强制要求。
+BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。目标是：灰底壳 + 白（或暗色表面）页面层、实色顶栏、共享分段滑块，避免双源 token 与「有的栏白、有的栏毛玻璃」混用。
+
+- **Token SSOT（桌面 CSS）：** `[packages/ui/src/theme/css-variables.css](../../packages/ui/src/theme/css-variables.css)`
+- **移动：** `useNativeTheme().colors` 字段语义与下表一一对应（`bgApp` / `bgSurface` / `borderMuted` 等）
+
+本轮规范描述的是约定；新代码只用 `--bg-*` / `--text-*` / `--border-*`，不要新增平行色名。
 
 ## 2. 颜色编码使用限制
 
-为保证深浅模式自动适配机制的稳定性，严禁在任何 `.css`, `.module.css` 及内联 `style` 属性中写入硬编码颜色：
+为保证深浅模式自动适配，严禁在 `.css`、`.module.css` 及常规内联 `style` 中写入硬编码基色：
 
-- **禁止硬编码基色：** 严禁使用 `#ffffff`, `#000000`, `white`, `black`, `transparent` 等固定色彩作为容器、表面、边框或文本的颜色属性。
-- **禁止使用不包含在主题层的兜底颜色：** 例如 `background-color: var(--color-surface, #FFFFFF);` 或 `rgba(255, 255, 255, 0.85)`。由于网络或渲染时延，硬兜底颜色会导致界面在模式切换时产生闪烁或白屏错误。
+- **禁止硬编码基色：** 勿用 `#ffffff`、`#000000`、`white`、`black` 等作为容器、表面、边框或文本颜色。
+- **禁止用十六进制兜底：** 勿写 `var(--bg-surface, #FFFFFF)` 或 `rgba(255, 255, 255, 0.85)` 充当主题层。网络/渲染时延下硬兜底会导致闪烁或主题错乱。
 
-> _例外说明：仅允许在某些状态固定或不随主题变化的单一视觉元素（如特殊的彩色徽章文字、强调警告的红色报错图标）中保留必要的色值。对于常规表面、字体和按钮，必须完全依赖主题变量组。_
+> 例外：状态固定且不随主题变化的元素（如特定彩色徽章、错误图标固定红）可保留必要色值。常规表面、字体、按钮必须完全依赖主题变量。
 
-## 3. 全局语义化 CSS 变量表
+## 3. 语义色
 
-所有的容器背景、阴影、层级、边框与文本必须统一调用 `packages/ui/src/theme/css-variables.css` 中已声明的语义化 CSS 变量。
+### 3.1 背景（主语义六档）
 
-### 3.1 背景与容器结构
+主层级：**壳** `app` **→ 页面/顶栏** `surface` **→ 抬起** `raised`。其余为交互 / 内凹 / 浮层。
 
-| 应用场景               | 必须使用的 CSS 变量         | 设计说明                                                                                                   |
-| :--------------------- | :-------------------------- | :--------------------------------------------------------------------------------------------------------- |
-| **最底层基础背景**     | `var(--bg-app)`             | 填充最底部的系统层画布（例如 Sidebar 下层及其它无承载组件的侧边区域）。呈现中性灰阶。                      |
-| **主内容区承载面板**   | `var(--bg-surface)`         | 最广泛使用的工作区基础面板层，主要用于各种主要数据的渲染背景。                                             |
-| **子级容器与下凹卡片** | `var(--bg-surface-normal)`  | 用于在主视图上方叠加辅助性区块、划分列表记录卡片或功能模块边界。                                           |
-| **浮层组件背景**       | `var(--bg-surface-highest)` | 用于最高视觉层级的承载体，如下拉菜单 (Dropdowns)、模态框 (Modals)。                                        |
-| **悬浮毛玻璃层**       | `var(--bg-glass-surface)`   | 用于顶部导航 (AppBar) 和浮动控制栏。需搭配 `backdrop-filter: var(--blur-overlay)` 共同使用以提供质感渲染。 |
+| 用途                             | Token                  | 说明                                                |
+| -------------------------------- | ---------------------- | --------------------------------------------------- |
+| 壳 / 侧栏下画布 / 页面内容区画布 | `--bg-app`             | 浅色中性灰 `#fafafa`（衬白卡）                      |
+| 窗口外圈磨砂罩（非页面 chrome）  | `--bg-window-shell`    | 半透 `bg-app`，配合系统 Acrylic                     |
+| 主工作区、**页面顶栏**、列表底   | `--bg-surface`         | 浅色实色白；顶栏禁止 glass                          |
+| 卡片 / 抬起块                    | `--bg-surface-raised`  | 浅色可与 surface 同色，靠边框区分；**锚定菜单勿用** |
+| 悬停                             | `--bg-surface-high`    | 仅交互态（含菜单项悬停 / 选中灰底）                 |
+| 内凹次级区                       | `--bg-surface-normal`  | 分段轨道、灰底分组                                  |
+| 居中 Modal / Dialog              | `--bg-surface-highest` | 全屏遮罩上的居中卡片；**锚定菜单勿用**              |
 
-### 3.2 文本与边框
+辅助（存量兼容，新代码尽量不用）：`--bg-surface-low`、`--bg-surface-lowest`、`--bg-surface-highlight`（≈ `high`）。
 
-| 应用场景       | 必须使用的 CSS 变量                                                    | 设计说明                                                 |
-| :------------- | :--------------------------------------------------------------------- | :------------------------------------------------------- |
-| **文字层级**   | `var(--text-primary)`, `var(--text-secondary)`, `var(--text-tertiary)` | 遵循文本层级递减规律。从高对比主标题，至低对比图例注释。 |
-| **通用界线**   | `var(--border-subtle)`                                                 | 模块之间极微弱的过渡分割线，确保层次感而不突兀。         |
-| **强视觉焦点** | `var(--border-strong)`                                                 | 用于表单输入框的 `focus` 状态等需要强凸显的边框线圈。    |
+### 3.2 边框
 
-## 4. UI 动效与视觉风格准则
+| 用途                    | Token                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| 极淡分割                | `--border-subtle`                                                                                    |
+| 分割线 / **顶栏底边**   | `--border-muted`                                                                                     |
+| 灰底上的内容卡片外框    | `--border-card`                                                                                      |
+| 可见控件 / 次要按钮描边 | `--border-control`（默认 `1px solid`）                                                               |
+| Focus / 强调描边        | `--border-strong`                                                                                    |
+| 表单输入聚焦描边        | `--form-field-border-focus`（浅色 `0.18` / 深色 `0.24` 浅灰加深；禁止再写 `0.32` / `0.42` 级重描边） |
+| 表单输入聚焦外圈        | `--form-field-focus-ring`（默认 `none`，不用光晕）                                                   |
+| 锚定菜单外壳            | `--menu-popup-*`（见 §3.8；对齐 ContextMenu）                                                        |
 
-当前的界面哲学倡导类 Apple 层级的优雅统一。请注重极简、克制与一致性：
+**勿**用 `--border-subtle` 充当按钮或卡片的「看得见」描边（浅色下几乎不可见）。
 
-1. **动画效果约束：** 不要擅自增加页面间的动画转换；复杂的动画会导致响应速度变缓。所有的视图切换依靠 `MainLayout` 已预设的全局转场即可，任何组件内的独立动效应当控制在 `0.2s` 以内（例如按钮 Hover 或 Focus 状态）。
-2. **纯实色与结构剥离：** 除特殊视觉展示需要外，所有的主要互动控件（如提交按钮，新建记录）必须使用单系统色 `var(--color-primary)`。严格禁止使用带有多种光晕或弥散效果的过渡渐变 (`linear-gradient`) 以及生硬的高亮 `transform`。
-3. **按钮交互标准：** 所有的按钮交互只需通过叠加系统设定的标准高斯阴影或微调 `opacity` 来传达反馈，以维持产品冷峻、纯净的视觉基调。
+**选中 / 聚焦加深：** 输入框、Select 触发器等「聚焦加深」一律走 `--form-field-border-focus`（浅灰），禁止各组件自写更深的黑/白描边。按钮悬停可用 `--border-strong`；菜单项选中用灰底 `--menu-popup-item-selected-bg`，不要主色实底或主色洗底。
 
-## 5. 质量校验清单
+### 3.3 文本与品牌
 
-在向版本控制系统提交任何 UI 层面的代码时，代码审查将重点检查以下项：
+| 用途              | Token                                                                            |
+| ----------------- | -------------------------------------------------------------------------------- |
+| 主标题 / 正文强调 | `--text-primary`                                                                 |
+| 说明 / 次要       | `--text-secondary`                                                               |
+| 占位 / 禁用       | `--text-tertiary`                                                                |
+| 文本选区底        | `--text-selection-bg`（品牌蓝 22% 透明；深色 28%）                               |
+| 文本选区字        | `--text-selection-fg`（=`--text-primary`）                                       |
+| 主色实心上的字    | `--text-on-primary`                                                              |
+| 品牌主色          | `--color-primary`（`#5BA8F5`）/ `--color-primary-dark` / `--color-primary-light` |
 
-- [ ] 当前 CSS 文件中已经没有剩余的未语义化十六进制色彩（如 `#fff`, `#f8f9fa`）。
-- [ ] 大面积卡片组件未采取自身固定颜色及遗留的 `[data-theme="dark"]` 后置重写方法。
+语义状态色：`--color-success` / `--color-warning` / `--color-error`；勿用 `#2563EB` 等深蓝替代原品牌蓝。
 
-_—— 本规范适用于所有的前端组件渲染行为。_
+**文本选区：** 输入框与正文 `::selection` 走 `--text-selection-`\*，禁止沿用系统选区蓝或反白字。编辑器选区也用同一套 token。
+
+**色系约定：** 品牌蓝统一 `#5BA8F5`。选中项文字 / 图标可用 `--color-primary`；侧栏选中底仍用灰底 `--bg-surface-high`，避免大面积洗蓝。  
+**主 CTA：** 描边（`--bg-surface` + `--border-control` + `--text-primary`），悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮同样描边，不要再做透明底。`Button` 默认 `outlined` + `size="small"`，宽度跟内容走，禁止在纵向 flex 里拉成一整行。
+
+**字体（桌面）：** UI 统一 Noto Sans 体系（`--font-family`）。简中默认 `Noto Sans SC`**（= 思源黑体简体）**，`zh-TW`→`Noto Sans TC`，`ja`→`Noto Sans JP`，`en`→`Noto Sans`。代码 / 路径 / Diff 必须用 `--font-family-mono`（栈末含 `--font-family`，保证 CJK 仍走思源，勿写裸 `ui-monospace…`）。禁止再硬编码 Inter / Manrope / Outfit。  
+**字体（移动）：** 不指定 `fontFamily`，走系统默认字族与语言回退；不要内嵌 Noto / 不要写死字族名。等宽代码块可继续用 `monospace`。  
+**字重阶梯：** 正文 `400`；按钮 / Tab / 次要强调 `500`；页面标题 / 卡片标题 / 标签 / Badge `600`。顶栏、列表项、chip、设置页禁止 `700` / `800` / `bold` / `900`；例外仅限品牌名与日记日号等展示型大数字。选中态优先主色 / 灰底，勿靠加粗制造「更粗」。  
+**控件阴影：** 描边触发器 / 顶栏 action / chip 默认 `box-shadow: none`；浮层（Modal / Dropdown / Toast）可用 `--shadow-`\*；禁止主色 glow 作为常规按钮反馈。
+
+### 3.3a 全局 UI 字号（四档 SSOT）
+
+桌面端工作台、伙伴页、通用界面 **新代码**必须用下列 token，禁止再写散落 `11px` / `15px` / `18px` / `20px` 平行字号。图标 / emoji 用 §3.3b，展示型大标题用 `--ui-display-*`。
+
+| Token        | 默认                                         | 用途                        |
+| ------------ | -------------------------------------------- | --------------------------- |
+| `--ui-fs-sm` | **12px**                                     | hint、路径、角标、Diff 正文 |
+| `--ui-fs-md` | **13px**                                     | 列表、树、工具条、表单标签  |
+| `--ui-fs-lg` | `var(--content-font-size)`（14×用户缩放）    | 说明、对话、一般正文        |
+| `--ui-fs-xl` | `var(--content-font-size-lg)`（16×用户缩放） | 区块 / 页内标题             |
+
+阅读区可继续直接用 `--content-font-size*`；设置页继续用 §3.6 的 `--settings-font-*`。
+
+### 3.3b 图标与展示字号
+
+正文不要用下面这档。glyph / emoji / 空状态图形用 `--icon-fs-*`（JS：`iconSizes`）。设置行左侧 / 右侧继续用 `--settings-icon-*` / `settingsIcons`。比标题更大的展示字用 `--ui-display-*`（JS：`displaySizes`）；日记日号继续用 `--mobile-fs-display` / `mobileTypography.display`。
+
+| Token             | 默认                                        | JS                | 用途              |
+| ----------------- | ------------------------------------------- | ----------------- | ----------------- |
+| `--icon-fs-xs`    | **10px**                                    | `iconSizes.xs`    | 极小标记、微箭头  |
+| `--icon-fs-sm`    | **16px**                                    | `iconSizes.sm`    | 工具条小图标      |
+| `--icon-fs-md`    | **20px**（=`--settings-icon-leading-size`） | `iconSizes.md`    | 默认图标 / emoji  |
+| `--icon-fs-lg`    | **24px**                                    | `iconSizes.lg`    | 卡片主图标        |
+| `--icon-fs-xl`    | **32px**（=`--settings-icon-leading-slot`） | `iconSizes.xl`    | 空状态、占位      |
+| `--icon-fs-2xl`   | **48px**                                    | `iconSizes.xxl`   | 大封面 emoji      |
+| `--icon-fs-3xl`   | **64px**                                    | `iconSizes.hero`  | 欢迎页超大图形    |
+| `--ui-display-sm` | **22px**                                    | `displaySizes.sm` | 页面大标题        |
+| `--ui-display-md` | **28px**                                    | `displaySizes.md` | 欢迎 / 空状态标题 |
+| `--ui-display-lg` | **36px**                                    | `displaySizes.lg` | 营销 / About 展示 |
+
+禁止在业务里再写 `10px` / `20px` / `24px` / `32px` / `48px` 平行图标字号。
+
+### 3.4 Glass 政策
+
+| 场景                                                      | 政策                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------- |
+| 页面顶栏、设置/管理子页顶栏、伙伴聊天顶栏、工作台聊天顶栏 | **实色** `--bg-surface`，禁止 glass / `backdrop-filter`       |
+| 窗口 TitleBar                                             | `--titlebar-glass-bg` 已映射为 `--bg-surface`（实色）         |
+| 锚定菜单 / 下拉弹层（ContextMenu、Select 下拉等）         | **实色** `--menu-popup-bg`，禁止 glass                        |
+| 输入条等非页面 chrome 的临时悬浮质感                      | 可使用 `--bg-glass-*`；**新页面 chrome / 菜单不得新增 glass** |
+
+### 3.5 唯一来源
+
+| 层级   | 文件                                      | 规则                                                                                               |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| SSOT   | `packages/ui/src/theme/css-variables.css` | 唯一权威数值源。浅色写在 `:root`，深色写在 `[data-theme='dark']`，不要在业务 CSS 再开一套 `--bg-*` |
+| 新代码 | 任意 UI                                   | 只用 `--bg-*` / `--text-*` / `--border-*` / `--color-primary*`（及 success/warning/error）         |
+
+移动端 `colors.bgApp` ↔ `--bg-app`，`colors.bgSurface` ↔ `--bg-surface`，`colors.borderMuted` ↔ `--border-muted`，以此类推；勿发明平行色名。
+
+### 3.6 设置页字号 / 字重（桌面 SSOT）
+
+设置 UI 以**侧栏 + 常规设置**为视觉基准。新设置页 / 改样式时**必须**使用下列 token，禁止再写散落的 `16px` / `20px` / `0.95rem` 平行字号。
+
+| 角色     | CSS Token（size / weight）      | 数值         | 用途                                              |
+| -------- | ------------------------------- | ------------ | ------------------------------------------------- |
+| 壳标题   | `--settings-font-shell-title-*` | **22 / 600** | 侧栏「系统设置」                                  |
+| 页标题   | `--settings-font-page-title-*`  | **18 / 600** | `SettingsPageChrome` 顶栏标题；勿自建 20px 顶栏   |
+| 区块标题 | `--settings-font-section-*`     | **15 / 600** | 卡内 section / cardTitle                          |
+| 侧栏导航 | `--settings-font-nav-*`         | **14 / 500** | `.settings-nav-label`                             |
+| 列表行   | `--settings-font-row-*`         | **14 / 400** | `SettingsListTile` 行标题、设置行正文             |
+| 表单标签 | `--settings-font-label-*`       | **13 / 500** | 字段 label、chip 文案                             |
+| 说明文案 | `--settings-font-desc-*`        | **13 / 400** | 行 subtitle / 次要说明（色用 `--text-secondary`） |
+| 元信息   | `--settings-font-meta-*`        | **12 / 500** | 侧栏分组 label、hint、路径角标                    |
+| 微文案   | `--settings-font-micro-*`       | **11 / 600** | badge 等极次要（少用）                            |
+
+**JS：** 桌面设置页同阶梯见 `[packages/ui/src/theme/tokens.ts](../../packages/ui/src/theme/tokens.ts)` 的 `settingsTypography` / `settingsIcons`。移动端不要套用这张表，见 §3.9。
+
+| 图标角色 | CSS Token                       | 数值     | 用途                              |
+| -------- | ------------------------------- | -------- | --------------------------------- |
+| 行左侧   | `--settings-icon-leading-size`  | **20px** | `SettingsListTile` leading Lucide |
+| 行右侧   | `--settings-icon-trailing-size` | **18px** | 箭头 / 外链等 trailing            |
+| 左侧占位 | `--settings-icon-leading-slot`  | **32px** | leading 列宽                      |
+
+**原则：**
+
+1. 设置 UI 字号一律 **px**，勿用 `rem`。
+2. 字重只用 **400 / 500 / 600**；选中态靠主色 / 灰底，不加粗。
+3. 页标题统一走 `SettingsPageChrome`（18/600）；WebSearch / TTS 等勿再平行写 20px 顶栏。
+4. 交互行统一 ListTile 节奏：**14/400 + 13 说明**；行图标 **20 / 18**，勿再写 24dp。
+5. 灰底上只铺一层内容卡（`--border-card`）；**禁止大卡套小卡**（内层再起白底+描边）。
+6. About 营销区、品牌名等展示型文案可例外，但普通设置行仍跟本表。
+7. 设置页、配置表单、对话框里的单行输入与下拉一律用默认尺寸：`Input` 与 `Select` 不传尺寸参数（内边距 `var(--spacing-sm-plus) var(--spacing-md-snug)`、字号 `--ui-fs-lg`、圆角 `--radius-md`）。多行 Markdown 编辑框用 `ResizableMarkdownEditor` 的 `variant="formField"`，与单行输入框同一套字号、内边距、圆角。
+8. 小号（`fieldSize="small"` / `size="small"`，内边距 `var(--spacing-xs-plus) var(--spacing-sm-plus)`、字号 `--ui-fs-md`、圆角 `--radius-sm`）只留给紧凑场景：工具栏与列表顶部的搜索框、嵌入式输入框（`baishou-form-field--embed`）、数字步进框、弹出菜单内的输入框、工作台界面，以及“输入框紧挨小号按钮”的同一行。
+
+### 3.7 设置页分割层级
+
+**大分割靠「卡片缝 + 卡外标题」，小分割才靠线。** 线只服务「同一张卡里的相邻行」，勿用同款水平线既切板块又切行。
+
+| 层级              | 手段                                                   | 规则                                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 大板块（Section） | 卡外 `sectionLabel` + sibling `cardSection` + 卡片间距 | 标题用 `--settings-font-meta-*`（12/500）+ `--text-primary`；标题下**紧接卡片**，勿在卡外再写说明段落；需要说明时用标题旁 `HelpTooltip`（?）；**卡与卡之间不画水平分割线** |
+| 行（Row）         | 卡内 `divider` / `settings-list-divider`               | 仅 `--border-muted` 或 `--border-subtle` 的 1px hairline                                                                                                                   |
+| Chrome            | 顶栏 / 页签栏底边                                      | 保留，不算内容区板块分割                                                                                                                                                   |
+
+结构样板（见 `GeneralSettingsPane`）：
+
+```text
+stackGroup
+  sectionLabelRow（卡外：标题 + 可选 HelpTooltip）
+  cardSection（白卡）
+    cardBody → 行 / ListTile；行间用 divider
+```
+
+**收敛：** 勿在单层大卡里用 `pageSection` 底边或全宽 divider「冒充下一板块」；应拆成多张 sibling 卡。卡内子分组（如「可信目录」）可用更轻的 meta 文案，不要再起一层白底描边卡。
+
+### 3.8 锚定菜单 / 下拉弹层（桌面 SSOT）
+
+视觉基准：**工作台输入框「选择工作空间」菜单** = `[ContextMenu](../../packages/ui/src/desktop/ContextMenu/ContextMenu.css)`。所有锚定下拉 / 上下文菜单 / 小型锚定浮层外壳与此项对齐。
+
+| Token                           | 默认                | 用途                                                     |
+| ------------------------------- | ------------------- | -------------------------------------------------------- |
+| `--menu-popup-bg`               | `--bg-surface`      | 外壳背景（禁止 `raised` / `highest` / glass）            |
+| `--menu-popup-border`           | `--border-muted`    | 外壳描边                                                 |
+| `--menu-popup-radius`           | `var(--radius-sm)`  | 外壳圆角                                                 |
+| `--menu-popup-shadow`           | `--shadow-md`       | 外壳阴影（禁止自写更重阴影）                             |
+| `--menu-popup-padding`          | `var(--spacing-xs)` | 外壳内边距                                               |
+| `--menu-popup-item-radius`      | `5px`               | 菜单项圆角（略小于外壳，不并入半径档）                   |
+| `--menu-popup-item-hover-bg`    | `--bg-surface-high` | 悬停灰底                                                 |
+| `--menu-popup-item-selected-bg` | `--bg-surface-high` | 选中灰底（可用主色字/图标；**禁止主色洗底 / 主色实底**） |
+
+全局工具类：`.baishou-menu-popup`（`packages/ui/src/theme/menu-popup.css`）。
+
+**适用范围：** ContextMenu、Select 下拉、TTS combobox、ChatAppBar 更多菜单、PageSize、WeatherPicker、附件年月筛选、TitleBar vault、Git 菜单、快捷指令列表外壳、Emoji/Avatar 锚定面板等。
+
+**不适用：** 居中 `Modal` / `Dialog` / Confirm / 底部 Sheet（走 Modal 体系与 `--bg-surface-highest`）。
+
+### 3.9 移动端字号
+
+桌面和移动端分开实现，样式规范仍写在这一份里。桌面字号用 §3.3a 的 `--ui-fs-*` 和 §3.6 的 `--settings-font-*`。移动端只用下面这一档，不按页面再拆字号。
+
+数值的唯一来源是 [`packages/ui/src/theme/css-variables.css`](../../packages/ui/src/theme/css-variables.css) 的 `--mobile-fs-*` / `--mobile-fw-*`。桌面样式写 `var(--mobile-fs-primary)`。React Native 没有 CSS 变量，引用同一数值的 [`mobileTypography`](../../packages/ui/src/theme/tokens.ts)。两边必须一致，禁止在页面里写死 `11` / `13` / `15` / `16` / `17` / `32`。
+
+| 角色     | CSS 变量                                          | JS          | 数值                |
+| -------- | ------------------------------------------------- | ----------- | ------------------- |
+| 标题     | `--mobile-fs-title` / `--mobile-fw-title`         | `title`     | **17 / 600**        |
+| 主要     | `--mobile-fs-primary` / `--mobile-fw-primary`     | `primary`   | **16 / 500**        |
+| 正文     | `--mobile-fs-body` / `--mobile-lh-body`           | `body`      | **15**，行高 **24** |
+| 次要     | `--mobile-fs-secondary` / `--mobile-fw-secondary` | `secondary` | **13 / 500**        |
+| 辅助     | `--mobile-fs-caption` / `--mobile-fw-caption`     | `caption`   | **11 / 600**        |
+| 展示数字 | `--mobile-fs-display` / `--mobile-fw-display`     | `display`   | **32 / 800**        |
+
+标题用于页面顶栏和区块标题。主要文字用于列表行。正文用于阅读内容，例如日记摘要。次要文字用于说明、星期、分组名。辅助文字用于底栏、角标和标签。展示数字只给日记日号这类大号，允许字重 800。其余不要用 `700` / `800` / `bold`。
+
+移动端不指定 `fontFamily`。
+
+### 3.10 间距、圆角、动效时长
+
+颜色和字号之后，间距 / 圆角 / 时长也只允许走总表。SSOT 仍是 [`css-variables.css`](../../packages/ui/src/theme/css-variables.css)；移动端用同一数值的 [`sharedTokens.spacing` / `sharedTokens.radius` / `sharedTokens.animation`](../../packages/ui/src/theme/tokens.ts)。不要在业务 CSS 或 RN 样式里写死 `8px` / `padding: 12` / `duration: 200`。
+
+**间距 `--spacing-*` / `sharedTokens.spacing`**
+
+| Token    | CSS                  | JS        | 默认     |
+| -------- | -------------------- | --------- | -------- |
+| 极细     | `--spacing-2xs`      | `xxs`     | **2px**  |
+| 细       | `--spacing-xs`       | `xs`      | **4px**  |
+| 略松细   | `--spacing-xs-plus`  | `xsPlus`  | **6px**  |
+| 小       | `--spacing-sm`       | `sm`      | **8px**  |
+| 略松小   | `--spacing-sm-plus`  | `smPlus`  | **10px** |
+| 紧中     | `--spacing-md-tight` | `mdTight` | **12px** |
+| 中贴     | `--spacing-md-snug`  | `mdSnug`  | **14px** |
+| 中       | `--spacing-md`       | `md`      | **16px** |
+| 略松中   | `--spacing-md-plus`  | `mdPlus`  | **20px** |
+| 大       | `--spacing-lg`       | `lg`      | **24px** |
+| 特大     | `--spacing-xl`       | `xl`      | **32px** |
+| 略松特大 | `--spacing-xl-plus`  | `xlPlus`  | **40px** |
+| 区块     | `--spacing-2xl`      | `xxl`     | **48px** |
+| 超大     | `--spacing-3xl`      | `xxxl`    | **64px** |
+
+**圆角 `--radius-*` / `sharedTokens.radius`**
+
+| Token  | CSS                | JS        | 默认       |
+| ------ | ------------------ | --------- | ---------- |
+| 极小   | `--radius-2xs`     | `xxs`     | **2px**    |
+| 小     | `--radius-xs`      | `xs`      | **4px**    |
+| 略松小 | `--radius-xs-plus` | `xsPlus`  | **6px**    |
+| 常规   | `--radius-sm`      | `sm`      | **8px**    |
+| 控件   | `--radius-control` | `control` | **10px**   |
+| 中     | `--radius-md`      | `md`      | **12px**   |
+| 大     | `--radius-lg`      | `lg`      | **16px**   |
+| 略松大 | `--radius-lg-plus` | `lgPlus`  | **20px**   |
+| 特大   | `--radius-xl`      | `xl`      | **24px**   |
+| 胶囊   | `--radius-full`    | `full`    | **9999px** |
+
+历史：移动端 `tokens.radius.sm` 曾是 4（等于现在的 `xs`）。新代码 4 用 `xs`，8 用 `sm`，与 CSS 同名同值。
+
+**时长 `--duration-*` / `sharedTokens.animation`**
+
+| Token  | CSS                   | JS         | 默认      |
+| ------ | --------------------- | ---------- | --------- |
+| 瞬时   | `--duration-instant`  | `instant`  | **100ms** |
+| 快     | `--duration-fast`     | `fast`     | **150ms** |
+| 轻交互 | `--duration-swift`    | `swift`    | **200ms** |
+| 常规   | `--duration-normal`   | `normal`   | **250ms** |
+| 中     | `--duration-moderate` | `moderate` | **300ms** |
+| 慢     | `--duration-slow`     | `slow`     | **400ms** |
+
+**不要收进这张表的：** 1px 发丝描边、`line-height`、`width` / `height`（含圆形头像的一半半径）、≥500ms 的转圈 / Toast 长等待、壳层几何 `--app-titlebar-height`（40px）。菜单项 `--menu-popup-item-radius: 5px` 是故意略小于外壳的例外。移动端滑动条几何见 §3.11，不要写进间距表。
+
+### 3.11 移动端滑动条
+
+移动端连续数值控件只用 [`NativeSlider`](../../packages/ui/src/native/Slider/NativeSlider.tsx)（`@baishou/ui/native` 的 `Slider`）。尺寸只认 [`native-slider.utils.ts`](../../packages/ui/src/native/Slider/native-slider.utils.ts)，不要在页面里再画轨道或拇指，也不要套用桌面 3px / 14px。
+
+| Token                             | 数值          | 用途                               |
+| --------------------------------- | ------------- | ---------------------------------- |
+| `NATIVE_SLIDER_TRACK_HEIGHT`      | **4**         | 轨道高度                           |
+| `NATIVE_SLIDER_THUMB_SIZE`        | **16**        | 圆拇指直径                         |
+| `NATIVE_SLIDER_HEIGHT`            | **44**        | 触控区域高度（可点下限）           |
+| `SLIDER_TRACK_HORIZONTAL_PADDING` | 拇指半径（8） | 轨道左右内边距，保证两端能拖到极值 |
+
+颜色：填充与拇指用 `colors.primary`（=`--color-primary`），未填充轨用 `colors.bgSurfaceNormal` / `colors.borderMuted`。
+
+例外：渐变色条（`GradientColorSlider`）可自绘彩色轨道，触控高度仍用 `NATIVE_SLIDER_HEIGHT`。设置行包装用 `SettingsSliderRow`，内部仍是 `NativeSlider`。
+
+桌面端滑动条见 §4，走 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指）。两端尺寸不同，不要互相套用。
+
+### 3.12 移动端弹窗与滚动条呼吸间距
+
+移动端连续可滚动的弹窗/浮层（`Modal`、`Dialog`、浮动面板等）内部嵌套纵向 `<ScrollView>` 时，因为 React Native 默认将垂直滚动指示条绘制在 `<ScrollView>` 容器最右侧边缘，若内容未预留右侧内边距，滚动时滚动指示条会紧贴或部分覆盖文字及右侧控件边缘。
+
+视觉与实现基准：**伙伴页 Skill 预览弹窗**（`[SkillCitePreviewDialog.tsx](../../packages/ui/src/native/ChatBubble/SkillCitePreviewDialog.tsx)`）。
+
+| 规范点         | 约定                                                                                                    | 说明                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 滚动条呼吸间距 | `contentContainerStyle={{ paddingRight: sharedTokens.spacing.mdTight }}`（或 `tokens.spacing.mdTight`） | 留出 **12px** 呼吸间距，滚动条与正文/列表不再紧贴重叠 |
+| 键盘与点击穿透 | `keyboardShouldPersistTaps="handled"`                                                                   | 保证长文本和列表滚动、点击复制或交互不被软键盘误拦截  |
+| 文本排版阶梯   | 正文使用 `mobileTypography.body`（15px / lh: 24），次要信息使用 `mobileTypography.secondary`            | 禁止硬编码字号与行高，与系统默认字阶对齐              |
+
+适用范围：
+
+- 知识库向量片段预览、原文/章节预览弹窗（`KnowledgeDetailScreen`、`KnowledgeSourcePreviewModal`）
+- 知识库整理任务进度详情浮层（`KnowledgeDetailJobBanner`）
+- 知识库/笔记本管理与设置弹窗（`KnowledgeDetailScreen` 中的设置/数据管理）
+- 聊天中知识库引用正文查看弹窗（`KnowledgeCitationBlock`）
+- 记忆中心查看记忆片段弹窗（`RagMemoryEntryCard`）
+- MCP 自定义工具列表查看弹窗（`McpClientServersSection`）
+- 人物设定/身份属性编辑列表弹窗（`IdentityFactsDialog`）
+- 记忆就绪度配置弹窗（`MemoryReadinessConfigModal`）及整理状态弹窗（`MemoryOrganizeDetailModal`）
+
+### 3.13 移动端分段切换动效
+
+移动端带选中滑块的分段选择统一使用 [`SegmentedControl`](../../packages/ui/src/native/SegmentedControl/SegmentedControl.tsx)，不要在页面里复制一套轨道或选中块。
+
+- 选中滑块的位置与宽度使用 Reanimated 滑动，时长统一为 `sharedTokens.animation.swift`（200ms）；选中项文字同步淡入。
+- 分段按钮切换页面内容时，用 [`SegmentedContent`](../../packages/ui/src/native/SegmentedControl/SegmentedContent.tsx) 包住当前面板，并把当前选项值传给 `value`，让新面板淡入。
+- 只切换搜索方式、权限值等表单选项时，保留滑块与选中项淡入即可；不要因为输入或检索结果更新而重挂载整片内容。
+- 自定义分段栏只有在需要图标或特殊布局时才保留；滑块和关联提示/面板仍须使用相同的 200ms 时长与淡入节奏。
+
+### 3.14 移动端表单控件与按钮规范
+
+移动端单行输入框（`Input`）、选择器触发器（`Select`、`SettingsSelector`、Combobox 下拉触发器）与操作按钮（`Button`）统一使用 **`mobileControlTokens`** 尺寸规范（`packages/ui/src/theme/tokens.ts`），禁止在页面和样式表内散落硬编码高度（如 48px、46px 等），确保同行排列时视觉高度平齐。
+
+| Token                                        | 数值                                    | 用途                                             |
+| -------------------------------------------- | --------------------------------------- | ------------------------------------------------ |
+| `mobileControlTokens.height`                 | **40**                                  | 标准控件高度（单行输入框、下拉触发器、操作按钮） |
+| `mobileControlTokens.compactHeight`          | **32**                                  | 紧凑型小号控件（小号标签按钮、微型搜索条）       |
+| `mobileControlTokens.largeHeight`            | **48**                                  | 大号/主操作控件（登录大按钮等）                  |
+| `mobileControlTokens.inputPaddingVertical`   | `sharedTokens.spacing.sm` (**8**)       | 单行输入框与选择器垂直内边距                     |
+| `mobileControlTokens.inputPaddingHorizontal` | `sharedTokens.spacing.mdTight` (**12**) | 输入框与选择器水平内边距                         |
+| `mobileControlTokens.radius`                 | `sharedTokens.radius.control` (**10**)  | 标准控件圆角                                     |
+
+**布局与对齐约定：**
+
+1. **输入框与按钮同行：** 移动端表单中“输入框紧挨操作按钮”（例如模型 ID 获取、TTS 语音试听测试）必须使用统一的 `mobileControlTokens.height`（40px），确保上下边缘平齐，避免输入框高于按钮。
+2. **设置项下拉框行内排布：** 设置项单项选择（如 TTS 供应商选择）采用标题在左、下拉框在右的单行布局（`flexDirection: 'row'`, `justifyContent: 'space-between'`），避免在移动端纵向堆叠占用过多屏幕高度。
+
+## 4. 布局约定（桌面）
+
+| 区域                       | 规则                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 页面顶栏                   | `padding: var(--spacing-md-tight) var(--spacing-xl)`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（=`--spacing-lg`）；卡片 `border-radius: var(--radius-md)`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止** `overflow: hidden`（会裁切绝对定位的 Select / Combobox 下拉）                                                                                                                                                                                           |
+| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；设置页 / 对话框 **不传** `fieldSize` / `size`（默认：`var(--spacing-sm-plus) var(--spacing-md-snug)`、`--ui-fs-lg`、`--radius-md`）；小号见 §3.6 第 8 条。禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；**仅** `:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`，**禁止** `:hover` **加深描边**；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
+| 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 分段滑块                   | 只用 `[SegmentedControl](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)`（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                                                                                                                                                                                                                        |
+| 原生滑动条（桌面）         | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`。移动端见 §3.11，不要套这组尺寸                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 主按钮                     | 描边：`--bg-surface` + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮仍透明底                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+### 4.1 壳层几何与全屏遮罩（桌面）
+
+窗口结构：**透明 TitleBar**（叠在壳顶）+ **灰底壳** + **主内容圆角卡**（`MainLayout.mainContent`）。TitleBar 本身透明，若全屏 `backdrop-filter` 遮罩铺到 `inset: 0`，模糊会透过顶栏露出来。
+
+**壳层几何 token（SSOT：**`css-variables.css` \***\*`:root`**）：\*\*
+
+| Token                        | 默认                       | 用途                       |
+| ---------------------------- | -------------------------- | -------------------------- |
+| `--app-titlebar-height`      | `40px`                     | TitleBar / `AppShell` 顶垫 |
+| `--app-content-inset-inline` | `var(--spacing-sm)`        | 内容卡左右外边距           |
+| `--app-content-inset-bottom` | `var(--spacing-sm)`        | 内容卡底外边距             |
+| `--app-content-radius`       | `var(--radius-md)`（12px） | 内容卡圆角                 |
+
+`AppShell` / `MainLayout` / `SettingsOverlayHost` / TitleBar **必须**引用上述 token，禁止再写散落的 `40px` / `8px` / `12px` 平行值。
+
+**全屏 portal 遮罩政策：**
+
+| 场景                                             | 政策                                         |
+| ------------------------------------------------ | -------------------------------------------- |
+| Dialog / Modal / Confirm / Sheet 类全屏 backdrop | **裁到主内容圆角卡**：勿盖 TitleBar / 窗外圈 |
+| 大图预览等全窗沉浸                               | 允许铺满视口（显式退出裁切）                 |
+| Tooltip / ContextMenu / Toast / 锚定 popover     | 不适用本条（非全屏 backdrop）                |
+| 已在内容卡内 `position: absolute` 的遮罩         | 已天然限于卡片，勿再套一层全屏裁切           |
+
+**实现（唯一入口）：**
+
+1. 全局工具类：`.baishou-app-content-overlay`（`[packages/ui/src/theme/app-chrome.css](../../packages/ui/src/theme/app-chrome.css)`，经 `css-variables.css` 引入）
+2. Helper：`withAppContentOverlay(className, { fullWindow?: boolean })` / `APP_CONTENT_OVERLAY_CLASS`（`@baishou/ui` → `desktop/overlay`）
+3. `[Modal](../../packages/ui/src/desktop/Modal/Modal.tsx)` 默认 `containToContentCard={true}`；全窗沉浸传 `containToContentCard={false}`
+
+**新代码：**
+
+- 优先用 `Modal` / `useDialog`（自动裁切）
+- 自建 `createPortal` + `position: fixed` 全屏遮罩时：**必须** `className={withAppContentOverlay(styles.overlay)}`
+- 禁止在各业务 CSS 里各自硬编码 `top: 52px` / `left: 8px` 平行裁切
+
+## 5. 动效与视觉风格
+
+1. **动画：** 页面级转场交给 `MainLayout`；组件内交互动效宜 ≤ `--duration-swift`（200ms），可用 `--duration-fast` / `--duration-swift` / `--ease-out-cubic`。不要写死 `0.2s` / `200ms`。
+2. **实色为主：** 主要互动控件用单系统色 `--color-primary`；禁止常规 CTA 使用多色 `linear-gradient` 或夸张 `transform` 高亮。
+3. **反馈：** 优先阴影 token（`--shadow-sm` 等）或 `opacity`，保持克制。
+
+## 6. 允许的例外（不必强行语义化）
+
+| 例外                                        | 说明                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `box-shadow` / elevation 的 `rgba(0,0,0,…)` | 阴影通道，可用                                                                       |
+| 图表系列色、热力图等级色、Provider 品牌色   | 数据/品牌意图色                                                                      |
+| 危险 / 成功                                 | 必须用 `--color-error` / `--color-success`（及 `--color-error-rgb`）；勿写 `#ef4444` |
+| `mix-blend-mode: difference` 上的反色字     | 叠在自定义聊天背景上的可读性技巧                                                     |
+
+主色按钮上的文字用 `--text-on-primary`，勿写 `color: #fff`。
+
+## 7. 质量校验清单
+
+提交 UI 相关改动前自检：
+
+- [ ] 无未语义化十六进制基色（`#fff`、`#f8f9fa` 等）用于表面 / 文本 / 边框（§6 例外除外）
+- [ ] 页面顶栏为 `--bg-surface` + `--border-muted`，未使用 glass
+- [ ] 移动端分段滑块复用 `SegmentedControl`，选中滑块以 `sharedTokens.animation.swift` 滑动、选中项淡入；切换页面面板时用 `SegmentedContent` 淡入
+- [ ] 新代码未新增 `--color-surface-*` / `--color-background-*` / `--color-on-surface*`
+- [ ] 未在组件内用 `[data-theme='dark']` 硬编一套平行色（应走全局变量）
+- [ ] 主色实心按钮文字为 `--text-on-primary`
+- [ ] 桌面端工作台 / 伙伴 / 通用界面字号使用 `--ui-fs-*`（§3.3a），Diff/代码字体用 `--font-family-mono`（含 CJK 回退）
+- [ ] 桌面设置页字号/字重使用 `--settings-font-*` 或 `settingsTypography`，无散落 16/20px 或 rem 平行字号（§3.6）
+- [ ] 移动端字号使用 `--mobile-fs-*` 或 `mobileTypography`（§3.9），不写死字号，不套用桌面设置页字号
+- [ ] 图标 / emoji 使用 `--icon-fs-*` / `iconSizes` 或设置行 `--settings-icon-*`（§3.3b），展示大标题使用 `--ui-display-*` / `displaySizes`
+- [ ] 间距 / 圆角 / 时长使用 `--spacing-*` / `--radius-*` / `--duration-*` 或 `sharedTokens.spacing|radius|animation`（§3.10），无散落 `8px` / `padding: 12` / `200ms`
+- [ ] 设置页分割：大板块用卡外标题 + sibling 卡间距；卡内才用细线（§3.7），无「全页同款水平线」切板块
+- [ ] 桌面全屏 Dialog/Modal 遮罩裁到内容卡（`Modal` 默认或 `withAppContentOverlay`），未透过 TitleBar 露模糊（§4.1）；全窗沉浸才显式关闭裁切
+- [ ] 表单聚焦描边使用 `--form-field-border-focus` 浅灰加深，仅 `:focus` / `:focus-within`，未在 `:hover` 变色，未自写更重描边
+- [ ] 设置页 / 对话框的 `Input` / `Select` 用默认尺寸；小号只出现在 §3.6 第 8 条列出的紧凑场景
+- [ ] 锚定菜单 / 下拉使用 `--menu-popup-*`（§3.8），未用 raised/glass/重阴影/主色洗底选中
+- [ ] 移动端滑动条使用 `NativeSlider`（§3.11：轨道 4、拇指 16、触控高 44），未在页面里再画轨道或拇指，未套用桌面 3px / 14px
+- [ ] 移动端弹窗 / 浮层内的 ScrollView 配置了 contentContainerStyle 的 paddingRight 呼吸间距（§3.12：对齐 SkillCitePreviewDialog，使用 sharedTokens.spacing.mdTight 或 tokens.spacing.mdTight），滚动条未紧贴或遮挡正文与列表
+- [ ] 移动端表单控件与按钮使用 `mobileControlTokens` 统一高度（§3.14：单行输入框、选择器与按钮统一 40px，同行时平齐对齐，TTS 等供应商下拉框与标题同行排布）
+
+机械检查（`pnpm lint` / `pnpm lint:css` 在本地和 CI 执行，不是应用运行时；提交前会跑，不必靠人工扫全仓）：
+
+- `pnpm lint`：ESLint `ui-theme/portal-must-clip-to-content-card` 查 `createPortal` 全屏遮罩是否调用 `withAppContentOverlay` / `Modal`（锚定菜单、Tooltip、拖拽预览、大图预览除外）。桌面与移动 TS/TSX 另以 **warning** 查 `ui-theme/no-hardcoded-font-size`：正文须用 `uiTypography` / `settingsTypography` / `mobileTypography`，图标须用 `iconSizes` / `settingsIcons`，展示大标题须用 `displaySizes`，或对应 CSS 变量。存量 warning 计入 `scripts/lint-warning-baseline.json`，新增会让 `pnpm lint` 失败。
+- `pnpm lint:css`：Stylelint 查业务 CSS 是否重画开关；并以 **warning** 列出写死的 `font-size` 像素（须改成 `var(--ui-fs-*)` / `var(--settings-font-*)` / `var(--mobile-fs-*)` / `var(--icon-fs-*)` / `var(--ui-display-*)`）。Stylelint 的 warning 目前不阻断 CI；清完存量后再改成 error。
+- `@baishou/ui` 测试：`settings-form-field-size.test.ts` 查设置区输入框尺寸；`ui-theme-guard.test.ts` 查 `[data-theme=dark]` 只允许出现在主题 SSOT、禁止写死 `#fff` / `white` 表面色、禁止 `var(--token, #hex)` 兜底、`top: 48px` / `52px` 平行裁切、禁止在业务 CSS 写死常见间距/圆角/时长像素。
+
+_—— 适用于桌面与移动前端组件渲染行为。_

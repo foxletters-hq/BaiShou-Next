@@ -1,19 +1,14 @@
 import i18n from 'i18next'
-import {
-  EMBEDDING_SOURCE_SORT_MILLIS_SQL,
-  EMBEDDING_SOURCE_SORT_ORDER_SQL,
-  buildDiaryEmbeddingGroupId,
-  filterDiaryScopedSearchResults,
-  logger,
-  SEMANTIC_SEARCH_TIMEOUT_MS,
-  timestampToMillis,
-  withPromiseTimeout
-} from '@baishou/shared'
+import { logger, type MemoryClearKind, type RagVectorKindFilter } from '@baishou/shared'
 import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
-import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
+import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
+import {
+  countAllMemoryEmbeddingsForVault,
+  countDiaryEmbeddingsForVault
+} from './mobile-diary-embedding.util'
+import { countEmbeddedGraphEntries } from './mobile-rag-vector-kind.helpers'
 import {
   chainRagProgressCallback,
-  diaryVaultListFilterSql,
   resolveEmbeddingAdapter,
   resolveVaultScope,
   type MobileRagServiceDeps,
@@ -24,17 +19,16 @@ import {
   runControlledDiaryBatchEmbed,
   runControlledDiaryBatchEmbedCore
 } from './mobile-rag-batch-embed.helpers'
+import { isMobileRagBatchBusy, setReembedInFlight } from './mobile-rag-state.helpers'
+import { HYBRID_SEARCH_TABLE, type RawSqlClient } from './mobile-rag-entry.helpers'
+import { queryMobileRagEntries } from './mobile-rag-query.helpers'
 import {
-  flushDeferredPostSyncEmbed,
-  isMobileRagBatchBusy,
-  setReembedInFlight
-} from './mobile-rag-state.helpers'
-
-const HYBRID_SEARCH_TABLE = 'memory_embeddings'
-
-type RawSqlClient = {
-  execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-}
+  addMobileManualMemory,
+  clearAllMobileRag,
+  clearMobileRagByKinds,
+  deleteMobileRagEntry,
+  editMobileRagEntry
+} from './mobile-rag-memory-write.helpers'
 
 export function createMobileRagService(deps: MobileRagServiceDeps) {
   const reembedAllInternal = async (onProgress?: RagProgressCallback): Promise<number> => {
@@ -78,10 +72,12 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       totalCount: number
       currentDimension: number
       diaryCountForVault: number
+      vaultTotalCount: number
       activeVaultName: string
     }> {
       const vaultScope = await resolveVaultScope(deps)
       const activeVaultName = await vaultScope.resolveActiveVaultName()
+      const activeVaultId = await vaultScope.resolveActiveVaultId()
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
       const rawClient = deps.rawSqlClient as RawSqlClient | undefined
       let totalCount = 0
@@ -102,7 +98,14 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         totalCount = ragConfig.totalEmbeddings || 0
       }
 
-      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultName)
+      const [diaryCountForVault, vaultMemoryCount, vaultGraphCount] = await Promise.all([
+        countDiaryEmbeddingsForVault(rawClient, activeVaultId),
+        countAllMemoryEmbeddingsForVault(rawClient, activeVaultId),
+        countEmbeddedGraphEntries(activeVaultId)
+      ])
+      const rawVaultTotal = vaultMemoryCount + vaultGraphCount
+      const vaultTotalCount =
+        rawVaultTotal > 0 ? rawVaultTotal : diaryCountForVault > 0 ? diaryCountForVault : 0
 
       let currentDimension = globalModels.globalEmbeddingDimension || 0
       try {
@@ -114,7 +117,13 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         logger.warn('[MobileRag] getCurrentEmbeddingMeta failed', e as Error)
       }
 
-      return { totalCount, currentDimension, diaryCountForVault, activeVaultName }
+      return {
+        totalCount,
+        currentDimension,
+        diaryCountForVault,
+        vaultTotalCount,
+        activeVaultName
+      }
     },
 
     async hasModelMismatch(): Promise<boolean> {
@@ -156,12 +165,25 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         return await reembedAllInternal(onProgress)
       } finally {
         setReembedInFlight(false)
-        await flushDeferredPostSyncEmbed()
       }
     },
 
     requestOperationAbort(): void {
       mobileRagOperationControl.requestAbort()
+      // 抽图队列独立于嵌入流水，取消整理时要一起停，否则会继续在后台跑。
+      mobileGraphExtractQueue.stop()
+    },
+
+    requestOperationPause(): void {
+      mobileRagOperationControl.requestPause()
+    },
+
+    requestOperationResume(): void {
+      mobileRagOperationControl.requestResume()
+    },
+
+    isOperationPaused(): boolean {
+      return mobileRagOperationControl.isPaused
     },
 
     async detectDimension(): Promise<number> {
@@ -215,183 +237,45 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       withTotal?: boolean
       minSimilarity?: number
       sourceType?: string
+      sourceKind?: RagVectorKindFilter
     }): Promise<{ entries: Array<Record<string, unknown>>; total: number }> {
-      const limit = params.limit ?? 10
-      const offset = params.offset ?? 0
-      const vaultScope = await resolveVaultScope(deps)
-      const activeVaultName = await vaultScope.resolveActiveVaultName()
-      const vaultGroupId = buildDiaryEmbeddingGroupId(activeVaultName)
-      const scopeFilter = diaryVaultListFilterSql(vaultGroupId)
-
-      if (params.mode === 'semantic' && params.keyword?.trim()) {
-        const keyword = params.keyword.trim()
-        try {
-          return await withPromiseTimeout(
-            (async () => {
-              const adapter = await resolveEmbeddingAdapter(deps)
-              if (!adapter) return { entries: [], total: 0 }
-
-              const vector = await adapter.embedQuery(keyword)
-              if (!vector?.length) return { entries: [], total: 0 }
-
-              const baseLimit = Math.max(limit, 50)
-              const fetchLimit =
-                params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
-              const results = filterDiaryScopedSearchResults(
-                await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
-                  threshold: params.minSimilarity,
-                  sourceType: params.sourceType
-                }),
-                activeVaultName
-              )
-              const entries = results.map((r) => ({
-                embeddingId: r.messageId,
-                text: r.chunkText,
-                createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-                sourceType: r.sourceType,
-                sourceId: r.sourceId,
-                similarity: r.score
-              }))
-              const sliced = entries.slice(offset, offset + limit)
-              return { entries: sliced, total: entries.length }
-            })(),
-            SEMANTIC_SEARCH_TIMEOUT_MS,
-            'semantic search'
-          )
-        } catch (error) {
-          logger.warn('[mobile-rag] semantic search failed', { error })
-          throw error
-        }
-      }
-
-      const keyword = params.keyword?.trim()
-      if (keyword) {
-        const fts = filterDiaryScopedSearchResults(
-          await deps.hsRepo.queryFTS(keyword, limit + offset),
-          activeVaultName
-        )
-        const page = fts.slice(offset, offset + limit).map((r) => ({
-          embeddingId: r.messageId,
-          text: r.chunkText,
-          createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-          sourceType: r.sourceType,
-          sourceId: r.sourceId
-        }))
-        return { entries: page, total: fts.length }
-      }
-
-      const client = deps.rawSqlClient as RawSqlClient | undefined
-      if (!client?.execute) return { entries: [], total: 0 }
-
-      const countRes = await client.execute({
-        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE ${scopeFilter.clause}`,
-        args: [...scopeFilter.args]
-      })
-      const countRow = countRes.rows?.[0] as Record<string, number> | undefined
-      const total = Number(countRow?.count ?? 0)
-
-      const listRes = await client.execute({
-        sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
-              ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
-              FROM ${HYBRID_SEARCH_TABLE}
-              WHERE ${scopeFilter.clause}
-              ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}
-              LIMIT ? OFFSET ?`,
-        args: [...scopeFilter.args, limit, offset]
-      })
-      const entries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) => ({
-        ...row,
-        createdAt: timestampToMillis(Number(row.createdAt)) ?? Date.now()
-      }))
-      return { entries, total }
+      return queryMobileRagEntries(deps, params)
     },
 
     async editEntry(embeddingId: string, newText: string): Promise<void> {
-      if (!newText.trim()) return
-      const adapter = await resolveEmbeddingAdapter(deps)
-      if (!adapter) {
-        throw new Error(
-          i18n.t(
-            'auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L296',
-            '嵌入模型未配置'
-          )
-        )
-      }
-
-      const client = deps.rawSqlClient as {
-        execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
-      }
-      if (!client?.execute) {
-        throw new Error(
-          i18n.t(
-            'auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L301',
-            '数据库不可用'
-          )
-        )
-      }
-
-      const rowRes = await client.execute({
-        sql: `SELECT source_type, source_id, group_id, chunk_index, metadata_json FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
-        args: [embeddingId]
-      })
-      const row = rowRes.rows?.[0] as Record<string, unknown> | undefined
-      if (!row) {
-        throw new Error(
-          i18n.t(
-            'auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L308',
-            '记忆条目不存在'
-          )
-        )
-      }
-
-      await deps.hsRepo.deleteEmbeddingsBySource(String(row.source_type), String(row.source_id))
-      await adapter.embedText({
-        text: newText,
-        sourceType: String(row.source_type),
-        sourceId: String(row.source_id),
-        groupId: String(row.group_id || 'manual_edit')
-      })
+      await editMobileRagEntry(deps, embeddingId, newText)
     },
 
     async addManualMemory(text: string): Promise<void> {
-      const adapter = await resolveEmbeddingAdapter(deps)
-      if (!adapter) {
-        throw new Error(
-          i18n.t(
-            'auto.apps.mobile.src.services.mobile.rag.service.impl.helpers.L321',
-            '嵌入模型未配置'
-          )
-        )
-      }
-      const id = `manual-${Date.now()}`
-      await adapter.embedText({
-        text,
-        sourceType: 'manual',
-        sourceId: id,
-        groupId: 'manual_memory'
-      })
+      await addMobileManualMemory(deps, text)
     },
 
     async deleteEntry(embeddingId: string): Promise<void> {
-      const client = deps.rawSqlClient as {
-        execute?: (q: { sql: string; args: unknown[] }) => Promise<unknown>
-      }
-      if (!client?.execute) return
-      await client.execute({
-        sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
-        args: [embeddingId]
-      })
+      await deleteMobileRagEntry(deps, embeddingId)
     },
 
     async clearAll(): Promise<void> {
-      await deps.hsRepo.clearEmbeddings()
-      const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
-      globalModels.globalEmbeddingDimension = 0
-      await deps.settingsManager.set('global_models', globalModels)
+      await clearAllMobileRag(deps)
+    },
 
-      const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
-      ragConfig.totalEmbeddings = 0
-      await deps.settingsManager.set('rag_config', ragConfig)
+    async clearKinds(kinds: MemoryClearKind[]): Promise<void> {
+      await clearMobileRagByKinds(deps, kinds)
+    },
+
+    async getUnindexedDiaryCount(): Promise<number> {
+      const { getPendingEmbedCounts } = await import('./mobile-pending-embed-counts')
+      const counts = await getPendingEmbedCounts(deps)
+      return counts.diaries
+    },
+
+    async getPendingEmbedCounts() {
+      const { getPendingEmbedCounts } = await import('./mobile-pending-embed-counts')
+      return getPendingEmbedCounts(deps)
+    },
+
+    async getOrganizePendingSnapshot() {
+      const { getOrganizePendingSnapshot } = await import('./mobile-pending-embed-counts')
+      return getOrganizePendingSnapshot(deps)
     }
   }
 

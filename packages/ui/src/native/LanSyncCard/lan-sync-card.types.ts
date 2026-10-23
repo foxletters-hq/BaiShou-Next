@@ -2,6 +2,7 @@ export interface DiscoveredDevice {
   deviceId: string
   nickname: string
   ip: string
+  ipCandidates?: string[]
   port: number
   deviceType: string
   rawServiceId: string

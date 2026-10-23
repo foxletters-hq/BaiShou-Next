@@ -10,17 +10,17 @@
 }
 
 .header {
-  padding: 24px;
+  padding: var(--spacing-lg);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--spacing-md);
 }
 
 .logoBox {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
-  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -39,7 +39,7 @@
 }
 
 .appName {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 700;
   color: var(--color-text-main);
   letter-spacing: -0.5px;
@@ -47,27 +47,29 @@
 }
 
 .tagline {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .navList {
   flex: 1;
-  padding: 0 16px;
+  padding: 0 var(--spacing-md);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  padding: 12px 12px;
-  border-radius: 10px;
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-control);
   cursor: pointer;
-  transition: all var(--animation-micro);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
   position: relative;
   background: transparent;
 }
@@ -77,8 +79,8 @@
 }
 
 .navItem.active {
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface-high);
+  box-shadow: none;
 }
 
 .navItem.dragging {
@@ -102,8 +104,8 @@
 }
 
 .dragIndicator {
-  font-size: 16px;
-  color: var(--color-text-secondary);
+  font-size: var(--ui-fs-xl);
+  color: var(--text-secondary);
 }
 
 .itemIcon {
@@ -112,13 +114,13 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  font-size: 18px;
-  color: var(--color-text-secondary);
+  font-size: var(--settings-font-page-title-size);
+  color: var(--text-secondary);
   transition: color var(--animation-micro);
 }
 
 .staticIcon {
-  margin-left: 20px; /* Align with dragged items excluding drag handle width */
+  margin-left: var(--spacing-md-plus); /* Align with dragged items excluding drag handle width */
 }
 
 .navItem.active .itemIcon {
@@ -126,42 +128,43 @@
 }
 
 .itemLabel {
-  margin-left: 12px;
-  font-size: 14px;
+  margin-left: var(--spacing-md-tight);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
-  color: var(--color-text-secondary);
+  line-height: 1.25;
+  color: var(--text-primary);
   transition: all var(--animation-micro);
 }
 
 .navItem.active .itemLabel {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--color-primary);
 }
 
 .divider {
   height: 1px;
   background: rgba(128, 128, 128, 0.15);
-  margin: 12px 0;
+  margin: var(--spacing-md-tight) 0;
 }
 
 .footer {
-  padding: 20px;
-  border-top: 1px solid rgba(128, 128, 128, 0.15);
+  padding: var(--spacing-md-plus);
+  border-top: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(91, 168, 245, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   display: flex;
   justify-content: center;
   align-items: center;
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: 600;
   overflow: hidden;
 }
 
@@ -177,8 +180,8 @@
 }
 
 .nickname {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
   color: var(--color-text-main);
   white-space: nowrap;
   overflow: hidden;

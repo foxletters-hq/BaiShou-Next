@@ -1,9 +1,9 @@
 .root {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   width: 100%;
-  margin: 8px 0 20px;
+  margin: var(--spacing-sm) 0 var(--spacing-md-plus);
   padding: 0;
   box-sizing: border-box;
 }
@@ -14,32 +14,23 @@
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.2)) 70%, transparent) 20%,
-    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.2)) 70%, transparent) 80%,
+    color-mix(in srgb, var(--border-control) 70%, transparent) 20%,
+    color-mix(in srgb, var(--border-control) 70%, transparent) 80%,
     transparent
   );
-  background-color: color-mix(
-    in srgb,
-    var(--color-outline, rgba(255, 255, 255, 0.18)) 100%,
-    transparent
-  );
+  background-color: color-mix(in srgb, var(--border-control) 100%, transparent);
   min-width: 24px;
 }
 
 .label {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: var(--color-on-surface-variant, rgba(255, 255, 255, 0.55));
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid
-    color-mix(in srgb, var(--color-outline, rgba(255, 255, 255, 0.15)) 100%, transparent);
-  background: color-mix(
-    in srgb,
-    var(--color-surface-container, rgba(255, 255, 255, 0.04)) 100%,
-    transparent
-  );
+  color: var(--text-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface-normal);
   white-space: nowrap;
 }

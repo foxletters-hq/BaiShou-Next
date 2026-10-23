@@ -5,17 +5,20 @@ import {
   Archive,
   BookOpen,
   Cable,
+  Layers,
   Cloud,
-  Database,
   Globe,
   GraduationCap,
+  Coffee,
   History,
   Library,
+  MessageCircle,
   NotebookPen,
   Paperclip,
   Puzzle,
   RefreshCw,
   Settings,
+  PawPrint,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -29,19 +32,29 @@ export function sidebarNavIcon(icon: React.ReactElement<{ size?: number }>): Rea
   return React.cloneElement(icon, { size: SIDEBAR_NAV_ICON_SIZE })
 }
 
-export const DEFAULT_VISIBLE_NAV_IDS = ['diary', 'summary', 'incremental-sync', 'git'] as const
+/** 双主场后：工作台改由顶栏进入；伙伴进侧栏默认可见。版本控制不默认露出（增量同步流程里会提醒开启） */
+export const DEFAULT_VISIBLE_NAV_IDS = [
+  'diary',
+  'companion',
+  'summary',
+  'memory',
+  'incremental-sync'
+] as const
 
-/** 与系统设置侧边栏条目一一对应（另含日记区核心页 diary / summary） */
+/** 与系统设置分类对应（另含日记区核心页 diary / companion / summary） */
 export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
+  'companion',
+  'workbench',
   'summary',
+  'memory',
   'diary-template',
   'general',
   'mcp',
   'ai-services',
   'ai-models',
   'assistants',
-  'rag',
+  'latte',
   'web-search',
   'agent-tools',
   'summary-settings',
@@ -91,7 +104,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L89',
       '日记与回忆'
     ),
-    itemIds: ['diary', 'summary', 'diary-template', 'summary-settings']
+    itemIds: ['diary', 'companion', 'summary', 'memory', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',
@@ -109,7 +122,13 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L101',
       'AI 与模型'
     ),
-    itemIds: ['ai-services', 'ai-models', 'assistants']
+    itemIds: ['ai-services', 'ai-models', 'tts']
+  },
+  {
+    key: 'settings-companion',
+    labelKey: 'settings.nav_group_companion',
+    defaultLabel: i18n.t('settings.nav_group_companion', '伙伴'),
+    itemIds: ['assistants', 'latte', 'agent-tools']
   },
   {
     key: 'memory',
@@ -118,7 +137,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L107',
       '记忆与工具'
     ),
-    itemIds: ['rag', 'web-search', 'agent-tools', 'tts']
+    itemIds: ['web-search']
   },
   {
     key: 'sync',
@@ -133,14 +152,17 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
 
 export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
+  companion: '/chat',
+  workbench: '/agent-workspace',
   summary: '/summary',
+  memory: '/memory',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
   general: `${SETTINGS_HUB_PREFIX}/general`,
   mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
   'ai-services': `${SETTINGS_HUB_PREFIX}/ai-services`,
   'ai-models': `${SETTINGS_HUB_PREFIX}/ai-models`,
   assistants: `${SETTINGS_HUB_PREFIX}/assistants`,
-  rag: `${SETTINGS_HUB_PREFIX}/rag`,
+  latte: `${SETTINGS_HUB_PREFIX}/latte`,
   'web-search': `${SETTINGS_HUB_PREFIX}/web-search`,
   'agent-tools': `${SETTINGS_HUB_PREFIX}/agent-tools`,
   'summary-settings': `${SETTINGS_HUB_PREFIX}/summary`,
@@ -162,10 +184,25 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
   const icon = sidebarNavIcon
   return {
     diary: { icon: icon(<BookOpen />), label: t('diary.title', '日记'), path: '/diary' },
+    companion: {
+      icon: icon(<MessageCircle />),
+      label: t('nav.agent', '伙伴'),
+      path: '/chat'
+    },
+    workbench: {
+      icon: icon(<Layers />),
+      label: t('nav.workbench', '工作台'),
+      path: '/agent-workspace'
+    },
     summary: {
       icon: icon(<Library />),
       label: t('summary.dashboard_title', '回忆'),
       path: '/summary'
+    },
+    memory: {
+      icon: icon(<PawPrint />),
+      label: t('nav.memory', '记忆'),
+      path: '/memory'
     },
     'diary-template': {
       icon: icon(<NotebookPen />),
@@ -197,10 +234,10 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       label: t('agent.assistant.settings_entry', '伙伴管理'),
       path: `${SETTINGS_HUB_PREFIX}/assistants`
     },
-    rag: {
-      icon: icon(<Database />),
-      label: t('agent.rag.title', 'RAG 记忆管理'),
-      path: `${SETTINGS_HUB_PREFIX}/rag`
+    latte: {
+      icon: icon(<Coffee />),
+      label: t('settings.latte_settings_title', 'Latte'),
+      path: `${SETTINGS_HUB_PREFIX}/latte`
     },
     'web-search': {
       icon: icon(<Globe />),
@@ -209,7 +246,7 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
     },
     'agent-tools': {
       icon: icon(<Puzzle />),
-      label: t('settings.agent_tools_title', '工具管理'),
+      label: t('settings.companion_chat_tools_title', '伙伴对话'),
       path: `${SETTINGS_HUB_PREFIX}/agent-tools`
     },
     'summary-settings': {

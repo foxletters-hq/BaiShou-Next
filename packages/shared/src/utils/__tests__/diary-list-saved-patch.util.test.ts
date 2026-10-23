@@ -17,4 +17,13 @@ describe('buildDiaryListSavedPatch', () => {
   it('returns null without id', () => {
     expect(buildDiaryListSavedPatch({ content: 'x' })).toBeNull()
   })
+
+  it('reads tags from diary body when metadata tags are empty', () => {
+    const patch = buildDiaryListSavedPatch({
+      id: 2,
+      content: '##### 12:30\n\n#工作\n\n开会',
+      tags: ''
+    })
+    expect(patch?.tags).toEqual(['工作'])
+  })
 })

@@ -1,35 +1,25 @@
-import type { IFileSystem } from '@baishou/core-mobile'
+import type { IFileSystem, RawDataSourceManager } from '@baishou/core-mobile'
 import type {
   SyncManifest,
   S3SyncConfig,
-  ManifestEntry,
   MergeDecision,
   IncrementalSyncRunOptions,
   IncrementalSyncStorageHistory
 } from '@baishou/shared'
 import {
-  createEmptySyncManifest,
-  getIncrementalSyncStorageId,
-  isIncrementalSyncRemoteFileNotFoundError,
-  normalizeSyncManifest,
-  reconcileSyncManifestRemovedWithRemoteFiles,
-  resolveIncrementalSyncStorageHistory,
-  upsertManifestPathEntries,
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
-  SYNC_STORAGE_ID_FILENAME
+  SYNC_REMOTE_VAULTS_FILENAME,
+  SYNC_STORAGE_ID_FILENAME,
+  type LastRemoteVaultsSnapshot
 } from '@baishou/shared'
 import type { IStoragePathService } from '@baishou/core-mobile'
-import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 import {
   writeIncrementalSyncSession,
   type IncrementalSyncSessionMode
 } from './mobile-incremental-sync-session.util'
 import { IncrementalManifestCommitQueue } from './mobile-incremental-manifest-commit.util'
-import { resolveMobileIncrementalSyncFullPath } from './mobile-incremental-sync-path.util'
-import { md5HexForSyncFile } from './mobile-sync-file-md5.util'
-import { loadVaultExternalSyncMounts } from '@baishou/core-mobile'
 import type { VaultExternalSyncMount } from '@baishou/shared'
 import type {
   MobileIncrementalExecutionContext,
@@ -49,16 +39,28 @@ import {
   trackInFlightTransfer as trackInFlightTransferHelper
 } from './mobile-incremental-engine-transfer.helpers'
 import { createCheckpointRuntime as createCheckpointRuntimeHelper } from './mobile-incremental-engine-checkpoint.helpers'
-
-function joinPath(...parts: string[]): string {
-  return parts
-    .map((p, i) => {
-      if (i === 0) return p.replace(/\/$/, '')
-      return p.replace(/^\//, '').replace(/\/$/, '')
-    })
-    .filter(Boolean)
-    .join('/')
-}
+import { joinIncrementalPath } from './mobile-incremental-engine-path.util'
+import {
+  emptyIncrementalManifest,
+  fetchRemoteManifestLight,
+  getIncrementalRemoteManifest,
+  getIncrementalSyncStorageHistoryState,
+  loadIncrementalRemoteSnapshot,
+  loadLastRemoteVaultsSnapshot,
+  loadLocalVaultIdToNameMap,
+  mergeIncrementalManifestFileCaches,
+  readIncrementalLocalManifestFile,
+  refreshIncrementalCheckpointForPaths,
+  saveIncrementalLocalManifest,
+  saveIncrementalRemoteSnapshot,
+  saveLastRemoteVaultsSnapshot
+} from './mobile-incremental-engine-io.helpers'
+import {
+  backupIncrementalLocalFile,
+  downloadIncrementalSyncFile,
+  loadExternalSyncMounts,
+  resolveIncrementalSyncFullPath
+} from './mobile-incremental-engine-file.ops'
 
 export type IncrementalEngineHost = {
   pathService: IStoragePathService
@@ -81,6 +83,8 @@ export type IncrementalEngineHost = {
   lastConflicts: string[]
   setLastConflicts(v: string[]): void
   invalidateExternalSyncMounts(): void
+  /** Prefer Manager when rewriting a monthly JSONL shard after sync. */
+  getRawDataSourceManager?: () => RawDataSourceManager | null
 }
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
@@ -124,7 +128,7 @@ export class MobileIncrementalEngineWorker {
   }
 
   manifestPath(metaDir: string): string {
-    return joinPath(metaDir, SYNC_MANIFEST_FILENAME)
+    return joinIncrementalPath(metaDir, SYNC_MANIFEST_FILENAME)
   }
 
   enqueueRemoteManifestUpload(
@@ -141,7 +145,11 @@ export class MobileIncrementalEngineWorker {
   }
 
   snapshotPath(metaDir: string): string {
-    return joinPath(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
+    return joinIncrementalPath(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
+  }
+
+  lastRemoteVaultsPath(metaDir: string): string {
+    return joinIncrementalPath(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
   }
 
   async buildLocalManifest(
@@ -253,110 +261,85 @@ export class MobileIncrementalEngineWorker {
 
   async saveLocalManifest(manifest: SyncManifest): Promise<void> {
     const metaDir = await this.syncMetaDir()
-    const mp = this.manifestPath(metaDir)
-    if (!(await this.host.fileSystem.exists(metaDir))) {
-      await this.host.fileSystem.mkdir(metaDir, { recursive: true })
-    }
-    await this.host.fileSystem.writeFile(mp, JSON.stringify(manifest, null, 2))
+    await saveIncrementalLocalManifest(this.host, metaDir, this.manifestPath(metaDir), manifest)
   }
 
   storageIdPath(metaDir: string): string {
-    return joinPath(metaDir, SYNC_STORAGE_ID_FILENAME)
+    return joinIncrementalPath(metaDir, SYNC_STORAGE_ID_FILENAME)
   }
 
   emptyManifest(): SyncManifest {
-    return createEmptySyncManifest(this.host.deviceId)
+    return emptyIncrementalManifest(this.host.deviceId)
   }
 
   /** 合并磁盘与内存中的 manifest 条目，较新的来源覆盖较旧（用于跳过未变更文件的 MD5） */
   mergeManifestFileCaches(...sources: Array<SyncManifest | null | undefined>): SyncManifest {
-    const merged = this.emptyManifest()
-    for (const source of sources) {
-      if (!source?.files) continue
-      Object.assign(merged.files, source.files)
-    }
-    return merged
+    return mergeIncrementalManifestFileCaches(this.host.deviceId, ...sources)
   }
 
   async fetchRemoteManifestLight(config: S3SyncConfig, syncRoot: string): Promise<SyncManifest> {
-    const client = new MobileIncrementalCloudClient(config, this.host.fileSystem)
-    client.setVaultPath(syncRoot)
-    const rel = `.baishou/${SYNC_MANIFEST_FILENAME}`
-    const temp = `${getAppCacheDirectory()}temp-remote-scopes-${Date.now()}.json`
-    try {
-      await client.downloadFile(rel, temp)
-      const raw = await this.host.fileSystem.readFile(temp)
-      return normalizeSyncManifest(JSON.parse(raw) as SyncManifest)
-    } catch {
-      return this.emptyManifest()
-    } finally {
-      await this.host.fileSystem.unlink(temp).catch(() => {})
-    }
+    return fetchRemoteManifestLight(this.host, config, syncRoot)
   }
 
   async readLocalManifestFile(): Promise<SyncManifest> {
     const metaDir = await this.syncMetaDir()
-    const mp = this.manifestPath(metaDir)
-    if (!(await this.host.fileSystem.exists(mp))) {
-      return this.emptyManifest()
-    }
-    const raw = await this.host.fileSystem.readFile(mp)
-    return JSON.parse(raw) as SyncManifest
+    return readIncrementalLocalManifestFile(this.host, this.manifestPath(metaDir))
   }
 
   async getSyncStorageHistoryState(config: S3SyncConfig): Promise<IncrementalSyncStorageHistory> {
     const metaDir = await this.syncMetaDir()
-    const storageIdPath = this.storageIdPath(metaDir)
-    if (!(await this.host.fileSystem.exists(storageIdPath))) {
-      return 'none'
-    }
-    try {
-      const savedId = (await this.host.fileSystem.readFile(storageIdPath)).trim()
-      return resolveIncrementalSyncStorageHistory(savedId, config)
-    } catch {
-      return 'mismatch'
-    }
+    return getIncrementalSyncStorageHistoryState(this.host, config, this.storageIdPath(metaDir))
   }
 
   async loadRemoteSnapshot(config: S3SyncConfig): Promise<SyncManifest> {
     const metaDir = await this.syncMetaDir()
-    const sp = this.snapshotPath(metaDir)
-    if (!(await this.host.fileSystem.exists(sp))) {
-      return this.emptyManifest()
-    }
-
-    const storageIdPath = this.storageIdPath(metaDir)
-    const currentStorageId = getIncrementalSyncStorageId(config)
-    if (await this.host.fileSystem.exists(storageIdPath)) {
-      try {
-        const savedId = (await this.host.fileSystem.readFile(storageIdPath)).trim()
-        if (savedId !== currentStorageId) {
-          return this.emptyManifest()
-        }
-      } catch {
-        return this.emptyManifest()
-      }
-    } else {
-      return this.emptyManifest()
-    }
-
-    try {
-      return JSON.parse(await this.host.fileSystem.readFile(sp)) as SyncManifest
-    } catch {
-      return this.emptyManifest()
-    }
+    return loadIncrementalRemoteSnapshot(
+      this.host,
+      config,
+      this.snapshotPath(metaDir),
+      this.storageIdPath(metaDir)
+    )
   }
 
   async saveRemoteSnapshot(manifest: SyncManifest, config: S3SyncConfig): Promise<void> {
     const metaDir = await this.syncMetaDir()
-    const sp = this.snapshotPath(metaDir)
-    if (!(await this.host.fileSystem.exists(metaDir))) {
-      await this.host.fileSystem.mkdir(metaDir, { recursive: true })
-    }
-    await this.host.fileSystem.writeFile(sp, JSON.stringify(manifest, null, 2))
-    await this.host.fileSystem.writeFile(
+    await saveIncrementalRemoteSnapshot(
+      this.host,
+      manifest,
+      config,
+      metaDir,
+      this.snapshotPath(metaDir),
+      this.storageIdPath(metaDir)
+    )
+  }
+
+  async loadLocalVaultIdToNameMap(): Promise<Record<string, string>> {
+    return loadLocalVaultIdToNameMap(this.host, await this.syncRoot())
+  }
+
+  async loadLastRemoteVaultsSnapshot(config: S3SyncConfig): Promise<LastRemoteVaultsSnapshot> {
+    const metaDir = await this.syncMetaDir()
+    return loadLastRemoteVaultsSnapshot(
+      this.host,
+      config,
+      this.lastRemoteVaultsPath(metaDir),
+      this.storageIdPath(metaDir)
+    )
+  }
+
+  async saveLastRemoteVaultsSnapshot(
+    config: S3SyncConfig,
+    vaults?: Record<string, string>
+  ): Promise<void> {
+    const metaDir = await this.syncMetaDir()
+    await saveLastRemoteVaultsSnapshot(
+      this.host,
+      config,
+      metaDir,
+      this.lastRemoteVaultsPath(metaDir),
       this.storageIdPath(metaDir),
-      getIncrementalSyncStorageId(config)
+      vaults,
+      () => this.loadLocalVaultIdToNameMap()
     )
   }
 
@@ -364,46 +347,21 @@ export class MobileIncrementalEngineWorker {
    * 收尾写盘后二次定稿：重算指定相对路径的 hash，更新 local + ancestor，并上传远端 manifest。
    */
   async refreshCheckpointForPaths(config: S3SyncConfig, relPaths: string[]): Promise<void> {
-    const unique = [...new Set(relPaths.map((p) => p.replace(/\\/g, '/')).filter(Boolean))]
-    if (unique.length === 0) return
-
     const syncRoot = await this.syncRoot()
-    const updates: Record<string, ManifestEntry | null> = {}
-
-    for (const relPath of unique) {
-      const fullPath = await this.resolveSyncFullPath(syncRoot, relPath)
-      const exists = await this.host.fileSystem.exists(fullPath)
-      if (!exists) {
-        updates[relPath] = null
-        continue
-      }
-      const stat = await this.host.fileSystem.stat(fullPath).catch(() => null)
-      if (!stat?.isFile) {
-        updates[relPath] = null
-        continue
-      }
-      const hash = await md5HexForSyncFile(this.host.fileSystem, fullPath)
-      updates[relPath] = {
-        hash,
-        size: stat.size ?? 0,
-        lastModified: stat.mtimeMs ?? Date.now()
-      }
-    }
-
-    const local = await this.readLocalManifestFile()
-    const ancestor = await this.loadRemoteSnapshot(config)
-    const nextLocal = upsertManifestPathEntries(local, updates)
-    const nextAncestor = upsertManifestPathEntries(ancestor, updates)
-    await this.saveLocalManifest(nextLocal)
-    await this.saveRemoteSnapshot(nextAncestor, config)
-
     const metaDir = await this.syncMetaDir()
     const client = new MobileIncrementalCloudClient(config, this.host.fileSystem)
     client.setVaultPath(syncRoot)
-    await this.flushRemoteManifestCheckpoint(metaDir, client)
-    console.warn('[IncrementalSync][Checkpoint] refreshCheckpointForPaths', {
-      pathCount: unique.length,
-      paths: unique.slice(0, 8)
+    await refreshIncrementalCheckpointForPaths({
+      host: this.host,
+      config,
+      relPaths,
+      syncRoot,
+      resolveSyncFullPath: (root, rel) => this.resolveSyncFullPath(root, rel),
+      readLocalManifest: () => this.readLocalManifestFile(),
+      loadRemoteSnapshot: () => this.loadRemoteSnapshot(config),
+      saveLocalManifest: (manifest) => this.saveLocalManifest(manifest),
+      saveRemoteSnapshot: (manifest) => this.saveRemoteSnapshot(manifest, config),
+      flushRemoteManifest: () => this.flushRemoteManifestCheckpoint(metaDir, client)
     })
   }
 
@@ -411,37 +369,7 @@ export class MobileIncrementalEngineWorker {
     client: MobileIncrementalCloudClient,
     onProgress?: (current: number, total: number, fileName: string) => void
   ): Promise<SyncManifest> {
-    onProgress?.(0, 0, '')
-    const files = await client.listFiles()
-    const actualFilesSet = new Set(files.map((f) => f.filename.replace(/\\/g, '/')))
-    const hit = files.find(
-      (f) =>
-        f.filename === SYNC_MANIFEST_FILENAME ||
-        f.filename.endsWith(`/${SYNC_MANIFEST_FILENAME}`) ||
-        f.filename.endsWith(`.baishou/${SYNC_MANIFEST_FILENAME}`)
-    )
-    if (!hit) {
-      return this.emptyManifest()
-    }
-    const temp = `${getAppCacheDirectory()}temp-remote-${Date.now()}.json`
-    await client.downloadFile(hit.filename, temp)
-    const raw = await this.host.fileSystem.readFile(temp)
-    await this.host.fileSystem.unlink(temp)
-    const manifest = normalizeSyncManifest(JSON.parse(raw) as SyncManifest)
-
-    if (manifest.files) {
-      const cleanFiles: Record<string, ManifestEntry> = {}
-      for (const [relPath, entry] of Object.entries(manifest.files)) {
-        const normalizedPath = relPath.replace(/\\/g, '/')
-        if (actualFilesSet.has(normalizedPath)) {
-          cleanFiles[normalizedPath] = entry
-        }
-      }
-      manifest.files = cleanFiles
-      return reconcileSyncManifestRemovedWithRemoteFiles(manifest, actualFilesSet)
-    }
-
-    return manifest
+    return getIncrementalRemoteManifest(this.host, client, onProgress)
   }
 
   async downloadSyncFile(
@@ -450,41 +378,26 @@ export class MobileIncrementalEngineWorker {
     fullPath: string,
     size: number
   ): Promise<boolean> {
-    try {
-      await client.downloadFile(relPath, fullPath, size > 0 ? size : undefined)
-      return await this.host.fileSystem.exists(fullPath)
-    } catch (error) {
-      if (isIncrementalSyncRemoteFileNotFoundError(error)) {
-        console.warn(`[MobileIncremental] Remote file missing, skip download: ${relPath}`)
-        return false
-      }
-      throw error
-    }
+    return downloadIncrementalSyncFile(this.host.fileSystem, client, relPath, fullPath, size)
   }
 
   async backupLocalFile(syncRoot: string, relPath: string): Promise<void> {
     const src = await this.resolveSyncFullPath(syncRoot, relPath)
-    if (!(await this.host.fileSystem.exists(src))) return
-    const backupFile = joinPath(syncRoot, '.versions', relPath, `${Date.now()}.bak`)
-    const bdir = backupFile.replace(/\/[^/]+$/, '')
-    if (!(await this.host.fileSystem.exists(bdir))) {
-      await this.host.fileSystem.mkdir(bdir, { recursive: true })
-    }
-    await this.host.fileSystem.copyFile(src, backupFile)
+    await backupIncrementalLocalFile(this.host.fileSystem, src, syncRoot, relPath)
   }
 
   async resolveSyncFullPath(syncRoot: string, relPath: string): Promise<string> {
     const mounts = await this.getExternalSyncMounts(syncRoot)
-    return resolveMobileIncrementalSyncFullPath(this.host.fileSystem, syncRoot, relPath, mounts)
+    return resolveIncrementalSyncFullPath(this.host.fileSystem, syncRoot, relPath, mounts)
   }
 
   private async getExternalSyncMounts(syncRoot: string): Promise<VaultExternalSyncMount[]> {
-    if (!this.host.externalSyncMounts) {
-      this.host.setExternalSyncMounts(
-        await loadVaultExternalSyncMounts(this.host.fileSystem, syncRoot)
-      )
-    }
-    return this.host.externalSyncMounts!
+    return loadExternalSyncMounts(
+      this.host.fileSystem,
+      syncRoot,
+      this.host.externalSyncMounts,
+      (v) => this.host.setExternalSyncMounts(v)
+    )
   }
 
   async syncThreeWay(

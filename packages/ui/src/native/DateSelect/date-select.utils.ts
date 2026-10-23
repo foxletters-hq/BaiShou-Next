@@ -1,17 +1,17 @@
 export const WHEEL_ITEM_HEIGHT = 44
 export const WHEEL_PAD_COUNT = 2
 
-/** 从 2000 年到当前年份 +30 年 */
-export function getPickerYearRange(): number[] {
+/** 默认从 2000 年到当前年份 +30 年；可按生日等场景扩展 */
+export function getPickerYearRange(opts?: { startYear?: number; endYear?: number }): number[] {
   const currentYear = new Date().getFullYear()
-  const startYear = 2000
-  const endYear = currentYear + 30
-  const length = endYear - startYear + 1
+  const startYear = opts?.startYear ?? 2000
+  const endYear = opts?.endYear ?? currentYear + 30
+  const length = Math.max(0, endYear - startYear + 1)
   return Array.from({ length }, (_, i) => startYear + i)
 }
 
-export function getDatePickerYears(): number[] {
-  return getPickerYearRange()
+export function getDatePickerYears(opts?: { startYear?: number; endYear?: number }): number[] {
+  return getPickerYearRange(opts)
 }
 
 export function daysInMonth(year: number, monthIndex: number): number {

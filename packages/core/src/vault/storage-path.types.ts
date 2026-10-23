@@ -5,6 +5,24 @@ export interface IStoragePathService {
   getGlobalRegistryDirectory(): Promise<string>
 
   /**
+   * 本机持久化的活跃仓库 id（V2-D6）。
+   * 存于桌面 baishou_settings.json / 移动 AsyncStorage，**不进** vault_registry、不同步。
+   * 未实现时 VaultService 仅回退 lastAccessedAt。
+   */
+  getLocalActiveVaultId?(): Promise<string | null>
+
+  /**
+   * 写入本机活跃仓库 id（切仓时调用）。
+   */
+  setLocalActiveVaultId?(vaultId: string): Promise<void>
+
+  /**
+   * 当前活跃 Vault 显示名（供上下文/日志；勿作 DB 键）。
+   * 未实现时调用方回退 Personal。
+   */
+  getActiveVaultNameForContext?(): Promise<string>
+
+  /**
    * 获取当前活跃 Vault 的物理路径
    */
   getActiveVaultPath(): Promise<string | null>
@@ -20,9 +38,15 @@ export interface IStoragePathService {
   getVaultSystemDirectory(vaultName: string): Promise<string>
 
   /**
-   * 当前活跃 Vault 的 .baishou 目录（settings.json 等）
+   * 当前活跃 Vault 的 .baishou 目录（仓内元数据；历史上也曾存放 settings）
    */
   getActiveVaultSettingsDirectory(): Promise<string>
+
+  /**
+   * 全局应用设置目录（存储根下 `.baishou/settings/`，不随工作空间切换）
+   * 不强制创建 settings 子目录本身，由写入方 mkdir。
+   */
+  getGlobalSettingsDirectory(): Promise<string>
 
   /**
    * 获取全局 Shadow DB 目录（单库 shadow_index_v2.db，所有 Vault 共用）
@@ -63,6 +87,16 @@ export interface IStoragePathService {
   getSessionsBaseDirectory(): Promise<string>
 
   /**
+   * 伙伴记忆原始数据源：Memory/ 月分片 JSONL
+   */
+  getMemoryBaseDirectory(): Promise<string>
+
+  /**
+   * 记忆图谱原始数据源：Graph/（nodes/edges/extract-state）
+   */
+  getGraphBaseDirectory(): Promise<string>
+
+  /**
    * 返回当前活动 Vault 下用于存放用户设置的 AI 模型助手角色位置
    */
   getAssistantsBaseDirectory(): Promise<string>
@@ -71,6 +105,11 @@ export interface IStoragePathService {
    * 返回当前活动 Vault 下附件与多媒体中心目录
    */
   getAttachmentsBaseDirectory(): Promise<string>
+
+  /**
+   * 知识库原始资料根目录：`<vault>/Notebooks/`
+   */
+  getNotebooksBaseDirectory(): Promise<string>
 
   /**
    * 返回专门用于存放全局用户与伙伴头像的统一子目录

@@ -6,47 +6,57 @@ import { executeRawSql } from './raw-sql.executor'
 import { FTS_SYNC_TRIGGER_STATEMENTS } from './schema/fts'
 import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
 import { isAgentMigrationArchiveImport } from './migration-context'
+import type {
+  EmbeddedMigrations,
+  MigrationJournal,
+  MigrationSqlExecutor
+} from './migration.service.types'
 import {
-  AGENT_DB_COLUMN_PATCHES,
-  MEMORY_EMBEDDINGS_CREATE_SQL,
-  MEMORY_EMBEDDINGS_INDEX_SQL,
-  SYSTEM_SETTINGS_CREATE_SQL
-} from './agent-schema-compat'
+  backfillAgentMessagesOrderIndex,
+  backfillMemoryEmbeddingsVaultNameColumn,
+  ensureAgentSchemaColumns,
+  ensureCompressionSnapshotsCompatibility,
+  ensureEmbedLedgerTable,
+  ensureGraphTables,
+  ensureMemoryEmbeddingsTable,
+  ensureMemoryEmbeddingsVaultIndex,
+  ensureSystemSettingsTable,
+  migrateSummariesAndAssistantsVault,
+  migrateVaultNameToVaultId,
+  retireDiaryEmbedJobsTable
+} from './migration.service.schema'
 
-export interface MigrationJournal {
-  version: string
-  dialect: string
-  entries: Array<{
-    idx: number
-    version: string
-    when: number
-    tag: string
-    breakpoints: boolean
-  }>
-}
+export type { EmbeddedMigrations, MigrationJournal } from './migration.service.types'
+
+export const AGENT_SCHEMA_COMPAT_VERSION_KEY = '__agent_schema_compat_version'
+export const AGENT_SCHEMA_COMPAT_VERSION = 'v1'
 
 /**
  * Agent DB 迁移服务
  *
- * 仅负责 Agent 数据库（baishou_agent.db）的 schema 迁移。
+ * 仅负责 Agent 数据库的 schema 迁移。
  * 影子索引（shadow_index.db）的建表由 ShadowIndexConnectionManager 独立管理。
  */
-export interface EmbeddedMigrations {
-  journal: MigrationJournal
-  sqlByTag: Record<string, string>
-}
-
 export class MigrationService {
   private db: AppDatabase
-  private client: any // 兼容 LibSQL.Client、Better-SQLite3、expo-sqlite
+  private client: any
   private migrationDir: string
   private embedded?: EmbeddedMigrations
+  /** 可选：存储根，用于读 vault_registry.json 做 name→id 回填 */
+  private storageRoot?: string
 
-  constructor(db: AppDatabase, client: any, migrationDir: string, embedded?: EmbeddedMigrations) {
+  constructor(
+    db: AppDatabase,
+    client: any,
+    migrationDir: string,
+    embedded?: EmbeddedMigrations,
+    options?: { storageRoot?: string }
+  ) {
     this.db = db
     this.client = client
     this.migrationDir = migrationDir
     this.embedded = embedded
+    this.storageRoot = options?.storageRoot
   }
 
   private async _executeSql(statement: string, args: any[] = []): Promise<any> {
@@ -61,7 +71,7 @@ export class MigrationService {
     try {
       logger.info('[MigrationService] 检查 Agent DB 迁移，目录:', this.migrationDir)
 
-      // 归档导入的旧库可能缺 order_index 等列；在任何 Drizzle agent_* 查询前补齐
+      // 归档导入的旧库可能缺 order_index 等列；在任何 agent_* 查询前补齐
       if (isAgentMigrationArchiveImport()) {
         await this._ensureAgentSchemaColumns()
       }
@@ -71,7 +81,6 @@ export class MigrationService {
       if (!hasMigrationsTable) {
         logger.info('[MigrationService] 未发现迁移跟踪表，判断是否为旧库...')
         try {
-          // 检测旧版 DB：如果有 agent_sessions 表但没有迁移跟踪，视为旧库
           const legacyCheck = await this._executeSql(
             `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_sessions'`
           )
@@ -86,7 +95,6 @@ export class MigrationService {
             `)
             hasMigrationsTable = true
 
-            // 标记首个迁移已执行（旧库已有这些表）
             const journal = await this.readMigrationJournal()
             const firstMigration = journal.entries[0]
             if (firstMigration) {
@@ -95,12 +103,9 @@ export class MigrationService {
                 [firstMigration.idx, firstMigration.tag, Date.now()]
               )
 
-              // 确保旧库中的 compression_snapshots 有正确的字段类型
               logger.info('[MigrationService] 检查旧库 compression_snapshots 字段兼容性...')
               await this._ensureCompressionSnapshotsCompatibility()
-              // 旧版 agent.sqlite 仅有部分 0000 表，回填迁移记录后仍需补齐 Next 新增表
-              await this._ensureSystemSettingsTable()
-              await this._ensureMemoryEmbeddingsTable()
+              await this._ensureCompatSchema()
             }
           }
         } catch (e: any) {
@@ -111,10 +116,7 @@ export class MigrationService {
       const journal = await this.readMigrationJournal()
       if (journal.entries.length === 0) {
         logger.info('[MigrationService] 迁移日志为空，无需执行。')
-        await this._ensureSystemSettingsTable()
-        await this._ensureMemoryEmbeddingsTable()
-        await this._ensureAgentSchemaColumns()
-        await this._backfillAgentMessagesOrderIndex()
+        await this._ensureCompatSchema()
         return
       }
 
@@ -127,6 +129,12 @@ export class MigrationService {
 
       if (pendingMigrations.length === 0) {
         logger.info('[MigrationService] Agent DB Schema 已是最新版本。')
+        if (!isAgentMigrationArchiveImport() && (await this._isSchemaCompatCurrent())) {
+          logger.info(
+            '[MigrationService] Agent DB Schema 兼容性与 FTS 索引均为最新，跳过重复回填与重建。'
+          )
+          return
+        }
       } else {
         logger.info(`[MigrationService] 发现 ${pendingMigrations.length} 个待执行迁移...`)
         for (const migration of pendingMigrations) {
@@ -180,10 +188,8 @@ export class MigrationService {
         logger.warn('[MigrationService] Agent FTS 基础设施初始化失败（非阻塞）:', e.message)
       }
 
-      await this._ensureSystemSettingsTable()
-      await this._ensureMemoryEmbeddingsTable()
-      await this._ensureAgentSchemaColumns()
-      await this._backfillAgentMessagesOrderIndex()
+      await this._ensureCompatSchema()
+      await this._markSchemaCompatCurrent()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
     } catch (error: any) {
@@ -206,10 +212,15 @@ export class MigrationService {
       return
     }
     await this._backfillAgentMessagesFts()
+    await this._markSchemaCompatCurrent()
     logger.info('[MigrationService] Agent 消息 FTS 历史索引补建完成。')
   }
 
   private async _backfillAgentMessagesFts(): Promise<void> {
+    const existing = await this._executeSql(`SELECT rowid FROM agent_messages_fts LIMIT 1`)
+    if (existing.rows.length > 0) {
+      return
+    }
     await this._executeSql(`
       INSERT OR IGNORE INTO agent_messages_fts(part_id, message_id, session_id, content)
       SELECT
@@ -222,150 +233,7 @@ export class MigrationService {
         AND COALESCE(json_extract(p.data, '$.isReasoning'), 0) IN (0, false)
         AND json_extract(p.data, '$.text') IS NOT NULL
         AND LENGTH(TRIM(json_extract(p.data, '$.text'))) > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM agent_messages_fts f WHERE f.part_id = p.id
-        )
     `)
-  }
-
-  /**
-   * 确保 system_settings 表存在（Flutter v3 agent.sqlite 升级后常见缺失）。
-   */
-  private async _ensureSystemSettingsTable(): Promise<void> {
-    try {
-      const table = await this._executeSql(
-        `SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'`
-      )
-      if (table.rows.length > 0) return
-
-      logger.info('[MigrationService] 创建缺失的 system_settings 表...')
-      await this._executeSql(SYSTEM_SETTINGS_CREATE_SQL)
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] system_settings 表检查失败（非阻塞）:', message)
-    }
-  }
-
-  /**
-   * 确保 memory_embeddings 表存在（原 0001 迁移；squash 后旧库可能缺整张表）。
-   */
-  private async _ensureMemoryEmbeddingsTable(): Promise<void> {
-    try {
-      const table = await this._executeSql(
-        `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`
-      )
-      if (table.rows.length > 0) return
-
-      logger.info('[MigrationService] 创建缺失的 memory_embeddings 表...')
-      await this._executeSql(MEMORY_EMBEDDINGS_CREATE_SQL)
-      await this._executeSql(MEMORY_EMBEDDINGS_INDEX_SQL)
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
-    }
-  }
-
-  /**
-   * 按 agent-schema-compat 清单补齐旧库缺失列（squash 迁移后未执行的增量变更）。
-   */
-  private async _ensureAgentSchemaColumns(): Promise<void> {
-    const columnsByTable = new Map<string, Set<string>>()
-
-    for (const patch of AGENT_DB_COLUMN_PATCHES) {
-      let names = columnsByTable.get(patch.table)
-      if (!names) {
-        const tableInfo = await this._executeSql(`PRAGMA table_info(${patch.table})`)
-        if (tableInfo.rows.length === 0) continue
-        names = new Set(
-          tableInfo.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
-        )
-        columnsByTable.set(patch.table, names)
-      }
-
-      if (names.has(patch.column)) continue
-
-      try {
-        logger.info(`[MigrationService] 添加 ${patch.table}.${patch.column} 列...`)
-        await this._executeSql(patch.ddl)
-        names.add(patch.column)
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e)
-        logger.warn(
-          `[MigrationService] ${patch.table}.${patch.column} 列检查失败（非阻塞）:`,
-          message
-        )
-      }
-    }
-  }
-
-  /**
-   * 旧版 agent.sqlite / 早期 Next 库可能缺 order_index 或全为 0；
-   * 按 session 内 created_at 顺序回填，保证导入后 Drizzle 查询可用。
-   */
-  private async _backfillAgentMessagesOrderIndex(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(agent_messages)`)
-      if (tableInfo.rows.length === 0) return
-      const hasOrderIndex = tableInfo.rows.some((c: { name?: string }) => c.name === 'order_index')
-      if (!hasOrderIndex) return
-
-      await this._executeSql(`
-        WITH ordered AS (
-          SELECT
-            id,
-            ROW_NUMBER() OVER (
-              PARTITION BY session_id
-              ORDER BY created_at, id
-            ) - 1 AS new_idx
-          FROM agent_messages
-        )
-        UPDATE agent_messages
-        SET order_index = (
-          SELECT new_idx FROM ordered WHERE ordered.id = agent_messages.id
-        )
-        WHERE order_index IS NULL
-           OR order_index != (
-             SELECT new_idx FROM ordered WHERE ordered.id = agent_messages.id
-           )
-      `)
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] agent_messages.order_index 回填失败（非阻塞）:', message)
-    }
-  }
-
-  private async _ensureCompressionSnapshotsCompatibility(): Promise<void> {
-    try {
-      const tableInfo = await this._executeSql(`PRAGMA table_info(compression_snapshots)`)
-      const cols = tableInfo.rows
-      const sessionIdCol = cols.find((c: any) => c.name === 'session_id')
-      if (sessionIdCol && (sessionIdCol.type as string).toUpperCase() === 'INTEGER') {
-        logger.info('[MigrationService] 重建 compression_snapshots（INTEGER→TEXT）...')
-        await this._executeSql(`ALTER TABLE compression_snapshots RENAME TO _comp_snap_old`)
-        await this._executeSql(`
-          CREATE TABLE compression_snapshots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            session_id TEXT NOT NULL,
-            summary_text TEXT NOT NULL,
-            covered_up_to_message_id TEXT NOT NULL,
-            message_count INTEGER NOT NULL,
-            token_count INTEGER,
-            created_at INTEGER NOT NULL
-          )
-        `)
-        await this._executeSql(`
-          INSERT INTO compression_snapshots
-            (id, session_id, summary_text, covered_up_to_message_id, message_count, created_at)
-          SELECT id, CAST(session_id AS TEXT), summary_text,
-                 CAST(covered_up_to_message_id AS TEXT), message_count, created_at
-          FROM _comp_snap_old
-        `)
-        await this._executeSql(`DROP TABLE _comp_snap_old`)
-        logger.info('[MigrationService] compression_snapshots 重建完成。')
-      }
-    } catch (e: any) {
-      logger.warn('[MigrationService] compression_snapshots 兼容性检查失败（非阻塞）:', e.message)
-    }
   }
 
   private async migrationsTableExists(): Promise<boolean> {
@@ -433,7 +301,6 @@ export class MigrationService {
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0)
 
-      // 确保迁移跟踪表在事务前已存在（CREATE TABLE 不能在事务内与 INSERT 混用于某些 SQLite 驱动）
       if (!(await this.migrationsTableExists())) {
         await this._executeSql(`
           CREATE TABLE IF NOT EXISTS __drizzle_migrations (
@@ -444,12 +311,10 @@ export class MigrationService {
         `)
       }
 
-      // 用事务包裹所有迁移语句，保证原子性：要么全部成功，要么全部回滚
       await this._executeSql('BEGIN')
       try {
         for (const statement of statements) {
           try {
-            // 如果 statement 试图创建 __drizzle_migrations 且该表在外部已建好，则跳过以防报错
             const trimmed = statement.trim().toLowerCase()
             if (
               trimmed.startsWith('create table') &&
@@ -469,7 +334,6 @@ export class MigrationService {
         }
         await this._executeSql('COMMIT')
       } catch (txError: any) {
-        // 回滚整个迁移，避免数据库处于半迁移状态
         try {
           await this._executeSql('ROLLBACK')
         } catch (rollbackErr: any) {
@@ -478,7 +342,6 @@ export class MigrationService {
         throw txError
       }
 
-      // 事务提交成功后，记录本次迁移执行情况（raw SQL，避免与 runAsync 混用 prepareSync）
       await this._executeSql(
         `INSERT INTO __drizzle_migrations (version, tag, executed_at) VALUES (?, ?, ?)`,
         [migration.idx, migration.tag, Date.now()]
@@ -490,6 +353,93 @@ export class MigrationService {
     } catch (error: any) {
       logger.error(`[MigrationService] x- 迁移失败: ${migration.tag}`, error)
       throw error
+    }
+  }
+
+  private sqlExec(): MigrationSqlExecutor {
+    return (statement, args) => this._executeSql(statement, args)
+  }
+
+  private async _ensureCompatSchema(): Promise<void> {
+    await this._ensureSystemSettingsTable()
+    await this._ensureMemoryEmbeddingsTable()
+    await this._ensureGraphTables()
+    await this._ensureEmbedLedgerTable()
+    await this._retireDiaryEmbedJobsTable()
+    await this._ensureAgentSchemaColumns()
+    await ensureMemoryEmbeddingsVaultIndex(this.sqlExec())
+    await backfillMemoryEmbeddingsVaultNameColumn(this.sqlExec())
+    await migrateVaultNameToVaultId(this.sqlExec(), this.storageRoot)
+    await migrateSummariesAndAssistantsVault(this.sqlExec())
+    await this._backfillAgentMessagesOrderIndex()
+  }
+
+  private async _ensureCompressionSnapshotsCompatibility(): Promise<void> {
+    await ensureCompressionSnapshotsCompatibility(this.sqlExec())
+  }
+
+  private async _ensureAgentSchemaColumns(): Promise<void> {
+    await ensureAgentSchemaColumns(this.sqlExec())
+  }
+
+  private async _backfillAgentMessagesOrderIndex(): Promise<void> {
+    await backfillAgentMessagesOrderIndex(this.sqlExec())
+  }
+
+  private async _ensureMemoryEmbeddingsTable(): Promise<void> {
+    await ensureMemoryEmbeddingsTable(this.sqlExec())
+  }
+
+  private async _ensureEmbedLedgerTable(): Promise<void> {
+    await ensureEmbedLedgerTable(this.sqlExec())
+  }
+
+  private async _retireDiaryEmbedJobsTable(): Promise<void> {
+    await retireDiaryEmbedJobsTable(this.sqlExec())
+  }
+
+  private async _ensureGraphTables(): Promise<void> {
+    await ensureGraphTables(this.sqlExec())
+  }
+
+  private async _ensureSystemSettingsTable(): Promise<void> {
+    await ensureSystemSettingsTable(this.sqlExec())
+  }
+
+  private async _isSchemaCompatCurrent(): Promise<boolean> {
+    try {
+      const ftsCheck = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='agent_messages_fts'`
+      )
+      if (ftsCheck.rows.length === 0) return false
+
+      const settingsCheck = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'`
+      )
+      if (settingsCheck.rows.length === 0) return false
+
+      const res = await this._executeSql(`SELECT value FROM system_settings WHERE key = ?`, [
+        AGENT_SCHEMA_COMPAT_VERSION_KEY
+      ])
+      return res.rows.length > 0 && res.rows[0]?.value === AGENT_SCHEMA_COMPAT_VERSION
+    } catch {
+      return false
+    }
+  }
+
+  private async _markSchemaCompatCurrent(): Promise<void> {
+    try {
+      await this._ensureSystemSettingsTable()
+      const now = Date.now()
+      await this._executeSql(
+        `INSERT INTO system_settings (key, value, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [AGENT_SCHEMA_COMPAT_VERSION_KEY, AGENT_SCHEMA_COMPAT_VERSION, now]
+      )
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] 记录 schema compat 版本印记失败（非阻塞）:', msg)
     }
   }
 }

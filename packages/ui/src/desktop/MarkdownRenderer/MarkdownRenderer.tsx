@@ -21,6 +21,8 @@ export interface MarkdownRendererProps {
   basePath?: string
   /** 纯文本模式：跳过 remarkCjkFriendly，避免在 CJK/ASCII 之间插入空格 */
   plainText?: boolean
+  /** 是否显示围栏代码块的复制按钮（卡片预览等只读场景可关闭） */
+  showCodeCopy?: boolean
 }
 
 function remarkBrToBreak() {
@@ -48,7 +50,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   isStreaming = false,
   basePath,
-  plainText = false
+  plainText: _plainText = false,
+  showCodeCopy = true
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -93,15 +96,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         remarkPlugins={remarkPlugins}
         rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
-          ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-          ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
-          li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-          p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-          em: ({ node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
-          a: ({ node, ...props }) => (
+          ul: ({ node: _node, ...props }) => <ul className={styles.list} {...props} />,
+          ol: ({ node: _node, ...props }) => <ol className={styles.list} {...props} />,
+          li: ({ node: _node, ...props }) => <li className={styles.listItem} {...props} />,
+          p: ({ node: _node, ...props }) => <p className={styles.paragraph} {...props} />,
+          hr: () => <hr className={styles.hr} />,
+          em: ({ node: _node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
+          a: ({ node: _node, ...props }) => (
             <a className={styles.link} target="_blank" rel="noopener noreferrer" {...props} />
           ),
-          img: ({ node, ...props }) => {
+          img: ({ node: _node, ...props }) => {
             const { src: cleanSrc, width } = parseImgWidth(props.src)
             const resolvedSrc = resolveAttachment(cleanSrc)
             const isLocal = cleanSrc && basePath && cleanSrc.startsWith('attachment/')
@@ -194,7 +198,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
             return renderImg()
           },
-          video: ({ node, ...props }) => (
+          video: ({ node: _node, ...props }) => (
             <video
               {...props}
               src={resolveAttachment(props.src)}
@@ -202,7 +206,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               controls
             />
           ),
-          audio: ({ node, ...props }) => (
+          audio: ({ node: _node, ...props }) => (
             <audio
               {...props}
               src={resolveAttachment(props.src)}
@@ -210,24 +214,34 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               controls
             />
           ),
-          code({ node, className, children, inline, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '')
-            return !inline && match ? (
-              <pre className={styles.codeWrapper}>
+          pre({ node: _node, className, children, ...props }: any) {
+            const codeClassName = React.isValidElement(children)
+              ? ((children.props as { className?: string }).className ?? '')
+              : ''
+            const match = /language-(\w+)/.exec(codeClassName)
+            return (
+              <pre className={[styles.codeWrapper, className].filter(Boolean).join(' ')} {...props}>
                 <div className={styles.codeHeader}>
-                  <span>{match[1]}</span>
-                  <button onClick={() => navigator.clipboard.writeText(String(children))}>
-                    {t('markdown.copy', '复制')}
-                  </button>
+                  {match?.[1] ? <span>{match[1]}</span> : null}
+                  {showCodeCopy ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        const code = event.currentTarget.closest('pre')?.querySelector('code')
+                        void navigator.clipboard.writeText(code?.textContent ?? '')
+                      }}
+                    >
+                      {t('markdown.copy', '复制')}
+                    </button>
+                  ) : null}
                 </div>
-                <div className={styles.codeBlock}>
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                </div>
+                {children}
               </pre>
-            ) : (
-              <code className={styles.inlineCode} {...props}>
+            )
+          },
+          code({ node: _node, className, children, ...props }: any) {
+            return (
+              <code className={[styles.inlineCode, className].filter(Boolean).join(' ')} {...props}>
                 {children}
               </code>
             )
@@ -239,7 +253,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               </div>
             )
           },
-          blockquote: ({ node, ...props }) => (
+          blockquote: ({ node: _node, ...props }) => (
             <blockquote className={styles.blockquote} {...props} />
           )
         }}

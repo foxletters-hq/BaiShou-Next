@@ -21,6 +21,7 @@ import { playTtsAudio } from '../../../services/play-tts-audio'
 import { fetchTtsProviderModels } from '../utils/tts-provider-models'
 import { setTtsPlaybackSettingsCache } from '../../../services/mobile-tts-settings.service'
 import { SettingsGroupCard } from './SettingsGroupCard'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface TTSSettingsSectionProps {
   providerId: string
@@ -107,7 +108,7 @@ export const TTSSettingsSection: React.FC<TTSSettingsSectionProps> = ({ provider
   return (
     <KeyboardAwareScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingBottom: sharedTokens.spacing.lg }}
       indicatorStyle={scrollIndicatorStyle(isDark)}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

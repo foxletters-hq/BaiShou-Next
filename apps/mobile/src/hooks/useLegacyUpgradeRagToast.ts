@@ -31,7 +31,7 @@ export function useLegacyUpgradeRagToast(): void {
       toast.showWarning(
         t(
           'settings.legacy_upgrade_rag_notice',
-          '已从旧版继承日记、总结和 AI 伙伴。RAG 记忆需要重新嵌入，请前往 设置 → RAG 记忆 执行全量扫描。'
+          '已从旧版继承日记、总结和 AI 伙伴。伙伴记忆需要重新嵌入，请前往 设置 → 伙伴记忆 执行全量扫描。'
         )
       )
     })()

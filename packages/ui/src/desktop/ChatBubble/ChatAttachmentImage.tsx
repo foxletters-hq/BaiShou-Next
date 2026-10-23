@@ -8,6 +8,8 @@ import {
 } from './chat-attachment-thumbnail.util'
 import styles from './ChatBubble.module.css'
 
+export type ChatAttachmentDisplay = 'thumb' | 'sticker'
+
 function resolveCopySource(filePath: string): string | undefined {
   if (!filePath) return undefined
   if (filePath.startsWith('blob:') || filePath.startsWith('data:')) return undefined
@@ -27,30 +29,54 @@ function resolveCopySource(filePath: string): string | undefined {
 interface ChatAttachmentImageProps {
   filePath: string
   fileName: string
+  display?: ChatAttachmentDisplay
 }
 
-export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({ filePath, fileName }) => {
-  const [thumbSrc, setThumbSrc] = useState<string | null>(null)
+export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({
+  filePath,
+  fileName,
+  display = 'thumb'
+}) => {
+  const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewSrc, setPreviewSrc] = useState('')
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const [stickerFallbackUsed, setStickerFallbackUsed] = useState(false)
+  const isSticker = display === 'sticker'
 
   const copySource = useMemo(() => resolveCopySource(filePath), [filePath])
 
   useEffect(() => {
     let cancelled = false
-    setThumbSrc(null)
+    setImgSrc(null)
+    setStickerFallbackUsed(false)
+
+    if (isSticker) {
+      const localSrc = resolveChatAttachmentSrc(filePath)
+      if (localSrc) {
+        setImgSrc(localSrc)
+      }
+      return
+    }
 
     void getChatAttachmentThumbnail(filePath).then((thumb) => {
       if (!cancelled) {
-        setThumbSrc(thumb)
+        setImgSrc(thumb)
       }
     })
 
     return () => {
       cancelled = true
     }
-  }, [filePath])
+  }, [filePath, isSticker])
+
+  const handleImageError = () => {
+    if (!isSticker || stickerFallbackUsed) return
+    setStickerFallbackUsed(true)
+    void getChatAttachmentFullImage(filePath).then((full) => {
+      if (full) setImgSrc(full)
+    })
+  }
 
   const handleOpenPreview = async () => {
     if (loadingPreview) return
@@ -72,10 +98,19 @@ export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({ filePa
         onClick={() => void handleOpenPreview()}
         aria-label={fileName}
       >
-        {thumbSrc ? (
-          <img src={thumbSrc} alt={fileName} className={styles.attImage} draggable={false} />
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt={fileName}
+            className={isSticker ? styles.attStickerImage : styles.attImage}
+            draggable={false}
+            onError={handleImageError}
+          />
         ) : (
-          <div className={styles.attImagePlaceholder} aria-hidden />
+          <div
+            className={isSticker ? styles.attStickerPlaceholder : styles.attImagePlaceholder}
+            aria-hidden
+          />
         )}
       </button>
       {previewOpen && (

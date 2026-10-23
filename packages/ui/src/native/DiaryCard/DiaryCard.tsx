@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import React, { memo, useMemo } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native'
 import { TouchableOpacity } from 'react-native-gesture-handler'
 import { Heart } from 'lucide-react-native'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
@@ -34,8 +36,13 @@ interface DiaryCardProps {
   onDelete?: () => void
 }
 
+const MAX_CONTENT_HEIGHT = 120
+const FADE_HEIGHT = 40
+const TRUNCATE_CHAR_THRESHOLD = 50
+const TRUNCATE_HEIGHT_THRESHOLD = 95
+
 export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
-  id,
+  id: _id,
   contentSnippet,
   tags,
   createdAt,
@@ -63,6 +70,34 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
     'diary.weekday_sat'
   ] as const
   const weekday = t(weekdayKeys[createdAt.getDay()])
+
+  const gradientId = useMemo(() => `diary-card-fade-${_id ?? '0'}`, [_id])
+
+  const isLikelyTruncated = useMemo(() => {
+    if (!contentSnippet) return false
+    return (
+      contentSnippet.length > TRUNCATE_CHAR_THRESHOLD ||
+      (contentSnippet.match(/\n/g) || []).length >= 2
+    )
+  }, [contentSnippet])
+
+  const [isTruncated, setIsTruncated] = useState(isLikelyTruncated)
+
+  useEffect(() => {
+    setIsTruncated(isLikelyTruncated)
+  }, [isLikelyTruncated])
+
+  const handleContentLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const height = e.nativeEvent.layout.height
+      const truncated =
+        height >= TRUNCATE_HEIGHT_THRESHOLD ||
+        (contentSnippet?.length ?? 0) > TRUNCATE_CHAR_THRESHOLD ||
+        (contentSnippet?.match(/\n/g) || []).length >= 2
+      setIsTruncated((prev) => (prev !== truncated ? truncated : prev))
+    },
+    [contentSnippet]
+  )
 
   const tagPalette = [
     { bg: colors.accentBlue + '15', fg: colors.accentBlue },
@@ -160,17 +195,34 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
       </View>
 
       <View style={styles.contentContainer} pointerEvents="box-none">
-        {previewMarkdown ? (
-          <MarkdownRenderer content={previewMarkdown} variant="preview" />
-        ) : (
-          <Text
-            style={[styles.snippet, { color: colors.textSecondary }]}
-            numberOfLines={3}
-            selectable={false}
-          >
-            —
-          </Text>
-        )}
+        <View onLayout={handleContentLayout} pointerEvents="box-none">
+          {previewMarkdown ? (
+            <MarkdownRenderer content={previewMarkdown} variant="preview" />
+          ) : (
+            <Text
+              style={[styles.snippet, { color: colors.textSecondary }]}
+              numberOfLines={3}
+              selectable={false}
+            >
+              —
+            </Text>
+          )}
+        </View>
+        {isTruncated ? (
+          <View testID="diary-card-fade-gradient" style={styles.gradientFade} pointerEvents="none">
+            <Svg width="100%" height={FADE_HEIGHT} style={StyleSheet.absoluteFill}>
+              <Defs>
+                <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor={colors.bgSurface} stopOpacity="0" />
+                  <Stop offset="40%" stopColor={colors.bgSurface} stopOpacity="0.05" />
+                  <Stop offset="70%" stopColor={colors.bgSurface} stopOpacity="0.45" />
+                  <Stop offset="100%" stopColor={colors.bgSurface} stopOpacity="1" />
+                </LinearGradient>
+              </Defs>
+              <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradientId})`} />
+            </Svg>
+          </View>
+        ) : null}
       </View>
 
       {previewTags.length > 0 && (
@@ -225,8 +277,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.md,
     borderWidth: 1,
     borderStyle: 'solid'
   },
@@ -234,67 +286,108 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20
+    marginBottom: sharedTokens.spacing.mdPlus
   },
   dateGroup: { flexDirection: 'row', alignItems: 'center' },
-  day: { fontSize: 32, fontWeight: '800', lineHeight: 32 },
-  dateMeta: { marginLeft: 12, justifyContent: 'center' },
-  weekday: { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  day: {
+    fontSize: mobileTypography.display.fontSize,
+    fontWeight: mobileTypography.display.fontWeight,
+    lineHeight: mobileTypography.display.lineHeight
+  },
+  dateMeta: { marginLeft: sharedTokens.spacing.mdTight, justifyContent: 'center' },
+  weekday: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight,
+    letterSpacing: 0.5
+  },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    marginTop: 4,
-    gap: 8
+    marginTop: sharedTokens.spacing.xs,
+    gap: sharedTokens.spacing.sm
   },
   badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs,
     borderWidth: 0.5
   },
-  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  badgeText: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    letterSpacing: 0.5
+  },
   iconOutlineBadge: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs,
     borderWidth: 0.5,
     alignItems: 'center',
     justifyContent: 'center'
   },
   similarityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   similarityText: {
-    fontSize: 10,
-    fontWeight: '800'
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight
   },
   headerSpacer: { width: 22 },
-  contentContainer: { maxHeight: 120, overflow: 'hidden' },
-  snippet: { fontSize: 15, lineHeight: 24, opacity: 0.9 },
+  contentContainer: {
+    maxHeight: MAX_CONTENT_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  gradientFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: FADE_HEIGHT
+  },
+  snippet: {
+    fontSize: mobileTypography.body.fontSize,
+    lineHeight: mobileTypography.body.lineHeight,
+    opacity: 0.9
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 20,
-    gap: 8,
+    marginTop: sharedTokens.spacing.mdPlus,
+    gap: sharedTokens.spacing.sm,
     maxHeight: 52,
     overflow: 'hidden'
   },
   tag: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.sm,
     minHeight: 20,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  tagText: { fontSize: 12, fontWeight: '600', lineHeight: 12 },
-  actionsDivider: { height: 1, marginTop: 20, marginBottom: 12 },
-  actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },
-  editText: { fontSize: 13, fontWeight: '600' },
-  deleteText: { fontSize: 13, fontWeight: '600' }
+  tagText: {
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: mobileTypography.caption.fontWeight,
+    lineHeight: mobileTypography.caption.fontSize
+  },
+  actionsDivider: {
+    height: 1,
+    marginTop: sharedTokens.spacing.mdPlus,
+    marginBottom: sharedTokens.spacing.mdTight
+  },
+  actionsBox: { flexDirection: 'row', justifyContent: 'flex-end', gap: sharedTokens.spacing.md },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', padding: sharedTokens.spacing.sm },
+  editText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
+  },
+  deleteText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: mobileTypography.secondary.fontWeight
+  }
 })

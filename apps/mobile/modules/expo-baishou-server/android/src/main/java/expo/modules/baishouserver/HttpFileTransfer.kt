@@ -19,7 +19,8 @@ import java.util.concurrent.TimeUnit
 /** 从磁盘路径流式 HTTP 上传，避免整文件进 JS 堆或沙盒中转 */
 object HttpFileTransfer {
   private val client = OkHttpClient.Builder()
-    .connectTimeout(60, TimeUnit.SECONDS)
+    // 局域网发送前已经探路；连接仍失败时不要卡 60 秒
+    .connectTimeout(10, TimeUnit.SECONDS)
     .readTimeout(15, TimeUnit.MINUTES)
     .writeTimeout(15, TimeUnit.MINUTES)
     .build()

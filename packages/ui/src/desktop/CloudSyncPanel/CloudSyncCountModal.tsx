@@ -1,8 +1,12 @@
 import i18n from 'i18next'
 import React from 'react'
 import { Archive } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
+import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
 
 export interface CloudSyncCountModalProps {
   vm: CloudSyncPanelViewModel
@@ -20,7 +24,10 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
   } = vm
 
   return (
-    <div className={styles.modalOverlay} onClick={() => setShowCountModal(false)}>
+    <div
+      className={withAppContentOverlay(styles.modalOverlay)}
+      onClick={() => setShowCountModal(false)}
+    >
       <div className={styles.countModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.countModalHeader}>
           <div
@@ -36,28 +43,24 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
               className={styles.countModalTitleBlock}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Archive size={20} color="var(--color-primary, #0ea5e9)" />
-              <span className={styles.countModalTitle} style={{ fontWeight: 'bold', fontSize: 16 }}>
+              <Archive size={16} color="var(--color-primary)" />
+              <span
+                className={styles.countModalTitle}
+                style={{
+                  fontWeight: 600,
+                  fontSize: 'var(--settings-font-section-size)'
+                }}
+              >
                 {activeTab === 'snapshot'
                   ? t('data_sync.max_snapshot_title', '快照上限设置')
                   : t('data_sync.max_backup_title', '备份上限设置')}
               </span>
             </div>
-            <input
+            <Input
               type="text"
-              className={styles.smNumberInput}
-              style={{
-                width: 72,
-                padding: '4px 8px',
-                border: '1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5)',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                textAlign: 'center',
-                background: 'var(--bg-surface-lowest, #f8fafc)',
-                outline: 'none'
-              }}
+              fieldSize="small"
+              className={styles.countModalNumberHost}
+              inputClassName={styles.countModalNumberInput}
               value={tempCount === -1 ? noLimitLabel : tempCount}
               onChange={(e) => {
                 const val = e.target.value.trim()
@@ -97,11 +100,15 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
         <div
           className={styles.countModalBody}
-          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          style={{ display: 'flex', flexDirection: 'column', gap: sharedTokens.spacing.md }}
         >
           <div
             className={styles.countModalDesc}
-            style={{ fontSize: 13, color: 'var(--color-on-surface-variant)', lineHeight: 1.5 }}
+            style={{
+              fontSize: settingsTypography.desc.fontSize,
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5
+            }}
           >
             {activeTab === 'snapshot'
               ? t(
@@ -127,7 +134,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
           <div
             className={styles.chipsContainer}
-            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}
+            style={{
+              display: 'flex',
+              gap: sharedTokens.spacing.sm,
+              flexWrap: 'wrap',
+              marginTop: sharedTokens.spacing.sm
+            }}
           >
             {[1, 2, 3, 5, 10, 15, -1].map((val) => (
               <button
@@ -137,20 +149,15 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                 onClick={() => setTempCount(val)}
                 style={{
                   background:
-                    tempCount === val
-                      ? 'var(--color-primary, #0ea5e9)'
-                      : 'var(--bg-surface-normal, #f1f5f9)',
-                  color:
-                    tempCount === val
-                      ? 'var(--text-on-primary, #fff)'
-                      : 'var(--text-secondary, #64748b)',
+                    tempCount === val ? 'var(--color-primary)' : 'var(--bg-surface-normal)',
+                  color: tempCount === val ? 'var(--text-on-primary)' : 'var(--text-secondary)',
                   border:
                     tempCount === val
-                      ? '1px solid var(--color-primary, #0ea5e9)'
-                      : '1px solid var(--border-subtle, #e2e8f0)',
+                      ? '1px solid var(--color-primary)'
+                      : '1px solid var(--border-subtle)',
                   padding: '6px 12px',
-                  borderRadius: 12,
-                  fontSize: 12,
+                  borderRadius: sharedTokens.radius.md,
+                  fontSize: settingsTypography.meta.fontSize,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
@@ -166,22 +173,24 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
 
         <div
           className={styles.countModalFooter}
-          style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: sharedTokens.spacing.sm,
+            marginTop: sharedTokens.spacing.mdTight
+          }}
         >
-          <button
+          <Button
             type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined}`}
+            variant="outlined"
+            size="small"
             onClick={() => setShowCountModal(false)}
           >
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.btnFilled}`}
-            onClick={confirmCountModal}
-          >
+          </Button>
+          <Button type="button" variant="outlined" size="small" onClick={confirmCountModal}>
             {t('common.confirm', '确定')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

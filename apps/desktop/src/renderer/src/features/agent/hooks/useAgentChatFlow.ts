@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
+import { useParams, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { toast } from '@baishou/ui'
 import type { InputBarRef } from '@baishou/ui'
 import type { AgentOutletContext } from '../agent-outlet-context'
 import {
+  useAgentGateInboxStore,
   useSettingsStore,
   useAssistantStore,
   usePromptShortcutStore,
@@ -29,6 +30,13 @@ import {
   isConfiguredProviderId,
   isAgentStreamAbortError
 } from '@baishou/shared'
+import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
+import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
+import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
+import { applyCompanionContextRecompressResult } from './companion-context-recompress.util'
+import { commitCompanionQueueEdit } from './commit-companion-queue-edit'
+import { consumeChatInitMeta } from './chat-init-meta.util'
+import { usePricingStatus } from './usePricingStatus'
 
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
@@ -36,6 +44,7 @@ import {
 export function useAgentChatFlow() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { sessions, loadSessions } = useOutletContext<AgentOutletContext>() || { sessions: [] }
 
@@ -56,13 +65,22 @@ export function useAgentChatFlow() {
     streamingReasoning: stream.reasoning
   })
   const tokens = useTokenUsage(sessionId, stream.isStreaming)
+  const resolvedLiveCount = useAgentGateInboxStore((state) => {
+    if (!sessionId) return 0
+    let count = 0
+    for (const item of state.resolvedLive ?? []) {
+      if (item.request.sessionId === sessionId) count += 1
+    }
+    return count
+  })
   const scroll = useChatScroll({
     sessionId,
     messages: chat.messages,
     streamingText: stream.text,
     streamingReasoning: stream.reasoning,
     isStreaming: stream.isStreaming,
-    activeTool: stream.activeTool
+    activeTool: stream.activeTool,
+    streamFollowKey: `${stream.completedTools.length}:${resolvedLiveCount}:${stream.pendingAgentGate?.id ?? ''}`
   })
   useStreamError(stream.error, stream.isStreaming)
   const recall = useRecallSearch()
@@ -75,11 +93,37 @@ export function useAgentChatFlow() {
       lastMessage?.role === 'assistant' &&
       (Boolean(lastMessage.content?.trim()) ||
         Boolean(lastMessage.reasoning?.trim()) ||
-        (lastMessage.toolInvocations?.length ?? 0) > 0)
+        (lastMessage.toolInvocations?.length ?? 0) > 0 ||
+        (lastMessage.attachments?.length ?? 0) > 0)
     ) {
       clearStreamBridgeForSession(sessionId)
     }
   }, [sessionId, stream.isBridgeActive, chat.messages])
+
+  // drain / promote 开流时同步 UI 流式态（排队消耗后的下一轮）
+  useEffect(() => {
+    if (!sessionId || typeof window === 'undefined' || !window.electron?.ipcRenderer?.on) return
+    const beginStreaming = stream.beginStreaming
+    const onRuntimeEvent = (
+      _: unknown,
+      event: { type?: string; sessionId?: string; inputId?: string }
+    ) => {
+      if (event?.type !== 'session.promoted' || event.sessionId !== sessionId) return
+      beginStreaming(sessionId)
+      window.dispatchEvent(
+        new CustomEvent('baishou:companion-pending-inputs-changed', {
+          detail: { sessionId, dropInputId: event.inputId }
+        })
+      )
+    }
+    const unsubscribe = window.electron.ipcRenderer.on(
+      'agent:session-runtime-event',
+      onRuntimeEvent
+    )
+    return () => {
+      unsubscribe?.()
+    }
+  }, [sessionId, stream.beginStreaming])
 
   // ── 2. Store 状态订阅 ──
   const settings = useSettingsStore()
@@ -97,7 +141,6 @@ export function useAgentChatFlow() {
 
   // ── 3. 各种 UI 弹窗与控制状态 ──
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
-  const [showCostDialog, setShowCostDialog] = useState(false)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
@@ -120,78 +163,26 @@ export function useAgentChatFlow() {
   )
   const storeRunRecompress = useContextCompressionStore((s) => s.runRecompress)
   const storeClearRecompressError = useContextCompressionStore((s) => s.clearError)
-  const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
-  const pricingBootWarnShownRef = useRef(false)
   const inputBarRef = useRef<InputBarRef>(null)
 
   // ── 4. TTS 音频朗读 Hook ──
   const tts = useTts(t)
 
   // ── 5. 计费价格表时间获取与更新 ──
-  const fetchPricingLastUpdated = useCallback(async () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const status = await window.electron.ipcRenderer.invoke('pricing:get-status')
-        if (status?.lastUpdated) {
-          setPricingLastUpdated(new Date(status.lastUpdated))
-        }
-
-        const pricingUnavailable =
-          status?.loadFailed || status?.hasPrices === false || !status?.lastUpdated
-        if (pricingUnavailable && !pricingBootWarnShownRef.current) {
-          pricingBootWarnShownRef.current = true
-          toast.showWarning(
-            t(
-              'agent.chat.pricing_boot_load_failed',
-              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
-            )
-          )
-        }
-      } catch (e) {
-        console.error('Failed to get pricing status:', e)
-        if (!pricingBootWarnShownRef.current) {
-          pricingBootWarnShownRef.current = true
-          toast.showWarning(
-            t(
-              'agent.chat.pricing_boot_load_failed',
-              '未能拉取 models.dev 价格表，计费估算可能不准确，请检查网络后在计费面板中刷新'
-            )
-          )
-        }
-      }
-    }
-  }, [t])
-
-  const handleRefreshPricing = useCallback(async () => {
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const result = await window.electron.ipcRenderer.invoke('pricing:refresh')
-        if (result.success && result.lastUpdated) {
-          setPricingLastUpdated(new Date(result.lastUpdated))
-          toast.showSuccess(t('agent.chat.pricing_refreshed', '价格表已更新'))
-        } else if (!result.success || result.loadFailed || !result.hasPrices) {
-          toast.showError(result.error || t('agent.chat.pricing_refresh_failed', '价格表刷新失败'))
-        }
-        return result
-      } catch (e) {
-        const errMsg =
-          e instanceof Error ? e.message : t('agent.chat.pricing_refresh_failed', '价格表刷新失败')
-        console.error('Failed to refresh pricing:', e)
-        toast.showError(errMsg)
-        return { success: false, error: errMsg }
-      }
-    }
-    return { success: false, error: 'No electron context' }
-  }, [t])
-
-  useEffect(() => {
-    fetchPricingLastUpdated()
-  }, [fetchPricingLastUpdated])
+  const { pricingLastUpdated, handleRefreshPricing } = usePricingStatus(t)
 
   // ── 6. 初始化加载 ──
   useEffect(() => {
     fetchAssistants()
     loadShortcuts()
+    const unsubSkills = (
+      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
+    ).skills?.onChanged?.(() => {
+      void loadShortcuts()
+    })
+    return () => {
+      unsubSkills?.()
+    }
   }, [fetchAssistants, loadShortcuts])
 
   // ── 7. 搜索模式持久化见 usePersistedSearchMode ──
@@ -240,7 +231,14 @@ export function useAgentChatFlow() {
   const handleSend = async (
     text: string,
     attachments?: any[],
-    search?: boolean
+    search?: boolean,
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+      delivery?: 'steer' | 'queue'
+      /** 正在编辑排队条目时提交正文，不新开一轮 */
+      queueEditInputId?: string
+    }
   ): Promise<boolean> => {
     let targetSessionId = sessionId
     if (search !== undefined) {
@@ -251,36 +249,71 @@ export function useAgentChatFlow() {
       !isConfiguredProviderId(model.currentProviderId) ||
       !isConfiguredDialogueModelId(model.currentModelId)
     ) {
-      toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+      toast.showInfo(t('agent.error.no_model', '请先选择一个模型'))
       return false
     }
 
+    const displayText = meta?.displayText?.trim() || text
+    const skillRefs = meta?.skillRefs
+    const needsNewSession = isDraftChatSessionId(sessionId)
+    let localQueueId: string | undefined
+
     try {
-      if (!targetSessionId) {
-        targetSessionId = (await createSession(text)) ?? undefined
+      if (meta?.queueEditInputId) {
+        return commitCompanionQueueEdit({ inputId: meta.queueEditInputId, text })
+      }
+
+      if (needsNewSession) {
+        targetSessionId = (await createSession(displayText)) ?? undefined
         if (!targetSessionId) {
           throw new Error(t('agent.error.create_session_failed', '创建会话失败'))
         }
+        await applyPendingNotebookMountToSession({
+          sessionId: targetSessionId,
+          assistantId: currentAssistant?.id,
+          scope: 'companion'
+        })
       }
 
-      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments)
+      const busy = stream.isStreaming || stream.isBridgeActive
+      const delivery = meta?.delivery ?? (busy ? 'queue' : 'queue')
+      localQueueId = busy && targetSessionId ? `local-${crypto.randomUUID()}` : undefined
+      if (localQueueId && targetSessionId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:companion-pending-inputs-changed', {
+            detail: {
+              sessionId: targetSessionId,
+              optimistic: { id: localQueueId, text }
+            }
+          })
+        )
+      }
+
+      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {
+        displayText,
+        providerId: model.currentProviderId,
+        modelId: model.currentModelId,
+        skillRefs
+      })
       if ('error' in saveResult) {
         throw new Error(saveResult.error)
       }
 
       const savedAttachments = mapSavedAttachmentsForUi(saveResult.attachments)
-      if (saveResult.userMessageId) {
+
+      if (saveResult.userMessageId && !busy) {
         chat.appendSentUserMessage({
           id: saveResult.userMessageId,
-          content: text,
-          attachments: savedAttachments
+          content: displayText,
+          attachments: savedAttachments,
+          skillRefs
         })
         if (savedAttachments?.length) {
           chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
         }
       }
 
-      const wasNewSession = !sessionId
+      const wasNewSession = needsNewSession
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
 
@@ -296,28 +329,41 @@ export function useAgentChatFlow() {
         })
       }
 
-      void stream
-        .startChat(
-          targetSessionId,
-          text,
-          model.currentProviderId,
-          model.currentModelId,
-          saveResult.attachments,
-          search,
-          saveResult.userMessageId
-        )
-        .catch((streamError: any) => {
-          if (isAgentStreamAbortError(streamError)) return
-          console.error('[AgentScreen] stream failed:', streamError)
-          toast.showError(
-            t('agent.error.send_failed', '发送消息失败: {{msg}}', {
-              msg: streamError?.message || '未知错误'
-            })
-          )
+      // 忙时入队、空闲时 admit 开流：禁止再走 agent:chat 直接 claim 打断当前回合
+      const admitted = await window.api.admit({
+        sessionId: targetSessionId!,
+        text,
+        delivery,
+        userMessageId: saveResult.userMessageId,
+        providerId: model.currentProviderId,
+        modelId: model.currentModelId,
+        reasoningEffort: getSessionReasoningEffortOverride(),
+        searchMode: search,
+        attachments: saveResult.attachments
+      })
+      window.dispatchEvent(
+        new CustomEvent('baishou:companion-pending-inputs-changed', {
+          detail: { sessionId: targetSessionId, dropOptimisticId: localQueueId }
         })
+      )
+
+      if (admitted.queued) {
+        return true
+      }
+
+      if (admitted.started) {
+        stream.beginStreaming(targetSessionId!)
+      }
 
       return true
     } catch (e: any) {
+      if (localQueueId && targetSessionId) {
+        window.dispatchEvent(
+          new CustomEvent('baishou:companion-pending-inputs-changed', {
+            detail: { sessionId: targetSessionId, dropOptimisticId: localQueueId }
+          })
+        )
+      }
       if (isAgentStreamAbortError(e)) return false
       console.error('[AgentScreen] send failed:', e)
       toast.showError(
@@ -327,35 +373,62 @@ export function useAgentChatFlow() {
     }
   }
 
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+  const initConsumedRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const raw = searchParams.get('init')
+    if (!raw?.trim() || initConsumedRef.current === `${sessionId ?? ''}:${raw}`) return
+    if (!isDraftChatSessionId(sessionId)) return
+    if (stream.isStreaming) return
+    if (
+      !isConfiguredProviderId(model.currentProviderId) ||
+      !isConfiguredDialogueModelId(model.currentModelId)
+    ) {
+      return
+    }
+
+    initConsumedRef.current = `${sessionId ?? ''}:${raw}`
+    const meta = sessionId ? consumeChatInitMeta(sessionId) : null
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('init')
+        return next
+      },
+      { replace: true }
+    )
+    void handleSendRef.current(raw, undefined, undefined, meta ?? undefined)
+  }, [
+    searchParams,
+    sessionId,
+    stream.isStreaming,
+    model.currentProviderId,
+    model.currentModelId,
+    setSearchParams
+  ])
+
   const handleStop = () => {
     stream.stopChat()
     toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
   }
 
+  const dismissContextRecompressError = useCallback(() => {
+    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
+  }, [activeContextSessionId, storeClearRecompressError])
+
   const runContextRecompress = useCallback(
     async (targetSessionId: string) => {
       if (!targetSessionId) return
       const result = await storeRunRecompress(targetSessionId)
-      if (result?.ok && result.summaryText) {
-        // 面板仍挂载时即时刷新摘要；若已切走（组件卸载）此更新为 no-op，
-        // 重新进入会话重新拉取调用链时会从数据库读到最新快照。
-        setContextDialogState((prev) => ({
-          ...prev,
-          compressedContent: result.summaryText,
-          flatEntries: prev.flatEntries?.map((entry: { kind?: string; summaryText?: string }) =>
-            entry.kind === 'compression-summary'
-              ? { ...entry, summaryText: result.summaryText }
-              : entry
-          )
-        }))
-      }
+      if (!(result?.ok && result.summaryText)) return
+      setContextDialogState((prev) =>
+        applyCompanionContextRecompressResult(prev, result.summaryText)
+      )
     },
     [storeRunRecompress]
   )
-
-  const dismissContextRecompressError = useCallback(() => {
-    if (activeContextSessionId) storeClearRecompressError(activeContextSessionId)
-  }, [activeContextSessionId, storeClearRecompressError])
 
   return {
     t,
@@ -381,8 +454,6 @@ export function useAgentChatFlow() {
     // UI 控制状态
     showModelSwitcher,
     setShowModelSwitcher,
-    showCostDialog,
-    setShowCostDialog,
     showAssistantPicker,
     setShowAssistantPicker,
     showRecallSheet,

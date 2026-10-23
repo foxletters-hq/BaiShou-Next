@@ -17,6 +17,8 @@ export function replaceEditorDocumentContent(
   content: string,
   options: ReplaceEditorDocumentOptions = {}
 ): boolean {
+  if (!view.dom?.isConnected) return false
+
   const current = view.state.doc.toString()
   if (content === current) return false
 
@@ -38,8 +40,12 @@ export function replaceEditorDocumentContent(
 
   if (refreshSyntaxTree) {
     requestAnimationFrame(() => {
-      if (!view.dom.isConnected) return
-      view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+      if (!view.dom?.isConnected) return
+      try {
+        view.dispatch({ effects: diarySyntaxTreeGrowthEffect.of(null) })
+      } catch {
+        /* 文档刚打开又被卸下时，补刷语法树可能读到空节点 */
+      }
     })
   }
 

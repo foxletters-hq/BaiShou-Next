@@ -7,6 +7,7 @@ export type MigrationBackupRow = {
   chunkText: string
   metadataJson: string
   sourceCreatedAt?: number
+  vaultName?: string
 }
 
 /** Normalized backup row with snake_case aliases for legacy migration callers. */
@@ -19,6 +20,31 @@ export type MigrationBackupRowCompat = MigrationBackupRow & {
   chunk_text: string
   metadata_json: string
   source_created_at?: number
+  vault_name?: string
+}
+
+/** 从 group_id / source_id 推断仓库名（模型迁移备份缺列时的兜底） */
+export function inferVaultNameFromEmbeddingRefs(params: {
+  groupId: string
+  sourceType: string
+  sourceId: string
+  vaultName?: string | null
+}): string {
+  const explicit = params.vaultName?.trim()
+  if (explicit) return explicit
+  const groupId = params.groupId ?? ''
+  // `memory:` 长度 7；勿写成 slice(8)（会把 Personal 切成 ersonal）
+  if (groupId.startsWith('memory:') && groupId.length > 7) {
+    return groupId.slice('memory:'.length)
+  }
+  if (groupId.startsWith('diary:') && groupId.length > 6) {
+    return groupId.slice('diary:'.length)
+  }
+  if (params.sourceType === 'diary') {
+    const idx = params.sourceId.indexOf('#')
+    if (idx > 0) return params.sourceId.slice(0, idx)
+  }
+  return ''
 }
 
 export function mapMigrationBackupRow(row: Record<string, unknown>): MigrationBackupRowCompat {
@@ -35,7 +61,11 @@ export function mapMigrationBackupRow(row: Record<string, unknown>): MigrationBa
         ? Number(row.sourceCreatedAt)
         : row.source_created_at !== undefined
           ? Number(row.source_created_at)
-          : undefined
+          : undefined,
+    vaultName:
+      row.vaultName !== undefined || row.vault_name !== undefined
+        ? String(row.vaultName ?? row.vault_name ?? '')
+        : undefined
   }
 
   return {
@@ -47,7 +77,8 @@ export function mapMigrationBackupRow(row: Record<string, unknown>): MigrationBa
     chunk_index: mapped.chunkIndex,
     chunk_text: mapped.chunkText,
     metadata_json: mapped.metadataJson,
-    source_created_at: mapped.sourceCreatedAt
+    source_created_at: mapped.sourceCreatedAt,
+    vault_name: mapped.vaultName
   }
 }
 

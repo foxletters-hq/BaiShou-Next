@@ -1,6 +1,7 @@
 import type {
   GitCommit,
   GitRollbackAllContext,
+  GitRemoteStatus,
   GitSyncConfig,
   GitStatus,
   FileChange,
@@ -173,6 +174,11 @@ export interface IGitSyncService {
   // ── 远程同步 ───────────────────────────────────────────────
 
   /**
+   * 读取远程同步状态（可选先 fetch）
+   */
+  getRemoteStatus(options?: { fetch?: boolean }): Promise<GitRemoteStatus>
+
+  /**
    * 推送到远程仓库
    * @throws {GitPushError} 推送失败
    * @throws {GitRemoteNotConfiguredError} 未配置远程仓库
@@ -185,6 +191,14 @@ export interface IGitSyncService {
    * @throws {GitRemoteNotConfiguredError} 未配置远程仓库
    */
   pull(): Promise<void>
+
+  /**
+   * 同步远程：fetch 后如有落后则拉取，再推送本地领先的提交
+   * @throws {GitPushError} 推送失败
+   * @throws {GitPullError} 拉取失败（含冲突）
+   * @throws {GitRemoteNotConfiguredError} 未配置远程仓库
+   */
+  syncRemote(): Promise<void>
 
   /**
    * 检查是否有未解决的冲突

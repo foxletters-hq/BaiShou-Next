@@ -10,16 +10,20 @@ import {
   type SettingsManagerService
 } from '@baishou/core-mobile'
 import {
+  formatDiaryPreviewText,
   parseDateStr,
-  prepareDiaryAppendContent,
-  prepareDiaryWriteContent,
-  resolveDiaryEditMode
+  prepareDiarySearcherEdit,
+  prepareDiarySearcherWrite
 } from '@baishou/shared'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
-import { formatDiaryPreviewText, type DiaryTemplateConfig } from '@baishou/shared'
-import { mergeDiaryTags } from '@baishou/ai'
+import {
+  ShadowIndexRepository,
+  alignShadowJournalVaultId,
+  shadowConnectionManager
+} from '@baishou/database'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
 import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
+import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
+import { wireMobilePendingReextractHook } from './mobile-graph.service'
 import type { VaultBoundDiaryStack, VaultDiarySearcher } from './mobile-vault-runtime.types'
 
 function diaryPreviewFromRaw(raw: string | null | undefined): string {
@@ -32,12 +36,12 @@ function diaryPreviewFromRaw(raw: string | null | undefined): string {
   return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
 }
 
-export function createVaultBoundDiaryStack(deps: {
+export async function createVaultBoundDiaryStack(deps: {
   pathService: IStoragePathService
   vaultService: VaultService
   fileSystem: IFileSystem
   settingsManager?: SettingsManagerService
-}): VaultBoundDiaryStack {
+}): Promise<VaultBoundDiaryStack> {
   const activeVault = deps.vaultService.getActiveVault()
   if (!activeVault) {
     throw new Error(
@@ -47,8 +51,16 @@ export function createVaultBoundDiaryStack(deps: {
       )
     )
   }
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
-  const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem)
+  await alignShadowJournalVaultId(shadowConnectionManager.getDb(), {
+    id: activeVault.id,
+    name: activeVault.name
+  })
+  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.id)
+  const rawManager = ensureMobileRawDataRuntime({
+    pathService: deps.pathService,
+    fileSystem: deps.fileSystem
+  }).manager
+  const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem, rawManager)
   const vaultIndexService = new VaultIndexServiceImpl()
   const shadowIndexSyncService = new ShadowIndexSyncService(
     shadowRepo,
@@ -57,6 +69,14 @@ export function createVaultBoundDiaryStack(deps: {
     deps.fileSystem,
     getMobileDiaryEmbeddingCallback()
   )
+  wireMobilePendingReextractHook({
+    vaultName: activeVault.name,
+    vaultId: activeVault.id,
+    shadowRepo,
+    pathService: deps.pathService,
+    fileSystem: deps.fileSystem,
+    shadowSync: shadowIndexSyncService
+  })
   const diaryService = new DiaryService(
     shadowRepo,
     fileSyncService,
@@ -95,20 +115,11 @@ export function createVaultBoundDiaryStack(deps: {
       }
       return rows
     },
-    async writeEntry(date: string, content: string, tags?: string) {
+    async writeEntry(date: string, content: string) {
       try {
-        const templateConfig: DiaryTemplateConfig = deps.settingsManager
-          ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-          : {}
-        const tagsStr = tags
-          ?.split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .join(',')
         await diaryService.create({
           date: parseDateStr(date),
-          content: prepareDiaryWriteContent(content, templateConfig, new Date()),
-          ...(tagsStr ? { tags: tagsStr } : {})
+          ...prepareDiarySearcherWrite(content)
         })
         return { ok: true as const }
       } catch (e) {
@@ -124,7 +135,7 @@ export function createVaultBoundDiaryStack(deps: {
         }
       }
     },
-    async editEntry({ date, content, mode, tags }) {
+    async editEntry({ date, content, mode }) {
       try {
         const existing = await diaryService.findByDate(parseDateStr(date))
         if (!existing?.id) {
@@ -134,24 +145,10 @@ export function createVaultBoundDiaryStack(deps: {
           }
         }
 
-        let finalContent = content
-        const editMode = resolveDiaryEditMode(mode)
-        if (editMode === 'append') {
-          const templateConfig: DiaryTemplateConfig = deps.settingsManager
-            ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-            : {}
-          finalContent = prepareDiaryAppendContent(
-            existing.content,
-            content,
-            templateConfig,
-            new Date()
-          )
-        }
-
-        await diaryService.update(existing.id, {
-          content: finalContent,
-          ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
-        })
+        await diaryService.update(
+          existing.id,
+          prepareDiarySearcherEdit(existing.content, content, mode)
+        )
         return { ok: true as const }
       } catch (e) {
         return {

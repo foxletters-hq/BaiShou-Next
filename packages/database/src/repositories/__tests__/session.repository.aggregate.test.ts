@@ -108,4 +108,30 @@ describe('SessionAggregateSync', () => {
     expect(messageInsert?.args?.[6]).toBe(20)
     expect(messageInsert?.args?.[9]).toBe(50)
   })
+
+  it('upsert rebuilds compression_snapshots from portable snapshots[]', async () => {
+    await sync.upsertAggregate({
+      session: {
+        id: 's3',
+        vaultId: 'vlt_test',
+        createdAt: 1_700_000_000_000,
+        updatedAt: 1_700_000_100_000
+      },
+      messages: [],
+      snapshots: [
+        {
+          coveredUpToMessageId: 'm2',
+          tailStartMessageId: 'm3',
+          summaryText: '摘要',
+          messageCount: 2,
+          tokenCount: 12,
+          createdAt: 1_700_000_050_000
+        }
+      ]
+    })
+    const stmts = batchMock.mock.calls[0]?.[0] as Array<{ sql: string; args?: unknown[] }>
+    expect(stmts.some((stmt) => stmt.sql.includes('DELETE FROM compression_snapshots'))).toBe(true)
+    const insert = stmts.find((stmt) => stmt.sql.includes('INSERT INTO compression_snapshots'))
+    expect(insert?.args).toEqual(['s3', '摘要', 'm2', 'm3', 2, 12, 1_700_000_050])
+  })
 })

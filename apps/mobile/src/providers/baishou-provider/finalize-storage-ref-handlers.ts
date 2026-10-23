@@ -20,6 +20,7 @@ import {
   hasStoragePermission
 } from '../../services/storage-permission.service'
 import { refreshMobileAttachmentPathRemapper } from '../../services/mobile-attachment-path-remapper'
+import { emitSyncMutation, emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
 import type { MobileBaishouInitContext } from './init-context'
 import type { MobileBaishouCoreState } from './bootstrap-mobile-baishou-core'
 
@@ -56,6 +57,9 @@ export async function finalizeStorageRefHandlers(
       }
 
       const priorStack = refs.diaryStackRef.current
+      if (priorStack) {
+        emitVaultSwitchMutation(undefined, 'storage-root-changed')
+      }
       const bootstrapOptions = options?.forceDeferResync
         ? { forceDeferResync: true as const, resyncReason: 'legacy-migration-complete' }
         : undefined
@@ -88,7 +92,12 @@ export async function finalizeStorageRefHandlers(
         vaultService
       )
       ragServiceRef.current = createMobileRagService(ragDeps)
-      setMobileDiaryEmbeddingDeps(ragDeps)
+      setMobileDiaryEmbeddingDeps(ragDeps, {
+        agentDb: agentDbRuntimeRef.current?.drizzleDb ?? null
+      })
+      if (priorStack) {
+        emitSyncMutation('resync-complete', 'storage-root-changed')
+      }
       if (isMounted()) {
         ctx.setValue((prev) => ({
           ...prev,
@@ -97,6 +106,7 @@ export async function finalizeStorageRefHandlers(
           services: prev.services
             ? {
                 ...prev.services,
+                diaryService: stack.diaryService,
                 ragService: ragServiceRef.current
               }
             : prev.services
@@ -183,7 +193,7 @@ export async function finalizeStorageRefHandlers(
               vaultCtx.pathService,
               vaultCtx.vaultService
             )
-            setMobileDiaryEmbeddingDeps(resumedRagDeps)
+            setMobileDiaryEmbeddingDeps(resumedRagDeps, { agentDb: runtime.drizzleDb })
             vaultCtx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
           }
         } else {
@@ -211,7 +221,7 @@ export async function finalizeStorageRefHandlers(
                 vaultCtx.pathService,
                 vaultCtx.vaultService
               )
-              setMobileDiaryEmbeddingDeps(resumedRagDeps)
+              setMobileDiaryEmbeddingDeps(resumedRagDeps, { agentDb: runtime.drizzleDb })
               vaultCtx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
             } catch (caughtResumeError) {
               logger.error(
@@ -235,10 +245,11 @@ export async function finalizeStorageRefHandlers(
         if (isMounted()) {
           const ragRef = refs.vaultBootstrapCtxRef.current?.ragServiceRef ?? ragServiceRef
           const stack = refs.diaryStackRef.current
+          const alreadyPublishedRestore = refs.archiveFullRestoreDoneRef.current
           ctx.setValue((prev) => ({
             ...prev,
             vaultSwitching: false,
-            vaultRevision: prev.vaultRevision + 1,
+            vaultRevision: alreadyPublishedRestore ? prev.vaultRevision : prev.vaultRevision + 1,
             services: prev.services
               ? {
                   ...prev.services,

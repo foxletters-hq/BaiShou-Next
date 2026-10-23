@@ -1,29 +1,30 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Animated, BackHandler } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
-import { Image } from 'react-native'
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { ONBOARDING_STORAGE_KEY } from '../../constants/storage'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
-import { useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import {
   NUM_ONBOARDING_PAGES,
   ONBOARDING_PAGE,
   SLIDE_THEMES,
   BRAND_BLUE_DARK
 } from './onboarding-theme'
-import { SCREEN_WIDTH, styles } from './OnboardingScreen.styles'
+import { styles } from './OnboardingScreen.styles'
+import { useOnboardingPaging } from './useOnboardingPaging'
 import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
+import { OnboardingInfoSlide } from './OnboardingInfoSlide'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguageSlide } from './components/OnboardingLanguageSlide'
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const APP_ICON = require('../../../assets/images/icon.png') as number
+import { OnboardingWelcomeSlide } from './components/OnboardingWelcomeSlide'
+import { OnboardingProfileSlide } from './components/OnboardingProfileSlide'
 import { useBaishou } from '@/src/providers/BaishouProvider'
+import { formatLocalDate, type UserGender } from '@baishou/shared'
 import {
   applyOnboardingUiLanguage,
   hasPersistedOnboardingUiLanguage,
@@ -31,7 +32,19 @@ import {
   syncOnboardingUiLanguageToVault,
   type OnboardingUiLanguage
 } from '@/src/lib/onboarding-language.util'
+import {
+  normalizeOnboardingNickname,
+  persistOnboardingNickname,
+  persistOnboardingProfile,
+  readOnboardingProfile,
+  syncOnboardingNicknameToVault,
+  syncOnboardingProfileToVault,
+  type OnboardingProfileInput
+} from '@/src/lib/onboarding-nickname.util'
 import { isExternalStorageRequiredError } from '@/src/services/storage-permission.service'
+
+// Re-export helpers for chrome/test compatibility
+export { persistOnboardingNickname, syncOnboardingNicknameToVault }
 
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter()
@@ -40,11 +53,17 @@ export const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation()
   const { t } = useTranslation()
   const toast = useNativeToast()
+  const { colors } = useNativeTheme()
   const storagePermission = useStoragePermission()
   const { services, dbReady, storageReady } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
   const [selectedLanguage, setSelectedLanguage] = useState<OnboardingUiLanguage | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
+  const [nickname, setNickname] = useState('')
+  const [nicknameError, setNicknameError] = useState(false)
+  const [birthday, setBirthday] = useState(() => formatLocalDate(new Date()))
+  const [gender, setGender] = useState<UserGender | null>(null)
+  const [customGender, setCustomGender] = useState('')
   const scrollViewRef = useRef<ScrollView>(null)
   const floatAnim = useRef(new Animated.Value(0)).current
   const programmaticTargetRef = useRef<number | null>(null)
@@ -64,6 +83,23 @@ export const OnboardingScreen: React.FC = () => {
     currentPage === ONBOARDING_PAGE.LANGUAGE &&
     !languageConfirmed &&
     !selectedLanguage
+  const nextBlockedOnNickname =
+    currentPage === ONBOARDING_PAGE.PROFILE && !normalizeOnboardingNickname(nickname)
+
+  const { goToPage, handlePrevious, handleScroll } = useOnboardingPaging({
+    currentPage,
+    setCurrentPage,
+    languageConfirmed,
+    isPreview,
+    nickname,
+    storageReadyToAdvance,
+    scrollViewRef,
+    programmaticTargetRef,
+    setNicknameError,
+    toast,
+    t,
+    normalizeNickname: normalizeOnboardingNickname
+  })
 
   const ensureAndroidStorageMounted = async (): Promise<boolean> => {
     if (!storagePermission.isAndroid) return true
@@ -86,6 +122,12 @@ export const OnboardingScreen: React.FC = () => {
       if (!lang) return
       setSelectedLanguage(lang)
       setLanguageConfirmed(true)
+    })
+    void readOnboardingProfile().then((prof) => {
+      if (prof.nickname) setNickname(prof.nickname)
+      if (prof.birthday) setBirthday(prof.birthday)
+      if (prof.gender) setGender(prof.gender)
+      if (prof.customGender) setCustomGender(prof.customGender)
     })
   }, [isPreview])
 
@@ -112,10 +154,43 @@ export const OnboardingScreen: React.FC = () => {
     await syncLanguageToVaultIfReady(lang)
   }
 
+  const syncProfileToVaultIfReady = useCallback(
+    async (prof: OnboardingProfileInput) => {
+      if (!dbReady || !storageReady || !services) return
+      try {
+        await syncOnboardingProfileToVault(prof, services.settingsManager)
+      } catch (e) {
+        if (!isExternalStorageRequiredError(e)) {
+          console.warn('[Onboarding] vault profile sync failed:', e)
+        }
+      }
+    },
+    [dbReady, storageReady, services]
+  )
+
+  const persistProfileSelection = async (
+    prof: OnboardingProfileInput
+  ): Promise<OnboardingProfileInput | null> => {
+    const saved = await persistOnboardingProfile(prof)
+    if (!saved) return null
+    setNickname(saved.nickname)
+    setBirthday(saved.birthday ?? '')
+    setGender(saved.gender)
+    setCustomGender(saved.customGender ?? '')
+    await syncProfileToVaultIfReady(saved)
+    return saved
+  }
+
   useEffect(() => {
     if (!selectedLanguage || !languageConfirmed) return
     void syncLanguageToVaultIfReady(selectedLanguage)
   }, [selectedLanguage, languageConfirmed, syncLanguageToVaultIfReady])
+
+  useEffect(() => {
+    const name = normalizeOnboardingNickname(nickname)
+    if (!name) return
+    void syncProfileToVaultIfReady({ nickname: name, birthday, gender, customGender })
+  }, [nickname, birthday, gender, customGender, syncProfileToVaultIfReady])
 
   const requireLanguageBeforeLeave = async (): Promise<boolean> => {
     if (isPreview || languageConfirmed) return true
@@ -126,6 +201,20 @@ export const OnboardingScreen: React.FC = () => {
     }
     toast.showWarning(t('onboarding.language_required'))
     goToPage(ONBOARDING_PAGE.LANGUAGE, { animated: true })
+    return false
+  }
+
+  const requireNicknameBeforeLeave = async (): Promise<boolean> => {
+    const persisted =
+      normalizeOnboardingNickname(nickname) ?? (await readOnboardingProfile()).nickname
+    if (persisted) {
+      setNickname(persisted)
+      setNicknameError(false)
+      return true
+    }
+    setNicknameError(true)
+    toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+    goToPage(ONBOARDING_PAGE.PROFILE, { animated: true })
     return false
   }
 
@@ -150,6 +239,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const finishOnboarding = async () => {
     if (!(await requireLanguageBeforeLeave())) return
+    if (!(await requireNicknameBeforeLeave())) return
     if (storagePermission.isAndroid && storagePermission.granted === true && !storageReady) {
       const mounted = await ensureAndroidStorageMounted()
       if (!mounted) {
@@ -158,6 +248,10 @@ export const OnboardingScreen: React.FC = () => {
       }
     }
     allowLeaveRef.current = true
+    const name = normalizeOnboardingNickname(nickname)
+    if (name) {
+      await persistProfileSelection({ nickname: name, birthday, gender, customGender })
+    }
     if (isPreview) {
       router.back()
       return
@@ -169,15 +263,6 @@ export const OnboardingScreen: React.FC = () => {
     router.replace('/(tabs)')
   }
 
-  const goToPage = (page: number, options?: { animated?: boolean }) => {
-    const target = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
-    programmaticTargetRef.current = target
-    scrollViewRef.current?.scrollTo({
-      x: target * SCREEN_WIDTH,
-      animated: options?.animated ?? true
-    })
-  }
-
   const handleNext = async () => {
     if (currentPage === ONBOARDING_PAGE.LANGUAGE) {
       if (!selectedLanguage) {
@@ -185,6 +270,16 @@ export const OnboardingScreen: React.FC = () => {
         return
       }
       await persistLanguageSelection(selectedLanguage)
+    }
+
+    if (currentPage === ONBOARDING_PAGE.PROFILE) {
+      const saved = await persistProfileSelection({ nickname, birthday, gender, customGender })
+      if (!saved?.nickname) {
+        setNicknameError(true)
+        toast.showWarning(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+        return
+      }
+      setNicknameError(false)
     }
 
     if (storagePermission.isAndroid && currentPage === ONBOARDING_PAGE.STORAGE) {
@@ -212,12 +307,6 @@ export const OnboardingScreen: React.FC = () => {
     }
   }
 
-  const handlePrevious = () => {
-    if (currentPage > 0) {
-      goToPage(currentPage - 1)
-    }
-  }
-
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (currentPage > 0) {
@@ -226,7 +315,7 @@ export const OnboardingScreen: React.FC = () => {
       return true
     })
     return () => subscription.remove()
-  }, [currentPage])
+  }, [currentPage, goToPage])
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -236,56 +325,21 @@ export const OnboardingScreen: React.FC = () => {
     return unsubscribe
   }, [navigation, isPreview])
 
-  const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
-    const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH)
-    const clampedPage = Math.max(0, Math.min(page, NUM_ONBOARDING_PAGES - 1))
-
-    const pendingTarget = programmaticTargetRef.current
-    if (pendingTarget !== null) {
-      if (clampedPage !== pendingTarget) {
-        return
-      }
-      programmaticTargetRef.current = null
-    }
-
-    if (clampedPage > ONBOARDING_PAGE.LANGUAGE && !languageConfirmed && !isPreview) {
-      programmaticTargetRef.current = ONBOARDING_PAGE.LANGUAGE
-      setCurrentPage(ONBOARDING_PAGE.LANGUAGE)
-      scrollViewRef.current?.scrollTo({
-        x: ONBOARDING_PAGE.LANGUAGE * SCREEN_WIDTH,
-        animated: true
-      })
-      toast.showWarning(t('onboarding.language_required'))
-      return
-    }
-
-    if (clampedPage > ONBOARDING_PAGE.STORAGE && !storageReadyToAdvance) {
-      programmaticTargetRef.current = ONBOARDING_PAGE.STORAGE
-      setCurrentPage(ONBOARDING_PAGE.STORAGE)
-      scrollViewRef.current?.scrollTo({
-        x: ONBOARDING_PAGE.STORAGE * SCREEN_WIDTH,
-        animated: true
-      })
-      toast.showWarning(t('storage.all_files_access_settings_hint'))
-      return
-    }
-
-    if (clampedPage !== currentPage) {
-      setCurrentPage(clampedPage)
-    }
-  }
-
   const theme = SLIDE_THEMES[currentPage]
   const isLast = currentPage === NUM_ONBOARDING_PAGES - 1
+
+  const renderSlideTitle = (text: string) => (
+    <Text style={[styles.slideTitle, { color: colors.textPrimary }]}>{text}</Text>
+  )
+
+  const renderSlideBody = (text: string) => (
+    <Text style={[styles.slideBody, { color: colors.textSecondary }]}>{text}</Text>
+  )
 
   const welcomeScale = floatAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.04]
   })
-
-  const renderSlideTitle = (text: string) => <Text style={styles.slideTitle}>{text}</Text>
-
-  const renderSlideBody = (text: string) => <Text style={styles.slideBody}>{text}</Text>
 
   const renderLanguageSlide = () => (
     <OnboardingLanguageSlide
@@ -299,35 +353,25 @@ export const OnboardingScreen: React.FC = () => {
     />
   )
 
-  const renderWelcomeSlide = () => (
-    <View style={styles.slideInner}>
-      <Animated.View style={[styles.welcomeIconWrap, { transform: [{ scale: welcomeScale }] }]}>
-        <Image source={APP_ICON} style={styles.welcomeIcon} resizeMode="cover" />
-      </Animated.View>
-      <Text style={styles.welcomeTitle}>{t('onboarding.welcome_title')}</Text>
-      <Text style={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</Text>
-      {renderSlideBody(t('onboarding.welcome_desc'))}
-    </View>
-  )
+  const renderWelcomeSlide = () => <OnboardingWelcomeSlide welcomeScale={welcomeScale} />
 
-  const renderPhilosophySlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.philosophy_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.philosophy_desc'))}
-    </View>
-  )
-
-  const renderCompressionSlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]} size={56} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.compression_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.compression_desc'))}
-    </View>
+  const renderProfileSlide = () => (
+    <OnboardingProfileSlide
+      nickname={nickname}
+      onChangeNickname={(val) => {
+        setNickname(val)
+        if (nicknameError && normalizeOnboardingNickname(val)) {
+          setNicknameError(false)
+        }
+      }}
+      nicknameError={nicknameError}
+      birthday={birthday}
+      onChangeBirthday={setBirthday}
+      gender={gender}
+      onChangeGender={setGender}
+      customGender={customGender}
+      onChangeCustomGender={setCustomGender}
+    />
   )
 
   const renderStorageSlide = () => (
@@ -350,36 +394,40 @@ export const OnboardingScreen: React.FC = () => {
     </View>
   )
 
-  const renderApiConfigSlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.API]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.api_guide_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.api_guide_desc'))}
-    </View>
-  )
-
-  const renderPrivacySlide = () => (
-    <View style={styles.slideInner}>
-      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]} />
-      <View style={styles.slideSpacerLarge} />
-      {renderSlideTitle(t('onboarding.privacy_title'))}
-      <View style={styles.slideSpacerMedium} />
-      {renderSlideBody(t('onboarding.privacy_desc'))}
-      <View style={styles.sloganSpacer} />
-      <Text style={styles.slogan}>{t('onboarding.slogan')}</Text>
-    </View>
-  )
-
   const slides = [
     renderLanguageSlide,
     renderWelcomeSlide,
-    renderPhilosophySlide,
-    renderCompressionSlide,
+    renderProfileSlide,
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.PHILOSOPHY]}
+        title={t('onboarding.philosophy_title')}
+        body={t('onboarding.philosophy_desc')}
+      />
+    ),
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.COMPRESSION]}
+        title={t('onboarding.compression_title')}
+        body={t('onboarding.compression_desc')}
+      />
+    ),
     renderStorageSlide,
-    renderApiConfigSlide,
-    renderPrivacySlide
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.API]}
+        title={t('onboarding.api_guide_title')}
+        body={t('onboarding.api_guide_desc')}
+      />
+    ),
+    () => (
+      <OnboardingInfoSlide
+        theme={SLIDE_THEMES[ONBOARDING_PAGE.PRIVACY]}
+        title={t('onboarding.privacy_title')}
+        body={t('onboarding.privacy_desc')}
+        slogan={t('onboarding.slogan')}
+      />
+    )
   ]
 
   return (
@@ -421,7 +469,7 @@ export const OnboardingScreen: React.FC = () => {
                     styles.indicator,
                     {
                       width: active ? 20 : 7,
-                      backgroundColor: active ? theme.iconColor : '#D1D5DB'
+                      backgroundColor: active ? theme.iconColor : colors.borderMuted
                     }
                   ]}
                 />
@@ -432,8 +480,10 @@ export const OnboardingScreen: React.FC = () => {
           <View style={styles.navActions}>
             {currentPage > ONBOARDING_PAGE.LANGUAGE && (
               <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
-                <ChevronLeft size={12} color="#9CA3AF" strokeWidth={2} />
-                <Text style={styles.backText}>{t('common.back')}</Text>
+                <ChevronLeft size={12} color={colors.textTertiary} strokeWidth={2} />
+                <Text style={[styles.backText, { color: colors.textSecondary }]}>
+                  {t('common.back')}
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -444,17 +494,19 @@ export const OnboardingScreen: React.FC = () => {
                 {
                   backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK,
                   opacity:
-                    nextBlockedOnLanguage || isMountingStorage
+                    nextBlockedOnLanguage || nextBlockedOnNickname || isMountingStorage
                       ? 0.45
                       : nextBlockedOnStorage && storagePermission.granted !== true
                         ? 0.45
                         : 1
                 }
               ]}
-              activeOpacity={nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9}
+              activeOpacity={
+                nextBlockedOnLanguage || nextBlockedOnNickname || isMountingStorage ? 1 : 0.9
+              }
               disabled={isMountingStorage}
             >
-              <Text style={styles.nextButtonText}>
+              <Text style={[styles.nextButtonText, { color: colors.textOnPrimary }]}>
                 {isMountingStorage
                   ? t('storage.mounting')
                   : isLast
@@ -462,7 +514,7 @@ export const OnboardingScreen: React.FC = () => {
                     : t('common.next')}
               </Text>
               {!isLast && !isMountingStorage && (
-                <ChevronRight size={14} color="#FFFFFF" strokeWidth={2} />
+                <ChevronRight size={14} color={colors.textOnPrimary} strokeWidth={2} />
               )}
             </TouchableOpacity>
           </View>

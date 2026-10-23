@@ -8,7 +8,7 @@ const diaryEditParams = z.object({
   content: z
     .string()
     .describe(
-      'Markdown content. In append mode (default): only the new section to add—existing paragraphs are kept automatically. ' +
+      'Markdown content. In append mode (default): the complete new section to add, including any desired time heading, section title, and #tags—the system appends it without generating a time heading. ' +
         'In overwrite mode: the FULL entry body including ALL paragraphs to keep; never pass only the edited snippet or other paragraphs will be deleted.'
     ),
   mode: z
@@ -16,13 +16,9 @@ const diaryEditParams = z.object({
     .optional()
     .default('append')
     .describe(
-      'Edit mode. "append" adds content with a timestamp header (default, preferred). ' +
+      'Edit mode. "append" adds content as a new section without generating a timestamp header (default, preferred). ' +
         '"overwrite" replaces the entire entry—use only when the user explicitly asked for a full rewrite.'
-    ),
-  tags: z
-    .string()
-    .optional()
-    .describe('Comma-separated tags to add/merge into the diary. Existing tags are preserved.')
+    )
 })
 
 export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
@@ -32,9 +28,9 @@ export class DiaryEditTool extends AgentTool<typeof diaryEditParams> {
     'Modify an existing diary entry. ' +
     'Call diary_read for the same date before editing to confirm existing content and structure. ' +
     'Never delete or drop paragraphs the user did not ask to change—keep all other sections intact. ' +
-    'Default mode is "append", which adds new content with an automatically inserted timestamp header. ' +
+    'Default mode is "append". Compose the complete new section yourself, including any desired time heading; the system only appends it to the existing body. ' +
     'Use "overwrite" only when necessary; content must then include the FULL diary with all preserved paragraphs, not just the edited part. ' +
-    'Tags are automatically merged with existing ones.'
+    'Write new-section labels as #tags directly in content. Do not write tags into file metadata.'
 
   readonly parameters = diaryEditParams
 

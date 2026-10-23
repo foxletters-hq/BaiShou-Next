@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
 import { AssistantAvatarPicker } from '../AssistantAvatarPicker'
 import styles from './AssistantEditPage.module.css'
+import { Button } from '../Button/Button'
 
 interface AssistantEditAvatarSectionProps {
   avatarPath: string
@@ -10,6 +11,8 @@ interface AssistantEditAvatarSectionProps {
   onUploadImage: (dataUrl: string) => void
   onResetToDefault?: () => void
   showReset?: boolean
+  previewSize?: number
+  fullWidth?: boolean
 }
 
 export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProps> = ({
@@ -17,7 +20,9 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
   onSelectBuiltin,
   onUploadImage,
   onResetToDefault,
-  showReset
+  showReset,
+  previewSize = 88,
+  fullWidth = false
 }) => {
   const { t } = useTranslation()
 
@@ -25,14 +30,15 @@ export const AssistantEditAvatarSection: React.FC<AssistantEditAvatarSectionProp
     <div className={styles.avatarSection}>
       <AssistantAvatarPicker
         avatarPath={avatarPath || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH}
-        previewSize={120}
+        previewSize={previewSize}
+        fullWidth={fullWidth}
         onSelectBuiltin={onSelectBuiltin}
         onUploadImage={onUploadImage}
       />
       {showReset && onResetToDefault ? (
-        <button type="button" className={styles.textBtn} onClick={onResetToDefault}>
+        <Button type="button" variant="outlined" size="small" onClick={onResetToDefault}>
           {t('agent.assistant.reset_builtin_avatar')}
-        </button>
+        </Button>
       ) : null}
     </div>
   )

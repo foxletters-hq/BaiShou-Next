@@ -1,4 +1,4 @@
-import { formatDiaryPreviewText } from '@baishou/shared'
+import { formatDiaryPreviewText, truncateTextSafe } from '@baishou/shared'
 import type { ToolContext } from './agent.tool'
 
 function previewFromRaw(raw: string | null | undefined): string {
@@ -8,7 +8,7 @@ function previewFromRaw(raw: string | null | undefined): string {
     .map((l) => l.trim())
     .find((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('---'))
   if (!firstLine) return '(empty)'
-  return firstLine.length > 80 ? `${firstLine.slice(0, 80)}...` : firstLine
+  return firstLine.length > 80 ? truncateTextSafe(firstLine, 80, '...') : firstLine
 }
 
 export async function runDiaryListViaDb(

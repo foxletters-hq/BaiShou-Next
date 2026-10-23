@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import React from 'react'
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { CloudSyncPanelProps } from './cloud-sync-panel.types'
 import { useCloudSyncPanel } from './useCloudSyncPanel'
@@ -61,7 +61,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           styles.saveButton,
           {
             backgroundColor: colors.primary,
-            borderRadius: tokens.radius.sm
+            borderRadius: tokens.radius.xs
           }
         ]}
         onPress={panel.handleSave}
@@ -78,7 +78,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({
           {
             backgroundColor: colors.bgSurfaceNormal,
             borderColor: colors.borderSubtle,
-            borderRadius: tokens.radius.sm
+            borderRadius: tokens.radius.xs
           }
         ]}
         onPress={panel.handleSync}

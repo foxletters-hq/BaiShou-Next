@@ -1,16 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Loader2 } from 'lucide-react'
 import type { RagMemoryViewProps } from './rag-memory.types'
 import { useRagMemoryView, getRagBusyFlags } from './useRagMemoryView'
 import { formatRagEntryDate } from './rag-memory.utils'
-import { RagMemoryHeader } from './RagMemoryHeader'
+import { RagClearMemoryModal } from './RagClearMemoryModal'
+import { RagMemoryStatusStrip } from './RagMemoryStatusStrip'
+import { RagMemoryToolbar } from './RagMemoryToolbar'
 import { RagMemoryDisabledAlert } from './RagMemoryDisabledAlert'
-import { RagMemoryStatsChips } from './RagMemoryStatsChips'
-import { RagMemoryConfigBlock } from './RagMemoryConfigBlock'
 import { RagMemoryAlerts } from './RagMemoryAlerts'
-import { RagMemoryDiaryEmbedHint } from './RagMemoryDiaryEmbedHint'
-import { RagMemoryActionButtons } from './RagMemoryActionButtons'
-import { RagMemorySearchBar } from './RagMemorySearchBar'
 import { RagMemoryEntriesList } from './RagMemoryEntriesList'
+import { RagMemoryPaginationBar } from './RagMemoryPaginationBar'
 import styles from './RagMemoryView.module.css'
 
 export type {
@@ -22,6 +22,8 @@ export type {
 } from './rag-memory.types'
 
 export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
+  embedded = false,
+  extraStatsChips,
   config,
   stats,
   ragState,
@@ -32,22 +34,35 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   currentPage: propCurrentPage,
   pageSize: propPageSize,
   onChange,
-  onBatchEmbed,
   onAddManualMemory,
   onClearAll,
   onTriggerMigration,
   onCancelMigration,
+  onPauseBatchEmbed,
+  onResumeBatchEmbed,
+  onCancelBatchEmbed,
   onRestoreMigration,
   onResumeMigration,
   migrationState,
   migrationCancelBusy,
   onSearch,
+  isSearching = false,
+  sourceKind = 'all',
+  onSourceKindChange,
   onDeleteEntry,
   onEditEntry,
   onNavigateToConfig,
   onDetectDimension,
-  onPageChange
+  onPageChange,
+  graphExtract = null,
+  graphExtractWaiting = false,
+  pendingGraphCount = 0,
+  suspectCount = 0,
+  onReviewSuspects,
+  hideOrganizeProgress = false
 }) => {
+  const { t } = useTranslation()
+  const [clearOpen, setClearOpen] = useState(false)
   const view = useRagMemoryView({
     totalCount,
     entriesLength: entries.length,
@@ -56,25 +71,40 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
     onSearch,
     onPageChange
   })
-  const { isBusy, isBatchEmbedding } = getRagBusyFlags(ragState)
+  const { isBusy } = getRagBusyFlags(ragState)
 
   return (
-    <div className={styles.page}>
-      <RagMemoryHeader config={config} stats={stats} onChange={onChange} onClearAll={onClearAll} />
+    <div className={`${styles.page}${embedded ? ` ${styles.pageEmbedded}` : ''}`}>
+      <RagMemoryStatusStrip
+        config={config}
+        stats={stats}
+        embeddingModelId={embeddingModelId}
+        isBusy={isBusy}
+        extraChips={extraStatsChips}
+        onChange={onChange}
+        onNavigateToConfig={onNavigateToConfig}
+        onDetectDimension={onDetectDimension}
+      />
 
-      <div className={styles.scrollArea}>
+      <RagMemoryToolbar
+        config={config}
+        isBusy={isBusy}
+        searchQuery={view.searchQuery}
+        searchMode={view.searchMode}
+        sourceKind={sourceKind}
+        onChange={onChange}
+        onSearch={view.handleSearch}
+        onClearSearch={view.handleClearSearch}
+        onToggleSearchMode={view.toggleSearchMode}
+        onSourceKindChange={onSourceKindChange ?? (() => undefined)}
+        onAddManualMemory={onAddManualMemory}
+        onOpenClear={() => setClearOpen(true)}
+        suspectCount={suspectCount}
+        onReviewSuspects={onReviewSuspects}
+      />
+
+      <div className={styles.alertsSlot}>
         <RagMemoryDisabledAlert ragEnabled={config.ragEnabled} />
-
-        <RagMemoryStatsChips
-          stats={stats}
-          embeddingModelId={embeddingModelId}
-          isBusy={isBusy}
-          onNavigateToConfig={onNavigateToConfig}
-          onDetectDimension={onDetectDimension}
-        />
-
-        <RagMemoryConfigBlock config={config} onChange={onChange} />
-
         <RagMemoryAlerts
           ragState={ragState}
           hasMismatchModel={hasMismatchModel}
@@ -82,49 +112,68 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           migrationCancelBusy={migrationCancelBusy}
           onTriggerMigration={onTriggerMigration}
           onCancelMigration={onCancelMigration}
+          onPauseBatchEmbed={onPauseBatchEmbed}
+          onResumeBatchEmbed={onResumeBatchEmbed}
+          onCancelBatchEmbed={onCancelBatchEmbed}
           onRestoreMigration={onRestoreMigration}
           onResumeMigration={onResumeMigration}
+          graphExtract={graphExtract}
+          graphExtractWaiting={graphExtractWaiting}
+          pendingGraphCount={pendingGraphCount}
+          suspectCount={suspectCount}
+          onReviewSuspects={onReviewSuspects}
+          surface={hideOrganizeProgress ? 'idle' : 'all'}
         />
+      </div>
 
-        <RagMemoryDiaryEmbedHint
-          failedAt={config.lastDiaryEmbedFailureAt}
-          failedMessage={config.lastDiaryEmbedFailureMessage}
-          onBatchEmbed={onBatchEmbed}
-        />
+      <div className={styles.listScroll} aria-busy={isSearching}>
+        {isSearching && entries.length === 0 ? (
+          <div className={styles.searchingState} role="status" aria-live="polite">
+            <Loader2 className={styles.searchingSpinner} size={24} aria-hidden />
+            <span>{t('settings.rag_searching', '正在搜索…')}</span>
+          </div>
+        ) : (
+          <>
+            {isSearching ? (
+              <div className={styles.searchingOverlay} role="status" aria-live="polite">
+                <Loader2 className={styles.searchingSpinner} size={24} aria-hidden />
+                <span>{t('settings.rag_searching', '正在搜索…')}</span>
+              </div>
+            ) : null}
+            <RagMemoryEntriesList
+              entries={entries}
+              searchQuery={view.searchQuery}
+              sourceKind={sourceKind}
+              activeMenuId={view.activeMenuId}
+              setActiveMenuId={view.setActiveMenuId}
+              formatDate={formatRagEntryDate}
+              onEditEntry={onEditEntry}
+              onDeleteEntry={onDeleteEntry}
+            />
+          </>
+        )}
+      </div>
 
-        <RagMemoryActionButtons
-          ragState={ragState}
-          isBusy={isBusy}
-          isBatchEmbedding={isBatchEmbedding}
-          onBatchEmbed={onBatchEmbed}
-          onAddManualMemory={onAddManualMemory}
-        />
-
-        <RagMemorySearchBar
-          searchQuery={view.searchQuery}
-          searchMode={view.searchMode}
-          onSearch={view.handleSearch}
-          onClearSearch={view.handleClearSearch}
-          onToggleSearchMode={view.toggleSearchMode}
-        />
-
-        <RagMemoryEntriesList
-          entries={entries}
-          searchQuery={view.searchQuery}
-          activeMenuId={view.activeMenuId}
-          setActiveMenuId={view.setActiveMenuId}
-          formatDate={formatRagEntryDate}
-          showPagination={view.showPagination}
+      {view.showPagination ? (
+        <RagMemoryPaginationBar
           effectiveTotal={view.effectiveTotal}
           pageSize={view.pageSize}
           currentPage={view.currentPage}
           totalPages={view.totalPages}
-          onEditEntry={onEditEntry}
-          onDeleteEntry={onDeleteEntry}
           onPageChange={view.handlePageChange}
           onPageSizeChange={view.handlePageSizeChange}
         />
-      </div>
+      ) : null}
+
+      <RagClearMemoryModal
+        open={clearOpen}
+        busy={isBusy}
+        onClose={() => setClearOpen(false)}
+        onConfirm={async (kinds) => {
+          await onClearAll?.(kinds)
+          setClearOpen(false)
+        }}
+      />
     </div>
   )
 }

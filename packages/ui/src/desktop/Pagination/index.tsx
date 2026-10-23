@@ -213,7 +213,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <div className={styles.jumper}>
           <input
             ref={inputRef}
-            className={styles.jumperInput}
+            className={`baishou-form-field baishou-form-field--small ${styles.jumperInput}`}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"

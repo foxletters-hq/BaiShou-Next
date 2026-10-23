@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react'
+import { Input } from '../Input/Input'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcher.module.css'
 import { MockAiProviderModel } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -10,8 +12,7 @@ import {
   Banknote,
   Settings,
   Blocks,
-  Sparkles,
-  PlusCircle
+  Sparkles
 } from 'lucide-react'
 
 interface ModelSwitcherProps {
@@ -74,7 +75,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={withAppContentOverlay(styles.overlay)} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>
@@ -92,9 +93,11 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
             <span className={styles.searchIcon}>
               <Search size={16} />
             </span>
-            <input
+            <Input
               type="text"
+              fieldSize="small"
               className={styles.searchInput}
+              inputClassName="baishou-form-field--embed"
               placeholder={t('common.search', '搜索模型 ...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

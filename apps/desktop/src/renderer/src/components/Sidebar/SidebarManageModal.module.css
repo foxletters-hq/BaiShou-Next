@@ -4,7 +4,7 @@
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-bottom: 20px !important;
+  padding-bottom: var(--spacing-md-plus) !important;
 }
 
 .modalContent {
@@ -22,37 +22,37 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 6px;
+  padding-right: var(--spacing-xs-plus);
   margin-right: -2px;
 }
 
 .hint {
-  margin: 0 0 16px;
-  font-size: 14px;
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--ui-fs-lg);
   line-height: 1.55;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .groupList {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding-bottom: 4px;
+  gap: var(--spacing-md-plus);
+  padding-bottom: var(--spacing-xs);
 }
 
 .groupTitle {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 700;
+  margin: 0 0 var(--spacing-sm-plus);
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .optionGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--spacing-sm-plus);
 }
 
 @media (max-width: 520px) {
@@ -64,21 +64,21 @@
 .option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border-radius: 10px;
-  border: 1px solid var(--border-default, #cbd5e1);
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #0f172a);
+  gap: var(--spacing-sm-plus);
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
 }
 
 .option:hover {
-  border-color: var(--border-strong, #94a3b8);
+  border-color: var(--border-control);
   background: rgba(var(--color-primary-rgb), 0.04);
 }
 
@@ -87,28 +87,13 @@
   background: rgba(var(--color-primary-rgb), 0.08);
 }
 
-.checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.checkbox svg {
-  width: 20px;
-  height: 20px;
-}
-
 .optionIcon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -122,31 +107,51 @@
 }
 
 .optionLabel {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.35;
 }
 
 .footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
-  padding-top: 16px;
-  margin-top: 12px;
-  border-top: 1px solid var(--border-default, #cbd5e1);
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md-tight);
+  border-top: 1px solid var(--border-muted);
 }
 
-.doneBtn {
-  padding: 9px 20px;
-  border-radius: 8px;
+.resetBtn {
+  padding: var(--spacing-sm) var(--spacing-xs);
   border: none;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
   cursor: pointer;
 }
 
+.resetBtn:hover {
+  color: var(--color-primary);
+}
+
+.doneBtn {
+  padding: var(--spacing-sm) var(--spacing-md-plus);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
 .doneBtn:hover {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }

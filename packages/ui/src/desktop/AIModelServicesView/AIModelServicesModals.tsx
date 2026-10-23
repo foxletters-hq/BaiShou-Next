@@ -1,9 +1,13 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { withAppContentOverlay } from '../overlay'
+import { Button } from '../Button/Button'
+import { Input } from '../Input/Input'
+import { settingsTypography } from '../../theme/tokens'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { resolveProviderTypeLabel } from './ai-model-services.constants'
-import { Blocks, CheckCircle2, ChevronDown, Cpu, Search, Sparkles, X } from 'lucide-react'
+import { Blocks, CheckCircle2, ChevronDown, Search, Sparkles, X } from 'lucide-react'
 
 export interface AIModelServicesModalsProps {
   vm: AIModelServicesViewModel
@@ -28,8 +32,6 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
     testModelId,
     setTestModelId,
     testModelOptions,
-    isTestModelDropdownOpen,
-    setIsTestModelDropdownOpen,
     confirmTestConnection,
     activeProviderMeta,
     renderIcon
@@ -46,7 +48,12 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isAddModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.addModalOverlay}>
+          <div
+            className={withAppContentOverlay(styles.addModalOverlay)}
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setIsAddModalOpen(false)
+            }}
+          >
             <div className={styles.addModalContent}>
               <div className={styles.addModalHeader}>
                 {t('agent.provider.add_title', '新增 AI 供应商')}
@@ -66,7 +73,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                         {resolveProviderTypeLabel(addModalData.type, t)}
                       </span>
                       <ChevronDown
-                        size={20}
+                        size={16}
                         className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`}
                       />
                     </div>
@@ -93,9 +100,8 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   <span className={styles.materialLabel}>
                     {t('agent.provider.add_name_label', '供应商名称')}
                   </span>
-                  <input
+                  <Input
                     type="text"
-                    className={styles.addModalInput}
                     placeholder={t('agent.provider.add_name_hint', '例如: My OpenAI Proxy')}
                     value={addModalData.name}
                     onChange={(e) => setAddModalData({ ...addModalData, name: e.target.value })}
@@ -103,9 +109,8 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
                 <div className={styles.materialField}>
                   <span className={styles.materialLabel}>Base URL</span>
-                  <input
+                  <Input
                     type="text"
-                    className={styles.addModalInput}
                     placeholder="https://api.example.com/v1"
                     value={addModalData.baseUrl}
                     onChange={(e) =>
@@ -118,12 +123,12 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
               </div>
               <div className={styles.addModalFooter}>
-                <button className={styles.addModalCancel} onClick={() => setIsAddModalOpen(false)}>
+                <Button variant="outlined" size="small" onClick={() => setIsAddModalOpen(false)}>
                   {t('common.cancel', '取消')}
-                </button>
-                <button className={styles.addModalConfirm} onClick={submitAddCustomProvider}>
+                </Button>
+                <Button variant="outlined" size="small" onClick={submitAddCustomProvider}>
                   {t('agent.provider.add_button', '添加')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,
@@ -133,7 +138,15 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isTestModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.testModalOverlay}>
+          <div
+            className={withAppContentOverlay(styles.testModalOverlay)}
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsTestModalOpen(false)
+                setSearchQuery('')
+              }
+            }}
+          >
             <div className={styles.testModalContent}>
               <div className={styles.addModalHeader}>
                 <h3>{t('ai_config.test_connection_title', '选择测试模型')}</h3>
@@ -144,16 +157,16 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     setSearchQuery('')
                   }}
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
               </div>
 
               <div className={styles.addModalBody}>
                 <p
                   style={{
-                    color: 'var(--color-text-secondary)',
+                    color: 'var(--text-secondary)',
                     marginBottom: 15,
-                    fontSize: 13,
+                    fontSize: settingsTypography.label.fontSize,
                     userSelect: 'none'
                   }}
                 >
@@ -169,9 +182,11 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     <span className={styles.testSearchIcon}>
                       <Search size={16} />
                     </span>
-                    <input
+                    <Input
                       type="text"
+                      fieldSize="small"
                       className={styles.testSearchInput}
+                      inputClassName="baishou-form-field--embed"
                       placeholder={t('common.search_model', '搜索模型...')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -237,18 +252,19 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
               </div>
               <div className={styles.addModalFooter}>
-                <button
-                  className={styles.addModalCancel}
+                <Button
+                  variant="outlined"
+                  size="small"
                   onClick={() => {
                     setIsTestModalOpen(false)
                     setSearchQuery('')
                   }}
                 >
                   {t('common.cancel', '取消')}
-                </button>
-                <button className={styles.addModalConfirm} onClick={confirmTestConnection}>
+                </Button>
+                <Button variant="outlined" size="small" onClick={confirmTestConnection}>
                   {t('ai_config.start_test', '开始测试')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,

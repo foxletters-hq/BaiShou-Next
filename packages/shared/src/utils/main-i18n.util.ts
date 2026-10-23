@@ -4,24 +4,12 @@ import en from '../i18n/en.i18n.json'
 import ja from '../i18n/ja.i18n.json'
 import zh from '../i18n/zh.i18n.json'
 import zh_TW from '../i18n/zh_TW.i18n.json'
+import { resolveAppLanguage } from './main-i18n-language'
+
+export { resolveAppLanguage }
 
 /** 独立实例：绝不能碰全局 i18next 单例，否则会把 App UI 语言改成 init 的 lng */
 let mainI18n: I18nInstance | null = null
-
-/** Map UI / store locale to i18next language code. */
-export function resolveAppLanguage(locale?: string): string {
-  const normalized = (locale || 'zh').toLowerCase().replace('_', '-')
-  if (normalized === 'system' || normalized === '') {
-    return 'zh'
-  }
-  if (normalized.startsWith('zh-tw') || normalized.startsWith('zh-hk')) {
-    return 'zh-TW'
-  }
-  if (normalized.startsWith('zh')) return 'zh'
-  if (normalized.startsWith('ja')) return 'ja'
-  if (normalized.startsWith('en')) return 'en'
-  return 'en'
-}
 
 function ensureMainI18n(): I18nInstance {
   if (mainI18n) return mainI18n
