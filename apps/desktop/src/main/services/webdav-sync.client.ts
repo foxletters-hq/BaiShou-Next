@@ -2,6 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { createClient, WebDAVClient } from 'webdav'
 import {
+  assertSafeSyncRelPath,
   isTransientWebDavHttpStatus,
   normalizeWebDavBaseUrl,
   suggestWebDavHttpFallbackUrl
@@ -173,8 +174,10 @@ export class WebDavSyncClient implements ICloudSyncClient {
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
     await this.withHttpFallback(async () => {
-      const oldPath = this.basePath + oldFilename
-      const newPath = this.basePath + newFilename
+      const oldSafe = assertSafeSyncRelPath(oldFilename)
+      const newSafe = assertSafeSyncRelPath(newFilename)
+      const oldPath = this.basePath + oldSafe
+      const newPath = this.basePath + newSafe
       await this.client.moveFile(oldPath, newPath)
     })
   }

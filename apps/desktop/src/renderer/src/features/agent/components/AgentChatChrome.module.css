@@ -1,0 +1,344 @@
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
+  height: 52px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  z-index: 20;
+  /* 伙伴选择器 / 计费器 / 右侧按钮统一高度 */
+  --chrome-chip-height: 34px;
+}
+
+/* 有对话后：仅右上角浮层按钮，不占整条顶栏（兼容保留） */
+.floatingActions {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  --chrome-chip-height: 34px;
+  pointer-events: auto;
+}
+
+.left {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.assistantSlot {
+  padding: 0 !important;
+  max-width: min(320px, 100%);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  height: var(--chrome-chip-height);
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-right: var(--spacing-xs);
+  height: 100%;
+}
+
+/* TokenBadge：强制与加号同高，压过 TokenBadge.container 默认 padding */
+.trailing .chip {
+  height: var(--chrome-chip-height) !important;
+  min-height: var(--chrome-chip-height) !important;
+  max-height: var(--chrome-chip-height) !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1;
+  overflow: hidden;
+  background: var(--bg-surface) !important;
+  justify-content: center;
+}
+
+.iconBtn {
+  height: var(--chrome-chip-height);
+  min-width: var(--chrome-chip-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs-plus);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-instant) ease;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  user-select: none;
+  padding: 0 var(--spacing-sm-plus);
+}
+
+.iconBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong, var(--border-control));
+  color: var(--text-primary);
+}
+
+.iconBtn:active {
+  transform: scale(0.97);
+}
+
+/* 仅图标按钮（如历史记录）保持正方形 */
+.iconOnlyBtn {
+  padding: 0;
+  width: var(--chrome-chip-height);
+}
+
+/* 新建对话按钮微高亮强调（Subtle CTA） */
+.newChatBtn {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 0 var(--spacing-md-tight);
+}
+
+.newChatBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.newChatText {
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+@media (max-width: 580px) {
+  .newChatText {
+    display: none;
+  }
+  .newChatBtn {
+    padding: 0;
+    width: var(--chrome-chip-height);
+  }
+}
+
+.chip {
+  height: var(--chrome-chip-height);
+  min-height: var(--chrome-chip-height);
+  max-height: var(--chrome-chip-height);
+  box-sizing: border-box;
+  padding: 0 var(--spacing-md-tight);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modelSwitcherTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
+  transition:
+    background-color var(--duration-swift),
+    border-color var(--duration-swift);
+  color: var(--text-primary);
+  height: var(--chrome-chip-height);
+  box-sizing: border-box;
+}
+
+.modelSwitcherTrigger:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
+}
+
+.modelProviderIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.modelProviderIcon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.modelName {
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-primary);
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-bottom: 1px;
+}
+
+.modelEffort {
+  font-size: inherit;
+  font-weight: 500;
+  /* 与 .modelName 使用同一行高，避免「强度」相对模型名上下偏移 */
+  line-height: 1.45;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-bottom: 1px;
+}
+
+.chevron {
+  font-size: var(--icon-fs-xs);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* 输入框底部模型切换：与加号/发送对齐，精致药丸微按钮（对齐现代 Chat 布局） */
+.modelSwitcherInComposer {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 var(--spacing-sm) 0 var(--spacing-xs-plus);
+  gap: var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.modelSwitcherInComposer:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
+  color: var(--text-primary);
+}
+
+.modelSwitcherInComposer .modelName {
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  color: inherit;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelSwitcherInComposer .modelEffort {
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.modelSwitcherInComposer .chevron {
+  font-size: var(--settings-font-micro-size);
+  color: var(--text-tertiary);
+  margin-left: var(--spacing-2xs);
+  display: flex;
+  align-items: center;
+}
+
+/* 工作台 meta 行右侧：与伙伴/工作区/权限 chip 同高同风格 */
+.modelSwitcherInMeta {
+  height: 28px;
+  min-height: 28px;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  gap: var(--spacing-xs-plus);
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.modelSwitcherInMeta:hover {
+  background-color: var(--bg-surface-high);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+.modelSwitcherInMeta .modelName {
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  color: inherit;
+}
+
+.modelSwitcherInMeta .modelEffort {
+  font-size: var(--ui-fs-md);
+  color: var(--text-tertiary);
+}
+
+.modelSwitcherInMeta .chevron {
+  font-size: var(--icon-fs-xs);
+  color: inherit;
+  opacity: 0.7;
+}
+
+.modelSwitcherInMeta .modelProviderIcon,
+.modelSwitcherInMeta .modelProviderIcon img {
+  width: 15px;
+  height: 15px;
+}
+
+.modelSwitcherInComposer .modelName {
+  font-size: var(--ui-fs-sm);
+}
+
+.modelSwitcherInComposer .modelProviderIcon,
+.modelSwitcherInComposer .modelProviderIcon img {
+  width: 16px;
+  height: 16px;
+}
+
+/* 输入框内仅显示供应商 icon */
+.modelSwitcherIconOnly {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+}

@@ -3,6 +3,8 @@ export interface DiscoveredDevice {
   deviceId: string
   nickname: string
   ip: string
+  /** 所有可尝试的 IPv4，最优在前；发送时不要只使用 ip */
+  ipCandidates?: string[]
   port: number
   deviceType: 'mobile' | 'desktop' | 'other'
   rawServiceId: string

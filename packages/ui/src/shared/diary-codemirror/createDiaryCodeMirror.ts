@@ -122,7 +122,7 @@ export function createDiaryCodeMirrorExtensions(
       : []),
     listContinuationExtension,
     inlineMarkEnterExtension,
-    markdownKeymap,
+    Prec.high(markdownKeymap),
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     markdownSupport,
     ...(isTouch ? [] : diaryMarkdownTableAutocompletionExt(markdownSupport)),
@@ -141,8 +141,31 @@ export function createDiaryCodeMirrorExtensions(
         ]
       : []),
     EditorView.domEventHandlers({
-      click: (event) => {
+      mousedown: (event, view) => {
         const target = event.target as HTMLElement
+        const renderedLink = target.closest('.cm-rendered-link')
+        if (!renderedLink?.getAttribute('data-href')) return false
+        const isModifier = event.ctrlKey || event.metaKey
+        const isReadOnly = view.state.readOnly
+        if (isModifier || isReadOnly) {
+          event.preventDefault()
+          return true
+        }
+        return false
+      },
+      click: (event, view) => {
+        const target = event.target as HTMLElement
+        const renderedLink = target.closest('.cm-rendered-link')
+        const href = renderedLink?.getAttribute('data-href')
+        if (renderedLink && href) {
+          const isModifier = event.ctrlKey || event.metaKey
+          const isReadOnly = view.state.readOnly
+          if (isModifier || isReadOnly) {
+            platform.onOpenExternalLink?.(href)
+            event.preventDefault()
+            return true
+          }
+        }
         if (target.closest('.cm-image-container')) {
           return false
         }
@@ -189,11 +212,15 @@ export function createDiaryCodeMirror(
     })
     // WebView 首帧：同步 + 多帧补刷装饰
     const refreshDecorations = () => {
-      if (!view.dom.isConnected) return
-      view.dispatch({
-        effects: diarySyntaxTreeGrowthEffect.of(null),
-        scrollIntoView: false
-      })
+      if (!view.dom?.isConnected) return
+      try {
+        view.dispatch({
+          effects: diarySyntaxTreeGrowthEffect.of(null),
+          scrollIntoView: false
+        })
+      } catch {
+        /* 打开文档后立刻卸下时，补刷装饰可能读到空节点 */
+      }
     }
     refreshDecorations()
     requestAnimationFrame(refreshDecorations)

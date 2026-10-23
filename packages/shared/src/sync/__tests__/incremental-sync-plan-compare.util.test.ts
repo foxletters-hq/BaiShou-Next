@@ -17,6 +17,8 @@ function preview(
     warnings: [],
     changeCount: overrides.items.length,
     skippedCount: 0,
+    totalUploadBytes: 0,
+    totalDownloadBytes: 0,
     boundaryIssues: {
       unknownVaultPaths: [],
       diskVaultsNotInRegistry: [],
@@ -31,10 +33,10 @@ function preview(
 describe('incremental-sync-plan-compare.util', () => {
   it('detects item list changes', () => {
     const before = preview({
-      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }]
+      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 }]
     })
     const after = preview({
-      items: [{ filePath: 'vault-a/b.md', action: 'upload', vaultScope: 'vault-a' }]
+      items: [{ filePath: 'vault-a/b.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 }]
     })
     expect(hasIncrementalSyncPlanMaterialChange(before, after)).toBe(true)
   })
@@ -42,15 +44,15 @@ describe('incremental-sync-plan-compare.util', () => {
   it('treats identical plans as unchanged', () => {
     const before = preview({
       items: [
-        { filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' },
-        { filePath: 'vault-a/b.md', action: 'download', vaultScope: 'vault-a' }
+        { filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 },
+        { filePath: 'vault-a/b.md', action: 'download', vaultScope: 'vault-a', sizeBytes: 0 }
       ]
     })
     const after = preview({
       changeCount: 2,
       items: [
-        { filePath: 'vault-a/b.md', action: 'download', vaultScope: 'vault-a' },
-        { filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }
+        { filePath: 'vault-a/b.md', action: 'download', vaultScope: 'vault-a', sizeBytes: 0 },
+        { filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 }
       ]
     })
     expect(hasIncrementalSyncPlanMaterialChange(before, after)).toBe(false)
@@ -59,11 +61,11 @@ describe('incremental-sync-plan-compare.util', () => {
   it('can ignore high-divergence flag cleared after user confirmation', () => {
     const before = preview({
       requiresHighDivergenceConfirm: true,
-      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }]
+      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 }]
     })
     const after = preview({
       requiresHighDivergenceConfirm: false,
-      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }]
+      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a', sizeBytes: 0 }]
     })
     expect(hasIncrementalSyncPlanMaterialChange(before, after)).toBe(true)
     expect(

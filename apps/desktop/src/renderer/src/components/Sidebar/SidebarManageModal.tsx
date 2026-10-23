@@ -1,13 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal } from '@baishou/ui'
-import { CheckSquare, Square } from 'lucide-react'
-import {
-  SIDEBAR_NAV_GROUPS,
-  SIDEBAR_NAV_ICON_SIZE,
-  buildSidebarNavItems,
-  type SidebarNavId
-} from './sidebar-nav-catalog'
+import { Checkbox } from '@baishou/ui'
+import { Modal } from '@baishou/ui/desktop/Modal/Modal'
+import { SIDEBAR_NAV_GROUPS, buildSidebarNavItems, type SidebarNavId } from './sidebar-nav-catalog'
 import styles from './SidebarManageModal.module.css'
 
 interface SidebarManageModalProps {
@@ -15,13 +10,15 @@ interface SidebarManageModalProps {
   hiddenItems: string[]
   onClose: () => void
   onToggle: (id: SidebarNavId) => void
+  onRestoreDefaults: () => void
 }
 
 export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
   isOpen,
   hiddenItems,
   onClose,
-  onToggle
+  onToggle,
+  onRestoreDefaults
 }) => {
   const { t } = useTranslation()
   const allItems = buildSidebarNavItems(t)
@@ -54,22 +51,14 @@ export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
                     if (!item) return null
                     const visible = !hiddenSet.has(id)
                     return (
-                      <button
+                      <label
                         key={id}
-                        type="button"
                         className={`${styles.option} ${visible ? styles.optionActive : ''}`}
-                        onClick={() => onToggle(id)}
                       >
-                        <span className={styles.checkbox} aria-hidden="true">
-                          {visible ? (
-                            <CheckSquare size={SIDEBAR_NAV_ICON_SIZE} />
-                          ) : (
-                            <Square size={SIDEBAR_NAV_ICON_SIZE} />
-                          )}
-                        </span>
+                        <Checkbox checked={visible} onChange={() => onToggle(id)} />
                         <span className={styles.optionIcon}>{item.icon}</span>
                         <span className={styles.optionLabel}>{item.label}</span>
-                      </button>
+                      </label>
                     )
                   })}
                 </div>
@@ -78,6 +67,9 @@ export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
           </div>
         </div>
         <div className={styles.footer}>
+          <button type="button" className={styles.resetBtn} onClick={onRestoreDefaults}>
+            {t('sidebar.restore_defaults', '恢复默认')}
+          </button>
           <button type="button" className={styles.doneBtn} onClick={onClose}>
             {t('common.done', '完成')}
           </button>

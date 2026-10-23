@@ -41,6 +41,32 @@ describe('ai-provider-config.util', () => {
     }
   })
 
+  it('throws provider_not_found when provider is disabled', () => {
+    const providers: AIProviderConfig[] = [
+      {
+        id: 'openai',
+        name: 'OpenAI',
+        type: 'openai' as any,
+        apiKey: 'sk-valid',
+        baseUrl: 'https://api.openai.com/v1',
+        models: [],
+        enabledModels: ['text-embedding-3-small'],
+        defaultDialogueModel: '',
+        defaultNamingModel: '',
+        isEnabled: false,
+        isSystem: true,
+        sortOrder: 0
+      }
+    ]
+
+    expect(() => resolveProviderConfig(providers, 'openai')).toThrow(EmbeddingProviderConfigError)
+    try {
+      resolveProviderConfig(providers, 'openai')
+    } catch (e) {
+      expect((e as EmbeddingProviderConfigError).code).toBe('provider_not_found')
+    }
+  })
+
   it('normalizes provider config for runtime', () => {
     const normalized = normalizeProviderConfig({
       id: 'openai',

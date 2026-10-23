@@ -1,0 +1,134 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(360px, 100%);
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-muted);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md-snug) var(--spacing-md-snug) var(--spacing-md-plus);
+  gap: var(--spacing-md-tight);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  margin: 0;
+  flex: 1;
+  font-size: var(--settings-font-row-size);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--settings-font-meta-size);
+  cursor: pointer;
+  outline: none;
+}
+
+.close:focus,
+.close:focus-visible {
+  outline: none;
+}
+
+.empty {
+  margin: var(--spacing-lg) var(--spacing-sm);
+  font-size: var(--settings-font-desc-size);
+  color: var(--text-secondary);
+}
+
+.groups {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.groupTitle {
+  margin: 0;
+  font-size: var(--settings-font-meta-size);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sessionId {
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
+  font-size: var(--settings-font-micro-size);
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs-plus);
+}
+
+.item {
+  width: 100%;
+  text-align: left;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-variant);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  outline: none;
+}
+
+.item:focus,
+.item:focus-visible {
+  outline: none;
+}
+
+.itemTitle {
+  font-size: var(--settings-font-desc-size);
+  color: var(--text-primary);
+}
+
+.itemMeta {
+  font-size: var(--settings-font-micro-size);
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.badgeBtn {
+  margin-right: var(--spacing-sm);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+  box-shadow: none;
+  -webkit-app-region: no-drag;
+}
+
+.badgeBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  color: var(--color-primary);
+}
+
+.badgeCount {
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
+  min-width: 1.2em;
+  text-align: center;
+}

@@ -42,7 +42,7 @@ describe('resolveSummaryConfigFromSettings', () => {
     })
   })
 
-  it('falls back to dialogue provider when summary model is still off', () => {
+  it('does not use the dialogue model when the summary slot is off', () => {
     const providers = [
       makeProvider('gemini', { apiKey: 'expired-gem', enabledModels: ['gemini-pro'] }),
       makeProvider('deepseek', { apiKey: 'sk-deep', enabledModels: ['deepseek-chat'] })
@@ -55,14 +55,12 @@ describe('resolveSummaryConfigFromSettings', () => {
       globalDialogueModelId: 'deepseek-chat'
     })
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.providerConfig.id).toBe('deepseek')
-    expect(result.modelId).toBe('deepseek-chat')
-    expect(result.isFallback).toBe(true)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toBe('no_model')
   })
 
-  it('does not treat placeholder summary provider id as configured when model is off', () => {
+  it('does not treat a placeholder summary provider as a reason to use dialogue', () => {
     const providers = [
       makeProvider('deepseek', { apiKey: 'sk-deep', enabledModels: ['deepseek-chat'] })
     ]
@@ -74,10 +72,9 @@ describe('resolveSummaryConfigFromSettings', () => {
       globalDialogueModelId: 'deepseek-chat'
     })
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.providerConfig.id).toBe('deepseek')
-    expect(result.modelId).toBe('deepseek-chat')
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toBe('no_model')
   })
 
   it('reports missing api key when no usable pair exists', () => {

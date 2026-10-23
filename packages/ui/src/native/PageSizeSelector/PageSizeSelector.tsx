@@ -49,7 +49,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
           styles.triggerBtn,
           {
             backgroundColor: colors.bgSurface,
-            borderColor: colors.borderSubtle
+            borderColor: colors.borderControl
           }
         ]}
         accessibilityRole="button"
@@ -92,14 +92,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
                     style={[
                       styles.optionBtn,
                       selected
-                        ? {
-                            backgroundColor: colors.primary,
-                            shadowColor: colors.primary,
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.25,
-                            shadowRadius: 6,
-                            elevation: 3
-                          }
+                        ? { backgroundColor: colors.primary }
                         : { backgroundColor: 'transparent' }
                     ]}
                   >

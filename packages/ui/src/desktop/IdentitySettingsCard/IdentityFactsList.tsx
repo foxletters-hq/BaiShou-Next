@@ -1,33 +1,35 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './IdentitySettingsCard.module.css'
-import { Pencil, Plus, Tag, Trash2, UserPlus } from 'lucide-react'
+import { Button } from '../Button/Button'
+import { Pencil, Tag, Trash2, UserPlus } from 'lucide-react'
 
 interface IdentityFactsListProps {
   currentFacts: Record<string, string>
   onAddFact: () => void
   onEditFact: (key: string, value: string) => void
   onDeleteFact: (key: string) => void
+  compact?: boolean
 }
 
 export const IdentityFactsList: React.FC<IdentityFactsListProps> = ({
   currentFacts,
   onAddFact,
   onEditFact,
-  onDeleteFact
+  onDeleteFact,
+  compact = false
 }) => {
   const { t } = useTranslation()
 
   return (
-    <div className={styles.factsContainer}>
+    <div className={`${styles.factsContainer}${compact ? ` ${styles.factsContainerCompact}` : ''}`}>
       <div className={styles.factsHeader}>
         <span className={styles.factsHeaderTitle}>
           {t('settings.identity_facts_title', '身份条目')}
         </span>
-        <button className={styles.addFactButton} onClick={onAddFact}>
-          <Plus size={16} />
+        <Button variant="outlined" size="small" onClick={onAddFact}>
           {t('settings.add_identity_entry', '添加条目')}
-        </button>
+        </Button>
       </div>
 
       {Object.keys(currentFacts).length === 0 ? (

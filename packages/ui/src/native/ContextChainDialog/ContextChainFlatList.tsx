@@ -1,11 +1,14 @@
 import i18n from 'i18next'
 import React from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { ChevronRight } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { CallChainFlatEntry } from './context-chain-panel.types'
 import { getLabelBadgeColor } from './context-chain-dialog.utils'
 import { COMPRESSION_SUMMARY_SELECTION_KEY, useContextChainView } from './useContextChainView'
 import { contextChainFlatListStyles as styles } from './context-chain-flat-list.styles'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 type ContextChainView = ReturnType<typeof useContextChainView>
 
@@ -76,9 +79,9 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
     return (
       <Text
         style={{
-          fontSize: 14,
+          fontSize: mobileTypography.secondary.fontSize,
           color: colors.textSecondary,
-          paddingVertical: 24,
+          paddingVertical: sharedTokens.spacing.lg,
           textAlign: 'center'
         }}
       >
@@ -97,7 +100,7 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
           styles.metaChip,
           {
             borderColor: colors.borderSubtle,
-            backgroundColor: colors.bgSurface
+            backgroundColor: colors.bgSurfaceNormal
           }
         ]}
       >
@@ -115,14 +118,19 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
             {params.label}
           </Text>
         </View>
-        <Text style={{ fontSize: 16, color: colors.textTertiary }}>›</Text>
+        <ChevronRight
+          size={iconSizes.sm}
+          color={colors.textTertiary}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+        />
       </Pressable>
     )
   }
 
   const renderChainMessage = (
     entry: CallChainFlatEntry & { kind: 'message'; item: NonNullable<CallChainFlatEntry['item']> },
-    idx: number
+    idx: number,
+    isLast: boolean
   ) => {
     const msg = entry.item
     const label = view.getMessageLabel(msg)
@@ -139,7 +147,13 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
       <Pressable
         key={msg.id ?? `msg-${idx}`}
         onPress={() => msg.id && onOpenDetail(msg.id)}
-        style={styles.messageItem}
+        style={[
+          styles.messageItem,
+          !isLast && {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.borderSubtle
+          }
+        ]}
       >
         <View style={styles.messageTopRow}>
           <View
@@ -154,7 +168,11 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
           >
             <Text style={[styles.roleBadgeText, { color: badge.color }]}>{label}</Text>
           </View>
-          <Text style={{ fontSize: 16, color: colors.textTertiary }}>›</Text>
+          <ChevronRight
+            size={iconSizes.sm}
+            color={colors.textTertiary}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+          />
         </View>
         <Text style={[styles.messagePreview, { color: colors.textSecondary }]} numberOfLines={2}>
           {preview}
@@ -202,15 +220,14 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
               onPress={() => view.toggleRound(group.roundIndex)}
               style={styles.roundHeader}
             >
-              <Text
-                style={[
-                  styles.roundChevron,
-                  { color: isActiveRound ? colors.primary : colors.textTertiary },
-                  expanded && { transform: [{ rotate: '90deg' }] }
-                ]}
-              >
-                ▶
-              </Text>
+              <View style={styles.roundChevron}>
+                <ChevronRight
+                  size={14}
+                  color={isActiveRound ? colors.primary : colors.textTertiary}
+                  strokeWidth={DEFAULT_STROKE_WIDTH}
+                  style={expanded ? { transform: [{ rotate: '90deg' }] } : undefined}
+                />
+              </View>
               <Text
                 style={[
                   styles.roundLabel,
@@ -220,7 +237,7 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
                 {view.t('agent.chat.round_label', '第 {{n}} 轮', { n: group.roundIndex })}
                 {isActiveRound ? `（${view.t('agent.chat.current_round', '当前')}）` : ''}
               </Text>
-              <Text style={[styles.roundMeta, { color: colors.textSecondary }]}>
+              <Text style={[styles.roundMeta, { color: colors.textTertiary }]}>
                 {group.messages.length}
                 {view.t('agent.chat.round_items', ' 条')}
               </Text>
@@ -228,7 +245,9 @@ export const ContextChainFlatList: React.FC<ContextChainFlatListProps> = ({
 
             {expanded ? (
               <View style={styles.roundBody}>
-                {visibleMessages.map((entry, idx) => renderChainMessage(entry, idx))}
+                {visibleMessages.map((entry, idx) =>
+                  renderChainMessage(entry, idx, idx === visibleMessages.length - 1)
+                )}
               </View>
             ) : null}
           </View>

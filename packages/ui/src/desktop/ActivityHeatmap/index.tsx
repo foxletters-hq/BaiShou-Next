@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ActivityHeatmap.module.css'
 
 import { generateHeatmapMatrix, ActivityData } from '../../utils/heatmap-matrix'
@@ -21,7 +22,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const thumbRef = useRef<HTMLDivElement>(null)
-  const [scrollRatio, setScrollRatio] = useState(0)
+  const [, setScrollRatio] = useState(0)
   const [thumbRatio, setThumbRatio] = useState(1)
   const [isOverflow, setIsOverflow] = useState(false)
   const [showYearPicker, setShowYearPicker] = useState(false)
@@ -30,18 +31,18 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const dragStartScrollLeft = useRef(0)
 
   const MONTHS = [
-    t('common.jan', '一月'),
-    t('common.feb', '二月'),
-    t('common.mar', '三月'),
-    t('common.apr', '四月'),
-    t('common.may', '五月'),
-    t('common.jun', '六月'),
-    t('common.jul', '七月'),
-    t('common.aug', '八月'),
-    t('common.sep', '九月'),
-    t('common.oct', '十月'),
-    t('common.nov', '十一月'),
-    t('common.dec', '十二月')
+    t('common.jan', '1月'),
+    t('common.feb', '2月'),
+    t('common.mar', '3月'),
+    t('common.apr', '4月'),
+    t('common.may', '5月'),
+    t('common.jun', '6月'),
+    t('common.jul', '7月'),
+    t('common.aug', '8月'),
+    t('common.sep', '9月'),
+    t('common.oct', '10月'),
+    t('common.nov', '11月'),
+    t('common.dec', '12月')
   ]
 
   const DAYS = [
@@ -237,7 +238,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       </div>
 
       {showYearPicker && (
-        <div className={styles.yearOverlay} onClick={() => setShowYearPicker(false)}>
+        <div
+          className={withAppContentOverlay(styles.yearOverlay)}
+          onClick={() => setShowYearPicker(false)}
+        >
           <div className={styles.yearModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.yearModalTitle}>{t('activity.select_year', '选择年份')}</div>
             <div className={styles.yearGrid}>

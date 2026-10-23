@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { getFileIcon } from './attachment-management.utils'
+import { sharedTokens } from '../../theme/tokens'
 
 interface AttachmentImageThumbProps {
   filePath: string
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   container: {
     width: 56,
     height: 56,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',

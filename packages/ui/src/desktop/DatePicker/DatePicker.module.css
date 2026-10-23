@@ -1,0 +1,377 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  font-family: var(--font-family);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--form-field-bg, var(--bg-surface));
+  color: var(--text-primary);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  font-size: var(--ui-fs-lg, 14px);
+  font-family: var(--font-family);
+  outline: none;
+  cursor: pointer;
+  user-select: none;
+  transition: var(--form-field-transition);
+}
+
+.trigger:hover {
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+}
+
+.trigger:focus-visible,
+.isOpen {
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+}
+
+.sizeSmall .trigger {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  height: 32px;
+  font-size: var(--ui-fs-md, var(--spacing-md-snug));
+  border-radius: var(--radius-sm);
+}
+
+.sizeMedium .trigger {
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  height: 38px;
+  font-size: var(--ui-fs-lg, 14px);
+  border-radius: var(--radius-md);
+}
+
+.triggerBody {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calendarIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.valueText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+  color: var(--text-primary);
+}
+
+.placeholderText {
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+}
+
+.triggerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xs);
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.clearBtn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-surface-high);
+}
+
+.chevronIcon {
+  color: var(--text-secondary);
+  opacity: 0.7;
+  transition: transform var(--duration-fast) ease;
+}
+
+.chevronRotated {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.dropdown {
+  position: fixed;
+  width: 280px;
+  box-sizing: border-box;
+  background-color: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, var(--radius-md));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  z-index: 10000;
+  padding: var(--spacing-md-tight);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  user-select: none;
+  animation: popoverIn var(--duration-fast) var(--ease-out-cubic) forwards;
+}
+
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.navBtn:hover {
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.titleBtn {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+}
+
+.titleBtn:hover {
+  background-color: var(--bg-surface-high);
+  color: var(--color-primary);
+}
+
+.weekdaysRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--spacing-2xs);
+  text-align: center;
+  margin-top: var(--spacing-2xs);
+}
+
+.weekdayCell {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--spacing-2xs);
+}
+
+.dayCell {
+  height: 32px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs-plus);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: var(--ui-fs-md);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.dayCell:hover:not(.dayDisabled):not(.daySelected) {
+  background-color: var(--bg-surface-high);
+}
+
+.dayOtherMonth {
+  color: var(--text-tertiary);
+  opacity: 0.45;
+}
+
+.dayToday {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.daySelected {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  font-weight: 600;
+  border-color: var(--color-primary);
+}
+
+.daySelected.dayToday {
+  color: var(--text-on-primary);
+}
+
+.dayDisabled {
+  color: var(--text-tertiary);
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.grid3x4 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+}
+
+.gridCell {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.gridCell:hover:not(.gridCellSelected) {
+  background-color: var(--bg-surface-high);
+  color: var(--color-primary);
+}
+
+.gridCellSelected {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  font-weight: 600;
+}
+
+.gridCellDimmed {
+  color: var(--text-tertiary);
+  opacity: 0.45;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--spacing-2xs);
+}
+
+.footerBtn {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast) ease;
+}
+
+.footerBtn:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.footerBtnSecondary {
+  color: var(--text-secondary);
+}
+
+.footerBtnSecondary:hover {
+  color: var(--text-primary);
+}
+
+.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.disabled .trigger {
+  pointer-events: none;
+}

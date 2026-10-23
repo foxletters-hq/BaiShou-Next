@@ -11,7 +11,7 @@ import { restrictToVerticalAxis, restrictToWindowEdges } from '@dnd-kit/modifier
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { ProviderSortableItem, ProviderStaticItem } from './ProviderListItems'
-import { Plus } from 'lucide-react'
+import { Button } from '../Button/Button'
 
 export interface AIModelServicesProviderPaneProps {
   vm: AIModelServicesViewModel
@@ -65,16 +65,16 @@ export const AIModelServicesProviderPane: React.FC<AIModelServicesProviderPanePr
             })}
           </SortableContext>
         </div>
-        {createPortal(
-          <DragOverlay
-            dropAnimation={{
-              sideEffects: defaultDropAnimationSideEffects({
-                styles: { active: { opacity: '0.4' } }
-              })
-            }}
-          >
-            {activeDragId
-              ? (() => {
+        {activeDragId
+          ? createPortal(
+              <DragOverlay
+                dropAnimation={{
+                  sideEffects: defaultDropAnimationSideEffects({
+                    styles: { active: { opacity: '0.4' } }
+                  })
+                }}
+              >
+                {(() => {
                   const p = localProvidersList.find((x) => x.id === activeDragId)
                   if (!p) return null
                   const isActive = selectedProviderId === p.id
@@ -89,17 +89,21 @@ export const AIModelServicesProviderPane: React.FC<AIModelServicesProviderPanePr
                       t={(key, fallback) => t(key, fallback ?? '')}
                     />
                   )
-                })()
-              : null}
-          </DragOverlay>,
-          document.body
-        )}
+                })()}
+              </DragOverlay>,
+              document.body
+            )
+          : null}
       </DndContext>
       <div className={styles.listFooter}>
-        <button className={styles.addButton} onClick={handleAddCustomProvider}>
-          <Plus size={18} />
-          <span>{t('agent.provider.add_button', '添加')}</span>
-        </button>
+        <Button
+          variant="outlined"
+          size="small"
+          className={styles.fullWidthButton}
+          onClick={handleAddCustomProvider}
+        >
+          {t('agent.provider.add_button', '添加')}
+        </Button>
       </div>
     </div>
   )

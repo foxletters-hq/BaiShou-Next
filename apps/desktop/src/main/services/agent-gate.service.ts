@@ -1,0 +1,558 @@
+import { BrowserWindow } from 'electron'
+import {
+  bridgeAgentGateEventBus,
+  createBaishouAgentGate,
+  type BaishouAgentGateService,
+  type BaishouAgentGateAllowlistStore,
+  BaishouAgentGateEventBus
+} from '@baishou/ai'
+import {
+  AgentGateEffect,
+  assignBaishouAgentGateConfig,
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  cloneBaishouAgentGateConfig,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  foldCompanionAllowlistIntoCapabilities,
+  type AgentGateAllowlistEntry,
+  type AgentGateConfigScope,
+  type AgentGateReplyInput,
+  type BaishouAgentGateConfig
+} from '@baishou/shared'
+import { settingsManager } from '../ipc/settings.ipc'
+import {
+  getWorkspaceExternalDirectoryAllowed,
+  getWorkspaceGateConfig,
+  setWorkspaceExternalDirectoryAllowed,
+  setWorkspaceGateConfig
+} from './agent-workspace-policy.store'
+import { getWorkspaceAutoAccept, setWorkspaceAutoAccept } from './agent-workspace-auto-accept.store'
+
+type GateRuntime = ReturnType<typeof createBaishouAgentGate>
+
+type ScopeKey = 'companion' | `workspace:${string}`
+
+interface ScopedRuntime {
+  key: ScopeKey
+  scope: AgentGateConfigScope
+  runtime: GateRuntime
+}
+
+const sharedEventBus = new BaishouAgentGateEventBus()
+let companionRuntime: ScopedRuntime | null = null
+const workspaceRuntimes = new Map<string, ScopedRuntime>()
+/** 工作区自动接受的进程内缓存（供 gate 同步查询） */
+const workspaceAutoAcceptCache = new Map<string, boolean>()
+/** 工作区级「允许访问工作区外目录」进程内缓存 */
+const workspaceExternalDirectoryCache = new Map<string, boolean>()
+/** requestId → scope key，用于 reply 路由 */
+const requestScopeIndex = new Map<string, ScopeKey>()
+let bridgeRegistered = false
+let lifecycleBridgeUnsub: (() => void) | null = null
+let busIndexSubscribed = false
+
+function applyWorkspaceExternalDirectoryPolicy(
+  config: BaishouAgentGateConfig,
+  externalAllowed: boolean
+): void {
+  const baseRules = (config.permissionRules ?? []).filter(
+    (rule) =>
+      !(
+        rule.action === 'external_directory' &&
+        !rule.pattern &&
+        rule.effect === AgentGateEffect.Allow
+      )
+  )
+  if (externalAllowed) {
+    baseRules.push({ action: 'external_directory', effect: AgentGateEffect.Allow })
+  } else {
+    config.allowlist = config.allowlist.filter((entry) => entry.action !== 'external_directory')
+  }
+  config.permissionRules = baseRules
+}
+
+function scopeKeyOf(scope: AgentGateConfigScope): ScopeKey {
+  return scope.kind === 'companion' ? 'companion' : `workspace:${scope.workspaceId}`
+}
+
+function parseScopeKey(key: ScopeKey): AgentGateConfigScope {
+  if (key === 'companion') return { kind: 'companion' }
+  return { kind: 'workspace', workspaceId: key.slice('workspace:'.length) }
+}
+
+async function loadCompanionConfig(): Promise<BaishouAgentGateConfig> {
+  const saved = await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)
+  const cloned = cloneBaishouAgentGateConfig(saved, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+  const folded = foldCompanionAllowlistIntoCapabilities(cloned)
+  if (folded.allowlist.length !== cloned.allowlist.length) {
+    try {
+      await persistCompanionConfig(folded)
+    } catch {
+      // 内存已折进能力矩阵；落盘失败下次启动再试
+    }
+  }
+  return folded
+}
+
+async function persistCompanionConfig(config: BaishouAgentGateConfig): Promise<void> {
+  const folded = foldCompanionAllowlistIntoCapabilities(config)
+  if (folded !== config) {
+    assignBaishouAgentGateConfig(config, folded)
+  }
+  await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
+}
+
+async function persistWorkspaceConfig(
+  workspaceId: string,
+  config: BaishouAgentGateConfig
+): Promise<void> {
+  // 在聊天确认卡中点击「始终允许」访问区外目录时，自动转为当前工作区级设置落盘，不污染全局白名单
+  if (workspaceId && config.allowlist.some((entry) => entry.action === 'external_directory')) {
+    workspaceExternalDirectoryCache.set(workspaceId, true)
+    await setWorkspaceExternalDirectoryAllowed(workspaceId, true)
+  }
+
+  const globalToSave: BaishouAgentGateConfig = {
+    ...config,
+    allowlist: config.allowlist.filter((entry) => entry.action !== 'external_directory'),
+    permissionRules: config.permissionRules?.filter(
+      (rule) =>
+        !(
+          rule.action === 'external_directory' &&
+          !rule.pattern &&
+          rule.effect === AgentGateEffect.Allow
+        )
+    )
+  }
+  const saved = await setWorkspaceGateConfig(undefined, globalToSave)
+  // 全局配置：同步到所有已创建的工作区 runtime，同时保留各工作区自身的区外目录开关
+  for (const [wsId, scoped] of workspaceRuntimes.entries()) {
+    const current = scoped.runtime.getConfig()
+    current.allowlist = saved.allowlist.map((e) => ({ ...e }))
+    current.exclusionList = [...saved.exclusionList]
+    current.permissionRules = saved.permissionRules?.map((r) => ({ ...r }))
+    current.actionRules = saved.actionRules ? { ...saved.actionRules } : undefined
+    current.hideDeniedTools = saved.hideDeniedTools
+    current.securityMode = saved.securityMode
+    current.commandBlacklist = Array.isArray(saved.commandBlacklist)
+      ? [...saved.commandBlacklist]
+      : undefined
+    current.scopePreset = saved.scopePreset
+    current.approvalPreset = saved.approvalPreset
+    applyWorkspaceExternalDirectoryPolicy(
+      current,
+      workspaceExternalDirectoryCache.get(wsId) === true
+    )
+  }
+}
+
+function allScopedRuntimes(): ScopedRuntime[] {
+  const list: ScopedRuntime[] = []
+  if (companionRuntime) list.push(companionRuntime)
+  for (const rt of workspaceRuntimes.values()) list.push(rt)
+  return list
+}
+
+function ensureRequestIndexSubscription(): void {
+  if (busIndexSubscribed) return
+  busIndexSubscribed = true
+  sharedEventBus.subscribe((event) => {
+    if (event.type !== 'agent_gate.asked') return
+    for (const scoped of allScopedRuntimes()) {
+      if (scoped.runtime.gate.get(event.request.id)) {
+        requestScopeIndex.set(event.request.id, scoped.key)
+        break
+      }
+    }
+  })
+}
+
+function createScopedRuntime(
+  scope: AgentGateConfigScope,
+  config: BaishouAgentGateConfig
+): ScopedRuntime {
+  ensureRequestIndexSubscription()
+  const key = scopeKeyOf(scope)
+  let runtimeRef: GateRuntime | null = null
+  const persistConfig = async () => {
+    if (!runtimeRef) return
+    if (scope.kind === 'companion') {
+      await persistCompanionConfig(runtimeRef.getConfig())
+    } else {
+      await persistWorkspaceConfig(scope.workspaceId, runtimeRef.getConfig())
+    }
+  }
+  runtimeRef = createBaishouAgentGate({
+    config,
+    persistConfig,
+    eventBus: sharedEventBus,
+    configScope: scope,
+    isAutoAccept:
+      scope.kind === 'workspace'
+        ? () => workspaceAutoAcceptCache.get(scope.workspaceId) === true
+        : undefined
+  })
+  return { key, scope, runtime: runtimeRef }
+}
+
+function ensureLifecycleBridge(): void {
+  if (!lifecycleBridgeUnsub) {
+    lifecycleBridgeUnsub = bridgeAgentGateEventBus(sharedEventBus)
+  }
+}
+
+export async function ensureCompanionGateRuntime(): Promise<GateRuntime> {
+  if (!companionRuntime) {
+    const config = await loadCompanionConfig()
+    companionRuntime = createScopedRuntime({ kind: 'companion' }, config)
+    ensureLifecycleBridge()
+  }
+  return companionRuntime.runtime
+}
+
+export async function ensureWorkspaceGateRuntime(workspaceId: string): Promise<GateRuntime> {
+  const existing = workspaceRuntimes.get(workspaceId)
+  if (existing) return existing.runtime
+
+  const [enabled, externalAllowed, rawGateConfig] = await Promise.all([
+    getWorkspaceAutoAccept(workspaceId),
+    getWorkspaceExternalDirectoryAllowed(workspaceId),
+    getWorkspaceGateConfig(workspaceId)
+  ])
+  workspaceAutoAcceptCache.set(workspaceId, enabled)
+  workspaceExternalDirectoryCache.set(workspaceId, externalAllowed)
+
+  const config = cloneBaishouAgentGateConfig(rawGateConfig, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
+  applyWorkspaceExternalDirectoryPolicy(config, externalAllowed)
+  const scoped = createScopedRuntime({ kind: 'workspace', workspaceId }, config)
+  workspaceRuntimes.set(workspaceId, scoped)
+  ensureLifecycleBridge()
+  return scoped.runtime
+}
+
+export async function getWorkspaceExternalDirectoryEnabled(workspaceId: string): Promise<boolean> {
+  if (workspaceExternalDirectoryCache.has(workspaceId)) {
+    return workspaceExternalDirectoryCache.get(workspaceId) === true
+  }
+  const allowed = await getWorkspaceExternalDirectoryAllowed(workspaceId)
+  workspaceExternalDirectoryCache.set(workspaceId, allowed)
+  return allowed
+}
+
+export async function setWorkspaceExternalDirectoryEnabled(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const next = await setWorkspaceExternalDirectoryAllowed(workspaceId, enabled)
+  workspaceExternalDirectoryCache.set(workspaceId, next)
+  const scoped = workspaceRuntimes.get(workspaceId)
+  if (scoped) {
+    applyWorkspaceExternalDirectoryPolicy(scoped.runtime.getConfig(), next)
+  }
+  sharedEventBus.publish({
+    type: 'agent_gate.allowlist_changed',
+    allowlist: scoped ? scoped.runtime.allowlistStore.list() : [],
+    scope: { kind: 'workspace', workspaceId }
+  })
+  return next
+}
+
+export async function getWorkspaceAutoAcceptEnabled(workspaceId: string): Promise<boolean> {
+  if (workspaceAutoAcceptCache.has(workspaceId)) {
+    return workspaceAutoAcceptCache.get(workspaceId) === true
+  }
+  const enabled = await getWorkspaceAutoAccept(workspaceId)
+  workspaceAutoAcceptCache.set(workspaceId, enabled)
+  return enabled
+}
+
+export async function setWorkspaceAutoAcceptEnabled(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const next = await setWorkspaceAutoAccept(workspaceId, enabled)
+  workspaceAutoAcceptCache.set(workspaceId, next)
+  return next
+}
+
+/** @deprecated 使用 ensureCompanionGateRuntime */
+export async function ensureAgentGateRuntime(): Promise<GateRuntime> {
+  return ensureCompanionGateRuntime()
+}
+
+export async function getAgentGate(): Promise<BaishouAgentGateService> {
+  return (await ensureCompanionGateRuntime()).gate
+}
+
+export async function getCompanionAgentGate(): Promise<BaishouAgentGateService> {
+  return (await ensureCompanionGateRuntime()).gate
+}
+
+export async function getWorkspaceAgentGate(workspaceId: string): Promise<BaishouAgentGateService> {
+  return (await ensureWorkspaceGateRuntime(workspaceId)).gate
+}
+
+export async function getAgentGateAllowlistStore(): Promise<BaishouAgentGateAllowlistStore> {
+  return (await ensureCompanionGateRuntime()).allowlistStore
+}
+
+export async function getAgentGateConfig(): Promise<BaishouAgentGateConfig> {
+  return (await ensureCompanionGateRuntime()).getConfig()
+}
+
+export async function getScopedAgentGateConfig(
+  scope: AgentGateConfigScope
+): Promise<BaishouAgentGateConfig> {
+  if (scope.kind === 'companion') {
+    return (await ensureCompanionGateRuntime()).getConfig()
+  }
+  return (await ensureWorkspaceGateRuntime(scope.workspaceId)).getConfig()
+}
+
+export async function patchScopedAgentGateConfig(
+  scope: AgentGateConfigScope,
+  patch: Partial<BaishouAgentGateConfig>
+): Promise<BaishouAgentGateConfig> {
+  const rt =
+    scope.kind === 'companion'
+      ? await ensureCompanionGateRuntime()
+      : await ensureWorkspaceGateRuntime(scope.workspaceId)
+  const next = rt.getConfig()
+  if (Array.isArray(patch.allowlist)) next.allowlist = [...patch.allowlist]
+  if (Array.isArray(patch.exclusionList)) next.exclusionList = [...patch.exclusionList]
+  if (Array.isArray(patch.commandBlacklist)) next.commandBlacklist = [...patch.commandBlacklist]
+  if (patch.permissionRules !== undefined) {
+    next.permissionRules = patch.permissionRules?.map((rule) => ({ ...rule }))
+  }
+  if (patch.actionRules !== undefined) {
+    next.actionRules = patch.actionRules ? { ...patch.actionRules } : undefined
+  }
+  if (typeof patch.hideDeniedTools === 'boolean') next.hideDeniedTools = patch.hideDeniedTools
+  if (patch.scopePreset !== undefined) next.scopePreset = patch.scopePreset
+  if (patch.approvalPreset !== undefined) next.approvalPreset = patch.approvalPreset
+  if (patch.securityMode !== undefined) next.securityMode = patch.securityMode
+
+  if (scope.kind === 'companion') {
+    await persistCompanionConfig(next)
+  } else {
+    const { applyWorkspaceSecurityModeToConfig, resolveWorkspaceSecurityMode } =
+      await import('@baishou/shared')
+    // 以 patch 显式传入的 securityMode 为准，避免旧 approvalPreset 干扰
+    const explicitMode = patch.securityMode
+    const mode =
+      explicitMode === 'full_access' || explicitMode === 'allow_list'
+        ? explicitMode
+        : resolveWorkspaceSecurityMode(next)
+    const expanded = applyWorkspaceSecurityModeToConfig(
+      {
+        ...next,
+        securityMode: mode
+      },
+      mode
+    )
+    next.exclusionList = [...expanded.exclusionList]
+    next.allowlist = expanded.allowlist.map((entry) => ({ ...entry }))
+    next.permissionRules = expanded.permissionRules?.map((rule) => ({ ...rule }))
+    next.actionRules = expanded.actionRules ? { ...expanded.actionRules } : undefined
+    next.hideDeniedTools = expanded.hideDeniedTools
+    next.securityMode = mode
+    next.commandBlacklist = Array.isArray(expanded.commandBlacklist)
+      ? [...expanded.commandBlacklist]
+      : undefined
+    // 清除旧二维预设，防止回读时误判成白名单
+    delete next.approvalPreset
+    delete next.scopePreset
+    await persistWorkspaceConfig(scope.workspaceId, {
+      ...expanded,
+      securityMode: mode,
+      approvalPreset: undefined,
+      scopePreset: undefined
+    })
+    applyWorkspaceExternalDirectoryPolicy(
+      next,
+      workspaceExternalDirectoryCache.get(scope.workspaceId) === true
+    )
+  }
+  sharedEventBus.publish({
+    type: 'agent_gate.allowlist_changed',
+    allowlist: rt.allowlistStore.list(),
+    scope
+  })
+  return cloneBaishouAgentGateConfig(
+    next,
+    scope.kind === 'companion'
+      ? DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+      : DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
+  )
+}
+
+export async function removeAgentGateAllowlistEntry(
+  id: string,
+  scope: AgentGateConfigScope = { kind: 'companion' }
+): Promise<boolean> {
+  const rt =
+    scope.kind === 'companion'
+      ? await ensureCompanionGateRuntime()
+      : await ensureWorkspaceGateRuntime(scope.workspaceId)
+  const removed = rt.allowlistStore.remove(id)
+  if (!removed) return false
+  await rt.allowlistStore.persist()
+  sharedEventBus.publish({
+    type: 'agent_gate.allowlist_changed',
+    allowlist: rt.allowlistStore.list(),
+    scope
+  })
+  return true
+}
+
+export async function replyAgentGate(input: AgentGateReplyInput): Promise<void> {
+  const key = requestScopeIndex.get(input.requestId)
+  let gate: BaishouAgentGateService | undefined
+
+  if (key) {
+    const scope = parseScopeKey(key)
+    gate =
+      scope.kind === 'companion'
+        ? (await ensureCompanionGateRuntime()).gate
+        : (await ensureWorkspaceGateRuntime(scope.workspaceId)).gate
+  } else {
+    for (const scoped of allScopedRuntimes()) {
+      if (scoped.runtime.gate.get(input.requestId)) {
+        gate = scoped.runtime.gate
+        requestScopeIndex.set(input.requestId, scoped.key)
+        break
+      }
+    }
+    if (!gate) {
+      gate = (await ensureCompanionGateRuntime()).gate
+    }
+  }
+
+  await gate.reply(input)
+  requestScopeIndex.delete(input.requestId)
+}
+
+export function cancelAgentGateSession(sessionId: string, reason?: string): void {
+  for (const scoped of allScopedRuntimes()) {
+    scoped.runtime.gate.cancelSession(sessionId, reason)
+  }
+}
+
+export function cancelAllAgentGateSessions(reason?: string): void {
+  for (const scoped of allScopedRuntimes()) {
+    const sessionIds = new Set(
+      scoped.runtime.gate.listPending().map((request) => request.sessionId)
+    )
+    for (const sessionId of sessionIds) {
+      scoped.runtime.gate.cancelSession(sessionId, reason)
+    }
+  }
+}
+
+/** 聚合全部作用域的 pending（可选按 session 过滤）；供渲染进程水合 */
+export function listPendingAgentGateRequests(
+  sessionId?: string
+): import('@baishou/shared').AgentGateRequest[] {
+  const byId = new Map<string, import('@baishou/shared').AgentGateRequest>()
+  for (const scoped of allScopedRuntimes()) {
+    for (const request of scoped.runtime.gate.listPending(sessionId)) {
+      byId.set(request.id, request)
+    }
+  }
+  return [...byId.values()].sort((a, b) => {
+    if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt
+    return a.id.localeCompare(b.id)
+  })
+}
+
+/** Vault 切换：取消挂起请求并丢弃运行时，下次按新 Vault 配置重建 */
+export function resetAgentGateRuntimes(reason = 'vault-switch'): void {
+  cancelAllAgentGateSessions(reason)
+  companionRuntime = null
+  workspaceRuntimes.clear()
+  workspaceAutoAcceptCache.clear()
+  workspaceExternalDirectoryCache.clear()
+  requestScopeIndex.clear()
+}
+
+async function subscribeAgentGateNotificationEvents(): Promise<void> {
+  const { closeAgentGateNotification, isAnyAgentGateWindowFocused, notifyAgentGateAsked } =
+    await import('./agent-gate-notification.service')
+
+  sharedEventBus.subscribe((event) => {
+    if (event.type === 'agent_gate.asked') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:asked', event.request)
+        }
+      }
+      if (!isAnyAgentGateWindowFocused()) {
+        void notifyAgentGateAsked(event.request)
+      } else {
+        // 聚焦时由渲染进程判断是否目标会话，非目标则 force 通知
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('agent-gate:focus-check', event.request)
+          }
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.replied') {
+      closeAgentGateNotification(event.requestId)
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:replied', {
+            sessionId: event.sessionId,
+            requestId: event.requestId,
+            reply: event.reply,
+            message: event.message,
+            selectedOptionIds: event.selectedOptionIds,
+            questionAnswers: event.questionAnswers
+          })
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.cancelled') {
+      for (const requestId of event.requestIds) {
+        closeAgentGateNotification(requestId)
+      }
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:cancelled', {
+            sessionId: event.sessionId,
+            requestIds: event.requestIds,
+            reason: event.reason
+          })
+        }
+      }
+      return
+    }
+
+    if (event.type === 'agent_gate.allowlist_changed') {
+      const payload: {
+        allowlist: AgentGateAllowlistEntry[]
+        scope?: AgentGateConfigScope
+      } = {
+        allowlist: event.allowlist,
+        scope: event.scope
+      }
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('agent-gate:allowlist-changed', payload)
+        }
+      }
+    }
+  })
+}
+
+/** 将门控 asked / allowlist 事件广播到所有渲染进程窗口 */
+export function registerAgentGateEventBridge(): void {
+  if (bridgeRegistered) return
+  bridgeRegistered = true
+  void subscribeAgentGateNotificationEvents()
+  void ensureCompanionGateRuntime()
+}

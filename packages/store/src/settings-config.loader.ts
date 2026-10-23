@@ -1,6 +1,8 @@
 import {
   AUTO_INJECT_TIME_TOOL_ID,
   normalizeEmojiToolConfig,
+  normalizeReasoningEffortBySlot,
+  publishPlayfulProcessStatus,
   type AgentBehaviorConfig,
   type AIProviderConfig,
   type GlobalModelsConfig,
@@ -45,7 +47,7 @@ export const SETTINGS_SEGMENT_CONFIG_KEYS: Record<string, SettingsConfigKey[]> =
   assistants: ['providers', 'agentBehavior'],
   rag: ['ragConfig', 'globalModels'],
   'web-search': ['webSearchConfig'],
-  'agent-tools': ['toolManagementConfig'],
+  'agent-tools': ['toolManagementConfig', 'agentBehavior'],
   summary: ['summaryConfig', 'globalModels'],
   tts: ['providers', 'globalModels'],
   'data-sync': ['cloudSyncConfig']
@@ -79,6 +81,8 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
   return {
     globalDialogueProviderId: '',
     globalDialogueModelId: '',
+    globalGraphProviderId: '',
+    globalGraphModelId: '',
     globalNamingProviderId: '',
     globalNamingModelId: '',
     globalSummaryProviderId: '',
@@ -92,7 +96,8 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
       speed: 1.0,
       responseFormat: 'mp3'
     },
-    monthlySummarySource: 'weeklies'
+    monthlySummarySource: 'weeklies',
+    reasoningEffortBySlot: {}
   }
 }
 
@@ -103,7 +108,9 @@ function getDefaultAgentBehavior(): AgentBehaviorConfig {
     companionTruncateTokens: 4000,
     agentPersona: '',
     agentGuidelines: '',
-    pinnedAssistantIds: []
+    pinnedAssistantIds: [],
+    restoreLastSessionOnReturn: true,
+    reasoningEffortDefault: 'auto'
   }
 }
 
@@ -112,7 +119,8 @@ export function getDefaultRagConfig(): RagConfig {
     ragEnabled: true,
     ragTopK: 20,
     ragSimilarityThreshold: 0.4,
-    batchEmbedConcurrency: 3
+    batchEmbedConcurrency: 3,
+    startupEmbedReminder: true
   }
 }
 
@@ -138,8 +146,10 @@ export function getDefaultToolManagementConfig(): ToolManagementConfig {
   return {
     disabledToolIds: [AUTO_INJECT_TIME_TOOL_ID],
     customConfigs: {},
+    playfulProcessStatus: true,
     emojiConfig: {
       enabled: false,
+      frequency: 'normal',
       groups: []
     }
   }
@@ -149,7 +159,8 @@ function getDefaultMcpServerConfig(): McpServerConfig {
   return {
     mcpEnabled: false,
     mcpPort: 31004,
-    mcpAuthEnabled: false
+    mcpAuthEnabled: false,
+    mcpAutoApproveTools: false
   }
 }
 
@@ -223,10 +234,27 @@ export function normalizeSettingsConfigKey(
   switch (key) {
     case 'providers':
       return { providers: (raw as AIProviderConfig[] | null) || [] }
-    case 'globalModels':
-      return { globalModels: (raw as GlobalModelsConfig | null) || getDefaultGlobalModels() }
-    case 'agentBehavior':
-      return { agentBehavior: (raw as AgentBehaviorConfig | null) || getDefaultAgentBehavior() }
+    case 'globalModels': {
+      const incoming: Partial<GlobalModelsConfig> = (raw as GlobalModelsConfig | null) || {}
+      return {
+        globalModels: {
+          ...getDefaultGlobalModels(),
+          ...incoming,
+          reasoningEffortBySlot: normalizeReasoningEffortBySlot(incoming.reasoningEffortBySlot)
+        }
+      }
+    }
+    case 'agentBehavior': {
+      const behavior = raw as AgentBehaviorConfig | null
+      const defaults = getDefaultAgentBehavior()
+      return {
+        agentBehavior: {
+          ...defaults,
+          ...(behavior || {}),
+          restoreLastSessionOnReturn: behavior?.restoreLastSessionOnReturn !== false
+        }
+      }
+    }
     case 'ragConfig':
       return { ragConfig: (raw as RagConfig | null) || getDefaultRagConfig() }
     case 'webSearchConfig':
@@ -238,10 +266,13 @@ export function normalizeSettingsConfigKey(
     case 'toolManagementConfig': {
       const toolManagementConfig = raw as ToolManagementConfig | null
       const defaults = getDefaultToolManagementConfig()
+      const playfulProcessStatus = toolManagementConfig?.playfulProcessStatus !== false
+      publishPlayfulProcessStatus(playfulProcessStatus)
       return {
         toolManagementConfig: {
           ...defaults,
           ...toolManagementConfig,
+          playfulProcessStatus,
           emojiConfig: normalizeEmojiToolConfig({
             ...defaults.emojiConfig,
             ...(toolManagementConfig?.emojiConfig ?? {})

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
@@ -7,8 +7,10 @@ import {
   getDefaultCompressionSystemPrompt
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import type {
   AssistantMemoryConfigPatch,
   AssistantPickerSheetAssistant
@@ -204,48 +206,48 @@ export function AssistantPickerMemoryPanel({
 
 const styles = StyleSheet.create({
   panel: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
   },
   card: {
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 8
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   rowSpacer: {
     flex: 1
   },
   label: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   value: {
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   hint: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   emptyWrap: {
-    paddingVertical: 24,
+    paddingVertical: sharedTokens.spacing.lg,
     alignItems: 'center'
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center'
   }
 })

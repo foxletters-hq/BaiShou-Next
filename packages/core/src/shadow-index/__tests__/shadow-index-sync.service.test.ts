@@ -10,7 +10,7 @@ import { IVaultService, VaultInfo } from '../../vault/vault.types'
 
 // ── Mock: ShadowIndexRepository ──────────
 class MockShadowIndexRepository {
-  vaultName = 'TestVault'
+  vaultId = 'vlt_test'
   private records: any[] = []
   private idCounter = 1
 
@@ -52,14 +52,42 @@ class MockShadowIndexRepository {
   }
 
   async getHashesByDates(dateIsos: string[]) {
-    const map = new Map<string, string>()
+    const map = new Map<
+      string,
+      {
+        filePath?: string
+        contentHash: string
+        fileMtimeMs: number | null
+        fileSize: number | null
+      }
+    >()
     for (const dateIso of dateIsos) {
       const rec = this.records.find((r) => r.date === dateIso || r.date.startsWith(dateIso))
       if (rec?.contentHash) {
-        map.set(dateIso, rec.contentHash)
+        map.set(dateIso, {
+          filePath: rec.filePath,
+          contentHash: rec.contentHash,
+          fileMtimeMs: rec.fileMtimeMs ?? null,
+          fileSize: rec.fileSize ?? null
+        })
       }
     }
     return map
+  }
+
+  async updateFileStat(
+    dateStr: string,
+    fileMtimeMs: number | null,
+    fileSize: number | null,
+    filePath?: string
+  ) {
+    for (const rec of this.records) {
+      if (rec.date === dateStr || String(rec.date).startsWith(dateStr)) {
+        if (fileMtimeMs != null) rec.fileMtimeMs = fileMtimeMs
+        if (fileSize != null) rec.fileSize = fileSize
+        if (filePath != null) rec.filePath = filePath
+      }
+    }
   }
 
   async getAllRecords() {
@@ -68,6 +96,10 @@ class MockShadowIndexRepository {
       date: r.date,
       filePath: r.filePath
     }))
+  }
+
+  _getRecord(dateStr: string) {
+    return this.records.find((r) => r.date === dateStr || String(r.date).startsWith(dateStr))
   }
 
   async searchFTS() {
@@ -111,6 +143,7 @@ describe('ShadowIndexSyncService', () => {
     } as unknown as IStoragePathService
 
     const vault: VaultInfo = {
+      id: 'vlt_testshadowidx001',
       name: 'TestVault',
       path: path.join(tmpDir, 'TestVault'),
       createdAt: new Date(),
@@ -120,10 +153,19 @@ describe('ShadowIndexSyncService', () => {
     mockVaultService = {
       initRegistry: async () => {},
       getActiveVault: () => vault,
+      resolveActiveVault: () => ({ id: vault.id, name: vault.name }),
       getAllVaults: () => [vault],
       switchVault: async () => {},
       deleteVault: async () => {},
+      renameVault: async () => ({
+        id: vault.id,
+        oldName: vault.name,
+        newName: vault.name,
+        estimatedUploadBytes: 0
+      }),
+      estimateVaultLocalSyncBytes: async () => 0,
       vaultExists: () => true,
+      findRegistryNameConflicts: () => [],
       createVault: async () => {},
       syncRegistryWithDisk: async () => [],
       ensureVaultsRegistered: async () => [],
@@ -173,7 +215,7 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecordCount()).toBe(1)
   })
 
-  // ── 2. Hash 脏检测：内容不变时跳过 ──
+  // ── 2. Hash / mtime 脏检测：内容不变时跳过 ──
   it('连续两次同步同一文件时第二次应无变化', async () => {
     await writeJournal('2026-03-30', '内容不变')
 
@@ -182,6 +224,46 @@ describe('ShadowIndexSyncService', () => {
 
     const r2 = await service.syncJournal('2026-03-30')
     expect(r2.isChanged).toBe(false)
+  })
+
+  it('mtime/size 与索引一致时应跳过读盘与哈希', async () => {
+    await writeJournal('2026-03-25', '快路径内容')
+    await service.syncJournal('2026-03-25')
+
+    const rec = mockRepo._getRecord('2026-03-25')
+    expect(rec?.fileMtimeMs).toEqual(expect.any(Number))
+    expect(rec?.fileSize).toEqual(expect.any(Number))
+
+    const fs = createNodeFileSystem()
+    const readSpy = vi.spyOn(fs, 'readFile')
+    const serviceWithSpy = new ShadowIndexSyncService(
+      mockRepo as any,
+      mockPathService,
+      mockVaultService,
+      fs,
+      mockEmbeddingCb
+    )
+
+    const r2 = await serviceWithSpy.syncJournal('2026-03-25')
+    expect(r2.isChanged).toBe(false)
+    expect(readSpy).not.toHaveBeenCalled()
+    readSpy.mockRestore()
+  })
+
+  it('mtime 漂移但内容未变时应回写指纹且不标记变更', async () => {
+    await writeJournal('2026-03-24', '指纹漂移')
+    await service.syncJournal('2026-03-24')
+
+    const rec = mockRepo._getRecord('2026-03-24')
+    expect(rec).toBeTruthy()
+    // 人为制造 mtime 漂移（内容不变）
+    rec!.fileMtimeMs = (rec!.fileMtimeMs ?? 0) - 10_000
+
+    const updateSpy = vi.spyOn(mockRepo, 'updateFileStat')
+    const r2 = await service.syncJournal('2026-03-24')
+    expect(r2.isChanged).toBe(false)
+    expect(updateSpy).toHaveBeenCalledWith('2026-03-24', expect.any(Number), expect.any(Number))
+    updateSpy.mockRestore()
   })
 
   // ── 3. Hash 脏检测：内容变更时触发更新 ──
@@ -326,6 +408,43 @@ describe('ShadowIndexSyncService', () => {
     await service.fullScanVault(true)
 
     expect(mockRepo._getRecordCount()).toBe(1)
+  })
+
+  it('Journals 目录存在但已被清空物理文件时应清理孤立影子索引记录', async () => {
+    await mockRepo.upsert({
+      filePath: '2.日记/2026/10/2026-10-19.md',
+      date: '2026-10-19',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      contentHash: 'external-hash',
+      weather: null,
+      mood: null,
+      location: null,
+      locationDetail: null,
+      isFavorite: false,
+      hasMedia: false,
+      rawContent: 'external diary body',
+      tags: ''
+    })
+    expect(mockRepo._getRecordCount()).toBe(1)
+
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(0)
+  })
+
+  it('外部日记路径记录在迁入 Journals 目录且内容未变时应对齐 filePath 而不被误删', async () => {
+    await writeJournal('2026-10-19', '跨端同步日记正文')
+    await service.syncJournal('2026-10-19')
+    const rec = mockRepo._getRecord('2026-10-19')
+    expect(rec).toBeTruthy()
+    // 模拟桌面端导出的数据库记录中保存了外部目录相对路径
+    rec.filePath = '2.日记/2026/10/2026-10-19.md'
+
+    await service.fullScanVault(true)
+
+    expect(mockRepo._getRecordCount()).toBe(1)
+    expect(mockRepo._getRecord('2026-10-19')?.filePath).toBe('Journals/2026/10/2026-10-19.md')
   })
 
   // ── 8. 同步禁用 ──

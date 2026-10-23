@@ -25,6 +25,13 @@ export function extractApiErrorMessage(error: unknown): string {
   return err.message || 'Unknown error'
 }
 
+/**
+ * 连接测试时，推理模型常因 max_tokens=1 触顶；能收到该错误说明鉴权与网络已通。
+ */
+export function isBenignConnectionTestLimitError(detail: string): boolean {
+  return /max_tokens|model output limit was reached|finish.?reason.*length/i.test(detail)
+}
+
 export function formatModelNotAvailableMessage(
   providerName: string,
   modelId: string,

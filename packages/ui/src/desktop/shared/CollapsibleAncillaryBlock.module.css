@@ -3,14 +3,14 @@
   width: fit-content;
   max-width: 100%;
   min-width: min(100%, max-content);
-  margin-bottom: 12px;
-  border-radius: 12px;
+  margin-bottom: var(--spacing-md-tight);
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1.5px solid var(--border-card);
   background: var(--bg-surface);
   box-sizing: border-box;
   align-self: flex-start;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-swift) ease;
 }
 
 .shell:hover {
@@ -20,12 +20,12 @@
 .header {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug);
   min-height: 42px;
   cursor: pointer;
   user-select: none;
   background: var(--bg-surface);
-  transition: background 0.15s ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .headerIcon {
@@ -35,15 +35,15 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  margin-right: 8px;
-  font-size: 14px;
+  margin-right: var(--spacing-sm);
+  font-size: var(--ui-fs-lg);
   line-height: 1;
 }
 
 .headerTitle {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   line-height: 1.45;
   color: var(--text-secondary);
@@ -61,7 +61,7 @@
   height: 24px;
   color: var(--text-tertiary);
   transform: rotate(-90deg);
-  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform var(--duration-normal) cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .headerChevronOpen {
@@ -71,7 +71,7 @@
 .contentWrap {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: grid-template-rows var(--duration-slow) cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .open .contentWrap {

@@ -4,6 +4,7 @@ import {
   isAgentStreamSessionClaimActive,
   releaseAgentStreamSession,
   abortAgentStreamSession,
+  clearPendingAgentStreamStop,
   resetAgentStreamSessionGuardForTests
 } from '../stream-session-guard'
 
@@ -61,5 +62,28 @@ describe('stream-session-guard', () => {
     releaseAgentStreamSession('s1', first.generation)
     const second = claimAgentStreamSession('s1')
     expect(second.signal.aborted).toBe(false)
+  })
+
+  it('clears idle pending-stop so the next claim can start', () => {
+    resetAgentStreamSessionGuardForTests()
+
+    abortAgentStreamSession('s1')
+    clearPendingAgentStreamStop('s1')
+    const claim = claimAgentStreamSession('s1')
+
+    expect(claim.signal.aborted).toBe(false)
+  })
+
+  it('should not abort a newer claim when a stale generation times out', () => {
+    resetAgentStreamSessionGuardForTests()
+
+    const first = claimAgentStreamSession('s1')
+    const second = claimAgentStreamSession('s1')
+
+    abortAgentStreamSession('s1', first.generation)
+
+    expect(first.signal.aborted).toBe(true)
+    expect(second.signal.aborted).toBe(false)
+    expect(isAgentStreamSessionClaimActive('s1', second.generation)).toBe(true)
   })
 })

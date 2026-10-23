@@ -1,5 +1,3 @@
-import { streamText } from 'ai'
-import type { ModelMessage } from 'ai'
 import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
 // @ts-ignore
@@ -7,13 +5,14 @@ import { SnapshotRepository } from '@baishou/database'
 import {
   CompressionErrorCode,
   compressionError,
-  getDefaultCompressionSystemPrompt,
-  adaptCompressionSystemPrompt
+  createAgentStreamAbortError,
+  isAgentStreamAbortError,
+  logger
 } from '@baishou/shared'
-import { logger } from '@baishou/shared'
 import { MessageWithParts } from './message.adapter'
 import {
   estimateContextTokensForTrigger,
+  estimateTokensSinceLastSnapshot,
   resolveCompressionBatch,
   hasEnoughMessagesForRecompress,
   hasUserContentInCompressionBatch,
@@ -23,7 +22,6 @@ import {
   computeTailStartMessageId,
   preserveRecentTokenBudget,
   extractMessageText,
-  buildCompressionUserMessageContent,
   type SessionCompressionConfig
 } from './context-compression.utils'
 import {
@@ -39,11 +37,11 @@ import {
   resolveLatestUserMessageId,
   finalizeCompressionForStorage
 } from './compaction-marker'
-import { consumeCompressionModelStream } from './compression-stream.utils'
+import { isAgentFirstOutputTimeoutError } from './agent-stream-timeout'
 import {
-  wrapLanguageModelWithMiddlewares,
-  buildCachedSystemForStream
-} from '../middleware/middleware-factory'
+  generateCompressionSummaryText,
+  resolveRecompressMarkerMessageId
+} from './context-compressor-summary.service'
 
 export type { SessionCompressionConfig } from './context-compression.utils'
 
@@ -51,6 +49,8 @@ export type CompressionRunOptions = {
   /** 方案 A：触发发送前压缩的用户消息 ID */
   triggerUserMessageId?: string
   abortSignal?: AbortSignal
+  /** 当前对话流 claim 代数；压缩超时时只中止这一轮 */
+  streamClaimGeneration?: number
   /** 是否在压缩 transcript 中包裹消息时间元数据，默认 true */
   wrapMessageTime?: boolean
   /** 调用方已加载的会话消息，避免重复全量查询 */
@@ -59,6 +59,8 @@ export type CompressionRunOptions = {
   recentCount?: number
   /** 对话系统提示词，用于触发估算与 UI 对齐 */
   systemPrompt?: string
+  /** 重发：触发量只算上一张快照之后的增量 */
+  countTokensSinceLastSnapshot?: boolean
 }
 
 export type RecompressResult = {
@@ -139,7 +141,7 @@ export class ContextCompressorService {
         config ?? (await resolveSessionCompressionConfig(sessionId, sessionRepo))
 
       if (runOptions?.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       const usableWindow = usableContextTokens(
@@ -161,12 +163,26 @@ export class ContextCompressorService {
         return false
       }
 
-      const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+      const { ensureSessionSnapshotsRestored } = await import('./session-snapshot-restore')
+      const latestSnapshot = await ensureSessionSnapshotsRestored(
+        sessionId,
+        snapshotRepo,
+        sessionRepo,
+        {
+          restoreSynthesizedFromMarkers: runOptions?.countTokensSinceLastSnapshot !== true
+        }
+      )
 
-      const contextTokens = estimateContextTokensForTrigger(allMessages, latestSnapshot, {
-        recentCount: runOptions?.recentCount,
-        systemPrompt: runOptions?.systemPrompt
-      })
+      if (runOptions?.countTokensSinceLastSnapshot && !latestSnapshot) {
+        return false
+      }
+      const contextTokens =
+        runOptions?.countTokensSinceLastSnapshot && latestSnapshot
+          ? estimateTokensSinceLastSnapshot(allMessages, latestSnapshot)
+          : estimateContextTokensForTrigger(allMessages, latestSnapshot, {
+              recentCount: runOptions?.recentCount,
+              systemPrompt: runOptions?.systemPrompt
+            })
       if (!resolveCompressionTrigger(contextTokens, compressionConfig)) {
         logger.info(
           `[ContextCompressor] Session(${sessionId}) skip: ~${contextTokens} tokens below threshold ${compressionConfig.threshold}.`
@@ -217,7 +233,7 @@ export class ContextCompressorService {
       })
       compressionStarted = true
 
-      const generated = await ContextCompressorService.generateSummaryText(
+      const generated = await generateCompressionSummaryText(
         provider,
         modelId,
         sessionId,
@@ -226,7 +242,10 @@ export class ContextCompressorService {
         latestSnapshot?.summaryText ?? null,
         providerType,
         runOptions?.abortSignal,
-        { wrapMessageTime: runOptions?.wrapMessageTime }
+        {
+          wrapMessageTime: runOptions?.wrapMessageTime,
+          streamClaimGeneration: runOptions?.streamClaimGeneration
+        }
       )
       if (!generated) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
@@ -280,14 +299,14 @@ export class ContextCompressorService {
       return true
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      const aborted = e instanceof DOMException && e.name === 'AbortError'
+      const aborted = isAgentStreamAbortError(e)
       if (!aborted) {
         logger.error('[ContextCompressor] Compression failed:', message)
       }
       if (compressionStarted) {
         emitCompressionLifecycle({ type: 'finish', sessionId, phase: 'auto', ok: false })
       }
-      if (aborted) {
+      if (aborted || isAgentFirstOutputTimeoutError(e)) {
         throw e
       }
       return false
@@ -346,7 +365,7 @@ export class ContextCompressorService {
           return compressionError(CompressionErrorCode.NO_USER_CONTENT)
         }
 
-        const generated = await ContextCompressorService.generateSummaryText(
+        const generated = await generateCompressionSummaryText(
           provider,
           modelId,
           sessionId,
@@ -386,11 +405,7 @@ export class ContextCompressorService {
         await writeCompactionMarker(
           sessionRepo,
           sessionId,
-          ContextCompressorService.resolveRecompressMarkerMessageId(
-            allMessages,
-            latestSnapshot.id,
-            coveredLastMsg.id
-          ),
+          resolveRecompressMarkerMessageId(allMessages, latestSnapshot.id, coveredLastMsg.id),
           {
             snapshotId: latestSnapshot.id,
             compressedAt: Date.now(),
@@ -431,98 +446,5 @@ export class ContextCompressorService {
       return compressionError(CompressionErrorCode.ALREADY_RUNNING)
     }
     return locked
-  }
-
-  private static async generateSummaryText(
-    provider: IAIProvider,
-    modelId: string,
-    sessionId: string,
-    toCompress: MessageWithParts[],
-    compressionConfig: SessionCompressionConfig,
-    priorSummaryText: string | null,
-    providerType: string,
-    abortSignal?: AbortSignal,
-    options?: { wrapMessageTime?: boolean }
-  ): Promise<{
-    text: string
-    reasoning?: string
-    completionTokens: number
-    thoughtDurationMs: number
-    summaryDurationMs: number
-  } | null> {
-    const baseModel = provider.getLanguageModel(modelId, { sessionId })
-    const model = wrapLanguageModelWithMiddlewares(baseModel, {
-      providerType,
-      modelId,
-      sessionId
-    })
-    const wrapMessageTime = options?.wrapMessageTime !== false
-    const rawSystem = compressionConfig.systemPrompt?.trim() || getDefaultCompressionSystemPrompt()
-    const systemBase = adaptCompressionSystemPrompt(rawSystem, undefined, { wrapMessageTime })
-
-    const userContent = buildCompressionUserMessageContent(toCompress, priorSummaryText, options)
-    if (!userContent) return null
-
-    const messages: ModelMessage[] = [{ role: 'user', content: userContent }]
-
-    const streamResult = streamText({
-      model,
-      system: buildCachedSystemForStream(systemBase, {
-        providerType,
-        modelId,
-        sessionId
-      }),
-      messages,
-      temperature: 0.1,
-      abortSignal
-    })
-
-    let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
-    try {
-      streamed = await consumeCompressionModelStream(streamResult, sessionId, abortSignal)
-    } catch (streamErr: unknown) {
-      const aborted = streamErr instanceof DOMException && streamErr.name === 'AbortError'
-      if (!aborted) {
-        const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
-        logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
-      }
-      throw streamErr
-    }
-
-    if (!streamed.summaryText) {
-      logger.error(
-        `[ContextCompressor] Session(${sessionId}) empty summary (API may have returned an error).`
-      )
-      return null
-    }
-    const lastAssistant = [...toCompress].reverse().find((m) => m.role === 'assistant')
-    const lastAssistantText = lastAssistant ? extractMessageText(lastAssistant).trim() : ''
-    if (lastAssistantText.length > 40 && streamed.summaryText === lastAssistantText) {
-      return null
-    }
-
-    return {
-      text: streamed.summaryText,
-      reasoning: streamed.reasoningText || undefined,
-      completionTokens: streamed.completionTokens,
-      thoughtDurationMs: streamed.thoughtDurationMs,
-      summaryDurationMs: streamed.summaryDurationMs
-    }
-  }
-
-  /** 重新压缩时优先更新已有触发用户消息上的 compaction 标记 */
-  private static resolveRecompressMarkerMessageId(
-    allMessages: MessageWithParts[],
-    snapshotId: number,
-    fallbackMessageId: string
-  ): string {
-    for (const msg of allMessages) {
-      const part = msg.parts?.find((p) => p.type === 'compaction')
-      const data = part?.data as { snapshotId?: number } | undefined
-      if (data?.snapshotId === snapshotId) {
-        return msg.id
-      }
-    }
-    return fallbackMessageId
   }
 }

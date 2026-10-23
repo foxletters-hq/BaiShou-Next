@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native'
@@ -5,6 +6,8 @@ import { useNativeTheme } from '../theme'
 import { SettingsSection } from '../SettingsSection'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
+import { modalActionsStyle } from '../Modal/Modal'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface SummarySettingsViewProps {
   config: {
@@ -28,10 +31,38 @@ interface TemplateItem {
 }
 
 const TEMPLATES: TemplateItem[] = [
-  { key: 'weeklyTemplate', title: '周结', icon: '📋' },
-  { key: 'monthlyTemplate', title: '月结', icon: '📅' },
-  { key: 'quarterlyTemplate', title: '季结', icon: '📊' },
-  { key: 'yearlyTemplate', title: '年结', icon: '📈' }
+  {
+    key: 'weeklyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L31',
+      '周结'
+    ),
+    icon: '📋'
+  },
+  {
+    key: 'monthlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L32',
+      '月结'
+    ),
+    icon: '📅'
+  },
+  {
+    key: 'quarterlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L33',
+      '季结'
+    ),
+    icon: '📊'
+  },
+  {
+    key: 'yearlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L34',
+      '年结'
+    ),
+    icon: '📈'
+  }
 ]
 
 export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config, onChange }) => {
@@ -107,11 +138,11 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
               numberOfLines={12}
             />
 
-            <View style={styles.modalActions}>
-              <Button variant="ghost" onPress={() => setEditingKey(null)}>
+            <View style={modalActionsStyle}>
+              <Button size="sm" variant="outline" onPress={() => setEditingKey(null)}>
                 {t('common.cancel', '取消')}
               </Button>
-              <Button variant="primary" onPress={saveEditor}>
+              <Button size="sm" variant="primary" onPress={saveEditor}>
                 {t('common.save', '保存')}
               </Button>
             </View>
@@ -127,20 +158,20 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   templateCard: {
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderBottomWidth: 1
   },
   templateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
-  templateIcon: { fontSize: 20, marginRight: 8 },
-  templateTitle: { fontSize: 16, fontWeight: '500' },
+  templateIcon: { fontSize: iconSizes.md, marginRight: sharedTokens.spacing.sm },
+  templateTitle: { fontSize: mobileTypography.primary.fontSize, fontWeight: '500' },
   preview: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
-    marginBottom: 10
+    marginBottom: sharedTokens.spacing.smPlus
   },
   modalOverlay: {
     flex: 1,
@@ -149,27 +180,27 @@ const styles = StyleSheet.create({
   },
   modalBox: {
     width: '90%',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: sharedTokens.radius.xl,
+    padding: sharedTokens.spacing.lg,
     maxHeight: '80%'
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.md
   },
   modalInput: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.secondary.fontSize,
     minHeight: 200,
     lineHeight: 20
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 20,
-    gap: 12
+    marginTop: sharedTokens.spacing.mdPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   bottomSpacer: { height: 40 }
 })

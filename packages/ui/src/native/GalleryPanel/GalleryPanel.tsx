@@ -2,6 +2,7 @@ import React from 'react'
 import { View, StyleSheet, useWindowDimensions, ActivityIndicator, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { SegmentedContent } from '../SegmentedControl'
 import type { GalleryPanelProps } from './gallery-panel.types'
 import { useGalleryPanel } from './useGalleryPanel'
 import { GalleryTabsHeader } from './GalleryTabsHeader'
@@ -9,6 +10,7 @@ import { GalleryYearPickerModal } from './GalleryYearPickerModal'
 import { GallerySummaryList } from './GallerySummaryList'
 import { GallerySummaryDetail } from './GallerySummaryDetail'
 import { GalleryImageGrid } from './GalleryImageGrid'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type { GalleryImage, SummaryItem, GalleryPanelProps } from './gallery-panel.types'
 export type { SummaryTab } from './gallery-panel.utils'
@@ -32,12 +34,12 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const isCompact = width < COMPACT_BREAKPOINT
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const panel = useGalleryPanel({ summaries: summaryItems, onOpen, onSave })
 
   if (!isSummaryMode) {
     return <GalleryImageGrid images={images ?? []} onImagePress={onImagePress} />
   }
 
-  const panel = useGalleryPanel({ summaries: summaryItems, onOpen, onSave })
   const showBlockingLoad = loading && summaryItems.length === 0
 
   const handleListItemPress = (id: string) => {
@@ -68,7 +70,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
         onYearChange={panel.handleYearChange}
       />
 
-      <View style={styles.body}>
+      <SegmentedContent value={panel.activeTab} style={styles.body}>
         {showBlockingLoad ? (
           <View style={[styles.loadingState, { backgroundColor: colors.bgApp }]}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -82,6 +84,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
             items={panel.displayedSummaries}
             onItemClick={handleListItemPress}
             onScroll={panel.handleScroll}
+            onViewportLayout={panel.handleViewportLayout}
+            onContentSizeChange={panel.handleContentSizeChange}
             activeTab={panel.activeTab}
           />
         ) : (
@@ -99,6 +103,8 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
               selectedSummary={panel.selectedSummary}
               onItemClick={handleListItemPress}
               onScroll={panel.handleScroll}
+              onViewportLayout={panel.handleViewportLayout}
+              onContentSizeChange={panel.handleContentSizeChange}
               activeTab={panel.activeTab}
             />
             <GallerySummaryDetail
@@ -122,7 +128,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : null}
-      </View>
+      </SegmentedContent>
     </View>
   )
 }
@@ -141,11 +147,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 48
+    gap: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xxl
   },
   loadingText: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   },
   refreshOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -158,8 +164,8 @@ const styles = StyleSheet.create({
     minHeight: 0,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: sharedTokens.radius.md,
+    borderBottomRightRadius: sharedTokens.radius.md,
     overflow: 'hidden'
   }
 })

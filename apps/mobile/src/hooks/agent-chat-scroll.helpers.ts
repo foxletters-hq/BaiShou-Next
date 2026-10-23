@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import { logAgentScrollEvent } from '../utils/agent-scroll-diagnostics'
+import { shouldTreatScrollAsUserLeave } from './agent-chat-scroll.decisions'
 
 export const BOTTOM_THRESHOLD_PX = 48
 /** 输出结束后短窗：此间任何程序化贴底 / 大幅跳底都标红排查 */
@@ -16,6 +17,7 @@ export interface UseAgentChatScrollParams {
   isStreaming: boolean
   isStreamBridgeActive: boolean
   activeTool: { name: string } | null
+  viewportHeight?: number
 }
 
 export function isNearBottom(
@@ -136,10 +138,21 @@ export function handleAgentChatListScroll(
     })
   }
 
-  // 上滑优先退出跟随；清托底引发的钳位用 suppress 吞掉，避免 hold↔trim 死循环
-  if (deltaY < -2 || (isUserDraggingRef.current && !isNearBottom(nativeEvent))) {
+  // 上滑优先退出跟随；程序化平滑贴底期间的抖动不算离开。
+  // 清托底引发的钳位用 suppress 吞掉，避免 hold↔trim 死循环。
+  if (
+    shouldTreatScrollAsUserLeave({
+      isSmoothScrolling: isSmoothScrollingRef.current,
+      deltaY,
+      isUserDragging: isUserDraggingRef.current,
+      nearBottom: isNearBottom(nativeEvent)
+    })
+  ) {
     if (suppressInterruptRef.current > 0) {
       suppressInterruptRef.current -= 1
+      return
+    }
+    if (!isUserDraggingRef.current) {
       return
     }
     exitFollowing()
@@ -159,7 +172,7 @@ export function handleAgentChatListScroll(
     return
   }
 
-  if (userLockedAwayRef.current) return
+  if (userLockedAwayRef.current || !isUserDraggingRef.current) return
 
   exitFollowing()
 }

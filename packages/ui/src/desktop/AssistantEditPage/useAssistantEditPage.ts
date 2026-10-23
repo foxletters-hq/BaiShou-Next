@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
@@ -7,17 +6,19 @@ import {
   DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isAssistantCustomAvatar,
+  isSystemLatteAssistantId,
   normalizeAssistantAvatarPath,
   normalizeAssistantKind,
   normalizeEmojiToolConfig,
   parseAssistantEmojiGroupIds,
   serializeAssistantEmojiGroupIds,
   type AssistantKind,
-  type EmojiGroup,
   type EmojiToolConfig,
+  type NormalizedEmojiToolConfig,
   logger
 } from '@baishou/shared'
 import type { AssistantFormData } from './assistant-edit.types'
+import { persistDesktopEmojiToolConfig } from './persist-desktop-emoji-tool-config'
 
 function resolveFormEmojiGroupIds(assistant: AssistantFormData | null): string[] {
   if (!assistant) return []
@@ -52,14 +53,15 @@ export function useAssistantEditPage({
   onSave,
   onPatchSave
 }: UseAssistantEditPageOptions) {
-  const { t } = useTranslation()
   const isEditing = assistant !== null
 
   const [name, setName] = useState(assistant?.name ?? '')
   const [description, setDescription] = useState(assistant?.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '')
-  const [assistantKind, setAssistantKind] = useState<AssistantKind>(
-    normalizeAssistantKind(assistant?.assistantKind ?? DEFAULT_ASSISTANT_KIND)
+  const [assistantKind, setAssistantKind] = useState<AssistantKind>(() =>
+    isSystemLatteAssistantId(assistant?.id)
+      ? 'companion'
+      : normalizeAssistantKind(assistant?.assistantKind ?? DEFAULT_ASSISTANT_KIND)
   )
   const [contextWindow, setContextWindow] = useState(
     assistant?.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW
@@ -79,8 +81,9 @@ export function useAssistantEditPage({
   const [providerPickerOpen, setProviderPickerOpen] = useState(false)
   const [pickerProviders, setPickerProviders] = useState<any[]>([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
-  const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
+  const [emojiConfig, setEmojiConfig] = useState<NormalizedEmojiToolConfig>(() =>
+    normalizeEmojiToolConfig(null)
+  )
   const [emojiEnabled, setEmojiEnabled] = useState(assistant?.emojiEnabled === true)
   const [selectedEmojiGroupIds, setSelectedEmojiGroupIds] = useState<string[]>(() =>
     resolveFormEmojiGroupIds(assistant)
@@ -107,7 +110,11 @@ export function useAssistantEditPage({
     setAvatarPath(
       normalizeAssistantAvatarPath(assistant.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
     )
-    setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
+    setAssistantKind(
+      isSystemLatteAssistantId(assistant.id)
+        ? 'companion'
+        : normalizeAssistantKind(assistant.assistantKind)
+    )
     setEmojiEnabled(assistant.emojiEnabled === true)
     setSelectedEmojiGroupIds(resolveFormEmojiGroupIds(assistant))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally hydrate only on id change
@@ -121,10 +128,9 @@ export function useAssistantEditPage({
         .getToolManagementConfig()
         .then((config: { emojiConfig?: EmojiToolConfig | null }) => {
           const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
-          setGlobalEmojiEnabled(normalized.enabled === true)
-          setEmojiGroups(normalized.groups)
+          setEmojiConfig(normalized)
         })
-        .catch(() => setEmojiGroups([]))
+        .catch(() => setEmojiConfig(normalizeEmojiToolConfig(null)))
     }
 
     loadEmojiConfig()
@@ -158,6 +164,17 @@ export function useAssistantEditPage({
     patchAssistantField({ compressKeepTurns: Math.round(value) })
   }
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).electron) {
+      ;(window as any).electron.ipcRenderer
+        .invoke('agent:get-providers')
+        .then((list: any) => {
+          setPickerProviders((list || []).filter((p: any) => p.isEnabled))
+        })
+        .catch(console.error)
+    }
+  }, [])
+
   const handleToggleCompress = (enabled: boolean) => {
     const next = enabled
       ? compressThreshold > 0
@@ -171,17 +188,6 @@ export function useAssistantEditPage({
         : 0
     })
   }
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).electron) {
-      ;(window as any).electron.ipcRenderer
-        .invoke('agent:get-providers')
-        .then((list: any) => {
-          setPickerProviders((list || []).filter((p: any) => p.isEnabled))
-        })
-        .catch(console.error)
-    }
-  }, [])
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -199,7 +205,7 @@ export function useAssistantEditPage({
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
         avatarPath: normalizeAssistantAvatarPath(avatarPath),
-        assistantKind,
+        assistantKind: isSystemLatteAssistantId(assistant?.id) ? 'companion' : assistantKind,
         ...buildEmojiPersistFields(selectedEmojiGroupIds, emojiEnabled)
       })
     } catch (e) {
@@ -251,10 +257,10 @@ export function useAssistantEditPage({
     commitCompressThreshold,
     commitCompressKeepTurns,
     handleToggleCompress,
-    emojiGroups,
+    emojiConfig,
     emojiEnabled,
     selectedEmojiGroupIds,
-    globalEmojiEnabled,
+    globalEmojiEnabled: emojiConfig.enabled === true,
     setEmojiEnabled: (value: boolean) => {
       setEmojiEnabled(value)
       patchAssistantField(buildEmojiPersistFields(selectedEmojiGroupIds, value))
@@ -267,6 +273,19 @@ export function useAssistantEditPage({
         patchAssistantField(buildEmojiPersistFields(next, emojiEnabled))
         return next
       })
+    },
+    handleEmojiConfigChange: (next: EmojiToolConfig) => {
+      const normalized = normalizeEmojiToolConfig(next)
+      setEmojiConfig(normalized)
+      const validIds = new Set(normalized.groups.map((group) => group.id))
+      setSelectedEmojiGroupIds((prev) => {
+        const pruned = prev.filter((id) => validIds.has(id))
+        if (pruned.length !== prev.length) {
+          patchAssistantField(buildEmojiPersistFields(pruned, emojiEnabled))
+        }
+        return pruned
+      })
+      void persistDesktopEmojiToolConfig(normalized)
     }
   }
 }

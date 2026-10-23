@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Input } from '../Input/Input'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
@@ -65,14 +67,14 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
       <Cloud
         size={18}
         className={styles.providerIconPlaceholder}
-        style={{ color: 'var(--text-tertiary, #999)' }}
+        style={{ color: 'var(--text-tertiary)' }}
       />
     )
   }
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.dialog}>
         {/* Header */}
         <div className={styles.header}>
@@ -89,12 +91,13 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
           <span className={styles.searchIcon}>
             <Search />
           </span>
-          <input
+          <Input
             type="text"
+            fieldSize="small"
             placeholder={t('common.search_model', '搜索模型...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={styles.searchInput}
+            inputClassName="baishou-form-field--pad-leading"
             autoFocus
           />
         </div>

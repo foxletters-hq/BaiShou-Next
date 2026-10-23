@@ -1,10 +1,13 @@
 import { createOpenAI } from '@ai-sdk/openai'
-import { LanguageModel, EmbeddingModel, generateText } from 'ai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { LanguageModel, EmbeddingModel } from 'ai'
 import {
   AiProviderModel,
   isChatModelForConnectionTest,
+  isOpenAiStyleReasoningModel,
   mergeZhipuKnownEmbeddingModels,
-  resolveProviderBaseUrl
+  resolveProviderBaseUrl,
+  sanitizeSurrogatesDeep
 } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
@@ -16,6 +19,12 @@ import {
   sanitizeRequestInit
 } from './fetch-header.util'
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provider-api-error.util'
+import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
+import {
+  shouldUseOpenAiCompatibleChatSdk,
+  shouldUseOpenAiResponsesLanguageModel
+} from './reasoning'
+import { applyOpenAiThinkingBodyInject } from './reasoning/openai-thinking-inject'
 
 const DEEPSEEK_THINK_OPEN = '<' + 'redacted_thinking>'
 const DEEPSEEK_THINK_CLOSE = '<' + '/redacted_thinking>'
@@ -70,40 +79,63 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * DeepSeek thinking 模式的请求方向拦截器：
- *
- * 将 assistant 消息中的  标签提取为独立的 reasoning_content 字段，
- * 满足 DeepSeek API 多轮对话中必须回传推理内容的要求。
- *
- * 响应方向的 reasoning_content 处理由 @ai-sdk/openai patch 原生支持，
- * 不再在此处对 SSE 流进行二次拦截（避免移动端 ReadableStream 兼容问题）。
+ * Chat Completions 降级兜底：本函数仅在 `/v1/chat/completions` 请求上调用。
+ * 若带 tools 且为 OpenAI 系推理模型，强制 reasoning_effort=none。
  */
-function createDeepSeekFetchInterceptor(
-  baseURL?: string,
+export function applyChatCompletionsReasoningEffortForTools(body: {
+  model?: unknown
+  tools?: unknown
+  reasoning_effort?: unknown
+}): boolean {
+  if (!Array.isArray(body.tools) || body.tools.length === 0) return false
+  if (typeof body.model !== 'string' || !isOpenAiStyleReasoningModel(body.model)) return false
+  if (body.reasoning_effort === 'none') return false
+  body.reasoning_effort = 'none'
+  return true
+}
+
+/**
+ * DeepSeek thinking 请求拦截 + Chat 路径 tools 降级。
+ */
+function createOpenAICompatFetchInterceptor(
+  options: { baseURL?: string; providerType?: string },
   fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
 ) {
+  const baseURL = options.baseURL
   const isDeepSeek = baseURL?.includes('deepseek')
 
   return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const safeInit = sanitizeRequestInit(init)
 
-    if (!isDeepSeek) {
-      return fetchImpl(url, safeInit)
-    }
-
     const urlStr = typeof url === 'string' ? url : url.toString()
-    if (!urlStr.includes('/chat/completions')) {
-      return fetchImpl(url, safeInit)
-    }
-
-    // 请求方向：提取 <think> → reasoning_content
-    if (safeInit?.body && typeof safeInit.body === 'string') {
+    if (
+      urlStr.includes('/chat/completions') &&
+      safeInit?.body &&
+      typeof safeInit.body === 'string'
+    ) {
       try {
-        const body = JSON.parse(safeInit.body)
-        if (body.messages && Array.isArray(body.messages)) {
+        const parsed = JSON.parse(safeInit.body) as Record<string, unknown>
+        // 严格 JSON 解析器（如 DeepSeek 的 serde_json）不接受孤立 UTF-16 代理项，
+        // 截断工具输出时可能产生半个 emoji，这里在序列化前统一兜底。
+        const body = sanitizeSurrogatesDeep(parsed)
+        let mutated = body !== parsed
+
+        if (applyChatCompletionsReasoningEffortForTools(body)) {
+          mutated = true
+        }
+
+        if (applyOpenAiThinkingBodyInject(body)) {
+          mutated = true
+        }
+
+        if (isDeepSeek && body.messages && Array.isArray(body.messages)) {
           for (const msg of body.messages) {
             applyDeepSeekReasoningFields(msg)
           }
+          mutated = true
+        }
+
+        if (mutated) {
           safeInit.body = JSON.stringify(body)
         }
       } catch {
@@ -111,9 +143,12 @@ function createDeepSeekFetchInterceptor(
       }
     }
 
+    if (!isDeepSeek) {
+      return fetchImpl(url, safeInit)
+    }
+
     const response = await fetchImpl(url, safeInit)
     if (!response.ok) {
-      // expo/fetch 的 FetchResponse.clone() 未实现，会抛出 Error('Not implemented') 并掩盖真实 API 错误
       const errorBody = await response.text()
       console.error(
         `[FetchDebug] DeepSeek error status=${response.status} body=${errorBody.slice(0, 800)}`
@@ -130,7 +165,6 @@ function createDeepSeekFetchInterceptor(
 
 /**
  * 通用的兼容 OpenAI 标准 API 格式的 Provider
- * 根据传入配置动态替换 BaseUrl 与 ApiKey
  */
 export class OpenAIAdaptedProvider implements IAIProvider {
   public config: AiProviderModel
@@ -142,31 +176,68 @@ export class OpenAIAdaptedProvider implements IAIProvider {
     return resolveProviderBaseUrl(this.config.id, this.config.type, this.config.baseUrl)
   }
 
-  private _getSdk() {
-    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
+  private _getFetch() {
     const baseURL = this.resolvedBaseUrl() || undefined
     const sanitizedFetch = createSanitizedFetch()
+    return createOpenAICompatFetchInterceptor(
+      { baseURL, providerType: this.config.type },
+      sanitizedFetch
+    )
+  }
+
+  private _getOfficialSdk() {
+    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
+    const baseURL = this.resolvedBaseUrl() || undefined
     return createOpenAI({
       apiKey: rotatedKey,
       baseURL,
-      fetch: createDeepSeekFetchInterceptor(baseURL, sanitizedFetch)
+      fetch: this._getFetch()
+    })
+  }
+
+  private _getCompatibleSdk() {
+    const rotatedKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
+    const baseURL = this.resolvedBaseUrl() || 'https://api.openai.com/v1'
+    return createOpenAICompatible({
+      name: 'openaiCompatible',
+      apiKey: rotatedKey,
+      baseURL,
+      includeUsage: true,
+      fetch: this._getFetch()
     })
   }
 
   getLanguageModel(modelId?: string): LanguageModel {
     const targetModel = modelId || this.config.defaultDialogueModel || 'gpt-4o'
-    // Use .chat() to ensure we hit /v1/chat/completions instead of the new Responses API (/v1/responses)
-    return this._getSdk().chat(targetModel) as unknown as LanguageModel
+    const ctx = {
+      modelId: targetModel,
+      providerType: this.config.type,
+      baseUrl: this.resolvedBaseUrl()
+    }
+    // 官方 OpenAI 推理模型走 Responses；兼容网关 Chat 走 openai-compatible
+    if (shouldUseOpenAiResponsesLanguageModel(ctx)) {
+      return this._getOfficialSdk().responses(targetModel) as unknown as LanguageModel
+    }
+    if (shouldUseOpenAiCompatibleChatSdk(ctx)) {
+      return this._getCompatibleSdk().chatModel(targetModel) as unknown as LanguageModel
+    }
+    return this._getOfficialSdk().chat(targetModel) as unknown as LanguageModel
   }
 
   getEmbeddingModel(modelId?: string): EmbeddingModel {
     const targetModel = modelId || 'text-embedding-3-small'
-    return this._getSdk().textEmbeddingModel(targetModel) as unknown as EmbeddingModel
+    if (
+      shouldUseOpenAiCompatibleChatSdk({
+        providerType: this.config.type,
+        baseUrl: this.resolvedBaseUrl()
+      })
+    ) {
+      return this._getCompatibleSdk().textEmbeddingModel(targetModel) as unknown as EmbeddingModel
+    }
+    return this._getOfficialSdk().textEmbeddingModel(targetModel) as unknown as EmbeddingModel
   }
 
   async fetchAvailableModels(): Promise<string[]> {
-    // OpenAI 原生的模型拉取端点。
-    // 这里因为 AI SDK 屏蔽了该接口，我们可以使用基础的 fetch 调用
     const apiKey = sanitizeApiKeyForHttp(getRotatedApiKey(this.config) || this.config.apiKey)
     if (!apiKey && this.config.type !== 'ollama' && this.config.type !== 'lmstudio') {
       return []
@@ -235,19 +306,13 @@ export class OpenAIAdaptedProvider implements IAIProvider {
     const modelToTest = await this.resolveTestModelId(testModelId)
 
     try {
-      const abortController = new AbortController()
-      const timeoutId = setTimeout(() => abortController.abort('Connection timeout'), 15000)
-
-      await generateText({
+      await probeProviderConnection({
         model: this.getLanguageModel(modelToTest),
-        prompt: 'test',
-        maxOutputTokens: 1,
-        abortSignal: abortController.signal
+        modelId: modelToTest,
+        providerType: this.config.type,
+        baseUrl: this.resolvedBaseUrl()
       })
-
-      clearTimeout(timeoutId)
     } catch (e: unknown) {
-      console.error(`Test connection error for ${this.config.name}:`, e)
       const detail = extractApiErrorMessage(e)
       const isModelError = /model does not exist|model not found|invalid model/i.test(detail)
       if (isModelError) {
@@ -262,7 +327,10 @@ export class OpenAIAdaptedProvider implements IAIProvider {
             (detail ? ` (${detail})` : '')
         )
       }
-      throw new Error(`Connection test failed: ${detail}`)
+      throw wrapConnectionTestError(this.config.name, e)
     }
   }
 }
+
+// re-export for tests that referenced isOpenAiStyleReasoningModel via this module historically
+export { isOpenAiStyleReasoningModel }

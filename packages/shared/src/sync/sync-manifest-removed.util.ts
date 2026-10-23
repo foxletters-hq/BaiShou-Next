@@ -8,6 +8,7 @@ import type {
   SyncManifest
 } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
+import { isLegacyVaultSettingsSyncPath } from '../utils/incremental-sync-scan.util'
 
 /** 跨设备时钟偏差容忍（毫秒）：仅当本地明显更旧时才采信远端删除 */
 export const SYNC_TOMBSTONE_CLOCK_SKEW_MS = 2 * 60 * 1000
@@ -180,6 +181,14 @@ export function finalizeIncrementalSyncManifest(options: {
 
   for (const decision of options.decisions) {
     manifest = applySyncDecisionRemovedSideEffects(manifest, decision, options.deviceId)
+  }
+
+  // 过渡期兼容：新端已把旧仓内 settings 迁到根级，旧端仍依赖它们。
+  // 不让 manifest 因本地扫描不到而丢掉这些远端条目；真实删除走 tombstone。
+  for (const [filePath, entry] of Object.entries(options.baselineRemote.files ?? {})) {
+    if (!isLegacyVaultSettingsSyncPath(filePath)) continue
+    if (manifest.files[filePath] || manifest.removed?.[filePath]) continue
+    manifest.files[filePath] = entry
   }
 
   return pruneSyncManifestRemoved(manifest)

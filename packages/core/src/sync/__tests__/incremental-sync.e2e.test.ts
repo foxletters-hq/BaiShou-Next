@@ -15,6 +15,7 @@ const JOURNAL_A = 'Personal/Journals/2026/05/entry-a.md'
 const JOURNAL_B = 'Personal/Journals/2026/05/entry-b.md'
 const JOURNAL_SHARED = 'Personal/Journals/2026/05/shared.md'
 const BG_IMAGE = 'Personal/Attachments/backgrounds/bg_test.jpg'
+const USER_SKILL = '.agents/skills/demo/SKILL.md'
 
 function journalPath(name: string): string {
   return `Personal/Journals/2026/05/${name}.md`
@@ -24,7 +25,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-describe('incremental sync E2E simulation', () => {
+describe('incremental sync E2E simulation', { timeout: 30_000 }, () => {
   let cloud: SharedCloudStore
   let devices: SimulatedSyncDevice[]
 
@@ -160,6 +161,22 @@ describe('incremental sync E2E simulation', () => {
     expect(result.uploaded).not.toContain(BG_IMAGE)
     expect(cloud.has(BG_IMAGE)).toBe(false)
     expect(cloud.has(JOURNAL_A)).toBe(true)
+  })
+
+  it('syncs user skills from storage-root .agents/skills', async () => {
+    cloud = new SharedCloudStore()
+    devices = []
+
+    const deviceA = createDevice('device-a')
+    await deviceA.writeFile(USER_SKILL, '# Demo skill\n\nUse this skill.\n')
+    await deviceA.sync()
+
+    const deviceB = createDevice('device-b')
+    const resultB = await deviceB.sync()
+
+    expect(resultB.downloaded).toContain(USER_SKILL)
+    expect(await deviceB.readFile(USER_SKILL)).toBe('# Demo skill\n\nUse this skill.\n')
+    expect(cloud.has(USER_SKILL)).toBe(true)
   })
 
   it('cleans up remote background files instead of downloading them', async () => {

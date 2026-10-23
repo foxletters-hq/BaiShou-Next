@@ -19,6 +19,14 @@ function setupWindowMock() {
 
   const win = (globalThis as any).window || globalThis
   win.electron = { ipcRenderer: mockRenderer }
+  win.api = {
+    agentGate: {
+      onAsked: vi.fn(() => () => {}),
+      onReplied: vi.fn(() => () => {}),
+      onCancelled: vi.fn(() => () => {}),
+      reply: vi.fn().mockResolvedValue({ allowed: true })
+    }
+  }
 
   const emit = (channel: string, ...data: any[]) => {
     listeners[channel]?.({} as any, ...data)
@@ -31,6 +39,7 @@ function teardownWindowMock() {
   const win = (globalThis as any).window || globalThis
   if (win) {
     delete win.electron
+    delete win.api
   }
 }
 
@@ -120,7 +129,8 @@ describe('useAgentStream', () => {
         providerId: 'p1',
         modelId: 'm1',
         attachments: [],
-        searchMode: false
+        searchMode: false,
+        reasoningEffort: undefined
       })
       expect(result.current.isStreaming).toBe(true)
     })
@@ -167,6 +177,62 @@ describe('useAgentStream', () => {
       expect(result.current.text).toBe('')
       vi.useRealTimers()
     })
+
+    it('passes session reasoning effort on chat / edit / resend', async () => {
+      sessionStorage.setItem('baishou.reasoningEffort.sessionOverride', 'high')
+      mockRenderer.invoke.mockResolvedValue(true)
+      const { result } = renderHook(() => useAgentStream('s1'))
+
+      await act(async () => {
+        await result.current.startChat('s1', '你好', 'p1', 'm1', [], false)
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:chat',
+        expect.objectContaining({ reasoningEffort: 'high' })
+      )
+
+      await act(async () => {
+        await result.current.editChat('s1', 'm-user', '改过', 'p1', 'm1', [], false)
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:edit-message',
+        's1',
+        'm-user',
+        '改过',
+        'p1',
+        'm1',
+        [],
+        false,
+        'high'
+      )
+
+      await act(async () => {
+        await result.current.resendChat('s1', 'm-user', false, 'p1', 'm1')
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:resend',
+        's1',
+        'm-user',
+        false,
+        'p1',
+        'm1',
+        'high'
+      )
+      sessionStorage.removeItem('baishou.reasoningEffort.sessionOverride')
+    })
+
+    it('should clear isStreaming when resend invoke fails', async () => {
+      mockRenderer.invoke.mockRejectedValue(new Error('IPC failed'))
+      const { result } = renderHook(() => useAgentStream('s1'))
+
+      await act(async () => {
+        await expect(result.current.resendChat('s1', 'm-user', false, 'p1', 'm1')).rejects.toThrow(
+          'IPC failed'
+        )
+      })
+
+      expect(result.current.isStreaming).toBe(false)
+    })
   })
 
   describe('stream events', () => {
@@ -188,6 +254,18 @@ describe('useAgentStream', () => {
       })
       expect(result.current.isStreaming).toBe(false)
       expect(result.current.error).toBe('超时错误')
+    })
+
+    it('should keep an unexpected abort error instead of clearing the stream', () => {
+      const { result } = renderHook(() => useAgentStream('s1'))
+      act(() => {
+        emit('agent:stream-finish', {
+          sessionId: 's1',
+          error: 'The operation was aborted'
+        })
+      })
+      expect(result.current.isStreaming).toBe(false)
+      expect(result.current.error).toBe('The operation was aborted')
     })
 
     it('should accumulate text from stream-chunk events', () => {
@@ -260,7 +338,9 @@ describe('useAgentStream', () => {
       act(() => {
         emit('agent:tool-start', { sessionId: 's1', name: 'diary_search', args: { query: 'test' } })
       })
-      expect(result.current.activeTool).toEqual({ name: 'diary_search', args: { query: 'test' } })
+      expect(result.current.activeTool).toEqual(
+        expect.objectContaining({ name: 'diary_search', args: { query: 'test' } })
+      )
     })
 
     it('should handle tool-result event', () => {
@@ -274,6 +354,63 @@ describe('useAgentStream', () => {
       expect(result.current.activeTool).toBeNull()
       expect(result.current.completedTools.length).toBe(1)
       expect(result.current.completedTools[0].name).toBe('diary_search')
+    })
+
+    it('should keep partial text as bridge when the user stops', () => {
+      vi.useFakeTimers()
+      mockRenderer.invoke.mockResolvedValue(undefined)
+      const { result } = renderHook(() => useAgentStream('s1'))
+      act(() => {
+        result.current.beginStreaming('s1')
+      })
+      act(() => {
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: '一半回复' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(STREAM_LINE_REVEAL_MS)
+      })
+      act(() => {
+        result.current.stopChat()
+      })
+      expect(result.current.isStreaming).toBe(false)
+      expect(result.current.text).toBe('一半回复')
+      expect(result.current.isBridgeActive).toBe(true)
+      act(() => {
+        emit('agent:stream-finish', { sessionId: 's1', success: true, messageId: 'a-partial' })
+      })
+      expect(result.current.text).toBe('一半回复')
+      expect(result.current.isBridgeActive).toBe(true)
+      vi.useRealTimers()
+    })
+
+    it('should recover active streaming state from main process after page reload', async () => {
+      mockRenderer.invoke.mockImplementation(async (channel: string, sid: string) => {
+        if (channel === 'agent:get-active-stream' && sid === 's-reload') {
+          return {
+            sessionId: 's-reload',
+            isStreaming: true,
+            text: '恢复的正文',
+            reasoning: '恢复的思考',
+            timeline: [{ kind: 'reasoning', text: '恢复的思考' }],
+            activeTool: { name: 'url_read', args: { url: 'https://example.com' }, callId: 'c1' },
+            completedTools: [{ name: 'diary_list', startTime: 100, durationMs: 50, callId: 'c0' }],
+            pendingEmojis: []
+          }
+        }
+        return null
+      })
+
+      const { result } = renderHook(() => useAgentStream('s-reload'))
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(result.current.isStreaming).toBe(true)
+      expect(result.current.text).toBe('恢复的正文')
+      expect(result.current.reasoning).toBe('恢复的思考')
+      expect(result.current.activeTool?.name).toBe('url_read')
+      expect(result.current.completedTools).toHaveLength(1)
     })
   })
 

@@ -1,10 +1,19 @@
-import type { EmbeddingMigrationStateView } from '@baishou/shared'
+import type { ReactNode } from 'react'
+import type {
+  EmbeddingMigrationStateView,
+  RagBatchEmbedPhaseCounts,
+  RagBatchEmbedPhaseKind,
+  RagVectorKindFilter
+} from '@baishou/shared'
 
 export interface RagConfig {
   ragTopK: number
   ragSimilarityThreshold: number
   ragEnabled: boolean
   batchEmbedConcurrency?: number
+  lastDiaryEmbedFailureAt?: number
+  lastDiaryEmbedFailureMessage?: string
+  startupEmbedReminder?: boolean
 }
 
 export interface RagStats {
@@ -12,6 +21,7 @@ export interface RagStats {
   currentDimension: number
   totalSizeText: string
   diaryCountForVault?: number
+  vaultTotalCount?: number
   activeVaultName?: string
 }
 
@@ -23,6 +33,10 @@ export interface RagState {
   statusText: string
   statusKey?: string
   error?: string
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
+  paused?: boolean
+  cancelling?: boolean
 }
 
 export interface RagEntry {
@@ -32,6 +46,12 @@ export interface RagEntry {
   createdAt: number
   sourceType?: string
   similarity?: number
+  sourceId?: string
+  tags?: string[]
+  sourceSessionId?: string | null
+  memoryCreatedAt?: number
+  memoryUpdatedAt?: number
+  isManual?: boolean
 }
 
 export const RAG_DEFAULT_PAGE_SIZE = 10
@@ -49,12 +69,19 @@ export interface RagMemoryViewProps {
   pageSize?: number
   searchQuery?: string
   searchMode?: 'semantic' | 'text'
+  /** 切换分类、改关键词或翻页时正在重新查询 */
+  isSearching?: boolean
+  sourceKind?: RagVectorKindFilter
+  onSourceKindChange?: (kind: RagVectorKindFilter) => void
   semanticAvailable?: boolean
   onSemanticUnavailable?: () => void
   migrationState?: EmbeddingMigrationStateView | null
   onChange: (config: RagConfig) => void
   onClearDimension?: () => Promise<void>
   onBatchEmbed?: () => Promise<void>
+  onPauseBatchEmbed?: () => Promise<void>
+  onResumeBatchEmbed?: () => Promise<void>
+  onCancelBatchEmbed?: () => Promise<void>
   onAddManualMemory?: () => Promise<void>
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
@@ -70,4 +97,14 @@ export interface RagMemoryViewProps {
   onDetectDimension?: () => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
   migrationCancelBusy?: boolean
+  suspectCount?: number
+  onReviewSuspects?: () => void
+  /** 记忆中心把统计收到设置弹层里，向量页不再重复展示 */
+  hideStats?: boolean
+  /** 插入第一张设置卡顶部，与检索参数同卡滚动 */
+  cardLead?: ReactNode
+  /** 记忆中心：搜索和条目先出现，启用与检索参数收到设置弹层 */
+  compactChrome?: boolean
+  /** 塞进设置弹层顶部，例如模型就绪行 */
+  settingsLead?: ReactNode
 }

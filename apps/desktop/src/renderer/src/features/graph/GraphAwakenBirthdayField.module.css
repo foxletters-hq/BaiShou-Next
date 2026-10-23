@@ -1,0 +1,215 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--spacing-md-tight);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--ui-fs-lg);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border-control));
+}
+
+.trigger:focus-visible {
+  outline: none;
+  border-color: var(--form-field-border-focus, var(--color-primary));
+  box-shadow: var(
+    --form-field-focus-ring,
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent)
+  );
+}
+
+.trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.triggerError {
+  border-color: var(--color-error);
+}
+
+.triggerValue {
+  color: var(--text-primary);
+}
+
+.triggerPlaceholder {
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.chevron {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.modal {
+  min-width: 360px;
+  max-width: min(400px, calc(100% - 48px));
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
+  color: var(--text-primary);
+  border-radius: var(--radius-xl, var(--radius-lg-plus));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  animation: birthdayModalIn var(--duration-moderate) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes birthdayModalIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md-snug) var(--spacing-md);
+}
+
+.cancelBtn,
+.confirmBtn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-radius: var(--radius-xs-plus);
+}
+
+.cancelBtn {
+  color: var(--text-secondary);
+}
+
+.cancelBtn:hover {
+  background: var(--bg-surface-high);
+}
+
+.confirmBtn {
+  color: var(--color-primary);
+}
+
+.confirmBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.headerTitle {
+  font-size: var(--content-font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-muted);
+}
+
+.columns {
+  display: flex;
+  height: 240px;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  min-width: 0;
+  height: 240px;
+}
+
+.column:last-child {
+  border-right: none;
+}
+
+.colLabel {
+  text-align: center;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: var(--spacing-sm) 0;
+  height: 29px;
+  box-sizing: border-box;
+  background: var(--bg-surface-low, var(--bg-surface));
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.colScroll {
+  height: 211px;
+  overflow-y: auto;
+  min-height: 0;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.colScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 固定留白：使首尾项（含今天/当前年）也能滚到正中 */
+.colPad {
+  height: 85px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.colItem,
+.colItemSelected {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-family: inherit;
+  font-size: var(--ui-fs-lg);
+  line-height: 40px;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.colItem:hover {
+  background: transparent;
+}
+
+.colItemSelected {
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.colItemSelected:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}

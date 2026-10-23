@@ -4,8 +4,10 @@ import { ShadowIndexUpsertOps } from './shadow-index.repository.upsert'
 
 export type {
   ShadowJournalRecord,
+  ShadowSyncFingerprint,
   UpsertShadowIndexPayload,
   ShadowFTSResult,
+  ShadowEmbedDetectionRow,
   DiaryListFilterOptions
 } from './shadow-index.repository.types'
 
@@ -28,12 +30,12 @@ export { normalizeShadowFilePath, ShadowIndexUpsertOps } from './shadow-index.re
 export class ShadowIndexRepository {
   private readonly upsertOps: ShadowIndexUpsertOps
   private readonly queryOps: ShadowIndexQueryOps
-  readonly vaultName: string
+  readonly vaultId: string
 
-  constructor(database: AppDatabase, vaultName: string) {
-    this.vaultName = vaultName
-    this.upsertOps = new ShadowIndexUpsertOps(database, vaultName)
-    this.queryOps = new ShadowIndexQueryOps(database, vaultName)
+  constructor(database: AppDatabase, vaultId: string) {
+    this.vaultId = vaultId
+    this.upsertOps = new ShadowIndexUpsertOps(database, vaultId)
+    this.queryOps = new ShadowIndexQueryOps(database, vaultId)
   }
 
   async upsert(...args: Parameters<ShadowIndexUpsertOps['upsert']>) {
@@ -48,8 +50,12 @@ export class ShadowIndexRepository {
     return this.upsertOps.deleteById(...args)
   }
 
-  async deleteAllForVault(vaultName?: string): Promise<void> {
-    return this.upsertOps.deleteAllForVault(vaultName)
+  async deleteAllForVault(vaultId?: string): Promise<void> {
+    return this.upsertOps.deleteAllForVault(vaultId)
+  }
+
+  async deleteAllRecords(): Promise<void> {
+    return this.upsertOps.deleteAllRecords()
   }
 
   async findByDatePrefix(...args: Parameters<ShadowIndexQueryOps['findByDatePrefix']>) {
@@ -70,6 +76,10 @@ export class ShadowIndexRepository {
 
   async getHashesByDates(...args: Parameters<ShadowIndexQueryOps['getHashesByDates']>) {
     return this.queryOps.getHashesByDates(...args)
+  }
+
+  async updateFileStat(...args: Parameters<ShadowIndexUpsertOps['updateFileStat']>) {
+    return this.upsertOps.updateFileStat(...args)
   }
 
   async getAllRecords(...args: Parameters<ShadowIndexQueryOps['getAllRecords']>) {
@@ -106,6 +116,10 @@ export class ShadowIndexRepository {
 
   async listAllWithFTS(...args: Parameters<ShadowIndexQueryOps['listAllWithFTS']>) {
     return this.queryOps.listAllWithFTS(...args)
+  }
+
+  async listForEmbedDetection(...args: Parameters<ShadowIndexQueryOps['listForEmbedDetection']>) {
+    return this.queryOps.listForEmbedDetection(...args)
   }
 
   async listAll(...args: Parameters<ShadowIndexQueryOps['listAll']>) {

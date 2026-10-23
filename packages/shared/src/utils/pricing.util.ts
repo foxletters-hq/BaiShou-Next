@@ -1,3 +1,4 @@
+import { applyDeepSeekPeakCost } from './deepseek-peak-pricing'
 import {
   applyVisionModelsRuntimeOverlay,
   extractVisionModelIdsFromModelsDev
@@ -117,7 +118,7 @@ export class ModelPricingService {
     const outputCost = (outputTokens / 1_000_000) * effectivePrice.output
     const cacheCost = (cachedInputTokens / 1_000_000) * effectivePrice.cacheRead
 
-    return inputCost + outputCost + cacheCost
+    return applyDeepSeekPeakCost(providerId, inputCost + outputCost + cacheCost)
   }
 }
 

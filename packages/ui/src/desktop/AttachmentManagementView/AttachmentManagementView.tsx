@@ -1,60 +1,68 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Folder } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import styles from './AttachmentManagementView.module.css'
 import { ImagePreview } from '../DiaryEditor/ImagePreview'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { DiaryAttachmentPane } from './DiaryAttachmentPane'
 import { SessionAttachmentPane } from './SessionAttachmentPane'
-import { AttachmentYearPickerPortal } from './AttachmentYearPickerPortal'
+import { EmojiAttachmentPane } from './EmojiAttachmentPane'
+import { SegmentedControl } from '../shared/SegmentedControl'
+import { SettingsPageChrome } from '../shared/SettingsPageChrome'
 
 export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> = (props) => {
   const vm = useAttachmentManagementView(props)
 
   return (
-    <div className={styles.container}>
-      <div className={styles.mainTabNav}>
-        <div className={styles.mainTabs}>
-          <button
-            className={`${styles.mainTabItem} ${vm.activePane === 'diary' ? styles.mainTabItemActive : ''}`}
-            onClick={() => vm.setActivePane('diary')}
-          >
-            <Calendar size={16} />
-            <span>{vm.t('settings.attachment_pane_diary', '日记附件')}</span>
-          </button>
-          <button
-            className={`${styles.mainTabItem} ${vm.activePane === 'session' ? styles.mainTabItemActive : ''}`}
-            onClick={() => vm.setActivePane('session')}
-          >
-            <Folder size={16} />
-            <span>{vm.t('settings.attachment_pane_session', 'AI 会话附件')}</span>
-          </button>
+    <SettingsPageChrome title={vm.t('settings.attachment_management', '附件管理')} layout="stack">
+      <div className={styles.container}>
+        <div className={styles.mainTabNav}>
+          <SegmentedControl
+            stretch
+            value={vm.activePane}
+            options={[
+              {
+                value: 'diary',
+                label: vm.t('settings.attachment_pane_diary', '日记附件')
+              },
+              {
+                value: 'session',
+                label: vm.t('settings.attachment_pane_session', 'AI 会话附件')
+              },
+              {
+                value: 'emoji',
+                label: vm.t('settings.attachment_pane_emoji', '表情包附件')
+              }
+            ]}
+            onChange={vm.setActivePane}
+          />
         </div>
+
+        <div className={styles.content}>
+          <AnimatePresence mode="wait">
+            {vm.activePane === 'diary' ? (
+              <DiaryAttachmentPane key="diary" vm={vm} />
+            ) : vm.activePane === 'session' ? (
+              <SessionAttachmentPane key="session" vm={vm} />
+            ) : (
+              <EmojiAttachmentPane key="emoji" vm={vm} />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {vm.mounted &&
+          vm.imagePreview &&
+          createPortal(
+            <ImagePreview
+              src={vm.imagePreview.src}
+              alt={vm.imagePreview.name}
+              isOpen={!!vm.imagePreview}
+              onClose={() => vm.setImagePreview(null)}
+            />,
+            document.body
+          )}
       </div>
-
-      <AnimatePresence mode="wait">
-        {vm.activePane === 'diary' ? (
-          <DiaryAttachmentPane key="diary" vm={vm} />
-        ) : (
-          <SessionAttachmentPane key="session" vm={vm} />
-        )}
-      </AnimatePresence>
-
-      <AttachmentYearPickerPortal vm={vm} />
-
-      {vm.mounted &&
-        vm.imagePreview &&
-        createPortal(
-          <ImagePreview
-            src={vm.imagePreview.src}
-            alt={vm.imagePreview.name}
-            isOpen={!!vm.imagePreview}
-            onClose={() => vm.setImagePreview(null)}
-          />,
-          document.body
-        )}
-    </div>
+    </SettingsPageChrome>
   )
 }

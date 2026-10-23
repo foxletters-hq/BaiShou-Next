@@ -1,4 +1,4 @@
-import type { IFileSystem } from '@baishou/core-mobile'
+import type { IFileSystem, RawDataSourceManager } from '@baishou/core-mobile'
 import type { SyncManifest, S3SyncConfig, IncrementalSyncRunOptions } from '@baishou/shared'
 import {
   assertBidirectionalSyncDivergenceAllowed,
@@ -6,8 +6,10 @@ import {
   buildIncrementalSyncPlanMergeResult,
   buildIncrementalSyncPlanReuseBaseline,
   collectManifestVaultScopes,
+  isLegacyRemoteManifest,
   countUnverifiedAncestorEntries,
   isSyncDivergenceConfirmationRequiredError,
+  prepareVaultRenamePassForPlan,
   reconcileAncestorWithRemoteTruth,
   type IncrementalSyncPlanPreview
 } from '@baishou/shared'
@@ -48,13 +50,17 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
   lastPlanLocalScanFingerprint: string | null = null
   manifestCommitQueue = new IncrementalManifestCommitQueue()
   externalSyncMounts: VaultExternalSyncMount[] | null = null
+  getRawDataSourceManager?: () => RawDataSourceManager | null
   private worker?: MobileIncrementalEngineWorker
 
   constructor(
     public readonly pathService: IStoragePathService,
     public readonly fileSystem: IFileSystem,
-    public readonly deviceId: string
-  ) {}
+    public readonly deviceId: string,
+    getRawDataSourceManager?: () => RawDataSourceManager | null
+  ) {
+    this.getRawDataSourceManager = getRawDataSourceManager
+  }
 
   private initWorker(): MobileIncrementalEngineWorker {
     if (!this.worker) {
@@ -258,20 +264,38 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     const previousLocalManifest = await worker
       .readLocalManifestFile()
       .catch(() => worker.emptyManifest())
+
+    const localVaults = await worker.loadLocalVaultIdToNameMap()
+    const lastRemoteVaults = (await worker.loadLastRemoteVaultsSnapshot(config)).vaults
+    const renamePass = prepareVaultRenamePassForPlan({
+      localVaults,
+      lastRemoteVaults,
+      remoteManifest,
+      ancestorSnapshot
+    })
+    const remoteForMerge = renamePass.remoteManifest
+    const ancestorForMerge = renamePass.ancestorSnapshot
+
     const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
-      remoteManifest,
-      ancestorSnapshot,
+      remoteForMerge,
+      ancestorForMerge,
       previousLocalManifest,
-      runOptions
+      {
+        ...runOptions,
+        ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+      }
     )
 
-    const manifestVaultScopes = collectManifestVaultScopes(localManifest, remoteManifest)
+    const manifestVaultScopes = collectManifestVaultScopes(localManifest, remoteForMerge)
     const pendingChangeCount = decisions.filter((d) => d.type !== 'skip').length
 
     const metaDir = await worker.syncMetaDir()
     const interruptedSession = await readIncrementalSyncSession(this.fileSystem, metaDir)
     const extraWarnings: string[] = []
+    if (isLegacyRemoteManifest(remoteManifest)) {
+      extraWarnings.push('data_sync.plan_warning_legacy_remote_writer')
+    }
     let interruptedSyncResume: { completed: number; total: number } | undefined
 
     if (
@@ -305,7 +329,8 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
         deletePropagationReason: deleteBlock?.reason,
         blockedDeleteCount: deleteBlock?.deleteCount,
         blockedDeleteDirection: deleteBlock?.direction,
-        extraWarnings
+        extraWarnings,
+        renamedFileCount: renamePass.renamedFileCount
       }),
       interruptedSyncResume,
       planReuseBaseline: {

@@ -97,12 +97,18 @@ describe('SessionRepository', () => {
   })
 
   describe('findAllSessions', () => {
-    it('should return all sessions sorted by isPinned and updatedAt', async () => {
+    it('fail-closed: missing vaultId returns empty', async () => {
+      const results = await repo.findAllSessions()
+      expect(results).toEqual([])
+      expect(mockSelect).not.toHaveBeenCalled()
+    })
+
+    it('should return sessions scoped by vaultId', async () => {
       mockOffset.mockResolvedValueOnce([
         { id: 's1', isPinned: true },
         { id: 's2', isPinned: false }
       ])
-      const results = await repo.findAllSessions()
+      const results = await repo.findAllSessions(20, 0, undefined, undefined, 'vlt_test')
       expect(results.length).toBe(2)
       expect(results[0]?.id).toBe('s1')
       expect(mockSelect).toHaveBeenCalled()
@@ -142,6 +148,15 @@ describe('SessionRepository', () => {
         expect.objectContaining({ providerId: 'openai', modelId: 'gpt-4o' })
       )
       expect(mockWhere).toHaveBeenCalled()
+    })
+  })
+
+  describe('replaceMessageParts', () => {
+    it('should delete existing parts then insert the new snapshot', async () => {
+      await repo.replaceMessageParts('m1', 's1', [
+        { id: 'p2', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: '半成品' } }
+      ])
+      expect((db as any).transaction).toHaveBeenCalled()
     })
   })
 

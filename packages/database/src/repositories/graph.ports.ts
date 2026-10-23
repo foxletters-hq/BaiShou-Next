@@ -1,0 +1,256 @@
+import type { GraphSimilarPendingPair } from '@baishou/shared'
+import type {
+  GraphEdgeRow,
+  GraphNodeRow,
+  GraphPath,
+  UpsertEdgeInput,
+  UpsertNodeInput
+} from './graph.repository.types'
+
+/** Name / id lookup only — extract, chat, find-or-create. */
+export interface GraphNodeLookup {
+  findNodeByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow | null>
+  findNodesByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow[]>
+  getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
+}
+
+/** Read / traverse — RAG and UI. */
+export interface GraphQuery extends GraphNodeLookup {
+  getEdgeById(id: string, vaultId?: string): Promise<GraphEdgeRow | null>
+  searchNodesByName(
+    vaultId: string,
+    query: string,
+    opts?: { nodeTypes?: string[]; limit?: number }
+  ): Promise<GraphNodeRow[]>
+  searchNodesByVector(
+    vaultId: string,
+    vector: number[],
+    topK: number,
+    opts?: { nodeType?: string; modelId?: string }
+  ): Promise<Array<GraphNodeRow & { distance: number }>>
+  traverse(
+    vaultId: string,
+    centerId: string,
+    depth: 1 | 2 | 3,
+    opts?: {
+      approvedOnly?: boolean
+      queryVector?: number[]
+      resolveQueryVector?: () => Promise<number[] | null | undefined>
+      maxNeighborsPerHop?: number
+    }
+  ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }>
+  listEntityTimeline(
+    vaultId: string,
+    nodeId: string,
+    opts?: { approvedOnly?: boolean; limit?: number }
+  ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }>
+  getGlobalGraph(opts: {
+    vaultId: string
+    maxNodes?: number
+    minMentionCount?: number
+    nodeTypes?: string[]
+    monthRange?: { startMonth: string; endMonth: string }
+  }): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }>
+  findShortestPath(
+    vaultId: string,
+    fromId: string,
+    toId: string,
+    opts?: { maxHops?: 2 | 3; approvedOnly?: boolean; hubDegreeThreshold?: number }
+  ): Promise<GraphPath | null>
+  findPathsFrom(
+    vaultId: string,
+    fromId: string,
+    opts?: { maxHops?: 2 | 3; approvedOnly?: boolean; limit?: number; hubDegreeThreshold?: number }
+  ): Promise<GraphPath[]>
+  listEmbeddedLiveNodesPage(
+    vaultId: string,
+    options?: { keyword?: string; limit?: number; offset?: number }
+  ): Promise<
+    Array<{ id: string; name: string; summary: string; modelId: string; updatedAt: number }>
+  >
+  countEmbeddedLiveNodes(vaultId: string, keyword?: string): Promise<number>
+  listLiveNodesPage(
+    vaultId: string,
+    options?: { keyword?: string; limit?: number; offset?: number }
+  ): Promise<GraphNodeRow[]>
+  countLiveNodes(vaultId: string, keyword?: string): Promise<number>
+  countLiveCurrentEdges(vaultId: string): Promise<number>
+  getNodesByIds(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
+}
+
+/** Explicit writes — IPC / review, not JSONL sync. */
+export interface GraphWrite {
+  upsertNode(input: UpsertNodeInput): Promise<string>
+  upsertEdge(input: UpsertEdgeInput): Promise<string>
+  /** Removes the node row and, by default, incident edges. */
+  softDeleteNode(id: string): Promise<void>
+  /** Removes the edge row. */
+  softDeleteEdge(id: string): Promise<void>
+  supersedeEdge(edgeId: string, validTo: number): Promise<void>
+  supersedeEdgesBySourceRef(
+    vaultId: string,
+    sourceRef: string,
+    opts?: { keepUserOrigin?: boolean; exceptIds?: ReadonlySet<string> }
+  ): Promise<void>
+  /** Clears the node vector only. The entity row stays. */
+  clearNodeEmbedding(id: string, vaultId: string): Promise<void>
+  /** Hard-delete this vault's life-graph rows. Does not touch notebook graphs. */
+  deleteAllForVault(vaultId: string): Promise<void>
+}
+
+/** Review queue listing — not a write, not RAG. */
+export interface GraphReview {
+  listPendingNodes(vaultId: string): Promise<GraphNodeRow[]>
+  listPendingEdges(vaultId: string): Promise<GraphEdgeRow[]>
+  listPendingGraph(vaultId: string): Promise<{
+    nodes: GraphNodeRow[]
+    edges: GraphEdgeRow[]
+    endpointNodes: GraphNodeRow[]
+  }>
+  listSuspectNodes(vaultId: string): Promise<GraphNodeRow[]>
+  listSimilarPendingPairs(vaultId: string): Promise<GraphSimilarPendingPair[]>
+  listLiveScanGraph(vaultId: string): Promise<{
+    nodes: Array<{
+      id: string
+      name: string
+      nodeType: string
+      discriminator: string
+      propsJson: string
+      origin: string
+      reviewStatus: string
+    }>
+    edges: Array<{
+      fromId: string
+      toId: string
+      edgeType: string
+      isCurrent: boolean
+      sourceRef: string | null
+    }>
+  }>
+}
+
+/** pending-index apply + orphan sweep. */
+export interface GraphSyncApply {
+  getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
+  getNodesByIds?(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
+  applyRawNode(
+    row: {
+      id: string
+      vaultId: string
+      nodeType: string
+      name: string
+      discriminator?: string
+      aliases: string[]
+      summary: string
+      props: Record<string, unknown>
+      mentionCount: number
+      firstSeenAt: number
+      lastSeenAt: number
+      origin: 'ai' | 'user'
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+      reviewStatus?: 'approved' | 'pending' | 'rejected'
+      shardMonth?: string
+      embedding?: number[] | null
+      modelId?: string
+    },
+    existingByIdOption?: GraphNodeRow | null
+  ): Promise<import('./graph.repository.types').ApplyRawNodeResult | void>
+  applyRawNodesBatch?(
+    rows: Array<{
+      id: string
+      vaultId: string
+      nodeType: string
+      name: string
+      discriminator?: string
+      aliases: string[]
+      summary: string
+      props: Record<string, unknown>
+      mentionCount: number
+      firstSeenAt: number
+      lastSeenAt: number
+      origin: 'ai' | 'user'
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+      reviewStatus?: 'approved' | 'pending' | 'rejected'
+      shardMonth?: string
+      embedding?: number[] | null
+      modelId?: string
+      existingById?: GraphNodeRow | null
+    }>
+  ): Promise<Array<import('./graph.repository.types').ApplyRawNodeResult>>
+  applyRawEdge(row: {
+    id: string
+    vaultId: string
+    fromId: string
+    toId: string
+    edgeType: string
+    props: Record<string, unknown>
+    validFrom: number | null
+    validTo: number | null
+    isCurrent: boolean
+    sourceKind: string
+    sourceRef: string | null
+    sourceExcerpt: string
+    sourceContentHash: string | null
+    confidence: number
+    origin: 'ai' | 'user'
+    reviewStatus: 'approved' | 'pending' | 'rejected'
+    shardMonth: string
+    createdAt: number
+    updatedAt: number
+    deletedAt: number | null
+  }): Promise<void>
+  applyRawEdgesBatch?(
+    rows: Array<{
+      id: string
+      vaultId: string
+      fromId: string
+      toId: string
+      edgeType: string
+      props: Record<string, unknown>
+      validFrom: number | null
+      validTo: number | null
+      isCurrent: boolean
+      sourceKind: string
+      sourceRef: string | null
+      sourceExcerpt: string
+      sourceContentHash: string | null
+      confidence: number
+      origin: 'ai' | 'user'
+      reviewStatus: 'approved' | 'pending' | 'rejected'
+      shardMonth: string
+      createdAt: number
+      updatedAt: number
+      deletedAt: number | null
+    }>
+  ): Promise<void>
+  softDeleteNode(id: string): Promise<void>
+  softDeleteEdge(id: string): Promise<void>
+  listNodeIds(vaultId: string): Promise<string[]>
+  listEdgeIds(vaultId: string): Promise<string[]>
+  listLiveNodeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>>
+  listLiveEdgeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>>
+}
+
+/** Diary extract commit — lookup + vector align + mention recount. */
+export interface GraphExtractStore extends GraphNodeLookup {
+  listEdgesTouching?(vaultId: string, nodeId: string): Promise<GraphEdgeRow[]>
+  searchNodesByVector(
+    vaultId: string,
+    vector: number[],
+    topK: number,
+    opts?: { nodeType?: string; modelId?: string }
+  ): Promise<Array<GraphNodeRow & { distance: number }>>
+  recountMentions(vaultId: string, nodeIds?: string[]): Promise<void>
+}
+
+export interface GraphRepositoryPort
+  extends
+    GraphQuery,
+    GraphWrite,
+    GraphReview,
+    Omit<GraphSyncApply, 'getNodesByIds'>,
+    GraphExtractStore {}

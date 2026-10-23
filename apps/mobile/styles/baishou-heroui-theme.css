@@ -15,9 +15,9 @@
   --color-danger-hover: #dc2626;
   --color-warning-hover: #d97706;
   --color-success-hover: #059669;
-  --color-accent-soft: rgba(91, 168, 245, 0.15);
+  --color-accent-soft: rgba(var(--color-primary-rgb), 0.15);
   --color-accent-soft-foreground: #3a88d5;
-  --color-accent-soft-hover: rgba(91, 168, 245, 0.2);
+  --color-accent-soft-hover: rgba(var(--color-primary-rgb), 0.2);
   --color-default-soft: rgba(234, 236, 239, 0.72);
   --color-default-soft-foreground: #1a1c23;
   --color-default-soft-hover: rgba(234, 236, 239, 0.82);
@@ -38,15 +38,16 @@
   --color-separator-tertiary: rgba(0, 0, 0, 0.14);
   --color-field-hover: #f8f9fa;
   --color-field-focus: #ffffff;
+  --color-field-placeholder: #a0aec0;
   --color-field-border-hover: rgba(0, 0, 0, 0.16);
-  --color-field-border-focus: rgba(91, 168, 245, 0.45);
+  --color-field-border-focus: rgba(var(--color-primary-rgb), 0.45);
   --color-surface-hover: #f8f9fa;
 }
 
 @layer theme {
   :root {
     @variant light {
-      --background: #f4f5f7;
+      --background: #fafafa;
       --foreground: #1a1c23;
       --surface: #ffffff;
       --surface-foreground: #1a1c23;
@@ -79,7 +80,7 @@
       --color-primary-hover: #3a88d5;
       --color-accent: #5ba8f5;
       --color-accent-foreground: #ffffff;
-      --color-background: #f4f5f7;
+      --color-background: #fafafa;
       --color-background-subtle: #f0f2f5;
       --color-foreground: #1a1c23;
       --color-foreground-secondary: #4a5568;
@@ -90,7 +91,7 @@
       --color-border-hover: rgba(0, 0, 0, 0.12);
       --color-muted: #eaecef;
       --color-secondary: #eaecef;
-      --color-ring: rgba(91, 168, 245, 0.4);
+      --color-ring: rgba(var(--color-primary-rgb), 0.4);
       --color-destructive: #ef4444;
       --color-success-base: #10b981;
       --color-warning-base: #f59e0b;
@@ -98,6 +99,7 @@
       --field-background: #ffffff;
       --field-foreground: #1a1c23;
       --field-placeholder: #a0aec0;
+      --color-field-placeholder: #a0aec0;
       --field-border: rgba(0, 0, 0, 0.12);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(0, 0, 0, 0.12);
@@ -107,9 +109,9 @@
       --color-danger-hover: #dc2626;
       --color-warning-hover: #d97706;
       --color-success-hover: #059669;
-      --color-accent-soft: rgba(91, 168, 245, 0.15);
+      --color-accent-soft: rgba(var(--color-primary-rgb), 0.15);
       --color-accent-soft-foreground: #3a88d5;
-      --color-accent-soft-hover: rgba(91, 168, 245, 0.2);
+      --color-accent-soft-hover: rgba(var(--color-primary-rgb), 0.2);
       --color-default-soft: rgba(234, 236, 239, 0.72);
       --color-default-soft-foreground: #1a1c23;
       --color-default-soft-hover: rgba(234, 236, 239, 0.82);
@@ -131,7 +133,7 @@
       --color-field-hover: #f8f9fa;
       --color-field-focus: #ffffff;
       --color-field-border-hover: rgba(0, 0, 0, 0.16);
-      --color-field-border-focus: rgba(91, 168, 245, 0.45);
+      --color-field-border-focus: rgba(var(--color-primary-rgb), 0.45);
       --color-surface-hover: #f8f9fa;
     }
 
@@ -180,7 +182,7 @@
       --color-border-hover: rgba(255, 255, 255, 0.14);
       --color-muted: #1e1e22;
       --color-secondary: #323236;
-      --color-ring: rgba(91, 168, 245, 0.45);
+      --color-ring: rgba(var(--color-primary-rgb), 0.45);
       --color-destructive: #ef4444;
       --color-success-base: #10b981;
       --color-warning-base: #f59e0b;
@@ -188,6 +190,7 @@
       --field-background: #2d2d31;
       --field-foreground: #f8fafc;
       --field-placeholder: #71717a;
+      --color-field-placeholder: #71717a;
       --field-border: rgba(255, 255, 255, 0.16);
       --field-border-width: 1.5px;
       --baishou-input-border: rgba(255, 255, 255, 0.16);
@@ -197,9 +200,9 @@
       --color-danger-hover: #f87171;
       --color-warning-hover: #fbbf24;
       --color-success-hover: #34d399;
-      --color-accent-soft: rgba(91, 168, 245, 0.2);
+      --color-accent-soft: rgba(var(--color-primary-rgb), 0.2);
       --color-accent-soft-foreground: #93c5fd;
-      --color-accent-soft-hover: rgba(91, 168, 245, 0.28);
+      --color-accent-soft-hover: rgba(var(--color-primary-rgb), 0.28);
       --color-default-soft: rgba(50, 50, 54, 0.72);
       --color-default-soft-foreground: #f8fafc;
       --color-default-soft-hover: rgba(50, 50, 54, 0.82);
@@ -221,7 +224,7 @@
       --color-field-hover: #323236;
       --color-field-focus: #2d2d31;
       --color-field-border-hover: rgba(255, 255, 255, 0.22);
-      --color-field-border-focus: rgba(91, 168, 245, 0.55);
+      --color-field-border-focus: rgba(var(--color-primary-rgb), 0.55);
       --color-surface-hover: #2d2d31;
     }
   }

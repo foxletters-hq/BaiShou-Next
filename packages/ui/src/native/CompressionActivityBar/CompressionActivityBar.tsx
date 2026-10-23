@@ -2,6 +2,7 @@ import React from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ThinkingBlock } from '../ThinkingBlock'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface NativeCompressionActivityBarProps {
   phase?: 'auto' | 'manual'
@@ -83,8 +84,8 @@ export const CompressionActivityBar: React.FC<NativeCompressionActivityBarProps>
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    marginTop: 4,
-    marginBottom: 4,
-    paddingHorizontal: 12
+    marginTop: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.mdTight
   }
 })

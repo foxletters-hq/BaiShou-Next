@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   MemoryDeduplicationService,
   type DeduplicationEmbeddingService,
@@ -39,7 +40,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: 'test memory',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('stored')
@@ -62,7 +65,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: 'test memory',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('skipped')
@@ -87,7 +92,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: 'new topic',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('stored')
@@ -122,7 +129,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: '更新后的记忆',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('merged')
@@ -150,7 +159,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: '新记忆',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('stored')
@@ -164,7 +175,9 @@ describe('MemoryDeduplicationService', () => {
 
     const result = await service.checkAndMerge({
       newMemoryContent: 'test',
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal'
     })
 
     expect(result.action).toBe('stored')

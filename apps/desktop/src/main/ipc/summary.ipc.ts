@@ -23,11 +23,17 @@ import {
   resolveSummaryTemplatesForGeneration
 } from '@baishou/shared'
 import { SummaryQueueService } from '../services/summary-queue.service'
-import { pathService, vaultService, getActiveVaultShadowRepo } from './vault.ipc'
+import {
+  pathService,
+  vaultService,
+  getActiveVaultShadowRepo,
+  resolveActiveVaultId
+} from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
 import { getDiaryManager } from './diary.ipc'
+import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 
 async function fetchDashboardSnapshotPayload(): Promise<{
   totalDiaryCount: number
@@ -55,9 +61,11 @@ async function fetchDashboardSnapshotPayload(): Promise<{
 
 export function getSummaryManager() {
   const db = connectionManager.getDb()
-  const summaryRepo = new SummaryRepositoryImpl(db)
-  const fileSync = new SummaryFileService(pathService, fileSystem)
-  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
+  const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
+  const fileSync = new SummaryFileService(pathService, fileSystem, getRawDataSourceManager())
+  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync, () =>
+    resolveActiveVaultId()
+  )
   return new SummaryManagerService(summaryRepo, fileSync, summarySync)
 }
 
@@ -78,25 +86,11 @@ export function resetCachedManager(): void {
 }
 
 /**
- * 工作区切换 / 冷启动后：失效 Manager 并将 SQLite 总结缓存与当前 Vault 的 Archives 对齐。
- * summaries 表是全局热缓存，须按 activeVaultName 清理上一工作区的 ghost 记录。
+ * 工作区切换 / 冷启动后：失效 Manager。
+ * V1.4 起 summaries 按 vault_id 共存，切换不再清空全局再重建。
  */
 export async function rebindSummaryCacheForActiveVault(): Promise<void> {
   resetCachedManager()
-
-  const activeVault = vaultService.getActiveVault()
-  if (!activeVault) return
-
-  const db = connectionManager.getDb()
-  const summaryRepo = new SummaryRepositoryImpl(db)
-  const fileSync = new SummaryFileService(pathService, fileSystem)
-  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
-
-  try {
-    await summarySync.fullScanArchives({ activeVaultName: activeVault.name })
-  } catch (err: unknown) {
-    logger.warn('[SummaryIPC] fullScanArchives after vault rebind failed:', err as Error)
-  }
 }
 
 let _queueInitialized = false
@@ -106,7 +100,7 @@ function ensureQueueReady(): void {
   const queueService = SummaryQueueService.getInstance()
   queueService.setDependencies(ensureManager(), async () => {
     const db = connectionManager.getDb()
-    const summaryRepo = new SummaryRepositoryImpl(db)
+    const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
     const shadowRepo = getActiveVaultShadowRepo()
 
     const diaryRepoAdapter = {
@@ -228,11 +222,14 @@ export function registerSummaryIPC() {
       if (!shadowConnectionManager.isConnected()) return []
 
       const shadowRepo = getActiveVaultShadowRepo()
-      const summaryRepo = new SummaryRepositoryImpl(db)
+      const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
 
       const diaryRepoAdapter = {
         async list() {
-          const records = await shadowRepo.listAll()
+          const records =
+            typeof shadowRepo.getAllRecords === 'function'
+              ? await shadowRepo.getAllRecords()
+              : await shadowRepo.listAll()
           logger.debug('[DEBUG-IPC] shadowRepo.listAll count:', records.length)
           if (records.length > 0) {
             logger.debug('[DEBUG-IPC] Sample record date field:', {
@@ -326,7 +323,7 @@ export function registerSummaryIPC() {
       return handleBuildSharedContextPreview(
         summaries,
         lookbackMonths,
-        vaultService.getActiveVault()?.name,
+        vaultService.getActiveVault()?.id,
         { userCopyPrefix, locale: options?.locale }
       )
     }

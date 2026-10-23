@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { sharedTokens } from '../../theme/tokens'
 
 export const SettingsGroupDivider: React.FC = () => {
   const { colors } = useNativeTheme()
@@ -10,6 +11,6 @@ export const SettingsGroupDivider: React.FC = () => {
 const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 14
+    marginLeft: sharedTokens.spacing.mdSnug
   }
 })

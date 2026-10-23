@@ -33,6 +33,10 @@ export class SessionRepository {
     return this.run(() => this.messageOps.insertMessageWithParts(...args))
   }
 
+  replaceMessageParts(...args: Parameters<SessionMessageOps['replaceMessageParts']>) {
+    return this.run(() => this.messageOps.replaceMessageParts(...args))
+  }
+
   updateTokenUsage(...args: Parameters<SessionCrudOps['updateTokenUsage']>) {
     return this.run(() => this.crudOps.updateTokenUsage(...args))
   }
@@ -45,12 +49,34 @@ export class SessionRepository {
     return this.run(() => this.crudOps.findAllSessions(...args))
   }
 
+  findAllSessionsAcrossVaults(...args: Parameters<SessionCrudOps['findAllSessionsAcrossVaults']>) {
+    return this.run(() => this.crudOps.findAllSessionsAcrossVaults(...args))
+  }
+
   updateSessionTitle(...args: Parameters<SessionCrudOps['updateSessionTitle']>) {
     return this.run(() => this.crudOps.updateSessionTitle(...args))
   }
 
+  updateSessionVaultId(...args: Parameters<SessionCrudOps['updateSessionVaultId']>) {
+    return this.run(() => this.crudOps.updateSessionVaultId(...args))
+  }
+
   updateSessionDialogueModel(...args: Parameters<SessionCrudOps['updateSessionDialogueModel']>) {
     return this.run(() => this.crudOps.updateSessionDialogueModel(...args))
+  }
+
+  updateMountedNotebookIds(...args: Parameters<SessionCrudOps['updateMountedNotebookIds']>) {
+    return this.run(() => this.crudOps.updateMountedNotebookIds(...args))
+  }
+
+  getSessionInstructionState(...args: Parameters<SessionCrudOps['getSessionInstructionState']>) {
+    return this.run(() => this.crudOps.getSessionInstructionState(...args))
+  }
+
+  updateSessionInstructionState(
+    ...args: Parameters<SessionCrudOps['updateSessionInstructionState']>
+  ) {
+    return this.run(() => this.crudOps.updateSessionInstructionState(...args))
   }
 
   deleteSessions(...args: Parameters<SessionCrudOps['deleteSessions']>) {

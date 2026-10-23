@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { useDialog } from '../Dialog'
 import { Input } from '../Input/Input'
+import { iconSizes, mobileTypography, settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export interface AgentProfile {
   name: string
@@ -60,16 +61,16 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
       style={{
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: sharedTokens.radius.lgPlus,
         backgroundColor: colors.primaryContainer,
         alignItems: 'center',
         justifyContent: 'center'
       }}
     >
       {profile.avatarPath ? (
-        <Text style={{ fontSize: 20 }}>{profile.emoji || '🤖'}</Text>
+        <Text style={{ fontSize: iconSizes.md }}>{profile.emoji || '🤖'}</Text>
       ) : (
-        <Text style={{ fontSize: 20 }}>{profile.emoji || '🤖'}</Text>
+        <Text style={{ fontSize: iconSizes.md }}>{profile.emoji || '🤖'}</Text>
       )}
     </View>
   )
@@ -106,7 +107,7 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               onSubmitEditing={submitRename}
               autoFocus
               style={{
-                fontSize: 16,
+                fontSize: mobileTypography.primary.fontSize,
                 fontWeight: '600',
                 padding: 0
               }}
@@ -121,7 +122,7 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
             >
               <Text
                 style={{
-                  fontSize: 16,
+                  fontSize: mobileTypography.primary.fontSize,
                   fontWeight: '600',
                   color: colors.textPrimary,
                   flex: 1
@@ -135,7 +136,11 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
                   opacity: pressed ? 0.5 : 1
                 })}
               >
-                <Text style={{ fontSize: 14, color: colors.textSecondary }}>✎</Text>
+                <Text
+                  style={{ fontSize: mobileTypography.body.fontSize, color: colors.textSecondary }}
+                >
+                  ✎
+                </Text>
               </Pressable>
             </View>
           )}
@@ -145,7 +150,7 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               style={{
                 flexDirection: 'row',
                 gap: tokens.spacing.xs,
-                marginTop: 2
+                marginTop: sharedTokens.spacing.xxs
               }}
             >
               {profile.modelIdentifier && (
@@ -153,13 +158,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
                   style={{
                     backgroundColor: colors.primaryContainer,
                     borderRadius: tokens.radius.full,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2
+                    paddingHorizontal: sharedTokens.spacing.sm,
+                    paddingVertical: sharedTokens.spacing.xxs
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 11,
+                      fontSize: mobileTypography.caption.fontSize,
                       color: colors.onPrimaryContainer
                     }}
                   >
@@ -172,13 +177,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
                   style={{
                     backgroundColor: colors.secondaryContainer,
                     borderRadius: tokens.radius.full,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2
+                    paddingHorizontal: sharedTokens.spacing.sm,
+                    paddingVertical: sharedTokens.spacing.xxs
                   }}
                 >
                   <Text
                     style={{
-                      fontSize: 11,
+                      fontSize: mobileTypography.caption.fontSize,
                       color: colors.onSecondaryContainer
                     }}
                   >
@@ -204,13 +209,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               opacity: pressed ? 0.5 : 1,
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: sharedTokens.radius.lg,
               backgroundColor: colors.bgSurfaceNormal,
               alignItems: 'center',
               justifyContent: 'center'
             })}
           >
-            <Text style={{ fontSize: 18 }}>🧠</Text>
+            <Text style={{ fontSize: settingsIcons.trailing }}>🧠</Text>
           </Pressable>
         )}
 
@@ -221,13 +226,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               opacity: pressed ? 0.5 : 1,
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: sharedTokens.radius.lg,
               backgroundColor: colors.bgSurfaceNormal,
               alignItems: 'center',
               justifyContent: 'center'
             })}
           >
-            <Text style={{ fontSize: 18 }}>⚙️</Text>
+            <Text style={{ fontSize: settingsIcons.trailing }}>⚙️</Text>
           </Pressable>
         )}
 
@@ -238,13 +243,13 @@ export const ChatAppBar: React.FC<NativeChatAppBarProps> = ({
               opacity: pressed ? 0.5 : 1,
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: sharedTokens.radius.lg,
               backgroundColor: colors.errorContainer,
               alignItems: 'center',
               justifyContent: 'center'
             })}
           >
-            <Text style={{ fontSize: 18 }}>🗑️</Text>
+            <Text style={{ fontSize: settingsIcons.trailing }}>🗑️</Text>
           </Pressable>
         )}
       </View>

@@ -5,9 +5,18 @@ import {
   buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
+  formatAiApiCallError,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
+  logger,
   markRagDiaryEmbedFailure,
+  buildDiaryEmbeddingTextArgs,
+  coerceDiaryCalendarDate,
+  DIARY_EMBED_GROUP_ID,
+  mergeEmbedContentHashIntoMetadata,
+  hashEmbedSourceContent,
+  type RagBatchEmbedPhaseCounts,
+  type RagBatchEmbedPhaseKind,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -26,6 +35,8 @@ export type RagProgressCallback = (progress: {
   current: number
   total: number
   status: string
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
 }) => void
 
 type RagProgressOperationType = 'batchEmbed' | 'reembed' | 'migration'
@@ -54,6 +65,7 @@ export type EmbedDiaryEntryOptions = {
   adapter?: EmbeddingAdapter
   skipIndexPrep?: boolean
   skipRagEnabledCheck?: boolean
+  contentHash?: string
 }
 
 export type ControlledDiaryBatchEmbedResult = {
@@ -63,12 +75,16 @@ export type ControlledDiaryBatchEmbedResult = {
   total: number
   skipped: boolean
   skipReason?: string
+  lastError?: string
 }
 
 function defaultVaultScope(): MobileRagVaultScope {
   return {
     resolveActiveVaultName: async () => 'Personal',
-    listVaultNames: async () => ['Personal']
+    resolveActiveVaultId: async () => 'Personal',
+    resolveVaultIdByName: async (name) => name.trim() || 'Personal',
+    listVaultNames: async () => ['Personal'],
+    listVaultEntries: async () => [{ id: 'Personal', name: 'Personal' }]
   }
 }
 
@@ -76,23 +92,43 @@ export async function resolveVaultScope(deps: MobileRagServiceDeps): Promise<Mob
   return deps.vaultScope ?? defaultVaultScope()
 }
 
-export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+export function vaultIdListFilterSql(vaultId: string): { clause: string; args: string[] } {
   return {
-    clause: `(source_type != 'diary' OR group_id = ?)`,
-    args: [vaultGroupId]
+    clause: `vault_id = ?`,
+    args: [vaultId]
   }
+}
+
+/** @deprecated 使用 vaultIdListFilterSql */
+export function vaultNameListFilterSql(vaultName: string): { clause: string; args: string[] } {
+  return vaultIdListFilterSql(vaultName)
+}
+
+/** @deprecated 使用 vaultIdListFilterSql */
+export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+  const vaultName = vaultGroupId.startsWith('diary:') ? vaultGroupId.slice(6) : vaultGroupId
+  return vaultIdListFilterSql(vaultName)
 }
 
 function broadcastRagProgress(
   type: RagProgressOperationType,
-  progress: { current: number; total: number; status?: string }
+  progress: {
+    current: number
+    total: number
+    status?: string
+    phase?: RagBatchEmbedPhaseKind
+    phases?: RagBatchEmbedPhaseCounts
+  }
 ): void {
+  if (mobileRagOperationControl.isAborted) return
   patchCachedMobileRagState({
     isRunning: true,
     type,
     progress: progress.current,
     total: progress.total,
-    statusText: progress.status ?? ''
+    statusText: progress.status ?? '',
+    ...(progress.phase !== undefined ? { phase: progress.phase } : {}),
+    ...(progress.phases !== undefined ? { phases: progress.phases } : {})
   })
 }
 
@@ -190,7 +226,9 @@ export async function resolveEmbeddingAdapter(
 
   if (!embeddingProviderId || !embeddingModelId) return null
 
-  const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
+  const embeddingProviderConfig = providers.find(
+    (p: any) => p.id === embeddingProviderId && p.isEnabled !== false
+  )
   if (!embeddingProviderConfig) return null
 
   const embeddingProvider = deps.registry.getOrUpdateProvider(embeddingProviderConfig)
@@ -199,48 +237,88 @@ export async function resolveEmbeddingAdapter(
 
 export async function loadEmbeddedDiaryIndex(
   deps: MobileRagServiceDeps,
-  vaultName: string
+  vaultId: string,
+  options?: { skipReconcile?: boolean }
 ): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
+  embeddedContentHashMap: Map<string, string>
 }> {
   const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
+  const embeddedContentHashMap = new Map<string, string>()
+  if (!options?.skipReconcile) {
+    try {
+      await deps.hsRepo.reconcileEmbedLedger?.({ vaultId, sourceType: 'diary' })
+    } catch (error) {
+      logger.warn('[MobileRag] embed_ledger 自检失败', error as Error)
+    }
+  }
   const client = deps.rawSqlClient as {
     execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
   }
   if (!client?.execute) {
-    return { embeddedIds, embeddedUpdatedAtMap }
+    return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
   }
 
-  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ?`,
-    args: [groupId]
+    sql: `
+      SELECT
+        source_id AS sourceId,
+        MAX(CAST(json_extract(metadata_json, '$.updated_at') AS INTEGER)) AS maxUpdatedAt,
+        MAX(COALESCE(json_extract(metadata_json, '$.content_hash'), '')) AS contentHash
+      FROM ${HYBRID_SEARCH_TABLE}
+      WHERE source_type = 'diary'
+        AND (group_id = ? OR group_id LIKE 'diary:%')
+        AND vault_id = ?
+      GROUP BY source_id
+    `,
+    args: [DIARY_EMBED_GROUP_ID, vaultId]
   })
 
   for (const row of (result.rows || []) as Array<{
     sourceId?: string | number
+    maxUpdatedAt?: number | string | null
+    contentHash?: string | null
     metadataJson?: string
   }>) {
     if (row.sourceId == null) continue
     const sourceId = String(row.sourceId)
     embeddedIds.add(sourceId)
+    if (row.maxUpdatedAt !== undefined || row.contentHash !== undefined) {
+      const maxUpdatedAt = Number(row.maxUpdatedAt)
+      if (Number.isFinite(maxUpdatedAt) && maxUpdatedAt > 0) {
+        const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
+        if (maxUpdatedAt > currentMax) {
+          embeddedUpdatedAtMap.set(sourceId, maxUpdatedAt)
+        }
+      }
+      if (typeof row.contentHash === 'string' && row.contentHash.trim()) {
+        embeddedContentHashMap.set(sourceId, row.contentHash.trim())
+      }
+      continue
+    }
     if (!row.metadataJson) continue
     try {
-      const meta = JSON.parse(row.metadataJson) as { updated_at?: number }
+      const meta = JSON.parse(row.metadataJson) as {
+        updated_at?: number
+        content_hash?: string
+      }
       if (typeof meta.updated_at === 'number') {
         const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
         if (meta.updated_at > currentMax) {
           embeddedUpdatedAtMap.set(sourceId, meta.updated_at)
         }
       }
+      if (typeof meta.content_hash === 'string' && meta.content_hash.trim()) {
+        embeddedContentHashMap.set(sourceId, meta.content_hash.trim())
+      }
     } catch {
       /* ignore malformed metadata */
     }
   }
 
-  return { embeddedIds, embeddedUpdatedAtMap }
+  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
 }
 
 export async function embedDiaryEntry(
@@ -261,30 +339,62 @@ export async function embedDiaryEntry(
   }
 
   const scope = await resolveVaultScope(deps)
-  const resolvedVault = params.vaultName?.trim() || (await scope.resolveActiveVaultName())
-  const sourceId = buildDiaryEmbeddingSourceId(resolvedVault, params.diaryId)
-  const groupId = buildDiaryEmbeddingGroupId(resolvedVault)
-  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVault, params.diaryId)
+  const resolvedVaultId = params.vaultName?.trim()
+    ? await scope.resolveVaultIdByName(params.vaultName)
+    : await scope.resolveActiveVaultId()
+  const sourceId = buildDiaryEmbeddingSourceId(resolvedVaultId, params.diaryId)
+  const groupId = buildDiaryEmbeddingGroupId()
+  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVaultId, params.diaryId)
 
-  const d = params.date instanceof Date ? params.date : new Date(params.date)
-  const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
-  const prefixedText = `${tagPrefix}[${label} 日记:]\n${params.content}`
-  const metadataJson = JSON.stringify({ updated_at: params.updatedAt.getTime() })
+  const d = coerceDiaryCalendarDate(params.date)
+  const contentHash = options?.contentHash?.trim() || hashEmbedSourceContent(params.content ?? '')
+  const metadataJson = mergeEmbedContentHashIntoMetadata(
+    JSON.stringify({ updated_at: params.updatedAt.getTime() }),
+    contentHash
+  )
+  const { text, chunkPrefix } = buildDiaryEmbeddingTextArgs(params.content, params.date)
   const embedArgs = {
-    text: prefixedText,
+    text,
+    chunkPrefix,
     sourceType: 'diary',
     sourceId,
     groupId,
-    sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
+    vaultId: resolvedVaultId,
+    sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),
     metadataJson,
-    requireSuccess: true as const
+    requireSuccess: true as const,
+    contentHash
   }
 
   try {
     await adapter.embedText(embedArgs)
   } catch (error) {
     await deps.hsRepo.deleteEmbeddingsBySource('diary', sourceId)
+    try {
+      await deps.hsRepo.recordEmbedFailure?.({
+        vaultId: resolvedVaultId,
+        sourceType: 'diary',
+        sourceId,
+        lastError: formatAiApiCallError(error)
+      })
+    } catch (ledgerError) {
+      logger.warn('[MobileDiaryEmbed] embed_ledger 失败记录写入失败', ledgerError as Error)
+    }
     throw error
+  }
+
+  // 批量嵌入（skipIndexPrep === true）结束后由整理流水统一调度图谱抽取，避免边嵌日记边抢占嵌入槽位与 SQLite 写锁
+  if (!options?.skipIndexPrep) {
+    try {
+      const { scheduleMobileDiaryGraphAfterEmbed } =
+        await import('./mobile-diary-graph-follow-after-embed')
+      await scheduleMobileDiaryGraphAfterEmbed({
+        vaultId: resolvedVaultId,
+        diaryId: params.diaryId,
+        contentHash
+      })
+    } catch (followError) {
+      logger.warn('[MobileDiaryEmbed] 向量完成后自动接抽图失败', followError as Error)
+    }
   }
 }

@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal, SafeAreaView, StyleSheet } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { NativeSlider } from '../Slider'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ColorPickerProps {
   value: string
@@ -12,31 +13,16 @@ export interface ColorPickerProps {
 }
 
 const presetColors = [
-  '#9AD4EA',
-  '#FF6B6B',
-  '#4ECDC4',
-  '#45B7D1',
-  '#96CEB4',
-  '#FFEAA7',
-  '#DDA0DD',
-  '#98D8C8',
-  '#F7DC6F',
-  '#BB8FCE',
-  '#FF8C42',
   '#5BA8F5',
+  '#FF6B6B',
+  '#FFD93D',
+  '#6BCB77',
+  '#4D96FF',
+  '#C77DFF',
+  '#9AD4EA',
   '#34D399',
   '#F472B6',
-  '#A78BFA',
-  '#6EE7B7',
-  '#FCA5A5',
-  '#93C5FD',
-  '#C4B5FD',
-  '#FCD34D',
-  '#67E8F9',
-  '#D8B4FE',
-  '#FDBA74',
-  '#86EFAC',
-  '#F9A8D4'
+  '#A78BFA'
 ]
 
 const hueBarColors = [
@@ -92,7 +78,12 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, visib
 
             {/* Preview */}
             <View style={styles.previewRow}>
-              <View style={[styles.previewCircle, { backgroundColor: value }]} />
+              <View
+                style={[
+                  styles.previewCircle,
+                  { backgroundColor: value, borderColor: colors.borderControl }
+                ]}
+              />
               <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>{value}</Text>
             </View>
 
@@ -169,62 +160,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   headerIcon: {
-    fontSize: 20
+    fontSize: iconSizes.md
   },
   headerText: {
-    fontSize: 18,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600'
   },
   closeIcon: {
-    fontSize: 24
+    fontSize: iconSizes.lg
   },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 18,
-    gap: 12
+    marginBottom: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.mdTight
   },
   previewCircle: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)'
+    borderRadius: sharedTokens.radius.lgPlus,
+    borderWidth: 2
   },
   previewLabel: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontFamily: 'monospace'
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.md
   },
   colorCell: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center'
   },
   checkMark: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   hueSliderWrap: {
     width: '100%',
@@ -234,7 +224,7 @@ const styles = StyleSheet.create({
   hueBar: {
     flexDirection: 'row',
     height: 24,
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden',
     position: 'absolute',
     left: 0,

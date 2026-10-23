@@ -2,63 +2,62 @@ import { useTranslation } from 'react-i18next'
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
-/** 与桌面 DashboardHeroBanner 一致：主色底 + 白字 + 装饰渐变球 */
+/** 移动端回忆页顶卡：实色表面 + 左侧主色条，不用整块浅底和光晕 */
 export const DashboardHeroBanner: React.FC = () => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
 
   return (
-    <View style={[styles.banner, { backgroundColor: colors.primary }]}>
-      <Text style={styles.title}>
-        {t('common.app_title')} · {t('summary.collective_memories_title')}
-      </Text>
-      <Text style={styles.subtitle}>{t('summary.algorithm_desc')}</Text>
-
-      <View style={[styles.circle, styles.circlePink]} />
-      <View style={[styles.circle, styles.circleBlue]} />
+    <View
+      style={[
+        styles.banner,
+        {
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderMuted
+        }
+      ]}
+    >
+      <View style={[styles.accent, { backgroundColor: colors.primary }]} />
+      <View style={styles.copy}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
+          {t('common.app_title', '白守')} · {t('summary.collective_memories_title', '回忆')}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {t('summary.algorithm_desc', '层层沉淀时光印记，凝练日常细节，构建我们共同的记忆脉络。')}
+        </Text>
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   banner: {
-    height: 140,
-    borderRadius: 20,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
+    borderRadius: sharedTokens.radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
     overflow: 'hidden'
   },
+  accent: {
+    width: 3,
+    alignSelf: 'stretch'
+  },
+  copy: {
+    flex: 1,
+    paddingVertical: sharedTokens.spacing.md,
+    paddingLeft: sharedTokens.spacing.md,
+    paddingRight: sharedTokens.spacing.md
+  },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    zIndex: 1,
-    letterSpacing: -0.5
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: mobileTypography.title.fontWeight,
+    letterSpacing: -0.3
   },
   subtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 8,
-    zIndex: 1,
-    lineHeight: 18
-  },
-  circle: {
-    position: 'absolute',
-    borderRadius: 999
-  },
-  circlePink: {
-    right: -20,
-    top: -40,
-    width: 140,
-    height: 140,
-    backgroundColor: 'rgba(255, 154, 158, 0.2)'
-  },
-  circleBlue: {
-    right: 80,
-    bottom: -30,
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(161, 196, 253, 0.3)'
+    marginTop: sharedTokens.spacing.xsPlus,
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 19
   }
 })

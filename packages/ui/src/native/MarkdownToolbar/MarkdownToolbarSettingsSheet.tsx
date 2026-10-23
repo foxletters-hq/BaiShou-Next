@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { MARKDOWN_TOOLBAR_TOOL_META, type MarkdownToolbarToolId } from './markdown-toolbar.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface MarkdownToolbarSettingsSheetProps {
   visible: boolean
@@ -120,7 +121,7 @@ export const MarkdownToolbarSettingsSheet: React.FC<MarkdownToolbarSettingsSheet
 
             <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
               <TouchableOpacity
-                style={[styles.footerBtn, { borderColor: colors.borderSubtle }]}
+                style={[styles.footerBtn, { borderColor: colors.borderControl }]}
                 onPress={onClose}
                 activeOpacity={0.75}
               >
@@ -149,63 +150,63 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   card: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
     overflow: 'hidden'
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingTop: sharedTokens.spacing.mdPlus,
+    paddingBottom: sharedTokens.spacing.mdTight,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: sharedTokens.spacing.mdTight,
     minHeight: 48,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1
   },
   rowLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '500'
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   footerBtn: {
     minWidth: 88,
     height: 40,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16
+    paddingHorizontal: sharedTokens.spacing.md
   },
   saveBtn: {
     borderWidth: 0

@@ -1,17 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildContextEncodingSystemPromptLines,
   injectModelMetadata,
   injectModelMetadataIntoAssistantParts,
   shouldWrapRoleForModel,
   wrapMessageBodyForModel
 } from '..'
 
+describe('buildContextEncodingSystemPromptLines', () => {
+  it('should describe per-message time wrappers instead of a sidecar table', () => {
+    const lines = buildContextEncodingSystemPromptLines().join('\n')
+    expect(lines).toContain('<message-time>')
+    expect(lines).toContain('<message-content>')
+    expect(lines).not.toContain('same order as the messages below')
+  })
+})
+
 describe('shouldWrapRoleForModel', () => {
-  it('wraps all model context roles', () => {
+  it('wraps only user and assistant conversation roles (not system summaries or tool outputs)', () => {
     expect(shouldWrapRoleForModel('user')).toBe(true)
     expect(shouldWrapRoleForModel('assistant')).toBe(true)
-    expect(shouldWrapRoleForModel('system')).toBe(true)
-    expect(shouldWrapRoleForModel('tool')).toBe(true)
+    expect(shouldWrapRoleForModel('system')).toBe(false)
+    expect(shouldWrapRoleForModel('tool')).toBe(false)
     expect(shouldWrapRoleForModel('other')).toBe(false)
   })
 })

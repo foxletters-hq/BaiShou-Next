@@ -5,6 +5,8 @@
  */
 
 import {
+  applyDeepSeekPeakCost,
+  applyReasoningCatalogFromModelsDevApi,
   applyVisionModelsRuntimeOverlay,
   extractVisionModelIdsFromModelsDev,
   logger
@@ -129,7 +131,7 @@ export class ModelPricingService {
       return 0
     }
 
-    const costInUSD = price.calculateCost(usage)
+    const costInUSD = applyDeepSeekPeakCost(providerId, price.calculateCost(usage))
     logger.info(
       `[ModelPricingService] Calculation for ${providerId}/${modelId}: inputTokens=${usage.inputTokens}, outputTokens=${usage.outputTokens} -> USD=${costInUSD}`
     )
@@ -167,6 +169,7 @@ export class ModelPricingService {
       }
 
       const data = await response.json()
+      applyReasoningCatalogFromModelsDevApi(data)
       try {
         applyVisionModelsRuntimeOverlay(extractVisionModelIdsFromModelsDev(data))
       } catch (visionError) {

@@ -2,11 +2,32 @@ import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
-import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger } from '@baishou/shared'
+import {
+  GlobalModelsConfig,
+  logger,
+  resolveDialogueModelSelection,
+  sessionBelongsToActiveVaultId
+} from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId } from './vault.ipc'
+
+function assertSessionInActiveVault<T extends { vaultId?: string | null }>(
+  session: T | null | undefined,
+  activeVaultId: string
+): asserts session is T {
+  if (!session) {
+    throw new Error(i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在'))
+  }
+  if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
+        '无权访问其他工作空间的会话'
+      )
+    )
+  }
+}
 
 export function registerSessionIPC() {
   // ==========================================
@@ -22,10 +43,17 @@ export function registerSessionIPC() {
       searchQuery?: string
     ) => {
       const { sessionManager } = getAgentManagers()
+      const activeVaultId = resolveActiveVaultId()
       logger.info(
-        `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
+        `[IPC] agent:get-sessions - vaultId=${activeVaultId}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
-      const results = await sessionManager.findAllSessions(limit, offset, assistantId, searchQuery)
+      const results = await sessionManager.findAllSessions(
+        limit,
+        offset,
+        assistantId,
+        searchQuery,
+        activeVaultId
+      )
       logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
       return results
     }
@@ -33,7 +61,16 @@ export function registerSessionIPC() {
 
   ipcMain.handle('agent:get-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
-    return await realSessionRepo.getSessionById(sessionId)
+    const session = await realSessionRepo.getSessionById(sessionId)
+    const activeVaultId = resolveActiveVaultId()
+    if (!session) return null
+    if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      logger.warn(
+        `[IPC] agent:get-session denied cross-vault: session=${sessionId} vault=${session.vaultId} active=${activeVaultId}`
+      )
+      return null
+    }
+    return session
   })
 
   ipcMain.handle(
@@ -55,50 +92,29 @@ export function registerSessionIPC() {
             ? String(rawAssistantId)
             : undefined
 
-      const { sessionManager, assistantManager } = getAgentManagers()
+      const { sessionManager } = getAgentManagers()
 
-      let vaultName = 'Personal'
+      let vaultId = resolveActiveVaultId()
       try {
         const active = vaultService.getActiveVault()
-        if (active?.name) vaultName = active.name
+        if (active?.id) vaultId = active.id
       } catch (e) {}
 
-      let providerId =
-        typeof requestedProviderId === 'string' &&
-        requestedProviderId.trim() &&
-        requestedProviderId.trim() !== 'unknown' &&
-        requestedProviderId.trim() !== 'default'
-          ? requestedProviderId.trim()
-          : 'default'
-      let modelId =
-        typeof requestedModelId === 'string' &&
-        requestedModelId.trim() &&
-        requestedModelId.trim() !== 'unknown' &&
-        requestedModelId.trim() !== 'default' &&
-        requestedModelId.trim() !== 'off'
-          ? requestedModelId.trim()
-          : 'default'
-      if (providerId === 'default' || modelId === 'default') {
-        if (safeAssistantId) {
-          const assistant = await assistantManager.findById(safeAssistantId)
-          if (assistant) {
-            if (providerId === 'default') providerId = assistant.providerId || 'default'
-            if (modelId === 'default') modelId = assistant.modelId || 'default'
-          }
-        }
-      }
-      if (providerId === 'default' || modelId === 'default') {
-        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-        if (providerId === 'default')
-          providerId = globalModels?.globalDialogueProviderId || 'default'
-        if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default'
-      }
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const resolvedDialogue = resolveDialogueModelSelection({
+        requestedProviderId,
+        requestedModelId,
+        globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+        globalDialogueModelId: globalModels?.globalDialogueModelId
+      })
+      const providerId = resolvedDialogue.providerId || 'default'
+      const modelId = resolvedDialogue.modelId || 'default'
 
       const newId = id || crypto.randomUUID()
       logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`)
       await sessionManager.upsertSession({
         id: newId,
-        vaultName,
+        vaultId,
         providerId,
         modelId,
         assistantId: safeAssistantId || undefined,
@@ -110,17 +126,53 @@ export function registerSessionIPC() {
   )
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
-    const { sessionManager } = getAgentManagers()
-    await sessionManager.deleteSessions(ids)
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const activeVaultId = resolveActiveVaultId()
+    const allowed: string[] = []
+    for (const id of ids) {
+      const session = await realSessionRepo.getSessionById(id)
+      if (session && sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+        allowed.push(id)
+      } else {
+        logger.warn(`[IPC] agent:delete-sessions skipped cross-vault or missing: ${id}`)
+      }
+    }
+    if (allowed.length > 0) {
+      await sessionManager.deleteSessions(allowed)
+    }
   })
 
   ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
-    const { sessionManager } = getAgentManagers()
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(id)
+    assertSessionInActiveVault(session, resolveActiveVaultId())
     await sessionManager.togglePin(id, isPinned)
   })
 
+  ipcMain.handle('agent:get-mounted-notebooks', async (_, sessionId: string) => {
+    const { realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(session, resolveActiveVaultId())
+    const { readSessionMountedNotebookIds } = await import('../services/session-mounted-notebooks')
+    return readSessionMountedNotebookIds(sessionId)
+  })
+
+  ipcMain.handle(
+    'agent:set-mounted-notebooks',
+    async (_, sessionId: string, notebookIds: string[]) => {
+      const { realSessionRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      assertSessionInActiveVault(session, resolveActiveVaultId())
+      const { writeSessionMountedNotebookIds } =
+        await import('../services/session-mounted-notebooks')
+      return writeSessionMountedNotebookIds(sessionId, notebookIds)
+    }
+  )
+
   ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
-    const { sessionManager } = getAgentManagers()
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(session, resolveActiveVaultId())
     await sessionManager.updateTitle(sessionId, title)
     return true
   })
@@ -128,7 +180,9 @@ export function registerSessionIPC() {
   ipcMain.handle(
     'agent:update-session-dialogue-model',
     async (_, sessionId: string, providerId: string, modelId: string) => {
-      const { sessionManager } = getAgentManagers()
+      const { sessionManager, realSessionRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      assertSessionInActiveVault(session, resolveActiveVaultId())
       await sessionManager.updateSessionDialogueModel(sessionId, providerId, modelId)
       return true
     }
@@ -136,6 +190,8 @@ export function registerSessionIPC() {
 
   ipcMain.handle('agent:export-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(session, resolveActiveVaultId())
     const messages = await realSessionRepo.getMessagesBySession(sessionId, 999)
 
     // 格式化为 Markdown
@@ -161,6 +217,16 @@ export function registerSessionIPC() {
   ipcMain.handle('agent:get-token-usage', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
+    const activeVaultId = resolveActiveVaultId()
+    if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      return {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        totalCostMicros: 0
+      }
+    }
     return {
       inputTokens: session?.totalInputTokens || 0,
       outputTokens: session?.totalOutputTokens || 0,
@@ -179,7 +245,8 @@ export function registerSessionIPC() {
           ? String(assistantId).trim()
           : ''
     if (!normalized) return []
-    return sessionManager.findAllSessions(-1, 0, normalized)
+    const activeVaultId = resolveActiveVaultId()
+    return sessionManager.findAllSessions(-1, 0, normalized, undefined, activeVaultId)
   })
 
   // 对话分支：从指定消息位置复制一个新会话
@@ -194,11 +261,7 @@ export function registerSessionIPC() {
 
       // 1. 获取原会话信息
       const originalSession = await realSessionRepo.getSessionById(sessionId)
-      if (!originalSession) {
-        throw new Error(
-          i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在')
-        )
-      }
+      assertSessionInActiveVault(originalSession, resolveActiveVaultId())
 
       // 2. 获取原会话的所有消息
       const allMessages = await realSessionRepo.getMessagesBySession(sessionId, 9999)
@@ -216,12 +279,10 @@ export function registerSessionIPC() {
       const messagesToCopy = allMessages.slice(0, targetIndex + 1)
 
       // 5. 创建新会话
-      let vaultName = 'default'
+      let vaultId = resolveActiveVaultId()
       try {
-        const activeVaultPath = await pathService.getActiveVaultPath()
-        if (activeVaultPath) {
-          vaultName = activeVaultPath
-        }
+        const active = vaultService.getActiveVault()
+        if (active?.id) vaultId = active.id
       } catch (e) {}
 
       const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
@@ -233,7 +294,7 @@ export function registerSessionIPC() {
 
       await sessionManager.upsertSession({
         id: newSessionId,
-        vaultName,
+        vaultId,
         providerId: originalSession.providerId,
         modelId: originalSession.modelId,
         assistantId: originalSession.assistantId || undefined,
@@ -247,8 +308,10 @@ export function registerSessionIPC() {
         const newMsgId = crypto.randomUUID()
         oldToNewMessageId.set(msg.id, newMsgId)
 
-        // 获取原始消息的 parts
-        const originalParts = await realMessageRepo.getPartsByMessageId(msg.id)
+        // 获取原始消息的 parts（getMessagesBySession 已携带 parts，缺失时再回退查询）
+        const originalParts = Array.isArray((msg as any).parts)
+          ? (msg as any).parts
+          : await realMessageRepo.getPartsByMessageId(msg.id)
 
         // 插入消息
         await realSessionRepo.insertMessageWithParts(

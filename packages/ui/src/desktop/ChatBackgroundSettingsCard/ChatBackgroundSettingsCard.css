@@ -1,8 +1,23 @@
-.chat-bg-settings-wrapper .settings-expansion-content {
-  padding: 0 16px 16px 16px;
+.chat-bg-modal {
+  width: min(560px, 92vw);
+}
+
+.chat-bg-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
+}
+
+.chat-bg-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
+}
+
+.chat-bg-reset-row {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .chat-bg-preview-area {
@@ -11,16 +26,16 @@
   aspect-ratio: 16 / 9;
   max-height: 270px;
   margin-inline: auto;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid var(--border-card, rgba(0, 0, 0, 0.12));
-  transition: border-color 0.2s;
+  border: 1px solid var(--border-card);
+  transition: border-color var(--duration-swift);
   contain: paint;
 }
 
 .chat-bg-preview-area:hover {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .chat-bg-preview-area:hover .chat-bg-preview-overlay {
@@ -42,62 +57,36 @@
 }
 
 .chat-bg-slider-section {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .chat-bg-slider-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .chat-bg-slider-label {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .chat-bg-slider-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-primary, #5ba8f5);
+  font-size: var(--settings-font-desc-size);
+  font-weight: 600;
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .chat-bg-range-input {
-  -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  margin: 4px 0 8px;
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-  background-image: linear-gradient(var(--color-primary), var(--color-primary));
-  background-repeat: no-repeat;
-}
-
-.chat-bg-range-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary, #5ba8f5);
-  cursor: pointer;
-}
-
-.chat-bg-range-input::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-primary, #5ba8f5);
-  cursor: pointer;
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
 }
 
 .chat-bg-preview-placeholder {
@@ -107,10 +96,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--text-secondary, #64748b);
-  background: var(--bg-surface, #f8fafc);
-  font-size: 14px;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  font-size: var(--settings-font-row-size);
   font-weight: 500;
 }
 
@@ -119,27 +108,30 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-xs);
   opacity: 0;
-  transition: opacity 0.2s ease;
-  color: #fff;
-  font-size: 14px;
+  transition: opacity var(--duration-swift) ease;
+  color: var(--text-on-primary);
+  font-size: var(--settings-font-row-size);
   font-weight: 600;
 }
 
 .chat-bg-reset-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   background: transparent;
-  border: 1px solid var(--border-muted, rgba(0, 0, 0, 0.08));
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  color: var(--color-error, #ef4444);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md-snug);
+  font-size: var(--settings-font-desc-size);
+  font-family: inherit;
+  color: var(--color-error);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
   width: fit-content;
 }
 

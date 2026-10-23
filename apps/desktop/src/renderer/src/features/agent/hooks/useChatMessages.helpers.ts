@@ -1,9 +1,9 @@
 import {
-  CHAT_MESSAGE_FETCH_LIMIT,
   CHAT_ROUNDS_PER_PAGE,
   computeInitialRoundWindowStart,
   flattenRoundSlice,
-  groupMessagesIntoRounds
+  groupMessagesIntoRounds,
+  leadingRoundNeedsParent
 } from '../utils/chat-round-pagination'
 import type { SessionMessageCacheEntry } from '../utils/chat-session-message-cache'
 
@@ -35,8 +35,6 @@ export function resolveLatestCompactionAnchor(messages: readonly any[]): Compact
 
   return best
 }
-export const CHAT_INITIAL_ROUND_BATCH = CHAT_ROUNDS_PER_PAGE
-export const CHAT_INITIAL_MESSAGE_BATCH = CHAT_MESSAGE_FETCH_LIMIT
 
 export function resolveHasMore(roundWindowStart: number, fetchHasMore: boolean): boolean {
   return roundWindowStart > 0 || fetchHasMore
@@ -120,7 +118,10 @@ export function applyCacheToWindow(
   fetchHasMore: boolean
 ): { display: any[]; hasMore: boolean; roundWindowStart: number } {
   const rounds = groupMessagesIntoRounds(cache)
-  const clampedStart = Math.min(roundWindowStart, computeInitialRoundWindowStart(rounds.length))
+  let clampedStart = Math.min(roundWindowStart, computeInitialRoundWindowStart(rounds.length))
+  if (clampedStart === 0 && fetchHasMore && rounds.length > 1 && leadingRoundNeedsParent(cache)) {
+    clampedStart = 1
+  }
   const display = flattenRoundSlice(rounds, clampedStart)
   return {
     display,
@@ -155,7 +156,7 @@ export async function fetchMessagesFromIpc(
     sessionId,
     limit,
     offset,
-    false
+    true
   )
   return fetched ?? null
 }

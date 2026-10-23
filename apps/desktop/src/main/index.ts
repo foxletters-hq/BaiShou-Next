@@ -1,9 +1,10 @@
 import i18n from 'i18next'
 import './app-identity'
 import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
-import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
+import { app, shell, BrowserWindow, dialog, ipcMain, Menu, net } from 'electron'
+import { existsSync } from 'fs'
 import { join } from 'path'
-import { fileURLToPath } from 'url'
+import { registerLocalProtocolHandler, registerLocalProtocolScheme } from './local-protocol-handler'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
@@ -30,9 +31,11 @@ import { registerDeveloperIPC } from './ipc/developer.ipc'
 import { registerEmojiIPC } from './ipc/emoji.ipc'
 import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
+import { registerGraphIPC } from './ipc/graph.ipc'
+import { registerKnowledgeIPC } from './ipc/knowledge.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
-import { registerShortcutIPC } from './ipc/shortcut.ipc'
+import { registerSkillIPC } from './ipc/skill.ipc'
 import { registerDiagnosticLogIPC } from './ipc/diagnostic-log.ipc'
 import {
   bootstrapDiagnosticLogFromDisk,
@@ -43,40 +46,133 @@ import {
   SettingsRepository,
   connectionManager
 } from '@baishou/database-desktop'
-import { getAppDb } from './db'
+import { clearAgentDbRecoveryNotice, getAgentDbRecoveryNotice, getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
-import { logger } from '@baishou/shared'
+import {
+  logger,
+  nextUiFontSizeLevel,
+  resolvePageZoomShortcut,
+  translateMain,
+  uiFontSizeLevelFromZoom,
+  uiPageZoomFromLevel
+} from '@baishou/shared'
+import { markStartup, traceStartupStep } from './startup-trace.util'
+import {
+  runDesktopPostWindowInit,
+  scheduleDesktopPostWindowInit
+} from './services/desktop-post-window-init'
+import {
+  installHelpDocsWebviewNavigation,
+  isHelpDocsInAppUrl
+} from './help-docs-webview-navigation.util'
+
+markStartup('main.module.loaded')
 
 if (is.dev) {
   app.commandLine.appendSwitch('remote-debugging-port', '9333')
   app.commandLine.appendSwitch('js-flags', '--expose-gc')
 }
 
+// 必须在 app ready 之前注册，否则渲染进程 fetch('local://...') 会直接 Failed to fetch
+registerLocalProtocolScheme()
+
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
 
+function resolveAppIconPath(rawIcon: string): string {
+  if (/app\.asar[\\/]/i.test(rawIcon) && !/app\.asar\.unpacked[\\/]/i.test(rawIcon)) {
+    const unpacked = rawIcon.replace(/app\.asar([\\/])/i, 'app.asar.unpacked$1')
+    if (existsSync(unpacked)) return unpacked
+  }
+  return rawIcon
+}
+
 function createWindow(needsOnboarding: boolean): void {
-  // Create the browser window.
+  const isWin = process.platform === 'win32'
+  const isMac = process.platform === 'darwin'
+  const resolvedIcon = resolveAppIconPath(icon)
+
+  /**
+   * Win11：勿开 transparent。transparent 会关掉系统圆角，Acrylic 仍按直角矩形铺满，
+   * CSS border-radius / clip-path 裁不到系统材质层，看起来永远是直角。
+   * 正确做法：Acrylic + roundedCorners，HTML 外圈半透露出磨砂。
+   */
   mainWindow = new BrowserWindow({
-    width: needsOnboarding ? 860 : 1000,
+    width: needsOnboarding ? 930 : 1000,
     height: needsOnboarding ? 580 : 680,
-    minWidth: 860,
+    minWidth: 930,
     minHeight: 520,
     show: false,
     frame: false,
     autoHideMenuBar: true,
-    backgroundColor: '#00000000',
-    icon,
+    hasShadow: true,
+    icon: resolvedIcon,
+    ...(isWin
+      ? {
+          // 勿设 transparent / 带 alpha 的 backgroundColor：会关掉系统圆角或盖住 Acrylic
+          transparent: false,
+          roundedCorners: true,
+          backgroundMaterial: 'acrylic' as const
+        }
+      : isMac
+        ? {
+            transparent: true,
+            vibrancy: 'under-window' as const,
+            visualEffectState: 'active' as const,
+            backgroundColor: '#00000000'
+          }
+        : {
+            transparent: false,
+            backgroundColor: '#fafafa'
+          }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
+  if (isWin) {
+    try {
+      mainWindow.setBackgroundMaterial('acrylic')
+    } catch {
+      /* Win10 等无 Acrylic：靠 CSS --bg-window-shell / --bg-app */
+    }
+  }
+
   mainWindow.on('ready-to-show', () => {
+    markStartup('window.ready-to-show')
     mainWindow!.show()
+    markStartup('window.show')
+    scheduleDesktopPostWindowInit(() => runDesktopPostWindowInit())
   })
+
+  mainWindow.webContents.on('did-start-loading', () => {
+    markStartup('window.did-start-loading')
+  })
+
+  mainWindow.webContents.on('dom-ready', () => {
+    markStartup('window.dom-ready')
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    markStartup('window.did-finish-load', {
+      url: mainWindow?.webContents.getURL()
+    })
+  })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      markStartup('window.did-fail-load', {
+        errorCode,
+        errorDescription,
+        validatedURL,
+        isMainFrame
+      })
+    }
+  )
 
   mainWindow.webContents.on('context-menu', (event, properties) => {
     const { isEditable, selectionText, editFlags } = properties
@@ -107,30 +203,29 @@ function createWindow(needsOnboarding: boolean): void {
     }
   })
 
-  // ── 缩放快捷键：Ctrl+= 放大，Ctrl+- 缩小，Ctrl+0 重置 ──
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
+  mainWindow.webContents.on('before-input-event', (event, input) => {
     if (!input.control && !input.meta) return
     if (input.type !== 'keyDown') return
-
-    const win = BrowserWindow.fromWebContents(mainWindow!.webContents)
-    if (!win) return
-
-    if (input.key === '=' || input.key === '+') {
-      const current = mainWindow!.webContents.getZoomLevel()
-      mainWindow!.webContents.setZoomLevel(Math.min(current + 0.5, 5))
-    } else if (input.key === '-') {
-      const current = mainWindow!.webContents.getZoomLevel()
-      mainWindow!.webContents.setZoomLevel(Math.max(current - 0.5, -3))
-    } else if (input.key === '0') {
-      mainWindow!.webContents.setZoomLevel(0)
-    } else {
-      return
-    }
+    const action = resolvePageZoomShortcut(input)
+    if (!action) return
+    event.preventDefault()
+    const current = uiFontSizeLevelFromZoom(mainWindow!.webContents.getZoomFactor())
+    const next = nextUiFontSizeLevel(current, action)
+    mainWindow!.webContents.setZoomFactor(uiPageZoomFromLevel(next))
+    mainWindow!.webContents.send('zoom:set-level', next)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.on('app-command', (event, command) => {
+    if (command !== 'browser-backward' && command !== 'browser-forward') return
+    event.preventDefault()
+    mainWindow?.webContents.send('workbench:editor-mouse-nav', {
+      direction: command === 'browser-backward' ? 'back' : 'forward'
+    })
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -140,18 +235,77 @@ function createWindow(needsOnboarding: boolean): void {
       ? process.env['ELECTRON_RENDERER_URL']
       : join(__dirname, '../renderer/index.html')
 
+  markStartup('window.load.begin', {
+    needsOnboarding,
+    baseUrl: typeof baseUrl === 'string' ? baseUrl : String(baseUrl)
+  })
   if (needsOnboarding) {
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      mainWindow.loadURL(`${baseUrl}#/welcome`)
+      void mainWindow.loadURL(`${baseUrl}#/welcome`)
     } else {
-      mainWindow.loadFile(baseUrl, { hash: '/welcome' })
+      void mainWindow.loadFile(baseUrl, { hash: '/welcome' })
     }
   } else {
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      mainWindow.loadURL(baseUrl)
+      void mainWindow.loadURL(baseUrl)
     } else {
-      mainWindow.loadFile(baseUrl)
+      void mainWindow.loadFile(baseUrl)
     }
+  }
+  markStartup('window.load.called')
+}
+
+/**
+ * 数据库损坏自动重建后给出明确提示：告诉用户备份位置，并说明聊天记录会尽量从
+ * 工作区 Sessions 文件恢复。提示文件会在用户确认后清除，避免每次启动重复弹出。
+ */
+function scheduleAgentDbRecoveryNotice(): void {
+  const notice = getAgentDbRecoveryNotice()
+  if (!notice || !mainWindow) return
+
+  const win = mainWindow
+  const showNotice = () => {
+    const locale = app.getLocale()
+    const backupPath = notice.backupPath
+    const fallbackPath = backupPath || notice.dbPath
+    const detail = translateMain(locale, 'app.db_recovery_detail').replace(
+      '{{path}}',
+      () => fallbackPath
+    )
+
+    const buttons = backupPath
+      ? [
+          translateMain(locale, 'app.db_recovery_show_file'),
+          translateMain(locale, 'app.db_recovery_ok')
+        ]
+      : [translateMain(locale, 'app.db_recovery_ok')]
+
+    void dialog
+      .showMessageBox(win, {
+        type: 'warning',
+        title: translateMain(locale, 'app.db_recovery_title'),
+        message: translateMain(locale, 'app.db_recovery_message'),
+        detail,
+        buttons,
+        defaultId: buttons.length - 1,
+        cancelId: buttons.length - 1,
+        noLink: true
+      })
+      .then(({ response }) => {
+        if (backupPath && response === 0) {
+          shell.showItemInFolder(backupPath)
+        }
+        clearAgentDbRecoveryNotice(notice)
+      })
+      .catch((e) => {
+        logger.warn('[DB] 展示数据库恢复提示失败（非阻塞）:', e as Error)
+      })
+  }
+
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', showNotice)
+  } else {
+    setTimeout(showNotice, 0)
   }
 }
 
@@ -163,39 +317,43 @@ async function completeFullBootstrap() {
   isBootstrapping = true
 
   try {
-    // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
-    await initVaultSystem()
+    await traceStartupStep('completeFullBootstrap', async () => {
+      // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
+      await traceStartupStep('initVaultSystem', () => initVaultSystem())
 
-    const { initDesktopMainCacheCoordinator } =
-      await import('./cache/desktop-main-cache-coordinator')
-    initDesktopMainCacheCoordinator()
+      const { initDesktopMainCacheCoordinator } =
+        await import('./cache/desktop-main-cache-coordinator')
+      initDesktopMainCacheCoordinator()
 
-    // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
-    // (JSON → SQLite 的全量同步已由 initVaultSystem() 内的 GlobalDataBootstrapper 完成)
+      // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
+      // (冷启动全量扫盘已延后到渲染进程首屏后再 schedule)
 
-    // 3. 这里的逻辑在引导完成后或者已有配置时执行
-    if (mainWindow) {
-      const settingsRepo = new SettingsRepository(getAppDb())
-      const { settingsManager } = await import('./ipc/settings.ipc')
-      const { purgeDeviceLocalSettingsFromAgentDb } =
-        await import('./services/desktop-device-settings.util')
-      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
+      // 3. 这里的逻辑在引导完成后或者已有配置时执行
+      if (mainWindow) {
+        const settingsRepo = new SettingsRepository(getAppDb())
+        const { settingsManager } = await import('./ipc/settings.ipc')
+        const { purgeDeviceLocalSettingsFromAgentDb } =
+          await import('./services/desktop-device-settings.util')
+        await traceStartupStep('purgeDeviceLocalSettings', () =>
+          purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
+        )
 
-      const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
-        await import('./services/desktop-hotkey-config.store')
-      await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
-        settingsManager.flushToDisk()
-      )
-      const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
-      hotkeyService.start()
-      setHotkeyService(hotkeyService)
+        const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
+          await import('./services/desktop-hotkey-config.store')
+        await traceStartupStep('migrateHotkeyConfig', () =>
+          migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
+            settingsManager.flushToDisk()
+          )
+        )
+        const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
+        hotkeyService.start()
+        setHotkeyService(hotkeyService)
 
-      const { bootstrapMcpServer } = await import('./services/mcp-runtime')
-      await bootstrapMcpServer()
-
-      // 通知渲染进程引导已就绪，可以跳转了
-      mainWindow.webContents.send('onboarding:ready')
-    }
+        // 通知渲染进程引导已就绪，可以跳转了
+        mainWindow.webContents.send('onboarding:ready')
+        markStartup('onboarding:ready sent')
+      }
+    })
 
     isBootstrapping = false
   } catch (err: any) {
@@ -207,7 +365,39 @@ async function completeFullBootstrap() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    webPreferences.sandbox = true
+    if (!isHelpDocsInAppUrl(params.src)) {
+      event.preventDefault()
+    }
+  })
+  installHelpDocsWebviewNavigation(contents, (url) => {
+    void shell.openExternal(url)
+  })
+})
+
 app.whenReady().then(async () => {
+  markStartup('app.whenReady')
+
+  // 渲染进程 / preload 启动打点 → 主进程终端（与 [Startup] 同一时间轴）
+  ipcMain.on(
+    'startup:mark',
+    (
+      _event,
+      payload: { step?: string; navMs?: number; detail?: Record<string, unknown> } | undefined
+    ) => {
+      const step = payload?.step || 'renderer.unknown'
+      markStartup(step, {
+        navMs: payload?.navMs,
+        ...(payload?.detail ?? {})
+      })
+    }
+  )
+
   // Inject Electron net.fetch to global scope to automatically bypass network isolation in custom components
   // like model-pricing.service that may be proxy-sensitive
   ;(global as any).customNetFetch = net.fetch
@@ -218,41 +408,13 @@ app.whenReady().then(async () => {
 
   // Windows 任务栏分组：开发端与稳定端使用不同 AppUserModelId，避免混为一组
   electronApp.setAppUserModelId(isDesktopDevBuild() ? DESKTOP_DEV_APP_ID : DESKTOP_APP_ID)
+  const { setWindowsToastIconPath, ensureWindowsToastShortcut } =
+    await import('./services/windows-toast-identity')
+  setWindowsToastIconPath(icon)
+  ensureWindowsToastShortcut()
 
   // Register local protocol for secure local asset rendering
-  protocol.handle('local', async (request) => {
-    try {
-      let targetUrl = request.url.replace(/^local:/i, 'file:')
-
-      // Resolve relative emoji paths: local:///emojis/xxx.png → absolute vault path
-      const emojiMatch = targetUrl.match(/^file:\/\/+emojis\/(.+)$/i)
-      if (emojiMatch) {
-        const { DesktopStoragePathService } = await import('./services/path.service')
-        const pathService = new DesktopStoragePathService()
-        const emojisDir = await pathService.getEmojisDirectory()
-        const absolutePath = require('path').join(emojisDir, emojiMatch[1])
-        const { existsSync } = require('node:fs')
-        if (!existsSync(absolutePath)) {
-          return new Response('Not found', { status: 404 })
-        }
-        return await net.fetch(`file:///${absolutePath.replace(/\\/g, '/')}`)
-      }
-
-      // Ensure absolute file URL starts with file:/// on Windows/Unix
-      if (targetUrl.startsWith('file://') && !targetUrl.startsWith('file:///')) {
-        targetUrl = 'file:///' + targetUrl.slice(7)
-      }
-      const physicalPath = fileURLToPath(targetUrl)
-      const { existsSync } = require('node:fs')
-      if (!existsSync(physicalPath)) {
-        return new Response('Not found', { status: 404 })
-      }
-      return await net.fetch(targetUrl)
-    } catch (e) {
-      // Squash annoying ERR_FILE_NOT_FOUND stack traces when UI loads dead db avatar paths
-      return new Response('Not found', { status: 404 })
-    }
-  })
+  registerLocalProtocolHandler()
 
   // 开发态：F12 开关 DevTools；生产态：屏蔽 Ctrl/Cmd+R 防误刷新
   // 见 https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -296,7 +458,9 @@ app.whenReady().then(async () => {
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json')
   const { resolveDesktopStorageBootstrap } =
     await import('./services/desktop-legacy-bootstrap.service')
-  const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
+  const bootstrap = await traceStartupStep('resolveDesktopStorageBootstrap', () =>
+    resolveDesktopStorageBootstrap(settingsPath)
+  )
   const needsOnboarding = bootstrap.needsOnboarding
   const customStorageRoot = bootstrap.storageRoot
 
@@ -308,9 +472,13 @@ app.whenReady().then(async () => {
 
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
   // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
-  const appDb = getAppDb(customStorageRoot || undefined)
+  const appDb = await traceStartupStep(
+    'agentDb.open',
+    () => getAppDb(customStorageRoot || undefined),
+    { root: customStorageRoot || null }
+  )
   connectionManager.setDb(appDb)
-  await installDatabaseSchema(appDb)
+  await traceStartupStep('agentDb.installSchema', () => installDatabaseSchema(appDb))
 
   // ======================================
   // 5. 自动升级探测已在 resolveDesktopStorageBootstrap 中完成
@@ -325,37 +493,52 @@ app.whenReady().then(async () => {
   registerSettingsIPC()
 
   // 2.5 提前注册所有业务级 IPC，防止渲染进程在窗口创建后立刻调用时 handler 尚未注册
-  registerAgentIPC()
-  registerCompressionEventBridge()
-  registerVaultIPC()
-  registerArchiveIPC()
-  registerLanIPC()
-  registerCloudSyncIPC()
-  registerGitSyncIPC()
-  registerIncrementalSyncIPC()
-  registerLegacyMigrationIPC()
-  registerDiaryIPC()
-  registerProfileIPC()
-  registerSummaryIPC()
-  registerStorageIPC()
-  registerAttachmentIPC()
-  registerDiaryAttachmentIPC()
-  registerRagIPC()
-  registerDeveloperIPC()
-  registerEmojiIPC()
-  registerSearchIPC()
-  registerUpdaterIPC()
-  registerShellIPC()
-  registerShortcutIPC()
-  registerDiagnosticLogIPC()
+  await traceStartupStep('registerBusinessIpc', async () => {
+    const { initDesktopSessionInboxStore } = await import('./services/session-inbox.store')
+    await initDesktopSessionInboxStore()
+    registerAgentIPC()
+    registerCompressionEventBridge()
+    const { registerSessionRuntimeEventBridge } =
+      await import('./services/session-runtime-event.service')
+    registerSessionRuntimeEventBridge()
+    registerVaultIPC()
+    registerArchiveIPC()
+    registerLanIPC()
+    registerCloudSyncIPC()
+    registerGitSyncIPC()
+    registerIncrementalSyncIPC()
+    registerLegacyMigrationIPC()
+    registerDiaryIPC()
+    registerProfileIPC()
+    registerSummaryIPC()
+    registerStorageIPC()
+    registerAttachmentIPC()
+    registerDiaryAttachmentIPC()
+    registerRagIPC()
+    registerDeveloperIPC()
+    registerEmojiIPC()
+    registerSearchIPC()
+    registerGraphIPC()
+    registerKnowledgeIPC()
+    registerUpdaterIPC()
+    registerShellIPC()
+    registerSkillIPC()
+    registerDiagnosticLogIPC()
+  })
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
+  markStartup('createWindow.call', { needsOnboarding })
   createWindow(needsOnboarding)
+  scheduleAgentDbRecoveryNotice()
 
   // 4. 决定是否立即执行全量初始化
   if (!needsOnboarding) {
     await completeFullBootstrap()
+  } else {
+    markStartup('skip completeFullBootstrap (needsOnboarding)')
   }
+
+  markStartup('whenReady handler finished', { needsOnboarding })
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(needsOnboarding)
@@ -366,6 +549,12 @@ app.on('will-quit', () => {
   const { globalShortcut } = require('electron')
   globalShortcut.unregisterAll()
   void import('./services/mcp-runtime').then(({ shutdownMcpServer }) => shutdownMcpServer())
+  void import('./services/session-inbox.store').then(({ flushDesktopSessionInboxStore }) =>
+    flushDesktopSessionInboxStore()
+  )
+  void import('./services/agent-workspace-session.store').then(({ flushWorkspaceSessionStore }) =>
+    flushWorkspaceSessionStore()
+  )
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

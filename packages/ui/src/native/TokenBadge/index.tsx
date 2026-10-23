@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface TokenBadgeProps {
   tokenCount: number
@@ -29,18 +30,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.md
   },
   dot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
-    marginRight: 6
+    borderRadius: sharedTokens.radius.xxs,
+    marginRight: sharedTokens.spacing.xsPlus
   },
   text: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   }
 })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import {
-  classifyAiApiCallError,
   formatAiApiCallError,
+  localizeAiApiErrorMessage,
   type EmbeddingMigrationStateView
 } from '@baishou/shared'
 import { showMigrationResultToast } from './migration-result-toast'
@@ -11,25 +11,6 @@ import {
   setCachedRagActiveState,
   subscribeRagRuntime
 } from '../rag-runtime-cache'
-
-function localizeRagEmbedError(raw: string, t: (key: string, fallback: string) => string): string {
-  const kind = classifyAiApiCallError({ message: raw, responseBody: raw })
-  switch (kind) {
-    case 'balance':
-      return t('agent.error.quota', '模型服务商提示账号额度不足。')
-    case 'auth':
-      return t(
-        'ai_config.error_no_model',
-        '检测失败：可能是未配置有效的 Embedding 模型或服务未连通。'
-      )
-    case 'rate_limit':
-      return t('agent.error.rate_limit', '请求过于频繁或超出并发限制，请稍后再试。')
-    case 'network':
-      return t('agent.error.network', '网络连接失败，请检查您的网络连接或代理设置。')
-    default:
-      return raw
-  }
-}
 
 function extractIpcErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -84,22 +65,26 @@ export function useRagSystem(
     void refreshMigrationState()
   }, [refreshMigrationState])
 
+  const checkMigrationStatus = useCallback(async () => {
+    try {
+      const [pending, mismatch] = await Promise.all([
+        (window as any).api?.rag?.hasPendingMigration?.(),
+        (window as any).api?.rag?.hasModelMismatch?.(),
+        refreshMigrationState()
+      ])
+      setHasMismatchModel(!!pending || !!mismatch)
+    } catch {
+      // keep previous flag; callers may optimistically clear on known-complete outcomes
+    }
+  }, [refreshMigrationState])
+
   useEffect(() => {
     if (!activeRagState.isRunning) {
-      void refreshMigrationState()
+      void checkMigrationStatus()
       migrationWaitRef.current?.resolve()
       migrationWaitRef.current = null
     }
-  }, [activeRagState.isRunning, refreshMigrationState])
-
-  const checkMigrationStatus = async () => {
-    try {
-      const pending = await (window as any).api?.rag?.hasPendingMigration?.()
-      const mismatch = await (window as any).api?.rag?.hasModelMismatch?.()
-      setHasMismatchModel(!!pending || !!mismatch)
-      await refreshMigrationState()
-    } catch {}
-  }
+  }, [activeRagState.isRunning, checkMigrationStatus])
 
   const handleDetectDimension = async () => {
     setIsProcessing(true)
@@ -148,26 +133,62 @@ export function useRagSystem(
   const handleBatchEmbed = async () => {
     if (
       !(await confirm(
-        t('settings.rag_batch_embed', '全量扫描未索引日记') + '?',
-        t('common.warning', '警告')
+        t(
+          'settings.rag_batch_embed_confirm',
+          '将补齐尚未嵌入的日记、记忆、图谱节点和知识库。这只会写本机向量，不会产生同步流量。确定开始？'
+        ),
+        t('memory.start_organize', '开始整理记忆')
       ))
     )
       return
     setIsProcessing(true)
-    patchCachedRagActiveState({ error: undefined })
+    patchCachedRagActiveState({
+      isRunning: true,
+      type: 'batchEmbed',
+      progress: 0,
+      total: 0,
+      statusText: t('settings.rag_batch_embed_starting', '正在开始索引…'),
+      phase: 'starting',
+      error: undefined,
+      paused: false,
+      cancelling: false
+    })
     try {
-      await (window as any).api?.rag?.triggerBatchEmbed()
-      patchCachedRagActiveState({ error: undefined })
+      const result = await (window as any).api?.rag?.triggerBatchEmbed()
+      patchCachedRagActiveState({ error: undefined, paused: false, cancelling: false })
       await fetchRagInfo()
       await reloadSettings?.()
-      toast.showSuccess(t('settings.rag_batch_embed_done', '批量嵌入已完成'))
+      if (result && typeof result === 'object' && result.alreadyRunning) {
+        return
+      }
+      if (result && typeof result === 'object' && result.cancelled) {
+        toast.showWarning(
+          t('settings.rag_batch_embed_cancelled', '已取消索引。已经嵌入的部分会保留。')
+        )
+        return
+      }
+      const graphFailed =
+        result && typeof result === 'object' && typeof result.graphFailed === 'number'
+          ? result.graphFailed
+          : 0
+      if (graphFailed > 0) {
+        toast.showWarning(
+          t('settings.rag_batch_embed_partial', '索引完成，但有 {{count}} 个图谱节点未能嵌入。', {
+            count: graphFailed
+          })
+        )
+      } else {
+        toast.showSuccess(t('settings.rag_batch_embed_done', '批量嵌入已完成'))
+      }
     } catch (e: unknown) {
       const raw = extractIpcErrorMessage(e)
-      const detail = localizeRagEmbedError(raw, t)
+      const detail = localizeAiApiErrorMessage(raw, t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
         type: 'idle',
+        paused: false,
+        cancelling: false,
         error: detail
       })
       toast.showError(
@@ -176,6 +197,32 @@ export function useRagSystem(
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handlePauseBatchEmbed = async () => {
+    patchCachedRagActiveState({ paused: true, cancelling: false })
+    await (window as any).api?.rag?.pauseBatchEmbed()
+  }
+
+  const handleResumeBatchEmbed = async () => {
+    patchCachedRagActiveState({ paused: false, cancelling: false })
+    await (window as any).api?.rag?.resumeBatchEmbed()
+  }
+
+  const handleCancelBatchEmbed = async () => {
+    if (
+      !(await confirm(
+        t(
+          'settings.rag_batch_embed_cancel_confirm',
+          '取消后将停止尚未开始的嵌入，已经写入的向量会保留。确定取消？'
+        ),
+        t('common.warning', '警告')
+      ))
+    ) {
+      return
+    }
+    patchCachedRagActiveState({ cancelling: true, paused: false })
+    await (window as any).api?.rag?.cancelBatchEmbed()
   }
 
   const handleTriggerMigration = async () => {
@@ -195,10 +242,14 @@ export function useRagSystem(
       if (result?.aborted) {
         await reloadSettings?.()
       }
+      // 迁移成功后立刻清掉「版本不匹配」标，避免 toast 已完成但卡片仍残留
+      if (result?.outcome === 'completed' || result?.completed || result?.outcome === 'no_data') {
+        setHasMismatchModel(false)
+      }
       showMigrationResultToast(result, t, toast)
-      await refreshMigrationState()
+      await checkMigrationStatus()
     } catch (e: unknown) {
-      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      const detail = localizeAiApiErrorMessage(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
@@ -208,6 +259,7 @@ export function useRagSystem(
       toast.showError(
         t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
@@ -230,7 +282,7 @@ export function useRagSystem(
       await (window as any).api?.rag?.restoreMigrationBackup()
       await fetchRagInfo()
       await reloadSettings?.()
-      await refreshMigrationState()
+      await checkMigrationStatus()
       toast.showSuccess(
         t('settings.rag_migration_restore_success', '已恢复迁移前的向量数据与嵌入模型。')
       )
@@ -240,6 +292,7 @@ export function useRagSystem(
           message: e?.message || String(e)
         })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
@@ -255,10 +308,13 @@ export function useRagSystem(
       if (result?.aborted) {
         await reloadSettings?.()
       }
+      if (result?.outcome === 'completed' || result?.completed || result?.outcome === 'no_data') {
+        setHasMismatchModel(false)
+      }
       showMigrationResultToast(result, t, toast)
-      await refreshMigrationState()
+      await checkMigrationStatus()
     } catch (e: unknown) {
-      const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
+      const detail = localizeAiApiErrorMessage(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
         ...getCachedRagActiveState(),
         isRunning: false,
@@ -268,6 +324,7 @@ export function useRagSystem(
       toast.showError(
         t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
@@ -339,26 +396,31 @@ export function useRagSystem(
     }
   }
 
-  const handleClearAll = async (prompt: any) => {
-    const phrase = t('settings.rag_clear_all_confirm_phrase', '确认清除')
-    const confirmText = await prompt(
-      t(
-        'settings.rag_clear_all_confirm',
-        '请在下方输入「{{phrase}}」以确认清空所有RAG记忆：'
-      ).replace('{{phrase}}', phrase),
-      '',
-      t('settings.rag_clear_all', '清空现有记忆')
-    )
-    if (confirmText !== phrase) {
-      if (confirmText !== null) {
-        toast.showWarning(t('settings.rag_clear_all_mismatch', '输入内容不匹配，操作已取消。'))
-      }
-      return
-    }
+  const handleClearAll = async (kinds: import('@baishou/shared').MemoryClearKind[]) => {
+    if (!kinds.length) return
     setIsProcessing(true)
     try {
-      await (window as any).api?.rag?.clearAll()
+      const ragKinds =
+        kinds.includes('life_graph') && !kinds.includes('graph_node')
+          ? [...kinds, 'graph_node' as const]
+          : kinds
+      const needsRag = ragKinds.some((kind) => kind !== 'life_graph')
+      await (window as any).api?.rag?.cancelBatchEmbed?.()
+      if (needsRag) {
+        await (window as any).api?.rag?.clearAll({ kinds: ragKinds })
+      }
+      if (kinds.includes('life_graph')) {
+        await window.api.graph.clearLifeGraph()
+      }
       await fetchRagInfo()
+      toast.showSuccess(t('settings.rag_clear_all_done', '已清除所选记忆'))
+    } catch (e: any) {
+      toast.showError(
+        t('settings.rag_clear_all_failed', '清除记忆失败：{{message}}', {
+          message: e?.message || String(e)
+        })
+      )
+      throw e
     } finally {
       setIsProcessing(false)
     }
@@ -375,6 +437,9 @@ export function useRagSystem(
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
+    handleCancelBatchEmbed,
     handleTriggerMigration,
     handleCancelMigration,
     handleRestoreMigration,

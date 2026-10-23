@@ -10,7 +10,14 @@ import { app } from 'electron'
 import express from 'express'
 
 import { ILanSyncService, DiscoveredDevice, IArchiveService } from '@baishou/core-desktop'
-import { buildLanServiceName, pickBestLanIpv4, isPrivateLanIpv4 } from '@baishou/shared'
+import {
+  buildLanMdnsHost,
+  buildLanServiceName,
+  isExcludedLanIpv4,
+  isPrivateLanIpv4,
+  isVirtualLanInterfaceName,
+  pickBestLanIpv4
+} from '@baishou/shared'
 import { LanDiscovery } from './LanDiscovery'
 import { getDesktopInstallInstanceId } from './install-instance.service'
 
@@ -34,38 +41,15 @@ export class DesktopLanSyncService implements ILanSyncService {
   }
 
   private isExcludedIp(ip: string): boolean {
-    const [a, b] = ip.split('.').map(Number)
-    if (Number.isNaN(a) || Number.isNaN(b)) return true
-    if (a === 127) return true
-    if (a === 169 && b === 254) return true
-    if (a === 198 && (b === 18 || b === 19)) return true
-    return false
+    return isExcludedLanIpv4(ip)
   }
 
   private isPrivateLanIp(ip: string): boolean {
-    const [a, b] = ip.split('.').map(Number)
-    if (a === 10) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 192 && b === 168) return true
-    return false
+    return isPrivateLanIpv4(ip)
   }
 
   private isVirtualInterface(name: string): boolean {
-    const lower = name.toLowerCase()
-    return [
-      'clash',
-      'meta',
-      'tun',
-      'wintun',
-      'wireguard',
-      'tailscale',
-      'vpn',
-      'virtual',
-      'vethernet',
-      'hyper-v',
-      'npcap',
-      'loopback'
-    ].some((keyword) => lower.includes(keyword))
+    return isVirtualLanInterfaceName(name)
   }
 
   private scoreNetworkCandidate(address: string, ifaceName: string): number {
@@ -156,14 +140,24 @@ export class DesktopLanSyncService implements ILanSyncService {
 
     const bestIp = this.pickBestIp(ips) || ips[0]
     const orderedIps = bestIp ? [bestIp, ...ips.filter((ip) => ip !== bestIp)] : ips
+    const host = buildLanMdnsHost(os.hostname(), deviceId)
 
-    this.discovery.publish(serviceName, port, {
-      nickname: safeNickname,
-      ip: orderedIps.slice(0, 4).join(','),
-      device_type: 'desktop',
-      dtype: 'desktop',
-      device_id: deviceId
-    })
+    this.discovery.publish(
+      serviceName,
+      port,
+      {
+        nickname: safeNickname,
+        ip: orderedIps.slice(0, 4).join(','),
+        device_type: 'desktop',
+        dtype: 'desktop',
+        device_id: deviceId
+      },
+      {
+        host,
+        interfaceIp: bestIp ?? null,
+        ips: orderedIps
+      }
+    )
 
     return serviceName
   }
@@ -345,7 +339,9 @@ export class DesktopLanSyncService implements ILanSyncService {
     onDeviceLost: (deviceId: string) => void
   ): Promise<void> {
     await this.stopDiscovery()
-    this.discovery.startDiscovery(this.publishedServiceName, onDeviceFound, onDeviceLost)
+    const ips = await this.getPreferredLocalIps()
+    const bestIp = this.pickBestIp(ips) || ips[0] || null
+    this.discovery.startDiscovery(this.publishedServiceName, onDeviceFound, onDeviceLost, bestIp)
   }
 
   public async stopDiscovery(): Promise<void> {
@@ -399,6 +395,7 @@ export class DesktopLanSyncService implements ILanSyncService {
     onProgress?: (percent: number) => void
   ): Promise<boolean> {
     let zipFile: string | null = null
+    let readStream: fs.ReadStream | null = null
     try {
       const reachableHost = await this.findReachableIp(ip, port)
       if (!reachableHost) {
@@ -410,7 +407,8 @@ export class DesktopLanSyncService implements ILanSyncService {
       if (!zipFile) return false
 
       const stat = await fsp.stat(zipFile)
-      const readStream = fs.createReadStream(zipFile)
+      const stream = fs.createReadStream(zipFile)
+      readStream = stream
 
       return await new Promise<boolean>((resolve) => {
         let settled = false
@@ -435,6 +433,8 @@ export class DesktopLanSyncService implements ILanSyncService {
 
         const finishIfUploadCompleteAfterAbort = (reason: string) => {
           if (!bodyFullySent || uploadedBytes < stat.size) return false
+          // 对端已经明确返回非 200（例如磁盘满/校验失败）时，不能因为连接随后断开就报成功。
+          if (responseStatus !== null && responseStatus !== 200) return false
           console.warn(`[DesktopLanSyncService] ${reason}; upload complete, treating as success`)
           onProgress?.(100)
           finish(true)
@@ -469,7 +469,7 @@ export class DesktopLanSyncService implements ILanSyncService {
             responseStatus = res.statusCode ?? null
             res.resume()
             res.on('end', () => {
-              onProgress?.(100)
+              if (res.statusCode === 200) onProgress?.(100)
               finish(res.statusCode === 200)
             })
             res.on('error', (e) => {
@@ -502,12 +502,12 @@ export class DesktopLanSyncService implements ILanSyncService {
           finishIfUploadCompleteAfterAbort('Connection closed without HTTP response')
         })
 
-        readStream.on('error', (e) => {
+        stream.on('error', (e) => {
           console.error('[DesktopLanSyncService] read stream error:', e)
           finish(false)
         })
 
-        readStream.on('data', (chunk: Buffer | string) => {
+        stream.on('data', (chunk: Buffer | string) => {
           uploadedBytes += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk)
           if (onProgress) {
             const pct = Math.min(99, Math.round((uploadedBytes / stat.size) * 100))
@@ -515,12 +515,13 @@ export class DesktopLanSyncService implements ILanSyncService {
           }
         })
 
-        readStream.pipe(req)
+        stream.pipe(req)
       })
     } catch (e) {
       console.error('[DesktopLanSyncService] failed to send file', e)
       return false
     } finally {
+      readStream?.destroy()
       if (zipFile) {
         await fsp.unlink(zipFile).catch(() => {})
       }

@@ -395,8 +395,12 @@ function buildSummaries(reference = new Date(2026, 5, 29)) {
   return summaries
 }
 
-function serializeDiaries(entries) {
-  return `/** 自动生成 — 运行 node scripts/generate-demo-data.mjs 更新 */\nimport type { DemoDiaryEntry } from './demo-data.types'\n\nexport const DEMO_DIARIES: DemoDiaryEntry[] = ${JSON.stringify(entries, null, 2)}\n`
+function serializeDiaryChunk(entries, exportName) {
+  return `/** 自动生成 — 运行 node scripts/generate-demo-data.mjs 更新 */\nimport type { DemoDiaryEntry } from './demo-data.types'\n\nexport const ${exportName}: DemoDiaryEntry[] = ${JSON.stringify(entries, null, 2)}\n`
+}
+
+function serializeDiariesBarrel() {
+  return `/** 自动生成 — 运行 node scripts/generate-demo-data.mjs 更新 */\nimport { DEMO_DIARIES_RECENT } from './demo-diaries-recent.generated'\nimport { DEMO_DIARIES_ARCHIVE } from './demo-diaries-archive.generated'\n\nexport const DEMO_DIARIES = [...DEMO_DIARIES_RECENT, ...DEMO_DIARIES_ARCHIVE]\n`
 }
 
 function serializeSummaries(entries) {
@@ -427,7 +431,16 @@ mkdirSync(OUT_DIR, { recursive: true })
 const diaries = buildDiaries()
 const summaries = buildSummaries()
 
-writeFileSync(join(OUT_DIR, 'demo-diaries.generated.ts'), serializeDiaries(diaries))
+const diaryMid = Math.ceil(diaries.length / 2)
+writeFileSync(
+  join(OUT_DIR, 'demo-diaries-recent.generated.ts'),
+  serializeDiaryChunk(diaries.slice(0, diaryMid), 'DEMO_DIARIES_RECENT')
+)
+writeFileSync(
+  join(OUT_DIR, 'demo-diaries-archive.generated.ts'),
+  serializeDiaryChunk(diaries.slice(diaryMid), 'DEMO_DIARIES_ARCHIVE')
+)
+writeFileSync(join(OUT_DIR, 'demo-diaries.generated.ts'), serializeDiariesBarrel())
 writeFileSync(join(OUT_DIR, 'demo-summaries.generated.ts'), serializeSummaries(summaries))
 
 console.log(`Generated ${diaries.length} diaries, ${summaries.length} summaries -> ${OUT_DIR}`)

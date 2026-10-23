@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AgentSidebar } from './components/AgentSidebar'
-import { AgentSessionRenameModal } from './components/AgentSessionRenameModal'
+import { AgentSessionsModal } from './components/AgentSessionsModal'
 import type { AgentAssistant } from './components/AgentSidebar'
 import {
   useAssistantStore,
@@ -10,9 +10,15 @@ import {
   useUserProfileStore,
   useAgentNavigationStore
 } from '@baishou/store'
-import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
+import { useToast, AssistantPickerSheet, useDialog } from '@baishou/ui'
+import { AssistantCreateModal } from './components/AssistantCreateModal'
 import styles from './AgentLayout.module.css'
-import { LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
+import {
+  LATTE_ASSISTANT_NAME,
+  buildAgentChatNavigationPath,
+  normalizeChatBackgroundBlur,
+  normalizeChatBackgroundOverlayOpacity
+} from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
 import i18n from 'i18next'
 import {
@@ -32,10 +38,18 @@ export const AgentLayout: React.FC = () => {
 
   const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore()
   const { loadConfig } = useSettingsStore()
-  const { loadProfile } = useUserProfileStore()
+  const agentBehavior = useSettingsStore((s) => s.agentBehavior)
+  const configHydrated = useSettingsStore((s) => s.configHydrated)
+  const restoreLastSessionOnReturn = agentBehavior?.restoreLastSessionOnReturn !== false
+  const { profile: userProfile, loadProfile } = useUserProfileStore()
+  const chatBackgroundUrl = userProfile?.chatBackgroundPath
+  const chatBackgroundBlur = normalizeChatBackgroundBlur(userProfile?.chatBackgroundBlur)
+  const chatBackgroundOverlay = normalizeChatBackgroundOverlayOpacity(
+    userProfile?.chatBackgroundOverlayOpacity
+  )
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSessionsOpen, setIsSessionsOpen] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
@@ -70,18 +84,8 @@ export const AgentLayout: React.FC = () => {
   const dialog = useDialog()
   const { t } = useTranslation()
 
-  const {
-    sessions,
-    hasMoreSessions,
-    isLoadingMoreSessions,
-    sidebarScrollKey,
-    loadSessions,
-    renameTarget,
-    renameInputRef,
-    setRenameTarget,
-    handleRenameSession,
-    commitRename
-  } = useAgentSessions(resolvedAssistantId, searchQuery)
+  const { sessions, hasMoreSessions, isLoadingMoreSessions, sidebarScrollKey, loadSessions } =
+    useAgentSessions(resolvedAssistantId, searchQuery)
 
   // 加载独立会话文档（通过 URL 直接访问时使用）
   useEffect(() => {
@@ -113,12 +117,23 @@ export const AgentLayout: React.FC = () => {
   }, [sessionId, urlAssistantId])
 
   useEffect(() => {
+    if (!isAgentPageActive) {
+      restoredNavigationRef.current = false
+      return
+    }
     if (restoredNavigationRef.current) return
     // 后台保活 remount（如切工作区）时禁止改写全局路由，否则会从日记/设置闪回伙伴页
-    if (!isAgentPageActive) return
 
     // 已通过 URL 进入具体会话或伙伴，无需再从快照恢复（否则点「新对话」后会误跳回旧会话）
     if (sessionId || urlAssistantId) {
+      restoredNavigationRef.current = true
+      return
+    }
+
+    // 等设置水合后再决定是否恢复，避免默认 true 抢先打开上次对话
+    if (!configHydrated) return
+
+    if (!restoreLastSessionOnReturn) {
       restoredNavigationRef.current = true
       return
     }
@@ -162,15 +177,41 @@ export const AgentLayout: React.FC = () => {
       if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
-  }, [sessionId, urlAssistantId, navigate, isAgentPageActive])
+  }, [
+    sessionId,
+    urlAssistantId,
+    navigate,
+    isAgentPageActive,
+    configHydrated,
+    restoreLastSessionOnReturn
+  ])
 
   useEffect(() => {
     if (!isAgentPageActive) return
+    if (!configHydrated) return
     if (sessionId && !urlAssistantId && !sessionDocReady) return
 
     const vaultKey = getDesktopVaultScopeKey()
-
     const assistantIdToPersist = resolvedAssistantId ?? null
+
+    // 空白对话：恢复尚未完成时不要冲掉上次会话；关闭「返回后继续」时也保留快照
+    if (!sessionId) {
+      if (restoreLastSessionOnReturn && !restoredNavigationRef.current) return
+      if (!restoreLastSessionOnReturn) {
+        const existing = readAgentNavigationSnapshot(vaultKey)
+        const preserved = {
+          assistantId: assistantIdToPersist ?? existing?.assistantId ?? null,
+          sessionId: existing?.sessionId ?? null
+        }
+        useAgentNavigationStore.getState().setContext(vaultKey, preserved)
+        writeAgentNavigationSnapshot(vaultKey, preserved)
+        if (assistantIdToPersist) {
+          resolvedAssistantIdRef.current = assistantIdToPersist
+        }
+        return
+      }
+    }
+
     const snapshot = {
       assistantId: assistantIdToPersist,
       sessionId: sessionId ?? null
@@ -180,7 +221,15 @@ export const AgentLayout: React.FC = () => {
     if (assistantIdToPersist) {
       resolvedAssistantIdRef.current = assistantIdToPersist
     }
-  }, [sessionId, resolvedAssistantId, urlAssistantId, sessionDocReady, isAgentPageActive])
+  }, [
+    sessionId,
+    resolvedAssistantId,
+    urlAssistantId,
+    sessionDocReady,
+    isAgentPageActive,
+    configHydrated,
+    restoreLastSessionOnReturn
+  ])
 
   // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在（勿依赖 session/assistant URL，否则进出设置会反复 refetch 闪烁）
   useEffect(() => {
@@ -275,16 +324,6 @@ export const AgentLayout: React.FC = () => {
   }, [mappedAssistant?.id])
 
   const pinnedIds = assistants.filter((a: any) => a.isPinned).map((a) => String(a.id))
-  const pinnedAssistants: AgentAssistant[] = pinnedIds
-    .map((id) => assistants.find((a) => String(a.id) === id))
-    .filter(Boolean)
-    .map((a) => ({
-      id: String(a!.id),
-      name: a!.name,
-      emoji: a!.emoji,
-      avatarPath: (a as any).avatarPath,
-      assistantKind: (a as any).assistantKind
-    }))
 
   const handleNewChat = async (targetAssistantId?: string) => {
     const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'))
@@ -298,9 +337,7 @@ export const AgentLayout: React.FC = () => {
     bumpNavigationIntent()
     setStandaloneSessionDoc(null)
 
-    const vaultKey =
-      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
-      'default'
+    const vaultKey = getDesktopVaultScopeKey()
     const snapshot = { assistantId: String(astId), sessionId: null }
     restoredNavigationRef.current = true
     useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
@@ -310,41 +347,33 @@ export const AgentLayout: React.FC = () => {
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
-    const switchIntentAtStart = bumpNavigationIntent()
     resolvedAssistantIdRef.current = astId
     restoredNavigationRef.current = true
     setStandaloneSessionDoc(null)
 
-    const vaultKey =
-      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
-      'default'
+    const vaultKey = getDesktopVaultScopeKey()
     const snapshot = { assistantId: astId, sessionId: null }
     useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
     writeAgentNavigationSnapshot(vaultKey, snapshot)
 
-    // 立即离开旧会话，避免切换过程中仍渲染上一页消息
+    // 切到该伙伴的空态草稿，不自动进入其最近会话（历史由用户主动打开）
     navigate(buildAgentChatNavigationPath(snapshot), { replace: true })
     void loadSessions(true, astId)
+  }
 
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const sessionsList = await window.electron.ipcRenderer.invoke(
-          'agent:list-sessions-by-assistant',
-          astId
-        )
-        if (shouldAbortNavigationRestore(switchIntentAtStart)) return
-        if (sessionsList && sessionsList.length > 0) {
-          const sorted = sessionsList.sort(
-            (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-          navigate(buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }), {
-            replace: true
-          })
-        }
-      } catch (e) {
-        console.error('[AgentLayout] Failed to switch to existing session', e)
-      }
-    }
+  const handleRenameSession = async (id: string) => {
+    const current = sessions.find((row) => row.id === id)
+    if (!current) return
+    const next = await dialog.prompt(
+      '',
+      current.title || '',
+      t('agent.rename_session', '重命名对话')
+    )
+    const newTitle = next?.trim()
+    if (!newTitle || !window.electron) return
+    await window.electron.ipcRenderer.invoke('agent:update-session-title', id, newTitle)
+    loadSessions(true)
+    toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title: newTitle }))
   }
 
   const handleDelete = async (id: string) => {
@@ -378,26 +407,66 @@ export const AgentLayout: React.FC = () => {
   }
 
   return (
-    <div className={styles.layoutContainer}>
-      <AgentSidebar
-        currentAssistant={mappedAssistant}
+    <motion.div
+      className={styles.layoutContainer}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
+      <div className={styles.chatArea}>
+        {chatBackgroundUrl ? (
+          <>
+            <div
+              className={styles.chatBackground}
+              style={{
+                backgroundImage: `url(${chatBackgroundUrl})`,
+                filter: chatBackgroundBlur > 0 ? `blur(${chatBackgroundBlur}px)` : undefined,
+                transform: chatBackgroundBlur > 0 ? 'scale(1.06)' : undefined
+              }}
+              aria-hidden
+            />
+            {chatBackgroundOverlay > 0 ? (
+              <div
+                className={styles.chatBackgroundOverlay}
+                style={{ backgroundColor: `rgba(0, 0, 0, ${chatBackgroundOverlay / 100})` }}
+                aria-hidden
+              />
+            ) : null}
+          </>
+        ) : null}
+        <Outlet
+          context={
+            {
+              sessions,
+              loadSessions,
+              onAssistantSwitched: handleAssistantSwitched,
+              currentAssistant: mappedAssistant,
+              onShowAssistantPicker: () => setIsPickerOpen(true),
+              onNewSession: () => void handleNewChat(),
+              onOpenSessions: () => setIsSessionsOpen(true)
+            } satisfies AgentOutletContext
+          }
+        />
+      </div>
+
+      <AgentSessionsModal
+        isOpen={isSessionsOpen}
+        assistantName={mappedAssistant?.name}
         sessions={sessions}
+        selectedSessionId={sessionId}
+        searchQuery={searchQuery}
         hasMore={hasMoreSessions}
         isLoadingMore={isLoadingMoreSessions}
         scrollKey={sidebarScrollKey}
-        onLoadMore={() => void loadSessions(false)}
-        selectedSessionId={sessionId}
-        searchQuery={searchQuery}
-        pinnedAssistants={pinnedAssistants}
+        onClose={() => setIsSessionsOpen(false)}
         onSearchQueryChanged={setSearchQuery}
+        onLoadMore={() => void loadSessions(false)}
         onSessionSelected={(id) => {
           bumpNavigationIntent()
           navigate(
             currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`
           )
         }}
-        onNewSession={handleNewChat}
-        onAssistantSwitched={handleAssistantSwitched}
         onPinSession={async (id) => {
           const s = sessions.find((s) => s.id === id)
           if (s && window.electron) {
@@ -406,40 +475,9 @@ export const AgentLayout: React.FC = () => {
           }
         }}
         onDeleteSession={handleDelete}
-        onRenameSession={(id) => handleRenameSession(id, sessions)}
+        onRenameSession={(id) => void handleRenameSession(id)}
         onBatchDelete={handleBatchDelete}
-        isCollapsed={isSidebarCollapsed}
-        onShowPicker={() => setIsPickerOpen(true)}
       />
-
-      <div className={styles.chatArea}>
-        <Outlet
-          context={
-            {
-              sessions,
-              loadSessions,
-              onAssistantSwitched: handleAssistantSwitched,
-              isSidebarCollapsed,
-              onToggleSidebar: () => setIsSidebarCollapsed((prev) => !prev)
-            } satisfies AgentOutletContext
-          }
-        />
-      </div>
-
-      {renameTarget ? (
-        <AgentSessionRenameModal
-          renameTarget={renameTarget}
-          renameInputRef={renameInputRef}
-          t={t}
-          onClose={() => setRenameTarget(null)}
-          onTitleChange={(title) => setRenameTarget({ ...renameTarget, title })}
-          onCommit={() =>
-            commitRename((title) =>
-              toast.showSuccess(t('agent.renamed_toast', '已重命名为「{{title}}」', { title }))
-            )
-          }
-        />
-      ) : null}
 
       {/* ─── Assistant Picker Sheet ─── */}
       <AssistantPickerSheet
@@ -471,34 +509,13 @@ export const AgentLayout: React.FC = () => {
         }}
       />
 
-      {/* ─── Assistant Create Modal ─── */}
-      <Modal
+      <AssistantCreateModal
         isOpen={isCreateAssistantOpen}
-        onClose={() => {
-          setIsCreateAssistantOpen(false)
-          setIsPickerOpen(true)
-        }}
-        closeOnOverlayClick={false}
-        style={{ padding: 0 }}
-      >
-        <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
-          <AssistantEditPage
-            assistant={null}
-            isLastAssistant={assistants.length <= 1}
-            onSave={async (data) => {
-              if (window.electron) {
-                await window.electron.ipcRenderer.invoke('agent:create-assistant', data)
-                await fetchAssistants()
-                setIsCreateAssistantOpen(false)
-              }
-            }}
-            onBack={() => {
-              setIsCreateAssistantOpen(false)
-              setIsPickerOpen(true)
-            }}
-          />
-        </div>
-      </Modal>
-    </div>
+        assistantCount={assistants.length}
+        onClose={() => setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => setIsPickerOpen(true)}
+        onCreated={fetchAssistants}
+      />
+    </motion.div>
   )
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { markdownSpacingTokens, mobileTypography } from '../../../theme/tokens'
 import {
   buildStreamdownMarkdownStyle,
   prepareNativeStreamdownMarkdown,
@@ -13,16 +14,45 @@ const mockColors = {
   primary: '#0a7',
   bgSurface: '#fff',
   bgSurfaceHighest: '#eee',
+  bgSurfaceNormal: '#EAECEF',
+  bgSurfaceHigh: '#F0F2F5',
   borderSubtle: '#ccc'
 } as const
 
 describe('buildStreamdownMarkdownStyle', () => {
-  it('keeps preview h4-h6 at or above body size', () => {
+  it('keeps preview headings on the mobile type scale', () => {
     const style = buildStreamdownMarkdownStyle(mockColors, 'preview')
-    expect(style.paragraph?.fontSize).toBe(15)
-    expect(style.h4?.fontSize).toBeGreaterThanOrEqual(16)
-    expect(style.h5?.fontSize).toBeGreaterThanOrEqual(15)
-    expect(style.h6?.fontSize).toBeGreaterThanOrEqual(15)
+    expect(style.paragraph?.fontSize).toBe(mobileTypography.body.fontSize)
+    expect(style.h1?.fontSize).toBe(mobileTypography.title.fontSize)
+    expect(style.h4?.fontSize).toBe(mobileTypography.primary.fontSize)
+    expect(style.h5?.fontSize).toBe(mobileTypography.body.fontSize)
+    expect(style.h6?.fontSize).toBe(mobileTypography.body.fontSize)
+  })
+
+  it('uses editor code surfaces in preview', () => {
+    const style = buildStreamdownMarkdownStyle(mockColors, 'preview')
+    expect(style.code?.backgroundColor).toBe('#EAECEF')
+    expect(style.code?.fontSize).toBe(mobileTypography.body.fontSize)
+    expect(style.codeBlock?.backgroundColor).toBe('#EAECEF')
+    expect(style.codeBlock?.fontSize).toBe(mobileTypography.body.fontSize)
+  })
+
+  it('provides comfortable paragraph spacing in chat and ancillary modes', () => {
+    const chatStyle = buildStreamdownMarkdownStyle(mockColors, 'chat')
+    expect(chatStyle.paragraph?.marginBottom).toBe(markdownSpacingTokens.paragraph)
+    const ancillaryStyle = buildStreamdownMarkdownStyle(mockColors, 'ancillary')
+    expect(ancillaryStyle.paragraph?.marginBottom).toBe(markdownSpacingTokens.paragraph)
+    const previewStyle = buildStreamdownMarkdownStyle(mockColors, 'preview')
+    expect(previewStyle.paragraph?.marginBottom).toBe(markdownSpacingTokens.paragraphPreview)
+  })
+
+  it('does not use harsh bgSurfaceHighest for chat text surfaces', () => {
+    const chatStyle = buildStreamdownMarkdownStyle(mockColors, 'chat')
+    expect(chatStyle.code?.backgroundColor).not.toBe(mockColors.bgSurfaceHighest)
+    expect(chatStyle.codeBlock?.backgroundColor).not.toBe(mockColors.bgSurfaceHighest)
+    expect(chatStyle.blockquote?.backgroundColor).not.toBe(mockColors.bgSurfaceHighest)
+    expect(chatStyle.table?.headerBackgroundColor).not.toBe(mockColors.bgSurfaceHighest)
+    expect(chatStyle.math?.backgroundColor).not.toBe(mockColors.bgSurfaceHighest)
   })
 })
 

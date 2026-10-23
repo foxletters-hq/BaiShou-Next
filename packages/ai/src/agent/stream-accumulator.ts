@@ -1,4 +1,3 @@
-import { TextStreamPart } from 'ai'
 import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
 
 export interface ToolCallSnapshot {
@@ -19,9 +18,29 @@ export interface StreamTokenUsage {
   cacheWriteInputTokens: number
 }
 
+/** 流式时间线片段：按发生顺序保留 reasoning / tool / text */
+export type StreamTimelineItem =
+  | { kind: 'reasoning'; text: string }
+  | { kind: 'text'; text: string }
+  | {
+      kind: 'tool'
+      callId: string
+      name: string
+      arguments: string
+      result?: unknown
+      status: 'running' | 'completed' | 'failed'
+      startTime?: number
+      durationMs?: number
+    }
+
 function readNumber(value: unknown): number {
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function readToolCallId(part: Record<string, unknown>): string {
+  const value = part.toolCallId ?? part.id
+  return value == null ? '' : String(value).trim()
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -51,7 +70,10 @@ export function extractCacheUsage(
     details?.cacheReadTokens ??
       usage?.cachedInputTokens ??
       usage?.cacheReadInputTokens ??
+      usage?.prompt_cache_hit_tokens ??
+      usage?.promptCacheHitTokens ??
       asRecord(usage?.promptTokensDetails)?.cachedTokens ??
+      asRecord(usage?.promptTokensDetails)?.cached_tokens ??
       asRecord(usage?.inputTokensDetails)?.cachedTokens ??
       raw?.cache_read_input_tokens ??
       anthropic?.cacheReadInputTokens ??
@@ -77,35 +99,67 @@ export function extractCacheUsage(
 }
 
 export class StreamAccumulator {
-  private _textBuffer: string = ''
-  private _reasoningBuffer: string = ''
+  private _timeline: StreamTimelineItem[] = []
+  private _textCache: string | null = null
+  private _sanitizedTextCache: string | null = null
+  private _reasoningCache: string | null = null
 
   private _inputTokens: number = 0
   private _outputTokens: number = 0
   private _cacheReadInputTokens: number = 0
   private _cacheWriteInputTokens: number = 0
 
-  private _toolCalls: Map<string, ToolCallSnapshot> = new Map()
-  private _toolResults: Map<string, ToolResultSnapshot> = new Map()
+  get timeline(): readonly StreamTimelineItem[] {
+    return this._timeline
+  }
 
   get text(): string {
-    return this._textBuffer
+    if (this._textCache !== null) return this._textCache
+    this._textCache = this._timeline
+      .filter((item): item is Extract<StreamTimelineItem, { kind: 'text' }> => item.kind === 'text')
+      .map((item) => item.text)
+      .join('')
+    return this._textCache
   }
 
   get sanitizedText(): string {
-    return sanitizeAssistantGeneratedText(this._textBuffer)
+    if (this._sanitizedTextCache !== null) return this._sanitizedTextCache
+    this._sanitizedTextCache = sanitizeAssistantGeneratedText(this.text)
+    return this._sanitizedTextCache
   }
 
   get reasoning(): string {
-    return this._reasoningBuffer
+    if (this._reasoningCache !== null) return this._reasoningCache
+    this._reasoningCache = this._timeline
+      .filter(
+        (item): item is Extract<StreamTimelineItem, { kind: 'reasoning' }> =>
+          item.kind === 'reasoning'
+      )
+      .map((item) => item.text)
+      .join('\n')
+    return this._reasoningCache
   }
 
   get toolCalls(): ToolCallSnapshot[] {
-    return Array.from(this._toolCalls.values())
+    return this._timeline
+      .filter((item): item is Extract<StreamTimelineItem, { kind: 'tool' }> => item.kind === 'tool')
+      .map((item) => ({
+        callId: item.callId,
+        name: item.name,
+        arguments: item.arguments
+      }))
   }
 
   get toolResults(): ToolResultSnapshot[] {
-    return Array.from(this._toolResults.values())
+    return this._timeline
+      .filter(
+        (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
+          item.kind === 'tool' && item.result !== undefined
+      )
+      .map((item) => ({
+        callId: item.callId,
+        result: item.result
+      }))
   }
 
   get usage(): StreamTokenUsage {
@@ -117,54 +171,59 @@ export class StreamAccumulator {
     }
   }
 
-  add(part: TextStreamPart<any>): void {
+  add(part: unknown): void {
     const p = part as Record<string, unknown>
     switch (p.type) {
+      case 'tool-input-start': {
+        this.upsertToolStart(p, { argumentsIfMissing: '{}' })
+        break
+      }
+
       case 'text-delta': {
-        if (p.textDelta) {
-          this._textBuffer += String(p.textDelta)
-        } else if (p.text) {
-          this._textBuffer += String(p.text)
-        }
+        const delta =
+          p.textDelta != null ? String(p.textDelta) : p.text != null ? String(p.text) : ''
+        if (delta) this.appendText(delta)
         break
       }
 
       case 'reasoning-delta': {
-        if (p.textDelta) {
-          this._reasoningBuffer += String(p.textDelta)
-        } else if (p.text) {
-          this._reasoningBuffer += String(p.text)
-        }
+        const delta =
+          p.textDelta != null ? String(p.textDelta) : p.text != null ? String(p.text) : ''
+        if (delta) this.appendReasoning(delta)
         break
       }
 
       case 'tool-call': {
-        const toolName = String(p.toolName ?? p.name ?? '').trim()
-        if (p.toolCallId && toolName) {
-          const legacyArgs =
-            p.args ?? (p.providerMetadata as Record<string, unknown> | undefined)?.raw
-          const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
-          const inputArgs =
-            typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? rawInput ?? {})
-
-          this._toolCalls.set(String(p.toolCallId), {
-            callId: String(p.toolCallId),
-            name: toolName,
-            arguments: inputArgs
-          })
-        }
+        this.upsertToolStart(p)
         break
       }
 
       case 'tool-result': {
-        if (p.toolCallId && this._toolCalls.has(String(p.toolCallId))) {
-          const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
-          const res = p.output ?? p.result ?? raw
-          this._toolResults.set(String(p.toolCallId), {
-            callId: String(p.toolCallId),
-            result: res
-          })
+        const callId = readToolCallId(p)
+        if (!callId) break
+        const tool = this.findTool(callId)
+        const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+        const result = p.output ?? p.result ?? raw
+        if (tool) {
+          tool.result = result
+          tool.status = 'completed'
+          if (tool.startTime != null) {
+            tool.durationMs = Math.max(0, Date.now() - tool.startTime)
+          }
+          break
         }
+        const toolName = String(p.toolName ?? p.name ?? '').trim()
+        if (!toolName) break
+        this._timeline.push({
+          kind: 'tool',
+          callId,
+          name: toolName,
+          arguments: '{}',
+          result,
+          status: 'completed',
+          startTime: Date.now(),
+          durationMs: 0
+        })
         break
       }
 
@@ -203,6 +262,70 @@ export class StreamAccumulator {
         break
       }
     }
+  }
+
+  private findTool(callId: string): Extract<StreamTimelineItem, { kind: 'tool' }> | undefined {
+    return this._timeline.find(
+      (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
+        item.kind === 'tool' && item.callId === callId
+    )
+  }
+
+  private upsertToolStart(
+    part: Record<string, unknown>,
+    extras?: { argumentsIfMissing?: string }
+  ): void {
+    const callId = readToolCallId(part)
+    const toolName = String(part.toolName ?? part.name ?? '').trim()
+    if (!callId || !toolName) return
+
+    const legacyArgs =
+      part.args ?? (part.providerMetadata as Record<string, unknown> | undefined)?.raw
+    const rawInput = (legacyArgs as { input?: unknown } | undefined)?.input
+    const hasInput = part.input !== undefined || rawInput !== undefined || part.args !== undefined
+    const inputArgs = hasInput
+      ? typeof part.input === 'string'
+        ? part.input
+        : JSON.stringify(part.input ?? rawInput ?? part.args ?? {})
+      : extras?.argumentsIfMissing
+
+    const existing = this.findTool(callId)
+    if (existing) {
+      if (inputArgs != null) existing.arguments = inputArgs
+      return
+    }
+
+    this._timeline.push({
+      kind: 'tool',
+      callId,
+      name: toolName,
+      arguments: inputArgs ?? '{}',
+      status: 'running',
+      startTime: Date.now()
+    })
+  }
+
+  private appendReasoning(delta: string): void {
+    this._reasoningCache = null
+    const last = this._timeline[this._timeline.length - 1]
+    if (last?.kind === 'reasoning') {
+      last.text += delta
+      return
+    }
+    this._timeline.push({ kind: 'reasoning', text: delta })
+  }
+
+  private appendText(delta: string): void {
+    if (this._textCache !== null) {
+      this._textCache += delta
+    }
+    this._sanitizedTextCache = null
+    const last = this._timeline[this._timeline.length - 1]
+    if (last?.kind === 'text') {
+      last.text += delta
+      return
+    }
+    this._timeline.push({ kind: 'text', text: delta })
   }
 
   private ingestUsage(

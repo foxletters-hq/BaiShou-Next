@@ -1,26 +1,20 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView
-} from 'react-native'
-import { NotebookText, Folder } from 'lucide-react-native'
+import { View, ActivityIndicator, RefreshControl, ScrollView } from 'react-native'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
+import { SegmentedContent, SegmentedControl } from '../SegmentedControl'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
 import { SessionAttachmentPane } from './SessionAttachmentPane'
 import { DiaryAttachmentPane } from './DiaryAttachmentPane'
+import { EmojiAttachmentPane } from './EmojiAttachmentPane'
 
 export type {
   AttachmentFileItem,
   SessionAttachmentGroup,
   DiaryAttachmentFileItem,
+  EmojiAttachmentListItem,
   AttachmentManagementViewProps
 } from './attachment-management.types'
 
@@ -42,55 +36,16 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   return (
     <View style={[styles.container, style]} {...rest}>
-      <View style={[styles.mainTabNav, { backgroundColor: colors.bgSurface, borderRadius: 10 }]}>
-        <View style={styles.mainTabs}>
-          <TouchableOpacity
-            style={[
-              styles.mainTabItem,
-              vm.activePane === 'diary' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => vm.setActivePane('diary')}
-          >
-            <NotebookText
-              size={16}
-              color={vm.activePane === 'diary' ? colors.textOnPrimary : colors.textSecondary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
-            <Text
-              style={[
-                styles.mainTabText,
-                {
-                  color: vm.activePane === 'diary' ? colors.textOnPrimary : colors.textPrimary
-                }
-              ]}
-            >
-              {vm.t('settings.attachment_pane_diary', '日记附件')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.mainTabItem,
-              vm.activePane === 'session' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => vm.setActivePane('session')}
-          >
-            <Folder
-              size={16}
-              color={vm.activePane === 'session' ? colors.textOnPrimary : colors.textSecondary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
-            <Text
-              style={[
-                styles.mainTabText,
-                {
-                  color: vm.activePane === 'session' ? colors.textOnPrimary : colors.textPrimary
-                }
-              ]}
-            >
-              {vm.t('settings.attachment_pane_session', 'AI 会话附件')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.mainTabNav}>
+        <SegmentedControl
+          value={vm.activePane}
+          options={[
+            { value: 'diary', label: vm.t('settings.attachment_pane_diary', '日记附件') },
+            { value: 'session', label: vm.t('settings.attachment_pane_session', 'AI 会话附件') },
+            { value: 'emoji', label: vm.t('settings.attachment_pane_emoji', '表情包附件') }
+          ]}
+          onChange={vm.setActivePane}
+        />
       </View>
 
       {isLoading ? (
@@ -106,11 +61,15 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
           }
           keyboardShouldPersistTaps="handled"
         >
-          {vm.activePane === 'diary' ? (
-            <DiaryAttachmentPane vm={vm} />
-          ) : (
-            <SessionAttachmentPane vm={vm} />
-          )}
+          <SegmentedContent value={vm.activePane}>
+            {vm.activePane === 'diary' ? (
+              <DiaryAttachmentPane vm={vm} />
+            ) : vm.activePane === 'session' ? (
+              <SessionAttachmentPane vm={vm} />
+            ) : (
+              <EmojiAttachmentPane vm={vm} />
+            )}
+          </SegmentedContent>
         </ScrollView>
       )}
 

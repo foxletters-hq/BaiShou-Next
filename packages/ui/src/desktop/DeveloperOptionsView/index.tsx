@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { Suspense, lazy, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
@@ -7,9 +7,13 @@ import {
   Database,
   FlaskConical,
   GalleryHorizontalEnd,
+  LayoutGrid,
   MessageCircle,
   Trash2
 } from 'lucide-react'
+import { settingsTypography, sharedTokens } from '../../theme/tokens'
+
+const DeveloperIconGallery = lazy(() => import('./DeveloperIconGallery'))
 
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
@@ -31,7 +35,16 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
   const [isClearingAgent, setIsClearingAgent] = useState(false)
   const [isInsertingCompressionTest, setIsInsertingCompressionTest] = useState(false)
+  const [page, setPage] = useState<'menu' | 'icons'>('menu')
   const toast = useToast()
+
+  if (page === 'icons') {
+    return (
+      <Suspense fallback={null}>
+        <DeveloperIconGallery onBack={() => setPage('menu')} />
+      </Suspense>
+    )
+  }
 
   const handleLoadDemoData = async () => {
     const confirmed = await confirm(
@@ -148,8 +161,49 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
   return (
     <div style={{ padding: '24px' }}>
+      <div
+        className="glass-panel-card"
+        style={{ padding: 0, marginBottom: sharedTokens.spacing.md }}
+      >
+        <div
+          className="settings-action-item"
+          onClick={() => setPage('icons')}
+          style={{
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <LayoutGrid
+            size={24}
+            style={{
+              marginRight: sharedTokens.spacing.md,
+              color: 'var(--color-primary)'
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
+              {t('developer.icon_gallery', '图标参考')}
+            </div>
+            <div
+              style={{ fontSize: settingsTypography.desc.fontSize, color: 'var(--text-secondary)' }}
+            >
+              {t(
+                'developer.icon_gallery_desc',
+                '顶部是软件已使用的图标，下面按分组展示全部 lucide 图标。'
+              )}
+            </div>
+          </div>
+          <ChevronRight size={24} style={{ opacity: 0.5 }} />
+        </div>
+      </div>
+
       {onOpenOnboarding ? (
-        <div className="glass-panel-card" style={{ padding: 0, marginBottom: 16 }}>
+        <div
+          className="glass-panel-card"
+          style={{ padding: 0, marginBottom: sharedTokens.spacing.md }}
+        >
           <div
             className="settings-action-item"
             onClick={onOpenOnboarding}
@@ -163,15 +217,20 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             <GalleryHorizontalEnd
               size={24}
               style={{
-                marginRight: 16,
+                marginRight: sharedTokens.spacing.md,
                 color: 'var(--color-primary)'
               }}
             />
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+              <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
                 {t('developer.open_onboarding', '打开开屏引导')}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+              <div
+                style={{
+                  fontSize: settingsTypography.desc.fontSize,
+                  color: 'var(--text-secondary)'
+                }}
+              >
                 {t('developer.open_onboarding_desc', '跳转到首次启动引导页，用于预览和调试。')}
               </div>
             </div>
@@ -182,7 +241,11 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
       <div
         className="glass-panel-card"
-        style={{ padding: 0, border: '1px solid rgba(91, 168, 245, 0.35)', marginBottom: 16 }}
+        style={{
+          padding: 0,
+          border: '1px solid rgba(var(--color-primary-rgb), 0.35)',
+          marginBottom: sharedTokens.spacing.md
+        }}
       >
         <div
           className="settings-action-item"
@@ -198,15 +261,17 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           <GalleryHorizontalEnd
             size={24}
             style={{
-              marginRight: 16,
+              marginRight: sharedTokens.spacing.md,
               color: 'var(--color-primary)'
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
               {t('developer.open_onboarding', '预览开屏引导')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div
+              style={{ fontSize: settingsTypography.desc.fontSize, color: 'var(--text-secondary)' }}
+            >
               {t(
                 'developer.open_onboarding_desc',
                 '跳转到首次启动引导页，用于检查文案与排版（不会修改已有数据）。'
@@ -234,15 +299,17 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           <FlaskConical
             size={24}
             style={{
-              marginRight: 16,
-              color: 'var(--color-on-surface)'
+              marginRight: sharedTokens.spacing.md,
+              color: 'var(--text-primary)'
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
               {t('developer.load_demo_data', '创建演示工作空间')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div
+              style={{ fontSize: settingsTypography.desc.fontSize, color: 'var(--text-secondary)' }}
+            >
               {t(
                 'developer.load_demo_desc',
                 '新建独立工作空间并写入 66 条日记与 17 篇总结（脱敏演示数据）。'
@@ -278,15 +345,17 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
           <MessageCircle
             size={24}
             style={{
-              marginRight: 16,
+              marginRight: sharedTokens.spacing.md,
               color: 'var(--color-primary)'
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: settingsTypography.section.fontSize }}>
               {t('developer.insert_compression_test', '注入压缩测试对话')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div
+              style={{ fontSize: settingsTypography.desc.fontSize, color: 'var(--text-secondary)' }}
+            >
               {t(
                 'developer.insert_compression_test_desc',
                 '新建一条含 15 轮、约 3 万 tokens 的模拟 AI 对话（含工具调用），用于测试滚动压缩。'
@@ -319,12 +388,18 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isClearing ? 'default' : 'pointer'
           }}
         >
-          <Trash2 size={24} style={{ marginRight: 16, color: '#f44336' }} />
+          <Trash2 size={24} style={{ marginRight: sharedTokens.spacing.md, color: '#f44336' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15, color: '#f44336' }}>
+            <div
+              style={{
+                fontWeight: '600',
+                fontSize: settingsTypography.section.fontSize,
+                color: '#f44336'
+              }}
+            >
               {t('developer.clear_all_data', '清理所有数据 (核弹级)')}
             </div>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>
+            <div style={{ fontSize: settingsTypography.desc.fontSize, opacity: 0.8 }}>
               {t(
                 'developer.clear_all_desc',
                 '彻底清空应用的所有数据，包括数据库、资源文件和全部应用级缓存，不可恢复。'
@@ -353,12 +428,18 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             cursor: isClearingAgent ? 'default' : 'pointer'
           }}
         >
-          <Database size={24} style={{ marginRight: 16, color: '#ff9800' }} />
+          <Database size={24} style={{ marginRight: sharedTokens.spacing.md, color: '#ff9800' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15, color: '#ff9800' }}>
+            <div
+              style={{
+                fontWeight: '600',
+                fontSize: settingsTypography.section.fontSize,
+                color: '#ff9800'
+              }}
+            >
               {t('developer.clear_agent_db', '清理 Agent 数据库')}
             </div>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>
+            <div style={{ fontSize: settingsTypography.desc.fontSize, opacity: 0.8 }}>
               {t(
                 'developer.clear_agent_db_desc',
                 '删除 Agent 会话、伙伴、消息数据（重启后自动重建）'

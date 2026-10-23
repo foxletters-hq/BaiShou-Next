@@ -1,4 +1,4 @@
-import { logger } from '@baishou/shared'
+import { logger, resolveGitCommitMessage } from '@baishou/shared'
 import type { GitCommit, GitSyncConfig } from '@baishou/shared'
 import { GitCommitError, GitConfigError } from './sync.errors'
 import { GitSyncWorkspaceMixin } from './git-sync.workspace'
@@ -102,11 +102,12 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个已暂存文件`)
       try {
         await this.ensureAuthorIdentity(git)
-        const result = await git.commit(message)
+        const finalMessage = resolveGitCommitMessage(message)
+        const result = await git.commit(finalMessage)
         const files = await this.getCommittedFileNames(git, result.commit)
         return {
           hash: result.commit,
-          message,
+          message: finalMessage,
           date: new Date(),
           files
         }
@@ -134,12 +135,13 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
 
       logger.info(`[GitSync] 提交 ${stagedPaths.length} 个文件`)
       await this.ensureAuthorIdentity(git)
-      const result = await git.commit(message)
+      const finalMessage = resolveGitCommitMessage(message)
+      const result = await git.commit(finalMessage)
       const files = await this.getCommittedFileNames(git, result.commit)
 
       return {
         hash: result.commit,
-        message,
+        message: finalMessage,
         date: new Date(),
         files
       }
@@ -155,11 +157,12 @@ export abstract class GitSyncCommitMixin extends GitSyncWorkspaceMixin {
         const git = await this.ensureGit()
         await git.add(files)
         await this.ensureAuthorIdentity(git)
-        const result = await git.commit(message)
+        const finalMessage = resolveGitCommitMessage(message)
+        const result = await git.commit(finalMessage)
 
         return {
           hash: result.commit,
-          message,
+          message: finalMessage,
           date: new Date(),
           files
         }

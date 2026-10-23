@@ -148,6 +148,34 @@ describe('threeWayMerge', () => {
     expect(decision?.hash).toBe('remote-hash')
   })
 
+  it('prefers remote protected paths on first sync even when local mtime is newer', () => {
+    const protectedPath = 'Personal/.baishou/vault.json'
+    const localEntry = makeEntry({ hash: 'legacy-id', lastModified: 9000 })
+    const remoteEntry = makeEntry({ hash: 'stable-id', lastModified: 1000 })
+    const local = makeManifest({ [protectedPath]: localEntry })
+    const remote = makeManifest({ [protectedPath]: remoteEntry })
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === protectedPath)
+
+    expect(decision?.type).toBe('conflict-resolved')
+    expect(decision?.direction).toBe('download')
+    expect(decision?.hash).toBe('stable-id')
+  })
+
+  it('keeps legacy vault settings remote entry when local was migrated', () => {
+    const legacyPath = 'Personal/.baishou/settings/user_profile.json'
+    const entry = makeEntry({ hash: 'legacy-settings' })
+    const local = makeManifest({})
+    const remote = makeManifest({ [legacyPath]: entry })
+    const ancestor = makeManifest({ [legacyPath]: entry })
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+
+    expect(decisions.some((d) => d.filePath === legacyPath)).toBe(false)
+  })
+
   it('should skip when both local and remote have same content (empty ancestor)', () => {
     const entry = makeEntry({ hash: 'same-hash' })
     const local = makeManifest({ [filePath]: entry })
@@ -204,6 +232,17 @@ describe('threeWayMerge', () => {
     const decision = decisions.find((d) => d.filePath === filePath)
 
     expect(decision?.type).toBe('skip')
+  })
+
+  it('does not download or upload jsonl shards.manifest.json', () => {
+    const manifestPath = 'Personal/Graph/nodes/shards.manifest.json'
+    const entry = makeEntry({ hash: 'idx-hash' })
+    const local = makeManifest({})
+    const remote = makeManifest({ [manifestPath]: entry })
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    expect(decisions.find((d) => d.filePath === manifestPath)).toBeUndefined()
   })
 
   it('should schedule delete-remote for sqlite runtime files present on remote', () => {

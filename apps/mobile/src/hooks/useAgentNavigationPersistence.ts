@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { useAgentNavigationStore } from '@baishou/store'
 import type { MobileAssistantUi } from '../lib/mobile-assistant.util'
+import { loadMobileSessionInActiveVault } from '../utils/mobile-session-vault.util'
 import {
   readAgentNavigationSnapshot,
   writeAgentNavigationSnapshot
@@ -12,19 +13,25 @@ import {
   shouldThrottleNavigationReconcile
 } from '../lib/agent-navigation-restore.util'
 
-type SessionRow = { id: string; assistantId?: string | null }
+type SessionRow = { id: string; assistantId?: string | null; vaultId?: string | null }
 
 type Services = {
   pathService: { getActiveVaultNameForContext: () => Promise<string> }
   sessionManager: {
     getSessionById: (sessionId: string) => Promise<SessionRow | null>
+    notifySessionMutated?: (sessionId: string) => void
   }
+  sessionRepo?: {
+    updateSessionVaultId?: (sessionId: string, vaultId: string) => Promise<void>
+  }
+  vaultService?: { getActiveVault?: () => { id?: string; name?: string } | null }
 }
 
 type UseAgentNavigationPersistenceOptions = {
   dbReady: boolean
   vaultSwitching: boolean
   vaultRevision: number
+  restoreLastSessionOnReturn?: boolean
   services: Services | null
   assistants: MobileAssistantUi[]
   currentAssistant: MobileAssistantUi | null
@@ -38,19 +45,21 @@ type UseAgentNavigationPersistenceOptions = {
 
 const RECONCILE_THROTTLE_MS = 2000
 
-async function lookupSession(
-  sessionManager: Services['sessionManager'],
-  sessionId: string
-): Promise<SessionRow | null> {
-  const session = await sessionManager.getSessionById(sessionId)
+async function lookupSession(services: Services, sessionId: string): Promise<SessionRow | null> {
+  const session = await loadMobileSessionInActiveVault(services, sessionId)
   if (!session) return null
-  return { id: session.id, assistantId: session.assistantId ?? null }
+  return {
+    id: sessionId,
+    assistantId: (session as SessionRow).assistantId ?? null,
+    vaultId: session.vaultId
+  }
 }
 
 export function useAgentNavigationPersistence({
   dbReady,
   vaultSwitching,
   vaultRevision,
+  restoreLastSessionOnReturn = true,
   services,
   assistants,
   currentAssistant,
@@ -127,6 +136,10 @@ export function useAgentNavigationPersistence({
       initialRestoreDoneRef.current = true
       return
     }
+    if (!restoreLastSessionOnReturn) {
+      initialRestoreDoneRef.current = true
+      return
+    }
     if (assistants.length === 0) return
 
     let cancelled = false
@@ -148,7 +161,7 @@ export function useAgentNavigationPersistence({
         }
 
         if (saved.sessionId) {
-          const session = await lookupSession(services.sessionManager, saved.sessionId)
+          const session = await lookupSession(services, saved.sessionId)
           if (cancelled) return
           if (!session) {
             invalidateCurrentSession()
@@ -195,6 +208,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     navigationHydrationEpoch,
+    restoreLastSessionOnReturn,
     services,
     vaultSwitching
   ])
@@ -241,7 +255,7 @@ export function useAgentNavigationPersistence({
 
     let cancelled = false
     void (async () => {
-      const session = await lookupSession(services.sessionManager, currentSessionId)
+      const session = await lookupSession(services, currentSessionId)
       if (cancelled || !session) return
 
       const sessionAssistantId = session.assistantId ?? null
@@ -305,6 +319,7 @@ export function useAgentNavigationPersistence({
     }
 
     if (!currentSessionId) {
+      if (!restoreLastSessionOnReturn) return
       if (!saved.sessionId) return
       if (persistedSessionId == null) return
       if (assistants.length === 0) return
@@ -326,7 +341,7 @@ export function useAgentNavigationPersistence({
         }
       }
 
-      const session = await lookupSession(services.sessionManager, saved.sessionId)
+      const session = await lookupSession(services, saved.sessionId)
       if (!session) {
         invalidateCurrentSession()
         return
@@ -336,7 +351,7 @@ export function useAgentNavigationPersistence({
       return
     }
 
-    const session = await lookupSession(services.sessionManager, currentSessionId)
+    const session = await lookupSession(services, currentSessionId)
     if (!session) {
       invalidateCurrentSession()
       return
@@ -366,6 +381,7 @@ export function useAgentNavigationPersistence({
     handleSelectSession,
     loadSessions,
     persistSnapshot,
+    restoreLastSessionOnReturn,
     services,
     vaultSwitching
   ])

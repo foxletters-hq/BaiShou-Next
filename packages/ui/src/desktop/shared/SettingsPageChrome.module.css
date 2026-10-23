@@ -1,0 +1,125 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  /* 规范灰底 --bg-app，白卡浮在上面 */
+  background: var(--bg-app);
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.headerRow,
+.headerRowStacked {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md-tight);
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 var(--spacing-xl);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 20;
+}
+
+.headerRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.headerRowStacked {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
+  line-height: 28px;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.2px;
+  min-width: 0;
+  font-family: var(--font-family);
+}
+
+.titleAccessory {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  height: 28px;
+  margin-left: auto;
+}
+
+/* 右侧控件不得撑高顶栏；标题旁仍固定成图标方钮，最右侧允许文字按钮按内容变宽 */
+.trailing :is(button, a),
+.titleAccessory :is(button, a) {
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.titleAccessory :is(button, a) {
+  width: 28px;
+}
+
+.trailing :is(button, a) {
+  width: auto;
+  min-width: 28px;
+}
+
+.title,
+.titleAccessory,
+.trailing {
+  max-height: 100%;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--settings-page-scroll-padding-top, 88px) var(--spacing-xl) var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
+  box-sizing: border-box;
+  container-type: inline-size;
+  container-name: settings-page-scroll;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: var(--radius-xs);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

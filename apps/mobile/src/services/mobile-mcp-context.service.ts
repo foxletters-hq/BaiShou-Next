@@ -1,11 +1,12 @@
 import type { AppDatabase } from '@baishou/database'
-import type { ToolContext, ToolDiarySearcher } from '@baishou/ai'
+import type { ToolContext, ToolDiarySearcher, IBaishouAgentGate } from '@baishou/ai'
 import {
   AIProviderRegistry,
   DatabaseAdapter,
   EmbeddingAdapter,
   MCP_EXTERNAL_SESSION_ID,
   MemoryDeduplicationServiceImpl,
+  createAutoApproveAgentGate,
   syncMcpToolUserConfig
 } from '@baishou/ai'
 import {
@@ -13,15 +14,22 @@ import {
   SqliteHybridSearchRepository,
   createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
-import type { SettingsManagerService } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import type { SettingsManagerService, VaultService } from '@baishou/core-mobile'
+import {
+  deriveLegacyVaultId,
+  isConfiguredDialogueModelId,
+  isConfiguredProviderId,
+  logger
+} from '@baishou/shared'
 import type { MobileStoragePathService } from './path.service'
 import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
 
 export interface MobileMcpToolContextDeps {
   settingsManager: SettingsManagerService
   pathService: MobileStoragePathService
+  vaultService?: VaultService
   getDiarySearcher: () => ToolDiarySearcher | undefined
+  getAgentGate?: () => IBaishouAgentGate | undefined
   drizzleDb: unknown
   webSearchResultFetcher: (url: string) => Promise<string>
   fetchSearchPage: (url: string) => Promise<string>
@@ -30,7 +38,7 @@ export interface MobileMcpToolContextDeps {
 /** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
 let mobileMcpToolContextCache: {
-  vaultName: string
+  vaultId: string
   context: ToolContext
   expiresAt: number
 } | null = null
@@ -39,44 +47,88 @@ export function invalidateMobileMcpToolContextCache(): void {
   mobileMcpToolContextCache = null
 }
 
-/** 仅用于设置页 tools/list 展示：不依赖 Agent 数据库，避免 DB 未就绪时列表失败 */
+import type { McpServerConfig } from '@baishou/shared'
+
 export async function buildMobileMcpToolListContext(
-  deps: Pick<MobileMcpToolContextDeps, 'settingsManager' | 'pathService'>
+  deps: Pick<MobileMcpToolContextDeps, 'settingsManager' | 'pathService' | 'vaultService'>
 ): Promise<ToolContext> {
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
-  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
+  const vaultId = await resolveMobileActiveVaultId(deps)
+  const [userConfig, mcpConfig] = await Promise.all([
+    buildMobileStreamUserConfig(deps.settingsManager, true),
+    deps.settingsManager.get<McpServerConfig>('mcp_server_config').catch(() => null)
+  ])
+  const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
+    ? mcpConfig.disabledToolIds
+    : []
   return {
     sessionId: MCP_EXTERNAL_SESSION_ID,
+    vaultId,
     vaultName,
-    userConfig
+    userConfig: {
+      ...userConfig,
+      mcpDisabledToolIds
+    }
   }
+}
+
+async function resolveMobileActiveVaultId(
+  deps: Pick<MobileMcpToolContextDeps, 'pathService' | 'vaultService'>
+): Promise<string> {
+  try {
+    if (deps.vaultService) {
+      await deps.vaultService.initRegistry()
+      const active = deps.vaultService.getActiveVault()
+      if (active?.id) return active.id
+    }
+  } catch {
+    // fallback below
+  }
+  const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+  return deriveLegacyVaultId(vaultName)
 }
 
 export async function buildMobileMcpToolContext(
   deps: MobileMcpToolContextDeps
 ): Promise<ToolContext> {
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+  const vaultId = await resolveMobileActiveVaultId(deps)
   const now = Date.now()
 
   if (
     mobileMcpToolContextCache &&
-    mobileMcpToolContextCache.vaultName === vaultName &&
+    mobileMcpToolContextCache.vaultId === vaultId &&
     mobileMcpToolContextCache.expiresAt > now
   ) {
     return mobileMcpToolContextCache.context
   }
 
-  const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
+  const [baseUserConfig, mcpConfig] = await Promise.all([
+    buildMobileStreamUserConfig(deps.settingsManager, true),
+    deps.settingsManager.get<McpServerConfig>('mcp_server_config').catch(() => null)
+  ])
+  const mcpDisabledToolIds = Array.isArray(mcpConfig?.disabledToolIds)
+    ? mcpConfig.disabledToolIds
+    : []
+  const baseAgentGate = deps.getAgentGate?.()
+  // 外部 MCP 客户端调用不在应用内弹确认：写/删除直接执行，仅保留 Deny 规则。
+  const agentGate = baseAgentGate ? createAutoApproveAgentGate(baseAgentGate) : baseAgentGate
+  const userConfig = {
+    ...baseUserConfig,
+    mcpDisabledToolIds
+  }
 
   const drizzleDb = deps.drizzleDb as AppDatabase | undefined
   if (!drizzleDb) {
     return {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate
     }
   }
 
@@ -95,7 +147,7 @@ export async function buildMobileMcpToolContext(
     let embeddingProvider: ReturnType<AIProviderRegistry['getOrUpdateProvider']> | undefined
 
     if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
-      const embConfig = providers.find((p) => p.id === embeddingProviderId)
+      const embConfig = providers.find((p) => p.id === embeddingProviderId && p.isEnabled !== false)
       if (embConfig) {
         embeddingProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(embConfig)
         embAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
@@ -103,17 +155,27 @@ export async function buildMobileMcpToolContext(
     }
 
     let dedupService: MemoryDeduplicationServiceImpl | undefined
-    if (embAdapter && embeddingProvider && embeddingModelId) {
-      dedupService = new MemoryDeduplicationServiceImpl(
-        embAdapter,
-        dbAdapter,
-        embeddingProvider,
-        embeddingModelId
-      )
+    if (embAdapter && isConfiguredProviderId(globalModels?.globalDialogueProviderId)) {
+      const dialogueModelId = globalModels?.globalDialogueModelId
+      const dialogueConfig = isConfiguredDialogueModelId(dialogueModelId)
+        ? providers.find(
+            (row) => row.id === globalModels.globalDialogueProviderId && row.isEnabled !== false
+          )
+        : undefined
+      if (dialogueConfig && dialogueModelId) {
+        const chatProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(dialogueConfig)
+        dedupService = new MemoryDeduplicationServiceImpl(
+          embAdapter,
+          dbAdapter,
+          chatProvider,
+          dialogueModelId.trim()
+        )
+      }
     }
 
     const context = syncMcpToolUserConfig({
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
@@ -123,11 +185,16 @@ export async function buildMobileMcpToolContext(
       summaryReader: dbAdapter,
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate,
+      skillsReader: (await import('./mobile-agent-skills.service')).createMobileSkillsReader(),
+      rawDataSourceManager:
+        (await import('./mobile-raw-data-source.runtime')).getMobileRawDataSourceManager() ??
+        undefined
     })
 
     mobileMcpToolContextCache = {
-      vaultName,
+      vaultId,
       context,
       expiresAt: now + MCP_CONTEXT_CACHE_TTL_MS
     }
@@ -140,11 +207,13 @@ export async function buildMobileMcpToolContext(
     )
     return {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
       webSearchResultFetcher: deps.webSearchResultFetcher,
-      fetchSearchPage: deps.fetchSearchPage
+      fetchSearchPage: deps.fetchSearchPage,
+      agentGate
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { IEmbeddingCallback } from '@baishou/core-mobile'
 import {
   formatAiApiCallError,
+  hashEmbedSourceContent,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
@@ -9,12 +10,17 @@ import {
   type RagConfig
 } from '@baishou/shared'
 
+import type { AppDatabase } from '@baishou/database'
 import { embedDiaryEntry, type MobileRagServiceDeps } from './mobile-rag.service'
+import { resolveEmbeddingAdapter } from './mobile-rag-core.helpers'
 
 const failureListeners = new Set<(message?: string) => void>()
 let embeddingDeps: MobileRagServiceDeps | null = null
 
-export function setMobileDiaryEmbeddingDeps(deps: MobileRagServiceDeps | null): void {
+export function setMobileDiaryEmbeddingDeps(
+  deps: MobileRagServiceDeps | null,
+  _options?: { agentDb?: AppDatabase | null }
+): void {
   embeddingDeps = deps
 }
 
@@ -42,32 +48,48 @@ export function notifyDiaryEmbedFailure(message?: string): void {
 const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
     const deps = embeddingDeps
-    if (!deps) return
+    if (!deps) return false
+
+    const contentHash = hashEmbedSourceContent(params.content)
 
     try {
-      const vaultName = deps.vaultScope
-        ? await deps.vaultScope.resolveActiveVaultName()
-        : 'Personal'
-      await embedDiaryEntry(deps, {
-        diaryId: params.diaryId,
-        content: params.content,
-        tags: params.tags,
-        date: params.date,
-        updatedAt: params.updatedAt,
-        vaultName
-      })
+      const ragConfig = await loadRagConfig(deps.settingsManager)
+      const adapter = await resolveEmbeddingAdapter(deps)
+
+      if (!isRagMemoryEnabled(ragConfig) || !adapter) {
+        return false
+      }
+
+      await embedDiaryEntry(
+        deps,
+        {
+          diaryId: params.diaryId,
+          content: params.content,
+          tags: params.tags,
+          date: params.date,
+          updatedAt: params.updatedAt,
+          vaultName: params.vaultName
+        },
+        { contentHash }
+      )
       const ragConfigAfter = await loadRagConfig(deps.settingsManager)
       if (hasRagDiaryEmbedFailure(ragConfigAfter)) {
         await deps.settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfigAfter))
       }
+      return true
     } catch (e) {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
       const ragConfig = await loadRagConfig(deps.settingsManager)
-      if (!isRagMemoryEnabled(ragConfig)) return
+      if (!isRagMemoryEnabled(ragConfig)) return false
       const message = formatAiApiCallError(e)
       await deps.settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
       notifyDiaryEmbedFailure(message)
+      return false
     }
+  },
+
+  async enqueueDiaryEmbed(_params) {
+    // diary_embed_jobs 已退休：待嵌入由账本检测，不再入队
   },
 
   async deleteEmbeddingsBySource(sourceType, sourceId) {

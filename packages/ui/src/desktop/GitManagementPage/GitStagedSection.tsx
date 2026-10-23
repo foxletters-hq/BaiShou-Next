@@ -1,13 +1,20 @@
 import React from 'react'
+import './GitManagementPage.css'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { getFileStatusIcon, isTextDiffablePath } from './git-management.utils'
 import { GitDiffViewer } from './GitDiffViewer'
 
 export interface GitStagedSectionProps {
   vm: GitManagementViewModel
+  inlineDiff?: boolean
+  activeFilePath?: string | null
 }
 
-export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
+export const GitStagedSection: React.FC<GitStagedSectionProps> = ({
+  vm,
+  inlineDiff = false,
+  activeFilePath
+}) => {
   const {
     t,
     isInitialized,
@@ -29,7 +36,7 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
       <div className="gmp-collapsible-header" onClick={() => toggleSection('staged')}>
         <span className="gmp-collapsible-arrow">{expandedSections.staged ? '▾' : '▸'}</span>
         <span className="gmp-collapsible-title">
-          {t('version_control.staged_changes', 'Staged Changes')}
+          {t('version_control.staged_changes', '已暂存')}
         </span>
         {stagedCount > 0 && <span className="gmp-collapsible-badge">{stagedCount}</span>}
         {stagedCount > 0 && (
@@ -53,10 +60,13 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
           ) : (
             gitStatus!.staged.map((file) => {
               const canDiff = isTextDiffablePath(file.path)
+              const isActive =
+                (expandedWorkingFile?.path === file.path && expandedWorkingFile.staged) ||
+                activeFilePath === file.path
               return (
                 <div key={file.path}>
                   <div
-                    className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''}`}
+                    className={`gmp-file-row ${canDiff ? 'gmp-file-row-clickable' : ''} ${isActive ? 'gmp-file-row-active' : ''}`}
                     onClick={canDiff ? () => handleViewWorkingDiff(file.path, true) : undefined}
                   >
                     <span className={`gmp-file-badge gmp-file-${file.stagedStatus}`}>
@@ -75,7 +85,8 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
                       </button>
                     </div>
                   </div>
-                  {expandedWorkingFile?.path === file.path &&
+                  {inlineDiff &&
+                    expandedWorkingFile?.path === file.path &&
                     expandedWorkingFile.staged &&
                     workingFileDiff && <GitDiffViewer diff={workingFileDiff} />}
                 </div>

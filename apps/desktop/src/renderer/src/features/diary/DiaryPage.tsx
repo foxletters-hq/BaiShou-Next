@@ -1,27 +1,51 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  useSyncExternalStore
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
+  EMPTY_PENDING_EMBED_COUNTS,
+  isRagEmbedFeatureConfigured,
   normalizeWeatherId,
   normalizeMoodIdForFilter,
   normalizeDiaryTags,
+  shouldShowPendingEmbed,
+  isStartupEmbedReminderEnabled,
+  shouldShowPendingEmbedReminder,
+  shouldShowPendingExtract,
   type WeatherId,
-  type MoodId
+  type MoodId,
+  type GlobalModelsConfig,
+  type PendingEmbedCounts,
+  type RagConfig
 } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
-import { useToast } from '@baishou/ui'
+import { useSettingsStore, getDefaultRagConfig } from '@baishou/store'
+import { useDialog, useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
+import { DiaryStatusBar } from './components/DiaryStatusBar'
+import { PendingEmbedNotice } from './components/PendingEmbedNotice'
+import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
+import { getCachedRagActiveState, subscribeRagRuntime } from '../settings/rag-runtime-cache'
+import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
+import { prefetchWorkbenchHome } from '../../lib/prefetch-workbench-home'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
+  const dialog = useDialog()
 
   // 搜索与月份状态（持久化到 sessionStorage）
   const [searchQuery, setSearchQuery] = useState(
@@ -87,9 +111,112 @@ export const DiaryPage: React.FC = () => {
   })
 
   const [todayEntry, setTodayEntry] = useState<DiaryEntry | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
   const gridScrollRef = useRef<HTMLDivElement>(null)
+  const [pendingGraphCount, setPendingGraphCount] = useState(0)
+  const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
+  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
+    EMPTY_PENDING_EMBED_COUNTS
+  )
+  const [graphConfigured, setGraphConfigured] = useState(false)
+  const [ragConfigured, setRagConfigured] = useState(false)
+  const [embedNotice, setEmbedNotice] = useState<{ count: number; needModel: boolean } | null>(null)
+  const ragState = useSyncExternalStore(
+    subscribeRagRuntime,
+    getCachedRagActiveState,
+    getCachedRagActiveState
+  )
+  const indexing = ragIndexingSnapshotFromState(ragState)
+
+  const refreshStatusBar = useCallback(async () => {
+    try {
+      const ragApi = (
+        window.api as {
+          rag?: {
+            getPendingEmbedCounts?: () => Promise<PendingEmbedCounts>
+            getUnindexedDiaryCount?: () => Promise<number>
+            getEmbedJobsPendingCount?: () => Promise<number>
+          }
+        }
+      ).rag
+      const [pending, embedCounts, globalModels, ragConfig] = await Promise.all([
+        window.api.graph.listPendingReextract().catch(() => []),
+        (ragApi?.getPendingEmbedCounts?.() ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)).catch(
+          () => EMPTY_PENDING_EMBED_COUNTS
+        ),
+        window.api.settings.getGlobalModels().catch(() => null),
+        window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>
+      ])
+      const counts =
+        embedCounts && typeof embedCounts === 'object' && 'total' in embedCounts
+          ? embedCounts
+          : EMPTY_PENDING_EMBED_COUNTS
+      setPendingGraphCount(Array.isArray(pending) ? pending.length : 0)
+      setPendingEmbedCount(counts.total)
+      setPendingEmbedParts(counts)
+      // 有待办就显示：模型/自称缺失时由目标页引导配置，避免底栏长期空白
+      setGraphConfigured(true)
+      const embeddingReady = isRagEmbedFeatureConfigured({
+        ragConfig: ragConfig as RagConfig | null,
+        globalModels: globalModels as GlobalModelsConfig | null
+      })
+      setRagConfigured(embeddingReady)
+      if (counts.total <= 0) {
+        setEmbedNotice(null)
+      } else if (
+        shouldShowPendingEmbedReminder(counts.total, {
+          enabled: isStartupEmbedReminderEnabled(ragConfig as RagConfig | null)
+        })
+      ) {
+        setEmbedNotice({ count: counts.total, needModel: !embeddingReady })
+      }
+    } catch {
+      setPendingGraphCount(0)
+      setPendingEmbedCount(0)
+      setPendingEmbedParts(EMPTY_PENDING_EMBED_COUNTS)
+      setGraphConfigured(false)
+      setRagConfigured(false)
+    }
+  }, [])
+
+  const diaryQuery = useMemo(
+    () => ({
+      selectedMonth,
+      searchQuery,
+      filterWeathers,
+      filterMoods,
+      filterFavorite,
+      page: currentPage,
+      pageSize
+    }),
+    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
+  )
+  const { entries, totalCount, loading, loadEntries, hasLoadedOnce } = useDiaryData(diaryQuery)
+  const storageIndexing = useStorageIndexing()
+
+  useEffect(() => {
+    if (!hasLoadedOnce) return
+    void refreshStatusBar()
+  }, [refreshStatusBar, hasLoadedOnce])
+
+  useEffect(() => {
+    if (!hasLoadedOnce) return
+    prefetchWorkbenchHome()
+  }, [hasLoadedOnce])
+
+  useEffect(() => {
+    if (!hasLoadedOnce) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshStatusBar()
+    }
+    const onFocus = () => void refreshStatusBar()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [refreshStatusBar, hasLoadedOnce])
 
   useEffect(() => {
     const api = (window as any).api
@@ -99,12 +226,23 @@ export const DiaryPage: React.FC = () => {
       if (event?.type === 'saved') {
         gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
       }
+      if (
+        event?.type === 'saved' ||
+        event?.type === 'embed-pending-changed' ||
+        event?.type === 'embed-failed' ||
+        event?.type === 'embed-failure-cleared' ||
+        event?.type === 'vault-resync-complete' ||
+        event?.type === 'indexing-complete'
+      ) {
+        if (!hasLoadedOnce) return
+        void refreshStatusBar()
+      }
     })
 
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [])
+  }, [refreshStatusBar, hasLoadedOnce])
 
   // sessionStorage 同步
   useEffect(() => {
@@ -142,21 +280,6 @@ export const DiaryPage: React.FC = () => {
     gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
   }, [currentPage])
 
-  const diaryQuery = useMemo(
-    () => ({
-      selectedMonth,
-      searchQuery,
-      filterWeathers,
-      filterMoods,
-      filterFavorite,
-      page: currentPage,
-      pageSize
-    }),
-    [selectedMonth, searchQuery, filterWeathers, filterMoods, filterFavorite, currentPage, pageSize]
-  )
-  const { entries, totalCount, loading, loadEntries } = useDiaryData(diaryQuery)
-  const storageIndexing = useStorageIndexing()
-
   // 页码越界时自动修正
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   useEffect(() => {
@@ -165,6 +288,7 @@ export const DiaryPage: React.FC = () => {
 
   // 获取今日日记（用于决定顶部按钮状态）
   useEffect(() => {
+    if (!hasLoadedOnce) return
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     ;(window as any).api?.diary
@@ -183,11 +307,11 @@ export const DiaryPage: React.FC = () => {
         })
       })
       .catch(() => setTodayEntry(null))
-  }, [loadEntries])
+  }, [loadEntries, hasLoadedOnce])
 
   // 获取当前月份的附件目录路径
   useEffect(() => {
-    if (!selectedMonth) return
+    if (!hasLoadedOnce || !selectedMonth) return
     const dateStr = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`
     ;(window as any).api?.diary
       ?.getAttachmentDir?.(dateStr)
@@ -195,7 +319,7 @@ export const DiaryPage: React.FC = () => {
         if (res?.success && res.path) setAttachmentBasePath(res.path)
       })
       .catch(() => {})
-  }, [selectedMonth])
+  }, [selectedMonth, hasLoadedOnce])
 
   const goToEditor = (dateStr: string) => {
     sessionStorage.setItem('desktop_last_nav', '/diary')
@@ -216,18 +340,35 @@ export const DiaryPage: React.FC = () => {
     navigate(`/diary/new?date=${dateStr}`)
   }
 
-  const performDelete = async () => {
-    if (deletingId === null) return
+  const handleDeleteEntry = async (id: number) => {
+    const ok = await dialog.confirm(
+      t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。'),
+      t('common.confirm_delete', '确认删除')
+    )
+    if (!ok) return
     try {
-      await window.api.diary.delete(deletingId)
+      await window.api.diary.delete(id)
       loadEntries()
-      setDeletingId(null)
       toast.showSuccess(t('diary.delete_success', '日记已删除'))
     } catch (e) {
       console.error('Delete failed', e)
       toast.showError(t('diary.delete_failed', '删除失败'))
     }
   }
+
+  const muteStartupEmbedReminder = useCallback(async () => {
+    const current =
+      useSettingsStore.getState().ragConfig ??
+      ((await window.api.settings.getRagConfig().catch(() => null)) as RagConfig | null) ??
+      getDefaultRagConfig()
+    const next = { ...current, startupEmbedReminder: false }
+    const setRagConfig = useSettingsStore.getState().setRagConfig
+    if (setRagConfig) {
+      await setRagConfig(next)
+      return
+    }
+    await window.api.settings.setRagConfig(next)
+  }, [])
 
   const displayEntries = useMemo(() => {
     if (!entries || entries.length === 0) return []
@@ -247,6 +388,15 @@ export const DiaryPage: React.FC = () => {
         }) as DiaryEntry
     )
   }, [entries])
+
+  const showPendingExtract = shouldShowPendingExtract({
+    graphConfigured,
+    count: pendingGraphCount
+  })
+  const showPendingEmbed = shouldShowPendingEmbed({
+    ragConfigured,
+    count: pendingEmbedCount
+  })
 
   return (
     <motion.div
@@ -283,31 +433,38 @@ export const DiaryPage: React.FC = () => {
         storageIndexing={storageIndexing}
         attachmentBasePath={attachmentBasePath}
         onGoToEditor={goToEditor}
-        onDeleteEntry={setDeletingId}
+        onDeleteEntry={(id) => void handleDeleteEntry(id)}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
         onViewAll={() => setSelectedMonth(null)}
       />
 
-      {/* 删除确认弹窗 */}
-      {deletingId !== null && (
-        <div className="diary-delete-modal-overlay" onClick={() => setDeletingId(null)}>
-          <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="dd-modal-title">{t('common.confirm_delete', '确认删除')}</div>
-            <div className="dd-modal-content">
-              {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。')}
-            </div>
-            <div className="dd-modal-actions">
-              <button className="dd-btn-cancel" onClick={() => setDeletingId(null)}>
-                {t('common.cancel', '取消')}
-              </button>
-              <button className="dd-btn-confirm" onClick={performDelete}>
-                {t('common.delete', '删除')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DiaryStatusBar
+        showPendingExtract={showPendingExtract}
+        pendingExtractCount={pendingGraphCount}
+        showPendingEmbed={showPendingEmbed}
+        pendingEmbedCount={pendingEmbedCount}
+        pendingEmbedParts={pendingEmbedParts}
+        indexing={indexing}
+        onPendingExtractClick={() => navigate('/memory/graph')}
+        onPendingEmbedClick={() => navigate('/memory/vectors')}
+      />
+
+      {embedNotice && !indexing ? (
+        <PendingEmbedNotice
+          count={embedNotice.count}
+          needModel={embedNotice.needModel}
+          onAction={() => {
+            setEmbedNotice(null)
+            navigate(embedNotice.needModel ? `${SETTINGS_HUB_PREFIX}/ai-models` : '/memory/vectors')
+          }}
+          onDismiss={() => setEmbedNotice(null)}
+          onMuteStartupReminder={() => {
+            void muteStartupEmbedReminder()
+            setEmbedNotice(null)
+          }}
+        />
+      ) : null}
     </motion.div>
   )
 }

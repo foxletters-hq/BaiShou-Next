@@ -1,13 +1,14 @@
 import { StyleSheet } from 'react-native'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const galleryPanelStyles = StyleSheet.create({
   container: {},
   row: {
-    gap: 4,
-    marginBottom: 4
+    gap: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xs
   },
   imageWrapper: {
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     overflow: 'hidden'
   },
@@ -21,25 +22,24 @@ export const galleryPanelStyles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 6,
-    paddingVertical: 2
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs
   },
   captionText: {
-    color: '#FFFFFF',
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   empty: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    padding: 32,
+    padding: sharedTokens.spacing.xl,
     alignItems: 'center'
   },
   emptyIcon: {
-    fontSize: 32,
-    marginBottom: 8
+    fontSize: iconSizes.xl,
+    marginBottom: sharedTokens.spacing.sm
   },
   emptyText: {
-    fontSize: 15
+    fontSize: mobileTypography.body.fontSize
   },
   fullscreenOverlay: {
     flex: 1,
@@ -56,95 +56,94 @@ export const galleryPanelStyles = StyleSheet.create({
     right: 20,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: sharedTokens.radius.lgPlus,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1
   },
   closeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: mobileTypography.display.fontSize,
     fontWeight: '300'
   },
   summaryContainer: {
     flex: 1
   },
   tabsContainer: {
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   tabsContent: {
-    paddingHorizontal: 16,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
   tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1
   },
   tabText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   yearContainer: {
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   yearContent: {
-    paddingHorizontal: 16,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
   yearButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1
   },
   yearText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   emptySummary: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: sharedTokens.spacing.xlPlus,
     opacity: 0.5
   },
   summaryItem: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
+    marginHorizontal: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.mdTight,
+    padding: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1
   },
   summaryItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   summaryItemTitle: {
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
   },
   summaryItemDate: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   summaryItemPreview: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   summaryItemActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   actionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm
   },
   actionText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   }
 })

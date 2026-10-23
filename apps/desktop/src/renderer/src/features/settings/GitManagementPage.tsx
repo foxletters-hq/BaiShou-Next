@@ -51,7 +51,16 @@ export const GitManagementPage: React.FC = () => {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div
+      style={{
+        flex: 1,
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
       <GitPage
         config={config}
         onSaveConfig={handleSaveConfig}
@@ -71,15 +80,28 @@ export const GitManagementPage: React.FC = () => {
         }
         onGetHistory={async (filePath?, limit?, offset?) => {
           if (!api) return []
-          return api.getHistory(filePath, limit, offset) ?? []
+          return api.getHistory(filePath, limit ?? 20, offset ?? 0) ?? []
         }}
         onGetHistoryCount={async (filePath?) => {
           if (!api) return 0
           return api.getHistoryCount(filePath) ?? 0
         }}
-        onGetRecentPulls={async (limit?) => {
-          if (!api) return []
-          return api.getRecentPulls(limit) ?? []
+        onGetRemoteStatus={async (fetch?) => {
+          if (!api?.getRemoteStatus) {
+            return {
+              configured: false,
+              connected: false,
+              unpublished: true,
+              branch: 'main',
+              ahead: 0,
+              behind: 0
+            }
+          }
+          return api.getRemoteStatus(fetch)
+        }}
+        onSyncRemote={async () => {
+          if (!api?.syncRemote) return { success: false, message: 'API not available' }
+          return api.syncRemote()
         }}
         onGetCommitChanges={async (hash) => api?.getCommitChanges(hash) ?? []}
         onGetFileDiff={async (filePath, hash) =>

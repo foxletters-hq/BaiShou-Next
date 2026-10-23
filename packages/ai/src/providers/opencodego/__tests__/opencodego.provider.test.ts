@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { generateText } from 'ai'
+import { streamText } from 'ai'
 import { OpenCodeGoAdaptedProvider } from '../opencodego.provider'
 import * as modelsClient from '../opencodego.models-client'
 import * as languageModelFactory from '../opencodego.language-model.factory'
 
 vi.mock('ai', () => ({
-  generateText: vi.fn()
+  generateText: vi.fn(),
+  streamText: vi.fn()
 }))
 
 const { dummyModel } = vi.hoisted(() => ({
@@ -71,22 +72,31 @@ describe('OpenCodeGoAdaptedProvider', () => {
   })
 
   describe('testConnection', () => {
-    it('resolves when generateText succeeds', async () => {
+    it('resolves when the streaming probe succeeds', async () => {
       vi.mocked(modelsClient.fetchOpenCodeGoModelIds).mockResolvedValueOnce(['kimi-k2.7-code'])
-      vi.mocked(generateText).mockResolvedValueOnce({ text: 'ok' } as any)
+      vi.mocked(streamText).mockReturnValueOnce({
+        fullStream: (async function* () {
+          yield { type: 'start' }
+          yield { type: 'finish' }
+        })()
+      } as any)
 
       await expect(provider.testConnection('kimi-k2.7-code')).resolves.toBeUndefined()
-      expect(generateText).toHaveBeenCalledWith(
+      expect(streamText).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'test',
-          maxOutputTokens: 1
+          maxOutputTokens: 16
         })
       )
     })
 
-    it('throws when generateText fails', async () => {
+    it('throws when the streaming probe emits an error', async () => {
       vi.mocked(modelsClient.fetchOpenCodeGoModelIds).mockResolvedValueOnce(['kimi-k2.7-code'])
-      vi.mocked(generateText).mockRejectedValueOnce(new Error('Unauthorized'))
+      vi.mocked(streamText).mockReturnValueOnce({
+        fullStream: (async function* () {
+          yield { type: 'error', error: new Error('Unauthorized') }
+        })()
+      } as any)
 
       await expect(provider.testConnection('kimi-k2.7-code')).rejects.toThrow(
         'Connection test failed: Unauthorized'

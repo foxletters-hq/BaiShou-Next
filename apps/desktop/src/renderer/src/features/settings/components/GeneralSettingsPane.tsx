@@ -12,6 +12,7 @@ import {
   AboutSettingsCard,
   RestoreBlockingOverlay,
   ChatBackgroundSettingsCard,
+  SettingsPageChrome,
   useOpenFeedbackChannel
 } from '@baishou/ui'
 import {
@@ -63,8 +64,10 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
 
   const loadVaults = useCallback(async () => {
     try {
-      const vList = await (window as any).api?.vault?.list()
-      const active = await (window as any).api?.vault?.getActive()
+      const [vList, active] = await Promise.all([
+        (window as any).api?.vault?.list(),
+        (window as any).api?.vault?.getActive()
+      ])
       if (vList) setVaults(vList)
       if (active?.name) {
         setActiveVault(active)
@@ -114,175 +117,200 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       />
       <div
         className="settings-pane settings-pane-full"
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
       >
-        <div className={styles.container}>
-          <section className={styles.cardSection}>
-            <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>
-                {t('settings.general_section_personal', '个人与环境')}
-              </h3>
-            </div>
-            <div className={styles.cardBody}>
-              <ProfileSettingsCard
-                profile={profile || { nickname: '', avatarPath: '' }}
-                onSave={async (p) => {
-                  if (typeof window !== 'undefined' && window.electron) {
-                    await window.electron.ipcRenderer.invoke('profile:save', p)
-                    if (loadProfile) await loadProfile()
-                  }
-                }}
-              />
-              <div className={styles.divider} />
-              <IdentitySettingsCard
-                embedded
-                isLast={false}
-                profile={identityProfile}
-                onChange={async (newProfile) => {
-                  if (typeof window !== 'undefined' && window.electron) {
-                    await window.electron.ipcRenderer.invoke('profile:save', newProfile)
-                    if (loadProfile) await loadProfile()
-                  }
-                }}
-                onManageIdentity={() => settingsNav.goIdentityCards()}
-              />
-              <div className={styles.divider} />
-              <WorkspaceSettingsCard
-                embedded
-                vaults={
-                  vaults.length > 0
-                    ? vaults
-                    : [{ name: t('common.loading', 'Loading...'), path: '--' }]
-                }
-                activeVault={activeVault || vaults[0] || null}
-                onSwitch={async (id) => {
-                  if (id === activeVault?.name) return
-                  await switchActiveVault(id)
-                  await loadVaults()
-                }}
-                onDelete={async (id) => {
-                  await (window as any).api?.vault?.delete(id)
-                  await loadVaults()
-                }}
-                onCreate={async (name) => {
-                  await (window as any).api?.vault?.createDialog(name)
-                  const active = await (window as any).api?.vault?.getActive()
-                  if (active) setActiveVault(active)
-                  window.location.reload()
-                }}
-                onManageWorkspace={() => settingsNav.goWorkspaces()}
-              />
-              <div className={styles.divider} />
-              <AppearanceSettingsCard
-                embedded
-                isLast={!settings.hotkeyConfig}
-                themeMode={settings.themeMode}
-                seedColor={settings.themeColor || '#5BA8F5'}
-                language={settings.locale}
-                onThemeModeChange={settings.setThemeMode}
-                onSeedColorChange={settings.setThemeColor}
-                onLanguageChange={settings.setLocale}
-              />
-              <div className={styles.divider} />
-              <ChatBackgroundSettingsCard
-                embedded
-                isLast={false}
-                backgroundPath={profile?.chatBackgroundPath || null}
-                blur={normalizeChatBackgroundBlur(profile?.chatBackgroundBlur)}
-                overlayOpacity={normalizeChatBackgroundOverlayOpacity(
-                  profile?.chatBackgroundOverlayOpacity
-                )}
-                onPickBackground={() => void pickAndSaveBackground()}
-                onClearBackground={() => void clearBackground()}
-                onBlurChange={(value) =>
-                  void updateChatBackgroundStyle({ chatBackgroundBlur: value })
-                }
-                onOverlayOpacityChange={(value) =>
-                  void updateChatBackgroundStyle({ chatBackgroundOverlayOpacity: value })
-                }
-              />
-              {settings.hotkeyConfig ? (
-                <>
-                  <div className={styles.divider} />
-                  <HotkeySettingsCard
-                    config={settings.hotkeyConfig}
-                    onChange={(config) => settings.setHotkeyConfig(config)}
+        <SettingsPageChrome title={t('settings.general', '常规设置')}>
+          <div className={styles.container}>
+            <div className={styles.stackGroup}>
+              <div className={styles.sectionLabelRow}>
+                <h3 className={styles.sectionLabel}>
+                  {t('settings.general_section_profile', '个人与账户')}
+                </h3>
+              </div>
+              <section className={styles.cardSection}>
+                <div className={styles.cardBody}>
+                  <ProfileSettingsCard
+                    profile={profile || { nickname: '', avatarPath: '' }}
+                    onSave={async (p) => {
+                      if (typeof window !== 'undefined' && window.electron) {
+                        await window.electron.ipcRenderer.invoke('profile:save', p)
+                        if (loadProfile) await loadProfile()
+                      }
+                    }}
                   />
-                </>
-              ) : null}
+                  <div className={styles.divider} />
+                  <IdentitySettingsCard
+                    embedded
+                    isLast={false}
+                    profile={identityProfile}
+                    onChange={async (newProfile) => {
+                      if (typeof window !== 'undefined' && window.electron) {
+                        await window.electron.ipcRenderer.invoke('profile:save', newProfile)
+                        if (loadProfile) await loadProfile()
+                      }
+                    }}
+                    onManageIdentity={() => settingsNav.goIdentityCards()}
+                  />
+                  <div className={styles.divider} />
+                  <WorkspaceSettingsCard
+                    embedded
+                    vaults={
+                      vaults.length > 0
+                        ? vaults
+                        : [{ name: t('common.loading', 'Loading...'), path: '--' }]
+                    }
+                    activeVault={activeVault || vaults[0] || null}
+                    onSwitch={async (id) => {
+                      if (id === activeVault?.name) return
+                      await switchActiveVault(id)
+                      await loadVaults()
+                    }}
+                    onDelete={async (id) => {
+                      await (window as any).api?.vault?.delete(id)
+                      await loadVaults()
+                    }}
+                    onCreate={async (name) => {
+                      await (window as any).api?.vault?.createDialog(name)
+                      const active = await (window as any).api?.vault?.getActive()
+                      if (active) setActiveVault(active)
+                      window.location.reload()
+                    }}
+                    onManageWorkspace={() => settingsNav.goWorkspaces()}
+                    showTopBarSwitcher={Boolean(settings.showTopBarVaultSwitcher)}
+                    onShowTopBarSwitcherChange={settings.setShowTopBarVaultSwitcher}
+                  />
+                  <div className={styles.divider} />
+                  <AppearanceSettingsCard
+                    embedded
+                    isLast={!settings.hotkeyConfig}
+                    themeMode={settings.themeMode}
+                    seedColor={settings.themeColor || '#5BA8F5'}
+                    language={settings.locale}
+                    fontSizeLevel={settings.fontSizeLevel}
+                    onThemeModeChange={settings.setThemeMode}
+                    onSeedColorChange={settings.setThemeColor}
+                    onLanguageChange={settings.setLocale}
+                    onFontSizeLevelChange={settings.setFontSizeLevel}
+                  />
+                  <div className={styles.divider} />
+                  <ChatBackgroundSettingsCard
+                    embedded
+                    isLast={false}
+                    backgroundPath={profile?.chatBackgroundPath || null}
+                    blur={normalizeChatBackgroundBlur(profile?.chatBackgroundBlur)}
+                    overlayOpacity={normalizeChatBackgroundOverlayOpacity(
+                      profile?.chatBackgroundOverlayOpacity
+                    )}
+                    onPickBackground={() => void pickAndSaveBackground()}
+                    onClearBackground={() => void clearBackground()}
+                    onBlurChange={(value) =>
+                      void updateChatBackgroundStyle({ chatBackgroundBlur: value })
+                    }
+                    onOverlayOpacityChange={(value) =>
+                      void updateChatBackgroundStyle({ chatBackgroundOverlayOpacity: value })
+                    }
+                  />
+                  {settings.hotkeyConfig ? (
+                    <>
+                      <div className={styles.divider} />
+                      <HotkeySettingsCard
+                        config={settings.hotkeyConfig}
+                        onChange={(config) => settings.setHotkeyConfig(config)}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              </section>
             </div>
-          </section>
 
-          <section className={styles.cardSection}>
-            <div className={styles.cardBody}>
-              <StorageSettingsCard
-                embedded
-                isLast
-                storageRootPath={storageSettings.storageRootPath}
-                externalJournalsPath={storageSettings.externalJournalsPath}
-                externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
-                externalJournalsFileCount={storageSettings.externalJournalsFileCount}
-                externalJournalsPathAvailable={storageSettings.externalJournalsPathAvailable}
-                externalSummariesPath={storageSettings.externalSummariesPath}
-                externalSummariesDefaultPath={storageSettings.externalSummariesDefaultPath}
-                externalSummariesFileCount={storageSettings.externalSummariesFileCount}
-                externalSummariesFileCounts={storageSettings.externalSummariesFileCounts}
-                externalSummariesPathAvailable={storageSettings.externalSummariesPathAvailable}
-                sqliteSizeStats={storageSettings.sqliteSizeStats}
-                vectorDbStats={storageSettings.vectorDbStats}
-                mediaCacheStats={storageSettings.mediaCacheStats}
-                onChangeDirectory={storageSettings.handleChangeDirectory}
-                onMigrateDirectory={storageSettings.handleMigrateDirectory}
-                onChangeExternalJournalsDirectory={
-                  storageSettings.handleChangeExternalJournalsDirectory
-                }
-                onClearExternalJournalsDirectory={
-                  storageSettings.handleClearExternalJournalsDirectory
-                }
-                onChangeExternalSummariesDirectory={
-                  storageSettings.handleChangeExternalSummariesDirectory
-                }
-                onClearExternalSummariesDirectory={
-                  storageSettings.handleClearExternalSummariesDirectory
-                }
-                onClearCache={async () => {
-                  await (window as any).api?.storage?.clearCache()
-                  await storageSettings.refreshStorageInfo({ includeFileCounts: true })
-                }}
-                onVacuumDb={async () => {
-                  await (window as any).api?.storage?.vacuumDb()
-                  await storageSettings.refreshStorageInfo({ includeFileCounts: true })
-                }}
-              />
+            <div className={styles.stackGroup}>
+              <div className={styles.sectionLabelRow}>
+                <h3 className={styles.sectionLabel}>
+                  {t('settings.general_section_storage', '存储')}
+                </h3>
+              </div>
+              <section className={styles.cardSection}>
+                <div className={styles.cardBody}>
+                  <StorageSettingsCard
+                    embedded
+                    isLast
+                    storageRootPath={storageSettings.storageRootPath}
+                    externalJournalsPath={storageSettings.externalJournalsPath}
+                    externalJournalsDefaultPath={storageSettings.externalJournalsDefaultPath}
+                    externalJournalsFileCount={storageSettings.externalJournalsFileCount}
+                    externalJournalsPathAvailable={storageSettings.externalJournalsPathAvailable}
+                    externalSummariesPath={storageSettings.externalSummariesPath}
+                    externalSummariesDefaultPath={storageSettings.externalSummariesDefaultPath}
+                    externalSummariesFileCount={storageSettings.externalSummariesFileCount}
+                    externalSummariesFileCounts={storageSettings.externalSummariesFileCounts}
+                    externalSummariesPathAvailable={storageSettings.externalSummariesPathAvailable}
+                    sqliteSizeStats={storageSettings.sqliteSizeStats}
+                    vectorDbStats={storageSettings.vectorDbStats}
+                    mediaCacheStats={storageSettings.mediaCacheStats}
+                    onChangeDirectory={storageSettings.handleChangeDirectory}
+                    onMigrateDirectory={storageSettings.handleMigrateDirectory}
+                    onChangeExternalJournalsDirectory={
+                      storageSettings.handleChangeExternalJournalsDirectory
+                    }
+                    onClearExternalJournalsDirectory={
+                      storageSettings.handleClearExternalJournalsDirectory
+                    }
+                    onChangeExternalSummariesDirectory={
+                      storageSettings.handleChangeExternalSummariesDirectory
+                    }
+                    onClearExternalSummariesDirectory={
+                      storageSettings.handleClearExternalSummariesDirectory
+                    }
+                    onClearCache={async () => {
+                      await (window as any).api?.storage?.clearCache()
+                      await storageSettings.refreshStorageInfo({ includeFileCounts: true })
+                    }}
+                    onVacuumDb={async () => {
+                      await (window as any).api?.storage?.vacuumDb()
+                      await storageSettings.refreshStorageInfo({ includeFileCounts: true })
+                    }}
+                  />
+                </div>
+              </section>
             </div>
-          </section>
 
-          <section className={styles.cardSection}>
-            <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>{t('settings.general_section_about', '关于')}</h3>
+            <div className={styles.stackGroup}>
+              <div className={styles.sectionLabelRow}>
+                <h3 className={styles.sectionLabel}>
+                  {t('settings.general_section_about', '关于')}
+                </h3>
+              </div>
+              <section className={styles.cardSection}>
+                <div className={styles.cardBody}>
+                  <AboutSettingsCard
+                    version={appVersion}
+                    heroImageSrc={baishouHeroImg}
+                    onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
+                    onOpenFeedback={() => void openFeedback()}
+                    onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
+                    onOpenOnboarding={() => navigate('/welcome?preview=1')}
+                    onDemoVaultCreated={async (vaultName) => {
+                      await switchActiveVault(vaultName)
+                    }}
+                    onExportDiagnosticLog={async () => {
+                      const result = await window.api.diagnosticLog.exportToDesktop()
+                      return { fileName: result.fileName }
+                    }}
+                    onCopyDiagnosticLog={async () => {
+                      await window.api.diagnosticLog.copyToClipboard()
+                    }}
+                  />
+                </div>
+              </section>
             </div>
-            <div className={styles.cardBody}>
-              <AboutSettingsCard
-                version={appVersion}
-                heroImageSrc={baishouHeroImg}
-                onOpenGithubRepo={() => window.api.shell.openExternal(GITHUB_REPO_URL)}
-                onOpenFeedback={() => void openFeedback()}
-                onOpenCompressionTestSession={(sessionId) => navigate(`/chat/${sessionId}`)}
-                onOpenOnboarding={() => navigate('/welcome?preview=1')}
-                onDemoVaultCreated={async (vaultName) => {
-                  await switchActiveVault(vaultName)
-                }}
-                onExportDiagnosticLog={async () => {
-                  const result = await window.api.diagnosticLog.exportToDesktop()
-                  return { fileName: result.fileName }
-                }}
-                onCopyDiagnosticLog={async () => {
-                  await window.api.diagnosticLog.copyToClipboard()
-                }}
-              />
-            </div>
-          </section>
-        </div>
+          </div>
+        </SettingsPageChrome>
       </div>
     </>
   )

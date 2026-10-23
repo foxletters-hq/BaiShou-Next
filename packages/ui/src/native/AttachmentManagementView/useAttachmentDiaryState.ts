@@ -15,13 +15,13 @@ export interface UseAttachmentDiaryStateOptions {
 
 export function useAttachmentDiaryState(
   diaryAttachments: DiaryAttachmentFileItem[],
-  activePane: 'session' | 'diary',
+  activePane: 'session' | 'diary' | 'emoji',
   {
     onDeleteDiaryAttachment,
     confirmKeyword,
-    toDisplayUri,
-    imagePreview,
-    setImagePreview
+    toDisplayUri: _toDisplayUri,
+    imagePreview: _imagePreview,
+    setImagePreview: _setImagePreview
   }: UseAttachmentDiaryStateOptions
 ) {
   const { t } = useTranslation()

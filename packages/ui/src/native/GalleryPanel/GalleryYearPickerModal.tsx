@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface GalleryYearPickerModalProps {
   isOpen: boolean
@@ -98,10 +99,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   content: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     maxHeight: '70%',
     overflow: 'hidden'
   },
@@ -109,34 +110,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderBottomWidth: 1
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600'
   },
   body: {
-    padding: 16,
-    gap: 12
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.mdTight
   },
   allBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center'
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   yearCell: {
     minWidth: '30%',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center'
   }

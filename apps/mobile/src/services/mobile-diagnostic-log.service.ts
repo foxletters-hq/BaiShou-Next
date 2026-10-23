@@ -26,8 +26,8 @@ export {
   trimDiagnosticText
 } from './mobile-diagnostic-log.util'
 
-const MAX_MEMORY_ENTRIES = 400
-const MAX_PERSISTED_BYTES = 256 * 1024
+const MAX_MEMORY_ENTRIES = 1000
+const MAX_PERSISTED_BYTES = 1024 * 1024
 const LOG_FILENAME = 'baishou_diagnostic.log'
 const EXPORT_TXT_PREFIX = 'baishou_diagnostic'
 const LOG_VERSION_MARKER = '# BaiShouDiagnosticLogVersion: '

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import { useBaishou } from '../../../../providers/BaishouProvider'
 import { useMobileRagSystem } from '../../../../hooks/useMobileRagSystem'
 import { appendDiagnosticBreadcrumb } from '../../../../services/mobile-diagnostic-log.service'
 import type { RagConfig, RagEntry, RagStats } from '@baishou/ui/native'
-import type { AIProviderConfig } from '@baishou/shared'
+import { runAfterIdle, type AIProviderConfig, type RagVectorKindFilter } from '@baishou/shared'
 import { DEFAULT_RAG_CONFIG, type PromptMode } from './rag-memory-section.constants'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
 import { useRagMemoryData } from './useRagMemoryData'
@@ -25,6 +25,8 @@ export function useRagMemorySection() {
   const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('text')
+  const [sourceKind, setSourceKind] = useState<RagVectorKindFilter>('all')
+  const [isSearching, setIsSearching] = useState(false)
   const [embeddingModelId, setEmbeddingModelId] = useState<string>()
   const [embeddingProviderId, setEmbeddingProviderId] = useState<string>()
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
@@ -56,7 +58,7 @@ export function useRagMemorySection() {
     const frame = requestAnimationFrame(() => {
       appendDiagnosticBreadcrumb('RAG android render stage 1 (view)')
       setAndroidRenderStage(1)
-      interactionTask = InteractionManager.runAfterInteractions(() => {
+      interactionTask = runAfterIdle(() => {
         appendDiagnosticBreadcrumb('RAG android render stage 2 (full)')
         setAndroidRenderStage(2)
       })
@@ -74,10 +76,10 @@ export function useRagMemorySection() {
     appendDiagnosticBreadcrumb(`RAG android render stage active: ${androidRenderStage}`)
   }, [androidRenderStage])
 
-  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
+  const stateRef = useRef({ searchQuery, searchMode, sourceKind, currentPage, pageSize })
   useEffect(() => {
-    stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
-  }, [searchQuery, searchMode, currentPage, pageSize])
+    stateRef.current = { searchQuery, searchMode, sourceKind, currentPage, pageSize }
+  }, [searchQuery, searchMode, sourceKind, currentPage, pageSize])
 
   const ctx: RagMemorySectionCtx = {
     services,
@@ -100,6 +102,10 @@ export function useRagMemorySection() {
     setSearchQuery,
     searchMode,
     setSearchMode,
+    sourceKind,
+    setSourceKind,
+    isSearching,
+    setIsSearching,
     embeddingModelId,
     embeddingProviderId,
     setEmbeddingModelId,

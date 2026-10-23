@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Button,
   Input,
   Pagination,
   useDialog,
@@ -8,10 +9,11 @@ import {
   validateWorkspaceName,
   type VaultInfo
 } from '@baishou/ui'
+import { formatIncrementalSyncPlanBytes } from '@baishou/shared'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 import { switchActiveVault } from '../../../lib/vault-runtime.util'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -47,8 +49,10 @@ export const WorkspaceManagementPane: React.FC = () => {
 
   const loadVaults = useCallback(async () => {
     try {
-      const vList = await (window as any).api?.vault?.list()
-      const active = await (window as any).api?.vault?.getActive()
+      const [vList, active] = await Promise.all([
+        (window as any).api?.vault?.list(),
+        (window as any).api?.vault?.getActive()
+      ])
       if (vList) setVaults(vList)
       setActiveVault(active ?? null)
     } catch (e) {
@@ -121,6 +125,59 @@ export const WorkspaceManagementPane: React.FC = () => {
     }
   }
 
+  const handleRename = async (vault: VaultInfo) => {
+    const name = await dialog.prompt(
+      t('workspace.rename_prompt', '将「{{name}}」重命名为：', { name: vault.name }),
+      vault.name
+    )
+    if (name === null) return
+    const validation = validateWorkspaceName(
+      name,
+      vaults.map((v) => v.name).filter((n) => n !== vault.name)
+    )
+    if (!validation.ok) {
+      const message =
+        validation.reason === 'duplicate'
+          ? t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。')
+          : t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+      toast.showWarning(message)
+      return
+    }
+    if (validation.name === vault.name) return
+
+    let bytesLabel = t('workspace.rename_bytes_unknown', '该工作空间的全部文件')
+    try {
+      const bytes = await (window as any).api?.vault?.estimateRenameBytes(vault.id || vault.name)
+      if (typeof bytes === 'number' && bytes > 0) {
+        bytesLabel = formatIncrementalSyncPlanBytes(bytes)
+      }
+    } catch {
+      // keep fallback label
+    }
+
+    const confirmed = await dialog.confirm(
+      t(
+        'workspace.rename_confirm',
+        '确定将「{{oldName}}」重命名为「{{newName}}」吗？\n\n下次同步将按朴素路径重新上传约 {{bytes}}（旧路径删除 + 新路径上传）。其它设备同步前请先完成本机同步。',
+        { oldName: vault.name, newName: validation.name, bytes: bytesLabel }
+      )
+    )
+    if (!confirmed) return
+
+    try {
+      await (window as any).api?.vault?.rename(vault.id || vault.name, validation.name)
+      await loadVaults()
+      toast.showSuccess(t('workspace.rename_success', '已重命名'))
+    } catch (e: any) {
+      const code = e?.code || e?.message
+      if (code === 'VAULT_NAME_EXISTS' || String(e?.message || '').includes('VAULT_NAME_EXISTS')) {
+        toast.showWarning(t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。'))
+        return
+      }
+      toast.showError(t('workspace.rename_failed', '重命名失败'))
+    }
+  }
+
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
       t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
@@ -152,19 +209,15 @@ export const WorkspaceManagementPane: React.FC = () => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('workspace.manage', '管理工作空间')}</h2>
-        <button
-          type="button"
-          className="settings-management-header-action"
-          onClick={() => void handleCreate()}
-        >
-          <Plus size={18} />
-          <span>{t('workspace.create_new', '创建新空间')}</span>
-        </button>
+        <Button type="button" variant="outlined" size="small" onClick={() => void handleCreate()}>
+          {t('workspace.create_new', '创建新空间')}
+        </Button>
       </div>
 
       <div className="settings-management-scroll">
         <div className="settings-management-card">
           <Input
+            fieldSize="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
@@ -180,7 +233,10 @@ export const WorkspaceManagementPane: React.FC = () => {
         {pagedVaults.map((vault) => {
           const isActive = activeVault?.name === vault.name
           return (
-            <div key={vault.name} className="settings-management-card settings-management-row">
+            <div
+              key={vault.id || vault.name}
+              className="settings-management-card settings-management-row"
+            >
               <div className="settings-management-row-main">
                 <span className="settings-management-row-title">{vault.name}</span>
                 <span className="settings-management-row-sub">
@@ -199,24 +255,33 @@ export const WorkspaceManagementPane: React.FC = () => {
                       {t('workspace.current_short', '当前')}
                     </span>
                   ) : (
-                    <button
+                    <Button
                       type="button"
-                      className="settings-text-btn"
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleSwitch(vault.name)}
                     >
                       {t('workspace.switch', '切换')}
-                    </button>
+                    </Button>
                   )}
                 </div>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => void handleRename(vault)}
+                >
+                  {t('workspace.rename', '重命名')}
+                </Button>
                 {!isActive ? (
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
-                    style={{ color: '#ef4444' }}
+                    variant="outlined"
+                    size="small"
                     onClick={() => void handleDelete(vault.name)}
                   >
                     {t('workspace.delete', '删除')}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>

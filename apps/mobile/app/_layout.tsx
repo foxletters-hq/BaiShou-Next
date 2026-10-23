@@ -4,6 +4,7 @@ import '../global.css'
 import { ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import * as SplashScreen from 'expo-splash-screen'
 import 'react-native-reanimated'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useEffect, useMemo } from 'react'
@@ -13,9 +14,9 @@ import { readOnboardingUiLanguage } from '@/src/lib/onboarding-language.util'
 import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale'
 
 import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
-import { NetworkProvider } from '@/src/providers/NetworkProvider'
+import { NetworkProvider, NetworkOfflineBanner } from '@/src/providers/NetworkProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
@@ -29,11 +30,18 @@ import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 import '@/src/screens/DiaryScreen/diary-filter-state.util'
 import { installMobileDiagnosticLog } from '@/src/services/install-mobile-diagnostic-log'
+import {
+  ensureMobileAgentGateNotifications,
+  setMobileAgentGateNotificationNavigateHandler
+} from '@/src/services/mobile-agent-gate-notifications'
+import { router } from 'expo-router'
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
   initialRouteName: '(tabs)'
 }
+
+void SplashScreen.preventAutoHideAsync()
 
 function AppContent() {
   const { isDark, colors } = useNativeTheme()
@@ -71,6 +79,23 @@ function AppContent() {
     }
     loadSavedLanguage()
   }, [dbReady, services])
+
+  useEffect(() => {
+    setMobileAgentGateNotificationNavigateHandler((sessionId, requestId) => {
+      router.push({
+        pathname: '/(tabs)/agent',
+        params: { sessionId, gateRequestId: requestId }
+      })
+    })
+    let dispose: (() => void) | undefined
+    void ensureMobileAgentGateNotifications().then((unsub) => {
+      dispose = unsub
+    })
+    return () => {
+      dispose?.()
+      setMobileAgentGateNotificationNavigateHandler(null)
+    }
+  }, [])
 
   return (
     <ThemeProvider value={navigationTheme}>
@@ -123,21 +148,26 @@ export default function RootLayout() {
     installMobileDiagnosticLog()
   }, [])
 
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => undefined)
+  }, [])
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <BaishouProvider>
           <NetworkProvider>
             <NativeAppThemeBridge>
               <HeroUIThemeBridge>
-                <ToastProvider>
-                  <DialogProvider>
+                <DialogProvider>
+                  <ToastProvider>
                     <IncrementalSyncProvider>
                       <LegacyMigrationPrompt />
                       <AppContent />
+                      <NetworkOfflineBanner />
                     </IncrementalSyncProvider>
-                  </DialogProvider>
-                </ToastProvider>
+                  </ToastProvider>
+                </DialogProvider>
               </HeroUIThemeBridge>
             </NativeAppThemeBridge>
           </NetworkProvider>

@@ -8,12 +8,13 @@ import { Switch, useNativeTheme, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SettingsGroupCard } from './SettingsGroupCard'
 import { SettingsSliderRow } from './SettingsSliderRow'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const ENGINES: Array<{ id: WebSearchConfig['webSearchEngine']; labelKey: string }> = [
+  { id: 'exa-mcp', labelKey: 'settings.web_search_engine_exa_mcp' },
   { id: 'duckduckgo', labelKey: 'settings.web_search_engine_duckduckgo' },
   { id: 'tavily', labelKey: 'settings.web_search_engine_tavily' },
   { id: 'exa', labelKey: 'settings.web_search_engine_exa' },
-  { id: 'exa-mcp', labelKey: 'settings.web_search_engine_exa_mcp' },
   { id: 'anysearch', labelKey: 'settings.web_search_engine_anysearch' }
 ]
 
@@ -101,7 +102,12 @@ export const WebSearchSection: React.FC = () => {
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.tools.param_tavily_api_key')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
+            <Text
+              style={[
+                styles.hint,
+                { color: colors.textTertiary, marginBottom: sharedTokens.spacing.xsPlus }
+              ]}
+            >
               {t('agent.tools.param_tavily_api_key_desc')}
             </Text>
             <Input
@@ -111,7 +117,7 @@ export const WebSearchSection: React.FC = () => {
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
-              containerStyle={{ marginTop: 8 }}
+              containerStyle={{ marginTop: sharedTokens.spacing.sm }}
             />
           </>
         )}
@@ -122,7 +128,12 @@ export const WebSearchSection: React.FC = () => {
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.tools.param_exa_api_key')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
+            <Text
+              style={[
+                styles.hint,
+                { color: colors.textTertiary, marginBottom: sharedTokens.spacing.xsPlus }
+              ]}
+            >
               {t('agent.tools.param_exa_api_key_desc')}
             </Text>
             <Input
@@ -132,7 +143,7 @@ export const WebSearchSection: React.FC = () => {
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
-              containerStyle={{ marginTop: 8 }}
+              containerStyle={{ marginTop: sharedTokens.spacing.sm }}
             />
           </>
         )}
@@ -143,7 +154,12 @@ export const WebSearchSection: React.FC = () => {
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.tools.param_anysearch_api_key')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 6 }]}>
+            <Text
+              style={[
+                styles.hint,
+                { color: colors.textTertiary, marginBottom: sharedTokens.spacing.xsPlus }
+              ]}
+            >
               {t('agent.tools.param_anysearch_api_key_desc')}
             </Text>
             <Input
@@ -153,7 +169,7 @@ export const WebSearchSection: React.FC = () => {
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
-              containerStyle={{ marginTop: 8 }}
+              containerStyle={{ marginTop: sharedTokens.spacing.sm }}
             />
           </>
         )}
@@ -227,15 +243,33 @@ export const WebSearchSection: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  desc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600' },
-  hint: { fontSize: 12, marginTop: 2, lineHeight: 17 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
+  cardTitle: {
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.sm
+  },
+  desc: {
+    fontSize: mobileTypography.secondary.fontSize,
+    lineHeight: 20,
+    marginBottom: sharedTokens.spacing.md
+  },
+  label: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  hint: {
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs,
+    lineHeight: 17
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
+  },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.lgPlus,
     borderWidth: 1,
     flexGrow: 1,
     flexBasis: '30%',
@@ -243,8 +277,8 @@ const styles = StyleSheet.create({
     maxWidth: '48%',
     alignItems: 'center'
   },
-  divider: { height: 1, marginVertical: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  divider: { height: 1, marginVertical: sharedTokens.spacing.mdSnug },
+  row: { flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.mdTight },
   rowText: { flex: 1 },
   collapsed: {
     height: 0,

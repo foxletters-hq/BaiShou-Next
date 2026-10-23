@@ -28,10 +28,21 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const selected = options.find((o) => o.value === value)
+  const selected = value ? options.find((o) => o.value === value) : undefined
   const displayLabel = selected?.label || placeholder
   const displayIcon = selected?.icon
   const displayIconSrc = selected?.iconSrc
+
+  const dropdownOptions = React.useMemo(() => {
+    if (options.some((o) => o.value === '')) return options
+    return [
+      {
+        value: '',
+        label: i18n.t('diary.picker.none', '不填')
+      },
+      ...options
+    ]
+  }, [options])
 
   const closeDropdown = useCallback(() => {
     setClosing(true)
@@ -51,10 +62,10 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
 
   const handleSelect = useCallback(
     (option: WeatherOption) => {
-      onChange(option.value)
+      onChange(option.value === value ? '' : option.value)
       closeDropdown()
     },
-    [onChange, closeDropdown]
+    [onChange, closeDropdown, value]
   )
 
   const handleOptionClick = useCallback(
@@ -126,46 +137,48 @@ export const WeatherPicker: React.FC<WeatherPickerProps> = ({
 
       {open && (
         <div className={`wp-dropdown${closing ? ' wp-dropdown-closing' : ''}`} role="listbox">
-          {options
-            .filter((option) => option.value !== '')
-            .map((option) => {
-              const isSelected = option.value === value
-              return (
-                <button
-                  key={option.value}
-                  className={`wp-option${isSelected ? ' wp-option-selected' : ''}`}
-                  onClick={handleOptionClick(option)}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                >
-                  <span className="wp-option-content">
-                    {option.iconSrc ? (
-                      <img className="wp-icon-img" src={option.iconSrc} alt="" draggable={false} />
-                    ) : option.icon ? (
-                      <span className="wp-icon">{option.icon}</span>
-                    ) : null}
-                    <span className="wp-option-label">{option.label}</span>
-                  </span>
-                  {isSelected && (
-                    <span className="wp-check">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+          {dropdownOptions.map((option) => {
+            const isSelected = option.value === value
+            return (
+              <button
+                key={option.value || '__empty__'}
+                className={`wp-option${isSelected ? ' wp-option-selected' : ''}`}
+                onClick={handleOptionClick(option)}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+              >
+                <span className="wp-option-content">
+                  {option.iconSrc ? (
+                    <img className="wp-icon-img" src={option.iconSrc} alt="" draggable={false} />
+                  ) : option.icon ? (
+                    <span className="wp-icon">{option.icon}</span>
+                  ) : (
+                    <span className="wp-icon wp-icon-empty" aria-hidden="true">
+                      —
                     </span>
                   )}
-                </button>
-              )
-            })}
+                  <span className="wp-option-label">{option.label}</span>
+                </span>
+                {isSelected && (
+                  <span className="wp-check">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

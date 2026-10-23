@@ -1,0 +1,58 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+const here = dirname(fileURLToPath(import.meta.url))
+
+function read(rel: string): string {
+  return readFileSync(join(here, rel), 'utf8')
+}
+
+describe('provider slot binding', () => {
+  it('should keep desktop PDF extract able to use OCR and the text layer', () => {
+    const configured = read('../../ipc/knowledge-ipc.context.ts')
+    const consumer = read('../knowledge-ingest-jobs.consumer.ts')
+    expect(configured).not.toContain('pdfVisionOnly')
+    expect(consumer).not.toContain('pdfVisionOnly')
+  })
+
+  it('should resolve vision as a complete slot instead of the first enabled provider', () => {
+    const vision = read('../register-desktop-vision-ocr.ts')
+    expect(vision).toContain('resolveProviderModelSlot')
+    expect(vision).toContain('buildVisionLanguageSlots')
+    expect(vision).not.toContain('providers.find((p) => p.isEnabled)')
+    const configured = read('../../ipc/knowledge-ipc.context.ts')
+    expect(configured).toContain('resolveProviderModelSlot')
+    expect(configured).not.toContain('providers.find((p) => p.isEnabled)')
+  })
+
+  it('should refuse a missing provider instead of substituting another one', () => {
+    const stream = read('../../ipc/agent-stream-config.ts')
+    expect(stream).toContain('No active provider configured (provider:')
+    expect(stream).not.toContain('providers.find((p: AIProviderConfig) => p.isEnabled)')
+    expect(stream).toContain('resolveProviderModelSlot')
+    expect(stream).not.toContain("'deepseek-chat'")
+  })
+
+  it('should merge memories with the dialogue model instead of the embedding model', () => {
+    const mcp = read('../../ipc/agent-mcp-context.ts')
+    expect(mcp).toContain('globalDialogueProviderId')
+    expect(mcp).toContain('getActiveProvider(globalModels?.globalDialogueProviderId)')
+    expect(mcp).not.toMatch(
+      /new MemoryDeduplicationServiceImpl\(\s*embAdapter,\s*dbAdapter,\s*embeddingProvider/
+    )
+  })
+
+  it('should resolve session and global dialogue slots as a pair in system prompt and message IPC', () => {
+    const sysPrompt = read('../../ipc/build-agent-system-prompt.ts')
+    expect(sysPrompt).toContain('resolveDialogueModelSelection')
+    expect(sysPrompt).not.toContain("'deepseek-chat'")
+
+    const msgIpc = read('../../ipc/agent-message.ipc.ts')
+    expect(msgIpc).toContain('resolveDialogueModelSelection')
+
+    const settingsIpc = read('../../ipc/settings-models.ipc.ts')
+    expect(settingsIpc).toContain('globalGraphProviderId')
+  })
+})

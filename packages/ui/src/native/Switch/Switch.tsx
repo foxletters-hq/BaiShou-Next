@@ -8,9 +8,9 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useNativeTheme } from '../theme'
 import { toReanimatedColor } from '../../shared/colors/reanimated-color.util'
+import { sharedTokens } from '../../theme/tokens'
 
-const TRACK_OFF_LIGHT = '#E2E8F0'
-const TRACK_OFF_DARK = '#2D3748'
+const TRACK_OFF_FALLBACK = '#E2E8F0'
 const TRACK_ON_FALLBACK = '#5BA8F5'
 
 export interface NativeSwitchProps {
@@ -27,7 +27,7 @@ export const Switch: React.FC<NativeSwitchProps> = ({
   onValueChange,
   disabled = false
 }) => {
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const progress = useSharedValue(value ? 1 : 0)
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export const Switch: React.FC<NativeSwitchProps> = ({
     })
   }, [value, progress])
 
-  const trackColorOff = isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT
+  const trackColorOff = toReanimatedColor(colors.bgSurfaceHighest, TRACK_OFF_FALLBACK)
   const trackColorOn = toReanimatedColor(colors.primary, TRACK_ON_FALLBACK)
 
   const rTrackStyle = useAnimatedStyle(() => {
@@ -47,12 +47,10 @@ export const Switch: React.FC<NativeSwitchProps> = ({
   })
 
   const rThumbStyle = useAnimatedStyle(() => {
-    const translateX = progress.value * 20
     const isOn = progress.value > 0.5
     return {
-      transform: [{ translateX }],
-      shadowOpacity: isOn ? 0.15 : 0,
-      elevation: isOn ? 3 : 0
+      transform: [{ translateX: progress.value * 18 }],
+      shadowOpacity: isOn ? 0.15 : 0
     }
   })
 
@@ -73,8 +71,8 @@ export const Switch: React.FC<NativeSwitchProps> = ({
             styles.thumb,
             rThumbStyle,
             {
-              backgroundColor: '#FFFFFF',
-              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
+              backgroundColor: colors.textOnPrimary,
+              borderColor: colors.borderSubtle
             }
           ]}
         />
@@ -89,18 +87,18 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   track: {
-    width: 46,
-    height: 26,
-    borderRadius: 13,
-    padding: 2,
+    width: 42,
+    height: 24,
+    borderRadius: sharedTokens.radius.md,
+    padding: 2.5,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden'
   },
   thumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

@@ -50,11 +50,18 @@ export const systemApi = {
   // Zoom
   zoom: {
     setFactor: (factor: number) => webFrame.setZoomFactor(factor),
-    getFactor: () => webFrame.getZoomFactor()
+    getFactor: () => webFrame.getZoomFactor(),
+    onSetLevel: (callback: (level: number) => void) => {
+      const handler = (_event: unknown, level: number) => callback(level)
+      ipcRenderer.on('zoom:set-level', handler)
+      return () => ipcRenderer.off('zoom:set-level', handler)
+    }
   },
 
   shell: {
-    openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
+    openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+    showItemInFolder: (filePath: string) =>
+      ipcRenderer.invoke('shell:show-item-in-folder', filePath)
   },
 
   diagnosticLog: {

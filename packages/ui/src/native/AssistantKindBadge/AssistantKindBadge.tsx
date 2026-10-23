@@ -1,6 +1,7 @@
-import React from 'react'
+﻿import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   getAssistantKindBadgeTheme,
   getAssistantKindLabelKey,
@@ -27,21 +28,21 @@ export const AssistantKindBadge: React.FC<AssistantKindBadgeProps> = ({ kind, co
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xsPlus,
     alignSelf: 'flex-start'
   },
   badgeCompact: {
-    paddingHorizontal: 6,
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
     paddingVertical: 1,
-    borderRadius: 4
+    borderRadius: sharedTokens.radius.xs
   },
   text: {
-    fontSize: 11,
-    fontWeight: '700'
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600'
   },
   textCompact: {
-    fontSize: 10
+    fontSize: mobileTypography.caption.fontSize
   }
 })

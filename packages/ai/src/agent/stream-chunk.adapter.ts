@@ -11,9 +11,28 @@
  */
 
 import type { StreamTextResult } from 'ai'
+import { parseCompanionAskStreamArgs } from '../tools/companion-ask-stream.util'
 import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types'
 import { StreamAccumulator } from './stream-accumulator'
-import { isAgentStreamAbortError, logger } from '@baishou/shared'
+import { createAgentStreamAbortError, isAgentStreamAbortError, logger } from '@baishou/shared'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import { isAgentStreamFirstOutputChunk } from './agent-stream-timeout'
+
+function readToolCallIds(part: { id?: unknown; toolCallId?: unknown }): {
+  canonical: string
+  aliases: string[]
+} {
+  const toolCallId = String(part.toolCallId ?? '').trim()
+  const id = String(part.id ?? '').trim()
+  const aliases = [...new Set([toolCallId, id].filter((value) => value.length > 0))]
+  return { canonical: aliases[0] ?? '', aliases }
+}
+
+function readToolInputDelta(part: { delta?: unknown; inputTextDelta?: unknown }): string {
+  if (typeof part.delta === 'string' && part.delta) return part.delta
+  if (typeof part.inputTextDelta === 'string') return part.inputTextDelta
+  return ''
+}
 
 export interface StreamChunkAdapterCallbacks {
   onChunk?: (chunk: StreamChunk) => void
@@ -26,10 +45,36 @@ export class StreamChunkAdapter {
   // ─── 性能指标追踪 ───
   private streamStartTime: number = 0
   private firstTokenTime: number | null = null
+  private readonly toolNames = new Map<string, string>()
+  private readonly canonicalCallIds = new Map<string, string>()
+  private readonly argBuffers = new Map<string, string>()
+  private readonly forwardedAsks = new Set<string>()
 
   constructor(accumulator: StreamAccumulator, callbacks: StreamChunkAdapterCallbacks = {}) {
     this.accumulator = accumulator
     this.callbacks = callbacks
+  }
+
+  private rememberCallId(ids: { canonical: string; aliases: string[] }): string {
+    const known =
+      this.canonicalCallIds.get(ids.canonical) ??
+      ids.aliases.map((alias) => this.canonicalCallIds.get(alias)).find((value) => Boolean(value))
+    const canonical = known || ids.canonical
+    for (const alias of ids.aliases) {
+      this.canonicalCallIds.set(alias, canonical)
+    }
+    this.canonicalCallIds.set(canonical, canonical)
+    return canonical
+  }
+
+  private resolveCallId(ids: { canonical: string; aliases: string[] }): string {
+    return (
+      this.canonicalCallIds.get(ids.canonical) ??
+      ids.aliases
+        .map((alias) => this.canonicalCallIds.get(alias))
+        .find((value) => Boolean(value)) ??
+      ids.canonical
+    )
   }
 
   /**
@@ -37,7 +82,10 @@ export class StreamChunkAdapter {
    *
    * @returns 流执行过程中遇到的致命错误（如果有），null 表示正常结束。
    */
-  async consumeStream(streamResult: StreamTextResult<any, any>): Promise<{ error: any | null }> {
+  async consumeStream(
+    streamResult: StreamTextResult<any, any, any>,
+    options?: { onFirstOutput?: () => void }
+  ): Promise<{ error: any | null }> {
     if (!streamResult.fullStream) {
       return { error: null }
     }
@@ -55,12 +103,14 @@ export class StreamChunkAdapter {
 
         if ((value as { type?: string }).type === 'error') {
           const err = (value as { error?: unknown }).error ?? value
-          fatalError = err instanceof Error ? err : new Error(String(err))
+          if (!isNoOutputGeneratedError(err)) {
+            fatalError = err instanceof Error ? err : new Error(String(err))
+          }
         }
 
         // 用户主动取消：SDK 可能以 abort 事件结束，而非抛 AbortError
         if ((value as { type?: string }).type === 'abort') {
-          fatalError = new DOMException('The operation was aborted', 'AbortError')
+          fatalError = createAgentStreamAbortError()
         }
 
         // 交给累积器保存进度
@@ -76,6 +126,9 @@ export class StreamChunkAdapter {
           ) {
             this.firstTokenTime = Date.now()
           }
+          if (isAgentStreamFirstOutputChunk(chunk.type)) {
+            options?.onFirstOutput?.()
+          }
 
           this.callbacks.onChunk?.(chunk)
         }
@@ -83,12 +136,9 @@ export class StreamChunkAdapter {
     } catch (e: any) {
       // AI_NoOutputGeneratedError 在 agent tool-call 场景中是正常的
       // 模型只返回工具调用而没有文本时会触发此错误，不应阻止后续计费和持久化
-      const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
-
       if (isAgentStreamAbortError(e)) {
-        fatalError =
-          e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
-      } else if (isNoOutputError) {
+        fatalError = e instanceof Error ? e : createAgentStreamAbortError()
+      } else if (isNoOutputGeneratedError(e)) {
         logger.info(
           '[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal'
         )
@@ -146,14 +196,43 @@ export class StreamChunkAdapter {
         return { type: ChunkType.REASONING_DELTA, text }
       }
 
+      case 'tool-input-start':
       case 'tool-call': {
         const toolName = String(part.toolName ?? '').trim()
-        if (!toolName) return null
+        const ids = readToolCallIds(part)
+        if (!toolName || !ids.canonical) return null
+        const canonical = this.rememberCallId(ids)
+        this.toolNames.set(canonical, toolName)
+        for (const alias of ids.aliases) {
+          this.toolNames.set(alias, toolName)
+        }
+        const partial = part.type === 'tool-input-start'
         return {
           type: ChunkType.TOOL_CALL,
-          toolCallId: part.toolCallId,
+          toolCallId: canonical,
           toolName,
-          input: part.input ?? part.args ?? {}
+          input: part.input ?? part.args ?? {},
+          ...(partial ? { partial: true } : {})
+        }
+      }
+
+      case 'tool-input-delta': {
+        const ids = readToolCallIds(part)
+        const delta = readToolInputDelta(part)
+        const canonical = this.resolveCallId(ids)
+        if (!canonical || !delta || this.forwardedAsks.has(canonical)) return null
+        const toolName = this.toolNames.get(canonical)
+        if (toolName !== 'companion_ask') return null
+        const next = (this.argBuffers.get(canonical) ?? '') + delta
+        this.argBuffers.set(canonical, next)
+        const parsed = parseCompanionAskStreamArgs(next)
+        if (!parsed) return null
+        this.forwardedAsks.add(canonical)
+        return {
+          type: ChunkType.TOOL_CALL,
+          toolCallId: canonical,
+          toolName,
+          input: parsed
         }
       }
 
@@ -169,6 +248,7 @@ export class StreamChunkAdapter {
       }
 
       case 'error': {
+        if (isNoOutputGeneratedError(part.error ?? part)) return null
         return { type: ChunkType.ERROR, error: part.error }
       }
 

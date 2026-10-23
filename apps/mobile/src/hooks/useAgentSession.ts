@@ -5,6 +5,10 @@ import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
+import {
+  assertMobileSessionInActiveVault,
+  resolveMobileActiveVaultId
+} from '../utils/mobile-session-vault.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
 import {
   CHAT_MESSAGE_FETCH_LIMIT,
@@ -167,11 +171,40 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   const ingestFetchedTail = useCallback(
     (fetched: SessionMessage[], preserveWindow: boolean) => {
-      messageCacheRef.current = dedupeMessagesById(fetched)
+      const prevById = new Map<string, SessionMessage>()
+      for (const prev of messageCacheRef.current) {
+        prevById.set(prev.id, prev)
+      }
+      for (const prev of useAgentStore.getState().messages as unknown as SessionMessage[]) {
+        if (prev?.id && !prevById.has(prev.id)) {
+          prevById.set(prev.id, prev)
+        }
+      }
+      const stabilized = fetched.map((next) => {
+        const prev = prevById.get(next.id)
+        if (
+          prev &&
+          prev.role === next.role &&
+          prev.content === next.content &&
+          prev.reasoning === next.reasoning &&
+          prev.inputTokens === next.inputTokens &&
+          prev.outputTokens === next.outputTokens &&
+          prev.cacheReadInputTokens === next.cacheReadInputTokens &&
+          prev.cacheWriteInputTokens === next.cacheWriteInputTokens &&
+          prev.costMicros === next.costMicros &&
+          (prev.parts?.length ?? 0) === (next.parts?.length ?? 0) &&
+          (prev.toolInvocations?.length ?? 0) === (next.toolInvocations?.length ?? 0) &&
+          (prev.attachments?.length ?? 0) === (next.attachments?.length ?? 0)
+        ) {
+          return prev
+        }
+        return next
+      })
+      messageCacheRef.current = dedupeMessagesById(stabilized)
       loadedFromEndRef.current = messageCacheRef.current.length
       fetchHasMoreRef.current = fetched.length >= CHAT_MESSAGE_FETCH_LIMIT
 
-      const rounds = groupMessagesIntoRounds(fetched)
+      const rounds = groupMessagesIntoRounds(messageCacheRef.current)
       let start = roundWindowStartRef.current
 
       if (!preserveWindow || start >= Math.max(0, rounds.length - CHAT_ROUNDS_PER_PAGE)) {
@@ -203,6 +236,11 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       }
     ) => {
       if (!dbReady || !services) return false
+
+      if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+        resetSessionState()
+        return false
+      }
 
       const retryCount = options?.retryCount ?? 1
       const waitForLatestUsage = options?.waitForLatestUsage ?? false
@@ -255,7 +293,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
       return true
     },
-    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext]
+    [
+      dbReady,
+      services,
+      mapDbMessageToUI,
+      ingestFetchedTail,
+      resolveStorageContext,
+      resetSessionState
+    ]
   )
 
   const loadMessages = useCallback(
@@ -321,14 +366,18 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
+      if (!dbReady || !services || vaultSwitching) return
+      if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+        toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+        return
+      }
       if (sessionId === useAgentStore.getState().currentSessionId) {
-        if (!dbReady || !services || vaultSwitching) return
         await loadMessages(sessionId)
         return
       }
       setCurrentSessionId(sessionId)
     },
-    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages]
+    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages, toast, t]
   )
 
   useFocusEffect(
@@ -377,7 +426,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       if (!dbReady || !services) return null
       try {
         const newId = Date.now().toString()
-        const vaultName = await services.pathService.getActiveVaultNameForContext()
+        const vaultId = resolveMobileActiveVaultId(services)
         await services.sessionManager.upsertSession(
           buildInsertSessionInput(
             {
@@ -387,7 +436,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
               providerId: options?.providerId,
               modelId: options?.modelId
             },
-            vaultName
+            vaultId
           )
         )
         resetPaginationRefs(paginationRefs)
@@ -411,6 +460,10 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string) => {
       if (!services) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+          toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+          return
+        }
         await services.sessionManager.deleteSessions([sessionId])
         if (sessionId === currentSessionId) {
           resetSessionState()
@@ -427,6 +480,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string, isPinned: boolean) => {
       if (!services) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) return
         await services.sessionManager.togglePin(sessionId, !isPinned)
       } catch (e) {
         console.error('Failed to pin session', e)
@@ -439,6 +493,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string, newTitle: string) => {
       if (!services || !newTitle.trim()) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) return
         await services.sessionManager.updateTitle(sessionId, newTitle.trim())
       } catch (e) {
         console.error('Failed to rename session', e)

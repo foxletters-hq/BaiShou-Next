@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, settingsIcons, uiTypography, sharedTokens } from '../../theme/tokens'
 
 export interface StatisticCardProps {
   title: string
@@ -65,26 +66,26 @@ export const StatisticCard: React.FC<StatisticCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderWidth: 1
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   icon: {
-    fontSize: 18,
-    marginRight: 8
+    fontSize: settingsIcons.trailing,
+    marginRight: sharedTokens.spacing.sm
   },
   title: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   value: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 6
+    fontSize: mobileTypography.display.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   footer: {
     flexDirection: 'row',
@@ -92,18 +93,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   subtitle: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   trendRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   trendIcon: {
-    fontSize: 12,
-    marginRight: 4
+    fontSize: uiTypography.sm,
+    marginRight: sharedTokens.spacing.xs
   },
   trendValue: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   }
 })

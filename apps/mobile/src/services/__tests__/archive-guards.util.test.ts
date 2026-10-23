@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  ARCHIVE_SKIP_TOP_LEVEL,
   assertSafeSnapshotFilename,
   collectSnapshotPreserveKeys,
   formatArchiveExportErrorMessage,
@@ -229,5 +232,19 @@ describe('resolveArchiveImportStageMessage', () => {
   it('returns human-readable stage labels', () => {
     expect(resolveArchiveImportStageMessage({ stage: 'unpacking' })).toContain('解压')
     expect(resolveArchiveImportStageMessage({ stage: 'migrating_legacy' })).toContain('迁移')
+  })
+})
+
+describe('mobile archive restore shadow index invariants', () => {
+  it('does not unlink globalShadowDir on mobile while ExpoShadowIndexConnectionManager caches the handle', () => {
+    const src = readFileSync(join(__dirname, '../archive-import.helpers.ts'), 'utf8')
+    expect(src).not.toContain('globalShadowDir')
+  })
+
+  it('should skip top-level runtime sqlite databases when copying archive extract to root', () => {
+    expect(ARCHIVE_SKIP_TOP_LEVEL.has('baishou_agent.db')).toBe(true)
+    expect(ARCHIVE_SKIP_TOP_LEVEL.has('knowledge.db')).toBe(true)
+    expect(ARCHIVE_SKIP_TOP_LEVEL.has('shadow_index_v2.db')).toBe(true)
+    expect(ARCHIVE_SKIP_TOP_LEVEL.has('Personal')).toBe(false)
   })
 })

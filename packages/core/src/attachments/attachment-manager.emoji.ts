@@ -4,7 +4,8 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { IStoragePathService } from '../vault/storage-path.types'
-import type { EmojiImportResult } from './attachment-manager.types'
+import type { EmojiAttachmentFileItem, EmojiImportResult } from './attachment-manager.types'
+import { getDirectoryFiles } from './attachment-manager.utils'
 
 export type { EmojiImportResult }
 
@@ -146,16 +147,20 @@ export class AttachmentEmojiOps {
    * Returns an array of relative paths like 'emojis/猫猫头.png'.
    */
   async listEmojis(): Promise<string[]> {
+    const files = await this.listEmojiAttachmentFiles()
+    return files.map((file) => file.relativePath)
+  }
+
+  async listEmojiAttachmentFiles(): Promise<EmojiAttachmentFileItem[]> {
     const emojisDir = await this.pathProvider.getEmojisDirectory()
-    try {
-      const entries = await fs.readdir(emojisDir)
-      const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'])
-      return entries
-        .filter((name) => imageExtensions.has(path.extname(name).toLowerCase()))
-        .map((name) => `emojis/${name}`)
-    } catch {
-      return []
-    }
+    const files = await getDirectoryFiles(emojisDir)
+    const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'])
+    return files
+      .filter((file) => imageExtensions.has(path.extname(file.name).toLowerCase()))
+      .map((file) => ({
+        ...file,
+        relativePath: `emojis/${file.name}`
+      }))
   }
 
   /**

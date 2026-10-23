@@ -3,6 +3,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { StatisticCard } from '../StatisticCard'
+import { iconSizes, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface SummaryDashboardProps {
   diaryCount: number
@@ -63,7 +64,7 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({
         {
           backgroundColor: colors.bgSurfaceNormal,
           borderColor: colors.borderSubtle,
-          borderRadius: tokens.radius.sm
+          borderRadius: tokens.radius.xs
         }
       ]}
       onPress={() => onNavigateToDetail?.(item.id)}
@@ -148,16 +149,16 @@ const styles = StyleSheet.create({
     flex: 1
   },
   dashboardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.md
   },
   statsGrid: {
-    marginBottom: 20
+    marginBottom: sharedTokens.spacing.mdPlus
   },
   statsRow: {
     flexDirection: 'row',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   statsCell: {
     flex: 1
@@ -166,38 +167,38 @@ const styles = StyleSheet.create({
     width: 12
   },
   recentSection: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600',
-    marginBottom: 10
+    marginBottom: sharedTokens.spacing.smPlus
   },
   summaryItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: sharedTokens.spacing.mdSnug,
     borderWidth: 1,
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   summaryItemLeft: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   summaryItemIcon: {
-    fontSize: 20,
-    marginRight: 12
+    fontSize: iconSizes.md,
+    marginRight: sharedTokens.spacing.mdTight
   },
   summaryItemTitle: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   summaryItemDate: {
-    fontSize: 12,
-    marginTop: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   },
   summaryArrow: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   }
 })

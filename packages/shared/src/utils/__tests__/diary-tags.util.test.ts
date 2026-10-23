@@ -28,4 +28,12 @@ describe('normalizeDiaryTags', () => {
   it('trims and drops empty entries', () => {
     expect(normalizeDiaryTags([' a ', '', 'b'])).toEqual(['a', 'b'])
   })
+
+  it('splits comma-separated strings', () => {
+    expect(normalizeDiaryTags('工作, 日记')).toEqual(['工作', '日记'])
+  })
+
+  it('parses JSON array strings', () => {
+    expect(normalizeDiaryTags('["工作", "日记"]')).toEqual(['工作', '日记'])
+  })
 })

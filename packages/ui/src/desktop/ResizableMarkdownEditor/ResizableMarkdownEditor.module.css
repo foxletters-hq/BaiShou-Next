@@ -2,12 +2,24 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   width: 100%;
   border: 1px solid var(--border-muted);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.shellFormField {
+  border: 1px solid var(--form-field-border);
+  border-radius: var(--radius-md);
+  background: var(--form-field-bg);
+  transition: var(--form-field-transition);
+}
+
+.shellFormField:focus-within {
+  border-color: var(--form-field-border-focus);
 }
 
 .body {
@@ -40,8 +52,43 @@
 }
 
 .body :global(.cm-content) {
-  padding-bottom: 28px;
-  padding-right: 20px;
+  padding-bottom: var(--spacing-lg);
+  padding-right: var(--spacing-md-plus);
+}
+
+.shell.shellFormField .body :global(.cm-editor) {
+  font-size: var(--ui-fs-lg) !important;
+  line-height: 1.6;
+}
+
+.shell.shellFormField .body :global(.cm-content) {
+  padding: var(--spacing-sm-plus) var(--spacing-md-snug) var(--spacing-md-plus);
+}
+
+/* 表单内的人设文本以正文为主，标题只比正文略大，避免压过页面标题 */
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h1) {
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h2) {
+  font-size: 1.2em;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h3) {
+  font-size: 1.1em;
+}
+
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h4),
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h5),
+.shell.shellFormField .body :global(.cm-line.cm-rendered-h6) {
+  font-size: 1em;
+}
+
+.shell.shellFormField .body :global(.cm-editor),
+.shell.shellFormField .body :global(.cm-scroller),
+.shell.shellFormField .body :global(.cm-gutters) {
+  background: var(--form-field-bg) !important;
 }
 
 .resizeHandle {
@@ -55,10 +102,10 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  padding: 0 3px 3px 0;
+  padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
   border: none;
   background: transparent;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .resizeHandle:hover {

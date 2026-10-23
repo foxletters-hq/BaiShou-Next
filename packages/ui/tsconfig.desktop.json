@@ -9,18 +9,23 @@
     "types": [],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "resolveJsonModule": true
   },
   "include": [
     "src/env.d.ts",
     "src/images.d.ts",
     "src/index.ts",
     "src/i18n.ts",
+    "src/agent-gate/**/*",
+    "src/agent-workspace/**/*",
     "src/desktop/**/*",
     "src/hooks/**/*",
     "src/theme/**/*",
     "src/utils/**/*",
-    "src/assets/**/*"
+    "src/assets/**/*",
+    "src/shared/editor-menus/**/*",
+    "src/shared/diary-codemirror/**/*"
   ],
   "exclude": ["src/native/**/*"]
 }

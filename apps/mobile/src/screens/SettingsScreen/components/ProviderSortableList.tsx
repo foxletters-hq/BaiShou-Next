@@ -20,6 +20,7 @@ import { ChevronRight } from 'lucide-react-native'
 import * as Haptics from 'expo-haptics'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme, ProviderBrandIcon } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   reorderDisabledProviders,
   reorderEnabledProviders,
@@ -190,8 +191,8 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
         >
           <Text
             style={{
-              fontSize: 10,
-              fontWeight: '700',
+              fontSize: mobileTypography.caption.fontSize,
+              fontWeight: '600',
               color: item.isEnabled ? colors.primary : colors.textTertiary
             }}
           >
@@ -200,7 +201,9 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
         </View>
         {!item.isSystem && (
           <View style={[styles.customBadge, { borderColor: colors.borderSubtle }]}>
-            <Text style={{ fontSize: 9, color: colors.textTertiary }}>
+            <Text
+              style={{ fontSize: mobileTypography.caption.fontSize, color: colors.textTertiary }}
+            >
               {t(
                 'auto.apps.mobile.src.screens.SettingsScreen.components.ProviderSortableList.L202',
                 '自定义'
@@ -378,37 +381,37 @@ const styles = StyleSheet.create({
     flex: 1
   },
   listContent: {
-    paddingBottom: 24
+    paddingBottom: sharedTokens.spacing.lg
   },
   groupList: {
     flexGrow: 0
   },
   headerBlock: {
-    gap: 4,
-    marginBottom: 8
+    gap: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.sm
   },
   listHeader: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
   listHint: {
-    fontSize: 11
+    fontSize: mobileTypography.caption.fontSize
   },
   sectionLabel: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    marginTop: 4,
-    marginBottom: 6,
-    paddingHorizontal: 2
+    marginTop: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.xxs
   },
   dividerBlock: {
-    marginTop: 8,
-    marginBottom: 2,
-    gap: 8
+    marginTop: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xxs,
+    gap: sharedTokens.spacing.sm
   },
   dividerLine: {
     height: StyleSheet.hairlineWidth,
@@ -417,7 +420,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     marginBottom: ROW_GAP,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden'
@@ -427,16 +430,16 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   dragGrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3
+    gap: sharedTokens.spacing.xxs
   },
   dragGripColumn: {
-    gap: 3
+    gap: sharedTokens.spacing.xxs
   },
   dragGripDot: {
     width: 3,
@@ -448,27 +451,27 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingRight: 8,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
+    gap: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingRight: sharedTokens.spacing.sm,
+    borderTopRightRadius: sharedTokens.radius.control,
+    borderBottomRightRadius: sharedTokens.radius.control,
     overflow: 'hidden'
   },
   rowName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: sharedTokens.spacing.xsPlus,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   customBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs,
     borderWidth: StyleSheet.hairlineWidth
   }
 })

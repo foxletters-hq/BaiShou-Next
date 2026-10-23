@@ -1,9 +1,11 @@
-import { Tabs } from 'expo-router'
+import { Tabs, usePathname } from 'expo-router'
 import React, { useMemo } from 'react'
 import { Platform, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 import { HapticTab } from '../../components/haptic-tab'
 import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
@@ -12,25 +14,27 @@ const TAB_BAR_CONTENT_HEIGHT = 56
 
 export default function TabLayout() {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, tokens, contentFontScale } = useNativeTheme()
   const insets = useSafeAreaInsets()
+  const pathname = usePathname()
+  const pendingGateCount = useAgentGateInboxStore(selectPendingCount)
+  const agentTabActive = pathname === '/agent' || pathname.startsWith('/agent/')
 
   const tabBarBottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
-  const sharedTabBarStyle = useMemo(
-    () =>
-      ({
-        backgroundColor: colors.bgSurface,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: colors.borderMuted,
-        elevation: 0,
-        shadowOpacity: 0,
-        height: TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset,
-        paddingTop: 0,
-        paddingBottom: tabBarBottomInset
-      }) as const,
-    [colors.bgSurface, colors.borderMuted, tabBarBottomInset]
-  )
+  const sharedTabBarStyle = useMemo(() => {
+    const scaleExtra = contentFontScale > 1 ? Math.round((contentFontScale - 1) * 16) : 0
+    return {
+      backgroundColor: colors.bgSurface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.borderMuted,
+      elevation: 0,
+      shadowOpacity: 0,
+      height: TAB_BAR_CONTENT_HEIGHT + scaleExtra + tabBarBottomInset,
+      paddingTop: 0,
+      paddingBottom: tabBarBottomInset
+    } as const
+  }, [colors.bgSurface, colors.borderMuted, contentFontScale, tabBarBottomInset])
 
   const sharedTabBarItemStyle = useMemo(
     () =>
@@ -46,11 +50,39 @@ export default function TabLayout() {
   const sharedTabBarLabelStyle = useMemo(
     () =>
       Platform.select({
-        ios: { fontSize: 11, marginTop: 2, marginBottom: 0 },
-        android: { fontSize: 11, marginTop: 2, marginBottom: 0, includeFontPadding: false },
-        default: { fontSize: 11, marginTop: 2, marginBottom: 0 }
+        ios: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0
+        },
+        android: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0,
+          includeFontPadding: false
+        },
+        default: {
+          fontSize: mobileTypography.caption.fontSize,
+          marginTop: sharedTokens.spacing.xxs,
+          marginBottom: 0
+        }
       }),
     []
+  )
+
+  const companionTabBadgeStyle = useMemo(
+    () => ({
+      backgroundColor: colors.warning,
+      color: colors.textPrimary,
+      fontSize: mobileTypography.caption.fontSize,
+      fontWeight: '600' as const,
+      minWidth: tokens.spacing.md,
+      height: tokens.spacing.md,
+      lineHeight: tokens.spacing.md,
+      borderRadius: tokens.radius.full,
+      top: 2
+    }),
+    [colors.textPrimary, colors.warning, tokens.radius.full, tokens.spacing.md]
   )
 
   return (
@@ -86,6 +118,13 @@ export default function TabLayout() {
         options={{
           title: t('nav.agent'),
           tabBarHideOnKeyboard: false,
+          tabBarBadge:
+            !agentTabActive && pendingGateCount > 0
+              ? pendingGateCount > 99
+                ? '99+'
+                : pendingGateCount
+              : undefined,
+          tabBarBadgeStyle: companionTabBadgeStyle,
           tabBarIcon: ({ color }) => <AppTabIcon id="agent" color={color} />
         }}
       />

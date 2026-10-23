@@ -1,14 +1,11 @@
 import {
   formatDiaryPreviewText,
-  prepareDiaryAppendContent,
-  prepareDiaryWriteContent,
   parseDateStr,
-  resolveDiaryEditMode,
-  mergeDiaryTags,
+  prepareDiarySearcherEdit,
+  prepareDiarySearcherWrite,
   logger
 } from '@baishou/shared'
 import { getActiveVaultShadowRepo } from './vault.ipc'
-import { settingsManager } from './settings.ipc'
 import { getDiaryManager } from './diary.ipc'
 
 function previewDiaryRow(raw: string | null | undefined): string {
@@ -28,11 +25,8 @@ export function createDiarySearcher() {
     return {
       async searchFTS(query: string, limit?: number) {
         const results = await shadowRepo.searchFTS(query, limit)
-        // 需要将 rowid 映射为 date 字符串
-        const allRecords = await shadowRepo.getAllRecords()
-        const idToDateMap = new Map(allRecords.map((r) => [r.id, r.date]))
         return results.map((r) => ({
-          date: idToDateMap.get(r.rowid) || '',
+          date: r.indexRow?.date || '',
           contentSnippet: r.contentSnippet,
           tags: r.tags,
           rankScore: r.rankScore
@@ -58,19 +52,12 @@ export function createDiarySearcher() {
         }
         return rows
       },
-      async writeEntry(date: string, content: string, tags?: string) {
+      async writeEntry(date: string, content: string) {
         try {
           const diaryService = getDiaryManager()
-          const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
-          const tagsStr = tags
-            ?.split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .join(',')
           await diaryService.create({
             date: parseDateStr(date),
-            content: prepareDiaryWriteContent(content, templateConfig, new Date()),
-            ...(tagsStr ? { tags: tagsStr } : {})
+            ...prepareDiarySearcherWrite(content)
           })
           return { ok: true as const }
         } catch (e) {
@@ -86,7 +73,7 @@ export function createDiarySearcher() {
           }
         }
       },
-      async editEntry({ date, content, mode, tags }) {
+      async editEntry({ date, content, mode }) {
         try {
           const diaryService = getDiaryManager()
           const existing = await diaryService.findByDate(parseDateStr(date))
@@ -97,22 +84,10 @@ export function createDiarySearcher() {
             }
           }
 
-          let finalContent = content
-          const editMode = resolveDiaryEditMode(mode)
-          if (editMode === 'append') {
-            const templateConfig = (await settingsManager.get<any>('diary_template_config')) || {}
-            finalContent = prepareDiaryAppendContent(
-              existing.content,
-              content,
-              templateConfig,
-              new Date()
-            )
-          }
-
-          await diaryService.update(existing.id, {
-            content: finalContent,
-            ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
-          })
+          await diaryService.update(
+            existing.id,
+            prepareDiarySearcherEdit(existing.content, content, mode)
+          )
           return { ok: true as const }
         } catch (e) {
           return {

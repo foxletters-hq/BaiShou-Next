@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GitStatus, VersionHistoryEntry, FileChange, FileDiff } from '@baishou/shared'
-import type { GitManagementPageProps } from './git-management.types'
+import type {
+  GitStatus,
+  GitRemoteStatus,
+  VersionHistoryEntry,
+  FileChange,
+  FileDiff,
+  GitStashEntry
+} from '@baishou/shared'
+import type { GitBranchInfo, GitManagementPageProps } from './git-management.types'
 import { useGitManagementCommit } from './useGitManagementCommit'
 import { useGitManagementWorkspace } from './useGitManagementWorkspace'
+import { useGitManagementRemote } from './useGitManagementRemote'
+import { useGitManagementBranch } from './useGitManagementBranch'
 
 export function useGitManagementPage(props: GitManagementPageProps) {
   const {
@@ -12,12 +21,15 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onInit,
     isInitialized,
     onTestRemote,
+    onCommit,
     onCommitAll,
     onToast,
     onGetStatus,
     onGetHistory,
     onGetHistoryCount,
     onGetRecentPulls,
+    onGetRemoteStatus,
+    onSyncRemote,
     onGetCommitChanges,
     onGetFileDiff,
     onGetWorkingDiff,
@@ -32,11 +44,24 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onResolveConflict,
     onRollbackFile,
     onRollbackAll,
-    onGetRollbackAllContext
+    onGetRollbackAllContext,
+    onGetBranchInfo,
+    onCheckoutBranch,
+    onCreateBranch,
+    onMergeBranch,
+    onDeleteBranch,
+    onPublishBranch,
+    onListStash,
+    onStashPush,
+    onStashApply,
+    onStashPop,
+    onStashDrop,
+    onOpenDiffInEditor,
+    onOpenCommitDiffInEditor
   } = props
   const { t } = useTranslation()
 
-  const [tab, setTab] = useState<'config' | 'version'>('config')
+  const [tab, setTab] = useState<'config' | 'version'>('version')
   const [remoteUrl, setRemoteUrl] = useState(config.remote?.url || '')
   const [remoteBranch, setRemoteBranch] = useState(config.remote?.branch || 'main')
   const [remoteUsername, setRemoteUsername] = useState(config.remote?.username || '')
@@ -45,10 +70,12 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const [userEmail, setUserEmail] = useState(config.userEmail || '')
   const [showPassword, setShowPassword] = useState(false)
 
-  // 工作区状态
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
+  const [remoteStatus, setRemoteStatus] = useState<GitRemoteStatus | null>(null)
+  const [isSyncingRemote, setIsSyncingRemote] = useState(false)
+  const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null)
+  const [stashList, setStashList] = useState<GitStashEntry[]>([])
 
-  // 可折叠区域
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     staged: true,
     changes: true,
@@ -56,7 +83,6 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     pulls: true
   })
 
-  // 历史记录
   const [history, setHistory] = useState<VersionHistoryEntry[]>([])
   const [recentPulls, setRecentPulls] = useState<VersionHistoryEntry[]>([])
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null)
@@ -89,14 +115,39 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }, [])
 
-  const handleRefreshStatus = useCallback(async () => {
-    try {
-      const status = await onGetStatus()
-      setGitStatus(status)
-    } catch {
-      // 静默失败
-    }
-  }, [onGetStatus])
+  const handleRefreshStatus = useCallback(
+    async (options?: { fetch?: boolean }) => {
+      try {
+        const status = await onGetStatus()
+        setGitStatus(status)
+        setConflicts(status.conflicted ?? [])
+      } catch {
+        // 静默失败
+      }
+      if (onGetRemoteStatus) {
+        try {
+          setRemoteStatus(await onGetRemoteStatus(Boolean(options?.fetch)))
+        } catch {
+          setRemoteStatus(null)
+        }
+      }
+      if (onGetBranchInfo) {
+        try {
+          setBranchInfo(await onGetBranchInfo())
+        } catch {
+          setBranchInfo(null)
+        }
+      }
+      if (onListStash) {
+        try {
+          setStashList(await onListStash())
+        } catch {
+          setStashList([])
+        }
+      }
+    },
+    [onGetStatus, onGetRemoteStatus, onGetBranchInfo, onListStash]
+  )
 
   const handleLoadHistory = useCallback(async () => {
     const requestId = ++historyRequestRef.current
@@ -108,7 +159,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
       ])
       if (requestId !== historyRequestRef.current) return
       setHistory(entries)
-      setTotalCount(total)
+      setTotalCount(typeof total === 'number' && Number.isFinite(total) ? Math.max(0, total) : 0)
     } catch {
       if (requestId !== historyRequestRef.current) return
       onToast(t('version_control.load_history_failed', '加载历史失败'), 'error')
@@ -116,6 +167,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   }, [onGetHistory, onGetHistoryCount, page, pageSize, onToast, t])
 
   useEffect(() => {
+    if (totalCount <= 0) return
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
     if (page > totalPages) {
       setPage(totalPages)
@@ -123,6 +175,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   }, [page, pageSize, totalCount])
 
   const handleLoadRecentPulls = useCallback(async () => {
+    if (!onGetRecentPulls) return
     try {
       const pulls = await onGetRecentPulls(10)
       setRecentPulls(pulls)
@@ -135,73 +188,66 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     const result = await onInit()
     if (result.success) {
       onToast(t('version_control.git_init_success', 'Git 仓库初始化成功'), 'success')
-      handleRefreshStatus()
+      await handleRefreshStatus({ fetch: true })
+      await handleLoadHistory()
     } else {
       onToast(result.message || t('version_control.git_init_failed', '初始化失败'), 'error')
     }
-  }, [onInit, onToast, t, handleRefreshStatus])
+  }, [onInit, onToast, t, handleRefreshStatus, handleLoadHistory])
 
-  const handleSaveAuthorConfig = useCallback(async () => {
-    try {
-      onSaveConfig({
-        userName: userName || undefined,
-        userEmail: userEmail || undefined
-      })
-      onToast(t('common.save_success', '保存成功'), 'success')
-    } catch (e: any) {
-      onToast(e?.message || t('common.error', '保存失败'), 'error')
-    }
-  }, [userName, userEmail, onSaveConfig, onToast, t])
-
-  const handleSaveRemoteConfig = useCallback(async () => {
-    try {
-      onSaveConfig({
-        remote: remoteUrl
-          ? {
-              url: remoteUrl,
-              branch: remoteBranch,
-              username: remoteUsername || undefined,
-              token: remoteToken || undefined
-            }
-          : undefined
-      })
-      onToast(t('common.save_success', '保存成功'), 'success')
-    } catch (e: any) {
-      onToast(e?.message || t('common.error', '保存失败'), 'error')
-    }
-  }, [remoteUrl, remoteBranch, remoteUsername, remoteToken, onSaveConfig, onToast, t])
-
-  const handleTestRemote = useCallback(async () => {
-    const ok = await onTestRemote()
-    onToast(
-      ok
-        ? t('version_control.connection_success', '连接成功')
-        : t('version_control.connection_failed', '连接失败'),
-      ok ? 'success' : 'error'
-    )
-  }, [onTestRemote, onToast, t])
-
-  const handlePush = useCallback(async () => {
-    const result = await onPush()
-    onToast(
-      result.success
-        ? t('version_control.push_success', '推送成功')
-        : result.message || t('version_control.git_push_failed', '推送失败'),
-      result.success ? 'success' : 'error'
-    )
-  }, [onPush, onToast, t])
+  const {
+    handleSaveAuthorConfig,
+    handleSaveRemoteConfig,
+    handleTestRemote,
+    isRemoteConfigured,
+    notifyRemoteRequired,
+    handlePush,
+    handlePull,
+    handleSyncRemote
+  } = useGitManagementRemote({
+    t,
+    remoteUrl,
+    remoteBranch,
+    remoteUsername,
+    remoteToken,
+    userName,
+    userEmail,
+    remoteStatus,
+    onSaveConfig,
+    onTestRemote,
+    onPush,
+    onPull,
+    onSyncRemote,
+    onToast,
+    setConflicts,
+    setIsSyncingRemote,
+    handleRefreshStatus,
+    handleLoadHistory
+  })
 
   const stagedCount = gitStatus?.staged.length ?? 0
   const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
   const canCommit = stagedCount > 0 || unstagedCount > 0
+  const canCommitStaged = stagedCount > 0
 
-  const { handleManualCommit, handleCommitAndPush } = useGitManagementCommit({
+  const {
+    isCommitActionInFlight,
+    handleManualCommit,
+    handleCommitStaged,
+    handleCommitAll,
+    handleCommitAndPush,
+    handleCommitAllAndPush
+  } = useGitManagementCommit({
     t,
     commitMessage,
     setCommitMessage,
+    onCommit,
     onCommitAll,
+    stagedCount,
     onPush,
     onToast,
+    isRemoteConfigured,
+    notifyRemoteRequired,
     handleRefreshStatus,
     handleLoadHistory,
     setSelectedCommit,
@@ -209,19 +255,31 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setSelectedFileDiff
   })
 
-  const handlePull = useCallback(async () => {
-    const result = await onPull()
-    if (result.success) {
-      onToast(t('version_control.pull_success', '拉取成功'), 'success')
-      handleRefreshStatus()
-      handleLoadHistory()
-    } else {
-      onToast(result.message || t('version_control.git_pull_failed', '拉取失败'), 'error')
-      if (result.conflicts) {
-        setConflicts(result.conflicts)
-      }
-    }
-  }, [onPull, onToast, t, handleRefreshStatus, handleLoadHistory])
+  const {
+    handleCheckoutBranch,
+    handleCreateBranch,
+    handleMergeBranch,
+    handleDeleteBranch,
+    handlePublishBranch,
+    handleStashPush,
+    handleStashApply,
+    handleStashPop,
+    handleStashDrop
+  } = useGitManagementBranch({
+    t,
+    onToast,
+    onCheckoutBranch,
+    onCreateBranch,
+    onMergeBranch,
+    onDeleteBranch,
+    onPublishBranch,
+    onStashPush,
+    onStashApply,
+    onStashPop,
+    onStashDrop,
+    handleRefreshStatus,
+    handleLoadHistory
+  })
 
   const {
     handleSelectCommit,
@@ -266,8 +324,23 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setExpandedWorkingFile,
     setWorkingFileDiff,
     handleRefreshStatus,
-    handleLoadHistory
+    handleLoadHistory,
+    onOpenDiffInEditor,
+    onOpenCommitDiffInEditor
   })
+
+  const handleResolveConflict = useCallback(
+    async (filePath: string, resolution: 'ours' | 'theirs') => {
+      const result = await onResolveConflict(filePath, resolution)
+      if (result.success) {
+        onToast(t('version_control.conflict_resolved', '已处理冲突'), 'success')
+        await handleRefreshStatus()
+      } else {
+        onToast(t('version_control.conflict_resolve_failed', '处理冲突失败'), 'error')
+      }
+    },
+    [onResolveConflict, onToast, t, handleRefreshStatus]
+  )
 
   return {
     t,
@@ -290,6 +363,10 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     showPassword,
     setShowPassword,
     gitStatus,
+    remoteStatus,
+    isSyncingRemote,
+    branchInfo,
+    stashList,
     expandedSections,
     history,
     recentPulls,
@@ -301,6 +378,10 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     expandedFile,
     expandedWorkingFile,
     workingFileDiff,
+    setExpandedWorkingFile,
+    setWorkingFileDiff,
+    setExpandedFile,
+    setSelectedFileDiff,
     page,
     setPage,
     pageSize,
@@ -311,6 +392,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     stagedCount,
     unstagedCount,
     canCommit,
+    canCommitStaged,
     toggleSection,
     handleRefreshStatus,
     handleLoadHistory,
@@ -321,8 +403,24 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleTestRemote,
     handlePush,
     handlePull,
+    handleSyncRemote,
+    canSyncRemote: Boolean(onSyncRemote),
+    handleResolveConflict,
+    isCommitActionInFlight,
     handleManualCommit,
+    handleCommitStaged,
+    handleCommitAll,
     handleCommitAndPush,
+    handleCommitAllAndPush,
+    handleCheckoutBranch,
+    handleCreateBranch,
+    handleMergeBranch,
+    handleDeleteBranch,
+    handlePublishBranch,
+    handleStashPush,
+    handleStashApply,
+    handleStashPop,
+    handleStashDrop,
     handleSelectCommit,
     handleViewDiff,
     handleViewWorkingDiff,

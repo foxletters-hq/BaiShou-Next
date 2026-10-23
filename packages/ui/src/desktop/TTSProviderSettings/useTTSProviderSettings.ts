@@ -5,7 +5,6 @@ import {
   MIMO_TTS_DEFAULT_MODELS,
   MIMO_TTS_VOICECLONE_MODEL_ID,
   MINIMAX_TTS_DEFAULT_MODELS,
-  MINIMAX_TTS_DEFAULT_VOICE,
   parseRefAudioPick
 } from '@baishou/shared'
 import { useToast } from '../Toast/useToast'
@@ -223,6 +222,8 @@ export function useTTSProviderSettings({
     }, AUTO_SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(autoSaveTimerRef.current)
+    // state 按字段列依赖，避免整个对象引用变化就自动保存
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isInitialized,
     onSaveConfig,

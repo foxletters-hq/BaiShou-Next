@@ -38,6 +38,7 @@ import { listS3 } from './mobile-incremental-cloud-s3-list.ops'
 import { uploadS3 } from './mobile-incremental-cloud-s3-upload.ops'
 import { downloadS3 } from './mobile-incremental-cloud-s3-download.ops'
 import { downloadWebDav, listWebDav, uploadWebDav } from './mobile-incremental-cloud-webdav.ops'
+import { renameS3, renameWebDav } from './mobile-incremental-cloud-rename.ops'
 
 async function withTransientNetworkRetry<T>(
   run: () => Promise<T>,
@@ -279,6 +280,28 @@ export class MobileIncrementalCloudClient implements IncrementalCloudOpsHost {
     if (!res.ok && res.status !== 404) {
       throw new Error(`S3 delete failed: ${res.status}`)
     }
+  }
+
+  /**
+   * 云端重命名：S3 = CopyObject + Delete；WebDAV = MOVE。
+   * 未实现或失败时由 rename pass 回落 V2.4，勿在调用方硬崩。
+   */
+  async renameFile(oldFilename: string, newFilename: string): Promise<void> {
+    const oldRel = oldFilename.replace(/\\/g, '/')
+    const newRel = newFilename.replace(/\\/g, '/')
+    if (!oldRel || !newRel || oldRel === newRel) return
+
+    await withTransientNetworkRetry(
+      async () => {
+        if (this.config.target === 'webdav') {
+          await renameWebDav(this, oldRel, newRel)
+        } else {
+          await renameS3(this, oldRel, newRel)
+        }
+      },
+      4,
+      this.abortSignal
+    )
   }
 
   async listFiles(): Promise<IncrementalSyncRecord[]> {

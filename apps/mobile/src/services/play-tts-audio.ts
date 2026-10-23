@@ -13,6 +13,7 @@ type AudioPlayer = {
   play: () => void
   pause: () => void
   release: () => void
+  currentTime?: number
   addListener: (
     event: 'playbackStatusUpdate',
     listener: (status: AudioStatus) => void
@@ -24,20 +25,26 @@ type PlaylistStatus = {
   currentIndex?: number
   trackCount?: number
   playing?: boolean
+  isLoaded?: boolean
+  currentTime?: number
+  duration?: number
 }
 
 type AudioPlaylist = {
   play: () => void
   pause: () => void
   destroy: () => void
+  currentTime?: number
   addListener: (
     event: 'playlistStatusUpdate',
     listener: (status: PlaylistStatus) => void
   ) => { remove: () => void }
 }
 
-const PLAYBACK_TIMEOUT_MS = 60_000
+/** 连续无播放进度超过该时长才判定卡死；长文本不设播放总时长上限。 */
+const PLAYBACK_STALL_TIMEOUT_MS = 60_000
 const LOAD_TIMEOUT_MS = 15_000
+const PLAYBACK_PROGRESS_EPSILON_SECONDS = 0.05
 
 let activePlayer: AudioPlayer | null = null
 let activeListener: { remove: () => void } | null = null
@@ -132,6 +139,87 @@ function hasPlaybackFinished(status: AudioStatus): boolean {
   )
 }
 
+type PlaybackProgress = {
+  positionSeconds: number
+  trackIndex?: number
+}
+
+/**
+ * 播放进度看门狗：只在连续无进度时判定卡死，不限制总播放时长。
+ * 定时器触发时会读取原生播放器的实时位置，避免后台 JS 定时器延迟造成误杀。
+ */
+function createPlaybackStallGuard(onStall: () => void, readLiveProgress: () => PlaybackProgress) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let running = false
+  let lastPositionSeconds = -1
+  let lastTrackIndex = -1
+
+  const clearTimer = () => {
+    if (timer === undefined) return
+    clearTimeout(timer)
+    timer = undefined
+  }
+
+  const hasProgressed = (progress: PlaybackProgress): boolean => {
+    const positionSeconds = Number.isFinite(progress.positionSeconds) ? progress.positionSeconds : 0
+    const trackIndex = progress.trackIndex ?? 0
+
+    if (trackIndex !== lastTrackIndex) {
+      lastTrackIndex = trackIndex
+      lastPositionSeconds = positionSeconds
+      return true
+    }
+
+    if (positionSeconds > lastPositionSeconds + PLAYBACK_PROGRESS_EPSILON_SECONDS) {
+      lastPositionSeconds = positionSeconds
+      return true
+    }
+    return false
+  }
+
+  const arm = () => {
+    clearTimer()
+    if (!running) return
+    timer = setTimeout(() => {
+      timer = undefined
+      if (!running) return
+
+      let live: PlaybackProgress
+      try {
+        live = readLiveProgress()
+      } catch {
+        onStall()
+        return
+      }
+
+      if (hasProgressed(live)) {
+        arm()
+        return
+      }
+      onStall()
+    }, PLAYBACK_STALL_TIMEOUT_MS)
+  }
+
+  return {
+    start() {
+      running = true
+      lastPositionSeconds = -1
+      lastTrackIndex = -1
+      arm()
+    },
+    stop() {
+      running = false
+      clearTimer()
+    },
+    update(progress: PlaybackProgress) {
+      if (!running) return
+      if (hasProgressed(progress) || timer === undefined) {
+        arm()
+      }
+    }
+  }
+}
+
 export async function stopTtsAudioPlayback(): Promise<void> {
   playbackGeneration += 1
   releaseActivePlayback()
@@ -153,7 +241,7 @@ async function playPreparedAudioFile(tempUri: string, generation: number): Promi
     const finish = () => {
       if (settled || generation !== playbackGeneration) return
       settled = true
-      clearTimeout(timeout)
+      stallGuard.stop()
       clearTimeout(loadTimeout)
       releaseActivePlayer()
       resolve()
@@ -162,15 +250,16 @@ async function playPreparedAudioFile(tempUri: string, generation: number): Promi
     const fail = (error: Error) => {
       if (settled) return
       settled = true
-      clearTimeout(timeout)
+      stallGuard.stop()
       clearTimeout(loadTimeout)
       releaseActivePlayer()
       reject(error)
     }
 
-    const timeout = setTimeout(() => {
-      fail(new Error('TTS playback timed out'))
-    }, PLAYBACK_TIMEOUT_MS)
+    const stallGuard = createPlaybackStallGuard(
+      () => fail(new Error('TTS playback timed out')),
+      () => ({ positionSeconds: player.currentTime ?? 0 })
+    )
 
     const loadTimeout = setTimeout(() => {
       if (!hasStartedPlayback) {
@@ -194,9 +283,13 @@ async function playPreparedAudioFile(tempUri: string, generation: number): Promi
       const state = String(status.playbackState ?? '').toLowerCase()
       if (state.includes('fail') || state.includes('error')) {
         fail(new Error('TTS playback failed'))
+        return
       }
+
+      stallGuard.update({ positionSeconds: status.currentTime ?? 0 })
     })
     activePlayer = player
+    stallGuard.start()
 
     try {
       player.play()
@@ -288,11 +381,13 @@ export async function playTtsAudioSequence(
 
     await new Promise<void>((resolve, reject) => {
       let settled = false
+      let hasStartedPlayback = false
 
       const finish = () => {
         if (settled || generation !== playbackGeneration) return
         settled = true
-        clearTimeout(timeout)
+        stallGuard.stop()
+        clearTimeout(loadTimeout)
         releaseActivePlaylist()
         resolve()
       }
@@ -300,22 +395,46 @@ export async function playTtsAudioSequence(
       const fail = (error: Error) => {
         if (settled) return
         settled = true
-        clearTimeout(timeout)
+        stallGuard.stop()
+        clearTimeout(loadTimeout)
         releaseActivePlaylist()
         reject(error)
       }
 
-      const timeout = setTimeout(() => {
-        fail(new Error('TTS playback timed out'))
-      }, PLAYBACK_TIMEOUT_MS * segments.length)
+      const stallGuard = createPlaybackStallGuard(
+        () => fail(new Error('TTS playback timed out')),
+        () => ({
+          positionSeconds: playlist.currentTime ?? 0,
+          trackIndex: playlist.currentIndex
+        })
+      )
+
+      const loadTimeout = setTimeout(() => {
+        if (!hasStartedPlayback) {
+          fail(new Error('TTS playback failed to start'))
+        }
+      }, LOAD_TIMEOUT_MS)
 
       activePlaylistListener = playlist.addListener('playlistStatusUpdate', (status) => {
         if (generation !== playbackGeneration) return
+
+        if (status.isLoaded || status.playing) {
+          hasStartedPlayback = true
+          clearTimeout(loadTimeout)
+        }
+
         if (status.didJustFinish) {
           finish()
+          return
         }
+
+        stallGuard.update({
+          positionSeconds: status.currentTime ?? 0,
+          trackIndex: status.currentIndex ?? 0
+        })
       })
 
+      stallGuard.start()
       try {
         playlist.play()
       } catch (error) {

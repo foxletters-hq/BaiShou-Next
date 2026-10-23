@@ -7,13 +7,16 @@ import {
   ScrollView,
   Pressable,
   Modal,
-  StyleSheet
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle
 } from 'react-native'
 import { Check, Pencil, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { settingsSelectorStyles } from '../SettingsSelector/settings-selector.styles'
+import { mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface TtsModelComboboxProps {
   value: string
@@ -24,6 +27,9 @@ interface TtsModelComboboxProps {
   onFocus: () => void
   onToggleDropdown: () => void
   onSelect: (modelId: string) => void
+  triggerStyle?: StyleProp<ViewStyle>
+  style?: StyleProp<ViewStyle>
+  compact?: boolean
 }
 
 export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
@@ -34,7 +40,10 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
   onChangeText,
   onFocus,
   onToggleDropdown,
-  onSelect
+  onSelect,
+  triggerStyle,
+  style,
+  compact = false
 }) => {
   const { t } = useTranslation()
   const { colors, tokens } = useNativeTheme()
@@ -72,15 +81,27 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
     !filteredOptions.some((opt) => opt.toLowerCase() === searchQuery.trim().toLowerCase())
 
   return (
-    <View style={comboboxStyles.wrapper}>
+    <View style={[compact ? comboboxStyles.compactWrapper : comboboxStyles.wrapper, style]}>
       <TouchableOpacity
         activeOpacity={0.7}
         style={[
           settingsSelectorStyles.trigger,
           {
             backgroundColor: colors.bgSurface,
-            borderColor: hasValue ? colors.borderMuted : colors.borderSubtle
-          }
+            borderColor: colors.borderControl,
+            borderRadius: sharedTokens.radius.lg,
+            minHeight: mobileControlTokens.height,
+            paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
+            paddingVertical: mobileControlTokens.inputPaddingVertical
+          },
+          compact && {
+            minHeight: 32,
+            paddingHorizontal: sharedTokens.spacing.smPlus,
+            paddingVertical: sharedTokens.spacing.xxs,
+            borderRadius: sharedTokens.radius.md,
+            gap: sharedTokens.spacing.xs
+          },
+          triggerStyle
         ]}
         onPress={() => {
           onFocus()
@@ -90,9 +111,12 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
         <Text
           style={[
             settingsSelectorStyles.triggerValue,
-            { color: hasValue ? colors.textPrimary : colors.textTertiary }
+            {
+              fontSize: mobileTypography.secondary.fontSize,
+              color: hasValue ? colors.textPrimary : colors.textTertiary
+            }
           ]}
-          numberOfLines={2}
+          numberOfLines={1}
         >
           {hasValue ? value : placeholder}
         </Text>
@@ -111,12 +135,12 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
               comboboxStyles.modalPanel,
               {
                 backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
+                borderColor: colors.borderMuted,
                 borderRadius: tokens.radius.lg
               }
             ]}
           >
-            <View style={[comboboxStyles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
+            <View style={[comboboxStyles.modalHeader, { borderBottomColor: colors.borderMuted }]}>
               <Text style={[comboboxStyles.modalTitle, { color: colors.textPrimary }]}>
                 {t('tts.settings.model_id_label', '模型 ID')}
               </Text>
@@ -138,7 +162,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                   {
                     color: colors.textPrimary,
                     backgroundColor: colors.bgSurface,
-                    borderColor: colors.borderSubtle
+                    borderColor: colors.borderControl
                   }
                 ]}
               />
@@ -206,6 +230,10 @@ const comboboxStyles = StyleSheet.create({
   wrapper: {
     flex: 1
   },
+  compactWrapper: {
+    flex: 1,
+    minWidth: 100
+  },
   modalPanel: {
     width: '90%',
     maxWidth: 360,
@@ -217,25 +245,26 @@ const comboboxStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   searchWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.sm
   },
   searchInput: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14
+    borderRadius: mobileControlTokens.radius,
+    paddingHorizontal: mobileControlTokens.inputPaddingHorizontal,
+    paddingVertical: mobileControlTokens.inputPaddingVertical,
+    minHeight: mobileControlTokens.height,
+    fontSize: mobileTypography.secondary.fontSize
   },
   optionsList: {
     maxHeight: 320
@@ -244,12 +273,12 @@ const comboboxStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   optionText: {
     flex: 1,
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   }
 })

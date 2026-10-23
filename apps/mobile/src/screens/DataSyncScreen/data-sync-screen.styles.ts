@@ -1,111 +1,146 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export const dataSyncScreenStyles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
-  section: { borderRadius: 16, padding: 16, marginBottom: 16 },
+  scrollContent: {
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md
+  },
+  topSwitcherContainer: { marginBottom: sharedTokens.spacing.md },
+  section: {
+    borderRadius: sharedTokens.radius.lg,
+    padding: sharedTokens.spacing.md,
+    marginBottom: sharedTokens.spacing.md
+  },
   backupScopeWrapper: {
-    marginTop: 4,
-    marginBottom: 8
+    marginTop: sharedTokens.spacing.xs,
+    marginBottom: sharedTokens.spacing.sm
   },
   statCardsRow: {
     flexDirection: 'column',
-    gap: 10,
-    borderRadius: 12,
+    gap: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    padding: 14,
-    marginBottom: 16
+    padding: sharedTokens.spacing.mdSnug,
+    marginBottom: sharedTokens.spacing.md
   },
-  statCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  statCard: { flexDirection: 'row', alignItems: 'center', gap: sharedTokens.spacing.mdTight },
   statIconWrapper: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     alignItems: 'center',
     justifyContent: 'center'
   },
   statInfo: { flex: 1 },
-  statLabel: { fontSize: 12, marginBottom: 3 },
-  statValue: { fontSize: 17, fontWeight: '600' },
-  backupTabBar: { flexDirection: 'row', borderRadius: 10, padding: 4, marginBottom: 12 },
-  backupTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  headerTitleRow: { marginBottom: 10 },
-  headerTitleBlock: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  headerTitleLabel: { fontSize: 16, fontWeight: '700' },
+  statLabel: {
+    fontSize: mobileTypography.caption.fontSize,
+    marginBottom: sharedTokens.spacing.xxs
+  },
+  statValue: { fontSize: mobileTypography.title.fontSize, fontWeight: '600' },
+  headerTitleRow: { marginBottom: sharedTokens.spacing.smPlus },
+  headerTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm,
+    flexWrap: 'wrap'
+  },
+  headerTitleLabel: { fontSize: mobileTypography.primary.fontSize, fontWeight: '600' },
   targetBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1
   },
   headerActionsGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 4
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs
   },
   headerActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
-  emptyContainer: { alignItems: 'center', padding: 32, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
-  emptySubText: { fontSize: 13, textAlign: 'center', lineHeight: 20, maxWidth: 320 },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.sm
+  },
+  emptyText: { fontSize: mobileTypography.body.fontSize, fontWeight: '600', textAlign: 'center' },
+  emptySubText: {
+    fontSize: mobileTypography.secondary.fontSize,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 320
+  },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: sharedTokens.spacing.xsPlus,
+    marginTop: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   settingsLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8
+    gap: sharedTokens.spacing.xsPlus,
+    marginTop: sharedTokens.spacing.xs,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm
   },
-  loadingContainer: { alignItems: 'center', padding: 32 },
-  loadingText: { fontSize: 14 },
+  loadingContainer: { alignItems: 'center', padding: sharedTokens.spacing.xl },
+  loadingText: { fontSize: mobileTypography.secondary.fontSize },
   recordList: {
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     overflow: 'hidden'
   },
   recordItem: {
-    padding: 12,
+    padding: sharedTokens.spacing.mdTight,
     flexDirection: 'row',
     alignItems: 'center'
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderRadius: 4,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  checkmark: { fontSize: 14, fontWeight: '700' },
   recordInfo: { flex: 1 },
-  recordName: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  recordMeta: { fontSize: 11 },
-  recordActions: { flexDirection: 'row', gap: 6, marginLeft: 4 },
-  recordAction: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6 },
-  recordActionText: { fontSize: 11, fontWeight: '600' },
-  renameContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  renameConfirm: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
-  renameConfirmText: { fontSize: 13, fontWeight: '600' },
-  renameCancel: { padding: 8 },
-  renameCancelText: { fontSize: 13, fontWeight: '600' }
+  recordName: {
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.xxs
+  },
+  recordMeta: { fontSize: mobileTypography.caption.fontSize },
+  recordActions: {
+    flexDirection: 'row',
+    gap: sharedTokens.spacing.xsPlus,
+    marginLeft: sharedTokens.spacing.xs
+  },
+  recordAction: {
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.xsPlus
+  },
+  recordActionText: { fontSize: mobileTypography.caption.fontSize, fontWeight: '600' },
+  renameContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.sm
+  },
+  renameConfirm: {
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.xsPlus
+  },
+  renameConfirmText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
+  renameCancel: { padding: sharedTokens.spacing.sm },
+  renameCancelText: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' }
 })

@@ -3,10 +3,13 @@ import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
 export const agentSessionsTable = sqliteTable('agent_sessions', {
   id: text('id').primaryKey(),
   title: text('title').notNull().default('新对话'),
-  vaultName: text('vault_name').notNull(),
+  vaultId: text('vault_id').notNull(),
   assistantId: text('assistant_id'),
   isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
   systemPrompt: text('system_prompt'),
+  mountedNotebookIds: text('mounted_notebook_ids').notNull().default(''),
+  /** 会话级 instruction 基线（JSON）：skills_catalog 等增量指令的冻结快照 */
+  instructionState: text('instruction_state'),
   providerId: text('provider_id').notNull(),
   modelId: text('model_id').notNull(),
   totalInputTokens: integer('total_input_tokens').notNull().default(0),

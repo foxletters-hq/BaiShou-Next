@@ -1,0 +1,248 @@
+import i18n from 'i18next'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  GraphExtractQueueEngine,
+  GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
+  GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY,
+  GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
+  logger,
+  buildGraphExtractEnqueueItems,
+  resolveGraphExtractConcurrency,
+  type GraphExtractQueueSnapshot
+} from '@baishou/shared'
+import type { GraphExtractDraft } from '@baishou/core-mobile'
+import type { AppDatabase, ShadowIndexRepository } from '@baishou/database'
+import type { IFileSystem, IStoragePathService, SettingsManagerService } from '@baishou/core-mobile'
+import {
+  mobileCommitGraphDrafts,
+  mobileExtractDraft,
+  mobileListPendingReextract,
+  resolveMobileGraphExtractAlignDeps
+} from './mobile-graph.service'
+
+export type {
+  GraphExtractQueueItem,
+  GraphExtractQueueSnapshot,
+  GraphExtractQueueStatus
+} from '@baishou/shared'
+
+export type MobileGraphExtractContext = {
+  vaultId: string
+  vaultName: string
+  drizzleDb: AppDatabase
+  shadowRepo: ShadowIndexRepository
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  settingsManager: SettingsManagerService
+}
+
+type Listener = (state: GraphExtractQueueSnapshot) => void
+
+/** 移动端图谱抽取候选池大小：与桌面端统一为 30，配合重叠流水线与实时单篇进度提升吞吐 */
+export const MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30
+
+const STORAGE_KEY = 'baishou.graph.extractQueue.v1'
+
+/**
+ * Module-level queue so extract keeps running when GraphScreen unmounts.
+ * Pending list is persisted in AsyncStorage (app data, not Vault) while running, but is discarded
+ * when the queue first gets a context after an app restart; the user must trigger organize again.
+ */
+class MobileGraphExtractQueue {
+  private readonly engine: GraphExtractQueueEngine
+  private readonly listeners = new Set<Listener>()
+  private context: MobileGraphExtractContext | null = null
+  private restored = false
+
+  constructor() {
+    this.engine = new GraphExtractQueueEngine({
+      concurrency: GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
+      alignPoolSize: MOBILE_GRAPH_EXTRACT_ALIGN_POOL_SIZE,
+      persist: (pending) => {
+        void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: 1, pending }))
+      },
+      broadcast: (state) => {
+        for (const listener of this.listeners) {
+          try {
+            listener(state)
+          } catch {
+            // ignore listener errors
+          }
+        }
+      },
+      messages: () => ({
+        cancelled: i18n.t('graph.extract_user_cancelled', '用户取消了抽取'),
+        failed: i18n.t('graph.extract_failed', '整理失败'),
+        skipped: i18n.t('graph.extract_skipped', '已跳过（不在待重抽列表）')
+      }),
+      flushDrafts: async (items, signal, onPhase) => {
+        const ctx = this.context
+        if (!ctx) {
+          throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
+        }
+        try {
+          return await mobileCommitGraphDrafts(
+            ctx,
+            items.map((item) => item.draft as GraphExtractDraft),
+            signal,
+            onPhase
+          )
+        } catch (e) {
+          // 引擎只把错误记在条目上；这里补日志，否则整批失败时没有任何痕迹。
+          logger.warn('[GraphExtract] flush failed', {
+            error: e instanceof Error ? e.message : String(e),
+            stack: e instanceof Error ? e.stack : undefined,
+            drafts: items.length
+          })
+          throw e
+        }
+      }
+    })
+    this.engine.setRunner(async ({ filePath, signal, onProgress }) => {
+      const ctx = this.context
+      if (!ctx) {
+        throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
+      }
+      const draft = await mobileExtractDraft({
+        ...ctx,
+        filePath,
+        signal,
+        onProgress
+      })
+      return { done: 1, failed: 0, errors: [], draft }
+    })
+    void this.restoreConcurrency()
+  }
+
+  private async restoreConcurrency() {
+    try {
+      const raw = await AsyncStorage.getItem(GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY)
+      if (raw != null) this.engine.setConcurrency(raw)
+    } catch {
+      // keep default
+    }
+  }
+
+  setConcurrency(value: unknown) {
+    const n = resolveGraphExtractConcurrency(value)
+    this.engine.setConcurrency(n)
+    void AsyncStorage.setItem(GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY, String(n))
+    return n
+  }
+
+  getConcurrency(): number {
+    return this.engine.getConcurrency()
+  }
+
+  subscribe(listener: Listener): () => void {
+    this.listeners.add(listener)
+    listener(this.engine.getQueueState())
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  getQueueState(): GraphExtractQueueSnapshot {
+    return this.engine.getQueueState()
+  }
+
+  get isRunning(): boolean {
+    return this.engine.isRunning
+  }
+
+  waitUntilIdle(
+    options?: Parameters<GraphExtractQueueEngine['waitUntilIdle']>[0]
+  ): ReturnType<GraphExtractQueueEngine['waitUntilIdle']> {
+    return this.engine.waitUntilIdle(options)
+  }
+
+  setContext(ctx: MobileGraphExtractContext) {
+    this.context = ctx
+    if (this.restored) return
+    this.restored = true
+    // 重启后不自动续跑上次未完成的整理，丢弃旧待办；待整理项会从数据库重新统计，
+    // 由用户在记忆中心手动点击「继续整理」触发。
+    void this.discardPersistedQueue()
+  }
+
+  private async discardPersistedQueue(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // 丢弃失败时内存队列仍为空，不影响手动触发
+    }
+  }
+
+  stop() {
+    this.engine.stop()
+  }
+
+  clearError() {
+    this.engine.clearError()
+  }
+
+  /** 停队列并丢掉持久化待办，避免清空图谱后恢复旧抽取再写出待确认节点。 */
+  async stopAndDropPersisted(): Promise<void> {
+    this.engine.stop()
+    this.restored = true
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // 清持久化失败时内存队列已空，忽略
+    }
+  }
+
+  cancelItem(filePath: string): boolean {
+    return this.engine.cancelItem(filePath)
+  }
+
+  async enqueue(
+    opts?: { filePaths?: string[]; concurrency?: number },
+    ctx?: MobileGraphExtractContext
+  ): Promise<{
+    queued: number
+    totalPending: number
+    skippedNotEmbedded: string[]
+    blockedPendingEmbed?: number
+  }> {
+    if (ctx) this.context = ctx
+    if (!this.context) {
+      throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
+    }
+    if (opts?.concurrency != null) {
+      this.setConcurrency(opts.concurrency)
+    }
+
+    const alignDeps = await resolveMobileGraphExtractAlignDeps(this.context)
+    if (!(await alignDeps.isEmbeddingConfigured?.())) {
+      throw new Error(GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR)
+    }
+
+    const pending = await mobileListPendingReextract({
+      vaultName: this.context.vaultName,
+      vaultId: this.context.vaultId,
+      shadowRepo: this.context.shadowRepo,
+      pathService: this.context.pathService,
+      fileSystem: this.context.fileSystem
+    })
+    const wanted = opts?.filePaths?.length ? opts.filePaths : pending.map((p) => p.filePath)
+    const { items, skippedNotEmbedded } = await buildGraphExtractEnqueueItems({
+      wanted,
+      pending,
+      isDiaryEmbedded: alignDeps.isDiaryEmbedded
+    })
+    const queued = this.engine.enqueue(items)
+    return { queued, totalPending: items.length, skippedNotEmbedded }
+  }
+
+  enqueueAfterEmbed(
+    items: Array<{ filePath: string; date?: string; contentHash?: string }>,
+    ctx?: MobileGraphExtractContext
+  ): number {
+    if (ctx) this.context = ctx
+    if (!this.context || items.length === 0) return 0
+    return this.engine.enqueueAfterEmbed(items)
+  }
+}
+
+export const mobileGraphExtractQueue = new MobileGraphExtractQueue()

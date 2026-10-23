@@ -10,6 +10,10 @@
 | [4-技术分享/](./4-技术分享/0-README.md)                                   | [0-README.md](./4-技术分享/0-README.md)                  | 疑难杂症攻克（[移动端](./4-技术分享/移动端/0-README.md) / [桌面端](./4-技术分享/桌面端/0-README.md)） |
 | [legal/](../legal/README.md)                                              | [README.md](../legal/README.md)                          | 版权、CLA、双许可与商标指引                                                                           |
 | [发版流程.md](./发版流程.md)                                              | —                                                        | 发版速查清单                                                                                          |
+| [发版检查SOP.md](./发版检查SOP.md)                                        | —                                                        | 发版前 / 发版 / 发版后逐项检查、回滚与证据归档                                                        |
+| [发版功能检查清单.md](./发版功能检查清单.md)                              | —                                                        | 发版前功能回归：P0 阻断项、分模块检查、重点功能专项                                                   |
 | [打包须知.md](./打包须知.md)                                              | —                                                        | Android / Windows 打包与 CI 发版详情                                                                  |
+
+AI 协作规则入口：[1-AI-Code/0-README.md](./1-AI-Code/0-README.md)（说明什么工作该打开哪一份规则）。组件清单：[../packages/ui/COMPONENTS.md](../packages/ui/COMPONENTS.md)。
 
 仓库主页（简体中文完整介绍）：[../README.md](../README.md)

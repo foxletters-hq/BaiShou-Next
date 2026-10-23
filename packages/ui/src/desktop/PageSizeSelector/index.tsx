@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Rows3 } from 'lucide-react'
 import styles from './PageSizeSelector.module.css'
 import {
   estimateDropdownHeight,
@@ -116,7 +115,6 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
       >
         <span className={styles.pageSizeValue}>{value}</span>
         <span className={styles.pageSizeUnit}>{resolvedLabel}</span>
-        <Rows3 size={14} className={styles.icon} />
       </button>
 
       {mounted &&

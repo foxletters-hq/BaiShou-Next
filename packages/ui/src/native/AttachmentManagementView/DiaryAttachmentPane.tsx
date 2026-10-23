@@ -59,7 +59,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
         <View style={styles.filterRow}>
           {availableYears.length > 0 && (
             <TouchableOpacity
-              style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
+              style={[styles.filterChip, { borderColor: colors.borderControl }]}
               onPress={() => setFilterSheet('year')}
             >
               <Calendar size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
@@ -77,7 +77,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
           )}
 
           <TouchableOpacity
-            style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
+            style={[styles.filterChip, { borderColor: colors.borderControl }]}
             onPress={() => setFilterSheet('month')}
           >
             <Folder size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
@@ -94,7 +94,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, { borderColor: colors.borderSubtle }]}
+            style={[styles.filterChip, { borderColor: colors.borderControl }]}
             onPress={() => setFilterSheet('orphan')}
           >
             <Tag size={14} color={colors.textSecondary} strokeWidth={DEFAULT_STROKE_WIDTH} />
@@ -132,7 +132,7 @@ export const DiaryAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel }
           )}
           {pagedDiaryAttachments.length > 0 && (
             <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.actionBtn, { borderColor: colors.borderControl }]}
               onPress={toggleSelectAllDiary}
             >
               <CheckSquare

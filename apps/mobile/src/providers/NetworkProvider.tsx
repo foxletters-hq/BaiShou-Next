@@ -11,6 +11,14 @@ import NetInfo, { type NetInfoState } from '@react-native-community/netinfo'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
+import {
+  resolveConnectionType,
+  resolveIsMetered,
+  type NetworkConnectionType
+} from './network-connection.util'
+
+export type { NetworkConnectionType }
 
 export interface NetworkStatus {
   /** 设备已连接 Wi-Fi 或蜂窝网络 */
@@ -19,21 +27,31 @@ export interface NetworkStatus {
   isInternetReachable: boolean | null
   /** 发送消息、触发云同步等需要联网的操作是否应放行 */
   isOnline: boolean
+  /** NetInfo 连接类型；未知时按 Wi-Fi 处理（不提示流量） */
+  connectionType: NetworkConnectionType
+  /** 蜂窝或 isConnectionExpensive 时为 true */
+  isMetered: boolean
 }
 
 const DEFAULT_STATUS: NetworkStatus = {
   isConnected: true,
   isInternetReachable: true,
-  isOnline: true
+  isOnline: true,
+  connectionType: 'unknown',
+  isMetered: false
 }
 
 const NetworkContext = createContext<NetworkStatus>(DEFAULT_STATUS)
+
+export { resolveConnectionType, resolveIsMetered }
 
 function resolveNetworkStatus(state: NetInfoState | null): NetworkStatus {
   const isConnected = state?.isConnected ?? true
   const isInternetReachable = state?.isInternetReachable ?? null
   const isOnline = isConnected && (isInternetReachable === null || isInternetReachable === true)
-  return { isConnected, isInternetReachable, isOnline }
+  const connectionType = resolveConnectionType(state)
+  const isMetered = resolveIsMetered(state, connectionType)
+  return { isConnected, isInternetReachable, isOnline, connectionType, isMetered }
 }
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
@@ -72,7 +90,7 @@ export function useNetworkStatus(): NetworkStatus {
   return useContext(NetworkContext)
 }
 
-/** 预留：后续在布局中挂载即可展示离线提示 */
+/** 离线时顶部提示横幅 */
 export function NetworkOfflineBanner() {
   const { isOnline } = useNetworkStatus()
   const insets = useSafeAreaInsets()
@@ -106,14 +124,14 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     zIndex: 1000,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
     alignItems: 'center'
   },
   bannerText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   }
 })

@@ -1,6 +1,5 @@
 import React from 'react'
 import styles from './TokenBadge.module.css'
-import { Activity } from 'lucide-react'
 
 export interface TokenBadgeProps {
   inputTokens?: number
@@ -9,6 +8,8 @@ export interface TokenBadgeProps {
   durationMs?: number // legacy prop alias
   onClick?: () => void
   className?: string
+  /** 聊天顶栏：与伙伴选择器同高 */
+  variant?: 'default' | 'toolbar'
 }
 
 export const TokenBadge: React.FC<TokenBadgeProps> = ({
@@ -17,7 +18,8 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   costMicros = 0,
   durationMs = 0,
   onClick,
-  className
+  className,
+  variant = 'default'
 }) => {
   const formatTokens = (n: number) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
@@ -29,10 +31,10 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
   const total = inputTokens + outputTokens
 
   return (
-    <div className={`${styles.container} ${className ?? ''}`.trim()} onClick={onClick}>
-      <span className={styles.iconWrap}>
-        <Activity size={14} strokeWidth={2.5} />
-      </span>
+    <div
+      className={`${styles.container} ${variant === 'toolbar' ? styles.toolbar : ''} ${className ?? ''}`.trim()}
+      onClick={onClick}
+    >
       <span className={styles.tokenText}>{formatTokens(total)}</span>
       {costText && (
         <>

@@ -1,5 +1,6 @@
 import { getSummaryWeekNumber } from '@baishou/shared'
 import type { TFunction } from 'i18next'
+import { parseSummaryBoundaryDate } from './summary-detail.helpers'
 
 export interface SummaryTitleInput {
   type: string
@@ -8,7 +9,7 @@ export interface SummaryTitleInput {
 
 /** 与桌面 SummaryGalleryView 一致的总结标题 */
 export function buildSummaryTitle(summary: SummaryTitleInput, t: TFunction): string {
-  const start = new Date(summary.startDate)
+  const start = parseSummaryBoundaryDate(summary.startDate)
   if (summary.type === 'weekly') {
     return t('summary.missing_label_weekly')
       .replace('$year', String(start.getFullYear()))

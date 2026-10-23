@@ -260,6 +260,9 @@ export function useDataSyncCloud() {
         )
         if (result.success) {
           reportArchiveImportStage(setCloudRestoreProgress, 'succeeded', { percent: 100 })
+          await new Promise((resolve) => setTimeout(resolve, 900))
+          setIsRestoring(false)
+          setCloudRestoreProgress(null)
           applyArchiveImportFeedback(
             {
               fileCount: -1,
@@ -270,7 +273,6 @@ export function useDataSyncCloud() {
             notifyArchiveRestoreComplete,
             { successMessage: result.message }
           )
-          await new Promise((resolve) => setTimeout(resolve, 900))
         } else {
           setCloudRestoreProgress(
             buildArchiveImportProgress('failed', { percent: 100, detail: result.message })
@@ -375,11 +377,44 @@ export function useDataSyncCloud() {
   }, [])
 
   const handleSyncNow = async () => {
-    if (!cloudSyncService || !services) return
+    if (!cloudSyncService || !services) {
+      toast.showWarning(t('common.service_initializing', '服务正在初始化，请稍后重试'))
+      return
+    }
+
     if (syncConfig.target === 'local') {
-      toast.showWarning(
-        t('cloud.sync_target_local_hint', '当前备份目标为本地，请先在备份设置中配置云端存储')
+      const confirmed = await dialog.confirm(
+        t(
+          'data_sync.target_local_dialog_desc',
+          '当前备份目标为本地存储，尚未配置云端存储。\n\n• 如需备份至云端，请前往「备份设置」配置 WebDAV 或 S3。\n• 如需导出到本机，可切换至「本地备份」标签页。'
+        ),
+        {
+          title: t('data_sync.cloud_backup_not_configured', '未配置云端存储'),
+          confirmText: t('data_sync.sync_settings_button', '备份设置'),
+          cancelText: t('common.cancel', '取消')
+        }
       )
+      if (confirmed) {
+        openSettings()
+      }
+      return
+    }
+
+    if (!isRemoteCloudSyncConfigured(syncConfig)) {
+      const confirmed = await dialog.confirm(
+        t(
+          'data_sync.cloud_config_incomplete_confirm',
+          '云端存储配置信息不完整，无法开始备份。是否前往完善配置？'
+        ),
+        {
+          title: t('data_sync.cloud_config_incomplete_title', '配置不完整'),
+          confirmText: t('data_sync.sync_settings_button', '备份设置'),
+          cancelText: t('common.cancel', '取消')
+        }
+      )
+      if (confirmed) {
+        openSettings()
+      }
       return
     }
 

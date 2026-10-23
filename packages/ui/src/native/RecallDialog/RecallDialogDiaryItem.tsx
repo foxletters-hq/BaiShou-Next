@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { RecallItem } from './recall-dialog.types'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 interface RecallDialogDiaryItemProps {
   item: RecallItem
@@ -36,13 +37,13 @@ export const RecallDialogDiaryItem: React.FC<RecallDialogDiaryItemProps> = ({ it
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 6
+          marginBottom: sharedTokens.spacing.xsPlus
         }}
       >
         <Text
           style={{
-            fontSize: 15,
-            fontWeight: '700',
+            fontSize: mobileTypography.body.fontSize,
+            fontWeight: '600',
             color: colors.textPrimary,
             flex: 1,
             marginRight: tokens.spacing.sm
@@ -52,7 +53,11 @@ export const RecallDialogDiaryItem: React.FC<RecallDialogDiaryItemProps> = ({ it
           {item.title}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm }}>
-          <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.date}</Text>
+          <Text
+            style={{ fontSize: mobileTypography.caption.fontSize, color: colors.textSecondary }}
+          >
+            {item.date}
+          </Text>
           <Pressable
             onPress={(e) => {
               e.stopPropagation?.()
@@ -68,7 +73,7 @@ export const RecallDialogDiaryItem: React.FC<RecallDialogDiaryItemProps> = ({ it
       <Text
         numberOfLines={2}
         style={{
-          fontSize: 13,
+          fontSize: mobileTypography.secondary.fontSize,
           color: colors.textSecondary,
           lineHeight: 20
         }}

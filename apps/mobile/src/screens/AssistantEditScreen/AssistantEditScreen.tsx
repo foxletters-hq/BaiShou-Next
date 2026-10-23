@@ -60,12 +60,15 @@ export const AssistantEditScreen: React.FC = () => {
             openModelSwitcher={() => void form.openModelSwitcher()}
             modelId={form.modelId}
             globalEmojiEnabled={form.globalEmojiEnabled}
-            emojiGroups={form.emojiGroups}
+            emojiConfig={form.emojiConfig}
             emojiEnabled={form.emojiEnabled}
             selectedEmojiGroupIds={form.selectedEmojiGroupIds}
             handleEmojiEnabledChange={form.handleEmojiEnabledChange}
             handleToggleEmojiGroup={form.handleToggleEmojiGroup}
-            setOuterScrollEnabled={form.setOuterScrollEnabled}
+            handleEmojiConfigChange={form.handleEmojiConfigChange}
+            handlePickAndImportEmojis={form.handlePickAndImportEmojis}
+            handleResolveEmojiPath={form.handleResolveEmojiPath}
+            handleDeleteEmoji={form.handleDeleteEmoji}
           />
           <AssistantEditMemorySection
             colors={form.colors}

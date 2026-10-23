@@ -5,6 +5,7 @@ import type { EmojiGroup, EmojiToolConfig } from '@baishou/shared'
 import { findEmojiGroup, normalizeEmojiToolConfig, upsertEmojiGroup } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { EmojiGroupStickerGrid } from './EmojiGroupStickerGrid'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface EmojiGroupDetailViewProps {
   config: EmojiToolConfig
@@ -92,19 +93,19 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 16 },
-  empty: { padding: 24, alignItems: 'center' },
+  container: { gap: sharedTokens.spacing.md },
+  empty: { padding: sharedTokens.spacing.lg, alignItems: 'center' },
   nameCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 8
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
-  label: { fontSize: 13, fontWeight: '600' },
+  label: { fontSize: mobileTypography.secondary.fontSize, fontWeight: '600' },
   nameInput: {
     borderWidth: 1,
-    borderRadius: 10,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10
+    borderRadius: sharedTokens.radius.control,
+    fontSize: mobileTypography.primary.fontSize,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.smPlus
   }
 })

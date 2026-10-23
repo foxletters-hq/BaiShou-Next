@@ -139,6 +139,49 @@ export class SnapshotRepository {
     await this.deleteSnapshots(sessionId, idsToDelete)
   }
 
+  async deleteBySessionId(sessionId: string): Promise<void> {
+    return this.run(async () => {
+      await this.db
+        .delete(compressionSnapshotsTable)
+        .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+    })
+  }
+
+  async replaceSnapshotsForSession(
+    sessionId: string,
+    snapshots: Array<{
+      coveredUpToMessageId: string
+      tailStartMessageId?: string | null
+      summaryText: string
+      messageCount: number
+      tokenCount?: number | null
+      createdAt?: number | Date
+    }>
+  ): Promise<void> {
+    return this.run(async () => {
+      await this.db
+        .delete(compressionSnapshotsTable)
+        .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+      for (const snap of snapshots) {
+        const createdAt =
+          snap.createdAt instanceof Date
+            ? snap.createdAt
+            : snap.createdAt
+              ? new Date(snap.createdAt < 1e12 ? snap.createdAt * 1000 : snap.createdAt)
+              : new Date()
+        await this.db.insert(compressionSnapshotsTable).values({
+          sessionId,
+          summaryText: snap.summaryText,
+          coveredUpToMessageId: snap.coveredUpToMessageId,
+          tailStartMessageId: snap.tailStartMessageId ?? null,
+          messageCount: snap.messageCount,
+          tokenCount: snap.tokenCount ?? null,
+          createdAt
+        })
+      }
+    })
+  }
+
   async getLatestSnapshot(sessionId: string): Promise<Snapshot | null> {
     return this.run(async () => {
       const result = await this.db

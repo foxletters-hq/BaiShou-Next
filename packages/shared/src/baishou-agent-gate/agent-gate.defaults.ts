@@ -1,0 +1,263 @@
+import { AgentGateEffect, AgentGateProfileId } from './agent-gate.enums'
+import type {
+  AgentGatePermissionRule,
+  AgentWorkspacePolicy,
+  BaishouAgentGateConfig,
+  WorkspaceGatePolicyV2,
+  WorkspaceToolManagementConfig
+} from './agent-gate.types'
+import { migrateLegacyExternalPathFields, migrateLegacyTrustMode } from './agent-gate-migrate.util'
+import { DEFAULT_WORKSPACE_COMMAND_BLACKLIST } from './agent-gate-shell-match.util'
+
+export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = ['diary_delete', 'memory_delete'] as const
+
+/** 工作区场景默认不可「始终允许」的操作（删除可始终允许，故默认为空） */
+export const DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST = [] as const
+
+export const AGENT_GATE_REQUEST_ID_PREFIX = 'bag_'
+export const AGENT_GATE_ALLOWLIST_ENTRY_ID_PREFIX = 'bagal_'
+export const BAISHOU_AGENT_GATE_CONFIG_KEY = 'baishou_agent_gate_config'
+/** 工作台全局门控（不再按 workspaceId 拆分） */
+export const BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY = 'baishou_workspace_agent_gate_config'
+
+/** userData 下工作区策略文件名（非 Vault settings） */
+export const AGENT_WORKSPACE_POLICY_STORE_FILE = 'agent-workspace-policy.json'
+
+/** 工作区工具开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY = 'workspace_tool_management'
+
+/** 工作区个人记忆只读开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY = 'workspace_personal_memory_read'
+
+/** 工作区访问区外目录开关写入后的 mutation meta.key（不经 SettingsManager） */
+export const WORKSPACE_EXTERNAL_DIRECTORY_POLICY_KEY = 'workspace_external_directory'
+
+export const AGENT_GATE_LIFECYCLE_COMPRESSION_SAVE_DIARY = 'lifecycle_compression_save_diary'
+
+/** Prefix for reject-with-feedback messages returned to the model */
+export const AGENT_GATE_CORRECTED_FEEDBACK_PREFIX = '[用户纠正]'
+
+/**
+ * Scene default rules (stacked under user permissionRules).
+ * Layered evaluation: later rules win (findLast).
+ */
+export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
+  AgentGateProfileId,
+  readonly AgentGatePermissionRule[]
+> = {
+  [AgentGateProfileId.Companion]: [{ action: 'workspace_*', effect: AgentGateEffect.Deny }],
+  [AgentGateProfileId.Workspace]: [
+    { action: 'diary_*', effect: AgentGateEffect.Deny },
+    // 后写覆盖先写：已知只读日记允许，其余日记操作仍拒绝
+    { action: 'diary_list', effect: AgentGateEffect.Allow },
+    { action: 'diary_search', effect: AgentGateEffect.Allow },
+    { action: 'diary_read', effect: AgentGateEffect.Allow },
+    { action: 'memory_*', effect: AgentGateEffect.Deny },
+    { action: 'graph_upsert', effect: AgentGateEffect.Deny },
+    // G3.2: in-workspace read-only tools default Allow (external_directory still Ask later)
+    { action: 'workspace_list', effect: AgentGateEffect.Allow },
+    { action: 'workspace_read', effect: AgentGateEffect.Allow }
+  ]
+}
+
+/** 伙伴会话默认门控（Vault 级；旧配置迁移到此） */
+export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
+  exclusionList: [...DEFAULT_AGENT_GATE_EXCLUSION_LIST],
+  allowlist: [],
+  hideDeniedTools: true
+}
+
+/**
+ * 工作区默认门控：allow_list + 默认命令黑名单。
+ * 具体 permissionRules 由 applyWorkspaceSecurityModeToConfig 在写入时展开。
+ */
+export const DEFAULT_WORKSPACE_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
+  exclusionList: [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST],
+  allowlist: [],
+  commandBlacklist: [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST],
+  hideDeniedTools: true,
+  securityMode: 'allow_list'
+}
+
+/** 工作区工具开关默认：全部开启（由运行时硬过滤决定可见工具集） */
+export const DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG: WorkspaceToolManagementConfig = {
+  disabledToolIds: [],
+  customConfigs: {}
+}
+
+/** 工作台按需只读个人记忆；缺字段视为开启 */
+export const DEFAULT_WORKSPACE_PERSONAL_MEMORY_READ_ENABLED = true
+
+/** 工作区默认是否直接允许访问工作区外目录；缺字段视为关闭（首次询问） */
+export const DEFAULT_WORKSPACE_EXTERNAL_DIRECTORY_ALLOWED = false
+
+/** 工作台个人记忆总开关控制的只读工具（不含写入/删除，也不含关系图读取） */
+export const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS = [
+  'diary_list',
+  'diary_search',
+  'diary_read',
+  'vector_search',
+  'summary_read',
+  'message_search',
+  'session_list'
+] as const
+
+export function normalizeWorkspacePersonalMemoryReadEnabled(value: unknown): boolean {
+  return value !== false
+}
+
+export function normalizeWorkspaceExternalDirectoryAllowed(value: unknown): boolean {
+  return value === true
+}
+
+export function cloneBaishouAgentGateConfig(
+  source?: BaishouAgentGateConfig | null,
+  defaults: BaishouAgentGateConfig = DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+): BaishouAgentGateConfig {
+  const base: BaishouAgentGateConfig = {
+    ...defaults,
+    exclusionList: [...defaults.exclusionList],
+    allowlist: [],
+    permissionRules: defaults.permissionRules?.map((rule) => ({ ...rule }))
+  }
+  if (!source) return base
+
+  const merged: BaishouAgentGateConfig = {
+    exclusionList: [...(source.exclusionList ?? base.exclusionList)],
+    allowlist: (source.allowlist ?? []).map((entry) => ({ ...entry })),
+    actionRules: source.actionRules ? { ...source.actionRules } : undefined,
+    permissionRules: source.permissionRules?.map((rule) => ({ ...rule })),
+    hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools,
+    scopePreset: source.scopePreset ?? base.scopePreset,
+    approvalPreset: source.approvalPreset ?? base.approvalPreset,
+    securityMode: source.securityMode ?? base.securityMode,
+    commandBlacklist: [
+      ...(source.commandBlacklist ?? base.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)
+    ]
+  }
+
+  // 兼容磁盘上仍带旧区外字段 / trustMode 的配置
+  return migrateLegacyTrustMode(
+    migrateLegacyExternalPathFields({
+      ...merged,
+      ...(source as BaishouAgentGateConfig & {
+        trustMode?: string
+        forceAskExternalPath?: boolean
+        externalPathEffect?: 'ask' | 'allow' | 'deny'
+        trustedExternalDirs?: string[]
+      })
+    })
+  )
+}
+
+/** 把 source 的字段写回运行时持有的同一份配置对象。 */
+export function assignBaishouAgentGateConfig(
+  target: BaishouAgentGateConfig,
+  source: BaishouAgentGateConfig
+): void {
+  target.exclusionList = [...source.exclusionList]
+  target.allowlist = source.allowlist.map((entry) => ({ ...entry }))
+  target.actionRules = source.actionRules ? { ...source.actionRules } : undefined
+  target.permissionRules = source.permissionRules?.map((rule) => ({ ...rule }))
+  target.hideDeniedTools = source.hideDeniedTools
+  target.scopePreset = source.scopePreset
+  target.approvalPreset = source.approvalPreset
+  target.securityMode = source.securityMode
+  if (source.commandBlacklist) {
+    target.commandBlacklist = [...source.commandBlacklist]
+  } else {
+    delete target.commandBlacklist
+  }
+}
+
+export function toWorkspaceGatePolicyV2(config: BaishouAgentGateConfig): WorkspaceGatePolicyV2 {
+  return {
+    version: 2,
+    scopePreset: config.scopePreset ?? 'workspace_write',
+    approvalPreset: config.approvalPreset ?? 'always_ask',
+    securityMode: config.securityMode === 'full_access' ? 'full_access' : 'allow_list',
+    rules: (config.permissionRules ?? []).map((rule) => ({ ...rule })),
+    remembered: (config.allowlist ?? []).map((entry) => ({ ...entry })),
+    exclusionList: [...config.exclusionList],
+    commandBlacklist: [...(config.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)],
+    hideDeniedTools: config.hideDeniedTools !== false
+  }
+}
+
+export function fromWorkspaceGatePolicyV2(policy: WorkspaceGatePolicyV2): BaishouAgentGateConfig {
+  return {
+    exclusionList: [...policy.exclusionList],
+    allowlist: policy.remembered.map((entry) => ({ ...entry })),
+    permissionRules: policy.rules.map((rule) => ({ ...rule })),
+    hideDeniedTools: policy.hideDeniedTools,
+    scopePreset: policy.scopePreset,
+    approvalPreset: policy.approvalPreset,
+    securityMode: policy.securityMode,
+    commandBlacklist: [...(policy.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)]
+  }
+}
+
+export function cloneWorkspaceToolManagementConfig(
+  source?: WorkspaceToolManagementConfig | null
+): WorkspaceToolManagementConfig {
+  return {
+    disabledToolIds: [
+      ...(source?.disabledToolIds ?? DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG.disabledToolIds)
+    ],
+    customConfigs: Object.fromEntries(
+      Object.entries(source?.customConfigs ?? {}).map(([toolId, params]) => [toolId, { ...params }])
+    )
+  }
+}
+
+export function resolveWorkspacePolicyFields(
+  raw?: Pick<
+    Partial<AgentWorkspacePolicy>,
+    'toolManagement' | 'personalMemoryReadEnabled' | 'externalDirectoryAllowed'
+  > | null
+): {
+  toolManagement: WorkspaceToolManagementConfig
+  personalMemoryReadEnabled: boolean
+  externalDirectoryAllowed: boolean
+} {
+  return {
+    toolManagement: cloneWorkspaceToolManagementConfig(raw?.toolManagement),
+    personalMemoryReadEnabled: normalizeWorkspacePersonalMemoryReadEnabled(
+      raw?.personalMemoryReadEnabled
+    ),
+    externalDirectoryAllowed: normalizeWorkspaceExternalDirectoryAllowed(
+      raw?.externalDirectoryAllowed
+    )
+  }
+}
+
+export function applyWorkspacePolicyPatch(
+  current: {
+    toolManagement: WorkspaceToolManagementConfig
+    personalMemoryReadEnabled: boolean
+    externalDirectoryAllowed?: boolean
+  },
+  patch: {
+    toolManagement?: WorkspaceToolManagementConfig
+    personalMemoryReadEnabled?: boolean
+    externalDirectoryAllowed?: boolean
+  }
+): {
+  toolManagement: WorkspaceToolManagementConfig
+  personalMemoryReadEnabled: boolean
+  externalDirectoryAllowed: boolean
+} {
+  return {
+    toolManagement: patch.toolManagement
+      ? cloneWorkspaceToolManagementConfig(patch.toolManagement)
+      : cloneWorkspaceToolManagementConfig(current.toolManagement),
+    personalMemoryReadEnabled:
+      typeof patch.personalMemoryReadEnabled === 'boolean'
+        ? patch.personalMemoryReadEnabled
+        : current.personalMemoryReadEnabled,
+    externalDirectoryAllowed:
+      typeof patch.externalDirectoryAllowed === 'boolean'
+        ? patch.externalDirectoryAllowed
+        : normalizeWorkspaceExternalDirectoryAllowed(current.externalDirectoryAllowed)
+  }
+}

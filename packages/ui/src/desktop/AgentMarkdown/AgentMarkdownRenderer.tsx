@@ -46,7 +46,11 @@ export const AgentMarkdownRenderer: React.FC<AgentMarkdownRendererProps> = ({
   const escapeRawHtml = useMemo(() => !CUSTOM_THINK_TAG_PATTERN.test(content), [content])
   const xProviderTheme = useMemo(
     () => ({
-      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm
+      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: {
+        fontFamily: 'var(--font-family)',
+        fontFamilyCode: 'var(--font-family-mono)'
+      }
     }),
     [isDark]
   )

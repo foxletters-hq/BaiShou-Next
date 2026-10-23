@@ -9,6 +9,7 @@ import {
   buildIncrementalSyncPlanPreview,
   collectManifestVaultScopes,
   finalizeIncrementalSyncManifest,
+  isLegacyRemoteManifest,
   buildIncrementalSyncPlanMergeResult,
   buildIncrementalSyncPlanReuseBaseline,
   isSyncDivergenceConfirmationRequiredError,
@@ -16,13 +17,27 @@ import {
   SyncDeletePropagationChoiceRequiredError,
   SyncDeletePropagationBlockedError,
   SyncDivergenceConfirmationRequiredError,
-  SyncDivergenceExceededError
+  SyncDivergenceExceededError,
+  prepareVaultRenamePassForPlan,
+  prepareVaultRenamePassForSync
 } from '@baishou/shared'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
 import { threeWayMerge } from './three-way-merge'
 import { S3NotConfiguredError, S3SyncError } from './sync.errors'
 import { ThreeWaySyncManifestMixin } from './three-way-sync.manifest'
 import { limitExecute } from './three-way-sync.utils'
+import {
+  applyJsonlConflictResolved,
+  classifyMonthlyJsonlPath,
+  classifyNotebookStructureJsonlPath,
+  shardKeyValidatorForJsonlKind
+} from '../raw-data/monthly-jsonl-path.util'
+import { JsonlRecordMergeService } from '../raw-data/jsonl-record-merge.service'
+import { MonthlyJsonlStore } from '../raw-data/stores/monthly-jsonl.store'
+import { createNodeFileSystem } from '../fs/create-node-file-system'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 export { limitExecute } from './three-way-sync.utils'
 
@@ -56,7 +71,7 @@ export class ThreeWaySyncService
 
     try {
       const prepared = await this.prepareSyncManifests({ onProgress })
-      const {
+      let {
         localManifest,
         remoteManifest,
         ancestorSnapshot,
@@ -68,13 +83,29 @@ export class ThreeWaySyncService
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
 
+      const localVaults = await this.loadLocalVaultIdToNameMap()
+      const lastRemoteVaults = (await this.getLastRemoteVaultsSnapshot()).vaults
+      const renamePass = await prepareVaultRenamePassForSync({
+        localVaults,
+        lastRemoteVaults,
+        remoteManifest,
+        ancestorSnapshot,
+        cloudClient: this.cloudClient,
+        preferDirectoryMove: this.config.target === 'webdav'
+      })
+      remoteManifest = renamePass.remoteManifest
+      ancestorSnapshot = renamePass.ancestorSnapshot
+
       const decisions = resolveSyncMergeDecisions(
         threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
         localManifest,
         remoteManifest,
         ancestorSnapshot,
         previousLocalManifest,
-        { deletePropagationChoice: runOptions?.deletePropagationChoice }
+        {
+          deletePropagationChoice: runOptions?.deletePropagationChoice,
+          ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+        }
       )
       const total = decisions.length
       let completedCount = 0
@@ -101,15 +132,24 @@ export class ThreeWaySyncService
               break
             case 'conflict-resolved': {
               result.conflicted.push(d.filePath)
-              if (d.direction === 'upload') {
-                if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
-                await this.uploadFile(d.filePath)
-                result.uploaded.push(d.filePath)
-              } else {
-                if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
-                if (await this.downloadFile(d.filePath)) {
-                  result.downloaded.push(d.filePath)
+              const outcome = await applyJsonlConflictResolved({
+                filePath: d.filePath,
+                direction: d.direction,
+                lineMerge: () => this.mergeJsonlConflict(d.filePath),
+                overwriteUpload: async () => {
+                  if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
+                  await this.uploadFile(d.filePath)
+                  result.uploaded.push(d.filePath)
+                },
+                overwriteDownload: async () => {
+                  if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
+                  if (await this.downloadFile(d.filePath)) {
+                    result.downloaded.push(d.filePath)
+                  }
                 }
+              })
+              if (outcome === 'merged') {
+                result.uploaded.push(d.filePath)
               }
               break
             }
@@ -151,6 +191,7 @@ export class ThreeWaySyncService
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)
+      await this.saveLastRemoteVaultsSnapshot(localVaults)
       onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
       this.invalidatePreparedManifests()
 
@@ -179,8 +220,8 @@ export class ThreeWaySyncService
 
     const {
       localManifest,
-      remoteManifest,
-      ancestorSnapshot,
+      remoteManifest: remoteRaw,
+      ancestorSnapshot: ancestorRaw,
       previousLocalManifest,
       storageHistory
     } = await this.prepareSyncManifests()
@@ -190,7 +231,7 @@ export class ThreeWaySyncService
     let maxDivergencePercent: number | undefined
 
     try {
-      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteRaw, this.config, {
         storageHistory,
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
@@ -204,12 +245,26 @@ export class ThreeWaySyncService
       }
     }
 
+    const localVaults = await this.loadLocalVaultIdToNameMap()
+    const lastRemoteVaults = (await this.getLastRemoteVaultsSnapshot()).vaults
+    const renamePass = prepareVaultRenamePassForPlan({
+      localVaults,
+      lastRemoteVaults,
+      remoteManifest: remoteRaw,
+      ancestorSnapshot: ancestorRaw
+    })
+    const remoteManifest = renamePass.remoteManifest
+    const ancestorSnapshot = renamePass.ancestorSnapshot
+
     const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
       remoteManifest,
       ancestorSnapshot,
       previousLocalManifest,
-      runOptions
+      {
+        ...runOptions,
+        ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+      }
     )
 
     return {
@@ -225,9 +280,106 @@ export class ThreeWaySyncService
         deletePropagationBlocked: deleteBlock != null,
         deletePropagationReason: deleteBlock?.reason,
         blockedDeleteCount: deleteBlock?.deleteCount,
-        blockedDeleteDirection: deleteBlock?.direction
+        blockedDeleteDirection: deleteBlock?.direction,
+        extraWarnings: isLegacyRemoteManifest(remoteRaw)
+          ? ['data_sync.plan_warning_legacy_remote_writer']
+          : [],
+        renamedFileCount: renamePass.renamedFileCount
       }),
-      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest)
+      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteRaw)
+    }
+  }
+
+  /**
+   * Line-level LWW for Memory monthly shards + Notebooks structure JSONL.
+   * Vault Graph and notebook-graph shards overwrite as a whole file.
+   */
+  protected async mergeJsonlConflict(relPath: string): Promise<boolean> {
+    try {
+      const fullPath = await this.resolveSyncFullPath(relPath)
+      const localText = fs.existsSync(fullPath) ? await fs.promises.readFile(fullPath, 'utf8') : ''
+
+      const tmp = path.join(
+        os.tmpdir(),
+        `baishou-jsonl-merge-${Date.now()}-${Math.random().toString(16).slice(2)}.jsonl`
+      )
+      try {
+        await this.cloudClient.downloadFile(relPath.replace(/\\/g, '/'), tmp)
+      } catch {
+        // Remote missing → keep local and upload
+        if (localText) {
+          await this.uploadFile(relPath)
+          return true
+        }
+        return false
+      }
+
+      const remoteText = await fs.promises.readFile(tmp, 'utf8')
+      await fs.promises.unlink(tmp).catch(() => undefined)
+
+      const merger = new JsonlRecordMergeService()
+      const merged = merger.mergeTexts(localText, remoteText)
+
+      if (fs.existsSync(fullPath)) {
+        await this.backupFile(relPath, '')
+      }
+
+      const notebookStructure = classifyNotebookStructureJsonlPath(relPath)
+      if (notebookStructure) {
+        const text =
+          merged.text.endsWith('\n') || merged.text.length === 0 ? merged.text : `${merged.text}\n`
+        await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
+        await fs.promises.writeFile(fullPath, text, 'utf8')
+        await this.uploadFile(relPath)
+        return true
+      }
+
+      const classified = classifyMonthlyJsonlPath(relPath)
+      if (!classified) return false
+
+      const manager = this.getRawDataSourceManager?.() ?? null
+      let wrote = false
+      if (manager) {
+        wrote = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+      }
+      if (!wrote) {
+        const store = new MonthlyJsonlStore({
+          fs: createNodeFileSystem(),
+          rootDir: path.dirname(fullPath),
+          isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
+        })
+        await store.replaceShardContent(classified.shardMonth, merged.text)
+        if (classified.kind === 'graph' && classified.collection === 'nodes') {
+          await manager?.getGraphManager()?.rebuildIdmap()
+        }
+      }
+      await this.uploadFile(relPath)
+      return true
+    } catch (e) {
+      console.warn(`[ThreeWaySync] JSONL LWW merge failed for ${relPath}:`, e)
+      return false
+    }
+  }
+
+  /** Invalidate pending-index for a rewritten Memory/Graph monthly shard. */
+  protected async markMonthlyJsonlPendingAfterExternalWrite(
+    relPath: string,
+    absoluteShardPath: string
+  ): Promise<void> {
+    const classified = classifyMonthlyJsonlPath(relPath)
+    if (!classified) return
+    const store = new MonthlyJsonlStore({
+      fs: createNodeFileSystem(),
+      rootDir: path.dirname(absoluteShardPath),
+      isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
+    })
+    await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
+    if (classified.kind === 'graph' && classified.collection === 'nodes') {
+      try {
+        await this.getRawDataSourceManager?.()?.getGraphManager()?.rebuildIdmap()
+      } catch (e) {
+        console.warn(`[ThreeWaySync] rebuildIdmap after external write failed for ${relPath}:`, e)
+      }
     }
   }
 }

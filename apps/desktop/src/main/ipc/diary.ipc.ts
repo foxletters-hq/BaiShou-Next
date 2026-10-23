@@ -5,12 +5,17 @@ import {
   FileSyncServiceImpl,
   VaultIndexServiceImpl
 } from '@baishou/core-desktop'
-import { parseDateStr, normalizeDiaryTags, normalizeDiaryPreviewMarkdown } from '@baishou/shared'
+import {
+  parseDateStr,
+  normalizeDiaryPreviewMarkdown,
+  resolveDiaryTagsFromSources
+} from '@baishou/shared'
 import * as fs from 'fs/promises'
 
 import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 import { getSharedShadowSync } from '../services/shadow-sync.registry'
+import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 
 /**
  * 日记管理服务工厂
@@ -22,7 +27,7 @@ import { getSharedShadowSync } from '../services/shadow-sync.registry'
  */
 export function getDiaryManager() {
   const shadowRepo = getActiveVaultShadowRepo()
-  const fileSync = new FileSyncServiceImpl(pathService, fileSystem)
+  const fileSync = new FileSyncServiceImpl(pathService, fileSystem, getRawDataSourceManager())
   const shadowSync = getSharedShadowSync()
   const vaultIndex = new VaultIndexServiceImpl()
 
@@ -75,7 +80,7 @@ export function registerDiaryIPC() {
             id: saved.id,
             date: saved.date,
             preview: normalizeDiaryPreviewMarkdown(saved.content?.substring(0, 500) ?? ''),
-            tags: normalizeDiaryTags(saved.tags),
+            tags: resolveDiaryTagsFromSources(saved.tags, saved.content ?? ''),
             weather: saved.weather ?? undefined,
             mood: saved.mood ?? undefined,
             location: saved.location ?? undefined,

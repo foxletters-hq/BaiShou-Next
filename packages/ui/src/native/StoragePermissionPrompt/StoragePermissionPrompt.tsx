@@ -3,6 +3,7 @@ import { View, Text, Platform, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface StoragePermissionPromptProps {
   onRequest: () => void | Promise<void>
@@ -62,18 +63,18 @@ export const StoragePermissionPrompt: React.FC<StoragePermissionPromptProps> = (
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    gap: 10
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.smPlus
   },
   compact: {
     marginHorizontal: 0
   },
   title: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   desc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18
   }
 })

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { StreamAccumulator, extractCacheUsage } from '../agent/stream-accumulator'
-import {
-  mergeStreamUsageFromSdk,
-  normalizeTokenUsageForBilling
-} from '../agent/token-usage.util'
+import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from '../agent/token-usage.util'
+
+const empty = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadInputTokens: 0,
+  cacheWriteInputTokens: 0
+}
 
 describe('extractCacheUsage', () => {
   it('reads SDK-style inputTokenDetails', () => {
@@ -58,6 +62,17 @@ describe('mergeStreamUsageFromSdk', () => {
     cacheWriteInputTokens: 617
   }
 
+  it('reads DeepSeek-style prompt_cache_hit_tokens', () => {
+    const usage = mergeStreamUsageFromSdk(empty, {
+      promptTokens: 25080,
+      completionTokens: 1495,
+      prompt_cache_hit_tokens: 13056
+    })
+    expect(usage.inputTokens).toBe(25080)
+    expect(usage.outputTokens).toBe(1495)
+    expect(usage.cacheReadInputTokens).toBe(13056)
+  })
+
   it('prefers SDK inputTokenDetails over accumulator values', () => {
     const merged = mergeStreamUsageFromSdk(accumulatorUsage, {
       inputTokens: 47624,
@@ -83,6 +98,22 @@ describe('mergeStreamUsageFromSdk', () => {
 })
 
 describe('normalizeTokenUsageForBilling', () => {
+  it('treats input as inclusive of cache', () => {
+    expect(
+      normalizeTokenUsageForBilling({
+        inputTokens: 25080,
+        outputTokens: 1495,
+        cacheReadInputTokens: 13056,
+        cacheWriteInputTokens: 0
+      })
+    ).toEqual({
+      inputTokens: 12024,
+      outputTokens: 1495,
+      cachedInputTokens: 13056,
+      cacheWriteInputTokens: 0
+    })
+  })
+
   it('splits cache write tokens out of input tokens', () => {
     const usage = normalizeTokenUsageForBilling({
       inputTokens: 12281,

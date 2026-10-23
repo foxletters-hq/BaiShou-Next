@@ -1,7 +1,8 @@
 import i18n from 'i18next'
 import {
   releaseExpoAgentDatabaseInstall,
-  ensureExpoAgentDatabaseInstalled
+  ensureExpoAgentDatabaseInstalled,
+  verifyExpoAgentDatabaseIntegrity
 } from '@baishou/database/expo'
 import { createAgentDbRuntime } from '../../services/mobile-agent-db-runtime'
 import {
@@ -30,7 +31,7 @@ import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from '../../services/mobile-file-
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import { mobileDataBootstrapper } from '../../services/mobile-bootstrapper.service'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import { logger } from '@baishou/shared'
+import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import type { ToolDiarySearcher } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
 import type { VaultService } from '@baishou/core-mobile'
@@ -70,7 +71,7 @@ export function assignReloadAgentDatabaseHandler(
     getDiarySearcher,
     diaryServiceProxy
   } = deps
-  refs.reloadAgentDatabaseRef.current = async () => {
+  refs.reloadAgentDatabaseRef.current = async (options?: { preserveExistingFile?: boolean }) => {
     const vaultCtx = refs.vaultBootstrapCtxRef.current
     if (!vaultCtx) {
       throw new Error(
@@ -91,11 +92,42 @@ export function assignReloadAgentDatabaseHandler(
     await stopVaultWatchers()
 
     await releaseExpoAgentDatabaseInstall()
-    await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
 
-    const { drizzleDb: newDrizzleDb, expoDb: newExpoDb } = await ensureExpoAgentDatabaseInstalled(
-      (options) => openAgentDatabase({ ...options, useNewConnection: true })
-    )
+    let newDrizzleDb: import('@baishou/database').AppDatabase
+    let newExpoDb: import('@baishou/database/expo').ExpoSqliteDatabase
+
+    if (options?.preserveExistingFile) {
+      try {
+        const installed = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+          openAgentDatabase({ ...openOptions, useNewConnection: true })
+        )
+        const integrity = await verifyExpoAgentDatabaseIntegrity(installed.expoDb)
+        if (!integrity.ok) {
+          throw new Error(integrity.detail ?? 'Restored agent database failed integrity check')
+        }
+        newDrizzleDb = installed.drizzleDb
+        newExpoDb = installed.expoDb
+      } catch (restoreOpenError) {
+        logger.warn(
+          '[AgentDbRecovery] Restored agent DB failed to open or verify, falling back to quarantine & rebuild:',
+          restoreOpenError as Error
+        )
+        await releaseExpoAgentDatabaseInstall()
+        await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
+        const rebuilt = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+          openAgentDatabase({ ...openOptions, useNewConnection: true })
+        )
+        newDrizzleDb = rebuilt.drizzleDb
+        newExpoDb = rebuilt.expoDb
+      }
+    } else {
+      await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
+      const installed = await ensureExpoAgentDatabaseInstalled((openOptions) =>
+        openAgentDatabase({ ...openOptions, useNewConnection: true })
+      )
+      newDrizzleDb = installed.drizzleDb
+      newExpoDb = installed.expoDb
+    }
 
     const diaryRepoAdapter =
       refs.diaryStackRef.current?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
@@ -106,7 +138,13 @@ export function assignReloadAgentDatabaseHandler(
       pathService: vaultCtx.pathService,
       fileSystem: vaultCtx.fileSystem,
       attachmentManager: vaultCtx.attachmentManager,
-      diaryRepoAdapter
+      diaryRepoAdapter,
+      resolveVaultId: () => {
+        const active = vaultCtx.vaultService.getActiveVault()
+        if (active?.id) return active.id
+        const name = active?.name?.trim() || 'Personal'
+        return deriveLegacyVaultId(name)
+      }
     })
     agentDbRuntimeRef.current = newRuntime
 
@@ -128,7 +166,7 @@ export function assignReloadAgentDatabaseHandler(
     vaultCtx.watcherDeps.summarySyncService = newRuntime.summarySyncService
 
     const stack = refs.diaryStackRef.current
-    if (stack) {
+    if (stack && !options?.preserveExistingFile) {
       registerVaultBootstrapDeps(stack, vaultCtx.bootstrapDeps)
       await restartVaultWatchers(stack, vaultService, vaultCtx.watcherDeps)
     }
@@ -144,7 +182,7 @@ export function assignReloadAgentDatabaseHandler(
       pathService,
       vaultService
     )
-    setMobileDiaryEmbeddingDeps(nextRagDeps)
+    setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: newRuntime.drizzleDb })
     vaultCtx.ragServiceRef.current = createMobileRagService(nextRagDeps)
     emitSyncMutation('resync-complete', 'agent-db-reload')
 
@@ -156,6 +194,7 @@ export function assignReloadAgentDatabaseHandler(
         return buildMobileMcpToolContext({
           settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
           pathService: vaultCtx.pathService,
+          vaultService: vaultCtx.vaultService,
           getDiarySearcher,
           drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
           webSearchResultFetcher: webFetchContent,
@@ -165,7 +204,8 @@ export function assignReloadAgentDatabaseHandler(
       () =>
         buildMobileMcpToolListContext({
           settingsManager: newRuntime.settingsManager,
-          pathService: vaultCtx.pathService
+          pathService: vaultCtx.pathService,
+          vaultService: vaultCtx.vaultService
         })
     )
     vaultCtx.mobileMcpService = mobileMcpService
@@ -175,6 +215,8 @@ export function assignReloadAgentDatabaseHandler(
       })
     }
 
+    const { getMobileRawDataSourceManager } =
+      await import('../../services/mobile-raw-data-source.runtime')
     const nextIncrementalSyncService = new MobileIncrementalSyncService(
       newRuntime.settingsManager,
       archiveService,
@@ -190,7 +232,9 @@ export function assignReloadAgentDatabaseHandler(
         }))
       },
       newRuntime.assistantManager,
-      newRuntime.sessionManager
+      newRuntime.sessionManager,
+      () => getMobileRawDataSourceManager(),
+      vaultCtx.vaultService
     )
 
     if (isMounted()) {

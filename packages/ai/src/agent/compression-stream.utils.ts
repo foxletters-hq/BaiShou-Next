@@ -1,4 +1,5 @@
 import type { StreamTextResult } from 'ai'
+import { createAgentStreamAbortError } from '@baishou/shared'
 import { emitCompressionLifecycle } from './compression-lifecycle'
 
 export type CompressionStreamConsumeResult = {
@@ -57,7 +58,7 @@ function createCompressionEmitBatcher(sessionId: string) {
 
 function throwIfAborted(abortSignal?: AbortSignal): void {
   if (abortSignal?.aborted) {
-    throw new DOMException('The operation was aborted', 'AbortError')
+    throw createAgentStreamAbortError()
   }
 }
 
@@ -65,9 +66,10 @@ function throwIfAborted(abortSignal?: AbortSignal): void {
  * 消费 Vercel AI SDK fullStream 原生 reasoning-delta / text-delta 事件。
  */
 export async function consumeCompressionModelStream(
-  streamResult: StreamTextResult<any, any>,
+  streamResult: StreamTextResult<any, any, any>,
   sessionId: string,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  options?: { onFirstOutput?: () => void }
 ): Promise<CompressionStreamConsumeResult> {
   let summaryText = ''
   let reasoningText = ''
@@ -93,6 +95,7 @@ export async function consumeCompressionModelStream(
               if (!chunk) break
               hasReasoning = true
               reasoningText += chunk
+              options?.onFirstOutput?.()
               batcher.pushReasoning(chunk)
               break
             }
@@ -103,6 +106,7 @@ export async function consumeCompressionModelStream(
                 firstTextDeltaTime = Date.now()
               }
               summaryText += chunk
+              options?.onFirstOutput?.()
               batcher.pushDelta(chunk)
               break
             }
@@ -121,6 +125,7 @@ export async function consumeCompressionModelStream(
           firstTextDeltaTime = Date.now()
         }
         summaryText += chunk
+        options?.onFirstOutput?.()
         batcher.pushDelta(chunk)
       }
     }

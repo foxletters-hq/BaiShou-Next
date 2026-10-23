@@ -1,5 +1,6 @@
 import type { CompressionLifecycleEvent } from '@baishou/ai'
 import { onCompressionLifecycle } from '@baishou/ai'
+import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
 export type MobileCompressionListener = (event: CompressionLifecycleEvent) => void
 
@@ -15,6 +16,12 @@ export function ensureMobileCompressionBridge(): void {
         listener(event)
       } catch {
         /* ignore */
+      }
+    }
+    if (event.type === 'finish' && event.ok) {
+      const sessionManager = agentDbRuntimeRef.current?.sessionManager
+      if (sessionManager) {
+        void sessionManager.flushSessionToDisk(event.sessionId).catch(() => undefined)
       }
     }
   })

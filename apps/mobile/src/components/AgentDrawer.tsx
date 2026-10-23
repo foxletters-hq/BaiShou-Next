@@ -6,7 +6,8 @@ import {
   Pressable,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar
 } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -16,7 +17,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { Plus, Settings } from 'lucide-react-native'
+import { ChevronRight, Plus, Settings } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -28,6 +29,7 @@ import {
 } from '@baishou/ui/native'
 import type { AssistantKind } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface AssistantSummary {
   id: string
@@ -97,7 +99,7 @@ function AgentDrawerComponent({
   onRenameSession
 }: AgentDrawerProps) {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -210,6 +212,11 @@ function AgentDrawerComponent({
       statusBarTranslucent
       onRequestClose={onClose}
     >
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       <View style={styles.overlay}>
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -219,7 +226,7 @@ function AgentDrawerComponent({
           style={[
             styles.drawerWrap,
             {
-              top: insets.top,
+              top: 0,
               bottom: 0
             },
             drawerSlideStyle
@@ -231,12 +238,20 @@ function AgentDrawerComponent({
               {
                 width: DRAWER_WIDTH,
                 backgroundColor: colors.bgSurface,
-                borderRightColor: colors.borderSubtle
+                borderRightColor: colors.borderSubtle,
+                paddingTop: Math.max(insets.top, 0) + sharedTokens.spacing.smPlus,
+                paddingBottom: Math.max(insets.bottom, 0) + sharedTokens.spacing.xs
               }
             ]}
           >
             <TouchableOpacity
-              style={[styles.currentCard, { backgroundColor: colors.bgSurfaceHighest }]}
+              style={[
+                styles.currentCard,
+                {
+                  backgroundColor: colors.bgSurfaceRaised,
+                  borderColor: colors.borderMuted
+                }
+              ]}
               onPress={() => {
                 onShowAssistantPicker()
                 onClose()
@@ -245,7 +260,7 @@ function AgentDrawerComponent({
             >
               {currentAssistant ? (
                 <>
-                  <DrawerAssistantAvatar assistant={currentAssistant} size={36} />
+                  <DrawerAssistantAvatar assistant={currentAssistant} size={38} />
                   <View style={styles.currentMeta}>
                     <View style={styles.currentNameRow}>
                       <Text
@@ -265,6 +280,7 @@ function AgentDrawerComponent({
                       </Text>
                     ) : null}
                   </View>
+                  <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
                 </>
               ) : (
                 <>
@@ -391,18 +407,18 @@ const styles = StyleSheet.create({
   },
   drawer: {
     flex: 1,
-    borderRightWidth: 1,
-    paddingTop: 12
+    borderRightWidth: 1
   },
   currentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 10,
-    padding: 12,
-    borderRadius: 12,
-    gap: 10
+    marginHorizontal: sharedTokens.spacing.mdTight,
+    marginTop: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.smPlus,
+    padding: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
+    borderWidth: 1,
+    gap: sharedTokens.spacing.smPlus
   },
   currentMeta: {
     flex: 1
@@ -410,16 +426,16 @@ const styles = StyleSheet.create({
   currentNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     flexWrap: 'wrap'
   },
   currentName: {
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
   },
   currentDesc: {
-    fontSize: 12,
-    marginTop: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   },
   avatarShell: {
     alignItems: 'center',
@@ -431,31 +447,31 @@ const styles = StyleSheet.create({
   avatarSkeleton: {
     width: 36,
     height: 36,
-    borderRadius: 18
+    borderRadius: sharedTokens.radius.lg
   },
   lineSkeleton: {
     height: 10,
-    borderRadius: 4,
+    borderRadius: sharedTokens.radius.xs,
     width: 80
   },
   lineSkeletonShort: {
     width: 56,
-    marginTop: 6
+    marginTop: sharedTokens.spacing.xsPlus
   },
   pinnedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    marginBottom: 10,
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.smPlus,
     minHeight: 44
   },
   pinHint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     flex: 1
   },
   pinnedAvatar: {
-    padding: 2,
+    padding: sharedTokens.spacing.xxs,
     borderRadius: 22,
     borderWidth: 2,
     borderColor: 'transparent'
@@ -464,36 +480,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    paddingVertical: 10,
-    borderRadius: 10
+    gap: sharedTokens.spacing.xsPlus,
+    marginHorizontal: sharedTokens.spacing.mdTight,
+    marginBottom: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.control
   },
   newChatText: {
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: mobileTypography.body.fontSize,
+    fontWeight: '600'
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 4
+    gap: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    marginBottom: sharedTokens.spacing.xs
   },
   settingsText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '500'
   },
   historyHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.xs
   },
   historyTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: mobileTypography.caption.fontSize,
+    fontWeight: '600',
     letterSpacing: 0.3,
     textTransform: 'uppercase'
   },
@@ -504,6 +520,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 24
+    paddingTop: sharedTokens.spacing.lg
   }
 })

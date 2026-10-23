@@ -4,6 +4,8 @@ export const summariesTable = sqliteTable(
   'summaries',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    /** 所属工作空间稳定 ID（V1.4） */
+    vaultId: text('vault_id').notNull(),
     type: text('type', {
       enum: ['weekly', 'monthly', 'quarterly', 'yearly']
     }).notNull(),
@@ -16,6 +18,6 @@ export const summariesTable = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'timestamp' })
   },
   (t) => ({
-    unq: unique().on(t.type, t.startDate, t.endDate)
+    unq: unique().on(t.vaultId, t.type, t.startDate, t.endDate)
   })
 )

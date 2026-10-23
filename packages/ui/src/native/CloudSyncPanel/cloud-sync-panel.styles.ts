@@ -1,93 +1,94 @@
 import { StyleSheet } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const cloudSyncPanelStyles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: sharedTokens.spacing.md,
     borderWidth: 1
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   targetRow: {
     flexDirection: 'row',
-    marginBottom: 16,
-    gap: 8
+    marginBottom: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
   },
   targetChip: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     alignItems: 'center',
     borderWidth: 1
   },
   targetChipText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   configSection: {
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   fieldGroup: {
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   fieldLabel: {
-    fontSize: 13,
-    marginBottom: 4
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.xs
   },
   fieldInput: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 14
+    paddingVertical: sharedTokens.spacing.smPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    fontSize: mobileTypography.secondary.fontSize
   },
   hintText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     textAlign: 'center',
-    paddingVertical: 16
+    paddingVertical: sharedTokens.spacing.md
   },
   saveButton: {
-    paddingVertical: 12,
+    paddingVertical: sharedTokens.spacing.mdTight,
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: sharedTokens.spacing.mdTight
   },
   saveButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   syncButton: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    paddingVertical: sharedTokens.spacing.mdTight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   syncButtonText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   recordsSection: {
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 10
+    marginBottom: sharedTokens.spacing.smPlus
   },
   recordItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: sharedTokens.spacing.smPlus,
     borderBottomWidth: 1
   },
   recordInfo: {
     flex: 1
   },
   recordName: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   },
   recordMeta: {
-    fontSize: 11,
-    marginTop: 2
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xxs
   }
 })

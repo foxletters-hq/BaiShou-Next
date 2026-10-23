@@ -1,6 +1,28 @@
+export const OCR_CONCURRENCY_MIN = 1
+export const OCR_CONCURRENCY_MAX = 10
+/** 下拉「推荐」项，也是未配置时的默认并发页数。 */
+export const RECOMMENDED_OCR_CONCURRENCY = 3
+export const DEFAULT_OCR_CONCURRENCY = RECOMMENDED_OCR_CONCURRENCY
+
+/** 将用户配置的 OCR / 视觉识图并发限制在 1–10。 */
+export function clampOcrConcurrency(value: number | undefined | null): number {
+  const n =
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.floor(value)
+      : DEFAULT_OCR_CONCURRENCY
+  return Math.max(OCR_CONCURRENCY_MIN, Math.min(OCR_CONCURRENCY_MAX, n))
+}
+
+export function listOcrConcurrencyValues(): number[] {
+  return Array.from(
+    { length: OCR_CONCURRENCY_MAX - OCR_CONCURRENCY_MIN + 1 },
+    (_, i) => OCR_CONCURRENCY_MIN + i
+  )
+}
+
 export const BATCH_EMBED_CONCURRENCY_MIN = 1
 export const BATCH_EMBED_CONCURRENCY_MAX = 20
-export const DEFAULT_BATCH_EMBED_CONCURRENCY = 3
+export const DEFAULT_BATCH_EMBED_CONCURRENCY = 20
 
 /** 移动端批量嵌入默认并发（未配置时） */
 export const MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY = 5
@@ -51,7 +73,8 @@ export async function withPromiseTimeout<T>(
 export async function limitExecute<T, R>(
   items: T[],
   concurrencyLimit: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  options?: { shouldStop?: () => boolean }
 ): Promise<R[]> {
   if (items.length === 0) return []
 
@@ -60,6 +83,7 @@ export async function limitExecute<T, R>(
 
   const worker = async () => {
     while (nextIndex < items.length) {
+      if (options?.shouldStop?.()) break
       const currentIndex = nextIndex++
       const item = items[currentIndex]!
       results[currentIndex] = await fn(item, currentIndex)

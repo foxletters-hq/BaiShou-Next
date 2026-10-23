@@ -3,3 +3,13 @@ export * from '@baishou/core/shared'
 export * from '@baishou/core/desktop'
 export { createNodeFileSystem } from './node-file-system'
 export { registerDugiteGitBinary } from './git-binary.dugite'
+export { WorkspaceFolderGitService } from './workspace-folder-git.service'
+export {
+  parseGitNameOnlyOutput,
+  parseGitNulSeparatedPaths,
+  resolveWorkspaceFolderGitRoot,
+  toGitShowSpec,
+  toWorkspaceHistoryEntries
+} from './workspace-folder-git.util'
+export { rollbackWorkspaceAll } from './workspace-folder-git-sync'
+export { searchWorkspaceFiles, replaceInWorkspaceFiles } from './workspace-search.service'

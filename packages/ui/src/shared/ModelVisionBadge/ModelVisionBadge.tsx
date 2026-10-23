@@ -15,7 +15,7 @@ export interface ModelVisionBadgeProps {
 export function ModelVisionBadge({
   modelId,
   providerKey,
-  size = 13,
+  size = 18,
   className,
   style
 }: ModelVisionBadgeProps) {
@@ -35,7 +35,7 @@ export function ModelVisionBadge({
         size={size}
         className={className}
         style={{
-          color: 'var(--text-secondary, #666)',
+          color: 'var(--text-secondary)',
           verticalAlign: 'middle',
           opacity: 0.8,
           ...style

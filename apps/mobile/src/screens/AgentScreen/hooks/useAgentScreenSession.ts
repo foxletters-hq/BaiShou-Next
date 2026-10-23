@@ -1,12 +1,16 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   type WebSearchConfig,
   type AIProviderConfig,
+  type AgentBehaviorConfig,
   normalizeChatBackgroundBlur,
-  normalizeChatBackgroundOverlayOpacity
+  normalizeChatBackgroundOverlayOpacity,
+  filterProvidersForModelSwitcher
 } from '@baishou/shared'
-import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
-import { useAgentStore } from '@baishou/store'
+import { DEFAULT_AGENT_BEHAVIOR, DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
+import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAgentSession } from '../../../hooks/useAgentSession'
 import { useAgentSessions } from '../../../hooks/useAgentSessions'
@@ -29,6 +33,18 @@ export function useAgentScreenSession(deps: {
 }) {
   const { drawerOpen, tr, webSearchEngine, setWebSearchEngine } = deps
   const { searchMode, clearSession } = useAgentStore()
+  const routeParams = useLocalSearchParams<{
+    sessionId?: string | string[]
+    gateRequestId?: string | string[]
+  }>()
+  const routeSessionId = Array.isArray(routeParams.sessionId)
+    ? routeParams.sessionId[0]
+    : routeParams.sessionId
+  const routeGateRequestId = Array.isArray(routeParams.gateRequestId)
+    ? routeParams.gateRequestId[0]
+    : routeParams.gateRequestId
+  const router = useRouter()
+  const consumedGateRouteRef = useRef<string | null>(null)
   const {
     services,
     dbReady,
@@ -39,23 +55,44 @@ export function useAgentScreenSession(deps: {
   } = useBaishou()
   const currentSessionIdRef = useRef<string | null>(null)
   const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([])
+  const [restoreLastSessionOnReturn, setRestoreLastSessionOnReturn] = useState(true)
   const userProfile = useAgentUserProfile()
 
-  useEffect(() => {
+  const loadRestoreLastSessionPref = useCallback(() => {
     if (!dbReady || !services) return
-    let cancelled = false
     void services.settingsManager
-      .get<AIProviderConfig[]>('ai_providers')
-      .then((list) => {
-        if (!cancelled) setAiProviders(list ?? [])
+      .get<AgentBehaviorConfig>('agent_behavior')
+      .then((saved) => {
+        const merged = { ...DEFAULT_AGENT_BEHAVIOR, ...saved }
+        setRestoreLastSessionOnReturn(merged.restoreLastSessionOnReturn !== false)
       })
-      .catch(() => {
-        if (!cancelled) setAiProviders([])
-      })
-    return () => {
-      cancelled = true
+      .catch(() => setRestoreLastSessionOnReturn(true))
+  }, [dbReady, services])
+
+  useEffect(() => {
+    loadRestoreLastSessionPref()
+  }, [loadRestoreLastSessionPref, vaultRevision])
+
+  const reloadAiProviders = useCallback(async () => {
+    if (!dbReady || !services) return
+    try {
+      const list = (await services.settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+      setAiProviders(list)
+    } catch {
+      setAiProviders([])
     }
-  }, [dbReady, services, vaultRevision])
+  }, [dbReady, services])
+
+  useEffect(() => {
+    void reloadAiProviders()
+  }, [reloadAiProviders, vaultRevision])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRestoreLastSessionPref()
+      void reloadAiProviders()
+    }, [loadRestoreLastSessionPref, reloadAiProviders])
+  )
 
   useEffect(() => {
     if (!dbReady || !services) return
@@ -86,6 +123,11 @@ export function useAgentScreenSession(deps: {
   const currentProviderType = useMemo(
     () => aiProviders.find((provider) => provider.id === currentProviderId)?.type,
     [aiProviders, currentProviderId]
+  )
+
+  const dialogueProviders = useMemo(
+    () => filterProvidersForModelSwitcher(aiProviders, 'dialogue'),
+    [aiProviders]
   )
 
   const { sessions, hasMoreSessions, isLoadingMoreSessions, sessionListScrollKey, loadSessions } =
@@ -124,6 +166,23 @@ export function useAgentScreenSession(deps: {
   currentSessionIdRef.current = currentSessionId
 
   const composerDraftKey = useAgentComposerDraftKey(currentSessionId)
+
+  // 通知深链只消费一次，避免 params 残留把用户手动切换的会话打回去
+  useEffect(() => {
+    if (!routeSessionId) return
+    const token = `${routeSessionId}|${routeGateRequestId ?? ''}`
+    if (consumedGateRouteRef.current === token) return
+    consumedGateRouteRef.current = token
+    handleSelectSession(routeSessionId)
+    if (routeGateRequestId) {
+      useAgentGateInboxStore.getState().setFocusedRequest(routeSessionId, routeGateRequestId)
+    }
+    try {
+      router.setParams({ sessionId: undefined, gateRequestId: undefined })
+    } catch {
+      /* ignore */
+    }
+  }, [routeSessionId, routeGateRequestId, handleSelectSession, router])
 
   useEffect(() => {
     void syncWithSession(currentSessionId)
@@ -166,6 +225,7 @@ export function useAgentScreenSession(deps: {
     dbReady,
     vaultSwitching,
     vaultRevision,
+    restoreLastSessionOnReturn,
     services,
     assistants,
     currentAssistant,
@@ -190,10 +250,14 @@ export function useAgentScreenSession(deps: {
     streamError,
     streamingText,
     streamingReasoning,
+    timeline,
     tokenUsage,
     activeTool,
     completedTools,
     pendingEmojis,
+    pendingAgentGate,
+    isAgentGateReplying,
+    replyAgentGate,
     handleSend,
     handleStop,
     handleRegenerate,
@@ -237,6 +301,7 @@ export function useAgentScreenSession(deps: {
     handleSelectModel,
     hasConfiguredDialogueModel,
     currentProviderType,
+    dialogueProviders,
     sessions,
     hasMoreSessions,
     isLoadingMoreSessions,
@@ -268,10 +333,14 @@ export function useAgentScreenSession(deps: {
     streamError,
     streamingText,
     streamingReasoning,
+    timeline,
     tokenUsage,
     activeTool,
     completedTools,
     pendingEmojis,
+    pendingAgentGate,
+    isAgentGateReplying,
+    replyAgentGate,
     handleSend,
     handleStop,
     handleRegenerate,

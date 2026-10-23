@@ -2,16 +2,27 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
+  DEFAULT_TOOL_MANAGEMENT_CONFIG,
+  deriveLegacyVaultId,
+  mergeEmojiAttachmentCatalog,
+  normalizeToolManagementConfig,
+  removeEmojisByRelativePaths,
+  type ToolManagementConfig
+} from '@baishou/shared'
+import {
   AttachmentManagementView,
   useNativeTheme,
   useNativeToast,
   type SessionAttachmentGroup,
-  type DiaryAttachmentFileItem
+  type DiaryAttachmentFileItem,
+  type EmojiAttachmentListItem
 } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAttachmentImageLoader } from '../../../hooks/useAttachmentImageLoader'
 import { toFileUri } from '../../../services/android-external-fs'
 import { shareLocalFile } from '../../../utils/share-local-file.util'
+import { publishEmojiToolConfig } from '../../../lib/emoji-tool-config.store'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 const SESSION_FETCH_LIMIT = 5000
 
@@ -24,11 +35,20 @@ export const AttachmentManagementSection: React.FC = () => {
 
   const [attachments, setAttachments] = useState<SessionAttachmentGroup[]>([])
   const [diaryAttachments, setDiaryAttachments] = useState<DiaryAttachmentFileItem[]>([])
+  const [emojiAttachments, setEmojiAttachments] = useState<EmojiAttachmentListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const loadSessionAttachments = useCallback(async () => {
     if (!services || !dbReady) return
-    const sessions = await services.sessionManager.findAllSessions(SESSION_FETCH_LIMIT, 0)
+    const activeVault = services.vaultService?.getActiveVault?.()
+    const activeVaultId = activeVault?.id ?? deriveLegacyVaultId(activeVault?.name || 'Personal')
+    const sessions = await services.sessionManager.findAllSessions(
+      SESSION_FETCH_LIMIT,
+      0,
+      undefined,
+      undefined,
+      activeVaultId
+    )
     const activeIds = new Set<string>(sessions.map((s: { id: string }) => s.id))
     const groups = await services.attachmentManager.listSessionGroups(activeIds)
     const titleMap = new Map<string, string | undefined>(
@@ -48,12 +68,23 @@ export const AttachmentManagementSection: React.FC = () => {
     setDiaryAttachments(list)
   }, [services, dbReady])
 
+  const loadEmojiAttachments = useCallback(async () => {
+    if (!services || !dbReady) return
+    const files = await services.attachmentManager.listEmojiAttachmentFiles()
+    const stored =
+      (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
+      DEFAULT_TOOL_MANAGEMENT_CONFIG
+    const tool = normalizeToolManagementConfig(stored)
+    setEmojiAttachments(mergeEmojiAttachmentCatalog(files, tool.emojiConfig))
+  }, [services, dbReady])
+
   const loadAll = useCallback(async () => {
     if (!services || !dbReady) return
     setIsLoading(true)
     clearImageCache()
     try {
       await loadDiaryAttachments()
+      await loadEmojiAttachments()
       await loadSessionAttachments()
     } catch (e) {
       console.warn('Load attachments failed', e)
@@ -61,7 +92,16 @@ export const AttachmentManagementSection: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [services, dbReady, loadDiaryAttachments, loadSessionAttachments, clearImageCache, toast, t])
+  }, [
+    services,
+    dbReady,
+    loadDiaryAttachments,
+    loadEmojiAttachments,
+    loadSessionAttachments,
+    clearImageCache,
+    toast,
+    t
+  ])
 
   useEffect(() => {
     void loadAll()
@@ -95,6 +135,7 @@ export const AttachmentManagementSection: React.FC = () => {
       <AttachmentManagementView
         attachments={attachments}
         diaryAttachments={diaryAttachments}
+        emojiAttachments={emojiAttachments}
         isLoading={isLoading}
         onRefresh={loadAll}
         toDisplayUri={toFileUri}
@@ -113,6 +154,20 @@ export const AttachmentManagementSection: React.FC = () => {
           await services?.attachmentManager.deleteDiaryAttachment(filePath)
           await loadDiaryAttachments()
         }}
+        onDeleteEmojiAttachments={async (relativePaths) => {
+          if (!services) return
+          for (const relativePath of relativePaths) {
+            await services.attachmentManager.deleteEmoji(relativePath)
+          }
+          const stored =
+            (await services.settingsManager.get<ToolManagementConfig>('tool_management_config')) ??
+            DEFAULT_TOOL_MANAGEMENT_CONFIG
+          const tool = normalizeToolManagementConfig(stored)
+          const emojiConfig = removeEmojisByRelativePaths(tool.emojiConfig, relativePaths)
+          await services.settingsManager.set('tool_management_config', { ...tool, emojiConfig })
+          publishEmojiToolConfig(emojiConfig)
+          await loadEmojiAttachments()
+        }}
       />
     </View>
   )
@@ -124,8 +179,8 @@ const styles = StyleSheet.create({
     minHeight: 400
   },
   sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: mobileTypography.secondary.fontSize,
+    marginBottom: sharedTokens.spacing.md,
     lineHeight: 20
   }
 })

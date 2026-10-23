@@ -1,4 +1,4 @@
-import type { MockChatAttachment } from '@baishou/shared'
+import { classifyPromptAttachmentKind, type MockChatAttachment } from '@baishou/shared'
 
 type ElectronFile = File & { path?: string }
 
@@ -12,6 +12,24 @@ function isPersistablePath(filePath?: string): boolean {
   return !filePath.startsWith('blob:') && !filePath.startsWith('data:')
 }
 
+export function resolveDroppedFilePath(file: File): string | undefined {
+  const electronPath = (file as ElectronFile).path
+  if (isPersistablePath(electronPath)) return electronPath
+  if (typeof window === 'undefined') return undefined
+  const getter = (
+    window as Window & {
+      api?: { agentWorkspace?: { getPathForFile?: (next: File) => string } }
+    }
+  ).api?.agentWorkspace?.getPathForFile
+  if (typeof getter !== 'function') return undefined
+  try {
+    const next = getter(file)
+    return isPersistablePath(next) ? next : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -22,19 +40,20 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 export async function fileToChatAttachment(file: File): Promise<InputBarAttachment> {
-  const electronPath = (file as ElectronFile).path
-  const isImage = file.type.startsWith('image/')
-  const isPdf = file.type === 'application/pdf'
-  const isText = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name)
+  const localPath = resolveDroppedFilePath(file)
+  const flags = classifyPromptAttachmentKind(file.name, file.type)
+  const isImage = file.type.startsWith('image/') || flags.isImage
+  const isPdf = file.type === 'application/pdf' || flags.isPdf
+  const isText = flags.isText
   const fileName = file.name || (isImage ? `pasted_${Date.now()}.png` : `file_${Date.now()}`)
 
   const id = Math.random().toString(36).substring(7)
 
-  if (isPersistablePath(electronPath)) {
+  if (isPersistablePath(localPath)) {
     return {
       id,
       fileName,
-      filePath: electronPath,
+      filePath: localPath,
       isImage,
       isPdf,
       isText,
@@ -58,6 +77,26 @@ export async function fileToChatAttachment(file: File): Promise<InputBarAttachme
     data,
     mimeType: file.type || undefined
   }
+}
+
+const TEXT_FILE_SIZE_LIMIT = 512 * 1024
+
+function isInMemoryAttachmentPath(filePath?: string): boolean {
+  if (!filePath) return true
+  return filePath.startsWith('blob:') || filePath.startsWith('data:')
+}
+
+/** 工作区路径引用会在物化时截断；仅拒绝没有落盘路径的超大内存文本 */
+export function shouldRejectOversizedTextAttachment(att: {
+  isText?: boolean
+  fileSize?: number
+  relativePath?: string
+  filePath?: string
+}): boolean {
+  if (!att.isText || !att.fileSize || att.fileSize <= TEXT_FILE_SIZE_LIMIT) return false
+  if (att.relativePath?.trim()) return false
+  if (!isInMemoryAttachmentPath(att.filePath)) return false
+  return true
 }
 
 export function collectClipboardImageFiles(clipboardData: DataTransfer): File[] {

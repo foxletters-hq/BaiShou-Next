@@ -1,8 +1,8 @@
 /* Sparkle animation */
 .sparkle {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-swift) ease;
 }
 
 .isThinking .sparkle {
@@ -38,8 +38,8 @@
 
 /* Content */
 .content {
-  padding: 12px 14px;
-  font-size: 14px;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  font-size: var(--ui-fs-lg);
   line-height: 1.7;
   color: var(--text-secondary);
   border-top: 1px solid var(--border-muted);
@@ -64,7 +64,7 @@
 
 /* 折叠态流式预览区（独立于 contentWrap，避免 grid 0fr 裁切） */
 .previewBody {
-  padding: 4px 14px 8px;
+  padding: var(--spacing-xs) var(--spacing-md-snug) var(--spacing-sm);
   border-top: 1px solid var(--border-muted);
   width: 100%;
   box-sizing: border-box;
@@ -74,7 +74,7 @@
 .previewContainer {
   overflow: hidden;
   position: relative;
-  transition: height 0.2s ease;
+  transition: height var(--duration-swift) ease;
   width: 100%;
   max-width: 100%;
   display: flex;
@@ -84,7 +84,7 @@
 
 .previewTail {
   display: block;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   line-height: 14px;
   color: var(--text-tertiary);
   white-space: pre-wrap;
@@ -99,14 +99,14 @@
   flex-direction: column;
   justify-content: flex-end;
   min-height: 100%;
-  padding-bottom: 4px;
+  padding-bottom: var(--spacing-xs);
 }
 
 /* legacy: 保留占位等待态 */
 .previewLine {
   width: 100%;
   line-height: 14px;
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
@@ -127,7 +127,7 @@
   width: 2px;
   height: 14px;
   background: var(--color-primary);
-  margin-left: 2px;
+  margin-left: var(--spacing-2xs);
   vertical-align: text-bottom;
   animation: blink 0.8s ease-in-out infinite;
 }
@@ -145,8 +145,8 @@
 /* Responsive */
 @media (max-width: 640px) {
   .content {
-    padding: 8px 12px;
-    font-size: 13px;
+    padding: var(--spacing-sm) var(--spacing-md-tight);
+    font-size: var(--ui-fs-md);
   }
 }
 
@@ -157,10 +157,10 @@
 .content h4,
 .content h5,
 .content h6 {
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-weight: 600;
-  margin-top: 14px;
-  margin-bottom: 8px;
+  margin-top: var(--spacing-md-snug);
+  margin-bottom: var(--spacing-sm);
   line-height: 1.4;
 }
 
@@ -180,25 +180,25 @@
 }
 
 .content p {
-  margin: 6px 0;
+  margin: var(--spacing-xs-plus) 0;
   line-height: 1.6;
 }
 
 .content ul,
 .content ol {
-  padding-left: 20px;
-  margin: 8px 0;
+  padding-left: var(--spacing-md-plus);
+  margin: var(--spacing-sm) 0;
 }
 
 .content li {
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
   line-height: 1.6;
 }
 
 .previewWaiting {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-tertiary);
   opacity: 0.8;
-  padding: 2px 0 4px;
+  padding: var(--spacing-2xs) 0 var(--spacing-xs);
 }

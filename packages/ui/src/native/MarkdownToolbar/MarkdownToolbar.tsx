@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   View,
   TouchableOpacity,
@@ -6,15 +6,18 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   type NativeScrollEvent
 } from 'react-native'
 import { Code, Image, List, Quote, Redo2, SlidersHorizontal, Undo2 } from 'lucide-react-native'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { MarkdownToolbarSettingsSheet } from './MarkdownToolbarSettingsSheet'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import {
   DEFAULT_MARKDOWN_TOOLBAR_ORDER,
   type MarkdownToolbarToolId
@@ -71,11 +74,47 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [settingsVisible, setSettingsVisible] = useState(false)
+  const [showScrollFade, setShowScrollFade] = useState(false)
   const isScrollingRef = useRef(false)
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollMetricsRef = useRef({ viewportWidth: 0, contentWidth: 0, offsetX: 0 })
+  const fadeGradientId = `markdown-toolbar-fade-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
 
   const iconColor = colors.textSecondary
   const disabledIcon = colors.textTertiary
+
+  const syncScrollFade = useCallback(() => {
+    const { viewportWidth, contentWidth, offsetX } = scrollMetricsRef.current
+    const next =
+      viewportWidth > 0 &&
+      contentWidth > viewportWidth &&
+      offsetX + viewportWidth < contentWidth - 1
+    setShowScrollFade((prev) => (prev === next ? prev : next))
+  }, [])
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollMetricsRef.current.offsetX = event.nativeEvent.contentOffset.x
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
+
+  const handleLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetricsRef.current.viewportWidth = event.nativeEvent.layout.width
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
+
+  const handleContentSizeChange = useCallback(
+    (width: number) => {
+      scrollMetricsRef.current.contentWidth = width
+      syncScrollFade()
+    },
+    [syncScrollFade]
+  )
 
   const markScrollStart = useCallback(() => {
     isScrollingRef.current = true
@@ -126,7 +165,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onUndo)}
               disabled={!onUndo}
               accessibilityLabel={t('diary.toolbar_undo', '撤销')}
@@ -142,7 +181,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onRedo)}
               disabled={!onRedo}
               accessibilityLabel={t('diary.toolbar_redo', '重做')}
@@ -158,7 +197,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('**'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_bold', '加粗')}
@@ -177,7 +216,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('*'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_italic', '斜体')}
@@ -197,7 +236,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('~~'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_strikethrough', '删除线')}
@@ -217,7 +256,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('`'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_code', '行内代码')}
@@ -233,7 +272,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('> '))}
               accessibilityLabel={t('diary.toolbar_quote', '引用')}
             >
@@ -244,7 +283,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('- '))}
               accessibilityLabel={t('diary.toolbar_list', '无序列表')}
             >
@@ -255,7 +294,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('#'))}
               accessibilityLabel={t('diary.toolbar_insert_tag', '插入标签')}
             >
@@ -266,7 +305,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('##### '))}
               accessibilityLabel={t('diary.toolbar_insert_h5', '插入五级标题')}
             >
@@ -277,7 +316,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('###### '))}
               accessibilityLabel={t('diary.toolbar_insert_h6', '插入六级标题')}
             >
@@ -288,7 +327,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onPickImages)}
               disabled={!onPickImages || pickingImages}
               accessibilityLabel={t('diary.toolbar_insert_image', '插入图片')}
@@ -330,7 +369,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
       items.push(
         <ToolbarButton
           key="settings"
-          borderColor={colors.borderSubtle}
+          borderColor={colors.borderControl}
           onPress={guardPress(() => setSettingsVisible(true))}
           accessibilityLabel={t('diary.toolbar_settings', '工具栏设置')}
         >
@@ -340,7 +379,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
     }
 
     return items
-  }, [colors.borderSubtle, guardPress, iconColor, onToolOrderChange, renderTool, t, toolOrder])
+  }, [colors.borderControl, guardPress, iconColor, onToolOrderChange, renderTool, t, toolOrder])
 
   return (
     <View
@@ -351,6 +390,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           borderTopColor: colors.borderSubtle
         }
       ]}
+      onLayout={handleLayout}
     >
       <ScrollView
         horizontal
@@ -362,9 +402,26 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={scheduleScrollEnd}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={16}
       >
         {toolbarContent}
       </ScrollView>
+
+      {showScrollFade ? (
+        <View style={styles.scrollFade} pointerEvents="none">
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id={fadeGradientId} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor={colors.bgSurface} stopOpacity={0} />
+                <Stop offset="1" stopColor={colors.bgSurface} stopOpacity={1} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${fadeGradientId})`} />
+          </Svg>
+        </View>
+      ) : null}
 
       {onToolOrderChange ? (
         <MarkdownToolbarSettingsSheet
@@ -382,38 +439,45 @@ const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1
   },
+  scrollFade: {
+    position: 'absolute',
+    top: 1,
+    right: 0,
+    bottom: 0,
+    width: 28
+  },
   scrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 8
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.sm
   },
   btn: {
     minWidth: 44,
     height: 40,
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 10
+    paddingHorizontal: sharedTokens.spacing.smPlus
   },
   btnDisabled: {
     opacity: 0.45
   },
   hashText: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
     lineHeight: 24
   },
   labelText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
     letterSpacing: 0.3
   },
   markText: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600',
     lineHeight: 22
   },
   italicText: {

@@ -2,7 +2,7 @@
   font-family: var(--font-family-main, inherit);
   color: var(--text-primary) !important;
   line-height: 1.6;
-  font-size: 15px;
+  font-size: var(--ui-fs-lg);
   word-wrap: break-word;
 }
 
@@ -14,16 +14,26 @@
 /* 流式逐段显现由 streaming-display-buffer 负责；此处不再对 last-of-type 做 CSS 动画，避免每 90ms 重绘时反复触发 translateY 导致抖动 */
 
 .list {
-  padding-left: 20px;
-  margin: 8px 0;
+  padding-left: var(--spacing-md-plus);
+  margin: var(--spacing-sm) 0;
 }
 
 .listItem {
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .paragraph {
-  margin: 8px 0;
+  margin: var(--spacing-sm) 0;
+}
+
+/* 覆盖浏览器默认 inset 粗线，预览卡片里保持轻量分割 */
+.hr {
+  border: none;
+  height: 0;
+  margin: var(--spacing-sm-plus) 0;
+  border-top: 1px solid var(--border-muted);
+  background: transparent;
+  color: transparent;
 }
 
 .link {
@@ -38,87 +48,133 @@
   opacity: 0.8;
 }
 
+.citationMark {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 var(--spacing-xs);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.citationMark:hover {
+  background: var(--bg-surface-normal);
+}
+
+:global(.x-markdown-light) a.citationMark::after,
+:global(.x-markdown-dark) a.citationMark::after {
+  content: none;
+  margin-left: 0;
+}
+
 .inlineCode {
-  background: var(--bg-surface);
-  color: var(--color-text-main);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9em;
-  border: 1px solid var(--color-glass-border);
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  padding: 0.08em 0.35em;
+  border-radius: 0.35rem;
+  font-family: var(--font-family-main, var(--font-family, inherit));
+  font-size: inherit;
+  border: none;
 }
 
 .codeWrapper {
-  margin: 12px 0;
-  border-radius: 8px;
-  border: 1px solid var(--color-glass-border, var(--border-subtle));
-  overflow: hidden;
-  background: var(--bg-surface-highlight, var(--bg-surface));
+  position: relative;
+  margin: var(--spacing-md-tight) 0;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-radius: var(--radius-xs-plus);
+  border: none;
+  overflow-x: auto;
+  background: var(--bg-code-block);
+  font-family: var(--font-family-main, var(--font-family));
+  font-size: inherit;
+  line-height: 1.6;
 }
 
 .codeHeader {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  font-size: 12px;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
   color: var(--text-secondary);
-  background: var(--bg-surface-highlight, rgba(0, 0, 0, 0.03));
-  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
   text-transform: lowercase;
+}
+
+.codeWrapper:hover .codeHeader,
+.codeWrapper:focus-within .codeHeader {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .codeHeader button {
   background: transparent;
   border: none;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-xs);
 }
 
 .codeHeader button:hover {
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-primary);
 }
 
-.codeBlock {
-  background: var(--bg-surface-highlight, var(--bg-surface));
-  padding: 12px 14px;
-  border-radius: 0;
-  overflow-x: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
-  border: none;
-  margin: 0;
-  box-shadow: none;
-}
-
-.codeBlock :global(code),
-.codeBlock :global(.hljs) {
+.codeWrapper > code,
+.codeWrapper :global(code),
+.codeWrapper :global(.hljs) {
+  display: block;
   background: transparent !important;
   color: var(--text-primary) !important;
   padding: 0 !important;
-  font-family: inherit;
-  font-size: inherit;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow-x: visible;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
   white-space: pre;
+}
+
+.blockquote,
+.blockquote :global(*) {
+  font-family: var(--font-family-main, var(--font-family));
 }
 
 .blockquote {
   border-left: 4px solid var(--color-primary);
-  margin: 12px 0;
-  padding: 4px 16px;
-  color: var(--color-text-secondary);
-  background: var(--color-glass-bg);
-  border-radius: 0 8px 8px 0;
+  margin: var(--spacing-md-tight) 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  color: var(--text-secondary);
+  background: var(--bg-glass-surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: calc(1em - 1px);
 }
 
 .blinkingCursor {
   display: inline-block;
   animation: blink 1s step-end infinite;
   color: var(--color-primary);
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
 }
 
 @keyframes blink {
@@ -141,10 +197,10 @@
 .tableWrap {
   width: 100%;
   overflow-x: auto;
-  margin: 16px 0;
-  border-radius: 8px;
-  border: 1px solid var(--color-glass-border, rgba(0, 0, 0, 0.08));
-  background: var(--bg-surface, #ffffff);
+  margin: var(--spacing-md) 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.015);
 }
 
@@ -152,21 +208,21 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
 }
 
 .tableWrap th {
   background: var(--bg-surface-hover, rgba(0, 0, 0, 0.02));
-  color: var(--text-primary, #111111);
+  color: var(--text-primary);
   font-weight: 600;
-  padding: 12px 16px;
-  border-bottom: 2px solid var(--color-glass-border, rgba(0, 0, 0, 0.08));
+  padding: var(--spacing-md-tight) var(--spacing-md);
+  border-bottom: 2px solid var(--border-muted);
 }
 
 .tableWrap td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-glass-border, rgba(0, 0, 0, 0.05));
-  color: var(--text-secondary, #444444);
+  padding: var(--spacing-md-tight) var(--spacing-md);
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-secondary);
 }
 
 .tableWrap tr:last-child td {
@@ -174,5 +230,5 @@
 }
 
 .tableWrap tr:hover {
-  background: var(--color-glass-bg-hover, rgba(0, 0, 0, 0.01));
+  background: color-mix(in srgb, var(--bg-surface-high) 40%, transparent);
 }

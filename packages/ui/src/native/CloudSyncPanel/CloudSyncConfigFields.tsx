@@ -30,7 +30,7 @@ export const CloudSyncTargetSelector: React.FC<CloudSyncTargetSelectorProps> = (
               {
                 backgroundColor: isSelected ? colors.primary : colors.bgSurfaceNormal,
                 borderColor: isSelected ? colors.primary : colors.borderSubtle,
-                borderRadius: tokens.radius.sm
+                borderRadius: tokens.radius.xs
               }
             ]}
             onPress={() => onSelectTarget(opt.key)}
@@ -62,7 +62,7 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
   localConfig,
   onUpdateField
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   const renderField = (
     label: string,
@@ -145,7 +145,7 @@ export const CloudSyncMaxBackupField: React.FC<{
   localConfig: CloudSyncConfig
   onUpdateField: (field: keyof CloudSyncConfig, value: string | number) => void
 }> = ({ localConfig, onUpdateField }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   return (
     <View style={styles.fieldGroup}>

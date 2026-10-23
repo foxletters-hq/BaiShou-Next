@@ -37,6 +37,27 @@ describe('SessionDiskPersistenceService', () => {
     expect(service.isDirty('s1')).toBe(false)
   })
 
+  it('writes vaultName snapshot on normal flush for legacy clients', async () => {
+    mockRepo.getSessionAggregate.mockResolvedValue({
+      session: { id: 's1', vaultId: 'vlt_1234567890abcdef' },
+      messages: []
+    })
+    const withResolver = new SessionDiskPersistenceService(
+      mockRepo as never,
+      mockFileService as never,
+      { resolveActiveVaultName: () => 'Work' }
+    )
+    await withResolver.flushNow('s1')
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('s1', {
+      session: {
+        id: 's1',
+        vaultId: 'vlt_1234567890abcdef',
+        vaultName: 'Work'
+      },
+      messages: []
+    })
+  })
+
   it('coalesces concurrent flushNow for the same session', async () => {
     let resolveAggregate: (value: unknown) => void = () => {}
     mockRepo.getSessionAggregate.mockImplementation(

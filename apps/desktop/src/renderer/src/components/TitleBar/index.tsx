@@ -1,36 +1,48 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
 import { useTranslation } from 'react-i18next'
-import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
+import { isIncrementalSyncReady } from '@baishou/shared'
+import { useSettingsStore } from '@baishou/store'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
-import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FolderSync, Layers, Minus, Square, X } from 'lucide-react'
+import {
+  AgentGatePendingBadgeButton,
+  AgentGatePendingDrawer
+} from '../../features/agent/AgentGatePendingDrawer'
+
+const WORKBENCH_ENTRY_ENABLED = false
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
 
   const location = useLocation()
   const navigate = useNavigate()
+  const isOnboarding = location.pathname.startsWith('/welcome')
+  const showTopBarVaultSwitcher = useSettingsStore((s) => s.showTopBarVaultSwitcher)
 
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [showVaultMenu, setShowVaultMenu] = useState(false)
+  const [showGateDrawer, setShowGateDrawer] = useState(false)
   const [isSwitchingVault, setIsSwitchingVault] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
+  const wasOnboardingRef = useRef(isOnboarding)
   const preloadedVaultsRef = useRef<Set<string>>(new Set())
   const [s3Configured, setS3Configured] = useState(false)
   const { isSyncing, isPlanning, progress, startSync } = useOrchestratedSync()
 
   const fetchVaults = useCallback(async (): Promise<boolean> => {
     try {
-      const vList = await (window as any).api?.vault?.list()
-      const active = await (window as any).api?.vault?.getActive()
+      const [vList, active] = await Promise.all([
+        (window as any).api?.vault?.list(),
+        (window as any).api?.vault?.getActive()
+      ])
       if (Array.isArray(vList)) setVaults(vList)
       if (active?.name) {
         setActiveVault(active)
@@ -65,9 +77,12 @@ export const TitleBar: React.FC = () => {
   }, [fetchVaults])
 
   useEffect(() => {
-    if (location.pathname.startsWith('/welcome')) return
-    void fetchVaults()
-  }, [location.pathname, fetchVaults])
+    const wasOnboarding = wasOnboardingRef.current
+    wasOnboardingRef.current = isOnboarding
+    if (wasOnboarding && !isOnboarding) {
+      void fetchVaults()
+    }
+  }, [isOnboarding, fetchVaults])
 
   useEffect(() => {
     const unsubRegistry = (window as any).api?.vault?.onRegistryUpdated?.(() => {
@@ -131,7 +146,7 @@ export const TitleBar: React.FC = () => {
       if (retryTimer) clearTimeout(retryTimer)
       window.removeEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
     }
-  }, [location.pathname])
+  }, [isOnboarding])
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return
@@ -167,40 +182,109 @@ export const TitleBar: React.FC = () => {
     })
   }
 
-  // Tabs logic corresponding to Flutter tab controller
-  const isAgent = location.pathname.startsWith('/agent') || location.pathname.startsWith('/chat')
+  // 顶栏双主场：日记 | 工作台（伙伴已迁入日记侧栏）
+  const isAgentWorkspace = location.pathname.startsWith('/agent-workspace')
   const isSettings = location.pathname.startsWith('/settings')
-  const isOnboarding = location.pathname.startsWith('/welcome')
+  const isDiaryTab = !isAgentWorkspace && !isSettings
+  const activeNavTab: 'diary' | 'workbench' | null = isAgentWorkspace
+    ? 'workbench'
+    : isDiaryTab
+      ? 'diary'
+      : null
+
+  const tabsContainerRef = useRef<HTMLDivElement>(null)
+  const diaryTabRef = useRef<HTMLDivElement>(null)
+  const workbenchTabRef = useRef<HTMLDivElement>(null)
+  const [tabThumb, setTabThumb] = useState<{ left: number; width: number } | null>(null)
+  const [tabThumbAnimate, setTabThumbAnimate] = useState(false)
+
+  const measureNavTabThumb = useCallback(() => {
+    const target =
+      activeNavTab === 'diary'
+        ? diaryTabRef.current
+        : activeNavTab === 'workbench'
+          ? workbenchTabRef.current
+          : null
+    if (!target || !tabsContainerRef.current) {
+      setTabThumb(null)
+      return
+    }
+    const next = { left: target.offsetLeft, width: target.offsetWidth }
+    setTabThumb((prev) => {
+      if (prev && prev.left === next.left && prev.width === next.width) return prev
+      return next
+    })
+  }, [activeNavTab])
+
+  useLayoutEffect(() => {
+    measureNavTabThumb()
+    const id = requestAnimationFrame(() => setTabThumbAnimate(true))
+    return () => cancelAnimationFrame(id)
+  }, [measureNavTabThumb])
+
+  useLayoutEffect(() => {
+    const container = tabsContainerRef.current
+    if (!container || typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(() => measureNavTabThumb())
+    observer.observe(container)
+    if (diaryTabRef.current) observer.observe(diaryTabRef.current)
+    if (workbenchTabRef.current) observer.observe(workbenchTabRef.current)
+    return () => observer.disconnect()
+  }, [measureNavTabThumb, isOnboarding])
 
   return (
-    <div className={`${styles.titleBar} ${isOnboarding ? styles.titleBarOnboarding : ''}`}>
+    <div className={styles.titleBar}>
       <div className={styles.dragRegion}>
-        {!isOnboarding && (
-          <div className={styles.tabsContainer}>
+        {!isOnboarding && WORKBENCH_ENTRY_ENABLED ? (
+          <div
+            ref={tabsContainerRef}
+            className={styles.tabsContainer}
+            role="tablist"
+            aria-label={t('nav.main', '主导航')}
+          >
+            {tabThumb ? (
+              <span
+                className={`${styles.tabThumb}${tabThumbAnimate ? ` ${styles.tabThumbAnimate}` : ''}`}
+                style={{
+                  width: tabThumb.width,
+                  transform: `translateX(${tabThumb.left}px)`,
+                  opacity: activeNavTab ? 1 : 0
+                }}
+                aria-hidden
+              />
+            ) : null}
             <div
-              className={`${styles.tab} ${!isAgent && !isSettings ? styles.activeTab : ''}`}
+              ref={diaryTabRef}
+              className={`${styles.tab} ${isDiaryTab ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
+              role="tab"
+              aria-selected={isDiaryTab}
             >
               <BookOpen className={styles.tabIcon} />
-              <span>{t('nav.diary', '日记')}</span>
+              <span className={styles.tabLabel}>{t('nav.diary', '日记')}</span>
             </div>
             <div
-              className={`${styles.tab} ${isAgent && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => {
-                const saved = readActiveVaultNavigationSnapshot()
-                navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
-              }}
+              ref={workbenchTabRef}
+              className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
+              onClick={() => navigate('/agent-workspace')}
+              role="tab"
+              aria-selected={isAgentWorkspace}
             >
-              <Sparkles className={styles.tabIcon} />
-              <span>{t('nav.agent', '伙伴')}</span>
+              <Layers className={styles.tabIcon} />
+              <span className={styles.tabLabel}>{t('nav.workbench', '工作台')}</span>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className={styles.actions}>
         {!isOnboarding && (
           <>
+            <AgentGatePendingBadgeButton onClick={() => setShowGateDrawer(true)} />
+            <AgentGatePendingDrawer
+              open={showGateDrawer}
+              onClose={() => setShowGateDrawer(false)}
+            />
             {s3Configured && (
               <div className={styles.syncPanelWrap}>
                 <IncrementalSyncPanel
@@ -212,58 +296,62 @@ export const TitleBar: React.FC = () => {
               </div>
             )}
 
-            <div
-              className={styles.vaultSwitcherWrapper}
-              ref={vaultMenuRef}
-              style={{ position: 'relative' }}
-            >
-              <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
-              <button
-                type="button"
-                className={styles.vaultSwitcher}
-                onClick={toggleVaultMenu}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                disabled={isSwitchingVault}
-                aria-expanded={showVaultMenu}
-                aria-haspopup="menu"
-                style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
+            {!isAgentWorkspace && showTopBarVaultSwitcher ? (
+              <div
+                className={styles.vaultSwitcherWrapper}
+                ref={vaultMenuRef}
+                style={{ position: 'relative' }}
               >
-                <FolderSync className={styles.actionIconSm} />
-                <span className={styles.vaultName}>
-                  {isSwitchingVault
-                    ? t('workspace.switching', 'Switching…')
-                    : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
-                </span>
-                <ChevronDown className={styles.actionIconSm} />
-              </button>
-              {showVaultMenu && (
-                <div className={styles.vaultMenu} role="menu">
-                  {vaults.length > 0 ? (
-                    vaults.map((v) => (
-                      <button
-                        key={v.name}
-                        type="button"
-                        role="menuitem"
-                        className={`${styles.vaultMenuItem} ${
-                          v.name === activeVault?.name ? styles.vaultMenuItemActive : ''
-                        }`}
-                        onMouseEnter={() => preloadVault(v.name)}
-                        onClick={() => void handleSwitchVault(v.name)}
-                      >
-                        {v.name}
-                      </button>
-                    ))
-                  ) : (
-                    <div className={styles.vaultMenuPlaceholder} role="presentation">
-                      {t('common.loading', '加载中…')}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
+                <button
+                  type="button"
+                  className={styles.vaultSwitcher}
+                  onClick={toggleVaultMenu}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  disabled={isSwitchingVault}
+                  aria-expanded={showVaultMenu}
+                  aria-haspopup="menu"
+                  style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
+                >
+                  <FolderSync className={styles.actionIconSm} />
+                  <span className={styles.vaultName}>
+                    {isSwitchingVault
+                      ? t('workspace.switching', 'Switching…')
+                      : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
+                  </span>
+                  <ChevronDown className={styles.actionIconSm} />
+                </button>
+                {showVaultMenu && (
+                  <div className={styles.vaultMenu} role="menu">
+                    {vaults.length > 0 ? (
+                      vaults.map((v) => (
+                        <button
+                          key={v.name}
+                          type="button"
+                          role="menuitem"
+                          className={`${styles.vaultMenuItem} ${
+                            v.name === activeVault?.name ? styles.vaultMenuItemActive : ''
+                          }`}
+                          onMouseEnter={() => preloadVault(v.name)}
+                          onClick={() => void handleSwitchVault(v.name)}
+                        >
+                          {v.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className={styles.vaultMenuPlaceholder} role="presentation">
+                        {t('common.loading', '加载中…')}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
 
-            <div className={styles.divider}></div>
+            {s3Configured || (!isAgentWorkspace && showTopBarVaultSwitcher) ? (
+              <div className={styles.divider}></div>
+            ) : null}
           </>
         )}
 

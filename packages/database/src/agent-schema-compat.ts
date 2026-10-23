@@ -22,6 +22,7 @@ export const MEMORY_EMBEDDINGS_CREATE_SQL = `
     source_type     TEXT NOT NULL,
     source_id       TEXT NOT NULL,
     group_id        TEXT NOT NULL,
+    vault_id        TEXT,
     chunk_index     INTEGER DEFAULT 0 NOT NULL,
     chunk_text      TEXT NOT NULL,
     metadata_json   TEXT DEFAULT '{}' NOT NULL,
@@ -38,6 +39,91 @@ export const MEMORY_EMBEDDINGS_INDEX_SQL = `
   ON memory_embeddings (embedding_id)
 `
 
+export const MEMORY_EMBEDDINGS_VAULT_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS memory_embeddings_vault_id_source
+  ON memory_embeddings (vault_id, source_type)
+`
+
+/** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
+export const DIARY_EMBED_JOBS_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS diary_embed_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    vault_id TEXT NOT NULL,
+    diary_id INTEGER NOT NULL,
+    content_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    next_retry_at INTEGER,
+    updated_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )
+`
+
+export const DIARY_EMBED_JOBS_INDEXES_SQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS diary_embed_jobs_vault_id_diary_unique
+   ON diary_embed_jobs (vault_id, diary_id)`,
+  `CREATE INDEX IF NOT EXISTS diary_embed_jobs_status_retry_idx
+   ON diary_embed_jobs (status, next_retry_at)`
+] as const
+
+/**
+ * 把剩余欠账行幂等写入 embed_ledger（failed、正文哈希留空），禁止复制文件级 MD5。
+ * 已有账本行（含 embedded）一律不覆盖。
+ */
+export const MIGRATE_DIARY_EMBED_JOBS_INTO_LEDGER_SQL = `
+  INSERT INTO embed_ledger (
+    vault_id, source_type, source_id, content_hash, chunk_count,
+    model_id, dimension, status, attempts, last_error, embedded_at, updated_at
+  )
+  SELECT
+    j.vault_id,
+    'diary',
+    j.vault_id || '#' || CAST(j.diary_id AS TEXT),
+    '',
+    0,
+    '',
+    0,
+    'failed',
+    COALESCE(j.attempts, 0),
+    COALESCE(j.last_error, 'migrated-from-diary-embed-jobs'),
+    NULL,
+    COALESCE(j.updated_at, 0)
+  FROM diary_embed_jobs j
+  WHERE NOT EXISTS (
+    SELECT 1 FROM embed_ledger e
+    WHERE e.vault_id = j.vault_id
+      AND e.source_type = 'diary'
+      AND e.source_id = j.vault_id || '#' || CAST(j.diary_id AS TEXT)
+  )
+`
+
+/** 本机嵌入账本；记录这台设备把哪个来源的哪个版本嵌入过，不参与同步 */
+export const EMBED_LEDGER_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS embed_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    vault_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    content_hash TEXT NOT NULL DEFAULT '',
+    chunk_count INTEGER NOT NULL DEFAULT 0,
+    model_id TEXT NOT NULL DEFAULT '',
+    dimension INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'embedded',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    embedded_at INTEGER,
+    updated_at INTEGER NOT NULL
+  )
+`
+
+export const EMBED_LEDGER_INDEXES_SQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS embed_ledger_source_unique
+   ON embed_ledger (vault_id, source_type, source_id)`,
+  `CREATE INDEX IF NOT EXISTS embed_ledger_read_idx
+   ON embed_ledger (vault_id, source_type, source_id, content_hash, chunk_count, status)`
+] as const
+
 /** 原 0000 迁移内容；Flutter v3 agent.sqlite 无此表，但迁移记录可能被误标为已执行 */
 export const SYSTEM_SETTINGS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS system_settings (
@@ -47,8 +133,96 @@ export const SYSTEM_SETTINGS_CREATE_SQL = `
   )
 `
 
+/** Graph nodes / edges（P1）；旧库无迁移记录时靠兜底建表 */
+export const GRAPH_NODES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_nodes (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_id TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    name_normalized TEXT DEFAULT '' NOT NULL,
+    discriminator TEXT DEFAULT '' NOT NULL,
+    aliases TEXT DEFAULT '[]' NOT NULL,
+    summary TEXT DEFAULT '' NOT NULL,
+    props_json TEXT DEFAULT '{}' NOT NULL,
+    embedding BLOB,
+    dimension INTEGER,
+    model_id TEXT DEFAULT '' NOT NULL,
+    mention_count INTEGER DEFAULT 0 NOT NULL,
+    first_seen_at INTEGER,
+    last_seen_at INTEGER,
+    origin TEXT DEFAULT 'ai' NOT NULL,
+    shard_month TEXT DEFAULT '' NOT NULL,
+    review_status TEXT DEFAULT 'approved' NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  )
+`
+
+export const GRAPH_NODE_ALIASES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_node_aliases (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    alias_normalized TEXT NOT NULL
+  )
+`
+
+export const GRAPH_EDGES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_edges (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_id TEXT NOT NULL,
+    from_id TEXT NOT NULL,
+    to_id TEXT NOT NULL,
+    edge_type TEXT NOT NULL,
+    props_json TEXT DEFAULT '{}' NOT NULL,
+    valid_from INTEGER,
+    valid_to INTEGER,
+    is_current INTEGER DEFAULT 1 NOT NULL,
+    source_kind TEXT DEFAULT 'diary' NOT NULL,
+    source_ref TEXT,
+    source_excerpt TEXT DEFAULT '' NOT NULL,
+    source_content_hash TEXT,
+    confidence INTEGER DEFAULT 100 NOT NULL,
+    origin TEXT DEFAULT 'ai' NOT NULL,
+    review_status TEXT DEFAULT 'approved' NOT NULL,
+    shard_month TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  )
+`
+
+/** Remove historical graph_nodes/graph_edges rows that only had deleted_at set. */
+export const GRAPH_PURGE_SOFT_DELETED_SQL = [
+  `DELETE FROM graph_edges WHERE deleted_at IS NOT NULL`,
+  `DELETE FROM graph_edges WHERE from_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)
+    OR to_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)`,
+  `DELETE FROM graph_node_aliases WHERE node_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)`,
+  `DELETE FROM graph_nodes WHERE deleted_at IS NOT NULL`
+] as const
+
+export const GRAPH_INDEXES_SQL = [
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_id_type ON graph_nodes(vault_id, node_type)`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_name_norm ON graph_nodes(vault_id, name_normalized)`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_mention ON graph_nodes(vault_id, mention_count)`,
+  // CREATE IF NOT EXISTS 不会改已有索引，必须先删再建成带区分信息的唯一约束
+  `DROP INDEX IF EXISTS graph_nodes_vault_type_name_live`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized, discriminator) WHERE deleted_at IS NULL AND node_type != 'entry'`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_embed_state ON graph_nodes (vault_id, model_id, dimension) WHERE deleted_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS graph_node_aliases_vault_alias ON graph_node_aliases(vault_id, alias_normalized)`,
+  `CREATE INDEX IF NOT EXISTS graph_node_aliases_node ON graph_node_aliases(node_id)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_to ON graph_edges(to_id)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_type_current ON graph_edges(vault_id, edge_type, is_current)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_source_ref ON graph_edges(vault_id, source_ref)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_shard_month ON graph_edges(vault_id, shard_month)`
+] as const
+
 /**
  * 按表聚合的缺列补丁（顺序无关，逐条检测后执行）。
+ * V2.2：vault_name → vault_id 由 MigrationService 的 rename+回填负责；此处仅兜底缺列。
  */
 export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
   // ── agent_assistants ──
@@ -76,6 +250,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     table: 'agent_assistants',
     column: 'compress_system_prompt',
     ddl: `ALTER TABLE agent_assistants ADD COLUMN compress_system_prompt TEXT`
+  },
+  {
+    table: 'agent_assistants',
+    column: 'custom_system_prompt',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN custom_system_prompt TEXT`
   },
   {
     table: 'agent_assistants',
@@ -113,6 +292,16 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'total_cost_micros',
     ddl: `ALTER TABLE agent_sessions ADD COLUMN total_cost_micros INTEGER NOT NULL DEFAULT 0`
   },
+  {
+    table: 'agent_sessions',
+    column: 'mounted_notebook_ids',
+    ddl: `ALTER TABLE agent_sessions ADD COLUMN mounted_notebook_ids TEXT NOT NULL DEFAULT ''`
+  },
+  {
+    table: 'agent_sessions',
+    column: 'instruction_state',
+    ddl: `ALTER TABLE agent_sessions ADD COLUMN instruction_state TEXT`
+  },
   // ── agent_messages（原 0002_cache_token_usage）──
   {
     table: 'agent_messages',
@@ -145,5 +334,36 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     table: 'summaries',
     column: 'updated_at',
     ddl: `ALTER TABLE summaries ADD COLUMN updated_at INTEGER`
+  },
+  // ── summaries / agent_assistants（仓库隔离 V1.4；先可空，迁移步骤回填/重建后再收紧）──
+  {
+    table: 'summaries',
+    column: 'vault_id',
+    ddl: `ALTER TABLE summaries ADD COLUMN vault_id TEXT`
+  },
+  {
+    table: 'agent_assistants',
+    column: 'vault_id',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN vault_id TEXT`
+  },
+  // ── memory_embeddings（仓库身份 V2.2；旧库若仍无 vault 列则直接加 vault_id）──
+  {
+    table: 'memory_embeddings',
+    column: 'vault_id',
+    ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_id TEXT`
+  },
+  // ── graph_nodes：同名不同人靠独立列区分，不能塞进 name_normalized ──
+  {
+    table: 'graph_nodes',
+    column: 'discriminator',
+    ddl: `ALTER TABLE graph_nodes ADD COLUMN discriminator TEXT NOT NULL DEFAULT ''`
   }
 ]
+
+/** V1.4：summaries 唯一约束必须带 vault_id，否则跨仓同月总结互相顶掉 */
+export const SUMMARIES_VAULT_UNIQUE_INDEX_SQL = `
+  CREATE UNIQUE INDEX IF NOT EXISTS summaries_vault_id_type_start_date_end_date_unique
+  ON summaries (vault_id, type, start_date, end_date)
+`
+
+export const SUMMARIES_LEGACY_UNIQUE_INDEX_NAME = 'summaries_type_start_date_end_date_unique'

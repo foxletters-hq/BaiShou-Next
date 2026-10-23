@@ -37,3 +37,4 @@ export interface MobileArchiveDbBridge {
 export const ARCHIVE_USER_AVATARS_ZIP_PREFIX = 'user-data/UserAvatars'
 
 export const MOBILE_ARCHIVE_DB_ZIP_NAME = 'database/baishou_agent.db'
+export const MOBILE_ARCHIVE_KNOWLEDGE_DB_ZIP_NAME = 'database/knowledge.db'

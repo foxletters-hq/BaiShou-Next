@@ -9,12 +9,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Platform,
   useWindowDimensions
 } from 'react-native'
 import { ArrowUpCircle, Search, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { SegmentedContent, SegmentedControl } from '../SegmentedControl'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard'
 import { Pagination } from '../Pagination'
@@ -22,6 +22,8 @@ import type { NativeRecallDialogProps } from './recall-dialog.types'
 import { useRecallDialog, RECALL_MEMORY_PAGE_SIZE } from './useRecallDialog'
 import { RecallDialogItem } from './RecallDialogItem'
 import { RecallDialogDiaryItem } from './RecallDialogDiaryItem'
+import { styles } from './recall-dialog.styles'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type { RecallItem, NativeRecallDialogProps } from './recall-dialog.types'
 
@@ -88,40 +90,22 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
             ]}
           >
             <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-              <View style={[styles.tabs, { backgroundColor: colors.bgSurfaceNormal }]}>
-                {(['diary', 'memory'] as const).map((tab) => {
-                  const active = dialog.activeTab === tab
-                  return (
-                    <Pressable
-                      key={tab}
-                      onPress={() => dialog.switchTab(tab)}
-                      style={[
-                        styles.tab,
-                        active && {
-                          backgroundColor: colors.bgSurface,
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.05,
-                          shadowRadius: 8,
-                          elevation: 1
-                        }
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: '700',
-                          color: active ? colors.primary : colors.textSecondary
-                        }}
-                      >
-                        {t(
-                          tab === 'diary' ? 'recall.tab_diary' : 'recall.tab_memory',
-                          tab === 'diary' ? '日记档案' : '向量记忆'
-                        )}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
+              <View style={{ flex: 1 }}>
+                <SegmentedControl
+                  size="small"
+                  value={dialog.activeTab}
+                  onChange={dialog.switchTab}
+                  options={[
+                    {
+                      value: 'diary',
+                      label: t('recall.tab_diary', '日记档案')
+                    },
+                    {
+                      value: 'memory',
+                      label: t('recall.tab_memory', '向量记忆')
+                    }
+                  ]}
+                />
               </View>
 
               <Pressable
@@ -133,87 +117,68 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
               </Pressable>
             </View>
 
-            {dialog.activeTab === 'memory' && (
-              <View style={styles.searchSection}>
-                <View
-                  style={[
-                    styles.searchBox,
-                    {
-                      backgroundColor: colors.bgSurface,
-                      borderColor: colors.borderMuted
-                    }
-                  ]}
-                >
-                  <View style={styles.searchInputInner}>
-                    <View pointerEvents="none" style={styles.searchIconInside}>
-                      <Search
-                        size={18}
-                        color={colors.textSecondary}
-                        strokeWidth={DEFAULT_STROKE_WIDTH}
-                      />
-                    </View>
-                    <TextInput
-                      style={[styles.searchInput, { color: colors.textPrimary }]}
-                      placeholder={searchPlaceholder}
-                      placeholderTextColor={colors.textTertiary}
-                      value={dialog.searchQuery}
-                      onChangeText={dialog.setSearchQuery}
-                      returnKeyType="search"
-                      autoCorrect={false}
-                      autoCapitalize="none"
-                    />
-                    {dialog.searchQuery.length > 0 ? (
-                      <TouchableOpacity
-                        onPress={() => dialog.setSearchQuery('')}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        activeOpacity={0.7}
-                        style={styles.searchClearBtn}
-                      >
-                        <X
-                          size={16}
-                          color={colors.textTertiary}
+            <SegmentedContent value={dialog.activeTab}>
+              {dialog.activeTab === 'memory' ? (
+                <View style={styles.searchSection}>
+                  <View
+                    style={[
+                      styles.searchBox,
+                      {
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.borderControl
+                      }
+                    ]}
+                  >
+                    <View style={styles.searchInputInner}>
+                      <View pointerEvents="none" style={styles.searchIconInside}>
+                        <Search
+                          size={18}
+                          color={colors.textSecondary}
                           strokeWidth={DEFAULT_STROKE_WIDTH}
                         />
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-
-                {onToggleSearchMode && (
-                  <View style={[styles.segmented, { backgroundColor: colors.bgSurfaceNormal }]}>
-                    {(['semantic', 'text'] as const).map((mode) => {
-                      const active = searchMode === mode
-                      return (
+                      </View>
+                      <TextInput
+                        style={[styles.searchInput, { color: colors.textPrimary }]}
+                        placeholder={searchPlaceholder}
+                        placeholderTextColor={colors.textTertiary}
+                        value={dialog.searchQuery}
+                        onChangeText={dialog.setSearchQuery}
+                        returnKeyType="search"
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                      />
+                      {dialog.searchQuery.length > 0 ? (
                         <TouchableOpacity
-                          key={mode}
+                          onPress={() => dialog.setSearchQuery('')}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           activeOpacity={0.7}
-                          style={[
-                            styles.segmentBtn,
-                            active && { backgroundColor: colors.bgSurface }
-                          ]}
-                          onPress={() => {
-                            if (searchMode !== mode) onToggleSearchMode()
-                          }}
+                          style={styles.searchClearBtn}
                         >
-                          <Text
-                            style={[
-                              styles.segmentText,
-                              { color: active ? colors.primary : colors.textSecondary },
-                              active && styles.segmentTextActive
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {mode === 'semantic'
-                              ? t('recall.search_semantic', '语义搜索')
-                              : t('recall.search_text', '文本搜索')}
-                          </Text>
+                          <X
+                            size={16}
+                            color={colors.textTertiary}
+                            strokeWidth={DEFAULT_STROKE_WIDTH}
+                          />
                         </TouchableOpacity>
-                      )
-                    })}
+                      ) : null}
+                    </View>
                   </View>
-                )}
-              </View>
-            )}
+
+                  {onToggleSearchMode ? (
+                    <SegmentedControl
+                      size="small"
+                      value={searchMode}
+                      accessibilityLabel={t('recall.search_mode', '搜索方式')}
+                      onChange={() => onToggleSearchMode()}
+                      options={[
+                        { value: 'semantic', label: t('recall.search_semantic', '语义搜索') },
+                        { value: 'text', label: t('recall.search_text', '文本搜索') }
+                      ]}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+            </SegmentedContent>
 
             <ScrollView
               style={styles.listArea}
@@ -221,276 +186,130 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator
             >
-              {dialog.activeTab === 'diary' ? (
-                <View style={styles.diaryWrap}>
-                  {showSharedMemoryCard && (
-                    <DashboardSharedMemoryCard
-                      lookbackMonths={lookbackMonths}
-                      onMonthsChanged={onMonthsChanged}
-                      onCopyContext={onCopyContext}
-                      copyPreview={copyPreview}
-                      copyPreviewLoading={copyPreviewLoading}
-                      copyPrefix={copyPrefix}
-                      onCopyPrefixChange={onCopyPrefixChange}
-                    />
-                  )}
-                  {isSearching ? (
-                    <View style={styles.emptyState}>
-                      <ActivityIndicator size="small" color={colors.primary} />
-                      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        {t('common.loading', '加载中...')}
-                      </Text>
-                    </View>
-                  ) : (
-                    items.map((item) => (
-                      <RecallDialogDiaryItem
-                        key={item.id}
-                        item={item}
-                        onCopy={onCopyDiarySnippet}
+              <SegmentedContent value={`${dialog.activeTab}:${searchMode}`}>
+                {dialog.activeTab === 'diary' ? (
+                  <View style={styles.diaryWrap}>
+                    {showSharedMemoryCard && (
+                      <DashboardSharedMemoryCard
+                        lookbackMonths={lookbackMonths}
+                        onMonthsChanged={onMonthsChanged}
+                        onCopyContext={onCopyContext}
+                        copyPreview={copyPreview}
+                        copyPreviewLoading={copyPreviewLoading}
+                        copyPrefix={copyPrefix}
+                        onCopyPrefixChange={onCopyPrefixChange}
                       />
-                    ))
-                  )}
-                </View>
-              ) : isSearching ? (
-                <View style={styles.emptyState}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('common.loading', '加载中...')}
-                  </Text>
-                </View>
-              ) : items.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}
-                  </Text>
-                </View>
-              ) : (
-                pagedMemoryItems.map((item) => (
-                  <RecallDialogItem
-                    key={item.id}
-                    item={item}
-                    isSelected={dialog.selectedIds.has(item.id)}
-                    onToggle={dialog.toggleSelect}
-                  />
-                ))
-              )}
+                    )}
+                    {isSearching ? (
+                      <View style={styles.emptyState}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                          {t('common.loading', '加载中...')}
+                        </Text>
+                      </View>
+                    ) : (
+                      items.map((item) => (
+                        <RecallDialogDiaryItem
+                          key={item.id}
+                          item={item}
+                          onCopy={onCopyDiarySnippet}
+                        />
+                      ))
+                    )}
+                  </View>
+                ) : isSearching ? (
+                  <View style={styles.emptyState}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      {t('common.loading', '加载中...')}
+                    </Text>
+                  </View>
+                ) : items.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      {t('recall.no_results', '未在库中匹配到任何历史记忆碎片。')}
+                    </Text>
+                  </View>
+                ) : (
+                  pagedMemoryItems.map((item) => (
+                    <RecallDialogItem
+                      key={item.id}
+                      item={item}
+                      isSelected={dialog.selectedIds.has(item.id)}
+                      onToggle={dialog.toggleSelect}
+                    />
+                  ))
+                )}
+              </SegmentedContent>
             </ScrollView>
 
-            {dialog.activeTab === 'memory' && items.length > RECALL_MEMORY_PAGE_SIZE ? (
-              <View style={[styles.paginationArea, { borderTopColor: colors.borderSubtle }]}>
-                <Pagination
-                  current={safeMemoryPage}
-                  total={memoryPageCount}
-                  onChange={dialog.setMemoryPage}
-                  showJumper={false}
-                  siblingCount={0}
-                />
-              </View>
-            ) : null}
-
-            {dialog.activeTab === 'memory' && (
-              <View
-                style={[
-                  styles.footer,
-                  {
-                    borderTopColor: colors.borderSubtle,
-                    backgroundColor: colors.bgSurface
-                  }
-                ]}
-              >
-                <Text style={[styles.selectionCount, { color: colors.textPrimary }]}>
-                  {t('recall.selected', '已选择')}{' '}
-                  <Text style={{ fontWeight: '700', color: colors.primary }}>
-                    {dialog.selectedIds.size}
-                  </Text>
-                </Text>
-                <Pressable
-                  onPress={dialog.handleInject}
-                  disabled={dialog.selectedIds.size === 0}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: tokens.spacing.md,
-                    paddingVertical: tokens.spacing.sm,
-                    borderRadius: tokens.radius.md,
-                    backgroundColor:
-                      dialog.selectedIds.size > 0 ? colors.primary : colors.bgSurfaceNormal,
-                    opacity: pressed ? 0.85 : dialog.selectedIds.size === 0 ? 0.6 : 1
-                  })}
-                >
-                  <ArrowUpCircle
-                    size={16}
-                    color={dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
+            <SegmentedContent value={dialog.activeTab}>
+              {dialog.activeTab === 'memory' && items.length > RECALL_MEMORY_PAGE_SIZE ? (
+                <View style={[styles.paginationArea, { borderTopColor: colors.borderSubtle }]}>
+                  <Pagination
+                    current={safeMemoryPage}
+                    total={memoryPageCount}
+                    onChange={dialog.setMemoryPage}
+                    showJumper={false}
+                    siblingCount={0}
                   />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
-                    }}
-                  >
-                    {t('recall.inject', '提取至当前上下文对话')}
+                </View>
+              ) : null}
+            </SegmentedContent>
+
+            <SegmentedContent value={dialog.activeTab}>
+              {dialog.activeTab === 'memory' ? (
+                <View
+                  style={[
+                    styles.footer,
+                    {
+                      borderTopColor: colors.borderSubtle,
+                      backgroundColor: colors.bgSurface
+                    }
+                  ]}
+                >
+                  <Text style={[styles.selectionCount, { color: colors.textPrimary }]}>
+                    {t('recall.selected', '已选择')}{' '}
+                    <Text style={{ fontWeight: '600', color: colors.primary }}>
+                      {dialog.selectedIds.size}
+                    </Text>
                   </Text>
-                </Pressable>
-              </View>
-            )}
+                  <Pressable
+                    onPress={dialog.handleInject}
+                    disabled={dialog.selectedIds.size === 0}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: sharedTokens.spacing.xsPlus,
+                      paddingHorizontal: tokens.spacing.md,
+                      paddingVertical: tokens.spacing.sm,
+                      borderRadius: tokens.radius.md,
+                      backgroundColor:
+                        dialog.selectedIds.size > 0 ? colors.primary : colors.bgSurfaceNormal,
+                      opacity: pressed ? 0.85 : dialog.selectedIds.size === 0 ? 0.6 : 1
+                    })}
+                  >
+                    <ArrowUpCircle
+                      size={16}
+                      color={dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary}
+                      strokeWidth={DEFAULT_STROKE_WIDTH}
+                    />
+                    <Text
+                      style={{
+                        fontSize: mobileTypography.caption.fontSize,
+                        fontWeight: '600',
+                        color: dialog.selectedIds.size > 0 ? colors.onPrimary : colors.textSecondary
+                      }}
+                    >
+                      {t('recall.inject', '提取至当前上下文对话')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </SegmentedContent>
           </View>
         </View>
       </View>
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  dialogWrap: {
-    width: '100%',
-    alignItems: 'center',
-    zIndex: 2
-  },
-  dialog: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    flexDirection: 'column'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 4,
-    borderRadius: 12
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12
-  },
-  searchSection: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 12
-  },
-  searchBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 44,
-    justifyContent: 'center'
-  },
-  searchInputInner: {
-    position: 'relative',
-    minHeight: 44,
-    justifyContent: 'center'
-  },
-  searchIconInside: {
-    position: 'absolute',
-    left: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
-    paddingLeft: 38,
-    paddingRight: 36,
-    minHeight: 44,
-    ...(Platform.OS === 'android'
-      ? { includeFontPadding: false, textAlignVertical: 'center' }
-      : null)
-  },
-  searchClearBtn: {
-    position: 'absolute',
-    right: 10,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    zIndex: 1
-  },
-  segmented: {
-    flexDirection: 'row',
-    width: '100%',
-    padding: 3,
-    borderRadius: 10,
-    gap: 4
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center'
-  },
-  segmentText: {
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  segmentTextActive: {
-    fontWeight: '700'
-  },
-  listArea: {
-    flex: 1
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    gap: 12
-  },
-  diaryWrap: {
-    gap: 12
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 8
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth
-  },
-  selectionCount: {
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  paginationArea: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    borderTopWidth: StyleSheet.hairlineWidth
-  }
-})

@@ -84,9 +84,21 @@ describe('HybridSearchService RRF Engine', () => {
     // 确保打分被计算并装载
     expect(results[0]?.score).toBeGreaterThan(0)
 
-    // 验证基础设施调用
-    expect(mockStorage.queryFTS).toHaveBeenCalledWith('山', 20)
-    expect(mockStorage.queryNativeVector).toHaveBeenCalled()
+    // 验证基础设施调用（V1：第三参为 vault/时间过滤，未传时为 undefined）
+    expect(mockStorage.queryFTS).toHaveBeenCalledWith(
+      '山',
+      20,
+      expect.objectContaining({
+        startMs: undefined,
+        endMs: undefined,
+        vaultId: undefined
+      })
+    )
+    expect(mockStorage.queryNativeVector).toHaveBeenCalledWith(
+      [0.1, 0.2],
+      20,
+      expect.objectContaining({ threshold: undefined })
+    )
   })
 
   it('should return only vector results when FTS query is empty', async () => {

@@ -7,7 +7,7 @@ import type {
   DiaryCmMarkdownMark,
   DiaryCmTheme
 } from '../../shared/diary-codemirror/types'
-import { useDialog } from '../Dialog/Dialog'
+import { useDialog } from '../Dialog'
 import { useNativeTheme } from '../theme'
 import { buildDiaryCmThemeFromNative } from './diary-cm-theme.util'
 import {
@@ -105,10 +105,10 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
   },
   ref
 ) {
-  const { colors, isDark } = useNativeTheme()
+  const { colors, isDark, contentFontScale } = useNativeTheme()
   const theme = useMemo(
-    () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors),
-    [colors, isDark, themeOverride]
+    () => themeOverride ?? buildDiaryCmThemeFromNative(isDark, colors, contentFontScale),
+    [colors, isDark, contentFontScale, themeOverride]
   )
 
   const dialog = useDialog()
@@ -170,6 +170,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
 
   useEffect(() => {
     if (!active) bridge.blur()
+    // bridge 每轮新对象，只跟稳定的方法引用走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, bridge.blur])
 
   useEffect(() => {
@@ -177,6 +179,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     if (bottomScrollInset > 0) {
       requestAnimationFrame(() => bridge.scrollCaretIntoView())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomScrollInset, bridge.setScrollInsets, bridge.scrollCaretIntoView])
 
   useEffect(() => {
@@ -184,6 +187,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     const delayMs = Platform.OS === 'ios' ? 120 : 220
     const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyboardInset, bottomScrollInset, bridge.scrollCaretIntoView])
 
   useImperativeHandle(

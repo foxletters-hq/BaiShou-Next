@@ -3,6 +3,7 @@ import type { MockChatMessage } from '@baishou/shared'
 import { MessageActionBar } from '../MessageActionBar'
 import { ChatBubbleAttachments } from './ChatBubbleAttachments'
 import { ChatBubbleInlineEditor } from './ChatBubbleInlineEditor'
+import { UserMessageSkillContent } from './UserMessageSkillContent'
 import { formatRelativeTime } from './chat-bubble.utils'
 import styles from './ChatBubble.module.css'
 import { resolveDesktopUserAvatarSrc } from '../user-avatar.util'
@@ -20,7 +21,7 @@ interface ChatBubbleUserRowProps {
   onResendEdit?: () => void
   hasResendEdit: boolean
   onCopy: (e?: React.MouseEvent) => void
-  onStartEdit: () => void
+  onStartEdit?: () => void
   onResend?: () => void
   onDelete?: () => void
   onShowContext?: (msg: MockChatMessage) => void
@@ -74,7 +75,14 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
             {message.attachments && message.attachments.length > 0 && (
               <ChatBubbleAttachments attachments={message.attachments} />
             )}
-            {message.content && <div className={styles.textContentUser}>{message.content}</div>}
+            {(message.content || message.skillRefs?.length || message.fileRefs?.length) && (
+              <UserMessageSkillContent
+                className={styles.textContentUser}
+                text={message.content || ''}
+                skillRefs={message.skillRefs}
+                fileRefs={message.fileRefs}
+              />
+            )}
           </div>
           <div className={styles.userFooterRow}>
             <MessageActionBar

@@ -50,4 +50,7 @@ export interface IFileSystem {
 
   /** 向文本文件末尾追加内容（用于流式写大 JSON，避免整包驻留内存） */
   appendFile(path: string, data: string, encoding?: FileEncoding): Promise<void>
+
+  /** 计算文件内容的 MD5（hex）。支持大文件流式计算，避免整文件读入内存导致 OOM。 */
+  md5Hex?(path: string): Promise<string>
 }

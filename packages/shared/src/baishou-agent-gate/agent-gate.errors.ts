@@ -1,0 +1,86 @@
+import { AGENT_GATE_CORRECTED_FEEDBACK_PREFIX } from './agent-gate.defaults'
+
+export class AgentGateDeniedError extends Error {
+  readonly code = 'agent_gate.denied' as const
+
+  constructor(
+    readonly action: string,
+    message?: string
+  ) {
+    super(message ?? `操作「${action}」已被禁用，无法执行。`)
+    this.name = 'AgentGateDeniedError'
+  }
+}
+
+export class AgentGateRejectedError extends Error {
+  readonly code = 'agent_gate.rejected' as const
+
+  constructor(message = '用户拒绝了本次操作。') {
+    super(message)
+    this.name = 'AgentGateRejectedError'
+  }
+}
+
+export function isAgentGateRejectedError(error: unknown): boolean {
+  if (error instanceof AgentGateRejectedError) return true
+  if (typeof error !== 'object' || error === null) {
+    return typeof error === 'string' && error.includes('用户拒绝了本次操作')
+  }
+  const record = error as { name?: unknown; code?: unknown; message?: unknown; cause?: unknown }
+  if (record.code === 'agent_gate.rejected' || record.name === 'AgentGateRejectedError') return true
+  if (typeof record.message === 'string' && record.message.includes('用户拒绝了本次操作')) {
+    return true
+  }
+  return record.cause !== undefined && isAgentGateRejectedError(record.cause)
+}
+
+export class AgentGateCorrectedError extends Error {
+  readonly code = 'agent_gate.corrected' as const
+
+  constructor(readonly feedback: string) {
+    super(`${AGENT_GATE_CORRECTED_FEEDBACK_PREFIX} ${feedback}`)
+    this.name = 'AgentGateCorrectedError'
+  }
+}
+
+export class AgentGateNotFoundError extends Error {
+  readonly code = 'agent_gate.not_found' as const
+
+  constructor(readonly requestId: string) {
+    super(`门控请求不存在：${requestId}`)
+    this.name = 'AgentGateNotFoundError'
+  }
+}
+
+export function isAgentGateNotFoundError(error: unknown): boolean {
+  if (error instanceof AgentGateNotFoundError) return true
+  if (typeof error !== 'object' || error === null) {
+    return typeof error === 'string' && error.includes('门控请求不存在')
+  }
+  const record = error as { name?: unknown; code?: unknown; message?: unknown; cause?: unknown }
+  if (record.code === 'agent_gate.not_found' || record.name === 'AgentGateNotFoundError') {
+    return true
+  }
+  if (typeof record.message === 'string' && record.message.includes('门控请求不存在')) {
+    return true
+  }
+  return record.cause !== undefined && isAgentGateNotFoundError(record.cause)
+}
+
+export class AgentGateCancelledError extends Error {
+  readonly code = 'agent_gate.cancelled' as const
+
+  constructor(message = '门控请求已取消。') {
+    super(message)
+    this.name = 'AgentGateCancelledError'
+  }
+}
+
+export class AgentGateAlwaysNotAllowedError extends Error {
+  readonly code = 'agent_gate.always_not_allowed' as const
+
+  constructor(readonly action: string) {
+    super(`操作「${action}」在排除列表中，不能设为始终允许。`)
+    this.name = 'AgentGateAlwaysNotAllowedError'
+  }
+}

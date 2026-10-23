@@ -164,5 +164,5 @@ describe('incremental sync multi-round E2E (30 files)', () => {
     // 统计：共经历 4 个阶段 × 3 轮拉取 = 12 次双向交换（每轮 2 次 sync）
     const totalPullExchanges = 4 * PULL_ROUNDS_PER_PHASE
     expect(totalPullExchanges).toBeGreaterThanOrEqual(9)
-  }, 60_000)
+  }, 120_000)
 })

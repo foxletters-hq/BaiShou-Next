@@ -8,7 +8,7 @@ import {
   type VaultInfo
 } from '@baishou/core-desktop'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
-import { fileSystem, pathService, vaultService } from '../ipc/vault.ipc'
+import { fileSystem, pathService, vaultService, resolveVaultIdByName } from '../ipc/vault.ipc'
 import { embeddingCallback } from '../ipc/diary-embedding.callback'
 import { VaultScopedStoragePathService } from './vault-scoped-path.service'
 import { DesktopStoragePathService } from './path.service'
@@ -24,12 +24,20 @@ class FixedVaultServiceStub implements IVaultService {
   }
 
   getActiveVault(): VaultInfo | null {
+    const fromRegistry = vaultService.getAllVaults().find((v) => v.name === this.vaultName)
     return {
+      id: fromRegistry?.id ?? `vlt_stub_${this.vaultName}`,
       name: this.vaultName,
       path: this.vaultPath,
-      createdAt: new Date(),
-      lastAccessedAt: new Date()
+      createdAt: fromRegistry?.createdAt ?? new Date(),
+      lastAccessedAt: fromRegistry?.lastAccessedAt ?? new Date()
     }
+  }
+
+  resolveActiveVault(): Pick<VaultInfo, 'id' | 'name'> | null {
+    const active = this.getActiveVault()
+    if (!active) return null
+    return { id: active.id, name: active.name }
   }
 
   getAllVaults(): VaultInfo[] {
@@ -38,6 +46,14 @@ class FixedVaultServiceStub implements IVaultService {
 
   vaultExists(vaultName: string): boolean {
     return vaultService.vaultExists(vaultName)
+  }
+
+  findRegistryNameConflicts(): Array<{
+    left: string
+    right: string
+    kind: 'case' | 'directory'
+  }> {
+    return vaultService.findRegistryNameConflicts()
   }
 
   createVault(vaultName: string): Promise<void> {
@@ -66,6 +82,14 @@ class FixedVaultServiceStub implements IVaultService {
   ): Promise<string[]> {
     return vaultService.pruneOrphanRegistryVaults(manifestVaultScopes, diskVaultNames)
   }
+
+  renameVault(oldNameOrId: string, newName: string) {
+    return vaultService.renameVault(oldNameOrId, newName)
+  }
+
+  estimateVaultLocalSyncBytes(vaultNameOrId: string) {
+    return vaultService.estimateVaultLocalSyncBytes(vaultNameOrId)
+  }
 }
 
 export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryService> {
@@ -85,8 +109,10 @@ export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryS
     )
   }
 
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
-  const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem)
+  const vaultId = resolveVaultIdByName(vaultName)
+  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+  const { getRawDataSourceManager } = await import('./raw-data-source.runtime')
+  const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem, getRawDataSourceManager())
   const shadowSync = new ShadowIndexSyncService(
     shadowRepo,
     scopedPath,

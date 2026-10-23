@@ -264,7 +264,7 @@ export async function fetchProviderModelsViaRegistry(
 ): Promise<string[]> {
   const registry = AIProviderRegistry.getInstance()
   const instance = registry.getOrUpdateProvider(
-    toRegistryConfig(config, baseUrl)
+    toRegistryConfig({ ...config, apiKey }, baseUrl)
   ) as IAIProvider & {
     fetchAvailableModels?: () => Promise<string[]>
   }

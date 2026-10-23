@@ -1,0 +1,102 @@
+/* 额外居中留白；内容卡裁切由 Modal 默认 + baishou-app-content-overlay 统一处理 */
+.overlay {
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl-plus) var(--spacing-lg);
+  box-sizing: border-box;
+}
+
+.modal {
+  padding: 0 !important;
+  width: min(640px, 92vw) !important;
+  min-width: min(480px, 92vw) !important;
+  max-height: min(780px, calc(100vh - 80px)) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-card) !important;
+  background: var(--bg-surface) !important;
+  box-shadow: var(--shadow-md, 0 12px 40px rgba(0, 0, 0, 0.12)) !important;
+  color: var(--text-primary) !important;
+}
+
+.panel {
+  height: min(680px, calc(100vh - 120px));
+  min-height: 480px;
+  max-height: min(680px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text-primary);
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md-snug);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.tabs {
+  flex-shrink: 0;
+  padding: var(--spacing-md-tight) var(--spacing-md) 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
+}
+
+.body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.body::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: var(--radius-xs);
+}
+
+.toolsBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md-tight) 0 0;
+}

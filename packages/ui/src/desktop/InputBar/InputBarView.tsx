@@ -1,30 +1,94 @@
-import React from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import styles from './InputBar.module.css'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { useInputBar } from './useInputBar'
-import { QuickActionChip } from './QuickActionChip'
-import { PromptShortcutSheet } from '../PromptShortcutSheet'
+import { AnchoredContextMenu } from '../ContextMenu/AnchoredContextMenu'
+import type { ContextMenuItem } from '../ContextMenu/ContextMenu'
 import {
-  ArrowUp,
+  getContextMenuBoundsForAnchor,
+  type ContextMenuBounds
+} from '../ContextMenu/context-menu-placement.util'
+import { getInputBarTextareaMinHeight } from './useInputBarExpand'
+import { InputBarSkillEditor } from './InputBarSkillEditor'
+import { FileMentionPicker } from './FileMentionPicker'
+import { SkillSlashPicker } from './SkillSlashPicker'
+import { formatFileMentionLabel } from '@baishou/shared'
+import {
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Folder,
+  Check,
+  FolderOpen,
   Globe,
   LayoutGrid,
-  Maximize2,
-  Menu,
-  Minimize2,
   Paperclip,
-  Send,
-  Square,
+  Plus,
+  ArrowRight,
+  Settings2,
+  Sparkles,
   Volume2,
-  X,
-  Zap
+  X
 } from 'lucide-react'
+import { getFileTypeIcon } from '../shared/FileTypeIcon'
+import { getShortcutCommand } from '@baishou/shared'
+import { resolveInputBarPrimaryAction } from '../../shared/input-bar-primary-action.util'
+import { shouldAcceptAttachmentDrag } from './input-bar-drop.util'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
+
+type MenuAnchorState = {
+  x: number
+  y: number
+  bounds: ContextMenuBounds
+}
+
+function buildSkillMenuItems(options: {
+  t: InputBarViewModel['t']
+  localizedShortcuts: InputBarViewModel['localizedShortcuts']
+  handlePromptShortcut: () => void
+  armCreateSkillChip: () => void
+  applyShortcut: InputBarViewModel['applyShortcut']
+}): ContextMenuItem[] {
+  const { t, localizedShortcuts, handlePromptShortcut, armCreateSkillChip, applyShortcut } = options
+
+  const items: ContextMenuItem[] = [
+    {
+      icon: <Settings2 size={15} />,
+      label: t('shortcut.manager_title', 'Skill 管理'),
+      onClick: handlePromptShortcut
+    },
+    { label: '', onClick: () => undefined, divider: true },
+    {
+      icon: <Plus size={15} />,
+      label: t('shortcut.create_skill', '创建 Skill'),
+      onClick: armCreateSkillChip
+    },
+    { label: '', onClick: () => undefined, divider: true }
+  ]
+
+  if (localizedShortcuts.length > 0) {
+    items.push({
+      label: t('shortcut.existing_skills', '现存 Skill'),
+      disabled: true,
+      onClick: () => undefined
+    })
+    for (const skill of localizedShortcuts) {
+      const command = getShortcutCommand(skill)
+      const displayName = skill.name?.trim()
+      items.push({
+        icon: skill.source === 'workspace' ? <FolderOpen size={15} /> : <Sparkles size={15} />,
+        label: displayName ? `${displayName}` : `/${command}`,
+        onClick: () => applyShortcut(skill)
+      })
+    }
+  } else {
+    items.push({
+      label: t('shortcut.no_skills_yet', '暂无 Skill'),
+      disabled: true,
+      onClick: () => undefined
+    })
+  }
+
+  return items
+}
 
 export function InputBarView({ vm }: { vm: InputBarViewModel }) {
   const {
@@ -32,48 +96,256 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     text,
     attachments,
     setAttachments,
-    showToolbar,
-    setShowToolbar,
-    textareaRef,
-    toolbarViewportRef,
-    toolbarOverflow,
-    toolbarCanScrollLeft,
-    toolbarCanScrollRight,
-    updateToolbarScrollState,
-    scrollToolbar,
-    isExpanded,
-    isAnimating,
-    handleMouseDown,
-    toggleExpand,
+    editorRef,
+    composerSyncKey,
+    composerSyncHtml,
+    handleComposerSnapshot,
     handleSend,
     handleKeyDown,
     fileInputRef,
     handlePickFiles,
     handleNativeWebFileChange,
+    handleAttachmentDrop,
+    attachmentIntake,
     handlePaste,
-    handleTextChange,
-    shortcutModeActive,
-    filteredShortcuts,
-    shortcutSelectedIndex,
+    onOpenFileRef,
+    skillPickerOpen,
+    closeSkillPicker,
+    slashPickerEntries,
+    skillPickerIndex,
+    setSkillPickerIndex,
+    mentionPickerOpen,
+    closeMentionPicker,
+    mentionPickerEntries,
+    mentionPickerIndex,
+    setMentionPickerIndex,
+    applyFileMention,
+    fileRefs,
     applyShortcut,
+    armCreateSkillChip,
+    skillRefs,
     toggleSearchMode,
     handlePromptShortcut,
+    localizedShortcuts,
     isLoading,
+    allowSendWhileLoading = false,
     isSending,
     onStop,
-    assistantName,
-    onAssistantTap,
     onRecall,
-    onTriggerShortcut,
-    onManageShortcuts,
     onOpenTools,
     searchMode,
     ttsMode,
-    onToggleTtsMode
+    onToggleTtsMode,
+    onOpenNotebookMount,
+    bottomLeading,
+    bottomTrailing,
+    footer,
+    sendIconSize = 16,
+    minRows = 1
   } = vm
 
+  const textareaMinHeight = getInputBarTextareaMinHeight(minRows)
+  const inputWrapperRef = useRef<HTMLDivElement>(null)
+  const [dropActive, setDropActive] = useState(false)
+
+  const clearDropActive = useCallback(() => setDropActive(false), [])
+
+  const handleDragOverCapture = useCallback(
+    (e: React.DragEvent) => {
+      if (!shouldAcceptAttachmentDrag(e.dataTransfer, attachmentIntake)) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'copy'
+      setDropActive(true)
+    },
+    [attachmentIntake]
+  )
+
+  const handleDragLeaveCapture = useCallback((e: React.DragEvent) => {
+    const next = e.relatedTarget as Node | null
+    if (next && e.currentTarget.contains(next)) return
+    setDropActive(false)
+  }, [])
+
+  const handleDropCapture = useCallback(
+    (e: React.DragEvent) => {
+      if (!shouldAcceptAttachmentDrag(e.dataTransfer, attachmentIntake)) return
+      e.preventDefault()
+      e.stopPropagation()
+      clearDropActive()
+      void handleAttachmentDrop(e.dataTransfer)
+    },
+    [attachmentIntake, clearDropActive, handleAttachmentDrop]
+  )
+
+  const [plusMenu, setPlusMenu] = useState<MenuAnchorState | null>(null)
+  const plusMenuOpen = plusMenu != null
+
+  const closePlusMenu = useCallback(() => setPlusMenu(null), [])
+
+  const openPlusMenu = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    const anchor = e.currentTarget
+    const rect = anchor.getBoundingClientRect()
+    const bounds = getContextMenuBoundsForAnchor(anchor)
+    setPlusMenu((prev) =>
+      prev
+        ? null
+        : {
+            x: rect.left + 10,
+            y: rect.top - 14,
+            bounds
+          }
+    )
+    requestAnimationFrame(() => anchor.blur())
+  }, [])
+
+  const skillSubmenuItems = useMemo(
+    () =>
+      buildSkillMenuItems({
+        t,
+        localizedShortcuts,
+        handlePromptShortcut,
+        armCreateSkillChip,
+        applyShortcut
+      }),
+    [t, localizedShortcuts, handlePromptShortcut, armCreateSkillChip, applyShortcut]
+  )
+
+  const slashPickerItems = useMemo(
+    () =>
+      slashPickerEntries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        description: entry.description,
+        badgeLabel: entry.isBuiltin ? t('shortcut.builtin_tag', '内置') : undefined,
+        iconKind:
+          entry.kind === 'create'
+            ? ('create' as const)
+            : entry.skill?.source === 'workspace'
+              ? ('workspace' as const)
+              : ('software' as const),
+        onSelect: () => {
+          if (entry.kind === 'create') armCreateSkillChip()
+          else if (entry.skill) applyShortcut(entry.skill)
+        }
+      })),
+    [slashPickerEntries, armCreateSkillChip, applyShortcut, t]
+  )
+
+  const plusMenuItems = useMemo((): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [
+      {
+        icon: <Paperclip size={15} />,
+        label: t('input.upload_attachment', '上传附件'),
+        onClick: handlePickFiles
+      },
+      {
+        icon: <Sparkles size={15} />,
+        label: t('input.shortcut_command', 'Skill'),
+        children: skillSubmenuItems
+      }
+    ]
+
+    if (onOpenNotebookMount) {
+      items.push({
+        icon: <BookOpen size={15} />,
+        label: t('workbench.notebook_mount', '知识库笔记本'),
+        onClick: onOpenNotebookMount
+      })
+    }
+
+    if (onRecall) {
+      items.push({
+        icon: <BookOpen size={15} />,
+        label: t('settings.recall_memories'),
+        onClick: onRecall
+      })
+    }
+
+    items.push({ label: '', onClick: () => undefined, divider: true })
+
+    items.push({
+      icon: searchMode ? <Check size={15} /> : <Globe size={15} />,
+      label: searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off'),
+      onClick: toggleSearchMode,
+      keepOpen: true
+    })
+
+    if (onToggleTtsMode) {
+      items.push({
+        icon: ttsMode === 'always' ? <Check size={15} /> : <Volume2 size={15} />,
+        label:
+          ttsMode === 'always'
+            ? t('agent.chat.tts_always', '始终朗读')
+            : t('agent.chat.tts_manual', '手动朗读'),
+        onClick: onToggleTtsMode,
+        keepOpen: true
+      })
+    }
+
+    if (onOpenTools) {
+      items.push({
+        icon: <LayoutGrid size={15} />,
+        label: t('settings.agent_tools_title', '工具管理'),
+        onClick: onOpenTools
+      })
+    }
+
+    return items
+  }, [
+    t,
+    handlePickFiles,
+    skillSubmenuItems,
+    onOpenNotebookMount,
+    onRecall,
+    searchMode,
+    toggleSearchMode,
+    ttsMode,
+    onToggleTtsMode,
+    onOpenTools
+  ])
+
+  const placeholder =
+    skillRefs.length > 0
+      ? t('shortcut.skill_ref_placeholder', '补充说明（可选）…')
+      : (vm.placeholder ?? t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
+
+  const mentionPickerItems = useMemo(
+    () =>
+      mentionPickerEntries.map((entry) => ({
+        id: entry.id,
+        path: entry.path,
+        group: entry.group,
+        onSelect: () => applyFileMention(entry.path)
+      })),
+    [applyFileMention, mentionPickerEntries]
+  )
+
+  const canSend = Boolean(
+    text.trim() || attachments.length > 0 || skillRefs.length > 0 || fileRefs.length > 0
+  )
+  const primaryAction = resolveInputBarPrimaryAction({
+    isLoading,
+    canSend,
+    allowSendWhileLoading,
+    hasStopHandler: Boolean(onStop)
+  })
+  const sendDisabled = isSending || !canSend || (isLoading && !allowSendWhileLoading)
+
   return (
-    <div className={styles.containerMask} data-desktop-input-bar>
+    <div
+      className={styles.containerMask}
+      data-desktop-input-bar
+      onDragOverCapture={handleDragOverCapture}
+      onDragLeaveCapture={handleDragLeaveCapture}
+      onDropCapture={handleDropCapture}
+      style={
+        {
+          ['--input-bar-textarea-min-height' as string]: `${textareaMinHeight}px`
+        } as React.CSSProperties
+      }
+    >
       <input
         type="file"
         multiple
@@ -81,17 +353,25 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         onChange={handleNativeWebFileChange}
         style={{ display: 'none' }}
       />
-      <div
-        className={`${styles.constrainedBox} ${isExpanded ? styles.constrainedBoxExpanded : ''}`}
-      >
-        <PromptShortcutSheet
-          isOpen={shortcutModeActive}
-          shortcuts={filteredShortcuts}
-          selectedIndex={shortcutSelectedIndex}
-          compact
-          onSelect={applyShortcut}
-        />
-        {/* Attachments Preview */}
+      <div className={styles.constrainedBox}>
+        {skillPickerOpen && slashPickerItems.length > 0 ? (
+          <SkillSlashPicker
+            items={slashPickerItems}
+            selectedIndex={skillPickerIndex}
+            onSelectIndex={setSkillPickerIndex}
+            onClose={closeSkillPicker}
+          />
+        ) : null}
+        {mentionPickerOpen ? (
+          <FileMentionPicker
+            items={mentionPickerItems}
+            selectedIndex={mentionPickerIndex}
+            onSelectIndex={setMentionPickerIndex}
+            onClose={closeMentionPicker}
+            emptyHint={t('workbench.file_mention_empty', '输入文件名以搜索工作区')}
+          />
+        ) : null}
+
         {attachments.length > 0 && (
           <div className={styles.attachmentList}>
             {attachments.map((att) => (
@@ -110,17 +390,24 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   />
                 ) : (
                   <div className={styles.attFileBox}>
-                    <span className={styles.attFileIcon}>
-                      {att.isPdf || att.isText ? <FileText size={18} /> : <Folder size={18} />}
-                    </span>
+                    <span className={styles.attFileIcon}>{getFileTypeIcon(att.fileName, 18)}</span>
                     <div className={styles.attFileMeta}>
-                      <span className={styles.attFileName}>{att.fileName}</span>
+                      <span className={styles.attFileName}>
+                        {att.relativePath
+                          ? formatFileMentionLabel({
+                              relativePath: att.relativePath,
+                              selection: att.selection
+                            }).replace(/^@/, '')
+                          : att.fileName}
+                      </span>
                       <span className={styles.attFileSize}>
-                        {att.fileSize
-                          ? att.fileSize < 1024 * 1024
-                            ? `${(att.fileSize / 1024).toFixed(1)} KB`
-                            : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`
-                          : '124 KB'}
+                        {att.comment?.trim()
+                          ? att.comment
+                          : att.fileSize
+                            ? att.fileSize < 1024 * 1024
+                              ? `${(att.fileSize / 1024).toFixed(1)} KB`
+                              : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`
+                            : att.relativePath || ''}
                       </span>
                     </div>
                   </div>
@@ -136,195 +423,91 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           </div>
         )}
 
-        {/* Animated Toolbar */}
-        <AnimatePresence initial={false}>
-          {showToolbar && (
-            <motion.div
-              className={styles.toolbarWrapper}
-              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginBottom: 2 }}
-              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              onAnimationComplete={updateToolbarScrollState}
-            >
-              <div className={styles.toolbarRow}>
-                {toolbarOverflow && (
-                  <button
-                    type="button"
-                    className={styles.toolbarScrollBtn}
-                    onClick={() => scrollToolbar(-1)}
-                    disabled={!toolbarCanScrollLeft}
-                    aria-label={t('input.toolbar_scroll_left', '向左滚动工具栏')}
-                    title={t('input.toolbar_scroll_left', '向左滚动')}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                )}
-                <div
-                  ref={toolbarViewportRef}
-                  className={styles.toolbarViewport}
-                  onScroll={updateToolbarScrollState}
-                >
-                  <div className={styles.toolbarScroll}>
-                    <QuickActionChip
-                      icon={<Paperclip size={14} />}
-                      label={t('input.upload_attachment', '上传附件')}
-                      onClick={handlePickFiles}
-                    />
-                    <QuickActionChip
-                      icon={<Zap size={14} />}
-                      label={t('input.shortcut_command', '快捷指令')}
-                      onClick={handlePromptShortcut}
-                    />
-                    {onRecall && (
-                      <QuickActionChip
-                        icon={<BookOpen size={14} />}
-                        label={t('settings.recall_memories')}
-                        onClick={onRecall}
-                      />
-                    )}
-                    <QuickActionChip
-                      icon={
-                        searchMode ? (
-                          <Globe size={14} />
-                        ) : (
-                          <span style={{ opacity: 0.5 }}>
-                            <Globe size={14} />
-                          </span>
-                        )
-                      }
-                      label={
-                        searchMode
-                          ? t('settings.web_search_mode_tool')
-                          : t('settings.web_search_mode_off')
-                      }
-                      isActive={searchMode}
-                      onClick={toggleSearchMode}
-                    />
-                    {onToggleTtsMode && (
-                      <QuickActionChip
-                        icon={<Volume2 size={14} />}
-                        label={
-                          ttsMode === 'always'
-                            ? t('agent.chat.tts_always', '始终朗读')
-                            : t('agent.chat.tts_manual', '手动朗读')
-                        }
-                        isActive={ttsMode === 'always'}
-                        onClick={onToggleTtsMode}
-                      />
-                    )}
-                    {onOpenTools && (
-                      <QuickActionChip
-                        icon={<LayoutGrid size={14} />}
-                        label={t('settings.agent_tools_title', '工具管理')}
-                        onClick={onOpenTools}
-                      />
-                    )}
-                  </div>
-                </div>
-                {toolbarOverflow && (
-                  <button
-                    type="button"
-                    className={styles.toolbarScrollBtn}
-                    onClick={() => scrollToolbar(1)}
-                    disabled={!toolbarCanScrollRight}
-                    aria-label={t('input.toolbar_scroll_right', '向右滚动工具栏')}
-                    title={t('input.toolbar_scroll_right', '向右滚动')}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Input Card */}
         <div
-          className={`${styles.inputCard} ${isExpanded ? styles.inputCardExpanded : ''} ${isAnimating ? styles.inputCardAnimating : ''}`}
+          className={`${styles.composerShell}${footer ? ` ${styles.composerShellWithFooter}` : ''}${dropActive ? ` ${styles.composerShellDropActive}` : ''}`}
         >
-          <div className={styles.topRow}>
-            <div className={styles.inputWrapper}>
-              <textarea
-                ref={textareaRef}
-                className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
-                placeholder={t('agent.chat.input_hint', 'Type a message...')}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                rows={1}
-              />
+          <div className={styles.inputCard}>
+            {/* 上部：文本输入区，独占整行并随输入自增高 */}
+            <div className={styles.topRow}>
+              <div className={styles.inputWrapper} ref={inputWrapperRef}>
+                <InputBarSkillEditor
+                  editorRef={editorRef}
+                  syncKey={composerSyncKey}
+                  syncHtml={composerSyncHtml}
+                  syncPlainText={text}
+                  placeholder={placeholder}
+                  minRows={minRows}
+                  onSnapshot={handleComposerSnapshot}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  onOpenFileRef={onOpenFileRef}
+                />
+              </div>
             </div>
 
-            {isExpanded && (
-              <div
-                className={styles.resizeHandle}
-                onMouseDown={handleMouseDown}
-                title={t('input.drag_resize', '拖拽调整高度')}
-              >
-                <div className={styles.resizeHandleIcon}>
-                  <span />
-                  <span />
+            {/* 下部：操作与发送工具栏（左侧加号+模型选择，右侧状态环+发送） */}
+            <div className={styles.bottomRow}>
+              <div className={styles.bottomLeading}>
+                <button
+                  className={`${styles.appMenuBtn} ${plusMenuOpen ? styles.appMenuBtnActive : ''}`}
+                  onClick={openPlusMenu}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={plusMenuOpen}
+                  title={t('input.open_actions', '更多操作')}
+                >
+                  <Plus size={16} strokeWidth={2} />
+                </button>
+                {bottomLeading}
+              </div>
+
+              <div className={styles.bottomRight}>
+                {bottomTrailing ? (
+                  <div className={styles.bottomTrailing}>{bottomTrailing}</div>
+                ) : null}
+                <div className={styles.sendBtnWrapper}>
+                  {primaryAction === 'stop' ? (
+                    <motion.button
+                      className={`${styles.actionBtn} ${styles.stopBtn}`}
+                      onClick={onStop}
+                      type="button"
+                      whileTap={{ scale: 0.92 }}
+                      aria-label={t('common.stop', '停止')}
+                      title={t('common.stop', '停止')}
+                    >
+                      <span className={styles.stopSquare} aria-hidden />
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      className={`${styles.actionBtn} ${styles.sendBtn} ${sendDisabled ? styles.sendBtnDisabled : ''}`}
+                      onClick={handleSend}
+                      disabled={sendDisabled}
+                      type="button"
+                      whileTap={{ scale: 0.92 }}
+                      aria-label={t('common.send', '发送')}
+                      title={t('common.send', '发送')}
+                    >
+                      <ArrowRight size={sendIconSize} strokeWidth={2.4} />
+                    </motion.button>
+                  )}
                 </div>
               </div>
-            )}
-
-            {/* Expand/Collapse Toggle Button */}
-            <button
-              className={styles.expandToggleBtn}
-              onClick={toggleExpand}
-              type="button"
-              title={
-                isExpanded ? t('input.collapse', '折叠输入框') : t('input.expand', '展开输入框')
-              }
-            >
-              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-          </div>
-
-          <div className={styles.bottomRow}>
-            <button
-              className={styles.appMenuBtn}
-              onClick={() =>
-                setShowToolbar((prev) => {
-                  const next = !prev
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('baishou_toolbar_open', String(next))
-                  }
-                  return next
-                })
-              }
-              type="button"
-            >
-              {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
-            </button>
-
-            <div className={styles.sendBtnWrapper}>
-              {isLoading ? (
-                <motion.button
-                  className={`${styles.actionBtn} ${styles.stopBtn}`}
-                  onClick={onStop}
-                  type="button"
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <Square size={20} />
-                </motion.button>
-              ) : (
-                <motion.button
-                  className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
-                  onClick={handleSend}
-                  disabled={isSending || (!text.trim() && attachments.length === 0)}
-                  type="button"
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <Send size={18} />
-                </motion.button>
-              )}
             </div>
           </div>
+          {footer ? <div className={styles.footer}>{footer}</div> : null}
         </div>
       </div>
+
+      {plusMenu && (
+        <AnchoredContextMenu
+          x={plusMenu.x}
+          y={plusMenu.y}
+          items={plusMenuItems}
+          onClose={closePlusMenu}
+          bounds={plusMenu.bounds}
+          preferAbove
+        />
+      )}
     </div>
   )
 }

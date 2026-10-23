@@ -13,6 +13,8 @@ describe('synthesizeTtsSpeechContent', () => {
   const globalModels = {
     globalDialogueProviderId: '',
     globalDialogueModelId: '',
+    globalGraphProviderId: '',
+    globalGraphModelId: '',
     globalNamingProviderId: '',
     globalNamingModelId: '',
     globalSummaryProviderId: '',

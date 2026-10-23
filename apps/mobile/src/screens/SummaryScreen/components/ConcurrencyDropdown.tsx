@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Modal } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Gauge } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface ConcurrencyDropdownProps {
   value: number
@@ -67,27 +68,27 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.full
   },
   triggerText: {
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600'
   },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
-    padding: 32
+    padding: sharedTokens.spacing.xl
   },
   menu: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     overflow: 'hidden'
   },
   option: {
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdSnug
   }
 })

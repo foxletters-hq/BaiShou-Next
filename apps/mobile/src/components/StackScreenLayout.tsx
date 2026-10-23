@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { View, StatusBar, StyleSheet, type ViewStyle } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme } from '@baishou/ui/native'
 import { StackScreenHeader, type StackScreenHeaderProps } from './StackScreenHeader'
 import { getStackScreenChrome } from './stackScreenChrome'
@@ -28,17 +28,27 @@ export const StackScreenLayout: React.FC<StackScreenLayoutProps> = ({
   ...headerProps
 }) => {
   const { colors, isDark } = useNativeTheme()
+  const insets = useSafeAreaInsets()
   const chrome = getStackScreenChrome(colors)
   const bg = backgroundColor ?? chrome.backgroundColor
   const transparent = transparentProp ?? chrome.transparent
 
+  const safeStyle = useMemo(
+    () => ({
+      paddingTop: insets.top,
+      paddingLeft: insets.left,
+      paddingRight: insets.right
+    }),
+    [insets.top, insets.left, insets.right]
+  )
+
   return (
     <>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
-      <SafeAreaView style={[styles.safe, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
+      <View style={[styles.safe, { backgroundColor: bg }, safeStyle]}>
         <StackScreenHeader {...headerProps} transparent={transparent} />
         <View style={[styles.content, contentStyle]}>{children}</View>
-      </SafeAreaView>
+      </View>
     </>
   )
 }

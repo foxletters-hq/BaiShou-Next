@@ -110,6 +110,7 @@ playwright-report/
 .cache/
 .eslintcache
 .stylelintcache
+.lint-count-*.json
 *.tgz
 
 # ─── AI Agent / Agentic 工具 ──────────────────────────────
@@ -119,9 +120,14 @@ _agents/
 _agent/
 .gemini/
 .claude/
+.cursor/
+.opencode/
 .antigravitycli/
 opencode.json
+opencode.jsonc
 AGENTS.md
+CLAUDE.md
+GEMINI.md
 SCOPE.md
 
 # ─── 临时文件 ──────────────────────────────────────────────
@@ -141,6 +147,13 @@ code-review-worktree/
 
 # 本地草稿目录（仅本机，不入库；勿加入 .prettierignore）
 草稿纸/
+
+# 桌面端默认工作区「稿纸」：开发态会建在 apps/desktop/稿纸，属用户内容，不入库
+稿纸/
+纯白信纸/
+
+# 本地设计稿（仅本机，不入库）
+docs/设计稿/
 
 # ─── Secret / Key ─────────────────────────────────────────
 *.pem

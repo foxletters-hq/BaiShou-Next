@@ -57,6 +57,14 @@ describe('useUserProfileStore', () => {
       await useUserProfileStore.getState().pickAndSaveAvatar()
       expect(useUserProfileStore.getState().profile?.avatarPath).toBe('/new/img.png')
     })
+
+    it('should directly update avatar path via updateAvatar', async () => {
+      await useUserProfileStore.getState().updateAvatar('builtin-user:user-preset-6')
+      expect(useUserProfileStore.getState().profile?.avatarPath).toBe('builtin-user:user-preset-6')
+      expect((globalThis as any).window.api.profile.saveProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ avatarPath: 'builtin-user:user-preset-6' })
+      )
+    })
   })
 
   describe('Personas management', () => {

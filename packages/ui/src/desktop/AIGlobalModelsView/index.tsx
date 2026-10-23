@@ -2,11 +2,21 @@ import React, { useState } from 'react'
 import styles from './AIGlobalModelsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
-import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
-import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
-import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { Database, Cloud, MessageCircle, Pencil, ScrollText } from 'lucide-react'
+import { SessionModelMenu } from '../SessionModelMenu'
+import {
+  GlobalModelsConfig as SharedGlobalModelsConfig,
+  formatReasoningEffortLabel,
+  isEmbeddingModel,
+  isTtsModel,
+  resolveReasoningEffortForSlot,
+  setReasoningEffortForSlot,
+  type ModelReasoningSlot,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
+import { Database, Cloud, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
+import { SettingsPageChrome } from '../shared/SettingsPageChrome'
+import stack from '../shared/SettingsStack.module.css'
 import { useTheme } from '../../hooks/useTheme'
 import { getProviderIcon } from '../../utils/provider-icons'
 
@@ -33,6 +43,15 @@ export interface AIGlobalModelsViewProps {
     }
   }) => Promise<boolean>
   onManageProviders?: () => void
+  /** 页面下方附加区块（如系统核心设定） */
+  footer?: React.ReactNode
+}
+
+type ModelSelectorKey = 'dialogue' | 'graph' | 'naming' | 'summary' | 'embedding'
+
+function selectorReasoningSlot(key: ModelSelectorKey): ModelReasoningSlot | null {
+  if (key === 'embedding') return null
+  return key
 }
 
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
@@ -40,23 +59,20 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   availableProviders,
   onChange,
   onEmbeddingMigrationRequest,
-  onManageProviders
+  onManageProviders,
+  footer
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
   const { isDark } = useTheme()
 
-  // State to manage which model selector is currently open
-  const [activeSelector, setActiveSelector] = useState<
-    'dialogue' | 'naming' | 'summary' | 'embedding' | null
-  >(null)
+  const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
+  const [menuAnchor, setMenuAnchor] = useState<DOMRect | null>(null)
 
-  // Filter provider arrays for the popup
   const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
     return Object.values(availableProviders)
       .filter((p) => p.enabled && p.enabledModels && p.enabledModels.length > 0)
       .map((p) => {
-        // Filter the models inside depending on whether they are embedding models, tts models, or other
         const validModels = (p.enabledModels || []).filter((m) => {
           const isEmbed = isEmbeddingModel(m)
           const isTts = isTtsModel(m)
@@ -130,6 +146,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     } else if (activeSelector === 'dialogue') {
       newConfig.globalDialogueProviderId = providerId
       newConfig.globalDialogueModelId = modelId
+    } else if (activeSelector === 'graph') {
+      newConfig.globalGraphProviderId = providerId
+      newConfig.globalGraphModelId = modelId
     } else if (activeSelector === 'naming') {
       newConfig.globalNamingProviderId = providerId
       newConfig.globalNamingModelId = modelId
@@ -142,15 +161,34 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     setActiveSelector(null)
   }
 
+  const handleEffortChange = async (value: ReasoningEffortSetting) => {
+    if (!activeSelector) return
+    const slot = selectorReasoningSlot(activeSelector)
+    if (!slot) return
+    await Promise.resolve(
+      onChange({
+        ...config,
+        reasoningEffortBySlot: setReasoningEffortForSlot(config.reasoningEffortBySlot, slot, value)
+      })
+    )
+  }
+
   const renderSection = (
-    key: 'dialogue' | 'naming' | 'summary' | 'embedding',
+    key: ModelSelectorKey | 'graph',
     title: string,
     icon: React.ReactNode,
     currentProvider: string,
     currentModel: string,
-    isDanger: boolean = false
+    options: { isDanger?: boolean; readOnly?: boolean } = {}
   ) => {
-    const isModelSet = currentProvider && currentModel
+    const { isDanger = false, readOnly = false } = options
+    const isModelSet = Boolean(currentProvider && currentModel)
+    const slot = selectorReasoningSlot(key as ModelSelectorKey)
+    const effortLabel = slot
+      ? formatReasoningEffortLabel(
+          resolveReasoningEffortForSlot(config.reasoningEffortBySlot, slot)
+        )
+      : null
     const providerMeta = availableProviders[currentProvider]
     const providerIconUrl =
       getProviderIcon(currentProvider, isDark) ||
@@ -165,6 +203,11 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           )
         case 'dialogue':
           return t('settings.tooltip_chat_model', '这是用来聊天的模型。')
+        case 'graph':
+          return t(
+            'settings.tooltip_graph_model',
+            '用于梳理日记和笔记本中的人物、事件与关系（图关系抽取）。'
+          )
         case 'naming':
           return t(
             'settings.tooltip_naming_model',
@@ -173,7 +216,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         case 'embedding':
           return t(
             'settings.tooltip_embedding_model',
-            '它会在 AI 执行记忆存储（存储到 RAG 记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。'
+            '它会在 AI 执行记忆存储（存储到伙伴记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。'
           )
         default:
           return ''
@@ -191,8 +234,18 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         </div>
 
         <div
-          className={`${styles.selectorBtn} ${isModelSet ? styles.hasValue : ''}`}
-          onClick={() => setActiveSelector(key)}
+          className={`${styles.selectorBtn} ${isModelSet ? styles.hasValue : ''} ${
+            readOnly ? styles.selectorBtnReadonly : ''
+          }`}
+          onClick={
+            readOnly
+              ? undefined
+              : (event) => {
+                  setMenuAnchor(event.currentTarget.getBoundingClientRect())
+                  setActiveSelector(key as ModelSelectorKey)
+                }
+          }
+          aria-disabled={readOnly}
         >
           {isModelSet ? (
             <div className={styles.selectedValueInfo}>
@@ -200,25 +253,58 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
                 {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <Cloud size={18} />}
               </span>
               <span className={styles.selectedModelName}>{currentModel}</span>
+              {effortLabel ? <span className={styles.selectedEffort}>{effortLabel}</span> : null}
             </div>
           ) : (
             <div className={styles.placeholderText}>
-              {t('models.click_to_assign', '点击分配默认处理模型')}
+              {readOnly
+                ? t('settings.not_set', '未设置')
+                : t('models.click_to_assign', '点击分配默认处理模型')}
             </div>
           )}
-          <span className={styles.dropdownIcon}>▼</span>
+          {!readOnly && <span className={styles.dropdownIcon}>▼</span>}
         </div>
       </div>
     )
   }
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <h2 className={styles.title}>{t('ai_config.global_models_title', '全局默认模型分配')}</h2>
-      </div>
+  const currentProviderForSelector = (): string => {
+    switch (activeSelector) {
+      case 'dialogue':
+        return config.globalDialogueProviderId
+      case 'graph':
+        return config.globalGraphProviderId
+      case 'naming':
+        return config.globalNamingProviderId
+      case 'summary':
+        return config.globalSummaryProviderId
+      case 'embedding':
+        return config.globalEmbeddingProviderId
+      default:
+        return ''
+    }
+  }
 
-      <div className={styles.scrollArea}>
+  const currentModelForSelector = (): string => {
+    switch (activeSelector) {
+      case 'dialogue':
+        return config.globalDialogueModelId
+      case 'graph':
+        return config.globalGraphModelId
+      case 'naming':
+        return config.globalNamingModelId
+      case 'summary':
+        return config.globalSummaryModelId
+      case 'embedding':
+        return config.globalEmbeddingModelId
+      default:
+        return ''
+    }
+  }
+
+  return (
+    <SettingsPageChrome title={t('ai_config.global_models_title', '全局默认模型分配')}>
+      <div className={stack.stack}>
         <div className={styles.grid}>
           {renderSection(
             'summary',
@@ -230,10 +316,18 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
           {renderSection(
             'dialogue',
-            t('ai_config.dialogue_model_title', '默认闲聊接管'),
+            t('ai_config.dialogue_model_title', '默认对话模型'),
             <MessageCircle size={22} />,
             config.globalDialogueProviderId,
             config.globalDialogueModelId
+          )}
+
+          {renderSection(
+            'graph',
+            t('ai_config.graph_model_title', '图关系抽取模型'),
+            <Waypoints size={22} />,
+            config.globalGraphProviderId,
+            config.globalGraphModelId
           )}
 
           {renderSection(
@@ -250,37 +344,40 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             <Database size={22} />,
             config.globalEmbeddingProviderId,
             config.globalEmbeddingModelId,
-            true
+            { isDanger: true }
           )}
         </div>
+
+        {footer}
       </div>
 
-      {activeSelector && (
-        <ModelSwitcherPopup
+      {activeSelector ? (
+        <SessionModelMenu
           providers={activeSelector === 'embedding' ? embeddingProviders : nonEmbeddingProviders}
-          currentProviderId={
-            activeSelector === 'dialogue'
-              ? config.globalDialogueProviderId
-              : activeSelector === 'naming'
-                ? config.globalNamingProviderId
-                : activeSelector === 'summary'
-                  ? config.globalSummaryProviderId
-                  : config.globalEmbeddingProviderId
-          }
-          currentModelId={
-            activeSelector === 'dialogue'
-              ? config.globalDialogueModelId
-              : activeSelector === 'naming'
-                ? config.globalNamingModelId
-                : activeSelector === 'summary'
-                  ? config.globalSummaryModelId
-                  : config.globalEmbeddingModelId
-          }
+          currentProviderId={currentProviderForSelector()}
+          currentModelId={currentModelForSelector()}
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
           onManageProviders={onManageProviders}
+          reasoningEffort={
+            selectorReasoningSlot(activeSelector)
+              ? resolveReasoningEffortForSlot(
+                  config.reasoningEffortBySlot,
+                  selectorReasoningSlot(activeSelector) ?? 'dialogue'
+                )
+              : undefined
+          }
+          onReasoningEffortChange={
+            selectorReasoningSlot(activeSelector)
+              ? (value) => {
+                  void handleEffortChange(value)
+                }
+              : undefined
+          }
+          anchorRect={menuAnchor}
+          showReasoningPanel={Boolean(selectorReasoningSlot(activeSelector))}
         />
-      )}
-    </div>
+      ) : null}
+    </SettingsPageChrome>
   )
 }

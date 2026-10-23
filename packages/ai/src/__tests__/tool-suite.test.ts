@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { ToolRegistry } from '../tools/tool-registry'
 import { CurrentTimeTool } from '../tools/current-time.tool'
 import { DiaryReadTool } from '../tools/diary-read.tool'
@@ -11,6 +12,7 @@ import { MemoryStoreTool } from '../tools/memory-store.tool'
 import { MemoryDeleteTool } from '../tools/memory-delete.tool'
 import { VectorSearchTool } from '../tools/vector-search.tool'
 import { MessageSearchTool } from '../tools/message-search.tool'
+import { SessionListTool } from '../tools/session-list.tool'
 import { SummaryReadTool } from '../tools/summary-read.tool'
 import { WebSearchTool } from '../tools/web-search.tool'
 import { UrlReadTool } from '../tools/url-read.tool'
@@ -18,17 +20,21 @@ import {
   ContextCompressUpstreamTool,
   ContextCompressDownstreamTool
 } from '../tools/context-compress.tool'
+import { CompanionAskTool } from '../tools/companion-ask.tool'
 
 describe('ToolRegistry — Full Tool Suite', () => {
-  it('should auto-register all 17 built-in tools on construction', () => {
+  it('should auto-register all built-in tools on construction', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(17)
+    expect(allTools).toHaveLength(33)
 
-    // 检验每个预期工具都被注册了
     const toolNames = allTools.map((t) => t.name)
     expect(toolNames).toContain('current_time')
+    expect(toolNames).toContain('companion_ask')
+    expect(toolNames).toContain('workspace_list')
+    expect(toolNames).toContain('workspace_read')
+    expect(toolNames).toContain('workspace_write')
     expect(toolNames).toContain('diary_read')
     expect(toolNames).toContain('diary_edit')
     expect(toolNames).toContain('diary_delete')
@@ -39,10 +45,18 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('memory_delete')
     expect(toolNames).toContain('vector_search')
     expect(toolNames).toContain('message_search')
+    expect(toolNames).toContain('session_list')
     expect(toolNames).toContain('summary_read')
+    expect(toolNames).toContain('summary_write')
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
     expect(toolNames).toContain('emoji_send')
+    expect(toolNames).toContain('graph_upsert')
+    expect(toolNames).toContain('recall_relations')
+    expect(toolNames).toContain('knowledge_search')
+    expect(toolNames).toContain('knowledge_graph_search')
+    expect(toolNames).toContain('skill_write')
+    expect(toolNames).toContain('skill_read')
     expect(toolNames).toContain('compress_context_upstream')
     expect(toolNames).toContain('compress_context_downstream')
   })
@@ -52,16 +66,25 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp'
     })
 
-    // 16 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store），
-    // 2 个内部压缩工具不暴露给模型主动调用。
-    expect(Object.keys(vercelTools)).toHaveLength(11)
+    // 无 folderRoot 时跳过 workspace_*；web_search/vector_search/memory_store 缺依赖跳过；
+    // 内部压缩工具不暴露。graph / knowledge_search / skill_write / skill_read 仍会进入可调用集。
+    expect(Object.keys(vercelTools)).toHaveLength(20)
     expect(vercelTools['current_time']).toBeDefined()
+    expect(vercelTools['companion_ask']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
     expect(vercelTools['diary_write']).toBeDefined()
     expect(vercelTools['summary_read']).toBeDefined()
+    expect(vercelTools['summary_write']).toBeDefined()
+    expect(vercelTools['graph_upsert']).toBeDefined()
+    expect(vercelTools['recall_relations']).toBeDefined()
+    expect(vercelTools['knowledge_search']).toBeDefined()
+    expect(vercelTools['knowledge_graph_search']).toBeDefined()
+    expect(vercelTools['skill_write']).toBeDefined()
+    expect(vercelTools['skill_read']).toBeDefined()
     expect(vercelTools['compress_context_upstream']).toBeUndefined()
     expect(vercelTools['compress_context_downstream']).toBeUndefined()
   })
@@ -71,6 +94,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         disabledToolIds: ['web_search', 'url_read']
@@ -80,13 +104,14 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(10)
+    expect(Object.keys(vercelTools)).toHaveLength(19)
   })
 
   it('keeps current_time enabled even when listed in disabledToolIds', () => {
     const registry = new ToolRegistry()
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         disabledToolIds: ['current_time', 'web_search']
@@ -102,6 +127,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         ragEnabled: false
@@ -136,9 +162,11 @@ describe('ToolRegistry — Full Tool Suite', () => {
       new MemoryDeleteTool(),
       new VectorSearchTool(),
       new MessageSearchTool(),
+      new SessionListTool(),
       new SummaryReadTool(),
       new WebSearchTool(),
       new UrlReadTool(),
+      new CompanionAskTool(),
       new ContextCompressUpstreamTool(),
       new ContextCompressDownstreamTool()
     ]

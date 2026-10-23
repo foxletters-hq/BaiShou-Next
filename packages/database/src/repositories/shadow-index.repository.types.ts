@@ -3,12 +3,16 @@
  */
 export interface ShadowJournalRecord {
   id: number
-  vaultName: string
+  vaultId: string
   filePath: string
   date: string
   createdAt: string
   updatedAt: string
   contentHash: string
+  /** 物理文件 mtime（毫秒）；旧库 / 未回填时可能缺失或为 null */
+  fileMtimeMs?: number | null
+  /** 物理文件字节大小；旧库 / 未回填时可能缺失或为 null */
+  fileSize?: number | null
   weather: string | null
   mood: string | null
   location: string | null
@@ -17,18 +21,30 @@ export interface ShadowJournalRecord {
   hasMedia: boolean
 }
 
+/** 全量扫描脏检测用的轻量指纹（hash + mtime/size + filePath） */
+export interface ShadowSyncFingerprint {
+  filePath?: string
+  contentHash: string
+  fileMtimeMs: number | null
+  fileSize: number | null
+}
+
 /**
  * Upsert 参数
  */
 export interface UpsertShadowIndexPayload {
   id?: number
   /** 可选；未提供时由 Repository 构造参数注入 */
-  vaultName?: string
+  vaultId?: string
   filePath: string
   date: string
   createdAt: string
   updatedAt: string
   contentHash: string
+  /** 物理文件 mtime（毫秒），写入后供下次扫描快路径跳过 */
+  fileMtimeMs?: number | null
+  /** 物理文件字节大小 */
+  fileSize?: number | null
   weather?: string | null
   mood?: string | null
   location?: string | null
@@ -59,6 +75,14 @@ export type ShadowJournalRow = ShadowJournalRecord & {
   rawContent?: string | null
   tags?: string | null
   tagColors?: string | null
+}
+
+/** 待嵌入检测瘦行：不含 journals_index.content_hash，正文只取 raw_content */
+export interface ShadowEmbedDetectionRow {
+  id: number
+  date: string
+  updatedAt: string
+  rawContent: string
 }
 
 export interface DiaryListFilterOptions {

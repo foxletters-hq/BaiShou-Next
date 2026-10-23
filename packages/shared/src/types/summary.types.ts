@@ -11,6 +11,8 @@ export const SummaryTypeSchema = z.nativeEnum(SummaryType)
 
 export const SummarySchema = z.object({
   id: z.number().int().positive().optional(),
+  /** 所属工作空间稳定 ID（V1.4）；写入必填，读取可空兼容旧缓存 */
+  vaultId: z.string().optional(),
   type: SummaryTypeSchema,
   startDate: z.date(),
   endDate: z.date(),

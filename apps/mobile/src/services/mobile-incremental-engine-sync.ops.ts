@@ -6,10 +6,21 @@ import {
   getSyncManifestRemovedMap,
   limitExecute,
   normalizeSyncManifest,
+  prepareVaultRenamePassForSync,
   reconcileAncestorWithRemoteTruth,
   resolveSyncMergeDecisions,
   threeWayMerge
 } from '@baishou/shared'
+import {
+  JsonlRecordMergeService,
+  MonthlyJsonlStore,
+  applyJsonlConflictResolved,
+  classifyMonthlyJsonlPath,
+  classifyNotebookStructureJsonlPath,
+  isMonthlyJsonlRawPath,
+  shardKeyValidatorForJsonlKind
+} from '@baishou/core-mobile'
+import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 import { throwIfIncrementalSyncAborted } from './mobile-incremental-sync-abort.util'
 import { sortSyncDecisionsBySizeAsc } from './mobile-incremental-sync-order.util'
@@ -25,6 +36,92 @@ import { SYNC_ACTIVITY_STATUS } from './mobile-incremental-engine-transfer.helpe
 import type { MobileIncrementalEngineWorker } from './mobile-incremental-engine.worker'
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
+
+async function markMobileMonthlyJsonlPending(
+  worker: MobileIncrementalEngineWorker,
+  relPath: string,
+  absoluteShardPath: string
+): Promise<void> {
+  const classified = classifyMonthlyJsonlPath(relPath)
+  if (!classified) return
+  const dir = absoluteShardPath.replace(/[/\\][^/\\]+$/, '')
+  const store = new MonthlyJsonlStore({
+    fs: worker.host.fileSystem,
+    rootDir: dir,
+    isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
+  })
+  await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
+  if (classified.kind === 'graph' && classified.collection === 'nodes') {
+    try {
+      await worker.host.getRawDataSourceManager?.()?.getGraphManager()?.rebuildIdmap()
+    } catch (e) {
+      console.warn(`[MobileIncremental] rebuildIdmap after external write failed:`, e)
+    }
+  }
+}
+
+async function mergeMobileJsonlConflict(
+  worker: MobileIncrementalEngineWorker,
+  client: MobileIncrementalCloudClient,
+  syncRoot: string,
+  relPath: string,
+  fullPath: string
+): Promise<boolean> {
+  try {
+    const localText = (await worker.host.fileSystem.exists(fullPath))
+      ? await worker.host.fileSystem.readFile(fullPath)
+      : ''
+    const tmp = `${getAppCacheDirectory()}baishou-jsonl-merge-${Date.now()}.jsonl`
+    try {
+      await client.downloadFile(relPath.replace(/\\/g, '/'), tmp)
+    } catch {
+      if (localText) {
+        await client.uploadFile(fullPath, relPath)
+        return true
+      }
+      return false
+    }
+    const remoteText = await worker.host.fileSystem.readFile(tmp)
+    await worker.host.fileSystem.unlink(tmp).catch(() => undefined)
+
+    const merger = new JsonlRecordMergeService()
+    const merged = merger.mergeTexts(localText, remoteText)
+    await worker.backupLocalFile(syncRoot, relPath)
+
+    const notebookStructure = classifyNotebookStructureJsonlPath(relPath)
+    if (notebookStructure) {
+      const text =
+        merged.text.endsWith('\n') || merged.text.length === 0 ? merged.text : `${merged.text}\n`
+      await worker.host.fileSystem.writeFile(fullPath, text)
+      await client.uploadFile(fullPath, relPath)
+      return true
+    }
+
+    const classified = classifyMonthlyJsonlPath(relPath)
+    if (!classified) return false
+    const manager = worker.host.getRawDataSourceManager?.() ?? null
+    let wrote = false
+    if (manager) {
+      wrote = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+    }
+    if (!wrote) {
+      const store = new MonthlyJsonlStore({
+        fs: worker.host.fileSystem,
+        rootDir: fullPath.replace(/[/\\][^/\\]+$/, ''),
+        isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
+      })
+      await store.replaceShardContent(classified.shardMonth, merged.text)
+      if (classified.kind === 'graph' && classified.collection === 'nodes') {
+        await manager?.getGraphManager()?.rebuildIdmap()
+      }
+    }
+    await client.uploadFile(fullPath, relPath)
+    return true
+  } catch (e) {
+    console.warn(`[MobileIncremental] JSONL LWW merge failed for ${relPath}:`, e)
+    return false
+  }
+}
 
 function mapDecisionProgress(
   completed: number,
@@ -78,7 +175,7 @@ export async function runSyncThreeWay(
     }))
 
   onProgress?.({ phase: 'comparing', current: 0, total: 1 })
-  const remoteManifest =
+  let remoteManifest =
     reusedRemoteManifest ??
     (await worker.getRemoteManifest(client, (current, total, fileName) => {
       onProgress?.({ phase: 'comparing', current, total, fileName })
@@ -101,13 +198,29 @@ export async function runSyncThreeWay(
     .readLocalManifestFile()
     .catch(() => worker.emptyManifest())
 
+  const localVaults = await worker.loadLocalVaultIdToNameMap()
+  const lastRemoteVaults = (await worker.loadLastRemoteVaultsSnapshot(config)).vaults
+  const renamePass = await prepareVaultRenamePassForSync({
+    localVaults,
+    lastRemoteVaults,
+    remoteManifest,
+    ancestorSnapshot,
+    cloudClient: client,
+    preferDirectoryMove: config.target === 'webdav'
+  })
+  remoteManifest = renamePass.remoteManifest
+  ancestorSnapshot = renamePass.ancestorSnapshot
+
   const decisions = resolveSyncMergeDecisions(
     threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
     localManifest,
     remoteManifest,
     ancestorSnapshot,
     previousLocalManifest,
-    { deletePropagationChoice: runOptions?.deletePropagationChoice }
+    {
+      deletePropagationChoice: runOptions?.deletePropagationChoice,
+      ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+    }
   )
 
   const sortedDecisions = sortSyncDecisionsBySizeAsc(decisions)
@@ -192,6 +305,9 @@ export async function runSyncThreeWay(
           break
         case 'download':
           if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+            if (isMonthlyJsonlRawPath(d.filePath)) {
+              await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+            }
             downloaded++
             downloadedPaths.push(d.filePath)
             mutated = true
@@ -205,26 +321,45 @@ export async function runSyncThreeWay(
           break
         case 'delete-local':
           await worker.host.fileSystem.unlink(fullPath)
+          if (isMonthlyJsonlRawPath(d.filePath)) {
+            await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+          }
           deletedLocal++
           deletedLocalPaths.push(d.filePath)
           mutated = true
           break
-        case 'conflict-resolved':
+        case 'conflict-resolved': {
           conflicted.push(d.filePath)
-          if (d.direction === 'upload') {
-            await worker.backupLocalFile(syncRoot, d.filePath)
-            await client.uploadFile(fullPath, d.filePath)
+          const outcome = await applyJsonlConflictResolved({
+            filePath: d.filePath,
+            direction: d.direction,
+            lineMerge: () =>
+              mergeMobileJsonlConflict(worker, client, syncRoot, d.filePath, fullPath),
+            overwriteUpload: async () => {
+              await worker.backupLocalFile(syncRoot, d.filePath)
+              await client.uploadFile(fullPath, d.filePath)
+              uploaded++
+              uploadedPaths.push(d.filePath)
+            },
+            overwriteDownload: async () => {
+              await worker.backupLocalFile(syncRoot, d.filePath)
+              if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+                if (isMonthlyJsonlRawPath(d.filePath)) {
+                  await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+                }
+                downloaded++
+                downloadedPaths.push(d.filePath)
+              }
+            }
+          })
+          if (outcome === 'merged') {
             uploaded++
             uploadedPaths.push(d.filePath)
-          } else {
-            await worker.backupLocalFile(syncRoot, d.filePath)
-            if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
-              downloaded++
-              downloadedPaths.push(d.filePath)
-            }
+            downloadedPaths.push(d.filePath)
           }
           mutated = true
           break
+        }
         case 'skip':
           skipped++
           break
@@ -272,7 +407,31 @@ export async function runSyncThreeWay(
 
   client.setTransferProgressCallback(undefined)
   client.setTransferActivityCallback(undefined)
-  const scanned = await worker.buildLocalManifest()
+  // 保留未变更文件的本机 mtimeMs，并用 workingManifest 覆盖本轮下载文件的最新元数据，避免收尾全量重算 MD5
+  const postSyncCacheFiles: Record<string, SyncManifest['files'][string]> = {
+    ...localManifest.files
+  }
+  for (const [relPath, entry] of Object.entries(workingManifest.files)) {
+    const localEntry = localManifest.files[relPath]
+    if (!localEntry || localEntry.hash !== entry.hash || localEntry.size !== entry.size) {
+      postSyncCacheFiles[relPath] = entry
+    }
+  }
+  for (const relPath of downloadedPaths) {
+    if (workingManifest.files[relPath]) {
+      postSyncCacheFiles[relPath] = workingManifest.files[relPath]
+    }
+  }
+  worker.host.pendingSyncLocalManifest = {
+    ...workingManifest,
+    files: postSyncCacheFiles
+  }
+  let scanned: SyncManifest
+  try {
+    scanned = await worker.buildLocalManifest()
+  } finally {
+    worker.host.pendingSyncLocalManifest = null
+  }
   const finalManifest = finalizeIncrementalSyncManifest({
     scanned,
     baselineRemote: remoteManifest,
@@ -287,6 +446,7 @@ export async function runSyncThreeWay(
     lastFile: sortedDecisions[totalDecisions - 1]?.filePath,
     startedAt: sessionStartedAt
   })
+  await worker.saveLastRemoteVaultsSnapshot(config, localVaults)
   worker.host.setLastConflicts(conflicted)
   await clearIncrementalSyncSession(worker.host.fileSystem, metaDir)
   onProgress?.({ phase: 'finalizing', current: 1, total: 1 })

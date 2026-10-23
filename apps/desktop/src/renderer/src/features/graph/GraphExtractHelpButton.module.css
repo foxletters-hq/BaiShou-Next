@@ -1,0 +1,28 @@
+.helpModal {
+  min-width: min(440px, 92vw);
+  max-width: 520px;
+}
+
+.helpContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.section {
+  margin: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--content-font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sectionBody {
+  margin: 0;
+  font-size: var(--content-font-size-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}

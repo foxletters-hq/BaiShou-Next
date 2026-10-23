@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback } from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { MONTH_I18N_KEYS } from '../YearMonthPicker/year-month-picker.utils'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface DatePickerProps {
   value: Date
@@ -124,7 +125,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
               styles.pickerItem,
               {
                 backgroundColor: year === currentYear ? colors.primary : colors.bgSurfaceNormal,
-                borderRadius: 8
+                borderRadius: sharedTokens.radius.sm
               }
             ]}
             onPress={() => handleYearChange(year)}
@@ -158,7 +159,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
                 {
                   backgroundColor: month === currentMonth ? colors.primary : colors.bgSurfaceNormal,
                   opacity: disabled ? 0.3 : 1,
-                  borderRadius: 8
+                  borderRadius: sharedTokens.radius.sm
                 }
               ]}
               onPress={() => !disabled && handleMonthChange(month)}
@@ -192,7 +193,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
                 {
                   backgroundColor: day === currentDay ? colors.primary : colors.bgSurfaceNormal,
                   opacity: disabled ? 0.3 : 1,
-                  borderRadius: 8
+                  borderRadius: sharedTokens.radius.sm
                 }
               ]}
               onPress={() => !disabled && handleDayChange(day)}
@@ -218,58 +219,58 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, minDate
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: sharedTokens.radius.lg,
     borderWidth: 1,
-    padding: 16
+    padding: sharedTokens.spacing.md
   },
   display: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.md,
+    marginBottom: sharedTokens.spacing.md,
     alignItems: 'center'
   },
   displayText: {
-    fontSize: 24,
-    fontWeight: '700'
+    fontSize: mobileTypography.display.fontSize,
+    fontWeight: '600'
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
-    marginBottom: 8
+    marginBottom: sharedTokens.spacing.sm
   },
   pickerRow: {
-    marginBottom: 14,
+    marginBottom: sharedTokens.spacing.mdSnug,
     maxHeight: 48
   },
   pickerContent: {
-    gap: 8,
-    paddingVertical: 4
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs
   },
   pickerItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
     minWidth: 60,
     alignItems: 'center'
   },
   pickerItemText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   gridRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 4
+    gap: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.xs
   },
   gridItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.sm,
     minWidth: 48,
     alignItems: 'center'
   },
   gridItemText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   }
 })

@@ -1,6 +1,9 @@
 import type { ManifestEntry, SyncManifest } from '../types/version-control.types'
 import {
   isIncrementalSyncChatBackgroundPath,
+  isIncrementalSyncProtectedRemotePath,
+  isJsonlShardsManifestSyncPath,
+  isLegacyVaultSettingsSyncPath,
   isSqliteRuntimeSyncPath
 } from '../utils/incremental-sync-scan.util'
 import {
@@ -72,6 +75,37 @@ export function threeWayMerge(
       continue
     }
 
+    if (isJsonlShardsManifestSyncPath(filePath)) {
+      continue
+    }
+
+    // 过渡期：旧端仍在使用 <Vault>/.baishou/settings/，新端迁移后本地扫描不到。
+    // 远端仍有、祖先也有时不要删远端；只有明确 tombstone 才传播删除。
+    if (isLegacyVaultSettingsSyncPath(filePath)) {
+      const legacyLocal = local.files[filePath] ?? null
+      const legacyRemote = remote.files[filePath] ?? null
+      const legacyAncestor = ancestor.files[filePath] ?? null
+      if (!legacyLocal && legacyRemote && legacyAncestor) {
+        const removed = getSyncManifestRemovedEntry(remote, filePath)
+        if (
+          removed &&
+          legacyRemote.lastModified <= removed.removedAt + SYNC_TOMBSTONE_CLOCK_SKEW_MS
+        ) {
+          decisions.push(
+            mkDecision(
+              'delete-remote',
+              filePath,
+              legacyRemote,
+              legacyLocal,
+              legacyRemote,
+              legacyAncestor
+            )
+          )
+        }
+        continue
+      }
+    }
+
     const localEntry = local.files[filePath] ?? null
     const remoteEntry = remote.files[filePath] ?? null
     const ancestorEntry = ancestor.files[filePath] ?? null
@@ -110,12 +144,19 @@ function decide(
     if (local.hash === remote.hash) {
       return mkDecision('skip', filePath, local, local, remote, ancestor)
     }
+    // 首次同步的保护路径（global settings / vault.json / registry / 用户技能 / 旧 settings）
+    // 远端优先，避免本机刚生成的默认值覆盖云端已有数据。
+    const preferRemote = isIncrementalSyncProtectedRemotePath(filePath)
     return {
       filePath,
       type: 'conflict-resolved',
-      direction: 'download',
-      hash: remote.hash,
-      size: remote.size,
+      direction: preferRemote
+        ? 'download'
+        : local.lastModified >= remote.lastModified
+          ? 'upload'
+          : 'download',
+      hash: preferRemote || remote.lastModified >= local.lastModified ? remote.hash : local.hash,
+      size: preferRemote || remote.lastModified >= local.lastModified ? remote.size : local.size,
       localEntry: local,
       remoteEntry: remote,
       ancestorEntry: ancestor

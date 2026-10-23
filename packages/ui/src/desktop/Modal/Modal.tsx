@@ -1,16 +1,28 @@
 import React, { HTMLAttributes, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { withAppContentOverlay } from '../overlay/appContentOverlay'
 import styles from './Modal.module.css'
 
 export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   isOpen: boolean
   onClose: () => void
   title?: React.ReactNode
+  /** 点击遮罩关闭。默认 true；忙碌中的流程可传 false */
   closeOnOverlayClick?: boolean
   /** Stack above other overlays (e.g. ModelSwitcherPopup). Default 1000. */
   zIndex?: number
-  /** 自定义遮罩层样式类（如顶部留白对齐） */
+  /** 自定义遮罩层样式类（如额外 padding） */
   overlayClassName?: string
+  /**
+   * Clip backdrop to the main content card under TitleBar (default true).
+   * Set false for immersive full-window surfaces.
+   */
+  containToContentCard?: boolean
+  /**
+   * scale 会把文字先栅格化再拉伸，CJK 看起来像换了字体。
+   * 确认框等短文案弹窗应使用 fade。
+   */
+  animation?: 'scale' | 'fade' | 'none'
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -19,19 +31,19 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   className = '',
-  closeOnOverlayClick = false,
+  closeOnOverlayClick = true,
   zIndex = 1000,
   overlayClassName = '',
+  containToContentCard = true,
+  animation = 'scale',
   ...props
 }) => {
   useEffect(() => {
-    if (isOpen && typeof document !== 'undefined') {
-      document.body.style.overflow = 'hidden'
-    } else if (typeof document !== 'undefined') {
-      document.body.style.overflow = 'auto'
-    }
+    if (!isOpen || typeof document === 'undefined') return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     return () => {
-      if (typeof document !== 'undefined') document.body.style.overflow = 'auto'
+      document.body.style.overflow = previousOverflow
     }
   }, [isOpen])
 
@@ -44,14 +56,19 @@ export const Modal: React.FC<ModalProps> = ({
     onClose()
   }
 
+  const overlayClasses = withAppContentOverlay(
+    `${styles.overlay} ${containToContentCard ? '' : styles.overlayFullWindow} ${
+      animation === 'none' ? styles.overlayStatic : ''
+    } ${overlayClassName}`.trim(),
+    { fullWindow: !containToContentCard }
+  )
+  const modalMotion =
+    animation === 'none' ? styles.modalStatic : animation === 'fade' ? styles.modalFade : ''
+
   return createPortal(
-    <div
-      className={`${styles.overlay} ${overlayClassName}`.trim()}
-      style={{ zIndex }}
-      onPointerDown={handleOverlayPointerDown}
-    >
+    <div className={overlayClasses} style={{ zIndex }} onPointerDown={handleOverlayPointerDown}>
       <div
-        className={`${styles.modal} ${className}`.trim()}
+        className={`${styles.modal} ${modalMotion} ${className}`.trim()}
         style={{ zIndex: zIndex + 1 }}
         onClick={(e) => e.stopPropagation()}
         {...props}

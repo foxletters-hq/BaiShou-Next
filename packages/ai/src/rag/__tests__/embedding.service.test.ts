@@ -14,6 +14,8 @@ const mockStorage: IEmbeddingStorage = {
   initVectorIndex: vi.fn(),
   insertEmbedding: vi.fn(),
   deleteEmbeddingsBySource: vi.fn(),
+  recordEmbedded: vi.fn(),
+  recordEmbedFailure: vi.fn(),
   clearEmbeddings: vi.fn(),
   hasPendingMigration: vi.fn(),
   hasMigrationBackupTable: vi.fn().mockResolvedValue(true),
@@ -61,7 +63,7 @@ describe('EmbeddingService', () => {
   describe('tiktoken Chunking', () => {
     it('should split text exceeding max chunk tokens correctly with overlaps', () => {
       // 生成足够长的重复文本
-      const text = 'Word '.repeat(2000)
+      const text = 'Word '.repeat(5000)
       const chunks = service.splitIntoChunks(text)
       expect(chunks.length).toBeGreaterThan(1)
 
@@ -80,6 +82,79 @@ describe('EmbeddingService', () => {
       expect(chunks.length).toBe(1)
       expect(chunks[0]!.text).toBe(text)
       expect(chunks[0]!.index).toBe(0)
+    })
+  })
+
+  describe('embedText ledger', () => {
+    it('records a zero ledger row when text is empty', async () => {
+      await service.embedText({
+        text: '   ',
+        sourceType: 'diary',
+        sourceId: 'vault-a#empty',
+        groupId: 'diary',
+        vaultId: 'vault-a',
+        contentHash: 'empty-hash'
+      })
+
+      expect(mockStorage.insertEmbedding).not.toHaveBeenCalled()
+      expect(mockStorage.recordEmbedded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vaultId: 'vault-a',
+          sourceType: 'diary',
+          sourceId: 'vault-a#empty',
+          contentHash: 'empty-hash',
+          chunkCount: 0
+        })
+      )
+    })
+
+    it('does not write ledger when embedding model is not configured', async () => {
+      vi.mocked(mockConfig.getGlobalEmbeddingModelId).mockReturnValueOnce('')
+      await service.embedText({
+        text: '',
+        sourceType: 'diary',
+        sourceId: 'vault-a#empty',
+        groupId: 'diary',
+        vaultId: 'vault-a'
+      })
+      expect(mockStorage.recordEmbedded).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('updateMemoryChunk guard', () => {
+    it.each(['diary', 'memory'])('refuses to update a %s chunk in place', async (sourceType) => {
+      await expect(
+        service.updateMemoryChunk({
+          entry: {
+            embedding_id: 'emb-1',
+            source_type: sourceType,
+            source_id: 'vault-a#1',
+            group_id: 'g',
+            vault_id: 'vault-a',
+            chunk_index: 0
+          },
+          newText: '改过的正文'
+        })
+      ).rejects.toThrow('reEmbedText')
+
+      expect(mockStorage.insertEmbedding).not.toHaveBeenCalled()
+    })
+
+    it('lets source types that stay out of the ledger through the guard', async () => {
+      // 走到真实的取模型一步才失败，说明守卫没有挡住 chat 这类不进账本的来源
+      await expect(
+        service.updateMemoryChunk({
+          entry: {
+            embedding_id: 'emb-2',
+            source_type: 'chat',
+            source_id: 'msg-1',
+            group_id: 'session-1',
+            vault_id: 'vault-a',
+            chunk_index: 0
+          },
+          newText: '改过的对话'
+        })
+      ).rejects.toThrow('getEmbeddingModel')
     })
   })
 })

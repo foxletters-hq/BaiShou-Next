@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: var(--spacing-sm);
   background-color: transparent;
   min-height: 100%;
 }
@@ -10,34 +10,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--icon-fs-lg);
+  font-weight: 600;
   margin: 0;
   color: var(--text-primary);
-}
-
-.createBtn {
-  background-color: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.createBtn:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .emptyState {
@@ -45,37 +25,37 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64px 0;
+  padding: var(--spacing-3xl) 0;
   margin: auto;
   color: var(--text-secondary);
 }
 
 .emptyIcon {
-  font-size: 64px;
+  font-size: var(--icon-fs-3xl);
   opacity: 0.4;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .emptyText {
-  font-size: 16px;
-  margin-bottom: 16px;
+  font-size: var(--ui-fs-xl);
+  margin-bottom: var(--spacing-md);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
 }
 
 .card {
   background-color: var(--bg-surface);
-  border: 1px solid rgba(128, 128, 128, 0.2);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   display: flex;
   align-items: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .card:hover {
@@ -87,7 +67,7 @@
   cursor: grab;
   color: var(--text-secondary);
   opacity: 0.5;
-  margin-right: 12px;
+  margin-right: var(--spacing-md-tight);
   display: flex;
   align-items: center;
 }
@@ -100,8 +80,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  margin-right: 16px;
+  font-size: var(--icon-fs-lg);
+  margin-right: var(--spacing-md);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -122,13 +102,13 @@
 .nameRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   flex-wrap: wrap;
 }
 
 .nameText {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--content-font-size-md);
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -136,9 +116,9 @@
 }
 
 .descText {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -147,8 +127,8 @@
 .metaRow {
   display: flex;
   align-items: center;
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--settings-font-micro-size);
   color: var(--text-secondary);
   opacity: 0.8;
 }
@@ -156,8 +136,8 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: 16px;
+  gap: var(--spacing-sm);
+  margin-left: var(--spacing-md);
 }
 
 .actionBtn {
@@ -171,7 +151,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--duration-swift);
 }
 
 .actionBtn:hover {

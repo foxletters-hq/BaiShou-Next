@@ -1,0 +1,340 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
+  flex-shrink: 0;
+}
+
+.modeBtn {
+  height: 26px;
+  padding: 0 var(--spacing-sm-plus);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs-plus);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modeBtnActive {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+}
+
+.fill {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  max-height: none;
+}
+
+.unified {
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-surface-low);
+  overflow: auto;
+  max-height: 320px;
+}
+
+.unifiedFill {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.unifiedContent {
+  margin: 0;
+  padding: var(--spacing-xs) 0 var(--spacing-md) 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family-mono);
+  font-variant-ligatures: none;
+  line-height: 1.55;
+  color: var(--text-primary);
+  width: max-content;
+  min-width: 100%;
+}
+
+.unifiedRow {
+  display: grid;
+  grid-template-columns: 3px 40px 40px 16px minmax(max-content, 1fr);
+  align-items: stretch;
+  min-height: 1.45em;
+  width: 100%;
+}
+
+.hunkHeader,
+.metaLine {
+  display: block;
+  padding: var(--spacing-xs) var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: var(--font-family-mono);
+  color: var(--diff-hunk-fg);
+  background: var(--diff-hunk-bg);
+  border-top: 1px solid var(--diff-hunk-border);
+  border-bottom: 1px solid var(--diff-hunk-border);
+}
+
+.metaLine {
+  background: transparent;
+  color: var(--text-tertiary);
+  border: none;
+  font-weight: 500;
+}
+
+.hunkText {
+  display: block;
+  white-space: pre;
+}
+
+.gutterBar {
+  width: 3px;
+  background: transparent;
+}
+
+.lineAdd .gutterBar {
+  background: var(--diff-add-gutter);
+}
+
+.lineRemove .gutterBar {
+  background: var(--diff-remove-gutter);
+}
+
+.lineNum {
+  padding: 0 var(--spacing-xs-plus);
+  text-align: right;
+  color: var(--text-tertiary);
+  user-select: none;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
+}
+
+.lineAdd .lineNum {
+  color: color-mix(in srgb, var(--diff-add-gutter) 75%, var(--text-tertiary));
+}
+
+.lineRemove .lineNum {
+  color: color-mix(in srgb, var(--diff-remove-gutter) 75%, var(--text-tertiary));
+}
+
+.marker {
+  text-align: center;
+  user-select: none;
+  font-family: var(--font-family-mono);
+}
+
+.lineAdd .marker {
+  color: var(--diff-add-gutter);
+  font-weight: 600;
+}
+
+.lineRemove .marker {
+  color: var(--diff-remove-gutter);
+  font-weight: 600;
+}
+
+.lineText {
+  padding: 0 var(--spacing-md) 0 var(--spacing-xs);
+  white-space: pre;
+  overflow-x: visible;
+  font-family: var(--font-family-mono);
+}
+
+/* 统一视图自动换行：保留缩进与空格，长 token 也按容器宽度折行 */
+.unifiedWrap .unifiedContent {
+  width: 100%;
+  min-width: 0;
+}
+
+.unifiedWrap .unifiedRow {
+  grid-template-columns: 3px 40px 40px 16px minmax(0, 1fr);
+}
+
+.unifiedWrap .lineText,
+.unifiedWrap .hunkText {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lineAdd {
+  background: var(--diff-add-bg);
+  color: var(--text-primary);
+}
+
+.lineRemove {
+  background: var(--diff-remove-bg);
+  color: var(--text-primary);
+}
+
+.lineNormal {
+  color: var(--text-primary);
+}
+
+.inlineChanged {
+  border-radius: var(--radius-2xs);
+  padding: 1px var(--spacing-2xs);
+}
+
+.lineAdd .inlineChanged {
+  background: var(--diff-add-inline-bg);
+}
+
+.lineRemove .inlineChanged {
+  background: var(--diff-remove-inline-bg);
+}
+
+.rowAdd .inlineChanged {
+  background: var(--diff-add-inline-bg);
+}
+
+.rowRemove .inlineChanged {
+  background: var(--diff-remove-inline-bg);
+}
+
+.splitRoot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.splitHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
+  flex-shrink: 0;
+}
+
+.splitHeaderCell {
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: var(--font-family);
+  color: var(--text-secondary);
+}
+
+.splitHeaderCell + .splitHeaderCell {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.splitBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.splitPane {
+  overflow: auto;
+  min-height: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
+  font-variant-ligatures: none;
+  line-height: 1.55;
+  background: var(--bg-surface-low);
+}
+
+.splitPane + .splitPane {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.splitRow {
+  display: grid;
+  grid-template-columns: 44px minmax(max-content, 1fr);
+  min-height: 20px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.splitRow .lineNum {
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
+}
+
+.splitRow .lineText {
+  padding: 0 var(--spacing-md) 0 var(--spacing-sm-plus);
+  white-space: pre;
+  overflow-x: visible;
+}
+
+/* 专属覆盖全局隐藏滚动条：在底部和右侧显示清晰、易操作的编辑器滚动条 */
+.unified,
+.splitPane {
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-strong) var(--bg-surface-normal) !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+.unified::-webkit-scrollbar,
+.splitPane::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.unified::-webkit-scrollbar-track,
+.splitPane::-webkit-scrollbar-track {
+  display: block !important;
+  background: var(--bg-surface-normal) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+}
+
+.unified::-webkit-scrollbar-thumb,
+.splitPane::-webkit-scrollbar-thumb {
+  display: block !important;
+  background-color: var(--border-strong) !important;
+  border-radius: var(--radius-xs-plus) !important;
+  border: 2px solid var(--bg-surface-normal) !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+}
+
+.unified::-webkit-scrollbar-thumb:hover,
+.splitPane::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-tertiary) !important;
+}
+
+.unified::-webkit-scrollbar-corner,
+.splitPane::-webkit-scrollbar-corner {
+  display: block !important;
+  background: var(--bg-surface-normal) !important;
+}
+
+.rowRemove .lineText {
+  background: var(--diff-remove-bg);
+  color: var(--text-primary);
+}
+
+.rowAdd .lineText {
+  background: var(--diff-add-bg);
+  color: var(--text-primary);
+}
+
+.rowEmpty .lineText {
+  background: var(--diff-empty-bg);
+}
+
+.empty {
+  padding: var(--spacing-md);
+  color: var(--text-tertiary);
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
+}

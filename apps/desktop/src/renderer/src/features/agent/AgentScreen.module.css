@@ -4,7 +4,8 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-app);
+  z-index: 1;
+  background-color: transparent;
 }
 
 .chatBackground {
@@ -30,26 +31,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  gap: 12px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  gap: var(--spacing-md-tight);
   flex-shrink: 0;
-  --app-bar-chip-height: 32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  --app-bar-chip-height: 36px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .appBarLeft {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   min-width: 0;
 }
 
 .appBarRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md-tight);
   min-width: 0;
 }
 
@@ -59,46 +59,46 @@
   justify-content: center;
   width: var(--app-bar-chip-height);
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   color: var(--text-secondary);
   transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    color 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift),
+    color var(--duration-swift);
 }
 
 .sidebarToggleBtn:hover {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 
 .appBarChip {
   height: var(--app-bar-chip-height);
   box-sizing: border-box;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md-tight);
 }
 
 .modelSwitcherTrigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 12px;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   transition:
-    background-color 0.2s,
-    border-color 0.2s;
+    background-color var(--duration-swift),
+    border-color var(--duration-swift);
   color: var(--text-primary);
 }
 
 .modelSwitcherTrigger:hover {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
 }
 
 .modelProviderIcon {
@@ -118,8 +118,8 @@
 }
 
 .modelName {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   color: var(--text-primary);
   max-width: 220px;
   white-space: nowrap;
@@ -128,7 +128,7 @@
 }
 
 .chevron {
-  font-size: 10px;
+  font-size: var(--icon-fs-xs);
   color: var(--text-tertiary);
   line-height: 1;
   flex-shrink: 0;
@@ -142,15 +142,34 @@
   scroll-behavior: auto;
   display: flex;
   flex-direction: column;
+  /* 底部窄幅渐隐：用缓入曲线让淡出更自然，避免消息在输入框上方硬裁切；底部留白大于渐隐高度，滚到底不受影响 */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 20px),
+    rgba(0, 0, 0, 0.84) calc(100% - 15px),
+    rgba(0, 0, 0, 0.5) calc(100% - 10px),
+    rgba(0, 0, 0, 0.16) calc(100% - 5px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 20px),
+    rgba(0, 0, 0, 0.84) calc(100% - 15px),
+    rgba(0, 0, 0, 0.5) calc(100% - 10px),
+    rgba(0, 0, 0, 0.16) calc(100% - 5px),
+    transparent 100%
+  );
 }
 
 .messageContent {
-  flex: 1;
-  min-height: 100%;
-  padding: 24px 0 40px;
-  max-width: 1000px;
-  margin: 0 auto;
+  /* 短对话贴输入框：高度不够时靠 margin-top:auto 沉底；变长后照常向上滚 */
+  margin-top: auto;
+  margin-left: auto;
+  margin-right: auto;
   width: 100%;
+  max-width: 1000px;
+  /* 顶部统一顶栏已具备固定高度，消息区使用标准间距 */
+  padding: var(--spacing-md) 0 var(--spacing-xl-plus);
   display: flex;
   flex-direction: column;
 }
@@ -158,35 +177,39 @@
 .compressionAnchor {
   width: 100%;
   max-width: min(800px, calc(100% - 60px));
-  margin: 0 auto 8px;
-  padding: 0 16px;
+  margin: 0 auto var(--spacing-sm);
+  padding: 0 var(--spacing-md);
   box-sizing: border-box;
 }
 
 .loadMoreBanner {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 10px 16px;
-  border: 1px dashed var(--border-subtle);
-  border-radius: 10px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 600;
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+  margin: var(--spacing-xs) auto var(--spacing-md-tight);
+  padding: var(--spacing-xs-plus) var(--spacing-md-snug);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  box-shadow: none;
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
+    background-color var(--duration-fast) var(--ease-out-cubic),
+    border-color var(--duration-fast) var(--ease-out-cubic),
+    color var(--duration-fast) var(--ease-out-cubic);
 }
 
 .loadMoreBanner:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  background: rgba(var(--color-primary-rgb), 0.06);
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .loadMoreBanner:disabled {
@@ -195,12 +218,94 @@
 }
 
 .messageList::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .messageList::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
-  border-radius: 3px;
+  background-color: rgba(var(--border-control-rgb), 0.3);
+  border-radius: var(--radius-2xs);
+}
+
+/* 无消息空态：欢迎图 + 文案 + 输入框垂直居中（对齐工作台首页 composer） */
+.emptyIdle {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-xl-plus);
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.emptyComposer {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 空态：去掉 InputBar 顶部 padding，吉祥物贴住输入框 */
+.emptyComposer :global([data-desktop-input-bar]) {
+  padding: 0 0 var(--spacing-sm);
+}
+
+.emptyHero {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 0;
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.emptyMascot {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  user-select: none;
+  line-height: 0;
+}
+
+.emptyMascotImg {
+  width: min(150px, 29vw);
+  height: auto;
+  margin: 0;
+  padding: 0;
+  display: block;
+  object-fit: contain;
+}
+
+.emptyGreeting {
+  margin: 0 0 52px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: none;
+  font-size: var(--icon-fs-md);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .emptyGreeting {
+    font-size: var(--settings-font-page-title-size);
+    margin-bottom: var(--spacing-xl-plus);
+    white-space: normal;
+  }
+
+  .emptyMascotImg {
+    width: min(112px, 32vw);
+  }
 }
 
 .inputFooter {
@@ -209,7 +314,7 @@
   flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 0 16px 12px;
+  padding: 0 var(--spacing-md) var(--spacing-md-tight);
   background-color: transparent;
   box-sizing: border-box;
   width: 100%;
@@ -220,6 +325,11 @@
   flex-shrink: 0;
   width: 100%;
   max-width: 1000px;
+}
+
+/* 已挂载笔记本标签：抵消 InputBar 顶部 12px 内边距，贴近输入框 */
+.mountHintTight.mountHintTight {
+  margin-bottom: calc(var(--spacing-2xs) - var(--spacing-md-tight));
 }
 
 .scrollToBottomBtn {
@@ -233,16 +343,16 @@
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  border: 1px solid var(--border-control);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   transition:
-    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--duration-swift) cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: auto;
 }
 
@@ -251,18 +361,19 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* 纯表情包消息行：头像 + 图片，不包裹气泡卡片 */
+/* 纯表情包消息行：与聊天气泡同一三列，左右头像槽对齐 */
 .emojiOnlyRow {
-  --chat-bubble-side-inset: 100px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 4px 16px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  column-gap: var(--spacing-sm-plus);
+  align-items: start;
+  padding: var(--spacing-xs) var(--spacing-md);
   width: 100%;
   box-sizing: border-box;
 }
 
 .emojiOnlyAvatar {
+  grid-column: 1;
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -279,15 +390,118 @@
 .emojiOnlyImages {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   align-items: flex-start;
-  max-width: min(800px, calc(100% - var(--chat-bubble-side-inset)));
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .emojiOnlyImg {
   width: 120px;
   height: 120px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   object-fit: contain;
   background-color: var(--bg-surface-normal);
+}
+
+/* 输入框底部 meta 行：伙伴在左，模型与上下文在右 */
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.metaLeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.metaTrailing {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  margin-left: auto;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+  max-width: min(220px, 100%);
+  min-width: 0;
+  height: 28px;
+  padding: var(--spacing-xs) var(--spacing-xs-plus);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.metaChip:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.metaIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.metaIconBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.metaChipLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistantAvatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--color-primary-rgb), 0.12);
+}
+
+.assistantAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }

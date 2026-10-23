@@ -1,7 +1,17 @@
+export interface ToolUsageGuidelinesOptions {
+  /** 是否在 system prompt 中实际注入了 <skills_catalog>（无目录时不输出 skill_read 导引） */
+  hasSkillsCatalog?: boolean
+  /** 是否在 system prompt 中注入了 <diary_writing_guidelines>（避免重复展开 append/overwrite 细则） */
+  hasDiaryWritingGuidelines?: boolean
+}
+
 /**
  * 根据当前可用工具，构建伙伴必须遵守的工具使用规范（注入 system prompt）。
  */
-export function buildToolUsageGuidelines(availableToolIds: readonly string[]): string | null {
+export function buildToolUsageGuidelines(
+  availableToolIds: readonly string[],
+  options?: ToolUsageGuidelinesOptions
+): string | null {
   const ids = new Set(availableToolIds)
   const lines: string[] = []
 
@@ -10,8 +20,12 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
   const hasDiaryRead = ids.has('diary_read')
   const hasDiaryEdit = ids.has('diary_edit')
   const hasDiaryList = ids.has('diary_list')
+  const hasSessionList = ids.has('session_list')
+  const hasMessageSearch = ids.has('message_search')
+  const hasCurrentTime = ids.has('current_time')
 
-  const canSearchPersonalRecords = hasDiarySearch || hasVectorSearch
+  const canSearchPersonalRecords =
+    hasDiarySearch || hasVectorSearch || hasSessionList || hasMessageSearch
 
   if (canSearchPersonalRecords) {
     lines.push('## 查事实，禁止装懂')
@@ -26,7 +40,30 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     if (hasVectorSearch) {
       lookupSteps.push('vector_search（语义搜索对话与记忆）')
     }
+    if (hasSessionList) {
+      lookupSteps.push('session_list（按时间列出会话）')
+    }
+    if (hasMessageSearch) {
+      lookupSteps.push('message_search（按关键词或日期搜索压缩前原文）')
+    }
     lines.push(`- **必须**先调用 ${lookupSteps.join(' 和/或 ')} 查阅，再回答。`)
+
+    if (hasSessionList && hasMessageSearch) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 session_list 列出会话；需要原文时再用 message_search（须同时填写 start_date 和 end_date，可再加 session_id）。`
+      )
+    } else if (hasSessionList) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 session_list 列出会话。`
+      )
+    } else if (hasMessageSearch) {
+      const relativeDateHint = hasCurrentTime ? '相对日期先用 current_time，再' : ''
+      lines.push(
+        `- 当前对话窗口（含压缩摘要）不足以回答「某段时间聊过什么」时：${relativeDateHint}用 message_search 查阅压缩前原文（可填关键词，或同时填写 start_date 和 end_date 按时间列出）。`
+      )
+    }
 
     if (hasDiaryRead) {
       lines.push('- 若搜索已定位到具体日记日期，须用 diary_read 读取完整正文后再引用或编辑。')
@@ -45,6 +82,51 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     )
   }
 
+  if (ids.has('memory_delete')) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 删除记忆必须使用唯一 id')
+    lines.push(
+      '- **删除记忆标准工作流**：当用户以自然语言要求删除某条或某些记忆时（如「删除关于xxx的记忆」），**必须先调用 vector_search** 搜索相关内容以获取目标记忆的 `memory_id`，再调用 `memory_delete` 传入该 `memory_id` 执行删除。'
+    )
+    lines.push(
+      '- 调用 memory_delete 时必须传入 vector_search 返回的 memory_id，或 memory_store 返回的 id。'
+    )
+    lines.push('- 禁止用描述、日期、标题或语义查询代替 id；找不到 id 时先检索，不要猜测。')
+    lines.push(
+      '- **严禁虚构已删除**：若 vector_search 未检索到对应记忆，或 memory_delete 返回未找到/删除失败，**绝对禁止**向用户声称已删除；必须如实说明未找到并请用户提供更明确的关键词。'
+    )
+  }
+
+  if (ids.has('skill_read') && (options?.hasSkillsCatalog ?? true)) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 选用技能时先读正文')
+    lines.push(
+      '- 系统提示里的 skills_catalog 只有名称和描述。决定使用某个技能后，必须先调用 skill_read 读取 SKILL.md 正文，再按正文执行。'
+    )
+    lines.push('- 用户已经用 /name 把技能正文附在消息里时，不要再读一遍。')
+  }
+
+  if (ids.has('companion_ask')) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 向用户提问')
+    lines.push(
+      '- 执行操作或推进任务分支前，若需要用户做明确选择、确认、同意或提供名称，**必须**调用 companion_ask，不要把问题写在普通回复里（日常闲聊、情绪共鸣或顺着话题的自然反问除外）。'
+    )
+    lines.push(
+      '- companion_ask 必须带 question 或 questions，以及每题至少两个 options。能一次问清的相关选择，收进同一题的 options。'
+    )
+    lines.push(
+      '- 若某道题允许用户同时选择多项（例如勾选要生成或修复的哪几篇总结、勾选要应用的修改项），必须在该题传 `multiple: true`，且每个 option 直接写单个候选项名称（如「2026年第34周（8月17日—8月23日）」），不要在多选选项里混入「两份都补」「只选A」这类互斥单选措辞。'
+    )
+    lines.push(
+      '- 彼此独立但可以同时决定的问题，必须放进同一次 companion_ask 的 questions，用户会在同一张确认卡里一起回答。不要先问一件事、等用户答完再追问第二件。'
+    )
+    lines.push('- 只有后一题的选项集合必须依赖前一题答案时，才等该次工具返回后再问。')
+    lines.push(
+      '- 若 companion_ask 返回用户取消了这一次操作，不要再对刚才那件事调用 companion_ask；用自然语言询问用户接下来希望怎么做。'
+    )
+  }
+
   if (hasDiaryEdit && hasDiaryRead) {
     if (lines.length > 0) lines.push('')
     lines.push('## 编辑日记前先读取')
@@ -52,17 +134,29 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
       '- 调用 diary_edit 修改某篇日记之前，**必须**在同一轮任务中先对该日期调用 diary_read，确认现有内容与结构后再编辑。'
     )
     lines.push('## 编辑时保留已有段落（强制）')
+    if (options?.hasDiaryWritingGuidelines) {
+      lines.push(
+        '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留（append 与 overwrite 的具体要求见下方 `<diary_writing_guidelines>`）。'
+      )
+    } else {
+      lines.push(
+        '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留。'
+      )
+      lines.push(
+        '- 默认使用 **append（追加）**：新增记录、补充或追加勘误时使用，content **只传本次新增的一段**，不要传整篇日记。'
+      )
+      lines.push(
+        '- **overwrite（整篇覆盖，慎用）**：仅在用户明确要求重写整篇日记，或必须原位修改既有某段时使用；此时须以 diary_read 读到的**全文**为底稿，仅修改目标段落后整体写回，**禁止**只传修改后的片段。'
+      )
+    }
+  }
+
+  const hasExternalMcp = availableToolIds.some((id) => id === 'mcp_call' || id.startsWith('mcp_'))
+  if (hasExternalMcp) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 外部扩展工具（MCP）调用规范')
     lines.push(
-      '- 日记往往有多条时间段落。**不得删除、省略或覆盖用户未要求修改的段落**；未改动的内容必须原样保留。'
-    )
-    lines.push(
-      '- 用户只要求改/补某一段时：用 **append** 追加勘误或补充；或在 overwrite 时把 diary_read 读到的**全文**作为底稿，仅修改目标段落后整体写回。' +
-        '**禁止**只传修改后的片段——那会删掉其他所有段落。'
-    )
-    lines.push('- 默认使用 **append（追加）**；content 只传需要新增或勘误的一段，不要传整篇日记。')
-    lines.push(
-      '- **overwrite（整篇覆盖）** 仅在用户明确要求替换/重写当天整篇日记时使用；' +
-        '此时 content 必须是合并保留后的**完整正文**（含所有要保留的段落），修改个别段落、润色、补充一律用 append。'
+      '- 需要调用外部 MCP 服务，或用户明确要求「走 MCP / 通过 MCP」执行查询或操作时，优先调用 `mcp_call`（传入目录中的 `tool` 名称与 `arguments` 参数）。'
     )
   }
 

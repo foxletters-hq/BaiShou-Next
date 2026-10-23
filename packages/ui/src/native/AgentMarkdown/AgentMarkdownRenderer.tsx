@@ -1,15 +1,17 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
+import { mobileTypography } from '../../theme/tokens'
 import {
   MarkdownRenderer,
   type MarkdownRendererProps,
   type MarkdownRendererVariant
 } from '../MarkdownRenderer/MarkdownRenderer'
+import { useAgentStreamingReveal } from './useAgentStreamingReveal'
 
 export interface AgentMarkdownRendererProps {
   content: string
-  /** 流式进行中：由 Streamdown 原生 streamingAnimation 处理渐显 */
+  /** 流式进行中：启用缓冲渐进揭示与 Gemini 风格尾部渐变 */
   isStreaming?: boolean
   variant?: MarkdownRendererVariant
   plainText?: boolean
@@ -21,7 +23,7 @@ export interface AgentMarkdownRendererProps {
 
 /**
  * 移动端 Agent Markdown。
- * 流式与历史消息统一走 Streamdown（react-native-streamdown + enriched-markdown 原生渐显）。
+ * 流式期间按平滑节奏从缓冲释放文本，并对最新浮现的尾部文字施加 Gemini 风格透明度渐变。
  */
 export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
   content,
@@ -34,6 +36,7 @@ export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
   onImagePress
 }: AgentMarkdownRendererProps) {
   const { colors } = useNativeTheme()
+  const { displayContent, streamingTailFadeChars } = useAgentStreamingReveal(content, isStreaming)
 
   if (plainText) {
     return (
@@ -43,13 +46,14 @@ export const AgentMarkdownRenderer = React.memo(function AgentMarkdownRenderer({
     )
   }
 
-  if (!content) return null
+  if (!displayContent) return null
 
   return (
     <View style={styles.root}>
       <MarkdownRenderer
-        content={content}
+        content={displayContent}
         isStreaming={isStreaming}
+        streamingTailFadeChars={streamingTailFadeChars}
         variant={variant}
         style={style}
         resolveImageUri={resolveImageUri}
@@ -66,7 +70,7 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   plainText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 22
   }
 })

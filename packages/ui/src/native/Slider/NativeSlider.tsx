@@ -1,22 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   StyleSheet,
-  Platform,
   PanResponder,
-  InteractionManager,
+  Platform,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle
 } from 'react-native'
-import CommunitySlider from '@react-native-community/slider'
 import { useNativeTheme } from '../theme'
 import {
   NATIVE_SLIDER_HEIGHT,
-  getAndroidSliderIntegerScale,
+  NATIVE_SLIDER_THUMB_SIZE,
+  NATIVE_SLIDER_TRACK_HEIGHT,
+  SLIDER_TRACK_HORIZONTAL_PADDING,
+  nativeValueFromPageX,
   snapSliderValue,
-  toNativeSliderProps,
   type NativeSliderThumbOptions
 } from './native-slider.utils'
 
@@ -38,10 +38,6 @@ export type NativeSliderProps = {
   disabled?: boolean
   style?: StyleProp<ViewStyle>
 }
-
-const THUMB_SIZE = 20
-const ANDROID_TRACK_HORIZONTAL_PADDING = 10
-const ANDROID_CUSTOM_TRACK_HEIGHT = 6
 
 function SliderTrack({
   progress,
@@ -71,16 +67,18 @@ function SliderTrack({
           ) : null}
         </View>
       ) : null}
-      <View
-        style={[
-          trackStyles.thumb,
-          {
-            left: `${clamped * 100}%`,
-            marginLeft: -THUMB_SIZE / 2,
-            backgroundColor: thumbColor
-          }
-        ]}
-      />
+      <View style={trackStyles.thumbTrack}>
+        <View
+          style={[
+            trackStyles.thumb,
+            {
+              left: `${clamped * 100}%`,
+              marginLeft: -NATIVE_SLIDER_THUMB_SIZE / 2,
+              backgroundColor: thumbColor
+            }
+          ]}
+        />
+      </View>
     </View>
   )
 }
@@ -89,6 +87,17 @@ function nativeProgress(value: number, min: number, max: number): number {
   const range = max - min
   if (range <= 0) return 0
   return (value - min) / range
+}
+
+type SliderGestureConfig = {
+  disabled?: boolean
+  minValue: number
+  maxValue: number
+  step: number
+  onChange?: (value: number) => void
+  onChangeEnd?: (value: number) => void
+  trackWidth: number
+  trackPageX: number
 }
 
 export const NativeSlider: React.FC<NativeSliderProps> = ({
@@ -110,151 +119,104 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
 }) => {
   const { colors } = useNativeTheme()
   const isSlidingRef = useRef(false)
-
-  const platformScale = Platform.OS === 'android' ? getAndroidSliderIntegerScale(step) : 1
-  const useCustomAndroidTrack = Platform.OS === 'android' && platformScale > 1
-  const [androidReady, setAndroidReady] = useState(!useCustomAndroidTrack)
-
-  useEffect(() => {
-    if (!useCustomAndroidTrack) {
-      setAndroidReady(true)
-      return
-    }
-    setAndroidReady(false)
-  }, [useCustomAndroidTrack])
-
-  useEffect(() => {
-    if (useCustomAndroidTrack) return
-    if (Platform.OS !== 'android') return
-    const task = InteractionManager.runAfterInteractions(() => setAndroidReady(true))
-    return () => task.cancel()
-  }, [useCustomAndroidTrack])
-
-  const nativeProps = useMemo(
-    () => toNativeSliderProps(value, minValue, maxValue, step, platformScale),
-    [value, minValue, maxValue, step, platformScale]
+  const [displayValue, setDisplayValue] = useState(() =>
+    snapSliderValue(value, minValue, maxValue, step)
   )
+  const displayRef = useRef(displayValue)
 
-  const [nativeValue, setNativeValue] = useState(nativeProps.value)
-  const nativeValueRef = useRef(nativeProps.value)
-  const [androidSliderWidth, setAndroidSliderWidth] = useState(0)
+  const configRef = useRef<SliderGestureConfig>({
+    disabled,
+    minValue,
+    maxValue,
+    step,
+    onChange,
+    onChangeEnd,
+    trackWidth: 0,
+    trackPageX: 0
+  })
+  configRef.current = {
+    ...configRef.current,
+    disabled,
+    minValue,
+    maxValue,
+    step,
+    onChange,
+    onChangeEnd
+  }
 
   useEffect(() => {
     if (isSlidingRef.current) return
-    setNativeValue(nativeProps.value)
-    nativeValueRef.current = nativeProps.value
-  }, [nativeProps.value])
+    const next = snapSliderValue(value, minValue, maxValue, step)
+    displayRef.current = next
+    setDisplayValue(next)
+  }, [value, minValue, maxValue, step])
 
   const minTrack = fillColor ?? minimumTrackTintColor ?? colors.primary
   const maxTrack =
     trackColor ?? maximumTrackTintColor ?? colors.bgSurfaceNormal ?? colors.borderMuted
   const thumb = thumbOptions?.thumbColor ?? thumbTintColor ?? colors.primary
 
-  const progress = nativeProgress(
-    Platform.OS === 'android' && useCustomAndroidTrack ? nativeValue : nativeProps.value,
-    nativeProps.minimumValue,
-    nativeProps.maximumValue
-  )
-
-  const emit = (raw: number, phase: 'change' | 'end') => {
-    const next = nativeProps.logicalFromNative(raw)
-    if (phase === 'change') {
-      onChange?.(next)
-      return
-    }
-    onChangeEnd?.(next)
+  const applyPageX = (pageX: number) => {
+    const cfg = configRef.current
+    const next = nativeValueFromPageX({
+      pageX,
+      trackPageX: cfg.trackPageX,
+      trackWidth: cfg.trackWidth,
+      minimumValue: cfg.minValue,
+      maximumValue: cfg.maxValue,
+      step: cfg.step
+    })
+    displayRef.current = next
+    setDisplayValue(next)
+    cfg.onChange?.(next)
   }
 
-  const handleAndroidGesture = (event: GestureResponderEvent, phase: 'change' | 'end') => {
-    const usableWidth = Math.max(1, androidSliderWidth - ANDROID_TRACK_HORIZONTAL_PADDING * 2)
-    const x = event.nativeEvent.locationX - ANDROID_TRACK_HORIZONTAL_PADDING
-    const ratio = Math.min(1, Math.max(0, x / usableWidth))
-    const raw =
-      nativeProps.minimumValue + (nativeProps.maximumValue - nativeProps.minimumValue) * ratio
-    const nextNative = snapSliderValue(
-      raw,
-      nativeProps.minimumValue,
-      nativeProps.maximumValue,
-      nativeProps.step
-    )
-    nativeValueRef.current = nextNative
-    setNativeValue(nextNative)
-    emit(nextNative, phase)
-  }
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !configRef.current.disabled,
+      onMoveShouldSetPanResponder: () => !configRef.current.disabled,
+      onStartShouldSetPanResponderCapture: () => !configRef.current.disabled,
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: (event: GestureResponderEvent) => {
+        const { pageX, locationX } = event.nativeEvent
+        // 按下时触点仍在轨道上，locationX 可信，用来记下轨道的屏幕原点
+        configRef.current.trackPageX = pageX - locationX
+        isSlidingRef.current = true
+        applyPageX(pageX)
+      },
+      onPanResponderMove: (event: GestureResponderEvent) => {
+        applyPageX(event.nativeEvent.pageX)
+      },
+      onPanResponderRelease: () => {
+        isSlidingRef.current = false
+        configRef.current.onChangeEnd?.(displayRef.current)
+      },
+      onPanResponderTerminate: () => {
+        isSlidingRef.current = false
+        configRef.current.onChangeEnd?.(displayRef.current)
+      }
+    })
+  ).current
 
-  const androidPanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => !disabled,
-        onMoveShouldSetPanResponder: () => !disabled,
-        onPanResponderGrant: (event) => {
-          isSlidingRef.current = true
-          handleAndroidGesture(event, 'change')
-        },
-        onPanResponderMove: (event) => {
-          handleAndroidGesture(event, 'change')
-        },
-        onPanResponderRelease: () => {
-          isSlidingRef.current = false
-          emit(nativeValueRef.current, 'end')
-        },
-        onPanResponderTerminate: () => {
-          isSlidingRef.current = false
-          emit(nativeValueRef.current, 'end')
-        }
-      }),
-    [disabled, androidSliderWidth, nativeProps]
-  )
-
-  const handleAndroidLayout = (event: LayoutChangeEvent) => {
-    setAndroidSliderWidth(event.nativeEvent.layout.width)
-  }
-
-  if (useCustomAndroidTrack) {
-    return (
-      <View
-        style={[styles.wrap, style]}
-        onLayout={handleAndroidLayout}
-        {...androidPanResponder.panHandlers}
-      >
-        <SliderTrack
-          progress={progress}
-          minTrack={minTrack}
-          maxTrack={maxTrack}
-          thumbColor={thumb}
-          disabled={disabled}
-        />
-      </View>
-    )
+  const handleLayout = (event: LayoutChangeEvent) => {
+    configRef.current.trackWidth = event.nativeEvent.layout.width
   }
 
   return (
-    <View style={[styles.wrap, style]}>
-      {androidReady ? (
-        <CommunitySlider
-          style={styles.slider}
-          value={nativeValue}
-          minimumValue={nativeProps.minimumValue}
-          maximumValue={nativeProps.maximumValue}
-          step={nativeProps.step}
-          disabled={disabled}
-          minimumTrackTintColor={minTrack}
-          maximumTrackTintColor={maxTrack}
-          thumbTintColor={thumb}
-          onValueChange={(raw) => {
-            isSlidingRef.current = true
-            setNativeValue(raw)
-            nativeValueRef.current = raw
-            emit(raw, 'change')
-          }}
-          onSlidingComplete={(raw) => {
-            isSlidingRef.current = false
-            setNativeValue(raw)
-            nativeValueRef.current = raw
-            emit(raw, 'end')
-          }}
-        />
-      ) : null}
+    <View
+      style={[styles.wrap, style, Platform.OS === 'web' ? webNoTouchPan : null]}
+      onLayout={handleLayout}
+      collapsable={false}
+      {...panResponder.panHandlers}
+    >
+      <SliderTrack
+        progress={nativeProgress(displayValue, minValue, maxValue)}
+        minTrack={minTrack}
+        maxTrack={maxTrack}
+        thumbColor={thumb}
+        disabled={disabled}
+      />
     </View>
   )
 }
@@ -264,38 +226,43 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     minHeight: NATIVE_SLIDER_HEIGHT
-  },
-  slider: {
-    width: '100%',
-    height: NATIVE_SLIDER_HEIGHT
   }
 })
+
+const webNoTouchPan = { touchAction: 'none' } as ViewStyle
 
 const trackStyles = StyleSheet.create({
   root: {
     width: '100%',
     height: NATIVE_SLIDER_HEIGHT,
     justifyContent: 'center',
-    paddingHorizontal: ANDROID_TRACK_HORIZONTAL_PADDING
+    paddingHorizontal: SLIDER_TRACK_HORIZONTAL_PADDING
   },
   disabled: {
     opacity: 0.5
   },
   track: {
-    height: ANDROID_CUSTOM_TRACK_HEIGHT,
-    borderRadius: ANDROID_CUSTOM_TRACK_HEIGHT / 2,
+    height: NATIVE_SLIDER_TRACK_HEIGHT,
+    borderRadius: NATIVE_SLIDER_TRACK_HEIGHT / 2,
     overflow: 'hidden'
   },
   fill: {
     height: '100%',
-    borderRadius: ANDROID_CUSTOM_TRACK_HEIGHT / 2
+    borderRadius: NATIVE_SLIDER_TRACK_HEIGHT / 2
+  },
+  thumbTrack: {
+    position: 'absolute',
+    left: SLIDER_TRACK_HORIZONTAL_PADDING,
+    right: SLIDER_TRACK_HORIZONTAL_PADDING,
+    top: 0,
+    bottom: 0
   },
   thumb: {
     position: 'absolute',
-    top: (NATIVE_SLIDER_HEIGHT - THUMB_SIZE) / 2,
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    elevation: 2
+    top: (NATIVE_SLIDER_HEIGHT - NATIVE_SLIDER_THUMB_SIZE) / 2,
+    width: NATIVE_SLIDER_THUMB_SIZE,
+    height: NATIVE_SLIDER_THUMB_SIZE,
+    borderRadius: NATIVE_SLIDER_THUMB_SIZE / 2,
+    borderWidth: StyleSheet.hairlineWidth
   }
 })

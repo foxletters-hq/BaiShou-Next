@@ -5,9 +5,13 @@ import {
   type ContextAtMessageResult,
   AIProviderRegistry,
   ToolRegistry,
+  DESKTOP_ONLY_WORKSPACE_TOOL_IDS,
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  type BaishouAgentGateConfig,
   buildDiaryWritingGuidelinesForSystemPrompt,
   formatUserCardFromProfile,
   getUserProfileFromSettings,
@@ -18,6 +22,10 @@ import {
   assistantRowToEmojiPrefs,
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
+  resolveReasoningEffortForSlot,
+  resolveDialogueModelSelection,
+  clampRagSimilarityThreshold,
+  clampRagTopK,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import {
@@ -49,6 +57,7 @@ export interface MobileContextAtMessageDeps {
   diarySearcher?: unknown
   webSearchResultFetcher?: (url: string) => Promise<string>
   fetchSearchPage?: (url: string) => Promise<string>
+  getAgentGate?: () => import('@baishou/ai').IBaishouAgentGate | undefined
 }
 
 export interface MobileContextAtMessagePayload {
@@ -123,7 +132,7 @@ export async function buildMobileStreamUserConfig(
     Boolean(embeddingProviderId) &&
     Boolean(embeddingModelId) &&
     embeddingModelId !== 'off' &&
-    providers.some((p) => p.id === embeddingProviderId)
+    providers.some((p) => p.id === embeddingProviderId && p.isEnabled !== false)
 
   const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
   const featureSettings =
@@ -132,11 +141,22 @@ export async function buildMobileStreamUserConfig(
     featureSettings.language || appSettings.language,
     i18n.language
   )
+  const agentGateStored =
+    (await settingsManager.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
+    DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+  const baishou_agent_gate_config: BaishouAgentGateConfig = {
+    ...agentGateStored,
+    exclusionList: [...(agentGateStored.exclusionList ?? [])],
+    allowlist: [...(agentGateStored.allowlist ?? [])]
+  }
 
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
+    rag_top_k: clampRagTopK(ragConfig?.ragTopK),
+    rag_similarity_threshold: clampRagSimilarityThreshold(ragConfig?.ragSimilarityThreshold),
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig.disabledToolIds,
+    disabledToolIds: [...toolManagementConfig.disabledToolIds, ...DESKTOP_ONLY_WORKSPACE_TOOL_IDS],
+    customConfigs: toolManagementConfig.customConfigs,
     recentCount:
       assistantContextWindow !== undefined
         ? assistantContextWindow < 0
@@ -159,7 +179,13 @@ export async function buildMobileStreamUserConfig(
       normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
       assistantEmojiPrefs
     ),
-    locale
+    locale,
+    baishou_agent_gate_config,
+    reasoningEffort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'dialogue'),
+    reasoningEffortDefault: resolveReasoningEffortForSlot(
+      globalModels?.reasoningEffortBySlot,
+      'dialogue'
+    )
   }
 }
 
@@ -231,30 +257,57 @@ export async function loadContextAtMessage(
   const session = await deps.sessionRepo.getSessionById(sessionId)
   const providers = (await deps.settingsManager.get<any[]>('ai_providers')) || []
   const globalModels = await deps.settingsManager.get<any>('global_models')
-  const providerId = session?.providerId || globalModels?.globalDialogueProviderId
-  const providerConfig =
-    providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
+  const resolvedDialogue = resolveDialogueModelSelection({
+    requestedProviderId: session?.providerId,
+    requestedModelId: session?.modelId,
+    globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+    globalDialogueModelId: globalModels?.globalDialogueModelId
+  })
+  const providerId = resolvedDialogue.providerId || ''
+  const providerConfig = providerId
+    ? providers.find((p) => p.id === providerId && p.isEnabled !== false)
+    : undefined
   const registry = AIProviderRegistry.getInstance()
   const provider = providerConfig ? registry.getOrUpdateProvider(providerConfig) : undefined
-  const modelId =
-    session?.modelId ||
-    globalModels?.globalDialogueModelId ||
-    providerConfig?.defaultDialogueModel ||
-    providerConfig?.models?.[0] ||
-    'deepseek-chat'
+  const modelId = resolvedDialogue.modelId || ''
+
+  const embeddingProviderId = globalModels?.globalEmbeddingProviderId
+  const embeddingModelId = globalModels?.globalEmbeddingModelId
+  const embConfig =
+    embeddingProviderId && embeddingModelId && embeddingModelId !== 'off'
+      ? providers.find((p) => p.id === embeddingProviderId && p.isEnabled !== false)
+      : undefined
+  const embeddingProvider = embConfig ? registry.getOrUpdateProvider(embConfig) : undefined
+  const systemModels =
+    embeddingProvider && embeddingModelId ? { embeddingProvider, embeddingModelId } : undefined
+
+  const { createMobileSkillsReader, createMobileSkillsWriter, mobileListSkillsCatalog } =
+    await import('./mobile-agent-skills.service')
+  const skillsCatalog = await mobileListSkillsCatalog().catch(() => undefined)
 
   const systemPrompt = provider
     ? await buildSystemPromptForSession({
         sessionId,
         sessionRepo: deps.sessionRepo,
-        assistantRepo: { findById: (id) => deps.assistantManager.findById(id) },
+        assistantRepo: {
+          findById: async (id) => (await deps.assistantManager.findById(id)) ?? null
+        },
         userConfig,
         provider,
         modelId,
+        systemModels: systemModels as any,
         toolRegistry: deps.toolRegistry,
         diarySearcher: deps.diarySearcher,
         webSearchResultFetcher: deps.webSearchResultFetcher,
-        fetchSearchPage: deps.fetchSearchPage
+        fetchSearchPage: deps.fetchSearchPage,
+        skillsWriter: createMobileSkillsWriter(),
+        skillsReader: createMobileSkillsReader(),
+        skillsCatalog,
+        extraVercelToolsFactory: async (toolContext) => {
+          const { mobileExtraVercelToolsFactory } = await import('./mobile-mcp-client-runtime')
+          return mobileExtraVercelToolsFactory(toolContext)
+        },
+        agentGate: deps.getAgentGate?.()
       })
     : ''
 

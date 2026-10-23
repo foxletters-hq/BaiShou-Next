@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { resolveReasoningEffortForSlot } from '@baishou/shared'
 import {
   getConfigKeysForSegment,
+  getDefaultGlobalModels,
+  normalizeSettingsConfigKey,
   segmentNeedsConfigLoading,
   segmentHasConfigFailure,
   SETTINGS_SEGMENT_CONFIG_KEYS
@@ -22,5 +25,41 @@ describe('settings-config.loader', () => {
     expect(segmentHasConfigFailure('mcp', ['mcpServerConfig'])).toBe(true)
     expect(segmentHasConfigFailure('mcp', ['providers'])).toBe(false)
     expect(segmentHasConfigFailure('general', ['hotkeyConfig'])).toBe(false)
+  })
+
+  it('should keep an independently configured graph model when loading global models', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      globalDialogueProviderId: 'gemini',
+      globalDialogueModelId: 'gemini-pro',
+      globalGraphProviderId: 'deepseek',
+      globalGraphModelId: 'deepseek-chat'
+    })
+    expect(patch.globalModels).toMatchObject({
+      globalDialogueModelId: 'gemini-pro',
+      globalGraphProviderId: 'deepseek',
+      globalGraphModelId: 'deepseek-chat'
+    })
+  })
+
+  it('should keep per-use-case reasoning effort and default missing slots to auto', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      reasoningEffortBySlot: { dialogue: 'high', graph: 'nope' }
+    })
+    expect(patch.globalModels?.reasoningEffortBySlot).toEqual({ dialogue: 'high' })
+    expect(resolveReasoningEffortForSlot(patch.globalModels?.reasoningEffortBySlot, 'graph')).toBe(
+      'auto'
+    )
+  })
+
+  it('should not copy a leftover global default into model-use slots', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      reasoningEffortDefault: 'max'
+    } as ReturnType<typeof getDefaultGlobalModels> & { reasoningEffortDefault: string })
+    expect(
+      resolveReasoningEffortForSlot(patch.globalModels?.reasoningEffortBySlot, 'dialogue')
+    ).toBe('auto')
   })
 })

@@ -1,6 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": ["ANDROID_HOME", "JAVA_HOME"],
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "eslint.baishou.base.mjs",
+    "eslint.cache-coordinator.mjs",
+    "scripts/lint-warning-baseline.json",
+    "scripts/run-eslint-with-budget.mjs",
+    "scripts/lint-targets.mjs",
+    "scripts/eslint-plugin-*.mjs"
+  ],
   "tasks": {
     "dev": {
       "dependsOn": ["^build"],
@@ -12,12 +21,16 @@
       "outputs": ["dist/**", ".next/**", "out/**", "build/**"]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^typecheck", "^build"],
+      "outputs": ["*.tsbuildinfo"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^test", "^build"]
     },
-    "lint": {},
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": [".eslintcache"]
+    },
     "clean": {
       "cache": false
     },

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { iconSizes, mobileControlTokens, mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export const settingsSelectorStyles = StyleSheet.create({
   trigger: {
@@ -6,18 +7,19 @@ export const settingsSelectorStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8
+    borderRadius: sharedTokens.radius.md,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: mobileControlTokens.inputPaddingVertical,
+    minHeight: mobileControlTokens.height,
+    gap: sharedTokens.spacing.sm
   },
   triggerValue: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   chevron: {
-    fontSize: 20,
+    fontSize: iconSizes.md,
     fontWeight: '300'
   },
   modalOverlay: {
@@ -29,19 +31,28 @@ export const settingsSelectorStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject
   },
   modalPanel: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     overflow: 'hidden',
-    maxHeight: '70%'
+    maxHeight: '75%',
+    padding: sharedTokens.spacing.md,
+    gap: sharedTokens.spacing.sm
+  },
+  modalOptionsList: {
+    gap: sharedTokens.spacing.sm
   },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    justifyContent: 'space-between',
+    gap: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md
   },
   modalCancel: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 14
+    paddingVertical: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 })

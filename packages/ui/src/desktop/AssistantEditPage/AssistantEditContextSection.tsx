@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Switch } from '../Switch/Switch'
 import { readRangeInputValue } from './assistant-edit.utils'
 import styles from './AssistantEditPage.module.css'
+import { sharedTokens } from '../../theme/tokens'
 
 interface AssistantEditContextSectionProps {
   contextWindow: number
@@ -29,7 +30,10 @@ export const AssistantEditContextSection: React.FC<AssistantEditContextSectionPr
         {!isUnlimitedContext && (
           <span className={styles.valueText}>{Math.round(contextWindow)}</span>
         )}
-        <span className={styles.descText} style={{ marginLeft: 4, marginRight: 8 }}>
+        <span
+          className={styles.descText}
+          style={{ marginLeft: sharedTokens.spacing.xs, marginRight: sharedTokens.spacing.sm }}
+        >
           {isUnlimitedContext
             ? t('agent.assistant.context_unlimited', '无限')
             : t('agent.assistant.context_limited', '有限')}

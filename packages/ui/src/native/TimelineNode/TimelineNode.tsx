@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../../native/theme'
+import { sharedTokens } from '../../theme/tokens'
 
 interface TimelineNodeProps {
   children: React.ReactNode
@@ -8,7 +9,11 @@ interface TimelineNodeProps {
   isFirst?: boolean
 }
 
-export const TimelineNode: React.FC<TimelineNodeProps> = ({ children, isLast, isFirst }) => {
+export const TimelineNode: React.FC<TimelineNodeProps> = ({
+  children,
+  isLast,
+  isFirst: _isFirst
+}) => {
   const { colors } = useNativeTheme()
 
   return (
@@ -20,8 +25,7 @@ export const TimelineNode: React.FC<TimelineNodeProps> = ({ children, isLast, is
             styles.indicator,
             {
               backgroundColor: colors.primary,
-              borderColor: colors.textOnPrimary,
-              shadowColor: colors.primary
+              borderColor: colors.textOnPrimary
             }
           ]}
         />
@@ -52,12 +56,8 @@ const styles = StyleSheet.create({
     left: 15, // 20 - 5
     width: 10,
     height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3
+    borderRadius: sharedTokens.radius.xs,
+    borderWidth: 2
   },
   content: {
     flex: 1

@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 import { useAssistantPickerSheet } from './useAssistantPickerSheet'
@@ -12,10 +13,26 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = (props)
   const { isOpen, currentAssistantId, onSelect, onClose, onCreateNew } = props
   const vm = useAssistantPickerSheet(props)
 
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
+  const handleOverlayPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return
+    e.preventDefault()
+    e.stopPropagation()
+    onClose()
+  }
+
   return createPortal(
-    <div className={styles.overlay}>
+    <div className={withAppContentOverlay(styles.overlay)} onPointerDown={handleOverlayPointerDown}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <AssistantPickerSidebar
           vm={vm}

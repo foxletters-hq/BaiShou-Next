@@ -18,9 +18,10 @@ export function TTSProviderSettingsFormTestSection({ vm }: { vm: TTSProviderSett
           className={styles.testInput}
         />
         <Button
-          variant="elevated"
+          variant="outlined"
+          size="small"
           onClick={handleTest}
-          disabled={isTesting}
+          isLoading={isTesting}
           className={styles.testBtn}
         >
           {isTesting

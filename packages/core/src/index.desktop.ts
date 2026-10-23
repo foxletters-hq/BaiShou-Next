@@ -13,10 +13,22 @@ export * from './import/legacy-import.service'
 export * from './sync/git-sync.interface'
 export * from './sync/git-sync.service'
 export * from './sync/storage-write-probe.cleanup'
+export {
+  parseDiffHunks,
+  buildNewFileDiffHunks,
+  mapWorkingStatus,
+  isTextDiffablePath,
+  mapStatusToType,
+  pathsEqual,
+  getAuthenticatedUrl,
+  parseGitHistoryLog,
+  parseRevListCount,
+  unquoteGitPath
+} from './sync/git-sync.helpers'
 export * from './sync/git-binary.registry'
+export * from './sync/run-bundled-git'
 export * from './sync/incremental-sync.interface'
 export * from './sync/version-manager.interface'
-export * from './sync/version-manager.service'
 export * from './sync/sync.errors'
 export * from './sync/sync-orchestrator.interface'
 export * from './sync/sync-orchestrator'

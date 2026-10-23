@@ -1,0 +1,93 @@
+.diff {
+  margin: 0;
+  padding: var(--spacing-sm) 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  border-top: none;
+  background: var(--bg-code);
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-lg);
+  line-height: 1.5;
+  overflow: auto;
+  max-height: 320px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 3px 40px 40px 14px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 1.45em;
+}
+
+.row > .hunkText {
+  grid-column: 1 / -1;
+  padding: var(--spacing-2xs) var(--spacing-sm-plus);
+  white-space: pre;
+}
+
+.gutterBar {
+  width: 3px;
+  background: transparent;
+}
+
+.add .gutterBar {
+  background: rgba(46, 160, 67, 0.85);
+}
+
+.del .gutterBar {
+  background: rgba(248, 81, 73, 0.85);
+}
+
+.lineNum {
+  padding: 0 var(--spacing-xs-plus);
+  text-align: right;
+  color: var(--text-tertiary, var(--text-secondary));
+  user-select: none;
+  opacity: 0.75;
+}
+
+.marker {
+  text-align: center;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.lineText {
+  padding-right: var(--spacing-sm-plus);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.add {
+  background: rgba(46, 160, 67, 0.12);
+  color: var(--text-primary);
+}
+
+.add .marker {
+  color: rgb(46, 160, 67);
+}
+
+.del {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--text-primary);
+}
+
+.del .marker {
+  color: rgb(248, 81, 73);
+}
+
+.hunk {
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.context {
+  color: var(--text-primary);
+}
+
+.empty {
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  display: block;
+}

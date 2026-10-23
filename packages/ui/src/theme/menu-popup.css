@@ -1,0 +1,14 @@
+/**
+ * 锚定菜单 / 下拉弹层外壳（桌面全局）
+ * Token：--menu-popup-* ；视觉 SSOT：ContextMenu / 工作台选择工作空间菜单
+ * 居中 Modal / Dialog 勿用此类。
+ */
+.baishou-menu-popup {
+  background: var(--menu-popup-bg);
+  border: 1px solid var(--menu-popup-border);
+  border-radius: var(--menu-popup-radius);
+  box-shadow: var(--menu-popup-shadow);
+  padding: var(--menu-popup-padding);
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}

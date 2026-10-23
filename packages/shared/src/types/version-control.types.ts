@@ -73,6 +73,26 @@ export interface GitSyncConfig {
   remote?: GitRemoteConfig
 }
 
+/** Git 远程同步状态（供版本控制页展示） */
+export interface GitRemoteStatus {
+  /** 是否已填写远程地址 */
+  configured: boolean
+  /** 最近一次 fetch 是否成功；未 fetch 时为 false */
+  connected: boolean
+  /** 远程尚不存在当前分支（从未成功推送） */
+  unpublished: boolean
+  /** 当前跟踪的远程分支名 */
+  branch: string
+  /** 远程地址（不含凭据） */
+  remoteUrl?: string
+  /** 本地领先远程的提交数 */
+  ahead: number
+  /** 本地落后远程的提交数 */
+  behind: number
+  /** fetch 失败时的错误信息 */
+  fetchError?: string
+}
+
 // ── S3 增量同步类型 ──────────────────────────────────────────
 
 /** S3 增量同步配置 */
@@ -174,6 +194,8 @@ export interface SyncManifest {
   files: Record<string, ManifestEntry>
   /** 已移除记录（key 为路径；旧客户端无此字段时按空对象处理） */
   removed?: Record<string, RemovedManifestEntry>
+  /** 写入端支持的新能力；旧客户端不写该字段 */
+  capabilities?: string[]
 }
 
 /** 同步操作类型 */
@@ -334,6 +356,14 @@ export interface GitStatus {
   conflicted: string[]
   /** 是否有任何变更 */
   hasChanges: boolean
+}
+
+/** Git stash 条目 */
+export interface GitStashEntry {
+  index: number
+  message: string
+  date: Date
+  branch: string
 }
 
 /** 整库回滚前的上下文（用于确认提示） */

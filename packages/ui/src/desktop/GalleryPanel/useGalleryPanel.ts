@@ -1,6 +1,9 @@
-import { useState, useMemo, useEffect, useRef, type UIEvent } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback, type UIEvent } from 'react'
 import type { SummaryItem } from './gallery-panel.types'
 import type { SummaryTab } from './gallery-panel.utils'
+
+const PAGE_STEP = 10
+const SCROLL_BOTTOM_THRESHOLD = 20
 
 interface UseGalleryPanelOptions {
   summaries: SummaryItem[]
@@ -12,10 +15,11 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
   const [activeTab, setActiveTab] = useState<SummaryTab>('weekly')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedYear, setSelectedYear] = useState<string>('all')
-  const [pageSize, setPageSize] = useState<number>(10)
+  const [pageSize, setPageSize] = useState<number>(PAGE_STEP)
   const [isYearPickerOpen, setIsYearPickerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const activeYearRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -83,27 +87,56 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
     setEditContent('')
   }, [selectedSummary?.id, activeTab])
 
+  const totalCount = filteredAndSortedSummaries.length
+  const hasMoreWeekly = activeTab === 'weekly' && pageSize < totalCount
+
+  const loadMore = useCallback(() => {
+    setPageSize((prev) => (prev < totalCount ? prev + PAGE_STEP : prev))
+  }, [totalCount])
+
+  /** 大屏首屏内容撑不满时不会产生 scroll，需主动补页直到可滚动或没有更多 */
+  const fillViewportIfNeeded = useCallback(() => {
+    if (!hasMoreWeekly) return
+    const el = listRef.current
+    if (!el) return
+    if (el.scrollHeight <= el.clientHeight + SCROLL_BOTTOM_THRESHOLD) {
+      loadMore()
+    }
+  }, [hasMoreWeekly, loadMore])
+
+  useEffect(() => {
+    fillViewportIfNeeded()
+  }, [fillViewportIfNeeded, displayedSummaries])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      fillViewportIfNeeded()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fillViewportIfNeeded])
+
   const handleTabChange = (tab: SummaryTab) => {
     setActiveTab(tab)
     setSelectedId(null)
-    setPageSize(10)
+    setPageSize(PAGE_STEP)
     setIsYearPickerOpen(false)
   }
 
   const handleYearChange = (year: string) => {
     setSelectedYear(year)
     setSelectedId(null)
-    setPageSize(10)
+    setPageSize(PAGE_STEP)
     setIsYearPickerOpen(false)
   }
 
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     if (activeTab !== 'weekly') return
     const target = e.currentTarget
-    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 20) {
-      if (pageSize < filteredAndSortedSummaries.length) {
-        setPageSize((prev) => prev + 10)
-      }
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + SCROLL_BOTTOM_THRESHOLD) {
+      loadMore()
     }
   }
 
@@ -138,6 +171,7 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
     setIsYearPickerOpen,
     mounted,
     activeYearRef,
+    listRef,
     isEditing,
     setIsEditing,
     editContent,

@@ -10,7 +10,9 @@ import type {
   IArchiveService,
   SettingsManagerService,
   AssistantManagerService,
-  SessionManagerService
+  SessionManagerService,
+  RawDataSourceManager,
+  VaultService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import {
@@ -62,9 +64,16 @@ export class MobileIncrementalSyncService {
     deviceId: string = `mobile-${Date.now()}`,
     onAfterSyncComplete?: () => void,
     private readonly assistantManager?: AssistantManagerService,
-    private readonly sessionManager?: SessionManagerService
+    private readonly sessionManager?: SessionManagerService,
+    getRawDataSourceManager?: () => RawDataSourceManager | null,
+    private readonly vaultService?: VaultService
   ) {
-    this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
+    this.engine = new MobileIncrementalEngine(
+      pathService,
+      fileSystem,
+      deviceId,
+      getRawDataSourceManager
+    )
     this.onAfterSyncComplete = onAfterSyncComplete
   }
 
@@ -98,6 +107,7 @@ export class MobileIncrementalSyncService {
       settingsManager: this.settingsManager,
       pathService: this.pathService,
       fileSystem: this.fileSystem,
+      vaultService: this.vaultService,
       bootstrapper: this.bootstrapper,
       sessionManager: this.sessionManager,
       reportPostSync: (statusText, current, total) =>
@@ -118,11 +128,8 @@ export class MobileIncrementalSyncService {
   private async resolveActiveUserProfileSyncRelPath(): Promise<string | null> {
     try {
       const syncRoot = (await this.pathService.getRootDirectory()).replace(/\\/g, '/')
-      const settingsDir = (await this.pathService.getActiveVaultSettingsDirectory()).replace(
-        /\\/g,
-        '/'
-      )
-      const full = `${settingsDir.replace(/\/$/, '')}/settings/user_profile.json`
+      const settingsDir = (await this.pathService.getGlobalSettingsDirectory()).replace(/\\/g, '/')
+      const full = `${settingsDir.replace(/\/$/, '')}/user_profile.json`
       const root = syncRoot.replace(/\/$/, '')
       if (full === root || !full.startsWith(`${root}/`)) return null
       return full.slice(root.length + 1)

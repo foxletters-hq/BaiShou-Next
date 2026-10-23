@@ -9,16 +9,24 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import styles from './NetworkOfflineBanner.module.css'
 
+export type NetworkConnectionType = 'wifi' | 'cellular' | 'other' | 'unknown'
+
 export interface NetworkStatus {
   isConnected: boolean
   isInternetReachable: boolean | null
   isOnline: boolean
+  /** 桌面无连接类型感知，恒为 other */
+  connectionType: NetworkConnectionType
+  /** 桌面恒为 false */
+  isMetered: boolean
 }
 
 const DEFAULT_STATUS: NetworkStatus = {
   isConnected: true,
   isInternetReachable: true,
-  isOnline: true
+  isOnline: true,
+  connectionType: 'other',
+  isMetered: false
 }
 
 const NetworkContext = createContext<NetworkStatus>(DEFAULT_STATUS)
@@ -28,7 +36,9 @@ function resolveNetworkStatus(): NetworkStatus {
   return {
     isConnected,
     isInternetReachable: isConnected ? null : false,
-    isOnline: isConnected
+    isOnline: isConnected,
+    connectionType: 'other',
+    isMetered: false
   }
 }
 
@@ -37,7 +47,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const applyState = () => {
-      setStatus(resolveNetworkStatus())
+      const next = resolveNetworkStatus()
+      setStatus((prev) =>
+        prev.isConnected === next.isConnected &&
+        prev.isInternetReachable === next.isInternetReachable &&
+        prev.isOnline === next.isOnline &&
+        prev.connectionType === next.connectionType &&
+        prev.isMetered === next.isMetered
+          ? prev
+          : next
+      )
     }
 
     applyState()
@@ -59,7 +78,7 @@ export function useNetworkStatus(): NetworkStatus {
   return useContext(NetworkContext)
 }
 
-/** 预留：后续在布局中挂载即可展示离线提示 */
+/** 离线时顶部提示横幅 */
 export function NetworkOfflineBanner() {
   const { isOnline } = useNetworkStatus()
   const { t } = useTranslation()

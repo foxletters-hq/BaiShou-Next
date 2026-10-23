@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import {
+  createAgentStreamAbortError,
   MissingSummary,
   SummaryType,
   logger,
@@ -16,12 +17,16 @@ import {
   buildQuarterlyPrompt,
   buildYearlyPrompt
 } from './summary-prompt-templates'
+import { isSummaryUserAbortError } from './summary-ai-stream'
 
 export interface SummaryAiGenerateOptions {
   system?: string
   providerId?: string
-  /** 用户取消 / 队列停止时中止 generateText */
+  /** 用户取消 / 队列停止时中止生成请求 */
   abortSignal?: AbortSignal
+  reasoningEffort?: string
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (reasoning: string) => void
 }
 
 export interface SummaryAiClient {
@@ -166,7 +171,7 @@ export class SummaryGeneratorService {
         promptLocale
       })
       if (options.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       logger.info(
@@ -179,7 +184,7 @@ export class SummaryGeneratorService {
       })
 
       if (options.abortSignal?.aborted) {
-        throw new DOMException('The operation was aborted', 'AbortError')
+        throw createAgentStreamAbortError()
       }
 
       logger.info(
@@ -187,8 +192,8 @@ export class SummaryGeneratorService {
       )
       yield generatedResult
     } catch (e: any) {
-      if (e?.name === 'AbortError' || options.abortSignal?.aborted) {
-        throw e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
+      if (isSummaryUserAbortError(e, options.abortSignal)) {
+        throw e instanceof Error ? e : createAgentStreamAbortError()
       }
       logger.error(
         `[SummaryGeneratorService] Failed to generate summary for target ${target.type}:`,

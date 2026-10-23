@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { SummarySyncService } from '../summary-sync.service'
 import { SummaryFileService } from '../../vault/summary-file.service'
 import { SummaryRepository } from '@baishou/database'
 import { SummaryType } from '@baishou/shared'
 import { MissingSummaryDetector } from '../missing-summary-detector.service'
 import { SummaryGeneratorService } from '../summary-generator.service'
+
+const VAULT_MAIN = deriveLegacyVaultId('MainVault')
+const VAULT_EMPTY = deriveLegacyVaultId('EmptyVault')
 
 describe('SummarySyncService (Ghost indexing)', () => {
   let mockFileService: import('vitest').Mocked<SummaryFileService>
@@ -16,7 +20,10 @@ describe('SummarySyncService (Ghost indexing)', () => {
   beforeEach(() => {
     mockFileService = {
       readSummary: vi.fn(),
-      listAllSummaries: vi.fn()
+      readSummaryAtAbsolutePath: vi.fn(),
+      listAllSummaries: vi.fn(),
+      listSummariesAcrossVaults: vi.fn(),
+      getSummaryFileMtimeMs: vi.fn()
     } as any
 
     mockRepo = {
@@ -36,7 +43,13 @@ describe('SummarySyncService (Ghost indexing)', () => {
       generate: vi.fn()
     } as any
 
-    service = new SummarySyncService(mockDetector, mockGenerator, mockRepo, mockFileService)
+    service = new SummarySyncService(
+      mockDetector,
+      mockGenerator,
+      mockRepo,
+      mockFileService,
+      () => VAULT_MAIN
+    )
   })
 
   const type = SummaryType.monthly
@@ -44,7 +57,6 @@ describe('SummarySyncService (Ghost indexing)', () => {
   const end = new Date()
 
   it('syncSummaryFile() should delete if file goes missing (Ghost cleanup)', async () => {
-    // DB 有，文件无
     mockFileService.readSummary.mockResolvedValue(null)
     mockRepo.getByDateRange.mockResolvedValue({
       id: 88,
@@ -59,12 +71,12 @@ describe('SummarySyncService (Ghost indexing)', () => {
   })
 
   it('syncSummaryFile() should delete ghost when endDate only mismatches (UI midnight vs 23:59:59)', async () => {
-    const weekStart = new Date(2026, 2, 23) // local midnight Monday
-    const weekEndUi = new Date(2026, 2, 29) // UI: Sunday midnight
-    const weekEndDb = new Date(2026, 2, 29, 23, 59, 59) // file/DB: Sunday end of day
+    const weekStart = new Date(2026, 2, 23)
+    const weekEndUi = new Date(2026, 2, 29)
+    const weekEndDb = new Date(2026, 2, 29, 23, 59, 59)
 
     mockFileService.readSummary.mockResolvedValue(null)
-    mockRepo.getByDateRange.mockResolvedValue(null) // exact endDate miss
+    mockRepo.getByDateRange.mockResolvedValue(null)
     mockRepo.findAllByTypeAndStartDay.mockResolvedValue([
       {
         id: 13,
@@ -77,7 +89,11 @@ describe('SummarySyncService (Ghost indexing)', () => {
 
     await service.syncSummaryFile(SummaryType.weekly, weekStart, weekEndUi)
 
-    expect(mockRepo.findAllByTypeAndStartDay).toHaveBeenCalledWith(SummaryType.weekly, weekStart)
+    expect(mockRepo.findAllByTypeAndStartDay).toHaveBeenCalledWith(
+      SummaryType.weekly,
+      weekStart,
+      VAULT_MAIN
+    )
     expect(mockRepo.delete).toHaveBeenCalledWith(13)
     expect(mockRepo.upsert).not.toHaveBeenCalled()
   })
@@ -86,14 +102,12 @@ describe('SummarySyncService (Ghost indexing)', () => {
     mockFileService.readSummary.mockResolvedValue('Fresh New File')
     mockRepo.findAllByTypeAndStartDay.mockResolvedValue([])
 
-    // 情景 1：DB 为空
     mockRepo.getByDateRange.mockResolvedValueOnce(null)
     await service.syncSummaryFile(type, start, end)
     expect(mockRepo.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ content: 'Fresh New File' })
+      expect.objectContaining({ content: 'Fresh New File', vaultId: VAULT_MAIN })
     )
 
-    // 情景 2：DB 不为空但内容过期
     mockRepo.getByDateRange.mockResolvedValueOnce({
       id: 1,
       content: 'Stale DB',
@@ -113,24 +127,22 @@ describe('SummarySyncService (Ghost indexing)', () => {
         fullPath: '/a.md'
       }
     ])
+    mockFileService.readSummaryAtAbsolutePath.mockResolvedValue('content_xyz')
 
-    // DB 中有个多余的 (比如外部删除了它的文件)
     mockRepo.getSummaries.mockResolvedValue([
       { id: 99, type: SummaryType.monthly, startDate: t2, content: '' } as any
     ])
 
-    // 用于 syncSummaryFile 能够 mock 正确的流程
-    mockFileService.readSummary.mockResolvedValue('content_xyz')
     mockRepo.getByDateRange.mockResolvedValue(null)
 
-    await service.fullScanArchives({ activeVaultName: 'MainVault' })
+    await service.fullScanArchives({
+      activeVaultName: 'MainVault',
+      activeVaultId: VAULT_MAIN
+    })
 
-    // 必定触发删除不存在的文件
     expect(mockRepo.delete).toHaveBeenCalledWith(99)
-
-    // 触发新文件的挂载
     expect(mockRepo.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ content: 'content_xyz' })
+      expect.objectContaining({ content: 'content_xyz', vaultId: VAULT_MAIN })
     )
   })
 
@@ -152,9 +164,71 @@ describe('SummarySyncService (Ghost indexing)', () => {
       { id: 42, type: SummaryType.weekly, startDate: start, content: 'old-vault' } as any
     ])
 
-    await service.fullScanArchives({ activeVaultName: 'EmptyVault' })
+    await service.fullScanArchives({
+      activeVaultName: 'EmptyVault',
+      activeVaultId: VAULT_EMPTY
+    })
 
+    expect(mockRepo.getSummaries).toHaveBeenCalledWith({ vaultId: VAULT_EMPTY })
     expect(mockRepo.delete).toHaveBeenCalledWith(42)
     expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
+
+  it('syncSummaryFile() skips read when skipUnchangedByMtime and disk mtime is not newer', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockRepo.getByDateRange.mockResolvedValue({
+      id: 7,
+      content: 'cached',
+      endDate: end,
+      updatedAt: dbUpdatedAt,
+      generatedAt: dbUpdatedAt
+    } as any)
+    mockFileService.getSummaryFileMtimeMs.mockResolvedValue(dbUpdatedAt.getTime())
+
+    await service.syncSummaryFile(type, start, end, {
+      skipUnchangedByMtime: true,
+      diskPath: '/Summaries/Monthly/2026-07-01.md'
+    })
+
+    expect(mockFileService.getSummaryFileMtimeMs).toHaveBeenCalledWith(
+      type,
+      start,
+      '/Summaries/Monthly/2026-07-01.md'
+    )
+    expect(mockFileService.readSummary).not.toHaveBeenCalled()
+    expect(mockFileService.readSummaryAtAbsolutePath).not.toHaveBeenCalled()
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+    expect(mockRepo.update).not.toHaveBeenCalled()
+  })
+
+  it('fullScanArchives({ skipUnchangedByMtime }) still reads when disk mtime is newer', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: SummaryType.monthly,
+        startDate: start,
+        endDate: end,
+        fullPath: '/a.md'
+      }
+    ])
+    mockRepo.getByDateRange.mockResolvedValue({
+      id: 1,
+      content: 'Stale DB',
+      endDate: end,
+      updatedAt: dbUpdatedAt,
+      generatedAt: dbUpdatedAt
+    } as any)
+    mockFileService.getSummaryFileMtimeMs.mockResolvedValue(dbUpdatedAt.getTime() + 10_000)
+    mockFileService.readSummaryAtAbsolutePath.mockResolvedValue('Fresh New File')
+    mockRepo.getSummaries.mockResolvedValue([])
+
+    await service.fullScanArchives({
+      activeVaultName: 'MainVault',
+      activeVaultId: VAULT_MAIN,
+      skipUnchangedByMtime: true
+    })
+
+    expect(mockFileService.readSummaryAtAbsolutePath).toHaveBeenCalled()
+    expect(mockRepo.update).toHaveBeenCalledWith(1, { content: 'Fresh New File' })
   })
 })

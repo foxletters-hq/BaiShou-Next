@@ -1,9 +1,10 @@
 export interface InsertSessionInput {
   id: string
   title?: string
-  vaultName: string
+  vaultId: string
   assistantId?: string
   systemPrompt?: string
+  mountedNotebookIds?: string[]
   providerId: string
   modelId: string
 }
@@ -27,6 +28,6 @@ export interface InsertPartInput {
   id: string
   messageId: string
   sessionId: string
-  type: 'text' | 'tool' | 'stepFinish' | 'compaction'
+  type: string
   data: any
 }

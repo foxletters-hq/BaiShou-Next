@@ -1,9 +1,10 @@
-import { generateText, type EmbeddingModel, type LanguageModel } from 'ai'
+import type { EmbeddingModel, LanguageModel } from 'ai'
 import { type AiProviderModel, isChatModelForConnectionTest, ProviderType } from '@baishou/shared'
 import { IAIProvider, type LanguageModelRequestContext } from '../provider.interface'
 import { assertAsciiApiKey } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from '../provider-api-error.util'
+import { probeProviderConnection, wrapConnectionTestError } from '../provider-connection-test.util'
 import {
   OPENCODE_GO_CONNECTION_TEST_SESSION_ID,
   OPENCODE_GO_DEFAULT_DIALOGUE_MODEL
@@ -68,21 +69,17 @@ export class OpenCodeGoAdaptedProvider implements IAIProvider {
     const modelToTest = await this.resolveTestModelId(testModelId)
 
     try {
-      const abortController = new AbortController()
-      const timeoutId = setTimeout(() => abortController.abort('Connection timeout'), 15000)
-
-      await generateText({
+      await probeProviderConnection({
         model: this.getLanguageModel(modelToTest, {
           sessionId: OPENCODE_GO_CONNECTION_TEST_SESSION_ID
         }),
-        prompt: 'test',
-        maxOutputTokens: 1,
-        abortSignal: abortController.signal
+        modelId: modelToTest,
+        providerType: this.config.type,
+        baseUrl: this.config.baseUrl,
+        // 与真实聊天保持一致走流式；移动端 expo/fetch 读取非流式 JSON 可能失败
+        streaming: true
       })
-
-      clearTimeout(timeoutId)
     } catch (e: unknown) {
-      console.error(`Test connection error for ${this.config.name}:`, e)
       const detail = extractApiErrorMessage(e)
       const isModelError = /model does not exist|model not found|invalid model/i.test(detail)
       if (isModelError) {
@@ -97,7 +94,7 @@ export class OpenCodeGoAdaptedProvider implements IAIProvider {
             (detail ? ` (${detail})` : '')
         )
       }
-      throw new Error(`Connection test failed: ${detail}`)
+      throw wrapConnectionTestError(this.config.name, e)
     }
   }
 }

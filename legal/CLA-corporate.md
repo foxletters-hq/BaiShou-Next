@@ -7,7 +7,7 @@
 **组织**：[foxletters-hq](https://github.com/foxletters-hq)  
 **项目托管方（Project Steward）**：郑州市金水区狐信网络科技工作室（个体工商户，统一社会信用代码 92410105MAKMWQ1PX9）及其经营者
 
-> **v1.1 修订说明**：仅明确托管方的法律主体，与 [组织级个人 CLA](./CLA-organization.md) v1.1 一致；授权范围未改变。请将签署文件发送至 `foxletters@163.com`。
+> **v1.1 修订说明**：仅明确托管方的法律主体，与 [组织级个人 CLA](./CLA-organization.md) v1.1 一致；授权范围未改变。请将签署文件发送至 `ansontrio1004@gmail.com`。
 
 ---
 
@@ -57,7 +57,7 @@
 | 拟贡献的覆盖仓库（可填「全部」） |      |
 | 签署日期                         |      |
 
-请将签署后的扫描件或电子版发送至 `foxletters@163.com`，归档于 `legal/signatures/corporate/`。
+请将签署后的扫描件或电子版发送至 `ansontrio1004@gmail.com`，归档于 `legal/signatures/corporate/`。
 
 ---
 

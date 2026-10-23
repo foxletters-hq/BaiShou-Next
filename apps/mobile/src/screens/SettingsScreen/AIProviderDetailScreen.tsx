@@ -8,6 +8,7 @@ import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { AIProviderConfigForm } from './components/AIProviderConfigForm'
+import { sharedTokens } from '@baishou/ui/theme/tokens'
 import {
   buildAndCacheProviderListItems,
   buildProviderListItems,
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
   layoutContent: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   }
 })

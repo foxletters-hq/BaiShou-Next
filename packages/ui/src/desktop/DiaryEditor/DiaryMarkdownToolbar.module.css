@@ -3,9 +3,10 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 8px;
-  border-top: 1px solid var(--border-subtle);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm-plus) var(--spacing-sm);
+  /* 与编辑区明确分区：用可见分割线，不用几乎看不见的 subtle */
+  border-top: 1px solid var(--border-muted);
   background: var(--bg-surface);
   flex-shrink: 0;
 }
@@ -17,22 +18,22 @@
   width: 28px;
   height: 34px;
   flex-shrink: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--bg-surface-low, var(--bg-surface));
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s,
-    opacity 0.15s;
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    opacity var(--duration-fast);
 }
 
 .scrollBtn:hover:not(:disabled) {
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
-  border-color: var(--border-muted, var(--border-subtle));
+  border-color: var(--border-muted);
 }
 
 .scrollBtn:disabled {
@@ -60,14 +61,14 @@
 .scroll {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
   width: max-content;
 }
 
 .divider {
   width: 1px;
   align-self: stretch;
-  margin: 4px 2px;
+  margin: var(--spacing-xs) var(--spacing-2xs);
   background: var(--border-subtle);
   flex-shrink: 0;
 }
@@ -78,25 +79,25 @@
   justify-content: center;
   min-width: 36px;
   height: 34px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface-low, var(--bg-surface));
+  padding: 0 var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background var(--duration-fast),
+    color var(--duration-fast),
+    border-color var(--duration-fast);
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
-  border-color: var(--border-muted, var(--border-subtle));
+  border-color: var(--border-muted);
 }
 
 .btn:disabled {
@@ -109,7 +110,7 @@
 }
 
 .btnMark {
-  font-size: 15px;
+  font-size: var(--content-font-size-md);
 }
 
 .italic {
@@ -121,11 +122,134 @@
 }
 
 .hash {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
   line-height: 1;
 }
 
 .icon {
   width: 18px;
   height: 18px;
+}
+
+.shortcutTriggerBtn {
+  margin-left: auto;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-sm-plus);
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.shortcutTriggerLabel {
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.shortcutsModal {
+  width: 440px;
+  max-width: 92vw;
+  padding: var(--spacing-md-plus, 18px) var(--spacing-lg, 20px);
+}
+
+.shortcutsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md, 14px);
+}
+
+.shortcutsTitle {
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shortcutsCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-xs, 6px);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.shortcutsCloseBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.shortcutsBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 14px);
+}
+
+.shortcutSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs-plus);
+}
+
+.shortcutSectionTitle {
+  font-size: var(--ui-fs-xs, 11px);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.shortcutList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.shortcutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  min-height: 30px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs, 6px);
+  background: var(--bg-surface-low);
+}
+
+.shortcutLabel {
+  font-size: var(--ui-fs-md);
+  color: var(--text-primary);
+}
+
+.shortcutKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.shortcutKeyPlus {
+  font-size: var(--ui-fs-xs, 11px);
+  color: var(--text-tertiary);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: var(--ui-fs-xs, 11px);
+  line-height: 1;
+  box-shadow: 0 1px 0 var(--border-subtle);
 }

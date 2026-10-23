@@ -17,6 +17,7 @@ import {
   type SyncProgressTranslate
 } from '../../utils/formatSyncProgress'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export type IncrementalSyncProgressOverlayState = Partial<
   Pick<
@@ -186,7 +187,7 @@ export const IncrementalSyncProgressOverlay: React.FC<IncrementalSyncProgressOve
         enterAnim.setValue(0)
         Animated.timing(enterAnim, {
           toValue: 1,
-          duration: 220,
+          duration: sharedTokens.animation.swift,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true
         }).start()
@@ -364,8 +365,8 @@ const styles = StyleSheet.create({
   banner: {
     width: '100%',
     maxWidth: 420,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderWidth: 1,
     ...Platform.select({
       ios: {
@@ -374,51 +375,48 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8
       },
-      android: {
-        elevation: 3
-      },
       default: {}
     })
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8
+    marginBottom: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.sm
   },
   spinner: {
     marginRight: -4
   },
   title: {
     flex: 1,
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   count: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   track: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: sharedTokens.radius.xxs,
     overflow: 'hidden'
   },
   fill: {
     height: 6,
-    borderRadius: 3
+    borderRadius: sharedTokens.radius.xxs
   },
   indeterminate: {
     width: '35%',
     opacity: 0.85
   },
   detail: {
-    marginTop: 8,
-    fontSize: 12,
+    marginTop: sharedTokens.spacing.sm,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 16
   },
   blockingHint: {
-    marginTop: 10,
-    fontSize: 12,
+    marginTop: sharedTokens.spacing.smPlus,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18,
     textAlign: 'center'
   },
@@ -426,6 +424,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24
+    paddingHorizontal: sharedTokens.spacing.lg
   }
 })

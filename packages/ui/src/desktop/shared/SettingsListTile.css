@@ -9,11 +9,11 @@
 }
 
 .settings-expansion-tile-embedded .settings-expansion-summary {
-  padding: 13px 14px;
+  padding: var(--spacing-md-snug) var(--spacing-md-snug);
 }
 
 .settings-expansion-summary-divider {
-  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--border-muted);
 }
 
 .settings-expansion-tile-embedded .settings-expansion-summary {
@@ -21,11 +21,11 @@
 }
 
 .settings-expansion-content-embedded {
-  padding: 0 14px 14px;
+  padding: 0 var(--spacing-md-snug) var(--spacing-md-snug);
 }
 
 .settings-expansion-content-divider {
-  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--border-muted);
 }
 
 .settings-card-link-action {
@@ -35,21 +35,24 @@
   width: auto;
   min-width: 128px;
   align-self: flex-end;
-  margin-top: 12px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
-  font-size: 14px;
-  font-weight: 600;
+  margin-top: var(--spacing-md-tight);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--settings-font-row-size);
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.15s;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .settings-card-link-action:hover:not(:disabled) {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .settings-card-link-action:disabled {
@@ -61,11 +64,11 @@
 .settings-expansion-summary {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
+  padding: var(--spacing-md-snug) var(--spacing-md);
   cursor: pointer;
   user-select: none;
   list-style: none;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
   border: none;
   background: none;
   width: 100%;
@@ -79,7 +82,7 @@
 .settings-list-tile-title-row {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--spacing-xs-plus);
 }
 
 /* Wraps ? help icons so clicks do not toggle expansion tiles or list rows */
@@ -92,35 +95,51 @@
 }
 
 .settings-expansion-summary:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: transparent;
 }
 
 .settings-expansion-tile-embedded:not(.settings-open) .settings-expansion-summary:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: transparent;
 }
 
-[data-theme='dark'] .settings-expansion-summary:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+/* 展开按钮：圆形描边；悬停仅按钮变灰，不整行变灰 */
+.settings-expansion-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-control);
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
-[data-theme='dark']
-  .settings-expansion-tile-embedded:not(.settings-open)
-  .settings-expansion-summary:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+.settings-expansion-toggle:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
+  color: var(--text-primary);
 }
 
 /* 展开箭头 */
 .settings-expansion-arrow {
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  color: var(--color-on-surface-variant);
-  transition: transform 0.25s;
+  width: 16px;
+  height: 16px;
+  font-size: var(--settings-font-shell-title-size);
+  color: currentColor;
+  transition: transform var(--duration-normal);
   flex-shrink: 0;
+  display: block;
 }
 
 .settings-expansion-tile[open] .settings-expansion-arrow,
-.settings-expansion-tile.settings-open .settings-expansion-arrow {
+.settings-expansion-tile.settings-open .settings-expansion-arrow,
+.settings-expansion-toggle.is-open .settings-expansion-arrow {
   transform: rotate(180deg);
 }
 
@@ -133,8 +152,8 @@
   margin: 0;
   padding: 0;
   transition:
-    grid-template-rows 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.35s ease-out;
+    grid-template-rows var(--duration-slow) cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity var(--duration-slow) ease-out;
 }
 
 .settings-expansion-grid-wrapper.expanded {
@@ -155,7 +174,7 @@
 .settings-list-tile {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-md);
   min-height: 54px;
   box-sizing: border-box;
   width: 100%;
@@ -163,17 +182,19 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  transition: background-color 0.15s;
+  transition: background-color var(--duration-fast);
   font-family: inherit;
   color: inherit;
 }
 
 .settings-list-tile:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: var(--bg-surface-high);
 }
 
-[data-theme='dark'] .settings-list-tile:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+/* 带展开按钮 / 禁整行灰底的列表行（需高于 .settings-list-tile:hover 优先级） */
+.settings-list-tile.settings-list-tile-expandable:hover,
+.settings-list-tile.settings-list-tile-no-row-hover:hover {
+  background-color: transparent;
 }
 
 /* 非交互 ListTile（无 cursor pointer） */
@@ -185,20 +206,20 @@
   background-color: transparent;
 }
 
-/* Leading 图标区 — Material 24dp */
+/* Leading 图标区 — 见 --settings-icon-* */
 .settings-list-tile-leading {
-  width: 40px;
+  width: var(--settings-icon-leading-slot);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 24px;
+  font-size: var(--settings-icon-leading-size);
 }
 
 .settings-list-tile-leading svg.lucide {
-  width: 24px;
-  height: 24px;
+  width: var(--settings-icon-leading-size);
+  height: var(--settings-icon-leading-size);
 }
 
 /* 文本内容区 */
@@ -206,79 +227,73 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   min-width: 0;
 }
 
 .settings-list-tile-title {
-  font-size: 14px;
-  font-weight: normal;
-  color: var(--color-on-surface);
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+  color: var(--text-primary);
   line-height: 1.4;
-}
-
-[data-theme='dark'] .settings-list-tile-title {
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .settings-list-tile-subtitle {
-  font-size: 13px;
-  color: var(--color-on-surface-variant);
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
   line-height: 1.4;
-}
-
-[data-theme='dark'] .settings-list-tile-subtitle {
-  color: rgba(255, 255, 255, 0.65);
 }
 
 /* monospace 字体（路径显示等） */
 .settings-monospace {
   font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
   word-break: break-all;
 }
 
 /* Trailing 图标 */
 .settings-list-tile-trailing {
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 22px;
+  font-size: var(--settings-icon-trailing-size);
 }
 
 .settings-list-tile-trailing svg.lucide {
-  width: 22px;
-  height: 22px;
+  width: var(--settings-icon-trailing-size);
+  height: var(--settings-icon-trailing-size);
 }
 
 /* 列表行内直接放置的 Lucide 图标（如快捷键折叠箭头） */
 .settings-list-tile > svg.lucide {
-  width: 20px;
-  height: 20px;
+  width: var(--settings-icon-trailing-size);
+  height: var(--settings-icon-trailing-size);
   flex-shrink: 0;
 }
 
 /* 分割线 */
+/* 卡内行分隔（小分割）；板块之间勿用此线，改用 sibling 卡 + 卡外标题 */
 .settings-list-divider {
   height: 1px;
-  background-color: var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  background-color: var(--border-muted);
   margin: 0;
 }
 
 .settings-list-divider.indent {
-  margin-left: 56px;
-  margin-right: 16px;
+  margin-left: var(--spacing-2xl);
+  margin-right: var(--spacing-md);
 }
 
 /* 嵌套 ExpansionTile */
 .settings-nested .settings-expansion-summary {
-  padding-left: 16px;
+  padding-left: var(--spacing-md);
 }
 
 /* 空内容提示 */
 .settings-empty-hint {
-  padding: 16px 56px;
-  font-size: 13px;
-  color: var(--color-on-surface-variant);
+  padding: var(--spacing-md) var(--spacing-2xl);
+  font-size: var(--settings-font-desc-size);
+  color: var(--text-secondary);
 }
 
 /* TextButton 样式（用于 trailing 操作按钮） */
@@ -286,83 +301,34 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
   font-weight: normal;
   color: var(--color-primary);
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background-color 0.15s;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs-plus);
+  transition: background-color var(--duration-fast);
   white-space: nowrap;
   flex-shrink: 0;
   font-family: inherit;
 }
 
 .settings-text-btn:hover {
-  background-color: rgba(91, 168, 245, 0.1);
-}
-
-/* ---- Switch 开关 (复制 Flutter Switch 外观) ---- */
-.settings-switch-label {
-  position: relative;
-  display: inline-block;
-  width: 52px;
-  height: 28px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.settings-switch-label input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.settings-switch-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(148, 163, 184, 0.4);
-  transition: 0.3s;
-  border-radius: 28px;
-}
-
-.settings-switch-slider:before {
-  position: absolute;
-  content: '';
-  height: 22px;
-  width: 22px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--bg-surface);
-  transition: 0.3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.settings-switch-label input:checked + .settings-switch-slider {
-  background-color: var(--color-primary);
-}
-
-.settings-switch-label input:checked + .settings-switch-slider:before {
-  transform: translateX(24px);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
 /* ---- Number input (for port fields etc.) ---- */
 .settings-number-input {
   width: 100px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-card, rgba(148, 163, 184, 0.3));
-  background: #fff;
-  color: var(--color-on-surface);
-  font-size: 14px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-row-size);
   font-family: inherit;
   text-align: center;
   outline: none;
-  transition: border-color 0.2s;
+  transition: var(--form-field-transition);
   flex-shrink: 0;
   -moz-appearance: textfield;
   appearance: textfield;
@@ -375,11 +341,6 @@
 }
 
 .settings-number-input:focus {
-  border-color: var(--color-primary);
-}
-
-[data-theme='dark'] .settings-number-input {
-  background: #fff;
-  border-color: var(--border-card, rgba(255, 255, 255, 0.15));
-  color: #1e293b;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }

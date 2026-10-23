@@ -61,11 +61,20 @@ export class ExpoShadowIndexConnectionManager {
     }
 
     if (this._cachedConnection?.dbPath === dbPath) {
-      this._expoDb = this._cachedConnection.expoDb
-      this._db = this._cachedConnection.db
-      this._currentDbPath = dbPath
-      logger.info(`[ExpoShadowDB] 恢复已缓存连接: ${dbPath}`)
-      return
+      try {
+        await ensureExpoShadowIndexSchema(this._cachedConnection.expoDb)
+        this._expoDb = this._cachedConnection.expoDb
+        this._db = this._cachedConnection.db
+        this._currentDbPath = dbPath
+        logger.info(`[ExpoShadowDB] 恢复已缓存连接: ${dbPath}`)
+        return
+      } catch (e) {
+        logger.warn(
+          `[ExpoShadowDB] 缓存连接已失效，将重新打开影子索引库 (${dbPath}):`,
+          e as Error
+        )
+        this._cachedConnection = null
+      }
     }
 
     if (this._expoDb && this._currentDbPath === dbPath) {

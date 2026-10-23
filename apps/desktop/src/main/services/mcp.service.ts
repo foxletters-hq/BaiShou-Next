@@ -151,6 +151,7 @@ export class McpService {
 
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        enableJsonResponse: true,
         onsessioninitialized: (sid) => {
           this.streamableTransports.set(sid, transport)
           logger.info(`[McpService] Streamable session initialized: ${sid}`)
@@ -233,9 +234,12 @@ export class McpService {
       try {
         this.httpServer = this.app.listen(port, '0.0.0.0', () => {
           this.isRunning = true
-          logger.info(`[McpService] Server started on http://0.0.0.0:${port}/mcp (SSE /sse)`)
+          const bound = this.httpServer?.address()
+          const actualPort = typeof bound === 'object' && bound ? bound.port : port
+          logger.info(`[McpService] Server started on http://0.0.0.0:${actualPort}/mcp (SSE: /sse)`)
           resolve()
         })
+        this.httpServer?.once('error', reject)
       } catch (e) {
         logger.error(`[McpService] Failed to start on port ${port}`, e as any)
         reject(e)

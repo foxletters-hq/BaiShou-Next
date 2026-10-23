@@ -35,6 +35,7 @@ describe.sequential('McpService', () => {
     } as unknown as ToolRegistry
     service = new McpService(emptyRegistry, async () => ({
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: 'vlt_test',
       vaultName: 'Personal',
       userConfig: {}
     }))
@@ -149,8 +150,9 @@ describe.sequential('McpService', () => {
     expect(listRes.status).toBe(200)
     const listText = await listRes.text()
     const dataLine = listText.split('\n').find((line) => line.startsWith('data: '))
-    expect(dataLine).toBeDefined()
-    const listJson = JSON.parse(dataLine!.slice('data: '.length)) as {
+    const rawJson = dataLine ? dataLine.slice('data: '.length) : listText.trim()
+    expect(rawJson).toBeTruthy()
+    const listJson = JSON.parse(rawJson) as {
       result?: { tools?: unknown[] }
     }
     expect(Array.isArray(listJson.result?.tools)).toBe(true)
@@ -191,7 +193,7 @@ describe.sequential('McpService', () => {
     await server.stop()
   }, 30_000)
 
-  it.skip('maps SSE POST /message to transport.sessionId from SDK', async () => {
+  it('maps SSE POST /message to transport.sessionId from SDK', async () => {
     await service.start()
     const port = testPort
 
@@ -242,6 +244,64 @@ describe.sequential('McpService', () => {
     await reader?.cancel()
   }, 15000)
 
+  it('rejects unauthorized Streamable HTTP when auth is enabled', async () => {
+    getDesktopMcpServerConfigMock.mockResolvedValue({
+      mcpPort: testPort,
+      mcpEnabled: true,
+      mcpAuthEnabled: true,
+      mcpAuthToken: 'secret-token'
+    })
+    await service.start()
+
+    const res = await fetch(`http://127.0.0.1:${testPort}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1.0.0' }
+        }
+      })
+    })
+    expect(res.status).toBe(401)
+  }, 15000)
+
+  it('allows Streamable HTTP without token when auth is disabled', async () => {
+    getDesktopMcpServerConfigMock.mockResolvedValue({
+      mcpPort: testPort,
+      mcpEnabled: true,
+      mcpAuthEnabled: false,
+      mcpAuthToken: 'ignored-token'
+    })
+    await service.start()
+
+    const res = await fetch(`http://127.0.0.1:${testPort}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream'
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1.0.0' }
+        }
+      })
+    })
+    expect(res.status).toBe(200)
+  }, 15000)
+
   it('should expose agent tools via real tool registry if provided', async () => {
     const currentTimeTool = {
       name: 'current_time',
@@ -259,6 +319,7 @@ describe.sequential('McpService', () => {
 
     const context = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: 'vlt_test',
       vaultName: 'Personal',
       userConfig: {}
     }

@@ -1,7 +1,6 @@
 import type { EditorState } from '@codemirror/state'
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import type { SyntaxNodeRef } from '@lezer/common'
-import type { Decoration } from '@codemirror/view'
 import {
   codeLineStyle,
   codeLineStyleBottom,

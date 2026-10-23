@@ -1,108 +1,94 @@
-.container {
-  flex: 1;
+.sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 32px 20px;
-  overflow-y: auto;
-  background: var(--bg-app);
-  color: var(--text-primary);
-  box-sizing: border-box;
-}
-
-.cardSection {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 20px 24px;
-}
-
-.cardTitle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.embeddedDesc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary);
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-md);
 }
 
 .syncButton {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: 1px solid var(--color-primary);
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-md-tight);
+  height: 32px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
+  font-family: inherit;
   cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.syncButton:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .syncButton:disabled {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+.syncStatusBlock {
+  margin-top: var(--spacing-md-tight);
 }
 
 .progressTrack {
   height: 3px;
   background: var(--bg-surface-low);
-  border-radius: 2px;
+  border-radius: var(--radius-2xs);
   overflow: hidden;
-  margin-bottom: 4px;
-  margin-top: 12px;
+  margin-bottom: var(--spacing-xs);
+  margin-top: var(--spacing-md-tight);
 }
 
 .progressFill {
   height: 100%;
   background: var(--color-primary);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-2xs);
+  transition: width var(--duration-moderate) ease;
 }
 
 .progressMeta {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
   color: var(--text-tertiary);
 }
 
 .statsGrid {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .statCard {
-  background: var(--bg-surface-low);
-  border-radius: 8px;
-  padding: 12px;
+  background: var(--bg-surface-high);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm-plus);
   text-align: center;
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
+  font-weight: var(--settings-font-meta-weight);
   color: var(--text-tertiary);
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-2xs);
 }
 
 .statValue {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
 }
 
 .statValueText {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
 }
 
 @keyframes spin {
@@ -116,18 +102,4 @@
 
 .spinning {
   animation: spin 1s linear infinite;
-}
-
-.helpIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease;
-  margin-top: 2px;
-}
-
-.helpIcon:hover {
-  color: var(--color-primary);
 }

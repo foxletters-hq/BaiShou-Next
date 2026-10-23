@@ -2,19 +2,25 @@ import React from 'react'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { McpToolsListContent, type McpToolListItem } from './McpToolsListContent'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface NativeMcpToolsListPanelProps {
   tools: McpToolListItem[]
   loading?: boolean
   failed?: boolean
+  disabledToolIds?: string[]
+  onToggleTool?: (toolId: string) => void
 }
 
 export const McpToolsListPanel: React.FC<NativeMcpToolsListPanelProps> = ({
   tools,
   loading = false,
-  failed = false
+  failed = false,
+  disabledToolIds,
+  onToggleTool
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -35,9 +41,17 @@ export const McpToolsListPanel: React.FC<NativeMcpToolsListPanelProps> = ({
       ]}
     >
       <View style={styles.header}>
-        <Text style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}>
-          {t('settings.mcp_tools_provided', '目前提供的工具列表')}
-        </Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+            {t('settings.mcp_tools_provided', '目前提供的工具列表')}
+          </Text>
+          <HelpTooltip
+            content={t(
+              'settings.mcp_view_tools_desc',
+              '查看当前 MCP 服务对外提供的日记与记忆管理等内置工具清单'
+            )}
+          />
+        </View>
         {countLabel ? (
           <Text style={[styles.count, { color: colors.textSecondary }]}>{countLabel}</Text>
         ) : null}
@@ -65,7 +79,12 @@ export const McpToolsListPanel: React.FC<NativeMcpToolsListPanelProps> = ({
       ) : null}
 
       {!loading && !failed && tools.length > 0 ? (
-        <McpToolsListContent tools={tools} inline />
+        <McpToolsListContent
+          tools={tools}
+          inline
+          disabledToolIds={disabledToolIds}
+          onToggleTool={onToggleTool}
+        />
       ) : null}
     </View>
   )
@@ -74,30 +93,37 @@ export const McpToolsListPanel: React.FC<NativeMcpToolsListPanelProps> = ({
 const styles = StyleSheet.create({
   panel: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 4
+    borderRadius: sharedTokens.radius.md,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingTop: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.xs
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4
+    justifyContent: 'space-between',
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.xs
+  },
+  headerTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sharedTokens.spacing.xsPlus
   },
   count: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   stateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.mdTight
   },
   stateText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
-    paddingVertical: 12
+    paddingVertical: sharedTokens.spacing.mdTight
   }
 })

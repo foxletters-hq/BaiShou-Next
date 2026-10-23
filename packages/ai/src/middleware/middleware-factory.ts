@@ -14,6 +14,7 @@ import { wrapLanguageModel, extractReasoningMiddleware } from 'ai'
 import type { LanguageModelV3Middleware } from '@ai-sdk/provider'
 import { createDeepSeekReasoningMiddleware } from './deepseek-reasoning'
 import { createPromptCachingMiddleware } from './prompt-caching.middleware'
+import { createTextSafetyMiddleware } from './text-safety.middleware'
 import type { PromptCachingContext } from './prompt-caching.types'
 import { logger } from '@baishou/shared'
 
@@ -76,10 +77,13 @@ export function buildLanguageModelMiddlewares(
   const resolved = resolveWrapOptions(options)
   const middlewares: LanguageModelV3Middleware[] = []
 
-  // 0. 提示词缓存 — 默认开启，覆盖所有厂商
+  // 0. 文本安全 — 先清理孤立代理项，避免严格 JSON 解析器报 400
+  middlewares.push(createTextSafetyMiddleware())
+
+  // 1. 提示词缓存 — 默认开启，覆盖所有厂商
   middlewares.push(createPromptCachingMiddleware(toCachingContext(resolved)))
 
-  // 1. DeepSeek reasoning 内容处理中间件
+  // 2. DeepSeek reasoning 内容处理中间件
   if (resolved.providerType === 'deepseek') {
     try {
       middlewares.push(createDeepSeekReasoningMiddleware())
@@ -92,7 +96,7 @@ export function buildLanguageModelMiddlewares(
     }
   }
 
-  // 2. 推理提取中间件
+  // 3. 推理提取中间件
   if (resolved.providerType === 'deepseek' || resolved.providerType === 'openai') {
     try {
       middlewares.push(
@@ -121,7 +125,7 @@ export function wrapLanguageModelWithMiddlewares(
   if (middlewares.length > 0) {
     return wrapLanguageModel({
       model: model as Parameters<typeof wrapLanguageModel>[0]['model'],
-      middleware: middlewares
+      middleware: middlewares as never
     })
   }
   return model

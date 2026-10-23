@@ -9,7 +9,11 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
-import { Plus, Sparkles, Trash2, Search } from 'lucide-react'
+import { Sparkles, Trash2, Search } from 'lucide-react'
+import { Button } from '../Button/Button'
+import { isSystemLatteAssistantId } from '@baishou/shared'
+import { Input } from '../Input/Input'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantManagementPage.module.css'
 import { AssistantListRow, AssistantSortableListItem } from './AssistantSortableListItem'
 import { useAssistantManagementPage } from './useAssistantManagementPage'
@@ -58,10 +62,13 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
   const vm = useAssistantManagementPage(assistants, pinnedIds, searchQuery, onReorder)
 
   const handleConfirmDelete = () => {
-    if (deleteTargetId) {
-      onDelete(deleteTargetId)
+    if (!deleteTargetId) return
+    if (isSystemLatteAssistantId(deleteTargetId)) {
       setDeleteTargetId(null)
+      return
     }
+    onDelete(deleteTargetId)
+    setDeleteTargetId(null)
   }
 
   useEffect(() => {
@@ -79,7 +86,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       assistant={assistant}
       isPinned={pinnedIds.has(assistant.id)}
       onEdit={onEdit}
-      onDelete={setDeleteTargetId}
+      onDelete={isSystemLatteAssistantId(assistant.id) ? undefined : setDeleteTargetId}
     />
   )
 
@@ -91,18 +98,19 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
           {assistants.length > 0 ? (
             <div className={styles.searchBox}>
               <Search size={16} color="var(--text-tertiary)" />
-              <input
+              <Input
+                fieldSize="small"
                 className={styles.searchInput}
+                inputClassName="baishou-form-field--embed"
                 placeholder={t('agent.assistant.search_hint')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           ) : null}
-          <button className={styles.createBtn} onClick={onCreate}>
-            <Plus size={18} />
+          <Button variant="outlined" size="small" onClick={onCreate}>
             {t('agent.assistant.create_new', '新增伙伴')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -115,10 +123,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
             <span className={styles.emptyText}>
               {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
             </span>
-            <button className={styles.emptyBtn} onClick={onCreate}>
-              <Plus size={18} />
+            <Button variant="outlined" size="small" onClick={onCreate}>
               {t('agent.assistant.create_first', '执行首建协议')}
-            </button>
+            </Button>
           </div>
         ) : vm.visibleAssistants.length === 0 ? (
           <div className={styles.emptyState}>
@@ -183,10 +190,13 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       {deleteTargetId !== null &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.dialogOverlay} onClick={() => setDeleteTargetId(null)}>
+          <div
+            className={withAppContentOverlay(styles.dialogOverlay)}
+            onClick={() => setDeleteTargetId(null)}
+          >
             <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
               <div className={styles.dialogHeaderIcon}>
-                <Trash2 size={32} color="var(--color-error, #F44336)" />
+                <Trash2 size={32} color="var(--color-error)" />
               </div>
               <div className={styles.dialogTitle}>
                 {t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？')}
@@ -198,18 +208,12 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 )}
               </div>
               <div className={styles.dialogActions}>
-                <button
-                  className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
-                  onClick={() => setDeleteTargetId(null)}
-                >
+                <Button variant="outlined" size="small" onClick={() => setDeleteTargetId(null)}>
                   {t('common.cancel', '暂缓')}
-                </button>
-                <button
-                  className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
-                  onClick={handleConfirmDelete}
-                >
+                </Button>
+                <Button variant="outlined" size="small" onClick={handleConfirmDelete}>
                   {t('common.delete', '授权粉碎')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,

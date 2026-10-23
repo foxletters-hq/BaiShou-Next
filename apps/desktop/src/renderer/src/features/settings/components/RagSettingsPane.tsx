@@ -5,8 +5,17 @@ import { getDefaultRagConfig } from '@baishou/store'
 import { useRagSettings } from '../hooks/useRagSettings'
 import { useRagStatsPrefetch } from '../hooks/useRagStatsPrefetch'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
+import { MemoryReadinessBar } from '../../memory/MemoryReadinessBar'
+import { requestGraphPendingFocus } from '../../graph/graph-pending-focus'
+import { requestMemoryGraphTab } from '../../memory/memory-graph-tab-focus'
+import { shouldWaitForGraphExtract } from '../../memory/organize-pipeline-waiting.util'
+import { useMemoryReadiness } from '../../memory/useMemoryReadiness'
 
-export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+export const RagSettingsPane: React.FC<{
+  settings: any
+  showReadinessBar?: boolean
+  embedded?: boolean
+}> = ({ settings, showReadinessBar = true, embedded = false }) => {
   useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
   const { t } = useTranslation()
@@ -22,14 +31,14 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
     isProcessing,
     activeRagState,
     hasMismatchModel,
-    searchQuery,
-    searchMode,
-    setCurrentPage,
-    setPageSize,
-    loadRagData,
+    sourceKind,
+    isSearching,
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
+    handleCancelBatchEmbed,
     handleAddManualMemory,
     handleTriggerMigration,
     handleCancelMigration,
@@ -37,6 +46,8 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
     handleResumeMigration,
     handleClearAll,
     handleSearch,
+    handleSourceKindChange,
+    handlePageChange,
     handleDeleteEntry,
     handleEditEntry,
     handleExportEmbeddings,
@@ -45,15 +56,33 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   } = useRagSettings({ settings, t, toast, confirm, prompt, alert })
 
   const ragConfig = settings.ragConfig ?? getDefaultRagConfig()
+  const readiness = useMemoryReadiness()
   return (
     <div className="settings-pane settings-pane-full">
       <RagMemoryView
+        embedded={embedded}
+        extraStatsChips={
+          !embedded && showReadinessBar ? (
+            <MemoryReadinessBar
+              wrap
+              rows={readiness.rows}
+              omit={['embedding', 'extract', 'graph']}
+              showLabel={false}
+              onConfigureEmbedding={() => settingsNav.goAiModels()}
+              onStartIndex={() => void handleBatchEmbed()}
+              pendingEmbedParts={readiness.pendingEmbedParts}
+              indexing={readiness.indexing}
+            />
+          ) : undefined
+        }
         config={ragConfig}
         stats={ragStats}
         ragState={
           activeRagState.isRunning
             ? activeRagState
-            : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
+            : isProcessing && activeRagState.type === 'batchEmbed'
+              ? { ...activeRagState, isRunning: true }
+              : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
         }
         hasMismatchModel={hasMismatchModel}
         migrationState={migrationState}
@@ -64,14 +93,13 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         pageSize={pageSize}
         onChange={(config) => settings.setRagConfig(config)}
         onNavigateToConfig={() => settingsNav.goAiModels()}
-        onPageChange={(page, size) => {
-          setCurrentPage(page)
-          setPageSize(size)
-          loadRagData(searchQuery, searchMode, page, size)
-        }}
+        onPageChange={handlePageChange}
         onDetectDimension={handleDetectDimension}
         onClearDimension={handleClearDimension}
         onBatchEmbed={handleBatchEmbed}
+        onPauseBatchEmbed={handlePauseBatchEmbed}
+        onResumeBatchEmbed={handleResumeBatchEmbed}
+        onCancelBatchEmbed={handleCancelBatchEmbed}
         onAddManualMemory={handleAddManualMemory}
         onTriggerMigration={handleTriggerMigration}
         onCancelMigration={handleCancelMigration}
@@ -79,6 +107,9 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         onResumeMigration={handleResumeMigration}
         onClearAll={handleClearAll}
         onSearch={handleSearch}
+        isSearching={isSearching}
+        sourceKind={sourceKind}
+        onSourceKindChange={handleSourceKindChange}
         onDeleteEntry={handleDeleteEntry}
         onEditEntry={handleEditEntry}
         onExportEmbeddings={handleExportEmbeddings}
@@ -86,6 +117,18 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         migrationCancelBusy={
           isProcessing && activeRagState.isRunning && activeRagState.type === 'migration'
         }
+        graphExtract={readiness.graphExtracting}
+        graphExtractWaiting={shouldWaitForGraphExtract({
+          organizePipeline: readiness.organizePipeline,
+          indexing: Boolean(readiness.indexing)
+        })}
+        pendingGraphCount={readiness.pendingGraphCount}
+        suspectCount={readiness.suspectCount}
+        onReviewSuspects={() => {
+          requestGraphPendingFocus()
+          requestMemoryGraphTab()
+        }}
+        hideOrganizeProgress={embedded}
       />
     </div>
   )

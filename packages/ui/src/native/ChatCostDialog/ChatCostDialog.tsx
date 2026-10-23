@@ -10,7 +10,11 @@ import {
   ActivityIndicator
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button'
+import { modalActionsStyle } from '../Modal/Modal'
 import { useNativeTheme } from '../theme'
+import { formatLocaleTokenCount } from '../../shared/token-usage-display'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface CostDetails {
   modelName?: string
@@ -45,7 +49,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
   pricingSourceUrl
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, maxModalWidth } = useNativeTheme()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
 
@@ -67,12 +71,12 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
     setRefreshError(null)
     try {
       const result = await onRefreshPricing()
-      if (!result.success && result.error) {
-        setRefreshError(result.error)
+      if (!result.success) {
+        setRefreshError(result.error || t('agent.chat.pricing_refresh_failed', '请检查网络环境'))
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      setRefreshError(msg || t('agent.chat.pricing_refresh_failed', '刷新失败'))
+      setRefreshError(msg || t('agent.chat.pricing_refresh_failed', '请检查网络环境'))
     } finally {
       setIsRefreshing(false)
     }
@@ -118,7 +122,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                   {t('agent.chat.cost_cumulative_input', '累计输入')}
                 </Text>
                 <Text style={[styles.costValue, { color: colors.textPrimary }]}>
-                  {details.promptTokens} {t('agent.chat.tokens_unit', 'tokens')}
+                  {formatLocaleTokenCount(details.promptTokens)}{' '}
+                  {t('agent.chat.tokens_unit', 'tokens')}
                 </Text>
               </View>
               <View style={styles.costRow}>
@@ -126,7 +131,8 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                   {t('agent.chat.cost_cumulative_output', '累计输出')}
                 </Text>
                 <Text style={[styles.costValue, { color: colors.textPrimary }]}>
-                  {details.completionTokens} {t('agent.chat.tokens_unit', 'tokens')}
+                  {formatLocaleTokenCount(details.completionTokens)}{' '}
+                  {t('agent.chat.tokens_unit', 'tokens')}
                 </Text>
               </View>
               {(details.cacheReadTokens ?? 0) > 0 ? (
@@ -135,7 +141,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                     {t('agent.chat.cost_cumulative_cache_read', '缓存读取')}
                   </Text>
                   <Text style={[styles.costValue, { color: colors.textPrimary }]}>
-                    {details.cacheReadTokens!.toLocaleString()}{' '}
+                    {formatLocaleTokenCount(details.cacheReadTokens!)}{' '}
                     {t('agent.chat.tokens_unit', 'tokens')}
                   </Text>
                 </View>
@@ -146,7 +152,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
                     {t('agent.chat.cost_cumulative_cache_write', '缓存写入')}
                   </Text>
                   <Text style={[styles.costValue, { color: colors.textPrimary }]}>
-                    {details.cacheWriteTokens!.toLocaleString()}{' '}
+                    {formatLocaleTokenCount(details.cacheWriteTokens!)}{' '}
                     {t('agent.chat.tokens_unit', 'tokens')}
                   </Text>
                 </View>
@@ -200,7 +206,11 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
 
               {refreshError ? (
                 <View style={[styles.errorMessage, { backgroundColor: colors.errorContainer }]}>
-                  <Text style={{ color: colors.error, fontSize: 12 }}>{refreshError}</Text>
+                  <Text
+                    style={{ color: colors.error, fontSize: mobileTypography.caption.fontSize }}
+                  >
+                    {refreshError}
+                  </Text>
                 </View>
               ) : null}
 
@@ -214,12 +224,19 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
               </Text>
             </View>
 
-            <View style={styles.actions}>
-              <Pressable onPress={onClose} style={styles.textButton}>
-                <Text style={[styles.textButtonLabel, { color: colors.primary }]}>
-                  {t('common.confirm', '确认')}
-                </Text>
-              </Pressable>
+            <View
+              style={[
+                modalActionsStyle,
+                {
+                  paddingHorizontal: sharedTokens.spacing.lg,
+                  paddingTop: sharedTokens.spacing.md,
+                  paddingBottom: sharedTokens.spacing.lg
+                }
+              ]}
+            >
+              <Button size="sm" variant="outlined" onPress={onClose}>
+                {t('common.confirm', '确认')}
+              </Button>
             </View>
           </Pressable>
         </SafeAreaView>
@@ -233,7 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20
+    paddingHorizontal: sharedTokens.spacing.mdPlus
   },
   safeArea: {
     width: '100%',
@@ -244,18 +261,18 @@ const styles = StyleSheet.create({
     maxWidth: 400
   },
   title: {
-    paddingTop: 24,
-    paddingHorizontal: 28,
-    paddingBottom: 16,
-    fontSize: 20,
+    paddingTop: sharedTokens.spacing.lg,
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingBottom: sharedTokens.spacing.md,
+    fontSize: mobileTypography.title.fontSize,
     fontWeight: '600',
     lineHeight: 28
   },
   content: {
-    paddingHorizontal: 28
+    paddingHorizontal: sharedTokens.spacing.lg
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     lineHeight: 20,
     letterSpacing: 0.5,
@@ -267,16 +284,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
-    gap: 12
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    gap: sharedTokens.spacing.mdTight
   },
   costLabel: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20,
     flexShrink: 0
   },
   costValue: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     lineHeight: 20,
     textAlign: 'right',
@@ -284,28 +301,28 @@ const styles = StyleSheet.create({
   },
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    marginVertical: 16
+    marginVertical: sharedTokens.spacing.md
   },
   disclaimer: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   pricingSourceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     flex: 1,
     justifyContent: 'flex-end'
   },
   sourceLink: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500'
   },
   refreshButtonInline: {
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: sharedTokens.radius.md,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
     minHeight: 28,
     justifyContent: 'center',
     alignItems: 'center'
@@ -314,27 +331,27 @@ const styles = StyleSheet.create({
     opacity: 0.5
   },
   refreshButtonText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   errorMessage: {
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8
+    marginTop: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm
   },
   actions: {
-    paddingTop: 16,
-    paddingBottom: 24,
-    paddingHorizontal: 28,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.lg,
+    paddingHorizontal: sharedTokens.spacing.lg,
     alignItems: 'flex-end'
   },
   textButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12
+    paddingVertical: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.mdTight
   },
   textButtonLabel: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '500',
     textTransform: 'uppercase'
   }

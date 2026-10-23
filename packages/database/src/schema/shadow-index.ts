@@ -4,14 +4,14 @@ import { sqliteTable, integer, text, uniqueIndex } from 'drizzle-orm/sqlite-core
  * 日记影子索引主表 — 对齐原版 `journals_index` 表名
  *
  * 存储在全局单库 `shadow_index_v2.db` 中，由 ShadowIndexConnectionManager 管理。
- * 多 Vault 通过 `vault_name` 列区分；Drizzle schema 仅用于类型推导。
+ * 多 Vault 通过 `vault_id` 列区分；Drizzle schema 仅用于类型推导。
  */
 export const shadowJournalIndexTable = sqliteTable(
   'journals_index',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    /** Vault 名称（多 vault 共享同一 shadow_index.db 时用于隔离） */
-    vaultName: text('vault_name').notNull(),
+    /** Vault 稳定 ID（多 vault 共享同一 shadow_index.db 时用于隔离） */
+    vaultId: text('vault_id').notNull(),
     /** 相对于 Vault 根目录的文件路径（用于唯一定位 .md 文件） */
     filePath: text('file_path').notNull(),
     /** 日期 ISO8601 字符串 (yyyy-MM-ddTHH:mm:ss.sssZ) */
@@ -22,6 +22,10 @@ export const shadowJournalIndexTable = sqliteTable(
     updatedAt: text('updated_at').notNull(),
     /** MD5 内容指纹（用于脏检测，避免无意义解析） */
     contentHash: text('content_hash').notNull(),
+    /** 物理文件 mtime（毫秒，Obsidian 风格快路径指纹） */
+    fileMtimeMs: integer('file_mtime_ms'),
+    /** 物理文件字节大小（与 mtime 组成快路径指纹） */
+    fileSize: integer('file_size'),
     // ── 可选扩展 Frontmatter 元数据 ──
     weather: text('weather'),
     mood: text('mood'),
@@ -39,7 +43,7 @@ export const shadowJournalIndexTable = sqliteTable(
   },
   (t) => ({
     vaultFilePathUniq: uniqueIndex('journals_index_vault_file_path_unique').on(
-      t.vaultName,
+      t.vaultId,
       t.filePath
     )
   })

@@ -12,7 +12,8 @@ import {
 export class SummaryFileService {
   constructor(
     private readonly pathProvider: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async getCategoryDir(type: SummaryType): Promise<string> {
@@ -82,7 +83,15 @@ export class SummaryFileService {
       await this.fileSystem.mkdir(parentDir, { recursive: true })
     }
 
-    await this.fileSystem.writeFile(fullPath, content.trim(), 'utf8')
+    const text = content.trim()
+    if (this.rawDataSourceManager) {
+      const summariesBase = await this.pathProvider.getSummariesBaseDirectory()
+      const relativePath = path.relative(summariesBase, fullPath)
+      await this.rawDataSourceManager.writeFile('summary', relativePath, text)
+      return fullPath
+    }
+
+    await this.fileSystem.writeFile(fullPath, text, 'utf8')
     return fullPath
   }
 
@@ -114,6 +123,42 @@ export class SummaryFileService {
     return [...searchDirs]
   }
 
+  /** 总结 md 的磁盘 mtime（ms）；优先 preferredPath，否则按 readSummary 搜索规则解析 */
+  async getSummaryFileMtimeMs(
+    type: SummaryType,
+    startDate: Date,
+    preferredPath?: string
+  ): Promise<number | undefined> {
+    if (preferredPath?.trim()) {
+      try {
+        const stat = await this.fileSystem.stat(preferredPath.trim())
+        if (stat.isFile && stat.mtimeMs != null) return stat.mtimeMs
+      } catch {
+        // fall through to resolve
+      }
+    }
+
+    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
+    const standardFileName = this.buildFileName(type, startDate)
+    const transitionFileName = this.buildTransitionFileName(type, startDate)
+    const searchDirs = await this.collectSummarySearchDirectories()
+
+    for (const fileName of [standardFileName, transitionFileName]) {
+      for (const baseDir of searchDirs) {
+        const typeDir = path.join(baseDir, typeDirName)
+        const fullPath = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
+        if (!fullPath) continue
+        try {
+          const stat = await this.fileSystem.stat(fullPath)
+          if (stat.isFile && stat.mtimeMs != null) return stat.mtimeMs
+        } catch {
+          // try next candidate
+        }
+      }
+    }
+    return undefined
+  }
+
   async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
     const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
     const standardFileName = this.buildFileName(type, startDate)
@@ -138,6 +183,17 @@ export class SummaryFileService {
     }
 
     return null
+  }
+
+  /** 按绝对路径读取总结正文（跨仓扫描时用，绕过活跃仓搜索） */
+  async readSummaryAtAbsolutePath(fullPath: string): Promise<string | null> {
+    try {
+      const content = await this.fileSystem.readFile(fullPath, 'utf8')
+      return this.cleanMarkdownContent(content)
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return null
+      throw e
+    }
   }
 
   private cleanMarkdownContent(rawContent: string): string {
@@ -172,13 +228,14 @@ export class SummaryFileService {
   }
 
   async listAllSummaries(): Promise<
-    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string }[]
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName?: string }[]
   > {
     const results: {
       type: SummaryType
       startDate: Date
       endDate: Date
       fullPath: string
+      vaultName?: string
     }[] = []
     const searchDirs = await this.collectSummarySearchDirectories()
 
@@ -186,6 +243,50 @@ export class SummaryFileService {
       await this.scanSummaryDir(baseDir, results)
     }
 
+    return results
+  }
+
+  /**
+   * 列出指定工作区 Archives/ 下的总结（跨仓冷启动水合用）。
+   * 仅扫仓内 Archives，不含活跃仓外部总结目录映射。
+   */
+  async listSummariesForVault(
+    vaultName: string
+  ): Promise<
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName: string }[]
+  > {
+    const name = vaultName.trim()
+    if (!name) return []
+    const vaultDir = await this.pathProvider.getVaultDirectory(name)
+    const results: {
+      type: SummaryType
+      startDate: Date
+      endDate: Date
+      fullPath: string
+    }[] = []
+    await this.scanSummaryDir(path.join(vaultDir, 'Archives'), results)
+    // 兼容少数仍用 Summaries/ 的布局
+    await this.scanSummaryDir(path.join(vaultDir, 'Summaries'), results)
+    return results.map((r) => ({ ...r, vaultName: name }))
+  }
+
+  async listSummariesAcrossVaults(
+    vaultNames: string[]
+  ): Promise<
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName: string }[]
+  > {
+    const unique = [...new Set(vaultNames.map((n) => n.trim()).filter(Boolean))]
+    const results: {
+      type: SummaryType
+      startDate: Date
+      endDate: Date
+      fullPath: string
+      vaultName: string
+    }[] = []
+    for (const name of unique) {
+      const listed = await this.listSummariesForVault(name)
+      results.push(...listed)
+    }
     return results
   }
 

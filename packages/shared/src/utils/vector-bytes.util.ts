@@ -18,5 +18,10 @@ export function bytesToFloat32Array(bytes: Uint8Array, dimension: number): Float
   if (bytes.byteLength < dimension * 4) {
     throw new RangeError('embedding bytes shorter than expected dimension')
   }
-  return new Float32Array(bytes.buffer, bytes.byteOffset, dimension)
+  if (bytes.byteOffset % 4 === 0) {
+    return new Float32Array(bytes.buffer, bytes.byteOffset, dimension)
+  }
+  const aligned = new Uint8Array(dimension * 4)
+  aligned.set(bytes.subarray(0, dimension * 4))
+  return new Float32Array(aligned.buffer, 0, dimension)
 }

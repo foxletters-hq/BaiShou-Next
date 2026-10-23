@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard } from 'react-native'
+import { View, StatusBar, Keyboard, InteractionManager, AppState } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
-import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { logger } from '@baishou/shared'
+import { logger, parseDateStr } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -21,9 +20,14 @@ import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
+import { formatDiaryDateStr, mapDiaryListEntries } from './diary-list-display.util'
+import { useDiaryPendingStatus } from './useDiaryPendingStatus'
+import { diaryPendingOrganizeCount } from './diary-pending-status.util'
+import { DiaryPendingStatusBar } from './DiaryPendingStatusBar'
+import { DiaryDeleteConfirmModal } from './DiaryDeleteConfirmModal'
+import { diaryScreenStyles as styles } from './diary-screen.styles'
 
 export const DiaryScreen: React.FC = () => {
-  const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
   const {
     services,
@@ -70,12 +74,37 @@ export const DiaryScreen: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [todayEntry, setTodayEntry] = useState<{ id: number } | null>(null)
+  const todayDateKeyRef = useRef(formatDiaryDateStr())
+  const todayEntryRequestIdRef = useRef(0)
+
+  const refreshTodayEntry = useCallback(async () => {
+    if (!dbReady || !services || !storageReady) return
+    const dateKey = formatDiaryDateStr()
+    todayDateKeyRef.current = dateKey
+    const requestId = ++todayEntryRequestIdRef.current
+    try {
+      const entry = await services.diaryService.findByDate(parseDateStr(dateKey))
+      if (requestId !== todayEntryRequestIdRef.current) return
+      setTodayEntry(entry?.id != null ? { id: entry.id } : null)
+    } catch {
+      if (requestId !== todayEntryRequestIdRef.current) return
+      setTodayEntry(null)
+    }
+  }, [dbReady, services, storageReady])
+
   const pendingEditorNavRef = useRef(false)
   const listRef = useRef<FlatList<DiaryListEntry> | null>(null)
   const listScrollYRef = useRef(0)
   const lastListScrollLogAtRef = useRef(0)
   const isListFocusedRef = useRef(isListFocused)
   isListFocusedRef.current = isListFocused
+  const {
+    pendingGraphCount,
+    pendingEmbedCount,
+    pendingEmbedParts,
+    graphConfigured,
+    ragConfigured
+  } = useDiaryPendingStatus()
   const {
     isSyncing,
     isPlanning,
@@ -102,14 +131,17 @@ export const DiaryScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       void refreshConfigured()
+      void refreshTodayEntry()
       if (!editorBundlePreloadedRef.current) {
         editorBundlePreloadedRef.current = true
-        void preloadDiaryEditorWebViewSource()
+        InteractionManager.runAfterInteractions(() => {
+          void preloadDiaryEditorWebViewSource()
+        })
       }
       return () => {
         clearDiarySearch()
       }
-    }, [clearDiarySearch, refreshConfigured])
+    }, [clearDiarySearch, refreshConfigured, refreshTodayEntry])
   )
 
   useEffect(() => {
@@ -258,72 +290,82 @@ export const DiaryScreen: React.FC = () => {
   }, [currentPage, totalPages, setCurrentPage])
 
   useEffect(() => {
-    if (!dbReady || !services || !storageReady) return
-    const today = new Date()
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    services.diaryService
-      .findByDate(new Date(dateStr))
-      .then((entry) => setTodayEntry(entry?.id != null ? { id: entry.id } : null))
-      .catch(() => setTodayEntry(null))
-  }, [dbReady, services, storageReady, vaultRevision])
+    void refreshTodayEntry()
+  }, [refreshTodayEntry, vaultRevision])
 
-  const displayEntries = useMemo((): DiaryListEntry[] => {
-    if (!entries?.length) return []
-    return entries.map((e) => {
-      let parsedDate = new Date()
-      if (e.date) {
-        const pd = new Date(e.date)
-        if (!isNaN(pd.getTime())) parsedDate = pd
-      } else if (e.createdAt) {
-        const cd = new Date(e.createdAt)
-        if (!isNaN(cd.getTime())) parsedDate = cd
-      }
-      return {
-        id: e.id,
-        date: parsedDate,
-        content: e.content || '',
-        tags: e.tags || [],
-        preview: e.preview || e.content?.substring(0, 500) || '',
-        weather: e.weather,
-        mood: e.mood,
-        location: e.location,
-        isFavorite: e.isFavorite,
-        tagColors: e.tagColors
-      }
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return
+      const dateKey = formatDiaryDateStr()
+      const dateChanged = dateKey !== todayDateKeyRef.current
+      void refreshTodayEntry()
+      if (dateChanged) void loadEntries({ silent: true })
     })
-  }, [entries])
+    return () => subscription.remove()
+  }, [loadEntries, refreshTodayEntry])
 
-  const formatTodayDateStr = () => {
-    const today = new Date()
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  }
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const schedule = () => {
+      const now = new Date()
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1)
+      timer = setTimeout(
+        () => {
+          const dateKey = formatDiaryDateStr()
+          const dateChanged = dateKey !== todayDateKeyRef.current
+          void refreshTodayEntry()
+          if (dateChanged) void loadEntries({ silent: true })
+          schedule()
+        },
+        Math.max(1000, nextMidnight.getTime() - now.getTime())
+      )
+    }
+    schedule()
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [loadEntries, refreshTodayEntry])
+
+  const displayEntries = useMemo(() => mapDiaryListEntries(entries), [entries])
 
   const ensureStorageThen = useCallback(
-    async (action: () => void) => {
+    async (action: () => void | Promise<void>) => {
       if (!needsFullFileAccess) {
-        action()
+        await action()
         return
       }
       const ok = await requestStorage()
-      if (ok) action()
+      if (ok) await action()
     },
     [needsFullFileAccess, requestStorage]
   )
 
   const handleEditToday = () => {
-    void ensureStorageThen(() => {
-      if (todayEntry) {
-        openDiaryEditor({ id: String(todayEntry.id), append: '1' })
+    void ensureStorageThen(async () => {
+      const dateKey = formatDiaryDateStr()
+      let entry = todayDateKeyRef.current === dateKey ? todayEntry : null
+      if (services?.diaryService) {
+        try {
+          const requestId = ++todayEntryRequestIdRef.current
+          const fresh = await services.diaryService.findByDate(parseDateStr(dateKey))
+          entry = fresh?.id != null ? { id: fresh.id } : null
+          todayDateKeyRef.current = dateKey
+          if (requestId === todayEntryRequestIdRef.current) setTodayEntry(entry)
+        } catch {
+          // 查询失败时沿用当天缓存，避免误开昨天的日记
+        }
+      }
+      if (entry) {
+        openDiaryEditor({ id: String(entry.id), append: '1' })
       } else {
-        openDiaryEditor({ date: formatTodayDateStr() })
+        openDiaryEditor({ date: dateKey })
       }
     })
   }
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      // 新建日记：仅作默认日期展示，不加载已有正文（与「编辑今天」不同）
-      openDiaryEditor({ new: '1', date: formatTodayDateStr() })
+      openDiaryEditor({ new: '1', date: formatDiaryDateStr() })
     })
   }
 
@@ -398,97 +440,36 @@ export const DiaryScreen: React.FC = () => {
             onRequestStoragePermission={handleRequestStoragePermission}
           />
 
-          <DiaryFab todayEntry={todayEntry} onEditToday={handleEditToday} onAddNew={handleAddNew} />
+          <DiaryPendingStatusBar
+            graphConfigured={graphConfigured}
+            ragConfigured={ragConfigured}
+            pendingGraphCount={pendingGraphCount}
+            pendingEmbedCount={pendingEmbedCount}
+            pendingEmbedParts={pendingEmbedParts}
+          />
+
+          <DiaryFab
+            todayEntry={todayEntry}
+            onEditToday={handleEditToday}
+            onAddNew={handleAddNew}
+            hasPendingStatus={
+              diaryPendingOrganizeCount({
+                graphConfigured,
+                ragConfigured,
+                pendingGraphCount,
+                pendingEmbedCount,
+                pendingDiaryCount: pendingEmbedParts.diaries
+              }) > 0
+            }
+          />
         </View>
       </ScreenSafeArea>
 
-      <Modal
+      <DiaryDeleteConfirmModal
         visible={deletingId !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDeletingId(null)}
-      >
-        <TouchableOpacity
-          style={[styles.deleteOverlay, { backgroundColor: colors.bgOverlay }]}
-          activeOpacity={1}
-          onPress={() => setDeletingId(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[styles.deleteModal, { backgroundColor: colors.bgSurface }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
-              {t('diary.delete_confirm_title')}
-            </Text>
-            <Text style={[styles.deleteContent, { color: colors.textSecondary }]}>
-              {t('diary.delete_confirm_content')}
-            </Text>
-            <View style={styles.deleteActions}>
-              <TouchableOpacity
-                style={[styles.deleteCancel, { backgroundColor: colors.bgSurfaceHighest }]}
-                onPress={() => setDeletingId(null)}
-              >
-                <Text style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deleteConfirm, { backgroundColor: colors.error }]}
-                onPress={performDelete}
-              >
-                <Text style={{ color: colors.textOnPrimary }}>{t('common.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onCancel={() => setDeletingId(null)}
+        onConfirm={() => void performDelete()}
+      />
     </>
   )
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
-  container: {
-    flex: 1,
-    position: 'relative'
-  },
-  deleteOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24
-  },
-  deleteModal: {
-    width: '100%',
-    maxWidth: 320,
-    borderRadius: 16,
-    padding: 24
-  },
-  deleteTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12
-  },
-  deleteContent: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24
-  },
-  deleteActions: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  deleteCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center'
-  },
-  deleteConfirm: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center'
-  }
-})

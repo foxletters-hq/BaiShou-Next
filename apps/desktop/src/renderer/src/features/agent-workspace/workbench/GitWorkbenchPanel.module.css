@@ -1,0 +1,905 @@
+.panel {
+  --git-header-x: 8px;
+  --git-content-x: 22px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-app);
+}
+
+.fixedChrome {
+  flex-shrink: 0;
+}
+
+.splitBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.splitPane {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 0 1 0;
+}
+
+.splitPaneGrow {
+  flex: 1 1 0;
+  min-height: 72px;
+}
+
+.splitPaneCollapsed {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.splitPaneCollapsed .historySection {
+  flex: 0 0 auto;
+}
+
+.viewHeader {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xs-plus) var(--spacing-sm) var(--spacing-2xs);
+  flex-shrink: 0;
+}
+
+.viewHeaderActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.viewTitle {
+  margin: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.panelSection {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-2xs) var(--git-header-x);
+  min-height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.sectionHeader:hover {
+  background: var(--bg-surface-high);
+}
+
+.sectionChevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform var(--duration-fast) ease;
+}
+
+.sectionChevronOpen {
+  transform: rotate(90deg);
+}
+
+.sectionTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.sectionBadge {
+  font-size: var(--ui-fs-sm);
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+}
+
+.changesSection {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-bottom: none;
+}
+
+.changesSubgroup + .changesSubgroup {
+  border-top: 1px solid var(--border-muted);
+}
+
+.subgroupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding-right: var(--spacing-xs-plus);
+}
+
+.subgroupToggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--git-header-x);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.subgroupToggle:hover {
+  background: var(--bg-surface-high);
+}
+
+.subgroupTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subgroupTrailing {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  flex-shrink: 0;
+  min-height: 22px;
+}
+
+.subgroupBadge {
+  font-size: var(--ui-fs-sm);
+  padding: 1px var(--spacing-xs-plus);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+}
+
+.subgroupActions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.subgroupHeader:hover .subgroupActions,
+.subgroupHeader:focus-within .subgroupActions {
+  opacity: 1;
+}
+
+.subgroupBody {
+  padding-bottom: var(--spacing-xs);
+}
+
+.treeEmpty {
+  padding: var(--spacing-xs-plus) var(--spacing-sm) var(--spacing-sm) var(--git-content-x);
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+  padding: 0 var(--spacing-sm) 0 var(--git-content-x);
+  min-height: 22px;
+  height: 22px;
+}
+
+.treeRow:hover {
+  background: var(--bg-surface-high);
+}
+
+.treeRow:hover .treeActions,
+.treeRow:focus-within .treeActions {
+  display: flex;
+}
+
+.treeRowClickable {
+  cursor: pointer;
+}
+
+.treeFileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.treeName {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--ui-fs-md);
+  font-family: var(--font-family);
+  font-weight: 400;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeNameDeleted {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.treeDir {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeRowEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.treeBadge {
+  width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--settings-font-micro-size);
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+  font-family: var(--font-family);
+  background: transparent;
+}
+
+.badge_added {
+  color: var(--color-success);
+}
+
+.badge_modified {
+  color: var(--color-warning);
+}
+
+.badge_deleted {
+  color: var(--color-error);
+}
+
+.badge_renamed {
+  color: #8250df;
+}
+
+.badge_untracked {
+  color: var(--color-success);
+}
+
+.treePath {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeActions {
+  display: none;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.treeIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.treeIconBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.treeActionBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-sm);
+  font-family: inherit;
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.treeActionBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.historySection {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid var(--border-muted);
+  border-bottom: none;
+}
+
+.graphBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: var(--spacing-xs-plus);
+}
+
+.graphList {
+  display: flex;
+  flex-direction: column;
+}
+
+.graphRow {
+  display: flex;
+  gap: 0;
+  min-height: 28px;
+  padding-left: var(--git-content-x);
+}
+
+.graphLane {
+  width: 16px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--spacing-sm-plus);
+}
+
+.graphNode {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--border-muted);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.graphNodeHead {
+  border-color: var(--color-primary);
+}
+
+.graphLine {
+  width: 2px;
+  flex: 1;
+  min-height: 8px;
+  margin-top: -1px;
+}
+
+.graphContent {
+  flex: 1;
+  min-width: 0;
+  padding: var(--spacing-2xs) var(--spacing-sm) var(--spacing-2xs) 0;
+}
+
+.graphCommit {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  width: 100%;
+  padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
+}
+
+.graphCommit:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.graphCommitMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.graphCommitExpanded {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.graphMessage {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graphMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs-plus);
+  flex-shrink: 0;
+}
+
+.graphHeadBadge {
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  letter-spacing: 0.02em;
+}
+
+.graphTime {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.graphHash {
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+}
+
+.graphFiles {
+  padding: var(--spacing-2xs) 0 var(--spacing-xs-plus);
+}
+
+.graphFiles .treeRow {
+  padding-left: 0;
+}
+
+.graphStats {
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.menuSectionLabel {
+  padding: var(--spacing-xs) var(--spacing-sm-plus) var(--spacing-2xs);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.stashMenuBlock {
+  padding: 0 var(--spacing-2xs);
+}
+
+.stashMenuRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.stashMenuLabel {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stashMenuActions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.stashMenuBtn {
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+  font-size: var(--ui-fs-sm);
+  padding: var(--spacing-2xs) var(--spacing-xs-plus);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.stashMenuBtn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.conflictSection {
+  margin: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border: 1px solid #d4a72c;
+  border-radius: var(--radius-xs-plus);
+  background: rgba(212, 167, 44, 0.08);
+}
+
+.conflictTitle {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.conflictRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+}
+
+.conflictPath {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 var(--spacing-2xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
+.branchWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.branchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  max-width: 140px;
+  height: 28px;
+  padding: 0 var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-xs-plus);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--ui-fs-sm);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.branchBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.branchName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syncHint {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  min-width: 200px;
+  max-width: 260px;
+  max-height: 280px;
+  overflow: auto;
+  padding: var(--menu-popup-padding, var(--spacing-xs));
+  border-radius: var(--menu-popup-radius, var(--radius-sm));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  background: var(--menu-popup-bg, var(--bg-surface));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+}
+
+.menuLeft {
+  right: auto;
+  left: 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-xs-plus) var(--spacing-sm-plus);
+  border: none;
+  border-radius: var(--menu-popup-item-radius, var(--radius-xs));
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--ui-fs-sm);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
+}
+
+.menuItemActive {
+  color: var(--color-primary);
+  font-weight: 500;
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
+}
+
+.menuDivider {
+  height: 1px;
+  margin: var(--spacing-xs) var(--spacing-xs-plus);
+  background: var(--border-muted);
+}
+
+.menuInput {
+  margin: var(--spacing-xs) 0;
+}
+
+.commitBox {
+  padding: var(--spacing-xs) var(--git-header-x) var(--spacing-sm);
+  border-bottom: 1px solid var(--border-muted);
+  flex-shrink: 0;
+}
+
+.commitMessage {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  max-height: 120px;
+  padding: var(--spacing-xs-plus) var(--spacing-sm);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-2xs);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--ui-fs-sm);
+  line-height: 1.4;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  transition: var(--form-field-transition);
+}
+
+.commitMessage:focus {
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+  outline: none;
+}
+
+.commitActions {
+  display: flex;
+  align-items: stretch;
+  margin-top: var(--spacing-sm);
+}
+
+.commitPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs-plus);
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 var(--spacing-sm-plus);
+  border: none;
+  border-radius: var(--radius-2xs) 0 0 var(--radius-2xs);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.commitPrimary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.commitPrimary:not(:disabled):hover {
+  background: var(--color-primary-dark);
+}
+
+.commitMenuBtn {
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid color-mix(in srgb, var(--text-on-primary) 28%, transparent);
+  border-radius: 0 var(--radius-2xs) var(--radius-2xs) 0;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commitMenuBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+.commitActions .branchWrap {
+  display: flex;
+  align-items: stretch;
+}
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  width: min(420px, 100%);
+  max-height: 85vh;
+  overflow: auto;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+}
+
+.sheetBody {
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.sheetLabel {
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sheetDivider {
+  height: 1px;
+  margin: var(--spacing-sm) 0;
+  background: var(--border-muted);
+}
+
+.tokenRow {
+  display: flex;
+  gap: var(--spacing-xs-plus);
+  align-items: center;
+}
+
+.tokenRow .menuInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheetFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md-tight) var(--spacing-md-snug);
+  border-top: 1px solid var(--border-muted);
+}
+
+.sheetBtn,
+.sheetBtnPrimary {
+  height: 32px;
+  padding: 0 var(--spacing-md-snug);
+  border-radius: var(--radius-sm);
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.sheetBtn:hover,
+.sheetBtnPrimary:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}

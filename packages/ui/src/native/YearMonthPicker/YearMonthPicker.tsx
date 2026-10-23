@@ -13,8 +13,8 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
   titlePlaceholder
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
-  const tagBackgroundColor = isDark ? colors.bgSurface : '#FFFFFF'
+  const { colors } = useNativeTheme()
+  const tagBackgroundColor = colors.bgSurface
   const [isOpen, setIsOpen] = useState(false)
   const placeholder = titlePlaceholder ?? t('diary.all_diaries')
 

@@ -3,6 +3,7 @@ import {
   TOOL_PAYLOAD_PRUNE_FIELD_MAX_BYTES,
   TOOL_PAYLOAD_STORE_MAX_BYTES
 } from './compression.constants'
+import { truncateTextSafe } from '@baishou/shared'
 
 export type ToolPartData = {
   callId?: string
@@ -10,6 +11,7 @@ export type ToolPartData = {
   arguments?: unknown
   result?: unknown
   status?: string
+  durationMs?: number
   contentPreview?: string
   contentLength?: number
   contentPruned?: boolean
@@ -54,7 +56,7 @@ function stringByteLength(value: string): number {
 
 function buildPreview(text: string): string {
   if (text.length <= TOOL_PAYLOAD_PREVIEW_CHARS) return text
-  return `${text.slice(0, TOOL_PAYLOAD_PREVIEW_CHARS)}…`
+  return truncateTextSafe(text, TOOL_PAYLOAD_PREVIEW_CHARS, '…')
 }
 
 function extractDiaryDates(text: string): string[] {

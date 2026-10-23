@@ -66,6 +66,9 @@ export async function hasFlutterLegacyDatabaseMarkers(
   fileSystem: IFileSystem,
   extractDir: string
 ): Promise<boolean> {
+  if (await fileSystem.exists(path.join(extractDir, 'database', 'baishou_agent.db'))) {
+    return false
+  }
   if (await fileSystem.exists(path.join(extractDir, '.baishou', 'agent.sqlite'))) return true
   if (await fileSystem.exists(path.join(extractDir, '.baishou', 'vault_registry.json'))) {
     return true

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   normalizeEmojiToolConfig,
+  publishPlayfulProcessStatus,
   resolveAssistantEmojiConfig,
   type ToolManagementConfig
 } from '@baishou/shared'
@@ -28,6 +29,7 @@ export function useAgentPendingEmojis(
       try {
         const toolConfig =
           await services.settingsManager.get<ToolManagementConfig>('tool_management_config')
+        publishPlayfulProcessStatus(toolConfig?.playfulProcessStatus !== false)
         if (toolConfig?.emojiConfig) {
           setEmojiToolConfig(normalizeEmojiToolConfig(toolConfig.emojiConfig))
         }

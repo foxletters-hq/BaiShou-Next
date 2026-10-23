@@ -1,5 +1,6 @@
 import { InteractionManager } from 'react-native'
 import { logger } from '@baishou/shared'
+import { warmAgentScreenCaches } from '../../lib/agent-user-profile.util'
 import { getTtsPlaybackSettings } from '../../services/mobile-tts-settings.service'
 import { shouldRefreshVaultAfterArchiveImport } from '../../services/archive-guards.util'
 import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
@@ -23,6 +24,8 @@ export async function commitMobileBaishouReadyState(
   const settingsManager = s.settingsManager
   const memorySearch = s.memorySearch
   const startAgentChat = s.startAgentChat
+  const agentGate = s.agentGate
+  const reloadAgentGateConfig = s.reloadAgentGateConfig
   const buildSharedContext = s.buildSharedContext
   const buildSharedContextPreview = s.buildSharedContextPreview
   const getContextAtMessage = s.getContextAtMessage
@@ -53,15 +56,24 @@ export async function commitMobileBaishouReadyState(
   const legacyMigrationSourcePendingDeletion = s.legacyMigrationSourcePendingDeletion
   const switchVault = s.switchVault
   const deleteVault = s.deleteVault
+  const renameVault = s.renameVault
+  const estimateVaultRenameBytes = s.estimateVaultRenameBytes
   const createDemoVault = s.createDemoVault
   const ragServiceRef = s.ragServiceRef
   const mobileMcpService = s.mobileMcpService
   const runDeferredVaultStartup = s.runDeferredVaultStartup as () => Promise<void>
   void getTtsPlaybackSettings(settingsManager).catch(() => {})
+  if (storageReady) {
+    void warmAgentScreenCaches(settingsManager, attachmentManager, fileSystem)
+  }
 
   if (isMounted()) {
     refs.notifyArchiveRestoreCompleteRef.current = (result: ImportResult) => {
       if (!isMounted() || !shouldRefreshVaultAfterArchiveImport(result)) return
+      if (refs.archiveRestoreEpochPublishedRef.current) {
+        refs.archiveRestoreEpochPublishedRef.current = false
+        return
+      }
       ctx.setValue((prev) => ({
         ...prev,
         vaultRevision: prev.vaultRevision + 1,
@@ -157,6 +169,8 @@ export async function commitMobileBaishouReadyState(
         vaultFileWatcher,
         switchVault,
         deleteVault,
+        renameVault,
+        estimateVaultRenameBytes,
         createDemoVault,
         memorySearch,
         mobileMcpService,
@@ -170,10 +184,14 @@ export async function commitMobileBaishouReadyState(
         buildSharedContextPreview,
         getContextAtMessage
       },
-      startAgentChat
+      startAgentChat,
+      agentGate,
+      reloadAgentGateConfig
     })
     InteractionManager.runAfterInteractions(() => {
-      void runDeferredVaultStartup()
+      setTimeout(() => {
+        void runDeferredVaultStartup()
+      }, 400)
     })
   }
 }

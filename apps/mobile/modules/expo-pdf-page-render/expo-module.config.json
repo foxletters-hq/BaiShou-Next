@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["ExpoPdfPageRenderModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.pdfpagerender.ExpoPdfPageRenderModule"]
+  }
+}

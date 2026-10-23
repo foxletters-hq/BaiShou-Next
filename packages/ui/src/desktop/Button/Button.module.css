@@ -5,49 +5,79 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border-radius: 9999px;
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease-in-out;
+  gap: var(--spacing-sm);
+  width: max-content;
+  max-width: 100%;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm-plus) var(--spacing-md-plus);
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
+  outline: none;
+  transition:
+    opacity var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.button:focus,
+.button:focus-visible {
+  outline: none;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
+/* 主 CTA：描边 + 日夜表面底，不用品牌实心 */
 .elevated {
-  background-color: var(--color-primary, #5ba8f5);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
+  box-shadow: none;
 }
 
 .elevated:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .text {
-  background-color: transparent;
-  color: var(--text-secondary, #475569);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
 }
 
 .text:hover:not(:disabled) {
-  background-color: var(--bg-surface-normal, #f2f2f2);
-  color: var(--text-primary, #1a1a1a);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .outlined {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-control);
 }
 
 .outlined:hover:not(:disabled) {
-  background-color: var(--bg-surface-normal);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.small {
+  padding: var(--spacing-xs-plus) var(--spacing-md-tight);
+  font-size: var(--ui-fs-md);
+  border-radius: var(--radius-sm);
+  gap: var(--spacing-xs-plus);
+}
+
+.small .spinner {
+  width: 12px;
+  height: 12px;
 }
 
 .spinner {

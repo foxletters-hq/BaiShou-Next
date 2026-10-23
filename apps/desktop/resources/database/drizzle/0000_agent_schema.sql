@@ -1,5 +1,6 @@
 CREATE TABLE `agent_assistants` (
-	`id` text PRIMARY KEY NOT NULL,
+	`id` text NOT NULL,
+	`vault_id` text NOT NULL,
 	`name` text NOT NULL,
 	`emoji` text,
 	`description` text DEFAULT '',
@@ -15,19 +16,23 @@ CREATE TABLE `agent_assistants` (
 	`compress_model_context_window` integer,
 	`compress_preserve_recent_tokens` integer,
 	`compress_system_prompt` text,
+	`custom_system_prompt` text,
 	`assistant_kind` text DEFAULT 'companion' NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
+	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	PRIMARY KEY(`vault_id`, `id`)
 );
 --> statement-breakpoint
 CREATE TABLE `agent_sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`title` text DEFAULT '新对话' NOT NULL,
-	`vault_name` text NOT NULL,
+	`vault_id` text NOT NULL,
 	`assistant_id` text,
 	`is_pinned` integer DEFAULT false NOT NULL,
 	`system_prompt` text,
+	`mounted_notebook_ids` text DEFAULT '' NOT NULL,
+	`instruction_state` text,
 	`provider_id` text NOT NULL,
 	`model_id` text NOT NULL,
 	`total_input_tokens` integer DEFAULT 0 NOT NULL,
@@ -80,6 +85,7 @@ CREATE TABLE `compression_snapshots` (
 --> statement-breakpoint
 CREATE TABLE `summaries` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`vault_id` text NOT NULL,
 	`type` text NOT NULL,
 	`start_date` integer NOT NULL,
 	`end_date` integer NOT NULL,
@@ -88,7 +94,7 @@ CREATE TABLE `summaries` (
 	`generated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `summaries_type_start_date_end_date_unique` ON `summaries` (`type`,`start_date`,`end_date`);
+CREATE UNIQUE INDEX `summaries_vault_id_type_start_date_end_date_unique` ON `summaries` (`vault_id`,`type`,`start_date`,`end_date`);
 --> statement-breakpoint
 CREATE TABLE `system_settings` (
 	`key` text PRIMARY KEY NOT NULL,
@@ -102,6 +108,7 @@ CREATE TABLE `memory_embeddings` (
 	`source_type` text NOT NULL,
 	`source_id` text NOT NULL,
 	`group_id` text NOT NULL,
+	`vault_id` text,
 	`chunk_index` integer DEFAULT 0 NOT NULL,
 	`chunk_text` text NOT NULL,
 	`metadata_json` text DEFAULT '{}' NOT NULL,
@@ -113,3 +120,5 @@ CREATE TABLE `memory_embeddings` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `memory_embeddings_embedding_id_unique` ON `memory_embeddings` (`embedding_id`);
+--> statement-breakpoint
+CREATE INDEX `memory_embeddings_vault_id_source` ON `memory_embeddings` (`vault_id`,`source_type`);

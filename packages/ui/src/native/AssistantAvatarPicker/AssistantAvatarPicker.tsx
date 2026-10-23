@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native'
+import { View, Image, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { ImagePlus, LayoutGrid } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +16,7 @@ import { Modal } from '../Modal'
 import { NATIVE_BUILTIN_ASSISTANT_AVATAR_SOURCES } from '../builtin-assistant-avatar.sources'
 import { resolveNativeAssistantAvatarSource } from '../assistant-avatar.util'
 import { runAfterOverlayDismiss } from '../avatar-image-picker.util'
+import { sharedTokens } from '../../theme/tokens'
 
 export interface AssistantAvatarPickerProps {
   avatarPath?: string | null
@@ -143,9 +144,9 @@ const styles = StyleSheet.create({
   modalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: sharedTokens.spacing.smPlus,
     justifyContent: 'center',
-    paddingBottom: 4
+    paddingBottom: sharedTokens.spacing.xs
   },
   presetBtn: {
     width: 72,

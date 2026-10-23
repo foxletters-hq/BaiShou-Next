@@ -7,6 +7,7 @@ import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
 import { formatAppVersion, GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
+import { Button } from '../Button/Button'
 import {
   ArrowLeft,
   ChevronRight,
@@ -178,9 +179,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label about-flat-label-inner">
-              {t('about.core_developer_label', '核心开发者')}
-            </div>
+            <div className="about-flat-label">{t('about.core_developer_label', '核心开发者')}</div>
             <div className="about-flat-developer">
               <div
                 className="about-flat-developer-tap"
@@ -199,9 +198,21 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-label about-flat-label-inner">
-              {t('about.oss_license_label', '开源协议')}
+            <div className="about-flat-label">{t('about.copyright_label', '版权信息')}</div>
+            <div className="about-license-content">
+              <span className="about-license-title">
+                {t('about.copyright_owner', '狐信科技 (Foxletters)')}
+              </span>
+              <span className="about-license-subtitle">
+                {t('about.copyright_statement', 'Copyright © 2026')}
+              </span>
             </div>
+          </div>
+        </section>
+
+        <section className="about-surface-card">
+          <div className="about-flat-section about-flat-section-only">
+            <div className="about-flat-label">{t('about.oss_license_label', '开源协议')}</div>
             <button
               type="button"
               className="about-flat-link-row"
@@ -210,7 +221,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
               <div className="about-license-content">
                 <span className="about-license-title">AGPL v3.0</span>
                 <span className="about-license-subtitle">
-                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                  GNU Affero General Public License v3.0
                 </span>
               </div>
               <ExternalLink size={18} className="about-flat-link-trailing" />
@@ -226,14 +237,14 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
                 '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'
               )}
             </p>
-            <button
+            <Button
               type="button"
-              className="about-contributors-btn"
+              variant="outlined"
+              size="small"
               onClick={() => window.open(GITHUB_CONTRIBUTORS_URL, '_blank')}
             >
-              <ExternalLink size={18} />
               {t('about.view_contributors', '查看项目贡献者')}
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -247,7 +258,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           <section className="about-surface-card">
             <div className="about-flat-section about-flat-section-only">
               <div className="about-diagnostic-card">
-                <div className="about-flat-label about-flat-label-inner">
+                <div className="about-flat-label">
                   {t('about.copy_diagnostic_log', '分享诊断日志')}
                 </div>
                 <p className="about-diagnostic-desc">
@@ -308,7 +319,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
               <div className="privacy-item-desc">
                 {t(
                   'privacy.data_ownership_desc',
-                  '白守始终认为，记忆是灵魂的延伸。你的日记数据仅保存在本地 SQLite 数据库中。除了你主动配置的 AI 供应商和云同步目标外，白守不会以任何形式上传你的隐私。'
+                  '白守始终认为，记忆是灵魂的延伸。你的日记以纯文本 Markdown 及附件形式完整保存在本地工作区（Vault）中，格式开放、永远属于你；本地 SQLite 仅作为影子索引与检索缓存，即使清空也可随时从文件安全重建。除你主动配置的模型服务与云同步目标外，白守绝不收集或上传你的任何数据。'
                 )}
               </div>
             </div>
@@ -317,7 +328,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
               <div className="privacy-item-desc">
                 {t(
                   'privacy.local_first_desc',
-                  '即便没有网络，你依然可以流畅地写日记。所有的 AI 总结都是在你发起请求时即时生成的，我们不存储任何生成的文本。'
+                  '即便在离线断网环境下，你依然可以丝滑书写日记。所有的 AI 伙伴交互与记忆总结均由你按需主动发起，直连你配置的模型服务商或本地离线大模型。白守不设任何中心化中转服务器，记录与生成内容全部保存在本地，绝不被挪用于模型训练。'
                 )}
               </div>
             </div>
@@ -326,7 +337,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
               <div className="privacy-item-desc">
                 {t(
                   'privacy.transparency_desc',
-                  '白守支持端到端的数据导出与同步。你可以随时通过 ZIP 导出彻底带走自己的回忆，或者将其同步至你完全掌控的 S3/WebDAV 空间。'
+                  '白守支持多设备双向增量云同步与全量快照备份。你可以将工作区安全同步至完全掌控的 WebDAV（如 NAS、坚果云）或 S3 兼容对象存储（如 Cloudflare R2、MinIO），桌面端亦支持 Git 版本管理。你也可随时通过 ZIP 一键导出带走全部回忆，实现真正的端到端自主掌控。'
                 )}
               </div>
             </div>
@@ -361,28 +372,28 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
       <div className="about-settings-wrapper">
         <button className="settings-list-tile" onClick={() => handleOpenPage('about')}>
           <div className="settings-list-tile-leading">
-            <Info size={24} />
+            <Info size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.about_baishou', '关于白守')}
             </span>
           </div>
-          <ChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={18} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
 
         <button className="settings-list-tile" onClick={() => handleOpenPage('privacy')}>
           <div className="settings-list-tile-leading">
-            <ShieldCheck size={24} />
+            <ShieldCheck size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.development_philosophy', '开发哲学与无痕承诺')}
             </span>
           </div>
-          <ChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={18} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
@@ -395,7 +406,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           }}
         >
           <div className="settings-list-tile-leading">
-            <MessageSquare size={24} />
+            <MessageSquare size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
@@ -405,7 +416,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           <ExternalLink
             size={20}
             className="settings-list-tile-trailing"
-            style={{ color: 'var(--color-on-surface-variant)' }}
+            style={{ color: 'var(--text-secondary)' }}
           />
         </button>
       </div>

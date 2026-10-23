@@ -5,6 +5,14 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   summaries: boolean
   settings: boolean
   assistants: boolean
+  /** Memory/ JSONL shards — pending-index → memory_embeddings */
+  memory: boolean
+  /** Graph/ nodes|edges JSONL — pending-index → graph_* tables */
+  graph: boolean
+  /** Notebooks/ 结构层 + extracted + 原文 — 差集排 knowledge embed job */
+  notebooks: boolean
+  /** 命中 Notebooks/<id>/graph/ 的笔记本 id，只对这些本做图谱 pending-index */
+  notebookGraphIds: string[]
   sessionRefs: Array<{ vaultName: string; sessionId: string }>
 } {
   let journals = false
@@ -12,6 +20,11 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   let summaries = false
   let settings = false
   let assistants = false
+  let memory = false
+  let graph = false
+  let notebooks = false
+  const notebookGraphIds: string[] = []
+  const seenNotebookGraph = new Set<string>()
   const sessionRefs: Array<{ vaultName: string; sessionId: string }> = []
   const seenSession = new Set<string>()
 
@@ -21,6 +34,15 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     if (/(^|\/)Summaries\//.test(p) || /(^|\/)Archives\//.test(p)) summaries = true
     if (p.includes('.baishou/settings') || /(^|\/)settings\//.test(p)) settings = true
     if (/(^|\/)Assistants\//.test(p)) assistants = true
+    if (/(^|\/)Memory\//.test(p)) memory = true
+    if (/(^|\/)Graph\//.test(p)) graph = true
+    if (/(^|\/)Notebooks\//.test(p)) notebooks = true
+    const nbGraph = p.match(/(?:^|\/)Notebooks\/([^/]+)\/graph\//)
+    const nbGraphId = nbGraph?.[1]?.trim()
+    if (nbGraphId && !seenNotebookGraph.has(nbGraphId)) {
+      seenNotebookGraph.add(nbGraphId)
+      notebookGraphIds.push(nbGraphId)
+    }
 
     const sessionMatch = p.match(/(?:^|\/)([^/]+)\/Sessions\/([^/]+)\.json$/i)
     const vaultName = sessionMatch?.[1]
@@ -35,5 +57,16 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     }
   }
 
-  return { journals, sessions, summaries, settings, assistants, sessionRefs }
+  return {
+    journals,
+    sessions,
+    summaries,
+    settings,
+    assistants,
+    memory,
+    graph,
+    notebooks,
+    notebookGraphIds,
+    sessionRefs
+  }
 }

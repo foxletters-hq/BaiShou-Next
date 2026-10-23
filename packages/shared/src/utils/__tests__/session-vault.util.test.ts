@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { resolveSessionFlushTargetVault, sessionBelongsToActiveVault } from '../session-vault.util'
+import {
+  resolveSessionFlushTargetVault,
+  sessionBelongsToActiveVault,
+  sessionBelongsToActiveVaultId
+} from '../session-vault.util'
 
 describe('resolveSessionFlushTargetVault', () => {
   it('优先使用磁盘上存在的会话自身 vault', () => {
@@ -17,6 +21,23 @@ describe('resolveSessionFlushTargetVault', () => {
       'Personal85'
     )
     expect(resolveSessionFlushTargetVault(null, 'Personal85', ['Personal85'])).toBe('Personal85')
+  })
+})
+
+describe('sessionBelongsToActiveVaultId', () => {
+  it('同 vault_id 允许访问', () => {
+    expect(sessionBelongsToActiveVaultId('vlt_a', 'vlt_a')).toBe(true)
+  })
+
+  it('跨仓拒绝', () => {
+    expect(sessionBelongsToActiveVaultId('vlt_a', 'vlt_b')).toBe(false)
+  })
+
+  it('缺任一侧 fail-closed', () => {
+    expect(sessionBelongsToActiveVaultId('', 'vlt_a')).toBe(false)
+    expect(sessionBelongsToActiveVaultId('vlt_a', '')).toBe(false)
+    expect(sessionBelongsToActiveVaultId(null, 'vlt_a')).toBe(false)
+    expect(sessionBelongsToActiveVaultId('vlt_a', null)).toBe(false)
   })
 })
 

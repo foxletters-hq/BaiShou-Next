@@ -1,3 +1,11 @@
+import {
+  AgentGateEffect,
+  AgentGateProfileId,
+  normalizeWorkspacePersonalMemoryReadEnabled,
+  resolveAgentGateProfileId,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
+  type BaishouAgentGateConfig
+} from '@baishou/shared'
 import { AgentTool, ToolContext } from './agent.tool'
 import { WebSearchTool } from './web-search.tool'
 import { UrlReadTool } from './url-read.tool'
@@ -8,18 +16,83 @@ import { DiaryEditTool } from './diary-edit.tool'
 import { DiaryDeleteTool } from './diary-delete.tool'
 import { DiaryWriteTool } from './diary-write.tool'
 import { SummaryReadTool } from './summary-read.tool'
+import { SummaryWriteTool } from './summary-write.tool'
 import { MemoryStoreTool } from './memory-store.tool'
 import { MemoryDeleteTool } from './memory-delete.tool'
 import { MessageSearchTool } from './message-search.tool'
+import { SessionListTool } from './session-list.tool'
 import { VectorSearchTool } from './vector-search.tool'
 import { CurrentTimeTool } from './current-time.tool'
 import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './context-compress.tool'
 import { hasEmbeddingCapability } from './tool-context.util'
 import { EmojiSendTool } from './emoji-send.tool'
+import { CompanionAskTool } from './companion-ask.tool'
+import { GraphUpsertTool } from './graph-upsert.tool'
+import { RecallRelationsTool } from './recall-relations.tool'
+import { KnowledgeSearchTool } from './knowledge-search.tool'
+import { KnowledgeGraphSearchTool } from './knowledge-graph-search.tool'
+import { SkillWriteTool } from './skill-write.tool'
+import { SkillReadTool } from './skill-read.tool'
+import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
+const WORKSPACE_ONLY_TOOL_IDS = new Set<string>(WORKSPACE_TOOL_IDS)
+const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set([
+  'companion_ask',
+  'current_time',
+  'skill_write',
+  'skill_read',
+  'web_search',
+  'url_read'
+])
+/** Read-only knowledge tools allowed in workspace sessions (D7 / K1.3) */
+const KNOWLEDGE_TOOL_IDS = new Set(['knowledge_search', 'knowledge_graph_search'])
+const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_ID_SET = new Set<string>(
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS
+)
+
+function resolveGateProfile(context: ToolContext): AgentGateProfileId {
+  if (context.gateProfile) {
+    return resolveAgentGateProfileId(context.gateProfile)
+  }
+  if (context.workspace?.sessionKind === 'workspace') {
+    return AgentGateProfileId.Workspace
+  }
+  return AgentGateProfileId.Companion
+}
+
+function shouldHideDeniedTool(name: string, context: ToolContext): boolean {
+  const gate = context.agentGate
+  if (!gate?.probeEffect) return false
+
+  const rawConfig = context.userConfig?.['baishou_agent_gate_config'] as
+    | BaishouAgentGateConfig
+    | undefined
+  const hideDenied = rawConfig?.hideDeniedTools !== false
+  if (!hideDenied) return false
+
+  return (
+    gate.probeEffect({
+      action: name,
+      profileId: resolveGateProfile(context)
+    }) === AgentGateEffect.Deny
+  )
+}
 
 function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolContext): boolean {
+  const isWorkspaceSession = context.workspace?.sessionKind === 'workspace'
+  const personalMemoryReadEnabled = normalizeWorkspacePersonalMemoryReadEnabled(
+    context.userConfig?.['personalMemoryReadEnabled']
+  )
+  if (isWorkspaceSession) {
+    const allowed =
+      WORKSPACE_ONLY_TOOL_IDS.has(name) ||
+      WORKSPACE_SESSION_UTILITY_TOOL_IDS.has(name) ||
+      KNOWLEDGE_TOOL_IDS.has(name) ||
+      (personalMemoryReadEnabled && WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_ID_SET.has(name))
+    if (!allowed) return false
+  }
+
   const disabledIds = new Set(
     Array.isArray(context.userConfig?.['disabledToolIds'])
       ? (context.userConfig!['disabledToolIds'] as string[])
@@ -45,6 +118,8 @@ function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolCon
     return false
   }
   if (name === 'web_search' && !webSearchEnabled) return false
+  if (WORKSPACE_ONLY_TOOL_IDS.has(name) && !context.workspace?.folderRoot) return false
+  if (shouldHideDeniedTool(name, context)) return false
   return true
 }
 
@@ -62,14 +137,24 @@ export class ToolRegistry {
       new DiaryDeleteTool(),
       new DiaryWriteTool(),
       new SummaryReadTool(),
+      new SummaryWriteTool(),
       new MemoryStoreTool(),
       new MemoryDeleteTool(),
       new MessageSearchTool(),
+      new SessionListTool(),
       new VectorSearchTool(),
       new CurrentTimeTool(),
       new EmojiSendTool(),
       new ContextCompressUpstreamTool(),
-      new ContextCompressDownstreamTool()
+      new ContextCompressDownstreamTool(),
+      new CompanionAskTool(),
+      new GraphUpsertTool(),
+      new RecallRelationsTool(),
+      new KnowledgeSearchTool(),
+      new KnowledgeGraphSearchTool(),
+      new SkillWriteTool(),
+      new SkillReadTool(),
+      ...createWorkspaceTools()
     ])
   }
 

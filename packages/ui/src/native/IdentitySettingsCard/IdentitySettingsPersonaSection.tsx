@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { pickQuickSwitchPersonaIds } from './identity-recent.utils'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface IdentitySettingsPersonaSectionProps {
   activeId: string
@@ -76,23 +77,23 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: sharedTokens.spacing.xsPlus,
     minHeight: 32,
-    paddingHorizontal: 12,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    borderRadius: sharedTokens.radius.sm
   },
   chipText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     maxWidth: 160
   },
   activeMark: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   }
 })

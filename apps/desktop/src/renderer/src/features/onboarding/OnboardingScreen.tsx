@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { APP_UI_LANGUAGE_ORDER, type CompressionPromptLocale } from '@baishou/shared'
+import {
+  APP_UI_LANGUAGE_ORDER,
+  formatLocalDate,
+  normalizeGraphAwakenNickname,
+  USER_GENDERS,
+  type CompressionPromptLocale,
+  type UserGender
+} from '@baishou/shared'
+import { Input } from '@baishou/ui'
 import { useSettingsStore } from '@baishou/store'
 import icon from '../../../../../resources/icon.png?asset'
 import {
@@ -14,6 +22,7 @@ import { OnboardingBackground } from './components/OnboardingBackground'
 import { OnboardingGlowIcon } from './components/OnboardingGlowIcon'
 import { OnboardingStorageSlide } from './components/OnboardingStorageSlide'
 import { OnboardingLanguagePage } from './OnboardingLanguagePage'
+import { GraphAwakenBirthdayField } from '../graph/GraphAwakenBirthdayField'
 import styles from './OnboardingScreen.module.css'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -29,6 +38,11 @@ export const OnboardingScreen: React.FC = () => {
   const [isFinishing, setIsFinishing] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState<CompressionPromptLocale | null>(null)
   const [languageConfirmed, setLanguageConfirmed] = useState(false)
+  const [nickname, setNickname] = useState('')
+  const [nicknameError, setNicknameError] = useState(false)
+  const [birthday, setBirthday] = useState(() => formatLocalDate(new Date()))
+  const [gender, setGender] = useState<UserGender | null>(null)
+  const [customGender, setCustomGender] = useState('')
   const scrollViewportRef = useRef<HTMLDivElement>(null)
   const programmaticTargetRef = useRef<number | null>(null)
 
@@ -48,6 +62,25 @@ export const OnboardingScreen: React.FC = () => {
     [setLocale]
   )
 
+  const persistOnboardingProfile = useCallback(async () => {
+    const name = normalizeGraphAwakenNickname(nickname)
+    if (!name) return null
+    try {
+      const current = (await window.api.profile?.getProfile?.()) || {}
+      await window.api.profile?.saveProfile?.({
+        ...current,
+        nickname: name,
+        birthday: birthday.trim() || null,
+        gender: gender ?? null,
+        customGender: gender === 'other' && customGender.trim() ? customGender.trim() : null
+      })
+      await window.api.settings?.setGraphSelfNameConfigured?.(true)
+    } catch (e) {
+      console.warn('Failed to persist onboarding profile', e)
+    }
+    return name
+  }, [birthday, customGender, gender, nickname])
+
   useEffect(() => {
     if (isPreview) return undefined
 
@@ -58,6 +91,20 @@ export const OnboardingScreen: React.FC = () => {
     window.api.onboarding.check().then((res) => {
       setSelectedPath(res.currentPath)
     })
+
+    void window.api.profile
+      ?.getProfile?.()
+      .then((prof) => {
+        if (!prof) return
+        const normalized = normalizeGraphAwakenNickname(prof.nickname)
+        if (normalized) setNickname(normalized)
+        if (prof.birthday) setBirthday(String(prof.birthday).trim())
+        if (prof.gender) setGender(prof.gender as UserGender)
+        if (prof.customGender) setCustomGender(String(prof.customGender).trim())
+      })
+      .catch(() => {
+        /* profile may not be ready yet */
+      })
 
     return () => cleanup()
   }, [navigate, isPreview])
@@ -131,18 +178,36 @@ export const OnboardingScreen: React.FC = () => {
       return
     }
 
+    if (!normalizeGraphAwakenNickname(nickname)) {
+      setNicknameError(true)
+      window.alert(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+      goToPage(ONBOARDING_PAGE.PROFILE)
+      return
+    }
+
     setIsFinishing(true)
     try {
       if (selectedPath.trim()) {
         await window.api.onboarding.setDirectory(selectedPath.trim())
       }
+      await persistOnboardingProfile()
       await window.api.ensureDefaultLatteAssistant(selectedLanguage)
       await window.api.onboarding.finish()
     } catch (e) {
       console.error('完成引导失败', e)
       setIsFinishing(false)
     }
-  }, [goToPage, isPreview, languageConfirmed, navigate, selectedLanguage, selectedPath, t])
+  }, [
+    goToPage,
+    isPreview,
+    languageConfirmed,
+    navigate,
+    nickname,
+    persistOnboardingProfile,
+    selectedLanguage,
+    selectedPath,
+    t
+  ])
 
   const handleNext = () => {
     if (isFinishing) return
@@ -153,6 +218,15 @@ export const OnboardingScreen: React.FC = () => {
         return
       }
       void applyOnboardingLanguage(selectedLanguage)
+    }
+
+    if (currentPage === ONBOARDING_PAGE.PROFILE) {
+      if (!normalizeGraphAwakenNickname(nickname)) {
+        setNicknameError(true)
+        window.alert(t('onboarding.nickname_required', '请告诉伙伴你的名字吧~'))
+        return
+      }
+      void persistOnboardingProfile()
     }
 
     if (currentPage < NUM_ONBOARDING_PAGES - 1) {
@@ -196,8 +270,14 @@ export const OnboardingScreen: React.FC = () => {
       return
     }
 
+    if (clampedPage > ONBOARDING_PAGE.PROFILE && !normalizeGraphAwakenNickname(nickname)) {
+      setNicknameError(true)
+      goToPage(ONBOARDING_PAGE.PROFILE, { animated: false })
+      return
+    }
+
     setCurrentPage((prev) => (clampedPage !== prev ? clampedPage : prev))
-  }, [goToPage, isPreview, languageConfirmed])
+  }, [goToPage, isPreview, languageConfirmed, nickname])
 
   useEffect(() => {
     const viewport = scrollViewportRef.current
@@ -219,6 +299,8 @@ export const OnboardingScreen: React.FC = () => {
   const isLast = currentPage === NUM_ONBOARDING_PAGES - 1
   const nextBlockedOnLanguage =
     !isPreview && currentPage === ONBOARDING_PAGE.LANGUAGE && !languageConfirmed
+  const nextBlockedOnNickname =
+    currentPage === ONBOARDING_PAGE.PROFILE && !normalizeGraphAwakenNickname(nickname)
 
   const renderSlideTitle = (text: string) => <h2 className={styles.slideTitle}>{text}</h2>
   const renderSlideBody = (text: string) => <p className={styles.slideBody}>{text}</p>
@@ -239,7 +321,84 @@ export const OnboardingScreen: React.FC = () => {
       </div>
       <h1 className={styles.welcomeTitle}>{t('onboarding.welcome_title')}</h1>
       <p className={styles.welcomeTagline}>{t('onboarding.welcome_tagline')}</p>
-      {renderSlideBody(t('onboarding.welcome_desc'))}
+      <p className={styles.welcomeDesc}>{t('onboarding.welcome_desc')}</p>
+    </div>
+  )
+
+  const renderProfileSlide = () => (
+    <div className={styles.slideInner}>
+      <OnboardingGlowIcon theme={SLIDE_THEMES[ONBOARDING_PAGE.PROFILE]} />
+      <div className={styles.slideSpacerMedium} />
+      {renderSlideTitle(t('onboarding.profile_title', '让伙伴认识你'))}
+      <div className={styles.profileForm}>
+        <div className={styles.profileField}>
+          <div className={styles.labelRow}>
+            <span className={styles.profileLabel}>
+              {t('onboarding.nickname_label', '你的名字')}
+            </span>
+            <span className={styles.requiredMark}>*</span>
+          </div>
+          <Input
+            value={nickname}
+            onChange={(e) => {
+              setNickname(e.target.value)
+              if (nicknameError && normalizeGraphAwakenNickname(e.target.value)) {
+                setNicknameError(false)
+              }
+            }}
+            placeholder={t('onboarding.nickname_placeholder', '怎么称呼你？')}
+            error={
+              nicknameError ? t('onboarding.nickname_required', '请告诉伙伴你的名字吧~') : undefined
+            }
+          />
+        </div>
+
+        <div className={styles.profileField}>
+          <span className={styles.profileLabel}>{t('onboarding.birthday_label', '你的生日')}</span>
+          <GraphAwakenBirthdayField
+            value={birthday}
+            onChange={setBirthday}
+            placeholder={t('onboarding.birthday_placeholder', '选择你的生日（选填）')}
+          />
+        </div>
+
+        <div className={styles.profileField}>
+          <span className={styles.profileLabel}>{t('onboarding.gender_label', '你的性别')}</span>
+          <div className={styles.genderRow} role="radiogroup">
+            {USER_GENDERS.map((g) => {
+              const active = gender === g
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  className={active ? styles.genderChipActive : styles.genderChip}
+                  onClick={() => setGender(active ? null : g)}
+                >
+                  {t(
+                    `graph.awaken_gender_${g}`,
+                    g === 'male'
+                      ? '男'
+                      : g === 'female'
+                        ? '女'
+                        : g === 'other'
+                          ? '自定义'
+                          : '暂不设置'
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          {gender === 'other' ? (
+            <Input
+              value={customGender}
+              onChange={(e) => setCustomGender(e.target.value)}
+              placeholder={t('profile.custom_gender_placeholder', '输入自定义性别')}
+            />
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 
@@ -300,6 +459,7 @@ export const OnboardingScreen: React.FC = () => {
   const slides = [
     renderLanguageSlide,
     renderWelcomeSlide,
+    renderProfileSlide,
     renderPhilosophySlide,
     renderCompressionSlide,
     renderStorageSlide,
@@ -349,7 +509,7 @@ export const OnboardingScreen: React.FC = () => {
               type="button"
               className={styles.nextButton}
               onClick={handleNext}
-              disabled={isFinishing || nextBlockedOnLanguage}
+              disabled={isFinishing || nextBlockedOnLanguage || nextBlockedOnNickname}
               style={{
                 backgroundColor: isLast ? theme.iconColor : BRAND_BLUE_DARK
               }}

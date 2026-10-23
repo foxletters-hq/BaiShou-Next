@@ -1,10 +1,6 @@
 import type { AIProviderConfig, GlobalModelsConfig } from '../types/settings.types'
 import { resolveProviderBaseUrl } from '../constants/provider-base-urls'
-import {
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
-  resolveProviderListDialogueFallback
-} from './agent-dialogue-model.util'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from './agent-dialogue-model.util'
 
 export type SummaryConfigResolution =
   | {
@@ -72,7 +68,7 @@ function resolveConfiguredPair(
 export function resolveSummaryConfigFromSettings(
   providers: AIProviderConfig[],
   globalModels: Partial<GlobalModelsConfig> | null | undefined,
-  fallbackModelId?: string
+  _fallbackModelId?: string
 ): SummaryConfigResolution {
   const models = globalModels ?? {}
 
@@ -90,72 +86,16 @@ export function resolveSummaryConfigFromSettings(
     }
   }
 
-  const dialoguePair = resolveConfiguredPair(
-    providers,
-    models.globalDialogueProviderId,
-    models.globalDialogueModelId
-  )
-  if (dialoguePair) {
-    return {
-      ok: true,
-      providerConfig: dialoguePair.provider,
-      modelId: dialoguePair.modelId,
-      isFallback: true
-    }
-  }
-
-  const listFallback = resolveProviderListDialogueFallback(providers)
-  const providerListPair = resolveConfiguredPair(
-    providers,
-    listFallback.providerId,
-    listFallback.modelId
-  )
-  if (providerListPair) {
-    return {
-      ok: true,
-      providerConfig: providerListPair.provider,
-      modelId: providerListPair.modelId,
-      isFallback: true
-    }
-  }
-
-  if (isConfiguredDialogueModelId(fallbackModelId)) {
-    const operational = providers.find((p) => isProviderOperational(p))
-    if (operational) {
-      const mid = fallbackModelId!.trim()
-      if (isModelAllowedOnProvider(operational, mid)) {
-        return {
-          ok: true,
-          providerConfig: operational,
-          modelId: mid,
-          isFallback: true
-        }
-      }
-    }
-  }
-
   const staleSummaryProvider = providers.find(
     (p) => p.id === models.globalSummaryProviderId?.trim()
   )
-  const staleDialogueProvider = providers.find(
-    (p) => p.id === models.globalDialogueProviderId?.trim()
-  )
-  const namedProvider = staleSummaryProvider ?? staleDialogueProvider
-
-  if (namedProvider && !readProviderApiKey(namedProvider)) {
-    return { ok: false, reason: 'no_api_key', providerName: namedProvider.name }
-  }
-
-  if (providers.some((p) => p.isEnabled !== false && !readProviderApiKey(p))) {
-    const missingKey = providers.find((p) => p.isEnabled !== false && !readProviderApiKey(p))
-    if (missingKey && providers.every((p) => !readProviderApiKey(p))) {
-      return { ok: false, reason: 'no_api_key', providerName: missingKey.name }
-    }
+  if (staleSummaryProvider && !readProviderApiKey(staleSummaryProvider)) {
+    return { ok: false, reason: 'no_api_key', providerName: staleSummaryProvider.name }
   }
 
   return {
     ok: false,
     reason: 'no_model',
-    providerName: namedProvider?.name
+    providerName: staleSummaryProvider?.name
   }
 }

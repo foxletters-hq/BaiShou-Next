@@ -1,0 +1,228 @@
+/**
+ * recall_relations — read-only GraphRAG for companion narrative.
+ */
+
+import { z } from 'zod'
+import { formatLocalDate, truncateTextSafe } from '@baishou/shared'
+import { AgentTool } from './agent.tool'
+import type { ToolContext } from './agent.tool'
+
+const params = z.object({
+  entity: z
+    .string()
+    .describe('Person, place, event, topic, or multi-entity query to look up in the memory graph.'),
+  mode: z
+    .enum(['network', 'timeline', 'neighbors', 'search'])
+    .optional()
+    .describe(
+      'search = find matching entities by name; neighbors = nearby nodes around the first match; ' +
+        'network = shortest relation paths (default, 2–3 hops) with diary excerpts; ' +
+        'timeline = relations ordered by validFrom.'
+    ),
+  node_type: z
+    .enum(['person', 'place', 'organization', 'event', 'topic'])
+    .optional()
+    .describe('Optional type filter when searching or resolving the entity.'),
+  depth: z
+    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .optional()
+    .describe('Hop cap for neighbors (default 1) or network paths (default 3).'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .optional()
+    .describe('Max nodes or paths to return (default 12).')
+})
+
+type RecallEdge = {
+  id: string
+  fromId: string
+  toId: string
+  edgeType: string
+  sourceRef?: string | null
+  sourceExcerpt?: string
+  validFrom?: number | null
+  isCurrent?: boolean
+}
+
+function formatValidFrom(validFrom?: number | null): string {
+  if (validFrom == null || !Number.isFinite(validFrom)) return ''
+  return ` [validFrom:${formatLocalDate(new Date(validFrom))}]`
+}
+
+function resolveNodeName(nodes: Array<{ id: string; name: string }>, id: string): string {
+  return nodes.find((n) => n.id === id)?.name || id.slice(0, 8)
+}
+
+function formatRelationEdge(
+  edge: RecallEdge,
+  nodes: Array<{ id: string; name: string }>,
+  opts?: { includeExcerpt?: boolean }
+): string {
+  const from = resolveNodeName(nodes, edge.fromId)
+  const to = resolveNodeName(nodes, edge.toId)
+  const id = edge.id ? ` id=${edge.id}` : ''
+  const src = edge.sourceRef ? ` [来源:${edge.sourceRef}]` : ''
+  const validFrom = formatValidFrom(edge.validFrom)
+  const excerpt =
+    opts?.includeExcerpt !== false && edge.sourceExcerpt
+      ? ` 「${truncateTextSafe(edge.sourceExcerpt, 80)}」`
+      : ''
+  const stale = edge.isCurrent === false ? ' （已失效）' : ''
+  return `- ${from} —${edge.edgeType}→ ${to}${id}${src}${validFrom}${excerpt}${stale}`
+}
+
+export class RecallRelationsTool extends AgentTool<typeof params> {
+  readonly name = 'recall_relations'
+
+  readonly description =
+    "Look up people, places, events and how they connect in the user's life graph (diary relations).\n\n" +
+    'This is not the notebook graph — use knowledge_graph_search for relations inside a knowledge notebook.\n\n' +
+    'Modes:\n' +
+    '- search: list matching entities when you only have a name or type\n' +
+    '- neighbors: current inbound and outbound edges around an entity (1 hop by default)\n' +
+    '- network: shortest current-edge paths with diary excerpts (default)\n' +
+    "- timeline: the same entity's relations ordered by time, including superseded edges marked 已失效\n\n" +
+    'Returns node and edge ids so graph_upsert can update or delete a specific edge. ' +
+    'Call this when the user refers to someone or somewhere as if you already know them, ' +
+    'asks how two things relate, or you need to check who is already in the graph before writing. ' +
+    'Read-only; approved relations only. Do not invent connections that are not returned.'
+
+  readonly parameters = params
+
+  get category(): string {
+    return 'memory'
+  }
+
+  get icon(): string {
+    return 'share-2'
+  }
+
+  get displayName(): string {
+    return '回忆人生关系图'
+  }
+
+  async execute(args: z.infer<typeof params>, context: ToolContext): Promise<string> {
+    const entity = args.entity.trim()
+    if (!entity) return '请提供 entity（实体名）。'
+    const reader = context.graphReader
+    if (!reader) {
+      return (
+        'The memory graph is not available yet. Do not call this tool again in this conversation. ' +
+        'Continue without graph context; the user can organize diary relations from the diary list later.'
+      )
+    }
+
+    const mode = args.mode ?? 'network'
+    try {
+      const result = await reader.recallRelations({
+        entity,
+        mode,
+        depth: args.depth,
+        nodeType: args.node_type,
+        limit: args.limit
+      })
+      if (!result.anchors.length) {
+        return (
+          `未找到「${entity}」。本次不要用同一名字空转；用户刚写入或再次追问后可以再查。` +
+          '需要关系时，用户可以从日记条目整理人物与事件。'
+        )
+      }
+
+      const anchorLines = result.anchors
+        .slice(0, 8)
+        .map((a) => `- ${a.name} (${a.nodeType}) id=${a.id}${a.summary ? `: ${a.summary}` : ''}`)
+        .join('\n')
+
+      if (mode === 'search') {
+        const nodeLines = result.nodes
+          .slice(0, args.limit ?? 12)
+          .map((n) => `- ${n.name} (${n.nodeType}) id=${n.id}${n.summary ? `: ${n.summary}` : ''}`)
+          .join('\n')
+        return [`## 匹配实体`, nodeLines || anchorLines, `共 ${result.nodes.length} 个`].join('\n')
+      }
+
+      if (mode === 'neighbors') {
+        const center = result.anchors[0]
+        const limit = args.limit ?? 12
+        const edgeLines = result.subgraph
+          .slice(0, limit)
+          .map((e) => formatRelationEdge(e, result.nodes))
+          .join('\n')
+        return [
+          `## 中心`,
+          center ? `- ${center.name} (${center.nodeType}) id=${center.id}` : anchorLines,
+          `## 邻居关系`,
+          edgeLines || '(无邻居)',
+          `节点 ${result.nodes.length} · 边 ${result.subgraph.length}`
+        ].join('\n')
+      }
+
+      if (mode === 'timeline') {
+        const edgeSource = result.timeline || result.subgraph
+        const edgeLines = edgeSource
+          .slice(0, args.limit ?? 12)
+          .map((e) => formatRelationEdge(e, result.nodes))
+          .join('\n')
+
+        return [
+          `## 锚点`,
+          anchorLines,
+          `## 关系时间线`,
+          edgeLines || '(无边)',
+          `节点 ${result.nodes.length} · 边 ${edgeSource.length}`
+        ].join('\n')
+      }
+
+      const paths = result.paths ?? []
+      const pathLines =
+        paths.length > 0
+          ? paths
+              .slice(0, 12)
+              .map((p, i) => {
+                const chain = p.nodeNames.join(' → ')
+                const excerpts = p.edges
+                  .map((e, ei) => {
+                    const dir = p.edgeDirections?.[ei] ?? 'forward'
+                    const fromName = resolveNodeName(result.nodes, e.fromId)
+                    const toName = resolveNodeName(result.nodes, e.toId)
+                    const label =
+                      dir === 'reverse'
+                        ? `${toName} ←${e.edgeType}— ${fromName}`
+                        : `${fromName} —${e.edgeType}→ ${toName}`
+                    const id = e.id ? ` id=${e.id}` : ''
+                    const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
+                    const validFrom = formatValidFrom(e.validFrom)
+                    const ex = e.sourceExcerpt
+                      ? `「${truncateTextSafe(e.sourceExcerpt, 80)}」`
+                      : e.sourceRef
+                        ? `[${e.sourceRef}]`
+                        : ''
+                    return `  · ${label}${id}${src}${validFrom}${ex ? ` ${ex}` : ''}`
+                  })
+                  .join('\n')
+                return `${i + 1}. ${chain}\n${excerpts || '  · (无摘录)'}`
+              })
+              .join('\n')
+          : [
+              '(未找到连接路径)',
+              `锚点${result.anchors.map((a) => `「${a.name}」`).join('')}之间当前边未连通（历史边只在 timeline 里）。`
+            ].join('\n')
+
+      return [
+        `## 锚点`,
+        anchorLines,
+        `## 关系路径（最短，≤3 跳）`,
+        pathLines,
+        `路径 ${paths.length} · 节点 ${result.nodes.length}`
+      ].join('\n')
+    } catch {
+      return (
+        'The memory graph could not be read right now. Do not call this tool again in this conversation. ' +
+        'Continue without graph context.'
+      )
+    }
+  }
+}

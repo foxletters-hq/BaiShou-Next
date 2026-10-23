@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { listAssistantsForUi } from '../lib/mobile-assistant.util'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 interface Assistant {
   id: string
@@ -237,7 +238,7 @@ export const AssistantManagementScreen: React.FC = () => {
           {options?.showDragHandle ? (
             <TouchableOpacity
               onPressIn={options.drag}
-              style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
+              style={[styles.dragHandle, { borderColor: colors.borderControl }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <GripVertical size={20} color={colors.textSecondary} strokeWidth={2} />
@@ -268,7 +269,7 @@ export const AssistantManagementScreen: React.FC = () => {
 
         <View style={styles.cardActions}>
           <TouchableOpacity
-            style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
+            style={[styles.chipBtn, { borderColor: colors.borderControl }]}
             onPress={() => void handleTogglePin(item)}
           >
             <Pin
@@ -378,35 +379,35 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-    gap: 16
+    padding: sharedTokens.spacing.xl,
+    gap: sharedTokens.spacing.md
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     textAlign: 'center',
     lineHeight: 22
   },
   createFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 999,
+    gap: sharedTokens.spacing.xsPlus,
+    paddingHorizontal: sharedTokens.spacing.mdPlus,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.full,
     borderWidth: 1
   },
   createFirstText: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   searchWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.mdTight
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 32
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl
   },
   listHost: {
     flex: 1,
@@ -415,21 +416,21 @@ const styles = StyleSheet.create({
   listEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 32
+    paddingVertical: sharedTokens.spacing.xl
   },
   columnWrap: {
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   card: {
     borderWidth: 1,
-    padding: 14,
-    gap: 10,
+    padding: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.smPlus,
     minHeight: 140
   },
   dragHandle: {
     width: 28,
     height: 44,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: sharedTokens.spacing.smPlus
   },
   avatar: {
     width: 44,
@@ -452,36 +453,36 @@ const styles = StyleSheet.create({
     height: 44
   },
   emojiText: {
-    fontSize: 22
+    fontSize: mobileTypography.display.fontSize
   },
   cardMeta: {
     flex: 1,
-    gap: 2
+    gap: sharedTokens.spacing.xxs
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: sharedTokens.spacing.xsPlus
   },
   cardName: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600',
     flexShrink: 1
   },
   cardDesc: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
     flex: 1
   },
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   chipBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'

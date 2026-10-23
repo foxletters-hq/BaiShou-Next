@@ -12,8 +12,9 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 
 ###### 👥 Key people & relationship progress
-- **(Person 1)**:
-- **(Person 2)**:
+- **User (me)**:
+- **AI companion**:
+- **Other people**:
 
 ---
 
@@ -55,8 +56,9 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 
 ###### 👥 Relationship dynamics
-- **(Person 1)**:
-- **(Person 2)**:
+- **User (me)**:
+- **AI companion**:
+- **Other people**:
 
 ---
 
@@ -89,6 +91,9 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 
 ###### 👥 Long-term relationships
+- **User (me)**:
+- **AI companion**:
+- **Other people**:
 
 ---
 
@@ -120,6 +125,9 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 
 ###### 👥 Important relationships this year
+- **User (me)**:
+- **AI companion**:
+- **Other people**:
 
 ---
 

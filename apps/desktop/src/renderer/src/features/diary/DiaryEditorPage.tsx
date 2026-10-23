@@ -7,6 +7,50 @@ import { motion } from 'framer-motion'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
+function DiaryEditorLoadingSkeleton() {
+  return (
+    <div className="diary-editor-skeleton" aria-busy="true" aria-label="Loading">
+      <div className="diary-editor-skeleton-appbar">
+        <div className="diary-editor-skeleton-circle" />
+        <div className="diary-editor-skeleton-appbar-center">
+          <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--title" />
+        </div>
+        <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--action" />
+      </div>
+
+      <div className="diary-editor-skeleton-body">
+        <div className="diary-editor-skeleton-meta">
+          <div className="diary-editor-skeleton-meta-left">
+            <div className="diary-editor-skeleton-pill" />
+            <div className="diary-editor-skeleton-pill" />
+            <div className="diary-editor-skeleton-square" />
+          </div>
+          <div className="diary-editor-skeleton-meta-spacer" />
+          <div className="diary-editor-skeleton-square" />
+        </div>
+
+        <div className="diary-editor-skeleton-content">
+          <div className="diary-editor-skeleton-lines">
+            <div className="diary-editor-skeleton-line" style={{ width: '28%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '62%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '88%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '74%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '46%' }} />
+          </div>
+          <div className="diary-editor-skeleton-toolbar">
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const DiaryEditorPage: React.FC = () => {
   const editor = useDiaryEditorPage()
   const tts = useTts(editor.t)
@@ -22,26 +66,22 @@ export const DiaryEditorPage: React.FC = () => {
   }, [editor.content, tts])
 
   if (editor.isLoading) {
-    return (
-      <div
-        style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-      >
-        Loading...
-      </div>
-    )
+    return <DiaryEditorLoadingSkeleton />
   }
+
+  const isLeaving = editor.savePhase === 'leaving'
 
   return (
     <motion.div
       className="diary-editor-page-container"
       style={{
-        pointerEvents: editor.isSaving ? 'none' : 'auto'
+        pointerEvents: editor.savePhase === 'idle' ? 'auto' : 'none'
       }}
-      initial={{ opacity: 0, scale: 0.98, y: 8 }}
-      animate={editor.isSaving ? { opacity: 0, scale: 0.98 } : { opacity: 1, scale: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={isLeaving ? { opacity: 0, y: 10, scale: 0.992 } : { opacity: 1, y: 0, scale: 1 }}
       transition={{
-        duration: editor.isSaving ? 0.15 : 0.2,
-        ease: editor.isSaving ? 'easeInOut' : 'easeOut'
+        duration: isLeaving ? 0.32 : 0.28,
+        ease: [0.22, 1, 0.36, 1]
       }}
     >
       <DiaryEditor
@@ -52,7 +92,9 @@ export const DiaryEditorPage: React.FC = () => {
         mood={editor.mood}
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
-        isSaving={editor.isSaving}
+        isSaving={editor.savePhase !== 'idle'}
+        isDirty={editor.isDirty}
+        savePhase={editor.savePhase}
         onContentChange={editor.handleContentChange}
         onDateChange={editor.setSelectedDate}
         onWeatherChange={editor.setWeather}
@@ -60,41 +102,11 @@ export const DiaryEditorPage: React.FC = () => {
         onFavoriteChange={editor.setIsFavorite}
         onMediaPathsChange={editor.setMediaPaths}
         onSave={editor.handleSave}
+        onQuickSave={editor.handleQuickSave}
         onCancel={editor.handleBack}
         onReadAloud={handleReadAloud}
         isTtsPlaying={tts.ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
       />
-
-      {editor.showExitConfirm && (
-        <div
-          className="diary-delete-modal-overlay"
-          onClick={() => editor.setShowExitConfirm(false)}
-        >
-          <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="dd-modal-title">{editor.t('common.confirm_leave', '确认离开')}</div>
-            <div
-              className="dd-modal-content"
-              style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}
-            >
-              {editor.t(
-                'diary.editor_leave_confirm',
-                '当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？'
-              )}
-            </div>
-            <div className="dd-modal-actions" style={{ marginTop: '24px' }}>
-              <button className="dd-btn-cancel" onClick={() => editor.setShowExitConfirm(false)}>
-                {editor.t('common.cancel', '我再写写')}
-              </button>
-              <button
-                className="dd-btn-confirm dd-btn-confirm-danger"
-                onClick={() => editor.goBackToSidebar()}
-              >
-                {editor.t('common.leave', '强行离开')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </motion.div>
   )
 }

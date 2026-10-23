@@ -1,21 +1,22 @@
 import { useCallback, useRef } from 'react'
-import type { MockChatAttachment } from '@baishou/shared'
+import type { MockChatAttachment, PromptFileRef } from '@baishou/shared'
+import { isSafeWorkspaceRelativePath } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import {
   collectClipboardImageFiles,
   fileToChatAttachment,
+  shouldRejectOversizedTextAttachment,
   type InputBarAttachment
 } from './input-bar-attachment.util'
-
-const TEXT_FILE_SIZE_LIMIT = 512 * 1024
+import { ingestDroppedAttachments, type InputBarAttachmentIntake } from './input-bar-drop.util'
 
 function filterValidAttachments(
   attachments: InputBarAttachment[],
   onReject: (message: string) => void
 ): InputBarAttachment[] {
   return attachments.filter((att) => {
-    if (att.isText && att.fileSize && att.fileSize > TEXT_FILE_SIZE_LIMIT) {
+    if (shouldRejectOversizedTextAttachment(att)) {
       onReject('input.file_too_large')
       return false
     }
@@ -23,8 +24,48 @@ function filterValidAttachments(
   })
 }
 
+export function asWorkspaceTextRef(att: InputBarAttachment): PromptFileRef | null {
+  const relativePath = att.relativePath?.trim().replace(/\\/g, '/')
+  if (!relativePath || !isSafeWorkspaceRelativePath(relativePath)) return null
+  if (att.isDirectory) {
+    return {
+      relativePath,
+      origin: att.origin ?? 'explorer-drop',
+      isDirectory: true
+    }
+  }
+  if (!att.isText || att.isImage || att.isPdf) return null
+  return {
+    relativePath,
+    selection: att.selection,
+    comment: att.comment,
+    origin: att.origin ?? 'explorer-drop'
+  }
+}
+
+function splitPromotedAttachments(
+  attachments: InputBarAttachment[],
+  promote: boolean
+): { kept: InputBarAttachment[]; promoted: PromptFileRef[] } {
+  if (!promote) return { kept: attachments, promoted: [] }
+  const kept: InputBarAttachment[] = []
+  const promoted: PromptFileRef[] = []
+  for (const att of attachments) {
+    const ref = asWorkspaceTextRef(att)
+    if (ref) promoted.push(ref)
+    else kept.push(att)
+  }
+  return { kept, promoted }
+}
+
 export function useInputBarAttachments(
-  setAttachments: React.Dispatch<React.SetStateAction<MockChatAttachment[]>>
+  setAttachments: React.Dispatch<React.SetStateAction<MockChatAttachment[]>>,
+  options?: {
+    attachmentIntake?: InputBarAttachmentIntake
+    resolveDropAttachments?: (dataTransfer: DataTransfer) => Promise<MockChatAttachment[] | null>
+    promoteWorkspaceTextRefs?: boolean
+    onPromotedFileRefs?: (refs: PromptFileRef[]) => void
+  }
 ) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -37,18 +78,32 @@ export function useInputBarAttachments(
     [t, toast]
   )
 
+  const commitAttachments = useCallback(
+    (attachments: InputBarAttachment[]) => {
+      const { kept, promoted } = splitPromotedAttachments(
+        attachments,
+        Boolean(options?.promoteWorkspaceTextRefs)
+      )
+      if (kept.length) setAttachments((prev) => [...prev, ...kept])
+      if (promoted.length) options?.onPromotedFileRefs?.(promoted)
+    },
+    // options 由调用方内联创建，按字段列依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [options?.onPromotedFileRefs, options?.promoteWorkspaceTextRefs, setAttachments]
+  )
+
   const addAttachments = useCallback(
     async (files: File[]) => {
       if (!files.length) return
       try {
         const newAtts = await Promise.all(files.map(fileToChatAttachment))
         const valid = filterValidAttachments(newAtts, rejectOversizedText)
-        if (valid.length) setAttachments((prev) => [...prev, ...valid])
+        if (valid.length) commitAttachments(valid)
       } catch (e) {
         console.error('Failed to add attachments:', e)
       }
     },
-    [rejectOversizedText, setAttachments]
+    [commitAttachments, rejectOversizedText]
   )
 
   const handlePickFiles = async () => {
@@ -61,7 +116,7 @@ export function useInputBarAttachments(
         const newAtts = await api.pickFiles()
         if (newAtts?.length) {
           const valid = filterValidAttachments(newAtts as InputBarAttachment[], rejectOversizedText)
-          if (valid.length) setAttachments((prev) => [...prev, ...valid])
+          if (valid.length) commitAttachments(valid)
         }
       } catch (e) {
         console.error('Failed to pick file via IPC:', e)
@@ -77,16 +132,59 @@ export function useInputBarAttachments(
     e.target.value = ''
   }
 
+  const handleAttachmentDrop = useCallback(
+    async (dataTransfer: DataTransfer) => {
+      try {
+        const newAtts = await ingestDroppedAttachments({
+          dataTransfer,
+          intake: options?.attachmentIntake ?? 'companion',
+          resolveDropAttachments: options?.resolveDropAttachments
+            ? async (dt) => {
+                const resolved = await options.resolveDropAttachments?.(dt)
+                return resolved as InputBarAttachment[] | null
+              }
+            : undefined
+        })
+        const valid = filterValidAttachments(newAtts, rejectOversizedText)
+        if (valid.length) commitAttachments(valid)
+      } catch (e) {
+        console.error('Failed to add dropped attachments:', e)
+      }
+    },
+    // options 由调用方内联创建，按字段列依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      commitAttachments,
+      options?.attachmentIntake,
+      options?.resolveDropAttachments,
+      rejectOversizedText
+    ]
+  )
+
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       const imageFiles = collectClipboardImageFiles(e.clipboardData)
-      if (!imageFiles.length) return
+      if (imageFiles.length) {
+        e.preventDefault()
+        await addAttachments(imageFiles)
+        return
+      }
 
+      // contenteditable 默认粘贴 HTML，会带入底色/字号；统一为纯文本
       e.preventDefault()
-      await addAttachments(imageFiles)
+      const text = e.clipboardData.getData('text/plain')
+      if (text) {
+        document.execCommand('insertText', false, text)
+      }
     },
     [addAttachments]
   )
 
-  return { fileInputRef, handlePickFiles, handleNativeWebFileChange, handlePaste }
+  return {
+    fileInputRef,
+    handlePickFiles,
+    handleNativeWebFileChange,
+    handlePaste,
+    handleAttachmentDrop
+  }
 }

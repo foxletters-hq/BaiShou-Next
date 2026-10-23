@@ -1,9 +1,24 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
+import * as os from 'os'
 import * as path from 'path'
-import { logger, supportsNativePdf, stripAttachmentBinaryForStorage } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  type GlobalModelsConfig,
+  logger,
+  normalizeFileCiteRefs,
+  resolveDialogueModelSelection,
+  supportsNativePdf,
+  stripAttachmentBinaryForStorage
+} from '@baishou/shared'
 import { pathService } from './vault.ipc'
+import { settingsManager } from './settings.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
+import { getWorkspaceSessionBinding } from '../services/agent-workspace-session.store'
+import {
+  decorateWorkspacePromptAttachment,
+  planWorkspacePromptAttachment
+} from '../services/workspace-prompt-attachment.util'
 
 function isEphemeralAttachmentPath(filePath?: string): boolean {
   if (!filePath) return true
@@ -63,7 +78,24 @@ export function registerAttachmentIPC() {
   // ==========================================
   ipcMain.handle(
     'agent:save-user-message',
-    async (_, args: { sessionId: string; text: string; attachments?: any[] }) => {
+    async (
+      _,
+      args: {
+        sessionId: string
+        text: string
+        providerId?: string
+        modelId?: string
+        attachments?: any[]
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath?: string
+          selection?: { startLine?: number; endLine?: number }
+          comment?: string
+          origin?: string
+        }>
+      }
+    ) => {
       try {
         const managers = getAgentManagers()
         const existingSession = await managers.realSessionRepo.getSessionById(args.sessionId)
@@ -72,19 +104,93 @@ export function registerAttachmentIPC() {
             `[CRITICAL BUG] 试图保存消息时，在数据库中找不到 sessionId=${args.sessionId}！`
           )
         }
-        const activeModelId = existingSession.modelId
-        const activeProviderId = existingSession.providerId
+        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+        const resolvedDialogue = resolveDialogueModelSelection({
+          requestedProviderId: args.providerId ?? existingSession.providerId,
+          requestedModelId: args.modelId ?? existingSession.modelId,
+          globalDialogueProviderId: globalModels?.globalDialogueProviderId,
+          globalDialogueModelId: globalModels?.globalDialogueModelId
+        })
+        const activeModelId = resolvedDialogue.modelId || ''
+        const activeProviderId = resolvedDialogue.providerId || ''
         let activeProviderType = ''
-        try {
-          const providerInstance = await getActiveProvider(activeProviderId)
-          activeProviderType = providerInstance.config.type || ''
-        } catch (provErr) {
-          logger.warn('Failed to resolve provider type for session', { error: provErr as any })
+        if (activeProviderId) {
+          try {
+            const providerInstance = await getActiveProvider(activeProviderId)
+            activeProviderType = providerInstance.config.type || ''
+          } catch (provErr) {
+            logger.warn('Failed to resolve provider type for session', { error: provErr as any })
+          }
         }
 
-        // 处理附件：复制到会话目录
+        // 处理附件：伙伴会话复制到附件库；工作台图片做本机快照，其余记原路径
         let finalAttachments = args.attachments
-        if (finalAttachments && finalAttachments.length > 0) {
+        const workspaceBinding = await getWorkspaceSessionBinding(args.sessionId)
+        if (finalAttachments && finalAttachments.length > 0 && workspaceBinding?.folderRoot) {
+          const safeSessionId = args.sessionId.replace(/[\\/]/g, '')
+          const snapshotDir = path.join(os.tmpdir(), 'baishou-workbench-prompt', safeSessionId)
+          finalAttachments = await Promise.all(
+            finalAttachments.map(async (att) => {
+              const plan = planWorkspacePromptAttachment(att)
+              if (plan.mode === 'path-ref') {
+                return decorateWorkspacePromptAttachment({
+                  absolutePath: plan.absolutePath,
+                  fileName: plan.fileName,
+                  folderRoot: workspaceBinding.folderRoot,
+                  mimeType: att.mimeType,
+                  selection: att.selection,
+                  comment: att.comment,
+                  origin: att.origin,
+                  isDirectory: att.isDirectory
+                })
+              }
+              if (plan.mode === 'image-snapshot') {
+                const ext = path.extname(plan.fileName) || path.extname(plan.absolutePath) || '.png'
+                const originalName = path.parse(plan.fileName).name || 'image'
+                const snapshotName = `${originalName}_${Date.now()}${ext}`
+                await fs.mkdir(snapshotDir, { recursive: true })
+                const destPath = path.join(snapshotDir, snapshotName)
+                try {
+                  await fs.copyFile(plan.absolutePath, destPath)
+                  return decorateWorkspacePromptAttachment({
+                    absolutePath: destPath,
+                    fileName: plan.fileName,
+                    mimeType: att.mimeType
+                  })
+                } catch (error) {
+                  logger.error('Failed to snapshot workbench image attachment', {
+                    path: plan.absolutePath,
+                    error
+                  })
+                  return decorateWorkspacePromptAttachment({
+                    absolutePath: plan.absolutePath,
+                    fileName: plan.fileName,
+                    folderRoot: workspaceBinding.folderRoot,
+                    mimeType: att.mimeType
+                  })
+                }
+              }
+              if (plan.mode === 'ephemeral' && att.data) {
+                const ext = inferAttachmentExt(att)
+                const originalName = path.parse(att.fileName || 'pasted').name || 'pasted'
+                const newFileName = `${originalName}_${Date.now()}${ext}`
+                await fs.mkdir(snapshotDir, { recursive: true })
+                const destPath = path.join(snapshotDir, newFileName)
+                const buffer = Buffer.from(
+                  String(att.data).replace(/^data:[^;]+;base64,/, ''),
+                  'base64'
+                )
+                await fs.writeFile(destPath, buffer)
+                return decorateWorkspacePromptAttachment({
+                  absolutePath: destPath,
+                  fileName: att.fileName || newFileName,
+                  mimeType: att.mimeType
+                })
+              }
+              return stripAttachmentBinaryForStorage(att)
+            })
+          )
+        } else if (finalAttachments && finalAttachments.length > 0) {
           try {
             const attachBase = await pathService.getAttachmentsBaseDirectory()
             const safeSessionId = args.sessionId.replace(/[\\/]/g, '')
@@ -110,9 +216,10 @@ export function registerAttachmentIPC() {
                     att.fileName = newFileName
                     att.name = newFileName
 
-                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
-                    const isText = /\.(txt|md)$/i.test(newFileName)
-                    const isPdf = /\.pdf$/i.test(newFileName)
+                    const flags = classifyPromptAttachmentKind(newFileName)
+                    const isImage = flags.isImage
+                    const isText = flags.isText
+                    const isPdf = flags.isPdf
                     att.isImage = isImage
                     att.isText = isText
                     att.isPdf = isPdf
@@ -144,9 +251,10 @@ export function registerAttachmentIPC() {
                     att.fileName = att.fileName || newFileName
                     att.name = att.name || att.fileName
 
-                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
-                    const isText = /\.(txt|md)$/i.test(newFileName)
-                    const isPdf = /\.pdf$/i.test(newFileName)
+                    const flags = classifyPromptAttachmentKind(newFileName)
+                    const isImage = flags.isImage
+                    const isText = flags.isText
+                    const isPdf = flags.isPdf
                     att.isImage = isImage
                     att.isText = isText
                     att.isPdf = isPdf
@@ -226,13 +334,41 @@ export function registerAttachmentIPC() {
         const userOrderIndex = lastOrder + 1
         const userMsgId = crypto.randomUUID()
 
+        const skillRefs = Array.isArray(args.skillRefs)
+          ? args.skillRefs
+              .map((ref) => ({
+                command: String(ref?.command ?? '')
+                  .trim()
+                  .replace(/^\//, ''),
+                content: typeof ref?.content === 'string' ? ref.content : ''
+              }))
+              .filter((ref) => Boolean(ref.command))
+          : []
+        const fileRefs = normalizeFileCiteRefs(args.fileRefs)
+        const rawDisplay =
+          typeof args.displayText === 'string' && args.displayText.trim()
+            ? args.displayText
+            : undefined
+        const displayText =
+          rawDisplay &&
+          (skillRefs.length > 0 ||
+            fileRefs.length > 0 ||
+            rawDisplay.trim() !== String(args.text ?? '').trim())
+            ? rawDisplay
+            : undefined
+
         const initialParts: any[] = [
           {
             id: crypto.randomUUID(),
             messageId: userMsgId,
             sessionId: args.sessionId,
             type: 'text',
-            data: { text: args.text }
+            data: {
+              text: args.text,
+              ...(displayText ? { displayText } : {}),
+              ...(skillRefs.length > 0 ? { skillRefs } : {}),
+              ...(fileRefs.length > 0 ? { fileRefs } : {})
+            }
           }
         ]
 
@@ -291,10 +427,11 @@ export function registerAttachmentIPC() {
       if (result.canceled) return []
 
       const filePromises = result.filePaths.map(async (filePath) => {
-        const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(filePath)
-        const isPdf = /\.pdf$/i.test(filePath)
-        const isText = /\.(txt|md)$/i.test(filePath)
         const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
+        const flags = classifyPromptAttachmentKind(fileName)
+        const isImage = flags.isImage
+        const isPdf = flags.isPdf
+        const isText = flags.isText
 
         let fileSize = 0
         try {

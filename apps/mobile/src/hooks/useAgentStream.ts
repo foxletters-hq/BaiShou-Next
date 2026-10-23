@@ -1,8 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { createStreamingTextDisplayBuffer, type StreamingTextDisplayBuffer } from '@baishou/shared'
+import {
+  createStreamingTextDisplayBuffer,
+  AgentGateReply,
+  type AgentGateQuestionAnswer,
+  type AgentStreamTimelineItem,
+  type StreamingTextDisplayBuffer
+} from '@baishou/shared'
+import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
+import { useTranslation } from 'react-i18next'
+import { useNativeToast } from '@baishou/ui/native'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
+import { hydrateMobileAgentGateInbox } from '../services/mobile-agent-gate.service'
+import { setMobileAgentGateFocusedSessionId } from '../services/mobile-agent-gate-notifications'
 import { useAgentStreamBridge } from './useAgentStream-bridge'
 import { useAgentStreamFinish } from './useAgentStream-finish'
 import { useAgentStreamChat } from './useAgentStream-chat'
@@ -31,7 +42,9 @@ export function useAgentStream(
   refreshSessionMessages?: RefreshSessionMessagesFn,
   bumpReloadEpoch?: () => void
 ) {
-  const { services, vaultSwitching } = useBaishou()
+  const { services, vaultSwitching, agentGate } = useBaishou()
+  const { t } = useTranslation()
+  const toast = useNativeToast()
   const releaseRetryActionRef = useRef<() => void>(() => {})
   const releaseRetryAction = useCallback(() => {
     releaseRetryActionRef.current()
@@ -43,6 +56,7 @@ export function useAgentStream(
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>(EMPTY_TOKEN_USAGE)
   const [activeTool, setActiveTool] = useState<ToolCallInfo | null>(null)
   const [completedTools, setCompletedTools] = useState<ToolCallInfo[]>([])
+  const [timeline, setTimeline] = useState<AgentStreamTimelineItem[]>([])
   const [pendingEmojis, setPendingEmojis] = useState<PendingEmoji[]>([])
   const [streamError, setStreamError] = useState<string | null>(null)
   const [isCompressing, setIsCompressing] = useState(false)
@@ -52,6 +66,10 @@ export function useAgentStream(
   const [compressionTriggerMessageId, setCompressionTriggerMessageId] = useState<string | null>(
     null
   )
+  const pendingAgentGate = useAgentGateInboxStore((state) =>
+    selectActivePendingForSession(state, currentSessionId, 'companion')
+  )
+  const [isAgentGateReplying, setIsAgentGateReplying] = useState(false)
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
@@ -62,6 +80,7 @@ export function useAgentStream(
   currentSessionIdRef.current = currentSessionId
   const streamingTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamingReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
+  const timelineRef = useRef<AgentStreamTimelineItem[]>([])
   const compressionTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const compressionReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamFinalizeLockRef = useRef<string | null>(null)
@@ -88,6 +107,7 @@ export function useAgentStream(
     currentSessionIdRef,
     streamingTextDisplayRef,
     streamingReasoningDisplayRef,
+    timelineRef,
     compressionTextDisplayRef,
     compressionReasoningDisplayRef,
     streamFinalizeLockRef,
@@ -150,7 +170,8 @@ export function useAgentStream(
     setCompressionTriggerMessageId,
     setActiveTool,
     setCompletedTools,
-    setPendingEmojis
+    setPendingEmojis,
+    setTimeline
   })
 
   const finish = useAgentStreamFinish({
@@ -201,9 +222,7 @@ export function useAgentStream(
     setCompressionText,
     setCompressionReasoning,
     setCompressionTriggerMessageId,
-    flushStreamingDisplayBuffers: bridge.flushStreamingDisplayBuffers,
-    stopStreamingUiImmediately: bridge.stopStreamingUiImmediately,
-    resetStreamingBuffers: bridge.resetStreamingBuffers,
+    keepPartialOutputAfterUserStop: bridge.keepPartialOutputAfterUserStop,
     resetCompressionBuffers: bridge.resetCompressionBuffers,
     interruptActiveStream: bridge.interruptActiveStream,
     finishStream: finish.finishStream,
@@ -216,7 +235,6 @@ export function useAgentStream(
 
   const syncTokenUsageFromSession = finish.syncTokenUsageFromSession
   const reloadMessagesFromDb = finish.reloadMessagesFromDb
-  const interruptActiveStream = bridge.interruptActiveStream
   const resetCompressionBuffers = bridge.resetCompressionBuffers
   const appendCompressionReasoningDelta = bridge.appendCompressionReasoningDelta
   const appendCompressionTextDelta = bridge.appendCompressionTextDelta
@@ -306,9 +324,68 @@ export function useAgentStream(
   ])
 
   useEffect(() => {
+    setMobileAgentGateFocusedSessionId(currentSessionId)
+    void hydrateMobileAgentGateInbox()
+    return () => {
+      if (currentSessionIdRef.current === currentSessionId) {
+        setMobileAgentGateFocusedSessionId(null)
+      }
+    }
+  }, [currentSessionId])
+
+  useEffect(() => {
+    if (activeTool?.name !== 'companion_ask' || pendingAgentGate) return
+    void hydrateMobileAgentGateInbox()
+    const timer = setInterval(() => {
+      void hydrateMobileAgentGateInbox()
+    }, 500)
+    return () => clearInterval(timer)
+  }, [activeTool?.name, pendingAgentGate])
+
+  const replyAgentGate = useCallback(
+    async (
+      requestId: string,
+      reply: AgentGateReply,
+      extras?: {
+        message?: string
+        selectedOptionIds?: string[]
+        questionAnswers?: AgentGateQuestionAnswer[]
+      }
+    ) => {
+      if (!agentGate) {
+        toast.showError(t('agent_gate.unavailable', '操作确认服务未就绪'))
+        return
+      }
+      const existing = useAgentGateInboxStore
+        .getState()
+        .pending.find((item) => item.id === requestId)
+      setIsAgentGateReplying(true)
+      try {
+        useAgentGateInboxStore.getState().removeReplied(requestId, {
+          requestId,
+          reply,
+          message: extras?.message,
+          selectedOptionIds: extras?.selectedOptionIds,
+          questionAnswers: extras?.questionAnswers,
+          resolvedAt: Date.now()
+        })
+        await agentGate.reply({ requestId, reply, ...extras })
+      } catch (e) {
+        if (existing) useAgentGateInboxStore.getState().upsertAsked(existing)
+        const msg = e instanceof Error ? e.message : String(e)
+        toast.showError(msg || t('agent_gate.reply_failed', '确认操作失败'))
+        throw e
+      } finally {
+        setIsAgentGateReplying(false)
+      }
+    },
+    [agentGate, toast, t]
+  )
+
+  useEffect(() => {
     if (!vaultSwitching) return
-    interruptActiveStream()
-  }, [vaultSwitching, interruptActiveStream])
+    bridge.interruptActiveStream()
+  }, [vaultSwitching, bridge])
 
   const updateTokenUsage = useCallback((usage: Partial<TokenUsage>) => {
     setTokenUsage((prev) => applyTokenUsage(prev, { ...prev, ...usage }))
@@ -327,10 +404,14 @@ export function useAgentStream(
     streamError,
     streamingText,
     streamingReasoning,
+    timeline,
     tokenUsage,
     activeTool,
     completedTools,
     pendingEmojis,
+    pendingAgentGate,
+    isAgentGateReplying,
+    replyAgentGate,
     handleSend: chat.handleSend,
     handleStop: actions.handleStop,
     handleRegenerate: actions.handleRegenerate,

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-nati
 import { useTranslation } from 'react-i18next'
 import { formatLocalDate } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ActivityHeatmapProps {
   data: Array<{ date: string; count: number }>
@@ -39,20 +40,23 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const cardBorder = colors.borderMuted
   const [showYearPicker, setShowYearPicker] = useState(false)
 
-  const MONTHS = [
-    t('common.jan'),
-    t('common.feb'),
-    t('common.mar'),
-    t('common.apr'),
-    t('common.may'),
-    t('common.jun'),
-    t('common.jul'),
-    t('common.aug'),
-    t('common.sep'),
-    t('common.oct'),
-    t('common.nov'),
-    t('common.dec')
-  ]
+  const MONTHS = useMemo(
+    () => [
+      t('common.jan'),
+      t('common.feb'),
+      t('common.mar'),
+      t('common.apr'),
+      t('common.may'),
+      t('common.jun'),
+      t('common.jul'),
+      t('common.aug'),
+      t('common.sep'),
+      t('common.oct'),
+      t('common.nov'),
+      t('common.dec')
+    ],
+    [t]
+  )
 
   const DAYS = [
     t('common.sun'),
@@ -150,7 +154,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         <View style={styles.selectors}>
           {onYearChange && (
             <Pressable
-              style={[styles.yearBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.yearBtn, { borderColor: colors.borderControl }]}
               onPress={() => setShowYearPicker(true)}
             >
               <Text style={{ color: colors.primary, fontWeight: '600' }}>
@@ -184,7 +188,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     styles.yearOption,
                     {
                       backgroundColor: y === year ? colors.primary + '20' : colors.bgSurfaceNormal,
-                      borderColor: y === year ? colors.primary : colors.borderSubtle
+                      borderColor: y === year ? colors.primary : colors.borderControl
                     }
                   ]}
                   onPress={() => {
@@ -277,61 +281,62 @@ const CELL_GAP = 2
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 16,
+    padding: sharedTokens.spacing.md,
+    borderRadius: sharedTokens.radius.lg,
     borderStyle: 'solid'
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: sharedTokens.spacing.mdTight,
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   title: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   },
   selectors: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: sharedTokens.spacing.mdTight
   },
   yearBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   totalBadge: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    padding: 24
+    padding: sharedTokens.spacing.lg
   },
   yearModal: {
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: sharedTokens.radius.md,
+    padding: sharedTokens.spacing.md,
     maxHeight: '60%'
   },
   yearModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.mdTight
   },
   yearGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: sharedTokens.spacing.sm,
+    paddingRight: sharedTokens.spacing.mdTight
   },
   yearOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1
   },
   chartArea: {
@@ -339,13 +344,13 @@ const styles = StyleSheet.create({
   },
   dayLabels: {
     justifyContent: 'space-between',
-    paddingVertical: 20,
-    marginRight: 4,
+    paddingVertical: sharedTokens.spacing.mdPlus,
+    marginRight: sharedTokens.spacing.xs,
     width: 28,
     height: 7 * (CELL_SIZE + CELL_GAP)
   },
   dayLabel: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     width: 28,
     textAlign: 'center'
   },
@@ -355,10 +360,10 @@ const styles = StyleSheet.create({
   monthRow: {
     height: 18,
     position: 'relative',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   monthLabel: {
-    fontSize: 10,
+    fontSize: mobileTypography.caption.fontSize,
     position: 'absolute'
   },
   grid: {
@@ -371,7 +376,7 @@ const styles = StyleSheet.create({
   cell: {
     width: CELL_SIZE,
     height: CELL_SIZE,
-    borderRadius: 2,
+    borderRadius: sharedTokens.radius.xxs,
     marginBottom: CELL_GAP
   }
 })

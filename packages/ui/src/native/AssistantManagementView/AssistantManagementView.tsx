@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface AssistantItem {
   id: string
@@ -128,30 +129,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: 1
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700'
+    fontSize: mobileTypography.title.fontSize,
+    fontWeight: '600'
   },
   createButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm,
+    borderRadius: sharedTokens.radius.sm
   },
   createButtonText: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   listContent: {
-    padding: 12
+    padding: sharedTokens.spacing.mdTight
   },
   itemRow: {
-    borderRadius: 10,
+    borderRadius: sharedTokens.radius.control,
     borderWidth: 1,
-    padding: 14
+    padding: sharedTokens.spacing.mdSnug
   },
   itemContent: {
     flex: 1
@@ -162,48 +163,48 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   itemName: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   defaultBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xxs,
+    borderRadius: sharedTokens.radius.xs
   },
   defaultBadgeText: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   deleteBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1
   },
   deleteBtnText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600'
   },
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 6
+    marginTop: sharedTokens.spacing.sm,
+    gap: sharedTokens.spacing.xsPlus
   },
   metaDot: {
     width: 4,
     height: 4,
-    borderRadius: 2
+    borderRadius: sharedTokens.radius.xxs
   },
   metaText: {
-    fontSize: 12
+    fontSize: mobileTypography.caption.fontSize
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40
+    paddingVertical: sharedTokens.spacing.xlPlus
   },
   emptyText: {
-    fontSize: 14
+    fontSize: mobileTypography.secondary.fontSize
   }
 })

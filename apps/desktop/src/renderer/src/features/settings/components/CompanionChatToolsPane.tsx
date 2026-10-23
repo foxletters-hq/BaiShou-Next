@@ -1,0 +1,395 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  AgentToolsCommunityTab,
+  Input,
+  SegmentedControl,
+  SettingsPageChrome,
+  Switch,
+  useDialog
+} from '@baishou/ui'
+import { getDefaultToolManagementConfig } from '@baishou/store'
+import {
+  AGENT_TOOL_CATEGORY_ORDER,
+  AGENT_TOOL_UI_DEFS,
+  AgentGateEffect,
+  applyCapabilityToConfig,
+  capabilityStateFromConfig,
+  companionToolEffectOptions,
+  DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
+  foldCompanionAllowlistIntoCapabilities,
+  isEnablingAutoInjectTime,
+  isCompanionGateCapabilityId,
+  nextDisabledToolIdsForEffect,
+  resolveCompanionToolEffect,
+  stripCompanionAllowlistActions,
+  type AgentBehaviorConfig,
+  type AgentGateCapabilityId,
+  type AgentGateNotificationPrefs,
+  type AgentToolCategory,
+  type BaishouAgentGateConfig
+} from '@baishou/shared'
+import styles from './AgentToolsPane.module.css'
+import gateStyles from './AgentGateSettings.module.css'
+import pane from './GeneralSettingsPane.module.css'
+import { persistDesktopAgentGateNotificationPrefs } from './agent-gate-notification-prefs.client'
+import '@baishou/ui/desktop/shared/SettingsListTile.css'
+
+interface CompanionChatToolsPaneProps {
+  settings: {
+    agentBehavior?: AgentBehaviorConfig | null
+    toolManagementConfig?: ReturnType<typeof getDefaultToolManagementConfig>
+    setAgentBehaviorConfig: (config: AgentBehaviorConfig) => Promise<void>
+    setToolManagementConfig: (config: ReturnType<typeof getDefaultToolManagementConfig>) => void
+  }
+}
+
+const FALLBACK_BEHAVIOR: AgentBehaviorConfig = {
+  agentContextWindowSize: 20,
+  companionCompressTokens: 8000,
+  companionTruncateTokens: 4000,
+  agentPersona: '',
+  agentGuidelines: '',
+  pinnedAssistantIds: [],
+  restoreLastSessionOnReturn: true,
+  reasoningEffortDefault: 'auto'
+}
+
+const CATEGORY_LABEL: Record<AgentToolCategory, string> = {
+  diary: 'settings.agent_tools_category_diary',
+  summary: 'settings.agent_tools_category_summary',
+  memory: 'settings.agent_tools_category_memory',
+  search: 'settings.agent_tools_category_search',
+  general: 'settings.agent_tools_category_general'
+}
+
+function scopesMatch(
+  a?: { kind: string; workspaceId?: string },
+  b?: { kind: string; workspaceId?: string }
+): boolean {
+  if (!a && !b) return true
+  if (!a || !b) return false
+  return a.kind === b.kind
+}
+
+/** 伙伴对话：常规设置 + 每个工具允许/询问/拒绝 */
+export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ settings }) => {
+  const { t } = useTranslation()
+  const [gateConfig, setGateConfig] = useState<BaishouAgentGateConfig | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [notificationPrefs, setNotificationPrefs] = useState<AgentGateNotificationPrefs>(
+    DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
+  )
+
+  const dialog = useDialog()
+  const companionTools = settings.toolManagementConfig ?? getDefaultToolManagementConfig()
+  const behavior: AgentBehaviorConfig = {
+    ...FALLBACK_BEHAVIOR,
+    ...(settings.agentBehavior ?? {})
+  }
+  const restoreLastSessionOnReturn = behavior.restoreLastSessionOnReturn !== false
+  const behaviorReady = Boolean(settings.agentBehavior)
+  const capabilityState = useMemo(
+    () => (gateConfig ? capabilityStateFromConfig(gateConfig, 'companion') : null),
+    [gateConfig]
+  )
+
+  const loadGateConfig = useCallback(async () => {
+    try {
+      const next = await window.api.settings.getBaishouAgentGateConfig({ kind: 'companion' })
+      setGateConfig(foldCompanionAllowlistIntoCapabilities(next))
+    } catch (error) {
+      console.error('[CompanionChatTools] load gate failed:', error)
+      setGateConfig(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadGateConfig()
+    void window.api.agentGate?.getNotificationPrefs?.().then((prefs) => {
+      if (prefs) setNotificationPrefs(prefs)
+    })
+    const unsubscribe = window.api.agentGate?.onAllowlistChanged?.((_allowlist, eventScope) => {
+      const effectiveScope = eventScope ?? { kind: 'companion' as const }
+      if (!scopesMatch(effectiveScope, { kind: 'companion' })) return
+      void loadGateConfig()
+    })
+    return () => unsubscribe?.()
+  }, [loadGateConfig])
+
+  const patchBehavior = (partial: Partial<AgentBehaviorConfig>) => {
+    if (!behaviorReady) return
+    void settings.setAgentBehaviorConfig({ ...behavior, ...partial })
+  }
+
+  const updateNotificationPrefs = async (patch: Partial<AgentGateNotificationPrefs>) => {
+    try {
+      const next = await persistDesktopAgentGateNotificationPrefs(patch)
+      setNotificationPrefs(next)
+    } catch (error) {
+      console.error('[CompanionChatTools] notification prefs failed:', error)
+    }
+  }
+
+  const syncDisabledTool = (toolId: string, effect: AgentGateEffect, tools = companionTools) => {
+    settings.setToolManagementConfig({
+      ...tools,
+      disabledToolIds: nextDisabledToolIdsForEffect(tools.disabledToolIds, toolId, effect)
+    })
+  }
+
+  const confirmEnableAutoInjectTime = async (toolId: string, effect: AgentGateEffect) => {
+    const currentlyEnabled =
+      resolveCompanionToolEffect(toolId, companionTools.disabledToolIds, capabilityState) !==
+      AgentGateEffect.Deny
+    if (effect !== AgentGateEffect.Deny && isEnablingAutoInjectTime(toolId, currentlyEnabled)) {
+      return dialog.confirm(
+        t(
+          'agent.tools.auto_inject_time_enable_confirm',
+          '开启后，发送给伙伴的每条历史消息都会带上发送时间标签。部分模型可能把这些标签抄进回复，聊天气泡里会出现类似 <message-time> 的文字。确定开启？'
+        ),
+        t('agent.tools.auto_inject_time_enable_confirm_title', '开启当前时间？')
+      )
+    }
+    return true
+  }
+
+  const saveToolEffect = async (toolId: AgentGateCapabilityId, effect: AgentGateEffect) => {
+    if (!gateConfig) return
+    const prev = gateConfig
+    const nextConfig = foldCompanionAllowlistIntoCapabilities(
+      stripCompanionAllowlistActions(
+        applyCapabilityToConfig(gateConfig, 'companion', {
+          capabilityId: toolId,
+          effect
+        }),
+        [toolId]
+      )
+    )
+    setGateConfig(nextConfig)
+    setSaving(true)
+    try {
+      await Promise.resolve(syncDisabledTool(toolId, effect))
+      const saved = await window.api.settings.setBaishouAgentGateConfig(nextConfig, {
+        kind: 'companion'
+      })
+      setGateConfig(saved)
+    } catch (error) {
+      console.error('[CompanionChatTools] save tool effect failed:', error)
+      setGateConfig(prev)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const resolveToolEffect = (toolId: string): AgentGateEffect =>
+    resolveCompanionToolEffect(toolId, companionTools.disabledToolIds, capabilityState)
+
+  const effectLabel = (effect: AgentGateEffect) => {
+    if (effect === AgentGateEffect.Allow) return t('settings.agent_gate_effect_allow', '允许')
+    if (effect === AgentGateEffect.Deny) return t('settings.agent_gate_effect_deny', '拒绝')
+    return t('settings.agent_gate_effect_ask', '询问')
+  }
+
+  return (
+    <div
+      className="settings-pane settings-pane-full"
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
+      <SettingsPageChrome
+        title={t('settings.companion_chat_tools_title', '伙伴对话')}
+        layout="stack"
+      >
+        <div className={styles.page}>
+          <div className={styles.tabBody}>
+            <div className={styles.scrollPane}>
+              <div className={pane.stackGroup}>
+                <div className={pane.sectionLabelRow}>
+                  <h3 className={pane.sectionLabel}>
+                    {t('settings.companion_chat_general_section', '常规')}
+                  </h3>
+                </div>
+                <section className={pane.cardSection}>
+                  <div className={`${pane.cardBody} ${gateStyles.paddedBody}`}>
+                    <div className="settings-list-tile settings-list-tile-noclick">
+                      <div className="settings-list-tile-content">
+                        <span className="settings-list-tile-title">
+                          {t('settings.restore_last_session_on_return', '返回后继续上次会话')}
+                        </span>
+                        <span className="settings-list-tile-subtitle">
+                          {t(
+                            'settings.restore_last_session_on_return_hint',
+                            '关闭后进入伙伴页会停留在空白对话，不再自动打开上次会话。'
+                          )}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={restoreLastSessionOnReturn}
+                        disabled={!behaviorReady}
+                        aria-label={t(
+                          'settings.restore_last_session_on_return',
+                          '返回后继续上次会话'
+                        )}
+                        onChange={(e) =>
+                          patchBehavior({ restoreLastSessionOnReturn: e.target.checked })
+                        }
+                      />
+                    </div>
+                    <div className={pane.divider} />
+                    <div className="settings-list-tile settings-list-tile-noclick">
+                      <div className="settings-list-tile-content">
+                        <span className="settings-list-tile-title">
+                          {t('settings.agent_gate_notify_enabled', '系统通知')}
+                        </span>
+                        <span className="settings-list-tile-subtitle">
+                          {t(
+                            'settings.agent_gate_notifications_hint',
+                            '伙伴需要你确认操作时，用系统通知提醒。'
+                          )}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={notificationPrefs.enabled}
+                        disabled={saving}
+                        aria-label={t('settings.agent_gate_notify_enabled', '系统通知')}
+                        onChange={(e) =>
+                          void updateNotificationPrefs({ enabled: e.target.checked })
+                        }
+                      />
+                    </div>
+                    <div className={pane.divider} />
+                    <div className="settings-list-tile settings-list-tile-noclick">
+                      <div className="settings-list-tile-content">
+                        <span className="settings-list-tile-title">
+                          {t('settings.agent_gate_notify_sound', '通知声音')}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={notificationPrefs.soundEnabled}
+                        disabled={saving || !notificationPrefs.enabled}
+                        aria-label={t('settings.agent_gate_notify_sound', '通知声音')}
+                        onChange={(e) =>
+                          void updateNotificationPrefs({ soundEnabled: e.target.checked })
+                        }
+                      />
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <AgentToolsCommunityTab
+                config={companionTools}
+                onConfigChange={(config) => settings.setToolManagementConfig(config)}
+              />
+
+              {AGENT_TOOL_CATEGORY_ORDER.map((category) => {
+                const tools = AGENT_TOOL_UI_DEFS.filter((tool) => tool.category === category)
+                if (tools.length === 0) return null
+                const labelKey = CATEGORY_LABEL[category]
+                return (
+                  <div key={category} className={pane.stackGroup}>
+                    <div className={pane.sectionLabelRow}>
+                      <h3 className={pane.sectionLabel}>{t(labelKey)}</h3>
+                    </div>
+                    <section className={pane.cardSection}>
+                      <div className={`${pane.cardBody} ${gateStyles.paddedBody}`}>
+                        {tools.map((tool, index) => {
+                          const current = resolveToolEffect(tool.id)
+                          const isUiOnly = tool.id === 'auto_inject_time'
+                          const options = companionToolEffectOptions(tool.id)
+                          const param = tool.configurableParams?.[0]
+
+                          return (
+                            <React.Fragment key={tool.id}>
+                              {index > 0 ? <div className={pane.divider} /> : null}
+                              <div className={gateStyles.matrixRow}>
+                                <div className={gateStyles.matrixText}>
+                                  <div className={gateStyles.matrixTitle}>{t(tool.nameKey)}</div>
+                                  <div className={gateStyles.matrixHint}>{t(tool.tooltipKey)}</div>
+                                </div>
+                                <SegmentedControl
+                                  aria-label={t(tool.nameKey)}
+                                  value={current}
+                                  options={options.map((effect) => ({
+                                    value: effect,
+                                    label: effectLabel(effect)
+                                  }))}
+                                  onChange={(effect) => {
+                                    if (isUiOnly) {
+                                      void (async () => {
+                                        if (!(await confirmEnableAutoInjectTime(tool.id, effect))) {
+                                          return
+                                        }
+                                        syncDisabledTool(tool.id, effect)
+                                      })()
+                                      return
+                                    }
+                                    if (!isCompanionGateCapabilityId(tool.id)) return
+                                    void saveToolEffect(tool.id, effect)
+                                  }}
+                                />
+                              </div>
+                              {param && current !== AgentGateEffect.Deny ? (
+                                <div className="settings-list-tile settings-list-tile-noclick">
+                                  <div className="settings-list-tile-content">
+                                    <span className="settings-list-tile-title">
+                                      {t(param.labelKey, param.key)}
+                                    </span>
+                                  </div>
+                                  <Input
+                                    fieldSize="small"
+                                    className={gateStyles.compactNumberInput}
+                                    inputClassName={gateStyles.compactNumberInputField}
+                                    type="number"
+                                    min={param.min ?? 1}
+                                    max={param.max ?? 50}
+                                    value={
+                                      Number(
+                                        companionTools.customConfigs?.[tool.id]?.[param.key] ??
+                                          param.defaultValue
+                                      ) ||
+                                      Number(param.defaultValue) ||
+                                      10
+                                    }
+                                    onChange={(e) => {
+                                      const n = Number(e.target.value)
+                                      if (!Number.isFinite(n)) return
+                                      const clamped = Math.max(
+                                        param.min ?? 1,
+                                        Math.min(param.max ?? 50, Math.floor(n))
+                                      )
+                                      settings.setToolManagementConfig({
+                                        ...companionTools,
+                                        customConfigs: {
+                                          ...companionTools.customConfigs,
+                                          [tool.id]: {
+                                            ...(companionTools.customConfigs?.[tool.id] ?? {}),
+                                            [param.key]: clamped
+                                          }
+                                        }
+                                      })
+                                    }}
+                                  />
+                                </div>
+                              ) : null}
+                            </React.Fragment>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </SettingsPageChrome>
+    </div>
+  )
+}

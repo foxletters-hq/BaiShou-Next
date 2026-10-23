@@ -2,7 +2,7 @@
   "expo": {
     "name": "白守",
     "slug": "mobile",
-    "version": "1.2.25",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -12,9 +12,7 @@
       "bundleIdentifier": "com.baishou.baishou",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "用于在同一 Wi-Fi 下发现附近的设备并进行数据备份传输。",
-        "NSBonjourServices": [
-          "_baishou._tcp"
-        ],
+        "NSBonjourServices": ["_baishou._tcp"],
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -22,7 +20,7 @@
     },
     "android": {
       "package": "com.baishou.baishou",
-      "versionCode": 102,
+      "versionCode": 103,
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -31,8 +29,13 @@
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE",
-        "android.permission.NEARBY_WIFI_DEVICES"
+        "android.permission.NEARBY_WIFI_DEVICES",
+        "android.permission.POST_NOTIFICATIONS"
       ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "requestLegacyExternalStorage": true
     },
     "web": {
@@ -66,6 +69,15 @@
       "expo-audio",
       "expo-web-browser",
       "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "agent-gate",
+          "sounds": []
+        }
+      ],
       [
         "expo-sqlite",
         {

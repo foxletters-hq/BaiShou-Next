@@ -61,9 +61,26 @@ describe('mcp-auth.util', () => {
     ).toBe(true)
   })
 
-  it('refreshMcpAuthToken replaces existing token', () => {
-    const config = { mcpEnabled: true, mcpPort: 31004, mcpAuthToken: 'old-token' }
+  it('allows all requests when auth is disabled even with a stored token', () => {
+    const config = {
+      mcpEnabled: true,
+      mcpPort: 31004,
+      mcpAuthEnabled: false,
+      mcpAuthToken: 'secret'
+    }
+    expect(isMcpRequestAuthorized(config, undefined)).toBe(true)
+    expect(isMcpRequestAuthorized(config, 'Bearer wrong')).toBe(true)
+  })
+
+  it('refreshMcpAuthToken replaces existing token and re-enables auth', () => {
+    const config = {
+      mcpEnabled: true,
+      mcpPort: 31004,
+      mcpAuthEnabled: false,
+      mcpAuthToken: 'old-token'
+    }
     const next = refreshMcpAuthToken(config)
+    expect(next.mcpAuthEnabled).toBe(true)
     expect(next.mcpAuthToken).toBeTruthy()
     expect(next.mcpAuthToken).not.toBe('old-token')
   })

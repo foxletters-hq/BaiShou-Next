@@ -1,78 +1,35 @@
-import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useSettingsStore, getConfigKeysForSegment, useSettingsPaneApi } from '@baishou/store'
 import { getSettingsRouteSegment } from './settings-route.util'
 import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
-
-const GeneralSettingsPane = lazy(() =>
-  import('./components/GeneralSettingsPane').then((m) => ({ default: m.GeneralSettingsPane }))
-)
-const McpSettingsPane = lazy(() =>
-  import('./components/McpSettingsPane').then((m) => ({ default: m.McpSettingsPane }))
-)
-const AiModelServicesPane = lazy(() =>
-  import('./components/AiModelServicesPane').then((m) => ({ default: m.AiModelServicesPane }))
-)
-const AiGlobalModelsPane = lazy(() =>
-  import('./components/AiGlobalModelsPane').then((m) => ({ default: m.AiGlobalModelsPane }))
-)
-const AssistantPane = lazy(() =>
-  import('./components/AssistantPane').then((m) => ({ default: m.AssistantPane }))
-)
-const RagSettingsPane = lazy(() =>
-  import('./components/RagSettingsPane').then((m) => ({ default: m.RagSettingsPane }))
-)
-const WebSearchPane = lazy(() =>
-  import('./components/WebSearchPane').then((m) => ({ default: m.WebSearchPane }))
-)
-const AgentToolsPane = lazy(() =>
-  import('./components/AgentToolsPane').then((m) => ({ default: m.AgentToolsPane }))
-)
-const DiaryTemplateSettingsPane = lazy(() =>
-  import('./components/DiaryTemplateSettingsPane').then((m) => ({
-    default: m.DiaryTemplateSettingsPane
-  }))
-)
-const SummarySettingsPane = lazy(() =>
-  import('./components/SummarySettingsPane').then((m) => ({ default: m.SummarySettingsPane }))
-)
-const TTSSettingsPane = lazy(() =>
-  import('./components/TTSSettingsPane').then((m) => ({ default: m.TTSSettingsPane }))
-)
-const LanTransferPane = lazy(() =>
-  import('./components/LanTransferPane').then((m) => ({ default: m.LanTransferPane }))
-)
-const DataSyncPane = lazy(() =>
-  import('./components/DataSyncPane').then((m) => ({ default: m.DataSyncPane }))
-)
-const IncrementalSyncPane = lazy(() =>
-  import('./components/IncrementalSyncPane').then((m) => ({ default: m.IncrementalSyncPane }))
-)
-const AttachmentManagementPane = lazy(() =>
-  import('./components/AttachmentManagementPane').then((m) => ({
-    default: m.AttachmentManagementPane
-  }))
-)
-const GitSettingsPane = lazy(() =>
-  import('./components/GitSettingsPane').then((m) => ({ default: m.GitSettingsPane }))
-)
-const WorkspaceManagementPane = lazy(() =>
-  import('./components/WorkspaceManagementPane').then((m) => ({
-    default: m.WorkspaceManagementPane
-  }))
-)
-const IdentityCardManagementPane = lazy(() =>
-  import('./components/IdentityCardManagementPane').then((m) => ({
-    default: m.IdentityCardManagementPane
-  }))
-)
-const LegacyMigrationPane = lazy(() =>
-  import('./components/LegacyMigrationPane').then((m) => ({ default: m.LegacyMigrationPane }))
-)
+import { GeneralSettingsPane } from './components/GeneralSettingsPane'
+import { McpSettingsPane } from './components/McpSettingsPane'
+import { AiModelServicesPane } from './components/AiModelServicesPane'
+import { AiGlobalModelsPane } from './components/AiGlobalModelsPane'
+import { AssistantPane } from './components/AssistantPane'
+import { WebSearchPane } from './components/WebSearchPane'
+import { CompanionChatToolsPane } from './components/CompanionChatToolsPane'
+import { DiaryTemplateSettingsPane } from './components/DiaryTemplateSettingsPane'
+import { SummarySettingsPane } from './components/SummarySettingsPane'
+import { TTSSettingsPane } from './components/TTSSettingsPane'
+import { LanTransferPane } from './components/LanTransferPane'
+import { DataSyncPane } from './components/DataSyncPane'
+import { IncrementalSyncPane } from './components/IncrementalSyncPane'
+import { AttachmentManagementPane } from './components/AttachmentManagementPane'
+import { GitSettingsPane } from './components/GitSettingsPane'
+import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
+import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
+import { LegacyMigrationPane } from './components/LegacyMigrationPane'
+import { LatteSettingsPane } from './components/LatteSettingsPane'
+import { HelpDocsPane } from './components/HelpDocsPane'
+import { MemoryCenterPage } from '../memory/MemoryCenterPage'
+import { Button } from '@baishou/ui'
 
 const FULL_HEIGHT_SEGMENTS = new Set([
   'general',
+  'help-docs',
   'mcp',
   'lan-transfer',
   'ai-services',
@@ -80,13 +37,18 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'tts',
   'rag',
   'web-search',
+  'agent-tools',
+  'summary',
   'git',
   'workspaces',
   'identity-cards',
+  'data-sync',
   'incremental-sync',
+  'attachments',
   'diary-template',
   'diary-ai-writing',
-  'legacy-migration'
+  'legacy-migration',
+  'latte'
 ])
 
 interface SettingsContentViewProps {
@@ -95,7 +57,6 @@ interface SettingsContentViewProps {
   className?: string
 }
 
-const SETTINGS_SPINNER_MIN_VISIBLE_MS = 200
 const SETTINGS_LOAD_FADE_MS = 200
 
 const SettingsPaneLoadingOverlay: React.FC<{ srLabel: string; leaving?: boolean }> = ({
@@ -111,19 +72,6 @@ const SettingsPaneLoadingOverlay: React.FC<{ srLabel: string; leaving?: boolean 
     <span className="settings-config-loading-sr-only">{srLabel}</span>
   </div>
 )
-
-/** Suspense 子树挂载后标记对应 Tab 的 chunk 已就绪 */
-const ChunkReadyMarker: React.FC<{
-  contentKey: string
-  onReady: (key: string) => void
-  children: React.ReactNode
-}> = ({ contentKey, onReady, children }) => {
-  useEffect(() => {
-    onReady(contentKey)
-  }, [contentKey, onReady])
-
-  return <>{children}</>
-}
 
 function useLoadCrossfade(isLoading: boolean) {
   const [showOverlay, setShowOverlay] = useState(isLoading)
@@ -162,9 +110,9 @@ const SegmentConfigFailedOverlay: React.FC<{
       <p className="settings-config-failed-text">
         {t('settings.config_load_failed', '部分配置加载失败')}
       </p>
-      <button type="button" className="settings-retry-btn" onClick={onRetry}>
+      <Button type="button" variant="outlined" size="small" onClick={onRetry}>
         {t('common.retry', '重试')}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -184,20 +132,9 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
   const settings = useSettingsPaneApi()
   const settingsRouteActive = useSettingsRouteActive()
   const deferredWarmupScheduledRef = useRef(false)
-  const segmentSyncMinVisibleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [segmentSyncing, setSegmentSyncing] = useState(false)
-  const [readyChunkKeys, setReadyChunkKeys] = useState<Set<string>>(() => new Set())
   const segment = getSettingsRouteSegment(pathname)
   const contentKey = motionKey ?? segment
-  const chunkReady = readyChunkKeys.has(contentKey)
-  const markChunkReady = useCallback((key: string) => {
-    setReadyChunkKeys((prev) => {
-      if (prev.has(key)) return prev
-      const next = new Set(prev)
-      next.add(key)
-      return next
-    })
-  }, [])
   const requiredKeys = getConfigKeysForSegment(segment)
   const isStoreLoading =
     requiredKeys.length > 0 && requiredKeys.some((key) => loadingConfigKeys.includes(key))
@@ -207,8 +144,7 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
     !isSegmentLoading &&
     requiredKeys.some((key) => failedConfigKeys.includes(key))
 
-  const isBlockingLoad = isSegmentLoading || !chunkReady
-  const { showOverlay, overlayLeaving, contentVisible } = useLoadCrossfade(isBlockingLoad)
+  const { showOverlay, overlayLeaving, contentVisible } = useLoadCrossfade(isSegmentLoading)
 
   useEffect(() => {
     if (!settingsRouteActive) {
@@ -224,10 +160,6 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
 
   useEffect(() => {
     if (!settingsRouteActive) {
-      if (segmentSyncMinVisibleTimerRef.current) {
-        clearTimeout(segmentSyncMinVisibleTimerRef.current)
-        segmentSyncMinVisibleTimerRef.current = null
-      }
       setSegmentSyncing(false)
       return
     }
@@ -242,19 +174,11 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
     if (!needsFetch) return
 
     let cancelled = false
-    const startedAt = Date.now()
     setSegmentSyncing(true)
 
     void ensureConfigForSegment(segment).finally(() => {
       if (cancelled) return
-      const remain = Math.max(0, SETTINGS_SPINNER_MIN_VISIBLE_MS - (Date.now() - startedAt))
-      if (segmentSyncMinVisibleTimerRef.current) {
-        clearTimeout(segmentSyncMinVisibleTimerRef.current)
-      }
-      segmentSyncMinVisibleTimerRef.current = setTimeout(() => {
-        segmentSyncMinVisibleTimerRef.current = null
-        if (!cancelled) setSegmentSyncing(false)
-      }, remain)
+      setSegmentSyncing(false)
     })
 
     return () => {
@@ -272,6 +196,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
     switch (segment) {
       case 'general':
         return <GeneralSettingsPane settings={settings} />
+      case 'help-docs':
+        return <HelpDocsPane />
       case 'mcp':
         return <McpSettingsPane settings={settings} />
       case 'ai-services':
@@ -280,12 +206,14 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <AiGlobalModelsPane settings={settings} />
       case 'assistants':
         return <AssistantPane settings={settings} />
+      case 'latte':
+        return <LatteSettingsPane />
       case 'rag':
-        return <RagSettingsPane settings={settings} />
+        return <MemoryCenterPage embedded />
       case 'web-search':
         return <WebSearchPane settings={settings} />
       case 'agent-tools':
-        return <AgentToolsPane settings={settings} />
+        return <CompanionChatToolsPane settings={settings} />
       case 'diary-template':
       case 'diary-ai-writing':
         return <DiaryTemplateSettingsPane />
@@ -326,15 +254,11 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
           srLabel={t('settings.config_syncing', '正在同步配置…')}
         />
       ) : null}
-      {isSegmentFailed && !isBlockingLoad ? (
+      {isSegmentFailed && !isSegmentLoading ? (
         <SegmentConfigFailedOverlay onRetry={() => void retryConfigForSegment(segment)} />
       ) : null}
       <div className={`settings-pane-body${contentVisible ? ' settings-pane-body--visible' : ''}`}>
-        <Suspense fallback={null}>
-          <ChunkReadyMarker contentKey={contentKey} onReady={markChunkReady}>
-            {renderBody()}
-          </ChunkReadyMarker>
-        </Suspense>
+        {renderBody()}
       </div>
     </div>
   )

@@ -8,7 +8,19 @@ export function normalizeDiaryTags(tags: unknown): string[] {
       .filter(Boolean)
   }
   if (typeof tags === 'string') {
-    return tags
+    const trimmed = tags.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return normalizeDiaryTags(parsed)
+        }
+      } catch {
+        /* fall through to comma split */
+      }
+    }
+    return trimmed
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean)

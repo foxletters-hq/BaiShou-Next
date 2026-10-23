@@ -1,9 +1,9 @@
 import {
   CreateDiaryInput,
   Diary,
-  extractDiaryTagsFromContent,
   formatLocalDate,
-  parseDateStr
+  parseDateStr,
+  persistDiaryTagsInBody
 } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
@@ -26,7 +26,8 @@ export interface FileSyncService {
 export class FileSyncServiceImpl implements FileSyncService {
   constructor(
     private readonly pathService: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async ensureDir(dirPath: string): Promise<void> {
@@ -65,18 +66,6 @@ export class FileSyncServiceImpl implements FileSyncService {
     if ('id' in diary && diary.id) lines.push(`id: ${diary.id}`)
     lines.push(`date: ${formatLocalDate(diary.date)}`)
 
-    if (diary.tags) {
-      const tagArr = Array.isArray(diary.tags)
-        ? diary.tags
-        : (diary.tags as string)
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-      const inlineTagSet = new Set(extractDiaryTagsFromContent(diary.content))
-      const fmOnlyTags = tagArr.filter((tag) => !inlineTagSet.has(tag))
-      if (fmOnlyTags.length > 0) lines.push(`tags: [${fmOnlyTags.join(', ')}]`)
-    }
-
     if ('tagColors' in diary && diary.tagColors) {
       const colorMap =
         typeof diary.tagColors === 'string' ? diary.tagColors : JSON.stringify(diary.tagColors)
@@ -96,9 +85,20 @@ export class FileSyncServiceImpl implements FileSyncService {
       lines.push(`updated_at: ${diary.updatedAt.toISOString()}`)
     }
 
-    lines.push('---', '', diary.content)
+    const body = persistDiaryTagsInBody(
+      diary.content ?? '',
+      'tags' in diary ? diary.tags : undefined
+    )
 
-    await this.fileSystem.writeFile(filePath, lines.join('\n'), 'utf8')
+    lines.push('---', '', body)
+
+    const content = lines.join('\n')
+    if (this.rawDataSourceManager) {
+      const relativePath = path.relative(rootPath, filePath)
+      await this.rawDataSourceManager.writeFile('journal', relativePath, content)
+      return
+    }
+    await this.fileSystem.writeFile(filePath, content, 'utf8')
   }
 
   async readJournal(date: Date, shadowFilePath?: string): Promise<Diary | null> {

@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable, ViewProps } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 
 export interface NativeSettingsItemProps extends ViewProps {
@@ -54,9 +55,9 @@ export const SettingsItem: React.FC<NativeSettingsItemProps> = ({
       <View style={{ flex: 1 }}>
         <Text
           style={{
-            fontSize: 16,
+            fontSize: mobileTypography.primary.fontSize,
             color: colors.textPrimary,
-            fontWeight: '500'
+            fontWeight: mobileTypography.primary.fontWeight
           }}
         >
           {title}
@@ -64,9 +65,10 @@ export const SettingsItem: React.FC<NativeSettingsItemProps> = ({
         {subtitle && (
           <Text
             style={{
-              fontSize: 14,
+              fontSize: mobileTypography.secondary.fontSize,
+              fontWeight: mobileTypography.secondary.fontWeight,
               color: colors.textSecondary,
-              marginTop: 2
+              marginTop: sharedTokens.spacing.xxs
             }}
           >
             {subtitle}

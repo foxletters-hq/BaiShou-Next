@@ -33,6 +33,9 @@ async function executeSaveUserMessage(
     attachments?: unknown[]
     modelId?: string
     providerType?: string
+    displayText?: string
+    skillRefs?: Array<{ command: string; content: string }>
+    fileRefs?: unknown[]
   }
 ): Promise<SaveUserMessageResult> {
   const existing = await sessionRepo.getSessionById(args.sessionId)
@@ -42,13 +45,29 @@ async function executeSaveUserMessage(
 
   let attachments = args.attachments as AttachmentInput[] | undefined
   if (pathService && fileSystem && attachments?.length) {
+    let resolvedProviderType = args.providerType || existing.providerId || ''
+    const runtime = getAgentDbRuntime()
+    if (runtime?.settingsManager && resolvedProviderType) {
+      try {
+        const providers =
+          (await runtime.settingsManager.get<Array<{ id: string; type?: string }>>(
+            'ai_providers'
+          )) || []
+        const matched = providers.find((p) => p.id === resolvedProviderType)
+        if (matched?.type) {
+          resolvedProviderType = matched.type
+        }
+      } catch {
+        // ignore settings lookup failure
+      }
+    }
     attachments = await processAgentAttachments(
       pathService,
       fileSystem,
       args.sessionId,
       attachments,
       args.modelId || existing.modelId || '',
-      args.providerType || ''
+      resolvedProviderType
     )
   }
 
@@ -69,7 +88,14 @@ async function executeSaveUserMessage(
       messageId: userMsgId,
       sessionId: args.sessionId,
       type: 'text',
-      data: { text: args.text }
+      data: {
+        text: args.text,
+        ...(args.displayText ? { displayText: args.displayText } : {}),
+        ...(args.skillRefs?.length ? { skillRefs: args.skillRefs } : {}),
+        ...(args.fileRefs && Array.isArray(args.fileRefs) && args.fileRefs.length
+          ? { fileRefs: args.fileRefs }
+          : {})
+      }
     }
   ]
 
@@ -107,6 +133,9 @@ export async function saveUserMessage(
     attachments?: unknown[]
     modelId?: string
     providerType?: string
+    displayText?: string
+    skillRefs?: Array<{ command: string; content: string }>
+    fileRefs?: unknown[]
   }
 ): Promise<SaveUserMessageResult> {
   try {

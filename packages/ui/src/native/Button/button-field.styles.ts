@@ -1,35 +1,49 @@
 import type { TextStyle, ViewStyle } from 'react-native'
 import type { ButtonVariant } from 'heroui-native'
 import type { lightColors } from '../../theme'
+import { mobileTypography } from '../../theme/tokens'
 
 type ThemeColors = typeof lightColors
 
+export function isCompactButtonSize(size?: string): boolean {
+  return size === 'sm' || size === 'small'
+}
+
 /** HeroUI Button 默认外观兜底，不依赖 Uniwind 是否生效 */
-export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVariant): ViewStyle {
+export function getHeroButtonRootStyle(
+  colors: ThemeColors,
+  variant: ButtonVariant,
+  size?: string
+): ViewStyle {
+  const compact = isCompactButtonSize(size)
   const base: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 16,
-    borderRadius: 24,
+    minHeight: compact ? 32 : 48,
+    paddingHorizontal: compact ? 12 : 16,
+    paddingVertical: compact ? 6 : undefined,
+    borderRadius: compact ? 8 : 24,
     borderCurve: 'continuous',
-    gap: 8
+    gap: compact ? 6 : 8,
+    alignSelf: compact ? 'flex-start' : undefined,
+    flexShrink: compact ? 0 : undefined
+  }
+
+  const surfaceOutline: ViewStyle = {
+    ...base,
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderControl
   }
 
   switch (variant) {
     case 'primary':
-      return { ...base, backgroundColor: colors.primary }
+    case 'outline':
+      return surfaceOutline
     case 'secondary':
     case 'tertiary':
       return { ...base, backgroundColor: colors.bgSurfaceHighest }
-    case 'outline':
-      return {
-        ...base,
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: colors.borderStrong
-      }
     case 'ghost':
       return { ...base, backgroundColor: 'transparent' }
     case 'danger':
@@ -37,18 +51,22 @@ export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVaria
     case 'danger-soft':
       return { ...base, backgroundColor: colors.errorContainer }
     default:
-      return { ...base, backgroundColor: colors.primary }
+      return surfaceOutline
   }
 }
 
 export function getHeroButtonLabelStyle(
   colors: ThemeColors,
   variant: ButtonVariant,
-  labelClassName?: string
+  labelClassName?: string,
+  fontFamily?: string,
+  size?: string
 ): TextStyle {
+  const compact = isCompactButtonSize(size)
   const base: TextStyle = {
-    fontSize: 15,
-    fontWeight: '600'
+    fontSize: compact ? mobileTypography.secondary.fontSize : mobileTypography.body.fontSize,
+    fontWeight: compact ? '500' : '600',
+    ...(fontFamily ? { fontFamily } : {})
   }
 
   if (labelClassName?.includes('text-danger')) {
@@ -57,18 +75,18 @@ export function getHeroButtonLabelStyle(
 
   switch (variant) {
     case 'primary':
-      return { ...base, color: colors.textOnPrimary }
+    case 'outline':
+      return { ...base, color: colors.textPrimary }
     case 'danger':
       return { ...base, color: colors.onError ?? colors.textOnPrimary }
     case 'danger-soft':
       return { ...base, color: colors.onErrorContainer ?? colors.error }
-    case 'outline':
     case 'ghost':
     case 'tertiary':
       return { ...base, color: colors.textPrimary }
     case 'secondary':
       return { ...base, color: colors.textPrimary }
     default:
-      return { ...base, color: colors.textOnPrimary }
+      return { ...base, color: colors.textPrimary }
   }
 }

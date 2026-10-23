@@ -14,6 +14,7 @@ import {
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { MobileUpdateCheckResult } from '../../../services/mobile-updater.service'
 import { SettingsGroupCard } from './SettingsGroupCard'
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
 
 export interface UpdateSettingsSectionProps {
   embedded?: boolean
@@ -142,12 +143,12 @@ export const UpdateSettingsSection: React.FC<UpdateSettingsSectionProps> = ({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24
+    marginBottom: sharedTokens.spacing.lg
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 16,
+    fontSize: mobileTypography.secondary.fontSize,
+    fontWeight: '600',
+    marginBottom: sharedTokens.spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 1
   },
@@ -155,31 +156,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: sharedTokens.spacing.mdTight,
     borderBottomWidth: 1,
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   label: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     fontWeight: '600'
   },
   value: {
-    fontSize: 15
+    fontSize: mobileTypography.body.fontSize
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: sharedTokens.spacing.mdSnug,
     borderBottomWidth: 1,
-    marginBottom: 16
+    marginBottom: sharedTokens.spacing.md
   },
   switchText: {
     flex: 1,
-    marginRight: 12
+    marginRight: sharedTokens.spacing.mdTight
   },
   hint: {
-    fontSize: 13,
-    marginTop: 4
+    fontSize: mobileTypography.secondary.fontSize,
+    marginTop: sharedTokens.spacing.xs
   }
 })

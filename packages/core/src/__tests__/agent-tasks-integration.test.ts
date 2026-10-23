@@ -119,15 +119,15 @@ describe('Agent 3: RAG 记忆管理验证', () => {
     )
     // 确认没有 JSX 中使用 onClearDimension 的按钮
     expect(jsxUsageLines.every((line: string) => !line.includes('<button'))).toBe(true)
-    // 确认按钮文字为 "清空现有记忆"
-    expect(tsx).toContain("'清空现有记忆'")
+    // 文案已迁到 i18n，按钮不再硬编码中文
+    expect(tsx).toContain("t('settings.rag_clear_all'")
   })
 
   it('任务14: 搜索支持语义/文本切换，默认语义', () => {
     const tsx = readUiModule('packages/ui/src/desktop/RagMemoryView')
     expect(tsx).toMatch(/searchMode.*semantic/)
     expect(tsx).toContain('toggleSearchMode')
-    expect(tsx).toContain('segmentedControl')
+    expect(tsx).toContain('SegmentedControl')
   })
 
   it('任务15: EmbeddingService 有 migrateEmbeddings 方法', () => {
@@ -152,11 +152,11 @@ describe('Agent 3: RAG 记忆管理验证', () => {
 describe('Agent 4: 设置与 UI 细节验证', () => {
   it('任务1: Ctrl+- 缩小功能已实现', () => {
     const ts = readFile('apps/desktop/src/renderer/src/hooks/useZoom.ts')
-    expect(ts).toContain("key === '-'")
+    // 按键判断已收进 shared 的 resolvePageZoomShortcut，由 ui-font-size.util 的单测覆盖
     // zoom 通过 preload bridge 调用，不是直接 webFrame
     expect(ts).toContain('api.zoom.setFactor')
-    expect(ts).toContain('MIN_ZOOM')
-    expect(ts).toContain('MAX_ZOOM')
+    expect(ts).toContain('resolvePageZoomShortcut')
+    expect(ts).toContain('nextUiFontSizeLevel')
   })
 
   it('任务21: descriptionText 和 chipsScrollArea 有内边距', () => {
@@ -201,7 +201,7 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
     const schema = readFile('packages/database/src/schema/agent-assistants.ts')
     expect(schema).toContain('context_window')
 
-    const helpers = readFile('apps/desktop/src/main/ipc/agent-helpers.ts')
+    const helpers = readFile('apps/desktop/src/main/ipc/agent-stream-config.ts')
     expect(helpers).toContain('assistantContextWindow')
 
     const builder = readFile('packages/ai/src/agent/context-window.builder.ts')
@@ -227,24 +227,18 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
 
 describe('Agent 7: 回忆生成页面验证', () => {
   it('任务17: 卡片 section 合并，无中间圆角', () => {
-    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
-    // 确认只有一个 cardSection 包裹
+    const tsx = readUiModule('packages/ui/src/desktop/SummarySettingsView')
+    // 确认只有卡外 stack + cardSection 结构
     const cardSections = tsx.match(/cardSection/g)
     expect(cardSections).toBeTruthy()
-
-    const css = readFile(
-      'packages/ui/src/desktop/SummarySettingsView/SummarySettingsView.module.css'
-    )
-    // 确认有 divider 但没有中间圆角
-    expect(css).toContain('divider')
+    expect(tsx).toContain('stack.divider')
   })
 
-  it('任务17: Emoji 正确映射 🌱☘️🪴🌳', () => {
-    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
-    expect(tsx).toContain("'🌱'")
-    expect(tsx).toContain("'☘️'")
-    expect(tsx).toContain("'🪴'")
-    expect(tsx).toContain("'🌳'")
+  it('任务17: 共享记忆回溯月数滑块仍在设置页', () => {
+    const tsx = readUiModule('packages/ui/src/desktop/SummarySettingsView')
+    expect(tsx).toContain('summary-inject-lookback')
+    expect(tsx).toContain('SHARED_MEMORY_LOOKBACK_MIN')
+    expect(tsx).toContain('lookbackDraft')
   })
 })
 

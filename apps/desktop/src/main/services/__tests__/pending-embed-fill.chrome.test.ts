@@ -1,0 +1,51 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+const src = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'pending-embed-fill.service.ts'),
+  'utf8'
+)
+
+function indexOfCall(marker: string): number {
+  const index = src.indexOf(marker)
+  if (index < 0) {
+    throw new Error(`未找到标记：${marker}`)
+  }
+  return index
+}
+
+describe('desktop pending embed fill stays on the memory system', () => {
+  it('should not consume notebook ingest or notebook graph jobs', () => {
+    expect(src).not.toContain('consumeKnowledgeIngestJobs')
+    expect(src).not.toContain('consumeKnowledgeGraphJobs')
+    expect(src).not.toContain('NotebookGraphRepository')
+  })
+
+  it('should backfill diary graph node embeddings after extract', () => {
+    expect(indexOfCall("markPhaseDone(phases, 'graph_extract')")).toBeLessThan(
+      indexOfCall('await backfillUnembeddedGraphNodes')
+    )
+  })
+
+  it('should not scan structural suspects after graph node fill', () => {
+    expect(src).not.toContain('runDesktopGraphSuspectScan')
+    expect(indexOfCall('[PendingEmbedFill] graph node fill failed')).toBeLessThan(
+      indexOfCall("report('finishing', phases)")
+    )
+  })
+
+  it('should report active item date/title and extraction phase in status text and use align pool size 4', () => {
+    expect(src).toContain('describeGraphExtractPhase')
+    expect(src).toContain('resolveGraphExtractItemDateOrTitle')
+    expect(src).toContain('graph.extract_item_detail')
+    expect(src).not.toContain('completed === lastReportedCompleted')
+    const queueSrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'graph-extract-queue.service.ts'),
+      'utf8'
+    )
+    expect(queueSrc).toContain('DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE = 30')
+    expect(queueSrc).toContain('alignPoolSize: DESKTOP_GRAPH_EXTRACT_ALIGN_POOL_SIZE')
+  })
+})

@@ -27,7 +27,7 @@ export function resolveOpenCodeGoWireProtocol(modelId: string): OpenCodeGoWirePr
   if (OPENCODE_GO_RESPONSES_WIRE_MODEL_IDS.has(normalized)) {
     return 'openai-responses'
   }
-  if (/^(minimax-|qwen)/.test(normalized)) {
+  if (/^(minimax-|qwen|claude-)/.test(normalized)) {
     return 'anthropic'
   }
   return 'openai'

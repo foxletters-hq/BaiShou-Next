@@ -23,38 +23,42 @@ function extractQuickCheckValue(rows: unknown[] | undefined): string | undefined
 
 /** 启动或自愈后校验 Agent 主库是否可读 */
 export async function verifyExpoAgentDatabaseIntegrity(
-  expoDb: ExpoSqliteDatabase
+  expoDb: ExpoSqliteDatabase,
+  options?: { mode?: 'light' | 'full' }
 ): Promise<ExpoAgentDbIntegrityResult> {
   const db = expoDb as ExpoSqliteProbe
+  const mode = options?.mode ?? 'light'
 
   try {
-    if (typeof db.getAllAsync === 'function') {
-      const rows = await db.getAllAsync('PRAGMA quick_check')
-      const value = extractQuickCheckValue(rows)
-      if (value === 'ok') {
-        return { ok: true }
-      }
-      if (value != null && value !== 'ok') {
-        return { ok: false, detail: value }
-      }
-    } else {
-      const rows = (await expoDb.execAsync('PRAGMA quick_check')) as unknown[]
-      const value = extractQuickCheckValue(rows)
-      if (value === 'ok') {
-        return { ok: true }
-      }
-      if (value != null && value !== 'ok') {
-        return { ok: false, detail: value }
+    if (mode === 'full') {
+      if (typeof db.getAllAsync === 'function') {
+        const rows = await db.getAllAsync('PRAGMA quick_check')
+        const value = extractQuickCheckValue(rows)
+        if (value === 'ok') {
+          return { ok: true }
+        }
+        if (value != null && value !== 'ok') {
+          return { ok: false, detail: value }
+        }
+      } else {
+        const rows = (await expoDb.execAsync('PRAGMA quick_check')) as unknown[]
+        const value = extractQuickCheckValue(rows)
+        if (value === 'ok') {
+          return { ok: true }
+        }
+        if (value != null && value !== 'ok') {
+          return { ok: false, detail: value }
+        }
       }
     }
 
-    // 部分 Android expo-sqlite 对 PRAGMA quick_check 不返回行；用轻量读探针代替误报
+    // 轻量模式或 quick_check 回退：用轻量读探针检验数据库头部与 schema 表可读性
     if (typeof db.getAllAsync === 'function') {
-      await db.getAllAsync('SELECT 1 AS probe')
+      await db.getAllAsync('SELECT count(*) as cnt FROM sqlite_master')
       return { ok: true }
     }
 
-    await expoDb.execAsync('SELECT 1')
+    await expoDb.execAsync('SELECT count(*) as cnt FROM sqlite_master')
     return { ok: true }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)

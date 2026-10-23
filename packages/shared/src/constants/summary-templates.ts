@@ -10,8 +10,9 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 
 ###### 👥 核心人物与关系进展
-- **(人物 1)**:
-- **(人物 2)**:
+- **用户（我）**:
+- **AI 伙伴**:
+- **其他人物**:
 
 ---
 
@@ -53,8 +54,9 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 
 ###### 👥 核心关系动态
-- **(人物 1)**:
-- **(人物 2)**:
+- **用户（我）**:
+- **AI 伙伴**:
+- **其他人物**:
 
 ---
 
@@ -87,6 +89,9 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 
 ###### 👥 长期关系沉淀
+- **用户（我）**:
+- **AI 伙伴**:
+- **其他人物**:
 
 ---
 
@@ -118,6 +123,9 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 
 ###### 👥 年度重要关系
+- **用户（我）**:
+- **AI 伙伴**:
+- **其他人物**:
 
 ---
 

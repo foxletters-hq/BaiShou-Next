@@ -186,7 +186,8 @@ export function useTTSProviderSettingsHandlers(deps: HandlerDeps) {
     setConfigs,
     t,
     toast,
-    setIsLoadingModels
+    setIsLoadingModels,
+    skipAutoSaveRef
   ])
 
   const handleTest = useCallback(async () => {

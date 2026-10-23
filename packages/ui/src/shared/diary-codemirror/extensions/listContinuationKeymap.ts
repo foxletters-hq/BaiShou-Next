@@ -3,6 +3,7 @@ import { Prec, type Extension } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 
 const BULLET_LIST_LINE_RE = /^(\s*)([-*+])\s(.*)$/
+const BLOCKQUOTE_LINE_RE = /^(\s*>+\s?)(.*)$/
 
 /** Enter 在列表行自动续行 `- `；空列表项时退出列表 */
 export function continueMarkdownBulletList(view: EditorView): boolean {
@@ -34,8 +35,42 @@ export function continueMarkdownBulletList(view: EditorView): boolean {
   return true
 }
 
+/** Enter 在引用行自动续行 `> `；空引用行时退出引用 */
+export function continueMarkdownBlockquote(view: EditorView): boolean {
+  const { state } = view
+  const { from, to } = state.selection.main
+  if (from !== to) return false
+
+  const line = state.doc.lineAt(from)
+  const match = line.text.match(BLOCKQUOTE_LINE_RE)
+  if (!match) return false
+
+  const rawPrefix = match[1] ?? '> '
+  const content = match[2] ?? ''
+  const normalizedPrefix = rawPrefix.endsWith(' ') ? rawPrefix : `${rawPrefix} `
+
+  if (content.trim() === '') {
+    const indent = rawPrefix.match(/^\s*/)?.[0] ?? ''
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: indent },
+      selection: { anchor: line.from + indent.length }
+    })
+    return true
+  }
+
+  // 光标在前缀内部时不触发续行
+  if (from < line.from + rawPrefix.length) return false
+
+  const insert = `\n${normalizedPrefix}`
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length }
+  })
+  return true
+}
+
 function handleListEnter(view: EditorView): boolean {
-  return continueMarkdownBulletList(view)
+  return continueMarkdownBulletList(view) || continueMarkdownBlockquote(view)
 }
 
 export const listContinuationKeymap = keymap.of([

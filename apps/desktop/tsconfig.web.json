@@ -28,7 +28,9 @@
       "@renderer/*": ["src/renderer/src/*"],
       "@baishou/store": ["../../packages/store/src/index.ts"],
       "@baishou/store/*": ["../../packages/store/src/*"],
-      "@baishou/shared": ["../../packages/shared/src/index.ts"]
+      "@baishou/shared": ["../../packages/shared/src/index.ts"],
+      "@baishou/ui": ["../../packages/ui/src/index.ts"],
+      "@baishou/ui/*": ["../../packages/ui/src/*"]
     }
   }
 }

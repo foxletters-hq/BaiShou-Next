@@ -25,6 +25,10 @@ describe('classifyIncrementalSyncPaths', () => {
       summaries: false,
       settings: false,
       assistants: false,
+      memory: false,
+      graph: false,
+      notebooks: false,
+      notebookGraphIds: [],
       sessionRefs: []
     })
     const result = classifyIncrementalSyncPaths([

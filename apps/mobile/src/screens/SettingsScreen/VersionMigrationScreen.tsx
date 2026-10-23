@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   scrollIndicatorStyle,
@@ -15,134 +15,8 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { DirectoryPickerModal } from '../../components/DirectoryPickerModal'
 import { useVersionMigration } from '../../hooks/useVersionMigration'
 import { EXTERNAL_STORAGE_ROOT } from '../../services/storage-permission.service'
-
-function SectionCard({
-  title,
-  meta,
-  warnings,
-  previewItems,
-  previewFormat,
-  failureSamples,
-  importStatus,
-  available,
-  importing,
-  onImport,
-  colors,
-  tokens,
-  t
-}: {
-  title: string
-  meta: string
-  warnings: string[]
-  previewItems?: Array<{ label: string; detail?: string }>
-  previewFormat?: 'persona' | 'config' | 'default'
-  failureSamples?: string[]
-  importStatus: string
-  available: boolean
-  importing: boolean
-  onImport: () => void
-  colors: ReturnType<typeof useNativeTheme>['colors']
-  tokens: ReturnType<typeof useNativeTheme>['tokens']
-  t: (key: string, options?: Record<string, unknown>) => string
-}) {
-  return (
-    <View
-      style={[
-        styles.sectionCard,
-        { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
-      ]}
-    >
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{title}</Text>
-        <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>{meta}</Text>
-      </View>
-
-      {previewItems && previewItems.length > 0 ? (
-        <View style={styles.previewList}>
-          {previewItems.map((item, index) => (
-            <Text
-              key={`${item.label}-${index}`}
-              style={[styles.previewItem, { color: colors.textSecondary }]}
-              numberOfLines={2}
-            >
-              {previewFormat === 'persona'
-                ? t('version_migration.persona_preview_line', {
-                    name: item.label,
-                    count: Number(item.detail ?? 0),
-                    defaultValue: `${item.label} · ${item.detail ?? 0} 个属性`
-                  })
-                : previewFormat === 'config'
-                  ? t(item.label)
-                  : item.detail
-                    ? `${item.label} · ${item.detail}`
-                    : item.label}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
-      {failureSamples && failureSamples.length > 0 ? (
-        <View style={styles.previewList}>
-          <Text style={[styles.failureTitle, { color: colors.error }]}>
-            {t('version_migration.failure_samples_title', { defaultValue: '部分条目导入失败：' })}
-          </Text>
-          {failureSamples.slice(0, 8).map((sample, index) => (
-            <Text
-              key={`fail-${index}`}
-              style={[styles.previewItem, { color: colors.textTertiary }]}
-              numberOfLines={2}
-            >
-              {sample}
-            </Text>
-          ))}
-          {failureSamples.length > 8 ? (
-            <Text style={[styles.previewItem, { color: colors.textTertiary }]}>
-              {t('version_migration.failure_samples_more', {
-                count: failureSamples.length - 8,
-                defaultValue: `还有 ${failureSamples.length - 8} 条未显示`
-              })}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {warnings.map((warningKey) => (
-        <Text key={warningKey} style={[styles.warning, { color: colors.textTertiary }]}>
-          {t(warningKey)}
-        </Text>
-      ))}
-
-      <View style={styles.sectionFooter}>
-        <Text style={[styles.statusText, { color: colors.textTertiary }]}>
-          {importStatus === 'success'
-            ? t('version_migration.status_success', { defaultValue: '已导入' })
-            : importStatus === 'failed'
-              ? t('version_migration.status_failed', { defaultValue: '导入失败' })
-              : importStatus === 'importing'
-                ? t('version_migration.status_importing', { defaultValue: '导入中…' })
-                : available
-                  ? t('version_migration.status_ready', { defaultValue: '可导入' })
-                  : t('version_migration.status_unavailable', { defaultValue: '无数据' })}
-        </Text>
-        <Pressable
-          disabled={!available || importing}
-          onPress={onImport}
-          style={({ pressed }) => [
-            styles.importBtn,
-            {
-              backgroundColor: available ? colors.primary : colors.borderMuted,
-              opacity: pressed ? 0.85 : 1
-            }
-          ]}
-        >
-          <Text style={styles.importBtnText}>
-            {t('version_migration.import_action', { defaultValue: '导入' })}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
+import { mobileTypography, sharedTokens } from '@baishou/ui/theme/tokens'
+import { VersionMigrationSectionCard as SectionCard } from './VersionMigrationSectionCard'
 
 export const VersionMigrationScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -276,7 +150,7 @@ export const VersionMigrationScreen: React.FC = () => {
           <Button
             variant="outline"
             className="w-full"
-            style={{ backgroundColor: colors.bgSurface, marginTop: 4 }}
+            style={{ backgroundColor: colors.bgSurface, marginTop: sharedTokens.spacing.xs }}
             onPress={() => void refreshScan()}
             disabled={!pageReady || scanning}
           >
@@ -302,7 +176,9 @@ export const VersionMigrationScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t('version_migration.db_not_ready', {
                 defaultValue: '数据库尚未就绪，请稍候后重新扫描。'
               })}
@@ -317,7 +193,9 @@ export const VersionMigrationScreen: React.FC = () => {
               { backgroundColor: colors.bgSurface, borderRadius: tokens.radius.lg }
             ]}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+            <Text
+              style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
+            >
               {t(
                 'version_migration.no_legacy_data',
                 '未检测到可迁移的旧版数据。若您刚升级，请确认旧版目录仍可访问，或手动选择旧版 Flutter 数据目录。'
@@ -354,9 +232,6 @@ export const VersionMigrationScreen: React.FC = () => {
             available={section.available}
             importing={importBusy}
             onImport={() => void handleImportSection(section.sectionId)}
-            colors={colors}
-            tokens={tokens}
-            t={t}
           />
         ))}
 
@@ -401,9 +276,6 @@ export const VersionMigrationScreen: React.FC = () => {
               available={workspace.available}
               importing={importBusy}
               onImport={() => void handleImportSection(workspace.sectionId)}
-              colors={colors}
-              tokens={tokens}
-              t={t}
             />
           )
         })}
@@ -420,100 +292,50 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 12,
-    gap: 12,
-    paddingBottom: 32
+    padding: sharedTokens.spacing.mdTight,
+    gap: sharedTokens.spacing.mdTight,
+    paddingBottom: sharedTokens.spacing.xl
   },
   card: {
-    padding: 14,
-    gap: 8
+    padding: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.sm
   },
   desc: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 20
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   },
   mono: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontFamily: 'monospace',
     lineHeight: 18
   },
   sourceActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     flexWrap: 'wrap'
   },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 16,
+    gap: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.md,
     justifyContent: 'center'
   },
   groupTitle: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600',
     marginBottom: -4,
-    marginTop: 4
+    marginTop: sharedTokens.spacing.xs
   },
   workspaceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 4
-  },
-  sectionCard: {
-    padding: 14,
-    gap: 8
-  },
-  sectionHeader: {
-    gap: 4
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  sectionMeta: {
-    fontSize: 13
-  },
-  previewList: {
-    gap: 2
-  },
-  previewItem: {
-    fontSize: 13
-  },
-  failureTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4
-  },
-  warning: {
-    fontSize: 12,
-    lineHeight: 18
-  },
-  sectionFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4
-  },
-  statusText: {
-    fontSize: 12,
-    flex: 1,
-    marginRight: 12
-  },
-  importBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  importBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600'
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs
   }
 })

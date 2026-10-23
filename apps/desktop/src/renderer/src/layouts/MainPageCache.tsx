@@ -1,36 +1,62 @@
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
-import { DiaryPage } from '../features/diary/DiaryPage'
-import { SummaryPage } from '../features/summary/SummaryPage'
-import { CloudSyncPage } from '../features/settings/CloudSyncPage'
-import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
-import { GitManagementPage } from '../features/settings/GitManagementPage'
-import { SettingsHubPage } from '../features/settings/SettingsHubPage'
-import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
+import { isAgentWorkspaceKnowledgeDetailPath } from '../features/agent-workspace/utils/agent-workspace-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
+import { nextMountedCacheKeys } from './route-switch-mask.util'
 
 export { MainPageCacheActiveContext } from './main-page-cache.context'
 
-/** 离开路由后仍保持挂载，便于日记 ↔ 伙伴快速切换 */
-const PERSISTENT_MAIN_PAGE_KEYS = new Set(['/diary', '/chat'])
-
-/** 侧边栏主页面：日记/伙伴保活；设置、总结等离开即卸载 */
-
+/**
+ * 侧边栏主页面：按路由懒加载，避免硬刷新时一次拉起全部页面模块图。
+ * 日记/伙伴保活；设置、总结等离开即卸载。
+ */
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
-  '/diary': DiaryPage,
-  '/summary': SummaryPage,
-  '/data-sync': CloudSyncPage,
-  '/incremental-sync': IncrementalSyncPage,
-  '/git': GitManagementPage,
-  '/hub': SettingsHubPage,
-  '/chat': AgentChatCachedPage
+  '/diary': lazy(() =>
+    import('../features/diary/DiaryPage').then((m) => ({ default: m.DiaryPage }))
+  ),
+  '/summary': lazy(() =>
+    import('../features/summary/SummaryPage').then((m) => ({ default: m.SummaryPage }))
+  ),
+  '/memory': lazy(() =>
+    import('../features/memory/MemoryCenterPage').then((m) => ({ default: m.MemoryCenterPage }))
+  ),
+  '/data-sync': lazy(() =>
+    import('../features/settings/CloudSyncPage').then((m) => ({ default: m.CloudSyncPage }))
+  ),
+  '/incremental-sync': lazy(() =>
+    import('../features/settings/IncrementalSyncPage').then((m) => ({
+      default: m.IncrementalSyncPage
+    }))
+  ),
+  '/git': lazy(() =>
+    import('../features/settings/GitManagementPage').then((m) => ({
+      default: m.GitManagementPage
+    }))
+  ),
+  '/hub': lazy(() =>
+    import('../features/settings/SettingsHubPage').then((m) => ({ default: m.SettingsHubPage }))
+  ),
+  '/chat': lazy(() =>
+    import('../features/agent/AgentChatCachedPage').then((m) => ({
+      default: m.AgentChatCachedPage
+    }))
+  ),
+  '/agent-workspace': lazy(() =>
+    import('../features/agent-workspace/AgentWorkspaceCachedPage').then((m) => ({
+      default: m.AgentWorkspaceCachedPage
+    }))
+  )
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
+  if (pathname === '/memory' || pathname.startsWith('/memory/')) return '/memory'
   if (pathname in MAIN_PAGE_CACHE) return pathname
   if (pathname.startsWith('/chat')) return '/chat'
+  // 笔记本详情走 Outlet，与日记编辑页相同；列表仍由工作台保活壳渲染
+  if (isAgentWorkspaceKnowledgeDetailPath(pathname)) return null
+  if (pathname.startsWith('/agent-workspace')) return '/agent-workspace'
   if (isSettingsHubPath(pathname)) return '/hub'
   return null
 }
@@ -76,7 +102,9 @@ const CachedPageLayer: React.FC<{
       animate={controls}
     >
       <MainPageCacheActiveContext.Provider value={layerActive}>
-        <Component />
+        <Suspense fallback={null}>
+          <Component />
+        </Suspense>
       </MainPageCacheActiveContext.Provider>
     </motion.div>
   )
@@ -95,16 +123,7 @@ export const MainPageCache: React.FC<{
 
   useEffect(() => {
     if (!activeKey) return
-    setMountedKeys((prev) => {
-      const next = new Set<string>()
-      for (const key of prev) {
-        if (PERSISTENT_MAIN_PAGE_KEYS.has(key)) {
-          next.add(key)
-        }
-      }
-      next.add(activeKey)
-      return next
-    })
+    setMountedKeys((prev) => nextMountedCacheKeys(prev, activeKey))
   }, [activeKey])
 
   return (

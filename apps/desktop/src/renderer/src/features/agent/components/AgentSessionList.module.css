@@ -1,0 +1,80 @@
+.scroller {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: var(--spacing-sm) 0 var(--spacing-md-tight);
+}
+
+.scroller::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scroller::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--text-primary-rgb), 0.12);
+  border-radius: var(--radius-xs);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.groupHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--spacing-sm) var(--spacing-md-snug) var(--spacing-xs);
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+}
+
+.groupItems {
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyState {
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md-tight);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  text-align: center;
+}
+
+/* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
+.emptyIcon {
+  display: block;
+  font-size: var(--icon-fs-2xl);
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.emptyText {
+  font-size: var(--ui-fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 260px;
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md-tight) 0 var(--spacing-xs);
+}

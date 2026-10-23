@@ -7,6 +7,7 @@ import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.sty
 import { SettingsListLeadingIcon } from '../settings/SettingsListLeadingIcon'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import type { NativeAboutSettingsCardProps } from './about-settings.types'
+import { settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export const AboutSettingsCard: React.FC<NativeAboutSettingsCardProps> = ({
   onNavigateAbout,
@@ -87,12 +88,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.mdSnug,
+    gap: sharedTokens.spacing.mdTight
   },
   chevron: {
-    fontSize: 18,
+    fontSize: settingsIcons.trailing,
     lineHeight: 18
   }
 })

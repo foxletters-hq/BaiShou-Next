@@ -1,0 +1,42 @@
+// 公共 API 分组：AI 提供商、模型能力、推理与语音相关
+
+export {
+  ProviderType,
+  WebSearchMode,
+  getDefaultWebSearchMode,
+  createAiProvider
+} from './types/ai-provider.types'
+export type { AiProviderModel } from './types/ai-provider.types'
+export * from './types/embedding-migration-state.types'
+export * from './utils/pricing.util'
+export * from './utils/deepseek-peak-pricing'
+export * from './utils/text-token-estimate.util'
+export * from './utils/model-context-window.util'
+export * from './utils/last-round-context-usage.util'
+export * from './utils/context-occupancy.util'
+export * from './utils/search-mode.util'
+export * from './utils/model-capabilities'
+export * from './utils/reasoning-effort'
+export * from './utils/reasoning-effort-slot'
+export * from './utils/session-reasoning-effort-options'
+export * from './utils/reasoning-catalog.types'
+export * from './utils/reasoning-catalog.overlay'
+export * from './utils/reasoning-catalog-extract'
+export * from './utils/reasoning-catalog-store'
+export * from './utils/provider-vision-models'
+export * from './utils/vision-models.snapshot'
+export * from './utils/vision-models.runtime'
+export * from './utils/reasoning-models.snapshot'
+export * from './utils/embedding.utils'
+export * from './utils/vector-bytes.util'
+export * from './utils/ai-provider-filter.util'
+export * from './utils/ai-api-error.util'
+export * from './utils/ai-first-output-timeout'
+export * from './utils/web-search-config.util'
+export * from './tts'
+export * from './types/tts.types'
+export * from './constants/provider-base-urls'
+export * from './constants/provider-display-names'
+export * from './utils/agent-dialogue-model.util'
+export * from './utils/provider-model-slot.util'
+export * from './utils/reasoning-effort-session.util'

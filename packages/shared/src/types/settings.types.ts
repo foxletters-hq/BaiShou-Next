@@ -3,6 +3,8 @@ import { ProviderType } from './ai-provider.types'
 export { ProviderType }
 import type { TtsSettings } from './tts.types'
 export type { TtsSettings }
+import type { ReasoningEffortSetting } from '../utils/reasoning-effort'
+import type { ReasoningEffortBySlot } from '../utils/reasoning-effort-slot'
 
 /**
  * AI 供应商配置模型
@@ -45,6 +47,9 @@ export interface TtsProviderConnectionConfig {
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string
   globalDialogueModelId: string
+  /** 日记与笔记本图关系抽取。未配置时不改用对话模型，由界面提示用户去选。 */
+  globalGraphProviderId: string
+  globalGraphModelId: string
   globalNamingProviderId: string
   globalNamingModelId: string
   globalSummaryProviderId: string
@@ -58,6 +63,11 @@ export interface GlobalModelsConfig {
   /** 各 TTS 供应商的 baseUrl / apiKey，key 为 openai-tts、mimo-tts 等 */
   globalTtsProviderConfigs?: Record<string, TtsProviderConnectionConfig>
   monthlySummarySource: 'weeklies' | 'diaries' // 月报：'weeklies' 仅本月周记；'diaries' 本月周记 + 本月日记
+  /**
+   * 按模型用途记录的思考强度。缺省或未写的用途一律 Default（auto）。
+   * 升级时不从旧的全局 reasoningEffortDefault 或其它用途拷贝。
+   */
+  reasoningEffortBySlot?: ReasoningEffortBySlot
 }
 
 /**
@@ -70,6 +80,13 @@ export interface AgentBehaviorConfig {
   agentPersona: string // Agent 角色人设描述
   agentGuidelines: string // Agent 行为准则
   pinnedAssistantIds: string[] // 侧边栏置顶助手列表 (最多 3 个)
+  /** 返回伙伴页时是否默认打开上次对话（默认 true） */
+  restoreLastSessionOnReturn?: boolean
+  /**
+   * 旧版全局默认思考强度。读取对话用途时不再使用本字段，
+   * 改读 GlobalModelsConfig.reasoningEffortBySlot.dialogue。
+   */
+  reasoningEffortDefault?: ReasoningEffortSetting
 }
 
 /**
@@ -85,6 +102,31 @@ export interface RagConfig {
   lastDiaryEmbedFailureAt?: number
   /** 最近一次日记自动嵌入失败的原因（用户可读） */
   lastDiaryEmbedFailureMessage?: string
+  /** 启动时是否检查并提示待嵌入。未写时视为开启。 */
+  startupEmbedReminder?: boolean
+}
+
+/**
+ * 知识库提取引擎配置（K1.5）
+ */
+export type KnowledgeImportProcessMode = 'vector' | 'both' | 'later'
+
+export interface KnowledgeConfig {
+  /** 默认提取引擎：ocr | vision。旧值 simple 读入时按 ocr 走。 */
+  defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+  /** 导入后默认：向量、向量和图关系，或稍后整理。旧值 graph 读入时按 both 走。 */
+  importProcessMode?: KnowledgeImportProcessMode
+  /** tesseract 语言，如 chi_sim+eng；无语言包时引擎会降级 eng */
+  ocrLanguage?: string
+  /** PDF 渲染 DPI，建议 200–300 */
+  ocrDpi?: number
+  /** OCR / vision 同时处理的页数（1–10，默认 1） */
+  ocrConcurrency?: number
+  /** Ask 默认开启多子查询（最多 2） */
+  multiQueryAsk?: boolean
+  /** 视觉提取专用多模态模型（优先于全局对话模型） */
+  visionProviderId?: string | null
+  visionModelId?: string | null
 }
 
 /**
@@ -145,13 +187,15 @@ export interface DiaryTemplateConfig {
   /** 追加记录时插入的时间块，支持 {time} {date} {datetime} */
   appendBlockTemplate?: string
   /**
-   * 伙伴写日记时的可选补充说明（风格/内容要求，不含时间标题格式）。
-   * 时间标题格式由 newEntryTemplate / appendBlockTemplate 统一决定。
+   * 伙伴写日记时的可选补充说明（风格/内容要求）。
+   * newEntryTemplate / appendBlockTemplate 会另外作为推荐结构提供给伙伴参考。
    */
   writingStyleSupplement?: string
   /** @deprecated 旧字段；读取时会迁移到 writingStyleSupplement，新写入请用 writingStyleSupplement */
   aiWritingPrompt?: string
 }
+
+export type { BaishouAgentGateConfig } from '../baishou-agent-gate/agent-gate.types'
 
 /**
  * 工具管理配置
@@ -160,13 +204,20 @@ export interface ToolManagementConfig {
   disabledToolIds: string[] // 被禁用的工具 ID 列表
   customConfigs: Record<string, Record<string, any>> // 各工具的独立 key-value 用户配置
   emojiConfig?: EmojiToolConfig // 表情包工具配置
+  /** 是否开启伙伴工作过程趣味状态文案（如「伙伴正在喝茶…」），默认开启 true */
+  playfulProcessStatus?: boolean
 }
+
+/** 表情包发送频率：较少 / 适中 / 频繁 / 每条回复 */
+export type EmojiSendFrequency = 'low' | 'normal' | 'high' | 'always'
 
 /**
  * 表情包工具配置
  */
 export interface EmojiToolConfig {
   enabled: boolean // 是否启用表情包回复
+  /** 表情包发送频率，缺省视为 normal */
+  frequency?: EmojiSendFrequency
   /** 表情包组列表（读取后应经 normalizeEmojiToolConfig 归一化） */
   groups?: EmojiGroup[]
   /** @deprecated 旧版扁平列表，读取时自动迁移到默认组 */
@@ -195,6 +246,40 @@ export interface McpServerConfig {
   mcpAuthEnabled?: boolean
   /** 可选访问令牌；鉴权开启且为空时自动生成 */
   mcpAuthToken?: string
+  /** 外部 MCP 客户端调用工具时自动允许，不再弹窗确认（默认关闭） */
+  mcpAutoApproveTools?: boolean
+  /** 禁用对外暴露的 MCP 工具 ID 列表（如 ['web_search', 'url_read']） */
+  disabledToolIds?: string[]
+}
+
+/** 作为客户端接入的外部 MCP（仅 Streamable HTTP /mcp） */
+export interface McpClientServerEntry {
+  id: string
+  name: string
+  url: string
+  enabled: boolean
+  authToken?: string
+  /** 始终允许此服务的所有工具调用（包括写入操作免弹窗确认） */
+  alwaysAllow?: boolean
+}
+
+export interface McpClientConfig {
+  servers: McpClientServerEntry[]
+}
+
+export interface McpClientListedTool {
+  name: string
+  description?: string
+}
+
+export type McpClientProbeReason = 'empty' | 'invalid' | 'sse' | 'connect' | 'timeout'
+
+export interface McpClientServerStatus {
+  id: string
+  connected: boolean
+  tools: McpClientListedTool[]
+  error?: string
+  reason?: McpClientProbeReason
 }
 
 /**
@@ -260,4 +345,6 @@ export interface DevicePreferences {
   s3_path?: string
   mcp_server_enabled?: boolean
   mcp_server_port?: number
+  /** 图谱抽取自称是否已由用户确认（默认昵称不算） */
+  graph_self_name_configured?: boolean
 }

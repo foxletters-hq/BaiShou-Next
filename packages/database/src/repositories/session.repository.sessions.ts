@@ -1,19 +1,45 @@
 import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
 import type { InferSelectModel } from 'drizzle-orm'
+import {
+  deriveLegacyVaultId,
+  isVaultId,
+  parseMountedNotebookIds,
+  serializeMountedNotebookIds
+} from '@baishou/shared'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
+import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 import type { InsertSessionInput } from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
 
-export type AgentSessionRow = InferSelectModel<typeof agentSessionsTable>
+export type AgentSessionRow = Omit<
+  InferSelectModel<typeof agentSessionsTable>,
+  'mountedNotebookIds'
+> & {
+  mountedNotebookIds: string[]
+}
+
+function withMountedNotebookIds<T extends { mountedNotebookIds?: unknown }>(
+  row: T
+): T & { mountedNotebookIds: string[] } {
+  return {
+    ...row,
+    mountedNotebookIds: parseMountedNotebookIds(row.mountedNotebookIds)
+  }
+}
+
+function resolveInsertVaultId(raw: string | undefined): string {
+  const value = raw || 'default'
+  return isVaultId(value) ? value : deriveLegacyVaultId(value)
+}
 
 export class SessionCrudOps {
   constructor(private readonly db: AppDatabase) {}
 
   async upsertSession(input: InsertSessionInput): Promise<void> {
-    const vaultName = input.vaultName || 'default'
+    const vaultId = resolveInsertVaultId(input.vaultId)
     const providerId = input.providerId || 'default'
     const modelId = input.modelId || 'default'
 
@@ -22,9 +48,10 @@ export class SessionCrudOps {
       .values({
         id: input.id,
         title: input.title,
-        vaultName: vaultName,
+        vaultId: vaultId,
         assistantId: input.assistantId,
         systemPrompt: input.systemPrompt,
+        mountedNotebookIds: serializeMountedNotebookIds(input.mountedNotebookIds),
         providerId: providerId,
         modelId: modelId,
         updatedAt: new Date()
@@ -33,10 +60,14 @@ export class SessionCrudOps {
         target: [agentSessionsTable.id],
         set: {
           title: input.title,
+          vaultId: vaultId,
           updatedAt: new Date(),
           ...(input.assistantId ? { assistantId: input.assistantId } : {}),
           ...(input.providerId ? { providerId } : {}),
-          ...(input.modelId ? { modelId } : {})
+          ...(input.modelId ? { modelId } : {}),
+          ...(input.mountedNotebookIds
+            ? { mountedNotebookIds: serializeMountedNotebookIds(input.mountedNotebookIds) }
+            : {})
         }
       })
   }
@@ -66,75 +97,70 @@ export class SessionCrudOps {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
+    searchQuery?: string,
+    vaultId?: string | null
+  ): Promise<AgentSessionRow[]> {
+    const normalizedVaultId = vaultId?.trim() ? resolveInsertVaultId(vaultId.trim()) : undefined
+    // 公开列表缺 vaultId → fail-closed（等价 1=0），禁止静默扫全表
+    if (!normalizedVaultId) {
+      console.warn('[SessionRepo] findAllSessions refused: vaultId is required (fail-closed)')
+      return []
+    }
+
+    return this.querySessions({
+      limit,
+      offset,
+      assistantId,
+      searchQuery,
+      vaultId: normalizedVaultId
+    })
+  }
+
+  /**
+   * 显式跨仓全表扫描（仅同步 / 迁移 / flush 缺盘补写使用）。
+   * 日常列表请用 findAllSessions(..., vaultId)。
+   */
+  async findAllSessionsAcrossVaults(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
     searchQuery?: string
   ): Promise<AgentSessionRow[]> {
+    return this.querySessions({
+      limit,
+      offset,
+      assistantId,
+      searchQuery,
+      vaultId: null
+    })
+  }
+
+  private async querySessions(params: {
+    limit: number
+    offset: number
+    assistantId?: string
+    searchQuery?: string
+    vaultId: string | null
+  }): Promise<AgentSessionRow[]> {
+    const { limit, offset, assistantId, searchQuery, vaultId } = params
     let matchedSessionIds: string[] = []
 
     if (searchQuery && searchQuery.trim()) {
-      const cleaned = searchQuery.replace(/"/g, ' ').trim()
-      const pattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
-      const sessionIdsSet = new Set<string>()
-
-      const tasks: Promise<void>[] = []
-
-      // 1. 尝试使用 FTS 快速查询匹配的会话 ID
-      if (cleaned) {
-        tasks.push(
-          (async () => {
-            try {
-              const ftsRows = await this.db.all(sql`
-                SELECT DISTINCT session_id as sessionId
-                FROM agent_messages_fts
-                WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
-              `)
-              ftsRows
-                .map((r: any) => r.sessionId)
-                .filter(Boolean)
-                .forEach((id: string) => sessionIdsSet.add(id))
-            } catch (e) {
-              console.warn('[SessionRepo] FTS search failed:', e)
-            }
-          })()
-        )
-      }
-
-      // 2. 无论 FTS 结果如何，都使用 LIKE 模糊查询补充
-      tasks.push(
-        (async () => {
-          try {
-            const likeRows = await this.db
-              .select({ sessionId: partsTbl.sessionId })
-              .from(partsTbl)
-              .where(
-                and(
-                  eq(partsTbl.type, 'text'),
-                  or(
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
-                    sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
-                  ),
-                  sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
-                )
-              )
-            likeRows
-              .map((r: any) => r.sessionId)
-              .filter(Boolean)
-              .forEach((id: string) => sessionIdsSet.add(id))
-          } catch (e) {
-            console.error('[SessionRepo] LIKE message search failed:', e)
-          }
-        })()
+      matchedSessionIds = await this.findSessionIdsMatchingMessageContent(
+        searchQuery,
+        vaultId,
+        assistantId
       )
-
-      await Promise.all(tasks)
-      matchedSessionIds = Array.from(sessionIdsSet)
     }
 
     let q = this.db.select().from(agentSessionsTable)
 
     // 组合过滤条件
     const conditions: any[] = []
+
+    if (vaultId) {
+      conditions.push(eq(agentSessionsTable.vaultId, vaultId))
+    }
 
     const normalizedAssistantId = assistantId?.trim()
     if (normalizedAssistantId) {
@@ -169,25 +195,91 @@ export class SessionCrudOps {
       finalQuery = finalQuery.limit(limit).offset(offset)
     }
 
-    const results = (await finalQuery) as AgentSessionRow[]
-    console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
+    const results = ((await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]).map(
+      (row) => withMountedNotebookIds(row)
     )
-    if (results.length === 0 && !searchQuery && normalizedAssistantId) {
-      const allDocs = await this.db.select().from(agentSessionsTable)
-      console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
-      if (allDocs.length > 0) {
-        const sampleIds = [...new Set(allDocs.map((row) => row.assistantId ?? '(null)'))].slice(
-          0,
-          5
-        )
-        console.log(
-          `[SessionRepo] assistantId filter=${normalizedAssistantId}, sample assistant_ids in DB:`,
-          sampleIds
-        )
-      }
-    }
     return results
+  }
+
+  /**
+   * 先走消息全文索引，再用正文 LIKE 补漏。
+   * 有工作空间 / 伙伴时先收窄会话范围，避免每次搜索扫全库 parts。
+   */
+  private async findSessionIdsMatchingMessageContent(
+    searchQuery: string,
+    vaultId: string | null,
+    assistantId?: string
+  ): Promise<string[]> {
+    const cleaned = searchQuery.replace(/"/g, ' ').trim()
+    const pattern = `%${searchQuery.replace(/[%_\\]/g, '\\$&')}%`
+    const sessionIdsSet = new Set<string>()
+    const normalizedAssistantId = assistantId?.trim()
+    const tasks: Promise<void>[] = []
+
+    if (cleaned) {
+      tasks.push(
+        (async () => {
+          try {
+            const ftsRows = await this.db.all(sql`
+              SELECT DISTINCT f.session_id as sessionId
+              FROM agent_messages_fts f
+              INNER JOIN agent_sessions s ON s.id = f.session_id
+              WHERE agent_messages_fts MATCH ${`"${cleaned}"`}
+                ${vaultId ? sql`AND s.vault_id = ${vaultId}` : sql``}
+                ${normalizedAssistantId ? sql`AND s.assistant_id = ${normalizedAssistantId}` : sql``}
+            `)
+            for (const row of ftsRows) {
+              const id = (row as { sessionId?: string }).sessionId
+              if (id) sessionIdsSet.add(id)
+            }
+          } catch (e) {
+            console.warn('[SessionRepo] FTS search failed:', e)
+          }
+        })()
+      )
+    }
+
+    tasks.push(
+      (async () => {
+        try {
+          const scope = [
+            eq(partsTbl.type, 'text'),
+            or(
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
+              sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
+            ),
+            sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+          ]
+          if (vaultId) scope.push(eq(agentSessionsTable.vaultId, vaultId))
+          if (normalizedAssistantId) {
+            scope.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
+          }
+          const likeRows = await this.db
+            .select({ sessionId: partsTbl.sessionId })
+            .from(partsTbl)
+            .innerJoin(agentSessionsTable, eq(partsTbl.sessionId, agentSessionsTable.id))
+            .where(and(...scope))
+          for (const row of likeRows) {
+            if (row.sessionId) sessionIdsSet.add(row.sessionId)
+          }
+        } catch (e) {
+          console.error('[SessionRepo] LIKE message search failed:', e)
+        }
+      })()
+    )
+
+    await Promise.all(tasks)
+    return Array.from(sessionIdsSet)
+  }
+
+  async updateSessionVaultId(sessionId: string, vaultId: string): Promise<void> {
+    const normalized = resolveInsertVaultId(vaultId)
+    await this.db
+      .update(agentSessionsTable)
+      .set({ vaultId: normalized, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
   }
 
   async updateSessionTitle(sessionId: string, title: string): Promise<void> {
@@ -216,12 +308,18 @@ export class SessionCrudOps {
         tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids)).run()
         tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids)).run()
         tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids)).run()
+        tx.delete(compressionSnapshotsTable)
+          .where(inArray(compressionSnapshotsTable.sessionId, ids))
+          .run()
       })
     } else {
       await this.db.transaction(async (tx) => {
         await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids))
         await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids))
         await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids))
+        await tx
+          .delete(compressionSnapshotsTable)
+          .where(inArray(compressionSnapshotsTable.sessionId, ids))
       })
     }
   }
@@ -232,7 +330,37 @@ export class SessionCrudOps {
       .from(agentSessionsTable)
       .where(eq(agentSessionsTable.id, sessionId))
       .limit(1)
-    return docs.length > 0 ? docs[0] : null
+    const row = docs[0]
+    return row ? withMountedNotebookIds(row) : null
+  }
+
+  async updateMountedNotebookIds(sessionId: string, notebookIds: string[]): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({
+        mountedNotebookIds: serializeMountedNotebookIds(notebookIds),
+        updatedAt: new Date()
+      })
+      .where(eq(agentSessionsTable.id, sessionId))
+  }
+
+  /** 读取会话级 instruction 基线（JSON 字符串）；无记录返回 null */
+  async getSessionInstructionState(sessionId: string): Promise<string | null> {
+    const docs = await this.db
+      .select({ instructionState: agentSessionsTable.instructionState })
+      .from(agentSessionsTable)
+      .where(eq(agentSessionsTable.id, sessionId))
+      .limit(1)
+    const raw = docs[0]?.instructionState
+    return typeof raw === 'string' && raw.trim() ? raw : null
+  }
+
+  /** 写入会话级 instruction 基线（JSON 字符串）；传 null 清空 */
+  async updateSessionInstructionState(sessionId: string, state: string | null): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({ instructionState: state, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {

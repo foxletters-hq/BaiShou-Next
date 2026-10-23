@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Loader2, Volume2 } from 'lucide-react'
@@ -9,6 +10,7 @@ import {
   getMoodLabelFallback,
   moodI18nKey,
   normalizeMoodId,
+  parseDiaryEditorContent,
   type WeatherId
 } from '@baishou/shared'
 import { MOOD_FLUENT_ICON_SRC } from '../../shared/mood-fluent-assets'
@@ -29,6 +31,10 @@ interface DiaryEditorProps {
   isFavorite?: boolean
   mediaPaths?: string[]
   isSaving?: boolean
+  /** 是否有尚未保存的修改 */
+  isDirty?: boolean
+  /** 保存按钮阶段：idle / saving / leaving */
+  savePhase?: 'idle' | 'saving' | 'leaving'
   onContentChange: (content: string) => void
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
@@ -36,6 +42,8 @@ interface DiaryEditorProps {
   onFavoriteChange?: (isFavorite: boolean) => void
   onMediaPathsChange?: (mediaPaths: string[]) => void
   onSave?: (content: string, date: Date) => void
+  /** 快捷键 Ctrl/Cmd+S 原地保存（不退出编辑页） */
+  onQuickSave?: (content: string, date: Date) => void
   onCancel?: () => void
   onReadAloud?: () => void
   isTtsPlaying?: boolean
@@ -61,6 +69,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   isFavorite = false,
   mediaPaths = [],
   isSaving = false,
+  isDirty = false,
+  savePhase = 'idle',
   onContentChange,
   onDateChange,
   onWeatherChange,
@@ -68,18 +78,20 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onFavoriteChange,
   onMediaPathsChange,
   onSave,
+  onQuickSave,
   onCancel,
   onReadAloud,
   isTtsPlaying = false,
   attachmentBasePath: attachmentBasePathProp
 }) => {
   const { t } = useTranslation()
-  const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
+  const [, setAttachments] = useState<DiaryAttachmentItem[]>([])
   const [attachmentBasePathState, setAttachmentBasePathState] = useState('')
   const attachmentBasePath = attachmentBasePathProp ?? attachmentBasePathState
   const editorRef = useRef<CodeMirrorEditorHandle>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [pickingImages, setPickingImages] = useState(false)
+  const [selectedCharCount, setSelectedCharCount] = useState(0)
   const mediaPathsRef = useRef(mediaPaths)
 
   useEffect(() => {
@@ -175,28 +187,26 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     [selectedDate, onMediaPathsChange]
   )
 
-  const weatherLabelFallback: Record<WeatherId, string> = {
-    sunny: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L179', '晴'),
-    cloudy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L180', '多云'),
-    overcast: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L181', '阴'),
-    light_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L182', '小雨'),
-    heavy_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L183', '大雨'),
-    snow: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L184', '雪'),
-    fog: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L185', '雾'),
-    windy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L186', '风')
-  }
-
-  const WEATHER_OPTIONS = useMemo(
-    () => [
-      { value: '', label: t('diary.weather.default', '天气') },
+  const WEATHER_OPTIONS = useMemo(() => {
+    const weatherLabelFallback: Record<WeatherId, string> = {
+      sunny: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L179', '晴'),
+      cloudy: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L180', '多云'),
+      overcast: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L181', '阴'),
+      light_rain: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L182', '小雨'),
+      heavy_rain: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L183', '大雨'),
+      snow: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L184', '雪'),
+      fog: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L185', '雾'),
+      windy: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L186', '风')
+    }
+    return [
+      { value: '', label: t('diary.weather.none', '不填') },
       ...WEATHER_IDS.map((id) => ({
         value: id,
         iconSrc: WEATHER_FLUENT_ICON_SRC[id],
         label: t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
       }))
-    ],
-    [t]
-  )
+    ]
+  }, [t])
 
   const normalizedWeather = normalizeWeatherId(weather)
 
@@ -208,7 +218,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
   const MOOD_OPTIONS = useMemo(
     () => [
-      { value: '', label: t('diary.mood.default', '心情') },
+      { value: '', label: t('diary.mood.none', '不填') },
       ...MOOD_IDS.map((id) => ({
         value: id,
         iconSrc: MOOD_FLUENT_ICON_SRC[id],
@@ -230,6 +240,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     editorRef.current?.insertWrappedText(prefix, suffix)
   }, [])
 
+  const handleToggleLinePrefix = useCallback((prefix: string) => {
+    editorRef.current?.toggleLinePrefix(prefix)
+  }, [])
+
+  const handleInsertCodeBlock = useCallback(() => {
+    editorRef.current?.insertCodeBlock()
+  }, [])
+
   const handleUndo = useCallback(() => {
     editorRef.current?.undo()
   }, [])
@@ -241,6 +259,29 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const handleToggleMark = useCallback((marker: '**' | '*' | '`' | '~~') => {
     editorRef.current?.toggleMarkdownMark(marker)
   }, [])
+
+  const bodyCharCount = useMemo(() => {
+    const { body } = parseDiaryEditorContent(content || '')
+    return body.replace(/\s+/g, '').length
+  }, [content])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        if (isSaving || savePhase !== 'idle') return
+        if (onQuickSave) {
+          onQuickSave(content, selectedDate)
+        } else {
+          onSave?.(content, selectedDate)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [content, selectedDate, isSaving, savePhase, onQuickSave, onSave])
 
   const handlePickImages = useCallback(() => {
     imageInputRef.current?.click()
@@ -293,15 +334,19 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           <button
             className="de-save-btn"
             onClick={() => onSave?.(content, selectedDate)}
-            disabled={isSaving}
+            disabled={isSaving || savePhase !== 'idle'}
+            title={t('diary.save_hint', '保存并返回 (Ctrl+S 仅保存)')}
           >
-            {isSaving ? (
+            {savePhase === 'saving' || savePhase === 'leaving' ? (
               <span className="de-save-loading">
-                <span className="de-spinner" />
+                <Loader2 className="de-save-spinner" size={14} aria-hidden />
                 {t('common.saving', '保存中...')}
               </span>
             ) : (
-              t('common.save', '保存')
+              <span className="de-save-label">
+                {isDirty && <span className="de-save-dirty-dot" aria-hidden="true" />}
+                {t('common.save', '保存')}
+              </span>
             )}
           </button>
         </div>
@@ -346,24 +391,43 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                   </button>
                 )}
               </div>
-              <button
-                className={`de-meta-fav-btn${isFavorite ? ' active' : ''}`}
-                onClick={() => onFavoriteChange?.(!isFavorite)}
-                title={isFavorite ? t('diary.unfavorite', '取消收藏') : t('diary.favorite', '收藏')}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill={isFavorite ? 'currentColor' : 'none'}
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              <div className="de-meta-right">
+                <span
+                  className={`de-meta-word-count${selectedCharCount > 0 ? ' has-selection' : ''}`}
+                  title={
+                    selectedCharCount > 0
+                      ? t('diary.word_count_selected_label', '已选中字数 / 正文总字数')
+                      : t('diary.word_count_label', '正文字数')
+                  }
                 >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
+                  {selectedCharCount > 0
+                    ? t('diary.word_count_selected', '已选 {{selected}} / {{total}} 字', {
+                        selected: selectedCharCount,
+                        total: bodyCharCount
+                      })
+                    : t('diary.word_count', '{{count}} 字', { count: bodyCharCount })}
+                </span>
+                <button
+                  className={`de-meta-fav-btn${isFavorite ? ' active' : ''}`}
+                  onClick={() => onFavoriteChange?.(!isFavorite)}
+                  title={
+                    isFavorite ? t('diary.unfavorite', '取消收藏') : t('diary.favorite', '收藏')
+                  }
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="18"
+                    height="18"
+                    fill={isFavorite ? 'currentColor' : 'none'}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
 
@@ -372,6 +436,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               ref={editorRef}
               content={content}
               onChange={(val) => onContentChange(val || '')}
+              onSelectionCountChange={setSelectedCharCount}
               placeholder={t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')}
               basePath={attachmentBasePath}
               onPasteFiles={handlePasteFiles}
@@ -389,6 +454,8 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
                 />
                 <DiaryMarkdownToolbar
                   onInsertText={handleInsertText}
+                  onToggleLinePrefix={handleToggleLinePrefix}
+                  onInsertCodeBlock={handleInsertCodeBlock}
                   onUndo={handleUndo}
                   onRedo={handleRedo}
                   onToggleMark={handleToggleMark}

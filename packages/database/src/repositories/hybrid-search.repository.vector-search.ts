@@ -15,8 +15,18 @@ import {
   type HybridSearchRuntimeState
 } from './hybrid-search.repository.constants'
 
-type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs'>
+type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultId'>
 type SqlBindValue = string | number | null | Uint8Array | ArrayBuffer
+
+/** LIKE 兜底检索按空白/标点拆词，避免「工具测试 记忆 日记」这类整句永远匹配不到。 */
+function tokenizeKeyword(keyword: string): string[] {
+  const terms = keyword
+    .trim()
+    .split(/[\s,，、;；|/\\。.!！?？:：]+/u)
+    .map((term) => term.replace(/[%_]/g, ' ').trim())
+    .filter(Boolean)
+  return [...new Set(terms)].slice(0, 8)
+}
 
 export class HybridSearchVectorQuery {
   constructor(
@@ -35,6 +45,15 @@ export class HybridSearchVectorQuery {
   ): { sql: string; args: SqlBindValue[] } {
     const conditions: string[] = []
     const args: SqlBindValue[] = []
+
+    const vaultId = filter?.vaultId?.trim()
+    if (vaultId) {
+      conditions.push(`${columnPrefix}vault_id = ?`)
+      args.push(vaultId)
+    } else {
+      // 未传仓库 → fail-closed，避免漏传退化成跨仓库检索
+      conditions.push('1 = 0')
+    }
 
     if (filter?.sourceType) {
       conditions.push(`${columnPrefix}source_type = ?`)
@@ -66,18 +85,27 @@ export class HybridSearchVectorQuery {
   async queryFTS(
     keyword: string,
     limit: number,
-    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs'>
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultId'>
   ): Promise<ISearchResult[]> {
+    const terms = tokenizeKeyword(keyword)
+    if (terms.length === 0) return []
+
     const timeWhere = this.buildWhereClause(filter)
-    const keywordClause = timeWhere.sql ? ' AND chunk_text LIKE ?' : ' WHERE chunk_text LIKE ?'
+    const termPatterns = terms.map((term) => `%${term}%`)
+    const matchClause = `(${terms.map(() => 'chunk_text LIKE ?').join(' OR ')})`
+    const scoreExpr = terms.map(() => '(CASE WHEN chunk_text LIKE ? THEN 1 ELSE 0 END)').join(' + ')
+    const whereSql = timeWhere.sql ? `${timeWhere.sql} AND ${matchClause}` : ` WHERE ${matchClause}`
+
     const res = await this.db.execute({
       sql: `
         SELECT embedding_id, source_id AS sourceId, group_id AS sessionId, chunk_text AS chunkText,
-               source_created_at AS createdAt, source_type AS sourceType
-        FROM ${HYBRID_SEARCH_TABLE}${timeWhere.sql}${keywordClause}
+               source_created_at AS createdAt, source_type AS sourceType,
+               (${scoreExpr}) AS matchScore
+        FROM ${HYBRID_SEARCH_TABLE}${whereSql}
+        ORDER BY matchScore DESC, source_created_at DESC
         LIMIT ?
       `,
-      args: [...timeWhere.args, `%${keyword}%`, limit]
+      args: [...termPatterns, ...timeWhere.args, ...termPatterns, limit]
     })
 
     return Array.from(res.rows).map((r, i) => ({
@@ -99,11 +127,11 @@ export class HybridSearchVectorQuery {
   ): Promise<ISearchResult[]> {
     const threshold = filter?.threshold
     const vectorBuffer = embeddingVectorToBytes(vector)
-    const vectorStr = `[${vector.join(',')}]`
     const queryFilter: QueryFilter = {
       sourceType: filter?.sourceType,
       startMs: filter?.startMs,
-      endMs: filter?.endMs
+      endMs: filter?.endMs,
+      vaultId: filter?.vaultId
     }
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {
@@ -131,6 +159,7 @@ export class HybridSearchVectorQuery {
 
     if (this.runtime.vectorTopKAvailable !== false) {
       try {
+        const vectorStr = `[${vector.join(',')}]`
         const results = await this.queryWithVectorTopK(vectorStr, limit, threshold, queryFilter)
         this.runtime.vectorTopKAvailable = true
         this.runtime.nativeVectorSupported = true
@@ -163,10 +192,10 @@ export class HybridSearchVectorQuery {
                source_created_at AS createdAt, source_type AS sourceType,
                vec_distance_cosine(embedding, ?) AS distance
         FROM ${HYBRID_SEARCH_TABLE}${where.sql}
-        ORDER BY vec_distance_cosine(embedding, ?) ASC
+        ORDER BY distance ASC
         LIMIT ?
       `,
-      args: [vectorBuffer, ...where.args, vectorBuffer, limit]
+      args: [vectorBuffer, ...where.args, limit]
     })
 
     let results = Array.from(res.rows).map((r) => ({
@@ -237,6 +266,12 @@ export class HybridSearchVectorQuery {
       })
 
       const dimension = queryVector.length
+      let normA = 0
+      for (let i = 0; i < dimension; i++) {
+        const qv = queryVector[i] ?? 0
+        normA += qv * qv
+      }
+      const sqrtNormA = Math.sqrt(normA)
       const scored: Array<ISearchResult & { _dist: number }> = []
 
       for (const r of res.rows) {
@@ -250,15 +285,14 @@ export class HybridSearchVectorQuery {
           const embArr = bytesToFloat32Array(buffer, dimension)
 
           let dot = 0,
-            normA = 0,
             normB = 0
           for (let i = 0; i < dimension; i++) {
-            dot += (queryVector[i] ?? 0) * (embArr[i] ?? 0)
-            normA += (queryVector[i] ?? 0) * (queryVector[i] ?? 0)
-            normB += (embArr[i] ?? 0) * (embArr[i] ?? 0)
+            const ev = embArr[i] ?? 0
+            dot += (queryVector[i] ?? 0) * ev
+            normB += ev * ev
           }
           const distance =
-            normA > 0 && normB > 0 ? 1.0 - dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 1.0
+            sqrtNormA > 0 && normB > 0 ? 1.0 - dot / (sqrtNormA * Math.sqrt(normB)) : 1.0
 
           scored.push({
             messageId: r.embedding_id as string,

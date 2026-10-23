@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useUserProfileStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
+  Button,
+  IdentityFactsDialog,
   Input,
   Pagination,
   useDialog,
@@ -12,13 +14,13 @@ import {
 } from '@baishou/ui'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
 interface PersonaInfo {
   id: string
-  factsCount: number
+  facts: Record<string, string>
 }
 
 export const IdentityCardManagementPane: React.FC = () => {
@@ -32,6 +34,7 @@ export const IdentityCardManagementPane: React.FC = () => {
   const [activePersonaId, setActivePersonaId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [factsPersonaId, setFactsPersonaId] = useState<string | null>(null)
 
   const loadPersonas = useCallback(async () => {
     try {
@@ -39,7 +42,7 @@ export const IdentityCardManagementPane: React.FC = () => {
       const personasMap = profile?.personas || {}
       const list: PersonaInfo[] = Object.keys(personasMap).map((id) => ({
         id,
-        factsCount: Object.keys(personasMap[id]?.facts || {}).length
+        facts: { ...(personasMap[id]?.facts || {}) }
       }))
       setPersonas(list)
       setActivePersonaId(profile?.activePersonaId || Object.keys(personasMap)[0] || '')
@@ -75,6 +78,8 @@ export const IdentityCardManagementPane: React.FC = () => {
   }, [filteredPersonas, safePage])
 
   const showPagination = filteredPersonas.length > 0
+  const currentPersona = personas.find((persona) => persona.id === activePersonaId) ?? null
+  const factsPersona = personas.find((persona) => persona.id === factsPersonaId) ?? null
 
   const saveProfile = async (userProfile: Record<string, unknown>) => {
     await (window as any).api?.profile?.saveProfile(userProfile)
@@ -107,6 +112,21 @@ export const IdentityCardManagementPane: React.FC = () => {
       )
       await saveProfile(userProfile)
       toast.showSuccess(t('common.save_success'))
+    } catch {
+      toast.showError(t('common.errors.save_failed'))
+    }
+  }
+
+  const handleChangeFacts = async (nextFacts: Record<string, string>) => {
+    if (!factsPersonaId) return
+    try {
+      const userProfile = (await (window as any).api?.profile?.getProfile()) || {}
+      const personasMap = { ...(userProfile.personas || {}) }
+      const current = personasMap[factsPersonaId]
+      if (!current) return
+      personasMap[factsPersonaId] = { ...current, facts: nextFacts }
+      userProfile.personas = personasMap
+      await saveProfile(userProfile)
     } catch {
       toast.showError(t('common.errors.save_failed'))
     }
@@ -157,6 +177,7 @@ export const IdentityCardManagementPane: React.FC = () => {
         newName.trim()
       )
       await saveProfile(userProfile)
+      if (factsPersonaId === personaId) setFactsPersonaId(newName.trim())
       toast.showSuccess(t('common.save_success'))
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -185,6 +206,7 @@ export const IdentityCardManagementPane: React.FC = () => {
       }
       userProfile.recentPersonaIds = removeRecentPersonaId(userProfile.recentPersonaIds, personaId)
       await saveProfile(userProfile)
+      if (factsPersonaId === personaId) setFactsPersonaId(null)
       toast.showSuccess(t('common.save_success'))
     } catch {
       toast.showError(t('common.errors.save_failed'))
@@ -203,20 +225,39 @@ export const IdentityCardManagementPane: React.FC = () => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('settings.manage_identity_cards')}</h2>
-        <button
-          type="button"
-          className="settings-management-header-action"
-          onClick={() => void handleCreate()}
-        >
-          <Plus size={18} />
-          <span>{t('settings.create_new_identity')}</span>
-        </button>
+        <Button type="button" variant="outlined" size="small" onClick={() => void handleCreate()}>
+          {t('settings.create_new_identity')}
+        </Button>
       </div>
 
       <div className="settings-management-scroll">
+        {currentPersona ? (
+          <div className="settings-management-card">
+            <div className="settings-management-current-label">
+              {t('settings.identity_current_card', '当前身份卡')}
+            </div>
+            <button
+              type="button"
+              className="settings-management-current-card"
+              onClick={() => setFactsPersonaId(currentPersona.id)}
+            >
+              <span className="settings-management-row-title">{currentPersona.id}</span>
+              <span className="settings-management-row-sub">
+                {t('settings.identity_facts_count', {
+                  count: Object.keys(currentPersona.facts).length
+                })}
+              </span>
+              <span className="settings-management-row-sub">
+                {t('settings.identity_tap_to_view', '点击查看全部属性')}
+              </span>
+            </button>
+          </div>
+        ) : null}
+
         <div className="settings-management-card settings-management-list-card">
           <div className="settings-management-search">
             <Input
+              fieldSize="small"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('settings.search_identity_placeholder')}
@@ -235,14 +276,20 @@ export const IdentityCardManagementPane: React.FC = () => {
                 key={persona.id}
                 className={`settings-management-list-row ${!isLast ? 'settings-management-list-row-divider' : ''}`}
               >
-                <div className="settings-management-row-main">
+                <button
+                  type="button"
+                  className="settings-management-row-main settings-management-row-main-button"
+                  onClick={() => {
+                    if (isActive) setFactsPersonaId(persona.id)
+                  }}
+                >
                   <span className="settings-management-row-title">{persona.id}</span>
                   <span className="settings-management-row-sub">
                     {t('settings.identity_facts_count', {
-                      count: persona.factsCount
+                      count: Object.keys(persona.facts).length
                     })}
                   </span>
-                </div>
+                </button>
                 <div className="settings-management-row-actions">
                   <div className="settings-management-status-slot">
                     {isActive ? (
@@ -250,32 +297,33 @@ export const IdentityCardManagementPane: React.FC = () => {
                         {t('settings.identity_active_mark')}
                       </span>
                     ) : (
-                      <button
+                      <Button
                         type="button"
-                        className="settings-text-btn"
+                        variant="outlined"
+                        size="small"
                         onClick={() => void handleSwitch(persona.id)}
                       >
                         {t('workspace.switch', '切换')}
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
-                    style={{ color: 'var(--color-on-surface-variant)' }}
+                    variant="outlined"
+                    size="small"
                     onClick={() => void handleRename(persona.id)}
                   >
                     {t('common.rename', '重命名')}
-                  </button>
+                  </Button>
                   {personas.length > 1 ? (
-                    <button
+                    <Button
                       type="button"
-                      className="settings-text-btn"
-                      style={{ color: '#ef4444' }}
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleDelete(persona.id)}
                     >
                       {t('workspace.delete', '删除')}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </div>
@@ -302,6 +350,14 @@ export const IdentityCardManagementPane: React.FC = () => {
           ) : null}
         </div>
       </div>
+
+      <IdentityFactsDialog
+        isOpen={Boolean(factsPersona)}
+        personaName={factsPersona?.id ?? ''}
+        facts={factsPersona?.facts ?? {}}
+        onClose={() => setFactsPersonaId(null)}
+        onChangeFacts={handleChangeFacts}
+      />
     </div>
   )
 }

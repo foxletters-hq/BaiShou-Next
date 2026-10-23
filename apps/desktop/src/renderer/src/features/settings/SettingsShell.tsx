@@ -1,13 +1,14 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Archive,
+  BookOpen,
   ArrowLeft,
   ArrowLeftRight,
   Cable,
   Cloud,
-  Database,
   Globe,
+  PawPrint,
   GraduationCap,
   History,
   NotebookPen,
@@ -17,6 +18,7 @@ import {
   Settings,
   SlidersHorizontal,
   Sparkles,
+  Coffee,
   Volume2,
   Wifi
 } from 'lucide-react'
@@ -32,7 +34,7 @@ import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 const NAV_ICON_SIZE = 18
 
 type SettingsTabItem =
-  | { kind: 'divider' }
+  | { kind: 'section'; label: string }
   | { kind: 'item'; id: number; label: string; icon: React.ReactNode }
 
 /** 全屏 overlay 设置（伙伴区等入口）：自带设置侧栏 + 内容区 */
@@ -40,30 +42,18 @@ export const SettingsShell: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [isClosing, setIsClosing] = useState(false)
   const settingsRouteActive = useSettingsRouteActive()
-  // 必须从 false 起算：首次挂载时路由往往已是 active
-  const prevSettingsRouteActiveRef = useRef(false)
   const activeTab = pathnameToSettingsTabId(location.pathname)
   const contentKey = getSettingsRouteSegment(location.pathname)
 
   useRagRuntimeBridge(settingsRouteActive)
 
-  useLayoutEffect(() => {
-    if (!settingsRouteActive) {
-      prevSettingsRouteActiveRef.current = false
-      return
-    }
-
-    const opened = !prevSettingsRouteActiveRef.current
-    prevSettingsRouteActiveRef.current = true
-    if (!opened) return
-    // 打开时取消关闭态；进入过渡由 SettingsOverlayHost 遮罩负责
-    setIsClosing(false)
-  }, [settingsRouteActive])
-
   const TABS = useMemo<SettingsTabItem[]>(
     () => [
+      {
+        kind: 'section',
+        label: t('settings.nav_group_general', '常规')
+      },
       {
         id: 0,
         kind: 'item',
@@ -71,12 +61,15 @@ export const SettingsShell: React.FC = () => {
         icon: <Settings size={NAV_ICON_SIZE} />
       },
       {
-        id: 13,
+        id: 19,
         kind: 'item',
-        label: t('settings.mcp_title', 'MCP 服务'),
-        icon: <Cable size={NAV_ICON_SIZE} />
+        label: t('settings.help_docs', '使用教程'),
+        icon: <BookOpen size={NAV_ICON_SIZE} />
       },
-      { kind: 'divider' },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_models', '模型')
+      },
       {
         id: 1,
         kind: 'item',
@@ -90,17 +83,48 @@ export const SettingsShell: React.FC = () => {
         icon: <SlidersHorizontal size={NAV_ICON_SIZE} />
       },
       {
+        id: 11,
+        kind: 'item',
+        label: t('settings.tts_settings', 'TTS 语音合成'),
+        icon: <Volume2 size={NAV_ICON_SIZE} />
+      },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_companion', '伙伴')
+      },
+      {
         id: 3,
         kind: 'item',
         label: t('agent.assistant.settings_entry', '伙伴管理'),
         icon: <GraduationCap size={NAV_ICON_SIZE} />
       },
-      { kind: 'divider' },
+      {
+        id: 18,
+        kind: 'item',
+        label: t('settings.latte_settings_title', 'Latte'),
+        icon: <Coffee size={NAV_ICON_SIZE} />
+      },
+      {
+        id: 6,
+        kind: 'item',
+        label: t('settings.companion_chat_tools_title', '伙伴对话'),
+        icon: <Puzzle size={NAV_ICON_SIZE} />
+      },
       {
         id: 4,
         kind: 'item',
-        label: t('agent.rag.title', 'RAG 记忆管理'),
-        icon: <Database size={NAV_ICON_SIZE} />
+        label: t('nav.memory', '记忆'),
+        icon: <PawPrint size={NAV_ICON_SIZE} />
+      },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_capabilities', '能力与集成')
+      },
+      {
+        id: 13,
+        kind: 'item',
+        label: t('settings.mcp_title', 'MCP 服务'),
+        icon: <Cable size={NAV_ICON_SIZE} />
       },
       {
         id: 5,
@@ -109,12 +133,9 @@ export const SettingsShell: React.FC = () => {
         icon: <Globe size={NAV_ICON_SIZE} />
       },
       {
-        id: 6,
-        kind: 'item',
-        label: t('settings.agent_tools_title', '工具管理'),
-        icon: <Puzzle size={NAV_ICON_SIZE} />
+        kind: 'section',
+        label: t('settings.nav_group_diary', '日记与回忆')
       },
-      { kind: 'divider' },
       {
         id: 15,
         kind: 'item',
@@ -128,12 +149,9 @@ export const SettingsShell: React.FC = () => {
         icon: <Sparkles size={NAV_ICON_SIZE} />
       },
       {
-        id: 11,
-        kind: 'item',
-        label: t('settings.tts_settings', 'TTS 语音合成'),
-        icon: <Volume2 size={NAV_ICON_SIZE} />
+        kind: 'section',
+        label: t('settings.nav_group_sync', '同步与数据')
       },
-      { kind: 'divider' },
       {
         id: 14,
         kind: 'item',
@@ -167,7 +185,7 @@ export const SettingsShell: React.FC = () => {
       {
         id: 17,
         kind: 'item',
-        label: t('legacy_migration.title', '版本迁移'),
+        label: t('version_migration.title', '版本迁移'),
         icon: <ArrowLeftRight size={NAV_ICON_SIZE} />
       }
     ],
@@ -190,9 +208,8 @@ export const SettingsShell: React.FC = () => {
   }
 
   const handleBack = () => {
-    if (isClosing) return
-    setIsClosing(true)
-    // 立即离开路由；「先消失再 fade」由 SettingsOverlayHost 遮罩完成
+    // 立即离开路由；「先消失再 fade」由 SettingsOverlayHost 遮罩完成。
+    // 不要用 isClosing 锁死返回：navigate 若被延后，按钮会再也点不动。
     navigate(resolveSettingsReturnPath(), { replace: true })
   }
 
@@ -212,15 +229,20 @@ export const SettingsShell: React.FC = () => {
           </div>
 
           <div className="settings-nav-scroll">
-            <div className="settings-nav-group">
+            <nav className="settings-nav-group" aria-label={t('settings.title', '系统设置')}>
               {TABS.map((tab, idx) => {
-                if (tab.kind === 'divider') {
-                  return <div key={`div-${idx}`} className="settings-divider" />
+                if (tab.kind === 'section') {
+                  return (
+                    <div key={`section-${idx}`} className="settings-nav-section-label">
+                      {tab.label}
+                    </div>
+                  )
                 }
                 const isSelected = activeTab === tab.id
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     className={`settings-nav-item ${isSelected ? 'active' : ''}`}
                     onClick={() => handleTabChange(tab.id)}
                   >
@@ -229,7 +251,7 @@ export const SettingsShell: React.FC = () => {
                   </button>
                 )
               })}
-            </div>
+            </nav>
           </div>
         </div>
 

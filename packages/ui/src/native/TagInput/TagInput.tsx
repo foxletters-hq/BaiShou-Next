@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface TagInputProps {
   tags: string[]
@@ -55,7 +56,7 @@ export const TagInput: React.FC<TagInputProps> = ({
         styles.container,
         {
           backgroundColor: colors.bgSurface,
-          borderColor: colors.borderSubtle
+          borderColor: colors.borderControl
         }
       ]}
     >
@@ -98,47 +99,47 @@ export const TagInput: React.FC<TagInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: sharedTokens.radius.md,
     borderWidth: 1,
-    padding: 10,
+    padding: sharedTokens.spacing.smPlus,
     minHeight: 48
   },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 6
+    gap: sharedTokens.spacing.xsPlus,
+    marginBottom: sharedTokens.spacing.xsPlus
   },
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16
+    paddingHorizontal: sharedTokens.spacing.smPlus,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.lg
   },
   tagText: {
-    fontSize: 14,
-    marginRight: 4
+    fontSize: mobileTypography.secondary.fontSize,
+    marginRight: sharedTokens.spacing.xs
   },
   tagRemove: {
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: sharedTokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center'
   },
   tagRemoveText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     lineHeight: 18,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   input: {
-    fontSize: 15,
-    paddingVertical: 4,
+    fontSize: mobileTypography.body.fontSize,
+    paddingVertical: sharedTokens.spacing.xs,
     minWidth: 60
   },
   limitHint: {
-    fontSize: 12,
-    marginTop: 4
+    fontSize: mobileTypography.caption.fontSize,
+    marginTop: sharedTokens.spacing.xs
   }
 })

@@ -19,6 +19,8 @@ export interface ChatBubbleProps {
   onShowContext?: (msg: MockChatMessage) => void
   onReadAloud?: (content: string) => void
   isTtsPlaying?: boolean
+  /** 本轮流式失败时显示在最后一条助手气泡下 */
+  error?: string | null
 }
 
 export type { MockChatMessage }

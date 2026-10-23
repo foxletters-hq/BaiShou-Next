@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 export interface ContextChainRecompressProgressProps {
   startedAt?: number
@@ -47,24 +48,24 @@ export const ContextChainRecompressProgress: React.FC<ContextChainRecompressProg
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 8,
-    marginBottom: 12
+    gap: sharedTokens.spacing.sm,
+    marginBottom: sharedTokens.spacing.mdTight
   },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    gap: sharedTokens.spacing.sm
   },
   title: {
-    fontSize: 14,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   elapsed: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     marginLeft: 'auto'
   },
   hint: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     lineHeight: 18
   }
 })

@@ -34,9 +34,33 @@ export const settingsApi = {
     setToolManagementConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-tool-management-config', config),
 
+    getBaishouAgentGateConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
+      ipcRenderer.invoke('settings:get-baishou-agent-gate-config', scope),
+    setBaishouAgentGateConfig: (
+      config: any,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => ipcRenderer.invoke('settings:set-baishou-agent-gate-config', config, scope),
+
+    getWorkspaceToolManagement: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-tool-management', workspaceId),
+    setWorkspaceToolManagement: (workspaceId: string, config: any) =>
+      ipcRenderer.invoke('settings:set-workspace-tool-management', workspaceId, config),
+    getWorkspacePersonalMemoryRead: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-personal-memory-read', workspaceId),
+    setWorkspacePersonalMemoryRead: (workspaceId: string, enabled: boolean) =>
+      ipcRenderer.invoke('settings:set-workspace-personal-memory-read', workspaceId, enabled),
+    getWorkspaceExternalDirectoryAllowed: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-external-directory-allowed', workspaceId),
+    setWorkspaceExternalDirectoryAllowed: (workspaceId: string, enabled: boolean) =>
+      ipcRenderer.invoke('settings:set-workspace-external-directory-allowed', workspaceId, enabled),
+
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
     setSearchModeEnabled: (enabled: boolean) =>
       ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
+
+    getGraphSelfNameConfigured: () => ipcRenderer.invoke('settings:get-graph-self-name-configured'),
+    setGraphSelfNameConfigured: (configured: boolean) =>
+      ipcRenderer.invoke('settings:set-graph-self-name-configured', configured),
 
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
     getMcpLanIp: (): Promise<string | null> => ipcRenderer.invoke('settings:get-mcp-lan-ip'),
@@ -44,6 +68,12 @@ export const settingsApi = {
       ipcRenderer.invoke('settings:set-mcp-server-config', config),
     refreshMcpAuthToken: () => ipcRenderer.invoke('settings:refresh-mcp-auth-token'),
     getMcpTools: () => ipcRenderer.invoke('settings:get-mcp-tools'),
+    getMcpClientConfig: () => ipcRenderer.invoke('settings:get-mcp-client-config'),
+    setMcpClientConfig: (config: unknown) =>
+      ipcRenderer.invoke('settings:set-mcp-client-config', config),
+    getMcpClientStatuses: () => ipcRenderer.invoke('settings:get-mcp-client-statuses'),
+    testMcpClient: (payload: { url: string; authToken?: string }) =>
+      ipcRenderer.invoke('settings:test-mcp-client', payload),
 
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),
@@ -80,9 +110,15 @@ export const settingsApi = {
     switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
     waitForResync: () => ipcRenderer.invoke('vault:wait-for-resync'),
     getIndexingStatus: () => ipcRenderer.invoke('vault:getIndexingStatus'),
+    releaseColdStartResync: (trigger?: string) =>
+      ipcRenderer.invoke('vault:releaseColdStartResync', trigger),
     preload: (vaultName: string) => ipcRenderer.invoke('vault:preload', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
+    rename: (oldNameOrId: string, newName: string) =>
+      ipcRenderer.invoke('vault:rename', oldNameOrId, newName),
+    estimateRenameBytes: (vaultNameOrId: string) =>
+      ipcRenderer.invoke('vault:estimateRenameBytes', vaultNameOrId),
     pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
     getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
     onRegistryUpdated: (callback: () => void) => {

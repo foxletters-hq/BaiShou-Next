@@ -4,8 +4,22 @@ export const SYNC_MANIFEST_FILENAME = 'manifest.json'
 /** 三向合并共同祖先快照（位于存储根 `.baishou/` 下） */
 export const SYNC_REMOTE_SNAPSHOT_FILENAME = 'last-remote-manifest.json'
 
+/**
+ * 上次成功同步时的 vaultId→目录名映射（与 last-remote-manifest 同时提交）。
+ * 供 V2.5 rename pass 检测「本机已改名、远端仍为旧前缀」。
+ */
+export const SYNC_REMOTE_VAULTS_FILENAME = 'last-remote-vaults.json'
+
 /** `SyncManifest.version` 当前格式版本 */
 export const SYNC_MANIFEST_VERSION = 1
+
+/** 新端写入 manifest 的能力标记；旧端 manifest 不含该字段 */
+export const SYNC_MANIFEST_CAPABILITIES = [
+  'global-settings',
+  'vault-identity',
+  'agents-skills',
+  'notebooks-jsonl-lww'
+] as const
 
 /** 远端 manifest 中「已移除记录」最大条数（同一路径只占一条） */
 export const SYNC_MANIFEST_REMOVED_MAX_ENTRIES = 20000

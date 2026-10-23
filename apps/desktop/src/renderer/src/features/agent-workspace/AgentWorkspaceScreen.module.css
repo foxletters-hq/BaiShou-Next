@@ -1,0 +1,137 @@
+.screen {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background-color: var(--bg-app);
+}
+
+.toolbar {
+  display: none;
+}
+
+.chatStage {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--spacing-md);
+  background-color: var(--bg-app);
+}
+
+.emptyState {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md-tight);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.primaryBtn {
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--ui-fs-md);
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.primaryBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.addWorkspaceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm-plus) var(--spacing-md);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--ui-fs-lg);
+  font-weight: 600;
+  font-family: inherit;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.addWorkspaceBtn:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.addWorkspaceBtnIcon {
+  font-size: var(--ui-fs-xl);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md-tight);
+}
+
+.assistantBubble {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: var(--spacing-sm-plus) var(--spacing-md-tight);
+  border-radius: var(--radius-md);
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.streamingHint {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.error {
+  color: #cf222e;
+  font-size: var(--ui-fs-md);
+}
+
+.inputArea {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-md) var(--spacing-md-tight);
+  background-color: transparent;
+}
+
+.noModelHint {
+  margin: 0 0 var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md-tight);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-high);
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  line-height: 1.5;
+}
+
+.inputBlocked {
+  opacity: 0.55;
+  pointer-events: none;
+}

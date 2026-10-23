@@ -19,6 +19,8 @@ export interface AgentMessage extends MessageId {
   attachments?: unknown[]
   toolInvocations?: unknown[]
   parts?: AgentMessagePart[]
+  skillRefs?: Array<{ command: string; content: string }>
+  fileRefs?: unknown[]
 }
 
 export interface AgentState {

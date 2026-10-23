@@ -7,6 +7,11 @@ export type MockChatAttachment = {
   isText?: boolean
   textContent?: string
   fileSize?: number
+  relativePath?: string
+  selection?: { startLine: number; endLine: number }
+  comment?: string
+  origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+  isDirectory?: boolean
 }
 
 export type MockToolInvocation = {
@@ -15,6 +20,11 @@ export type MockToolInvocation = {
   state: 'partial-call' | 'call' | 'result'
   args: any
   result?: any
+}
+
+export type MockChatSkillCite = {
+  command: string
+  content: string
 }
 
 export type MockChatMessage = {
@@ -27,6 +37,16 @@ export type MockChatMessage = {
   toolName?: string
   toolCallId?: string
   attachments?: MockChatAttachment[]
+  /** 用户消息中的 Skill 引用快照（气泡点击预览） */
+  skillRefs?: MockChatSkillCite[]
+  /** 用户消息中的工作区文件引用快照（气泡点击打开） */
+  fileRefs?: Array<{
+    relativePath: string
+    selection?: { startLine: number; endLine: number }
+    comment?: string
+    origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+    isDirectory?: boolean
+  }>
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
@@ -35,6 +55,13 @@ export type MockChatMessage = {
   contextMessages?: MockChatMessage[]
   isReasoning?: boolean
   toolInvocations?: MockToolInvocation[]
+  /** 落库 parts，供助手气泡按发生顺序展开思考 / 工具 / 正文 */
+  parts?: Array<{
+    id?: string
+    type?: string
+    data?: unknown
+    createdAt?: Date | number | string | null
+  }>
   /** 调用链列表中的展示标签（如「系统提示词」「AI 输出」） */
   label?: string
 }

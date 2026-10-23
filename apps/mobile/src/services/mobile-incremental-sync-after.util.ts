@@ -1,7 +1,8 @@
 import type {
   IFileSystem,
   SettingsManagerService,
-  SessionManagerService
+  SessionManagerService,
+  VaultService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
@@ -14,6 +15,7 @@ export interface MobileIncrementalAfterSyncDeps {
   settingsManager: SettingsManagerService
   pathService: IStoragePathService
   fileSystem: IFileSystem
+  vaultService?: VaultService
   bootstrapper?: MobileDataBootstrapper
   sessionManager?: SessionManagerService
   reportPostSync: (statusText: string, current: number, total: number) => void
@@ -31,6 +33,17 @@ export async function runMobileIncrementalAfterSync(
   deps: MobileIncrementalAfterSyncDeps
 ): Promise<void> {
   try {
+    const identityChanged = [...outcome.downloadedPaths, ...outcome.deletedLocalPaths].some(
+      (filePath) => filePath === 'vault_registry.json' || filePath.endsWith('/.baishou/vault.json')
+    )
+    if (identityChanged && deps.vaultService) {
+      try {
+        await deps.vaultService.initRegistry()
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync] vault registry reload after sync failed:', e)
+      }
+    }
+
     const cls = classifyIncrementalSyncPaths([
       ...outcome.downloadedPaths,
       ...outcome.deletedLocalPaths
@@ -45,6 +58,10 @@ export async function runMobileIncrementalAfterSync(
         summaries: cls.summaries,
         settings: cls.settings,
         assistants: cls.assistants,
+        memory: cls.memory,
+        graph: cls.graph,
+        notebooks: cls.notebooks,
+        notebookGraphIds: cls.notebookGraphIds.length,
         sessionRefCount: cls.sessionRefs.length
       }
     })
@@ -55,7 +72,11 @@ export async function runMobileIncrementalAfterSync(
       cls.sessions ||
       cls.summaries ||
       cls.settings ||
-      cls.assistants
+      cls.assistants ||
+      cls.memory ||
+      cls.graph ||
+      cls.notebooks ||
+      cls.notebookGraphIds.length > 0
 
     let step = 0
     const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
@@ -127,11 +148,92 @@ export async function runMobileIncrementalAfterSync(
       }
     }
 
-    if (cls.journals) {
-      deps.reportPostSync('data_sync.progress_schedule_embed', ++step, totalSteps)
-      const { schedulePostSyncDiaryBatchEmbed } =
-        await import('./mobile-post-sync-diary-embed.service')
-      schedulePostSyncDiaryBatchEmbed()
+    if (cls.memory || cls.graph) {
+      try {
+        const {
+          ensureMobileRawDataRuntime,
+          runMobileDerivedIndexHydration,
+          resolveMobileEmbeddingForHydration
+        } = await import('./mobile-raw-data-source.runtime')
+        ensureMobileRawDataRuntime({
+          pathService: deps.pathService,
+          fileSystem: deps.fileSystem
+        })
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        const pathServiceWithVault = deps.pathService as unknown as {
+          getActiveVaultNameForContext?: () => Promise<string>
+        }
+        const activeVaultName =
+          typeof pathServiceWithVault.getActiveVaultNameForContext === 'function'
+            ? await pathServiceWithVault.getActiveVaultNameForContext()
+            : null
+        if (runtime?.drizzleDb && activeVaultName) {
+          let activeVaultId: string | undefined
+          try {
+            if (deps.vaultService) {
+              await deps.vaultService.initRegistry()
+              activeVaultId = deps.vaultService.getActiveVault()?.id
+            }
+          } catch {
+            activeVaultId = undefined
+          }
+          if (!activeVaultId) {
+            console.warn('[IncrementalSync] skip graph hydration: no vault.id')
+          } else {
+            const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+            const vaults = deps.vaultService
+              ? deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name }))
+              : undefined
+            await runMobileDerivedIndexHydration({
+              drizzleDb: runtime.drizzleDb,
+              vaultId: activeVaultId,
+              vaultName: activeVaultName,
+              vaults,
+              embeddingProvider: emb.embeddingProvider,
+              embeddingModelId: emb.embeddingModelId,
+              reason: 'incremental-sync',
+              deletedShardPaths: outcome.deletedLocalPaths,
+              syncMemory: cls.memory,
+              syncGraph: cls.graph
+            })
+          }
+        }
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] derived hydration failed:', e)
+      }
+    }
+
+    if (cls.notebooks) {
+      try {
+        const { runMobileKnowledgeHydration } = await import('./mobile-raw-data-source.runtime')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        if (runtime?.settingsManager) {
+          await runMobileKnowledgeHydration({
+            reason: 'incremental-sync-notebooks',
+            pathService: deps.pathService,
+            fileSystem: deps.fileSystem,
+            settingsManager: runtime.settingsManager
+          })
+        }
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] knowledge hydration failed:', e)
+      }
+    }
+
+    if (cls.notebookGraphIds.length > 0) {
+      try {
+        const { runMobileNotebookGraphIndex } = await import('./mobile-raw-data-source.runtime')
+        await runMobileNotebookGraphIndex({
+          notebookIds: cls.notebookGraphIds,
+          pathService: deps.pathService,
+          fileSystem: deps.fileSystem,
+          deletedShardPaths: outcome.deletedLocalPaths
+        })
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] notebook graph index failed:', e)
+      }
     }
 
     if (checkpointRefreshPaths.length > 0) {
@@ -142,6 +244,16 @@ export async function runMobileIncrementalAfterSync(
       }
     }
 
+    const {
+      clearMobileOrganizePendingSnapshot,
+      invalidateMobilePendingEmbedCountsCache,
+      notifyMobilePendingEmbedCountsChanged
+    } = await import('./mobile-pending-embed-counts')
+    clearMobileOrganizePendingSnapshot()
+    invalidateMobilePendingEmbedCountsCache()
+    notifyMobilePendingEmbedCountsChanged()
+    const { notifyGraphDataChanged } = await import('./mobile-graph-data-changed')
+    notifyGraphDataChanged()
     deps.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
     console.warn('[IncrementalSync][PostSync] done', {
       checkpointRefreshCount: checkpointRefreshPaths.length

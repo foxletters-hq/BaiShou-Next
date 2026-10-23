@@ -48,6 +48,7 @@ interface WindowAPI {
 
 interface ShellAPI {
   openExternal(url: string): Promise<boolean>
+  showItemInFolder(filePath: string): Promise<boolean>
 }
 
 interface DiagnosticLogAPI {
@@ -66,6 +67,7 @@ interface DiaryAPI {
   search(query: string, options?: { limit?: number; offset?: number }): Promise<unknown>
   count(): Promise<number>
   onSyncEvent(callback: (event: unknown) => void): () => void
+  getAttachmentDir?(dateStr: string): Promise<string>
 }
 
 interface SummaryAPI {
@@ -79,6 +81,7 @@ interface SummaryAPI {
 interface ZoomAPI {
   setFactor(factor: number): void
   getFactor(): number
+  onSetLevel(callback: (level: number) => void): () => void
 }
 
 interface UpdaterAPI {
@@ -105,12 +108,82 @@ interface SettingsAPI {
   getGlobalModels(): Promise<import('@baishou/shared').GlobalModelsConfig | null>
   getLegacyUpgradeNoticeState(): Promise<{ pending: boolean; shownCount: number }>
   markLegacyUpgradeNoticeShown(): Promise<number>
+  getBaishouAgentGateConfig(
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  setBaishouAgentGateConfig(
+    config: import('@baishou/shared').BaishouAgentGateConfig,
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  getGraphSelfNameConfigured(): Promise<boolean>
+  setGraphSelfNameConfigured(configured: boolean): Promise<boolean>
+  getWorkspaceToolManagement(
+    workspaceId: string
+  ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>
+  setWorkspaceToolManagement(
+    workspaceId: string,
+    config: import('@baishou/shared').WorkspaceToolManagementConfig
+  ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>
+  getWorkspacePersonalMemoryRead(workspaceId: string): Promise<boolean>
+  setWorkspacePersonalMemoryRead(workspaceId: string, enabled: boolean): Promise<boolean>
   testTts(
     config: unknown,
     text: string
   ): Promise<import('@baishou/shared').TtsSynthesizeFromSettingsResult>
   pickTtsRefAudio(): Promise<string | null>
   [key: string]: (...args: unknown[]) => Promise<unknown>
+}
+
+interface AgentGateAPI {
+  reply(input: {
+    requestId: string
+    reply: import('@baishou/shared').AgentGateReply
+    message?: string
+    selectedOptionIds?: string[]
+    questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
+  }): Promise<{ success: boolean }>
+  listPending(sessionId?: string): Promise<import('@baishou/shared').AgentGateRequest[]>
+  getNotificationPrefs(): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
+  setNotificationPrefs(
+    prefs: Partial<import('@baishou/shared').AgentGateNotificationPrefs>
+  ): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
+  notifyAsked(request: import('@baishou/shared').AgentGateRequest): Promise<{ success: boolean }>
+  previewNotification(): Promise<import('@baishou/shared').AgentGateNotificationPreviewResult>
+  getConfig(
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  removeAllowlistEntry(
+    entryId: string,
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<{ success: boolean }>
+  onAsked(callback: (request: import('@baishou/shared').AgentGateRequest) => void): () => void
+  onReplied(
+    callback: (payload: {
+      sessionId: string
+      requestId: string
+      reply: import('@baishou/shared').AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+      questionAnswers?: import('@baishou/shared').AgentGateQuestionAnswer[]
+    }) => void
+  ): () => void
+  onCancelled(
+    callback: (payload: { sessionId: string; requestIds: string[]; reason?: string }) => void
+  ): () => void
+  onAllowlistChanged(
+    callback: (
+      allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => void
+  ): () => void
+  onFocusCheck(callback: (request: import('@baishou/shared').AgentGateRequest) => void): () => void
+  onNavigate(
+    callback: (payload: {
+      sessionId: string
+      requestId: string
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    }) => void
+  ): () => void
 }
 
 interface PickFilesOptions {
@@ -160,7 +233,8 @@ interface VaultAPI {
     resyncing: boolean
     shadowScanning: boolean
   }>
-  [key: string]: (...args: unknown[]) => Promise<unknown>
+  releaseColdStartResync?(trigger?: string): Promise<boolean>
+  [key: string]: ((...args: unknown[]) => Promise<unknown>) | undefined
 }
 
 interface StorageAPI {
@@ -168,8 +242,16 @@ interface StorageAPI {
   [key: string]: (...args: unknown[]) => Promise<unknown>
 }
 
+interface ProfileAPI {
+  getProfile(): Promise<any>
+  saveProfile(profile: any): Promise<any>
+  pickAndSaveAvatar?(): Promise<any>
+  pickAndSaveBackground?(): Promise<any>
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI
+  profile?: ProfileAPI
   window: WindowAPI
   shell: ShellAPI
   diagnosticLog: DiagnosticLogAPI
@@ -185,8 +267,40 @@ interface AppAPI {
   storage: StorageAPI
   tts: TtsAPI
   pickFiles(options?: PickFilesOptions): Promise<PickedFile[]>
+  getMountedNotebooks(sessionId: string): Promise<string[]>
+  setMountedNotebooks(sessionId: string, notebookIds: string[]): Promise<string[]>
+  getAssistants(): Promise<unknown[]>
+  updateAssistant(id: string, input: Record<string, unknown>): Promise<void>
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
+  ensureSystemLatteAssistant(locale?: string): Promise<{ created: boolean; assistantId: string }>
   syncDefaultLatteLocale(locale?: string): Promise<void>
+  agentGate: AgentGateAPI
+  agentWorkspace: AgentWorkspaceAPI
+  graph: GraphAPI
+  knowledge: KnowledgeAPI
+  getMessages(sessionId: string): Promise<unknown>
+  admit(params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+    attachments?: unknown[]
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }>
+  listPendingInputs(sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]>
+  cancelPendingInput(inputId: string): Promise<import('@baishou/shared').SessionInputRecord | null>
+  updatePendingInput(params: {
+    inputId: string
+    text?: string
+    delivery?: 'steer' | 'queue'
+  }): Promise<import('@baishou/shared').SessionInputRecord | null>
   [key: string]: unknown
 }
 
@@ -209,6 +323,8 @@ interface GitAPI {
   getHistory(filePath?: string, limit?: number, offset?: number): Promise<unknown[]>
   getHistoryCount(filePath?: string): Promise<number>
   getRecentPulls(limit?: number): Promise<unknown[]>
+  getRemoteStatus(fetch?: boolean): Promise<import('@baishou/shared').GitRemoteStatus>
+  syncRemote(): Promise<{ success: boolean; message?: string; conflicts?: string[] }>
   getCommitChanges(commitHash: string): Promise<unknown[]>
   getFileDiff(filePath: string, commitHash?: string): Promise<unknown>
   getWorkingDiff(filePath: string, staged: boolean): Promise<unknown>

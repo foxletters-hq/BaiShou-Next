@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ComponentProps as XMarkdownComponentProps } from '@ant-design/x-markdown'
 import markdownStyles from '../MarkdownRenderer/MarkdownRenderer.module.css'
+import { useKnowledgeCitationOpener } from '../KnowledgeCitationBlock'
 import { AgentThinkBlock } from './AgentThinkBlock'
 import { agentIncompleteMarkdownComponents } from './agent-markdown-incomplete'
 
@@ -14,15 +15,52 @@ const thinkTags = {
 /** 桌面 Agent 气泡内保留的 Markdown 定制：代码复制 + 流式占位 + Think */
 export function useAgentMarkdownComponents() {
   const { t } = useTranslation()
+  const citationOpener = useKnowledgeCitationOpener()
+  const citationOpenerRef = useRef(citationOpener)
+  citationOpenerRef.current = citationOpener
 
   return useMemo(() => {
     const Link = ({
       domNode: _domNode,
       streamStatus: _streamStatus,
+      href,
+      children,
       ...props
-    }: XMarkdownComponentProps) => (
-      <a {...props} className={markdownStyles.link} target="_blank" rel="noopener noreferrer" />
-    )
+    }: XMarkdownComponentProps) => {
+      const target = typeof href === 'string' ? href : ''
+      if (target.startsWith('#kb-cite-')) {
+        return (
+          <a
+            {...props}
+            href={target}
+            className={markdownStyles.citationMark}
+            onClick={(event) => {
+              event.preventDefault()
+              citationOpenerRef.current.openFromHref(target)
+            }}
+          >
+            {children}
+          </a>
+        )
+      }
+      return (
+        <a
+          {...props}
+          href={typeof href === 'string' ? href : undefined}
+          className={markdownStyles.link}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      )
+    }
+
+    const Pre = ({
+      domNode: _domNode,
+      streamStatus: _streamStatus,
+      children
+    }: XMarkdownComponentProps) => <>{children}</>
 
     const Code = ({
       domNode: _domNode,
@@ -35,33 +73,20 @@ export function useAgentMarkdownComponents() {
     }: XMarkdownComponentProps) => {
       const language = lang || /language-(\w+)/.exec(className || '')?.[1]
       if (block) {
-        if (language) {
-          return (
-            <pre className={markdownStyles.codeWrapper}>
-              <div className={markdownStyles.codeHeader}>
-                <span>{language}</span>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(String(children))}
-                >
-                  {t('markdown.copy', '复制')}
-                </button>
-              </div>
-              <div className={markdownStyles.codeBlock}>
-                <code className={className || `language-${language}`} {...props}>
-                  {children}
-                </code>
-              </div>
-            </pre>
-          )
-        }
         return (
           <pre className={markdownStyles.codeWrapper}>
-            <div className={markdownStyles.codeBlock}>
-              <code className={className} {...props}>
-                {children}
-              </code>
+            <div className={markdownStyles.codeHeader}>
+              {language ? <span>{language}</span> : null}
+              <button type="button" onClick={() => navigator.clipboard.writeText(String(children))}>
+                {t('markdown.copy', '复制')}
+              </button>
             </div>
+            <code
+              className={className || (language ? `language-${language}` : undefined)}
+              {...props}
+            >
+              {children}
+            </code>
           </pre>
         )
       }
@@ -72,11 +97,19 @@ export function useAgentMarkdownComponents() {
       )
     }
 
+    const Blockquote = ({
+      domNode: _domNode,
+      streamStatus: _streamStatus,
+      ...props
+    }: XMarkdownComponentProps) => <blockquote className={markdownStyles.blockquote} {...props} />
+
     return {
       ...agentIncompleteMarkdownComponents,
       ...thinkTags,
       a: Link,
-      code: Code
+      pre: Pre,
+      code: Code,
+      blockquote: Blockquote
     }
   }, [t])
 }

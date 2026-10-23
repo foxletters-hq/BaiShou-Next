@@ -3,6 +3,8 @@ import { StatusBar } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { AgentChatList } from './components/AgentChatList'
 import { AgentScreenOverlays } from './components/AgentScreenOverlays'
+import { AgentGateCardHost } from '../../components/agent-gate/AgentGateCardHost'
+import { AgentGatePendingList } from '../../components/agent-gate/AgentGatePendingList'
 import { useAgentScreenController } from './hooks/useAgentScreenController'
 
 export const AgentScreen = () => {
@@ -12,9 +14,14 @@ export const AgentScreen = () => {
     <>
       <StatusBar
         barStyle={c.isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={c.colors.bgApp}
+        backgroundColor={c.hasChatBackground ? 'transparent' : c.colors.bgApp}
+        translucent={c.hasChatBackground}
       />
-      <ScreenSafeArea preset="tab" style={{ backgroundColor: c.colors.bgApp }}>
+      <ScreenSafeArea
+        preset="tab"
+        edges={c.hasChatBackground ? ['left', 'right'] : undefined}
+        style={{ backgroundColor: c.hasChatBackground ? 'transparent' : c.colors.bgApp }}
+      >
         <AgentChatList
           colors={c.colors}
           isDark={c.isDark}
@@ -25,7 +32,15 @@ export const AgentScreen = () => {
           userProfile={c.userProfile}
           displayModelName={c.displayModelName}
           currentProviderId={c.currentProviderId}
+          currentModelId={c.currentModelId}
+          currentSessionId={c.currentSessionId}
+          assistantId={c.currentAssistant?.id}
           currentProviderType={c.currentProviderType}
+          dialogueProviders={c.dialogueProviders}
+          handleSelectModel={c.handleSelectModel}
+          assistantAvatarUri={c.resolvedCurrentAvatarUri}
+          assistantAvatarPath={c.currentAssistant?.avatarPath}
+          assistantEmoji={c.currentAssistant?.emoji}
           totalCostMicros={c.totalCostMicros}
           setDrawerOpen={c.setDrawerOpen}
           setShowModelSwitcher={c.setShowModelSwitcher}
@@ -66,6 +81,7 @@ export const AgentScreen = () => {
           compressionReasoning={c.compressionReasoning}
           IDLE_LIVE_COMPRESSION={c.streaming.IDLE_LIVE_COMPRESSION}
           lastMessage={c.lastMessage}
+          streamError={c.streamError}
           liveAssistantActive={c.streaming.liveAssistantActive}
           keepLiveRowAfterHold={c.streaming.keepLiveRowAfterHold}
           markdownPresentationActive={c.streaming.markdownPresentationActive}
@@ -112,7 +128,20 @@ export const AgentScreen = () => {
           ttsMode={c.ttsMode}
           toggleTtsMode={c.toggleTtsMode}
         />
+        <AgentGatePendingList
+          currentSessionId={c.currentSessionId}
+          onSelect={(sessionId) => {
+            if (sessionId !== c.currentSessionId) {
+              c.handleSelectSession(sessionId)
+            }
+          }}
+        />
       </ScreenSafeArea>
+      <AgentGateCardHost
+        request={c.pendingAgentGate}
+        isReplying={c.isAgentGateReplying}
+        onReply={c.replyAgentGate}
+      />
       <AgentScreenOverlays
         drawerOpen={c.drawerOpen}
         setDrawerOpen={c.setDrawerOpen}

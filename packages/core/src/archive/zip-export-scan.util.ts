@@ -3,10 +3,15 @@ import * as fsp from 'fs/promises'
 import * as path from 'path'
 import {
   FULL_BACKUP_EXCLUDED_ROOT_NAMES,
+  JOURNAL_TREE_SKIP_DIR_NAMES,
   comparableStoragePath,
   isPathInsideStorageRoot
 } from '@baishou/shared'
 import { isStorageWriteProbePath } from '../sync/git-sync.helpers'
+import {
+  VAULT_EXTERNAL_PATHS_FILE,
+  type VaultExternalPathsConfig
+} from '../vault/vault-external-paths.service'
 
 /** 任意深度都应跳过的目录（Git 仓库、应用元数据等） */
 export const ARCHIVE_RECURSIVE_SKIP_DIR_NAMES = new Set([
@@ -23,6 +28,16 @@ export const ARCHIVE_RECURSIVE_SKIP_DIR_NAMES = new Set([
 
 const SQLITE_SIDEcar_SUFFIXES = ['-wal', '-shm', '-journal'] as const
 
+/** 存储根下由 database/ 专职携带 checkpoint 副本的运行时 SQLite 数据库文件 */
+export const ARCHIVE_ROOT_RUNTIME_SQLITE_NAMES = new Set([
+  'baishou_agent.db',
+  'knowledge.db',
+  'shadow_index.db',
+  'shadow_index_v2.db',
+  'agent.db',
+  'baishou.db'
+])
+
 const IN_PROGRESS_BACKUP_ZIP_RE = /^BaiShou_(Vault_Backup|Full_Archive)_.+\.zip$/i
 
 export function isArchiveRootSkipEntry(name: string): boolean {
@@ -30,6 +45,7 @@ export function isArchiveRootSkipEntry(name: string): boolean {
     name === 'snapshots' ||
     name === 'temp' ||
     name === '.snapshots' ||
+    ARCHIVE_ROOT_RUNTIME_SQLITE_NAMES.has(name.toLowerCase()) ||
     FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(name)
   )
 }
@@ -107,6 +123,108 @@ export async function shouldIncludeArchivePath(
     return false
   }
   return isWithinArchiveExportRoot(ctx.rootRealPath, absolutePath)
+}
+
+export interface ArchiveExternalMountDir {
+  vaultName: string
+  kind: 'journals' | 'summaries'
+  absDir: string
+  realDir: string
+  zipRelativePrefix: string
+}
+
+export async function shouldIncludeExternalMountArchivePath(
+  absolutePath: string,
+  mountRealPath: string,
+  ctx: ArchiveExportScanContext
+): Promise<boolean> {
+  if (isExcludedArchiveOutputPath(absolutePath, ctx)) return false
+  try {
+    const lst = await fsp.lstat(absolutePath)
+    if (lst.isSymbolicLink()) return false
+  } catch {
+    return false
+  }
+  return isWithinArchiveExportRoot(mountRealPath, absolutePath)
+}
+
+export function isArchiveExternalMountSkipDir(
+  dirName: string,
+  kind: 'journals' | 'summaries'
+): boolean {
+  if (isArchiveRecursiveSkipDir(dirName)) return true
+  if (kind === 'journals' && JOURNAL_TREE_SKIP_DIR_NAMES.has(dirName)) return true
+  return false
+}
+
+export async function collectArchiveExternalMountDirs(
+  rootDir: string
+): Promise<ArchiveExternalMountDir[]> {
+  if (!fs.existsSync(rootDir)) return []
+  const mounts: ArchiveExternalMountDir[] = []
+  let topEntries: fs.Dirent[] = []
+  try {
+    topEntries = await fsp.readdir(rootDir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  for (const entry of topEntries) {
+    if (!entry.isDirectory()) continue
+    if (isArchiveRootSkipEntry(entry.name) || isArchiveRecursiveSkipDir(entry.name)) continue
+
+    const vaultDir = path.join(rootDir, entry.name)
+    const externalConfigPath = path.join(vaultDir, '.baishou', VAULT_EXTERNAL_PATHS_FILE)
+    if (!fs.existsSync(externalConfigPath)) continue
+
+    let parsed: VaultExternalPathsConfig = {}
+    try {
+      const raw = await fsp.readFile(externalConfigPath, 'utf8')
+      parsed = JSON.parse(raw) as VaultExternalPathsConfig
+    } catch {
+      continue
+    }
+
+    const candidates: Array<{
+      rawDir: string | null | undefined
+      internalSubdir: string
+      kind: 'journals' | 'summaries'
+    }> = [
+      {
+        rawDir: parsed.journalsDirectory,
+        internalSubdir: 'Journals',
+        kind: 'journals'
+      },
+      {
+        rawDir: parsed.summariesDirectory,
+        internalSubdir: 'Archives',
+        kind: 'summaries'
+      }
+    ]
+
+    for (const candidate of candidates) {
+      const customDir = typeof candidate.rawDir === 'string' ? candidate.rawDir.trim() : ''
+      if (!customDir) continue
+      const internalDir = path.join(vaultDir, candidate.internalSubdir)
+      if (comparableStoragePath(customDir) === comparableStoragePath(internalDir)) continue
+      try {
+        const stat = await fsp.stat(customDir)
+        if (!stat.isDirectory()) continue
+        const realDir = await fsp.realpath(customDir)
+        mounts.push({
+          vaultName: entry.name,
+          kind: candidate.kind,
+          absDir: customDir,
+          realDir,
+          zipRelativePrefix: `${entry.name}/${candidate.internalSubdir}`
+        })
+      } catch {
+        // ignore missing or inaccessible external mount
+      }
+    }
+  }
+
+  return mounts
 }
 
 export interface ArchiveExportEstimate {
@@ -189,6 +307,44 @@ export async function estimateArchiveExportSize(
           // skip
         }
       }
+    }
+
+    const externalMounts = await collectArchiveExternalMountDirs(rootDir)
+    const walkExternalMount = async (
+      dirPath: string,
+      mountRealPath: string,
+      kind: 'journals' | 'summaries'
+    ): Promise<void> => {
+      if (!(await shouldIncludeExternalMountArchivePath(dirPath, mountRealPath, ctx))) return
+      let entries: fs.Dirent[]
+      try {
+        entries = await fsp.readdir(dirPath, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name)
+        if (entry.isDirectory()) {
+          if (isArchiveExternalMountSkipDir(entry.name, kind)) continue
+          await walkExternalMount(fullPath, mountRealPath, kind)
+          continue
+        }
+        if (!entry.isFile()) continue
+        if (shouldSkipArchiveFile(entry.name, ctx)) continue
+        if (!(await shouldIncludeExternalMountArchivePath(fullPath, mountRealPath, ctx))) continue
+        try {
+          const stat = await fsp.lstat(fullPath)
+          if (stat.isSymbolicLink()) continue
+          totalBytes += stat.size
+          fileCount += 1
+        } catch {
+          // skip unreadable files
+        }
+      }
+    }
+
+    for (const mount of externalMounts) {
+      await walkExternalMount(mount.absDir, mount.realDir, mount.kind)
     }
   }
 

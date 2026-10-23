@@ -3,6 +3,7 @@ import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   normalizeToolManagementConfig,
+  normalizeReasoningEffortBySlot,
   stripLegacyDefaultSummaryTemplates
 } from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
@@ -17,7 +18,8 @@ import type {
   SummaryConfig,
   ToolManagementConfig,
   McpServerConfig,
-  HotkeyConfig
+  HotkeyConfig,
+  BaishouAgentGateConfig
 } from '@baishou/shared'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 import {
@@ -29,8 +31,10 @@ import {
   DEFAULT_SUMMARY_CONFIG,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   DEFAULT_MCP_SERVER_CONFIG,
-  DEFAULT_HOTKEY_CONFIG
+  DEFAULT_HOTKEY_CONFIG,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG
 } from './settings.defaults'
+import { BAISHOU_AGENT_GATE_CONFIG_KEY } from '@baishou/shared'
 
 export class SettingsRepository {
   constructor(private readonly db: any) {}
@@ -169,7 +173,12 @@ export class SettingsRepository {
   }
 
   async getGlobalModelsConfig(): Promise<GlobalModelsConfig> {
-    return (await this.get<GlobalModelsConfig>('global_models')) ?? DEFAULT_GLOBAL_MODELS
+    const raw = (await this.get<GlobalModelsConfig>('global_models')) ?? DEFAULT_GLOBAL_MODELS
+    return {
+      ...DEFAULT_GLOBAL_MODELS,
+      ...raw,
+      reasoningEffortBySlot: normalizeReasoningEffortBySlot(raw.reasoningEffortBySlot)
+    }
   }
   async setGlobalModelsConfig(config: GlobalModelsConfig): Promise<void> {
     await this.set('global_models', config)
@@ -183,9 +192,16 @@ export class SettingsRepository {
     return {
       agentContextWindowSize:
         raw.agentContextWindowSize ?? DEFAULT_AGENT_BEHAVIOR.agentContextWindowSize,
+      companionCompressTokens:
+        raw.companionCompressTokens ?? DEFAULT_AGENT_BEHAVIOR.companionCompressTokens,
+      companionTruncateTokens:
+        raw.companionTruncateTokens ?? DEFAULT_AGENT_BEHAVIOR.companionTruncateTokens,
       agentPersona: raw.agentPersona ?? DEFAULT_AGENT_BEHAVIOR.agentPersona,
       agentGuidelines: raw.agentGuidelines ?? DEFAULT_AGENT_BEHAVIOR.agentGuidelines,
-      pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds
+      pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds,
+      restoreLastSessionOnReturn: raw.restoreLastSessionOnReturn !== false,
+      reasoningEffortDefault:
+        raw.reasoningEffortDefault ?? DEFAULT_AGENT_BEHAVIOR.reasoningEffortDefault
     }
   }
   async setAgentBehaviorConfig(config: AgentBehaviorConfig): Promise<void> {
@@ -236,5 +252,15 @@ export class SettingsRepository {
   }
   async setHotkeyConfig(config: HotkeyConfig): Promise<void> {
     await this.set('hotkey_config', config)
+  }
+
+  async getBaishouAgentGateConfig(): Promise<BaishouAgentGateConfig> {
+    return (
+      (await this.get<BaishouAgentGateConfig>(BAISHOU_AGENT_GATE_CONFIG_KEY)) ??
+      DEFAULT_BAISHOU_AGENT_GATE_CONFIG
+    )
+  }
+  async setBaishouAgentGateConfig(config: BaishouAgentGateConfig): Promise<void> {
+    await this.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
   }
 }

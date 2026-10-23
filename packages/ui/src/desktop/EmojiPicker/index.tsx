@@ -1,5 +1,6 @@
 import React from 'react'
 import { X } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './EmojiPicker.module.css'
 import { useTranslation } from 'react-i18next'
 
@@ -66,7 +67,7 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ isOpen, onClose, onSel
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.container} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleWrapper}>

@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchTimeFilter } from './agent.tool'
-import { formatStoredTimestamp } from '@baishou/shared'
+import { clampRagTopK, formatAiApiCallError, formatStoredTimestamp } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
 import {
@@ -59,14 +59,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
   readonly description =
     'Semantic search over conversation history and stored memories. ' +
-    'You may use this when the user asks about past content, previous decisions, personal preferences, ' +
-    'or earlier topics and the current context (including any rolling compression summary) is insufficient. ' +
-    'REQUIRED when specific names, people, places, events, or dates are not clearly established in the ' +
-    'current conversation: search before answering; do not guess or fabricate. ' +
-    'Combine with diary_search when the answer may live in diary entries. ' +
-    'Optionally set start_date and/or end_date (YYYY-MM-DD, local calendar day) to narrow results to a time window—' +
-    'use this when the user mentions a specific period (e.g. last spring, March 2024, before a trip). ' +
-    'Returns the most semantically relevant conversation snippets with scores.'
+    'Use this when the current context (including any rolling summary) does not cover past discussions, decisions, or preferences. ' +
+    'Optionally pass start_date and/or end_date (YYYY-MM-DD, local calendar day) to filter by time period. ' +
+    'Returns relevant snippets with scores; memory hits include memory_id for exact deletion via memory_delete.'
 
   readonly parameters = vectorSearchParams
 
@@ -85,6 +80,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
     if (!embeddingService || !vectorStore) {
       return '嵌入服务或向量数据库未配置，无法执行语义搜索。'
     }
+    if (!embeddingService.isConfigured) {
+      return '嵌入模型未配置，无法执行语义搜索。请在设置中配置嵌入模型。'
+    }
 
     const dateRange = resolveVectorSearchDateRange(args.start_date, args.end_date)
     if ('error' in dateRange) {
@@ -102,14 +100,15 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       args.min_score ??
       (context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_THRESHOLD_KEY] as number | undefined) ??
       VECTOR_SEARCH_DEFAULT_MIN_SCORE
-    const maxResults =
-      (context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_TOP_K_KEY] as number | undefined) ??
+    const maxResults = clampRagTopK(
+      context.userConfig?.[VECTOR_SEARCH_USER_CONFIG_TOP_K_KEY],
       VECTOR_SEARCH_DEFAULT_TOP_K
+    )
 
     try {
       const queryEmbedding = await embeddingService.embedQuery(args.query)
       if (!queryEmbedding) {
-        return '嵌入模型未配置或查询嵌入失败。请在设置中配置嵌入模型。'
+        return '查询嵌入失败：未得到向量。请检查嵌入模型服务是否可用。'
       }
 
       const pipeline: string[] = []
@@ -119,22 +118,40 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       }
 
       let results: ISearchResult[] = []
+      const vaultId = context.vaultId
 
-      const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, timeFilter)
+      const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, {
+        ...timeFilter,
+        vaultId
+      })
       const vectorResults: ISearchResult[] = vectorRaw.map((r) => ({
         messageId: r.sourceId,
         sessionId: r.groupId,
         chunkText: r.chunkText,
         score: 1.0 - r.distance,
         source: 'vector' as const,
-        createdAt: r.createdAt
+        createdAt: r.createdAt,
+        sourceType: r.sourceType,
+        sourceId: r.sourceId
       }))
 
       const bestVecScore = vectorResults.length > 0 ? vectorResults[0]!.score.toFixed(4) : '-'
       pipeline.push(`🔍 向量语义搜索: ${vectorResults.length} 条命中 (最佳 ${bestVecScore})`)
 
+      // 阈值只筛向量候选；纯关键词命中的 RRF 分数量级很小，不能被同一个阈值洗掉。
+      const vectorCandidates =
+        minScore > 0 ? vectorResults.filter((r) => r.score >= minScore) : vectorResults
+      if (minScore > 0) {
+        pipeline.push(
+          `✂️ 向量相似度过滤 (≥${minScore.toFixed(2)}): ${vectorResults.length} → ${vectorCandidates.length} 条`
+        )
+      }
+
       if (mode === 'hybrid' && vectorStore.searchFts) {
-        const ftsRaw = await vectorStore.searchFts(args.query, maxResults, timeFilter)
+        const ftsRaw = await vectorStore.searchFts(args.query, maxResults, {
+          ...timeFilter,
+          vaultId
+        })
         pipeline.push(`📝 FTS关键词搜索: ${ftsRaw.length} 条命中`)
 
         const ftsResults: ISearchResult[] = ftsRaw.map((r) => ({
@@ -143,22 +160,16 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
           chunkText: r.snippet,
           score: 0,
           source: 'fts' as const,
-          createdAt: r.createdAt
+          createdAt: r.createdAt,
+          sourceType: r.sourceType,
+          sourceId: r.sourceId ?? r.messageId
         }))
 
-        results = HybridSearchUtils.mergeRRF(ftsResults, vectorResults, maxResults)
+        results = HybridSearchUtils.mergeRRF(ftsResults, vectorCandidates, maxResults)
         pipeline.push(`🔀 RRF融合排序: ${results.length} 条合并`)
       } else {
-        results = vectorResults
+        results = vectorCandidates
       }
-
-      const beforeScoreCount = results.length
-      if (minScore > 0) {
-        results = results.filter((r) => r.score >= minScore)
-      }
-      pipeline.push(
-        `✂️ 相似度过滤 (≥${minScore.toFixed(2)}): ${beforeScoreCount} → ${results.length} 条`
-      )
 
       if (results.length === 0) {
         const rangeHint = rangeLabel ? `（时间范围: ${rangeLabel}）` : ''
@@ -176,18 +187,33 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         const r = results[i]!
         const sourceLabel = r.source === 'hybrid' ? '混合' : r.source === 'fts' ? 'FTS' : '向量'
         lines.push(`--- 结果 ${i + 1} [${sourceLabel}] ---`)
+        const sourceType = r.sourceType?.trim() || 'unknown'
+        lines.push(`类型: ${sourceType}`)
+        const rawEntityId = (r.sourceId || r.messageId || '').trim()
+        const isMemory =
+          sourceType === 'memory' ||
+          sourceType === 'manual' ||
+          (sourceType === 'unknown' && rawEntityId.startsWith('mem_'))
+        const entityId = isMemory ? rawEntityId.replace(/_chunk_\d+$/, '') : rawEntityId
+        if (entityId) {
+          lines.push(isMemory ? `memory_id: ${entityId}` : `id: ${entityId}`)
+        }
         const timeLabel = resolveResultTimestamp(r.chunkText, r.createdAt)
         if (timeLabel) {
           lines.push(`时间: ${timeLabel}`)
         }
         lines.push(`内容: ${r.chunkText}`)
-        lines.push(`相似度: ${r.score.toFixed(4)}`)
+        if (r.source === 'fts') {
+          lines.push('匹配方式: 关键词')
+        } else {
+          lines.push(`相似度: ${r.score.toFixed(4)}`)
+        }
         lines.push('')
       }
 
       return lines.join('\n')
     } catch (e) {
-      return `语义搜索失败: ${e instanceof Error ? e.message : String(e)}`
+      return `语义搜索失败: ${formatAiApiCallError(e)}`
     }
   }
 }

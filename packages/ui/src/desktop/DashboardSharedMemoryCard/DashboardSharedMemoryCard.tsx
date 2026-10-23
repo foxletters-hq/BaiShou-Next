@@ -1,16 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, HelpCircle, Loader2, TextQuote } from 'lucide-react'
+import { Copy, Loader2, TextQuote } from 'lucide-react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import {
   clampSharedMemoryLookbackMonths,
   SHARED_MEMORY_LOOKBACK_MIN,
   SHARED_MEMORY_LOOKBACK_SLIDER_BASE
 } from '@baishou/shared'
+import { Input } from '../Input/Input'
 import { Tooltip } from '../Tooltip/Tooltip'
+import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
 import { formatCompactTokenCount } from '../../shared/token-usage-display'
 import './DashboardSharedMemoryCard.css'
+import { sharedTokens } from '../../theme/tokens'
 
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
@@ -154,8 +157,8 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   const handlePrefixSettings = useCallback(async () => {
     if (!onCopyPrefixChange) return
     const next = await dialog.prompt(
-      t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：Hi，这是我的回忆...）'),
-      copyPrefix,
+      t('summary.copy_prefix_hint', '会自动附加在拷贝内容的最前方（例如：这是我们的回忆...）'),
+      copyPrefix.trim() || t('summary.copy_prefix_default', '这是我们的回忆'),
       t('summary.copy_prefix_label', '拷贝前缀'),
       true
     )
@@ -179,21 +182,17 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             height="20"
             fill="var(--color-primary)"
             className="sm-header-icon"
-            style={{ marginRight: 8 }}
           >
             <path d="M10.74 13.91l-1.92-2.1c.96-1.55 1.57-3.05 1.83-4.5h-1.9c-.43 0-.82-.28-.95-.69a1.002 1.002 0 0 1 .95-1.31h4.08c.55 0 1 .45 1 1 0 3.01-1.28 5.76-3.09 7.6zM18.74 13.91l-1.92-2.1c.96-1.55 1.57-3.05 1.83-4.5h-1.9c-.43 0-.82-.28-.95-.69a1.002 1.002 0 0 1 .95-1.31h4.08c.55 0 1 .45 1 1 0 3.01-1.28 5.76-3.09 7.6z" />
           </svg>
           <span className="sm-header-title">{t('summary.shared_memory', '共同回忆')}</span>
-          <Tooltip
+          <HelpTooltip
+            size={15}
             content={t(
               'summary.shared_memory_tooltip',
-              '共同回忆统计展示您在设定时间周期内的核心足迹与情感波动数据。系统通过级联折叠算法在后台自动整合历史快照数据，去除重复啰嗦内容，将海量原始流水账压缩为符合 LLM 极窄上下文容量的高浓度叙事，方便 AI 快速理解您的近期现状。'
+              '根据所选的回溯周期，自动汇总该时间范围内的日记与阶段总结，提炼为高浓度的生活记忆。\n\n在与伙伴对话或生成新总结时注入，让 AI 能自然延续对你近期生活轨迹与关键事件的了解。'
             )}
-          >
-            <span className="sm-help-icon-wrapper">
-              <HelpCircle size={15} />
-            </span>
-          </Tooltip>
+          />
         </div>
         {onCopyPrefixChange ? (
           <Tooltip content={t('summary.copy_prefix_label', '拷贝前缀')}>
@@ -212,8 +211,10 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       <div className="sm-controls">
         <div className="sm-label-row">
           <span className="sm-label">{t('summary.lookback_label', 'Lookback (months)')}</span>
-          <input
+          <Input
             type="number"
+            fieldSize="small"
+            className="sm-number-input-host"
             min={SHARED_MEMORY_LOOKBACK_MIN}
             value={lookbackDraft}
             onChange={(e) =>
@@ -223,7 +224,6 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur()
             }}
-            className="sm-number-input"
           />
         </div>
         <div className="sm-slider-container">
@@ -267,9 +267,13 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         disabled={copying}
       >
         {copying ? (
-          <Loader2 size={16} className="sm-previewSpinner" style={{ marginRight: 6 }} />
+          <Loader2
+            size={16}
+            className="sm-previewSpinner"
+            style={{ marginRight: sharedTokens.spacing.xsPlus }}
+          />
         ) : (
-          <Copy size={16} style={{ marginRight: 6 }} />
+          <Copy size={16} style={{ marginRight: sharedTokens.spacing.xsPlus }} />
         )}
         {t('summary.copy_memories', '复制共同回忆')}
       </button>

@@ -81,7 +81,7 @@ function generatePartId(): string {
   })
 }
 
-/** 将 emoji_send 工具调用转为 assistant 消息内的 image parts（排在文本之前） */
+/** 将 emoji_send 工具调用转为 assistant 消息内的 image parts（由调用方排在正文之后） */
 export function buildEmojiImagePartsFromToolCalls(
   toolCalls: readonly ToolCallSnapshot[],
   assistantMsgId: string,

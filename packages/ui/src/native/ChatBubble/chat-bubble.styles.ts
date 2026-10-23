@@ -1,4 +1,5 @@
 import { StyleSheet, type DimensionValue } from 'react-native'
+import { mobileTypography, sharedTokens } from '../../theme/tokens'
 
 /**
  * 聊天气泡正文现已全程 LegacyMarkdown（测高稳定）。
@@ -6,15 +7,15 @@ import { StyleSheet, type DimensionValue } from 'react-native'
  */
 export const CHAT_MARKDOWN_BOTTOM_GUARD = 12
 
-/** 同行头像列（32 头像 + 8 间距）及对侧留白；RN StyleSheet 不支持 calc() */
+/** 同行头像列（32 头像 + 8 间距）及对侧留白，用户/伙伴共用；RN StyleSheet 不支持 calc() */
 const CHAT_BUBBLE_MAX_WIDTH = '88%' as DimensionValue
 const CHAT_BUBBLE_OPPOSITE_GAP = 36
 
 const chatBubbleLayoutStyles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: sharedTokens.spacing.sm,
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
     paddingVertical: 0,
     alignItems: 'flex-start',
     width: '100%'
@@ -61,22 +62,22 @@ const chatBubbleLayoutStyles = StyleSheet.create({
   nameTimeRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 8,
-    paddingBottom: 6,
+    gap: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.xsPlus,
     width: '100%'
   },
   nameTimeRowUser: {
     justifyContent: 'flex-end',
-    paddingRight: 4
+    paddingRight: sharedTokens.spacing.xs
   },
   nameTimeRowAssistant: {
     justifyContent: 'flex-start',
-    paddingLeft: 4
+    paddingLeft: sharedTokens.spacing.xs
   },
   bubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.smPlus,
+    borderRadius: sharedTokens.radius.lg,
     alignSelf: 'stretch',
     width: '100%',
     overflow: 'visible'
@@ -106,35 +107,35 @@ const chatBubbleLayoutStyles = StyleSheet.create({
     minWidth: 0
   },
   reasoningBlock: {
-    marginBottom: 8,
-    paddingBottom: 8,
+    marginBottom: sharedTokens.spacing.sm,
+    paddingBottom: sharedTokens.spacing.sm,
     borderBottomWidth: 1
   },
   editActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 6
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xsPlus
   },
   editBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: sharedTokens.spacing.mdTight,
+    paddingVertical: sharedTokens.spacing.xsPlus,
+    borderRadius: sharedTokens.radius.sm,
     borderWidth: 1,
     borderColor: 'transparent'
   },
   comfortableEditBtn: {
     minHeight: 32,
-    paddingHorizontal: 14,
-    paddingVertical: 7
+    paddingHorizontal: sharedTokens.spacing.mdSnug,
+    paddingVertical: sharedTokens.spacing.sm
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
+    gap: sharedTokens.spacing.sm,
+    marginTop: sharedTokens.spacing.xs,
     width: '100%',
     alignSelf: 'stretch',
     minHeight: 26
@@ -147,20 +148,23 @@ const chatBubbleLayoutStyles = StyleSheet.create({
     minHeight: 26
   },
   actionChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12
+    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingVertical: sharedTokens.spacing.xs,
+    borderRadius: sharedTokens.radius.md
   },
   deferredChromeSpacer: {
     height: 36,
     width: '100%'
+  },
+  deferredChromeHidden: {
+    opacity: 0
   },
   tokenRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 8,
+    gap: sharedTokens.spacing.sm,
     width: '100%',
     flexBasis: '100%'
   },
@@ -170,19 +174,19 @@ const chatBubbleLayoutStyles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   actionSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
+    borderTopLeftRadius: sharedTokens.radius.lgPlus,
+    borderTopRightRadius: sharedTokens.radius.lgPlus,
+    paddingTop: sharedTokens.spacing.md,
+    paddingBottom: sharedTokens.spacing.xl,
     maxHeight: '60%'
   },
   actionItem: {
-    paddingHorizontal: 24,
-    paddingVertical: 14
+    paddingHorizontal: sharedTokens.spacing.lg,
+    paddingVertical: sharedTokens.spacing.mdSnug
   },
   actionCancel: {
-    marginTop: 8,
-    paddingTop: 14,
+    marginTop: sharedTokens.spacing.sm,
+    paddingTop: sharedTokens.spacing.mdSnug,
     borderTopWidth: 1,
     alignItems: 'center'
   }
@@ -190,12 +194,12 @@ const chatBubbleLayoutStyles = StyleSheet.create({
 
 const chatBubbleTextStyles = StyleSheet.create({
   nameLabel: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
     flexShrink: 0
   },
   timeLabel: {
-    fontSize: 10
+    fontSize: mobileTypography.caption.fontSize
   },
   nameLabelUser: {
     textAlign: 'right'
@@ -204,62 +208,62 @@ const chatBubbleTextStyles = StyleSheet.create({
     textAlign: 'left'
   },
   bubbleNameLabel: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: sharedTokens.spacing.xsPlus,
     alignSelf: 'stretch'
   },
   text: {
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     lineHeight: 24,
     textAlign: 'left',
     flexShrink: 1
   },
   reasoningLabel: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '600',
-    marginBottom: 4
+    marginBottom: sharedTokens.spacing.xs
   },
   reasoningText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     lineHeight: 18,
     fontStyle: 'italic'
   },
   editInput: {
     width: '100%',
-    fontSize: 15,
+    fontSize: mobileTypography.body.fontSize,
     lineHeight: 22,
     minHeight: 72,
     maxHeight: 260,
     padding: 0
   },
   editBtnText: {
-    fontSize: 13,
+    fontSize: mobileTypography.secondary.fontSize,
     fontWeight: '600'
   },
   comfortableEditBtnText: {
-    fontSize: 13
+    fontSize: mobileTypography.secondary.fontSize
   },
   actionChipText: {
-    fontSize: 12,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   tokenText: {
-    fontSize: 11,
+    fontSize: mobileTypography.caption.fontSize,
     fontWeight: '500'
   },
   actionSheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: mobileTypography.primary.fontSize,
+    fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 16
+    marginBottom: sharedTokens.spacing.mdTight,
+    paddingHorizontal: sharedTokens.spacing.md
   },
   actionItemText: {
-    fontSize: 16
+    fontSize: mobileTypography.primary.fontSize
   },
   actionCancelText: {
-    fontSize: 16,
+    fontSize: mobileTypography.primary.fontSize,
     fontWeight: '600'
   }
 })

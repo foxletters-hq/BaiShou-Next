@@ -97,6 +97,42 @@ describe('context-menu-placement.util', () => {
     expect(position.y).toBe(600)
   })
 
+  it('alignEnd hangs the menu from the right edge of the anchor', () => {
+    const bounds = getDefaultContextMenuBounds(1000, 800, 0)
+    const menuWidth = 180
+    const anchorRight = 420
+    const position = resolveContextMenuPosition(anchorRight, 120, menuWidth, 80, bounds, {
+      alignEnd: true
+    })
+
+    expect(position.x).toBe(anchorRight - menuWidth)
+    expect(position.x + menuWidth).toBe(anchorRight)
+    expect(position.y).toBe(120)
+  })
+
+  it('preferAbove places menu above the anchor even when there is room below', () => {
+    const bounds = getDefaultContextMenuBounds(1000, 800, 0)
+    const menuHeight = 160
+    const anchorBottom = 400
+    const position = resolveContextMenuPosition(420, anchorBottom, 140, menuHeight, bounds, {
+      preferAbove: true
+    })
+
+    expect(position.y).toBe(anchorBottom - menuHeight)
+    expect(position.y + menuHeight).toBe(anchorBottom)
+  })
+
+  it('preferAbove falls back below when there is not enough room above', () => {
+    const bounds = getDefaultContextMenuBounds(1000, 800, 0)
+    const menuHeight = 160
+    const anchorBottom = CONTEXT_MENU_MARGIN + 40
+    const position = resolveContextMenuPosition(420, anchorBottom, 140, menuHeight, bounds, {
+      preferAbove: true
+    })
+
+    expect(position.y).toBe(anchorBottom + CONTEXT_MENU_GAP)
+  })
+
   it('uses the tallest bottom obstruction between composer and diary toolbar', () => {
     const composer = document.createElement('div')
     composer.setAttribute('data-desktop-input-bar', 'true')

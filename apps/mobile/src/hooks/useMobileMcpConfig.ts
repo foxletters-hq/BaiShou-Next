@@ -10,7 +10,9 @@ import { useBaishou } from '../providers/BaishouProvider'
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
   mcpPort: 31004,
-  mcpAuthEnabled: false
+  mcpAuthEnabled: false,
+  mcpAutoApproveTools: false,
+  disabledToolIds: []
 }
 
 async function persistMcpConfig(
@@ -91,6 +93,24 @@ export function useMobileMcpConfig() {
   const persistConfig = useCallback(
     async (next: McpServerConfig) => {
       if (!services || !dbReady) return
+      const needsServerApply =
+        next.mcpEnabled !== config.mcpEnabled ||
+        next.mcpPort !== config.mcpPort ||
+        next.mcpAuthEnabled !== config.mcpAuthEnabled ||
+        next.mcpAuthToken !== config.mcpAuthToken
+
+      if (!needsServerApply) {
+        try {
+          const saved = await persistMcpConfig(services, next)
+          setConfig(saved)
+          await services.mobileMcpService.applyConfig(saved)
+        } catch (e) {
+          console.error(e)
+          toast.showError(t('common.errors.save_failed'))
+        }
+        return
+      }
+
       setApplying(true)
       try {
         const saved = await persistMcpConfig(services, next)
@@ -112,7 +132,16 @@ export function useMobileMcpConfig() {
         setApplying(false)
       }
     },
-    [dbReady, services, t, toast]
+    [
+      config.mcpAuthEnabled,
+      config.mcpAuthToken,
+      config.mcpEnabled,
+      config.mcpPort,
+      dbReady,
+      services,
+      t,
+      toast
+    ]
   )
 
   const refreshAuthToken = useCallback(async () => {

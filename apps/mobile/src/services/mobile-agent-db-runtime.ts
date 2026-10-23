@@ -33,16 +33,18 @@ import {
   RecoveryAwareSummarySyncService
 } from './recovery-aware-sync.services'
 import { createMobileSessionDiskPersistenceHooks } from './session-file-watcher.service'
+import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
 import {
   mobileAgentDbRecovery,
   type MobileAgentDbRecoveryCoordinator
 } from './mobile-agent-db-recovery.coordinator'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
-import { resolveSummaryTemplatesForGeneration, logger } from '@baishou/shared'
+import { deriveLegacyVaultId, resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 
 export type AgentDbRuntime = {
   expoDb: ExpoSqliteDatabase
   drizzleDb: AppDatabase
+  pathService: MobileStoragePathService
   sessionRepo: SessionRepository
   assistantRepo: AssistantRepository
   settingsRepo: SettingsRepository
@@ -70,6 +72,7 @@ export type CreateAgentDbRuntimeOptions = {
   attachmentManager: MobileAttachmentManagerService
   diaryRepoAdapter: unknown
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }
 
 export type SummaryPipelineServices = {
@@ -86,11 +89,16 @@ export async function createSummaryPipelineServices(options: {
   fileSystem: IFileSystem
   settingsManager: SettingsManagerService
   diaryRepoAdapter: unknown
+  activeVaultName?: string | null
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }): Promise<SummaryPipelineServices> {
   const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
   const recovery = options.recovery ?? mobileAgentDbRecovery
-  const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+  const resolveVaultId =
+    options.resolveVaultId ??
+    (() => deriveLegacyVaultId(options.activeVaultName?.trim() || 'Personal'))
+  const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
   const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
   const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
     string,
@@ -98,7 +106,8 @@ export async function createSummaryPipelineServices(options: {
   >
   const promptLocale = ((summaryConfig?.promptLocale as string | undefined) ?? 'zh') as 'zh' | 'en'
   const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
-  const summaryFileService = new SummaryFileService(pathService, fileSystem)
+  const rawManager = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+  const summaryFileService = new SummaryFileService(pathService, fileSystem, rawManager)
   const missingSummaryDetector = new MissingSummaryDetector(
     diaryRepoAdapter as never,
     summaryRepo as never
@@ -115,7 +124,8 @@ export async function createSummaryPipelineServices(options: {
     summaryGenerator,
     summaryRepo,
     summaryFileService,
-    recovery
+    recovery,
+    resolveVaultId
   )
   const summaryManager = new SummaryManagerService(
     summaryRepo,
@@ -125,7 +135,7 @@ export async function createSummaryPipelineServices(options: {
   return { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService }
 }
 
-/** 工作区切换后重建总结管线，并将 SQLite 总结缓存与当前 Vault 磁盘文件对齐 */
+/** 工作区切换后重建总结管线。V1.4 起按 vault_id 共存，切换不再清空重建。 */
 export async function rebindSummaryPipelineForVault(options: {
   drizzleDb: AppDatabase
   pathService: MobileStoragePathService
@@ -134,27 +144,18 @@ export async function rebindSummaryPipelineForVault(options: {
   diaryRepoAdapter: unknown
   activeVaultName?: string | null
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }): Promise<SummaryPipelineServices> {
-  const pipeline = await createSummaryPipelineServices({
+  return createSummaryPipelineServices({
     drizzleDb: options.drizzleDb,
     pathService: options.pathService,
     fileSystem: options.fileSystem,
     settingsManager: options.settingsManager,
     diaryRepoAdapter: options.diaryRepoAdapter,
-    recovery: options.recovery ?? mobileAgentDbRecovery
+    activeVaultName: options.activeVaultName,
+    recovery: options.recovery ?? mobileAgentDbRecovery,
+    resolveVaultId: options.resolveVaultId
   })
-
-  if (options.activeVaultName) {
-    try {
-      await pipeline.summarySyncService.fullScanArchives({
-        activeVaultName: options.activeVaultName
-      })
-    } catch (e) {
-      logger.warn('[SummaryPipeline] fullScanArchives after vault rebind failed:', e as Error)
-    }
-  }
-
-  return pipeline
 }
 
 export async function createAgentDbRuntime(
@@ -165,13 +166,15 @@ export async function createAgentDbRuntime(
   const recovery = options.recovery ?? mobileAgentDbRecovery
 
   const sessionRepo = new SessionRepository(drizzleDb)
-  const assistantRepo = new AssistantRepository(drizzleDb)
+  const resolveVaultId = options.resolveVaultId
+  const assistantRepo = new AssistantRepository(drizzleDb, resolveVaultId)
   const settingsRepo = new SettingsRepository(drizzleDb)
-  const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+  const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
   const profileRepo = new UserProfileRepository(drizzleDb)
   const snapshotRepo = new SnapshotRepository(drizzleDb)
 
-  const sessionFileService = new SessionFileService(pathService, fileSystem)
+  const sessionRaw = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+  const sessionFileService = new SessionFileService(pathService, fileSystem, sessionRaw)
   const sessionSyncService = new RecoveryAwareSessionSyncService(
     sessionRepo,
     sessionFileService,
@@ -181,14 +184,17 @@ export async function createAgentDbRuntime(
     sessionRepo,
     sessionFileService,
     sessionSyncService,
-    createMobileSessionDiskPersistenceHooks()
+    createMobileSessionDiskPersistenceHooks({
+      resolveActiveVaultName: () => pathService.getActiveVaultNameForContext?.() ?? null
+    })
   )
 
   const assistantFileService = new AssistantFileService(pathService, fileSystem)
   const assistantManager = new AssistantManagerService(
     assistantRepo,
     assistantFileService,
-    attachmentManager
+    attachmentManager,
+    resolveVaultId
   )
 
   const settingsFileService = new SettingsFileService(pathService, fileSystem)
@@ -201,7 +207,8 @@ export async function createAgentDbRuntime(
       fileSystem,
       settingsManager,
       diaryRepoAdapter,
-      recovery
+      recovery,
+      resolveVaultId
     })
 
   const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
@@ -211,6 +218,7 @@ export async function createAgentDbRuntime(
   return {
     expoDb,
     drizzleDb,
+    pathService,
     sessionRepo,
     assistantRepo,
     settingsRepo,

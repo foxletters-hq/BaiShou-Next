@@ -42,7 +42,9 @@ export class ContextWindowBuilder {
       sessionId,
       COMPRESSION_MESSAGE_FETCH_LIMIT
     )) as MessageWithParts[]
-    return this.buildFromMessages(sessionId, snapshotRepo, rawMessages, config)
+    const { ensureSessionSnapshotsRestored } = await import('./session-snapshot-restore')
+    const snapshot = await ensureSessionSnapshotsRestored(sessionId, snapshotRepo, sessionRepo)
+    return this.buildFromMessages(sessionId, snapshotRepo, rawMessages, config, snapshot)
   }
 
   /** 复用已加载的会话消息，避免 streamChat 内重复全量查询 */
