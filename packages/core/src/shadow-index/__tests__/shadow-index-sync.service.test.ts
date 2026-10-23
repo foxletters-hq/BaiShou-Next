@@ -410,7 +410,7 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecordCount()).toBe(1)
   })
 
-  it('Journals 目录存在但暂无物理文件时不应清空已有影子索引', async () => {
+  it('Journals 目录存在但已被清空物理文件时应清理孤立影子索引记录', async () => {
     await mockRepo.upsert({
       filePath: '2.日记/2026/10/2026-10-19.md',
       date: '2026-10-19',
@@ -430,7 +430,7 @@ describe('ShadowIndexSyncService', () => {
 
     await service.fullScanVault(true)
 
-    expect(mockRepo._getRecordCount()).toBe(1)
+    expect(mockRepo._getRecordCount()).toBe(0)
   })
 
   it('外部日记路径记录在迁入 Journals 目录且内容未变时应对齐 filePath 而不被误删', async () => {

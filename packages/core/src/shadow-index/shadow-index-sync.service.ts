@@ -345,7 +345,11 @@ export class ShadowIndexSyncService {
               update.filePath
             )
           } else {
-            await this.shadowRepo.updateFileStat(update.dateStr, update.fileMtimeMs, update.fileSize)
+            await this.shadowRepo.updateFileStat(
+              update.dateStr,
+              update.fileMtimeMs,
+              update.fileSize
+            )
           }
         } catch (e: any) {
           logger.warn(`[ShadowSync] 更新文件指纹失败 (${update.dateStr}):`, e?.message ?? e)
@@ -467,43 +471,37 @@ export class ShadowIndexSyncService {
       if (!journalsDirExists) {
         logger.info('[ShadowSync] Journals 目录不可用，跳过孤立清理')
       } else {
+        const validRelativePaths = new Set(
+          [...pathsByDate.values()].map((absPath) =>
+            normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
+          )
+        )
         const allRecords = await this.shadowRepo.getAllRecords()
-        if (pathsByDate.size === 0 && allRecords.length > 0) {
-          logger.info(
-            `[ShadowSync] Journals 目录暂无物理文件，保留现有影子索引记录 (${allRecords.length} 条)`
-          )
-        } else {
-          const validRelativePaths = new Set(
-            [...pathsByDate.values()].map((absPath) =>
-              normalizeShadowFilePath(path.relative(path.dirname(journalsDir), absPath))
-            )
-          )
 
-          for (const record of allRecords) {
-            const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
-            const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
-            const pathStillValid = validRelativePaths.has(normalizedRecordPath)
+        for (const record of allRecords) {
+          const normalizedRecordPath = normalizeShadowFilePath(record.filePath)
+          const underSkippedDir = isJournalPathUnderSkippedDir(record.filePath)
+          const pathStillValid = validRelativePaths.has(normalizedRecordPath)
 
-            if (!underSkippedDir && pathStillValid) continue
+          if (!underSkippedDir && pathStillValid) continue
 
-            await this.shadowRepo.deleteById(record.id)
+          await this.shadowRepo.deleteById(record.id)
 
-            if (this.embeddingCallback) {
-              try {
-                await this.embeddingCallback.deleteEmbeddingsBySource(
-                  'diary',
-                  buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, record.id)
-                )
-              } catch (e: any) {
-                logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
-              }
+          if (this.embeddingCallback) {
+            try {
+              await this.embeddingCallback.deleteEmbeddingsBySource(
+                'diary',
+                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, record.id)
+              )
+            } catch (e: any) {
+              logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
             }
-
-            const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
-            logger.info(
-              `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
-            )
           }
+
+          const reason = underSkippedDir ? 'summary-path' : 'orphan-path'
+          logger.info(
+            `[ShadowSync] 已清理索引 (${reason}): path=${record.filePath}, ID=${record.id}`
+          )
         }
       }
     } finally {

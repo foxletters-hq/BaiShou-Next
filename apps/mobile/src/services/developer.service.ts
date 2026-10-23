@@ -1,7 +1,10 @@
 import i18n from 'i18next'
 import * as SQLite from 'expo-sqlite'
+import { shadowConnectionManager } from '@baishou/database'
+import { releaseExpoAgentDatabaseInstall } from '@baishou/database/expo'
 import { deleteAsync } from './mobile-sandbox-fs'
 import { getAppDocumentDirectory } from './mobile-app-paths'
+import { clearAllVaultShadowIndexes } from './mobile-vault-runtime-cleanup'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { VaultService } from '@baishou/core-mobile'
 import type { DiaryService, SummaryManagerService } from '@baishou/core-mobile'
@@ -66,8 +69,20 @@ export class MobileDeveloperService {
       }
 
       const registryDir = await deps.pathService.getGlobalRegistryDirectory()
+      try {
+        await clearAllVaultShadowIndexes(deps.vaultService)
+        await shadowConnectionManager.disconnect()
+      } catch (e) {
+        logger.warn('[Developer] shadow index disconnect failed:', e as Error)
+      }
       if (await deps.fileSystem.exists(registryDir)) {
         await deps.fileSystem.rm(registryDir, { recursive: true, force: true })
+      }
+
+      try {
+        await releaseExpoAgentDatabaseInstall()
+      } catch (e) {
+        logger.warn('[Developer] releaseExpoAgentDatabaseInstall failed:', e as Error)
       }
 
       try {
@@ -78,10 +93,12 @@ export class MobileDeveloperService {
 
       const docDir = getAppDocumentDirectory()
       const dbUri = `${docDir}SQLite/${MOBILE_DB_NAME}`
-      try {
-        await deleteAsync(dbUri, { idempotent: true })
-      } catch {
-        // ignore
+      for (const suffix of ['', '-wal', '-shm']) {
+        try {
+          await deleteAsync(`${dbUri}${suffix}`, { idempotent: true })
+        } catch {
+          // ignore
+        }
       }
 
       const keys = await AsyncStorage.getAllKeys()

@@ -273,7 +273,7 @@ export async function rebootstrapAfterStorageRootChange(
       },
       {
         deferResync: !blockingResync,
-        forceShadowResync: blockingResync,
+        forceShadowResync: true,
         resyncReason: blockingResync ? 'archive-full-restore' : 'storage-root-changed'
       }
     )

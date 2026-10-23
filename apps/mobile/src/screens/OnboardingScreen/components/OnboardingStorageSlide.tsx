@@ -38,7 +38,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
   const { t } = useTranslation()
   const toast = useNativeToast()
   const { colors } = useNativeTheme()
-  const { dbReady, services } = useBaishou()
+  const { dbReady, services, retryStorageSetup } = useBaishou()
   const [rootPath, setRootPath] = useState(displayPath(EXTERNAL_STORAGE_ROOT))
   const [changing, setChanging] = useState(false)
 
@@ -78,6 +78,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
       if (result.status === 'selected') {
         await services.pathService.updateRootDirectory(toFileUri(result.path))
         await refreshRootPath()
+        await retryStorageSetup()
       }
     } catch {
       toast.showError(t('onboarding.storage_permission_error'))

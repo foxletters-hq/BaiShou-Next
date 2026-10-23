@@ -20,6 +20,7 @@ import {
   hasStoragePermission
 } from '../../services/storage-permission.service'
 import { refreshMobileAttachmentPathRemapper } from '../../services/mobile-attachment-path-remapper'
+import { emitSyncMutation, emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
 import type { MobileBaishouInitContext } from './init-context'
 import type { MobileBaishouCoreState } from './bootstrap-mobile-baishou-core'
 
@@ -56,6 +57,9 @@ export async function finalizeStorageRefHandlers(
       }
 
       const priorStack = refs.diaryStackRef.current
+      if (priorStack) {
+        emitVaultSwitchMutation(undefined, 'storage-root-changed')
+      }
       const bootstrapOptions = options?.forceDeferResync
         ? { forceDeferResync: true as const, resyncReason: 'legacy-migration-complete' }
         : undefined
@@ -91,6 +95,9 @@ export async function finalizeStorageRefHandlers(
       setMobileDiaryEmbeddingDeps(ragDeps, {
         agentDb: agentDbRuntimeRef.current?.drizzleDb ?? null
       })
+      if (priorStack) {
+        emitSyncMutation('resync-complete', 'storage-root-changed')
+      }
       if (isMounted()) {
         ctx.setValue((prev) => ({
           ...prev,
@@ -99,6 +106,7 @@ export async function finalizeStorageRefHandlers(
           services: prev.services
             ? {
                 ...prev.services,
+                diaryService: stack.diaryService,
                 ragService: ragServiceRef.current
               }
             : prev.services
