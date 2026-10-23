@@ -3,6 +3,7 @@ import {
   buildIncrementalSyncBoundaryHints,
   buildIncrementalSyncBoundaryIssues,
   buildIncrementalSyncPlanPreview,
+  collectManifestVaultScopes,
   formatIncrementalSyncPlanBytes,
   resolveIncrementalSyncVaultScope
 } from '../incremental-sync-plan.util'
@@ -36,6 +37,12 @@ describe('incremental-sync-plan.util', () => {
     )
   })
 
+  it('resolveIncrementalSyncVaultScope maps root hidden dirs to root scope', () => {
+    expect(resolveIncrementalSyncVaultScope('.agents/skills/daily-brief/SKILL.md')).toBe('__root__')
+    expect(resolveIncrementalSyncVaultScope('.baishou/sync-log/latest.json')).toBe('__root__')
+    expect(resolveIncrementalSyncVaultScope('Personal/.agents/skills/a/SKILL.md')).toBe('Personal')
+  })
+
   it('buildIncrementalSyncPlanPreview groups root settings under global scope', () => {
     const preview = buildIncrementalSyncPlanPreview({
       decisions: [
@@ -50,6 +57,27 @@ describe('incremental-sync-plan.util', () => {
     expect(preview.boundaryIssues.unknownVaultPaths).toEqual([])
     const global = preview.vaultSummaries.find((s) => s.vaultName === 'global')
     expect(global).toMatchObject({ upload: 1, uploadBytes: 100, downloadBytes: 0 })
+  })
+
+  it('treats root .agents skill files as root scope instead of a vault', () => {
+    const scopes = collectManifestVaultScopes({
+      files: { '.agents/skills/daily-brief/SKILL.md': {} }
+    } as never)
+    expect(scopes.size).toBe(0)
+
+    const preview = buildIncrementalSyncPlanPreview({
+      decisions: [decision('.agents/skills/daily-brief/SKILL.md', 'upload', { size: 10 })],
+      registeredVaults: ['Personal', '.agents'],
+      diskVaultNames: ['Personal'],
+      activeVaultName: 'Personal',
+      manifestVaultScopes: scopes
+    })
+
+    expect(preview.vaultSummaries.map((s) => s.vaultName)).toEqual(['__root__'])
+    expect(preview.boundaryIssues.unknownVaultPaths).toEqual([])
+    expect(preview.boundaryIssues.diskVaultsNotInRegistry).toEqual([])
+    expect(preview.boundaryIssues.registryVaultsMissingOnDisk).toEqual([])
+    expect(preview.warnings).toEqual([])
   })
 
   it('buildIncrementalSyncBoundaryIssues detects registry/disk mismatch', () => {
