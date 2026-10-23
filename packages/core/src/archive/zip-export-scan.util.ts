@@ -8,7 +8,10 @@ import {
   isPathInsideStorageRoot
 } from '@baishou/shared'
 import { isStorageWriteProbePath } from '../sync/git-sync.helpers'
-import { VAULT_EXTERNAL_PATHS_FILE, type VaultExternalPathsConfig } from '../vault/vault-external-paths.service'
+import {
+  VAULT_EXTERNAL_PATHS_FILE,
+  type VaultExternalPathsConfig
+} from '../vault/vault-external-paths.service'
 
 /** 任意深度都应跳过的目录（Git 仓库、应用元数据等） */
 export const ARCHIVE_RECURSIVE_SKIP_DIR_NAMES = new Set([
@@ -25,6 +28,16 @@ export const ARCHIVE_RECURSIVE_SKIP_DIR_NAMES = new Set([
 
 const SQLITE_SIDEcar_SUFFIXES = ['-wal', '-shm', '-journal'] as const
 
+/** 存储根下由 database/ 专职携带 checkpoint 副本的运行时 SQLite 数据库文件 */
+export const ARCHIVE_ROOT_RUNTIME_SQLITE_NAMES = new Set([
+  'baishou_agent.db',
+  'knowledge.db',
+  'shadow_index.db',
+  'shadow_index_v2.db',
+  'agent.db',
+  'baishou.db'
+])
+
 const IN_PROGRESS_BACKUP_ZIP_RE = /^BaiShou_(Vault_Backup|Full_Archive)_.+\.zip$/i
 
 export function isArchiveRootSkipEntry(name: string): boolean {
@@ -32,6 +45,7 @@ export function isArchiveRootSkipEntry(name: string): boolean {
     name === 'snapshots' ||
     name === 'temp' ||
     name === '.snapshots' ||
+    ARCHIVE_ROOT_RUNTIME_SQLITE_NAMES.has(name.toLowerCase()) ||
     FULL_BACKUP_EXCLUDED_ROOT_NAMES.has(name)
   )
 }

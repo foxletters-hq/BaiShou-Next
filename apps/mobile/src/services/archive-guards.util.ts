@@ -5,7 +5,22 @@ import {
   type IFileSystem
 } from '@baishou/core-mobile'
 
-export const ARCHIVE_SKIP_TOP_LEVEL = new Set(['database', 'config', 'manifest.json', 'user-data'])
+export const ARCHIVE_RUNTIME_SQLITE_DB_NAMES = new Set([
+  'baishou_agent.db',
+  'knowledge.db',
+  'shadow_index.db',
+  'shadow_index_v2.db',
+  'agent.db',
+  'baishou.db'
+])
+
+export const ARCHIVE_SKIP_TOP_LEVEL = new Set([
+  'database',
+  'config',
+  'manifest.json',
+  'user-data',
+  ...ARCHIVE_RUNTIME_SQLITE_DB_NAMES
+])
 
 /** 全量导入 wipe 工作区时需保留的目录（本地快照、临时文件） */
 export const SNAPSHOT_STORAGE_DIR_NAMES = new Set(['snapshots', 'temp', '.snapshots'])

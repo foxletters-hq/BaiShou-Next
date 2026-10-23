@@ -21,9 +21,12 @@ describe('zip-export-scan.util', () => {
     expect(isArchiveRecursiveSkipDir('.baishou')).toBe(true)
   })
 
-  it('skips root-level sync and git entries', () => {
+  it('skips root-level sync, git, and runtime sqlite db entries', () => {
     expect(isArchiveRootSkipEntry('.git')).toBe(true)
     expect(isArchiveRootSkipEntry('.baishou-s3.json')).toBe(true)
+    expect(isArchiveRootSkipEntry('baishou_agent.db')).toBe(true)
+    expect(isArchiveRootSkipEntry('knowledge.db')).toBe(true)
+    expect(isArchiveRootSkipEntry('shadow_index_v2.db')).toBe(true)
     expect(isArchiveRootSkipEntry('Personal')).toBe(false)
   })
 

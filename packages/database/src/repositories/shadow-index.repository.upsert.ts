@@ -58,12 +58,7 @@ function buildMapsFromRows(
   return { idByPath, pathById, idByDate, dateById, foreignVaultIds }
 }
 
-function trackAssignedId(
-  maps: IdPathMaps,
-  filePath: string,
-  dateStr: string,
-  rowId: number
-): void {
+function trackAssignedId(maps: IdPathMaps, filePath: string, dateStr: string, rowId: number): void {
   const normalizedPath = normalizeShadowFilePath(filePath)
   const previousPath = maps.pathById.get(rowId)
   if (previousPath != null && previousPath !== normalizedPath) {
@@ -439,32 +434,25 @@ export class ShadowIndexUpsertOps {
             rowIds.push(rowId)
           }
         })
-        if (driver === 'better-sqlite') {
-          try {
-            await this.database.transaction(async (tx) => {
-              const syncTx = tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void }
-              for (let i = 0; i < payloads.length; i++) {
-                syncFtsRowSync(syncTx, rowIds[i]!, payloads[i]!.rawContent, payloads[i]!.tags)
-              }
-            })
-          } catch {
+        try {
+          await this.database.transaction(async (tx) => {
+            const syncTx = tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void }
             for (let i = 0; i < payloads.length; i++) {
-              syncFtsRowSync(
-                this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
-                rowIds[i]!,
-                payloads[i]!.rawContent,
-                payloads[i]!.tags
+              const rowId = rowIds[i]!
+              const item = payloads[i]!
+              syncTx.run(sql`DELETE FROM journals_fts WHERE rowid = ${rowId}`)
+              syncTx.run(
+                sql`INSERT INTO journals_fts(rowid, content, tags) VALUES(${rowId}, ${segmentChinese(item.rawContent)}, ${segmentChinese(item.tags)})`
               )
             }
-          }
-        } else {
+          })
+        } catch {
           for (let i = 0; i < payloads.length; i++) {
-            await syncFtsRowAsync(
-              this.database,
+            syncFtsRowSync(
+              this.database as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
               rowIds[i]!,
               payloads[i]!.rawContent,
-              payloads[i]!.tags,
-              `[ShadowIndex] 批量 FTS 同步失败 (非阻塞) [ID=${rowIds[i]!}]`
+              payloads[i]!.tags
             )
           }
         }

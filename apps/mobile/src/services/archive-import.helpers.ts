@@ -42,6 +42,7 @@ import {
   type ArchiveRestoreRebootstrapOptions
 } from './mobile-archive-db.bridge'
 import {
+  sweepStaleArchiveImportCache,
   wipeStorageRootPreservingSnapshots,
   selectiveCopyArchiveTree
 } from './archive-snapshot.helpers'
@@ -284,23 +285,7 @@ export async function runArchiveImportFromZip(
   let extractDir: string | undefined
   try {
     const cacheDir = stripFileScheme(getAppCacheDirectory())
-    const normalizedInputZip = stripFileScheme(zipFilePath)
-    try {
-      const cacheEntries = await ctx.fileSystem.readdir(cacheDir)
-      for (const entryName of cacheEntries) {
-        if (
-          entryName.startsWith('baishou_archive_extract_') ||
-          entryName.startsWith('baishou_import_') ||
-          entryName.startsWith('lan_sync_payload_')
-        ) {
-          const candidatePath = joinStoragePath(cacheDir, entryName)
-          if (candidatePath === normalizedInputZip) continue
-          await ctx.fileSystem.rm(candidatePath, { recursive: true, force: true }).catch(() => {})
-        }
-      }
-    } catch {
-      // ignore cache sweep failures
-    }
+    await sweepStaleArchiveImportCache(ctx, cacheDir, stripFileScheme(zipFilePath))
 
     extractDir = joinStoragePath(cacheDir, `baishou_archive_extract_${Date.now()}`)
     await ctx.fileSystem.mkdir(extractDir, { recursive: true })
