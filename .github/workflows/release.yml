@@ -359,7 +359,9 @@ jobs:
           SEMVER="${{ needs.prepare.outputs.semver }}"
           DISPLAY="${{ needs.prepare.outputs.display_semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
-          SCOPE="${{ needs.prepare.outputs.scope }}"
+          # 固定为本 job 的平台：prepare.scope 在 workflow_dispatch both 时为 "both"，
+          # 直接透传会把 Android 产物表渲染成 Windows。
+          SCOPE="mobile"
           APPEND=false
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             APPEND=true
@@ -462,7 +464,9 @@ jobs:
           SEMVER="${{ needs.prepare.outputs.semver }}"
           DISPLAY="${{ needs.prepare.outputs.display_semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
-          SCOPE="${{ needs.prepare.outputs.scope }}"
+          # 固定为本 job 的平台：prepare.scope 在 workflow_dispatch both 时为 "both"，
+          # 直接透传会把产物表标题渲染成 Windows。
+          SCOPE="desktop"
           APPEND=false
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             APPEND=true
@@ -557,7 +561,7 @@ jobs:
             --tag "${{ needs.prepare.outputs.release_tag }}" \
             --repo "${{ github.repository }}"
 
-      - name: Commit channel manifest via PR
+      - name: Commit channel manifest
         env:
           GH_TOKEN: ${{ github.token }}
           PR_BRANCH: chore/release-channel
@@ -570,10 +574,16 @@ jobs:
             echo "channel.json 无变更"
             exit 0
           fi
-
-          # main 受 ruleset 保护（必须走 PR），因此不再直接 push
-          git checkout -B "$PR_BRANCH"
           git commit -m "chore(release): 更新 releases/channel.json [skip ci]"
+
+          # 优先直推；main 若开启 PR 保护则自动改走 PR
+          if git push origin HEAD:main; then
+            echo "channel.json 已直接推送到 main"
+            exit 0
+          fi
+          echo "::warning::直推 main 被仓库规则拦截，改走 Pull Request"
+
+          git checkout -B "$PR_BRANCH"
           git push --force origin "$PR_BRANCH"
 
           STATE=$(gh pr view "$PR_BRANCH" --json state -q .state 2>/dev/null || true)
@@ -596,5 +606,7 @@ jobs:
             fi
             sleep 5
           done
-          gh pr merge "$PR_BRANCH" --squash --delete-branch --auto \
-            || echo "::warning::channel.json PR 尚未合并，请手动合并后再验证下载入口"
+          if ! gh pr merge "$PR_BRANCH" --squash --delete-branch --auto; then
+            echo "::error::channel.json PR 无法自动合并，请手动合并后再验证下载入口"
+            exit 1
+          fi
