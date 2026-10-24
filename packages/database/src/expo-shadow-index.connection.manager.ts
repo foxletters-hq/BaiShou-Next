@@ -69,10 +69,7 @@ export class ExpoShadowIndexConnectionManager {
         logger.info(`[ExpoShadowDB] 恢复已缓存连接: ${dbPath}`)
         return
       } catch (e) {
-        logger.warn(
-          `[ExpoShadowDB] 缓存连接已失效，将重新打开影子索引库 (${dbPath}):`,
-          e as Error
-        )
+        logger.warn(`[ExpoShadowDB] 缓存连接已失效，将重新打开影子索引库 (${dbPath}):`, e as Error)
         this._cachedConnection = null
       }
     }

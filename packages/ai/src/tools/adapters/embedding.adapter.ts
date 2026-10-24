@@ -16,7 +16,8 @@ const CHUNK_EMBED_CONCURRENCY = 3
 const EMBED_MAX_ATTEMPTS = 3
 
 function isTransientEmbeddingError(error: unknown): boolean {
-  const status = (error as { statusCode?: number; status?: number } | null)?.statusCode ??
+  const status =
+    (error as { statusCode?: number; status?: number } | null)?.statusCode ??
     (error as { status?: number } | null)?.status
   if (status === 408 || status === 429 || (typeof status === 'number' && status >= 500)) {
     return true

@@ -69,7 +69,7 @@ export class GraphEmbedOps {
         `[GraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
       )
     }
-    const scored: Array<{ row: typeof rows[number]; distance: number }> = []
+    const scored: Array<{ row: (typeof rows)[number]; distance: number }> = []
     for (const row of rows) {
       if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
       if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
@@ -78,9 +78,7 @@ export class GraphEmbedOps {
       scored.push({ row, distance: cosineDistance(query, emb) })
     }
     scored.sort((a, b) => a.distance - b.distance)
-    return scored
-      .slice(0, topK)
-      .map((item) => ({ ...mapNode(item.row), distance: item.distance }))
+    return scored.slice(0, topK).map((item) => ({ ...mapNode(item.row), distance: item.distance }))
   }
 
   async countUnembeddedLiveNodes(vaultId: string): Promise<number> {

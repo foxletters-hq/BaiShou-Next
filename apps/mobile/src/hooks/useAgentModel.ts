@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, type MutableRefObject } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import {
+  DEFAULT_LATTE_ASSISTANT_ID,
+  SYSTEM_LATTE_ASSISTANT_ID,
   formatDialogueModelLabel,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
@@ -180,9 +182,13 @@ export function useAgentModel(options: UseAgentModelOptions = {}) {
 
         setCurrentAssistant((prev) => {
           const stillValid = prev && assistants.find((a) => a.id === prev.id)
+          const normalizedPersistedId =
+            persisted.assistantId === DEFAULT_LATTE_ASSISTANT_ID
+              ? SYSTEM_LATTE_ASSISTANT_ID
+              : persisted.assistantId
           const fromPersisted =
-            persisted.assistantId &&
-            assistants.find((assistant) => assistant.id === persisted.assistantId)
+            normalizedPersistedId &&
+            assistants.find((assistant) => assistant.id === normalizedPersistedId)
           const next =
             stillValid ||
             fromPersisted ||
