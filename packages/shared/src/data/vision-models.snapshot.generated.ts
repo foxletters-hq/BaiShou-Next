@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-22T21:25:35.346Z',
+  syncedAt: '2026-10-23T01:59:31.636Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -142,13 +142,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'zai-org/GLM-5V-Turbo'
     ],
     kimi: ['kimi-k2.6', 'kimi-k2.7-code', 'kimi-k2.7-code-highspeed', 'kimi-k3'],
-    xiaomimimo: [
-      'mimo-v2-omni',
-      'mimo-v2.5',
-      'mimo-v2.6-flash',
-      'mimo-v2.6-pro',
-      'mimo-v2.6-pro-ultraspeed'
-    ],
+    xiaomimimo: ['mimo-v2.5', 'mimo-v2.6-flash', 'mimo-v2.6-pro', 'mimo-v2.6-pro-ultraspeed'],
     minimax: ['MiniMax-M3', 'MiniMax-M3.1-Flash'],
     zhipu: [
       'glm-4.5v',
@@ -171,8 +165,6 @@ export const VISION_MODELS_SNAPSHOT = {
       'qwen-vl-ocr',
       'qwen-vl-plus',
       'qwen2-5-omni-7b',
-      'qwen2-5-vl-72b-instruct',
-      'qwen2-5-vl-7b-instruct',
       'qwen3-livetranslate-flash-realtime',
       'qwen3-omni-flash',
       'qwen3-omni-flash-realtime',
@@ -475,7 +467,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'mistral-small-2603',
       'mistral-small-latest',
       'pixtral-12b',
-      'pixtral-large-latest'
+      'zai-glm-5-3-flash'
     ],
     stepfun: ['step-3.7-flash', 'step-5-preview'],
     vertexai: [
@@ -1025,7 +1017,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'meta/muse-spark-open',
     'meta/muse-wonder',
     'meta/muse-wonder-1.0',
-    'mimo-v2-omni',
     'mimo-v2.5',
     'mimo-v2.6-flash',
     'mimo-v2.6-pro',
@@ -1187,7 +1178,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'perplexity/sonar-pro-search',
     'perplexity/sonar-reasoning-pro',
     'pixtral-12b',
-    'pixtral-large-latest',
     'prism-ml/ternary-bonsai-2-27b',
     'quiverai/arrow-2',
     'quiverai/arrow-2-telos',
@@ -1222,8 +1212,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'qwen/qwen3.8-max-prime',
     'qwen/qwen3.8-omni-flash',
     'qwen2-5-omni-7b',
-    'qwen2-5-vl-72b-instruct',
-    'qwen2-5-vl-7b-instruct',
     'qwen3-livetranslate-flash-realtime',
     'qwen3-omni-flash',
     'qwen3-omni-flash-realtime',
@@ -1300,6 +1288,7 @@ export const VISION_MODELS_SNAPSHOT = {
     'z-ai/glm-5.3-flash',
     'z-ai/glm-5.3-flashx',
     'z-ai/glm-5v-turbo',
+    'zai-glm-5-3-flash',
     'zai-org/GLM-5.3-Flash',
     'zai-org/GLM-5V-Turbo',
     'zai/glm-4.5v',
