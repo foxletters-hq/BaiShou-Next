@@ -14,6 +14,7 @@ import {
   isConfiguredProviderId,
   logger,
   resolveProviderModelSlot,
+  resolveTemperatureForModel,
   type AgentGatePreview
 } from '@baishou/shared'
 import { getActiveProvider } from '../ipc/agent-helpers'
@@ -158,7 +159,7 @@ export const classifyWorkspaceGateRisk: AgentGateRiskClassifier = async (input) 
       const streamResult = streamText({
         model,
         prompt: buildClassifierPrompt(input),
-        temperature: 0,
+        temperature: resolveTemperatureForModel(modelId, 0),
         maxOutputTokens: CLASSIFIER_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
         experimental_telemetry: { isEnabled: false },
