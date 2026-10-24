@@ -25,7 +25,7 @@
 - 每条新 Release 说明自动附带**各端当前最新版本**下载直链 + 官网入口（无需版本号统一）
 - 贡献者与 PR 列表由 **GitHub `generate_release_notes`** 自动追加（配置见 `.github/release.yml`）；README 另有贡献者徽章与头像墙
 - Tag 必须打在 **main** 上的 commit
-- CI 成功后自动更新 `releases/channel.json` 并 commit 回 main
+- CI 成功后自动更新 `releases/channel.json`，并通过 PR 自动合并回 main
 
 ## 文档
 

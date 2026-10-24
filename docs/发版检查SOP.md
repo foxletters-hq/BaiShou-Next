@@ -31,7 +31,7 @@
 - [ ] GitHub Actions `Build & Release` 全部 job 成功
 - [ ] Release 附件含「版本化文件名 + 固定别名」
 - [ ] Release 说明包含下载表、更新摘要、PR / Contributors
-- [ ] `releases/channel.json` 已由 CI 自动更新并 commit 回 `main`
+- [ ] `releases/channel.json` 已由 CI 自动更新并通过 PR 合并回 `main`
 
 ### 发版后
 
@@ -324,14 +324,14 @@ CI 会校验：
 
 打开 GitHub → Actions → **Build & Release**，确认以下 job：
 
-| Job                               | 通过标准                                    |
-| --------------------------------- | ------------------------------------------- |
-| `Prepare release`                 | tag / 版本 / main 校验通过                  |
-| `Build Android APK`               | APK 构建成功，非 Debug 签名                 |
-| `Build Windows Installer`         | Setup.exe 构建成功；签名状态符合预期        |
-| `Release Android`                 | Release 附件上传成功                        |
-| `Release Windows`                 | Release 附件上传成功                        |
-| `Update release channel manifest` | `releases/channel.json` 已更新并推送回 main |
+| Job                               | 通过标准                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| `Prepare release`                 | tag / 版本 / main 校验通过                           |
+| `Build Android APK`               | APK 构建成功，非 Debug 签名                          |
+| `Build Windows Installer`         | Setup.exe 构建成功；签名状态符合预期                 |
+| `Release Android`                 | Release 附件上传成功                                 |
+| `Release Windows`                 | Release 附件上传成功                                 |
+| `Update release channel manifest` | `releases/channel.json` 已更新，PR 已自动合并回 main |
 
 任一 job 失败：
 
@@ -366,7 +366,7 @@ Invoke-RestMethod "https://raw.githubusercontent.com/foxletters-hq/BaiShou-Next/
 - `downloadUrl` 可访问。
 - `updatedAt` 是本次发版时间。
 
-> `channel.json` 由 CI 自动 commit 回 `main`；不要手动改版本号或下载链接。
+> `channel.json` 由 CI 通过 PR 自动合并回 `main`；不要手动改版本号或下载链接。
 
 ---
 
@@ -470,20 +470,20 @@ Invoke-RestMethod "https://raw.githubusercontent.com/foxletters-hq/BaiShou-Next/
 
 ## 6. 常见失败与处理
 
-| 现象                            | 常见原因                                         | 处理                                                           |
-| ------------------------------- | ------------------------------------------------ | -------------------------------------------------------------- |
-| CI 提示 tag 不在 main           | tag 打在功能分支                                 | 合并到 main 后重新打 tag                                       |
-| tag 与 version.json 不一致      | 忘记 bump 或 bump 错端                           | 修正版本、`sync-app-version`、重新打 tag（未发 Release 前）    |
-| Android 提示无法降级            | `versionCode` 没 +1                              | 递增 `versionCode` 后重发                                      |
-| Android 安装包是 Debug 签名     | `key.properties` 被 prebuild 清掉 / secrets 缺失 | 检查 `ANDROID_*` secrets，重新构建                             |
-| Windows SmartScreen 未知发布者  | 未配置 Authenticode                              | 配置 `WINDOWS_CERT_*`，设 `WINDOWS_SIGN_REQUIRED=1`            |
-| Windows 本地打包 Access denied  | 白守仍在运行                                     | 退出所有窗口后重跑 `release:desktop:win`                       |
-| 安装包启动崩溃                  | 只重编了 `win-unpacked` 没重跑 Inno              | 完整执行 `pnpm release:desktop:win`                            |
-| `sync:check` 失败               | 生成物过期                                       | `pnpm sync`，提交生成物                                        |
-| `pnpm lint` 因 warning 预算失败 | warning 超过 baseline                            | 修复 warning；确需调整 baseline 时按规范单独提交，不得静默放宽 |
-| `channel.json` 未更新           | `update-channel` job 失败 / 无 main 权限         | 检查 job 日志与 `contents: write` 权限；不要手改版本           |
-| Release 附件缺失                | artifact 名称不匹配                              | 检查构建日志与 `Normalize * artifacts` 步骤                    |
-| 旧版检查更新无提示              | channel.json 未更新 / 缓存                       | 确认 channel 内容与客户端缓存策略                              |
+| 现象                            | 常见原因                                         | 处理                                                                        |
+| ------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- |
+| CI 提示 tag 不在 main           | tag 打在功能分支                                 | 合并到 main 后重新打 tag                                                    |
+| tag 与 version.json 不一致      | 忘记 bump 或 bump 错端                           | 修正版本、`sync-app-version`、重新打 tag（未发 Release 前）                 |
+| Android 提示无法降级            | `versionCode` 没 +1                              | 递增 `versionCode` 后重发                                                   |
+| Android 安装包是 Debug 签名     | `key.properties` 被 prebuild 清掉 / secrets 缺失 | 检查 `ANDROID_*` secrets，重新构建                                          |
+| Windows SmartScreen 未知发布者  | 未配置 Authenticode                              | 配置 `WINDOWS_CERT_*`，设 `WINDOWS_SIGN_REQUIRED=1`                         |
+| Windows 本地打包 Access denied  | 白守仍在运行                                     | 退出所有窗口后重跑 `release:desktop:win`                                    |
+| 安装包启动崩溃                  | 只重编了 `win-unpacked` 没重跑 Inno              | 完整执行 `pnpm release:desktop:win`                                         |
+| `sync:check` 失败               | 生成物过期                                       | `pnpm sync`，提交生成物                                                     |
+| `pnpm lint` 因 warning 预算失败 | warning 超过 baseline                            | 修复 warning；确需调整 baseline 时按规范单独提交，不得静默放宽              |
+| `channel.json` 未更新           | `update-channel` job 失败 / channel PR 未合并    | 检查 job 日志与 `pull-requests: write` 权限及 channel PR 状态；不要手改版本 |
+| Release 附件缺失                | artifact 名称不匹配                              | 检查构建日志与 `Normalize * artifacts` 步骤                                 |
+| 旧版检查更新无提示              | channel.json 未更新 / 缓存                       | 确认 channel 内容与客户端缓存策略                                           |
 
 ---
 
