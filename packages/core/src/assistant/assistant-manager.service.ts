@@ -26,6 +26,20 @@ import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
 export type AssistantVaultIdResolver = () => string | null | undefined
 
+/**
+ * 会话重绑后的落盘回调。
+ * 单仓会话 JSON 是冷启动回灌 SQLite 的权威源，必须把 assistant_id 同步写回磁盘，
+ * 否则下一次启动会把刚修好的绑定覆盖回旧值。
+ */
+export type AssistantSessionRebindPort = {
+  onSessionsRebound?: (payload: {
+    vaultId: string
+    oldAssistantId: string
+    newAssistantId: string
+    sessionIds: string[]
+  }) => Promise<void> | void
+}
+
 function normalizeVaultId(raw: string | null | undefined): string | null {
   const value = String(raw ?? '').trim()
   if (!value) return null
@@ -41,7 +55,8 @@ export class AssistantManagerService {
     private readonly repo: AssistantRepository,
     private readonly fileService: AssistantFileService,
     private readonly attachmentManager: IAttachmentManager,
-    private readonly resolveVaultId?: AssistantVaultIdResolver
+    private readonly resolveVaultId?: AssistantVaultIdResolver,
+    private readonly sessionRebindPort?: AssistantSessionRebindPort
   ) {}
 
   private requireVaultId(override?: string | null): string {
@@ -410,14 +425,42 @@ export class AssistantManagerService {
   }
 
   /**
-   * 将会话关联的助手 ID 批量重绑定（用于出厂默认助手升级为官方系统助手）
+   * 将会话关联的助手 ID 批量重绑定（用于出厂默认助手升级为官方系统助手）。
+   * 数据库改完后立即通过 port 把会话 JSON 落盘，避免冷启动回灌把绑定改回旧值。
+   * 返回被改写的会话 ID；幂等，旧 ID 无会话时返回空数组。
    */
   async rebindSessionsAssistantId(
     oldId: string,
     newId: string,
     vaultId?: string | null
-  ): Promise<void> {
+  ): Promise<string[]> {
     const scoped = this.requireVaultId(vaultId)
-    await this.repo.rebindAssistantSessions(oldId, newId, scoped)
+    const sessionIds = await this.repo.rebindAssistantSessions(oldId, newId, scoped)
+    if (sessionIds.length === 0) return sessionIds
+
+    try {
+      await this.sessionRebindPort?.onSessionsRebound?.({
+        vaultId: scoped,
+        oldAssistantId: oldId,
+        newAssistantId: newId,
+        sessionIds
+      })
+    } catch (e) {
+      logger.warn('[AssistantManager] 会话重绑后落盘失败（下次启动会再次自愈）:', {
+        oldId,
+        newId,
+        vaultId: scoped,
+        count: sessionIds.length,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    }
+
+    logger.info('[AssistantManager] 历史会话伙伴绑定已迁移', {
+      oldId,
+      newId,
+      vaultId: scoped,
+      count: sessionIds.length
+    })
+    return sessionIds
   }
 }

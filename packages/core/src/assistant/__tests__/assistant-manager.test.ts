@@ -32,7 +32,8 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
       findById: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
-      delete: vi.fn()
+      delete: vi.fn(),
+      rebindAssistantSessions: vi.fn().mockResolvedValue([])
     } as any
 
     mockAttachmentManager = {
@@ -275,5 +276,47 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     await expect(manager.delete('latte')).rejects.toThrow('SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE')
     expect(mockRepo.delete).not.toHaveBeenCalled()
     expect(mockFileService.deleteAssistant).not.toHaveBeenCalled()
+  })
+
+  it('rebindSessionsAssistantId() flushes rebound session JSON through the port', async () => {
+    const onSessionsRebound = vi.fn().mockResolvedValue(undefined)
+    const portManager = new AssistantManagerService(
+      mockRepo,
+      mockFileService,
+      mockAttachmentManager as any,
+      () => VAULT_PERSONAL,
+      { onSessionsRebound }
+    )
+    mockRepo.rebindAssistantSessions.mockResolvedValue(['sess-1', 'sess-2'])
+
+    const ids = await portManager.rebindSessionsAssistantId('default', 'latte')
+
+    expect(ids).toEqual(['sess-1', 'sess-2'])
+    expect(mockRepo.rebindAssistantSessions).toHaveBeenCalledWith(
+      'default',
+      'latte',
+      VAULT_PERSONAL
+    )
+    expect(onSessionsRebound).toHaveBeenCalledWith({
+      vaultId: VAULT_PERSONAL,
+      oldAssistantId: 'default',
+      newAssistantId: 'latte',
+      sessionIds: ['sess-1', 'sess-2']
+    })
+  })
+
+  it('rebindSessionsAssistantId() is a no-op when no session matches', async () => {
+    const onSessionsRebound = vi.fn()
+    const portManager = new AssistantManagerService(
+      mockRepo,
+      mockFileService,
+      mockAttachmentManager as any,
+      () => VAULT_PERSONAL,
+      { onSessionsRebound }
+    )
+    mockRepo.rebindAssistantSessions.mockResolvedValue([])
+
+    await expect(portManager.rebindSessionsAssistantId('default', 'latte')).resolves.toEqual([])
+    expect(onSessionsRebound).not.toHaveBeenCalled()
   })
 })
