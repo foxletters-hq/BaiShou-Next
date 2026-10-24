@@ -5,7 +5,8 @@ import {
   getDefaultCompressionSystemPrompt,
   adaptCompressionSystemPrompt,
   isAgentStreamAbortError,
-  logger
+  logger,
+  resolveTemperatureForModel
 } from '@baishou/shared'
 import { buildSmallTaskReasoningOptions } from '../providers/reasoning'
 import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
@@ -94,7 +95,7 @@ export async function generateCompressionSummaryText(
               }),
               allowSystemInMessages: true,
               messages,
-              temperature: 0.1,
+              temperature: resolveTemperatureForModel(modelId, 0.1),
               abortSignal,
               experimental_telemetry: { isEnabled: false },
               ...(builtReasoning.providerOptions

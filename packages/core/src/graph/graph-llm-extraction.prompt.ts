@@ -5,7 +5,11 @@ import {
   runWithOpenAiThinkingInjectAsync,
   wrapLanguageModelWithMiddlewares
 } from '@baishou/ai'
-import { AI_FIRST_OUTPUT_TIMEOUT_MS, normalizeReasoningEffortSetting } from '@baishou/shared'
+import {
+  AI_FIRST_OUTPUT_TIMEOUT_MS,
+  normalizeReasoningEffortSetting,
+  resolveTemperatureForModel
+} from '@baishou/shared'
 import type {
   ExtractionCostEstimate,
   GraphExtractLlmDeps,
@@ -239,7 +243,7 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
         model,
         system,
         messages: [{ role: 'user', content: user }],
-        temperature: 0.1,
+        temperature: resolveTemperatureForModel(deps.modelId, 0.1),
         abortSignal: abortController.signal,
         experimental_telemetry: { isEnabled: false },
         onError: () => {},

@@ -16,7 +16,12 @@ import type {
   ToolVectorStore,
   ToolDeduplicationService
 } from '../tools/agent.tool'
-import { AI_FIRST_OUTPUT_TIMEOUT_MS, logger, formatLocalDateTime } from '@baishou/shared'
+import {
+  AI_FIRST_OUTPUT_TIMEOUT_MS,
+  logger,
+  formatLocalDateTime,
+  resolveTemperatureForModel
+} from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 /** 相似度 > 此值视为精确重复 */
@@ -237,7 +242,7 @@ ${newMemoryContent}
 {"action": "merge" | "new" | "skip", "merge_target_ids": [], "merged_content": ""}`
           }
         ],
-        temperature: 0.1
+        temperature: resolveTemperatureForModel(this.modelId, 0.1)
       })
 
       if (!text) return null
