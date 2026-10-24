@@ -173,15 +173,16 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.ref }}
 
-      - name: Free disk space (async)
+      - name: Free disk space
         run: |
           set -euo pipefail
           df -h /
-          # 后台并行清理大型冗余目录，不阻塞后续依赖安装
-          (
-            sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk-bundle \
-              /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
-          ) >/dev/null 2>&1 &
+          # 只清理与后续步骤无关的冗余目录，且同步执行。
+          # 不要删除 $AGENT_TOOLSDIRECTORY（/opt/hostedtoolcache）：setup-node / setup-java
+          # 会把 Node 与 JDK 安装到该目录，异步删除会和安装过程竞争，
+          # 导致后续 Gradle 报 "JAVA_HOME is set to an invalid directory"。
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk-bundle \
+            /opt/ghc /usr/local/share/boost || true
 
       - uses: pnpm/action-setup@v4
 
@@ -524,6 +525,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -555,8 +557,12 @@ jobs:
             --tag "${{ needs.prepare.outputs.release_tag }}" \
             --repo "${{ github.repository }}"
 
-      - name: Commit channel manifest
+      - name: Commit channel manifest via PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH: chore/release-channel
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add releases/channel.json
@@ -564,5 +570,31 @@ jobs:
             echo "channel.json 无变更"
             exit 0
           fi
+
+          # main 受 ruleset 保护（必须走 PR），因此不再直接 push
+          git checkout -B "$PR_BRANCH"
           git commit -m "chore(release): 更新 releases/channel.json [skip ci]"
-          git push origin main
+          git push --force origin "$PR_BRANCH"
+
+          STATE=$(gh pr view "$PR_BRANCH" --json state -q .state 2>/dev/null || true)
+          if [ "$STATE" != "OPEN" ]; then
+            gh pr create \
+              --base main \
+              --head "$PR_BRANCH" \
+              --title "chore(release): 更新 releases/channel.json" \
+              --body "由 Build & Release 工作流自动创建（run ${{ github.run_id }}）。
+
+          \`main\` 要求变更走 Pull Request，因此 channel.json 改为 PR 合并。
+          合并后官网与应用内「检查更新」才会指向新版本。"
+          fi
+
+          # 无必需审批时可立即合并；否则退化为开启 auto-merge，待审批后自动合并
+          for _ in 1 2 3 4 5; do
+            if gh pr merge "$PR_BRANCH" --squash --delete-branch; then
+              echo "channel.json PR 已合并"
+              exit 0
+            fi
+            sleep 5
+          done
+          gh pr merge "$PR_BRANCH" --squash --delete-branch --auto \
+            || echo "::warning::channel.json PR 尚未合并，请手动合并后再验证下载入口"
