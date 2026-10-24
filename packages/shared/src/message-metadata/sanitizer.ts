@@ -132,5 +132,38 @@ export function unwrapMessageMetadataForDisplay(text: string): string {
   return sanitizeAssistantGeneratedText(raw)
 }
 
+const CLOSED_THINK_PATTERNS = [
+  /<redacted_thinking>([\s\S]*?)<\/redacted_thinking>/gi,
+  /<thinking>([\s\S]*?)<\/thinking>/gi,
+  /<think>([\s\S]*?)<\/think>/gi
+]
+
+/**
+ * 从 assistant 生成文本中提取闭合的思考块（<think> / <thinking> / <redacted_thinking>），
+ * 并分别返回思考内容和清洗后的正文。
+ */
+export function splitThinkingFromAssistantText(text: string): {
+  cleanText: string
+  reasoningText?: string
+} {
+  let rest = unwrapMessageContentBlocks(text ?? '')
+  rest = stripLeakedToolCallMarkup(rest)
+
+  const thinkings: string[] = []
+  for (const pattern of CLOSED_THINK_PATTERNS) {
+    pattern.lastIndex = 0
+    rest = rest.replace(pattern, (_, inner: string) => {
+      const trimmed = inner?.trim()
+      if (trimmed) thinkings.push(trimmed)
+      return ''
+    })
+  }
+
+  const reasoningText = thinkings.length > 0 ? thinkings.join('\n\n') : undefined
+  const cleanText = sanitizeAssistantGeneratedText(rest)
+
+  return { cleanText, reasoningText }
+}
+
 /** @deprecated 使用 sanitizeAssistantGeneratedText */
 export const stripLeakedMessageTimeFromAssistantText = sanitizeAssistantGeneratedText
