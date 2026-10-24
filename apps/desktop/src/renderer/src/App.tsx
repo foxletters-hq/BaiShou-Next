@@ -39,11 +39,6 @@ const AssistantEditScreen = lazy(() =>
 const DiaryEditorPage = lazy(() =>
   import('./features/diary/DiaryEditorPage').then((m) => ({ default: m.DiaryEditorPage }))
 )
-const KnowledgeDetailPage = lazy(() =>
-  import('./features/knowledge/KnowledgeDetailPage').then((m) => ({
-    default: m.KnowledgeDetailPage
-  }))
-)
 const SummaryDetailPage = lazy(() =>
   import('./features/summary/SummaryDetailPage').then((m) => ({ default: m.SummaryDetailPage }))
 )
@@ -162,8 +157,6 @@ function sameRouteLocation(
   return a.pathname === b.pathname && (a.search || '') === (b.search || '')
 }
 
-const WORKBENCH_ENTRY_ENABLED = false
-
 const AppRoutes = () => {
   const location = useLocation()
   const { closeAll } = useDialog()
@@ -252,22 +245,7 @@ const AppRoutes = () => {
 
             {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
             <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
-            <Route
-              path="/agent-workspace/knowledge/:notebookId"
-              element={
-                WORKBENCH_ENTRY_ENABLED ? <KnowledgeDetailPage /> : <Navigate to="/diary" replace />
-              }
-            />
-            <Route
-              path="/agent-workspace/*"
-              element={
-                WORKBENCH_ENTRY_ENABLED ? (
-                  <CachedRoutePlaceholder />
-                ) : (
-                  <Navigate to="/diary" replace />
-                )
-              }
-            />
+            <Route path="/agent-workspace/*" element={<Navigate to="/diary" replace />} />
             <Route path="/sessions" element={<SessionManagementScreen />} />
             <Route path="/assistants" element={<AssistantManagementScreen />} />
             <Route path="/assistants/:id" element={<AssistantEditScreen />} />

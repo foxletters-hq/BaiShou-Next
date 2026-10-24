@@ -81,9 +81,6 @@ export function loadHiddenNavItems(): string[] {
     const filtered = parsed.filter(
       (id): id is string => typeof id === 'string' && ALL_NAV_ID_SET.has(id)
     )
-    if (!filtered.includes('workbench')) {
-      filtered.push('workbench')
-    }
     return filtered
   } catch {
     return [...getDefaultHiddenNavIds()]
@@ -191,10 +188,9 @@ export function loadSidebarNavOrder(): string[] {
         }
       }
 
-      // v4：已配置用户也强制露出伙伴、隐藏工作台（入口改到顶栏）
+      // v4：已配置用户也强制露出伙伴
       if (mv < 4) {
         hidden.delete('companion')
-        hidden.add('workbench')
       }
 
       persistHiddenNavItems(
@@ -208,16 +204,6 @@ export function loadSidebarNavOrder(): string[] {
 
     order = ensureCompanionAfterDiary(order)
     order = reorderSyncNavIdsInOrder(stripRemovedSidebarNavIds(order))
-
-    if (mv < 3 && !order.includes('workbench')) {
-      const diaryIndex = order.indexOf('diary')
-      if (diaryIndex >= 0) {
-        order.splice(diaryIndex + 1, 0, 'workbench')
-      } else {
-        order.unshift('workbench')
-      }
-      order = ensureCompanionAfterDiary(order)
-    }
 
     localStorage.setItem(MIGRATION_VERSION_KEY, String(CURRENT_MIGRATION_VERSION))
     localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order))
