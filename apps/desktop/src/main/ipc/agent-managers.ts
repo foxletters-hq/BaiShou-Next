@@ -84,7 +84,14 @@ export function getAgentManagers(): AgentManagers {
     realAssistantRepo,
     assistantFileService,
     attachmentManager,
-    () => resolveActiveVaultId()
+    () => resolveActiveVaultId(),
+    {
+      onSessionsRebound: async ({ vaultId, sessionIds }) => {
+        const vaultName =
+          vaultService.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null
+        await sessionManager.flushSessionsToDisk(sessionIds, vaultName)
+      }
+    }
   )
 
   const realMessageRepo = new MessageRepository(db)

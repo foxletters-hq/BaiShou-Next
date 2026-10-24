@@ -260,7 +260,19 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       assistantRepo,
       assistantFileService,
       attachmentManager,
-      () => resolveActiveVaultId()
+      () => resolveActiveVaultId(),
+      {
+        onSessionsRebound: async ({ vaultId, sessionIds }) => {
+          const activeVaultName = await Promise.resolve(
+            pathService.getActiveVaultNameForContext?.()
+          )
+          const vaultName =
+            vaultService?.getAllVaults().find((vault) => vault.id === vaultId)?.name ??
+            activeVaultName ??
+            null
+          await sessionManager.flushSessionsToDisk(sessionIds, vaultName)
+        }
+      }
     )
 
     vaultService = new VaultService(pathService, fileSystem)
