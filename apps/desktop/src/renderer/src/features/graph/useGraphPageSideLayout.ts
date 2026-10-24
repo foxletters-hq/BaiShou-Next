@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { usePanelResize } from '../agent-workspace/workbench/usePanelResize'
+import { usePanelResize } from './usePanelResize'
 import type { GraphSideMode } from './graph-page.types'
 import {
   GRAPH_SIDE_WIDTH_MAX,

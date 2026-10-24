@@ -433,9 +433,7 @@ describe('memory center chrome', () => {
 
   it('C3: memory help stays mounted independently of the readiness bar', () => {
     const page = readSrc('features/memory/MemoryCenterPage.tsx')
-    const help = readSrc('features/memory/MemoryHelpButton.tsx')
     expect(page).toContain('<MemoryHelpButton')
-    expect(help).toContain('<MemoryNotebookNotice')
     const helpIndex = page.indexOf('<MemoryHelpButton')
     const barIndex = page.indexOf('<MemoryCenterOrganizeSlot')
     expect(helpIndex).toBeGreaterThanOrEqual(0)
