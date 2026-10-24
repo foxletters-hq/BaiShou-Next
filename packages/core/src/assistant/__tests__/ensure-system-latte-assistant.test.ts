@@ -153,6 +153,11 @@ describe('ensureSystemLatteAssistant', () => {
     expect(create).not.toHaveBeenCalled()
     expect(update).not.toHaveBeenCalled()
     expect(findAll).not.toHaveBeenCalled()
+    expect((manager as any).rebindSessionsAssistantId).toHaveBeenCalledWith(
+      DEFAULT_LATTE_ASSISTANT_ID,
+      SYSTEM_LATTE_ASSISTANT_ID,
+      undefined
+    )
   })
 
   it('heals orphaned legacy default sessions even when system Latte already exists', async () => {

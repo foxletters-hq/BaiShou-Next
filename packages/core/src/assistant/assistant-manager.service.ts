@@ -246,8 +246,22 @@ export class AssistantManagerService {
   async findAll(vaultIdOverride?: string | null) {
     const vaultId = this.tryVaultId(vaultIdOverride)
     if (!vaultId) return []
-    const items = await this.repo.findAll(vaultId)
+    let items = await this.repo.findAll(vaultId)
     const fileIds = new Set((await this.fileService.listAllAssistants()).map((f) => f.id))
+    const dbIds = new Set(items.map((i) => i.id))
+    const missingFileIds = [...fileIds].filter((fileId) => !dbIds.has(fileId))
+
+    if (missingFileIds.length > 0) {
+      let hydratedAny = false
+      for (const fileId of missingFileIds) {
+        if (await this.upsertFromDiskFile(fileId, vaultId)) {
+          hydratedAny = true
+        }
+      }
+      if (hydratedAny) {
+        items = await this.repo.findAll(vaultId)
+      }
+    }
 
     // 兜底：Assistants 目录一个文件都没有、但库里有记录时，先按库返回。
     // 常见于工作区目录未挂载 / 云盘尚未同步完成；否则 UI 会退回默认伙伴，
@@ -266,7 +280,13 @@ export class AssistantManagerService {
   async findById(id: string, vaultIdOverride?: string | null) {
     const vaultId = this.tryVaultId(vaultIdOverride)
     if (!vaultId) return undefined
-    const item = await this.repo.findById(id, vaultId)
+    let item = await this.repo.findById(id, vaultId)
+    if (!item) {
+      const hydrated = await this.upsertFromDiskFile(id, vaultId)
+      if (hydrated) {
+        item = await this.repo.findById(id, vaultId)
+      }
+    }
     if (item) return this.mapAvatarOutput(item)
     return item
   }
@@ -318,11 +338,11 @@ export class AssistantManagerService {
     fileId: string,
     vaultId: string,
     vaultName?: string | null
-  ): Promise<void> {
+  ): Promise<boolean> {
     const raw = await this.fileService.readAssistant(fileId, vaultName)
     const data = normalizeDiskAssistantRecord(raw)
     if (!data?.id || typeof data.name !== 'string') {
-      return
+      return false
     }
 
     if (data.createdAt != null) data.createdAt = new Date(data.createdAt)
@@ -336,7 +356,7 @@ export class AssistantManagerService {
     const existing = await this.repo.findById(fileId, vaultId)
     if (existing) {
       if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
-        return
+        return true
       }
       await this.repo.update(
         fileId,
@@ -346,6 +366,7 @@ export class AssistantManagerService {
     } else {
       await this.repo.create({ ...(data as InsertAssistantInput), vaultId })
     }
+    return true
   }
 
   /**
