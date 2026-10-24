@@ -33,7 +33,7 @@ import {
   resolveFlutterLegacyMigrationTargetRoot,
   resolveMobileFlutterAvatarsDirectory
 } from './mobile-legacy-migration.service'
-import { stageLegacySqliteForAttach } from '@baishou/core-mobile'
+import { stageLegacySqliteForAttach, ROOT_VAULT_SKIP_DIR_NAMES } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { FLUTTER_LEGACY_MIGRATED_SOURCE_KEY } from '../constants/storage'
 import { withMobileMigrationSqlite } from './mobile-legacy-version-migration.sqlite'
@@ -215,7 +215,13 @@ async function collectExistingTargetVaultNames(
 
     const entries = await runtime.fileSystem.readdir(rootDir)
     for (const name of entries) {
-      if (name.startsWith('.') || name === 'vault_registry.json') continue
+      if (
+        name.startsWith('.') ||
+        name === 'vault_registry.json' ||
+        ROOT_VAULT_SKIP_DIR_NAMES.has(name)
+      ) {
+        continue
+      }
       const dirPath = `${rootDir}/${name}`
       try {
         const stat = await runtime.fileSystem.stat(dirPath)

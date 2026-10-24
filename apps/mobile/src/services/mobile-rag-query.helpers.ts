@@ -229,12 +229,13 @@ export async function queryMobileRagEntries(
     const mIds = pageKeys.filter((k) => k.kind === 'm' && k.itemId).map((k) => k.itemId)
     const gIds = pageKeys.filter((k) => k.kind === 'g' && k.itemId).map((k) => k.itemId)
 
+    const sqlClient = client
     const [memoryById, graphById] = await Promise.all([
       (async () => {
         const map = new Map<string, ReturnType<typeof enrichMobileEntry>>()
-        if (mIds.length === 0) return map
+        if (mIds.length === 0 || !sqlClient.execute) return map
         const placeholders = mIds.map(() => '?').join(', ')
-        const rowsRes = await client.execute({
+        const rowsRes = await sqlClient.execute({
           sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
                     source_id as sourceId, metadata_json as metadataJson, model_id as modelId,
                     ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt

@@ -5,6 +5,7 @@ import {
   isBatchEmbedAbortRequested,
   isBatchEmbedAbortedError,
   isBatchEmbedPaused,
+  isBatchEmbedSessionActive,
   requestBatchEmbedCancel,
   requestBatchEmbedPause,
   requestBatchEmbedResume
@@ -49,6 +50,10 @@ export class MobileRagOperationControl {
 
   get isPaused(): boolean {
     return isBatchEmbedPaused()
+  }
+
+  get isRunning(): boolean {
+    return isBatchEmbedSessionActive()
   }
 }
 

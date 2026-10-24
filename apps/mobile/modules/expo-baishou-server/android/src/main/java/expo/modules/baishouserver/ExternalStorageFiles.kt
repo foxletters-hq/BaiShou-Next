@@ -532,7 +532,7 @@ object ExternalStorageFiles {
     )
 
     private val ARCHIVE_SKIP_TOP_LEVEL =
-        setOf("database", "config", "manifest.json", "user-data") + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
+        setOf("AI", "database", "config", "manifest.json", "user-data") + ARCHIVE_RUNTIME_SQLITE_DB_NAMES
 
     private val ARCHIVE_SKIP_DIR_NAMES = setOf("snapshots", "temp", ".snapshots")
 

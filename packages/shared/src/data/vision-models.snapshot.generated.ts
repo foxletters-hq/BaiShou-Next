@@ -4,7 +4,7 @@
  * Source: https://models.dev/api.json + scripts/provider-modelsdev.manifest.json
  */
 export const VISION_MODELS_SNAPSHOT = {
-  syncedAt: '2026-10-23T01:59:31.636Z',
+  syncedAt: '2026-10-24T17:35:09.186Z',
   source: 'https://models.dev/api.json',
   byProvider: {
     openai: [
@@ -141,7 +141,14 @@ export const VISION_MODELS_SNAPSHOT = {
       'zai-org/GLM-5.3-Flash',
       'zai-org/GLM-5V-Turbo'
     ],
-    kimi: ['kimi-k2.6', 'kimi-k2.7-code', 'kimi-k2.7-code-highspeed', 'kimi-k3'],
+    kimi: [
+      'kimi-k2.6',
+      'kimi-k2.7-code',
+      'kimi-k2.7-code-highspeed',
+      'kimi-k3',
+      'kimi-k3.1-pro',
+      'kimi-k3.1-pro-highspeed'
+    ],
     xiaomimimo: ['mimo-v2.5', 'mimo-v2.6-flash', 'mimo-v2.6-pro', 'mimo-v2.6-pro-ultraspeed'],
     minimax: ['MiniMax-M3', 'MiniMax-M3.1-Flash'],
     zhipu: [
@@ -280,6 +287,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'moonshotai/kimi-k2.6',
       'moonshotai/kimi-k2.7-code',
       'moonshotai/kimi-k3',
+      'moonshotai/kimi-k3.1-pro',
       'nex-agi/nex-n2.5-mini',
       'nex-agi/nex-n2.5-pro',
       'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
@@ -424,6 +432,7 @@ export const VISION_MODELS_SNAPSHOT = {
     opencodego: [
       'claude-haiku-5-5',
       'deepseek-v4.1-flash',
+      'gemini-4-argon',
       'gemini-4-argon-contributor',
       'glm-5.3-flash',
       'gpt-5.6-luna',
@@ -431,6 +440,7 @@ export const VISION_MODELS_SNAPSHOT = {
       'grok-4.7',
       'kimi-k2.7-code',
       'kimi-k3',
+      'kimi-k3.1-pro',
       'longcat-2.5-preview-free',
       'mimo-v2.5',
       'mimo-v2.6-flash',
@@ -637,15 +647,15 @@ export const VISION_MODELS_SNAPSHOT = {
       'moonshotai/kimi-k2.7-code-highspeed',
       'moonshotai/kimi-k3',
       'moonshotai/kimi-k3-fast',
+      'moonshotai/kimi-k3.1-pro',
+      'moonshotai/kimi-k3.1-pro-highspeed',
       'nvidia/nemotron-3.5-super-vl',
       'nvidia/nemotron-nano-12b-v2-vl',
-      'openai/gpt-4-turbo',
       'openai/gpt-4.1',
       'openai/gpt-4.1-fast',
       'openai/gpt-4.1-mini',
       'openai/gpt-4.1-mini-fast',
       'openai/gpt-4.1-nano',
-      'openai/gpt-4.1-nano-fast',
       'openai/gpt-4o',
       'openai/gpt-4o-fast',
       'openai/gpt-4o-mini',
@@ -696,7 +706,6 @@ export const VISION_MODELS_SNAPSHOT = {
       'openai/o3-fast',
       'openai/o3-pro',
       'openai/o4-mini',
-      'openai/o4-mini-fast',
       'perplexity/sonar',
       'quiverai/arrow-2',
       'quiverai/arrow-2-telos',
@@ -987,6 +996,8 @@ export const VISION_MODELS_SNAPSHOT = {
     'kimi-k2.7-code',
     'kimi-k2.7-code-highspeed',
     'kimi-k3',
+    'kimi-k3.1-pro',
+    'kimi-k3.1-pro-highspeed',
     'kimi/kimi-k2.5',
     'klingai/kling-v2.5-turbo-i2v',
     'klingai/kling-v2.6-i2v',
@@ -1076,6 +1087,8 @@ export const VISION_MODELS_SNAPSHOT = {
     'moonshotai/kimi-k2.7-code-highspeed',
     'moonshotai/kimi-k3',
     'moonshotai/kimi-k3-fast',
+    'moonshotai/kimi-k3.1-pro',
+    'moonshotai/kimi-k3.1-pro-highspeed',
     'muse-spark-1.2-contributor',
     'muse-spark-1.3-contributor',
     'nex-agi/Nex-N2-Pro',
@@ -1098,7 +1111,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'openai/gpt-4.1-mini',
     'openai/gpt-4.1-mini-fast',
     'openai/gpt-4.1-nano',
-    'openai/gpt-4.1-nano-fast',
     'openai/gpt-4o',
     'openai/gpt-4o-2024-05-13',
     'openai/gpt-4o-2024-08-06',
@@ -1167,7 +1179,6 @@ export const VISION_MODELS_SNAPSHOT = {
     'openai/o3-fast',
     'openai/o3-pro',
     'openai/o4-mini',
-    'openai/o4-mini-fast',
     'openai/o4-mini-high',
     'openrouter/auto',
     'openrouter/free',
