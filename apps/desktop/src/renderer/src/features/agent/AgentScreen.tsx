@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
-import { useOutletContext, useSearchParams } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import {
   InputBar,
   SessionContextUsageRing,
@@ -18,8 +18,6 @@ import {
   resolveDialogueEffortPreference
 } from '@baishou/shared'
 import { selectSameActionCountInSession, useAgentGateInboxStore } from '@baishou/store'
-import { WorkbenchNotebookMountDialog } from '../agent-workspace/workbench/WorkbenchNotebookMountDialog'
-import { KnowledgeMountHint } from '../knowledge/KnowledgeMountHint'
 import { AgentChatEmptyState } from './AgentChatEmptyState'
 import { AgentCompanionGateDock } from './AgentCompanionGateDock'
 import { AgentContextChainHost } from './AgentContextChainHost'
@@ -51,8 +49,6 @@ import {
 import { useDialogueSlotEffort } from './use-dialogue-slot-effort'
 import { isDraftChatSessionId } from './utils/draft-chat-session.util'
 
-const KNOWLEDGE_ENTRY_ENABLED = false
-
 /**
  * Agent 大模型聊天屏幕主页面组件。
  * 本组件已彻底重构为容器组件，仅负责高层框架布局，业务逻辑与渲染控制已分别下沉至 useAgentChatFlow 和子组件中。
@@ -80,18 +76,7 @@ export const AgentScreen: React.FC = () => {
 
   const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
   const modelTriggerRef = useRef<HTMLButtonElement>(null)
-  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
-
-  useEffect(() => {
-    if (!KNOWLEDGE_ENTRY_ENABLED) return
-    if (searchParams.get('focus') !== 'notebook-mount') return
-    setNotebookMountOpen(true)
-    const next = new URLSearchParams(searchParams)
-    next.delete('focus')
-    setSearchParams(next, { replace: true })
-  }, [searchParams, setSearchParams])
 
   const displayModelName = noModelSelected
     ? flow.t('agent.no_model_selected', '暂未选择模型')
@@ -335,16 +320,6 @@ export const AgentScreen: React.FC = () => {
             onQueueNext={onQueueNext}
             sameActionCount={sameActionCount}
           />
-          {KNOWLEDGE_ENTRY_ENABLED ? (
-            <KnowledgeMountHint
-              sessionId={flow.sessionId}
-              assistantId={flow.currentAssistant?.id}
-              scope="companion"
-              refreshToken={notebookMountOpen}
-              className={styles.mountHintTight}
-              onOpen={() => setNotebookMountOpen(true)}
-            />
-          ) : null}
           <ComposerRuntimeQueueBar
             items={pendingQueueCtl.pendingQueue}
             editingInputId={pendingQueueCtl.editingInputId}
@@ -375,9 +350,6 @@ export const AgentScreen: React.FC = () => {
             isLoading={companionStreamUi.composerBusy}
             allowSendWhileLoading
             attachmentIntake="companion"
-            onOpenNotebookMount={
-              KNOWLEDGE_ENTRY_ENABLED ? () => setNotebookMountOpen(true) : undefined
-            }
             onEmptySubmit={() => {
               const head = pendingQueueCtl.pendingQueue[0]
               if (head && !pendingQueueCtl.editingInputId) void pendingQueueCtl.sendNow(head)
@@ -418,16 +390,6 @@ export const AgentScreen: React.FC = () => {
           />
         </div>
       </div>
-
-      {KNOWLEDGE_ENTRY_ENABLED ? (
-        <WorkbenchNotebookMountDialog
-          open={notebookMountOpen}
-          sessionId={flow.sessionId}
-          assistantId={flow.currentAssistant?.id}
-          scope="companion"
-          onClose={() => setNotebookMountOpen(false)}
-        />
-      ) : null}
 
       {/* 对话框与抽屉弹出层组件 */}
       <AgentDialogs

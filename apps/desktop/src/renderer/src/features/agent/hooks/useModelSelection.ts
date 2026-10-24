@@ -14,7 +14,6 @@ import {
 } from '@baishou/shared'
 import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
 import { peekChatInitMeta } from './chat-init-meta.util'
-import { peekWorkspaceInitMeta } from '../../agent-workspace/utils/workspace-init-meta.util'
 
 export interface UseModelSelectionParams {
   sessionId: string | undefined
@@ -123,9 +122,7 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     }
 
     if (!userManuallySetModelRef.current && sessionId) {
-      const initMeta = isDraftChatSessionId(sessionId)
-        ? peekChatInitMeta(sessionId)
-        : peekWorkspaceInitMeta(sessionId)
+      const initMeta = peekChatInitMeta(sessionId)
       if (
         initMeta &&
         isConfiguredProviderId(initMeta.providerId) &&
