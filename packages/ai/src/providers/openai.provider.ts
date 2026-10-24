@@ -94,8 +94,18 @@ export function applyChatCompletionsReasoningEffortForTools(body: {
   return true
 }
 
+function isMiniMaxRequest(
+  options: { baseURL?: string; providerType?: string },
+  model?: unknown
+): boolean {
+  if (options.providerType?.toLowerCase() === 'minimax') return true
+  if (options.baseURL?.toLowerCase().includes('minimax')) return true
+  if (typeof model === 'string' && /minimax/i.test(model)) return true
+  return false
+}
+
 /**
- * DeepSeek thinking 请求拦截 + Chat 路径 tools 降级。
+ * DeepSeek thinking 请求拦截 + Chat 路径 tools 降级 + MiniMax reasoning_split 注入。
  */
 function createOpenAICompatFetchInterceptor(
   options: { baseURL?: string; providerType?: string },
@@ -125,6 +135,13 @@ function createOpenAICompatFetchInterceptor(
         }
 
         if (applyOpenAiThinkingBodyInject(body)) {
+          mutated = true
+        }
+
+        // MiniMax 官方 Chat Completions 协议：未显式传参时默认开启 reasoning_split，
+        // 将思考过程分流至 delta.reasoning_content（对齐参考实现）
+        if (isMiniMaxRequest(options, body.model) && body.reasoning_split === undefined) {
+          body.reasoning_split = true
           mutated = true
         }
 

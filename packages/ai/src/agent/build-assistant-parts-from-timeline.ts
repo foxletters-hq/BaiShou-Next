@@ -1,4 +1,4 @@
-import { sanitizeAssistantGeneratedText } from '@baishou/shared'
+import { sanitizeAssistantGeneratedText, splitThinkingFromAssistantText } from '@baishou/shared'
 import type { StreamAccumulator, StreamTimelineItem } from './stream-accumulator'
 import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
 import { resolvePersistedToolStatus } from './persist-tool-status.util'
@@ -52,6 +52,16 @@ export function buildAssistantPartsFromTimeline(params: {
     })
   }
 
+  const pushContentWithThinkingExtraction = (text: string) => {
+    const { cleanText, reasoningText } = splitThinkingFromAssistantText(text)
+    if (reasoningText && reasoningText.trim()) {
+      pushTextSegment(reasoningText, true)
+    }
+    if (cleanText && cleanText.trim()) {
+      pushTextSegment(cleanText, false)
+    }
+  }
+
   if (timeline.length === 0) {
     // 兼容旧路径：无 timeline 时按 思考 → 工具 → 正文 落盘（勿把正文放最前）
     if (accumulator.reasoning.trim()) pushTextSegment(accumulator.reasoning, true)
@@ -77,8 +87,7 @@ export function buildAssistantPartsFromTimeline(params: {
         data: { ...(toolData as Record<string, unknown>), seq: seq++ }
       })
     }
-    const text = sanitizeAssistantGeneratedText(accumulator.text)
-    if (text.trim()) pushTextSegment(text, false)
+    if (accumulator.text.trim()) pushContentWithThinkingExtraction(accumulator.text)
     return parts
   }
 
@@ -88,7 +97,7 @@ export function buildAssistantPartsFromTimeline(params: {
       continue
     }
     if (item.kind === 'text') {
-      pushTextSegment(item.text, false)
+      pushContentWithThinkingExtraction(item.text)
       continue
     }
     if (item.kind === 'tool') {
