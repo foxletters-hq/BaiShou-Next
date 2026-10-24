@@ -231,24 +231,33 @@ export class AssistantRepository {
   }
 
   /**
-   * 将会话绑定的助手 ID 批量迁移（如旧版本 default 升级为官方 latte）
+   * 将会话绑定的助手 ID 批量迁移（如旧版本 default 升级为官方 latte）。
+   *
+   * 返回被改写的会话 ID，供上层把同一变更同步回会话 JSON；
+   * 只改 SQLite 的话，下次冷启动从磁盘回灌会再次覆盖回旧 assistant_id。
    */
   async rebindAssistantSessions(
     oldAssistantId: string,
     newAssistantId: string,
     vaultId?: string | null
-  ): Promise<void> {
-    await this.run(async () => {
+  ): Promise<string[]> {
+    return this.run(async () => {
       const scoped = this.requireVaultId(vaultId)
+      const conditions = and(
+        eq(agentSessionsTable.vaultId, scoped),
+        eq(agentSessionsTable.assistantId, oldAssistantId)
+      )
+      const rows = await this.db
+        .select({ id: agentSessionsTable.id })
+        .from(agentSessionsTable)
+        .where(conditions)
+      if (rows.length === 0) return []
+
       await this.db
         .update(agentSessionsTable)
         .set({ assistantId: newAssistantId })
-        .where(
-          and(
-            eq(agentSessionsTable.vaultId, scoped),
-            eq(agentSessionsTable.assistantId, oldAssistantId)
-          )
-        )
+        .where(conditions)
+      return rows.map((row) => row.id)
     })
   }
 }

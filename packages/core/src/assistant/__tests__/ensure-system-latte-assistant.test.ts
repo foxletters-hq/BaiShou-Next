@@ -13,6 +13,8 @@ describe('ensureSystemLatteAssistant', () => {
   let findAll: ReturnType<typeof vi.fn>
   let create: ReturnType<typeof vi.fn>
   let update: ReturnType<typeof vi.fn>
+  let deleteMock: ReturnType<typeof vi.fn>
+  let rebindMock: ReturnType<typeof vi.fn>
   let manager: AssistantManagerService
 
   beforeEach(() => {
@@ -20,14 +22,15 @@ describe('ensureSystemLatteAssistant', () => {
     findAll = vi.fn()
     create = vi.fn()
     update = vi.fn()
-    const deleteMock = vi.fn()
-    const rebindMock = vi.fn()
+    deleteMock = vi.fn()
+    rebindMock = vi.fn()
     manager = {
       findById,
       findAll,
       create,
       update,
       delete: deleteMock,
+      syncToDisk: vi.fn(),
       rebindSessionsAssistantId: rebindMock
     } as unknown as AssistantManagerService
   })
@@ -150,5 +153,29 @@ describe('ensureSystemLatteAssistant', () => {
     expect(create).not.toHaveBeenCalled()
     expect(update).not.toHaveBeenCalled()
     expect(findAll).not.toHaveBeenCalled()
+  })
+
+  it('heals orphaned legacy default sessions even when system Latte already exists', async () => {
+    const existing = {
+      id: SYSTEM_LATTE_ASSISTANT_ID,
+      name: 'Latte',
+      systemPrompt: 'already here',
+      isDefault: true
+    }
+    findById.mockImplementation(async (id: string) =>
+      id === SYSTEM_LATTE_ASSISTANT_ID ? existing : null
+    )
+    rebindMock.mockResolvedValue(['sess-1', 'sess-2'])
+
+    const result = await ensureSystemLatteAssistant(manager, 'zh')
+
+    expect(result).toEqual({ created: false, assistantId: SYSTEM_LATTE_ASSISTANT_ID })
+    expect(create).not.toHaveBeenCalled()
+    expect(deleteMock).not.toHaveBeenCalled()
+    expect(rebindMock).toHaveBeenCalledWith(
+      DEFAULT_LATTE_ASSISTANT_ID,
+      SYSTEM_LATTE_ASSISTANT_ID,
+      undefined
+    )
   })
 })

@@ -22,6 +22,7 @@ import {
   ensureMemoryEmbeddingsVaultIndex,
   ensureSystemSettingsTable,
   migrateSummariesAndAssistantsVault,
+  migrateLegacyDefaultAssistantInDb,
   migrateVaultNameToVaultId,
   retireDiaryEmbedJobsTable
 } from './migration.service.schema'
@@ -29,7 +30,8 @@ import {
 export type { EmbeddedMigrations, MigrationJournal } from './migration.service.types'
 
 export const AGENT_SCHEMA_COMPAT_VERSION_KEY = '__agent_schema_compat_version'
-export const AGENT_SCHEMA_COMPAT_VERSION = 'v1'
+/** v2：补跑历史会话 default→latte 绑定修复（v1 已打戳的库也需要再执行一次） */
+export const AGENT_SCHEMA_COMPAT_VERSION = 'v2'
 
 /**
  * Agent DB 迁移服务
@@ -371,6 +373,7 @@ export class MigrationService {
     await backfillMemoryEmbeddingsVaultNameColumn(this.sqlExec())
     await migrateVaultNameToVaultId(this.sqlExec(), this.storageRoot)
     await migrateSummariesAndAssistantsVault(this.sqlExec())
+    await migrateLegacyDefaultAssistantInDb(this.sqlExec())
     await this._backfillAgentMessagesOrderIndex()
   }
 

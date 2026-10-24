@@ -349,11 +349,25 @@ export async function migrateLegacyDefaultAssistantInDb(
   executeSql: MigrationSqlExecutor
 ): Promise<void> {
   try {
-    await executeSql(
-      `UPDATE agent_sessions SET assistant_id = 'latte' WHERE assistant_id = 'default'`
+    // 只迁移「当前仓已存在官方 latte」的会话，避免把还没升级的工作区提前绑到不存在的伙伴上。
+    // 幂等：重复执行时 0 行受影响。落盘修正由 ensureSystemLatteAssistant 在启动时补齐。
+    const result = await executeSql(
+      `UPDATE agent_sessions
+          SET assistant_id = 'latte'
+        WHERE assistant_id = 'default'
+          AND EXISTS (
+            SELECT 1 FROM agent_assistants
+             WHERE agent_assistants.id = 'latte'
+               AND agent_assistants.vault_id = agent_sessions.vault_id
+          )`
     )
-  } catch {
-    // best-effort
+    const count = Number(result.rowsAffected ?? 0)
+    if (count > 0) {
+      logger.info('[MigrationService] 历史会话 default→latte 绑定额回填完成', { count })
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e)
+    logger.warn('[MigrationService] 历史会话 default→latte 回填失败（非阻塞）:', message)
   }
 }
 

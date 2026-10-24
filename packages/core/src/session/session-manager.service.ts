@@ -141,9 +141,38 @@ export class SessionManagerService {
     this.persistence.notifySessionMutated(sessionId, urgency)
   }
 
-  /** 立即将会话 aggregate 写入 JSON */
-  public flushSessionToDisk(sessionId: string): Promise<void> {
-    return this.persistence.flushNow(sessionId)
+  /** 立即将会话 aggregate 写入 JSON；显式传 vaultName 时写入该工作区 Sessions/ */
+  public flushSessionToDisk(sessionId: string, vaultName?: string | null): Promise<void> {
+    return this.persistence.flushNow(
+      sessionId,
+      vaultName?.trim() ? { vaultName: vaultName.trim() } : undefined
+    )
+  }
+
+  /**
+   * 批量落盘指定会话（伙伴重绑 / 归属修复后使用）。
+   * 必须带目标工作区名，否则多仓场景会把 JSON 写到当前活跃仓。
+   * 单条失败只告警，不阻断其余会话；返回成功条数。
+   */
+  async flushSessionsToDisk(
+    sessionIds: readonly string[],
+    vaultName?: string | null
+  ): Promise<number> {
+    let flushed = 0
+    const target = vaultName?.trim() || null
+    for (const sessionId of sessionIds) {
+      try {
+        await this.persistence.flushNow(sessionId, target ? { vaultName: target } : undefined)
+        flushed++
+      } catch (e) {
+        console.warn('[SessionManager] flushSessionsToDisk failed', {
+          sessionId,
+          vaultName: target,
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    }
+    return flushed
   }
 
   /** 仅 flush 脏会话（增量同步 / 存储静默前） */
