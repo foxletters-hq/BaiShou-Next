@@ -63,7 +63,9 @@ export async function importLegacyChatsFromRows(
       sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
         ? String(sessionRow.assistant_id)
         : null
-    const mappedAssistantId = rawAssistantId ? assistantIdMap[rawAssistantId] : fallbackAssistantId
+    const mappedAssistantId = rawAssistantId
+      ? (assistantIdMap[rawAssistantId] ?? fallbackAssistantId)
+      : fallbackAssistantId
     if (!mappedAssistantId) {
       skipped += 1
       if (!warnings.includes('version_migration.import_chat_missing_assistant')) {
@@ -162,7 +164,9 @@ export async function importLegacyChatsFromSources(
       sessionRow.assistant_id != null && String(sessionRow.assistant_id).trim() !== ''
         ? String(sessionRow.assistant_id)
         : null
-    const mappedAssistantId = rawAssistantId ? assistantIdMap[rawAssistantId] : fallbackAssistantId
+    const mappedAssistantId = rawAssistantId
+      ? (assistantIdMap[rawAssistantId] ?? fallbackAssistantId)
+      : fallbackAssistantId
     if (!mappedAssistantId) {
       skipped += 1
       if (!warnings.includes('version_migration.import_chat_missing_assistant')) {
