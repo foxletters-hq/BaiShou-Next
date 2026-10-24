@@ -10,7 +10,7 @@ import {
   readLegacyVaultRegistry,
   writeNextVaultRegistry
 } from '../migration/legacy-migration.shared'
-import { listDiskVaultFolderNames } from './vault-disk.util'
+import { listDiskVaultFolderNames, ROOT_VAULT_SKIP_DIR_NAMES } from './vault-disk.util'
 import {
   discoverAllVaultNamesOnDisk,
   discoverLegacyVaultNamesOnDisk,
@@ -71,13 +71,28 @@ export abstract class VaultRegistryMixin extends VaultIdentityBase {
       try {
         const rawList = JSON.parse(content)
         const fallbackNow = new Date()
-        this._vaults = rawList.map((item: any) => ({
+        let hadSkippedVaults = false
+        const filteredList = Array.isArray(rawList)
+          ? rawList.filter((item: any) => {
+              const name = typeof item?.name === 'string' ? item.name.trim() : ''
+              if (!name || ROOT_VAULT_SKIP_DIR_NAMES.has(name)) {
+                hadSkippedVaults = true
+                return false
+              }
+              return true
+            })
+          : []
+        this._vaults = filteredList.map((item: any) => ({
           id: isVaultId(item.id) ? item.id : '',
           name: item.name,
           path: item.path,
           createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
           lastAccessedAt: parseRegistryTimestamp(item.lastAccessedAt, fallbackNow)
         }))
+
+        if (hadSkippedVaults) {
+          shouldSave = true
+        }
 
         if (this._vaults.length === 0) {
           const defaultVaultName = 'Personal'
@@ -181,6 +196,12 @@ export abstract class VaultRegistryMixin extends VaultIdentityBase {
     const diskNames = await listDiskVaultFolderNames(this.fileSystem, rootDir)
     const added: string[] = []
     let dirty = false
+
+    const beforeCount = this._vaults.length
+    this._vaults = this._vaults.filter((v) => !ROOT_VAULT_SKIP_DIR_NAMES.has(v.name.trim()))
+    if (this._vaults.length !== beforeCount) {
+      dirty = true
+    }
 
     for (const diskName of diskNames) {
       if (this.registryCoversDiskFolder(diskName)) continue

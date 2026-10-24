@@ -40,6 +40,7 @@ describe('incremental-sync-plan.util', () => {
   it('resolveIncrementalSyncVaultScope maps root hidden dirs to root scope', () => {
     expect(resolveIncrementalSyncVaultScope('.agents/skills/daily-brief/SKILL.md')).toBe('__root__')
     expect(resolveIncrementalSyncVaultScope('.baishou/sync-log/latest.json')).toBe('__root__')
+    expect(resolveIncrementalSyncVaultScope('AI/skills/summary-write/SKILL.md')).toBe('__root__')
     expect(resolveIncrementalSyncVaultScope('Personal/.agents/skills/a/SKILL.md')).toBe('Personal')
   })
 

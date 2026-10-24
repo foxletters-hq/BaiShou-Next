@@ -40,13 +40,15 @@ export class VaultNameExistsError extends Error {
 }
 
 export class VaultInvalidNameError extends Error {
-  readonly reason: 'empty' | 'invalid_chars'
+  readonly reason: 'empty' | 'invalid_chars' | 'reserved_name'
 
-  constructor(input: string, reason: 'empty' | 'invalid_chars') {
+  constructor(input: string, reason: 'empty' | 'invalid_chars' | 'reserved_name') {
     super(
       reason === 'empty'
         ? 'Vault name cannot be empty.'
-        : `Vault name "${input}" contains invalid characters.`
+        : reason === 'reserved_name'
+          ? `Vault name "${input}" is a reserved system directory name.`
+          : `Vault name "${input}" contains invalid characters.`
     )
     this.name = 'VaultInvalidNameError'
     this.reason = reason

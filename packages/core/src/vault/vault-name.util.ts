@@ -1,9 +1,11 @@
+import { ROOT_VAULT_SKIP_DIR_NAMES } from './vault-disk.util'
+
 /** 工作空间名称中不允许的字符（路径 / URI 安全） */
 const INVALID_VAULT_NAME_REGEX = /[\\/:%#?*\x00-\x1f]/
 
 export type VaultNameValidationResult =
   | { ok: true; name: string }
-  | { ok: false; reason: 'empty' | 'invalid_chars' }
+  | { ok: false; reason: 'empty' | 'invalid_chars' | 'reserved_name' }
 
 export type VaultNameConflictKind = 'exact' | 'case' | 'directory'
 
@@ -59,6 +61,9 @@ export function validateVaultName(name: string): VaultNameValidationResult {
   if (normalized === '.' || normalized === '..') return { ok: false, reason: 'invalid_chars' }
   if (INVALID_VAULT_NAME_REGEX.test(normalized)) {
     return { ok: false, reason: 'invalid_chars' }
+  }
+  if (ROOT_VAULT_SKIP_DIR_NAMES.has(normalized)) {
+    return { ok: false, reason: 'reserved_name' }
   }
   return { ok: true, name: normalized }
 }

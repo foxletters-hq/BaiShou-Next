@@ -21,9 +21,18 @@ const UNKNOWN_SCOPE = '__unknown__'
 const ROOT_FILES = new Set(['vault_registry.json'])
 const GLOBAL_SETTINGS_PREFIX = '.baishou/settings/'
 
-/** 存储根下点目录（`.agents` 技能、`.baishou` 运行时数据等）不是工作区，归入根作用域 */
-function isRootHiddenSyncScope(scope: string): boolean {
-  return scope.startsWith('.')
+const ROOT_NON_VAULT_TOP_LEVEL_NAMES = new Set([
+  'AI',
+  'assistant_avatars',
+  'node_modules',
+  'config',
+  'database',
+  'user-data'
+])
+
+/** 存储根下点目录（`.agents` 技能、`.baishou` 运行时数据等）与系统保留目录（`AI` 技能等）不是工作区，归入根作用域 */
+function isRootNonVaultScope(scope: string): boolean {
+  return scope.startsWith('.') || ROOT_NON_VAULT_TOP_LEVEL_NAMES.has(scope)
 }
 
 function isNonVaultSyncScope(scope: string): boolean {
@@ -31,7 +40,7 @@ function isNonVaultSyncScope(scope: string): boolean {
     scope === ROOT_SCOPE ||
     scope === INCREMENTAL_SYNC_GLOBAL_SCOPE ||
     scope === UNKNOWN_SCOPE ||
-    isRootHiddenSyncScope(scope)
+    isRootNonVaultScope(scope)
   )
 }
 
@@ -44,8 +53,8 @@ export function resolveIncrementalSyncVaultScope(filePath: string): string {
   const slash = normalized.indexOf('/')
   if (slash === -1) return ROOT_SCOPE
   const scope = normalized.slice(0, slash)
-  // `.agents/skills/...` 等根级点目录由存储根共享，若当作工作区会被误报「注册表工作区缺失」
-  return isRootHiddenSyncScope(scope) ? ROOT_SCOPE : scope
+  // `.agents/skills/...`、`AI/skills/...` 等根级目录由存储根共享，若当作工作区会被误报「注册表工作区缺失」
+  return isRootNonVaultScope(scope) ? ROOT_SCOPE : scope
 }
 
 /** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录（大小写不敏感） */
