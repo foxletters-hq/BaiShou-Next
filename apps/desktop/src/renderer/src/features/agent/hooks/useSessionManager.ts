@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { DEFAULT_LATTE_ASSISTANT_ID, SYSTEM_LATTE_ASSISTANT_ID } from '@baishou/shared'
 import { useToast } from '@baishou/ui'
 
 export interface UseSessionManagerParams {
@@ -32,8 +33,10 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
     async (title: string): Promise<string | null> => {
       if (typeof window === 'undefined' || !window.electron) return null
       try {
-        const rawAstId = searchParams.get('assistantId') || currentAssistantId || 'default'
-        const astId = typeof rawAstId === 'string' ? rawAstId : String(rawAstId)
+        const rawAstId =
+          searchParams.get('assistantId') || currentAssistantId || SYSTEM_LATTE_ASSISTANT_ID
+        const strAstId = typeof rawAstId === 'string' ? rawAstId : String(rawAstId)
+        const astId = strAstId === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : strAstId
         const newTitle = title.trim().substring(0, 10) || t('agent.sessions.newChat', '新对话')
 
         const newId = crypto.randomUUID() // 前端生成纯 UUID

@@ -38,7 +38,6 @@ import { PendingEmbedNotice } from './components/PendingEmbedNotice'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { getCachedRagActiveState, subscribeRagRuntime } from '../settings/rag-runtime-cache'
 import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
-import { prefetchWorkbenchHome } from '../../lib/prefetch-workbench-home'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
@@ -198,11 +197,6 @@ export const DiaryPage: React.FC = () => {
     if (!hasLoadedOnce) return
     void refreshStatusBar()
   }, [refreshStatusBar, hasLoadedOnce])
-
-  useEffect(() => {
-    if (!hasLoadedOnce) return
-    prefetchWorkbenchHome()
-  }, [hasLoadedOnce])
 
   useEffect(() => {
     if (!hasLoadedOnce) return

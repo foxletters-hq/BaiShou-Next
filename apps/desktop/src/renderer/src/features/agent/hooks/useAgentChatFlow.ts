@@ -30,7 +30,6 @@ import {
   isConfiguredProviderId,
   isAgentStreamAbortError
 } from '@baishou/shared'
-import { applyPendingNotebookMountToSession } from '../../knowledge/apply-pending-notebook-mount'
 import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 import { isDraftChatSessionId } from '../utils/draft-chat-session.util'
 import { applyCompanionContextRecompressResult } from './companion-context-recompress.util'
@@ -268,11 +267,6 @@ export function useAgentChatFlow() {
         if (!targetSessionId) {
           throw new Error(t('agent.error.create_session_failed', '创建会话失败'))
         }
-        await applyPendingNotebookMountToSession({
-          sessionId: targetSessionId,
-          assistantId: currentAssistant?.id,
-          scope: 'companion'
-        })
       }
 
       const busy = stream.isStreaming || stream.isBridgeActive

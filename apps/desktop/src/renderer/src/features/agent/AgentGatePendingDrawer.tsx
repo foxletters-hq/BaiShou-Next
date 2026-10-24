@@ -13,8 +13,6 @@ export interface AgentGatePendingDrawerProps {
   onClose: () => void
 }
 
-const WORKBENCH_ENTRY_ENABLED = false
-
 export const AgentGatePendingDrawer: React.FC<AgentGatePendingDrawerProps> = ({
   open,
   onClose
@@ -23,13 +21,7 @@ export const AgentGatePendingDrawer: React.FC<AgentGatePendingDrawerProps> = ({
   const navigate = useNavigate()
   const pendingCount = useAgentGateInboxStore(selectPendingCount)
   const groups = useAgentGateInboxStore(selectGroupedPending)
-  const items = useMemo(
-    () =>
-      WORKBENCH_ENTRY_ENABLED
-        ? groups
-        : groups.filter((group) => group.scope?.kind !== 'workspace'),
-    [groups]
-  )
+  const items = useMemo(() => groups.filter((group) => group.scope?.kind !== 'workspace'), [groups])
   const nameMaps = useAgentGatePendingNameMaps(open, items)
 
   if (!open) return null

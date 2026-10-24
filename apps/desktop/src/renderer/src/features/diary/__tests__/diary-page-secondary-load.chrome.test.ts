@@ -19,6 +19,5 @@ describe('diary first paint secondary load', () => {
     expect(page).toMatch(/if \(!hasLoadedOnce\) return[\s\S]*refreshStatusBar/)
     expect(page).toMatch(/if \(!hasLoadedOnce\) return[\s\S]*findByDate/)
     expect(page).toMatch(/if \(!hasLoadedOnce \|\| !selectedMonth\) return[\s\S]*getAttachmentDir/)
-    expect(page).toContain('prefetchWorkbenchHome')
   })
 })

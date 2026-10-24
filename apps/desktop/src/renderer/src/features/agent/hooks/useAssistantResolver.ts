@@ -1,7 +1,11 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAssistantStore } from '@baishou/store'
-import { LATTE_ASSISTANT_NAME } from '@baishou/shared'
+import {
+  DEFAULT_LATTE_ASSISTANT_ID,
+  LATTE_ASSISTANT_NAME,
+  SYSTEM_LATTE_ASSISTANT_ID
+} from '@baishou/shared'
 
 export interface UseAssistantResolverParams {
   sessionId: string | undefined
@@ -28,9 +32,11 @@ export function useAssistantResolver(
   const currentSession = sessions.find((s: any) => s.id === sessionId)
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
-    if (typeof raw === 'string' && raw.length > 0) return raw
-    if (raw !== null && raw !== undefined) return String(raw)
-    return undefined
+    let val: string | undefined
+    if (typeof raw === 'string' && raw.length > 0) val = raw
+    else if (raw !== null && raw !== undefined) val = String(raw)
+    if (!val) return undefined
+    return val === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : val
   }
 
   let activeAssistantId: string | undefined
@@ -48,12 +54,12 @@ export function useAssistantResolver(
     if (activeAssistantId) {
       assistant = assistants.find((a) => String(a.id) === String(activeAssistantId)) ||
         assistants.find((a) => a.isDefault) || {
-          id: 'default',
+          id: SYSTEM_LATTE_ASSISTANT_ID,
           name: LATTE_ASSISTANT_NAME
         }
     } else {
       assistant = assistants.find((a) => a.isDefault) || {
-        id: 'default',
+        id: SYSTEM_LATTE_ASSISTANT_ID,
         name: LATTE_ASSISTANT_NAME
       }
     }

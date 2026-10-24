@@ -14,7 +14,9 @@ import { useToast, AssistantPickerSheet, useDialog } from '@baishou/ui'
 import { AssistantCreateModal } from './components/AssistantCreateModal'
 import styles from './AgentLayout.module.css'
 import {
+  DEFAULT_LATTE_ASSISTANT_ID,
   LATTE_ASSISTANT_NAME,
+  SYSTEM_LATTE_ASSISTANT_ID,
   buildAgentChatNavigationPath,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity
@@ -66,9 +68,11 @@ export const AgentLayout: React.FC = () => {
     navigationIntentRef.current !== intentAtStart
 
   const sanitizeAssistantId = (raw: unknown): string | undefined => {
-    if (typeof raw === 'string' && raw.length > 0) return raw
-    if (typeof raw === 'number') return String(raw)
-    return undefined
+    let val: string | undefined
+    if (typeof raw === 'string' && raw.length > 0) val = raw
+    else if (typeof raw === 'number') val = String(raw)
+    if (!val) return undefined
+    return val === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : val
   }
 
   const urlAssistantId = sanitizeAssistantId(searchParams.get('assistantId'))
@@ -311,7 +315,7 @@ export const AgentLayout: React.FC = () => {
       }
     : !isAssistantsLoading
       ? {
-          id: 'default',
+          id: SYSTEM_LATTE_ASSISTANT_ID,
           name: LATTE_ASSISTANT_NAME,
           emoji: undefined
         }
@@ -331,7 +335,7 @@ export const AgentLayout: React.FC = () => {
     if (!astId) {
       const store = useAssistantStore.getState()
       const defaultAst = store.assistants.find((a) => a.isDefault) || store.assistants[0]
-      astId = defaultAst?.id || 'default'
+      astId = defaultAst?.id || SYSTEM_LATTE_ASSISTANT_ID
     }
 
     bumpNavigationIntent()
