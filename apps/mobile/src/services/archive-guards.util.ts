@@ -15,6 +15,7 @@ export const ARCHIVE_RUNTIME_SQLITE_DB_NAMES = new Set([
 ])
 
 export const ARCHIVE_SKIP_TOP_LEVEL = new Set([
+  'AI',
   'database',
   'config',
   'manifest.json',

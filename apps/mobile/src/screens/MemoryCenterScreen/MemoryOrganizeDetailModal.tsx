@@ -120,7 +120,7 @@ export function MemoryOrganizeDetailModal(props: {
                   ? t('settings.rag_phase_skipped', '无需补齐')
                   : row.status === 'pending'
                     ? row.total > 0
-                      ? row.id === 'graphNodes' || row.id === 'memories'
+                      ? row.id === 'graph_node' || row.id === 'memory'
                         ? t('settings.rag_phase_pending_item_count', '待整理 {{count}} 个', {
                             count: row.total
                           })
