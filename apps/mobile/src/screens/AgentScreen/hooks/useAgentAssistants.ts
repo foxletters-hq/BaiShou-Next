@@ -39,8 +39,8 @@ export function useAgentAssistants(deps: {
     dbReady,
     services,
     storageIndexing,
-    vaultRevision: _vaultRevision,
-    ecosystemResyncEpoch: _ecosystemResyncEpoch,
+    vaultRevision,
+    ecosystemResyncEpoch,
     vaultSwitching,
     currentAssistant,
     setCurrentAssistant,
@@ -52,6 +52,8 @@ export function useAgentAssistants(deps: {
 
   const [assistants, setAssistants] = useState<MobileAssistantUi[]>([])
   const loadAssistantsRequestRef = useRef(0)
+  const lastVaultRevisionRef = useRef(vaultRevision)
+  const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
 
   useEffect(() => {
     if (vaultSwitching) {
@@ -61,7 +63,7 @@ export function useAgentAssistants(deps: {
   }, [vaultSwitching])
 
   const loadAssistants = useCallback(async () => {
-    if (!dbReady || !services) return
+    if (!dbReady || !services || vaultSwitching) return
     if (storageIndexing) {
       await waitForVaultEcosystemResync()
     }
@@ -69,7 +71,9 @@ export function useAgentAssistants(deps: {
     try {
       const rows = await services.assistantManager.findAll()
       if (requestId !== loadAssistantsRequestRef.current) return
+      // 先用库里的元数据铺满列表，头像解析失败也不该让伙伴列表变空
       setAssistants(mapAssistantRowsToUiWithCachedAvatars(rows, { preferFileUri: true }))
+      if (rows.length === 0) return
 
       const hydrated = await hydrateAssistantsForUi(
         rows,
@@ -79,11 +83,12 @@ export function useAgentAssistants(deps: {
       )
       if (requestId !== loadAssistantsRequestRef.current) return
       setAssistants(hydrated)
-    } catch {
+    } catch (e) {
       if (requestId !== loadAssistantsRequestRef.current) return
-      setAssistants([])
+      // 保留上一次成功加载的列表，避免临时读盘/头像失败把伙伴选择器打成空态
+      console.warn('Failed to load assistants', e)
     }
-  }, [dbReady, services, storageIndexing])
+  }, [dbReady, services, storageIndexing, vaultSwitching])
 
   const refreshAssistantsOnFocus = useCallback(() => {
     void loadAssistants()
@@ -92,6 +97,18 @@ export function useAgentAssistants(deps: {
   useEffect(() => {
     void loadAssistants()
   }, [loadAssistants])
+
+  // 归档恢复 / 迁移 / 工作区切换完成后，伙伴 JSON 与影子库都可能已更新；
+  // 与 useAgentSessions 保持一致，跟着 revision/epoch 重新加载，避免只有设置页能看到伙伴。
+  useEffect(() => {
+    const vaultChanged = lastVaultRevisionRef.current !== vaultRevision
+    const ecosystemResynced = lastEcosystemResyncEpochRef.current !== ecosystemResyncEpoch
+    lastVaultRevisionRef.current = vaultRevision
+    lastEcosystemResyncEpochRef.current = ecosystemResyncEpoch
+
+    if (!vaultChanged && !ecosystemResynced) return
+    void loadAssistants()
+  }, [vaultRevision, ecosystemResyncEpoch, loadAssistants])
 
   useThrottledFocusRefresh(refreshAssistantsOnFocus, 2000, consumeAssistantsNeedRefresh)
 
