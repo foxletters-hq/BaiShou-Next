@@ -308,10 +308,11 @@ export function buildReasoningProviderOptionsResult(
         }
         break
       }
-      // MiniMax-M3 openai-compat：thinking.type（对齐参考）
+      // MiniMax-M3 openai-compat：thinking.type（对齐参考）与 reasoning_split
       if (isMiniMaxM3Model(params.modelId)) {
         openAiThinkingInject = {
-          thinkingType: effort === 'none' ? 'disabled' : 'adaptive'
+          thinkingType: effort === 'none' ? 'disabled' : 'adaptive',
+          reasoningSplit: effort !== 'none'
         }
         break
       }

@@ -329,6 +329,6 @@ describe('reasoning adapters', () => {
       providerType: 'minimax',
       effort: 'high'
     })
-    expect(built.openAiThinkingInject).toEqual({ thinkingType: 'adaptive' })
+    expect(built.openAiThinkingInject).toEqual({ thinkingType: 'adaptive', reasoningSplit: true })
   })
 })

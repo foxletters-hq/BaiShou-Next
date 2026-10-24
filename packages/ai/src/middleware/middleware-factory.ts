@@ -96,8 +96,13 @@ export function buildLanguageModelMiddlewares(
     }
   }
 
-  // 3. 推理提取中间件
-  if (resolved.providerType === 'deepseek' || resolved.providerType === 'openai') {
+  // 3. 推理提取中间件（对齐参考：对所有非纯原生思考协议如 anthropic/gemini 的提供商，兜底提取正文中的 <think> 标签）
+  const isNativeThoughtsOnly =
+    resolved.providerType === 'anthropic' ||
+    resolved.providerType === 'gemini' ||
+    resolved.providerType === 'vertexai'
+
+  if (!isNativeThoughtsOnly) {
     try {
       middlewares.push(
         extractReasoningMiddleware({ tagName: 'think' }) as LanguageModelV3Middleware

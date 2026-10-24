@@ -14,6 +14,8 @@ export type OpenAiThinkingBodyInject = {
   openRouterReasoning?: { effort: string }
   /** MiniMax-M3 openai-compat：body.thinking = { type } */
   thinkingType?: 'disabled' | 'adaptive' | 'enabled'
+  /** MiniMax 流式推理字段切分：为 true 时将思考内容放入 delta.reasoning_content */
+  reasoningSplit?: boolean
   /** 其它需原样合并进 chat/completions JSON 的字段 */
   extraBody?: Record<string, unknown>
 }
@@ -73,6 +75,7 @@ function hasInjectPayload(inject: OpenAiThinkingBodyInject | undefined): boolean
     (typeof inject.reasoningEffort === 'string' && inject.reasoningEffort.length > 0) ||
     Boolean(inject.openRouterReasoning?.effort) ||
     Boolean(inject.thinkingType) ||
+    typeof inject.reasoningSplit === 'boolean' ||
     Boolean(inject.extraBody && Object.keys(inject.extraBody).length > 0)
   )
 }
@@ -129,6 +132,10 @@ export function applyOpenAiThinkingBodyInject(
   }
   if (src.thinkingType) {
     body.thinking = { type: src.thinkingType }
+    mutated = true
+  }
+  if (typeof src.reasoningSplit === 'boolean') {
+    body.reasoning_split = src.reasoningSplit
     mutated = true
   }
   if (src.extraBody) {
