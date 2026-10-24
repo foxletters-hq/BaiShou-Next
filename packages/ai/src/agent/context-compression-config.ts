@@ -2,6 +2,7 @@ import type { SessionRepository } from '@baishou/database'
 import { AssistantRepository } from '@baishou/database'
 import {
   DEFAULT_LATTE_ASSISTANT_ID,
+  SYSTEM_LATTE_ASSISTANT_ID,
   DEFAULT_MODEL_CONTEXT_WINDOW,
   getModelContextWindow
 } from '@baishou/shared'
@@ -87,7 +88,9 @@ export async function resolveSessionCompressionConfig(
     const linkedAssistantId = session?.assistantId?.trim()
     let ast = linkedAssistantId ? await astRepo.findById(linkedAssistantId, vaultId) : null
     if (!ast) {
-      ast = await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID, vaultId)
+      ast =
+        (await astRepo.findById(SYSTEM_LATTE_ASSISTANT_ID, vaultId)) ??
+        (await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID, vaultId))
     }
 
     const modelContextWindow = getModelContextWindow(

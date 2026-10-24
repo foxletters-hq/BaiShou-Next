@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm'
 import {
+  DEFAULT_LATTE_ASSISTANT_ID,
+  SYSTEM_LATTE_ASSISTANT_ID,
   deriveLegacyVaultId,
   isVaultId,
   parseMountedNotebookIds,
@@ -12,6 +14,15 @@ import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
+
+function resolveSessionAssistantId(session: {
+  assistantId?: string | null
+  assistant_id?: string | null
+}): string | null {
+  const raw = String(session.assistantId ?? session.assistant_id ?? '').trim()
+  if (!raw) return null
+  return raw === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : raw
+}
 
 function resolveSessionVaultId(session: {
   vaultId?: string | null
@@ -42,6 +53,7 @@ export class SessionAggregateSync {
     if (!row) return null
     const session = {
       ...row,
+      assistantId: resolveSessionAssistantId(row) ?? row.assistantId,
       mountedNotebookIds: parseMountedNotebookIds(row.mountedNotebookIds)
     }
 
@@ -187,7 +199,7 @@ export class SessionAggregateSync {
         session.id,
         session.title ?? null,
         resolveSessionVaultId(session),
-        session.assistantId ?? null,
+        resolveSessionAssistantId(session),
         session.isPinned ? 1 : 0,
         session.systemPrompt ?? null,
         serializeMountedNotebookIds(session.mountedNotebookIds ?? session.mounted_notebook_ids),

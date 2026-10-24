@@ -477,5 +477,37 @@ describe('MigrationService', () => {
         { embedding_id: 'e-2', group_id: 'memory', vault_id: 'vlt_personal' }
       ])
     })
+
+    it('_ensureCompatSchema should migrate legacy default assistant_id in agent_sessions to latte', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE agent_sessions (
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL DEFAULT '新对话',
+          vault_id TEXT NOT NULL,
+          assistant_id TEXT,
+          provider_id TEXT NOT NULL DEFAULT 'default',
+          model_id TEXT NOT NULL DEFAULT 'default',
+          created_at INTEGER NOT NULL DEFAULT 1,
+          updated_at INTEGER NOT NULL DEFAULT 1
+        )
+      `)
+      await db.run(sql`
+        INSERT INTO agent_sessions (id, title, vault_id, assistant_id)
+        VALUES ('s-default', 'Latte Chat', 'vlt_personal', 'default'),
+               ('s-custom', 'Custom Chat', 'vlt_personal', 'ast_custom')
+      `)
+
+      await (service as any)._ensureCompatSchema()
+
+      const rows = (await db.all(
+        sql`SELECT id, assistant_id FROM agent_sessions ORDER BY id`
+      )) as Array<{ id: string; assistant_id: string }>
+
+      expect(rows).toEqual([
+        { id: 's-custom', assistant_id: 'ast_custom' },
+        { id: 's-default', assistant_id: 'latte' }
+      ])
+    })
   })
 })
