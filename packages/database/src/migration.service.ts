@@ -21,7 +21,6 @@ import {
   ensureMemoryEmbeddingsTable,
   ensureMemoryEmbeddingsVaultIndex,
   ensureSystemSettingsTable,
-  migrateLegacyDefaultAssistantInDb,
   migrateSummariesAndAssistantsVault,
   migrateLegacyDefaultAssistantInDb,
   migrateVaultNameToVaultId,
@@ -377,7 +376,6 @@ export class MigrationService {
     await migrateSummariesAndAssistantsVault(this.sqlExec())
     await migrateLegacyDefaultAssistantInDb(this.sqlExec())
     await this._backfillAgentMessagesOrderIndex()
-    await migrateLegacyDefaultAssistantInDb(this.sqlExec())
   }
 
   private async _ensureCompressionSnapshotsCompatibility(): Promise<void> {
