@@ -319,4 +319,70 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     await expect(portManager.rebindSessionsAssistantId('default', 'latte')).resolves.toEqual([])
     expect(onSessionsRebound).not.toHaveBeenCalled()
   })
+
+  it('findById() hydrates from disk when SQLite has not synced the assistant file yet', async () => {
+    mockRepo.findById
+      .mockResolvedValueOnce(undefined as any)
+      .mockResolvedValueOnce(undefined as any)
+      .mockResolvedValueOnce({
+        id: 'default',
+        name: 'Custom Latte',
+        avatarPath: null,
+        assistantKind: 'companion',
+        sortOrder: 0
+      } as any)
+    mockFileService.readAssistant.mockResolvedValue({
+      id: 'default',
+      name: 'Custom Latte'
+    })
+
+    const item = await manager.findById('default')
+
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'default',
+        name: 'Custom Latte',
+        vaultId: VAULT_PERSONAL
+      })
+    )
+    expect(item).toMatchObject({ id: 'default', name: 'Custom Latte' })
+  })
+
+  it('findAll() hydrates missing disk assistant files even when SQLite already has some rows', async () => {
+    mockFileService.listAllAssistants.mockResolvedValue([
+      { id: 'latte', fullPath: '' },
+      { id: 'custom-1', fullPath: '' }
+    ])
+    mockRepo.findAll
+      .mockResolvedValueOnce([
+        { id: 'latte', name: 'Latte', avatarPath: null, assistantKind: 'companion', sortOrder: 0 }
+      ] as any)
+      .mockResolvedValueOnce([
+        { id: 'latte', name: 'Latte', avatarPath: null, assistantKind: 'companion', sortOrder: 0 },
+        {
+          id: 'custom-1',
+          name: 'Custom One',
+          avatarPath: null,
+          assistantKind: 'companion',
+          sortOrder: 1
+        }
+      ] as any)
+    mockRepo.findById.mockResolvedValueOnce(undefined as any)
+    mockFileService.readAssistant.mockResolvedValueOnce({
+      id: 'custom-1',
+      name: 'Custom One'
+    })
+
+    const items = await manager.findAll()
+
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'custom-1',
+        name: 'Custom One',
+        vaultId: VAULT_PERSONAL
+      })
+    )
+    expect(items.map((item) => item.id)).toEqual(['latte', 'custom-1'])
+  })
+  })
 })
