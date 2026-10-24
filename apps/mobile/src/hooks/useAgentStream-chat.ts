@@ -6,9 +6,7 @@ import { claimAgentStreamSession } from '@baishou/ai'
 import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
-  deriveSessionTitleFromUserText,
-  notebookMountPendingKey,
-  takePendingMountedNotebookIds
+  deriveSessionTitleFromUserText
 } from '@baishou/shared'
 
 import { useBaishou } from '../providers/BaishouProvider'
@@ -349,18 +347,6 @@ export function useAgentStreamChat({
             )
           })
           sessionId = newSessionId
-          const pending = takePendingMountedNotebookIds(
-            notebookMountPendingKey({
-              sessionId: undefined,
-              assistantId: currentAssistant?.id,
-              scope: 'companion'
-            })
-          )
-          if (pending.length > 0) {
-            await runMobileAgentDbWrite('mountPendingNotebooks', async (runtime) => {
-              await runtime.sessionManager.updateMountedNotebookIds(newSessionId, pending)
-            })
-          }
         } catch (e) {
           console.error('Failed to create session', e)
           toast.showError(

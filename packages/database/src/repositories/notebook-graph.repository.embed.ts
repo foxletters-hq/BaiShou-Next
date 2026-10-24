@@ -138,7 +138,7 @@ export class NotebookGraphEmbedOps {
         `[NotebookGraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
       )
     }
-    const scored: Array<{ row: typeof rows[number]; distance: number }> = []
+    const scored: Array<{ row: (typeof rows)[number]; distance: number }> = []
     for (const row of rows) {
       if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
       if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
