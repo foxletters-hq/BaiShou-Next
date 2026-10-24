@@ -481,6 +481,20 @@ describe('MigrationService', () => {
     it('_ensureCompatSchema should migrate legacy default assistant_id in agent_sessions to latte', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
+        CREATE TABLE agent_assistants (
+          id TEXT NOT NULL,
+          vault_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT 1,
+          updated_at INTEGER NOT NULL DEFAULT 1,
+          PRIMARY KEY (id, vault_id)
+        )
+      `)
+      await db.run(sql`
+        INSERT INTO agent_assistants (id, vault_id, name)
+        VALUES ('latte', 'vlt_personal', 'Latte')
+      `)
+      await db.run(sql`
         CREATE TABLE agent_sessions (
           id TEXT PRIMARY KEY NOT NULL,
           title TEXT NOT NULL DEFAULT '新对话',
