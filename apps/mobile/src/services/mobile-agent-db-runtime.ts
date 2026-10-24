@@ -73,6 +73,8 @@ export type CreateAgentDbRuntimeOptions = {
   diaryRepoAdapter: unknown
   recovery?: MobileAgentDbRecoveryCoordinator
   resolveVaultId?: () => string | null | undefined
+  /** vault_id → 工作区目录名；伙伴重绑后把会话 JSON 写回正确仓库 */
+  resolveVaultName?: (vaultId: string) => string | null | undefined
 }
 
 export type SummaryPipelineServices = {
@@ -194,7 +196,14 @@ export async function createAgentDbRuntime(
     assistantRepo,
     assistantFileService,
     attachmentManager,
-    resolveVaultId
+    resolveVaultId,
+    {
+      onSessionsRebound: async ({ vaultId, sessionIds }) => {
+        const activeVaultName = await Promise.resolve(pathService.getActiveVaultNameForContext?.())
+        const vaultName = options.resolveVaultName?.(vaultId) ?? activeVaultName ?? null
+        await sessionManager.flushSessionsToDisk(sessionIds, vaultName)
+      }
+    }
   )
 
   const settingsFileService = new SettingsFileService(pathService, fileSystem)

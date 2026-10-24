@@ -1,5 +1,6 @@
 import {
   VaultService,
+  ensureDefaultLatteAssistant,
   journalMarkdownExistsInTree,
   countJournalMarkdownInTree,
   countSummaryMarkdownInArchivesTree,
@@ -13,6 +14,7 @@ import {
   type SummarySyncService
 } from '@baishou/core-mobile'
 import { logger } from '@baishou/shared'
+import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import { scheduleVaultEcosystemResync } from './mobile-vault-resync.service'
 import type { MobileExternalPathService } from './mobile-external-vault-paths.service'
@@ -232,6 +234,25 @@ export async function runVaultBootstrap(
                 e as Error
               )
             })
+        }
+        // 快路径也执行伙伴自愈：旧版本 default→latte 只改库未落盘，
+        // 若冷启动完全跳过 resync，磁盘回灌后历史会话会再次失联。
+        try {
+          const settings =
+            (await deps.bootstrapDeps.settingsManager.get<{ language?: string }>('settings')) || {}
+          const locale = await resolveMobileBootstrapUiLocale(settings.language)
+          if (locale) {
+            await ensureDefaultLatteAssistant(
+              deps.bootstrapDeps.assistantManager,
+              locale,
+              activeVault?.id
+            )
+          }
+        } catch (e) {
+          logger.warn(
+            '[VaultRuntime] ensure Latte assistant on skip-shadow-resync failed:',
+            e as Error
+          )
         }
         await restartVaultWatchers(deps.diaryStack, deps.vaultService, deps.watcherDeps)
         if (activeVault) {

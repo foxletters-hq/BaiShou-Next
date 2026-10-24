@@ -144,7 +144,9 @@ export function assignReloadAgentDatabaseHandler(
         if (active?.id) return active.id
         const name = active?.name?.trim() || 'Personal'
         return deriveLegacyVaultId(name)
-      }
+      },
+      resolveVaultName: (vaultId) =>
+        vaultCtx.vaultService.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null
     })
     agentDbRuntimeRef.current = newRuntime
 
