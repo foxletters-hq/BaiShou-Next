@@ -10,6 +10,7 @@ export const NEXT_REGISTRY_FILENAME = 'vault_registry.json'
 
 /** 归档根目录下不属于工作区的文件夹（与移动端 ARCHIVE_SKIP_TOP_LEVEL 对齐） */
 export const LEGACY_ARCHIVE_SKIP_TOP_LEVEL = new Set([
+  'AI',
   'config',
   'assistant_avatars',
   'database',

@@ -3,7 +3,8 @@ import * as path from '../fs/path.util'
 import { NEXT_REGISTRY_FILENAME } from '../migration/legacy-migration.shared'
 
 /** 存储根下不作为工作区目录的文件夹名 */
-const ROOT_VAULT_SKIP_DIR_NAMES = new Set([
+export const ROOT_VAULT_SKIP_DIR_NAMES = new Set([
+  'AI',
   'node_modules',
   'snapshots',
   'temp',

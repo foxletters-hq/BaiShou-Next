@@ -242,4 +242,52 @@ describe('VaultService Integration', () => {
     const conflicts = service.findRegistryNameConflicts()
     expect(conflicts.some((c) => c.kind === 'case')).toBe(true)
   })
+
+  it('initRegistry prunes reserved system directories like AI from registry', async () => {
+    const registryPath = path.join(tempDir, 'vault_registry.json')
+    await fs.writeFile(
+      registryPath,
+      JSON.stringify([
+        {
+          id: 'vlt_personal000001',
+          name: 'Personal',
+          path: path.join(tempDir, 'Personal'),
+          createdAt: new Date().toISOString(),
+          lastAccessedAt: new Date().toISOString()
+        },
+        {
+          id: 'vlt_ai000000000001',
+          name: 'AI',
+          path: path.join(tempDir, 'AI'),
+          createdAt: new Date().toISOString(),
+          lastAccessedAt: new Date().toISOString()
+        }
+      ])
+    )
+
+    await service.initRegistry()
+
+    expect(service.getAllVaults().map((v) => v.name)).toEqual(['Personal'])
+    expect(service.vaultExists('AI')).toBe(false)
+
+    const saved = JSON.parse(await fs.readFile(registryPath, 'utf8'))
+    expect(saved.map((item: any) => item.name)).toEqual(['Personal'])
+  })
+
+  it('syncRegistryWithDisk ignores reserved system directories like AI on disk', async () => {
+    await fs.mkdir(path.join(tempDir, 'Personal', 'Journals'), { recursive: true })
+    await fs.writeFile(path.join(tempDir, 'Personal', 'Journals', 'a.md'), '# a')
+    await fs.mkdir(path.join(tempDir, 'AI', 'skills', 'summary-write'), { recursive: true })
+    await fs.writeFile(
+      path.join(tempDir, 'AI', 'skills', 'summary-write', 'SKILL.md'),
+      'name: summary-write'
+    )
+
+    await service.initRegistry()
+    const added = await service.syncRegistryWithDisk()
+
+    expect(added).not.toContain('AI')
+    expect(service.vaultExists('AI')).toBe(false)
+    expect(service.getAllVaults().map((v) => v.name)).toEqual(['Personal'])
+  })
 })

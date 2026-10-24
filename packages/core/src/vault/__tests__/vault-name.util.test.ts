@@ -52,6 +52,12 @@ describe('validateVaultName vs sanitizeVaultDirectoryName', () => {
     expect(validateVaultName('foo/bar').ok).toBe(false)
     expect(sanitizeVaultDirectoryName('foo/bar')).toBe('foo_bar')
   })
+
+  it('rejects reserved system directory names', () => {
+    expect(validateVaultName('AI')).toEqual({ ok: false, reason: 'reserved_name' })
+    expect(validateVaultName('config')).toEqual({ ok: false, reason: 'reserved_name' })
+    expect(validateVaultName('node_modules')).toEqual({ ok: false, reason: 'reserved_name' })
+  })
 })
 
 describe('findConflictingVaultName', () => {
