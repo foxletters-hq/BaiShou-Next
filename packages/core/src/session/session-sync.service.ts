@@ -1,4 +1,5 @@
 import { SessionRepository } from '@baishou/database'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { SessionFileService } from './session-file.service'
 import type { DiskResyncOptions } from '../vault/disk-resync.types'
 
@@ -174,7 +175,11 @@ export class SessionSyncService {
 
   private async cleanupGhostSessions(
     allFiles: ReadonlyArray<{ id: string; vaultName?: string }>,
-    allDbSessions: ReadonlyArray<{ id: string; vaultName?: string | null }>,
+    allDbSessions: ReadonlyArray<{
+      id: string
+      vaultName?: string | null
+      vaultId?: string | null
+    }>,
     options?: DiskResyncOptions
   ): Promise<number> {
     // 兜底：全盘一个会话文件都没读到，但库里仍有会话时，几乎一定是工作区目录未挂载 /
@@ -191,7 +196,8 @@ export class SessionSyncService {
     const fileIds = new Set(allFiles.map((f) => f.id))
     const preserveIds = new Set(options?.preserveSessionIds ?? [])
     const toDeleteIds: string[] = []
-    const activeVaultName = options?.activeVaultName
+    const activeVaultName = options?.activeVaultName?.trim()
+    const activeVaultId = options?.activeVaultId?.trim()
     const vaultNames = [
       ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
     ]
@@ -203,26 +209,48 @@ export class SessionSyncService {
         .map((f) => ('vaultName' in f ? f.vaultName?.trim() : ''))
         .filter((name): name is string => Boolean(name))
     )
+    // DB 行只有 vault_id；把扫描目录名映射成 id，才能在跨仓扫描时正确判断归属。
+    const vaultNameById = new Map<string, string>()
+    const scannedVaultIds = new Set<string>()
+    for (const name of vaultNames) {
+      const id = options?.vaultIdByName?.[name]?.trim() || deriveLegacyVaultId(name)
+      scannedVaultIds.add(id)
+      vaultNameById.set(id, name)
+    }
+    if (activeVaultId && activeVaultName) {
+      vaultNameById.set(activeVaultId, activeVaultName)
+    }
 
     for (const dbRecord of allDbSessions) {
       if (fileIds.has(dbRecord.id)) continue
       if (preserveIds.has(dbRecord.id)) continue
 
+      const legacyVaultName = String(dbRecord.vaultName ?? '').trim()
+      const rawVaultId = String(dbRecord.vaultId ?? '').trim()
+      const recordVaultName =
+        legacyVaultName || (rawVaultId ? (vaultNameById.get(rawVaultId) ?? '') : '')
+
       if (scannedVaultSet) {
         // 跨 vault 全扫：仅清理「归属已扫工作区」且盘上已无文件的记录
-        const recordVault = dbRecord.vaultName?.trim()
-        if (recordVault && recordVault !== 'default') {
-          if (!scannedVaultSet.has(recordVault)) continue
-          if (vaultsWithFiles.size > 0 && !vaultsWithFiles.has(recordVault)) {
+        if (recordVaultName && recordVaultName !== 'default') {
+          if (!scannedVaultSet.has(recordVaultName)) continue
+          if (vaultsWithFiles.size > 0 && !vaultsWithFiles.has(recordVaultName)) {
             console.warn('[SessionSyncService] skip ghost cleanup for vault with 0 files', {
-              vaultName: recordVault,
+              vaultName: recordVaultName,
               dbCount: allDbSessions.length
             })
             continue
           }
+        } else if (rawVaultId && rawVaultId !== activeVaultId) {
+          // 有稳定 id 但无法对应到已扫描目录：保守跳过，避免误删未挂载工作区
+          if (!scannedVaultIds.has(rawVaultId)) continue
         }
-      } else if (activeVaultName && dbRecord.vaultName !== activeVaultName) {
-        continue
+      } else {
+        // 只扫活跃仓：其它仓 / 无法判断归属的记录一律保留
+        if (!recordVaultName && !rawVaultId) continue
+        if (activeVaultName && recordVaultName && recordVaultName !== activeVaultName) continue
+        if (activeVaultId && rawVaultId && rawVaultId !== activeVaultId) continue
+        if (!activeVaultName && !activeVaultId) continue
       }
 
       toDeleteIds.push(dbRecord.id)

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SessionSyncService } from '../session-sync.service'
 import type { SessionFileService } from '../session-file.service'
 import type { SessionRepository } from '@baishou/database'
+import { deriveLegacyVaultId } from '@baishou/shared'
 
 describe('SessionSyncService', () => {
   let mockFileService: import('vitest').Mocked<SessionFileService>
@@ -160,6 +161,27 @@ describe('SessionSyncService', () => {
 
     expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-personal'])
     expect(mockRepo.deleteSessions).not.toHaveBeenCalledWith(['ghost-work'])
+  })
+
+  it('fullScanArchives resolves vaultId-only rows against scanned vault ids', async () => {
+    const workId = deriveLegacyVaultId('Work')
+    mockFileService.listSessionsAcrossVaults = vi
+      .fn()
+      .mockResolvedValue([{ id: 'kept', fullPath: '/Work/Sessions/kept.json', vaultName: 'Work' }])
+    mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'ghost-work', vaultId: workId },
+      { id: 'other-vault', vaultId: 'vlt_other_vault' }
+    ] as any)
+
+    await service.fullScanArchives({
+      activeVaultName: 'Work',
+      activeVaultId: workId,
+      diskVaultNames: ['Work'],
+      vaultIdByName: { Work: workId }
+    })
+
+    expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-work'])
   })
 
   it('reconcileFromDisks skips read when disk mtime is not newer than DB updatedAt', async () => {
