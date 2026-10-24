@@ -36,7 +36,7 @@ describe('Agent Chat Background frosted chrome', () => {
     expect(agentScreenSrc).toContain("edges={c.hasChatBackground ? ['left', 'right'] : undefined}")
   })
 
-  it('passes hasChatBackground to AgentChatAppBar, KnowledgeMountHintBar, and InputBar in AgentChatList', () => {
+  it('passes hasChatBackground to AgentChatAppBar and InputBar in AgentChatList', () => {
     expect(agentChatListSrc).toContain('hasChatBackground={p.hasChatBackground}')
   })
 

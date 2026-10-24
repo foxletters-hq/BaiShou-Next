@@ -5,7 +5,6 @@ import { Sidebar } from '../components/Sidebar'
 import styles from './MainLayout.module.css'
 import { MainPageCache, getMainPageCacheKey } from './MainPageCache'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
-import { isAgentWorkspaceKnowledgeDetailPath } from '../features/agent-workspace/utils/agent-workspace-route.util'
 import {
   getDesktopVaultScopeRevision,
   subscribeDesktopVaultScope
@@ -15,7 +14,6 @@ import {
   nextMountedCacheKeys,
   shouldShowRouteSwitchMask
 } from './route-switch-mask.util'
-import { consumeWorkbenchEditorMouseNav } from '../features/agent-workspace/workbench/workbench-editor-mouse-nav'
 
 export const MainLayout: React.FC = () => {
   const location = useLocation()
@@ -30,13 +28,10 @@ export const MainLayout: React.FC = () => {
   // overlay 已有更高 z-index 盖住即可；hidden 再显示会造成伙伴页闪烁。
   const hideCacheForSubRoute =
     showOutlet &&
-    (location.pathname.startsWith('/diary/') ||
-      location.pathname.startsWith('/summary/') ||
-      isAgentWorkspaceKnowledgeDetailPath(location.pathname))
+    (location.pathname.startsWith('/diary/') || location.pathname.startsWith('/summary/'))
 
   useEffect(() => {
     const onMouseNav = (direction: 'back' | 'forward') => {
-      if (consumeWorkbenchEditorMouseNav(direction)) return
       if (direction === 'back') window.history.back()
       else window.history.forward()
     }
@@ -67,8 +62,6 @@ export const MainLayout: React.FC = () => {
     activeCacheKey = '/diary'
   } else if (location.pathname.startsWith('/chat')) {
     activeCacheKey = '/chat'
-  } else if (location.pathname.startsWith('/agent-workspace')) {
-    activeCacheKey = '/agent-workspace'
   } else if (location.pathname.startsWith('/diary/')) {
     activeCacheKey = '/diary'
   } else if (location.pathname.startsWith('/summary/')) {

@@ -23,18 +23,13 @@ import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
 import { INPUT_DOCK_HEIGHT, LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
-import { MobileNotebookMountSheet } from './MobileNotebookMountSheet'
-import { KnowledgeMountHintBar } from './KnowledgeMountHintBar'
 import { useSessionReasoningEffort } from './useSessionReasoningEffort'
 import type { AgentChatListProps } from './agent-chat-list.types'
 
 export type { AgentChatListProps } from './agent-chat-list.types'
 
-const KNOWLEDGE_ENTRY_ENABLED = false
-
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
-  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const dockHeightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDockHeightRef = useRef(p.inputDockHeight)
   currentDockHeightRef.current = p.inputDockHeight
@@ -432,15 +427,6 @@ export function AgentChatList(props: AgentChatListProps) {
           style={[styles.inputDock, p.inputDockAnimatedStyle]}
           pointerEvents={p.isBubbleEditing ? 'none' : 'auto'}
         >
-          {KNOWLEDGE_ENTRY_ENABLED ? (
-            <KnowledgeMountHintBar
-              sessionId={p.currentSessionId}
-              assistantId={p.assistantId}
-              refreshToken={notebookMountOpen}
-              hasChatBackground={p.hasChatBackground}
-              onOpen={() => setNotebookMountOpen(true)}
-            />
-          ) : null}
           <InputBar
             ref={p.inputBarRef}
             hasChatBackground={p.hasChatBackground}
@@ -474,9 +460,6 @@ export function AgentChatList(props: AgentChatListProps) {
             assistantName={p.assistantDisplayName}
             onManageShortcuts={() => p.setShowShortcutSheet(true)}
             onRecall={() => p.setShowRecallSheet(true)}
-            onOpenNotebookMount={
-              KNOWLEDGE_ENTRY_ENABLED ? () => setNotebookMountOpen(true) : undefined
-            }
             onOpenTools={() => p.router.push('/settings/agent-tools')}
             searchMode={p.searchMode}
             onToggleSearchMode={p.toggleSearchMode}
@@ -484,14 +467,6 @@ export function AgentChatList(props: AgentChatListProps) {
             onToggleTtsMode={p.toggleTtsMode}
           />
         </Animated.View>
-        {KNOWLEDGE_ENTRY_ENABLED ? (
-          <MobileNotebookMountSheet
-            visible={notebookMountOpen}
-            sessionId={p.currentSessionId}
-            assistantId={p.assistantId}
-            onClose={() => setNotebookMountOpen(false)}
-          />
-        ) : null}
       </View>
     </ChatBackgroundWrapper>
   )
