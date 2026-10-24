@@ -134,4 +134,20 @@ describe('SessionAggregateSync', () => {
     const insert = stmts.find((stmt) => stmt.sql.includes('INSERT INTO compression_snapshots'))
     expect(insert?.args).toEqual(['s3', '摘要', 'm2', 'm3', 2, 12, 1_700_000_050])
   })
+
+  it('normalizes legacy default assistantId to latte when syncing session aggregate from disk', async () => {
+    await sync.upsertAggregate({
+      session: {
+        id: 's-legacy-latte',
+        vaultId: 'vlt_test',
+        assistantId: 'default',
+        createdAt: 1_700_000_000_000,
+        updatedAt: 1_700_000_100_000
+      },
+      messages: []
+    })
+    const stmts = batchMock.mock.calls[0]?.[0] as Array<{ sql: string; args?: unknown[] }>
+    const sessionInsert = stmts.find((stmt) => stmt.sql.includes('INSERT INTO agent_sessions'))
+    expect(sessionInsert?.args?.[3]).toBe('latte')
+  })
 })

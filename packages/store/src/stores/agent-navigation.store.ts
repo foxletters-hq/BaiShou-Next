@@ -1,5 +1,16 @@
-import type { AgentNavigationSnapshot } from '@baishou/shared'
+import {
+  DEFAULT_LATTE_ASSISTANT_ID,
+  SYSTEM_LATTE_ASSISTANT_ID,
+  type AgentNavigationSnapshot
+} from '@baishou/shared'
 import { createStore } from '../create-store'
+
+function normalizeNavAssistantId(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  return trimmed === DEFAULT_LATTE_ASSISTANT_ID ? SYSTEM_LATTE_ASSISTANT_ID : trimmed
+}
 
 type VaultNavigationMap = Record<string, AgentNavigationSnapshot>
 
@@ -30,7 +41,7 @@ export const useAgentNavigationStore = createStore<AgentNavigationState & AgentN
         contexts: {
           ...state.contexts,
           [vaultKey]: {
-            assistantId: snapshot.assistantId ?? null,
+            assistantId: normalizeNavAssistantId(snapshot.assistantId),
             sessionId: snapshot.sessionId ?? null
           }
         }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildAgentChatNavigationPath, resolveCompanionReturnPath } from '../agent-navigation.util'
+import {
+  buildAgentChatNavigationPath,
+  parseAgentNavigationSnapshot,
+  resolveCompanionReturnPath
+} from '../agent-navigation.util'
 
 describe('resolveCompanionReturnPath', () => {
   it('opens last session when restore is on', () => {
@@ -27,5 +31,15 @@ describe('resolveCompanionReturnPath', () => {
         snapshot: null
       })
     ).toBe('/chat')
+  })
+
+  it('normalizes legacy default assistantId to latte in snapshot parsing and path building', () => {
+    expect(parseAgentNavigationSnapshot({ assistantId: 'default', sessionId: 's1' })).toEqual({
+      assistantId: 'latte',
+      sessionId: 's1'
+    })
+    expect(buildAgentChatNavigationPath({ assistantId: 'default', sessionId: 's1' })).toBe(
+      '/chat/s1?assistantId=latte'
+    )
   })
 })
