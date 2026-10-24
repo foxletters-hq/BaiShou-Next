@@ -384,5 +384,4 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     )
     expect(items.map((item) => item.id)).toEqual(['latte', 'custom-1'])
   })
-  })
 })
