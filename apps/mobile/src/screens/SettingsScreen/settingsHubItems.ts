@@ -9,7 +9,6 @@ export type SettingsStackPathname =
   | '/incremental-sync'
   | '/settings/tts'
   | '/graph'
-  | '/knowledge'
   | '/memory'
   | '/settings/help-docs'
 
@@ -29,8 +28,6 @@ export interface SettingsHubGroup {
   titleKey: string
   items: SettingsHubItem[]
 }
-
-const KNOWLEDGE_ENTRY_ENABLED = false
 
 /** 与桌面端 SettingsPage / 旧版 BaiShou 移动枢纽分组对齐 */
 export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
@@ -112,17 +109,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'settings.summary_settings_title',
         icon: 'summary-settings',
         route: { type: 'section', section: 'summary' }
-      },
-      ...(KNOWLEDGE_ENTRY_ENABLED
-        ? [
-            {
-              id: 'knowledge',
-              titleKey: 'knowledge.title',
-              icon: 'knowledge' as const,
-              route: { type: 'stack' as const, pathname: '/knowledge' as const }
-            }
-          ]
-        : [])
+      }
     ]
   },
   {

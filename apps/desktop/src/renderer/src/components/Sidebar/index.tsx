@@ -150,14 +150,10 @@ export const Sidebar: React.FC = () => {
     navigate(path)
   }
 
-  // 工作台主场隐藏日记侧栏；伙伴页保留侧栏
-  const isWorkbenchMode = location.pathname.startsWith('/agent-workspace')
-  const isLegacyAgentMode =
-    location.pathname.startsWith('/agent') && !location.pathname.startsWith('/agent-workspace')
-
+  const isLegacyAgentMode = location.pathname.startsWith('/agent')
   const isInSettings = isSettingsOverlayPath(location.pathname)
 
-  if (isWorkbenchMode || isLegacyAgentMode) return null
+  if (isLegacyAgentMode) return null
 
   return (
     <>

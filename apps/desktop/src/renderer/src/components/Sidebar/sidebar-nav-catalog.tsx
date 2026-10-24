@@ -5,7 +5,6 @@ import {
   Archive,
   BookOpen,
   Cable,
-  Layers,
   Cloud,
   Globe,
   GraduationCap,
@@ -45,7 +44,6 @@ export const DEFAULT_VISIBLE_NAV_IDS = [
 export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
   'companion',
-  'workbench',
   'summary',
   'memory',
   'diary-template',
@@ -153,7 +151,6 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
 export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
   companion: '/chat',
-  workbench: '/agent-workspace',
   summary: '/summary',
   memory: '/memory',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
@@ -188,11 +185,6 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       icon: icon(<MessageCircle />),
       label: t('nav.agent', '伙伴'),
       path: '/chat'
-    },
-    workbench: {
-      icon: icon(<Layers />),
-      label: t('nav.workbench', '工作台'),
-      path: '/agent-workspace'
     },
     summary: {
       icon: icon(<Library />),
