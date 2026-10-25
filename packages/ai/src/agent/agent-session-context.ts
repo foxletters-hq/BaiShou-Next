@@ -258,13 +258,19 @@ export async function prepareAgentSessionContext(input: {
     sessionMessages = await loadSessionMessages()
   }
 
+  const targetUserMsg = userMessageId
+    ? sessionMessages.find((message) => message.id === userMessageId)
+    : undefined
+  const upToOrderIndex = targetUserMsg?.orderIndex
+
   const dbHistory = await ContextWindowBuilder.buildFromMessages(
     sessionId,
     snapshotRepo,
     sessionMessages,
     {
       recentCount: configRecentCount,
-      ...(userMessageId ? { requiredMessageId: userMessageId } : {})
+      ...(userMessageId ? { requiredMessageId: userMessageId } : {}),
+      ...(upToOrderIndex !== undefined ? { upToOrderIndex } : {})
     },
     snapshotForWindow
   )

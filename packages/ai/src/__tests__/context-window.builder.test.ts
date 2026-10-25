@@ -297,4 +297,33 @@ describe('ContextWindowBuilder', () => {
     expect(result[0]?.isSummary).toBe(true)
     expect(result.map((m) => m.id)).toEqual(['snapshot_12', '5'])
   })
+
+  it('filters out messages after upToOrderIndex to prevent subsequent queued turns from leaking', async () => {
+    const messages: MessageWithParts[] = [
+      makeMsg('user', 0),
+      makeMsg('assistant', 1),
+      makeMsg('user', 2),
+      makeMsg('user', 3)
+    ]
+
+    const sessionRepo = {
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
+    }
+    const snapshotRepo = {
+      getLatestSnapshot: vi.fn().mockResolvedValue(null)
+    }
+
+    const result = await ContextWindowBuilder.build(
+      'session_1',
+      sessionRepo as any,
+      snapshotRepo as any,
+      { recentCount: 0, upToOrderIndex: 2 }
+    )
+
+    expect(result.map((m) => m.orderIndex)).toEqual([0, 1, 2])
+  })
 })

@@ -24,6 +24,8 @@ export interface InputBarModelSelector {
 
 export interface InputBarProps {
   isLoading: boolean
+  /** 为 true 时，即使正在加载也允许发送（用于支持排队的会话场景，有输入时显示发送键而非停止键） */
+  allowSendWhileLoading?: boolean
   /** 返回 false 时保留输入内容与草稿 */
   onSend: ComposerOnSend
   onStop?: () => void
