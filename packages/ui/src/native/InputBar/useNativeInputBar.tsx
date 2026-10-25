@@ -51,6 +51,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
   const {
     onSend,
     isLoading,
+    allowSendWhileLoading = false,
     onStop,
     onRecall,
     onOpenNotebookMount,
@@ -308,7 +309,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
   const handleSend = useCallback(async () => {
     if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
     if (!text.trim() && attachments.length === 0 && skillRefs.length === 0) return
-    if (isLoading || isSending) return
+    if ((isLoading && !allowSendWhileLoading) || isSending) return
 
     if (composerBlocked) {
       onComposerBlocked?.()
@@ -353,6 +354,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       setIsSending(false)
     }
   }, [
+    allowSendWhileLoading,
     animateInputHeight,
     attachments,
     clearDraft,
@@ -431,6 +433,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     onHeightChange,
     composerEnabled,
     isLoading,
+    allowSendWhileLoading,
     onStop
   }
 }

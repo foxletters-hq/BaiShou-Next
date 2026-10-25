@@ -432,6 +432,7 @@ export function AgentChatList(props: AgentChatListProps) {
             hasChatBackground={p.hasChatBackground}
             onSend={p.handleSendWithScroll}
             isLoading={p.isLoading || p.isStreaming}
+            allowSendWhileLoading
             onStop={p.handleStop}
             composerBlocked={!p.hasConfiguredDialogueModel}
             onComposerBlocked={() =>

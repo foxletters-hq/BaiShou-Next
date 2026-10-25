@@ -1,8 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
-import { claimAgentStreamSession } from '@baishou/ai'
+import {
+  claimAgentStreamSession,
+  getSharedSessionInbox,
+  isAgentStreamSessionBusy,
+  releaseAgentStreamSession
+} from '@baishou/ai'
 import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
@@ -88,6 +93,10 @@ export function useAgentStreamChat({
     userStoppedStreamRef,
     pendingRetryReleaseEpochRef
   } = refs
+
+  const sendQueueLockRef = useRef<Promise<void>>(Promise.resolve())
+  const drainingSessionsRef = useRef<Set<string>>(new Set())
+  const drainAgainSessionsRef = useRef<Set<string>>(new Set())
 
   const invokeAgentStreamChat = useCallback(
     async (
@@ -265,6 +274,8 @@ export function useAgentStreamChat({
         if (stoppedByUser) {
           userStoppedStreamRef.current = false
         }
+      } finally {
+        releaseAgentStreamSession(sessionId, claim.generation)
       }
     },
     [
@@ -292,6 +303,134 @@ export function useAgentStreamChat({
     ]
   )
 
+  const runSessionStreamTurn = useCallback(
+    async (
+      sessionId: string,
+      text: string,
+      userMessageId: string,
+      overrides?: {
+        providerId?: string
+        modelId?: string
+        searchMode?: boolean
+        attachments?: unknown[]
+      }
+    ) => {
+      userStoppedStreamRef.current = false
+      interruptActiveStream({ keepStreamingFlag: true })
+      const claim = claimAgentStreamSession(sessionId)
+      streamAbortRef.current = claim.abort
+
+      setLoading(true)
+      setIsStreaming(true)
+      setStreamError(null)
+      resetStreamingBuffers()
+
+      const failStream = (errorMsg: string) => {
+        if (userStoppedStreamRef.current) return
+        setStreamError(errorMsg)
+      }
+
+      try {
+        await invokeAgentStreamChat(
+          sessionId,
+          text,
+          {
+            providerId: overrides?.providerId,
+            modelId: overrides?.modelId,
+            searchMode: overrides?.searchMode,
+            abortSignal: claim.signal,
+            userMessageId,
+            skipUserMessageRecording: true,
+            streamClaimGeneration: claim.generation,
+            attachments: overrides?.attachments
+          },
+          failStream
+        )
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
+          setStreamError(null)
+        }
+        await finishStream(sessionId, { waitForLatestUsage: !stoppedByUser })
+        if (stoppedByUser) {
+          userStoppedStreamRef.current = false
+        }
+      } catch (e: unknown) {
+        const stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) {
+          setStreamError(null)
+        } else {
+          const msg = e instanceof Error ? e.message : String(e)
+          failStream(msg)
+        }
+        await finishStream(sessionId, { waitForLatestUsage: !stoppedByUser })
+        if (stoppedByUser) {
+          userStoppedStreamRef.current = false
+        }
+      } finally {
+        releaseAgentStreamSession(sessionId, claim.generation)
+      }
+    },
+    [
+      userStoppedStreamRef,
+      interruptActiveStream,
+      streamAbortRef,
+      setLoading,
+      setIsStreaming,
+      setStreamError,
+      resetStreamingBuffers,
+      invokeAgentStreamChat,
+      finishStream
+    ]
+  )
+
+  const drainMobileSessionInbox = useCallback(
+    async (sessionId: string) => {
+      if (isAgentStreamSessionBusy(sessionId)) return
+      if (drainingSessionsRef.current.has(sessionId)) {
+        drainAgainSessionsRef.current.add(sessionId)
+        return
+      }
+      drainingSessionsRef.current.add(sessionId)
+
+      try {
+        for (;;) {
+          if (userStoppedStreamRef.current) break
+          if (isAgentStreamSessionBusy(sessionId)) break
+          const inbox = getSharedSessionInbox()
+          const promoted = inbox.promoteNext(sessionId)
+          if (!promoted) break
+
+          const payload = (promoted.payload ?? {}) as {
+            providerId?: string
+            modelId?: string
+            searchMode?: boolean
+            attachments?: unknown[]
+          }
+
+          await runSessionStreamTurn(
+            sessionId,
+            promoted.text,
+            promoted.userMessageId ?? '',
+            payload
+          )
+
+          if (userStoppedStreamRef.current) break
+        }
+      } finally {
+        drainingSessionsRef.current.delete(sessionId)
+        if (
+          drainAgainSessionsRef.current.delete(sessionId) ||
+          getSharedSessionInbox().listPending(sessionId).length > 0
+        ) {
+          if (!isAgentStreamSessionBusy(sessionId) && !userStoppedStreamRef.current) {
+            void drainMobileSessionInbox(sessionId)
+          }
+        }
+      }
+    },
+    [runSessionStreamTurn, userStoppedStreamRef]
+  )
+
   const handleSend = useCallback(
     async (
       text: string,
@@ -316,170 +455,142 @@ export function useAgentStreamChat({
         return false
       }
 
-      const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false
-      let sessionId = currentSessionId
-      const wasNewSession = !sessionId
+      let unlock: () => void = () => {}
+      const prevLock = sendQueueLockRef.current
+      sendQueueLockRef.current = new Promise<void>((resolve) => {
+        unlock = resolve
+      })
 
-      if (!sessionId) {
-        try {
-          const newSessionId = Date.now().toString()
-          const firstAtt = attachments?.[0] as { fileName?: string; name?: string } | undefined
-          const sessionTitleSource =
-            text.trim() ||
-            firstAtt?.fileName ||
-            firstAtt?.name ||
-            t('agent.sessions.default_title', '新对话')
-          const vaultId = resolveMobileActiveVaultId(services)
-          await runMobileAgentDbWrite('upsertSession', async (runtime) => {
-            await runtime.sessionManager.upsertSession(
-              buildInsertSessionInput(
-                {
-                  id: newSessionId,
-                  title:
-                    deriveSessionTitleFromUserText(sessionTitleSource) ||
-                    t('agent.sessions.default_title', '新对话'),
-                  assistantId: currentAssistant?.id,
-                  providerId: currentProviderId || undefined,
-                  modelId: currentModelId || undefined
-                },
-                vaultId
+      try {
+        await prevLock
+
+        const effectiveSearchMode = sendSearchMode ?? searchModeRef.current ?? false
+        let sessionId = currentSessionId
+        const wasNewSession = !sessionId
+
+        if (!sessionId) {
+          try {
+            const newSessionId = Date.now().toString()
+            const firstAtt = attachments?.[0] as { fileName?: string; name?: string } | undefined
+            const sessionTitleSource =
+              text.trim() ||
+              firstAtt?.fileName ||
+              firstAtt?.name ||
+              t('agent.sessions.default_title', '新对话')
+            const vaultId = resolveMobileActiveVaultId(services)
+            await runMobileAgentDbWrite('upsertSession', async (runtime) => {
+              await runtime.sessionManager.upsertSession(
+                buildInsertSessionInput(
+                  {
+                    id: newSessionId,
+                    title:
+                      deriveSessionTitleFromUserText(sessionTitleSource) ||
+                      t('agent.sessions.default_title', '新对话'),
+                    assistantId: currentAssistant?.id,
+                    providerId: currentProviderId || undefined,
+                    modelId: currentModelId || undefined
+                  },
+                  vaultId
+                )
               )
+            })
+            sessionId = newSessionId
+          } catch (e) {
+            console.error('Failed to create session', e)
+            toast.showError(
+              t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: '' })
             )
-          })
-          sessionId = newSessionId
-        } catch (e) {
-          console.error('Failed to create session', e)
-          toast.showError(
-            t('agent.error.create_session', '由于系统原因创建会话失败: {{msg}}', { msg: '' })
-          )
+            setLoading(false)
+            setIsStreaming(false)
+            return false
+          }
+        }
+
+        const saveResult = await saveUserMessage(
+          services.sessionRepo,
+          services.sessionManager,
+          services.pathService,
+          services.fileSystem,
+          {
+            sessionId,
+            text,
+            attachments,
+            modelId: currentModelId || undefined,
+            providerType: currentProviderId || undefined,
+            displayText: meta?.displayText,
+            skillRefs: meta?.skillRefs,
+            fileRefs: meta?.fileRefs
+          }
+        )
+        if ('error' in saveResult) {
+          toast.showError(saveResult.error)
           setLoading(false)
           setIsStreaming(false)
           return false
         }
-      }
 
-      const saveResult = await saveUserMessage(
-        services.sessionRepo,
-        services.sessionManager,
-        services.pathService,
-        services.fileSystem,
-        {
+        if (wasNewSession) {
+          onSessionCreated?.(sessionId)
+          onSessionListRefresh?.()
+        }
+
+        addMessage({
+          id: saveResult.userMessageId,
+          role: 'user',
+          content: meta?.displayText || text,
+          timestamp: new Date(),
+          skillRefs: meta?.skillRefs,
+          fileRefs: meta?.fileRefs,
+          attachments: mapSavedAttachmentsForMobileUi(
+            saveResult.attachments,
+            await services.pathService.getRootDirectory(),
+            await services.pathService.getAttachmentsBaseDirectory()
+          ) as any
+        })
+
+        const isBusy =
+          refs.isStreamingRef.current ||
+          isAgentStreamSessionBusy(sessionId) ||
+          drainingSessionsRef.current.has(sessionId)
+
+        getSharedSessionInbox().admit({
           sessionId,
           text,
-          attachments,
-          modelId: currentModelId || undefined,
-          providerType: currentProviderId || undefined,
-          displayText: meta?.displayText,
-          skillRefs: meta?.skillRefs,
-          fileRefs: meta?.fileRefs
+          delivery: 'queue',
+          userMessageId: saveResult.userMessageId,
+          payload: {
+            providerId: currentProviderId || undefined,
+            modelId: currentModelId || undefined,
+            searchMode: effectiveSearchMode,
+            attachments: saveResult.attachments
+          }
+        })
+
+        if (!isBusy) {
+          void drainMobileSessionInbox(sessionId)
         }
-      )
-      if ('error' in saveResult) {
-        toast.showError(saveResult.error)
-        setLoading(false)
-        setIsStreaming(false)
-        return false
+
+        return true
+      } finally {
+        unlock()
       }
-
-      if (wasNewSession) {
-        onSessionCreated?.(sessionId)
-        onSessionListRefresh?.()
-      }
-
-      userStoppedStreamRef.current = false
-      interruptActiveStream({ keepStreamingFlag: true })
-      const claim = claimAgentStreamSession(sessionId)
-      streamAbortRef.current = claim.abort
-
-      addMessage({
-        id: saveResult.userMessageId,
-        role: 'user',
-        content: meta?.displayText || text,
-        timestamp: new Date(),
-        skillRefs: meta?.skillRefs,
-        fileRefs: meta?.fileRefs,
-        attachments: mapSavedAttachmentsForMobileUi(
-          saveResult.attachments,
-          await services.pathService.getRootDirectory(),
-          await services.pathService.getAttachmentsBaseDirectory()
-        ) as any
-      })
-
-      setLoading(true)
-      setIsStreaming(true)
-      setStreamError(null)
-      resetStreamingBuffers()
-
-      const failStream = (errorMsg: string) => {
-        if (userStoppedStreamRef.current) return
-        setStreamError(errorMsg)
-      }
-
-      // 对齐桌面：流式 fire-and-forget，避免 InputBar isSending 绑住整段生成导致发送键无法变色
-      const streamSessionId = sessionId!
-      void (async () => {
-        try {
-          await invokeAgentStreamChat(
-            streamSessionId,
-            text,
-            {
-              providerId: currentProviderId || undefined,
-              modelId: currentModelId || undefined,
-              searchMode: effectiveSearchMode,
-              abortSignal: claim.signal,
-              userMessageId: saveResult.userMessageId,
-              skipUserMessageRecording: true,
-              streamClaimGeneration: claim.generation,
-              attachments: saveResult.attachments
-            },
-            failStream
-          )
-          const stoppedByUser = userStoppedStreamRef.current
-          if (stoppedByUser) {
-            setStreamError(null)
-          }
-          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
-          if (stoppedByUser) {
-            userStoppedStreamRef.current = false
-          }
-        } catch (e: unknown) {
-          const stoppedByUser = userStoppedStreamRef.current
-          if (stoppedByUser) {
-            setStreamError(null)
-          } else {
-            const msg = e instanceof Error ? e.message : String(e)
-            failStream(msg)
-          }
-          await finishStream(streamSessionId, { waitForLatestUsage: !stoppedByUser })
-          if (stoppedByUser) {
-            userStoppedStreamRef.current = false
-          }
-        }
-      })()
-
-      return true
     },
     [
-      currentSessionId,
-      currentAssistant,
+      services,
       currentProviderId,
       currentModelId,
-      services,
+      currentSessionId,
+      toast,
       t,
-      addMessage,
-      setLoading,
+      searchModeRef,
+      currentAssistant,
       onSessionCreated,
       onSessionListRefresh,
-      finishStream,
-      resetStreamingBuffers,
-      interruptActiveStream,
-      invokeAgentStreamChat,
-      toast,
-      searchModeRef,
-      streamAbortRef,
-      userStoppedStreamRef,
-      setIsStreaming,
-      setStreamError
+      addMessage,
+      refs.isStreamingRef,
+      drainMobileSessionInbox,
+      setLoading,
+      setIsStreaming
     ]
   )
 

@@ -272,6 +272,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
                   {resolveInputBarPrimaryAction({
                     isLoading: bar.isLoading,
                     canSend: Boolean(bar.text.trim() || bar.attachments.length > 0),
+                    allowSendWhileLoading: bar.allowSendWhileLoading,
                     hasStopHandler: Boolean(bar.onStop)
                   }) === 'stop' ? (
                     <TouchableOpacity
