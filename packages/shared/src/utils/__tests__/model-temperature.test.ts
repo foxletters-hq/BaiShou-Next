@@ -13,13 +13,21 @@ describe('isServerFixedTemperatureModel', () => {
 
   it('marks Kimi provider short aliases', () => {
     expect(isServerFixedTemperatureModel('k3-256k')).toBe(true)
+    expect(isServerFixedTemperatureModel('k3')).toBe(true)
     expect(isServerFixedTemperatureModel('k2p5')).toBe(true)
+    // 不带版本号的短名与带后缀的短名同样是 Kimi 供应商别名
+    expect(isServerFixedTemperatureModel('k2p')).toBe(true)
+    expect(isServerFixedTemperatureModel('k2p-256k')).toBe(true)
+    expect(isServerFixedTemperatureModel('pro/k2p5:free')).toBe(true)
   })
 
   it('keeps temperature configurable for non-Kimi models', () => {
     expect(isServerFixedTemperatureModel('moonshot-v1-8k')).toBe(false)
     expect(isServerFixedTemperatureModel('gpt-5.6-sol')).toBe(false)
     expect(isServerFixedTemperatureModel('deepseek-v4-pro')).toBe(false)
+    // k2p 后紧跟字母属于其他命名，不能误判
+    expect(isServerFixedTemperatureModel('k2p5x')).toBe(false)
+    expect(isServerFixedTemperatureModel('k2pro')).toBe(false)
     expect(isServerFixedTemperatureModel('')).toBe(false)
   })
 })
