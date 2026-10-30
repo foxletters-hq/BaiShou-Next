@@ -13,9 +13,8 @@ export function isServerFixedTemperatureModel(modelId: string): boolean {
   const id = normalizeModelBaseId(modelId)
   if (!id) return false
   if (/^kimi(?:$|[-_.])/.test(id)) return true
-  // Kimi 供应商短名（如 k3-256k / k2p5）
-  if (/^k3(?:$|[-_.])/.test(id)) return true
-  return /^k2p\d(?:$|[-_.])/.test(id)
+  // Kimi 供应商短名（如 k3-256k / k2p5 / k2p）
+  return /^(?:k3|k2p\d*)(?:$|[-_.])/.test(id)
 }
 
 /**
