@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyGraphInventoryEdgeDelete,
+  applyGraphInventoryNodeDelete,
   filterGraphInventoryNodes,
   graphInventoryHasItems,
   graphInventoryPageOffset,
@@ -112,3 +114,56 @@ describe('resolveGraphInventoryList', () => {
     expect(listed.items.map((row) => row.id)).toEqual(['pending-1', 'approved-1', 'approved-2'])
   })
 })
+
+describe('applyGraphInventoryNodeDelete', () => {
+  it('should remove deleted node from current page and search hits while preserving page when items remain', () => {
+    const next = applyGraphInventoryNodeDelete({
+      nodeId: 'n-2',
+      deletedEdgeCount: 3,
+      pageItems: [
+        { id: 'n-1', name: '甲' },
+        { id: 'n-2', name: '乙' },
+        { id: 'n-3', name: '丙' }
+      ],
+      searchHits: [
+        { id: 'n-2', name: '乙' },
+        { id: 'n-4', name: '丁' }
+      ],
+      total: 23,
+      nodeCount: 23,
+      edgeCount: 15,
+      page: 2
+    })
+    expect(next.pageItems.map((row) => row.id)).toEqual(['n-1', 'n-3'])
+    expect(next.searchHits.map((row) => row.id)).toEqual(['n-4'])
+    expect(next.total).toBe(22)
+    expect(next.nodeCount).toBe(22)
+    expect(next.edgeCount).toBe(12)
+    expect(next.page).toBe(2)
+  })
+
+  it('should step back to previous page when deleting the last item on page > 1', () => {
+    const next = applyGraphInventoryNodeDelete({
+      nodeId: 'n-21',
+      deletedEdgeCount: 1,
+      pageItems: [{ id: 'n-21', name: '尾页独苗' }],
+      total: 21,
+      nodeCount: 21,
+      edgeCount: 5,
+      page: 2
+    })
+    expect(next.pageItems).toEqual([])
+    expect(next.total).toBe(20)
+    expect(next.nodeCount).toBe(20)
+    expect(next.edgeCount).toBe(4)
+    expect(next.page).toBe(1)
+  })
+})
+
+describe('applyGraphInventoryEdgeDelete', () => {
+  it('should decrement edge count and clamp at zero', () => {
+    expect(applyGraphInventoryEdgeDelete(5, 2)).toBe(3)
+    expect(applyGraphInventoryEdgeDelete(1, 3)).toBe(0)
+  })
+})
+
