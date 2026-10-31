@@ -43,7 +43,9 @@ describe('mobile useAgentSessions pagination & search chrome', () => {
     expect(listScrollSrc).toContain('handleLoadMoreWithAnchor')
     expect(listScrollSrc).toContain('pendingPrependAnchorRef')
     expect(listScrollSrc).toContain('const deltaHeight = height - pendingAnchor.prevHeight')
-    expect(listScrollSrc).toContain('flatListRef.current?.scrollTo({ y: targetOffsetY, animated: false })')
+    expect(listScrollSrc).toContain(
+      'flatListRef.current?.scrollTo({ y: targetOffsetY, animated: false })'
+    )
     expect(listScrollSrc).toContain('handleListScrollEndDrag')
   })
 })

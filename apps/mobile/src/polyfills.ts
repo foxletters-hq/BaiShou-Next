@@ -30,9 +30,8 @@ export function ensureAbortSignalReasonPolyfill(): void {
 
   const reasons = new WeakMap<AbortSignal, unknown>()
   const createDefaultAbortError = (): Error => {
-    const DomEx = (
-      globalThis as { DOMException?: new (message?: string, name?: string) => Error }
-    ).DOMException
+    const DomEx = (globalThis as { DOMException?: new (message?: string, name?: string) => Error })
+      .DOMException
     if (typeof DomEx === 'function') {
       return new DomEx('The operation was aborted.', 'AbortError')
     }

@@ -143,9 +143,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
     if (name === null) return
     const next = name.trim()
     if (!next) {
-      toast.showWarning(
-        t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。')
-      )
+      toast.showWarning(t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。'))
       return
     }
     if (next === vault.name) return

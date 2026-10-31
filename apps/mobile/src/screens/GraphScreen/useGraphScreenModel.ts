@@ -269,7 +269,9 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
           ctx.review.setPendingSelected(next.pendingSelected)
           ctx.search.setHighlightIds(next.highlightIds)
           ctx.search.setHighlightedEdgeIds(next.highlightedEdgeIds)
-          ctx.search.setLocateIds(next.locateIds && next.locateIds.length > 0 ? next.locateIds : null)
+          ctx.search.setLocateIds(
+            next.locateIds && next.locateIds.length > 0 ? next.locateIds : null
+          )
           ctx.search.setLocalView(next.localView)
           if (selectedIdRef.current === event.id) {
             ctx.search.setSelectedNode(null)
