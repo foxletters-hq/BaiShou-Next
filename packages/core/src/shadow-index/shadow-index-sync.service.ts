@@ -539,7 +539,8 @@ export class ShadowIndexSyncService {
           content: diary.content,
           tags: diary.tags,
           date: diary.date,
-          updatedAt: diary.updatedAt
+          updatedAt: diary.updatedAt,
+          vaultName: this.vaultService.getActiveVault()?.name || this.shadowRepo.vaultId
         })
         const dayStr = this._formatDayStr(diary.date)
         logger.info(`[ShadowSync] RAG 嵌入完成: ${dayStr}`)

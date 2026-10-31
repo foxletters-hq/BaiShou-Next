@@ -5,8 +5,10 @@ import type { SessionFileService } from './session-file.service'
 export type SessionDiskFlushUrgency = 'immediate' | 'debounced'
 
 export type SessionDiskPersistenceHooks = {
-  /** 写入 JSON 前回调（桌面端可用于抑制 watcher 回环） */
-  onBeforeWrite?: (sessionId: string, filePath: string) => void
+  /** 写入 JSON 前回调（可用于抑制 watcher 回环） */
+  onBeforeWrite?: (sessionId: string, filePath: string) => Promise<void> | void
+  /** 写入 JSON 完成且磁盘 mtime 落定后回调（刷新抑制窗口，防止写盘耗时吃掉抑制期） */
+  onAfterWrite?: (sessionId: string, filePath: string) => Promise<void> | void
   /**
    * 会话 JSON 的 vaultName 快照。
    * 普通 flush 没有显式目标仓库时，先按 vaultId 查注册表，再回退当前活跃仓库；
@@ -38,6 +40,15 @@ export class SessionDiskPersistenceService {
 
   isDirty(sessionId: string): boolean {
     return this.dirty.has(sessionId)
+  }
+
+  hasPendingPersistence(sessionId: string): boolean {
+    if (!sessionId) return false
+    return (
+      this.dirty.has(sessionId) ||
+      this.debounceTimers.has(sessionId) ||
+      this.inFlight.has(sessionId)
+    )
   }
 
   getDirtySessionIds(): ReadonlySet<string> {
@@ -101,19 +112,21 @@ export class SessionDiskPersistenceService {
     this.cancelScheduledFlush(sessionId)
     this.markDirty(sessionId)
 
-    const pending = this.inFlight.get(sessionId)
-    if (pending) {
-      await pending
-      if (!this.dirty.has(sessionId)) return
-    }
-
-    const task = this.flushSessionUnlocked(sessionId, options).finally(() => {
-      if (this.inFlight.get(sessionId) === task) {
-        this.inFlight.delete(sessionId)
+    while (this.dirty.has(sessionId) && !this.discarded.has(sessionId)) {
+      const pending = this.inFlight.get(sessionId)
+      if (pending) {
+        await pending
+        continue
       }
-    })
-    this.inFlight.set(sessionId, task)
-    await task
+
+      const task = this.flushSessionUnlocked(sessionId, options).finally(() => {
+        if (this.inFlight.get(sessionId) === task) {
+          this.inFlight.delete(sessionId)
+        }
+      })
+      this.inFlight.set(sessionId, task)
+      await task
+    }
   }
 
   /** 仅落盘脏会话（存储静默、增量同步扫描 manifest 前） */
@@ -141,72 +154,80 @@ export class SessionDiskPersistenceService {
       return
     }
 
-    const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
-    if (!aggregate) {
+    try {
+      const aggregate = await this.sessionRepo.getSessionAggregate(sessionId)
+      // 在快照读取完成后清除 dirty；并发进入的 flushNow 合并为本次写盘，而写盘 I/O 期间的新变更会重新标记 dirty 并由外层循环补刷
       this.dirty.delete(sessionId)
-      return
-    }
+      if (!aggregate) {
+        return
+      }
 
-    if (this.discarded.has(sessionId)) {
-      this.discarded.delete(sessionId)
-      this.dirty.delete(sessionId)
-      return
-    }
+      if (this.discarded.has(sessionId)) {
+        this.discarded.delete(sessionId)
+        this.dirty.delete(sessionId)
+        return
+      }
 
-    const { aggregate: cleaned, partUpdates } = sanitizeSessionAggregateForDisk(aggregate)
-    if (partUpdates.length > 0 && typeof this.sessionRepo.updatePartsDataById === 'function') {
-      await this.sessionRepo.updatePartsDataById(partUpdates)
-    }
+      const { aggregate: cleaned, partUpdates } = sanitizeSessionAggregateForDisk(aggregate)
+      if (partUpdates.length > 0 && typeof this.sessionRepo.updatePartsDataById === 'function') {
+        await this.sessionRepo.updatePartsDataById(partUpdates)
+      }
 
-    if (this.discarded.has(sessionId)) {
-      this.discarded.delete(sessionId)
-      this.dirty.delete(sessionId)
-      return
-    }
+      if (this.discarded.has(sessionId)) {
+        this.discarded.delete(sessionId)
+        this.dirty.delete(sessionId)
+        return
+      }
 
-    // V2-D4: 新写入 dual-write vaultId + vaultName（名字快照）；不发明假 id
-    const sessionObj =
-      cleaned?.session && typeof cleaned.session === 'object'
-        ? ({ ...(cleaned.session as Record<string, unknown>) } as Record<string, unknown>)
-        : undefined
-    if (sessionObj) {
-      const rawId = String(sessionObj.vaultId ?? sessionObj.vault_id ?? '').trim()
-      let fallbackVaultName: string | null = null
-      if (!options?.vaultName?.trim() && !sessionObj.vaultName && !sessionObj.vault_name) {
-        try {
-          if (rawId) {
-            fallbackVaultName = (await this.hooks?.resolveVaultName?.(rawId)) ?? null
+      // V2-D4: 新写入 dual-write vaultId + vaultName（名字快照）；不发明假 id
+      const sessionObj =
+        cleaned?.session && typeof cleaned.session === 'object'
+          ? ({ ...(cleaned.session as Record<string, unknown>) } as Record<string, unknown>)
+          : undefined
+      if (sessionObj) {
+        const rawId = String(sessionObj.vaultId ?? sessionObj.vault_id ?? '').trim()
+        let fallbackVaultName: string | null = null
+        if (!options?.vaultName?.trim() && !sessionObj.vaultName && !sessionObj.vault_name) {
+          try {
+            if (rawId) {
+              fallbackVaultName = (await this.hooks?.resolveVaultName?.(rawId)) ?? null
+            }
+            if (!fallbackVaultName) {
+              fallbackVaultName = (await this.hooks?.resolveActiveVaultName?.()) ?? null
+            }
+          } catch {
+            fallbackVaultName = null
           }
-          if (!fallbackVaultName) {
-            fallbackVaultName = (await this.hooks?.resolveActiveVaultName?.()) ?? null
-          }
-        } catch {
-          fallbackVaultName = null
+        }
+        const nameSnapshot =
+          options?.vaultName?.trim() ||
+          String(sessionObj.vaultName ?? sessionObj.vault_name ?? '').trim() ||
+          fallbackVaultName?.trim() ||
+          undefined
+        if (rawId) {
+          sessionObj.vaultId = isVaultId(rawId) ? rawId : rawId
+          delete sessionObj.vault_id
+        }
+        if (nameSnapshot) {
+          sessionObj.vaultName = nameSnapshot
+          delete sessionObj.vault_name
         }
       }
-      const nameSnapshot =
-        options?.vaultName?.trim() ||
-        String(sessionObj.vaultName ?? sessionObj.vault_name ?? '').trim() ||
-        fallbackVaultName?.trim() ||
-        undefined
-      if (rawId) {
-        sessionObj.vaultId = isVaultId(rawId) ? rawId : rawId
-        delete sessionObj.vault_id
-      }
-      if (nameSnapshot) {
-        sessionObj.vaultName = nameSnapshot
-        delete sessionObj.vault_name
-      }
-    }
-    const enriched = sessionObj ? { ...cleaned, session: sessionObj } : cleaned
+      const enriched = sessionObj ? { ...cleaned, session: sessionObj } : cleaned
 
-    this.hooks?.onBeforeWrite?.(sessionId, sessionId)
-    const targetVault = options?.vaultName?.trim()
-    if (targetVault) {
-      await this.fileService.writeSession(sessionId, enriched, targetVault)
-    } else {
-      await this.fileService.writeSession(sessionId, enriched)
+      await this.hooks?.onBeforeWrite?.(sessionId, sessionId)
+      const targetVault = options?.vaultName?.trim()
+      if (targetVault) {
+        await this.fileService.writeSession(sessionId, enriched, targetVault)
+      } else {
+        await this.fileService.writeSession(sessionId, enriched)
+      }
+      await this.hooks?.onAfterWrite?.(sessionId, sessionId)
+    } catch (error) {
+      if (!this.discarded.has(sessionId)) {
+        this.dirty.add(sessionId)
+      }
+      throw error
     }
-    this.dirty.delete(sessionId)
   }
 }
