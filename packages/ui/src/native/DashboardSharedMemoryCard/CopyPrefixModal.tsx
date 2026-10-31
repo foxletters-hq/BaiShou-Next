@@ -43,9 +43,10 @@ export function CopyPrefixModal({
         onChangeText={setValue}
         multiline
         textarea
+        nestedScrollEnabled
         autoFocus
         containerStyle={{ marginBottom: sharedTokens.spacing.md }}
-        style={{ minHeight: 100 }}
+        style={{ minHeight: 100, maxHeight: 180 }}
       />
       <View style={modalActionsStyle}>
         <Button size="sm" variant="outlined" onPress={onCancel}>

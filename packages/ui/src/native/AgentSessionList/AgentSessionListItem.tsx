@@ -37,6 +37,11 @@ export const AgentSessionListItem: React.FC<AgentSessionListItemProps> = React.m
               {item.title || t('agent.sessions.default_title', '新对话')}
             </Text>
           </View>
+          {item.snippet ? (
+            <Text style={[styles.itemSnippet, { color: colors.textSecondary }]} numberOfLines={2}>
+              {item.snippet}
+            </Text>
+          ) : null}
           <View style={styles.itemMeta}>
             <Text style={[styles.itemTime, { color: colors.textTertiary }]}>
               {formatSessionTime(item.lastMessageAt)}
