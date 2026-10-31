@@ -140,6 +140,7 @@ async function runPendingFillAfterDiaryBatch(
     const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
     return await runMobileManualPendingEmbedFill(deps, {
       counts,
+      skipProbe: true,
       onProgress: ({ completed, total, statusText, phase, phases }) => {
         onProgress?.({ current: completed, total, status: statusText, phase, phases })
       }

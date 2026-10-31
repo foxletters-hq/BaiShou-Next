@@ -1,4 +1,5 @@
 import { AppState, type AppStateStatus } from 'react-native'
+import { isAgentStreamSessionBusy } from '@baishou/ai'
 import type {
   SessionFileService,
   SessionSyncService,
@@ -24,9 +25,12 @@ type WatcherDeps = {
   sessionFileService: SessionFileService
   sessionSyncService: SessionSyncService
   fileSystem: IFileSystem
+  sessionManager?: {
+    hasPendingDiskPersistence?: (sessionId: string) => boolean
+  }
 }
 
-const DEFAULT_SUPPRESS_MS = 8000
+const DEFAULT_SUPPRESS_MS = 20000
 const MAX_SYNCS_PER_TICK = 2
 const INTER_SYNC_IDLE_MS = 40
 
@@ -52,6 +56,9 @@ export function createMobileSessionDiskPersistenceHooks(options?: {
     resolveVaultName: options?.resolveVaultName,
     resolveActiveVaultName: options?.resolveActiveVaultName,
     onBeforeWrite: (sessionId) => {
+      sessionFileWatcher.suppressSession(sessionId)
+    },
+    onAfterWrite: (sessionId) => {
       sessionFileWatcher.suppressSession(sessionId)
     }
   }
@@ -159,10 +166,20 @@ export class SessionFileWatcherService {
     sessionId: string,
     deps: WatcherDeps,
     generation: number
-  ): Promise<void> {
+  ): Promise<'synced' | 'suppressed' | 'deferred'> {
     await waitForExpoAgentDatabaseIdle()
-    if (generation !== this.generation || this.deps !== deps) return
+    if (generation !== this.generation || this.deps !== deps) return 'deferred'
+    if (deps.sessionManager?.hasPendingDiskPersistence?.(sessionId)) {
+      return 'deferred'
+    }
+    if (this.isSuppressed(sessionId)) {
+      return 'suppressed'
+    }
+    if (isAgentStreamSessionBusy(sessionId)) {
+      return 'deferred'
+    }
     await runWithSqliteBusyRetry(() => deps.sessionSyncService.syncSessionFile(sessionId))
+    return 'synced'
   }
 
   private async tick() {
@@ -209,8 +226,16 @@ export class SessionFileWatcherService {
         if (prev !== undefined && prev === mtime) continue
 
         const sessionId = name.replace(/\.json$/, '')
+        // 先检查待写盘/写盘中，避免在 writeSession 尚未落定前把旧 mtime 记进 this.mtimes
+        if (deps.sessionManager?.hasPendingDiskPersistence?.(sessionId)) {
+          continue
+        }
+        // 本端写盘已落定且仍在抑制窗口内：即使流式尚未结束，也记录其最新 mtime，避免抑制过期后被误判为外部修改
         if (this.isSuppressed(sessionId)) {
           this.mtimes.set(fp, mtime)
+          continue
+        }
+        if (isAgentStreamSessionBusy(sessionId)) {
           continue
         }
 
@@ -221,13 +246,26 @@ export class SessionFileWatcherService {
       for (const item of pending) {
         if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
         if (synced >= MAX_SYNCS_PER_TICK) break
-        try {
-          await this.syncSessionFileQuiet(item.sessionId, deps, generation)
-          if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
+        if (deps.sessionManager?.hasPendingDiskPersistence?.(item.sessionId)) {
+          continue
+        }
+        if (this.isSuppressed(item.sessionId)) {
           this.mtimes.set(item.fp, item.mtime)
-          synced += 1
-          if (synced < MAX_SYNCS_PER_TICK && synced < pending.length) {
-            await new Promise((resolve) => setTimeout(resolve, INTER_SYNC_IDLE_MS))
+          continue
+        }
+        if (isAgentStreamSessionBusy(item.sessionId)) {
+          continue
+        }
+        try {
+          const outcome = await this.syncSessionFileQuiet(item.sessionId, deps, generation)
+          if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
+          if (outcome === 'deferred') continue
+          this.mtimes.set(item.fp, item.mtime)
+          if (outcome === 'synced') {
+            synced += 1
+            if (synced < MAX_SYNCS_PER_TICK && synced < pending.length) {
+              await new Promise((resolve) => setTimeout(resolve, INTER_SYNC_IDLE_MS))
+            }
           }
         } catch (e) {
           if (generation !== this.generation || this.deps !== deps) return

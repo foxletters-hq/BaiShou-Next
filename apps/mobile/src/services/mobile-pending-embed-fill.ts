@@ -86,6 +86,7 @@ export async function runMobileManualPendingEmbedFill(
   options?: {
     onProgress?: (progress: MobilePendingEmbedFillProgress) => void
     counts?: OrganizeFillCounts
+    skipProbe?: boolean
   }
 ): Promise<MobilePendingEmbedFillResult> {
   const empty: MobilePendingEmbedFillResult = { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
@@ -108,9 +109,11 @@ export async function runMobileManualPendingEmbedFill(
     }
   }
 
-  const probe = await probeEmbeddingApi((text) => adapter.embedQuery(text))
-  if (!probe.ok) {
-    throw new Error(probe.message)
+  if (!options?.skipProbe) {
+    const probe = await probeEmbeddingApi((text) => adapter.embedQuery(text))
+    if (!probe.ok) {
+      throw new Error(probe.message)
+    }
   }
 
   let phases = markPhaseDone(

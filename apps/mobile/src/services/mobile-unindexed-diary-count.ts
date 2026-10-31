@@ -4,7 +4,6 @@ import {
   resolveVaultScope,
   type MobileRagServiceDeps
 } from './mobile-rag-core.helpers'
-import { mobileRagOperationControl } from './mobile-rag-operation-control'
 
 /** 当前活跃仓待嵌入日记篇数（底栏「待嵌入」） */
 export async function countUnindexedDiariesForActiveVault(
@@ -16,7 +15,7 @@ export async function countUnindexedDiariesForActiveVault(
   if (!diaries.length) return 0
   const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
     await loadEmbeddedDiaryIndex(deps, vaultId, {
-      skipReconcile: mobileRagOperationControl.isRunning
+      skipReconcile: true
     })
   const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
     resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string),

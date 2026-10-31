@@ -115,8 +115,28 @@ export function getMobileGraphRawManager(): GraphRawManager | null {
   return runtime?.graphManager ?? null
 }
 
+const mobileVaultScopedManagers = new Map<string, RawDataSourceManager>()
+
 export function getMobileRawDataSourceManager(): RawDataSourceManager | null {
   return runtime?.manager ?? null
+}
+
+export function getMobileRawDataSourceManagerForVault(
+  vaultName?: string,
+  scopedPathService?: IStoragePathService
+): RawDataSourceManager | null {
+  if (!runtime) return null
+  if (!vaultName || !scopedPathService) return runtime.manager
+  const existing = mobileVaultScopedManagers.get(vaultName)
+  if (existing) return existing
+  const versionManager = new FsVersionManager(scopedPathService, runtime.fileSystem)
+  const created = createRawDataSourceManager({
+    pathService: scopedPathService,
+    fs: runtime.fileSystem,
+    versionManager
+  })
+  mobileVaultScopedManagers.set(vaultName, created.manager)
+  return created.manager
 }
 
 export function getMobileMemoryRawManager(): MemoryRawManager | null {
@@ -131,6 +151,7 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+  mobileVaultScopedManagers.clear()
   void import('./mobile-pending-embed-counts')
     .then((m) => {
       m.clearMobileOrganizePendingSnapshot()
@@ -161,6 +182,28 @@ export function createMobileMemoryEmbedSink(
         groupId: MEMORY_EMBED_GROUP_ID,
         vaultId: opts.vaultId
       })
+    },
+    embedTextsBatch: async (
+      items: Array<{
+        text: string
+        sourceType: string
+        sourceId: string
+        groupId: string
+        vaultId: string
+        metadataJson?: string
+        sourceCreatedAt?: number
+      }>
+    ) => {
+      if (!embeddingAdapter?.isConfigured) {
+        throw new Error('Embedding adapter not configured')
+      }
+      await embeddingAdapter.embedTextsBatch(
+        items.map((item) => ({
+          ...item,
+          groupId: MEMORY_EMBED_GROUP_ID,
+          vaultId: item.vaultId
+        }))
+      )
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
