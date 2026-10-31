@@ -40,6 +40,12 @@ export class GraphRepository implements GraphRepositoryPort {
     return this.query.findNodesByNameOrAlias(...args)
   }
 
+  findNodesByNamesOrAliasesBatch(
+    ...args: Parameters<GraphQueryOps['findNodesByNamesOrAliasesBatch']>
+  ) {
+    return this.query.findNodesByNamesOrAliasesBatch(...args)
+  }
+
   findNodeByNameOrAlias(...args: Parameters<GraphQueryOps['findNodeByNameOrAlias']>) {
     return this.query.findNodeByNameOrAlias(...args)
   }

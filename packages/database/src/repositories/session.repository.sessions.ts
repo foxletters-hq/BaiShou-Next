@@ -13,7 +13,10 @@ import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import { compressionSnapshotsTable } from '../schema/compression-snapshots'
-import type { InsertSessionInput } from './session.repository.types'
+import {
+  ensureAgentSessionIndexes,
+  type InsertSessionInput
+} from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
 
 export type AgentSessionRow = Omit<
@@ -21,6 +24,33 @@ export type AgentSessionRow = Omit<
   'mountedNotebookIds'
 > & {
   mountedNotebookIds: string[]
+  snippet?: string
+}
+
+function collapsePreviewWhitespace(raw: string, maxChars: number): string {
+  const cleaned = raw.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  if (cleaned.length <= maxChars) return cleaned
+  return `${cleaned.slice(0, maxChars)}…`
+}
+
+function extractAroundSearchKeyword(raw: string, query: string, maxChars: number): string {
+  const cleaned = raw.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  const needle = query.trim().toLowerCase()
+  if (!needle || cleaned.length <= maxChars) {
+    return collapsePreviewWhitespace(cleaned, maxChars)
+  }
+  const idx = cleaned.toLowerCase().indexOf(needle)
+  if (idx === -1) {
+    return collapsePreviewWhitespace(cleaned, maxChars)
+  }
+  const half = Math.max(4, Math.floor((maxChars - needle.length) / 2))
+  const start = Math.max(0, idx - half)
+  const end = Math.min(cleaned.length, start + maxChars)
+  const prefix = start > 0 ? '…' : ''
+  const suffix = end < cleaned.length ? '…' : ''
+  return `${prefix}${cleaned.slice(start, end)}${suffix}`
 }
 
 function normalizeSessionAssistantId(raw: string | null | undefined): string | undefined {
@@ -51,11 +81,17 @@ function resolveInsertVaultId(raw: string | undefined): string {
 export class SessionCrudOps {
   constructor(private readonly db: AppDatabase) {}
 
+  private async ensureSessionQueryIndexes(): Promise<void> {
+    await ensureAgentSessionIndexes(this.db)
+  }
+
   async upsertSession(input: InsertSessionInput): Promise<void> {
     const vaultId = resolveInsertVaultId(input.vaultId)
     const providerId = input.providerId || 'default'
     const modelId = input.modelId || 'default'
     const assistantId = normalizeSessionAssistantId(input.assistantId) ?? input.assistantId
+
+    const now = new Date()
 
     await this.db
       .insert(agentSessionsTable)
@@ -68,14 +104,15 @@ export class SessionCrudOps {
         mountedNotebookIds: serializeMountedNotebookIds(input.mountedNotebookIds),
         providerId: providerId,
         modelId: modelId,
-        updatedAt: new Date()
+        createdAt: now,
+        updatedAt: now
       })
       .onConflictDoUpdate({
         target: [agentSessionsTable.id],
         set: {
           title: input.title,
           vaultId: vaultId,
-          updatedAt: new Date(),
+          updatedAt: now,
           ...(assistantId ? { assistantId } : {}),
           ...(input.providerId ? { providerId } : {}),
           ...(input.modelId ? { modelId } : {}),
@@ -214,17 +251,185 @@ export class SessionCrudOps {
 
     let finalQuery: any = q.orderBy(
       desc(agentSessionsTable.isPinned),
-      desc(agentSessionsTable.updatedAt)
+      desc(agentSessionsTable.updatedAt),
+      desc(agentSessionsTable.id)
     )
 
     if (limit > 0) {
       finalQuery = finalQuery.limit(limit).offset(offset)
     }
 
-    const results = ((await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]).map(
-      (row) => withMountedNotebookIds(row)
-    )
+    const results: AgentSessionRow[] = (
+      (await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]
+    ).map((row) => withMountedNotebookIds(row))
+
+    if (vaultId !== null && results.length > 0 && (limit > 0 || results.length <= 200)) {
+      await this.enrichSessionsWithSnippets(results, searchQuery)
+    }
+
     return results
+  }
+
+  /**
+   * 为当前页会话批量填充消息预览（snippet）：
+   * - 无搜索词：取该会话最新一条非推理文本消息预览；
+   * - 有搜索词：取命中关键词的消息片段；若命中的并非最新消息（如复制出来的对话分支命中了分叉前的共同历史），
+   *   自动拼接「命中片段 · 最新: 最新消息预览」，从而在搜索结果中直接区分原会话与各个分支。
+   */
+  private async enrichSessionsWithSnippets(
+    sessions: AgentSessionRow[],
+    searchQuery?: string
+  ): Promise<void> {
+    if (sessions.length === 0 || typeof (this.db as any).all !== 'function') return
+
+    const sessionIds = sessions.map((s) => s.id).filter(Boolean)
+    if (sessionIds.length === 0) return
+
+    const idListSql = sql.join(
+      sessionIds.map((id) => sql`${id}`),
+      sql`, `
+    )
+    const trimmedQuery = searchQuery?.trim() || ''
+
+    type SnippetRow = {
+      sessionId?: string
+      messageId?: string
+      orderIndex?: number
+      text?: string
+    }
+
+    const latestBySession = new Map<string, { messageId: string; text: string }>()
+    const matchedBySession = new Map<string, { messageId: string; text: string }>()
+
+    try {
+      await this.ensureSessionQueryIndexes()
+
+      const latestRows = (await this.db.all(sql`
+        WITH latest_msg AS (
+          SELECT session_id, MAX(order_index) AS max_order
+          FROM agent_messages
+          WHERE session_id IN (${idListSql})
+            AND role IN ('user', 'assistant')
+          GROUP BY session_id
+        )
+        SELECT
+          m.session_id as sessionId,
+          m.id as messageId,
+          m.order_index as orderIndex,
+          json_extract(p.data, '$.text') as text
+        FROM latest_msg lm
+        INNER JOIN agent_messages m
+          ON m.session_id = lm.session_id AND m.order_index = lm.max_order
+        INNER JOIN agent_parts p
+          ON p.message_id = m.id
+        WHERE p.type = 'text'
+          AND (
+            json_extract(p.data, '$.isReasoning') IS NULL
+            OR json_extract(p.data, '$.isReasoning') = 0
+            OR json_extract(p.data, '$.isReasoning') = false
+            OR json_extract(p.data, '$.isReasoning') = 'false'
+          )
+          AND LENGTH(TRIM(COALESCE(json_extract(p.data, '$.text'), ''))) > 0
+        ORDER BY m.order_index DESC, p.created_at DESC
+      `)) as SnippetRow[]
+
+      for (const row of latestRows ?? []) {
+        if (!row?.sessionId || !row.text || latestBySession.has(row.sessionId)) continue
+        latestBySession.set(row.sessionId, {
+          messageId: String(row.messageId ?? ''),
+          text: String(row.text)
+        })
+      }
+
+      const missingIds = sessionIds.filter((id) => !latestBySession.has(id))
+      if (missingIds.length > 0) {
+        const missingSql = sql.join(
+          missingIds.map((id) => sql`${id}`),
+          sql`, `
+        )
+        const fallbackRows = (await this.db.all(sql`
+          SELECT
+            m.session_id as sessionId,
+            m.id as messageId,
+            m.order_index as orderIndex,
+            json_extract(p.data, '$.text') as text
+          FROM agent_messages m
+          INNER JOIN agent_parts p ON p.message_id = m.id
+          WHERE m.session_id IN (${missingSql})
+            AND m.role IN ('user', 'assistant')
+            AND p.type = 'text'
+            AND (
+              json_extract(p.data, '$.isReasoning') IS NULL
+              OR json_extract(p.data, '$.isReasoning') = 0
+              OR json_extract(p.data, '$.isReasoning') = false
+              OR json_extract(p.data, '$.isReasoning') = 'false'
+            )
+            AND LENGTH(TRIM(COALESCE(json_extract(p.data, '$.text'), ''))) > 0
+          ORDER BY m.order_index DESC, p.created_at DESC
+        `)) as SnippetRow[]
+
+        for (const row of fallbackRows ?? []) {
+          if (!row?.sessionId || !row.text || latestBySession.has(row.sessionId)) continue
+          latestBySession.set(row.sessionId, {
+            messageId: String(row.messageId ?? ''),
+            text: String(row.text)
+          })
+        }
+      }
+
+      if (trimmedQuery) {
+        const pattern = `%${trimmedQuery.replace(/[%_\\]/g, '\\$&')}%`
+        const matchedRows = (await this.db.all(sql`
+          SELECT
+            m.session_id as sessionId,
+            m.id as messageId,
+            m.order_index as orderIndex,
+            json_extract(p.data, '$.text') as text
+          FROM agent_messages m
+          INNER JOIN agent_parts p ON p.message_id = m.id
+          WHERE m.session_id IN (${idListSql})
+            AND p.type = 'text'
+            AND (
+              json_extract(p.data, '$.isReasoning') IS NULL
+              OR json_extract(p.data, '$.isReasoning') = 0
+              OR json_extract(p.data, '$.isReasoning') = false
+              OR json_extract(p.data, '$.isReasoning') = 'false'
+            )
+            AND json_extract(p.data, '$.text') LIKE ${pattern} ESCAPE '\\'
+          ORDER BY m.order_index DESC, p.created_at DESC
+        `)) as SnippetRow[]
+
+        for (const row of matchedRows ?? []) {
+          if (!row?.sessionId || !row.text || matchedBySession.has(row.sessionId)) continue
+          matchedBySession.set(row.sessionId, {
+            messageId: String(row.messageId ?? ''),
+            text: String(row.text)
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('[SessionRepo] enrichSessionsWithSnippets failed:', e)
+      return
+    }
+
+    for (const session of sessions) {
+      const latest = latestBySession.get(session.id)
+      const matched = trimmedQuery ? matchedBySession.get(session.id) : undefined
+
+      if (matched) {
+        const matchedPreview = extractAroundSearchKeyword(matched.text, trimmedQuery, 30)
+        if (latest && latest.messageId !== matched.messageId) {
+          const latestPreview = collapsePreviewWhitespace(latest.text, 24)
+          if (latestPreview && latestPreview !== matchedPreview) {
+            session.snippet = `${matchedPreview} · 最新: ${latestPreview}`
+            continue
+          }
+        }
+        session.snippet = extractAroundSearchKeyword(matched.text, trimmedQuery, 48)
+      } else if (latest) {
+        session.snippet = collapsePreviewWhitespace(latest.text, 48)
+      }
+    }
   }
 
   /**
@@ -277,15 +482,16 @@ export class SessionCrudOps {
     tasks.push(
       (async () => {
         try {
+          await this.ensureSessionQueryIndexes()
           const scope = [
             eq(partsTbl.type, 'text'),
+            sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`,
             or(
               sql`json_extract(${partsTbl.data}, '$.isReasoning') IS NULL`,
               sql`json_extract(${partsTbl.data}, '$.isReasoning') = 0`,
               sql`json_extract(${partsTbl.data}, '$.isReasoning') = false`,
               sql`json_extract(${partsTbl.data}, '$.isReasoning') = 'false'`
-            ),
-            sql`json_extract(${partsTbl.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+            )
           ]
           if (vaultId) scope.push(eq(agentSessionsTable.vaultId, vaultId))
           if (normalizedAssistantId) {
@@ -300,8 +506,11 @@ export class SessionCrudOps {
               scope.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
             }
           }
-          const likeRows = await this.db
-            .select({ sessionId: partsTbl.sessionId })
+          const selectFn =
+            typeof (this.db as any).selectDistinct === 'function'
+              ? this.db.selectDistinct.bind(this.db)
+              : this.db.select.bind(this.db)
+          const likeRows = await selectFn({ sessionId: partsTbl.sessionId })
             .from(partsTbl)
             .innerJoin(agentSessionsTable, eq(partsTbl.sessionId, agentSessionsTable.id))
             .where(and(...scope))

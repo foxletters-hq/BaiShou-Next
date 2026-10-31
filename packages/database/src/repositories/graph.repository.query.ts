@@ -3,6 +3,7 @@ import {
   GRAPH_GLOBAL_MAX_NODES,
   GRAPH_PENDING_LIST_LIMIT,
   GRAPH_SQL_IN_CHUNK,
+  entityAlignKey,
   graphViewQueryLimit,
   graphViewSqlLimit,
   normalizeGraphName,
@@ -73,6 +74,104 @@ export class GraphQueryOps {
     return [...seen.values()].sort((a, b) =>
       compareDiscriminatorAsc(a.discriminator, b.discriminator)
     )
+  }
+
+  async findNodesByNamesOrAliasesBatch(
+    vaultId: string,
+    queries: ReadonlyArray<{ name: string; type?: GraphNodeType | string }>
+  ): Promise<Map<string, GraphNodeRow[]>> {
+    const out = new Map<string, GraphNodeRow[]>()
+    const normalizedSet = new Set<string>()
+    for (const q of queries) {
+      const normalized = normalizeGraphName(q.name)
+      if (normalized) normalizedSet.add(normalized)
+    }
+    if (normalizedSet.size === 0) return out
+
+    const normalizedNames = [...normalizedSet]
+    const nodesById = new Map<string, GraphNodeRow>()
+    const byNameNorm = new Map<string, GraphNodeRow[]>()
+
+    for (const part of chunkIds(normalizedNames, GRAPH_SQL_IN_CHUNK)) {
+      const rows = await this.database
+        .select(GRAPH_NODE_ROW_COLUMNS)
+        .from(graphNodesTable)
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            inArray(graphNodesTable.nameNormalized, part),
+            isNull(graphNodesTable.deletedAt)
+          )
+        )
+      for (const row of rows) {
+        const mapped = mapNode(row)
+        nodesById.set(mapped.id, mapped)
+        const list = byNameNorm.get(mapped.nameNormalized)
+        if (list) list.push(mapped)
+        else byNameNorm.set(mapped.nameNormalized, [mapped])
+      }
+    }
+
+    const aliasNodeIdsByNorm = new Map<string, string[]>()
+    const missingAliasNodeIds: string[] = []
+    for (const part of chunkIds(normalizedNames, GRAPH_SQL_IN_CHUNK)) {
+      const aliasHits = await this.database
+        .select({
+          nodeId: graphNodeAliasesTable.nodeId,
+          aliasNormalized: graphNodeAliasesTable.aliasNormalized
+        })
+        .from(graphNodeAliasesTable)
+        .where(
+          and(
+            eq(graphNodeAliasesTable.vaultId, vaultId),
+            inArray(graphNodeAliasesTable.aliasNormalized, part)
+          )
+        )
+      for (const hit of aliasHits) {
+        const list = aliasNodeIdsByNorm.get(hit.aliasNormalized)
+        if (list) list.push(hit.nodeId)
+        else aliasNodeIdsByNorm.set(hit.aliasNormalized, [hit.nodeId])
+        if (!nodesById.has(hit.nodeId)) {
+          missingAliasNodeIds.push(hit.nodeId)
+        }
+      }
+    }
+
+    const uniqueMissingIds = uniqueNonEmptyIds(missingAliasNodeIds)
+    if (uniqueMissingIds.length > 0) {
+      const aliasNodes = await this.getNodesByIds(vaultId, uniqueMissingIds)
+      for (const node of aliasNodes) {
+        nodesById.set(node.id, node)
+      }
+    }
+
+    for (const q of queries) {
+      const normalized = normalizeGraphName(q.name)
+      if (!normalized) continue
+      const key = entityAlignKey(q.type ?? '', q.name)
+      if (out.has(key)) continue
+      const typed = q.type?.trim()
+      const seen = new Map<string, GraphNodeRow>()
+
+      for (const node of byNameNorm.get(normalized) ?? []) {
+        if (typed && node.nodeType !== typed) continue
+        seen.set(node.id, node)
+      }
+      for (const nodeId of aliasNodeIdsByNorm.get(normalized) ?? []) {
+        if (seen.has(nodeId)) continue
+        const node = nodesById.get(nodeId)
+        if (!node) continue
+        if (typed && node.nodeType !== typed) continue
+        seen.set(node.id, node)
+      }
+
+      out.set(
+        key,
+        [...seen.values()].sort((a, b) => compareDiscriminatorAsc(a.discriminator, b.discriminator))
+      )
+    }
+
+    return out
   }
 
   async findNodeByNameOrAlias(

@@ -61,7 +61,12 @@ export class SessionAggregateSync {
       .select()
       .from(messagesTbl)
       .where(eq(messagesTbl.sessionId, sessionId))
-    messages.sort((a, b) => a.orderIndex - b.orderIndex)
+    messages.sort((a, b) => {
+      if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex
+      if (a.role === 'assistant' && b.role === 'user') return -1
+      if (a.role === 'user' && b.role === 'assistant') return 1
+      return 0
+    })
 
     const parts = await this.db.select().from(partsTbl).where(eq(partsTbl.sessionId, sessionId))
     const partsByMessageId = new Map<string, typeof parts>()
