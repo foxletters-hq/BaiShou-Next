@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import * as Clipboard from 'expo-clipboard'
 import type { PromptShortcut, SharedMemoryCopyPreview } from '@baishou/shared'
 import {
@@ -37,7 +37,11 @@ export type AgentScreenOverlaysProps = {
   sessionListScrollKey: number
   hasMoreSessions: boolean
   isLoadingMoreSessions: boolean
+  isRefreshingSessions?: boolean
+  sessionSearchQuery?: string
+  setSessionSearchQuery?: (query: string) => void
   loadSessions: (reset?: boolean, assistantId?: string) => Promise<void>
+  refreshSessions?: () => Promise<void>
   currentSessionId: string | null
   handleSelectSession: (id: string) => Promise<void> | void
   handleCreateSession: (opts: any) => Promise<string | null>
@@ -119,7 +123,11 @@ export function AgentScreenOverlays(props: AgentScreenOverlaysProps) {
     sessionListScrollKey,
     hasMoreSessions,
     isLoadingMoreSessions,
+    isRefreshingSessions,
+    sessionSearchQuery,
+    setSessionSearchQuery,
     loadSessions,
+    refreshSessions,
     currentSessionId,
     handleSelectSession,
     handleCreateSession,
@@ -185,46 +193,86 @@ export function AgentScreenOverlays(props: AgentScreenOverlaysProps) {
     loadAssistants
   } = props
 
+  const drawerCurrentAssistant = useMemo(
+    () =>
+      currentAssistant
+        ? {
+            id: currentAssistant.id,
+            name: currentAssistant.name,
+            description: currentAssistant.description,
+            emoji: currentAssistant.emoji,
+            avatarPath: currentAssistant.avatarPath ?? undefined,
+            displayAvatarUri: resolvedCurrentAvatarUri || undefined,
+            assistantKind: currentAssistant.assistantKind
+          }
+        : null,
+    [
+      currentAssistant?.id,
+      currentAssistant?.name,
+      currentAssistant?.description,
+      currentAssistant?.emoji,
+      currentAssistant?.avatarPath,
+      currentAssistant?.assistantKind,
+      resolvedCurrentAvatarUri
+    ]
+  )
+
+  const handleCloseDrawer = useCallback(() => setDrawerOpen(false), [setDrawerOpen])
+  const handleLoadMoreDrawerSessions = useCallback(() => void loadSessions(false), [loadSessions])
+  const handleRefreshDrawerSessions = useCallback(() => {
+    if (refreshSessions) {
+      void refreshSessions()
+    } else {
+      refreshSessionList()
+    }
+  }, [refreshSessions, refreshSessionList])
+  const handleCreateDrawerSession = useCallback(() => {
+    void handleCreateSession({
+      assistantId: currentAssistant?.id,
+      providerId: currentProviderId || undefined,
+      modelId: currentModelId || undefined
+    }).then((sessionId) => {
+      if (sessionId) refreshSessionList()
+    })
+  }, [
+    handleCreateSession,
+    currentAssistant?.id,
+    currentProviderId,
+    currentModelId,
+    refreshSessionList
+  ])
+  const handleOpenAssistantPicker = useCallback(
+    () => setShowAssistantPicker(true),
+    [setShowAssistantPicker]
+  )
+  const handleDrawerSelectAssistant = useCallback(
+    (assistant: any) => {
+      void handleSelectAssistantWithTracking(assistant)
+    },
+    [handleSelectAssistantWithTracking]
+  )
+
   return (
     <>
       <AgentDrawer
         visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        currentAssistant={
-          currentAssistant
-            ? {
-                id: currentAssistant.id,
-                name: currentAssistant.name,
-                description: currentAssistant.description,
-                emoji: currentAssistant.emoji,
-                avatarPath: currentAssistant.avatarPath ?? undefined,
-                displayAvatarUri: resolvedCurrentAvatarUri || undefined,
-                assistantKind: currentAssistant.assistantKind
-              }
-            : null
-        }
+        onClose={handleCloseDrawer}
+        currentAssistant={drawerCurrentAssistant}
         pinnedAssistants={pinnedAssistants}
         sessions={sessions}
         sessionListScrollKey={sessionListScrollKey}
         hasMoreSessions={hasMoreSessions}
         isLoadingMoreSessions={isLoadingMoreSessions}
-        onLoadMoreSessions={() => void loadSessions(false)}
-        onRefreshSessions={() => void loadSessions(true)}
+        isRefreshingSessions={isRefreshingSessions}
+        sessionSearchQuery={sessionSearchQuery}
+        onSessionSearchQueryChange={setSessionSearchQuery}
+        onLoadMoreSessions={handleLoadMoreDrawerSessions}
+        onRefreshSessions={handleRefreshDrawerSessions}
         selectedSessionId={currentSessionId || undefined}
         onSelectSession={handleSelectSession}
-        onCreateSession={() => {
-          void handleCreateSession({
-            assistantId: currentAssistant?.id,
-            providerId: currentProviderId || undefined,
-            modelId: currentModelId || undefined
-          }).then((sessionId) => {
-            if (sessionId) refreshSessionList()
-          })
-        }}
-        onShowAssistantPicker={() => setShowAssistantPicker(true)}
-        onSelectAssistant={(assistant) => {
-          void handleSelectAssistantWithTracking(assistant)
-        }}
+        onCreateSession={handleCreateDrawerSession}
+        onShowAssistantPicker={handleOpenAssistantPicker}
+        onSelectAssistant={handleDrawerSelectAssistant}
         onPinSession={handlePinSession}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}

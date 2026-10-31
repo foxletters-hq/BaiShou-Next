@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
+import { buildBranchSessionTitle, extractMessagePlainTextSnippet } from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import {
@@ -33,7 +34,7 @@ export function useBranchSession() {
         // 对齐桌面：按 id 取原会话，勿无 vault 过滤地扫全表
         const originalSession = await loadMobileSessionInActiveVault(services, sessionId)
         if (!originalSession) {
-          throw new Error(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+          throw new Error(t('agent.sessions.cross_vault_denied', '无权访问其他小窝的会话'))
         }
 
         const allMessages = await sessionManager.getMessagesBySession(sessionId, 9999)
@@ -48,7 +49,16 @@ export function useBranchSession() {
         const vaultId = resolveMobileActiveVaultId(services)
 
         const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-        const branchTitle = `${assistantName || originalSession.title || t('agent.sessions.default_title', '新对话')} (${t('agent.chat.branch', '从此处创建分支')})`
+        const targetMsg = messagesToCopy[targetIndex] as
+          | { parts?: Array<{ type?: string; data?: unknown }> }
+          | undefined
+        const branchTitle = buildBranchSessionTitle({
+          originalTitle: originalSession.title,
+          assistantName,
+          defaultTitle: t('agent.sessions.default_title', '新对话'),
+          branchLabel: t('agent.chat.branch_tag', '分支'),
+          branchPointSnippet: extractMessagePlainTextSnippet(targetMsg?.parts)
+        })
 
         await sessionManager.upsertSession({
           id: newSessionId,
@@ -78,7 +88,8 @@ export function useBranchSession() {
               cacheWriteInputTokens: msg.cacheWriteInputTokens,
               costMicros: msg.costMicros,
               providerId: msg.providerId,
-              modelId: msg.modelId
+              modelId: msg.modelId,
+              createdAt: msg.createdAt
             },
             originalParts.map((p: any) => ({
               id: `part-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,

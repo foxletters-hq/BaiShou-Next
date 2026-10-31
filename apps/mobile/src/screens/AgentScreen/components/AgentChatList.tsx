@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, StyleSheet, TouchableOpacity, Text, ImageBackground, ScrollView } from 'react-native'
 import { InputBar } from '@baishou/ui/native'
 import {
@@ -23,6 +23,7 @@ import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
 import { INPUT_DOCK_HEIGHT, LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
+import { MobileComposerQueueTopSlot } from './MobileComposerRuntimeQueueBar'
 import { useSessionReasoningEffort } from './useSessionReasoningEffort'
 import type { AgentChatListProps } from './agent-chat-list.types'
 
@@ -88,6 +89,55 @@ export function AgentChatList(props: AgentChatListProps) {
     providerType: p.currentProviderType,
     modelId: p.currentModelId ?? null
   })
+  const {
+    setDrawerOpen,
+    setShowCostDialog,
+    toast,
+    t,
+    router,
+    setShowShortcutSheet,
+    setShowRecallSheet
+  } = p
+  const handleMenuPress = useCallback(() => setDrawerOpen(true), [setDrawerOpen])
+  const handleCostPress = useCallback(() => setShowCostDialog(true), [setShowCostDialog])
+  const handleComposerBlocked = useCallback(() => {
+    toast.showInfo(t('agent.error.no_model', '请先在输入栏选择一个模型'))
+  }, [toast, t])
+  const handleManageProviders = useCallback(
+    () => (router as any).push('/settings/ai-services'),
+    [router]
+  )
+  const handleManageShortcuts = useCallback(
+    () => setShowShortcutSheet(true),
+    [setShowShortcutSheet]
+  )
+  const handleRecall = useCallback(() => setShowRecallSheet(true), [setShowRecallSheet])
+  const handleOpenTools = useCallback(() => router.push('/settings/agent-tools'), [router])
+  const modelSelector = useMemo(
+    () =>
+      p.handleSelectModel
+        ? {
+            currentProviderId: p.currentProviderId,
+            currentModelId: p.currentModelId,
+            currentProviderType: p.currentProviderType,
+            displayModelName: p.displayModelName,
+            providers: p.dialogueProviders || [],
+            onSelectModel: p.handleSelectModel,
+            onManageProviders: handleManageProviders,
+            reasoningEffort
+          }
+        : undefined,
+    [
+      p.handleSelectModel,
+      p.currentProviderId,
+      p.currentModelId,
+      p.currentProviderType,
+      p.displayModelName,
+      p.dialogueProviders,
+      handleManageProviders,
+      reasoningEffort
+    ]
+  )
   const resolvedLive = useAgentGateInboxStore((state) =>
     selectResolvedLiveForSession(state, p.currentSessionId, 'companion')
   )
@@ -156,11 +206,11 @@ export function AgentChatList(props: AgentChatListProps) {
           avatarEmoji={p.assistantEmoji}
           costMicros={p.totalCostMicros}
           hasChatBackground={p.hasChatBackground}
-          onMenuPress={() => p.setDrawerOpen(true)}
-          onCostPress={() => p.setShowCostDialog(true)}
+          onMenuPress={handleMenuPress}
+          onCostPress={handleCostPress}
         />
 
-        <AgentDrawerSwipeZone enabled={p.drawerSwipeEnabled} onOpen={() => p.setDrawerOpen(true)}>
+        <AgentDrawerSwipeZone enabled={p.drawerSwipeEnabled} onOpen={handleMenuPress}>
           <ScrollView
             ref={p.flatListRef}
             style={styles.list}
@@ -355,10 +405,12 @@ export function AgentChatList(props: AgentChatListProps) {
                       invertMetaOverBackground={chatBackgroundMetaTone}
                       hasChatBackground={p.hasChatBackground}
                       retryDisabled={
-                        p.isRetryActionBusy ||
-                        p.isStreaming ||
-                        p.isCompressing ||
-                        p.markdownPresentationActive
+                        isLastAssistant
+                          ? p.isRetryActionBusy ||
+                            p.isStreaming ||
+                            p.isCompressing ||
+                            p.markdownPresentationActive
+                          : Boolean(p.isRetryActionBusy)
                       }
                       error={isLastAssistant ? (p.streamError ?? null) : null}
                     />
@@ -413,15 +465,10 @@ export function AgentChatList(props: AgentChatListProps) {
               p.setInputDockHeight(next)
               return
             }
-
             // 动画开合与尺寸频繁过渡期间防抖，避免逐帧触发根页面与消息流重渲染
-            if (dockHeightDebounceRef.current) {
-              clearTimeout(dockHeightDebounceRef.current)
-            }
+            if (dockHeightDebounceRef.current) clearTimeout(dockHeightDebounceRef.current)
             dockHeightDebounceRef.current = setTimeout(() => {
-              if (Math.abs(next - currentDockHeightRef.current) >= 2) {
-                p.setInputDockHeight(next)
-              }
+              if (Math.abs(next - currentDockHeightRef.current) >= 2) p.setInputDockHeight(next)
             }, 60)
           }}
           style={[styles.inputDock, p.inputDockAnimatedStyle]}
@@ -430,38 +477,38 @@ export function AgentChatList(props: AgentChatListProps) {
           <InputBar
             ref={p.inputBarRef}
             hasChatBackground={p.hasChatBackground}
-            onSend={p.handleSendWithScroll}
+            topSlot={
+              <MobileComposerQueueTopSlot
+                pendingQueueCtl={p.pendingQueueCtl}
+                inputBarRef={p.inputBarRef}
+                hasChatBackground={p.hasChatBackground}
+                t={p.t}
+              />
+            }
+            onSend={async (text, attachments, search, meta) => {
+              if (p.pendingQueueCtl?.editingInputId) {
+                const ok = await p.pendingQueueCtl.commitEdit(text)
+                if (ok) p.inputBarRef.current?.restoreDraft?.({ text: '' })
+                return ok
+              }
+              return p.handleSendWithScroll(text, attachments, search, meta)
+            }}
             isLoading={p.isLoading || p.isStreaming}
             allowSendWhileLoading
             onStop={p.handleStop}
             composerBlocked={!p.hasConfiguredDialogueModel}
-            onComposerBlocked={() =>
-              p.toast.showInfo(p.t('agent.error.no_model', '请先在输入栏选择一个模型'))
-            }
+            onComposerBlocked={handleComposerBlocked}
             composerDraftKey={p.composerDraftKey}
             composerDraftStorage={mobileComposerDraftStorage}
             composerEnabled={!p.isBubbleEditing}
             reasoningEffort={reasoningEffort}
-            modelSelector={
-              p.handleSelectModel
-                ? {
-                    currentProviderId: p.currentProviderId,
-                    currentModelId: p.currentModelId,
-                    currentProviderType: p.currentProviderType,
-                    displayModelName: p.displayModelName,
-                    providers: p.dialogueProviders || [],
-                    onSelectModel: p.handleSelectModel,
-                    onManageProviders: () => (p.router as any).push('/settings/ai-services'),
-                    reasoningEffort
-                  }
-                : undefined
-            }
+            modelSelector={modelSelector}
             onInputFocus={p.handleInputBarFocus}
             shortcuts={p.shortcuts}
             assistantName={p.assistantDisplayName}
-            onManageShortcuts={() => p.setShowShortcutSheet(true)}
-            onRecall={() => p.setShowRecallSheet(true)}
-            onOpenTools={() => p.router.push('/settings/agent-tools')}
+            onManageShortcuts={handleManageShortcuts}
+            onRecall={handleRecall}
+            onOpenTools={handleOpenTools}
             searchMode={p.searchMode}
             onToggleSearchMode={p.toggleSearchMode}
             ttsMode={p.ttsMode}

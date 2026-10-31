@@ -193,17 +193,15 @@ export function useAgentStreamFinish({
         }
 
         try {
-          try {
-            await services?.sessionManager.flushSessionToDisk(sessionId)
-          } catch {
-            /* ignore */
+          if (services?.sessionManager) {
+            void services.sessionManager.flushSessionToDisk(sessionId).catch(() => undefined)
           }
 
           if (!isActiveSession(sessionId)) return
 
           let reloaded = await reloadMessagesFromDb(sessionId, {
             preserveWindow: true,
-            retryCount: 5,
+            retryCount: options?.waitForLatestUsage ? 2 : 1,
             waitForLatestUsage: options?.waitForLatestUsage ?? false,
             commitToUi: true
           })
@@ -211,7 +209,7 @@ export function useAgentStreamFinish({
           if (!reloaded && isActiveSession(sessionId)) {
             reloaded = await reloadMessagesFromDb(sessionId, {
               preserveWindow: true,
-              retryCount: 2,
+              retryCount: 1,
               waitForLatestUsage: false,
               commitToUi: true
             })
