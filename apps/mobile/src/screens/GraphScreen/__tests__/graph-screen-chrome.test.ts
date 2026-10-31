@@ -48,6 +48,7 @@ describe('GraphScreen chrome', () => {
     expect(reviewPage).toContain('StackScreenLayout')
     expect(reviewPage).toContain("t('graph.node_review_title', '整理节点')")
     expect(reviewPage).toContain('SegmentedControl')
+    expect(reviewPage).toContain('size="small"')
     expect(reviewPage).toContain("t('graph.tab_pending_count'")
     expect(reviewPage).toContain("t('graph.tab_similar_count'")
     expect(reviewPage).toContain('GraphScreenPendingTab')
@@ -289,5 +290,12 @@ describe('GraphScreen chrome', () => {
     expect(canvasSrc).not.toContain("t('graph.create_node'")
     expect(canvasSrc).not.toContain("t('graph.merge_nodes'")
     expect(canvasSrc).not.toContain("t('graph.extract_concurrency'")
+  })
+
+  it('should use DatePickerFloatingModal and center concurrency in settings organize tab', () => {
+    expect(organizeSrc).toContain('DatePickerFloatingModal')
+    expect(organizeSrc).not.toContain('<TextInput')
+    expect(organizeSrc).toContain("textAlign: 'center'")
+    expect(organizeSrc).toContain('safeParseDate')
   })
 })

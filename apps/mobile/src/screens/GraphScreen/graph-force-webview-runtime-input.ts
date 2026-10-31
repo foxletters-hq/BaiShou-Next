@@ -204,23 +204,49 @@ window.__setGraphSelection = function(next){
 
 window.__patchGraphMeta = function(payload){
   if(!payload || typeof payload !== 'object') return;
-  const byId = new Map((payload.nodes||[]).map(function(n){ return [n.id, n]; }));
-  for(const n of nodes){
+  const rawNextNodes = (payload.nodes||[]).filter(function(n){ return n && n.reviewStatus !== 'rejected'; });
+  const byId = new Map(rawNextNodes.map(function(n){ return [n.id, n]; }));
+  for(let i = nodes.length - 1; i >= 0; i--){
+    const n = nodes[i];
     const fresh = byId.get(n.id);
-    if(!fresh) continue;
+    if(!fresh){
+      nodes.splice(i, 1);
+      continue;
+    }
     n.name = fresh.name;
     n.discriminator = fresh.discriminator;
     n.nodeType = fresh.nodeType;
     n.mentionCount = fresh.mentionCount;
     n.reviewStatus = fresh.reviewStatus;
   }
-  const linkMeta = new Map((payload.edges||[]).map(function(e){ return [e.id, e]; }));
-  for(const l of links){
+  idIndex.clear();
+  for(let i = 0; i < nodes.length; i++){
+    idIndex.set(nodes[i].id, i);
+  }
+  const rawNextEdges = (payload.edges||[]).filter(function(e){
+    return e && e.reviewStatus !== 'rejected' && idIndex.has(e.fromId) && idIndex.has(e.toId);
+  });
+  const linkMeta = new Map(rawNextEdges.map(function(e){ return [e.id, e]; }));
+  for(let i = links.length - 1; i >= 0; i--){
+    const l = links[i];
     const fresh = linkMeta.get(l.id);
-    if(!fresh) continue;
+    if(!fresh || !idIndex.has(fresh.fromId) || !idIndex.has(fresh.toId)){
+      links.splice(i, 1);
+      continue;
+    }
+    l.a = idIndex.get(fresh.fromId);
+    l.b = idIndex.get(fresh.toId);
     l.reviewStatus = fresh.reviewStatus;
     l.edgeType = fresh.edgeType;
   }
+  degreeById.clear();
+  for(const l of links){
+    const a = nodes[l.a], b = nodes[l.b];
+    if(!a || !b) continue;
+    degreeById.set(a.id, (degreeById.get(a.id)||0)+1);
+    degreeById.set(b.id, (degreeById.get(b.id)||0)+1);
+  }
+  if(selectedId && !idIndex.has(selectedId)) selectedId = null;
   requestDraw();
 };
 
