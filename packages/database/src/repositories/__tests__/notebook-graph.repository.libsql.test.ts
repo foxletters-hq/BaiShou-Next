@@ -332,4 +332,37 @@ describe('NotebookGraphRepository applyRawNode (libsql)', () => {
     expect(raw.rows[0]?.discriminator).toBe('')
     expect(raw.rows[0]?.discriminator).not.toBeNull()
   })
+
+  it('should replace notebook node aliases when applyRawNode receives origin=user and keep union when origin=ai', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'nb-merged',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '小李',
+      aliases: ['李某', '小张'],
+      origin: 'user',
+      createdAt: now,
+      updatedAt: now,
+      shardMonth: '2026-08'
+    })
+
+    await repo.applyRawNode({
+      id: 'nb-merged',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '小李',
+      aliases: ['李某'],
+      origin: 'user',
+      createdAt: now,
+      updatedAt: now + 1,
+      shardMonth: '2026-08'
+    })
+
+    const afterUser = await repo.getNodeById('nb-merged', 'v1', 'nb1')
+    expect(JSON.parse(String(afterUser?.aliases ?? '[]'))).toEqual(['小李', '李某'])
+    expect(await repo.findNodesByNameOrAlias('v1', 'nb1', '小张', 'person')).toHaveLength(0)
+  })
 })

@@ -57,7 +57,10 @@ export class NotebookGraphMutateOps {
     }
     const now = Date.now()
     const existingById = await this.lookup.getNodeById(row.id, vaultId, notebookId)
-    const aliases = mergeNotebookAliases(existingById?.aliases, [row.name, ...(row.aliases ?? [])])
+    const aliases =
+      row.origin === 'user'
+        ? mergeNotebookAliases(undefined, [row.name, ...(row.aliases ?? [])])
+        : mergeNotebookAliases(existingById?.aliases, [row.name, ...(row.aliases ?? [])])
     const discriminator = normalizeGraphDiscriminator(row.discriminator)
     const embeddingPatch = notebookNodeEmbeddingPatch(row)
     try {

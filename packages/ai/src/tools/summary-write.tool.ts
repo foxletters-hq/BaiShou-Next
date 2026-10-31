@@ -69,10 +69,6 @@ export class SummaryWriteTool extends AgentTool<typeof summaryWriteParams> {
     }
 
     try {
-      if (context.rawDataSourceManager?.writeFile) {
-        await context.rawDataSourceManager.writeFile('summary', bounds.relativePath, trimmedContent)
-      }
-
       if (context.summaryReader?.writeSummary) {
         const dbRes = await context.summaryReader.writeSummary({
           type: bounds.type,
@@ -83,6 +79,10 @@ export class SummaryWriteTool extends AgentTool<typeof summaryWriteParams> {
         if (!dbRes.ok) {
           return `Error: ${dbRes.message}`
         }
+      }
+
+      if (context.rawDataSourceManager?.writeFile) {
+        await context.rawDataSourceManager.writeFile('summary', bounds.relativePath, trimmedContent)
       }
 
       return (

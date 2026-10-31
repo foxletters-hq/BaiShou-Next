@@ -304,4 +304,90 @@ describe('GraphRepository mutations', () => {
     const leftover = await client.execute("SELECT id FROM graph_nodes WHERE id = 'n-gone'")
     expect(leftover.rows).toHaveLength(0)
   })
+
+  it('should replace aliases when applyRawNode or applyRawNodesBatch receives origin=user and keep union when origin=ai', async () => {
+    const now = Date.now()
+    await repo.upsertNode({
+      id: 'n-merged',
+      forceId: true,
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '小李',
+      aliases: ['小李', '李某', '小张'],
+      origin: 'user',
+      shardMonth: '2026-03'
+    })
+
+    // User deletes alias '小张', leaving only ['李某'] in the JSONL record
+    await repo.applyRawNode({
+      id: 'n-merged',
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '小李',
+      aliases: ['李某'],
+      summary: '',
+      props: {},
+      mentionCount: 2,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      origin: 'user',
+      createdAt: now,
+      updatedAt: now + 1,
+      deletedAt: null,
+      shardMonth: '2026-03'
+    })
+
+    const afterSingle = await repo.getNodeById('n-merged', VAULT)
+    expect(afterSingle?.aliases).toEqual(['小李', '李某'])
+    expect(await repo.findNodesByNameOrAlias(VAULT, '小张', 'person')).toHaveLength(0)
+
+    // AI extraction discovers an additional alias '老李' -> should union with existing
+    await repo.applyRawNode({
+      id: 'n-merged',
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '小李',
+      aliases: ['老李'],
+      summary: '',
+      props: {},
+      mentionCount: 3,
+      firstSeenAt: now,
+      lastSeenAt: now + 2,
+      origin: 'ai',
+      createdAt: now,
+      updatedAt: now + 2,
+      deletedAt: null,
+      shardMonth: '2026-03'
+    })
+
+    const afterAi = await repo.getNodeById('n-merged', VAULT)
+    expect(afterAi?.aliases).toEqual(['小李', '李某', '老李'])
+
+    // Batch sync with origin='user' removes '老李' and '李某'
+    await repo.applyRawNodesBatch([
+      {
+        id: 'n-merged',
+        existingById: afterAi,
+        vaultId: VAULT,
+        nodeType: 'person',
+        name: '小李',
+        aliases: [],
+        summary: '',
+        props: {},
+        mentionCount: 3,
+        firstSeenAt: now,
+        lastSeenAt: now + 3,
+        origin: 'user',
+        createdAt: now,
+        updatedAt: now + 3,
+        deletedAt: null,
+        shardMonth: '2026-03'
+      }
+    ])
+
+    const afterBatch = await repo.getNodeById('n-merged', VAULT)
+    expect(afterBatch?.aliases).toEqual(['小李'])
+    expect(await repo.findNodesByNameOrAlias(VAULT, '老李', 'person')).toHaveLength(0)
+    expect(await repo.findNodesByNameOrAlias(VAULT, '李某', 'person')).toHaveLength(0)
+  })
 })

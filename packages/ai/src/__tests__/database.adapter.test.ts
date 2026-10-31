@@ -245,4 +245,79 @@ describe('DatabaseAdapter.getAvailableSummaries', () => {
     expect(lines).toEqual([`- ${formatLocalDate(start)} ~ ${formatLocalDate(end)}`])
     expect(lines[0]).toBe('- 2025-06-16 ~ 2025-06-22')
   })
+
+  it('should fail-closed in writeSummary when resolveVaultId is omitted and succeed when provided', async () => {
+    const adapterWithoutVault = new DatabaseAdapter({} as any, {} as any, {} as any)
+    const failed = await adapterWithoutVault.writeSummary({
+      type: 'weekly',
+      startDate: new Date(2026, 2, 9),
+      endDate: new Date(2026, 2, 15, 23, 59, 59, 999),
+      content: '周报正文'
+    })
+    expect(failed).toEqual({
+      ok: false,
+      message: 'No active vault ID available for writing summary.'
+    })
+
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined)
+    const values = vi.fn().mockReturnValue({ onConflictDoUpdate })
+    const insert = vi.fn().mockReturnValue({ values })
+    const where = vi.fn().mockResolvedValue([])
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const db = { select, insert }
+
+    const adapterWithVault = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
+    const res = await adapterWithVault.writeSummary({
+      type: 'weekly',
+      startDate: new Date(2026, 2, 9),
+      endDate: new Date(2026, 2, 15, 23, 59, 59, 999),
+      content: '周报正文'
+    })
+    expect(res).toEqual({ ok: true })
+    expect(insert).toHaveBeenCalledTimes(1)
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vaultId: 'vlt_test',
+        type: 'weekly',
+        content: '周报正文'
+      })
+    )
+  })
+
+  it('should match same calendar day in readSummary when exact timestamp query misses', async () => {
+    const storedStart = new Date(2026, 2, 9, 8, 0, 0)
+    const storedEnd = new Date(2026, 2, 15, 23, 59, 59)
+    const storedGen = new Date(2026, 2, 16, 10, 0, 0)
+
+    let callCount = 0
+    const where = vi.fn().mockImplementation(() => {
+      callCount += 1
+      if (callCount === 1) {
+        return { limit: vi.fn().mockResolvedValue([]) }
+      }
+      return Promise.resolve([
+        {
+          id: 1,
+          vaultId: 'vlt_test',
+          type: 'weekly',
+          startDate: storedStart,
+          endDate: storedEnd,
+          generatedAt: storedGen,
+          content: '周报内容'
+        }
+      ])
+    })
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const db = { select }
+
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
+    const found = await adapter.readSummary('weekly', '2026-03-09')
+    expect(found).toEqual({
+      content: '周报内容',
+      generatedAt: '2026-03-16',
+      endDateIso: '2026-03-15'
+    })
+  })
 })

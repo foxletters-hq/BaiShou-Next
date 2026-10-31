@@ -157,6 +157,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
 
     const datePart = startDateIso.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
     const targetDate = datePart ? parseDateStr(datePart) : new Date(startDateIso)
+    const dayKey = datePart ?? formatLocalDate(targetDate)
     const rows = await this.db
       .select()
       .from(summariesTable)
@@ -169,12 +170,25 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       )
       .limit(1)
 
-    if (rows.length === 0) return null
-    const s = rows[0]!
+    let matched: (typeof rows)[number] | undefined = rows[0]
+    if (!matched) {
+      const candidates = await this.db
+        .select()
+        .from(summariesTable)
+        .where(
+          and(eq(summariesTable.vaultId, vaultId), eq(summariesTable.type as any, type as any))
+        )
+      matched = candidates.find((row) => {
+        const start = row.startDate instanceof Date ? row.startDate : new Date(row.startDate)
+        return formatLocalDate(start) === dayKey
+      })
+    }
+
+    if (!matched) return null
     return {
-      content: s.content,
-      generatedAt: formatLocalDate(s.generatedAt),
-      endDateIso: formatLocalDate(s.endDate)
+      content: matched.content,
+      generatedAt: formatLocalDate(matched.generatedAt),
+      endDateIso: formatLocalDate(matched.endDate)
     }
   }
 

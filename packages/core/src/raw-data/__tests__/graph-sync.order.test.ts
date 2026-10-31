@@ -212,4 +212,63 @@ describe('GraphSyncService write→index order', () => {
     await new GraphSyncService(graphManager, repo, null).syncPendingIndex({ absentSweep: 'off' })
     expect(listLiveNodeRefs).not.toHaveBeenCalled()
   })
+
+  it('should not skip batch upsert when origin=user raw node removes stale aliases on existing row with same updatedAt', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    await graphManager.writeRecord(
+      {
+        ...nodeRecord({ id: 'n-alias-fix', vaultId, name: '小李', now, shardMonth: '2026-07' }),
+        aliases: ['李某'],
+        origin: 'user',
+        updatedAt: now
+      },
+      { collection: 'nodes' }
+    )
+
+    const existingRow = {
+      id: 'n-alias-fix',
+      vaultId,
+      nodeType: 'person',
+      name: '小李',
+      nameNormalized: '小李',
+      discriminator: '',
+      aliases: ['小李', '李某', '被删掉的旧别名'],
+      summary: '',
+      propsJson: '{}',
+      mentionCount: 1,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      origin: 'user' as const,
+      shardMonth: '2026-07',
+      reviewStatus: 'approved' as const,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      embedding: null,
+      dimension: null,
+      modelId: null
+    }
+
+    const applyRawNodesBatch = vi.fn().mockResolvedValue([{ id: 'n-alias-fix' }])
+    const repo = {
+      getNodesByIds: vi.fn().mockResolvedValue(new Map([['n-alias-fix', existingRow]])),
+      applyRawNodesBatch,
+      applyRawNode: vi.fn(),
+      softDeleteNode: vi.fn(),
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs: vi.fn().mockResolvedValue([]),
+      listLiveEdgeRefs: vi.fn().mockResolvedValue([])
+    } as unknown as GraphRepository
+
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex({
+      absentSweep: 'off'
+    })
+
+    expect(result.nodesUpserted).toBe(1)
+    expect(applyRawNodesBatch).toHaveBeenCalledTimes(1)
+  })
 })
