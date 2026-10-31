@@ -1,13 +1,27 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native'
+import {
+  View,
+  Text,
+  Pressable,
+  FlatList,
+  ActivityIndicator,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent
+} from 'react-native'
 import { Search } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
 export type { AgentSession, AgentSessionListProps } from './agent-session-list.types'
-import { groupSessionsByTime, type TimeGroup } from './agent-session-list.utils'
+import {
+  flattenGroupedSessions,
+  groupSessionsByTime,
+  type FlatSessionListRow,
+  type TimeGroup
+} from './agent-session-list.utils'
 import { agentSessionListStyles as styles } from './agent-session-list.styles'
 import { AgentSessionListItem } from './AgentSessionListItem'
 import { AgentSessionActionSheet } from './AgentSessionActionSheet'
@@ -21,13 +35,30 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  searchQuery: controlledSearchQuery,
+  onSearchQueryChange,
+  isRefreshing = false,
+  onRefresh,
   scrollKey = 0
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const [searchQuery, setSearchQuery] = useState('')
+  const [internalSearchQuery, setInternalSearchQuery] = useState('')
   const [actionSession, setActionSession] = useState<AgentSession | null>(null)
-  const listRef = useRef<FlatList>(null)
+  const listRef = useRef<FlatList<FlatSessionListRow>>(null)
+
+  const isControlledSearch = typeof onSearchQueryChange === 'function'
+  const searchQuery = isControlledSearch ? (controlledSearchQuery ?? '') : internalSearchQuery
+  const handleSearchChange = useCallback(
+    (nextQuery: string) => {
+      if (isControlledSearch) {
+        onSearchQueryChange(nextQuery)
+      } else {
+        setInternalSearchQuery(nextQuery)
+      }
+    },
+    [isControlledSearch, onSearchQueryChange]
+  )
 
   useEffect(() => {
     if (scrollKey > 0) {
@@ -50,50 +81,93 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
   )
 
   const filteredSessions = useMemo(() => {
-    if (!searchQuery.trim()) return sessions
+    // 受控搜索下由外部查询数据库（同时覆盖标题与消息正文），前端不再仅按标题二次截断
+    if (isControlledSearch || !searchQuery.trim()) return sessions
     const query = searchQuery.toLowerCase()
-    return sessions.filter((s) => (s.title ?? '').toLowerCase().includes(query))
-  }, [sessions, searchQuery])
+    return sessions.filter(
+      (s) =>
+        (s.title ?? '').toLowerCase().includes(query) ||
+        (s.snippet ?? '').toLowerCase().includes(query)
+    )
+  }, [sessions, searchQuery, isControlledSearch])
 
   const groupedSessions = useMemo(
     () => groupSessionsByTime(filteredSessions, groupLabel),
     [filteredSessions, groupLabel]
   )
 
-  const endReachedLockRef = useRef(false)
-
-  useEffect(() => {
-    if (!isLoadingMore) {
-      endReachedLockRef.current = false
-    }
-  }, [isLoadingMore])
+  const flatRows = useMemo(() => flattenGroupedSessions(groupedSessions), [groupedSessions])
 
   const handleEndReached = useCallback(() => {
-    if (!hasMore || isLoadingMore || !onLoadMore || endReachedLockRef.current) return
-    endReachedLockRef.current = true
+    if (!hasMore || isLoadingMore || !onLoadMore) return
     onLoadMore()
   }, [hasMore, isLoadingMore, onLoadMore])
 
+  const handleScrollNearBottom = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!hasMore || isLoadingMore || !onLoadMore) return
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent
+      if (contentOffset.y <= 0 || contentSize.height <= 0 || layoutMeasurement.height <= 0) return
+      const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y
+      const threshold = Math.max(120, layoutMeasurement.height * 0.25)
+      if (distanceFromBottom <= threshold) {
+        onLoadMore()
+      }
+    },
+    [hasMore, isLoadingMore, onLoadMore]
+  )
+
   const listFooter = useMemo(() => {
-    if (!isLoadingMore) return null
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.textSecondary} />
-      </View>
-    )
-  }, [isLoadingMore, colors.textSecondary])
+    if (isLoadingMore) {
+      return (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+        </View>
+      )
+    }
+    if (hasMore && onLoadMore) {
+      return (
+        <View style={styles.footerLoadMore}>
+          <Button variant="outlined" size="sm" onPress={onLoadMore}>
+            {t('agent.sessions.loadMore', '加载更多对话')}
+          </Button>
+        </View>
+      )
+    }
+    return null
+  }, [isLoadingMore, hasMore, onLoadMore, colors.textSecondary, t])
 
   const handleShowActions = useCallback((session: AgentSession) => {
     setActionSession(session)
   }, [])
 
+  const renderRow = useCallback(
+    ({ item: row }: { item: FlatSessionListRow }) => {
+      if (row.type === 'header') {
+        return (
+          <View style={[styles.groupHeader, { backgroundColor: colors.bgApp }]}>
+            <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>{row.label}</Text>
+          </View>
+        )
+      }
+      return (
+        <AgentSessionListItem
+          item={row.session}
+          onSelect={onSelect}
+          onShowActions={handleShowActions}
+        />
+      )
+    },
+    [colors.bgApp, colors.textSecondary, onSelect, handleShowActions]
+  )
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
       <View style={styles.searchBar}>
         <Input
-          placeholder={t('agent.sidebar.search_title_hint', '搜索对话标题...')}
+          placeholder={t('agent.sidebar.search_hint', '搜索对话标题或内容...')}
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={handleSearchChange}
           className="rounded-full min-h-10"
           style={styles.searchInput}
           leftSlot={
@@ -101,7 +175,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
           }
           rightSlot={
             searchQuery.length > 0 ? (
-              <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+              <Pressable onPress={() => handleSearchChange('')} hitSlop={8}>
                 <Text style={[styles.clearIcon, { color: colors.textSecondary }]}>×</Text>
               </Pressable>
             ) : undefined
@@ -111,26 +185,14 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
 
       <FlatList
         ref={listRef}
-        data={groupedSessions}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        data={flatRows}
         scrollEnabled={!actionSession}
-        keyExtractor={(item) => item.group}
-        renderItem={({ item: group }) => (
-          <View>
-            <View style={[styles.groupHeader, { backgroundColor: colors.bgApp }]}>
-              <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>
-                {group.label}
-              </Text>
-            </View>
-            {group.items.map((session: AgentSession) => (
-              <AgentSessionListItem
-                key={session.id}
-                item={session}
-                onSelect={onSelect}
-                onShowActions={handleShowActions}
-              />
-            ))}
-          </View>
-        )}
+        keyExtractor={(row) => row.key}
+        renderItem={renderRow}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
@@ -140,7 +202,11 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
         }
         ListFooterComponent={listFooter}
         onEndReached={handleEndReached}
-        onEndReachedThreshold={0.2}
+        onEndReachedThreshold={0.3}
+        onScroll={handleScrollNearBottom}
+        onScrollEndDrag={handleScrollNearBottom}
+        onMomentumScrollEnd={handleScrollNearBottom}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
 

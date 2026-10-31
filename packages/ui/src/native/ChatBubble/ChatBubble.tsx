@@ -459,13 +459,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           />
         ) : null}
 
-        <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
-        <SkillCitePreviewDialog
-          visible={Boolean(previewSkill)}
-          command={previewSkill?.command ?? ''}
-          content={previewSkill?.content ?? ''}
-          onClose={() => setPreviewSkill(null)}
-        />
+        {previewImageUri ? (
+          <NativeImagePreviewModal uri={previewImageUri} onClose={() => setPreviewImageUri(null)} />
+        ) : null}
+        {previewSkill ? (
+          <SkillCitePreviewDialog
+            visible
+            command={previewSkill.command}
+            content={previewSkill.content}
+            onClose={() => setPreviewSkill(null)}
+          />
+        ) : null}
       </View>
     </KnowledgeCitationBlock>
   )

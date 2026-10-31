@@ -69,7 +69,7 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 {t('data_sync.plan_confirm_desc', {
                   count: preview.changeCount,
-                  activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
+                  activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择小窝')
                 })}
               </Text>
               <Text style={[styles.trafficSummary, { color: colors.textTertiary }]}>

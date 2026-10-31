@@ -2,7 +2,9 @@ import { StyleSheet } from 'react-native'
 import { mobileTypography, settingsIcons, sharedTokens } from '../../theme/tokens'
 
 export const agentSessionListStyles = StyleSheet.create({
-  container: { flex: 1, position: 'relative' },
+  container: { flex: 1, minHeight: 0, position: 'relative' },
+  list: { flex: 1 },
+  listContent: { paddingBottom: sharedTokens.spacing.lg },
   searchBar: {
     margin: sharedTokens.spacing.mdTight
   },
@@ -22,10 +24,19 @@ export const agentSessionListStyles = StyleSheet.create({
   itemHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: sharedTokens.spacing.xs },
   pinIcon: { fontSize: mobileTypography.secondary.fontSize, marginRight: sharedTokens.spacing.xs },
   itemTitle: { fontSize: mobileTypography.primary.fontSize, flex: 1 },
+  itemSnippet: {
+    fontSize: mobileTypography.caption.fontSize,
+    lineHeight: 16,
+    marginBottom: sharedTokens.spacing.xs
+  },
   itemMeta: { flexDirection: 'row', justifyContent: 'space-between' },
   itemTime: { fontSize: mobileTypography.caption.fontSize },
   itemCount: { fontSize: mobileTypography.caption.fontSize },
   emptyContainer: { padding: sharedTokens.spacing.xlPlus, alignItems: 'center' },
   emptyText: { fontSize: mobileTypography.body.fontSize },
-  footerLoader: { paddingVertical: sharedTokens.spacing.md, alignItems: 'center' }
+  footerLoader: { paddingVertical: sharedTokens.spacing.md, alignItems: 'center' },
+  footerLoadMore: {
+    paddingHorizontal: sharedTokens.spacing.md,
+    paddingVertical: sharedTokens.spacing.sm
+  }
 })
