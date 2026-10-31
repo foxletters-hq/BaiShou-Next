@@ -144,12 +144,13 @@ export function useGraphPageSelection(deps: SelectionDeps) {
   const graphNodeNameById = useMemo(
     () =>
       buildGraphNodeNameMap([
+        ...(localView?.nodes || []),
         ...deps.nodes,
         ...deps.pendingNodes,
         ...deps.pendingEndpointNodes,
-        ...(localView?.nodes || [])
+        ...(selectedNode ? [selectedNode] : [])
       ]),
-    [deps.nodes, deps.pendingNodes, deps.pendingEndpointNodes, localView]
+    [localView, deps.nodes, deps.pendingNodes, deps.pendingEndpointNodes, selectedNode]
   )
 
   const detailEdges = useMemo(

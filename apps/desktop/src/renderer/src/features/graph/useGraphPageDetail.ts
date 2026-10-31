@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   applyGraphLocalEdgeDelete,
   applyGraphLocalNodeDelete,
   isGraphNodeSameNameConflict,
   restoreGraphLocalEdgeDelete,
   restoreGraphLocalNodeDelete,
-  type GraphSameNameExisting
+  type GraphInventorySnapshot,
+  type GraphSameNameExisting,
+  type GraphSimilarPendingPair
 } from '@baishou/shared'
 import { findGraphSameNameNode } from './graph-same-name.lookup'
 import {
@@ -54,6 +56,17 @@ type DetailDeps = {
   inFlightDeletedNodeIdsRef: { current: Set<string> }
   inFlightDeletedEdgeIdsRef: { current: Set<string> }
   graphViewRef: { current: any }
+  similarPairs?: GraphSimilarPendingPair[]
+  setSimilarPairs?: (pairs: GraphSimilarPendingPair[]) => void
+  inventory?: {
+    snapshot: () => GraphInventorySnapshot
+    applyLocalNodeDelete: (nodeId: string, deletedEdgeCount?: number) => void
+    applyLocalEdgeDelete: (deletedEdgeCount?: number) => void
+    restoreSnapshot: (snap: GraphInventorySnapshot) => void
+    reloadSilent: () => Promise<void>
+  }
+  removeNodeFromSearchHits?: (nodeId: string) => void
+  onAfterDeleteNode?: () => void
 }
 
 export function useGraphPageDetail(deps: DetailDeps) {
@@ -69,24 +82,63 @@ export function useGraphPageDetail(deps: DetailDeps) {
   const [edgeTypes, setEdgeTypes] = useState<string[]>([])
   const [createOpen, setCreateOpen] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
+  const syncedNodeSnapshotRef = useRef<{
+    id: string
+    name: string
+    summary: string
+    aliases: string
+  } | null>(null)
+
+  const selectedNodeId = deps.selectedNode?.id ? String(deps.selectedNode.id) : null
+  const selectedNodeName = String(deps.selectedNode?.name || '')
+  const selectedNodeSummary = String(deps.selectedNode?.summary || '')
+  const selectedNodeAliases = Array.isArray(deps.selectedNode?.aliases)
+    ? deps.selectedNode.aliases.join(', ')
+    : ''
+  const selectedNodeType = deps.selectedNode?.nodeType
+    ? String(deps.selectedNode.nodeType)
+    : undefined
 
   useEffect(() => {
-    if (!deps.selectedNode) return
-    setEditName(deps.selectedNode.name || '')
-    setEditSummary(deps.selectedNode.summary || '')
-    setEditAliases(
-      Array.isArray(deps.selectedNode.aliases) ? deps.selectedNode.aliases.join(', ') : ''
-    )
+    if (!selectedNodeId) {
+      syncedNodeSnapshotRef.current = null
+      return
+    }
+    const prev = syncedNodeSnapshotRef.current
+    const isNewSelection = !prev || prev.id !== selectedNodeId
+    const persistedFieldsChanged =
+      !prev ||
+      prev.name !== selectedNodeName ||
+      prev.summary !== selectedNodeSummary ||
+      prev.aliases !== selectedNodeAliases
+
+    if (!isNewSelection && !persistedFieldsChanged) return
+
+    syncedNodeSnapshotRef.current = {
+      id: selectedNodeId,
+      name: selectedNodeName,
+      summary: selectedNodeSummary,
+      aliases: selectedNodeAliases
+    }
+    setEditName(selectedNodeName)
+    setEditSummary(selectedNodeSummary)
+    setEditAliases(selectedNodeAliases)
     setEditNameConflict(null)
-  }, [deps.selectedNode])
+    if (isNewSelection) {
+      setAddEdgeToId('')
+      setAddEdgeType('relates_to')
+      setAddEdgeQuery('')
+      setAddEdgeHits([])
+    }
+  }, [selectedNodeId, selectedNodeName, selectedNodeSummary, selectedNodeAliases])
 
   useEffect(() => {
-    if (!deps.selectedNode) {
+    if (!selectedNodeId) {
       setEditNameConflict(null)
       return
     }
     const trimmed = editName.trim()
-    if (!trimmed || trimmed === String(deps.selectedNode.name || '').trim()) {
+    if (!trimmed || trimmed === selectedNodeName.trim()) {
       setEditNameConflict(null)
       return
     }
@@ -94,8 +146,8 @@ export function useGraphPageDetail(deps: DetailDeps) {
     const timer = window.setTimeout(() => {
       void findGraphSameNameNode({
         name: trimmed,
-        nodeType: deps.selectedNode.nodeType,
-        exceptId: deps.selectedNode.id
+        nodeType: selectedNodeType,
+        exceptId: selectedNodeId
       })
         .then((hit) => {
           if (!cancelled) setEditNameConflict(hit)
@@ -108,16 +160,16 @@ export function useGraphPageDetail(deps: DetailDeps) {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [editName, deps.selectedNode])
+  }, [editName, selectedNodeId, selectedNodeName, selectedNodeType])
 
   useEffect(() => {
-    if (!deps.selectedNode?.id) {
+    if (!selectedNodeId) {
       setNameCandidates([])
       return
     }
     let cancelled = false
     void window.api.graph
-      .listNameCandidates({ nodeId: deps.selectedNode.id })
+      .listNameCandidates({ nodeId: selectedNodeId })
       .then((rows) => {
         if (!cancelled) setNameCandidates(rows)
       })
@@ -127,7 +179,7 @@ export function useGraphPageDetail(deps: DetailDeps) {
     return () => {
       cancelled = true
     }
-  }, [deps.selectedNode?.id])
+  }, [selectedNodeId, selectedNodeName])
 
   const saveNodeEdit = async () => {
     if (!deps.selectedNode) return
@@ -179,6 +231,26 @@ export function useGraphPageDetail(deps: DetailDeps) {
       await deps.refresh()
       const node = await window.api.graph.getNode(deps.selectedNode.id)
       deps.setSelectedNode(node)
+      if (node) {
+        const nextName = String(node.name || '')
+        const nextSummary = String(node.summary || '')
+        const nextAliases = Array.isArray(node.aliases) ? node.aliases.join(', ') : ''
+        syncedNodeSnapshotRef.current = {
+          id: String(node.id),
+          name: nextName,
+          summary: nextSummary,
+          aliases: nextAliases
+        }
+        setEditName(nextName)
+        setEditSummary(nextSummary)
+        setEditAliases(nextAliases)
+        if (deps.localView) {
+          deps.setLocalView({
+            ...deps.localView,
+            nodes: (deps.localView.nodes || []).map((n: any) => (n.id === node.id ? node : n))
+          })
+        }
+      }
     } catch (e: any) {
       const message = e?.message || String(e)
       deps.toast.showError(message)
@@ -231,6 +303,8 @@ export function useGraphPageDetail(deps: DetailDeps) {
     )
     if (!ok) return
     const nodeId = deps.selectedNode.id
+    const inventorySnapshot = deps.inventory?.snapshot()
+    const similarSnapshot = deps.similarPairs
     const snapshot = {
       nodes: deps.nodes,
       edges: deps.edges,
@@ -244,6 +318,12 @@ export function useGraphPageDetail(deps: DetailDeps) {
       selectedId: deps.selectedId,
       selectedNode: deps.selectedNode,
       pinNeighborhood: deps.pinNeighborhood
+    }
+    const deletedEdgeIds = new Set<string>()
+    for (const edge of [...snapshot.edges, ...(snapshot.localView?.edges || [])]) {
+      if (edge && (edge.fromId === nodeId || edge.toId === nodeId)) {
+        deletedEdgeIds.add(edge.id)
+      }
     }
     const next = applyGraphLocalNodeDelete({
       nodeId,
@@ -269,28 +349,31 @@ export function useGraphPageDetail(deps: DetailDeps) {
     deps.setSelectedNode(null)
     deps.setSelectedId(null)
     deps.setPinNeighborhood(false)
+    deps.inventory?.applyLocalNodeDelete(nodeId, deletedEdgeIds.size)
+    deps.removeNodeFromSearchHits?.(nodeId)
+    if (deps.similarPairs && deps.setSimilarPairs) {
+      deps.setSimilarPairs(
+        deps.similarPairs.filter((pair) => pair.nodeId !== nodeId && pair.peerId !== nodeId)
+      )
+    }
+    deps.onAfterDeleteNode?.()
     deps.inFlightDeletedNodeIdsRef.current.add(nodeId)
-    for (const edge of snapshot.edges) {
-      if (edge.fromId === nodeId || edge.toId === nodeId) {
-        deps.inFlightDeletedEdgeIdsRef.current.add(edge.id)
-      }
+    for (const edgeId of deletedEdgeIds) {
+      deps.inFlightDeletedEdgeIdsRef.current.add(edgeId)
     }
     deps.toast.showSuccess(deps.t('graph.node_deleted', '已删除节点'))
     void window.api.graph.softDelete({ kind: 'node', id: nodeId }).then(
       () => {
         deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
-        for (const edge of snapshot.edges) {
-          if (edge.fromId === nodeId || edge.toId === nodeId) {
-            deps.inFlightDeletedEdgeIdsRef.current.delete(edge.id)
-          }
+        for (const edgeId of deletedEdgeIds) {
+          deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
         }
+        void deps.inventory?.reloadSilent()
       },
       (e: unknown) => {
         deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
-        for (const edge of snapshot.edges) {
-          if (edge.fromId === nodeId || edge.toId === nodeId) {
-            deps.inFlightDeletedEdgeIdsRef.current.delete(edge.id)
-          }
+        for (const edgeId of deletedEdgeIds) {
+          deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
         }
         const restored = restoreGraphLocalNodeDelete({
           nodeId,
@@ -302,6 +385,8 @@ export function useGraphPageDetail(deps: DetailDeps) {
         deps.setPendingNodes(restored.pendingNodes)
         deps.setPendingEdges(restored.pendingEdges)
         deps.setLocalView(restored.localView)
+        if (inventorySnapshot) deps.inventory?.restoreSnapshot(inventorySnapshot)
+        if (similarSnapshot && deps.setSimilarPairs) deps.setSimilarPairs(similarSnapshot)
         const message = e instanceof Error ? e.message : String(e)
         deps.setStatus(message)
         deps.toast.showError(message)
@@ -315,6 +400,7 @@ export function useGraphPageDetail(deps: DetailDeps) {
       deps.t('graph.delete_edge', '删除')
     )
     if (!ok) return
+    const inventorySnapshot = deps.inventory?.snapshot()
     const snapshot = {
       edges: deps.edges,
       pendingEdges: deps.pendingEdges,
@@ -335,6 +421,7 @@ export function useGraphPageDetail(deps: DetailDeps) {
     deps.setPendingSelected(next.pendingSelected)
     deps.setHighlightedEdgeIds(next.highlightedEdgeIds)
     deps.setLocalView(next.localView)
+    deps.inventory?.applyLocalEdgeDelete(1)
     deps.inFlightDeletedEdgeIdsRef.current.add(edgeId)
     deps.toast.showSuccess(deps.t('graph.edge_deleted', '已删除关系'))
     void window.api.graph.softDelete({ kind: 'edge', id: edgeId }).then(
@@ -351,6 +438,7 @@ export function useGraphPageDetail(deps: DetailDeps) {
         deps.setEdges(restored.edges)
         deps.setPendingEdges(restored.pendingEdges)
         deps.setLocalView(restored.localView)
+        if (inventorySnapshot) deps.inventory?.restoreSnapshot(inventorySnapshot)
         const message = e instanceof Error ? e.message : String(e)
         deps.setStatus(message)
         deps.toast.showError(message)

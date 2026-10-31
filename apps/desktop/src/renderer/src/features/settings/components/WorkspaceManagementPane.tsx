@@ -92,7 +92,7 @@ export const WorkspaceManagementPane: React.FC = () => {
   const showPagination = filteredVaults.length > 0
 
   const handleCreate = async () => {
-    const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
+    const name = await dialog.prompt(t('workspace.new_name', '小窝名称'), '')
     if (name === null) return
     const validation = validateWorkspaceName(
       name,
@@ -101,8 +101,8 @@ export const WorkspaceManagementPane: React.FC = () => {
     if (!validation.ok) {
       const message =
         validation.reason === 'duplicate'
-          ? t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。')
-          : t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+          ? t('workspace.name_exists', '已经有同名小窝啦，换一个名字试试。')
+          : t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。')
       toast.showWarning(message)
       return
     }
@@ -138,14 +138,14 @@ export const WorkspaceManagementPane: React.FC = () => {
     if (!validation.ok) {
       const message =
         validation.reason === 'duplicate'
-          ? t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。')
-          : t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+          ? t('workspace.name_exists', '已经有同名小窝啦，换一个名字试试。')
+          : t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。')
       toast.showWarning(message)
       return
     }
     if (validation.name === vault.name) return
 
-    let bytesLabel = t('workspace.rename_bytes_unknown', '该工作空间的全部文件')
+    let bytesLabel = t('workspace.rename_bytes_unknown', '该小窝的全部文件')
     try {
       const bytes = await (window as any).api?.vault?.estimateRenameBytes(vault.id || vault.name)
       if (typeof bytes === 'number' && bytes > 0) {
@@ -171,7 +171,7 @@ export const WorkspaceManagementPane: React.FC = () => {
     } catch (e: any) {
       const code = e?.code || e?.message
       if (code === 'VAULT_NAME_EXISTS' || String(e?.message || '').includes('VAULT_NAME_EXISTS')) {
-        toast.showWarning(t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。'))
+        toast.showWarning(t('workspace.name_exists', '已经有同名小窝啦，换一个名字试试。'))
         return
       }
       toast.showError(t('workspace.rename_failed', '重命名失败'))
@@ -180,7 +180,7 @@ export const WorkspaceManagementPane: React.FC = () => {
 
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
-      t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
+      t('workspace.delete_confirm_input', '请输入小窝名称 "{{name}}" 以确认删除：', {
         name: vaultName
       })
     )
@@ -208,9 +208,9 @@ export const WorkspaceManagementPane: React.FC = () => {
         >
           <ArrowLeft size={22} />
         </button>
-        <h2 className="settings-management-title">{t('workspace.manage', '管理工作空间')}</h2>
+        <h2 className="settings-management-title">{t('workspace.manage', '管理小窝')}</h2>
         <Button type="button" variant="outlined" size="small" onClick={() => void handleCreate()}>
-          {t('workspace.create_new', '创建新空间')}
+          {t('workspace.create_new', '创建新小窝')}
         </Button>
       </div>
 
@@ -220,13 +220,13 @@ export const WorkspaceManagementPane: React.FC = () => {
             fieldSize="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
+            placeholder={t('workspace.search_placeholder', '搜索小窝…')}
           />
         </div>
 
         {filteredVaults.length === 0 ? (
           <div className="settings-management-card settings-management-empty">
-            {t('workspace.search_empty', '没有匹配的工作空间')}
+            {t('workspace.search_empty', '没有匹配的小窝')}
           </div>
         ) : null}
 

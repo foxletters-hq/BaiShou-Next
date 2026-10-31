@@ -67,11 +67,13 @@ export function useRagSettings({
       size: number,
       generation = dataGenerationRef.current,
       kind: RagVectorKindFilter = stateRef.current.sourceKind,
-      options?: { includeStats?: boolean; checkMigration?: boolean }
+      options?: { includeStats?: boolean; checkMigration?: boolean; silent?: boolean }
     ) => {
       const includeStats = options?.includeStats ?? true
       const checkMigration = options?.checkMigration ?? includeStats
-      setIsSearching(true)
+      if (!options?.silent) {
+        setIsSearching(true)
+      }
       try {
         const limit = size
         const offset = (page - 1) * limit
@@ -151,14 +153,21 @@ export function useRagSettings({
     [t, toast]
   )
 
-  const fetchRagInfo = async (page?: number, size?: number) => {
+  const fetchRagInfo = async (
+    page?: number,
+    size?: number,
+    options?: { includeStats?: boolean; checkMigration?: boolean; silent?: boolean }
+  ) => {
     const targetPage = page !== undefined ? page : stateRef.current.currentPage
     const targetSize = size !== undefined ? size : stateRef.current.pageSize
     await loadRagData(
       stateRef.current.searchQuery,
       stateRef.current.searchMode,
       targetPage,
-      targetSize
+      targetSize,
+      dataGenerationRef.current,
+      stateRef.current.sourceKind,
+      options
     )
   }
 
@@ -190,13 +199,51 @@ export function useRagSettings({
 
   checkMigrationStatusRef.current = checkMigrationStatus
 
+  const optimisticDeleteEntry = useCallback(
+    (id: string) => {
+      const snapshotEntries = ragEntries
+      const snapshotTotal = ragTotalCount
+      const snapshotStats = ragStats
+      const snapshotPage = currentPage
+      const remaining = ragEntries.filter((entry) => entry?.embeddingId !== id)
+      const nextTotal = Math.max(0, ragTotalCount - 1)
+      setRagEntries(remaining)
+      setRagTotalCount(nextTotal)
+      if (ragStats) {
+        setCachedRagStats({
+          ...ragStats,
+          totalCount: Math.max(0, (ragStats.totalCount ?? 0) - 1)
+        })
+      }
+      if (remaining.length === 0 && currentPage > 1 && nextTotal > 0) {
+        setCurrentPage(currentPage - 1)
+      }
+      return () => {
+        setRagEntries(snapshotEntries)
+        setRagTotalCount(snapshotTotal)
+        setCachedRagStats(snapshotStats)
+        setCurrentPage(snapshotPage)
+      }
+    },
+    [currentPage, ragEntries, ragStats, ragTotalCount]
+  )
+
   const {
     handleAddManualMemory,
     handleDeleteEntry,
     handleEditEntry,
     handleExportEmbeddings,
     handleManageBackups
-  } = useRagActions(t, toast, confirm, prompt, alert, fetchRagInfo, setIsProcessing)
+  } = useRagActions(
+    t,
+    toast,
+    confirm,
+    prompt,
+    alert,
+    fetchRagInfo,
+    setIsProcessing,
+    optimisticDeleteEntry
+  )
 
   useEffect(() => {
     const generation = ++dataGenerationRef.current
@@ -218,7 +265,8 @@ export function useRagSettings({
       stateRef.current.currentPage,
       stateRef.current.pageSize,
       generation,
-      stateRef.current.sourceKind
+      stateRef.current.sourceKind,
+      { silent: true }
     )
   }, [loadRagData])
 

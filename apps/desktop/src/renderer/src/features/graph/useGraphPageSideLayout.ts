@@ -14,6 +14,8 @@ export function useGraphPageSideLayout() {
   const [sideWidth, setSideWidth] = useState(loadGraphSideWidth)
   const [sideCollapsed, setSideCollapsed] = useState(loadGraphSideCollapsed)
   const [sideMode, setSideMode] = useState<GraphSideMode>('organize')
+  const [hasVisitedContent, setHasVisitedContent] = useState(false)
+  const lastNonDetailModeRef = useRef<Exclude<GraphSideMode, 'detail'>>('organize')
   const sideWidthRef = useRef(sideWidth)
   sideWidthRef.current = sideWidth
 
@@ -23,8 +25,18 @@ export function useGraphPageSideLayout() {
   }
 
   const openSide = (mode: GraphSideMode) => {
+    if (mode !== 'detail') {
+      lastNonDetailModeRef.current = mode
+    }
+    if (mode === 'content') {
+      setHasVisitedContent(true)
+    }
     setSideMode(mode)
     if (sideCollapsed) setSideCollapsedPersist(false)
+  }
+
+  const closeDetailSide = () => {
+    setSideMode((prev) => (prev === 'detail' ? lastNonDetailModeRef.current : prev))
   }
 
   const { onMouseDown: onSideResizeDown } = usePanelResize({
@@ -42,9 +54,11 @@ export function useGraphPageSideLayout() {
     sideWidth,
     sideCollapsed,
     sideMode,
+    hasVisitedContent,
     setSideMode,
     setSideCollapsedPersist,
     openSide,
+    closeDetailSide,
     onSideResizeDown
   }
 }
