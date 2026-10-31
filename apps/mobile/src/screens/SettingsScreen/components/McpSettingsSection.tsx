@@ -22,6 +22,9 @@ export const McpSettingsSection: React.FC = () => {
   const [kind, setKind] = React.useState<'outbound' | 'custom'>('outbound')
   const {
     config,
+    workspaces,
+    selectedWorkspaceId,
+    setSelectedWorkspaceId,
     mcpEndpointUrl,
     mcpSseEndpointUrl,
     applying,
@@ -117,6 +120,9 @@ export const McpSettingsSection: React.FC = () => {
           config={config}
           mcpEndpointUrl={mcpEndpointUrl}
           mcpSseEndpointUrl={mcpSseEndpointUrl}
+          workspaces={workspaces}
+          selectedWorkspaceId={selectedWorkspaceId}
+          onSelectWorkspace={setSelectedWorkspaceId}
           applying={applying}
           isRunning={isRunning}
           activePort={activePort}

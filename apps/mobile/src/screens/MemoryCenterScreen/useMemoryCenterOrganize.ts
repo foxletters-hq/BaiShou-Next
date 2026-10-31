@@ -29,7 +29,10 @@ import { useBaishou } from '@/src/providers/BaishouProvider'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import { syncMobileSelfPersonNodeOnRename } from '@/src/services/mobile-graph.service'
-import { subscribeMobilePendingEmbedCountsChanged } from '@/src/services/mobile-pending-embed-counts'
+import {
+  notifyMobilePendingEmbedCountsChanged,
+  subscribeMobilePendingEmbedCountsChanged
+} from '@/src/services/mobile-pending-embed-counts'
 import {
   isMemoryOrganizeCancelledError,
   isMemoryOrganizeIdle,
@@ -394,6 +397,7 @@ export function useMemoryCenterOrganize(input: {
           }
         ).batchEmbed?.()
         await writeMemoryOrganizeInterrupted(false)
+        notifyMobilePendingEmbedCountsChanged()
         await refresh()
       } catch (error) {
         if (isMemoryOrganizeCancelledError(error)) {

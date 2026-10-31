@@ -95,7 +95,7 @@ export function immediateOrganizePendingSnapshot<
   return snapshot
 }
 
-/** 待办快照未就绪时不显示「已整理完毕」，避免进页先空后跳。 */
+/** 待办快照未就绪时不显示「已整理完毕」，避免进页先空后跳；只有完全无待办时才显示已整理完毕。 */
 export function resolveMemoryOrganizeFabState(input: {
   snapshotReady: boolean
   pendingEmbedCount: number
@@ -103,8 +103,8 @@ export function resolveMemoryOrganizeFabState(input: {
   pendingDiaryCount?: number
 }): { kind: MemoryOrganizeFabKind; pendingCount: number } {
   if (!input.snapshotReady) return { kind: 'loading', pendingCount: 0 }
+  if (isMemoryOrganizeIdle(input)) return { kind: 'idle', pendingCount: 0 }
   const pendingCount = memoryOrganizePendingArticleCount(input)
-  if (pendingCount <= 0) return { kind: 'idle', pendingCount: 0 }
   return { kind: 'pending', pendingCount }
 }
 

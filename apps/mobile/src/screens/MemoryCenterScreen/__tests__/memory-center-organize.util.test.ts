@@ -216,6 +216,17 @@ describe('resolveMemoryOrganizeFabState', () => {
       })
     ).toEqual({ kind: 'pending', pendingCount: 9 })
   })
+
+  it('should not show idle when there are pending memory shards or graph nodes without diaries', () => {
+    expect(
+      resolveMemoryOrganizeFabState({
+        snapshotReady: true,
+        pendingEmbedCount: 3,
+        pendingGraphCount: 0,
+        pendingDiaryCount: 0
+      })
+    ).toEqual({ kind: 'pending', pendingCount: 0 })
+  })
 })
 
 describe('isMemoryOrganizeCancelledError', () => {

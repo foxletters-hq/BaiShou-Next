@@ -65,6 +65,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
   })
 
   const queryGenerationRef = useRef(0)
+  const silentLoadRef = useRef(false)
   const isQueryStale = (generation: number) => generation !== queryGenerationRef.current
 
   const refreshEntriesOnly = useCallback(
@@ -192,8 +193,12 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
         return
       }
 
+      const silent = silentLoadRef.current
+      silentLoadRef.current = false
       const generation = ++queryGenerationRef.current
-      setIsSearching(true)
+      if (!silent) {
+        setIsSearching(true)
+      }
       appendDiagnosticBreadcrumb(`RAG loadRagData start mode=${mode} page=${page}`)
 
       try {
@@ -327,6 +332,7 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
 
   useEffect(() => {
     return subscribeMobilePendingEmbedCountsChanged(() => {
+      silentLoadRef.current = true
       void loadRagDataRef.current()
     })
   }, [])

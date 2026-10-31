@@ -112,7 +112,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
   const showPagination = totalPages > 1
 
   const handleCreate = async () => {
-    const name = await dialog.prompt(t('workspace.new_name', '空间名称'), '')
+    const name = await dialog.prompt(t('workspace.new_name', '小窝名称'), '')
     if (!name?.trim()) return
     try {
       await services!.switchVault(name.trim())
@@ -144,7 +144,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
     const next = name.trim()
     if (!next) {
       toast.showWarning(
-        t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+        t('workspace.name_invalid', '小窝名称不能包含特殊字符，且不能以点号结尾。')
       )
       return
     }
@@ -153,11 +153,11 @@ export const WorkspaceManagementScreen: React.FC = () => {
       (v) => v.name !== vault.name && v.name.toLowerCase() === next.toLowerCase()
     )
     if (conflict) {
-      toast.showWarning(t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。'))
+      toast.showWarning(t('workspace.name_exists', '已经有同名小窝啦，换一个名字试试。'))
       return
     }
 
-    let bytesLabel = t('workspace.rename_bytes_unknown', '该工作空间的全部文件')
+    let bytesLabel = t('workspace.rename_bytes_unknown', '该小窝的全部文件')
     try {
       const bytes = await services.estimateVaultRenameBytes?.(vault.id || vault.name)
       if (typeof bytes === 'number' && bytes > 0) {
@@ -187,7 +187,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
 
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
-      t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
+      t('workspace.delete_confirm_input', '请输入小窝名称 "{{name}}" 以确认删除：', {
         name: vaultName
       })
     )
@@ -206,7 +206,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
 
   return (
     <StackScreenLayout
-      title={t('workspace.manage', '管理工作空间')}
+      title={t('workspace.manage', '管理小窝')}
       {...chrome}
       contentStyle={styles.layoutContent}
     >
@@ -224,7 +224,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
           <Input
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
+            placeholder={t('workspace.search_placeholder', '搜索小窝…')}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -241,7 +241,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
             <Text
               style={{ color: colors.textSecondary, fontSize: mobileTypography.secondary.fontSize }}
             >
-              {t('workspace.search_empty', '没有匹配的工作空间')}
+              {t('workspace.search_empty', '没有匹配的小窝')}
             </Text>
           </View>
         ) : null}
@@ -337,7 +337,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
           ]}
         >
           <Text style={[styles.rowTitle, { color: colors.primary, flex: 1 }]}>
-            {t('workspace.create_new', '创建新空间')}
+            {t('workspace.create_new', '创建新小窝')}
           </Text>
           <Text style={{ color: colors.primary, fontSize: mobileTypography.title.fontSize }}>
             +

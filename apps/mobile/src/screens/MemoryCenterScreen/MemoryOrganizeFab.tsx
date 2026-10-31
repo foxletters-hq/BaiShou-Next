@@ -23,7 +23,11 @@ export function MemoryOrganizeFab(props: {
     count: pendingCount
   })
   const accessibilityLabel =
-    kind === 'idle' ? doneLabel : kind === 'pending' ? `${startLabel} ${pendingLabel}` : startLabel
+    kind === 'idle'
+      ? doneLabel
+      : kind === 'pending' && pendingCount > 0
+        ? `${startLabel} ${pendingLabel}`
+        : startLabel
   return (
     <Pressable
       accessibilityRole="button"
@@ -47,7 +51,7 @@ export function MemoryOrganizeFab(props: {
     >
       {kind === 'idle' ? (
         <Text style={[styles.label, { color: colors.textOnPrimary }]}>{doneLabel}</Text>
-      ) : kind === 'pending' ? (
+      ) : kind === 'pending' && pendingCount > 0 ? (
         <>
           <Text style={[styles.label, { color: colors.textOnPrimary }]}>{startLabel}</Text>
           <View
