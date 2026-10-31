@@ -5,7 +5,10 @@ import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
-import { ONBOARDING_STORAGE_KEY } from '../../constants/storage'
+import {
+  LEGACY_MIGRATION_PROMPT_DISMISSED_KEY,
+  ONBOARDING_STORAGE_KEY
+} from '../../constants/storage'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import {
@@ -260,6 +263,7 @@ export const OnboardingScreen: React.FC = () => {
       await persistLanguageSelection(selectedLanguage)
     }
     await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, '1')
+    await AsyncStorage.setItem(LEGACY_MIGRATION_PROMPT_DISMISSED_KEY, '1')
     router.replace('/(tabs)')
   }
 

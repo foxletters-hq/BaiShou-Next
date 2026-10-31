@@ -103,6 +103,7 @@ export async function finishDesktopOnboarding(settingsPath: string): Promise<voi
   settings.onboarding_completed = true
   delete settings.onboarding_in_progress
   await writeDesktopSettingsFile(settingsPath, settings)
+  await dismissDesktopLegacyMigrationPrompt()
 }
 
 export function validateFlutterLegacyMigrationTarget(targetDir: string): string {

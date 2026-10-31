@@ -9,8 +9,10 @@ import {
 } from '@baishou/core/shared'
 import {
   finishDesktopOnboarding,
+  isDesktopLegacyMigrationPromptDismissed,
   isDesktopOnboardingCompleted,
   resolveDesktopStorageBootstrap,
+  resolvePendingFlutterLegacyMigration,
   validateFlutterLegacyMigrationTarget,
   writeDesktopOnboardingDirectory
 } from '../desktop-legacy-bootstrap.service'
@@ -74,6 +76,7 @@ describe('desktop onboarding completion', () => {
   let settingsPath = ''
 
   beforeEach(async () => {
+    await fs.rm('/tmp/baishou-user-data', { recursive: true, force: true }).catch(() => {})
     settingsPath = join(
       tmpdir(),
       `baishou-onboarding-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -83,6 +86,7 @@ describe('desktop onboarding completion', () => {
   })
 
   afterEach(async () => {
+    await fs.rm('/tmp/baishou-user-data', { recursive: true, force: true }).catch(() => {})
     if (settingsPath) {
       await fs.rm(join(settingsPath, '..'), { recursive: true, force: true }).catch(() => {})
     }
@@ -125,6 +129,15 @@ describe('desktop onboarding completion', () => {
     const done = JSON.parse(await fs.readFile(settingsPath, 'utf-8'))
     expect(done.onboarding_completed).toBe(true)
     expect(done.onboarding_in_progress).toBeUndefined()
+    expect(await isDesktopLegacyMigrationPromptDismissed()).toBe(true)
+  })
+
+  it('finishDesktopOnboarding dismisses migration prompt so first install does not prompt for migration', async () => {
+    expect(await isDesktopLegacyMigrationPromptDismissed()).toBe(false)
+    await finishDesktopOnboarding(settingsPath)
+    expect(await isDesktopLegacyMigrationPromptDismissed()).toBe(true)
+    const pending = await resolvePendingFlutterLegacyMigration(settingsPath)
+    expect(pending).toBeNull()
   })
 
   it('sanitizes and validates migration target paths', () => {

@@ -43,4 +43,9 @@ describe('mobile onboarding chrome', () => {
       }
     }
   })
+
+  it('should dismiss legacy migration prompt upon finishing onboarding', () => {
+    expect(screenSrc).toContain('LEGACY_MIGRATION_PROMPT_DISMISSED_KEY')
+    expect(screenSrc).toContain("AsyncStorage.setItem(LEGACY_MIGRATION_PROMPT_DISMISSED_KEY, '1')")
+  })
 })
