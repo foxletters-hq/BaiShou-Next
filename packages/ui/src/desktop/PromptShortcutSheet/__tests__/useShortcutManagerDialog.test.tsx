@@ -29,4 +29,40 @@ describe('useShortcutManagerDialog pagination', () => {
     await waitFor(() => expect(result.current.currentPage).toBe(1))
     expect(result.current.paginatedShortcuts.length).toBeGreaterThan(0)
   })
+
+  it('propagates updated content and description when saving an edited skill', async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined)
+    const initial: PromptShortcut[] = [
+      {
+        id: 'writer-helper',
+        command: 'writer-helper',
+        name: '旧描述',
+        description: '旧描述',
+        tag: '旧描述',
+        content: '旧正文'
+      }
+    ]
+    const { result } = renderHook(() => useShortcutManagerDialog(initial, vi.fn(), onUpdate))
+
+    act(() => {
+      result.current.handleEdit(initial[0]!)
+    })
+    act(() => {
+      result.current.setDraftName('新描述')
+      result.current.setDraftContent('新正文')
+    })
+    await act(async () => {
+      await result.current.handleSave()
+    })
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'writer-helper',
+        command: 'writer-helper',
+        name: '新描述',
+        description: '新描述',
+        content: '新正文'
+      })
+    )
+  })
 })

@@ -7,6 +7,7 @@ import {
 } from '../shared/settingsInlineHelpBlock'
 import { Switch } from '../Switch/Switch'
 import { Input } from '../Input/Input'
+import { Select } from '../Select/Select'
 import { Button } from '../Button/Button'
 import { withAppContentOverlay } from '../overlay'
 import styles from './McpSettingsCard.module.css'
@@ -24,6 +25,11 @@ export interface McpServerConfig {
   mcpAutoApproveTools?: boolean
 }
 
+export interface McpWorkspaceOption {
+  id: string
+  name: string
+}
+
 interface McpSettingsCardProps {
   config: McpServerConfig
   onChange: (config: McpServerConfig) => void
@@ -32,6 +38,10 @@ interface McpSettingsCardProps {
   standalone?: boolean
   /** 本机局域网 IPv4，用于展示对外连接地址 */
   lanHost?: string | null
+  /** 可选工作空间列表，用于在连接地址中拼接 ?vault=<vaultId> 映射 */
+  workspaces?: McpWorkspaceOption[]
+  /** 当前活跃工作空间 ID，作为默认选中项 */
+  activeWorkspaceId?: string
 }
 
 export { buildMcpUrl, buildMcpSseUrl } from './mcp-url'
@@ -43,18 +53,33 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   onChange,
   onRefreshToken,
   standalone = false,
-  lanHost = null
+  lanHost = null,
+  workspaces,
+  activeWorkspaceId
 }) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = React.useState(true)
   const [showRefreshConfirm, setShowRefreshConfirm] = React.useState(false)
+  const [selectedVaultId, setSelectedVaultId] = React.useState<string>(
+    () => activeWorkspaceId || workspaces?.[0]?.id || ''
+  )
   const toast = useToast()
 
+  React.useEffect(() => {
+    if (!workspaces || workspaces.length === 0) return
+    if (selectedVaultId && workspaces.some((w) => w.id === selectedVaultId)) return
+    setSelectedVaultId(activeWorkspaceId || workspaces[0].id)
+  }, [activeWorkspaceId, selectedVaultId, workspaces])
+
+  const effectiveVaultId =
+    workspaces && workspaces.length > 0 ? selectedVaultId || workspaces[0].id : undefined
   const endpointHost = lanHost?.trim() || '127.0.0.1'
-  const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost)
-  const mcpSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost)
-  const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1') : null
-  const localhostSseUrl = lanHost ? buildMcpSseUrl(config.mcpPort, '127.0.0.1') : null
+  const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost, effectiveVaultId)
+  const mcpSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost, effectiveVaultId)
+  const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1', effectiveVaultId) : null
+  const localhostSseUrl = lanHost
+    ? buildMcpSseUrl(config.mcpPort, '127.0.0.1', effectiveVaultId)
+    : null
   const authEnabled = isMcpAuthEnabled(config)
   const authTokenForUi = authEnabled ? config.mcpAuthToken : undefined
 
@@ -85,6 +110,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
               mcpAuthEnabled={authEnabled}
               mcpAuthToken={authTokenForUi}
               lanHost={lanHost}
+              vaultId={effectiveVaultId}
             />
           </span>
           {config.mcpEnabled ? <span className={styles.statusIndicator} aria-hidden /> : null}
@@ -171,6 +197,26 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           }}
         />
       </div>
+      {workspaces && workspaces.length > 0 ? (
+        <>
+          <div className={styles.portRow}>
+            <span className={styles.portLabel}>{t('settings.mcp_workspace', '目标小窝')}</span>
+            <Select
+              className={styles.workspaceSelectHost}
+              options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+              value={effectiveVaultId}
+              onChange={(e) => setSelectedVaultId(e.target.value)}
+              aria-label={t('settings.mcp_workspace', '目标小窝')}
+            />
+          </div>
+          <div className={styles.workspaceHint}>
+            {t(
+              'settings.mcp_workspace_suffix_hint',
+              '连接地址已自动拼接 ?vault=<小窝ID> 后缀，外部客户端必须保留该后缀才能绑定到所选小窝。'
+            )}
+          </div>
+        </>
+      ) : null}
       <div className={styles.endpointRow}>
         <span className={styles.endpointLabel}>
           {t('settings.mcp_url_label', '连接地址（推荐）')}
@@ -309,6 +355,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
                 mcpAuthEnabled={authEnabled}
                 mcpAuthToken={authTokenForUi}
                 lanHost={lanHost}
+                vaultId={effectiveVaultId}
               />
             </span>
             {config.mcpEnabled && <span className={styles.statusIndicator} aria-hidden />}

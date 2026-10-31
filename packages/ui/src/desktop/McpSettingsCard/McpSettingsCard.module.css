@@ -116,6 +116,18 @@
   flex-shrink: 0;
 }
 
+.workspaceSelectHost {
+  width: 220px !important;
+  max-width: 60%;
+  flex-shrink: 0;
+}
+
+.workspaceHint {
+  font-size: var(--settings-font-label-size);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .portInputHost input {
   text-align: center;
   -moz-appearance: textfield;
