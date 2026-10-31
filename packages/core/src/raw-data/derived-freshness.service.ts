@@ -18,6 +18,10 @@ export interface PendingReextractCollaborators {
   listJournals: () => Promise<Array<{ filePath: string; contentHash: string; date?: string }>>
   /** Persist extract-state cursor after successful LLM extract */
   writeExtractState: (filePath: string, contentHash: string) => Promise<void>
+  /** Batch persist extract-state cursors after committing multiple LLM drafts */
+  writeExtractStatesBatch?: (
+    items: ReadonlyArray<{ filePath: string; contentHash: string }>
+  ) => Promise<void>
 }
 
 const JOURNAL_DATE_IN_PATH = /(?:^|\/)(\d{4}-\d{2}-\d{2})\.md$/i
@@ -168,6 +172,40 @@ export class DerivedFreshnessService {
     if (dateKey) {
       for (const markKey of [...this.reextractMarks.keys()]) {
         if (extractJournalDateFromPath(markKey) === dateKey) {
+          this.reextractMarks.delete(markKey)
+        }
+      }
+    }
+  }
+
+  async commitReextractBatch(
+    items: ReadonlyArray<{ filePath: string; contentHash: string }>
+  ): Promise<void> {
+    if (items.length === 0) return
+    if (!this.collaborators) {
+      throw new Error('DerivedFreshnessService: pending-reextract collaborators not bound')
+    }
+    const normalizedItems = items.map((item) => ({
+      filePath: normalizeFilePath(item.filePath),
+      contentHash: item.contentHash
+    }))
+    if (typeof this.collaborators.writeExtractStatesBatch === 'function') {
+      await this.collaborators.writeExtractStatesBatch(normalizedItems)
+    } else {
+      for (const item of normalizedItems) {
+        await this.collaborators.writeExtractState(item.filePath, item.contentHash)
+      }
+    }
+    const dateKeys = new Set<string>()
+    for (const item of normalizedItems) {
+      this.reextractMarks.delete(item.filePath)
+      const dateKey = extractJournalDateFromPath(item.filePath)
+      if (dateKey) dateKeys.add(dateKey)
+    }
+    if (dateKeys.size > 0) {
+      for (const markKey of [...this.reextractMarks.keys()]) {
+        const markDate = extractJournalDateFromPath(markKey)
+        if (markDate && dateKeys.has(markDate)) {
           this.reextractMarks.delete(markKey)
         }
       }

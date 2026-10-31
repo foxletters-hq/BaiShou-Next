@@ -46,6 +46,10 @@ export class GraphRawManager
 
   private stores: Partial<Record<GraphCollection, MonthlyJsonlStore>> = {}
   private rootDir: string | null = null
+  private readonly extractStateCache = new Map<
+    string,
+    { contentHash: string; rows: GraphExtractStateRawRecord[] }
+  >()
 
   constructor(
     private readonly pathService: IStoragePathService,
@@ -56,6 +60,7 @@ export class GraphRawManager
   resetCache(): void {
     this.stores = {}
     this.rootDir = null
+    this.extractStateCache.clear()
   }
 
   private async getRoot(): Promise<string> {
@@ -323,12 +328,37 @@ export class GraphRawManager
     const store = await this.getStore('extract-state')
     const shards = await store.listShards()
     const all: GraphExtractStateRawRecord[] = []
+    const liveMonths = new Set<string>()
     for (const shard of shards) {
-      const rows = collapseJsonlById(
-        (await store.readRecords(shard.shardMonth)) as GraphExtractStateRawRecord[]
-      )
-      for (const row of rows) {
-        if (row && row.deletedAt == null) all.push(row as GraphExtractStateRawRecord)
+      liveMonths.add(shard.shardMonth)
+      const cached = this.extractStateCache.get(shard.shardMonth)
+      let liveRows: GraphExtractStateRawRecord[]
+      if (
+        cached &&
+        shard.contentHash &&
+        shard.contentHash !== 'dirty' &&
+        cached.contentHash === shard.contentHash
+      ) {
+        liveRows = cached.rows
+      } else {
+        const rows = collapseJsonlById(
+          (await store.readRecords(shard.shardMonth)) as GraphExtractStateRawRecord[]
+        )
+        liveRows = rows.filter((row): row is GraphExtractStateRawRecord =>
+          Boolean(row && row.deletedAt == null)
+        )
+        if (shard.contentHash && shard.contentHash !== 'dirty') {
+          this.extractStateCache.set(shard.shardMonth, {
+            contentHash: shard.contentHash,
+            rows: liveRows
+          })
+        }
+      }
+      all.push(...liveRows)
+    }
+    for (const key of this.extractStateCache.keys()) {
+      if (!liveMonths.has(key)) {
+        this.extractStateCache.delete(key)
       }
     }
     return all
@@ -354,6 +384,7 @@ export class GraphRawManager
    * Only reads the month shard derived from sourceRef (not all edge shards).
    */
   async wipeAllCollections(): Promise<number> {
+    this.extractStateCache.clear()
     let count = 0
     for (const collection of COLLECTIONS) {
       const store = await this.getStore(collection)
@@ -366,26 +397,63 @@ export class GraphRawManager
     sourceRef: string,
     opts?: { exceptIds?: ReadonlySet<string>; shardMonth?: string }
   ): Promise<number> {
+    return this.supersedeAiEdgesBySourceRefsBatch([
+      {
+        sourceRef,
+        exceptIds: opts?.exceptIds,
+        shardMonth: opts?.shardMonth
+      }
+    ])
+  }
+
+  async supersedeAiEdgesBySourceRefsBatch(
+    items: ReadonlyArray<{
+      sourceRef: string
+      exceptIds?: ReadonlySet<string>
+      shardMonth?: string
+    }>,
+    opts?: { skipCompact?: boolean }
+  ): Promise<number> {
+    if (items.length === 0) return 0
     const now = Date.now()
-    const shardMonth = opts?.shardMonth || graphDiaryInstant(sourceRef).shardMonth
-    const edges = await this.readCollapsedEdges(shardMonth)
-    const superseded: GraphEdgeRawRecord[] = []
-    for (const edge of edges) {
-      if (edge.sourceRef !== sourceRef) continue
-      if (!edge.isCurrent) continue
-      if (edge.origin === 'user') continue
-      if (opts?.exceptIds?.has(edge.id)) continue
-      superseded.push({
-        ...edge,
-        isCurrent: false,
-        validTo: now,
-        updatedAt: now
-      })
+    const byMonth = new Map<string, Map<string, ReadonlySet<string> | undefined>>()
+    for (const item of items) {
+      const ref = item.sourceRef?.trim()
+      if (!ref) continue
+      const shardMonth = item.shardMonth || graphDiaryInstant(ref).shardMonth
+      let refMap = byMonth.get(shardMonth)
+      if (!refMap) {
+        refMap = new Map()
+        byMonth.set(shardMonth, refMap)
+      }
+      refMap.set(ref, item.exceptIds)
     }
-    if (superseded.length > 0) {
-      await this.writeRecords(superseded, { collection: 'edges' })
-      await this.compactShard('edges', shardMonth)
+
+    let totalSuperseded = 0
+    for (const [shardMonth, refMap] of byMonth) {
+      const edges = await this.readCollapsedEdges(shardMonth)
+      const superseded: GraphEdgeRawRecord[] = []
+      for (const edge of edges) {
+        if (!edge.sourceRef || !refMap.has(edge.sourceRef)) continue
+        if (!edge.isCurrent) continue
+        if (edge.origin === 'user') continue
+        const exceptIds = refMap.get(edge.sourceRef)
+        if (exceptIds?.has(edge.id)) continue
+        superseded.push({
+          ...edge,
+          isCurrent: false,
+          validTo: now,
+          updatedAt: now
+        })
+      }
+      if (superseded.length > 0) {
+        await this.writeRecords(superseded, { collection: 'edges' })
+        if (!opts?.skipCompact) {
+          await this.compactShard('edges', shardMonth)
+        }
+        totalSuperseded += superseded.length
+      }
     }
-    return superseded.length
+    return totalSuperseded
   }
 }

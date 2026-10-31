@@ -13,16 +13,19 @@ import { collapseJsonlById } from './stores/monthly-jsonl.store'
 
 export { MEMORY_SOURCE_TYPE }
 
+export interface MemoryEmbedItemInput {
+  text: string
+  sourceType: string
+  sourceId: string
+  groupId: string
+  vaultId: string
+  metadataJson?: string
+  sourceCreatedAt?: number
+}
+
 export interface MemoryEmbedSink {
-  embedText(options: {
-    text: string
-    sourceType: string
-    sourceId: string
-    groupId: string
-    vaultId: string
-    metadataJson?: string
-    sourceCreatedAt?: number
-  }): Promise<void>
+  embedText(options: MemoryEmbedItemInput): Promise<void>
+  embedTextsBatch?(items: ReadonlyArray<MemoryEmbedItemInput>): Promise<void>
   deleteBySource?(sourceType: string, sourceId: string): Promise<void>
   listSourceIdsByType?(
     sourceType: string,
@@ -34,14 +37,64 @@ export interface MemoryEmbedSink {
   ): Promise<Array<{ sourceId: string; contentHash: string; status: string }>>
 }
 
+const MEMORY_EMBED_CONCURRENCY = 4
+const MEMORY_EMBED_BATCH_SIZE = 16
+
 /**
  * pending-index → differential embed into memory_embeddings.
  */
 export class MemorySyncService {
+  private readonly shardRowsCache = new Map<
+    string,
+    { contentHash: string; rows: MemoryRawRecord[] }
+  >()
+
   constructor(
     private readonly memoryManager: MemoryRawManager,
     private readonly sink: MemoryEmbedSink
   ) {}
+
+  private async readCollapsedShardCached(shard: {
+    relativePath: string
+    contentHash: string
+  }): Promise<MemoryRawRecord[]> {
+    const hash = shard.contentHash
+    if (hash && hash !== 'dirty') {
+      const cached = this.shardRowsCache.get(shard.relativePath)
+      if (cached && cached.contentHash === hash) {
+        return cached.rows
+      }
+    }
+    const rows = collapseJsonlById(
+      (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
+    )
+    if (hash && hash !== 'dirty') {
+      this.shardRowsCache.set(shard.relativePath, { contentHash: hash, rows })
+    }
+    return rows
+  }
+
+  private async embedSingleWithRetry(
+    payload: MemoryEmbedItemInput,
+    onBeforeItem?: () => Promise<void>
+  ): Promise<void> {
+    let lastErr: unknown
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      try {
+        await this.sink.embedText(payload)
+        lastErr = undefined
+        break
+      } catch (err) {
+        lastErr = err
+        if (attempt < 1) {
+          await onBeforeItem?.()
+        }
+      }
+    }
+    if (lastErr !== undefined) {
+      throw lastErr
+    }
+  }
 
   async syncPendingIndex(options?: {
     vaultName?: string
@@ -79,11 +132,10 @@ export class MemorySyncService {
 
     for (const shard of pending) {
       await options?.onBeforeItem?.()
-      const rows = collapseJsonlById(
-        (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
-      )
+      const rows = await this.readCollapsedShardCached(shard)
 
       let hasPendingLiveRows = false
+      const toEmbed: MemoryEmbedItemInput[] = []
       for (const row of rows) {
         if (!row?.id) continue
         await options?.onBeforeItem?.()
@@ -104,35 +156,51 @@ export class MemorySyncService {
             continue
           }
         }
-        let lastErr: unknown
-        for (let attempt = 0; attempt <= 1; attempt++) {
-          try {
-            await this.sink.embedText({
-              text: row.content,
-              sourceType: MEMORY_SOURCE_TYPE,
-              sourceId: row.id,
-              groupId: MEMORY_EMBED_GROUP_ID,
-              vaultId: resolveVaultIdFromRecord({
-                vaultId: row.vaultId,
-                vaultName: row.vaultName,
-                inferredVaultName: inferredVault
-              }),
-              metadataJson: buildMemoryMetadataJson(row),
-              sourceCreatedAt: row.createdAt
-            })
-            lastErr = undefined
-            break
-          } catch (err) {
-            lastErr = err
-            if (attempt < 1) {
-              await options?.onBeforeItem?.()
+        toEmbed.push({
+          text: row.content,
+          sourceType: MEMORY_SOURCE_TYPE,
+          sourceId: row.id,
+          groupId: MEMORY_EMBED_GROUP_ID,
+          vaultId: resolveVaultIdFromRecord({
+            vaultId: row.vaultId,
+            vaultName: row.vaultName,
+            inferredVaultName: inferredVault
+          }),
+          metadataJson: buildMemoryMetadataJson(row),
+          sourceCreatedAt: row.createdAt
+        })
+      }
+
+      if (toEmbed.length > 0) {
+        if (typeof this.sink.embedTextsBatch === 'function' && toEmbed.length > 1) {
+          for (let i = 0; i < toEmbed.length; i += MEMORY_EMBED_BATCH_SIZE) {
+            await options?.onBeforeItem?.()
+            const slice = toEmbed.slice(i, i + MEMORY_EMBED_BATCH_SIZE)
+            try {
+              await this.sink.embedTextsBatch(slice)
+              upserted += slice.length
+            } catch {
+              for (const item of slice) {
+                await options?.onBeforeItem?.()
+                await this.embedSingleWithRetry(item, options?.onBeforeItem)
+                upserted += 1
+              }
             }
           }
+        } else {
+          let cursor = 0
+          const workerCount = Math.min(MEMORY_EMBED_CONCURRENCY, toEmbed.length)
+          await Promise.all(
+            Array.from({ length: workerCount }, async () => {
+              while (cursor < toEmbed.length) {
+                const item = toEmbed[cursor++]!
+                await options?.onBeforeItem?.()
+                await this.embedSingleWithRetry(item, options?.onBeforeItem)
+                upserted += 1
+              }
+            })
+          )
         }
-        if (lastErr !== undefined) {
-          throw lastErr
-        }
-        upserted += 1
       }
 
       if (embedMissing || !hasPendingLiveRows) {
@@ -160,9 +228,7 @@ export class MemorySyncService {
     const vaultId = options?.vaultId?.trim()
 
     for (const shard of pending) {
-      const rows = collapseJsonlById(
-        (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
-      )
+      const rows = await this.readCollapsedShardCached(shard)
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
         if (vaultId) {
@@ -225,10 +291,10 @@ export class MemorySyncService {
     const liveIdsByVault = new Map<string, Set<string>>()
     let inferredVault: string | undefined
 
+    const liveShardPaths = new Set<string>()
     for (const shard of await this.memoryManager.listShards()) {
-      const rows = collapseJsonlById(
-        (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
-      )
+      liveShardPaths.add(shard.relativePath)
+      const rows = await this.readCollapsedShardCached(shard)
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
         const vaultKey = resolveVaultIdFromRecord({
@@ -242,6 +308,11 @@ export class MemorySyncService {
           liveIdsByVault.set(vaultKey, set)
         }
         set.add(row.id)
+      }
+    }
+    for (const cachedPath of this.shardRowsCache.keys()) {
+      if (!liveShardPaths.has(cachedPath)) {
+        this.shardRowsCache.delete(cachedPath)
       }
     }
 
