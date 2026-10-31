@@ -23,8 +23,6 @@ export const McpSettingsSection: React.FC = () => {
   const {
     config,
     workspaces,
-    selectedWorkspaceId,
-    setSelectedWorkspaceId,
     mcpEndpointUrl,
     mcpSseEndpointUrl,
     applying,
@@ -47,18 +45,18 @@ export const McpSettingsSection: React.FC = () => {
     }, [loading, reloadTools])
   )
 
-  const handleCopyEndpoint = async () => {
+  const handleCopyEndpoint = async (targetUrl?: string) => {
     try {
-      await Clipboard.setStringAsync(mcpEndpointUrl)
+      await Clipboard.setStringAsync(targetUrl || mcpEndpointUrl)
       toast.showSuccess(t('common.copied'))
     } catch {
       toast.showError(t('common.copy_failed'))
     }
   }
 
-  const handleCopySseEndpoint = async () => {
+  const handleCopySseEndpoint = async (targetUrl?: string) => {
     try {
-      await Clipboard.setStringAsync(mcpSseEndpointUrl)
+      await Clipboard.setStringAsync(targetUrl || mcpSseEndpointUrl)
       toast.showSuccess(t('common.copied'))
     } catch {
       toast.showError(t('common.copy_failed'))
@@ -121,14 +119,12 @@ export const McpSettingsSection: React.FC = () => {
           mcpEndpointUrl={mcpEndpointUrl}
           mcpSseEndpointUrl={mcpSseEndpointUrl}
           workspaces={workspaces}
-          selectedWorkspaceId={selectedWorkspaceId}
-          onSelectWorkspace={setSelectedWorkspaceId}
           applying={applying}
           isRunning={isRunning}
           activePort={activePort}
           onChange={(next) => void persistConfig(next)}
-          onCopyEndpoint={() => void handleCopyEndpoint()}
-          onCopySseEndpoint={() => void handleCopySseEndpoint()}
+          onCopyEndpoint={(url) => void handleCopyEndpoint(url)}
+          onCopySseEndpoint={(url) => void handleCopySseEndpoint(url)}
           onCopyToken={() => void handleCopyToken()}
           onRefreshToken={handleRefreshToken}
         />
