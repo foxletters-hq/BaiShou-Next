@@ -19,6 +19,7 @@ import {
   mobileListPendingReextract,
   resolveMobileGraphExtractAlignDeps
 } from './mobile-graph.service'
+import { notifyMobilePendingEmbedCountsChanged } from './mobile-pending-embed-counts'
 
 export type {
   GraphExtractQueueItem,
@@ -81,12 +82,14 @@ class MobileGraphExtractQueue {
           throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
         }
         try {
-          return await mobileCommitGraphDrafts(
+          const res = await mobileCommitGraphDrafts(
             ctx,
             items.map((item) => item.draft as GraphExtractDraft),
             signal,
             onPhase
           )
+          notifyMobilePendingEmbedCountsChanged()
+          return res
         } catch (e) {
           // 引擎只把错误记在条目上；这里补日志，否则整批失败时没有任何痕迹。
           logger.warn('[GraphExtract] flush failed', {

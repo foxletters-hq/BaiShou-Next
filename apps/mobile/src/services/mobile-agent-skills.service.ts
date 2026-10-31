@@ -10,7 +10,7 @@ import {
 } from '@baishou/shared'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { createMobileFileSystem } from './create-mobile-file-system'
-import { notifyMobileSkillsChanged } from './mobile-skills-events'
+import { notifyMobileSkillsChanged, subscribeMobileSkillsChanged } from './mobile-skills-events'
 import { ensureMobileShortcutsMigrated } from './mobile-skills-migrate.util'
 import {
   ensureMobileDefaultSkills,
@@ -18,6 +18,21 @@ import {
   readMobileSkill,
   writeMobileUserSkill
 } from './mobile-skills-writer.util'
+
+const migratedVaultRoots = new Set<string>()
+let cachedShortcutsRoot: string | null = null
+let cachedShortcutsValue: PromptShortcut[] | null = null
+let cacheGeneration = 0
+
+subscribeMobileSkillsChanged(() => {
+  cacheGeneration += 1
+  cachedShortcutsValue = null
+})
+
+export function invalidateMobileSkillsCache(): void {
+  cacheGeneration += 1
+  cachedShortcutsValue = null
+}
 
 function joinPath(base: string, ...parts: string[]): string {
   return [base.replace(/[\\/]+$/, ''), ...parts].join('/').replace(/\\/g, '/')
@@ -34,51 +49,62 @@ async function readSkillsFromRoot(
   } catch {
     return []
   }
-  const out: PromptShortcut[] = []
-  for (const name of names) {
-    const file = joinPath(root, name, 'SKILL.md')
-    try {
-      if (!(await fs.exists(file))) continue
-      const text = await fs.readFile(file)
-      const parsed = parseSkillMarkdown(String(text), file, { fallbackName: name })
-      if (!parsed) continue
-      out.push(skillToPromptShortcut({ ...parsed, source }))
-    } catch {
-      /* 单条损坏不阻断目录 */
-    }
-  }
-  return out
+  const items = await Promise.all(
+    names.map(async (name) => {
+      const file = joinPath(root, name, 'SKILL.md')
+      try {
+        if (!(await fs.exists(file))) return null
+        const text = await fs.readFile(file)
+        const parsed = parseSkillMarkdown(String(text), file, { fallbackName: name })
+        if (!parsed) return null
+        return skillToPromptShortcut({ ...parsed, source })
+      } catch {
+        /* 单条损坏不阻断目录 */
+        return null
+      }
+    })
+  )
+  return items.filter((item): item is PromptShortcut => item !== null)
 }
 
 export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
+  const gen = cacheGeneration
   const runtime = agentDbRuntimeRef.current
   const roots: Array<{ path: string; source: AgentSkill['source'] }> = []
+  let activeCacheKey: string | null = null
   if (runtime?.pathService) {
     try {
       const vaultRoot = await runtime.pathService.getRootDirectory()
       if (vaultRoot) {
-        const fs = createMobileFileSystem()
-        if (runtime.settingsManager) {
-          try {
-            await ensureMobileShortcutsMigrated({
-              vaultRoot,
-              settings: runtime.settingsManager,
-              fs
-            })
-          } catch {
-            /* 迁移失败不阻断已有磁盘技能 */
+        activeCacheKey = vaultRoot
+        if (cachedShortcutsRoot === vaultRoot && cachedShortcutsValue) {
+          return cachedShortcutsValue
+        }
+        if (!migratedVaultRoots.has(vaultRoot)) {
+          const fs = createMobileFileSystem()
+          if (runtime.settingsManager) {
+            try {
+              await ensureMobileShortcutsMigrated({
+                vaultRoot,
+                settings: runtime.settingsManager,
+                fs
+              })
+            } catch {
+              /* 迁移失败不阻断已有磁盘技能 */
+            }
           }
-        }
-        try {
-          await ensureMobileDefaultSkills(vaultRoot, fs)
-        } catch {
-          /* 默认技能写入失败不阻断已有磁盘技能 */
-        }
-        try {
-          const activeVaultRoot = await runtime.pathService.getActiveVaultPath()
-          await migrateLegacyVaultUserSkills(vaultRoot, activeVaultRoot, fs)
-        } catch {
-          /* 旧目录迁移失败不阻断已有磁盘技能 */
+          try {
+            await ensureMobileDefaultSkills(vaultRoot, fs)
+          } catch {
+            /* 默认技能写入失败不阻断已有磁盘技能 */
+          }
+          try {
+            const activeVaultRoot = await runtime.pathService.getActiveVaultPath()
+            await migrateLegacyVaultUserSkills(vaultRoot, activeVaultRoot, fs)
+          } catch {
+            /* 旧目录迁移失败不阻断已有磁盘技能 */
+          }
+          migratedVaultRoots.add(vaultRoot)
         }
         roots.push({ path: joinPath(vaultRoot, '.agents', 'skills'), source: 'user' })
         roots.push({ path: joinPath(vaultRoot, 'AI', 'skills'), source: 'software' })
@@ -88,12 +114,10 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
     }
   }
 
-  const listed: PromptShortcut[] = []
-  for (const root of roots) {
-    listed.push(
-      ...(await readSkillsFromRoot(root.path, root.source === 'user' ? 'user' : 'software'))
-    )
-  }
+  const rootLists = await Promise.all(
+    roots.map((root) => readSkillsFromRoot(root.path, root.source === 'user' ? 'user' : 'software'))
+  )
+  const listed: PromptShortcut[] = rootLists.flat()
   const defaultShortcuts = DEFAULT_AGENT_SKILLS.map((skill) =>
     skillToPromptShortcut({
       name: skill.name,
@@ -112,7 +136,12 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
   )
 
   const merged = hasCreateSkill ? listed : [...defaultShortcuts, ...listed]
-  return dedupePromptShortcuts(merged)
+  const deduped = dedupePromptShortcuts(merged)
+  if (activeCacheKey && gen === cacheGeneration) {
+    cachedShortcutsRoot = activeCacheKey
+    cachedShortcutsValue = deduped
+  }
+  return deduped
 }
 
 export async function mobileListSkillsCatalog(): Promise<

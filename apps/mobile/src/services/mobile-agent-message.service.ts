@@ -72,8 +72,10 @@ async function executeSaveUserMessage(
   }
 
   const history = await sessionRepo.getMessagesBySession(args.sessionId, 1)
-  const lastOrder = history.length > 0 && history[0] ? history[0].orderIndex : 0
-  const userOrderIndex = lastOrder + 1
+  const lastMsg = history.length > 0 ? history[0] : undefined
+  const lastOrder = lastMsg ? lastMsg.orderIndex : 0
+  // 若上一条消息仍是 user（例如上一轮 AI 仍在流式生成尚未落盘），预留 lastOrder + 1 给上一轮 assistant，避免排队消息抢占同一 orderIndex
+  const userOrderIndex = lastMsg?.role === 'user' ? lastOrder + 2 : lastOrder + 1
   const userMsgId = generateUUID()
 
   const initialParts: Array<{
