@@ -1,5 +1,5 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react'
-import { useAgentStore } from '@baishou/store'
+import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
 
@@ -163,6 +163,7 @@ export function useAgentStreamFinish({
         )
       })
       if (epoch !== retryEpochRef.current) return false
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
 
       const synced = await reloadMessagesFromDb(sessionId, { preserveWindow: false })
       if (epoch !== retryEpochRef.current) return false
@@ -233,6 +234,7 @@ export function useAgentStreamFinish({
               releaseRetryAction()
             }
           } else {
+            useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
             beginStreamBridgeHandoff()
             isStreamingRef.current = false
             setIsStreaming(false)

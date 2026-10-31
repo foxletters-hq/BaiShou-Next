@@ -7,7 +7,8 @@ import {
   resolveAssistantEmojiConfig,
   assistantRowToEmojiPrefs,
   collectAgentGatePartDataForSurface,
-  collectUnresolvedAgentGateRequestsForSurface
+  collectUnresolvedAgentGateRequestsForSurface,
+  visibleAgentGateParts
 } from '@baishou/shared'
 import {
   ChatBubble,
@@ -140,7 +141,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     return ids
   }, [chat.messages])
   const liveGateParts = useMemo(
-    () => resolvedLive.filter((item) => !persistedGateIds.has(item.request.id)),
+    () =>
+      visibleAgentGateParts(resolvedLive).filter((item) => !persistedGateIds.has(item.request.id)),
     [persistedGateIds, resolvedLive]
   )
 
@@ -361,7 +363,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     reasoning: stream.reasoning,
     timeline: stream.timeline,
     activeTool: stream.activeTool,
-    completedToolsCount: stream.completedTools.length
+    completedToolsCount: stream.completedTools.length,
+    liveGatePartsCount: liveGateParts.length
   })
   const hidePersistedLiveTurn = streamUi.hidePersistedLiveTurn
   const visibleMessages = hidePersistedLiveTurn ? chat.messages.slice(0, -1) : chat.messages
@@ -518,7 +521,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
             )
           })}
 
-          {showStreamingBubble || liveGateParts.length > 0 ? (
+          {showStreamingBubble ? (
             <StreamingBubble
               text={stream.text}
               reasoning={stream.reasoning}

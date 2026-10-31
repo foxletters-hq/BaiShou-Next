@@ -206,6 +206,7 @@ export function useAgentStream(
       userMsgId?: string
     ): Promise<void> => {
       resetStreamDisplayBuffers(sessionId)
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -251,6 +252,7 @@ export function useAgentStream(
       searchMode?: boolean
     ) => {
       resetStreamDisplayBuffers(sessionId)
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -295,6 +297,7 @@ export function useAgentStream(
       modelId?: string
     ) => {
       resetStreamDisplayBuffers(sessionId)
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = true
         state.isBridgeActive = false
@@ -330,6 +333,7 @@ export function useAgentStream(
 
   const beginStreaming = useCallback((sessionId: string): void => {
     resetStreamDisplayBuffers(sessionId)
+    useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
     updateSessionState(sessionId, (state) => {
       state.isStreaming = true
       state.isBridgeActive = false
@@ -421,6 +425,7 @@ export function useAgentStream(
     if (!currentSessionId) return
     resetStreamDisplayBuffers(currentSessionId)
     resetCompressionDisplayBuffers(currentSessionId)
+    useAgentGateInboxStore.getState().clearResolvedLiveForSession(currentSessionId)
     updateSessionState(currentSessionId, (state) => {
       state.error = null
       state.isStreaming = false

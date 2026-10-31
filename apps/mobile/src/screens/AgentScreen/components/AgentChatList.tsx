@@ -3,7 +3,8 @@ import { View, StyleSheet, TouchableOpacity, Text, ImageBackground, ScrollView }
 import { InputBar } from '@baishou/ui/native'
 import {
   collectAgentGatePartDataForSurface,
-  collectUnresolvedAgentGateRequestsForSurface
+  collectUnresolvedAgentGateRequestsForSurface,
+  visibleAgentGateParts
 } from '@baishou/shared'
 import { selectResolvedLiveForSession, useAgentGateInboxStore } from '@baishou/store'
 import { listPendingMobileAgentGate } from '../../../services/mobile-agent-gate.service'
@@ -159,7 +160,7 @@ export function AgentChatList(props: AgentChatListProps) {
         persisted.add(data.request.id)
       }
     }
-    return resolvedLive.filter((item) => !persisted.has(item.request.id))
+    return visibleAgentGateParts(resolvedLive).filter((item) => !persisted.has(item.request.id))
   }, [p.messages, resolvedLive])
   const scrollButtonVisible = p.showScrollButton && !p.isBubbleEditing
   const scrollButtonOpacity = useSharedValue(scrollButtonVisible ? 1 : 0)

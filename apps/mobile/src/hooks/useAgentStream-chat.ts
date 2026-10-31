@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
-import { useAgentStore } from '@baishou/store'
+import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import {
   abortAgentStreamSession,
   claimAgentStreamSession,
@@ -268,6 +268,7 @@ export function useAgentStreamChat({
       setLoading(true)
       setIsStreaming(true)
       setStreamError(null)
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       resetStreamingBuffers()
       resetCompressionBuffers()
       setIsCompressing(false)
@@ -373,6 +374,7 @@ export function useAgentStreamChat({
       setLoading(true)
       setIsStreaming(true)
       setStreamError(null)
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
       resetStreamingBuffers()
 
       const failStream = (errorMsg: string) => {
