@@ -8,6 +8,7 @@ import {
 
 vi.mock('../platform/read-local-file', () => ({
   canReadLocalPath: (p: string) => Boolean(p),
+  readLocalDocumentText: async () => '# 转换后的文档标题\n\n这是从 docx 提取的正文。',
   readLocalFileAsBase64: () => 'ZmFrZQ==',
   readLocalFileAsBase64Async: async () => 'ZmFrZQ==',
   readLocalTextFile: async () => 'notes from disk',
@@ -168,6 +169,38 @@ describe('appendFileAttachmentToContentParts', () => {
     )
 
     expect((parts[0] as { text: string }).text).toContain('pdf text')
+  })
+
+  it('should convert .docx files via readLocalDocumentText when textContent is absent', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      {
+        fileName: 'report.docx',
+        filePath: 'D:\\Projects\\invoice\\report.docx'
+      },
+      { modelId: 'deepseek-v4-flash' }
+    )
+
+    const text = (parts[0] as { text: string }).text
+    expect(text).toContain('[User Uploaded File Attachment: report.docx]')
+    expect(text).toContain('# 转换后的文档标题')
+  })
+
+  it('should return a clear hint for legacy .doc files', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      {
+        fileName: 'legacy.doc',
+        filePath: 'D:\\Projects\\invoice\\legacy.doc'
+      },
+      { modelId: 'deepseek-v4-flash' }
+    )
+
+    const text = (parts[0] as { text: string }).text
+    expect(text).toContain('legacy.doc')
+    expect(text).toContain('.docx')
   })
 })
 

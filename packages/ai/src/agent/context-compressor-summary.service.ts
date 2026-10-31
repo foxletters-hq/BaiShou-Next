@@ -17,6 +17,7 @@ import {
   type SessionCompressionConfig
 } from './context-compression.utils'
 import { consumeCompressionModelStream } from './compression-stream.utils'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 import {
   AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
   isAgentFirstOutputTimeoutError,
@@ -74,10 +75,20 @@ export async function generateCompressionSummaryText(
   })
 
   let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
+  const localAbortController = new AbortController()
+  const onCallerAbort = () => localAbortController.abort()
+  if (abortSignal) {
+    if (abortSignal.aborted) {
+      localAbortController.abort()
+    } else {
+      abortSignal.addEventListener('abort', onCallerAbort, { once: true })
+    }
+  }
   try {
     streamed = await runWithFirstOutputTimeout({
       timeoutMs: AGENT_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
       abort: () => {
+        localAbortController.abort()
         if (options?.streamClaimGeneration !== undefined) {
           abortAgentStreamSession(sessionId, options.streamClaimGeneration)
         }
@@ -96,25 +107,39 @@ export async function generateCompressionSummaryText(
               allowSystemInMessages: true,
               messages,
               temperature: resolveTemperatureForModel(modelId, 0.1),
-              abortSignal,
+              abortSignal: localAbortController.signal,
               experimental_telemetry: { isEnabled: false },
+              onError: () => {},
               ...(builtReasoning.providerOptions
                 ? { providerOptions: builtReasoning.providerOptions as never }
                 : {})
             })
         )
-        return consumeCompressionModelStream(streamResult, sessionId, abortSignal, {
-          onFirstOutput: markFirstOutput
-        })
+        return consumeCompressionModelStream(
+          streamResult,
+          sessionId,
+          localAbortController.signal,
+          {
+            onFirstOutput: markFirstOutput
+          }
+        )
       }
     })
   } catch (streamErr: unknown) {
+    if (isNoOutputGeneratedError(streamErr)) {
+      logger.error(
+        `[ContextCompressor] Session(${sessionId}) empty summary (no output generated).`
+      )
+      return null
+    }
     const aborted = isAgentStreamAbortError(streamErr)
     if (!aborted && !isAgentFirstOutputTimeoutError(streamErr)) {
       const detail = streamErr instanceof Error ? streamErr.message : String(streamErr)
       logger.error(`[ContextCompressor] Session(${sessionId}) model stream failed: ${detail}`)
     }
     throw streamErr
+  } finally {
+    abortSignal?.removeEventListener('abort', onCallerAbort)
   }
 
   if (!streamed.summaryText) {
