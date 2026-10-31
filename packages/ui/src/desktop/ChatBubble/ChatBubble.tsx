@@ -9,6 +9,58 @@ import { ChatBubbleAiRow } from './ChatBubbleAiRow'
 import { ChatBubbleContextMenu } from './ChatBubbleContextMenu'
 import styles from './ChatBubble.module.css'
 
+function areDesktopChatBubblePropsEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boolean {
+  if (prev.isTtsPlaying !== next.isTtsPlaying) return false
+  if (prev.error !== next.error) return false
+  if (
+    prev.userProfile?.nickname !== next.userProfile?.nickname ||
+    prev.userProfile?.avatarPath !== next.userProfile?.avatarPath
+  ) {
+    return false
+  }
+  if (
+    prev.aiProfile?.name !== next.aiProfile?.name ||
+    prev.aiProfile?.avatarPath !== next.aiProfile?.avatarPath ||
+    prev.aiProfile?.emoji !== next.aiProfile?.emoji
+  ) {
+    return false
+  }
+  if (
+    Boolean(prev.onRegenerate) !== Boolean(next.onRegenerate) ||
+    Boolean(prev.onResend) !== Boolean(next.onResend) ||
+    Boolean(prev.onSaveEdit) !== Boolean(next.onSaveEdit) ||
+    Boolean(prev.onResendEdit) !== Boolean(next.onResendEdit) ||
+    Boolean(prev.onBranch) !== Boolean(next.onBranch) ||
+    Boolean(prev.onShowContext) !== Boolean(next.onShowContext) ||
+    Boolean(prev.onReadAloud) !== Boolean(next.onReadAloud)
+  ) {
+    return false
+  }
+
+  if (prev.message === next.message) return true
+
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.role === next.message.role &&
+    prev.message.content === next.message.content &&
+    prev.message.reasoning === next.message.reasoning &&
+    prev.message.isReasoning === next.message.isReasoning &&
+    prev.message.inputTokens === next.message.inputTokens &&
+    prev.message.outputTokens === next.message.outputTokens &&
+    prev.message.cacheReadInputTokens === next.message.cacheReadInputTokens &&
+    prev.message.cacheWriteInputTokens === next.message.cacheWriteInputTokens &&
+    prev.message.costMicros === next.message.costMicros &&
+    (prev.message.parts === next.message.parts ||
+      (prev.message.parts?.length ?? 0) === (next.message.parts?.length ?? 0)) &&
+    (prev.message.toolInvocations === next.message.toolInvocations ||
+      (prev.message.toolInvocations?.length ?? 0) === (next.message.toolInvocations?.length ?? 0)) &&
+    (prev.message.attachments === next.message.attachments ||
+      (prev.message.attachments?.length ?? 0) === (next.message.attachments?.length ?? 0)) &&
+    (prev.message.skillRefs === next.message.skillRefs ||
+      (prev.message.skillRefs?.length ?? 0) === (next.message.skillRefs?.length ?? 0))
+  )
+}
+
 export const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
   ({
     message,
@@ -138,5 +190,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = React.memo(
         />
       </>
     )
-  }
+  },
+  areDesktopChatBubblePropsEqual
 )

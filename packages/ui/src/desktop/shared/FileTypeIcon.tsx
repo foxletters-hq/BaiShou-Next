@@ -21,10 +21,94 @@ export function getFileTypeIcon(fileName: string, size = 18): React.ReactNode {
   if (ext === 'pdf') {
     return <FileText size={size} className={`${styles.fileTypeIcon} ${styles.iconPdf}`} />
   }
-  if (['md', 'markdown', 'txt'].includes(ext)) {
+  if (
+    [
+      'md',
+      'markdown',
+      'txt',
+      'docx',
+      'doc',
+      'xlsx',
+      'xls',
+      'pptx',
+      'ppt',
+      'odt',
+      'ods',
+      'odp',
+      'epub',
+      'rtf',
+      'csv',
+      'tsv',
+      'log',
+      'tex',
+      'rst',
+      'org'
+    ].includes(ext)
+  ) {
     return <FileText size={size} className={`${styles.fileTypeIcon} ${styles.iconText}`} />
   }
-  if (['json', 'js', 'ts', 'tsx', 'html', 'css', 'yaml', 'yml'].includes(ext)) {
+  if (
+    [
+      'json',
+      'jsonc',
+      'jsonl',
+      'js',
+      'jsx',
+      'ts',
+      'tsx',
+      'mjs',
+      'cjs',
+      'html',
+      'htm',
+      'css',
+      'scss',
+      'sass',
+      'less',
+      'yaml',
+      'yml',
+      'toml',
+      'xml',
+      'py',
+      'pyw',
+      'pyi',
+      'ipynb',
+      'rb',
+      'go',
+      'rs',
+      'java',
+      'kt',
+      'swift',
+      'c',
+      'h',
+      'cpp',
+      'hpp',
+      'cs',
+      'sql',
+      'graphql',
+      'vue',
+      'svelte',
+      'astro',
+      'sh',
+      'bash',
+      'zsh',
+      'ps1',
+      'bat',
+      'cmd',
+      'php',
+      'lua',
+      'r',
+      'dart',
+      'scala',
+      'proto',
+      'sol',
+      'ini',
+      'conf',
+      'cfg',
+      'env',
+      'diff',
+      'patch'
+    ].includes(ext)
+  ) {
     return <FileCode size={size} className={`${styles.fileTypeIcon} ${styles.iconCode}`} />
   }
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {

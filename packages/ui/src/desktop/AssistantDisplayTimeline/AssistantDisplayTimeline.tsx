@@ -73,7 +73,10 @@ function AssistantDisplayTimelineInner(props: {
             ...coalesced.textItems.map((t) => t.text)
           ].filter((t) => Boolean(t.trim()))
           const combinedReasoning = cleanReasonings.join('\n\n')
-          const processStreaming = !coalesced.hasSubsequentText && Boolean(isStreaming && !error)
+          const lastTimelineItem = items[items.length - 1]
+          const trailingWorkActive = Boolean(lastTimelineItem && lastTimelineItem.kind !== 'text')
+          const processStreaming =
+            (!coalesced.hasSubsequentText || trailingWorkActive) && Boolean(isStreaming && !error)
 
           return (
             <AgentProcessSection

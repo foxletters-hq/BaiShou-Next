@@ -22,7 +22,7 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({ onLaun
           <p className={styles.subtitle}>
             {t(
               'assistant.matrix_desc',
-              '用来精细化管理和创造专属助理对象，包含预设提示词配置与单独工作空间关联。'
+              '用来精细化管理和创造专属助理对象，包含预设提示词配置与单独小窝关联。'
             )}
           </p>
         </div>
