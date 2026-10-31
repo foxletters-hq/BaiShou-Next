@@ -45,4 +45,13 @@ describe('AIGlobalModelsView graph slot', () => {
     expect(css).not.toContain('auto-fill')
     expect(css).not.toContain('auto-fit')
   })
+
+  it('should style the embedding slot like every other slot instead of a danger variant', () => {
+    expect(src).not.toContain('isDanger')
+    expect(src).not.toContain('dangerCard')
+    expect(src).not.toContain('dangerIcon')
+    expect(src).not.toContain('dangerName')
+    expect(css).not.toContain('.danger')
+    expect(css).toContain('.routeIcon {')
+  })
 })

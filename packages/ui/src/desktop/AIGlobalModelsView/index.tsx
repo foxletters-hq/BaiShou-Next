@@ -179,9 +179,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     icon: React.ReactNode,
     currentProvider: string,
     currentModel: string,
-    options: { isDanger?: boolean; readOnly?: boolean } = {}
+    options: { readOnly?: boolean } = {}
   ) => {
-    const { isDanger = false, readOnly = false } = options
+    const { readOnly = false } = options
     const isModelSet = Boolean(currentProvider && currentModel)
     const slot = selectorReasoningSlot(key as ModelSelectorKey)
     const effortLabel = slot
@@ -224,12 +224,10 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     }
 
     return (
-      <div className={`${styles.routingCard} ${isDanger ? styles.dangerCard : ''}`}>
+      <div className={styles.routingCard}>
         <div className={styles.routeHeader}>
-          <div className={`${styles.routeIcon} ${isDanger ? styles.dangerIcon : ''}`}>{icon}</div>
-          <span className={`${styles.routeName} ${isDanger ? styles.dangerName : ''}`}>
-            {title}
-          </span>
+          <div className={styles.routeIcon}>{icon}</div>
+          <span className={styles.routeName}>{title}</span>
           <HelpTooltip content={getTooltipContent()} className={styles.titleTooltip} size={16} />
         </div>
 
@@ -343,8 +341,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             t('ai_config.embedding_model_title', 'RAG 向量映射层 (Embeddings)'),
             <Database size={22} />,
             config.globalEmbeddingProviderId,
-            config.globalEmbeddingModelId,
-            { isDanger: true }
+            config.globalEmbeddingModelId
           )}
         </div>
 
