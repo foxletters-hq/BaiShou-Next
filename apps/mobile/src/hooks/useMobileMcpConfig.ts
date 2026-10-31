@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as Network from 'expo-network'
 import type { McpServerConfig } from '@baishou/shared'
-import { appendMcpVaultQuery, ensureMcpAuthToken, refreshMcpAuthToken } from '@baishou/shared'
+import { ensureMcpAuthToken, refreshMcpAuthToken } from '@baishou/shared'
 import type { McpToolListItem } from '@baishou/ui/native'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
@@ -31,7 +31,6 @@ export function useMobileMcpConfig() {
   const [config, setConfig] = useState<McpServerConfig>(DEFAULT_MCP_CONFIG)
   const [deviceIp, setDeviceIp] = useState('127.0.0.1')
   const [workspaces, setWorkspaces] = useState<Array<{ id: string; name: string }>>([])
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
   const [tools, setTools] = useState<McpToolListItem[]>([])
@@ -45,15 +44,10 @@ export function useMobileMcpConfig() {
       try {
         await vaultService.initRegistry()
         const all = vaultService.getAllVaults()
-        const active = vaultService.getActiveVault()
         const items = all
           .filter((v) => v && typeof v.id === 'string' && typeof v.name === 'string')
           .map((v) => ({ id: v.id, name: v.name }))
         setWorkspaces(items)
-        setSelectedWorkspaceId((prev) => {
-          if (prev && items.some((w) => w.id === prev)) return prev
-          return active?.id || items[0]?.id
-        })
       } catch {
         // ignore
       }
@@ -113,16 +107,8 @@ export function useMobileMcpConfig() {
     void loadTools()
   }, [applying, config.mcpEnabled, loadTools, loading])
 
-  const effectiveWorkspaceId =
-    workspaces.length > 0 ? selectedWorkspaceId || workspaces[0].id : undefined
-  const mcpEndpointUrl = appendMcpVaultQuery(
-    `http://${deviceIp}:${config.mcpPort}/mcp`,
-    effectiveWorkspaceId
-  )
-  const mcpSseEndpointUrl = appendMcpVaultQuery(
-    `http://${deviceIp}:${config.mcpPort}/sse`,
-    effectiveWorkspaceId
-  )
+  const mcpEndpointUrl = `http://${deviceIp}:${config.mcpPort}/mcp`
+  const mcpSseEndpointUrl = `http://${deviceIp}:${config.mcpPort}/sse`
   const persistConfig = useCallback(
     async (next: McpServerConfig) => {
       if (!services || !dbReady) return
@@ -198,8 +184,6 @@ export function useMobileMcpConfig() {
     config,
     deviceIp,
     workspaces,
-    selectedWorkspaceId: effectiveWorkspaceId,
-    setSelectedWorkspaceId,
     loading,
     applying,
     mcpEndpointUrl,

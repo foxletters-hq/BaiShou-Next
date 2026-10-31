@@ -19,7 +19,6 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
   const { t } = useTranslation()
   const [lanHost, setLanHost] = React.useState<string | null>(null)
   const [workspaces, setWorkspaces] = React.useState<Array<{ id: string; name: string }>>([])
-  const [activeWorkspaceId, setActiveWorkspaceId] = React.useState<string | undefined>(undefined)
   const [kind, setKind] = React.useState<'outbound' | 'custom'>('outbound')
 
   React.useEffect(() => {
@@ -31,19 +30,13 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
       try {
         const vaultApi = (window as any).api?.vault
         if (!vaultApi) return
-        const [allVaults, activeVault] = await Promise.all([
-          vaultApi.list?.().catch(() => []),
-          vaultApi.getActive?.().catch(() => null)
-        ])
+        const allVaults = await vaultApi.list?.().catch(() => [])
         if (Array.isArray(allVaults)) {
           setWorkspaces(
             allVaults
               .filter((v: any) => v && typeof v.id === 'string' && typeof v.name === 'string')
               .map((v: any) => ({ id: v.id, name: v.name }))
           )
-        }
-        if (activeVault?.id) {
-          setActiveWorkspaceId(activeVault.id)
         }
       } catch {
         // ignore
@@ -71,7 +64,6 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings, embe
               standalone
               lanHost={lanHost}
               workspaces={workspaces}
-              activeWorkspaceId={activeWorkspaceId}
               config={
                 settings.mcpServerConfig || {
                   mcpEnabled: false,

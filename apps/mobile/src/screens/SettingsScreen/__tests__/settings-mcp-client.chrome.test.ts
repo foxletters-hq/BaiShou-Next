@@ -125,6 +125,12 @@ describe('mobile settings mcp custom client chrome', () => {
       "const rawId = tool.toolId || tool.name.replace(/^baishou_/, '')"
     )
     expect(mcpSettingsCard).toContain("t('settings.mcp_auth_enable_desc'")
+    expect(mcpSettingsCard).toContain("t('settings.mcp_workspaces_title'")
+    expect(mcpSettingsCard).toContain('onCopyEndpoint(itemMcpUrl)')
+    expect(mcpSettingsCard).toContain('Pagination')
+    expect(mcpSettingsCard).not.toContain('mcp_workspace_current')
     expect(mcpContextService).toContain('buildMobileStreamUserConfig(deps.settingsManager, true)')
+    expect(mcpContextService).toContain('graphReader')
+    expect(mcpContextService).toContain('graphNodeLookup')
   })
 })
