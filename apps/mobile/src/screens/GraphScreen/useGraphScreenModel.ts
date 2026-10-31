@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  applyGraphLocalEdgeDelete,
+  applyGraphLocalNodeDelete,
   deriveLegacyVaultId,
   emptyGraphExtractQueueSnapshot,
   clampGraphMonthRange,
@@ -17,7 +19,10 @@ import {
 } from '@/src/services/mobile-graph.service'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
-import { subscribeGraphDataChanged } from '@/src/services/mobile-graph-data-changed'
+import {
+  subscribeGraphDataChanged,
+  subscribeGraphOptimisticDelete
+} from '@/src/services/mobile-graph-data-changed'
 import { mobileGraphExtractQueue } from '@/src/services/mobile-graph-extract-queue.service'
 import { countGraphCanvasNodes } from './graph-screen-display.util'
 import {
@@ -117,9 +122,12 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
     applyOpsNodeFocus()
     return subscribeGraphOpsNodeFocus(applyOpsNodeFocus)
   }, [])
-  const refreshVisibleAfterReview = (opts?: { stripSuspectOnNodeId?: string }) =>
+  const refreshVisibleAfterReview = (opts?: {
+    stripSuspectOnNodeId?: string
+    selectedIdOverride?: string
+  }) =>
     data.refreshVisibleAfterReview({
-      selectedId: search.selectedId,
+      selectedId: opts?.selectedIdOverride ?? search.selectedId,
       pinNeighborhood: search.pinNeighborhood,
       localView: search.localView,
       focusDepth: search.focusDepth,
@@ -207,16 +215,134 @@ export function useGraphScreenModel(options?: { onUnifiedOrganize?: () => void |
     localView: search.localView
   }
 
+  const refreshVisibleAfterReviewRef = useRef(refreshVisibleAfterReview)
+  refreshVisibleAfterReviewRef.current = refreshVisibleAfterReview
+  const busyRef = useRef(busy)
+  busyRef.current = busy
+  const selectedIdRef = useRef(search.selectedId)
+  selectedIdRef.current = search.selectedId
+  const suppressNextDataChangedRef = useRef(0)
+  const localDeleteCtxRef = useRef({
+    data,
+    search,
+    review,
+    inventory
+  })
+  localDeleteCtxRef.current = {
+    data,
+    search,
+    review,
+    inventory
+  }
+
   useEffect(() => {
     if (!dbReady || !vaultId) return
     void data.refreshRef.current().catch((e) => setStatus(String(e?.message || e)))
   }, [dbReady, vaultId, settings.monthRange, settings.viewMaxNodes, data.refreshRef])
 
   useEffect(() => {
+    return subscribeGraphOptimisticDelete((event) => {
+      const ctx = localDeleteCtxRef.current
+      if (event.phase === 'optimistic') {
+        suppressNextDataChangedRef.current += 1
+        if (event.kind === 'node') {
+          ctx.data.inFlightDeletedNodeIdsRef.current.add(event.id)
+          for (const edgeId of event.deletedEdgeIds ?? []) {
+            ctx.data.inFlightDeletedEdgeIdsRef.current.add(edgeId)
+          }
+          const next = applyGraphLocalNodeDelete({
+            nodeId: event.id,
+            nodes: ctx.data.graphViewRef.current.nodes,
+            edges: ctx.data.graphViewRef.current.edges,
+            pendingNodes: ctx.data.graphViewRef.current.pendingNodes,
+            pendingEdges: ctx.data.graphViewRef.current.pendingEdges,
+            pendingSelected: ctx.review.pendingSelected,
+            highlightIds: ctx.search.highlightIds,
+            highlightedEdgeIds: ctx.search.highlightedEdgeIds,
+            locateIds: ctx.search.locateIds,
+            localView: ctx.data.graphViewRef.current.localView
+          })
+          ctx.data.setGraphNodes(next.nodes)
+          ctx.data.setGraphEdges(next.edges)
+          ctx.data.setPendingNodes(next.pendingNodes)
+          ctx.data.setPendingEdges(next.pendingEdges)
+          ctx.review.setPendingSelected(next.pendingSelected)
+          ctx.search.setHighlightIds(next.highlightIds)
+          ctx.search.setHighlightedEdgeIds(next.highlightedEdgeIds)
+          ctx.search.setLocateIds(next.locateIds && next.locateIds.length > 0 ? next.locateIds : null)
+          ctx.search.setLocalView(next.localView)
+          if (selectedIdRef.current === event.id) {
+            ctx.search.setSelectedNode(null)
+            ctx.search.setSelectedId(null)
+            ctx.search.setPinNeighborhood(false)
+          }
+          ctx.inventory.applyLocalNodeDelete(event.id, event.deletedEdgeIds?.length ?? 0)
+          ctx.search.removeNodeFromHits(event.id)
+          ctx.data.setSimilarPairs((prev) =>
+            prev.filter((pair) => pair.nodeId !== event.id && pair.peerId !== event.id)
+          )
+          return
+        }
+        ctx.data.inFlightDeletedEdgeIdsRef.current.add(event.id)
+        const next = applyGraphLocalEdgeDelete({
+          edgeId: event.id,
+          edges: ctx.data.graphViewRef.current.edges,
+          pendingEdges: ctx.data.graphViewRef.current.pendingEdges,
+          pendingSelected: ctx.review.pendingSelected,
+          highlightedEdgeIds: ctx.search.highlightedEdgeIds,
+          localView: ctx.data.graphViewRef.current.localView
+        })
+        ctx.data.setGraphEdges(next.edges)
+        ctx.data.setPendingEdges(next.pendingEdges)
+        ctx.review.setPendingSelected(next.pendingSelected)
+        ctx.search.setHighlightedEdgeIds(next.highlightedEdgeIds)
+        ctx.search.setLocalView(next.localView)
+        ctx.inventory.applyLocalEdgeDelete(1)
+        return
+      }
+      if (event.phase === 'committed') {
+        if (event.kind === 'node') {
+          ctx.data.inFlightDeletedNodeIdsRef.current.delete(event.id)
+          for (const edgeId of event.deletedEdgeIds ?? []) {
+            ctx.data.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+          }
+          void ctx.inventory.reloadSilent()
+        } else {
+          ctx.data.inFlightDeletedEdgeIdsRef.current.delete(event.id)
+        }
+        return
+      }
+      suppressNextDataChangedRef.current = Math.max(0, suppressNextDataChangedRef.current - 1)
+      if (event.kind === 'node') {
+        ctx.data.inFlightDeletedNodeIdsRef.current.delete(event.id)
+        for (const edgeId of event.deletedEdgeIds ?? []) {
+          ctx.data.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+        }
+      } else {
+        ctx.data.inFlightDeletedEdgeIdsRef.current.delete(event.id)
+      }
+      void ctx.data.refreshRef.current()
+    })
+  }, [])
+
+  useEffect(() => {
     return subscribeGraphDataChanged(() => {
+      if (suppressNextDataChangedRef.current > 0) {
+        suppressNextDataChangedRef.current -= 1
+        return
+      }
+      if (
+        !busyRef.current &&
+        selectedIdRef.current &&
+        data.inFlightDeletedNodeIdsRef.current.size === 0 &&
+        data.inFlightDeletedEdgeIdsRef.current.size === 0
+      ) {
+        void refreshVisibleAfterReviewRef.current()
+        return
+      }
       void data.refreshRef.current()
     })
-  }, [data.refreshRef])
+  }, [data.refreshRef, data.inFlightDeletedNodeIdsRef, data.inFlightDeletedEdgeIdsRef])
 
   const updateMonthRange = useCallback(
     (next: GraphMonthRange | Partial<GraphMonthRange>) => {

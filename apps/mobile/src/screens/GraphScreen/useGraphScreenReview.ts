@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Alert } from 'react-native'
 import {
   graphPendingItemKey,
   groupSimilarPendingPairsForMerge,
@@ -22,7 +21,7 @@ import type { GraphPendingItem, GraphScreenTranslateFn } from './graph-screen.ty
 type ReviewDeps = {
   t: GraphScreenTranslateFn
   toast: { showSuccess: (message: string) => void; showError: (message: string) => void }
-  dialog?: { confirm: (message: any, titleOrOptions?: any) => Promise<boolean> }
+  dialog: { confirm: (message: any, titleOrOptions?: any) => Promise<boolean> }
   services: { pathService: unknown; fileSystem: unknown } | null
   vaultId: string
   vaultName: string
@@ -35,7 +34,10 @@ type ReviewDeps = {
   setSelectedNode: (node: any | null) => void
   setBusy: (busy: boolean) => void
   refresh: () => Promise<void>
-  refreshVisibleAfterReview: (opts?: { stripSuspectOnNodeId?: string }) => Promise<void>
+  refreshVisibleAfterReview: (opts?: {
+    stripSuspectOnNodeId?: string
+    selectedIdOverride?: string
+  }) => Promise<void>
 }
 
 export function useGraphScreenReview(deps: ReviewDeps) {
@@ -45,6 +47,23 @@ export function useGraphScreenReview(deps: ReviewDeps) {
   >(null)
   const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
   const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
+
+  const syncMergedSelection = async (drizzleDb: any, survivorId?: string) => {
+    setMergeConfirm(null)
+    setMergeSearchOpen(false)
+    if (!survivorId) {
+      await deps.refresh()
+      return
+    }
+    deps.setSelectedId(survivorId)
+    try {
+      const updatedSurvivor = await mobileGetNode(drizzleDb, deps.vaultId, survivorId)
+      deps.setSelectedNode(updatedSurvivor)
+    } catch {
+      deps.setSelectedNode(null)
+    }
+    await deps.refreshVisibleAfterReview({ selectedIdOverride: survivorId })
+  }
 
   const pendingItems: GraphPendingItem[] = useMemo(
     () => [
@@ -187,26 +206,11 @@ export function useGraphScreenReview(deps: ReviewDeps) {
     confirmLabel: string
     destructive?: boolean
   }): Promise<boolean> =>
-    deps.dialog
-      ? deps.dialog.confirm(opts.message, {
-          title: opts.title,
-          confirmText: opts.confirmLabel,
-          destructive: opts.destructive
-        })
-      : new Promise((resolve) => {
-          Alert.alert(opts.title, opts.message, [
-            {
-              text: deps.t('common.cancel', '取消'),
-              style: 'cancel',
-              onPress: () => resolve(false)
-            },
-            {
-              text: opts.confirmLabel,
-              style: opts.destructive ? 'destructive' : 'default',
-              onPress: () => resolve(true)
-            }
-          ])
-        })
+    deps.dialog.confirm(opts.message, {
+      title: opts.title,
+      confirmText: opts.confirmLabel,
+      destructive: opts.destructive
+    })
 
   const applyPendingReviews = async (opts: {
     reviewStatus: 'approved' | 'rejected'
@@ -343,22 +347,7 @@ export function useGraphScreenReview(deps: ReviewDeps) {
           failures.push(e?.message || String(e))
         }
       }
-      setMergeConfirm(null)
-      setMergeSearchOpen(false)
-      await deps.refresh()
-      if (selectedGroup) {
-        deps.setSelectedId(selectedGroup.survivorId)
-        try {
-          const updatedSurvivor = await mobileGetNode(
-            runtime.drizzleDb,
-            deps.vaultId,
-            selectedGroup.survivorId
-          )
-          deps.setSelectedNode(updatedSurvivor)
-        } catch {
-          deps.setSelectedNode(null)
-        }
-      }
+      await syncMergedSelection(runtime.drizzleDb, selectedGroup?.survivorId)
       if (failures.length > 0) {
         deps.toast.showError(
           deps.t('graph.similar_merge_all_failed', '有 {{count}} 组相似节点合并失败：{{message}}', {
@@ -470,18 +459,10 @@ export function useGraphScreenReview(deps: ReviewDeps) {
         })
       }
       const loserIds = new Set(losers.map((n) => n.id))
-      if (deps.selectedId && (loserIds.has(deps.selectedId) || deps.selectedId === survivorId)) {
-        deps.setSelectedId(survivorId)
-        try {
-          const updatedSurvivor = await mobileGetNode(runtime.drizzleDb, deps.vaultId, survivorId)
-          deps.setSelectedNode(updatedSurvivor)
-        } catch {
-          deps.setSelectedNode(null)
-        }
-      }
-      setMergeConfirm(null)
-      setMergeSearchOpen(false)
-      await deps.refresh()
+      const shouldSelectSurvivor = Boolean(
+        deps.selectedId && (loserIds.has(deps.selectedId) || deps.selectedId === survivorId)
+      )
+      await syncMergedSelection(runtime.drizzleDb, shouldSelectSurvivor ? survivorId : undefined)
       deps.toast.showSuccess(deps.t('graph.nodes_merged', '已合并节点'))
     } catch (e: any) {
       deps.toast.showError(e?.message || String(e))

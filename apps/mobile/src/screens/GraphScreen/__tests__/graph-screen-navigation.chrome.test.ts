@@ -261,10 +261,78 @@ describe('GraphScreen chrome - navigation and action layout', () => {
     expect(confirmSrc).toContain('losers')
 
     const reviewHookSrc = readSrc('useGraphScreenReview.ts')
-    expect(reviewHookSrc).toContain('mobileGetNode(runtime.drizzleDb, deps.vaultId, survivorId)')
+    expect(reviewHookSrc).toContain('mobileGetNode(drizzleDb, deps.vaultId, survivorId)')
     expect(reviewHookSrc).toContain('deps.setSelectedNode(updatedSurvivor)')
     expect(reviewHookSrc).toContain("deps.t('graph.similar_keep_apart', '不是同一人')")
     expect(reviewHookSrc).toContain('deps.dialog.confirm(opts.message, {')
     expect(reviewHookSrc).toContain('title: opts.title')
+  })
+
+  it('should stabilize onSelectNode and prevent GraphNodeScreen from flickering or wiping edits on re-render', () => {
+    const updatedSearchSrc = readSrc('useGraphScreenSearch.ts')
+    const updatedNodeScreenSrc = readSrc('GraphNodeScreen.tsx')
+    const updatedDetailHookSrc = readSrc('useGraphScreenDetail.ts')
+    const updatedDataHookSrc = readSrc('useGraphScreenData.ts')
+    const mutateServiceSrc = readFileSync(
+      join(dir, '../../../services/mobile-graph-mutate.ts'),
+      'utf8'
+    )
+    const reviewServiceSrc = readFileSync(
+      join(dir, '../../../services/mobile-graph-review.ts'),
+      'utf8'
+    )
+    const splitServiceSrc = readFileSync(
+      join(dir, '../../../services/mobile-graph-split.ts'),
+      'utf8'
+    )
+
+    // 1. onSelectNode in useGraphScreenSearch must be memoized with useCallback and focusDepthRef
+    expect(updatedSearchSrc).toContain('const focusDepthRef = useRef')
+    expect(updatedSearchSrc).toMatch(/const onSelectNode = useCallback\(/)
+
+    // 2. GraphNodeScreen must guard initial load by targetKey so re-renders never flash loading spinner
+    expect(updatedNodeScreenSrc).toContain('loadedTargetKeyRef')
+    expect(updatedNodeScreenSrc).toContain('if (loadedTargetKeyRef.current === targetKey) return')
+
+    // 3. useGraphScreenDetail must not depend on raw [deps.selectedNode] object reference for form sync
+    expect(updatedDetailHookSrc).toContain('syncedNodeSnapshotRef')
+    expect(updatedDetailHookSrc).not.toContain('}, [deps.selectedNode])')
+    expect(updatedDetailHookSrc).not.toContain('}, [editName, deps.selectedNode, deps.vaultId])')
+    expect(updatedDetailHookSrc).not.toContain('}, [deps.selectedNode, deps.vaultId])')
+
+    // 4. useGraphScreenData coalesces concurrent refresh() calls
+    expect(updatedDataHookSrc).toContain('inFlightRefreshRef')
+    expect(updatedDataHookSrc).toContain('refreshQueuedRef')
+
+    // 5. Graph mutations, reviews, and splits notify cross-screen subscribers
+    expect(
+      mutateServiceSrc.match(/notifyGraphDataChanged\(\)/g)?.length ?? 0
+    ).toBeGreaterThanOrEqual(7)
+    expect(
+      reviewServiceSrc.match(/notifyGraphDataChanged\(\)/g)?.length ?? 0
+    ).toBeGreaterThanOrEqual(4)
+    expect(
+      splitServiceSrc.match(/notifyGraphDataChanged\(\)/g)?.length ?? 0
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  it('should sync node deletion optimistically across screens and prune canvas in-place without full reload', () => {
+    const deleteHookSrc = readSrc('useGraphScreenDetailDelete.ts')
+    const extractHookSrc = readSrc('useGraphScreenExtract.ts')
+    const reviewHookSrc = readSrc('useGraphScreenReview.ts')
+    const modelHookSrc = readSrc('useGraphScreenModel.ts')
+    const inventoryHookSrc = readSrc('useGraphScreenInventory.ts')
+    const webviewRuntimeSrc = readSrc('GraphForceWebView.tsx')
+    expect(deleteHookSrc).toContain('notifyGraphOptimisticDelete')
+    expect(deleteHookSrc).toContain('deps.dialog.confirm(')
+    expect(deleteHookSrc).toContain("title: deps.t('graph.delete_node', '删除节点')")
+    expect(deleteHookSrc).toContain("title: deps.t('graph.delete_edge', '删除')")
+    expect(deleteHookSrc).not.toContain('Alert.alert')
+    expect(extractHookSrc).not.toContain('Alert.alert')
+    expect(reviewHookSrc).not.toContain('Alert.alert')
+    expect(modelHookSrc).toContain('subscribeGraphOptimisticDelete')
+    expect(modelHookSrc).toContain('ctx.inventory.applyLocalNodeDelete')
+    expect(inventoryHookSrc).toContain('applyGraphInventoryNodeDelete')
+    expect(webviewRuntimeSrc).toContain('canPruneInPlace')
   })
 })

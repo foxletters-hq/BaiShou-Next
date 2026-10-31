@@ -1,4 +1,3 @@
-import { Alert } from 'react-native'
 import {
   applyGraphLocalEdgeDelete,
   applyGraphLocalNodeDelete,
@@ -6,12 +5,21 @@ import {
   restoreGraphLocalNodeDelete
 } from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { notifyGraphOptimisticDelete } from '@/src/services/mobile-graph-data-changed'
 import { mobileSoftDeleteGraph } from '@/src/services/mobile-graph.service'
 import type { GraphScreenTranslateFn } from './graph-screen.types'
 
 export type GraphScreenDetailDeleteDeps = {
   t: GraphScreenTranslateFn
   toast: { showSuccess: (message: string) => void; showError: (message: string) => void }
+  dialog: {
+    confirm: (
+      message: string,
+      titleOrOptions?:
+        | string
+        | { title?: string; confirmText?: string; cancelText?: string; destructive?: boolean }
+    ) => Promise<boolean>
+  }
   services: { pathService: unknown; fileSystem: unknown } | null
   vaultId: string
   selectedId: string | null
@@ -48,187 +56,213 @@ export type GraphScreenDetailDeleteDeps = {
 export function useGraphScreenDetailDelete(deps: GraphScreenDetailDeleteDeps) {
   const deleteSelected = () => {
     if (!deps.selectedNode) return
-    Alert.alert(
-      deps.t('graph.delete_node', '删除节点'),
-      deps.t('graph.confirm_delete_node', '确定删除该节点？相关边也会一并删除。'),
-      [
-        { text: deps.t('common.cancel', '取消'), style: 'cancel' },
+    void (async () => {
+      const ok = await deps.dialog.confirm(
+        deps.t('graph.confirm_delete_node', '确定删除该节点？相关边也会一并删除。'),
         {
-          text: deps.t('common.delete', '删除'),
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              if (!deps.services) return
-              const runtime = getAgentDbRuntime()
-              if (!runtime?.drizzleDb) return
-              const nodeId = deps.selectedNode.id
-              const snapshot = {
-                graphNodes: deps.graphNodes,
-                graphEdges: deps.graphEdges,
-                pendingNodes: deps.pendingNodes,
-                pendingEdges: deps.pendingEdges,
-                pendingSelected: deps.pendingSelected,
-                highlightIds: deps.highlightIds,
-                highlightedEdgeIds: deps.highlightedEdgeIds,
-                locateIds: deps.locateIds,
-                localView: deps.localView,
-                selectedId: deps.selectedId,
-                selectedNode: deps.selectedNode,
-                pinNeighborhood: deps.pinNeighborhood
-              }
-              const next = applyGraphLocalNodeDelete({
-                nodeId,
-                nodes: deps.graphNodes,
-                edges: deps.graphEdges,
-                pendingNodes: deps.pendingNodes,
-                pendingEdges: deps.pendingEdges,
-                pendingSelected: deps.pendingSelected,
-                highlightIds: deps.highlightIds,
-                highlightedEdgeIds: deps.highlightedEdgeIds,
-                locateIds: deps.locateIds,
-                localView: deps.localView
-              })
-              deps.setGraphNodes(next.nodes)
-              deps.setGraphEdges(next.edges)
-              deps.setPendingNodes(next.pendingNodes)
-              deps.setPendingEdges(next.pendingEdges)
-              deps.setPendingSelected(next.pendingSelected)
-              deps.setHighlightIds(next.highlightIds)
-              deps.setHighlightedEdgeIds(next.highlightedEdgeIds)
-              deps.setLocateIds(next.locateIds && next.locateIds.length > 0 ? next.locateIds : null)
-              deps.setLocalView(next.localView)
-              deps.setSelectedNode(null)
-              deps.setSelectedId(null)
-              deps.setPinNeighborhood(false)
-              deps.inFlightDeletedNodeIdsRef.current.add(nodeId)
-              for (const edge of snapshot.graphEdges) {
-                if (edge.fromId === nodeId || edge.toId === nodeId) {
-                  deps.inFlightDeletedEdgeIdsRef.current.add(edge.id)
-                }
-              }
-              deps.toast.showSuccess(deps.t('graph.node_deleted', '已删除节点'))
-              void mobileSoftDeleteGraph({
-                drizzleDb: runtime.drizzleDb,
-                pathService: deps.services.pathService as never,
-                fileSystem: deps.services.fileSystem as never,
-                kind: 'node',
-                id: nodeId,
-                vaultId: deps.vaultId
-              }).then(
-                () => {
-                  deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
-                  for (const edge of snapshot.graphEdges) {
-                    if (edge.fromId === nodeId || edge.toId === nodeId) {
-                      deps.inFlightDeletedEdgeIdsRef.current.delete(edge.id)
-                    }
-                  }
-                },
-                (e: unknown) => {
-                  deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
-                  for (const edge of snapshot.graphEdges) {
-                    if (edge.fromId === nodeId || edge.toId === nodeId) {
-                      deps.inFlightDeletedEdgeIdsRef.current.delete(edge.id)
-                    }
-                  }
-                  const restored = restoreGraphLocalNodeDelete({
-                    nodeId,
-                    current: deps.graphViewRef.current,
-                    before: {
-                      nodes: snapshot.graphNodes,
-                      edges: snapshot.graphEdges,
-                      pendingNodes: snapshot.pendingNodes,
-                      pendingEdges: snapshot.pendingEdges,
-                      localView: snapshot.localView
-                    }
-                  })
-                  deps.setGraphNodes(restored.nodes)
-                  deps.setGraphEdges(restored.edges)
-                  deps.setPendingNodes(restored.pendingNodes)
-                  deps.setPendingEdges(restored.pendingEdges)
-                  deps.setLocalView(restored.localView)
-                  const message = e instanceof Error ? e.message : String(e)
-                  deps.setStatus(message)
-                  deps.toast.showError(message)
-                }
-              )
-            })()
-          }
+          title: deps.t('graph.delete_node', '删除节点'),
+          confirmText: deps.t('common.delete', '删除'),
+          destructive: true
         }
-      ]
-    )
+      )
+      if (!ok) return
+      if (!deps.services || !deps.selectedNode) return
+      const runtime = getAgentDbRuntime()
+      if (!runtime?.drizzleDb) return
+      const nodeId = deps.selectedNode.id
+      const snapshot = {
+        graphNodes: deps.graphNodes,
+        graphEdges: deps.graphEdges,
+        pendingNodes: deps.pendingNodes,
+        pendingEdges: deps.pendingEdges,
+        pendingSelected: deps.pendingSelected,
+        highlightIds: deps.highlightIds,
+        highlightedEdgeIds: deps.highlightedEdgeIds,
+        locateIds: deps.locateIds,
+        localView: deps.localView,
+        selectedId: deps.selectedId,
+        selectedNode: deps.selectedNode,
+        pinNeighborhood: deps.pinNeighborhood
+      }
+      const next = applyGraphLocalNodeDelete({
+        nodeId,
+        nodes: deps.graphNodes,
+        edges: deps.graphEdges,
+        pendingNodes: deps.pendingNodes,
+        pendingEdges: deps.pendingEdges,
+        pendingSelected: deps.pendingSelected,
+        highlightIds: deps.highlightIds,
+        highlightedEdgeIds: deps.highlightedEdgeIds,
+        locateIds: deps.locateIds,
+        localView: deps.localView
+      })
+      deps.setGraphNodes(next.nodes)
+      deps.setGraphEdges(next.edges)
+      deps.setPendingNodes(next.pendingNodes)
+      deps.setPendingEdges(next.pendingEdges)
+      deps.setPendingSelected(next.pendingSelected)
+      deps.setHighlightIds(next.highlightIds)
+      deps.setHighlightedEdgeIds(next.highlightedEdgeIds)
+      deps.setLocateIds(next.locateIds && next.locateIds.length > 0 ? next.locateIds : null)
+      deps.setLocalView(next.localView)
+      deps.setSelectedNode(null)
+      deps.setSelectedId(null)
+      deps.setPinNeighborhood(false)
+      const deletedEdgeIds = Array.from(
+        new Set(
+          [...snapshot.graphEdges, ...(snapshot.localView?.edges || [])]
+            .filter((edge) => edge && (edge.fromId === nodeId || edge.toId === nodeId))
+            .map((edge) => String(edge.id))
+        )
+      )
+      deps.inFlightDeletedNodeIdsRef.current.add(nodeId)
+      for (const edgeId of deletedEdgeIds) {
+        deps.inFlightDeletedEdgeIdsRef.current.add(edgeId)
+      }
+      notifyGraphOptimisticDelete({
+        kind: 'node',
+        id: nodeId,
+        deletedEdgeIds,
+        phase: 'optimistic'
+      })
+      deps.toast.showSuccess(deps.t('graph.node_deleted', '已删除节点'))
+      void mobileSoftDeleteGraph({
+        drizzleDb: runtime.drizzleDb,
+        pathService: deps.services.pathService as never,
+        fileSystem: deps.services.fileSystem as never,
+        kind: 'node',
+        id: nodeId,
+        vaultId: deps.vaultId
+      }).then(
+        () => {
+          deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
+          for (const edgeId of deletedEdgeIds) {
+            deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+          }
+          notifyGraphOptimisticDelete({
+            kind: 'node',
+            id: nodeId,
+            deletedEdgeIds,
+            phase: 'committed'
+          })
+        },
+        (e: unknown) => {
+          deps.inFlightDeletedNodeIdsRef.current.delete(nodeId)
+          for (const edgeId of deletedEdgeIds) {
+            deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+          }
+          const restored = restoreGraphLocalNodeDelete({
+            nodeId,
+            current: deps.graphViewRef.current,
+            before: {
+              nodes: snapshot.graphNodes,
+              edges: snapshot.graphEdges,
+              pendingNodes: snapshot.pendingNodes,
+              pendingEdges: snapshot.pendingEdges,
+              localView: snapshot.localView
+            }
+          })
+          deps.setGraphNodes(restored.nodes)
+          deps.setGraphEdges(restored.edges)
+          deps.setPendingNodes(restored.pendingNodes)
+          deps.setPendingEdges(restored.pendingEdges)
+          deps.setLocalView(restored.localView)
+          notifyGraphOptimisticDelete({
+            kind: 'node',
+            id: nodeId,
+            deletedEdgeIds,
+            phase: 'rollback'
+          })
+          const message = e instanceof Error ? e.message : String(e)
+          deps.setStatus(message)
+          deps.toast.showError(message)
+        }
+      )
+    })()
   }
 
   const deleteEdge = (edgeId: string) => {
-    Alert.alert(
-      deps.t('graph.delete_edge', '删除'),
-      deps.t('graph.confirm_delete_edge', '确定删除这条关系？'),
-      [
-        { text: deps.t('common.cancel', '取消'), style: 'cancel' },
+    void (async () => {
+      const ok = await deps.dialog.confirm(
+        deps.t('graph.confirm_delete_edge', '确定删除这条关系？'),
         {
-          text: deps.t('common.delete', '删除'),
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              if (!deps.services) return
-              const runtime = getAgentDbRuntime()
-              if (!runtime?.drizzleDb) return
-              const snapshot = {
-                graphEdges: deps.graphEdges,
-                pendingEdges: deps.pendingEdges,
-                pendingSelected: deps.pendingSelected,
-                highlightedEdgeIds: deps.highlightedEdgeIds,
-                localView: deps.localView
-              }
-              const next = applyGraphLocalEdgeDelete({
-                edgeId,
-                edges: deps.graphEdges,
-                pendingEdges: deps.pendingEdges,
-                pendingSelected: deps.pendingSelected,
-                highlightedEdgeIds: deps.highlightedEdgeIds,
-                localView: deps.localView
-              })
-              deps.setGraphEdges(next.edges)
-              deps.setPendingEdges(next.pendingEdges)
-              deps.setPendingSelected(next.pendingSelected)
-              deps.setHighlightedEdgeIds(next.highlightedEdgeIds)
-              deps.setLocalView(next.localView)
-              deps.inFlightDeletedEdgeIdsRef.current.add(edgeId)
-              deps.toast.showSuccess(deps.t('graph.edge_deleted', '已删除关系'))
-              void mobileSoftDeleteGraph({
-                drizzleDb: runtime.drizzleDb,
-                pathService: deps.services.pathService as never,
-                fileSystem: deps.services.fileSystem as never,
-                kind: 'edge',
-                id: edgeId,
-                vaultId: deps.vaultId
-              }).then(
-                () => {
-                  deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
-                },
-                (e: unknown) => {
-                  deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
-                  const restored = restoreGraphLocalEdgeDelete({
-                    edgeId,
-                    current: deps.graphViewRef.current,
-                    before: {
-                      edges: snapshot.graphEdges,
-                      pendingEdges: snapshot.pendingEdges,
-                      localView: snapshot.localView
-                    }
-                  })
-                  deps.setGraphEdges(restored.edges)
-                  deps.setPendingEdges(restored.pendingEdges)
-                  deps.setLocalView(restored.localView)
-                  const message = e instanceof Error ? e.message : String(e)
-                  deps.setStatus(message)
-                  deps.toast.showError(message)
-                }
-              )
-            })()
-          }
+          title: deps.t('graph.delete_edge', '删除'),
+          confirmText: deps.t('common.delete', '删除'),
+          destructive: true
         }
-      ]
-    )
+      )
+      if (!ok) return
+      if (!deps.services) return
+      const runtime = getAgentDbRuntime()
+      if (!runtime?.drizzleDb) return
+      const snapshot = {
+        graphEdges: deps.graphEdges,
+        pendingEdges: deps.pendingEdges,
+        pendingSelected: deps.pendingSelected,
+        highlightedEdgeIds: deps.highlightedEdgeIds,
+        localView: deps.localView
+      }
+      const next = applyGraphLocalEdgeDelete({
+        edgeId,
+        edges: deps.graphEdges,
+        pendingEdges: deps.pendingEdges,
+        pendingSelected: deps.pendingSelected,
+        highlightedEdgeIds: deps.highlightedEdgeIds,
+        localView: deps.localView
+      })
+      deps.setGraphEdges(next.edges)
+      deps.setPendingEdges(next.pendingEdges)
+      deps.setPendingSelected(next.pendingSelected)
+      deps.setHighlightedEdgeIds(next.highlightedEdgeIds)
+      deps.setLocalView(next.localView)
+      deps.inFlightDeletedEdgeIdsRef.current.add(edgeId)
+      notifyGraphOptimisticDelete({
+        kind: 'edge',
+        id: edgeId,
+        phase: 'optimistic'
+      })
+      deps.toast.showSuccess(deps.t('graph.edge_deleted', '已删除关系'))
+      void mobileSoftDeleteGraph({
+        drizzleDb: runtime.drizzleDb,
+        pathService: deps.services.pathService as never,
+        fileSystem: deps.services.fileSystem as never,
+        kind: 'edge',
+        id: edgeId,
+        vaultId: deps.vaultId
+      }).then(
+        () => {
+          deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+          notifyGraphOptimisticDelete({
+            kind: 'edge',
+            id: edgeId,
+            phase: 'committed'
+          })
+        },
+        (e: unknown) => {
+          deps.inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+          const restored = restoreGraphLocalEdgeDelete({
+            edgeId,
+            current: deps.graphViewRef.current,
+            before: {
+              edges: snapshot.graphEdges,
+              pendingEdges: snapshot.pendingEdges,
+              localView: snapshot.localView
+            }
+          })
+          deps.setGraphEdges(restored.edges)
+          deps.setPendingEdges(restored.pendingEdges)
+          deps.setLocalView(restored.localView)
+          notifyGraphOptimisticDelete({
+            kind: 'edge',
+            id: edgeId,
+            phase: 'rollback'
+          })
+          const message = e instanceof Error ? e.message : String(e)
+          deps.setStatus(message)
+          deps.toast.showError(message)
+        }
+      )
+    })()
   }
 
   return { deleteSelected, deleteEdge }

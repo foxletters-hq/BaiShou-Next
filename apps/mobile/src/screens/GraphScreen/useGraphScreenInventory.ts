@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   GRAPH_INVENTORY_PAGE_SIZE_DEFAULT,
+  applyGraphInventoryEdgeDelete,
+  applyGraphInventoryNodeDelete,
   graphInventoryPageOffset,
   resolveGraphInventoryList,
   toGraphInventoryNode,
   type GraphInventoryNode,
+  type GraphInventorySnapshot,
   type GraphSearchMode
 } from '@baishou/shared'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
@@ -38,44 +41,104 @@ export function useGraphScreenInventory(deps: {
   const [edgeCount, setEdgeCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const seqRef = useRef(0)
+  const prevRevisionRef = useRef(deps.revision)
+  const stateRef = useRef({
+    pageItems,
+    total,
+    nodeCount,
+    edgeCount,
+    page
+  })
+  stateRef.current = {
+    pageItems,
+    total,
+    nodeCount,
+    edgeCount,
+    page
+  }
 
   useEffect(() => {
     setPage(1)
   }, [deps.query, deps.searchMode])
 
-  const load = useCallback(async () => {
-    const requestRevision = deps.revision
-    const runtime = getAgentDbRuntime()
-    if (!runtime?.drizzleDb || !deps.dbReady || !deps.vaultId) return
-    const seq = ++seqRef.current
-    setLoading(true)
-    try {
-      const [nodes, filteredTotal, liveNodes, liveEdges] = await Promise.all([
-        mobileListLiveNodesPage(runtime.drizzleDb, deps.vaultId, {
-          keyword: deps.searchMode === 'text' ? deps.query : '',
-          limit: pageSize,
-          offset: graphInventoryPageOffset(page, pageSize)
-        }),
-        mobileCountLiveNodes(
-          runtime.drizzleDb,
-          deps.vaultId,
-          deps.searchMode === 'text' ? deps.query : undefined
-        ),
-        mobileCountLiveNodes(runtime.drizzleDb, deps.vaultId),
-        mobileCountLiveCurrentEdges(runtime.drizzleDb, deps.vaultId)
-      ])
-      if (seq !== seqRef.current || requestRevision !== deps.revision) return
-      setPageItems(nodes.map(toGraphInventoryNode))
-      setTotal(filteredTotal)
-      setNodeCount(liveNodes)
-      setEdgeCount(liveEdges)
-    } finally {
-      if (seq === seqRef.current) setLoading(false)
-    }
-  }, [deps.dbReady, deps.query, deps.searchMode, deps.vaultId, page, pageSize, deps.revision])
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const requestRevision = deps.revision
+      const isRevisionRefresh = prevRevisionRef.current !== deps.revision
+      prevRevisionRef.current = deps.revision
+      const silent = Boolean(
+        opts?.silent || (isRevisionRefresh && stateRef.current.pageItems.length > 0)
+      )
+      const runtime = getAgentDbRuntime()
+      if (!runtime?.drizzleDb || !deps.dbReady || !deps.vaultId) return
+      const seq = ++seqRef.current
+      if (!silent) setLoading(true)
+      try {
+        const trimmedKeyword = deps.searchMode === 'text' ? deps.query.trim() : ''
+        const [nodes, liveNodes, filteredTotalMaybe, liveEdges] = await Promise.all([
+          mobileListLiveNodesPage(runtime.drizzleDb, deps.vaultId, {
+            keyword: trimmedKeyword,
+            limit: pageSize,
+            offset: graphInventoryPageOffset(page, pageSize)
+          }),
+          mobileCountLiveNodes(runtime.drizzleDb, deps.vaultId),
+          trimmedKeyword
+            ? mobileCountLiveNodes(runtime.drizzleDb, deps.vaultId, trimmedKeyword)
+            : Promise.resolve<number | null>(null),
+          mobileCountLiveCurrentEdges(runtime.drizzleDb, deps.vaultId)
+        ])
+        const filteredTotal = filteredTotalMaybe ?? liveNodes
+        if (seq !== seqRef.current || requestRevision !== deps.revision) return
+        if (filteredTotal > 0 && (page - 1) * pageSize >= filteredTotal) {
+          setPage(Math.max(1, Math.ceil(filteredTotal / pageSize)))
+          return
+        }
+        setPageItems(nodes.map(toGraphInventoryNode))
+        setTotal(filteredTotal)
+        setNodeCount(liveNodes)
+        setEdgeCount(liveEdges)
+      } finally {
+        if (seq === seqRef.current) setLoading(false)
+      }
+    },
+    [deps.dbReady, deps.query, deps.searchMode, deps.vaultId, page, pageSize, deps.revision]
+  )
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  const snapshot = useCallback((): GraphInventorySnapshot => ({ ...stateRef.current }), [])
+
+  const applyLocalNodeDelete = useCallback((nodeId: string, deletedEdgeCount = 0) => {
+    const next = applyGraphInventoryNodeDelete({
+      nodeId,
+      deletedEdgeCount,
+      ...stateRef.current
+    })
+    setPageItems(next.pageItems)
+    setTotal(next.total)
+    setNodeCount(next.nodeCount)
+    setEdgeCount(next.edgeCount)
+    if (next.page !== stateRef.current.page) {
+      setPage(next.page)
+    }
+  }, [])
+
+  const applyLocalEdgeDelete = useCallback((deletedEdgeCount = 1) => {
+    setEdgeCount((prev) => applyGraphInventoryEdgeDelete(prev, deletedEdgeCount))
+  }, [])
+
+  const restoreSnapshot = useCallback((snap: GraphInventorySnapshot) => {
+    setPageItems(snap.pageItems)
+    setTotal(snap.total)
+    setNodeCount(snap.nodeCount)
+    setEdgeCount(snap.edgeCount)
+    setPage(snap.page)
+  }, [])
+
+  const reloadSilent = useCallback(async () => {
+    await load({ silent: true })
   }, [load])
 
   const listed = useMemo(
@@ -102,6 +165,11 @@ export function useGraphScreenInventory(deps: {
     setPageSize: (size: number) => {
       setPageSize(size)
       setPage(1)
-    }
+    },
+    snapshot,
+    applyLocalNodeDelete,
+    applyLocalEdgeDelete,
+    restoreSnapshot,
+    reloadSilent
   }
 }

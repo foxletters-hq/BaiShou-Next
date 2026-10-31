@@ -45,6 +45,8 @@ export function useGraphScreenSearch(deps: SearchDeps) {
   const [locateIds, setLocateIds] = useState<string[] | null>(null)
   const [locateSeq, setLocateSeq] = useState(0)
   const [focusDepth, setFocusDepth] = useState<GraphFocusDepth>(1)
+  const focusDepthRef = useRef<GraphFocusDepth>(focusDepth)
+  focusDepthRef.current = focusDepth
 
   useEffect(() => {
     let cancelled = false
@@ -52,7 +54,9 @@ export function useGraphScreenSearch(deps: SearchDeps) {
       try {
         const raw = await AsyncStorage.getItem(GRAPH_FOCUS_DEPTH_STORAGE_KEY)
         if (cancelled || raw == null) return
-        setFocusDepth(clampGraphFocusDepth(JSON.parse(raw)))
+        const next = clampGraphFocusDepth(JSON.parse(raw))
+        focusDepthRef.current = next
+        setFocusDepth(next)
       } catch {
         // ignore
       }
@@ -64,33 +68,37 @@ export function useGraphScreenSearch(deps: SearchDeps) {
 
   const persistFocusDepth = useCallback((depth: GraphFocusDepth) => {
     const next = clampGraphFocusDepth(depth)
+    focusDepthRef.current = next
     setFocusDepth(next)
     void AsyncStorage.setItem(GRAPH_FOCUS_DEPTH_STORAGE_KEY, JSON.stringify(next))
     return next
   }, [])
 
-  const onSelectNode = async (id: string, opts?: { locate?: boolean; bypassMonth?: boolean }) => {
-    const runtime = getAgentDbRuntime()
-    if (!runtime?.drizzleDb) return
-    setHighlightedEdgeIds(new Set())
-    setLocateIds(null)
-    let depthSetting = focusDepth
-    if (opts?.bypassMonth && focusDepth < 2) {
-      depthSetting = 2
-      persistFocusDepth(2)
-    }
-    const depth = viewDepthFor(depthSetting)
-    const node = await mobileGetNode(runtime.drizzleDb, deps.vaultId, id)
-    const view = await mobileGetView(runtime.drizzleDb, deps.vaultId, {
-      centerNodeId: id,
-      depth
-    })
-    setSelectedId(id)
-    setSelectedNode(node)
-    setLocalView(view)
-    if (opts?.bypassMonth) setPinNeighborhood(true)
-    if (opts?.locate || opts?.bypassMonth) setLocateSeq((n) => n + 1)
-  }
+  const onSelectNode = useCallback(
+    async (id: string, opts?: { locate?: boolean; bypassMonth?: boolean }) => {
+      const runtime = getAgentDbRuntime()
+      if (!runtime?.drizzleDb) return
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
+      let depthSetting = focusDepthRef.current
+      if (opts?.bypassMonth && depthSetting < 2) {
+        depthSetting = 2
+        persistFocusDepth(2)
+      }
+      const depth = viewDepthFor(depthSetting)
+      const node = await mobileGetNode(runtime.drizzleDb, deps.vaultId, id)
+      const view = await mobileGetView(runtime.drizzleDb, deps.vaultId, {
+        centerNodeId: id,
+        depth
+      })
+      setSelectedId(id)
+      setSelectedNode(node)
+      setLocalView(view)
+      if (opts?.bypassMonth) setPinNeighborhood(true)
+      if (opts?.locate || opts?.bypassMonth) setLocateSeq((n) => n + 1)
+    },
+    [deps.vaultId, persistFocusDepth]
+  )
 
   const clearSelectionKeepPin = () => {
     setSelectedId(null)
@@ -180,6 +188,10 @@ export function useGraphScreenSearch(deps: SearchDeps) {
     setLocateIds(next.locateIds)
     setLocateSeq((n) => n + 1)
   }
+
+  const removeNodeFromHits = useCallback((nodeId: string) => {
+    setHits((prev) => prev.filter((item) => item?.id !== nodeId))
+  }, [])
 
   const searchSeqRef = useRef(0)
 
@@ -301,6 +313,7 @@ export function useGraphScreenSearch(deps: SearchDeps) {
     locatePendingNode,
     locatePendingEdge,
     applySearchHits,
+    removeNodeFromHits,
     onSearch,
     onSearchHitPress,
     findGraphNode

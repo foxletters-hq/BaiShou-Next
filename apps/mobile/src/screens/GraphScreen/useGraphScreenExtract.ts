@@ -1,6 +1,5 @@
 import i18n from 'i18next'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert } from 'react-native'
 import {
   GRAPH_ALIGN_MIN_SIMILARITY_PERCENT,
   GRAPH_EXTRACT_CONCURRENCY_MAX,
@@ -21,6 +20,7 @@ import {
   getCachedMobileRagState,
   patchCachedMobileRagState
 } from '@/src/services/mobile-rag-runtime-cache'
+import { notifyMobilePendingEmbedCountsChanged } from '@/src/services/mobile-pending-embed-counts'
 import { writeMemoryOrganizeInterrupted } from '../MemoryCenterScreen/memory-center-organize.storage'
 import { ensureMobileGraphSelfName } from '../DiaryScreen/ensure-graph-self-name'
 import {
@@ -118,6 +118,7 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         )
         if (wasRunningRef.current) {
           wasRunningRef.current = false
+          notifyMobilePendingEmbedCountsChanged()
           if (state.lastError && !getCachedMobileRagState().isRunning) {
             const friendlyError = localizeAiApiErrorMessage(state.lastError, (key, fallback) =>
               tRef.current(key, fallback)
@@ -155,17 +156,9 @@ export function useGraphScreenExtract(deps: ExtractDeps) {
         similarity: GRAPH_ALIGN_MIN_SIMILARITY_PERCENT
       }
     )
-    if (deps.dialog?.confirm) {
-      return deps.dialog.confirm(message, {
-        title,
-        confirmText: deps.t('common.confirm', '开始')
-      })
-    }
-    return new Promise((resolve) => {
-      Alert.alert(title, message, [
-        { text: deps.t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
-        { text: deps.t('common.confirm', '开始'), onPress: () => resolve(true) }
-      ])
+    return deps.dialog.confirm(message, {
+      title,
+      confirmText: deps.t('common.confirm', '开始')
     })
   }
 
