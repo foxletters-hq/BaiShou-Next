@@ -5,8 +5,10 @@ import {
   prepareDiarySearcherWrite,
   logger
 } from '@baishou/shared'
-import { getActiveVaultShadowRepo } from './vault.ipc'
+import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
+import { getActiveVaultShadowRepo, resolveVaultIdByName, vaultService } from './vault.ipc'
 import { getDiaryManager } from './diary.ipc'
+import { getDiaryManagerForVault } from '../services/diary-vault.factory'
 
 function previewDiaryRow(raw: string | null | undefined): string {
   const cleaned = formatDiaryPreviewText(raw)
@@ -19,9 +21,22 @@ function previewDiaryRow(raw: string | null | undefined): string {
 }
 
 /** 创建日记 FTS5 搜索适配器，注入到 ToolContext 供 diary_search 工具使用 */
-export function createDiarySearcher() {
+export function createDiarySearcher(target?: { vaultId?: string; vaultName?: string }) {
   try {
-    const shadowRepo = getActiveVaultShadowRepo()
+    const targetVaultName = target?.vaultName?.trim()
+    const shadowRepo = targetVaultName
+      ? new ShadowIndexRepository(
+          shadowConnectionManager.getDb(),
+          target?.vaultId || resolveVaultIdByName(targetVaultName)
+        )
+      : getActiveVaultShadowRepo()
+    const resolveDiaryService = async () => {
+      if (targetVaultName && vaultService.getActiveVault()?.name !== targetVaultName) {
+        return getDiaryManagerForVault(targetVaultName)
+      }
+      return getDiaryManager()
+    }
+
     return {
       async searchFTS(query: string, limit?: number) {
         const results = await shadowRepo.searchFTS(query, limit)
@@ -40,7 +55,7 @@ export function createDiarySearcher() {
         }))
       },
       async readByDates(dates: string[]) {
-        const diaryService = getDiaryManager()
+        const diaryService = await resolveDiaryService()
         const rows: Array<{ date: string; content: string | null }> = []
         for (const date of dates) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -54,7 +69,7 @@ export function createDiarySearcher() {
       },
       async writeEntry(date: string, content: string) {
         try {
-          const diaryService = getDiaryManager()
+          const diaryService = await resolveDiaryService()
           await diaryService.create({
             date: parseDateStr(date),
             ...prepareDiarySearcherWrite(content)
@@ -75,7 +90,7 @@ export function createDiarySearcher() {
       },
       async editEntry({ date, content, mode }) {
         try {
-          const diaryService = getDiaryManager()
+          const diaryService = await resolveDiaryService()
           const existing = await diaryService.findByDate(parseDateStr(date))
           if (!existing?.id) {
             return {
@@ -98,7 +113,7 @@ export function createDiarySearcher() {
       },
       async deleteEntry(date: string) {
         try {
-          const diaryService = getDiaryManager()
+          const diaryService = await resolveDiaryService()
           const existing = await diaryService.findByDate(parseDateStr(date))
           if (!existing?.id) {
             return {

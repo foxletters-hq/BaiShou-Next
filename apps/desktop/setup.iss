@@ -20,6 +20,13 @@ AppPublisherURL=https://github.com/foxletters-hq/BaiShou-Next
 DefaultDirName={autopf}\BaiShou
 DefaultGroupName=白守
 DisableDirPage=no
+; 默认以当前用户权限安装（写入 %LOCALAPPDATA%\Programs\BaiShou），免 UAC 且降低杀软对 Program Files 的误报拦截；
+; 同时启用 UsePreviousPrivileges=yes 与 PrivilegesRequiredOverridesAllowed=commandline：
+; - 已安装在 HKLM（如 C:\Program Files\BaiShou）的存量老用户升级时，Inno Setup 会自动检测旧版记录并提权，原地覆盖旧目录；
+; - 首次安装或已安装在 HKCU 的用户，保持当前用户权限无感安装/覆盖。
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
+UsePreviousPrivileges=yes
 ; 勿用 CloseApplications=force：Electron 常不响应 Restart Manager，安装向导会长时间卡住。
 ; 进程占用改由下方 [Code] 检测，并提示用户关闭或代为结束。
 CloseApplications=no
@@ -90,31 +97,44 @@ Name: "{group}\{cm:UninstallApp}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{cm:AppName}"; Filename: "{app}\BaiShou.exe"; IconFilename: "{app}\BaiShou.exe"; IconIndex: 0; Tasks: desktopicon; AppUserModelID: "com.baishou.baishou"
 
 [Run]
-Filename: "{app}\BaiShou.exe"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\BaiShou.exe"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 function IsBaiShouRunning: Boolean;
 var
-  ResultCode: Integer;
+  ExePath: String;
+  Stream: TFileStream;
 begin
-  { tasklist 在无匹配进程时仍可能 exit 0，用 findstr 二次确认 }
-  Result :=
-    Exec(
-      ExpandConstant('{cmd}'),
-      '/C tasklist /NH /FI "IMAGENAME eq BaiShou.exe" 2>nul | findstr /I /C:"BaiShou.exe" >nul',
-      '', SW_HIDE, ewWaitUntilTerminated, ResultCode
-    ) and (ResultCode = 0);
+  Result := False;
+  ExePath := ExpandConstant('{app}\BaiShou.exe');
+  if not FileExists(ExePath) then
+    Exit;
+
+  { 正在运行的 exe 会被 Windows 内核映射锁定写入权限；直接尝试读写打开即可判断，无需启动外部命令行进程 }
+  try
+    Stream := TFileStream.Create(ExePath, fmOpenReadWrite or fmShareDenyNone);
+    Stream.Free;
+  except
+    Result := True;
+  end;
 end;
 
 function TryCloseBaiShou: Boolean;
 var
   ResultCode: Integer;
 begin
+  { 直接调用系统 taskkill.exe，不经过 cmd.exe /C 管道，避免触发杀毒软件对临时目录脚本的启发式拦截 }
   Exec(
-    ExpandConstant('{cmd}'),
-    '/C taskkill /F /IM BaiShou.exe /T >nul 2>nul',
+    ExpandConstant('{sys}\taskkill.exe'),
+    '/F /IM BaiShou.exe /T',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode
   );
+  { 退出码 128 表示系统中已无 BaiShou.exe 进程，直接放行避免因文件只读属性等非进程因素死循环 }
+  if ResultCode = 128 then
+  begin
+    Result := True;
+    Exit;
+  end;
   Sleep(1500);
   Result := not IsBaiShouRunning;
 end;
@@ -153,11 +173,6 @@ begin
         MsgBox(ExpandConstant('{cm:AppRunningManual}'), mbInformation, MB_OK);
     end;
   end;
-end;
-
-function InitializeSetup: Boolean;
-begin
-  Result := EnsureBaiShouNotRunning;
 end;
 
 function InitializeUninstall: Boolean;

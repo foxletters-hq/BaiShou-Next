@@ -4,9 +4,13 @@ import * as os from 'os'
 import * as path from 'path'
 import {
   classifyPromptAttachmentKind,
+  extractPromptDocumentText,
   type GlobalModelsConfig,
+  isConvertiblePromptDocument,
   logger,
   normalizeFileCiteRefs,
+  PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES,
+  PROMPT_PICKER_EXTENSIONS,
   resolveDialogueModelSelection,
   supportsNativePdf,
   stripAttachmentBinaryForStorage
@@ -69,6 +73,96 @@ function mimeTypeFromExt(ext: string): string {
       return 'application/pdf'
     default:
       return 'image/jpeg'
+  }
+}
+
+async function populateDesktopAttachmentContent(params: {
+  att: Record<string, any>
+  destPath: string
+  classifyFileName: string
+  activeModelId: string
+  activeProviderType: string
+}): Promise<void> {
+  const { att, destPath, classifyFileName, activeModelId, activeProviderType } = params
+  const flags = classifyPromptAttachmentKind(classifyFileName, att.mimeType)
+  const isConvertible = isConvertiblePromptDocument(classifyFileName, att.mimeType)
+  const isImage = flags.isImage
+  const isText = flags.isText
+  const isPdf = flags.isPdf
+
+  att.isImage = isImage
+  att.isText = isText || isConvertible
+  att.isPdf = isPdf
+
+  if (isImage) {
+    att.type = 'image'
+    att.mimeType = mimeTypeFromExt(path.extname(classifyFileName))
+    return
+  }
+
+  if (isPdf) {
+    att.type = 'file'
+    att.mimeType = 'application/pdf'
+    const nativePdfSupported = supportsNativePdf(activeModelId, activeProviderType)
+    if (!nativePdfSupported) {
+      try {
+        const { readPdfTextFromPath } = await import('@baishou/ai')
+        att.textContent = (await readPdfTextFromPath(destPath)) || ''
+        att.isText = true
+      } catch (pdfErr) {
+        logger.error('Failed to parse PDF file:', {
+          error: pdfErr as any
+        })
+      }
+    }
+    return
+  }
+
+  if (isConvertible) {
+    att.type = 'file'
+    try {
+      const stats = await fs.stat(destPath)
+      if (stats.size <= PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES) {
+        const rawBuf = await fs.readFile(destPath)
+        att.textContent = extractPromptDocumentText(
+          classifyFileName,
+          new Uint8Array(rawBuf),
+          att.mimeType
+        )
+        att.isText = true
+      }
+    } catch (docErr) {
+      logger.error('Failed to extract convertible document content:', {
+        fileName: classifyFileName,
+        error: docErr as any
+      })
+    }
+    return
+  }
+
+  if (isText) {
+    att.type = 'text'
+    try {
+      const stats = await fs.stat(destPath)
+      const MAX_SIZE = 512 * 1024 // 512 KB
+      if (stats.size > MAX_SIZE) {
+        const fd = await fs.open(destPath, 'r')
+        try {
+          const buffer = Buffer.alloc(MAX_SIZE)
+          await fd.read(buffer, 0, MAX_SIZE, 0)
+          att.textContent = buffer.toString('utf8') + '\n\n[Content truncated due to size limit]'
+        } finally {
+          await fd.close()
+        }
+      } else {
+        att.textContent = await fs.readFile(destPath, 'utf8')
+      }
+      att.isText = true
+    } catch (readErr) {
+      logger.error('Failed to read text file content:', {
+        error: readErr as any
+      })
+    }
   }
 }
 
@@ -206,6 +300,7 @@ export function registerAttachmentIPC() {
                   const newFileName = `${originalName}_${Date.now()}${ext}`
                   const destPath = path.join(sessionAttachDir, newFileName)
                   try {
+                    const classifyName = att.fileName || newFileName
                     const buffer = Buffer.from(
                       String(att.data).replace(/^data:[^;]+;base64,/, ''),
                       'base64'
@@ -213,23 +308,16 @@ export function registerAttachmentIPC() {
                     await fs.writeFile(destPath, buffer)
                     att.url = `file:///${destPath.replace(/\\/g, '/')}`
                     att.filePath = destPath
-                    att.fileName = newFileName
-                    att.name = newFileName
+                    att.fileName = att.fileName || newFileName
+                    att.name = att.name || att.fileName
 
-                    const flags = classifyPromptAttachmentKind(newFileName)
-                    const isImage = flags.isImage
-                    const isText = flags.isText
-                    const isPdf = flags.isPdf
-                    att.isImage = isImage
-                    att.isText = isText
-                    att.isPdf = isPdf
-                    if (isImage) {
-                      att.type = 'image'
-                      att.mimeType = mimeTypeFromExt(path.extname(newFileName))
-                    } else if (isPdf) {
-                      att.type = 'file'
-                      att.mimeType = 'application/pdf'
-                    }
+                    await populateDesktopAttachmentContent({
+                      att,
+                      destPath,
+                      classifyFileName: classifyName,
+                      activeModelId,
+                      activeProviderType
+                    })
                     delete att.data
                   } catch (e: any) {
                     logger.error('Failed to write base64 attachment', e)
@@ -245,74 +333,20 @@ export function registerAttachmentIPC() {
                   const destPath = path.join(sessionAttachDir, newFileName)
 
                   try {
+                    const classifyName = att.fileName || newFileName
                     await fs.copyFile(att.filePath, destPath)
                     att.url = `file:///${destPath.replace(/\\/g, '/')}`
                     att.filePath = destPath
                     att.fileName = att.fileName || newFileName
                     att.name = att.name || att.fileName
 
-                    const flags = classifyPromptAttachmentKind(newFileName)
-                    const isImage = flags.isImage
-                    const isText = flags.isText
-                    const isPdf = flags.isPdf
-                    att.isImage = isImage
-                    att.isText = isText
-                    att.isPdf = isPdf
-                    if (isImage) {
-                      att.type = 'image'
-                      const ext = path.extname(newFileName).toLowerCase()
-                      att.mimeType =
-                        ext === '.png'
-                          ? 'image/png'
-                          : ext === '.gif'
-                            ? 'image/gif'
-                            : ext === '.webp'
-                              ? 'image/webp'
-                              : 'image/jpeg'
-                    } else if (isPdf) {
-                      att.type = 'file'
-                      att.mimeType = 'application/pdf'
-                    }
-
-                    // 读取文本内容（如果是 txt/md 文件）
-                    if (isText) {
-                      try {
-                        const stats = await fs.stat(destPath)
-                        const MAX_SIZE = 512 * 1024 // 512 KB
-                        if (stats.size > MAX_SIZE) {
-                          // 仅读取前 512KB
-                          const fd = await fs.open(destPath, 'r')
-                          const buffer = Buffer.alloc(MAX_SIZE)
-                          await fd.read(buffer, 0, MAX_SIZE, 0)
-                          await fd.close()
-                          att.textContent =
-                            buffer.toString('utf8') + '\n\n[Content truncated due to size limit]'
-                        } else {
-                          att.textContent = await fs.readFile(destPath, 'utf8')
-                        }
-                        att.isText = true
-                      } catch (readErr) {
-                        logger.error('Failed to read text file content:', {
-                          error: readErr as any
-                        })
-                      }
-                    } else if (isPdf) {
-                      const nativePdfSupported = supportsNativePdf(
-                        activeModelId,
-                        activeProviderType
-                      )
-                      if (!nativePdfSupported) {
-                        try {
-                          const { readPdfTextFromPath } = await import('@baishou/ai')
-                          att.textContent = (await readPdfTextFromPath(destPath)) || ''
-                          att.isText = true
-                        } catch (pdfErr) {
-                          logger.error('Failed to parse PDF file:', {
-                            error: pdfErr as any
-                          })
-                        }
-                      }
-                    }
+                    await populateDesktopAttachmentContent({
+                      att,
+                      destPath,
+                      classifyFileName: classifyName,
+                      activeModelId,
+                      activeProviderType
+                    })
                   } catch (copyErr) {
                     logger.error('Failed to copy attachment:', {
                       path: att.filePath,
@@ -330,8 +364,10 @@ export function registerAttachmentIPC() {
         }
 
         const history = await managers.realSessionRepo.getMessagesBySession(args.sessionId, 1)
-        const lastOrder = history.length > 0 ? history[0].orderIndex : 0
-        const userOrderIndex = lastOrder + 1
+        const lastMsg = history.length > 0 ? history[0] : undefined
+        const lastOrder = lastMsg ? lastMsg.orderIndex : 0
+        // 若上一条消息仍是 user（例如上一轮 AI 仍在流式生成尚未落盘），预留 lastOrder + 1 给上一轮 assistant，避免排队消息抢占同一 orderIndex
+        const userOrderIndex = lastMsg?.role === 'user' ? lastOrder + 2 : lastOrder + 1
         const userMsgId = crypto.randomUUID()
 
         const skillRefs = Array.isArray(args.skillRefs)
@@ -415,8 +451,8 @@ export function registerAttachmentIPC() {
       properties: ['openFile', 'multiSelections'],
       filters: [
         {
-          name: 'Documents & Images',
-          extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'pdf', 'txt', 'md']
+          name: 'Documents, Code & Images',
+          extensions: PROMPT_PICKER_EXTENSIONS
         },
         { name: 'All Files', extensions: ['*'] }
       ]
@@ -431,7 +467,7 @@ export function registerAttachmentIPC() {
         const flags = classifyPromptAttachmentKind(fileName)
         const isImage = flags.isImage
         const isPdf = flags.isPdf
-        const isText = flags.isText
+        const isText = flags.isText || isConvertiblePromptDocument(fileName)
 
         let fileSize = 0
         try {

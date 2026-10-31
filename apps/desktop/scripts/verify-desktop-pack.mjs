@@ -146,6 +146,25 @@ function resolveDugiteGitBinary() {
   return join(dugiteRoot, 'bin', 'git')
 }
 
+/** @returns {string | null} */
+function resolveSqliteVecBinary() {
+  const unpackedNodeModules = join(resourcesDir, 'app.asar.unpacked', 'node_modules')
+  if (!existsSync(unpackedNodeModules)) return null
+  const osName = platform() === 'win32' ? 'windows' : platform()
+  const ext = platform() === 'win32' ? 'dll' : platform() === 'darwin' ? 'dylib' : 'so'
+  const expected = join(unpackedNodeModules, `sqlite-vec-${osName}-${process.arch}`, `vec0.${ext}`)
+  if (existsSync(expected)) return expected
+
+  for (const entry of readdirSync(unpackedNodeModules, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith('sqlite-vec-')) continue
+    for (const candidate of ['vec0.dll', 'vec0.dylib', 'vec0.so']) {
+      const fullPath = join(unpackedNodeModules, entry.name, candidate)
+      if (existsSync(fullPath)) return fullPath
+    }
+  }
+  return null
+}
+
 if (!existsSync(asarPath)) {
   fail(`未找到 ${asarPath}，请先执行 npm run build:unpack`)
 }
@@ -202,3 +221,14 @@ if (!existsSync(dugiteGitBinary)) {
 }
 
 console.log(`[verify-desktop-pack] 内置 Git 已就位: ${dugiteGitBinary}`)
+
+const sqliteVecBinary = resolveSqliteVecBinary()
+
+if (!sqliteVecBinary) {
+  fail(
+    '未在 app.asar.unpacked/node_modules/sqlite-vec-* 中找到 vec0 动态库文件（vec0.dll / vec0.dylib / vec0.so）\n' +
+      '请确认 electron-builder.yml 已配置 asarUnpack: node_modules/sqlite-vec-*/**。'
+  )
+}
+
+console.log(`[verify-desktop-pack] sqlite-vec 原生扩展已就位: ${sqliteVecBinary}`)

@@ -16,6 +16,7 @@ import { AgentSessionService, ToolRegistry } from '@baishou/ai'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
 import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { fileSystem, pathService, resolveActiveVaultId, vaultService } from './vault.ipc'
+import { invalidateMcpToolContextCache } from './agent-mcp-context'
 
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
@@ -37,6 +38,7 @@ let cachedAgentManagersDb: ReturnType<typeof connectionManager.getDb> | null = n
 export function invalidateAgentManagers(): void {
   cachedAgentManagers = null
   cachedAgentManagersDb = null
+  invalidateMcpToolContextCache()
 }
 
 // 按当前 DB 句柄缓存：跨 IPC 共享 SessionManager dirty，使同步前 flushPending 生效
@@ -61,18 +63,27 @@ export function getAgentManagers(): AgentManagers {
       resolveVaultName: (vaultId) =>
         vaultService.getAllVaults().find((vault) => vault.id === vaultId)?.name ?? null,
       resolveActiveVaultName: () => vaultService.getActiveVault()?.name ?? null,
-      onBeforeWrite: (sessionId) => {
-        void (async () => {
-          try {
-            const { sessionWatcher } = await import('../services/session-watcher.service')
-            const vaultPath = await pathService.getActiveVaultPath()
-            if (!vaultPath) return
-            const { join } = await import('path')
-            sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
-          } catch {
-            // watcher 未启动时忽略
-          }
-        })()
+      onBeforeWrite: async (sessionId) => {
+        try {
+          const { sessionWatcher } = await import('../services/session-watcher.service')
+          const vaultPath = await pathService.getActiveVaultPath()
+          if (!vaultPath) return
+          const { join } = await import('path')
+          sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
+        } catch {
+          // watcher 未启动时忽略
+        }
+      },
+      onAfterWrite: async (sessionId) => {
+        try {
+          const { sessionWatcher } = await import('../services/session-watcher.service')
+          const vaultPath = await pathService.getActiveVaultPath()
+          if (!vaultPath) return
+          const { join } = await import('path')
+          sessionWatcher.suppressPath(join(vaultPath, 'Sessions', `${sessionId}.json`))
+        } catch {
+          // watcher 未启动时忽略
+        }
       }
     }
   )
