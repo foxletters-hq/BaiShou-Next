@@ -203,6 +203,7 @@ export async function runAgentSessionStream(input: {
           stopWhen: stepCountIs(maxStepsThisTurn),
           abortSignal,
           experimental_telemetry: { isEnabled: false },
+          onError: () => {},
           experimental_repairToolCall: buildToolCallRepairHandler(),
           ...(builtReasoning.providerOptions
             ? { providerOptions: builtReasoning.providerOptions }
@@ -273,7 +274,7 @@ export async function runAgentSessionStream(input: {
           if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
             streamError = error
           } else {
-            throw error
+            streamError = error
           }
         }
         const continueNeeded = needsProviderTurnContinuation({
@@ -317,7 +318,7 @@ export async function runAgentSessionStream(input: {
           if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
             streamError = error
           } else {
-            throw error
+            streamError = error
           }
         }
       }
@@ -330,7 +331,7 @@ export async function runAgentSessionStream(input: {
         if (isAgentFirstOutputTimeoutError(error) || isAgentStreamAbortError(error)) {
           streamError = error
         } else {
-          throw error
+          streamError = error
         }
       }
     }

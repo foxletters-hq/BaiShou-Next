@@ -1,6 +1,8 @@
 import type { StreamTextResult } from 'ai'
 import { createAgentStreamAbortError } from '@baishou/shared'
 import { emitCompressionLifecycle } from './compression-lifecycle'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
+import { normalizeApiErrorObject } from '../providers/provider-api-error.util'
 
 export type CompressionStreamConsumeResult = {
   summaryText: string
@@ -80,15 +82,21 @@ export async function consumeCompressionModelStream(
   let firstTextDeltaTime: number | null = null
 
   try {
-    if (streamResult.fullStream) {
-      const reader = streamResult.fullStream.getReader()
+    const fullStream = streamResult.fullStream
+    if (fullStream) {
+      const reader = fullStream.getReader()
       try {
         while (true) {
           throwIfAborted(abortSignal)
           const { done, value } = await reader.read()
           if (done) break
 
-          const part = value as { type: string; textDelta?: string; text?: string }
+          const part = value as {
+            type: string
+            textDelta?: string
+            text?: string
+            error?: unknown
+          }
           switch (part.type) {
             case 'reasoning-delta': {
               const chunk = part.textDelta ?? part.text ?? ''
@@ -110,6 +118,16 @@ export async function consumeCompressionModelStream(
               batcher.pushDelta(chunk)
               break
             }
+            case 'error': {
+              const err = part.error ?? part
+              if (!isNoOutputGeneratedError(err)) {
+                throw normalizeApiErrorObject(err)
+              }
+              break
+            }
+            case 'abort': {
+              throw createAgentStreamAbortError()
+            }
             default:
               break
           }
@@ -129,6 +147,7 @@ export async function consumeCompressionModelStream(
         batcher.pushDelta(chunk)
       }
     }
+    throwIfAborted(abortSignal)
   } catch (e) {
     batcher.cancel()
     throw e
@@ -154,7 +173,12 @@ export async function consumeCompressionModelStream(
     summaryDurationMs = endTime - startTime
   }
 
-  const usage = await streamResult.usage
+  let usage: unknown
+  try {
+    usage = await streamResult.usage
+  } catch {
+    usage = undefined
+  }
   const completionTokens =
     (usage as { completionTokens?: number; outputTokens?: number } | undefined)?.completionTokens ??
     (usage as { outputTokens?: number } | undefined)?.outputTokens ??

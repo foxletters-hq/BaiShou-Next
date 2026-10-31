@@ -236,4 +236,22 @@ describe('StreamChunkAdapter', () => {
     await adapter.consumeStream({ fullStream } as never)
     expect(callIds).toEqual(['c1', 'c1'])
   })
+
+  it('should access the fullStream getter only once to avoid extra stream teeing', async () => {
+    let getterCalls = 0
+    const streamResult = {
+      get fullStream() {
+        getterCalls += 1
+        return {
+          getReader: () => ({
+            read: async () => ({ done: true, value: undefined }),
+            releaseLock: () => {}
+          })
+        }
+      }
+    }
+    const adapter = new StreamChunkAdapter(new StreamAccumulator())
+    await adapter.consumeStream(streamResult as never)
+    expect(getterCalls).toBe(1)
+  })
 })

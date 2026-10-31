@@ -19,6 +19,7 @@ describe('agent session stream run chrome', () => {
 
   it('should keep an unexpected abort as streamError so finish can report it', () => {
     expect(src).toContain('isAgentStreamAbortError(error)')
+    expect(src).not.toContain('throw error')
   })
 
   it('should flush the checkpoint when a companion_ask gate is asked', () => {
