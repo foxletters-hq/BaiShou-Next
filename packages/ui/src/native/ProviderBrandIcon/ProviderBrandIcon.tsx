@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react'
-import { View, Text, StyleSheet, useColorScheme } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
 import { getProviderIconComponent, hasProviderIcon } from '../../utils/provider-icons.native'
 
@@ -21,9 +21,7 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
   providerType,
   size = 22
 }) => {
-  const { colors } = useNativeTheme()
-  const colorScheme = useColorScheme()
-  const isDark = colorScheme === 'dark'
+  const { colors, isDark } = useNativeTheme()
   const iconProviderId = useMemo(
     () => resolveIconProviderId(providerId, providerType),
     [providerId, providerType]
@@ -42,7 +40,7 @@ const ProviderBrandIconInner: React.FC<ProviderBrandIconProps> = ({
         {
           width: wrapSize,
           height: wrapSize,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: Icon ? 'transparent' : colors.bgSurfaceNormal,
           borderRadius: wrapSize / 4
         }
       ]}

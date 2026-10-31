@@ -95,7 +95,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
                 paddingVertical: tokens.spacing.md,
                 maxWidth: '92%',
                 width: 320,
-                maxHeight: 360,
+                maxHeight: 420,
                 ...Platform.select({
                   ios: {
                     shadowColor: shadowColor,
@@ -108,7 +108,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
               }}
             >
               <ScrollView
-                style={{ maxHeight: 328 }}
+                style={{ maxHeight: 388 }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
