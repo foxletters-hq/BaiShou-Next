@@ -115,7 +115,31 @@ export function getMobileGraphRawManager(): GraphRawManager | null {
   return runtime?.graphManager ?? null
 }
 
-const mobileVaultScopedManagers = new Map<string, RawDataSourceManager>()
+const mobileVaultScopedManagers = new Map<
+  string,
+  { manager: RawDataSourceManager; graphManager: GraphRawManager }
+>()
+
+function ensureMobileVaultScopedManagers(
+  vaultName?: string,
+  scopedPathService?: IStoragePathService
+): { manager: RawDataSourceManager; graphManager: GraphRawManager } | null {
+  if (!runtime) return null
+  if (!vaultName || !scopedPathService) {
+    return { manager: runtime.manager, graphManager: runtime.graphManager }
+  }
+  const existing = mobileVaultScopedManagers.get(vaultName)
+  if (existing) return existing
+  const versionManager = new FsVersionManager(scopedPathService, runtime.fileSystem)
+  const created = createRawDataSourceManager({
+    pathService: scopedPathService,
+    fs: runtime.fileSystem,
+    versionManager
+  })
+  const entry = { manager: created.manager, graphManager: created.graphManager }
+  mobileVaultScopedManagers.set(vaultName, entry)
+  return entry
+}
 
 export function getMobileRawDataSourceManager(): RawDataSourceManager | null {
   return runtime?.manager ?? null
@@ -125,18 +149,14 @@ export function getMobileRawDataSourceManagerForVault(
   vaultName?: string,
   scopedPathService?: IStoragePathService
 ): RawDataSourceManager | null {
-  if (!runtime) return null
-  if (!vaultName || !scopedPathService) return runtime.manager
-  const existing = mobileVaultScopedManagers.get(vaultName)
-  if (existing) return existing
-  const versionManager = new FsVersionManager(scopedPathService, runtime.fileSystem)
-  const created = createRawDataSourceManager({
-    pathService: scopedPathService,
-    fs: runtime.fileSystem,
-    versionManager
-  })
-  mobileVaultScopedManagers.set(vaultName, created.manager)
-  return created.manager
+  return ensureMobileVaultScopedManagers(vaultName, scopedPathService)?.manager ?? null
+}
+
+export function getMobileGraphRawManagerForVault(
+  vaultName?: string,
+  scopedPathService?: IStoragePathService
+): GraphRawManager | null {
+  return ensureMobileVaultScopedManagers(vaultName, scopedPathService)?.graphManager ?? null
 }
 
 export function getMobileMemoryRawManager(): MemoryRawManager | null {
@@ -238,16 +258,18 @@ export async function syncMobileGraphPendingIndex(options: {
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
   vaultId?: string
+  graphManager?: GraphRawManager | null
   absentSweep?: 'shard-present' | 'off'
   deletedShardPaths?: string[]
 }): Promise<void> {
-  if (!runtime) return
+  const targetGraphManager = options.graphManager ?? runtime?.graphManager
+  if (!targetGraphManager) return
   const graphRepo = new GraphRepository(options.drizzleDb)
   let embeddingAdapter: EmbeddingAdapter | null = null
   if (options.embeddingProvider && options.embeddingModelId) {
     embeddingAdapter = new EmbeddingAdapter(options.embeddingProvider, options.embeddingModelId)
   }
-  const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
+  const graphSync = new GraphSyncService(targetGraphManager, graphRepo, {
     embedQuery: embeddingAdapter?.isConfigured
       ? (text) => embeddingAdapter!.embedQuery(text)
       : undefined,
