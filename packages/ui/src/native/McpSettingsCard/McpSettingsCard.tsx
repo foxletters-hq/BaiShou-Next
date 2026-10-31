@@ -6,28 +6,28 @@ import type { McpServerConfig } from '@baishou/shared'
 import { appendMcpVaultQuery, isMcpAuthEnabled } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
-import { Select } from '../Select/Select'
+import { Pagination } from '../Pagination/Pagination'
 import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
-import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { McpHelpContent } from './McpHelpContent'
 import { mcpSettingsCardStyles as styles } from './mcp-settings-card.styles'
+
+export const MCP_WORKSPACE_PAGE_SIZE = 3
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
   mcpEndpointUrl: string
   mcpSseEndpointUrl?: string
   workspaces?: Array<{ id: string; name: string }>
-  selectedWorkspaceId?: string
-  onSelectWorkspace?: (workspaceId: string) => void
   applying?: boolean
   isRunning?: boolean
   activePort?: number
   onChange: (config: McpServerConfig) => void
-  onCopyEndpoint: () => void
-  onCopySseEndpoint?: () => void
+  onCopyEndpoint: (url?: string) => void
+  onCopySseEndpoint?: (url?: string) => void
   onCopyToken?: () => void
   onRefreshToken?: () => void
 }
@@ -37,8 +37,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   mcpEndpointUrl,
   mcpSseEndpointUrl,
   workspaces,
-  selectedWorkspaceId,
-  onSelectWorkspace,
   applying = false,
   isRunning = false,
   activePort,
@@ -49,12 +47,31 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   onRefreshToken
 }) => {
   const { t } = useTranslation()
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   const [localEnabled, setLocalEnabled] = React.useState(config.mcpEnabled)
   const [localApplying, setLocalApplying] = React.useState(applying)
+  const [workspacePage, setWorkspacePage] = React.useState(1)
   const authEnabled = isMcpAuthEnabled(config)
   const authTokenForUi = authEnabled ? config.mcpAuthToken : undefined
+
+  const totalWorkspacePages = Math.max(
+    1,
+    Math.ceil((workspaces?.length ?? 0) / MCP_WORKSPACE_PAGE_SIZE)
+  )
+  const safeWorkspacePage = Math.min(workspacePage, totalWorkspacePages)
+
+  React.useEffect(() => {
+    if (workspacePage > totalWorkspacePages) {
+      setWorkspacePage(totalWorkspacePages)
+    }
+  }, [workspacePage, totalWorkspacePages])
+
+  const pagedWorkspaces = React.useMemo(() => {
+    if (!workspaces) return []
+    const start = (safeWorkspacePage - 1) * MCP_WORKSPACE_PAGE_SIZE
+    return workspaces.slice(start, start + MCP_WORKSPACE_PAGE_SIZE)
+  }, [workspaces, safeWorkspacePage])
 
   React.useEffect(() => {
     setLocalEnabled(config.mcpEnabled)
@@ -94,9 +111,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   }
 
   const displayPort = activePort ?? config.mcpPort
-  const effectiveWorkspaceId =
-    workspaces && workspaces.length > 0 ? selectedWorkspaceId || workspaces[0].id : undefined
-  const localUrl = appendMcpVaultQuery(`http://127.0.0.1:${displayPort}/mcp`, effectiveWorkspaceId)
+  const baseMcpUrl = mcpEndpointUrl.split('?')[0] || `http://127.0.0.1:${displayPort}/mcp`
+  const baseSseUrl = mcpSseEndpointUrl ? mcpSseEndpointUrl.split('?')[0] : undefined
+  const localUrl = `http://127.0.0.1:${displayPort}/mcp`
   const subtitle = localEnabled
     ? localApplying
       ? t('settings.mcp_starting', '正在启停服务...')
@@ -105,7 +122,18 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         : t('settings.mcp_stopped', '已停止')
     : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')
 
-  const effectiveToken = authEnabled ? config.mcpAuthToken : undefined
+  const workspaceStreamableEntries =
+    workspaces?.map((w) => ({
+      name: w.name,
+      url: appendMcpVaultQuery(baseMcpUrl, w.id)
+    })) ?? []
+  const workspaceSseEntries =
+    baseSseUrl && workspaces
+      ? workspaces.map((w) => ({
+          name: w.name,
+          url: appendMcpVaultQuery(baseSseUrl, w.id)
+        }))
+      : []
 
   const connectionPanel = (
     <View style={styles.panel}>
@@ -141,44 +169,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           />
         </View>
 
-        {workspaces && workspaces.length > 0 ? (
-          <View
-            style={[
-              styles.row,
-              styles.tokenBody,
-              styles.rowBorder,
-              { borderTopColor: colors.borderMuted }
-            ]}
-          >
-            <View
-              style={{
-                width: '100%',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: sharedTokens.spacing.sm
-              }}
-            >
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {t('settings.mcp_workspace', '目标小窝')}
-              </Text>
-              <Select
-                variant="settings"
-                compact
-                options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
-                value={effectiveWorkspaceId}
-                onValueChange={onSelectWorkspace}
-              />
-            </View>
-            <Text style={[styles.sub, { color: colors.textSecondary }]}>
-              {t(
-                'settings.mcp_workspace_suffix_hint',
-                '连接地址已自动拼接 ?vault=<小窝ID> 后缀，外部客户端必须保留该后缀才能绑定到所选小窝。'
-              )}
-            </Text>
-          </View>
-        ) : null}
-
         <View
           style={[
             styles.row,
@@ -187,30 +177,189 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             { borderTopColor: colors.borderMuted }
           ]}
         >
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            {t('settings.mcp_url_label', '连接地址（推荐）')}
-          </Text>
-          <Text style={[styles.mono, { color: colors.primary }]} selectable>
-            {mcpEndpointUrl}
-          </Text>
-          <Pressable
-            onPress={onCopyEndpoint}
-            style={({ pressed }) => [
-              styles.copyBtn,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
-            ]}
-          >
-            <Text
-              style={{
-                color: colors.textOnPrimary,
-                fontWeight: '600',
-                fontSize: mobileTypography.secondary.fontSize
-              }}
-            >
-              {t('settings.mcp_copy_url', '复制 MCP 地址')}
-            </Text>
-          </Pressable>
-          {mcpEndpointUrl !== localUrl ? (
+          {workspaces && workspaces.length > 0 ? (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('settings.mcp_workspaces_title', '目标小窝连接地址')}
+              </Text>
+              <Text style={[styles.sub, { color: colors.textSecondary }]}>
+                {t(
+                  'settings.mcp_workspace_suffix_hint',
+                  '所有小窝已同时暴露，每个小窝拥有独立的 ?vault=<小窝ID> 连接地址，支持在外部客户端中同时配置多个小窝，无需切换。'
+                )}
+              </Text>
+              <View style={styles.workspaceList}>
+                {pagedWorkspaces.map((w) => {
+                  const itemMcpUrl = appendMcpVaultQuery(baseMcpUrl, w.id)
+                  const itemSseUrl = baseSseUrl ? appendMcpVaultQuery(baseSseUrl, w.id) : undefined
+                  return (
+                    <View
+                      key={w.id}
+                      style={[styles.workspaceItem, { backgroundColor: colors.bgApp }]}
+                    >
+                      <View style={styles.workspaceItemHeader}>
+                        <View style={styles.workspaceTitleGroup}>
+                          <Text
+                            style={[styles.workspaceName, { color: colors.textPrimary }]}
+                            numberOfLines={1}
+                          >
+                            {w.name}
+                          </Text>
+                        </View>
+                        <View style={styles.workspaceActions}>
+                          <Pressable
+                            onPress={() => onCopyEndpoint(itemMcpUrl)}
+                            accessibilityLabel={t(
+                              'settings.mcp_copy_workspace_url',
+                              '复制 {{name}} 的 MCP 地址',
+                              { name: w.name }
+                            )}
+                            style={({ pressed }) => [
+                              styles.workspaceActionBtn,
+                              {
+                                backgroundColor: colors.primary,
+                                borderColor: colors.primary,
+                                opacity: pressed ? 0.8 : 1
+                              }
+                            ]}
+                          >
+                            <Copy
+                              size={14}
+                              color={colors.textOnPrimary}
+                              strokeWidth={DEFAULT_STROKE_WIDTH}
+                            />
+                            <Text
+                              style={[
+                                styles.workspaceActionBtnText,
+                                { color: colors.textOnPrimary }
+                              ]}
+                            >
+                              MCP
+                            </Text>
+                          </Pressable>
+                          {itemSseUrl && onCopySseEndpoint ? (
+                            <Pressable
+                              onPress={() => onCopySseEndpoint(itemSseUrl)}
+                              accessibilityLabel={t(
+                                'settings.mcp_copy_workspace_sse_url',
+                                '复制 {{name}} 的 SSE 地址',
+                                { name: w.name }
+                              )}
+                              style={({ pressed }) => [
+                                styles.workspaceActionBtn,
+                                {
+                                  backgroundColor: colors.bgSurface,
+                                  borderColor: colors.borderMuted,
+                                  opacity: pressed ? 0.8 : 1
+                                }
+                              ]}
+                            >
+                              <Copy
+                                size={14}
+                                color={colors.textSecondary}
+                                strokeWidth={DEFAULT_STROKE_WIDTH}
+                              />
+                              <Text
+                                style={[
+                                  styles.workspaceActionBtnText,
+                                  { color: colors.textSecondary }
+                                ]}
+                              >
+                                SSE
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      </View>
+                      <Text
+                        style={[styles.mono, { color: colors.primary, marginTop: 0 }]}
+                        selectable
+                      >
+                        {itemMcpUrl}
+                      </Text>
+                    </View>
+                  )
+                })}
+              </View>
+              {totalWorkspacePages > 1 ? (
+                <View style={styles.workspacePaginationRow}>
+                  <Text style={[styles.workspacePageInfo, { color: colors.textSecondary }]}>
+                    {t('workspace.page_info', '共 {{total}} 个 · 第 {{page}} / {{pages}} 页', {
+                      total: workspaces.length,
+                      page: safeWorkspacePage,
+                      pages: totalWorkspacePages
+                    })}
+                  </Text>
+                  <Pagination
+                    current={safeWorkspacePage}
+                    total={totalWorkspacePages}
+                    onChange={setWorkspacePage}
+                  />
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('settings.mcp_url_label', '连接地址（推荐）')}
+              </Text>
+              <Text style={[styles.mono, { color: colors.primary }]} selectable>
+                {mcpEndpointUrl}
+              </Text>
+              <Pressable
+                onPress={() => onCopyEndpoint(mcpEndpointUrl)}
+                style={({ pressed }) => [
+                  styles.copyBtn,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                ]}
+              >
+                <Text
+                  style={{
+                    color: colors.textOnPrimary,
+                    fontWeight: '600',
+                    fontSize: mobileTypography.secondary.fontSize
+                  }}
+                >
+                  {t('settings.mcp_copy_url', '复制 MCP 地址')}
+                </Text>
+              </Pressable>
+              {mcpSseEndpointUrl ? (
+                <>
+                  <Text
+                    style={[
+                      styles.label,
+                      { color: colors.textSecondary, marginTop: sharedTokens.spacing.smPlus }
+                    ]}
+                  >
+                    {t('settings.mcp_sse_label', '连接地址（SSE）')}
+                  </Text>
+                  <Text style={[styles.mono, { color: colors.primary }]} selectable>
+                    {mcpSseEndpointUrl}
+                  </Text>
+                  {onCopySseEndpoint ? (
+                    <Pressable
+                      onPress={() => onCopySseEndpoint(mcpSseEndpointUrl)}
+                      style={({ pressed }) => [
+                        styles.copyBtn,
+                        { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: colors.textOnPrimary,
+                          fontWeight: '600',
+                          fontSize: mobileTypography.secondary.fontSize
+                        }}
+                      >
+                        {t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          )}
+          {baseMcpUrl !== localUrl ? (
             <>
               <Text
                 style={[
@@ -223,40 +372,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
               <Text style={[styles.mono, { color: colors.primary }]} selectable>
                 {localUrl}
               </Text>
-            </>
-          ) : null}
-          {mcpSseEndpointUrl ? (
-            <>
-              <Text
-                style={[
-                  styles.label,
-                  { color: colors.textSecondary, marginTop: sharedTokens.spacing.smPlus }
-                ]}
-              >
-                {t('settings.mcp_sse_label', '连接地址（SSE）')}
-              </Text>
-              <Text style={[styles.mono, { color: colors.primary }]} selectable>
-                {mcpSseEndpointUrl}
-              </Text>
-              {onCopySseEndpoint ? (
-                <Pressable
-                  onPress={onCopySseEndpoint}
-                  style={({ pressed }) => [
-                    styles.copyBtn,
-                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: colors.textOnPrimary,
-                      fontWeight: '600',
-                      fontSize: mobileTypography.secondary.fontSize
-                    }}
-                  >
-                    {t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
-                  </Text>
-                </Pressable>
-              ) : null}
             </>
           ) : null}
           {isRunning && activePort != null ? (
@@ -327,72 +442,15 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     </View>
   )
 
-  const codeBlockBg = isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)'
   const mcpHelpContent = (
-    <View style={{ gap: sharedTokens.spacing.mdTight }}>
-      <Text style={[styles.helpIntro, { color: colors.textPrimary }]}>
-        {t(
-          'settings.mcp_help_intro',
-          '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 等外部 AI 客户端调用日记、记忆等工具。'
-        )}
-      </Text>
-      <View style={{ gap: sharedTokens.spacing.xs }}>
-        <Text style={[styles.helpHeading, { color: colors.textPrimary }]}>
-          {t('settings.mcp_help_cursor_title', 'Cursor')}
-        </Text>
-        <Text style={[styles.sub, { color: colors.textSecondary }]}>
-          1.{' '}
-          {t(
-            'settings.mcp_help_cursor_1',
-            '打开或创建 Cursor 全局配置文件（Windows：%USERPROFILE%\\.cursor\\mcp.json，macOS/Linux：~/.cursor/mcp.json）。'
-          )}
-          {'\n'}
-          2.{' '}
-          {t(
-            'settings.mcp_help_cursor_2',
-            '将下方配置粘贴到 mcpServers 中（推荐 /mcp；若客户端仅支持旧版 SSE，改用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
-          )}
-        </Text>
-        <Text style={[styles.helpSubTitle, { color: colors.textSecondary }]}>
-          {t('settings.mcp_help_streamable_title', '推荐：Streamable HTTP（/mcp）')}
-        </Text>
-        <Text
-          style={[styles.helpCodeBlock, { backgroundColor: codeBlockBg, color: colors.primary }]}
-        >
-          {buildMcpClientJsonExample(mcpEndpointUrl, authTokenForUi, 'streamableHttp')}
-        </Text>
-        {mcpSseEndpointUrl ? (
-          <>
-            <Text style={[styles.helpSubTitle, { color: colors.textSecondary }]}>
-              {t('settings.mcp_help_sse_title', '兼容：SSE（/sse）')}
-            </Text>
-            <Text
-              style={[
-                styles.helpCodeBlock,
-                {
-                  backgroundColor: codeBlockBg,
-                  color: colors.primary,
-                  marginTop: sharedTokens.spacing.xs
-                }
-              ]}
-            >
-              {buildMcpClientJsonExample(mcpSseEndpointUrl, effectiveToken)}
-            </Text>
-          </>
-        ) : null}
-      </View>
-      <Text style={[styles.helpNote, { color: colors.textTertiary }]}>
-        {authEnabled
-          ? t(
-              'settings.mcp_help_note',
-              '优先使用 /mcp；仅当客户端不支持 Streamable HTTP 时改用 /sse。启用后需保持白守移动端运行，并确保客户端与手机在同一局域网。'
-            )
-          : t(
-              'settings.mcp_help_auth_disabled_note',
-              '当前已关闭鉴权，配置中无需 Authorization 头。仅建议在受信网络使用。'
-            )}
-      </Text>
-    </View>
+    <McpHelpContent
+      mcpEndpointUrl={mcpEndpointUrl}
+      mcpSseEndpointUrl={mcpSseEndpointUrl}
+      authEnabled={authEnabled}
+      authToken={authTokenForUi}
+      workspaceStreamableEntries={workspaceStreamableEntries}
+      workspaceSseEntries={workspaceSseEntries}
+    />
   )
 
   return (
