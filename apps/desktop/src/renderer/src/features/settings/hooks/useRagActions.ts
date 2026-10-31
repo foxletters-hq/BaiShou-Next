@@ -7,7 +7,8 @@ export function useRagActions(
   prompt: any,
   alert: any,
   fetchRagInfo: any,
-  setIsProcessing: (v: boolean) => void
+  setIsProcessing: (v: boolean) => void,
+  optimisticDeleteEntry?: (id: string) => () => void
 ) {
   const handleAddManualMemory = async () => {
     const text = await prompt('', '', t('settings.rag_add_manual', '添加手动记忆片段'), true)
@@ -39,12 +40,13 @@ export function useRagActions(
       t('common.warning', '警告')
     )
     if (!confirmed) return
-    setIsProcessing(true)
+    const rollback = optimisticDeleteEntry?.(id)
     try {
       await (window as any).api?.rag?.deleteEntry(id)
-      await fetchRagInfo()
-    } finally {
-      setIsProcessing(false)
+      await fetchRagInfo(undefined, undefined, { silent: true })
+    } catch (e: any) {
+      rollback?.()
+      toast.showError(e?.message || t('common.error', '错误'))
     }
   }
 
