@@ -90,7 +90,9 @@ function renderWall(contributors) {
   return [
     START,
     `<!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。展示 ${AVATAR_SIZE}px / 源图 ${AVATAR_SRC_SIZE}px。勿手改；运行: pnpm sync:contributors -->`,
+    '',
     links.join('\n'),
+    '',
     END
   ].join('\n')
 }
