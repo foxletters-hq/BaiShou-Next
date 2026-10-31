@@ -59,6 +59,7 @@ import {
 } from '@baishou/shared'
 import { markStartup, traceStartupStep } from './startup-trace.util'
 import {
+  bindDesktopWindowMcpKeepAlive,
   runDesktopPostWindowInit,
   scheduleDesktopPostWindowInit
 } from './services/desktop-post-window-init'
@@ -79,6 +80,27 @@ registerLocalProtocolScheme()
 
 let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
+
+function focusMainWindow(): void {
+  const target = mainWindow ?? BrowserWindow.getAllWindows()[0] ?? null
+  if (!target || target.isDestroyed()) return
+  if (target.isMinimized()) {
+    target.restore()
+  }
+  if (!target.isVisible()) {
+    target.show()
+  }
+  target.focus()
+}
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    focusMainWindow()
+  })
+}
 
 function resolveAppIconPath(rawIcon: string): string {
   if (/app\.asar[\\/]/i.test(rawIcon) && !/app\.asar\.unpacked[\\/]/i.test(rawIcon)) {
@@ -146,6 +168,7 @@ function createWindow(needsOnboarding: boolean): void {
     mainWindow!.show()
     markStartup('window.show')
     scheduleDesktopPostWindowInit(() => runDesktopPostWindowInit())
+    bindDesktopWindowMcpKeepAlive(mainWindow!)
   })
 
   mainWindow.webContents.on('did-start-loading', () => {
@@ -171,6 +194,9 @@ function createWindow(needsOnboarding: boolean): void {
         validatedURL,
         isMainFrame
       })
+      if (isMainFrame && mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        mainWindow.show()
+      }
     }
   )
 
@@ -381,6 +407,7 @@ app.on('web-contents-created', (_event, contents) => {
 })
 
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return
   markStartup('app.whenReady')
 
   // 渲染进程 / preload 启动打点 → 主进程终端（与 [Startup] 同一时间轴）

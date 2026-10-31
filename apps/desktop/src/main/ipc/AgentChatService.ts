@@ -35,11 +35,21 @@ import { searchService } from '../services/search.service'
 import { cancelAllAgentGateSessions, cancelAgentGateSession } from '../services/agent-gate.service'
 import {
   drainSessionInbox,
+  isSessionInboxDraining,
   markDrainAfterAbort,
   scheduleDrainWhenIdle,
-  takeDrainAfterAbort
+  takeDrainAfterAbort,
+  waitForSessionInboxDrainLock
 } from '../services/session-inbox-drain'
 import { initDesktopSessionInboxStore } from '../services/session-inbox.store'
+
+function isCompanionSessionBusy(sessionId: string): boolean {
+  return (
+    isAgentStreamSessionBusy(sessionId) ||
+    Boolean(getActiveMainStreamSnapshot(sessionId)) ||
+    isSessionInboxDraining(sessionId)
+  )
+}
 
 async function drainCompanionInbox(
   event: Electron.IpcMainInvokeEvent,
@@ -48,7 +58,7 @@ async function drainCompanionInbox(
   await initDesktopSessionInboxStore()
   await drainSessionInbox({
     sessionId,
-    isBusy: isAgentStreamSessionBusy,
+    isBusy: (id) => isAgentStreamSessionBusy(id) || Boolean(getActiveMainStreamSnapshot(id)),
     logLabel: 'CompanionChat',
     runPromoted: async (promoted) => {
       const payload = (promoted.payload ?? {}) as {
@@ -200,6 +210,7 @@ export class AgentChatService {
     const { sessionManager } = getAgentManagers()
     /** 正常结束才 drain；Stop/abort 不排空 inbox */
     let shouldDrainInbox = false
+    beginMainStreamSnapshot(args.sessionId)
     try {
       const prefs = await this.getAssistantSessionPrefs(args.sessionId)
       const resolved = await resolveStreamDialogueSelection({
@@ -233,12 +244,6 @@ export class AgentChatService {
         skipUserMessageRecording: Boolean(args.userMsgId)
       })
 
-      try {
-        await sessionManager.flushSessionToDisk(args.sessionId)
-      } catch (e: any) {
-        logger.error('Agent IPC persistence SSOT Error', e)
-      }
-
       if (streamResult?.aborted) {
         return 'aborted'
       }
@@ -262,11 +267,12 @@ export class AgentChatService {
       })
       return false
     } finally {
+      clearMainStreamSnapshot(args.sessionId)
       AgentChatCoreService.resetAbortController()
       if (shouldDrainInbox || takeDrainAfterAbort(args.sessionId)) {
         scheduleDrainWhenIdle({
           sessionId: args.sessionId,
-          isBusy: (id) => isAgentStreamSessionBusy(id),
+          isBusy: (id) => isCompanionSessionBusy(id),
           run: () => drainCompanionInbox(event, args.sessionId)
         })
       }
@@ -311,7 +317,9 @@ export class AgentChatService {
       timestamp: Date.now()
     })
 
-    const busy = isAgentStreamSessionBusy(args.sessionId)
+    await waitForSessionInboxDrainLock(args.sessionId)
+
+    const busy = isCompanionSessionBusy(args.sessionId)
     if (busy) {
       return { input, started: false, queued: true }
     }
@@ -376,13 +384,13 @@ export class AgentChatService {
     }
     if (updated && params.delivery === 'steer') {
       const sessionId = updated.sessionId
-      if (isAgentStreamSessionBusy(sessionId)) {
+      if (isCompanionSessionBusy(sessionId)) {
         markDrainAfterAbort(sessionId)
         this.stopStream(sessionId)
       }
       scheduleDrainWhenIdle({
         sessionId,
-        isBusy: (id) => isAgentStreamSessionBusy(id),
+        isBusy: (id) => isCompanionSessionBusy(id),
         run: () => drainCompanionInbox(event, sessionId)
       })
     }

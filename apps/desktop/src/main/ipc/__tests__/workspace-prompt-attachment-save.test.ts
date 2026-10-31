@@ -18,4 +18,11 @@ describe('workspace prompt attachment save', () => {
     expect(src).toContain('copyFile')
     expect(src).toMatch(/workspaceBinding\?\.folderRoot/)
   })
+
+  it('should extract convertible documents and expose full picker extensions in companion attachment IPC', () => {
+    expect(src).toContain('extractPromptDocumentText')
+    expect(src).toContain('isConvertiblePromptDocument')
+    expect(src).toContain('PROMPT_PICKER_EXTENSIONS')
+    expect(src).toContain('populateDesktopAttachmentContent')
+  })
 })
