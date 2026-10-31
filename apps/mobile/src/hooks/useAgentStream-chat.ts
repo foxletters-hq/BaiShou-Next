@@ -1,14 +1,17 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import {
+  abortAgentStreamSession,
   claimAgentStreamSession,
+  clearPendingAgentStreamStop,
   getSharedSessionInbox,
   isAgentStreamSessionBusy,
   releaseAgentStreamSession
 } from '@baishou/ai'
 import {
+  isAgentStreamAbortError,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   deriveSessionTitleFromUserText
@@ -29,6 +32,7 @@ import {
 
 interface UseAgentStreamChatOptions {
   refs: AgentStreamRefs
+  isStreaming: boolean
   currentSessionId: string | null
   currentProviderId: string | null
   currentModelId: string | null
@@ -58,6 +62,7 @@ interface UseAgentStreamChatOptions {
 
 export function useAgentStreamChat({
   refs,
+  isStreaming,
   currentSessionId,
   currentProviderId,
   currentModelId,
@@ -91,19 +96,59 @@ export function useAgentStreamChat({
     streamAbortRef,
     streamAttemptErrorRef,
     userStoppedStreamRef,
-    pendingRetryReleaseEpochRef
+    pendingRetryReleaseEpochRef,
+    isStreamingRef
   } = refs
 
   const sendQueueLockRef = useRef<Promise<void>>(Promise.resolve())
   const drainingSessionsRef = useRef<Set<string>>(new Set())
   const drainAgainSessionsRef = useRef<Set<string>>(new Set())
+  const drainAfterSteerAbortRef = useRef<Set<string>>(new Set())
+  const idleDrainWatchersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const drainMobileSessionInboxRef = useRef<(sessionId: string) => Promise<void>>(async () => {})
+
+  const scheduleMobileDrainWhenIdle = useCallback(
+    (sessionId: string) => {
+      if (!sessionId) return
+      const existingTimer = idleDrainWatchersRef.current.get(sessionId)
+      if (existingTimer) {
+        clearTimeout(existingTimer)
+        idleDrainWatchersRef.current.delete(sessionId)
+      }
+
+      const deadline = Date.now() + 5000
+      const step = () => {
+        idleDrainWatchersRef.current.delete(sessionId)
+        if (getSharedSessionInbox().listPending(sessionId).length === 0) return
+        if (userStoppedStreamRef.current && !drainAfterSteerAbortRef.current.has(sessionId)) return
+        if (!isAgentStreamSessionBusy(sessionId) && !drainingSessionsRef.current.has(sessionId)) {
+          void drainMobileSessionInboxRef.current(sessionId)
+          return
+        }
+        if (Date.now() < deadline) {
+          idleDrainWatchersRef.current.set(sessionId, setTimeout(step, 25))
+        }
+      }
+      idleDrainWatchersRef.current.set(sessionId, setTimeout(step, 0))
+    },
+    [userStoppedStreamRef]
+  )
+
+  useEffect(() => {
+    const watchers = idleDrainWatchersRef.current
+    return () => {
+      for (const timer of watchers.values()) clearTimeout(timer)
+      watchers.clear()
+    }
+  }, [])
 
   const invokeAgentStreamChat = useCallback(
     async (
       sessionId: string,
       userText: string,
       overrides: AgentStreamOverrides,
-      onFail: (errorMsg: string) => void
+      onFail: (errorMsg: string) => void,
+      onClaimReplaced?: (claim: ReturnType<typeof claimAgentStreamSession>) => void
     ) => {
       if (!startAgentChat) return
 
@@ -119,6 +164,7 @@ export function useAgentStreamChat({
           resetStreamingBuffers()
           const claim = claimAgentStreamSession(sessionId)
           streamAbortRef.current = claim.abort
+          onClaimReplaced?.(claim)
           activeOverrides = {
             ...activeOverrides,
             abortSignal: claim.signal,
@@ -133,24 +179,21 @@ export function useAgentStreamChat({
             userText,
             {
               onTextDelta: (chunk) => {
-                if (userStoppedStreamRef.current) return
-                appendStreamingTextDelta(chunk)
+                if (!userStoppedStreamRef.current) appendStreamingTextDelta(chunk)
               },
               onReasoningDelta: (chunk) => {
-                if (userStoppedStreamRef.current) return
-                appendStreamingReasoningDelta(chunk)
+                if (!userStoppedStreamRef.current) appendStreamingReasoningDelta(chunk)
               },
               onToolCallStart: (toolName, args, toolCallId) => {
-                if (userStoppedStreamRef.current) return
-                handleToolCallStart(toolName, args, toolCallId)
+                if (!userStoppedStreamRef.current) handleToolCallStart(toolName, args, toolCallId)
               },
               onToolCallResult: (toolName, result, toolCallId) => {
-                if (userStoppedStreamRef.current) return
-                handleToolCallResult(toolName, result, toolCallId)
+                if (!userStoppedStreamRef.current)
+                  handleToolCallResult(toolName, result, toolCallId)
               },
               onFinish: () => {},
               onError: (err) => {
-                if (userStoppedStreamRef.current) return
+                if (userStoppedStreamRef.current || isAgentStreamAbortError(err)) return
                 const msg = err.message || t('app.unknown_error', '未知网络或系统错误')
                 streamAttemptErrorRef.current = msg
                 onFail(msg)
@@ -160,7 +203,7 @@ export function useAgentStreamChat({
           )
         } catch (e) {
           thrownError = e
-          if (userStoppedStreamRef.current) return
+          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) return
           const msg = e instanceof Error ? e.message : String(e)
           streamAttemptErrorRef.current = msg
           onFail(msg)
@@ -213,14 +256,15 @@ export function useAgentStreamChat({
       }
 
       const fail = (errorMsg: string) => {
-        if (userStoppedStreamRef.current) return
-        setStreamError(errorMsg)
+        if (!userStoppedStreamRef.current) setStreamError(errorMsg)
       }
 
       userStoppedStreamRef.current = false
+      clearPendingAgentStreamStop(sessionId)
       interruptActiveStream()
-      const claim = claimAgentStreamSession(sessionId)
+      let claim = claimAgentStreamSession(sessionId)
       streamAbortRef.current = claim.abort
+      isStreamingRef.current = true
       setLoading(true)
       setIsStreaming(true)
       setStreamError(null)
@@ -231,6 +275,7 @@ export function useAgentStreamChat({
       setCompressionReasoning('')
       setCompressionTriggerMessageId(null)
 
+      let stoppedByUser = false
       try {
         await invokeAgentStreamChat(
           sessionId,
@@ -246,36 +291,36 @@ export function useAgentStreamChat({
             streamClaimGeneration: claim.generation,
             attachments: userMessage.attachments
           },
-          fail
+          fail,
+          (nextClaim) => {
+            claim = nextClaim
+          }
         )
-        const stoppedByUser = userStoppedStreamRef.current
-        if (stoppedByUser) {
-          setStreamError(null)
-        }
+        stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) setStreamError(null)
         await finishStream(sessionId, {
-          waitForLatestUsage: !stoppedByUser,
+          waitForLatestUsage: !stoppedByUser && !streamAttemptErrorRef.current,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
-        if (stoppedByUser) {
-          userStoppedStreamRef.current = false
-        }
       } catch (e) {
-        const stoppedByUser = userStoppedStreamRef.current
-        if (stoppedByUser) {
-          setStreamError(null)
-        } else {
-          const msg = e instanceof Error ? e.message : String(e)
-          fail(msg)
-        }
+        stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) setStreamError(null)
+        else fail(e instanceof Error ? e.message : String(e))
         await finishStream(sessionId, {
-          waitForLatestUsage: !stoppedByUser,
+          waitForLatestUsage: false,
           releaseRetryEpoch: releaseEpoch ?? undefined
         })
-        if (stoppedByUser) {
-          userStoppedStreamRef.current = false
-        }
       } finally {
         releaseAgentStreamSession(sessionId, claim.generation)
+        const steered = drainAfterSteerAbortRef.current.delete(sessionId)
+        userStoppedStreamRef.current = false
+        if (
+          (!stoppedByUser || steered) &&
+          (drainAgainSessionsRef.current.delete(sessionId) ||
+            getSharedSessionInbox().listPending(sessionId).length > 0)
+        ) {
+          scheduleMobileDrainWhenIdle(sessionId)
+        }
       }
     },
     [
@@ -296,10 +341,13 @@ export function useAgentStreamChat({
       setCompressionReasoning,
       setCompressionTriggerMessageId,
       invokeAgentStreamChat,
+      scheduleMobileDrainWhenIdle,
       searchModeRef,
       streamAbortRef,
+      streamAttemptErrorRef,
       userStoppedStreamRef,
-      pendingRetryReleaseEpochRef
+      pendingRetryReleaseEpochRef,
+      isStreamingRef
     ]
   )
 
@@ -314,11 +362,13 @@ export function useAgentStreamChat({
         searchMode?: boolean
         attachments?: unknown[]
       }
-    ) => {
+    ): Promise<'ok' | 'stopped'> => {
       userStoppedStreamRef.current = false
+      clearPendingAgentStreamStop(sessionId)
       interruptActiveStream({ keepStreamingFlag: true })
-      const claim = claimAgentStreamSession(sessionId)
+      let claim = claimAgentStreamSession(sessionId)
       streamAbortRef.current = claim.abort
+      isStreamingRef.current = true
 
       setLoading(true)
       setIsStreaming(true)
@@ -326,10 +376,10 @@ export function useAgentStreamChat({
       resetStreamingBuffers()
 
       const failStream = (errorMsg: string) => {
-        if (userStoppedStreamRef.current) return
-        setStreamError(errorMsg)
+        if (!userStoppedStreamRef.current) setStreamError(errorMsg)
       }
 
+      let stoppedByUser = false
       try {
         await invokeAgentStreamChat(
           sessionId,
@@ -344,36 +394,35 @@ export function useAgentStreamChat({
             streamClaimGeneration: claim.generation,
             attachments: overrides?.attachments
           },
-          failStream
+          failStream,
+          (nextClaim) => {
+            claim = nextClaim
+          }
         )
-        const stoppedByUser = userStoppedStreamRef.current
-        if (stoppedByUser) {
-          setStreamError(null)
-        }
-        await finishStream(sessionId, { waitForLatestUsage: !stoppedByUser })
-        if (stoppedByUser) {
-          userStoppedStreamRef.current = false
-        }
+        stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) setStreamError(null)
+        await finishStream(sessionId, {
+          waitForLatestUsage: !stoppedByUser && !streamAttemptErrorRef.current
+        })
       } catch (e: unknown) {
-        const stoppedByUser = userStoppedStreamRef.current
-        if (stoppedByUser) {
-          setStreamError(null)
-        } else {
-          const msg = e instanceof Error ? e.message : String(e)
-          failStream(msg)
-        }
-        await finishStream(sessionId, { waitForLatestUsage: !stoppedByUser })
-        if (stoppedByUser) {
-          userStoppedStreamRef.current = false
-        }
+        stoppedByUser = userStoppedStreamRef.current
+        if (stoppedByUser) setStreamError(null)
+        else failStream(e instanceof Error ? e.message : String(e))
+        await finishStream(sessionId, { waitForLatestUsage: false })
       } finally {
         releaseAgentStreamSession(sessionId, claim.generation)
       }
+
+      const steered = drainAfterSteerAbortRef.current.delete(sessionId)
+      userStoppedStreamRef.current = false
+      return stoppedByUser && !steered ? 'stopped' : 'ok'
     },
     [
       userStoppedStreamRef,
       interruptActiveStream,
       streamAbortRef,
+      streamAttemptErrorRef,
+      isStreamingRef,
       setLoading,
       setIsStreaming,
       setStreamError,
@@ -385,17 +434,28 @@ export function useAgentStreamChat({
 
   const drainMobileSessionInbox = useCallback(
     async (sessionId: string) => {
-      if (isAgentStreamSessionBusy(sessionId)) return
       if (drainingSessionsRef.current.has(sessionId)) {
         drainAgainSessionsRef.current.add(sessionId)
         return
       }
+      if (isAgentStreamSessionBusy(sessionId)) {
+        drainAgainSessionsRef.current.add(sessionId)
+        scheduleMobileDrainWhenIdle(sessionId)
+        return
+      }
       drainingSessionsRef.current.add(sessionId)
 
+      let stoppedByUser = false
       try {
         for (;;) {
-          if (userStoppedStreamRef.current) break
-          if (isAgentStreamSessionBusy(sessionId)) break
+          if (userStoppedStreamRef.current && !drainAfterSteerAbortRef.current.has(sessionId)) {
+            stoppedByUser = true
+            break
+          }
+          if (isAgentStreamSessionBusy(sessionId)) {
+            drainAgainSessionsRef.current.add(sessionId)
+            break
+          }
           const inbox = getSharedSessionInbox()
           const promoted = inbox.promoteNext(sessionId)
           if (!promoted) break
@@ -407,29 +467,44 @@ export function useAgentStreamChat({
             attachments?: unknown[]
           }
 
-          await runSessionStreamTurn(
+          const outcome = await runSessionStreamTurn(
             sessionId,
             promoted.text,
             promoted.userMessageId ?? '',
             payload
           )
 
-          if (userStoppedStreamRef.current) break
+          if (outcome === 'stopped') {
+            stoppedByUser = true
+            break
+          }
         }
       } finally {
         drainingSessionsRef.current.delete(sessionId)
-        if (
+        const shouldDrainAgain =
           drainAgainSessionsRef.current.delete(sessionId) ||
           getSharedSessionInbox().listPending(sessionId).length > 0
-        ) {
-          if (!isAgentStreamSessionBusy(sessionId) && !userStoppedStreamRef.current) {
+        if (shouldDrainAgain && !stoppedByUser) {
+          if (!isAgentStreamSessionBusy(sessionId)) {
             void drainMobileSessionInbox(sessionId)
+          } else {
+            scheduleMobileDrainWhenIdle(sessionId)
           }
         }
       }
     },
-    [runSessionStreamTurn, userStoppedStreamRef]
+    [runSessionStreamTurn, scheduleMobileDrainWhenIdle, userStoppedStreamRef]
   )
+  drainMobileSessionInboxRef.current = drainMobileSessionInbox
+
+  useEffect(() => {
+    if (!currentSessionId || isStreaming) return
+    if (userStoppedStreamRef.current && !drainAfterSteerAbortRef.current.has(currentSessionId)) {
+      return
+    }
+    if (getSharedSessionInbox().listPending(currentSessionId).length === 0) return
+    scheduleMobileDrainWhenIdle(currentSessionId)
+  }, [currentSessionId, isStreaming, scheduleMobileDrainWhenIdle, userStoppedStreamRef])
 
   const handleSend = useCallback(
     async (
@@ -567,7 +642,11 @@ export function useAgentStreamChat({
         })
 
         if (!isBusy) {
+          userStoppedStreamRef.current = false
           void drainMobileSessionInbox(sessionId)
+        } else {
+          drainAgainSessionsRef.current.add(sessionId)
+          scheduleMobileDrainWhenIdle(sessionId)
         }
 
         return true
@@ -588,15 +667,42 @@ export function useAgentStreamChat({
       onSessionListRefresh,
       addMessage,
       refs.isStreamingRef,
+      userStoppedStreamRef,
       drainMobileSessionInbox,
+      scheduleMobileDrainWhenIdle,
       setLoading,
       setIsStreaming
+    ]
+  )
+
+  const steerPendingInput = useCallback(
+    async (sessionId: string, inputId: string) => {
+      const updated = getSharedSessionInbox().setPendingDelivery(inputId, 'steer')
+      if (!updated) return
+      userStoppedStreamRef.current = false
+      if (isStreamingRef.current || isAgentStreamSessionBusy(sessionId)) {
+        drainAfterSteerAbortRef.current.add(sessionId)
+        drainAgainSessionsRef.current.add(sessionId)
+        streamAbortRef.current?.()
+        abortAgentStreamSession(sessionId)
+        scheduleMobileDrainWhenIdle(sessionId)
+        return
+      }
+      await drainMobileSessionInbox(sessionId)
+    },
+    [
+      drainMobileSessionInbox,
+      isStreamingRef,
+      scheduleMobileDrainWhenIdle,
+      streamAbortRef,
+      userStoppedStreamRef
     ]
   )
 
   return {
     invokeAgentStreamChat,
     streamFromExistingUserMessage,
-    handleSend
+    handleSend,
+    steerPendingInput
   }
 }

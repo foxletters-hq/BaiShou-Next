@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
+import { isAgentStreamSessionBusy } from '@baishou/ai'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import {
@@ -265,7 +266,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
             !messageHasUsageStats(latestAssistant) &&
             attempt < retryCount - 1
           ) {
-            await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+            await new Promise((r) => setTimeout(r, 80 * (attempt + 1)))
             continue
           }
 
@@ -274,18 +275,13 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
           console.error('Failed to refresh session messages', e)
           mapped = null
           if (attempt < retryCount - 1) {
-            await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+            await new Promise((r) => setTimeout(r, 80 * (attempt + 1)))
             continue
           }
         }
       }
 
       if (!mapped) return false
-
-      const latestAssistant = [...mapped].reverse().find((m) => m.role === 'assistant')
-      if (waitForLatestUsage && latestAssistant && !messageHasUsageStats(latestAssistant)) {
-        return false
-      }
 
       if (commitToUi && commitEpoch === reloadEpochRef.current) {
         ingestFetchedTail(mapped, options?.preserveWindow ?? false)
@@ -368,7 +364,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string) => {
       if (!dbReady || !services || vaultSwitching) return
       if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
-        toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+        toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他小窝的会话'))
         return
       }
       if (sessionId === useAgentStore.getState().currentSessionId) {
@@ -461,7 +457,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
       if (!services) return
       try {
         if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
-          toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+          toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他小窝的会话'))
           return
         }
         await services.sessionManager.deleteSessions([sessionId])
@@ -517,6 +513,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
     if (!vaultChanged && !ecosystemResynced) return
     if (!currentSessionId || vaultSwitching || storageIndexing) return
+    if (isAgentStreamSessionBusy(currentSessionId)) return
 
     void refreshSessionMessages(currentSessionId, { preserveWindow: true })
   }, [

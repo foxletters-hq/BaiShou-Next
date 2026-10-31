@@ -5,10 +5,18 @@ import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileSessionChanged } from '../services/mobile-session-events'
 
-/** 每页 10 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
-export const SESSION_PAGE_SIZE = 10
+/** 每页 20 条；多取 1 条用于判断是否还有下一页（对齐桌面端 useAgentSessions） */
+export const SESSION_PAGE_SIZE = 20
 
 const SESSION_LIST_REFRESH_DEBOUNCE_MS = 300
+const SESSION_SEARCH_DEBOUNCE_MS = 200
+
+export interface LoadSessionsOptions {
+  /** 刷新时保留当前已加载的条数上限，避免把已翻多页的列表打回第一页 */
+  preserveLoadedCount?: boolean
+  /** resetOffset 为 true 时是否滚回顶部（默认在不保留条数时滚回顶部） */
+  scrollToTop?: boolean
+}
 
 export function useAgentSessions(activeAssistantId: string | undefined) {
   const { t } = useTranslation()
@@ -17,10 +25,14 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
   const [sessions, setSessions] = useState<AgentSession[]>([])
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
+  const [isRefreshingSessions, setIsRefreshingSessions] = useState(false)
+  const [sessionSearchQuery, setSessionSearchQuery] = useState('')
   const [sessionListScrollKey, setSessionListScrollKey] = useState(0)
 
   const lastLoadRequestId = useRef(0)
+  const loadingMoreInFlightRef = useRef(false)
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
+  const searchQueryRef = useRef(sessionSearchQuery)
   const sessionsLoadedFromDbRef = useRef(0)
   const lastVaultRevisionRef = useRef(vaultRevision)
   const lastEcosystemResyncEpochRef = useRef(ecosystemResyncEpoch)
@@ -30,6 +42,10 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     assistantIdRef.current = activeAssistantId
   }, [activeAssistantId])
 
+  useEffect(() => {
+    searchQueryRef.current = sessionSearchQuery
+  }, [sessionSearchQuery])
+
   const mapSession = useCallback(
     (s: {
       id: string
@@ -38,6 +54,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       updatedAt?: string | Date | null
       createdAt?: string | Date | null
       messageCount?: number | null
+      snippet?: string | null
     }): AgentSession => ({
       id: s.id,
       title: s.title || t('agent.sessions.default_title', '新对话'),
@@ -47,22 +64,31 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
         : s.createdAt
           ? new Date(s.createdAt).getTime()
           : Date.now(),
-      messageCount: s.messageCount ?? 0
+      messageCount: s.messageCount ?? 0,
+      snippet: s.snippet ?? undefined
     }),
     [t]
   )
 
   const loadSessions = useCallback(
-    async (resetOffset = false, overrideAssistantId?: string) => {
+    async (resetOffset = false, overrideAssistantId?: string, options?: LoadSessionsOptions) => {
       if (!dbReady || !services) return
 
       const targetAssistantId = overrideAssistantId || assistantIdRef.current
       if (!targetAssistantId) return
 
+      if (!resetOffset && loadingMoreInFlightRef.current) return
+
       const reqId = ++lastLoadRequestId.current
       const offset = resetOffset ? 0 : sessionsLoadedFromDbRef.current
+      const preserveLoadedCount = Boolean(resetOffset && options?.preserveLoadedCount)
+      const targetLimit =
+        preserveLoadedCount && sessionsLoadedFromDbRef.current > SESSION_PAGE_SIZE
+          ? sessionsLoadedFromDbRef.current
+          : SESSION_PAGE_SIZE
 
       if (!resetOffset) {
+        loadingMoreInFlightRef.current = true
         setIsLoadingMoreSessions(true)
       }
 
@@ -75,25 +101,29 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
               ?.getActiveVaultNameForContext?.()
               .catch(() => 'Personal')) || 'Personal'
           )
+        const normalizedQuery = searchQueryRef.current.trim() || undefined
         const sessionList = await services.sessionManager.list(
-          SESSION_PAGE_SIZE + 1,
+          targetLimit + 1,
           offset,
           targetAssistantId.trim(),
-          undefined,
+          normalizedQuery,
           activeVaultId
         )
 
         if (reqId !== lastLoadRequestId.current) return
 
         if (sessionList && sessionList.length > 0) {
-          const hasMore = sessionList.length > SESSION_PAGE_SIZE
-          const page = hasMore ? sessionList.slice(0, SESSION_PAGE_SIZE) : sessionList
+          const hasMore = sessionList.length > targetLimit
+          const page = hasMore ? sessionList.slice(0, targetLimit) : sessionList
           const mapped = page.map(mapSession)
 
           if (resetOffset) {
             setSessions(mapped)
-            sessionsLoadedFromDbRef.current = sessionList.length
-            setSessionListScrollKey((prev) => prev + 1)
+            sessionsLoadedFromDbRef.current = page.length
+            const shouldScrollTop = options?.scrollToTop ?? !preserveLoadedCount
+            if (shouldScrollTop) {
+              setSessionListScrollKey((prev) => prev + 1)
+            }
           } else {
             setSessions((prev) => {
               const existing = new Set(prev.map((s) => s.id))
@@ -103,7 +133,7 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
               }
               return merged
             })
-            sessionsLoadedFromDbRef.current += sessionList.length
+            sessionsLoadedFromDbRef.current += page.length
           }
           setHasMoreSessions(hasMore)
         } else if (resetOffset) {
@@ -116,13 +146,27 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       } catch (e) {
         console.warn('Failed to load sessions', e)
       } finally {
-        if (reqId === lastLoadRequestId.current) {
+        if (!resetOffset) {
+          loadingMoreInFlightRef.current = false
           setIsLoadingMoreSessions(false)
         }
       }
     },
     [dbReady, services, mapSession]
   )
+
+  const refreshSessions = useCallback(async () => {
+    if (!dbReady || !services || !assistantIdRef.current) return
+    setIsRefreshingSessions(true)
+    try {
+      await loadSessions(true, assistantIdRef.current, {
+        preserveLoadedCount: true,
+        scrollToTop: false
+      })
+    } finally {
+      setIsRefreshingSessions(false)
+    }
+  }, [dbReady, services, loadSessions])
 
   const lastActiveAssistantId = useRef<string | undefined>(activeAssistantId)
   useEffect(() => {
@@ -142,6 +186,10 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     }
 
     if (isAssistantChanged || dbBecameReady) {
+      if (isAssistantChanged) {
+        searchQueryRef.current = ''
+        setSessionSearchQuery('')
+      }
       lastLoadRequestId.current += 1
       sessionsLoadedFromDbRef.current = 0
       setSessions([])
@@ -151,12 +199,30 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     }
 
     const timer = setTimeout(() => {
-      sessionsLoadedFromDbRef.current = 0
-      void loadSessions(true, activeAssistantId)
+      void loadSessions(true, activeAssistantId, {
+        preserveLoadedCount: true,
+        scrollToTop: false
+      })
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
   }, [activeAssistantId, dbReady, loadSessions])
+
+  // 搜索词变化时走数据库检索（同时匹配标题与消息正文）
+  const lastSearchQueryRef = useRef(sessionSearchQuery)
+  useEffect(() => {
+    if (lastSearchQueryRef.current === sessionSearchQuery) return
+    lastSearchQueryRef.current = sessionSearchQuery
+    if (!activeAssistantId || !dbReady) return
+
+    const delay = sessionSearchQuery.trim() ? SESSION_SEARCH_DEBOUNCE_MS : 0
+    const timer = setTimeout(() => {
+      sessionsLoadedFromDbRef.current = 0
+      void loadSessions(true, activeAssistantId, { scrollToTop: true })
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [sessionSearchQuery, activeAssistantId, dbReady, loadSessions])
 
   // vault 切换或后台索引完成后刷新会话列表
   useEffect(() => {
@@ -169,18 +235,25 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     if (!activeAssistantId || !dbReady) return
 
     const timer = setTimeout(() => {
-      sessionsLoadedFromDbRef.current = 0
-      void loadSessions(true, activeAssistantId)
+      if (vaultChanged) {
+        sessionsLoadedFromDbRef.current = 0
+      }
+      void loadSessions(true, activeAssistantId, {
+        preserveLoadedCount: !vaultChanged,
+        scrollToTop: vaultChanged
+      })
     }, SESSION_LIST_REFRESH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
   }, [vaultRevision, ecosystemResyncEpoch, activeAssistantId, dbReady, loadSessions])
 
-  // 监听会话变更（如命名模型生成新标题并落盘）实时刷新列表
+  // 监听会话变更（如命名模型生成新标题并落盘）实时刷新列表，保留已分页加载深度
   useEffect(() => {
     return subscribeMobileSessionChanged(() => {
-      sessionsLoadedFromDbRef.current = 0
-      void loadSessions(true, assistantIdRef.current)
+      void loadSessions(true, assistantIdRef.current, {
+        preserveLoadedCount: true,
+        scrollToTop: false
+      })
     })
   }, [loadSessions])
 
@@ -188,7 +261,11 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
     sessions,
     hasMoreSessions,
     isLoadingMoreSessions,
+    isRefreshingSessions,
+    sessionSearchQuery,
+    setSessionSearchQuery,
     sessionListScrollKey,
-    loadSessions
+    loadSessions,
+    refreshSessions
   }
 }
