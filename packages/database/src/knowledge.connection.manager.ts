@@ -5,6 +5,7 @@ import * as fs from 'fs'
 import { logger } from '@baishou/shared'
 
 import type { AppDatabase } from './types'
+import { loadNodeSqliteVecExtension } from './drivers/node-sqlite.driver'
 import { KNOWLEDGE_DB_FILENAME, ensureKnowledgeSchema } from './knowledge-schema.shared'
 
 /**
@@ -134,9 +135,7 @@ export class KnowledgeConnectionManager {
 
   private loadSqliteVec(sqlite: Database.Database): string | null {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const sqliteVec = require('sqlite-vec') as { load: (db: Database.Database) => void }
-      sqliteVec.load(sqlite)
+      loadNodeSqliteVecExtension(sqlite)
       const row = sqlite.prepare('SELECT vec_version() AS v').get() as { v?: string } | undefined
       const version = row?.v != null ? String(row.v) : 'loaded'
       logger.info(`[KnowledgeDB] sqlite-vec 已加载，vec_version()=${version}`)

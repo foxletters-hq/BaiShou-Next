@@ -106,14 +106,18 @@ export class ShadowIndexQueryOps {
   }
 
   async getAllRecords(): Promise<
-    Pick<ShadowJournalRecord, 'id' | 'date' | 'filePath' | 'contentHash'>[]
+    Pick<
+      ShadowJournalRecord,
+      'id' | 'date' | 'filePath' | 'contentHash' | 'fileSize'
+    >[]
   > {
     return await this.ctx.database
       .select({
         id: shadowJournalIndexTable.id,
         date: shadowJournalIndexTable.date,
         filePath: shadowJournalIndexTable.filePath,
-        contentHash: shadowJournalIndexTable.contentHash
+        contentHash: shadowJournalIndexTable.contentHash,
+        fileSize: shadowJournalIndexTable.fileSize
       })
       .from(shadowJournalIndexTable)
       .where(this.ctx.vaultFilter())
