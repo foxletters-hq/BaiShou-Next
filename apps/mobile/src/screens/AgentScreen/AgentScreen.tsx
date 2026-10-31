@@ -59,6 +59,7 @@ export const AgentScreen = () => {
           setListViewportHeight={c.setListViewportHeight}
           layoutReadyRef={c.layoutReadyRef}
           messages={c.messages}
+          pendingQueueCtl={c.pendingQueueCtl}
           hasMore={c.hasMore}
           showLoadMoreBanner={c.showLoadMoreBanner}
           handleLoadMore={c.handleLoadMore}
@@ -152,7 +153,11 @@ export const AgentScreen = () => {
         sessionListScrollKey={c.sessionListScrollKey}
         hasMoreSessions={c.hasMoreSessions}
         isLoadingMoreSessions={c.isLoadingMoreSessions}
+        isRefreshingSessions={c.isRefreshingSessions}
+        sessionSearchQuery={c.sessionSearchQuery}
+        setSessionSearchQuery={c.setSessionSearchQuery}
         loadSessions={c.loadSessions}
+        refreshSessions={c.refreshSessions}
         currentSessionId={c.currentSessionId}
         handleSelectSession={c.handleSelectSession}
         handleCreateSession={c.handleCreateSession}

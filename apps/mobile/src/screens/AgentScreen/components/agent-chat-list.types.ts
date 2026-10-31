@@ -1,5 +1,16 @@
 import type React from 'react'
 import type { View, ScrollView, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
+import type { MobileRuntimeQueueItem } from './MobileComposerRuntimeQueueBar'
+
+export interface MobilePendingQueueController {
+  pendingQueue: MobileRuntimeQueueItem[]
+  editingInputId: string | null
+  beginEdit: (item: MobileRuntimeQueueItem) => void
+  cancelEdit: () => void
+  commitEdit: (text: string) => Promise<boolean>
+  deleteItem: (item: MobileRuntimeQueueItem) => Promise<void>
+  sendNow: (item: MobileRuntimeQueueItem) => Promise<void>
+}
 
 export type ComposerOnSend = (
   text: string,
@@ -44,6 +55,7 @@ export type AgentChatListProps = {
   setListViewportHeight: React.Dispatch<React.SetStateAction<number>>
   layoutReadyRef: React.RefObject<boolean>
   messages: any[]
+  pendingQueueCtl?: MobilePendingQueueController
   hasMore: boolean
   showLoadMoreBanner: boolean
   handleLoadMore: () => Promise<void> | void

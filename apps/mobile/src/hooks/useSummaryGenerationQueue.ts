@@ -194,7 +194,12 @@ export function useSummaryGenerationQueue(options: {
 
           await onRefreshData()
         } else {
-          throw new Error('Generated content was empty.')
+          throw new Error(
+            i18n.t(
+              'summary.error.empty_content',
+              '生成内容为空，请检查模型思考配置、输出限制或尝试更换其他模型'
+            )
+          )
         }
       } catch (e: unknown) {
         const err = e as { message?: string; stack?: string; name?: string }

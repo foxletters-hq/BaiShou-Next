@@ -187,6 +187,7 @@ export function useAgentStream(
 
   const chat = useAgentStreamChat({
     refs,
+    isStreaming,
     currentSessionId,
     currentProviderId,
     currentModelId,
@@ -297,15 +298,13 @@ export function useAgentStream(
 
         void (async () => {
           const sessionId = event.sessionId
-          try {
-            await services?.sessionManager.flushSessionToDisk(sessionId)
-          } catch {
-            /* ignore */
+          if (services?.sessionManager) {
+            void services.sessionManager.flushSessionToDisk(sessionId).catch(() => undefined)
           }
           await reloadMessagesFromDb(sessionId, {
             preserveWindow: false,
-            retryCount: 5,
-            waitForLatestUsage: true
+            retryCount: 1,
+            waitForLatestUsage: false
           })
           resetCompressionBuffers()
           setCompressionText('')
@@ -413,6 +412,7 @@ export function useAgentStream(
     isAgentGateReplying,
     replyAgentGate,
     handleSend: chat.handleSend,
+    steerPendingInput: chat.steerPendingInput,
     handleStop: actions.handleStop,
     handleRegenerate: actions.handleRegenerate,
     handleResend: actions.handleResend,
