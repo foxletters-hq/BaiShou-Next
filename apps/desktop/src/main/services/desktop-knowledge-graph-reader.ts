@@ -11,14 +11,15 @@ import { getEmbeddingConfig, getEmbeddingService } from '../ipc/rag.ipc'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
 
 export function createDesktopKnowledgeGraphReader(
-  embedQuery?: (text: string) => Promise<number[] | null>
+  embedQuery?: (text: string) => Promise<number[] | null>,
+  targetVaultId?: string
 ): ToolKnowledgeGraphReader | undefined {
   if (!knowledgeConnectionManager.isConnected()) return undefined
   const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
   const knowledgeRepo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
 
   return new KnowledgeGraphReaderAdapter(async (opts) => {
-    const vaultId = resolveActiveVaultId()?.trim() || ''
+    const vaultId = (targetVaultId || resolveActiveVaultId())?.trim() || ''
     if (!vaultId) throw new Error('active vault not ready')
     const notebookIds = parseMountedNotebookIds(opts.notebookIds)
     const profiles = await knowledgeRepo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })

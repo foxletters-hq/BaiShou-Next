@@ -180,7 +180,19 @@ export async function moveSkillDirectory(fromDir: string, toDir: string): Promis
 export async function getSkillsRootMtimeMs(skillsRoot: string): Promise<number> {
   try {
     const st = await fs.stat(skillsRoot)
-    return st.mtimeMs
+    let signature = st.mtimeMs
+    const entries = await fs.readdir(skillsRoot).catch(() => [] as string[])
+    for (const entry of entries) {
+      if (!isValidSkillName(entry)) continue
+      const skillFile = resolveSkillFile(skillsRoot, entry)
+      try {
+        const fileStat = await fs.stat(skillFile)
+        signature += fileStat.mtimeMs + fileStat.size
+      } catch {
+        // ignore missing SKILL.md
+      }
+    }
+    return signature
   } catch {
     return 0
   }

@@ -84,7 +84,7 @@ export function registerLegacyMigrationIPC(): void {
     ): Promise<LegacyVersionMigrationBatchImportResult> => {
       if (!Array.isArray(sectionIds)) {
         throw new Error(
-          i18n.t('auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L76', '无效的工作空间列表')
+          i18n.t('auto.apps.desktop.src.main.ipc.legacy.migration.ipc.L76', '无效的小窝列表')
         )
       }
       return desktopLegacyVersionMigrationService.importAllWorkspaces(sectionIds, {

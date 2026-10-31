@@ -241,6 +241,7 @@ export function registerRagBatchEmbedIpc(): void {
       const { runManualPendingEmbedFill } = await import('../services/pending-embed-fill.service')
       const fillResult = await runManualPendingEmbedFill({
         counts,
+        skipProbe: diaryResult.embedded > 0 || (diaryResult.total > 0 && diaryResult.failed === 0),
         onProgress: ({ completed, total, statusText, phase, phases: nextPhases }) => {
           phases = nextPhases
           sendProgress(completed, total, statusText, { phase, phases: nextPhases })

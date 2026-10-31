@@ -361,6 +361,7 @@ async function embedVaultDiaries(
   let abortAfterRetryExhausted = false
   // 限制同时进入文件读取/分词/SQLite 写入的日记篇数，与全局嵌入槽位上限（12）匹配，兼顾高吞吐与低排队延迟。
   const effectiveConcurrency = Math.max(1, Math.min(ctx.batchConcurrency, 10))
+  const diaryById = await diaryManager.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
 
   await limitExecute(
     diariesToEmbed,
@@ -381,7 +382,11 @@ async function embedVaultDiaries(
           ctx.globalTotal
         )
 
-      const diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
+      let diary = diaryById.get(meta.id)
+      diaryById.delete(meta.id)
+      if (!diary) {
+        diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
+      }
       if (!diary?.id) {
         loadSkipped++
         ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)

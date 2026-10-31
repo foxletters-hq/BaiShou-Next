@@ -5,6 +5,8 @@ import { getAgentManagers } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
 import {
   GlobalModelsConfig,
+  buildBranchSessionTitle,
+  extractMessagePlainTextSnippet,
   logger,
   resolveDialogueModelSelection,
   sessionBelongsToActiveVaultId
@@ -23,7 +25,7 @@ function assertSessionInActiveVault<T extends { vaultId?: string | null }>(
     throw new Error(
       i18n.t(
         'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
-        '无权访问其他工作空间的会话'
+        '无权访问其他小窝的会话'
       )
     )
   }
@@ -290,7 +292,16 @@ export function registerSessionIPC() {
         'auto.apps.desktop.src.main.ipc.agent.session.ipc.L191',
         '对话'
       )
-      const branchTitle = title || `${originalSession.title || defaultSessionTitle} (分支)`
+      const targetMsg = messagesToCopy[targetIndex] as any
+      const targetParts = Array.isArray(targetMsg?.parts)
+        ? targetMsg.parts
+        : await realMessageRepo.getPartsByMessageId(targetMsg.id)
+      const branchTitle = buildBranchSessionTitle({
+        originalTitle: title || originalSession.title,
+        defaultTitle: defaultSessionTitle,
+        branchLabel: i18n.t('agent.chat.branch', '分支'),
+        branchPointSnippet: extractMessagePlainTextSnippet(targetParts)
+      })
 
       await sessionManager.upsertSession({
         id: newSessionId,
@@ -313,7 +324,7 @@ export function registerSessionIPC() {
           ? (msg as any).parts
           : await realMessageRepo.getPartsByMessageId(msg.id)
 
-        // 插入消息
+        // 插入消息（保留原消息的 createdAt 时间戳）
         await realSessionRepo.insertMessageWithParts(
           {
             id: newMsgId,
@@ -326,7 +337,8 @@ export function registerSessionIPC() {
             cacheWriteInputTokens: msg.cacheWriteInputTokens ?? undefined,
             costMicros: msg.costMicros ?? undefined,
             providerId: msg.providerId ?? undefined,
-            modelId: msg.modelId ?? undefined
+            modelId: msg.modelId ?? undefined,
+            createdAt: (msg as any).createdAt ?? undefined
           },
           originalParts.map((p: any) => ({
             id: crypto.randomUUID(),
