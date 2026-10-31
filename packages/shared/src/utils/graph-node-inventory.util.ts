@@ -146,3 +146,54 @@ export function resolveGraphInventoryList(input: {
     showPagination: input.total > 0
   }
 }
+
+export type GraphInventorySnapshot = {
+  pageItems: GraphInventoryNode[]
+  searchHits?: GraphInventoryNode[]
+  total: number
+  nodeCount: number
+  edgeCount: number
+  page: number
+}
+
+export function applyGraphInventoryNodeDelete(input: {
+  nodeId: string
+  deletedEdgeCount?: number
+  pageItems: GraphInventoryNode[]
+  searchHits?: GraphInventoryNode[]
+  total: number
+  nodeCount: number
+  edgeCount: number
+  page: number
+}): {
+  pageItems: GraphInventoryNode[]
+  searchHits: GraphInventoryNode[]
+  total: number
+  nodeCount: number
+  edgeCount: number
+  page: number
+} {
+  const hadInPage = input.pageItems.some((item) => item.id === input.nodeId)
+  const pageItems = input.pageItems.filter((item) => item.id !== input.nodeId)
+  const searchHits = (input.searchHits ?? []).filter((item) => item.id !== input.nodeId)
+  const total = hadInPage ? Math.max(0, input.total - 1) : input.total
+  const nodeCount = Math.max(0, input.nodeCount - 1)
+  const edgeCount = Math.max(0, input.edgeCount - Math.max(0, input.deletedEdgeCount ?? 0))
+  const page = pageItems.length === 0 && input.page > 1 && total > 0 ? input.page - 1 : input.page
+  return {
+    pageItems,
+    searchHits,
+    total,
+    nodeCount,
+    edgeCount,
+    page
+  }
+}
+
+export function applyGraphInventoryEdgeDelete(
+  edgeCount: number,
+  deletedEdgeCount = 1
+): number {
+  return Math.max(0, edgeCount - Math.max(0, deletedEdgeCount))
+}
+

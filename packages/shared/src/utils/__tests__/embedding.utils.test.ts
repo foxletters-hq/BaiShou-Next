@@ -3,6 +3,8 @@ import {
   isChatModelForConnectionTest,
   isEmbeddingModel,
   mergeZhipuKnownEmbeddingModels,
+  normalizeModelId,
+  normalizeRemoteModelIds,
   ZHIPU_KNOWN_EMBEDDING_MODELS
 } from '../embedding.utils'
 
@@ -49,6 +51,51 @@ describe('mergeZhipuKnownEmbeddingModels', () => {
       'glm-4',
       'embedding-2',
       'embedding-3'
+    ])
+  })
+})
+
+describe('normalizeModelId', () => {
+  it('strips jina-ai/ prefix for Jina models', () => {
+    expect(normalizeModelId('jina-ai/jina-embeddings-v3')).toBe('jina-embeddings-v3')
+    expect(normalizeModelId('jina-ai/jina-clip-v2')).toBe('jina-clip-v2')
+    expect(normalizeModelId('jina-ai/reader-lm-1.5b')).toBe('reader-lm-1.5b')
+  })
+
+  it('strips models/ prefix for Gemini models', () => {
+    expect(normalizeModelId('models/gemini-2.0-flash')).toBe('gemini-2.0-flash')
+    expect(normalizeModelId('models/text-embedding-004')).toBe('text-embedding-004')
+  })
+
+  it('preserves namespaced models for providers that require them', () => {
+    expect(normalizeModelId('BAAI/bge-m3')).toBe('BAAI/bge-m3')
+    expect(normalizeModelId('Pro/BAAI/bge-m3')).toBe('Pro/BAAI/bge-m3')
+    expect(normalizeModelId('meta-llama/Llama-3.3-70B-Instruct')).toBe(
+      'meta-llama/Llama-3.3-70B-Instruct'
+    )
+    expect(normalizeModelId('text-embedding-3-small')).toBe('text-embedding-3-small')
+  })
+
+  it('handles empty or whitespace strings gracefully', () => {
+    expect(normalizeModelId('')).toBe('')
+    expect(normalizeModelId('  jina-ai/jina-embeddings-v3  ')).toBe('jina-embeddings-v3')
+  })
+})
+
+describe('normalizeRemoteModelIds', () => {
+  it('normalizes prefixes and deduplicates while maintaining order', () => {
+    const raw = [
+      'jina-ai/jina-embeddings-v3',
+      'jina-embeddings-v3',
+      'jina-ai/jina-clip-v2',
+      'BAAI/bge-m3',
+      'models/gemini-2.0-flash'
+    ]
+    expect(normalizeRemoteModelIds(raw)).toEqual([
+      'jina-embeddings-v3',
+      'jina-clip-v2',
+      'BAAI/bge-m3',
+      'gemini-2.0-flash'
     ])
   })
 })
