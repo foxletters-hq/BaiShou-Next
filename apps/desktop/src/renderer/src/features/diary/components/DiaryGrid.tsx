@@ -128,11 +128,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
   return (
     <div className="diary-grid" ref={scrollRef}>
       {/* 顶部分页控制栏 */}
-      {showPagination && (
-        <div className="diary-pagination-top">
-          {renderPaginationBar()}
-        </div>
-      )}
+      {showPagination && <div className="diary-pagination-top">{renderPaginationBar()}</div>}
 
       <div className="diary-grid-inner">
         {entries.map((entry) => (
@@ -150,11 +146,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
       </div>
 
       {/* 底部分页控制栏 */}
-      {showPagination && (
-        <div className="diary-pagination">
-          {renderPaginationBar()}
-        </div>
-      )}
+      {showPagination && <div className="diary-pagination">{renderPaginationBar()}</div>}
     </div>
   )
 }

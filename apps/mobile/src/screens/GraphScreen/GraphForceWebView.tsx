@@ -77,9 +77,7 @@ export const GraphForceWebView: React.FC<{
         edges
           .filter(
             (e) =>
-              e.reviewStatus !== 'rejected' &&
-              liveNodeIds.has(e.fromId) &&
-              liveNodeIds.has(e.toId)
+              e.reviewStatus !== 'rejected' && liveNodeIds.has(e.fromId) && liveNodeIds.has(e.toId)
           )
           .map((e) => e.id)
       ),

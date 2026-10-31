@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 桌面端多小窝原始数据源管理与同步运行时聚合模块 */
 import {
   createRawDataSourceManager,
   MemoryJsonlBackfillService,

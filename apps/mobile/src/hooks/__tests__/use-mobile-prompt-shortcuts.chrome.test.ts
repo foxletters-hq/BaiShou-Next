@@ -18,6 +18,8 @@ describe('useMobilePromptShortcuts chrome', () => {
     expect(src).toContain('applyShortcutDisplayOrder')
     expect(src).toContain('prompt_shortcut_order_v1')
     expect(src).toContain('next.map((item) => item.id)')
-    expect(src).toContain('dedupePromptShortcuts([...prev, ...next.filter((item) => !isSkillShortcut(item))])')
+    expect(src).toContain(
+      'dedupePromptShortcuts([...prev, ...next.filter((item) => !isSkillShortcut(item))])'
+    )
   })
 })

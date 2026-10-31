@@ -116,6 +116,7 @@ export const SummaryPage: React.FC = () => {
           )
         } else if (
           cur.error?.includes('Generated content was empty') ||
+          // eslint-disable-next-line i18n-chinese/no-hardcoded-chinese -- 匹配服务端错误标识字符串
           cur.error?.includes('生成内容为空')
         ) {
           errText = t(

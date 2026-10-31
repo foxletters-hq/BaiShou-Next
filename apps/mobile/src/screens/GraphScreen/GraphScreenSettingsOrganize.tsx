@@ -55,10 +55,7 @@ export function GraphScreenSettingsOrganize(props: {
   const { colors } = useNativeTheme()
   const router = useRouter()
   const [extractPickerOpen, setExtractPickerOpen] = useState(false)
-  const extractDateValue = useMemo(
-    () => safeParseDate(props.extractDate),
-    [props.extractDate]
-  )
+  const extractDateValue = useMemo(() => safeParseDate(props.extractDate), [props.extractDate])
 
   return (
     <View style={styles.settingsBody}>
