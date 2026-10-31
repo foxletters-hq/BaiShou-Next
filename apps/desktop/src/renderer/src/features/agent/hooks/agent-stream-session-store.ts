@@ -9,6 +9,7 @@ import {
   type AgentStreamTimelineItem,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
+import { useAgentGateInboxStore } from '@baishou/store'
 export interface SessionStreamState {
   text: string
   reasoning: string
@@ -235,6 +236,7 @@ export function clearStreamBridgeState(state: SessionStreamState): void {
 export function clearStreamBridgeForSession(sessionId: string): void {
   if (sessionStates[sessionId]?.isStreaming) return
   resetStreamDisplayBuffers(sessionId)
+  useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
   updateSessionState(sessionId, (state) => {
     clearStreamBridgeState(state)
   })

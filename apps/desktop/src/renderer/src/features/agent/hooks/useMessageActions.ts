@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { buildBranchSessionTitle, extractMessagePlainTextSnippet } from '@baishou/shared'
+import { useAgentGateInboxStore } from '@baishou/store'
 import { useDialog, toast } from '@baishou/ui'
 import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
@@ -140,6 +141,9 @@ export function useMessageActions({
       t('common.confirm_delete', '确认删除')
     )
     if (!ok) return
+    if (sessionId) {
+      useAgentGateInboxStore.getState().clearResolvedLiveForSession(sessionId)
+    }
     if (typeof window !== 'undefined' && window.electron) {
       window.electron.ipcRenderer
         .invoke('agent:delete-message', sessionId, msg.id)

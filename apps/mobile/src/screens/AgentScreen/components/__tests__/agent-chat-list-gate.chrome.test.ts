@@ -13,6 +13,7 @@ describe('AgentChatList gate chrome', () => {
     expect(src).toContain('selectResolvedLiveForSession')
     expect(src).toContain("selectResolvedLiveForSession(state, p.currentSessionId, 'companion')")
     expect(src).toContain("collectAgentGatePartDataForSurface(msg.parts, 'companion')")
+    expect(src).toContain('visibleAgentGateParts(resolvedLive)')
     expect(src).not.toContain('resolvedLiveAll')
     expect(src).not.toContain('!p.currentSessionId ||')
   })

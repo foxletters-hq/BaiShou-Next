@@ -22,11 +22,13 @@ export function companionStreamHasVisibleBody(input: {
   timeline?: ReadonlyArray<CompanionStreamUiTimelineItem>
   activeTool?: unknown
   completedToolsCount?: number
+  liveGatePartsCount?: number
 }): boolean {
   if (input.text?.trim()) return true
   if (input.reasoning?.trim()) return true
   if (input.activeTool) return true
   if ((input.completedToolsCount ?? 0) > 0) return true
+  if ((input.liveGatePartsCount ?? 0) > 0) return true
   return (input.timeline ?? []).some((item) => {
     if (item.kind === 'tool') return item.name !== 'emoji_send'
     return Boolean(item.text?.trim())
@@ -60,6 +62,7 @@ export function resolveCompanionStreamUi(input: {
   timeline?: ReadonlyArray<CompanionStreamUiTimelineItem>
   activeTool?: unknown
   completedToolsCount?: number
+  liveGatePartsCount?: number
 }): {
   hidePersistedLiveTurn: boolean
   showStreamingBubble: boolean
@@ -75,7 +78,8 @@ export function resolveCompanionStreamUi(input: {
     reasoning: input.reasoning,
     timeline: input.timeline,
     activeTool: input.activeTool,
-    completedToolsCount: input.completedToolsCount
+    completedToolsCount: input.completedToolsCount,
+    liveGatePartsCount: input.liveGatePartsCount
   })
   const assistantPersistedDuringBridge =
     input.isBridgeActive && lastAssistantHasPersistedContent(input.lastMessage)

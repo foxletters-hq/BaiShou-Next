@@ -64,4 +64,24 @@ describe('resolveCompanionStreamUi', () => {
     expect(ui.showStreamingBubble).toBe(false)
     expect(ui.composerBusy).toBe(false)
   })
+
+  it('should treat visible live gate parts as visible stream body only while session is live', () => {
+    const idleWithGate = resolveCompanionStreamUi({
+      isStreaming: false,
+      isBridgeActive: false,
+      isCompressing: false,
+      lastMessage: finishedAssistant,
+      liveGatePartsCount: 1
+    })
+    expect(idleWithGate.showStreamingBubble).toBe(false)
+
+    const liveWithGate = resolveCompanionStreamUi({
+      isStreaming: true,
+      isBridgeActive: false,
+      isCompressing: false,
+      lastMessage: { role: 'user', content: '执行工具' },
+      liveGatePartsCount: 1
+    })
+    expect(liveWithGate.showStreamingBubble).toBe(true)
+  })
 })
