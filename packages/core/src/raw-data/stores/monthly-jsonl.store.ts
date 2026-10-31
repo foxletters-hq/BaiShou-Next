@@ -245,12 +245,24 @@ export class MonthlyJsonlStore {
     const text = content.endsWith('\n') || content.length === 0 ? content : `${content}\n`
     await this.fs.writeFile(abs, text, 'utf8')
     const contentHash = md5Hex(text)
+    let size: number | undefined
+    let mtimeMs: number | undefined
+    try {
+      const st = await this.fs.stat(abs)
+      size = st.size
+      mtimeMs = st.mtimeMs
+    } catch {
+      size = undefined
+      mtimeMs = undefined
+    }
     const manifest = await this.readManifest()
     const rel = this.shardRelativePath(shardMonth)
     const prev = manifest.shards[rel]
     manifest.shards[rel] = {
       contentHash,
-      indexedHash: prev?.indexedHash
+      indexedHash: prev?.indexedHash,
+      size,
+      mtimeMs
     }
     await this.writeManifest(manifest)
     return { shardPath: abs, relativePath: rel, contentHash }
@@ -356,7 +368,6 @@ export class MonthlyJsonlStore {
         .split(/[/\\]/)
         .pop() ?? ''
     if (!this.isValidKey(month)) return
-    const current = await this.computeShardHash(month)
     const manifest = await this.readManifest()
     const prev = manifest.shards[relativePath]
     let size: number | undefined
@@ -369,6 +380,16 @@ export class MonthlyJsonlStore {
       size = prev?.size
       mtimeMs = prev?.mtimeMs
     }
+    const fingerprintHit =
+      !!prev?.contentHash &&
+      prev.contentHash !== DIRTY_SHARD_HASH &&
+      prev.size != null &&
+      prev.mtimeMs != null &&
+      size != null &&
+      mtimeMs != null &&
+      prev.size === size &&
+      prev.mtimeMs === mtimeMs
+    const current = fingerprintHit ? prev!.contentHash : await this.computeShardHash(month)
     manifest.shards[relativePath] = {
       ...prev,
       contentHash: current,

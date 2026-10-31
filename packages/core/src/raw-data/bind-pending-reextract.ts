@@ -95,6 +95,30 @@ export function bindPendingReextractCollaborators(options: {
         deletedAt: null
       }
       await graphManager.writeRecord(record, { collection: 'extract-state' })
+    },
+    writeExtractStatesBatch: async (items) => {
+      if (items.length === 0) return
+      const vaultName = await getVaultName()
+      const vaultId = (await getVaultId()).trim()
+      if (!vaultId) {
+        throw new Error('bindPendingReextract: vaultId is required for extract-state')
+      }
+      const now = Date.now()
+      const records: GraphExtractStateRawRecord[] = items.map((item) => {
+        const key = normalizeFilePath(item.filePath)
+        return {
+          id: `extract:${key}`,
+          schemaVersion: 1,
+          vaultId,
+          vaultName,
+          filePath: key,
+          sourceContentHash: item.contentHash,
+          extractedAt: now,
+          updatedAt: now,
+          deletedAt: null
+        }
+      })
+      await graphManager.writeRecords(records, { collection: 'extract-state' })
     }
   })
 }

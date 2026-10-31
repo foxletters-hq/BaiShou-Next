@@ -27,7 +27,7 @@ export const LEGACY_MIGRATION_SECTION_LABELS: Record<LegacyMigrationSectionId, s
   ),
   workspaces: i18n.t(
     'auto.packages.core.src.migration.legacy.selective.migration.shared.L15',
-    '工作空间'
+    '小窝'
   )
 }
 
