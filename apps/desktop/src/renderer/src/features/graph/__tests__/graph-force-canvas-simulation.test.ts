@@ -41,4 +41,16 @@ describe('prewarmGraphForceSimulation', () => {
     prewarmGraphForceSimulation(sim, 20)
     expect(sim.alpha()).toBeCloseTo(0.1)
   })
+
+  it('should preserve existing node positions without ticking when skipTicks is true', () => {
+    const nodes: GraphForceSimNode[] = [
+      { id: 'a', name: 'A', nodeType: 'person', x: 120, y: 240, vx: 0, vy: 0 }
+    ]
+    const sim = forceSimulation(nodes) as Simulation<GraphForceSimNode, GraphForceSimLink>
+    sim.stop()
+    prewarmGraphForceSimulation(sim, nodes.length, { skipTicks: true })
+    expect(nodes[0]!.x).toBe(120)
+    expect(nodes[0]!.y).toBe(240)
+    expect(sim.alpha()).toBeCloseTo(0.1)
+  })
 })

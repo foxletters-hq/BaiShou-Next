@@ -156,7 +156,12 @@ export function useGraphPageModel({
     onSelectNode: selection.onSelectNode,
     inFlightDeletedNodeIdsRef: data.inFlightDeletedNodeIdsRef,
     inFlightDeletedEdgeIdsRef: data.inFlightDeletedEdgeIdsRef,
-    graphViewRef: data.graphViewRef
+    graphViewRef: data.graphViewRef,
+    similarPairs: data.similarPairs,
+    setSimilarPairs: data.setSimilarPairs,
+    inventory,
+    removeNodeFromSearchHits: search.removeNodeFromHits,
+    onAfterDeleteNode: side.closeDetailSide
   })
   const awaken = useGraphPageAwaken({
     t: translate,

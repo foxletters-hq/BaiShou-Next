@@ -16,9 +16,31 @@ export function GraphPageContentPane(props: {
   reextract: React.ComponentProps<typeof GraphPageReextractPane>
   pending: React.ComponentProps<typeof GraphPagePendingPane>
   similar: React.ComponentProps<typeof GraphPageSimilarPane>
+  scrollTopByTabRef?: React.MutableRefObject<Partial<Record<GraphSideTab, number>>>
+  lastNodesPageKeyRef?: React.MutableRefObject<string | null>
 }): React.ReactElement {
   const { t } = useTranslation()
   const { tab } = props
+  const fallbackScrollRef = React.useRef<Partial<Record<GraphSideTab, number>>>({})
+  const fallbackPageKeyRef = React.useRef<string | null>(null)
+  const scrollMapRef = props.scrollTopByTabRef ?? fallbackScrollRef
+  const pageKeyRef = props.lastNodesPageKeyRef ?? fallbackPageKeyRef
+  const panelRef = React.useRef<HTMLDivElement>(null)
+  const nodesPageKey = `${props.nodes.listed.page}:${props.nodes.pageSize}:${props.nodes.searchMode}:${props.nodes.query.trim()}`
+
+  React.useLayoutEffect(() => {
+    if (pageKeyRef.current !== null && pageKeyRef.current !== nodesPageKey) {
+      scrollMapRef.current.nodes = 0
+    }
+    pageKeyRef.current = nodesPageKey
+  }, [nodesPageKey, pageKeyRef, scrollMapRef])
+
+  React.useLayoutEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    el.scrollTop = scrollMapRef.current[tab] ?? 0
+  }, [tab, nodesPageKey, scrollMapRef])
+
   return (
     <>
       <div className={styles.tabs}>
@@ -55,7 +77,14 @@ export function GraphPageContentPane(props: {
           })}
         </button>
       </div>
-      <div className={styles.panel} data-graph-side-scroll>
+      <div
+        ref={panelRef}
+        className={styles.panel}
+        data-graph-side-scroll
+        onScroll={(event) => {
+          scrollMapRef.current[tab] = event.currentTarget.scrollTop
+        }}
+      >
         {tab === 'nodes' && <GraphPageNodesPane {...props.nodes} />}
 
         {tab === 'reextract' && <GraphPageReextractPane {...props.reextract} />}

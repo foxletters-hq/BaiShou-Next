@@ -30,13 +30,17 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
   })
 
   const refresh = useCallback(async () => {
-    const graph = await window.api.graph.getGlobalGraph({
-      maxNodes: viewMaxNodes,
-      monthRange: clampGraphMonthRange(monthRange)
-    })
+    const [graph, pending, similar, nextPendingReextract, nextEstimate] = await Promise.all([
+      window.api.graph.getGlobalGraph({
+        maxNodes: viewMaxNodes,
+        monthRange: clampGraphMonthRange(monthRange)
+      }),
+      window.api.graph.listPending(),
+      window.api.graph.listSimilarPairs().catch(() => [] as GraphSimilarPendingPair[]),
+      window.api.graph.listPendingReextract(),
+      window.api.graph.estimateExtraction().catch(() => null)
+    ])
     const remapped = remapGraphViewReviewForDisplay(graph.nodes || [], graph.edges || [])
-    const pending = await window.api.graph.listPending()
-    const similar = await window.api.graph.listSimilarPairs().catch(() => [])
     const pendingView = remapGraphViewReviewForDisplay(pending.nodes || [], pending.edges || [])
     const visible = omitInFlightGraphDeletes({
       nodes: remapped.nodes,
@@ -48,20 +52,22 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
     })
     setNodes(visible.nodes)
     setEdges(visible.edges)
-    setPendingReextract(await window.api.graph.listPendingReextract())
+    setPendingReextract(nextPendingReextract)
     setPendingNodes(visible.pendingNodes)
     setPendingEdges(visible.pendingEdges)
-    setSimilarPairs(similar)
+    setSimilarPairs(
+      similar.filter(
+        (pair) =>
+          !inFlightDeletedNodeIdsRef.current.has(pair.nodeId) &&
+          !inFlightDeletedNodeIdsRef.current.has(pair.peerId)
+      )
+    )
     setPendingEndpointNodes(
       (pending.endpointNodes || []).filter(
         (node) => !inFlightDeletedNodeIdsRef.current.has(node.id)
       )
     )
-    try {
-      setEstimate(await window.api.graph.estimateExtraction())
-    } catch {
-      setEstimate(null)
-    }
+    setEstimate(nextEstimate)
     setGraphHydrated(true)
     setRevision((n) => n + 1)
   }, [monthRange, viewMaxNodes])
@@ -81,6 +87,7 @@ export function useGraphPageData(monthRange: GraphMonthRange, viewMaxNodes: numb
     setPendingEdges,
     pendingEndpointNodes,
     similarPairs,
+    setSimilarPairs,
     estimate,
     revision,
     refresh,

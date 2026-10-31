@@ -515,4 +515,24 @@ describe('GraphPage chrome', () => {
       }
     }
   })
+
+  it('should preserve unsaved detail edits when selectedNode reference refreshes without content changes', () => {
+    const detailHookSrc = readSrc('useGraphPageDetail.ts')
+    expect(detailHookSrc).toContain('syncedNodeSnapshotRef')
+    expect(detailHookSrc).not.toContain('}, [deps.selectedNode])')
+    expect(detailHookSrc).not.toContain('}, [editName, deps.selectedNode])')
+  })
+
+  it('should keep sidebar scroll position, return from detail, and update inventory in-place on node delete', () => {
+    const detailHookSrc = readSrc('useGraphPageDetail.ts')
+    const inventoryHookSrc = readSrc('useGraphPageInventory.ts')
+    const sideLayoutSrc = readSrc('useGraphPageSideLayout.ts')
+    expect(sideSrc).toContain('scrollTopByTabRef')
+    expect(contentSrc).toContain('scrollMapRef.current[tab] = event.currentTarget.scrollTop')
+    expect(sideLayoutSrc).toContain('closeDetailSide')
+    expect(detailHookSrc).toContain('deps.inventory?.applyLocalNodeDelete')
+    expect(detailHookSrc).toContain('deps.onAfterDeleteNode?.()')
+    expect(inventoryHookSrc).toContain('applyGraphInventoryNodeDelete')
+    expect(inventoryHookSrc).toContain('reloadSilent')
+  })
 })

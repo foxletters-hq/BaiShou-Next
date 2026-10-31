@@ -38,6 +38,10 @@ export function useGraphPageSearch(deps: SearchDeps) {
     setSearchAttempted(false)
   }
 
+  const removeNodeFromHits = (nodeId: string) => {
+    setSearchHits((prev) => prev.filter((item) => item?.id !== nodeId))
+  }
+
   useEffect(() => {
     if (!searching && !searchAttempted) return
     const onPointerDown = (event: MouseEvent) => {
@@ -122,6 +126,7 @@ export function useGraphPageSearch(deps: SearchDeps) {
     searchGroupRef,
     dismissSearchPanel,
     clearSearchHits,
+    removeNodeFromHits,
     applySearchHits,
     onSearch,
     changeSearchMode
