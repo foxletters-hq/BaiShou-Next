@@ -417,13 +417,14 @@ const styles = StyleSheet.create({
   effortRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: sharedTokens.spacing.xsPlus,
+    flexWrap: 'nowrap',
+    gap: sharedTokens.spacing.xs,
     paddingBottom: sharedTokens.spacing.xs
   },
   effortChip: {
-    paddingHorizontal: sharedTokens.spacing.smPlus,
-    height: 26,
+    flex: 1,
+    paddingHorizontal: sharedTokens.spacing.xs,
+    height: 28,
     borderRadius: sharedTokens.radius.xsPlus,
     borderWidth: 1,
     alignItems: 'center',
@@ -460,7 +461,8 @@ const styles = StyleSheet.create({
   },
   modelRow: {
     height: 32,
-    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingLeft: sharedTokens.spacing.md,
+    paddingRight: sharedTokens.spacing.sm,
     borderRadius: sharedTokens.radius.xsPlus,
     flexDirection: 'row',
     alignItems: 'center',

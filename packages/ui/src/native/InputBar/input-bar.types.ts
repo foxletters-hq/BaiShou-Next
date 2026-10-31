@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { PromptShortcut, ReasoningEffortSetting } from '@baishou/shared'
 import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
 
@@ -63,10 +64,19 @@ export interface InputBarProps {
   }
   /** 是否存在聊天背景图（为 true 时底栏外层透明、输入卡片使用悬浮毛玻璃质感，避免纯白遮挡） */
   hasChatBackground?: boolean
+  /** 渲染在输入栏外壳上方的附加内容（如待发排队列表、编辑排队标签） */
+  topSlot?: ReactNode
+}
+
+export interface InputBarDraft {
+  text: string
+  skillRefs?: Array<{ command: string; content: string }>
 }
 
 export interface InputBarRef {
   insertText: (text: string) => void
+  setText: (text: string) => void
+  restoreDraft: (draft: InputBarDraft) => void
   insertShortcutContent: (content: string) => void
   applyShortcut: (shortcut: PromptShortcut) => void
   focus: () => void

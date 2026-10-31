@@ -19,330 +19,343 @@ import type { InputBarProps, InputBarRef } from './input-bar.types'
 export type { InputBarProps, InputBarRef, InputBarModelSelector } from './input-bar.types'
 export { ModelReasoningControl } from './ModelReasoningControl'
 
-export const InputBar = forwardRef<InputBarRef, InputBarProps>((props, ref) => {
-  const bar = useNativeInputBar(props, ref)
-  const { colors, t } = bar
-  const hasChatBackground = Boolean(props.hasChatBackground)
-  const [previewSkill, setPreviewSkill] = useState<{ command: string; content: string } | null>(
-    null
-  )
+export const InputBar = React.memo(
+  forwardRef<InputBarRef, InputBarProps>((props, ref) => {
+    const bar = useNativeInputBar(props, ref)
+    const { colors, t } = bar
+    const hasChatBackground = Boolean(props.hasChatBackground)
+    const [previewSkill, setPreviewSkill] = useState<{ command: string; content: string } | null>(
+      null
+    )
 
-  const toolbarAnimatedStyle = useAnimatedStyle(() => {
-    const progress = bar.toolbarProgress.value
-    return {
-      opacity: progress,
-      maxHeight: progress * TOOLBAR_MAX_HEIGHT,
-      overflow: 'hidden' as const,
-      display: progress <= 0.001 ? ('none' as const) : ('flex' as const)
-    }
-  })
+    const toolbarAnimatedStyle = useAnimatedStyle(() => {
+      const progress = bar.toolbarProgress.value
+      return {
+        opacity: progress,
+        maxHeight: progress * TOOLBAR_MAX_HEIGHT,
+        overflow: 'hidden' as const,
+        display: progress <= 0.001 ? ('none' as const) : ('flex' as const)
+      }
+    })
 
-  const inputFrameAnimatedStyle = useAnimatedStyle(() => ({
-    height: bar.inputHeightSv.value,
-    overflow: 'hidden' as const
-  }))
+    const inputFrameAnimatedStyle = useAnimatedStyle(() => ({
+      height: bar.inputHeightSv.value,
+      overflow: 'hidden' as const
+    }))
 
-  return (
-    <View
-      onLayout={(event) => {
-        const next = Math.ceil(event.nativeEvent.layout.height)
-        if (next > 0) bar.onHeightChange?.(next)
-      }}
-      style={styles.container}
-    >
+    return (
       <View
-        style={[
-          styles.composerBlock,
-          bar.shortcutPanelHeight > 0 ? { paddingTop: bar.shortcutPanelHeight } : null
-        ]}
+        onLayout={(event) => {
+          const next = Math.ceil(event.nativeEvent.layout.height)
+          if (next > 0) bar.onHeightChange?.(next)
+        }}
+        style={styles.container}
       >
-        <InlinePromptShortcutList
-          visible={bar.shortcutHandlers.shortcutModeActive}
-          shortcuts={bar.shortcutHandlers.filteredShortcuts}
-          selectedIndex={bar.shortcutHandlers.selectedIndex}
-          onSelect={bar.applyComposerShortcut}
-          onHeightChange={bar.setShortcutPanelHeight}
-          hasChatBackground={hasChatBackground}
-        />
-
         <View
           style={[
-            styles.composerChrome,
-            {
-              borderTopColor: hasChatBackground ? 'transparent' : colors.borderSubtle,
-              borderTopWidth: hasChatBackground ? 0 : StyleSheet.hairlineWidth,
-              backgroundColor: hasChatBackground ? 'transparent' : colors.bgSurface
-            }
+            styles.composerBlock,
+            bar.shortcutPanelHeight > 0 ? { paddingTop: bar.shortcutPanelHeight } : null
           ]}
         >
-          {bar.attachments.length > 0 && (
-            <ScrollView
-              horizontal
-              style={styles.attachmentList}
-              showsHorizontalScrollIndicator={false}
-            >
-              {bar.attachments.map((att) => (
-                <View
-                  key={att.id}
-                  style={[
-                    styles.attachmentChip,
-                    {
-                      borderColor: colors.borderMuted,
-                      backgroundColor: colors.bgSurfaceHigh
-                    }
-                  ]}
-                >
-                  {att.isImage ? (
-                    <Image source={{ uri: att.filePath }} style={styles.attImage} />
-                  ) : (
-                    <View style={styles.attDoc}>
-                      <Text style={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
-                      <Text
-                        style={[styles.attDocName, { color: colors.textSecondary }]}
-                        numberOfLines={1}
-                      >
-                        {att.fileName}
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
-                    onPress={() =>
-                      bar.setAttachments((prev) => prev.filter((p) => p.id !== att.id))
-                    }
-                  >
-                    <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          )}
+          <InlinePromptShortcutList
+            visible={bar.shortcutHandlers.shortcutModeActive}
+            shortcuts={bar.shortcutHandlers.filteredShortcuts}
+            selectedIndex={bar.shortcutHandlers.selectedIndex}
+            onSelect={bar.applyComposerShortcut}
+            onHeightChange={bar.setShortcutPanelHeight}
+            hasChatBackground={hasChatBackground}
+          />
 
           <View
             style={[
-              styles.composerShell,
-              hasChatBackground
-                ? {
-                    backgroundColor: bar.isDark
-                      ? 'rgba(32, 33, 37, 0.85)'
-                      : 'rgba(255, 255, 255, 0.88)',
-                    borderColor: bar.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)'
-                  }
-                : {
-                    backgroundColor: bar.isDark ? colors.bgSurfaceHigh : colors.bgSurface,
-                    borderColor: colors.borderStrong
-                  }
+              styles.composerChrome,
+              {
+                borderTopColor: hasChatBackground ? 'transparent' : colors.borderSubtle,
+                borderTopWidth: hasChatBackground ? 0 : StyleSheet.hairlineWidth,
+                backgroundColor: hasChatBackground ? 'transparent' : colors.bgSurface
+              }
             ]}
           >
-            <Animated.View
-              style={toolbarAnimatedStyle}
-              pointerEvents={bar.showToolbar ? 'auto' : 'none'}
-            >
-              <View
-                style={[
-                  styles.toolbarAttached,
-                  {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: hasChatBackground
-                      ? bar.isDark
-                        ? 'rgba(255, 255, 255, 0.08)'
-                        : 'rgba(0, 0, 0, 0.06)'
-                      : colors.borderMuted
-                  }
-                ]}
+            {props.topSlot}
+            {bar.attachments.length > 0 && (
+              <ScrollView
+                horizontal
+                style={styles.attachmentList}
+                showsHorizontalScrollIndicator={false}
               >
-                <InputBarToolbar
-                  colors={colors}
-                  isDark={bar.isDark}
-                  hasChatBackground={hasChatBackground}
-                  onUploadAttachment={() => void bar.handleUploadAttachment()}
-                  onShortcutPress={bar.handleShortcutPress}
-                  onRecall={bar.onRecall}
-                  onOpenNotebookMount={bar.onOpenNotebookMount}
-                  searchMode={bar.searchMode}
-                  onToggleSearchMode={bar.onToggleSearchMode}
-                  ttsMode={bar.ttsMode}
-                  onToggleTtsMode={bar.onToggleTtsMode}
-                  onOpenTools={bar.onOpenTools}
-                />
-              </View>
-            </Animated.View>
-
-            <View pointerEvents={bar.composerEnabled ? 'auto' : 'none'} style={styles.inputCard}>
-              {bar.skillRefs.length > 0 ? (
-                <View style={styles.skillCiteRow}>
-                  {bar.skillRefs.map((skill) => (
-                    <NativeSkillCiteChip
-                      key={skill.command}
-                      command={skill.command}
-                      onPress={() => setPreviewSkill(skill)}
-                      onRemove={() => bar.removeSkillRef(skill.command)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              <View
-                style={[
-                  styles.topRow,
-                  bar.inputHeight <= INPUT_MIN_HEIGHT + 1 ? styles.topRowSingleLine : null
-                ]}
-              >
-                <Animated.View style={[styles.inputWrapper, inputFrameAnimatedStyle]}>
-                  <Input
-                    ref={bar.inputRef}
-                    bare
-                    keyboardAware={false}
-                    className="border-0 bg-transparent"
+                {bar.attachments.map((att) => (
+                  <View
+                    key={att.id}
                     style={[
-                      styles.input,
+                      styles.attachmentChip,
                       {
-                        color: colors.textPrimary,
-                        height: '100%'
+                        borderColor: colors.borderMuted,
+                        backgroundColor: colors.bgSurfaceHigh
                       }
                     ]}
-                    value={bar.text}
-                    onChangeText={bar.handleChangeText}
-                    onKeyPress={bar.handleKeyPress}
-                    onContentSizeChange={bar.handleContentSizeChange}
-                    placeholder={t('agent.chat.input_hint', '输入消息...')}
-                    multiline
-                    scrollEnabled={bar.inputScrollEnabled}
-                    nestedScrollEnabled
-                    textAlignVertical={
-                      !bar.isExpanded && bar.inputHeight <= INPUT_MIN_HEIGHT + 1 ? 'center' : 'top'
-                    }
-                    editable={bar.composerEnabled}
-                    onFocus={bar.composerEnabled ? bar.onInputFocus : undefined}
-                  />
-                </Animated.View>
-                <TouchableOpacity
-                  style={[
-                    styles.expandToggle,
-                    bar.inputHeight > INPUT_MIN_HEIGHT + 1 ? styles.expandToggleMultiline : null
-                  ]}
-                  onPress={bar.toggleExpand}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  accessibilityLabel={
-                    bar.isExpanded
-                      ? t('input.collapse', '折叠输入框')
-                      : t('input.expand', '展开输入框')
-                  }
-                >
-                  <LucideIcon
-                    icon={bar.isExpanded ? Minimize2 : Maximize2}
-                    size={16}
-                    color={colors.textTertiary}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.bottomRow}>
-                <TouchableOpacity
-                  style={styles.toolbarToggle}
-                  onPress={bar.toggleToolbar}
-                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                >
-                  <LucideIcon
-                    icon={bar.showToolbar ? LayoutGrid : Menu}
-                    size={20}
-                    color={colors.textTertiary}
-                  />
-                </TouchableOpacity>
-
-                <View style={styles.bottomActions}>
-                  {props.modelSelector ? (
-                    <ModelReasoningControl
-                      currentProviderId={props.modelSelector.currentProviderId}
-                      currentModelId={props.modelSelector.currentModelId}
-                      currentProviderType={props.modelSelector.currentProviderType}
-                      displayModelName={props.modelSelector.displayModelName}
-                      providers={props.modelSelector.providers}
-                      onSelectModel={props.modelSelector.onSelectModel}
-                      onManageProviders={props.modelSelector.onManageProviders}
-                      reasoningEffort={props.modelSelector.reasoningEffort || props.reasoningEffort}
-                      hasChatBackground={hasChatBackground}
-                    />
-                  ) : props.reasoningEffort && props.reasoningEffort.options.length > 0 ? (
-                    <ReasoningEffortControl
-                      value={props.reasoningEffort.value}
-                      options={props.reasoningEffort.options}
-                      onChange={props.reasoningEffort.onChange}
-                    />
-                  ) : null}
-                  {resolveInputBarPrimaryAction({
-                    isLoading: bar.isLoading,
-                    canSend: Boolean(bar.text.trim() || bar.attachments.length > 0),
-                    allowSendWhileLoading: bar.allowSendWhileLoading,
-                    hasStopHandler: Boolean(bar.onStop)
-                  }) === 'stop' ? (
+                  >
+                    {att.isImage ? (
+                      <Image source={{ uri: att.filePath }} style={styles.attImage} />
+                    ) : (
+                      <View style={styles.attDoc}>
+                        <Text style={styles.attDocIcon}>
+                          {att.isPdf || att.isText ? '📄' : '📁'}
+                        </Text>
+                        <Text
+                          style={[styles.attDocName, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {att.fileName}
+                        </Text>
+                      </View>
+                    )}
                     <TouchableOpacity
-                      style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-                      onPress={bar.onStop}
-                      accessibilityLabel={t('common.stop', '停止')}
+                      style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
+                      onPress={() =>
+                        bar.setAttachments((prev) => prev.filter((p) => p.id !== att.id))
+                      }
                     >
-                      <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                      <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>
+                        ×
+                      </Text>
                     </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <View
+              style={[
+                styles.composerShell,
+                hasChatBackground
+                  ? {
+                      backgroundColor: bar.isDark
+                        ? 'rgba(32, 33, 37, 0.85)'
+                        : 'rgba(255, 255, 255, 0.88)',
+                      borderColor: bar.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)'
+                    }
+                  : {
+                      backgroundColor: bar.isDark ? colors.bgSurfaceHigh : colors.bgSurface,
+                      borderColor: colors.borderStrong
+                    }
+              ]}
+            >
+              <Animated.View
+                style={toolbarAnimatedStyle}
+                pointerEvents={bar.showToolbar ? 'auto' : 'none'}
+              >
+                <View
+                  style={[
+                    styles.toolbarAttached,
+                    {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: hasChatBackground
+                        ? bar.isDark
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(0, 0, 0, 0.06)'
+                        : colors.borderMuted
+                    }
+                  ]}
+                >
+                  <InputBarToolbar
+                    colors={colors}
+                    isDark={bar.isDark}
+                    hasChatBackground={hasChatBackground}
+                    onUploadAttachment={() => void bar.handleUploadAttachment()}
+                    onShortcutPress={bar.handleShortcutPress}
+                    onRecall={bar.onRecall}
+                    onOpenNotebookMount={bar.onOpenNotebookMount}
+                    searchMode={bar.searchMode}
+                    onToggleSearchMode={bar.onToggleSearchMode}
+                    ttsMode={bar.ttsMode}
+                    onToggleTtsMode={bar.onToggleTtsMode}
+                    onOpenTools={bar.onOpenTools}
+                  />
+                </View>
+              </Animated.View>
+
+              <View pointerEvents={bar.composerEnabled ? 'auto' : 'none'} style={styles.inputCard}>
+                {bar.skillRefs.length > 0 ? (
+                  <View style={styles.skillCiteRow}>
+                    {bar.skillRefs.map((skill) => (
+                      <NativeSkillCiteChip
+                        key={skill.command}
+                        command={skill.command}
+                        onPress={() => setPreviewSkill(skill)}
+                        onRemove={() => bar.removeSkillRef(skill.command)}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                <View
+                  style={[
+                    styles.topRow,
+                    bar.inputHeight <= INPUT_MIN_HEIGHT + 1 ? styles.topRowSingleLine : null
+                  ]}
+                >
+                  <Animated.View style={[styles.inputWrapper, inputFrameAnimatedStyle]}>
+                    <Input
+                      ref={bar.inputRef}
+                      bare
+                      keyboardAware={false}
+                      className="border-0 bg-transparent"
                       style={[
-                        styles.sendBtn,
+                        styles.input,
                         {
-                          backgroundColor: hasChatBackground
-                            ? bar.isDark
-                              ? 'rgba(255, 255, 255, 0.12)'
-                              : 'rgba(255, 255, 255, 0.75)'
-                            : colors.bgSurface,
-                          borderWidth: 1,
-                          borderColor: hasChatBackground
-                            ? bar.isDark
-                              ? 'rgba(255, 255, 255, 0.12)'
-                              : 'rgba(0, 0, 0, 0.08)'
-                            : !bar.text.trim() &&
-                                bar.attachments.length === 0 &&
-                                bar.skillRefs.length === 0
-                              ? colors.borderSubtle
-                              : colors.borderControl
-                        },
-                        bar.isSending && {
-                          opacity: 0.72
+                          color: colors.textPrimary,
+                          height: '100%'
                         }
                       ]}
-                      onPress={() => void bar.handleSend()}
-                      disabled={
-                        bar.isSending ||
-                        (!bar.text.trim() &&
-                          bar.attachments.length === 0 &&
-                          bar.skillRefs.length === 0)
+                      value={bar.text}
+                      onChangeText={bar.handleChangeText}
+                      onKeyPress={bar.handleKeyPress}
+                      onContentSizeChange={bar.handleContentSizeChange}
+                      placeholder={t('agent.chat.input_hint', '输入消息...')}
+                      multiline
+                      scrollEnabled={bar.inputScrollEnabled}
+                      nestedScrollEnabled
+                      textAlignVertical={
+                        !bar.isExpanded && bar.inputHeight <= INPUT_MIN_HEIGHT + 1
+                          ? 'center'
+                          : 'top'
                       }
-                      accessibilityLabel={t('common.send', '发送')}
-                    >
-                      <LucideIcon
-                        icon={Send}
-                        size={18}
-                        color={
-                          !bar.text.trim() &&
-                          bar.attachments.length === 0 &&
-                          bar.skillRefs.length === 0
-                            ? colors.textTertiary
-                            : colors.textPrimary
+                      editable={bar.composerEnabled}
+                      onFocus={bar.composerEnabled ? bar.onInputFocus : undefined}
+                    />
+                  </Animated.View>
+                  <TouchableOpacity
+                    style={[
+                      styles.expandToggle,
+                      bar.inputHeight > INPUT_MIN_HEIGHT + 1 ? styles.expandToggleMultiline : null
+                    ]}
+                    onPress={bar.toggleExpand}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    accessibilityLabel={
+                      bar.isExpanded
+                        ? t('input.collapse', '折叠输入框')
+                        : t('input.expand', '展开输入框')
+                    }
+                  >
+                    <LucideIcon
+                      icon={bar.isExpanded ? Minimize2 : Maximize2}
+                      size={16}
+                      color={colors.textTertiary}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    style={styles.toolbarToggle}
+                    onPress={bar.toggleToolbar}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <LucideIcon
+                      icon={bar.showToolbar ? LayoutGrid : Menu}
+                      size={20}
+                      color={colors.textTertiary}
+                    />
+                  </TouchableOpacity>
+
+                  <View style={styles.bottomActions}>
+                    {props.modelSelector ? (
+                      <ModelReasoningControl
+                        currentProviderId={props.modelSelector.currentProviderId}
+                        currentModelId={props.modelSelector.currentModelId}
+                        currentProviderType={props.modelSelector.currentProviderType}
+                        displayModelName={props.modelSelector.displayModelName}
+                        providers={props.modelSelector.providers}
+                        onSelectModel={props.modelSelector.onSelectModel}
+                        onManageProviders={props.modelSelector.onManageProviders}
+                        reasoningEffort={
+                          props.modelSelector.reasoningEffort || props.reasoningEffort
                         }
+                        hasChatBackground={hasChatBackground}
                       />
-                    </TouchableOpacity>
-                  )}
+                    ) : props.reasoningEffort && props.reasoningEffort.options.length > 0 ? (
+                      <ReasoningEffortControl
+                        value={props.reasoningEffort.value}
+                        options={props.reasoningEffort.options}
+                        onChange={props.reasoningEffort.onChange}
+                      />
+                    ) : null}
+                    {resolveInputBarPrimaryAction({
+                      isLoading: bar.isLoading,
+                      canSend: Boolean(bar.text.trim() || bar.attachments.length > 0),
+                      allowSendWhileLoading: bar.allowSendWhileLoading,
+                      hasStopHandler: Boolean(bar.onStop)
+                    }) === 'stop' ? (
+                      <TouchableOpacity
+                        style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                        onPress={bar.onStop}
+                        accessibilityLabel={t('common.stop', '停止')}
+                      >
+                        <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.sendBtn,
+                          {
+                            backgroundColor: hasChatBackground
+                              ? bar.isDark
+                                ? 'rgba(255, 255, 255, 0.12)'
+                                : 'rgba(255, 255, 255, 0.75)'
+                              : colors.bgSurface,
+                            borderWidth: 1,
+                            borderColor: hasChatBackground
+                              ? bar.isDark
+                                ? 'rgba(255, 255, 255, 0.12)'
+                                : 'rgba(0, 0, 0, 0.08)'
+                              : !bar.text.trim() &&
+                                  bar.attachments.length === 0 &&
+                                  bar.skillRefs.length === 0
+                                ? colors.borderSubtle
+                                : colors.borderControl
+                          },
+                          bar.isSending && {
+                            opacity: 0.72
+                          }
+                        ]}
+                        onPress={() => void bar.handleSend()}
+                        disabled={
+                          bar.isSending ||
+                          (!bar.text.trim() &&
+                            bar.attachments.length === 0 &&
+                            bar.skillRefs.length === 0)
+                        }
+                        accessibilityLabel={t('common.send', '发送')}
+                      >
+                        <LucideIcon
+                          icon={Send}
+                          size={18}
+                          color={
+                            !bar.text.trim() &&
+                            bar.attachments.length === 0 &&
+                            bar.skillRefs.length === 0
+                              ? colors.textTertiary
+                              : colors.textPrimary
+                          }
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>
           </View>
         </View>
+        {previewSkill ? (
+          <SkillCitePreviewDialog
+            visible
+            command={previewSkill.command}
+            content={previewSkill.content}
+            onClose={() => setPreviewSkill(null)}
+          />
+        ) : null}
       </View>
-      <SkillCitePreviewDialog
-        visible={Boolean(previewSkill)}
-        command={previewSkill?.command ?? ''}
-        content={previewSkill?.content ?? ''}
-        onClose={() => setPreviewSkill(null)}
-      />
-    </View>
-  )
-})
+    )
+  })
+)
 
 InputBar.displayName = 'InputBar'

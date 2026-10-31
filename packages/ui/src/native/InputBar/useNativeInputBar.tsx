@@ -7,6 +7,7 @@ import React, {
   useState
 } from 'react'
 import {
+  Keyboard,
   Platform,
   useWindowDimensions,
   type NativeSyntheticEvent,
@@ -15,7 +16,12 @@ import {
 } from 'react-native'
 import { cancelAnimation, Easing, useSharedValue, withTiming } from 'react-native-reanimated'
 import type { MockChatAttachment, PromptShortcut } from '@baishou/shared'
-import { getDefaultShortcutLabelsFromT, localizePromptShortcuts } from '@baishou/shared'
+import {
+  CREATE_SKILL_SLASH_COMMAND,
+  getDefaultShortcutLabelsFromT,
+  getShortcutCommand,
+  localizePromptShortcuts
+} from '@baishou/shared'
 import type { ComposerSendSkillRef } from '../../shared/composer-draft'
 import { buildNativeComposerSend, isSkillShortcut } from './composer-send-meta.util'
 import { useTranslation } from 'react-i18next'
@@ -113,6 +119,30 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
   }, [shortcuts, t])
   const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
+
+  useEffect(() => {
+    if (!localizedShortcuts?.length) return
+    const contentByCommand = new Map<string, string>()
+    for (const item of localizedShortcuts) {
+      const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
+      if (cmd) contentByCommand.set(cmd, item.content ?? '')
+    }
+    setSkillRefs((prev) => {
+      if (!prev.length) return prev
+      let changed = false
+      const next = prev.map((item) => {
+        const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
+        if (!cmd || cmd === CREATE_SKILL_SLASH_COMMAND) return item
+        const latestContent = contentByCommand.get(cmd)
+        if (typeof latestContent === 'string' && latestContent !== item.content) {
+          changed = true
+          return { ...item, content: latestContent }
+        }
+        return item
+      })
+      return changed ? next : prev
+    })
+  }, [localizedShortcuts])
 
   /**
    * 与面板同帧预留高度：不能依赖子组件 layout 回调，否则首帧面板会先叠在输入区上再跳上去。
@@ -290,6 +320,27 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
       setText((prev) => (prev ? `${prev}\n${newText}` : newText))
       setTimeout(() => inputRef.current?.focus?.(), 0)
     },
+    setText: (nextText: string) => {
+      setText(nextText)
+    },
+    restoreDraft: (draft) => {
+      const nextText = typeof draft.text === 'string' ? draft.text : ''
+      setText(nextText)
+      if (draft.skillRefs) {
+        setSkillRefs(
+          draft.skillRefs
+            .map((item) => ({
+              command: String(item.command ?? '')
+                .trim()
+                .replace(/^\//, ''),
+              content: typeof item.content === 'string' ? item.content : ''
+            }))
+            .filter((item) => Boolean(item.command))
+        )
+      } else if (!nextText) {
+        setSkillRefs([])
+      }
+    },
     insertShortcutContent: (content: string) => {
       shortcutHandlers.insertShortcutContent(content)
       setTimeout(() => inputRef.current?.focus?.(), 0)
@@ -318,7 +369,19 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
 
     const pendingText = text
     const pendingAttachments = attachments.length > 0 ? [...attachments] : []
-    const pendingSkills = [...skillRefs]
+    const contentByCommand = new Map<string, string>()
+    for (const item of localizedShortcuts ?? []) {
+      const cmd = getShortcutCommand(item).trim().replace(/^\/+/, '').toLowerCase()
+      if (cmd) contentByCommand.set(cmd, item.content ?? '')
+    }
+    const pendingSkills = skillRefs.map((item) => {
+      const cmd = item.command.trim().replace(/^\/+/, '').toLowerCase()
+      const latestContent =
+        cmd && cmd !== CREATE_SKILL_SLASH_COMMAND ? contentByCommand.get(cmd) : undefined
+      return typeof latestContent === 'string' && latestContent !== item.content
+        ? { ...item, content: latestContent }
+        : item
+    })
     const composed = buildNativeComposerSend({
       text: pendingText,
       skillRefs: pendingSkills,
@@ -332,6 +395,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     contentHeightRef.current = INPUT_MIN_HEIGHT
     setInputScrollEnabled(false)
     animateInputHeight(INPUT_MIN_HEIGHT, true)
+    Keyboard.dismiss()
 
     setIsSending(true)
     try {
@@ -361,6 +425,7 @@ export function useNativeInputBar(props: InputBarProps, ref: React.ForwardedRef<
     composerBlocked,
     isLoading,
     isSending,
+    localizedShortcuts,
     onComposerBlocked,
     onSend,
     shortcutHandlers.shortcutModeActive,

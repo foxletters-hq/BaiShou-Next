@@ -1,22 +1,27 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Copy, RefreshCw } from 'lucide-react-native'
 import type { McpServerConfig } from '@baishou/shared'
-import { isMcpAuthEnabled } from '@baishou/shared'
+import { appendMcpVaultQuery, isMcpAuthEnabled } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
+import { Select } from '../Select/Select'
 import { Switch } from '../Switch'
 import { settingsHubListStyles as hubStyles } from '../settings/settings-hub.styles'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { mobileTypography, sharedTokens } from '../../theme/tokens'
+import { mcpSettingsCardStyles as styles } from './mcp-settings-card.styles'
 
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
   mcpEndpointUrl: string
   mcpSseEndpointUrl?: string
+  workspaces?: Array<{ id: string; name: string }>
+  selectedWorkspaceId?: string
+  onSelectWorkspace?: (workspaceId: string) => void
   applying?: boolean
   isRunning?: boolean
   activePort?: number
@@ -31,6 +36,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   config,
   mcpEndpointUrl,
   mcpSseEndpointUrl,
+  workspaces,
+  selectedWorkspaceId,
+  onSelectWorkspace,
   applying = false,
   isRunning = false,
   activePort,
@@ -86,6 +94,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   }
 
   const displayPort = activePort ?? config.mcpPort
+  const effectiveWorkspaceId =
+    workspaces && workspaces.length > 0 ? selectedWorkspaceId || workspaces[0].id : undefined
+  const localUrl = appendMcpVaultQuery(`http://127.0.0.1:${displayPort}/mcp`, effectiveWorkspaceId)
   const subtitle = localEnabled
     ? localApplying
       ? t('settings.mcp_starting', '正在启停服务...')
@@ -130,6 +141,44 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           />
         </View>
 
+        {workspaces && workspaces.length > 0 ? (
+          <View
+            style={[
+              styles.row,
+              styles.tokenBody,
+              styles.rowBorder,
+              { borderTopColor: colors.borderMuted }
+            ]}
+          >
+            <View
+              style={{
+                width: '100%',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: sharedTokens.spacing.sm
+              }}
+            >
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('settings.mcp_workspace', '目标小窝')}
+              </Text>
+              <Select
+                variant="settings"
+                compact
+                options={workspaces.map((w) => ({ value: w.id, label: w.name }))}
+                value={effectiveWorkspaceId}
+                onValueChange={onSelectWorkspace}
+              />
+            </View>
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>
+              {t(
+                'settings.mcp_workspace_suffix_hint',
+                '连接地址已自动拼接 ?vault=<小窝ID> 后缀，外部客户端必须保留该后缀才能绑定到所选小窝。'
+              )}
+            </Text>
+          </View>
+        ) : null}
+
         <View
           style={[
             styles.row,
@@ -161,6 +210,21 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
               {t('settings.mcp_copy_url', '复制 MCP 地址')}
             </Text>
           </Pressable>
+          {mcpEndpointUrl !== localUrl ? (
+            <>
+              <Text
+                style={[
+                  styles.label,
+                  { color: colors.textSecondary, marginTop: sharedTokens.spacing.smPlus }
+                ]}
+              >
+                {t('settings.mcp_url_local', '本机访问')}
+              </Text>
+              <Text style={[styles.mono, { color: colors.primary }]} selectable>
+                {localUrl}
+              </Text>
+            </>
+          ) : null}
           {mcpSseEndpointUrl ? (
             <>
               <Text
@@ -263,37 +327,20 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     </View>
   )
 
+  const codeBlockBg = isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)'
   const mcpHelpContent = (
     <View style={{ gap: sharedTokens.spacing.mdTight }}>
-      <Text
-        style={{
-          fontSize: mobileTypography.secondary.fontSize,
-          color: colors.textPrimary,
-          lineHeight: 20
-        }}
-      >
+      <Text style={[styles.helpIntro, { color: colors.textPrimary }]}>
         {t(
           'settings.mcp_help_intro',
           '启用 MCP 后，白守会在本机启动 MCP 服务，供 Cursor 等外部 AI 客户端调用日记、记忆等工具。'
         )}
       </Text>
       <View style={{ gap: sharedTokens.spacing.xs }}>
-        <Text
-          style={{
-            fontSize: mobileTypography.secondary.fontSize,
-            fontWeight: '600',
-            color: colors.textPrimary
-          }}
-        >
+        <Text style={[styles.helpHeading, { color: colors.textPrimary }]}>
           {t('settings.mcp_help_cursor_title', 'Cursor')}
         </Text>
-        <Text
-          style={{
-            fontSize: mobileTypography.secondary.fontSize,
-            color: colors.textSecondary,
-            lineHeight: 18
-          }}
-        >
+        <Text style={[styles.sub, { color: colors.textSecondary }]}>
           1.{' '}
           {t(
             'settings.mcp_help_cursor_1',
@@ -306,66 +353,35 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             '将下方配置粘贴到 mcpServers 中（推荐 /mcp；若客户端仅支持旧版 SSE，改用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
           )}
         </Text>
-        <Text
-          style={{
-            fontSize: mobileTypography.caption.fontSize,
-            fontWeight: '600',
-            color: colors.textSecondary,
-            marginTop: sharedTokens.spacing.xsPlus
-          }}
-        >
+        <Text style={[styles.helpSubTitle, { color: colors.textSecondary }]}>
           {t('settings.mcp_help_streamable_title', '推荐：Streamable HTTP（/mcp）')}
         </Text>
         <Text
-          style={{
-            fontSize: mobileTypography.caption.fontSize,
-            fontFamily: 'monospace',
-            backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
-            padding: sharedTokens.spacing.sm,
-            borderRadius: sharedTokens.radius.xsPlus,
-            color: colors.primary,
-            lineHeight: 15
-          }}
+          style={[styles.helpCodeBlock, { backgroundColor: codeBlockBg, color: colors.primary }]}
         >
           {buildMcpClientJsonExample(mcpEndpointUrl, authTokenForUi, 'streamableHttp')}
         </Text>
         {mcpSseEndpointUrl ? (
           <>
-            <Text
-              style={{
-                fontSize: mobileTypography.caption.fontSize,
-                fontWeight: '600',
-                color: colors.textSecondary,
-                marginTop: sharedTokens.spacing.xsPlus
-              }}
-            >
+            <Text style={[styles.helpSubTitle, { color: colors.textSecondary }]}>
               {t('settings.mcp_help_sse_title', '兼容：SSE（/sse）')}
             </Text>
             <Text
-              style={{
-                fontSize: mobileTypography.caption.fontSize,
-                fontFamily: 'monospace',
-                backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
-                padding: sharedTokens.spacing.sm,
-                borderRadius: sharedTokens.radius.xsPlus,
-                color: colors.primary,
-                lineHeight: 15,
-                marginTop: sharedTokens.spacing.xs
-              }}
+              style={[
+                styles.helpCodeBlock,
+                {
+                  backgroundColor: codeBlockBg,
+                  color: colors.primary,
+                  marginTop: sharedTokens.spacing.xs
+                }
+              ]}
             >
               {buildMcpClientJsonExample(mcpSseEndpointUrl, effectiveToken)}
             </Text>
           </>
         ) : null}
       </View>
-      <Text
-        style={{
-          fontSize: mobileTypography.caption.fontSize,
-          color: colors.textTertiary,
-          fontStyle: 'italic',
-          marginTop: sharedTokens.spacing.xs
-        }}
-      >
+      <Text style={[styles.helpNote, { color: colors.textTertiary }]}>
         {authEnabled
           ? t(
               'settings.mcp_help_note',
@@ -420,94 +436,3 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: sharedTokens.radius.md,
-    overflow: 'hidden'
-  },
-  header: {
-    paddingHorizontal: sharedTokens.spacing.mdSnug,
-    paddingTop: sharedTokens.spacing.mdTight,
-    paddingBottom: sharedTokens.spacing.sm
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: sharedTokens.spacing.xsPlus
-  },
-  block: {
-    gap: 0,
-    paddingHorizontal: sharedTokens.spacing.mdSnug,
-    paddingBottom: sharedTokens.spacing.xs
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: sharedTokens.spacing.smPlus,
-    gap: sharedTokens.spacing.sm
-  },
-  rowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth
-  },
-  tokenBody: { flexDirection: 'column', alignItems: 'flex-start' },
-  label: {
-    fontSize: mobileTypography.secondary.fontSize
-  },
-  sub: {
-    fontSize: mobileTypography.secondary.fontSize,
-    lineHeight: 18
-  },
-  portRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: sharedTokens.spacing.smPlus,
-    gap: sharedTokens.spacing.mdTight
-  },
-  portInput: {
-    width: 100,
-    fontSize: mobileTypography.secondary.fontSize,
-    textAlign: 'center'
-  },
-  mono: {
-    fontSize: mobileTypography.secondary.fontSize,
-    fontFamily: 'monospace',
-    marginTop: sharedTokens.spacing.xs
-  },
-  copyBtn: {
-    marginTop: sharedTokens.spacing.sm,
-    paddingHorizontal: sharedTokens.spacing.mdTight,
-    paddingVertical: sharedTokens.spacing.sm,
-    borderRadius: sharedTokens.radius.sm
-  },
-  tokenActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: sharedTokens.spacing.sm,
-    marginTop: sharedTokens.spacing.sm
-  },
-  iconBtn: {
-    padding: sharedTokens.spacing.sm,
-    borderRadius: sharedTokens.radius.sm
-  },
-  panel: {
-    position: 'relative'
-  },
-  panelDimmed: {
-    opacity: 0.45
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: sharedTokens.spacing.sm,
-    zIndex: 1
-  },
-  loadingText: {
-    fontSize: mobileTypography.secondary.fontSize,
-    fontWeight: '500'
-  }
-})

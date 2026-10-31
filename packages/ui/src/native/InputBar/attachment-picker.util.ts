@@ -1,6 +1,11 @@
 import * as DocumentPicker from 'expo-document-picker'
 import * as ImagePicker from 'expo-image-picker'
-import type { MockChatAttachment } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  isConvertiblePromptDocument,
+  PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES,
+  type MockChatAttachment
+} from '@baishou/shared'
 
 function newAttachmentId(): string {
   return Math.random().toString(36).substring(7)
@@ -23,13 +28,16 @@ function attachmentFromDocumentAsset(
   asset: DocumentPicker.DocumentPickerAsset
 ): MockChatAttachment | null {
   const fileName = asset.name || `file_${Date.now()}`
-  const isImage =
-    /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName) ||
-    (asset.mimeType?.startsWith('image/') ?? false)
-  const isPdf = /\.pdf$/i.test(fileName) || asset.mimeType === 'application/pdf'
-  const isText = /\.(txt|md)$/i.test(fileName) || (asset.mimeType?.startsWith('text/') ?? false)
+  const flags = classifyPromptAttachmentKind(fileName, asset.mimeType)
+  const isImage = flags.isImage
+  const isPdf = flags.isPdf
+  const isConvertible = isConvertiblePromptDocument(fileName, asset.mimeType)
+  const isText = flags.isText || isConvertible
 
-  if (isText && asset.size && asset.size > 512 * 1024) {
+  if (flags.isText && asset.size && asset.size > 512 * 1024) {
+    return null
+  }
+  if (isConvertible && asset.size && asset.size > PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES) {
     return null
   }
 

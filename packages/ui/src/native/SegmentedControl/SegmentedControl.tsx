@@ -221,16 +221,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: sharedTokens.spacing.sm,
-    paddingHorizontal: sharedTokens.spacing.sm,
+    paddingHorizontal: sharedTokens.spacing.xs,
     minWidth: 0,
     zIndex: 1
   },
   itemSmall: {
     paddingVertical: sharedTokens.spacing.xs,
-    paddingHorizontal: sharedTokens.spacing.sm
+    paddingHorizontal: sharedTokens.spacing.xs
   },
   itemHug: {
-    flex: 0
+    flex: 0,
+    paddingHorizontal: sharedTokens.spacing.sm
   },
   label: {
     fontSize: mobileTypography.body.fontSize,
