@@ -1,6 +1,7 @@
 import React from 'react'
-import { View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { sharedTokens } from '../../theme/tokens'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Button } from '../Button'
@@ -41,21 +42,32 @@ export const IdentitySettingsFactModal: React.FC<IdentitySettingsFactModalProps>
       onClose={onClose}
       avoidKeyboard
     >
-      <Input
-        label={t('settings.identity_key', '标签')}
-        value={editKeyInput}
-        onChangeText={onEditKeyChange}
-        placeholder={t('settings.identity_key_hint', '如：生日、职业')}
-        containerStyle={{ marginBottom: tokens.spacing.md }}
-      />
+      <ScrollView
+        style={styles.formScroll}
+        contentContainerStyle={styles.formScrollContent}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+      >
+        <Input
+          label={t('settings.identity_key', '标签')}
+          value={editKeyInput}
+          onChangeText={onEditKeyChange}
+          placeholder={t('settings.identity_key_hint', '如：生日、职业')}
+          containerStyle={{ marginBottom: tokens.spacing.md }}
+        />
 
-      <Input
-        label={t('settings.identity_value', '内容')}
-        value={editValInput}
-        onChangeText={onEditValChange}
-        placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
-        containerStyle={{ marginBottom: tokens.spacing.lg }}
-      />
+        <Input
+          label={t('settings.identity_value', '内容')}
+          value={editValInput}
+          onChangeText={onEditValChange}
+          placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
+          multiline
+          textarea
+          nestedScrollEnabled
+          containerStyle={{ marginBottom: tokens.spacing.xs }}
+          style={styles.valueInput}
+        />
+      </ScrollView>
 
       <View style={modalActionsStyle}>
         <Button size="sm" variant="outline" onPress={onClose}>
@@ -68,3 +80,18 @@ export const IdentitySettingsFactModal: React.FC<IdentitySettingsFactModalProps>
     </Modal>
   )
 }
+
+const styles = StyleSheet.create({
+  formScroll: {
+    flexGrow: 0,
+    flexShrink: 1
+  },
+  formScrollContent: {
+    paddingRight: sharedTokens.spacing.mdTight
+  },
+  valueInput: {
+    minHeight: sharedTokens.spacing.xxxl * 2,
+    maxHeight: sharedTokens.spacing.xxxl * 3 + sharedTokens.spacing.xl,
+    textAlignVertical: 'top'
+  }
+})

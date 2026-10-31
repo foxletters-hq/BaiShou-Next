@@ -25,6 +25,7 @@ export const modalActionsStyle: ViewStyle = {
   flexWrap: 'wrap',
   justifyContent: 'flex-end',
   alignItems: 'center',
+  flexShrink: 0,
   gap: sharedTokens.spacing.sm,
   marginTop: sharedTokens.spacing.md
 }
@@ -146,7 +147,8 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
     flexGrow: 0,
-    flexShrink: 1
+    flexShrink: 1,
+    overflow: 'hidden'
   },
   body: {
     flexGrow: 0,

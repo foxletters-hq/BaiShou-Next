@@ -23,4 +23,21 @@ describe('native IdentitySettingsCard chrome', () => {
     expect(factModalSrc).toContain('avoidKeyboard')
     expect(factModalSrc).not.toContain("Modal } from 'react-native'")
   })
+
+  it('should bound the fact value textarea height and keep modal actions outside ScrollView for >200 chars', () => {
+    const factModalSrc = readFileSync(join(here, '../IdentitySettingsFactModal.tsx'), 'utf8')
+
+    expect(factModalSrc).toContain('<ScrollView')
+    expect(factModalSrc).toContain('keyboardShouldPersistTaps="handled"')
+    expect(factModalSrc).toContain('paddingRight: sharedTokens.spacing.mdTight')
+    expect(factModalSrc).toContain('multiline')
+    expect(factModalSrc).toContain('textarea')
+    expect(factModalSrc).toContain('nestedScrollEnabled')
+    expect(factModalSrc).toContain(
+      'maxHeight: sharedTokens.spacing.xxxl * 3 + sharedTokens.spacing.xl'
+    )
+    expect(factModalSrc.indexOf('</ScrollView>')).toBeLessThan(
+      factModalSrc.indexOf('<View style={modalActionsStyle}>')
+    )
+  })
 })

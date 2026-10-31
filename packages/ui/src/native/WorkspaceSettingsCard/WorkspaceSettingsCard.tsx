@@ -72,9 +72,9 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
   const currentVault = activeVault
 
   const perVaultItems = [
+    t('workspace.help_per_vault_agent', '伙伴人设、记忆、关系图谱与聊天记录'),
     t('workspace.help_per_vault_diary', '日记与日记附件'),
     t('workspace.help_per_vault_summary', '阶段总结与归档'),
-    t('workspace.help_per_vault_agent', '伙伴配置与聊天记录'),
     t('workspace.help_per_vault_attachments', '附件库与回忆画廊')
   ]
 
@@ -82,7 +82,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
     t('workspace.help_global_ui', '主题、语言等界面设置'),
     t('workspace.help_global_ai', 'AI 服务商、模型与 RAG 等配置'),
     t('workspace.help_global_profile', '昵称、身份卡与用户头像'),
-    t('workspace.help_global_registry', '工作空间列表与存储位置')
+    t('workspace.help_global_registry', '小窝列表与存储位置')
   ]
 
   const workspaceHelpContent = (
@@ -96,7 +96,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
       >
         {t(
           'workspace.help_intro',
-          '每个工作空间是独立的本地数据区。切换后会刷新页面，并加载该空间内的内容。'
+          '小窝是你与伙伴共同生活的独立空间。如果你有多个伙伴，可以创建并切换不同的小窝——切换小窝后，对应的伙伴、日记、记忆与全部专属数据都会一并切换。'
         )}
       </Text>
       <View style={{ gap: sharedTokens.spacing.xsPlus }}>
@@ -107,7 +107,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
             color: colors.textPrimary
           }}
         >
-          {t('workspace.help_per_vault_title', '切换工作空间后会变：')}
+          {t('workspace.help_per_vault_title', '切换小窝后会随之切换：')}
         </Text>
         <View
           style={{
@@ -154,7 +154,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
             color: colors.textPrimary
           }}
         >
-          {t('workspace.help_global_title', '切换工作空间后不变：')}
+          {t('workspace.help_global_title', '切换小窝后不变：')}
         </Text>
         <View
           style={{
@@ -207,9 +207,9 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
           color={colors.textSecondary}
         />
       }
-      title={t('workspace.title', '工作空间')}
+      title={t('workspace.title', '小窝')}
       titleAddon={<HelpTooltip content={workspaceHelpContent} />}
-      subtitle={t('workspace.current', '当前空间: {{name}}', {
+      subtitle={t('workspace.current', '当前小窝: {{name}}', {
         name: activeVault?.name ?? t('common.unknown', '未知')
       })}
     >
@@ -221,7 +221,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
           ]}
         >
           <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            {t('workspace.current_space', '当前空间')}
+            {t('workspace.current_space', '当前小窝')}
           </Text>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
             {currentVault.name}
@@ -234,14 +234,14 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         </View>
       ) : (
         <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
-          {t('workspace.no_active', '尚未选择工作空间')}
+          {t('workspace.no_active', '尚未选择小窝')}
         </Text>
       )}
 
       {recentVaults.length > 0 ? (
         <>
           <Text style={[styles.sectionLabel, styles.recentLabel, { color: colors.textSecondary }]}>
-            {t('workspace.recent_hint', '仅显示最近使用的三个工作空间')}
+            {t('workspace.recent_hint', '仅显示最近使用的三个小窝')}
           </Text>
           <View style={styles.recentList}>
             {recentVaults.map((vault) => (
@@ -278,7 +278,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         onPress={() => onManageWorkspace?.()}
         isDisabled={!onManageWorkspace}
       >
-        {t('workspace.manage', '管理工作空间')}
+        {t('workspace.manage', '管理小窝')}
       </CardLinkAction>
     </SettingsExpansionTile>
   )

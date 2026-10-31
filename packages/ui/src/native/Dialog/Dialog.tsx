@@ -257,6 +257,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   onChangeText={setPromptValue}
                   multiline={state.isMultiline}
                   textarea={state.isMultiline}
+                  nestedScrollEnabled={state.isMultiline}
                   numberOfLines={state.isMultiline ? (state.numberOfLines ?? 6) : 1}
                   placeholder={
                     state.placeholder ??
@@ -269,6 +270,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     state.isMultiline
                       ? {
                           minHeight: 140,
+                          maxHeight: 220,
                           textAlignVertical: 'top'
                         }
                       : undefined

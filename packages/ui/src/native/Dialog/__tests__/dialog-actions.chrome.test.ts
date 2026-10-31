@@ -23,6 +23,7 @@ describe('native Dialog actions chrome', () => {
     expect(source).toContain("t('common.input_content', '请输入内容')")
     expect(source).toContain('state.numberOfLines ?? 6')
     expect(source).toContain('minHeight: 140')
+    expect(source).toContain('maxHeight: 220')
     expect(source).toContain("textAlignVertical: 'top'")
     expect(source).toContain('title={state.title}')
   })
