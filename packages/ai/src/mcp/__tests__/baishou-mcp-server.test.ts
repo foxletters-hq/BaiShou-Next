@@ -110,10 +110,15 @@ describe('baishou-mcp-server', () => {
     }
 
     const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
-    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const schemas = buildBaishouMcpToolSchemas(registry, context)
+    const mcpTools = schemas.map((tool) => tool.name)
 
     expect(enabled).toContain('vector_search')
     expect(mcpTools).toContain('baishou_vector_search')
+    const vectorSchema = schemas.find((tool) => tool.name === 'baishou_vector_search')
+    const diarySearchSchema = schemas.find((tool) => tool.name === 'baishou_diary_search')
+    expect(vectorSchema?.description).toContain('personal diary entries')
+    expect(diarySearchSchema?.description).toContain('vector_search')
   })
 
   it('exposes vector_search when runtime embedding services are wired', () => {

@@ -58,8 +58,8 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
   readonly name = 'vector_search'
 
   readonly description =
-    'Semantic search over conversation history and stored memories. ' +
-    'Use this when the current context (including any rolling summary) does not cover past discussions, decisions, or preferences. ' +
+    'Semantic and hybrid (vector + keyword) search over personal diary entries, conversation history, and stored memories. ' +
+    'Use this for meaning/concept/synonym recall across diaries and memories, or when the current context (including any rolling summary) does not cover past discussions, decisions, or preferences. ' +
     'Optionally pass start_date and/or end_date (YYYY-MM-DD, local calendar day) to filter by time period. ' +
     'Returns relevant snippets with scores; memory hits include memory_id for exact deletion via memory_delete.'
 

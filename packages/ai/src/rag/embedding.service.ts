@@ -1,6 +1,6 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid'
-import { embed } from 'ai'
+import { embed, embedMany } from 'ai'
 import {
   formatAiApiCallError,
   toSerializableAiError,
@@ -39,6 +39,7 @@ export class EmbeddingService {
   private readonly migrationRef = { current: false }
   private rollbackConfig?: EmbeddingMigrationRollbackConfig
   private migrationLifecycle?: MigrationLifecycle
+  private batchUnsupported = false
 
   constructor(
     private readonly config: IEmbeddingConfig,
@@ -290,41 +291,83 @@ export class EmbeddingService {
       await yieldMainThreadIfNeeded()
       const chunks = this.splitIntoChunks(params.text)
       await yieldMainThreadIfNeeded()
-      // 批量路径（skipIndexPrep）不再叠加分块并发，避免「日记并发 × 分块并发」把主进程/API 打满。
-      const chunkParallel = params.skipIndexPrep ? 1 : 3
 
       const preparedChunks: Array<{ index: number; text: string; vector: number[] }> = []
-      const futures: Promise<void>[] = []
+      const prefixedInputs = chunks.map((chunk) =>
+        params.chunkPrefix ? `${params.chunkPrefix}${chunk.text}` : chunk.text
+      )
 
-      for (const chunk of chunks) {
-        const embeddingInput = params.chunkPrefix
-          ? `${params.chunkPrefix}${chunk.text}`
-          : chunk.text
-
-        const future = this.retryEmbed(async () => {
-          const { embedding } = await withEmbeddingSlot(() =>
-            embed({
+      let batchEmbedded = false
+      if (chunks.length > 1 && !this.batchUnsupported) {
+        try {
+          const { embeddings } = await withEmbeddingSlot(() =>
+            embedMany({
               model: aiModel,
-              value: embeddingInput
+              values: prefixedInputs
             })
           )
-          preparedChunks.push({
-            index: chunk.index,
-            text: embeddingInput,
-            vector: this.normalize(embedding)
-          })
-        }, `embedText chunk ${chunk.index}`)
-
-        futures.push(future)
-
-        if (futures.length >= chunkParallel) {
-          await Promise.all(futures)
-          futures.length = 0
+          if (
+            Array.isArray(embeddings) &&
+            embeddings.length === chunks.length &&
+            embeddings.every((vec) => Array.isArray(vec) && vec.length > 0)
+          ) {
+            for (let i = 0; i < chunks.length; i++) {
+              preparedChunks.push({
+                index: chunks[i]!.index,
+                text: prefixedInputs[i]!,
+                vector: this.normalize(embeddings[i]!)
+              })
+            }
+            batchEmbedded = true
+          }
+        } catch (err) {
+          const status =
+            (err as { statusCode?: number; status?: number } | null)?.statusCode ??
+            (err as { status?: number } | null)?.status
+          if (status !== 408 && status !== 429 && (typeof status !== 'number' || status < 500)) {
+            this.batchUnsupported = true
+          }
+          const msg = String((err as { message?: string } | null)?.message ?? err ?? '')
+          if (!msg.includes('No "embedMany" export')) {
+            logger.warn('[EmbeddingService] embedMany fallback to per-chunk embed', { error: err })
+          }
         }
       }
 
-      if (futures.length > 0) {
-        await Promise.all(futures)
+      if (!batchEmbedded) {
+        // 批量路径（skipIndexPrep）不再叠加分块并发，避免「日记并发 × 分块并发」把主进程/API 打满。
+        const chunkParallel = params.skipIndexPrep ? 1 : 3
+        const futures: Promise<void>[] = []
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i]!
+          const embeddingInput = prefixedInputs[i]!
+
+          const future = this.retryEmbed(async () => {
+            const { embedding } = await withEmbeddingSlot(() =>
+              embed({
+                model: aiModel,
+                value: embeddingInput
+              })
+            )
+            preparedChunks.push({
+              index: chunk.index,
+              text: embeddingInput,
+              vector: this.normalize(embedding)
+            })
+          }, `embedText chunk ${chunk.index}`)
+
+          futures.push(future)
+
+          if (futures.length >= chunkParallel) {
+            await Promise.all(futures)
+            futures.length = 0
+          }
+        }
+
+        if (futures.length > 0) {
+          await Promise.all(futures)
+        }
       }
 
       preparedChunks.sort((a, b) => a.index - b.index)

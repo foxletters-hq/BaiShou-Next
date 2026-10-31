@@ -32,9 +32,9 @@ export class DiarySearchTool extends AgentTool<typeof diarySearchParams> {
   readonly name = 'diary_search'
 
   readonly description =
-    "Search the user's PERSONAL DIARY/JOURNAL entries by keyword. " +
+    "Search the user's PERSONAL DIARY/JOURNAL entries by exact keyword (SQLite FTS5). " +
     'Returns matching diary dates and content snippets. ' +
-    'Use this when the user asks about their own past experiences, memories, or personal records.\n\n' +
+    'Use this for exact keyword/name matching; for semantic or synonym recall over diaries when exact words may differ, also use vector_search if available.\n\n' +
     'REQUIRED when specific names, people, places, events, or dates are not clearly established in the ' +
     'current conversation: search before answering; do not guess or fabricate.\n\n' +
     "IMPORTANT: This tool ONLY searches the user's personal diary entries stored locally, " +

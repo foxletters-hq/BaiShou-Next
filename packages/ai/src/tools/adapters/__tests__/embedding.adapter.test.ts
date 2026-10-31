@@ -267,4 +267,53 @@ describe('EmbeddingAdapter', () => {
       })
     )
   })
+
+  it('embeds multiple memory items in batch via embedTextsBatch and persists each item', async () => {
+    const replaceSourceEmbeddings = vi.fn().mockResolvedValue(undefined)
+    const batchRepo = {
+      ...hybridRepo,
+      replaceSourceEmbeddings
+    } as unknown as SqliteHybridSearchRepository
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', batchRepo)
+    const embedBatchSpy = vi
+      .spyOn(adapter, 'embedBatch')
+      .mockResolvedValue([normalizeEmbeddingVector([1, 0, 0]), normalizeEmbeddingVector([0, 1, 0])])
+
+    await adapter.embedTextsBatch([
+      {
+        text: '记忆一',
+        sourceType: 'memory',
+        sourceId: 'mem-1',
+        groupId: 'memory',
+        vaultId: deriveLegacyVaultId('Personal')
+      },
+      {
+        text: '记忆二',
+        sourceType: 'memory',
+        sourceId: 'mem-2',
+        groupId: 'memory',
+        vaultId: deriveLegacyVaultId('Personal')
+      }
+    ])
+
+    expect(embedBatchSpy).toHaveBeenCalledTimes(1)
+    expect(embedBatchSpy).toHaveBeenCalledWith(['记忆一', '记忆二'])
+    expect(replaceSourceEmbeddings).toHaveBeenCalledTimes(2)
+    expect(replaceSourceEmbeddings).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        sourceId: 'mem-1',
+        sourceType: 'memory',
+        recordLedger: true
+      })
+    )
+    expect(replaceSourceEmbeddings).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sourceId: 'mem-2',
+        sourceType: 'memory',
+        recordLedger: true
+      })
+    )
+  })
 })
