@@ -141,24 +141,31 @@ export async function bootstrapMobileSyncLayer(
   ctx.mobileMcpServiceHolder.current = mobileMcpService = new MobileMcpService(
     settingsManager,
     toolRegistry,
-    () => {
+    (targetVault) => {
       const runtime = agentDbRuntimeRef.current
-      return buildMobileMcpToolContext({
-        settingsManager: runtime?.settingsManager ?? settingsManager,
-        pathService,
-        vaultService,
-        getDiarySearcher,
-        drizzleDb: runtime?.drizzleDb ?? drizzleDb,
-        webSearchResultFetcher: webFetchContent,
-        fetchSearchPage: fetchSearchPageHtml
-      })
+      return buildMobileMcpToolContext(
+        {
+          settingsManager: runtime?.settingsManager ?? settingsManager,
+          pathService,
+          fileSystem,
+          vaultService,
+          getDiarySearcher,
+          drizzleDb: runtime?.drizzleDb ?? drizzleDb,
+          webSearchResultFetcher: webFetchContent,
+          fetchSearchPage: fetchSearchPageHtml
+        },
+        targetVault
+      )
     },
-    () =>
-      buildMobileMcpToolListContext({
-        settingsManager: agentDbRuntimeRef.current?.settingsManager ?? settingsManager,
-        pathService,
-        vaultService
-      })
+    (targetVault) =>
+      buildMobileMcpToolListContext(
+        {
+          settingsManager: agentDbRuntimeRef.current?.settingsManager ?? settingsManager,
+          pathService,
+          vaultService
+        },
+        targetVault
+      )
   )
 
   const ragServiceDeps = attachMobileRagVaultScope(

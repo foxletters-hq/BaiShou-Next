@@ -191,24 +191,31 @@ export function assignReloadAgentDatabaseHandler(
     mobileMcpServiceHolder.current = mobileMcpService = new MobileMcpService(
       newRuntime.settingsManager,
       toolRegistry,
-      () => {
+      (targetVault) => {
         const runtime = agentDbRuntimeRef.current
-        return buildMobileMcpToolContext({
-          settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
-          pathService: vaultCtx.pathService,
-          vaultService: vaultCtx.vaultService,
-          getDiarySearcher,
-          drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
-          webSearchResultFetcher: webFetchContent,
-          fetchSearchPage: fetchSearchPageHtml
-        })
+        return buildMobileMcpToolContext(
+          {
+            settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
+            pathService: vaultCtx.pathService,
+            fileSystem: vaultCtx.fileSystem,
+            vaultService: vaultCtx.vaultService,
+            getDiarySearcher,
+            drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
+            webSearchResultFetcher: webFetchContent,
+            fetchSearchPage: fetchSearchPageHtml
+          },
+          targetVault
+        )
       },
-      () =>
-        buildMobileMcpToolListContext({
-          settingsManager: newRuntime.settingsManager,
-          pathService: vaultCtx.pathService,
-          vaultService: vaultCtx.vaultService
-        })
+      (targetVault) =>
+        buildMobileMcpToolListContext(
+          {
+            settingsManager: newRuntime.settingsManager,
+            pathService: vaultCtx.pathService,
+            vaultService: vaultCtx.vaultService
+          },
+          targetVault
+        )
     )
     vaultCtx.mobileMcpService = mobileMcpService
     if (mcpWasRunning) {

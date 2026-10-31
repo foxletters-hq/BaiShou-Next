@@ -50,6 +50,9 @@ interface AgentDrawerProps {
   sessionListScrollKey: number
   hasMoreSessions: boolean
   isLoadingMoreSessions: boolean
+  isRefreshingSessions?: boolean
+  sessionSearchQuery?: string
+  onSessionSearchQueryChange?: (query: string) => void
   onLoadMoreSessions: () => void
   onRefreshSessions: () => void
   selectedSessionId?: string
@@ -87,6 +90,9 @@ function AgentDrawerComponent({
   sessionListScrollKey,
   hasMoreSessions,
   isLoadingMoreSessions,
+  isRefreshingSessions = false,
+  sessionSearchQuery,
+  onSessionSearchQueryChange,
   onLoadMoreSessions,
   onRefreshSessions,
   selectedSessionId: _selectedSessionId,
@@ -139,6 +145,14 @@ function AgentDrawerComponent({
   }, [visible, slideX, backdropOpacity])
 
   useEffect(() => {
+    if (!visible || !mounted || listReady) return
+    const timer = setTimeout(() => {
+      onOpenAnimationEnd()
+    }, DRAWER_OPEN_MS + 40)
+    return () => clearTimeout(timer)
+  }, [visible, mounted, listReady, onOpenAnimationEnd])
+
+  useEffect(() => {
     if (!mounted) return
 
     cancelAnimation(slideX)
@@ -172,31 +186,46 @@ function AgentDrawerComponent({
     })
   }, [visible, mounted, slideX, backdropOpacity, finishClose, onOpenAnimationEnd])
 
-  const handleSelect = (id: string) => {
-    onSelectSession(id)
-    onClose()
-  }
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
 
-  const handleCreate = () => {
+  const handleSelect = useCallback(
+    (id: string) => {
+      onSelectSession(id)
+      onClose()
+    },
+    [onSelectSession, onClose]
+  )
+
+  const handleCreate = useCallback(() => {
     onCreateSession()
     onClose()
-  }
+  }, [onCreateSession, onClose])
 
-  const handlePin = async (id: string) => {
-    const session = sessions.find((s) => s.id === id)
-    if (session) onPinSession(id, session.isPinned)
-    onRefreshSessions()
-  }
+  const handlePin = useCallback(
+    async (id: string) => {
+      const session = sessionsRef.current.find((s) => s.id === id)
+      if (session) await onPinSession(id, session.isPinned)
+      onRefreshSessions()
+    },
+    [onPinSession, onRefreshSessions]
+  )
 
-  const handleDelete = async (id: string) => {
-    onDeleteSession(id)
-    onRefreshSessions()
-  }
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await onDeleteSession(id)
+      onRefreshSessions()
+    },
+    [onDeleteSession, onRefreshSessions]
+  )
 
-  const handleRename = async (id: string, title: string) => {
-    onRenameSession(id, title)
-    onRefreshSessions()
-  }
+  const handleRename = useCallback(
+    async (id: string, title: string) => {
+      await onRenameSession(id, title)
+      onRefreshSessions()
+    },
+    [onRenameSession, onRefreshSessions]
+  )
 
   const handleLoadMore = useCallback(() => {
     onLoadMoreSessions()
@@ -377,6 +406,10 @@ function AgentDrawerComponent({
                   hasMore={hasMoreSessions}
                   isLoadingMore={isLoadingMoreSessions}
                   onLoadMore={handleLoadMore}
+                  isRefreshing={isRefreshingSessions}
+                  onRefresh={onRefreshSessions}
+                  searchQuery={sessionSearchQuery}
+                  onSearchQueryChange={onSessionSearchQueryChange}
                 />
               ) : (
                 <View style={styles.listPlaceholder}>
@@ -514,7 +547,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   listWrap: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   listPlaceholder: {
     flex: 1,

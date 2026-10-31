@@ -13,7 +13,57 @@ function ensureDomExceptionPolyfill(): void {
   }
 }
 
+/**
+ * React Native 自带的 abort-controller 不支持 AbortSignal.prototype.reason。
+ * AI SDK 在流被取消时会读取 abortSignal.reason，若为 undefined 会将结果 Promise 以 undefined 拒绝。
+ */
+export function ensureAbortSignalReasonPolyfill(): void {
+  const Controller = (globalThis as { AbortController?: typeof AbortController }).AbortController
+  const Signal = (globalThis as { AbortSignal?: typeof AbortSignal }).AbortSignal
+  if (typeof Controller !== 'function' || typeof Signal !== 'function') return
+
+  const testController = new Controller()
+  testController.abort()
+  if ((testController.signal as { reason?: unknown }).reason !== undefined) {
+    return
+  }
+
+  const reasons = new WeakMap<AbortSignal, unknown>()
+  const createDefaultAbortError = (): Error => {
+    const DomEx = (
+      globalThis as { DOMException?: new (message?: string, name?: string) => Error }
+    ).DOMException
+    if (typeof DomEx === 'function') {
+      return new DomEx('The operation was aborted.', 'AbortError')
+    }
+    const err = new Error('The operation was aborted.')
+    err.name = 'AbortError'
+    return err
+  }
+
+  const originalAbort = Controller.prototype.abort
+  Controller.prototype.abort = function abortWithReason(this: AbortController, reason?: unknown) {
+    if (this.signal && !this.signal.aborted && !reasons.has(this.signal)) {
+      reasons.set(this.signal, reason !== undefined ? reason : createDefaultAbortError())
+    }
+    return originalAbort.call(this, reason)
+  }
+
+  Object.defineProperty(Signal.prototype, 'reason', {
+    configurable: true,
+    enumerable: true,
+    get(this: AbortSignal): unknown {
+      if (!this.aborted) return undefined
+      if (reasons.has(this)) return reasons.get(this)
+      const fallback = createDefaultAbortError()
+      reasons.set(this, fallback)
+      return fallback
+    }
+  })
+}
+
 ensureDomExceptionPolyfill()
+ensureAbortSignalReasonPolyfill()
 ;(globalThis as any).TextEncoderStream = TextEncoderStream
 ;(globalThis as any).TextDecoderStream = TextDecoderStream
 
