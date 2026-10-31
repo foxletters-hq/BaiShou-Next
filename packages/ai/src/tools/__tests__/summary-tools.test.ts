@@ -156,4 +156,42 @@ describe('SummaryReadTool and SummaryWriteTool', () => {
     expect(result).toContain('Summaries/Weekly/2026/2026-03-09.md')
     expect(result).toContain('2026-03-09 ~ 2026-03-15')
   })
+
+  it('should abort before writing markdown file when summaryReader.writeSummary returns ok=false', async () => {
+    const tool = new SummaryWriteTool()
+    const writeFile = vi.fn().mockResolvedValue({ contentHash: 'abc123' })
+    const writeSummary = vi.fn().mockResolvedValue({
+      ok: false as const,
+      message: 'No active vault ID available for writing summary.'
+    })
+
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultId: 'vault-1',
+      vaultName: 'default',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(),
+        tombstone: vi.fn(),
+        writeFile
+      },
+      summaryReader: {
+        readSummary: vi.fn(),
+        getAvailableSummaries: vi.fn(),
+        writeSummary
+      }
+    }
+
+    const result = await tool.execute(
+      {
+        type: 'weekly',
+        start_date: '2026-03-09',
+        content: '##### 2026年3月第11周总结\n\n正文内容'
+      },
+      context
+    )
+
+    expect(writeSummary).toHaveBeenCalledTimes(1)
+    expect(writeFile).not.toHaveBeenCalled()
+    expect(result).toBe('Error: No active vault ID available for writing summary.')
+  })
 })

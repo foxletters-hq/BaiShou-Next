@@ -56,7 +56,10 @@ export class GraphSyncOps {
       nodeType: row.nodeType,
       name: row.name,
       discriminator: row.discriminator,
-      aliases: mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
+      aliases:
+        row.origin === 'user'
+          ? mergeAliases([], [row.name, ...(row.aliases ?? [])])
+          : mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
       summary: row.summary || existingById?.summary || '',
       propsJson: JSON.stringify(row.props ?? {}),
       mentionCount: row.mentionCount,
@@ -200,7 +203,10 @@ export class GraphSyncOps {
           nodeType: row.nodeType,
           name: row.name,
           discriminator: row.discriminator,
-          aliases: mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
+          aliases:
+            row.origin === 'user'
+              ? mergeAliases([], [row.name, ...(row.aliases ?? [])])
+              : mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
           summary: row.summary || existingById?.summary || '',
           propsJson: JSON.stringify(row.props ?? {}),
           mentionCount: row.mentionCount,

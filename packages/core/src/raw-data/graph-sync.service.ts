@@ -87,7 +87,10 @@ function isExistingNodeIdenticalToRaw(
   if ((existing.shardMonth ?? '') !== targetShardMonth) return false
   if (existing.origin !== preferGraphOrigin(existing.origin, raw.origin)) return false
   if (existing.propsJson !== JSON.stringify(raw.props ?? {})) return false
-  const mergedAliases = mergeSyncAliases(existing.aliases ?? [], [raw.name, ...(raw.aliases ?? [])])
+  const mergedAliases =
+    raw.origin === 'user'
+      ? mergeSyncAliases([], [raw.name, ...(raw.aliases ?? [])])
+      : mergeSyncAliases(existing.aliases ?? [], [raw.name, ...(raw.aliases ?? [])])
   if (
     mergedAliases.length !== (existing.aliases?.length ?? 0) ||
     mergedAliases.some((a, idx) => a !== existing.aliases[idx])
