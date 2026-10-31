@@ -210,7 +210,7 @@ export const LegacyMigrationPane: React.FC = () => {
                 size={14}
                 content={t(
                   'version_migration.import_order_hint',
-                  '推荐顺序：全局（头像/身份卡/配置）→ 各工作空间（日记 + 伙伴与会话）'
+                  '推荐顺序：全局（头像/身份卡/配置）→ 各小窝（日记 + 伙伴与会话）'
                 )}
               />
             </div>
@@ -330,7 +330,7 @@ export const LegacyMigrationPane: React.FC = () => {
               <div className="legacy-migration-workspace-header">
                 <div className={pane.sectionLabelRow}>
                   <h3 className={pane.sectionLabel}>
-                    {t('version_migration.workspace_group_title', '工作空间')}
+                    {t('version_migration.workspace_group_title', '小窝')}
                   </h3>
                 </div>
                 {importableWorkspaces.length > 1 ? (
@@ -341,7 +341,7 @@ export const LegacyMigrationPane: React.FC = () => {
                     disabled={importingSection != null}
                     onClick={() => void handleImportAllWorkspaces()}
                   >
-                    {t('version_migration.import_all_workspaces', '导入全部工作空间')}
+                    {t('version_migration.import_all_workspaces', '导入全部小窝')}
                   </Button>
                 ) : null}
               </div>

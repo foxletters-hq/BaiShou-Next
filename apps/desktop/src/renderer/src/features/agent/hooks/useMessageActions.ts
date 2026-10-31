@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { buildBranchSessionTitle, extractMessagePlainTextSnippet } from '@baishou/shared'
 import { useDialog, toast } from '@baishou/ui'
 import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
@@ -151,14 +152,19 @@ export function useMessageActions({
     if (typeof window === 'undefined' || !window.electron) return
     try {
       const currentSession = sessions.find((s) => s.id === sessionId)
-      const originalTitle =
-        currentSession?.title ||
-        currentAssistant?.name ||
-        i18n.t(
+      const branchPointSnippet =
+        extractMessagePlainTextSnippet(msg?.parts) ||
+        (typeof msg?.content === 'string' ? msg.content : '')
+      const title = buildBranchSessionTitle({
+        originalTitle: currentSession?.title,
+        assistantName: currentAssistant?.name,
+        defaultTitle: i18n.t(
           'auto.apps.desktop.src.renderer.src.features.agent.hooks.useMessageActions.L151',
           '对话'
-        )
-      const title = `${originalTitle} (${t('agent.chat.branch', '分支')})`
+        ),
+        branchLabel: t('agent.chat.branch', '分支'),
+        branchPointSnippet
+      })
       const newSessionId = await window.electron.ipcRenderer.invoke('agent:branch-session', {
         sessionId,
         messageId: msg.id,
