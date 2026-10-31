@@ -141,6 +141,11 @@ export class SessionManagerService {
     this.persistence.notifySessionMutated(sessionId, urgency)
   }
 
+  /** 会话是否有尚未写入磁盘 JSON 的变更（dirty / 防抖等待 / 正在写入） */
+  public hasPendingDiskPersistence(sessionId: string): boolean {
+    return this.persistence.hasPendingPersistence(sessionId)
+  }
+
   /** 立即将会话 aggregate 写入 JSON；显式传 vaultName 时写入该工作区 Sessions/ */
   public flushSessionToDisk(sessionId: string, vaultName?: string | null): Promise<void> {
     return this.persistence.flushNow(

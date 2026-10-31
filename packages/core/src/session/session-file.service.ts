@@ -3,11 +3,23 @@ import * as path from '../fs/path.util'
 import { IStoragePathService } from '../vault/storage-path.types'
 
 export class SessionFileService {
+  /** 内存缓存每个路径最近一次落盘的文本指纹（长度 + FNV-1a），避免每次写盘都读盘并二次 JSON.parse */
+  private readonly lastWrittenFingerprintByPath = new Map<string, string>()
+
   constructor(
     private readonly pathProvider: IStoragePathService,
     private readonly fileSystem: IFileSystem,
     private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
+
+  private computeFastFingerprint(content: string): string {
+    let hash = 2166136261
+    for (let i = 0; i < content.length; i++) {
+      hash ^= content.charCodeAt(i)
+      hash = Math.imul(hash, 16777619)
+    }
+    return `${content.length}:${hash >>> 0}`
+  }
 
   private async getDirectory(vaultName?: string | null): Promise<string> {
     if (vaultName?.trim()) {
@@ -29,10 +41,18 @@ export class SessionFileService {
     const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
     const next = JSON.stringify(sessionData)
+    const nextFp = this.computeFastFingerprint(next)
+    if (this.lastWrittenFingerprintByPath.get(fullPath) === nextFp) {
+      return fullPath
+    }
     try {
       const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
       // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
-      if (prevRaw === next || JSON.stringify(JSON.parse(prevRaw)) === next) {
+      if (
+        prevRaw === next ||
+        (prevRaw.includes('\n') && JSON.stringify(JSON.parse(prevRaw)) === next)
+      ) {
+        this.lastWrittenFingerprintByPath.set(fullPath, nextFp)
         return fullPath
       }
     } catch {
@@ -40,9 +60,11 @@ export class SessionFileService {
     }
     if (this.rawDataSourceManager) {
       await this.rawDataSourceManager.writeFile('session', `${sessionId}.json`, next)
+      this.lastWrittenFingerprintByPath.set(fullPath, nextFp)
       return fullPath
     }
     await this.fileSystem.writeFile(fullPath, next, 'utf8')
+    this.lastWrittenFingerprintByPath.set(fullPath, nextFp)
     return fullPath
   }
 
@@ -92,6 +114,7 @@ export class SessionFileService {
   async deleteSession(sessionId: string, vaultName?: string | null): Promise<void> {
     const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
+    this.lastWrittenFingerprintByPath.delete(fullPath)
     try {
       await this.fileSystem.unlink(fullPath)
     } catch (e: any) {

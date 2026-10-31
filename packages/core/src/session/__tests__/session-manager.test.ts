@@ -251,4 +251,54 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(mockFileService.readSession).not.toHaveBeenCalled()
     expect(mockSyncService.fullScanArchives).not.toHaveBeenCalled()
   })
+
+  it('flushSessionToDisk() re-flushes when session is dirtied while an earlier write is in flight and awaits async onBeforeWrite', async () => {
+    const events: string[] = []
+    let resolveFirstWrite!: () => void
+    const firstWriteBarrier = new Promise<void>((resolve) => {
+      resolveFirstWrite = resolve
+    })
+
+    const snap1 = { session: { id: 'chat-1' }, messages: [{ id: 'u1', role: 'user' }] }
+    const snap2 = {
+      session: { id: 'chat-1' },
+      messages: [
+        { id: 'u1', role: 'user' },
+        { id: 'a1', role: 'assistant' }
+      ]
+    }
+    mockRepo.getSessionAggregate.mockResolvedValueOnce(snap1).mockResolvedValueOnce(snap2)
+
+    let writeCall = 0
+    mockFileService.writeSession.mockImplementation(async (_id, data) => {
+      writeCall += 1
+      events.push(`write:${writeCall}:${(data as any).messages.length}`)
+      if (writeCall === 1) {
+        await firstWriteBarrier
+      }
+      return '/Personal/Sessions/chat-1.json'
+    })
+
+    const hookedManager = new SessionManagerService(mockRepo, mockFileService, mockSyncService, {
+      onBeforeWrite: async (sessionId) => {
+        await Promise.resolve()
+        events.push(`beforeWrite:${sessionId}`)
+      }
+    })
+
+    const p1 = hookedManager.flushSessionToDisk('chat-1')
+    // 等待第一次 getSessionAggregate + onBeforeWrite 进入 writeSession
+    await new Promise((r) => setTimeout(r, 10))
+    expect(hookedManager.hasPendingDiskPersistence('chat-1')).toBe(true)
+
+    // 第一轮写盘尚未完成时，助手消息落库触发第二次 flushSessionToDisk
+    const p2 = hookedManager.flushSessionToDisk('chat-1')
+    resolveFirstWrite()
+
+    await Promise.all([p1, p2])
+
+    expect(mockFileService.writeSession).toHaveBeenCalledTimes(2)
+    expect(events).toEqual(['beforeWrite:chat-1', 'write:1:1', 'beforeWrite:chat-1', 'write:2:2'])
+    expect(hookedManager.hasPendingDiskPersistence('chat-1')).toBe(false)
+  })
 })

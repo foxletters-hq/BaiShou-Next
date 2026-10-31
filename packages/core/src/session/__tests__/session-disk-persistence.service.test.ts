@@ -76,6 +76,50 @@ describe('SessionDiskPersistenceService', () => {
     expect(mockFileService.writeSession).toHaveBeenCalledTimes(1)
   })
 
+  it('re-flushes when a new mutation arrives while writeSession is in-flight', async () => {
+    let resolveFirstWrite: (value: string) => void = () => {}
+    let notifyWriteStarted: () => void = () => {}
+    const firstWriteStarted = new Promise<void>((resolve) => {
+      notifyWriteStarted = resolve
+    })
+    let aggregateCalls = 0
+    mockRepo.getSessionAggregate.mockImplementation(async () => {
+      aggregateCalls += 1
+      return {
+        session: { id: 's1' },
+        messages: [{ id: `m${aggregateCalls}` }]
+      }
+    })
+    mockFileService.writeSession
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveFirstWrite = resolve
+            notifyWriteStarted()
+          })
+      )
+      .mockResolvedValueOnce('/vault/Sessions/s1.json')
+
+    const firstFlush = service.flushNow('s1')
+    await firstWriteStarted
+
+    // 写盘期间发生新的 SQLite 变更
+    service.markDirty('s1')
+    resolveFirstWrite('/vault/Sessions/s1.json')
+    await firstFlush
+
+    expect(mockFileService.writeSession).toHaveBeenCalledTimes(2)
+    expect(mockFileService.writeSession).toHaveBeenNthCalledWith(1, 's1', {
+      session: { id: 's1' },
+      messages: [{ id: 'm1' }]
+    })
+    expect(mockFileService.writeSession).toHaveBeenNthCalledWith(2, 's1', {
+      session: { id: 's1' },
+      messages: [{ id: 'm2' }]
+    })
+    expect(service.isDirty('s1')).toBe(false)
+  })
+
   it('scheduleFlush debounces writes', async () => {
     service.scheduleFlush('s1', 300)
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
@@ -116,16 +160,22 @@ describe('SessionDiskPersistenceService', () => {
     expect(service.getDirtySessionIds().size).toBe(0)
   })
 
-  it('invokes onBeforeWrite hook before writing session file', async () => {
+  it('invokes onBeforeWrite and onAfterWrite hooks around writing session file', async () => {
     const onBeforeWrite = vi.fn()
+    const onAfterWrite = vi.fn()
     const hooked = new SessionDiskPersistenceService(mockRepo as never, mockFileService as never, {
-      onBeforeWrite
+      onBeforeWrite,
+      onAfterWrite
     })
 
     await hooked.flushNow('s1')
     expect(onBeforeWrite).toHaveBeenCalledWith('s1', 's1')
+    expect(onAfterWrite).toHaveBeenCalledWith('s1', 's1')
     expect(onBeforeWrite.mock.invocationCallOrder[0]).toBeLessThan(
       mockFileService.writeSession.mock.invocationCallOrder[0]!
+    )
+    expect(mockFileService.writeSession.mock.invocationCallOrder[0]).toBeLessThan(
+      onAfterWrite.mock.invocationCallOrder[0]!
     )
   })
 
