@@ -3,8 +3,12 @@ export const PROMPT_TEXT_EXTENSIONS = new Set([
   '.markdown',
   '.mdx',
   '.txt',
+  '.csv',
+  '.tsv',
   '.json',
   '.jsonc',
+  '.jsonl',
+  '.ndjson',
   '.js',
   '.jsx',
   '.ts',
@@ -13,7 +17,9 @@ export const PROMPT_TEXT_EXTENSIONS = new Set([
   '.cjs',
   '.css',
   '.scss',
+  '.sass',
   '.less',
+  '.styl',
   '.html',
   '.htm',
   '.xml',
@@ -22,29 +28,98 @@ export const PROMPT_TEXT_EXTENSIONS = new Set([
   '.yml',
   '.toml',
   '.ini',
+  '.conf',
+  '.cfg',
+  '.properties',
   '.env',
+  '.log',
   '.sh',
   '.bash',
   '.zsh',
+  '.fish',
+  '.nu',
+  '.awk',
+  '.sed',
   '.ps1',
   '.bat',
   '.cmd',
   '.py',
+  '.pyw',
+  '.pyi',
   '.rb',
   '.go',
   '.rs',
   '.java',
   '.kt',
+  '.kts',
+  '.groovy',
+  '.gradle',
   '.swift',
   '.c',
   '.h',
   '.cpp',
   '.hpp',
+  '.cc',
+  '.cxx',
   '.cs',
+  '.fs',
+  '.fsx',
+  '.m',
+  '.mm',
   '.sql',
   '.graphql',
+  '.gql',
+  '.proto',
+  '.prisma',
+  '.sol',
   '.vue',
   '.svelte',
+  '.astro',
+  '.r',
+  '.rmd',
+  '.lua',
+  '.php',
+  '.pl',
+  '.pm',
+  '.dart',
+  '.scala',
+  '.clj',
+  '.cljs',
+  '.ex',
+  '.exs',
+  '.erl',
+  '.hrl',
+  '.hs',
+  '.ml',
+  '.mli',
+  '.v',
+  '.sv',
+  '.vhd',
+  '.vhdl',
+  '.zig',
+  '.nim',
+  '.jl',
+  '.cmake',
+  '.mk',
+  '.dockerfile',
+  '.tf',
+  '.tfvars',
+  '.hcl',
+  '.glsl',
+  '.wgsl',
+  '.hlsl',
+  '.srt',
+  '.vtt',
+  '.ass',
+  '.lrc',
+  '.tex',
+  '.bib',
+  '.rst',
+  '.org',
+  '.adoc',
+  '.asciidoc',
+  '.diff',
+  '.patch',
   '.lock',
   '.gitignore',
   '.gitattributes',
@@ -57,9 +132,79 @@ export const PROMPT_TEXT_EXTENSIONS = new Set([
   '.nvmrc'
 ])
 
+/** 可通过附件文档转换层提取为 Markdown/文本的复合文档后缀 */
+export const PROMPT_CONVERTIBLE_DOCUMENT_EXTENSIONS = new Set([
+  '.docx',
+  '.xlsx',
+  '.pptx',
+  '.odt',
+  '.ods',
+  '.odp',
+  '.epub',
+  '.rtf',
+  '.ipynb'
+])
+
+export const PROMPT_CONVERTIBLE_DOCUMENT_MIMES = new Set([
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation',
+  'application/epub+zip',
+  'application/rtf',
+  'text/rtf',
+  'application/x-ipynb+json'
+])
+
+/** 旧版二进制 OLE2 Office 文档（提示用户另存为新版或 PDF） */
+export const PROMPT_LEGACY_OFFICE_EXTENSIONS = new Set(['.doc', '.xls', '.ppt'])
+
+export const PROMPT_LEGACY_OFFICE_MIMES = new Set([
+  'application/msword',
+  'application/vnd.ms-excel',
+  'application/vnd.ms-powerpoint'
+])
+
+export const PROMPT_TEXT_MIMES = new Set([
+  'application/json',
+  'application/ld+json',
+  'application/xml',
+  'application/javascript',
+  'application/x-javascript',
+  'application/typescript',
+  'application/x-typescript',
+  'application/x-python',
+  'application/x-python-code',
+  'application/x-sh',
+  'application/x-shellscript',
+  'application/x-yaml',
+  'application/yaml',
+  'application/toml',
+  'application/sql',
+  'application/graphql',
+  'application/csv'
+])
+
+/** 桌面端文件选择器默认放行的扩展名（不含前导点） */
+export const PROMPT_PICKER_EXTENSIONS: string[] = [
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+  'heic',
+  'pdf',
+  ...[...PROMPT_CONVERTIBLE_DOCUMENT_EXTENSIONS].map((ext) => ext.slice(1)),
+  ...[...PROMPT_TEXT_EXTENSIONS].map((ext) => ext.slice(1)).filter(Boolean)
+]
+
 export const PROMPT_TEXT_BASENAMES = new Set([
   'makefile',
   'dockerfile',
+  'cmakelists.txt',
   'license',
   'licence',
   'copying',
@@ -70,13 +215,18 @@ export const PROMPT_TEXT_BASENAMES = new Set([
   'gemfile',
   'rakefile',
   'procfile',
-  'vagrantfile'
+  'vagrantfile',
+  'justfile',
+  'brewfile',
+  'podfile'
 ])
 
 export const PROMPT_TEXT_ATTACHMENT_MAX_LINES = 2000
 export const PROMPT_TEXT_ATTACHMENT_MAX_BYTES = 256 * 1024
 /** 物化前最多读入的字节，避免超大文本整文件进内存 */
 export const PROMPT_TEXT_ATTACHMENT_READ_MAX_BYTES = 1024 * 1024
+/** 复合文档（.docx/.xlsx/.pptx/.epub/.ipynb 等）转换前允许读入的最大文件字节（20 MB） */
+export const PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES = 20 * 1024 * 1024
 
 export function isSafeWorkspaceRelativePath(relativePath: string): boolean {
   const rel = relativePath.trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
@@ -120,24 +270,46 @@ export function extensionOfFileName(fileName: string): string {
   return base.slice(dot).toLowerCase()
 }
 
+export function isConvertiblePromptDocument(fileName: string, mimeType?: string): boolean {
+  const ext = extensionOfFileName(fileName)
+  if (PROMPT_CONVERTIBLE_DOCUMENT_EXTENSIONS.has(ext)) return true
+  const mime = (mimeType || '').toLowerCase().split(';')[0]?.trim() || ''
+  return Boolean(mime && PROMPT_CONVERTIBLE_DOCUMENT_MIMES.has(mime))
+}
+
+export function isLegacyOfficeDocument(fileName: string, mimeType?: string): boolean {
+  const ext = extensionOfFileName(fileName)
+  if (PROMPT_LEGACY_OFFICE_EXTENSIONS.has(ext)) return true
+  const mime = (mimeType || '').toLowerCase().split(';')[0]?.trim() || ''
+  return Boolean(mime && PROMPT_LEGACY_OFFICE_MIMES.has(mime))
+}
+
 export function classifyPromptAttachmentKind(
   fileName: string,
   mimeType?: string
 ): PromptAttachmentKindFlags {
-  const mime = (mimeType || '').toLowerCase()
+  const mime = (mimeType || '').toLowerCase().split(';')[0]?.trim() || ''
   const base = fileNameFrom(fileName).toLowerCase()
   const ext = extensionOfFileName(fileName)
   const isImage = mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName)
   const isPdf = mime === 'application/pdf' || ext === '.pdf'
+  const isConvertible = isConvertiblePromptDocument(fileName, mimeType)
+  const isLegacyOffice = isLegacyOfficeDocument(fileName, mimeType)
   const isText =
     !isImage &&
     !isPdf &&
+    !isConvertible &&
+    !isLegacyOffice &&
     (mime === 'text/plain' ||
       mime === 'text/markdown' ||
       mime.startsWith('text/') ||
+      PROMPT_TEXT_MIMES.has(mime) ||
       PROMPT_TEXT_EXTENSIONS.has(ext) ||
       PROMPT_TEXT_BASENAMES.has(base) ||
-      base.startsWith('.env'))
+      base.startsWith('.env') ||
+      base.startsWith('.eslintrc') ||
+      base.startsWith('.prettierrc') ||
+      base.startsWith('dockerfile'))
   return { isImage, isPdf, isText }
 }
 
@@ -292,7 +464,15 @@ export function formatPromptFileAttachmentBlock(params: {
 }
 
 export function formatPromptUnsupportedAttachmentHint(displayPath: string): string {
-  return `\n\n[User Uploaded File Attachment: ${displayPath}]\n（该文件不是文本、图片或 PDF，无法直接放入对话。请改用工作区工具读取，或改选文本文件。）\n`
+  return `\n\n[User Uploaded File Attachment: ${displayPath}]\n（该文件不是受支持的文本、代码、Office 文档、图片或 PDF，无法直接放入对话。请改用工作区工具读取，或改选受支持格式的文件。）\n`
+}
+
+export function formatPromptLegacyOfficeAttachmentHint(displayPath: string): string {
+  return `\n\n[User Uploaded File Attachment: ${displayPath}]\n（该文件为旧版二进制 Office 格式（.doc/.xls/.ppt），暂不支持直接解析。请将其另存为 .docx/.xlsx/.pptx 或 PDF 格式后重新上传。）\n`
+}
+
+export function formatPromptDocumentExtractFailedHint(displayPath: string): string {
+  return `\n\n[User Uploaded File Attachment: ${displayPath}]\n（无法提取该文档的文本内容：文件可能已加密、损坏或不包含可识别文本，请导出为 PDF 或纯文本后重试。）\n`
 }
 
 export function formatPromptDirectoryAttachmentBlock(displayPath: string): string {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendMcpVaultQuery,
   ensureMcpAuthToken,
+  extractMcpTargetVault,
   isMcpAuthEnabled,
   isMcpRequestAuthorized,
   refreshMcpAuthToken
@@ -83,5 +85,26 @@ describe('mcp-auth.util', () => {
     expect(next.mcpAuthEnabled).toBe(true)
     expect(next.mcpAuthToken).toBeTruthy()
     expect(next.mcpAuthToken).not.toBe('old-token')
+  })
+
+  it('should append vault query suffix when vaultId is provided', () => {
+    expect(appendMcpVaultQuery('http://127.0.0.1:31004/mcp', 'vlt_abc123')).toBe(
+      'http://127.0.0.1:31004/mcp?vault=vlt_abc123'
+    )
+    expect(appendMcpVaultQuery('http://127.0.0.1:31004/mcp', '')).toBe('http://127.0.0.1:31004/mcp')
+    expect(appendMcpVaultQuery('http://127.0.0.1:31004/mcp', undefined)).toBe(
+      'http://127.0.0.1:31004/mcp'
+    )
+  })
+
+  it('should extract target vault from query params or path segments', () => {
+    expect(extractMcpTargetVault('/mcp?vault=vlt_123456')).toBe('vlt_123456')
+    expect(extractMcpTargetVault('/sse?vaultId=vlt_abcdef')).toBe('vlt_abcdef')
+    expect(extractMcpTargetVault('http://127.0.0.1:31004/mcp?workspace=Personal')).toBe('Personal')
+    expect(extractMcpTargetVault('/mcp/vlt_999')).toBe('vlt_999')
+    expect(extractMcpTargetVault('/sse/%E5%B0%8F%E9%9B%AA')).toBe('小雪')
+    expect(extractMcpTargetVault('/mcp')).toBeUndefined()
+    expect(extractMcpTargetVault('/sse/')).toBeUndefined()
+    expect(extractMcpTargetVault('')).toBeUndefined()
   })
 })
