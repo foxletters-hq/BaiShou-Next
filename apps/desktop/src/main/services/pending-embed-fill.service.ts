@@ -55,6 +55,7 @@ export async function runManualPendingEmbedFill(options?: {
     graphExtract?: number
     graphDisambiguate?: number
   }
+  skipProbe?: boolean
 }): Promise<PendingEmbedFillResult> {
   const empty: PendingEmbedFillResult = { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
   const vaultId = resolveActiveVaultId()?.trim()
@@ -79,9 +80,11 @@ export async function runManualPendingEmbedFill(options?: {
   }
   const adapter = embeddingAdapter
 
-  const probe = await probeEmbeddingApi((text) => adapter.embedQuery(text))
-  if (!probe.ok) {
-    throw new Error(`${EMBED_API_UNAVAILABLE}: ${probe.message}`)
+  if (!options?.skipProbe) {
+    const probe = await probeEmbeddingApi((text) => adapter.embedQuery(text))
+    if (!probe.ok) {
+      throw new Error(`${EMBED_API_UNAVAILABLE}: ${probe.message}`)
+    }
   }
 
   let phases = markPhaseDone(

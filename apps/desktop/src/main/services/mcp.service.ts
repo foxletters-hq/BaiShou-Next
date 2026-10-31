@@ -9,7 +9,7 @@ import { APP_VERSION } from '../../app-version'
 import { Server as HttpServer } from 'http'
 import type { ToolRegistry, ToolContext } from '@baishou/ai'
 import { createBaishouMcpServer } from '@baishou/ai'
-import { isMcpRequestAuthorized, logger } from '@baishou/shared'
+import { extractMcpTargetVault, isMcpRequestAuthorized, logger } from '@baishou/shared'
 import { getDesktopMcpServerConfig } from './desktop-mcp-config.store'
 import { buildMcpToolContext } from '../ipc/agent-helpers'
 
@@ -18,20 +18,29 @@ interface SseMcpSession {
   transport: SSEServerTransport
 }
 
+export const DEFAULT_MCP_START_RETRY_DELAYS_MS = [500, 1000, 2000] as const
+
+export interface McpStartOptions {
+  retryDelaysMs?: readonly number[]
+}
+
 export class McpService {
   private readonly app = express()
   private httpServer: HttpServer | null = null
   private isRunning = false
+  private startPromise: Promise<void> | null = null
   private readonly sseSessions = new Map<string, SseMcpSession>()
   private readonly streamableTransports = new Map<string, StreamableHTTPServerTransport>()
 
   get running(): boolean {
-    return this.isRunning
+    return this.isRunning && Boolean(this.httpServer?.listening)
   }
 
   constructor(
     private readonly toolRegistry?: ToolRegistry,
-    private readonly resolveToolContext: () => Promise<ToolContext> = buildMcpToolContext
+    private readonly resolveToolContext: (
+      targetVault?: string
+    ) => Promise<ToolContext> = buildMcpToolContext
   ) {
     this.app.use(express.json())
     this.app.use(this.corsMiddleware)
@@ -68,34 +77,31 @@ export class McpService {
     return false
   }
 
-  private createMcpServer(): Server {
-    return createBaishouMcpServer(APP_VERSION, this.toolRegistry, () => this.resolveToolContext())
+  private createMcpServer(targetVault?: string): Server {
+    return createBaishouMcpServer(APP_VERSION, this.toolRegistry, () =>
+      this.resolveToolContext(targetVault)
+    )
+  }
+
+  private resolveRequestTargetVault(req: express.Request): string | undefined {
+    return extractMcpTargetVault(req.originalUrl || req.url)
   }
 
   private setupRoutes() {
     // Streamable HTTP (Cursor / modern MCP clients) — primary endpoint
-    this.app.post('/mcp', async (req, res) => {
+    this.app.post(['/mcp', '/mcp/:vault'], async (req, res) => {
       await this.handleStreamablePost(req, res)
     })
-    this.app.get('/mcp', async (req, res) => {
+    this.app.get(['/mcp', '/mcp/:vault'], async (req, res) => {
       await this.handleStreamableGet(req, res)
     })
-    this.app.delete('/mcp', async (req, res) => {
+    this.app.delete(['/mcp', '/mcp/:vault'], async (req, res) => {
       await this.handleStreamableDelete(req, res)
     })
 
     // Legacy SSE transport (optional; session id must match SDK transport.sessionId)
-    this.app.get('/sse', async (req, res) => {
-      if (!(await this.ensureAuthorized(req, res))) return
-      const transport = new SSEServerTransport('/message', res)
-      const server = this.createMcpServer()
-
-      await server.connect(transport)
-      this.sseSessions.set(transport.sessionId, { server, transport })
-
-      res.on('close', () => {
-        this.sseSessions.delete(transport.sessionId)
-      })
+    this.app.get(['/sse', '/sse/:vault'], async (req, res) => {
+      await this.handleSseConnect(req, res)
     })
 
     this.app.post('/message', async (req, res) => {
@@ -111,6 +117,20 @@ export class McpService {
 
       // express.json() 已消费 body 流；必须把 parsed body 传给 SDK，否则会 400 stream is not readable
       await session.transport.handlePostMessage(req, res, req.body)
+    })
+  }
+
+  private async handleSseConnect(req: express.Request, res: express.Response) {
+    if (!(await this.ensureAuthorized(req, res))) return
+    const targetVault = this.resolveRequestTargetVault(req)
+    const transport = new SSEServerTransport('/message', res)
+    const server = this.createMcpServer(targetVault)
+
+    await server.connect(transport)
+    this.sseSessions.set(transport.sessionId, { server, transport })
+
+    res.on('close', () => {
+      this.sseSessions.delete(transport.sessionId)
     })
   }
 
@@ -149,12 +169,15 @@ export class McpService {
         return
       }
 
+      const targetVault = this.resolveRequestTargetVault(req)
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         enableJsonResponse: true,
         onsessioninitialized: (sid) => {
           this.streamableTransports.set(sid, transport)
-          logger.info(`[McpService] Streamable session initialized: ${sid}`)
+          logger.info(
+            `[McpService] Streamable session initialized: ${sid}${targetVault ? ` (vault=${targetVault})` : ''}`
+          )
         },
         onsessionclosed: (sid) => {
           this.streamableTransports.delete(sid)
@@ -162,7 +185,7 @@ export class McpService {
         }
       })
 
-      const server = this.createMcpServer()
+      const server = this.createMcpServer(targetVault)
       await server.connect(transport)
       if (transport.sessionId) {
         this.streamableTransports.set(transport.sessionId, transport)
@@ -186,7 +209,8 @@ export class McpService {
 
     const sessionId = this.getStreamableSessionId(req)
     if (!sessionId) {
-      res.status(400).send('Invalid or missing session ID')
+      // 兼容外部客户端将复制的 /mcp 地址配置为 Legacy SSE 连接类型的场景（发送无 mcp-session-id 的 GET /mcp）
+      await this.handleSseConnect(req, res)
       return
     }
 
@@ -224,31 +248,137 @@ export class McpService {
     }
   }
 
-  async start(): Promise<void> {
-    if (this.isRunning) return
-
-    const config = await getDesktopMcpServerConfig()
-    const port = config.mcpPort || 31004
-
+  private listenOnce(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      try {
-        this.httpServer = this.app.listen(port, '0.0.0.0', () => {
-          this.isRunning = true
-          const bound = this.httpServer?.address()
-          const actualPort = typeof bound === 'object' && bound ? bound.port : port
-          logger.info(`[McpService] Server started on http://0.0.0.0:${actualPort}/mcp (SSE: /sse)`)
-          resolve()
+      let server: HttpServer | null = null
+      let settled = false
+
+      const onStartupError = (err: Error) => {
+        if (settled) return
+        settled = true
+        if (server) {
+          server.removeListener('listening', onListening)
+          server.removeListener('error', onStartupError)
+          try {
+            server.close()
+          } catch {
+            // 忽略未成功监听时的关闭异常
+          }
+        }
+        if (this.httpServer === server) {
+          this.httpServer = null
+        }
+        this.isRunning = false
+        reject(err)
+      }
+
+      // Express 5 的 app.listen(port, host, callback) 会将 callback 同时注册到 server.once('error', callback)，
+      // 当端口占用时 callback 会收到 err 参数且 server.listening 为 false。
+      const onListening = (err?: Error) => {
+        if (err) {
+          onStartupError(err)
+          return
+        }
+        if (settled || !server) return
+        const activeServer = server
+        if (!activeServer.listening) {
+          onStartupError(
+            new Error(`MCP HTTP server failed to enter listening state on port ${port}`)
+          )
+          return
+        }
+        settled = true
+        activeServer.removeListener('error', onStartupError)
+        this.httpServer = activeServer
+        this.isRunning = true
+
+        activeServer.on('close', () => {
+          this.isRunning = false
+          if (this.httpServer === activeServer) {
+            this.httpServer = null
+          }
         })
-        this.httpServer?.once('error', reject)
+
+        activeServer.on('error', (runtimeErr) => {
+          logger.error('[McpService] Runtime HTTP server error:', runtimeErr)
+          this.isRunning = false
+          if (this.httpServer === activeServer && !activeServer.listening) {
+            this.httpServer = null
+          }
+        })
+
+        const bound = activeServer.address()
+        const actualPort = typeof bound === 'object' && bound ? bound.port : port
+        logger.info(`[McpService] Server started on http://0.0.0.0:${actualPort}/mcp (SSE: /sse)`)
+        resolve()
+      }
+
+      try {
+        server = this.app.listen(port, '0.0.0.0', onListening)
+        this.httpServer = server
+        server.once('error', onStartupError)
       } catch (e) {
-        logger.error(`[McpService] Failed to start on port ${port}`, e as any)
-        reject(e)
+        onStartupError(e as Error)
       }
     })
   }
 
+  private async startWithRetry(retryDelaysMs: readonly number[]): Promise<void> {
+    if (this.running) return
+
+    if (this.httpServer && !this.httpServer.listening) {
+      try {
+        this.httpServer.closeAllConnections?.()
+        this.httpServer.close()
+      } catch {
+        // 忽略残留实例清理异常
+      }
+      this.httpServer = null
+    }
+    this.isRunning = false
+
+    const config = await getDesktopMcpServerConfig()
+    const port = config.mcpPort || 31004
+    const totalAttempts = retryDelaysMs.length + 1
+
+    for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+      try {
+        await this.listenOnce(port)
+        return
+      } catch (e: any) {
+        this.isRunning = false
+        this.httpServer = null
+
+        const delayMs = retryDelaysMs[attempt - 1]
+        if (delayMs !== undefined) {
+          const code = e?.code ? ` (${e.code})` : ''
+          logger.warn(
+            `[McpService] Failed to listen on port ${port}${code} (attempt ${attempt}/${totalAttempts}), retrying in ${delayMs}ms...`
+          )
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+          if (this.running) return
+          continue
+        }
+
+        logger.error(`[McpService] Failed to start on port ${port}`, e as any)
+        throw e
+      }
+    }
+  }
+
+  async start(options?: McpStartOptions): Promise<void> {
+    if (this.running) return
+    if (this.startPromise) return this.startPromise
+
+    const retryDelaysMs = options?.retryDelaysMs ?? DEFAULT_MCP_START_RETRY_DELAYS_MS
+    this.startPromise = this.startWithRetry(retryDelaysMs).finally(() => {
+      this.startPromise = null
+    })
+    return this.startPromise
+  }
+
   async stop(): Promise<void> {
-    if (!this.isRunning || !this.httpServer) return
+    if (!this.isRunning && !this.httpServer) return
 
     for (const [_id, session] of this.sseSessions.entries()) {
       try {
@@ -265,14 +395,29 @@ export class McpService {
     this.streamableTransports.clear()
 
     const server = this.httpServer
+    this.isRunning = false
+    this.httpServer = null
+    if (!server) return
+
     return new Promise((resolve) => {
-      server.closeAllConnections?.()
-      server.close(() => {
-        this.isRunning = false
-        this.httpServer = null
-        logger.info(`[McpService] Server stopped`)
+      try {
+        server.closeAllConnections?.()
+        if (!server.listening) {
+          logger.info(`[McpService] Server stopped`)
+          resolve()
+          return
+        }
+        server.close(() => {
+          this.isRunning = false
+          if (this.httpServer === server) {
+            this.httpServer = null
+          }
+          logger.info(`[McpService] Server stopped`)
+          resolve()
+        })
+      } catch {
         resolve()
-      })
+      }
     })
   }
 

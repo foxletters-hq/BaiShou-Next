@@ -2,6 +2,11 @@ import { logger } from '@baishou/shared'
 import { markStartup } from '../startup-trace.util'
 
 let started = false
+const boundKeepAliveWindows = new WeakSet<object>()
+
+export interface DesktopKeepAliveWindowTarget {
+  on(event: 'focus' | 'show', listener: () => void): unknown
+}
 
 export function resetDesktopPostWindowInitForTests(): void {
   started = false
@@ -15,6 +20,32 @@ export function scheduleDesktopPostWindowInit(start: () => Promise<void>): boole
     logger.warn('[Startup] post-window init failed:', error as Error)
   })
   return true
+}
+
+/**
+ * 绑定主窗口 focus / show 事件，在窗口重新激活或显示时触发 MCP Server 自愈保活检查。
+ */
+export function bindDesktopWindowMcpKeepAlive(
+  window: DesktopKeepAliveWindowTarget,
+  ensureAlive?: () => Promise<void>
+): void {
+  if (boundKeepAliveWindows.has(window)) return
+  boundKeepAliveWindows.add(window)
+
+  const handleWindowActive = () => {
+    const run =
+      ensureAlive ??
+      (async () => {
+        const { ensureMcpServerAlive } = await import('./mcp-runtime')
+        await ensureMcpServerAlive()
+      })
+    void run().catch((error) => {
+      logger.warn('[Startup] ensureMcpServerAlive on window active failed:', error as Error)
+    })
+  }
+
+  window.on('focus', handleWindowActive)
+  window.on('show', handleWindowActive)
 }
 
 export async function runDesktopPostWindowInit(): Promise<void> {

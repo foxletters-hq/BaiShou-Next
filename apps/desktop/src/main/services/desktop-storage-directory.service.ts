@@ -24,7 +24,7 @@ import { summaryWatcher } from './summary-watcher.service'
 import { sessionWatcher } from './session-watcher.service'
 import { resetSyncService } from '../ipc/incremental-sync.ipc'
 import { resetGitService } from '../ipc/git-sync.ipc'
-import { getMcpService, bootstrapMcpServer } from './mcp-runtime'
+import { shutdownMcpServer, bootstrapMcpServer } from './mcp-runtime'
 import { invalidateMcpToolContextCache } from '../ipc/agent-helpers'
 import { resolvePickedStorageDirectory } from './desktop-legacy-bootstrap.service'
 import { getAppDb, resetAppDb } from '../db'
@@ -40,7 +40,6 @@ export type StorageTargetValidation =
   | { valid: false; code: StorageTargetValidationCode }
 
 let quiesceDepth = 0
-let mcpWasRunningBeforeQuiesce = false
 
 export async function reconnectAgentDbForCurrentStorageRoot(): Promise<void> {
   const storageRoot = await pathService.getRootDirectory()
@@ -112,13 +111,10 @@ export async function quiesceStorageForFileCopy(): Promise<void> {
     logger.warn('[StorageDirectory] session flushPending failed before quiesce:', e as Error)
   }
 
-  mcpWasRunningBeforeQuiesce = Boolean(getMcpService()?.running)
-  if (mcpWasRunningBeforeQuiesce) {
-    try {
-      await getMcpService()?.stop()
-    } catch (e) {
-      logger.warn('[StorageDirectory] MCP stop failed:', e as Error)
-    }
+  try {
+    await shutdownMcpServer()
+  } catch (e) {
+    logger.warn('[StorageDirectory] MCP shutdown failed:', e as Error)
   }
 
   try {
@@ -141,46 +137,46 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   quiesceDepth -= 1
   if (quiesceDepth > 0) return
 
-  await reconnectAgentDbForCurrentStorageRoot()
-  await vaultService.initRegistry()
-  await connectGlobalShadowDb()
-  await connectKnowledgeDb()
-
-  const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
-  resetSharedShadowSync()
-
-  const { globalBootstrapper } = await import('./bootstrapper.service')
-  await globalBootstrapper.activateVaultRuntime()
-
-  const { resetAttachmentAllowedRootsCache } = await import('../ipc/attachment-path-cache')
-  resetAttachmentAllowedRootsCache()
-  resetSyncService()
-  resetGitService()
-
-  const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
-  scheduleVaultEcosystemResync('storage-root-changed')
-
-  const { emitStorageRootChangedMutation } = await import('../cache/desktop-main-cache-coordinator')
-  emitStorageRootChangedMutation(vaultService.getActiveVault()?.name)
-
   try {
-    await settingsManager.fullResyncFromDisk()
-    invalidateMcpToolContextCache()
-  } catch (e) {
-    logger.warn(
-      '[StorageDirectory] settings fullResyncFromDisk failed after root change:',
-      e as Error
-    )
-  }
+    await reconnectAgentDbForCurrentStorageRoot()
+    await vaultService.initRegistry()
+    await connectGlobalShadowDb()
+    await connectKnowledgeDb()
 
-  if (mcpWasRunningBeforeQuiesce) {
+    const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
+    resetSharedShadowSync()
+
+    const { globalBootstrapper } = await import('./bootstrapper.service')
+    await globalBootstrapper.activateVaultRuntime()
+
+    const { resetAttachmentAllowedRootsCache } = await import('../ipc/attachment-path-cache')
+    resetAttachmentAllowedRootsCache()
+    resetSyncService()
+    resetGitService()
+
+    const { scheduleVaultEcosystemResync } = await import('./vault-resync.service')
+    scheduleVaultEcosystemResync('storage-root-changed')
+
+    const { emitStorageRootChangedMutation } =
+      await import('../cache/desktop-main-cache-coordinator')
+    emitStorageRootChangedMutation(vaultService.getActiveVault()?.name)
+  } finally {
+    try {
+      await settingsManager.fullResyncFromDisk()
+      invalidateMcpToolContextCache()
+    } catch (e) {
+      logger.warn(
+        '[StorageDirectory] settings fullResyncFromDisk failed after root change:',
+        e as Error
+      )
+    }
+
     try {
       await bootstrapMcpServer()
     } catch (e) {
       logger.warn('[StorageDirectory] MCP restart failed:', e as Error)
     }
   }
-  mcpWasRunningBeforeQuiesce = false
 
   BrowserWindow.getAllWindows().forEach((w) => {
     w.webContents.send('storage:root-changed')
