@@ -25,6 +25,7 @@ import { useTts } from './useTts'
 import { usePersistedSharedMemoryLookback } from '../../../hooks/usePersistedSharedMemoryLookback'
 import { usePersistedSearchMode } from './usePersistedSearchMode'
 import {
+  buildSkillInvocationBody,
   mapSavedAttachmentsForUi,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
@@ -179,10 +180,21 @@ export function useAgentChatFlow() {
     ).skills?.onChanged?.(() => {
       void loadShortcuts()
     })
+    const onWindowFocus = () => {
+      void loadShortcuts()
+    }
+    window.addEventListener('focus', onWindowFocus)
     return () => {
       unsubSkills?.()
+      window.removeEventListener('focus', onWindowFocus)
     }
   }, [fetchAssistants, loadShortcuts])
+
+  useEffect(() => {
+    if (showShortcutManager) {
+      void loadShortcuts()
+    }
+  }, [showShortcutManager, loadShortcuts])
 
   // ── 7. 搜索模式持久化见 usePersistedSearchMode ──
 
@@ -252,14 +264,48 @@ export function useAgentChatFlow() {
       return false
     }
 
-    const displayText = meta?.displayText?.trim() || text
-    const skillRefs = meta?.skillRefs
+    let effectiveText = text
+    let skillRefs = meta?.skillRefs
+    if (skillRefs?.length) {
+      try {
+        const latestSkills = await (
+          window.api as {
+            skills?: { list?: () => Promise<Array<{ name: string; content: string }>> }
+          }
+        )?.skills?.list?.()
+        if (Array.isArray(latestSkills) && latestSkills.length > 0) {
+          const contentByCommand = new Map(
+            latestSkills.map((item) => [
+              item.name.trim().replace(/^\/+/, '').toLowerCase(),
+              item.content
+            ])
+          )
+          skillRefs = skillRefs.map((ref) => {
+            const key = ref.command.trim().replace(/^\/+/, '').toLowerCase()
+            const latestContent = contentByCommand.get(key)
+            if (typeof latestContent === 'string' && latestContent !== ref.content) {
+              const oldBody = buildSkillInvocationBody(ref)
+              const nextRef = { ...ref, content: latestContent }
+              const newBody = buildSkillInvocationBody(nextRef)
+              if (oldBody && effectiveText.includes(oldBody)) {
+                effectiveText = effectiveText.replace(oldBody, newBody)
+              }
+              return nextRef
+            }
+            return ref
+          })
+        }
+      } catch {
+        // 技能列表刷新失败时不阻断发送
+      }
+    }
+    const displayText = meta?.displayText?.trim() || effectiveText
     const needsNewSession = isDraftChatSessionId(sessionId)
     let localQueueId: string | undefined
 
     try {
       if (meta?.queueEditInputId) {
-        return commitCompanionQueueEdit({ inputId: meta.queueEditInputId, text })
+        return commitCompanionQueueEdit({ inputId: meta.queueEditInputId, text: effectiveText })
       }
 
       if (needsNewSession) {
@@ -277,13 +323,13 @@ export function useAgentChatFlow() {
           new CustomEvent('baishou:companion-pending-inputs-changed', {
             detail: {
               sessionId: targetSessionId,
-              optimistic: { id: localQueueId, text }
+              optimistic: { id: localQueueId, text: effectiveText }
             }
           })
         )
       }
 
-      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {
+      const saveResult = await stream.saveUserMessage(targetSessionId, effectiveText, attachments, {
         displayText,
         providerId: model.currentProviderId,
         modelId: model.currentModelId,
@@ -311,7 +357,9 @@ export function useAgentChatFlow() {
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
 
-      void chat.refreshLatestMessages(1, targetSessionId, { resetPagination: true })
+      const refreshPromise = chat.refreshLatestMessages(1, targetSessionId, {
+        resetPagination: true
+      })
 
       if (wasNewSession) {
         if (loadSessions) {
@@ -326,7 +374,7 @@ export function useAgentChatFlow() {
       // 忙时入队、空闲时 admit 开流：禁止再走 agent:chat 直接 claim 打断当前回合
       const admitted = await window.api.admit({
         sessionId: targetSessionId!,
-        text,
+        text: effectiveText,
         delivery,
         userMessageId: saveResult.userMessageId,
         providerId: model.currentProviderId,
@@ -346,6 +394,10 @@ export function useAgentChatFlow() {
       }
 
       if (admitted.started) {
+        if (busy) {
+          await refreshPromise
+          await chat.refreshLatestMessages(2, targetSessionId, { resetPagination: true })
+        }
         stream.beginStreaming(targetSessionId!)
       }
 

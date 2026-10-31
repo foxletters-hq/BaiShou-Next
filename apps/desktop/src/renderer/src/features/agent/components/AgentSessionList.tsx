@@ -51,7 +51,13 @@ function groupSessions(
       pinned.push(session)
       continue
     }
-    const updatedAt = session.updatedAt
+    const rawUpdatedAt = session.updatedAt as number | string | Date | undefined
+    const updatedAt =
+      typeof rawUpdatedAt === 'number'
+        ? rawUpdatedAt
+        : rawUpdatedAt
+          ? new Date(rawUpdatedAt).getTime()
+          : undefined
     if (!updatedAt || Number.isNaN(updatedAt)) {
       older.push(session)
       continue
@@ -131,8 +137,19 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     }
   }, [scrollKey])
 
+  const handleScroll = React.useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!hasMore || isLoadingMore || !onLoadMore) return
+      const el = e.currentTarget
+      if (el.scrollHeight - el.scrollTop - el.clientHeight <= 80) {
+        onLoadMore()
+      }
+    },
+    [hasMore, isLoadingMore, onLoadMore]
+  )
+
   return (
-    <div className={styles.scroller} ref={scrollerRef}>
+    <div className={styles.scroller} ref={scrollerRef} onScroll={handleScroll}>
       {isLoading ? (
         <div className={styles.emptyState}>
           <span className={styles.emptyText}>{t('common.loading', '加载中...')}</span>

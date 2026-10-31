@@ -366,6 +366,21 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   const hidePersistedLiveTurn = streamUi.hidePersistedLiveTurn
   const visibleMessages = hidePersistedLiveTurn ? chat.messages.slice(0, -1) : chat.messages
   const showStreamingBubble = streamUi.showStreamingBubble
+  const bubbleUserProfile = useMemo(
+    () => ({
+      nickname: userProfile?.nickname || 'User',
+      avatarPath: userProfile?.avatarPath
+    }),
+    [userProfile?.nickname, userProfile?.avatarPath]
+  )
+  const bubbleAiProfile = useMemo(
+    () => ({
+      name: currentAssistant?.name || 'AI',
+      avatarPath: currentAssistant?.avatarPath,
+      emoji: currentAssistant?.emoji
+    }),
+    [currentAssistant?.name, currentAssistant?.avatarPath, currentAssistant?.emoji]
+  )
 
   return (
     <CompanionAskInteractionProvider
@@ -451,15 +466,8 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               <React.Fragment key={msg.id}>
                 <ChatBubble
                   message={bubbleMessage}
-                  userProfile={{
-                    nickname: userProfile?.nickname || 'User',
-                    avatarPath: userProfile?.avatarPath
-                  }}
-                  aiProfile={{
-                    name: currentAssistant?.name || 'AI',
-                    avatarPath: currentAssistant?.avatarPath,
-                    emoji: currentAssistant?.emoji
-                  }}
+                  userProfile={bubbleUserProfile}
+                  aiProfile={bubbleAiProfile}
                   onShowContext={
                     msg.role === 'user' || msg.role === 'assistant'
                       ? (m) => handleShowContext(m, msg)
@@ -522,11 +530,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               gateParts={liveGateParts}
               attachments={pendingEmojiAttachments}
               error={stream.error}
-              aiProfile={{
-                name: currentAssistant?.name || 'AI',
-                avatarPath: currentAssistant?.avatarPath,
-                emoji: currentAssistant?.emoji
-              }}
+              aiProfile={bubbleAiProfile}
             />
           ) : null}
 

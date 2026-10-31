@@ -233,6 +233,7 @@ export function clearStreamBridgeState(state: SessionStreamState): void {
 
 /** 消息列表已从 DB 刷新后清除桥接态，避免 StreamingBubble 与 ChatBubble 短暂并存 */
 export function clearStreamBridgeForSession(sessionId: string): void {
+  if (sessionStates[sessionId]?.isStreaming) return
   resetStreamDisplayBuffers(sessionId)
   updateSessionState(sessionId, (state) => {
     clearStreamBridgeState(state)
@@ -335,6 +336,16 @@ function registerGlobalStreamIpcListeners(): () => void {
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
     const delta = chunk ?? ''
+    if (sessionStates[sId]?.isBridgeActive && !sessionStates[sId]?.isStreaming) {
+      resetStreamDisplayBuffers(sId)
+      updateSessionState(
+        sId,
+        (state) => {
+          clearStreamBridgeState(state)
+        },
+        { notify: false }
+      )
+    }
     let needsHydrate = false
     updateSessionState(
       sId,
@@ -357,6 +368,16 @@ function registerGlobalStreamIpcListeners(): () => void {
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
     const delta = chunk ?? ''
+    if (sessionStates[sId]?.isBridgeActive && !sessionStates[sId]?.isStreaming) {
+      resetStreamDisplayBuffers(sId)
+      updateSessionState(
+        sId,
+        (state) => {
+          clearStreamBridgeState(state)
+        },
+        { notify: false }
+      )
+    }
     let needsHydrate = false
     updateSessionState(
       sId,
@@ -377,6 +398,16 @@ function registerGlobalStreamIpcListeners(): () => void {
   const onToolStart = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     if (!sId || userStoppedSessions.has(sId)) return
+    if (sessionStates[sId]?.isBridgeActive && !sessionStates[sId]?.isStreaming) {
+      resetStreamDisplayBuffers(sId)
+      updateSessionState(
+        sId,
+        (state) => {
+          clearStreamBridgeState(state)
+        },
+        { notify: false }
+      )
+    }
     const name = typeof payload === 'object' ? payload?.name : payload?.name
     const args = typeof payload === 'object' ? payload?.args : payload?.args
     const toolCallId =

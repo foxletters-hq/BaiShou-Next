@@ -493,10 +493,13 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
           const success = await refreshLatestMessages(1)
           if (!success || !sessionId) continue
           persistSessionCache(sessionId)
-          const last = messageCacheRef.current[messageCacheRef.current.length - 1]
+          const lastAssistant = [...messageCacheRef.current]
+            .reverse()
+            .find((m) => m.role === 'assistant')
           if (
-            last?.role === 'assistant' &&
-            (!knownAssistantIds.has(last.id) || !isPersistedAssistantStreamInProgress(last))
+            lastAssistant &&
+            (!knownAssistantIds.has(lastAssistant.id) ||
+              !isPersistedAssistantStreamInProgress(lastAssistant))
           ) {
             clearStreamBridgeForSession(sessionId)
             return
