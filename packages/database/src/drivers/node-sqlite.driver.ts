@@ -5,6 +5,39 @@ import * as fs from 'fs'
 import { AppDatabase } from '../types'
 import { MigrationService } from '../migration.service'
 
+export interface SqliteVecModule {
+  getLoadablePath?: () => string
+  load: (db: Pick<Database.Database, 'loadExtension'>) => void
+}
+
+/**
+ * 将 Electron 打包后 require.resolve 返回的 app.asar 虚拟路径转换为 app.asar.unpacked 物理路径。
+ * SQLite 原生 loadExtension 直接调用系统 dlopen/LoadLibrary，无法读取 asar 归档内部文件。
+ */
+export function resolveNodeSqliteVecPath(rawPath: string): string {
+  return rawPath.replace(/([\\/])app\.asar([\\/])/i, '$1app.asar.unpacked$2')
+}
+
+/**
+ * 在 better-sqlite3 实例上加载 sqlite-vec 原生扩展。
+ * 优先通过 getLoadablePath() 拿到路径并转换为 app.asar.unpacked，避免打包后从 app.asar 加载失败。
+ */
+export function loadNodeSqliteVecExtension(
+  sqlite: Pick<Database.Database, 'loadExtension'>,
+  sqliteVecOverride?: SqliteVecModule
+): string {
+  // 使用 runtime require，避免 Rollup default/namespace interop 破坏 sqlite-vec 的 CJS 导出 { load, getLoadablePath }。
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const sqliteVec = (sqliteVecOverride ?? require('sqlite-vec')) as SqliteVecModule
+  if (typeof sqliteVec.getLoadablePath === 'function') {
+    const loadablePath = resolveNodeSqliteVecPath(sqliteVec.getLoadablePath())
+    sqlite.loadExtension(loadablePath)
+    return loadablePath
+  }
+  sqliteVec.load(sqlite)
+  return ''
+}
+
 /**
  * 初始化适用于 Desktop / Node 端的 SQLite 数据库实例
  * @param dbPath SQLite 文件路径 (例如 userData 目录下的 'baishou.db')
@@ -14,11 +47,8 @@ export function initNodeDatabase(dbPath: string, onCorrupt?: (err: any) => void)
   const sqlite = new Database(dbPath)
 
   // 1. 一键载入 C++ 原生向量数据库引擎支持！
-  // 使用 runtime require，避免 Rollup default/namespace interop 破坏 sqlite-vec 的 CJS 导出 { load }。
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const sqliteVec = require('sqlite-vec') as { load: (db: InstanceType<typeof Database>) => void }
-    sqliteVec.load(sqlite)
+    loadNodeSqliteVecExtension(sqlite)
     console.log(
       '[VectorSearch] Native sqlite-vec extension loaded successfully on desktop database!'
     )

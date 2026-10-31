@@ -1,22 +1,33 @@
-import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, integer, text, index } from 'drizzle-orm/sqlite-core'
 
-export const agentSessionsTable = sqliteTable('agent_sessions', {
-  id: text('id').primaryKey(),
-  title: text('title').notNull().default('新对话'),
-  vaultId: text('vault_id').notNull(),
-  assistantId: text('assistant_id'),
-  isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
-  systemPrompt: text('system_prompt'),
-  mountedNotebookIds: text('mounted_notebook_ids').notNull().default(''),
-  /** 会话级 instruction 基线（JSON）：skills_catalog 等增量指令的冻结快照 */
-  instructionState: text('instruction_state'),
-  providerId: text('provider_id').notNull(),
-  modelId: text('model_id').notNull(),
-  totalInputTokens: integer('total_input_tokens').notNull().default(0),
-  totalOutputTokens: integer('total_output_tokens').notNull().default(0),
-  totalCacheReadInputTokens: integer('total_cache_read_input_tokens').notNull().default(0),
-  totalCacheWriteInputTokens: integer('total_cache_write_input_tokens').notNull().default(0),
-  totalCostMicros: integer('total_cost_micros').notNull().default(0),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow()
-})
+export const agentSessionsTable = sqliteTable(
+  'agent_sessions',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull().default('新对话'),
+    vaultId: text('vault_id').notNull(),
+    assistantId: text('assistant_id'),
+    isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
+    systemPrompt: text('system_prompt'),
+    mountedNotebookIds: text('mounted_notebook_ids').notNull().default(''),
+    /** 会话级 instruction 基线（JSON）：skills_catalog 等增量指令的冻结快照 */
+    instructionState: text('instruction_state'),
+    providerId: text('provider_id').notNull(),
+    modelId: text('model_id').notNull(),
+    totalInputTokens: integer('total_input_tokens').notNull().default(0),
+    totalOutputTokens: integer('total_output_tokens').notNull().default(0),
+    totalCacheReadInputTokens: integer('total_cache_read_input_tokens').notNull().default(0),
+    totalCacheWriteInputTokens: integer('total_cache_write_input_tokens').notNull().default(0),
+    totalCostMicros: integer('total_cost_micros').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow()
+  },
+  (t) => ({
+    vaultAssistantUpdatedIdx: index('idx_agent_sessions_vault_assistant_updated').on(
+      t.vaultId,
+      t.assistantId,
+      t.isPinned,
+      t.updatedAt
+    )
+  })
+)

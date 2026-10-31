@@ -80,19 +80,27 @@ export class MessageRepository implements AgentMessageRepository {
       .limit(limit)
       .offset(offset)
 
-    return rows.reverse().map((row) => ({
-      ...row,
-      role: row.role as AgentMessage['role'],
-      askId: row.askId ?? undefined,
-      providerId: row.providerId ?? undefined,
-      modelId: row.modelId ?? undefined,
-      inputTokens: row.inputTokens ?? undefined,
-      outputTokens: row.outputTokens ?? undefined,
-      cacheReadInputTokens: row.cacheReadInputTokens ?? undefined,
-      cacheWriteInputTokens: row.cacheWriteInputTokens ?? undefined,
-      costMicros: row.costMicros ?? undefined,
-      createdAt: row.createdAt
-    }))
+    return rows
+      .reverse()
+      .sort((a, b) => {
+        if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex
+        if (a.role === 'assistant' && b.role === 'user') return -1
+        if (a.role === 'user' && b.role === 'assistant') return 1
+        return 0
+      })
+      .map((row) => ({
+        ...row,
+        role: row.role as AgentMessage['role'],
+        askId: row.askId ?? undefined,
+        providerId: row.providerId ?? undefined,
+        modelId: row.modelId ?? undefined,
+        inputTokens: row.inputTokens ?? undefined,
+        outputTokens: row.outputTokens ?? undefined,
+        cacheReadInputTokens: row.cacheReadInputTokens ?? undefined,
+        cacheWriteInputTokens: row.cacheWriteInputTokens ?? undefined,
+        costMicros: row.costMicros ?? undefined,
+        createdAt: row.createdAt
+      }))
   }
 
   async getPartsByMessageId(messageId: string): Promise<AgentPart[]> {
