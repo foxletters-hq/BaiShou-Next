@@ -54,31 +54,32 @@ export function useGraphScreenData(deps: DataDeps) {
     localView: null as { nodes: any[]; edges: any[] } | null
   })
 
-  const refresh = useCallback(async () => {
+  const runRefreshOnce = useCallback(async () => {
     if (!deps.services || !deps.dbReady) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
     const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), deps.vaultId)
-    setPending(
-      await mobileListPendingReextract({
+    const [nextPending, pendingBundle, similar, graph] = await Promise.all([
+      mobileListPendingReextract({
         vaultName: deps.vaultName,
         vaultId: deps.vaultId,
         shadowRepo,
         pathService: deps.services.pathService as never,
         fileSystem: deps.services.fileSystem as never
-      })
-    )
-    const pendingBundle = await mobileListPending(runtime.drizzleDb, deps.vaultId)
-    const similar = await mobileListSimilarPairs(runtime.drizzleDb, deps.vaultId).catch(
-      () => [] as GraphSimilarPendingPair[]
-    )
+      }),
+      mobileListPending(runtime.drizzleDb, deps.vaultId),
+      mobileListSimilarPairs(runtime.drizzleDb, deps.vaultId).catch(
+        () => [] as GraphSimilarPendingPair[]
+      ),
+      mobileLoadGlobalGraph(
+        runtime.drizzleDb,
+        deps.vaultId,
+        deps.viewMaxNodes,
+        clampGraphMonthRange(deps.monthRange)
+      )
+    ])
+    setPending(nextPending)
     const pendingView = remapGraphViewReviewForDisplay(pendingBundle.nodes, pendingBundle.edges)
-    const graph = await mobileLoadGlobalGraph(
-      runtime.drizzleDb,
-      deps.vaultId,
-      deps.viewMaxNodes,
-      clampGraphMonthRange(deps.monthRange)
-    )
     const remapped = remapGraphViewReviewForDisplay(graph.nodes, graph.edges)
     const visible = omitInFlightGraphDeletes({
       nodes: remapped.nodes,
@@ -106,7 +107,8 @@ export function useGraphScreenData(deps: DataDeps) {
           vaultId: deps.vaultId,
           shadowRepo,
           pathService: deps.services.pathService as never,
-          fileSystem: deps.services.fileSystem as never
+          fileSystem: deps.services.fileSystem as never,
+          pendingItems: nextPending
         })
       )
     } catch {
@@ -120,6 +122,31 @@ export function useGraphScreenData(deps: DataDeps) {
     deps.monthRange,
     deps.viewMaxNodes
   ])
+  const runRefreshOnceRef = useRef(runRefreshOnce)
+  runRefreshOnceRef.current = runRefreshOnce
+
+  const inFlightRefreshRef = useRef<Promise<void> | null>(null)
+  const refreshQueuedRef = useRef(false)
+
+  const refresh = useCallback(async () => {
+    if (inFlightRefreshRef.current) {
+      refreshQueuedRef.current = true
+      return inFlightRefreshRef.current
+    }
+    const runner = (async () => {
+      try {
+        do {
+          await Promise.resolve()
+          refreshQueuedRef.current = false
+          await runRefreshOnceRef.current()
+        } while (refreshQueuedRef.current)
+      } finally {
+        inFlightRefreshRef.current = null
+      }
+    })()
+    inFlightRefreshRef.current = runner
+    return runner
+  }, [])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
@@ -182,6 +209,7 @@ export function useGraphScreenData(deps: DataDeps) {
     setPendingEdges,
     pendingEndpointNodes,
     similarPairs,
+    setSimilarPairs,
     graphNodes,
     setGraphNodes,
     graphEdges,

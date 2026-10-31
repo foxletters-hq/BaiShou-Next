@@ -32,7 +32,14 @@ import { useGraphScreenDetailDelete } from './useGraphScreenDetailDelete'
 type DetailDeps = {
   t: GraphScreenTranslateFn
   toast: { showSuccess: (message: string) => void; showError: (message: string) => void }
-  dialog: { confirm: (message: string, title?: string) => Promise<boolean> }
+  dialog: {
+    confirm: (
+      message: string,
+      titleOrOptions?:
+        | string
+        | { title?: string; confirmText?: string; cancelText?: string; destructive?: boolean }
+    ) => Promise<boolean>
+  }
   services: { pathService: unknown; fileSystem: unknown } | null
   vaultId: string
   vaultName: string
@@ -84,77 +91,109 @@ export function useGraphScreenDetail(deps: DetailDeps) {
   const [addEdgeType, setAddEdgeType] = useState<string>(GRAPH_EDGE_TYPES[0] ?? 'relates_to')
   const [addEdgeSearchMode, setAddEdgeSearchMode] = useState<GraphSearchMode>('text')
   const [addEdgeSearching, setAddEdgeSearching] = useState(false)
+  const syncedNodeSnapshotRef = useRef<{
+    id: string
+    name: string
+    summary: string
+    aliases: string
+  } | null>(null)
+
+  const selectedNodeId = deps.selectedNode?.id ? String(deps.selectedNode.id) : null
+  const selectedNodeName = String(deps.selectedNode?.name || '')
+  const selectedNodeSummary = String(deps.selectedNode?.summary || '')
+  const selectedNodeAliases = Array.isArray(deps.selectedNode?.aliases)
+    ? deps.selectedNode.aliases.join(', ')
+    : ''
+  const selectedNodeType = deps.selectedNode?.nodeType
+    ? String(deps.selectedNode.nodeType)
+    : undefined
 
   useEffect(() => {
-    if (!deps.selectedNode) return
-    setEditName(deps.selectedNode.name || '')
-    setEditSummary(deps.selectedNode.summary || '')
-    setEditAliases(
-      Array.isArray(deps.selectedNode.aliases) ? deps.selectedNode.aliases.join(', ') : ''
-    )
-    setAddEdgeQuery('')
-    setAddEdgeHits([])
-    setAddEdgeToId('')
-    setAddEdgeType('relates_to')
-    setAddEdgeSearchMode('text')
-    setAddEdgeSearching(false)
+    if (!selectedNodeId) {
+      syncedNodeSnapshotRef.current = null
+      return
+    }
+    const prev = syncedNodeSnapshotRef.current
+    const isNewSelection = !prev || prev.id !== selectedNodeId
+    const persistedFieldsChanged =
+      !prev ||
+      prev.name !== selectedNodeName ||
+      prev.summary !== selectedNodeSummary ||
+      prev.aliases !== selectedNodeAliases
+
+    if (!isNewSelection && !persistedFieldsChanged) return
+
+    syncedNodeSnapshotRef.current = {
+      id: selectedNodeId,
+      name: selectedNodeName,
+      summary: selectedNodeSummary,
+      aliases: selectedNodeAliases
+    }
+    setEditName(selectedNodeName)
+    setEditSummary(selectedNodeSummary)
+    setEditAliases(selectedNodeAliases)
     setEditNameConflict(null)
-  }, [deps.selectedNode])
+    if (isNewSelection) {
+      setAddEdgeQuery('')
+      setAddEdgeHits([])
+      setAddEdgeToId('')
+      setAddEdgeType('relates_to')
+      setAddEdgeSearchMode('text')
+      setAddEdgeSearching(false)
+    }
+  }, [selectedNodeId, selectedNodeName, selectedNodeSummary, selectedNodeAliases])
 
   useEffect(() => {
     const runtime = getAgentDbRuntime()
-    if (!deps.selectedNode || !runtime?.drizzleDb) {
+    if (!selectedNodeId || !runtime?.drizzleDb) {
       setEditNameConflict(null)
       return
     }
     const trimmed = editName.trim()
-    if (!trimmed || trimmed === String(deps.selectedNode.name || '').trim()) {
+    if (!trimmed || trimmed === selectedNodeName.trim()) {
       setEditNameConflict(null)
       return
     }
     let cancelled = false
     const timer = setTimeout(() => {
-      void mobileFindNodeByName(
-        runtime.drizzleDb,
-        deps.vaultId,
-        trimmed,
-        deps.selectedNode.nodeType
-      ).then((hit) => {
-        if (cancelled) return
-        setEditNameConflict(
-          hit && hit.id !== deps.selectedNode.id
-            ? { id: hit.id, name: hit.name, nodeType: hit.nodeType, summary: hit.summary }
-            : null
-        )
-      })
+      void mobileFindNodeByName(runtime.drizzleDb, deps.vaultId, trimmed, selectedNodeType).then(
+        (hit) => {
+          if (cancelled) return
+          setEditNameConflict(
+            hit && hit.id !== selectedNodeId
+              ? { id: hit.id, name: hit.name, nodeType: hit.nodeType, summary: hit.summary }
+              : null
+          )
+        }
+      )
     }, 300)
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [editName, deps.selectedNode, deps.vaultId])
+  }, [editName, selectedNodeId, selectedNodeName, selectedNodeType, deps.vaultId])
 
   useEffect(() => {
     const runtime = getAgentDbRuntime()
-    if (!deps.selectedNode || !runtime?.drizzleDb) {
+    if (!selectedNodeId || !runtime?.drizzleDb) {
       setSameNameEntities([])
       return
     }
     let cancelled = false
-    void mobileListNameCandidates(runtime.drizzleDb, deps.selectedNode.id).then((rows) => {
+    void mobileListNameCandidates(runtime.drizzleDb, selectedNodeId).then((rows) => {
       if (cancelled) return
       setSameNameEntities(rows)
     })
     return () => {
       cancelled = true
     }
-  }, [deps.selectedNode, deps.vaultId])
+  }, [selectedNodeId, selectedNodeName, deps.vaultId])
 
   const saveNodeEdit = async () => {
     if (!deps.services || !deps.selectedNode) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
-    const name = editName.trim()
+    const name = editName.trim() || String(deps.selectedNode.name || '').trim()
     if (!name) return
     const nameUnchanged = name === String(deps.selectedNode.name || '').trim()
     const hit = nameUnchanged
@@ -211,6 +250,26 @@ export function useGraphScreenDetail(deps: DetailDeps) {
       await deps.refresh()
       const node = await mobileGetNode(runtime.drizzleDb, deps.vaultId, deps.selectedNode.id)
       deps.setSelectedNode(node)
+      if (node) {
+        const nextName = String(node.name || '')
+        const nextSummary = String(node.summary || '')
+        const nextAliases = Array.isArray(node.aliases) ? node.aliases.join(', ') : ''
+        syncedNodeSnapshotRef.current = {
+          id: String(node.id),
+          name: nextName,
+          summary: nextSummary,
+          aliases: nextAliases
+        }
+        setEditName(nextName)
+        setEditSummary(nextSummary)
+        setEditAliases(nextAliases)
+        if (deps.localView) {
+          deps.setLocalView({
+            ...deps.localView,
+            nodes: (deps.localView.nodes || []).map((n: any) => (n.id === node.id ? node : n))
+          })
+        }
+      }
     } catch (e: any) {
       deps.setStatus(e?.message || String(e))
       deps.toast.showError(e?.message || String(e))

@@ -99,12 +99,13 @@ export function useGraphScreenDisplayModel(opts: GraphScreenDisplayModelOptions)
   const graphNodeNameById = useMemo(
     () =>
       buildGraphNodeNameMap([
+        ...(localView?.nodes || []),
         ...graphNodes,
         ...pendingNodes,
         ...pendingEndpointNodes,
-        ...(localView?.nodes || [])
+        ...(selectedNode ? [selectedNode] : [])
       ]),
-    [graphNodes, pendingNodes, pendingEndpointNodes, localView]
+    [localView, graphNodes, pendingNodes, pendingEndpointNodes, selectedNode]
   )
   const detailEdges = useMemo(
     () =>
