@@ -1,6 +1,7 @@
 /// <reference path="./pdf-parse.d.ts" />
 import fs from 'fs'
 import { createRequire } from 'node:module'
+import { extractPromptDocumentText, PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES } from '@baishou/shared'
 
 /** 必须从 node_modules 加载（electron-vite 将 pdf-parse 标为 external） */
 const nodeRequire = createRequire(import.meta.url)
@@ -40,4 +41,18 @@ export async function readPdfTextFromPath(filePath: string): Promise<string> {
   const dataBuffer = fs.readFileSync(filePath)
   const pdfData = await pdfParse(dataBuffer)
   return pdfData.text || ''
+}
+
+export async function readLocalDocumentText(
+  filePath: string,
+  fileName?: string,
+  mimeType?: string
+): Promise<string> {
+  if (!filePath) return ''
+  const stat = fs.statSync(filePath)
+  if (stat.size > PROMPT_CONVERTIBLE_DOCUMENT_MAX_BYTES) {
+    throw new Error('Document file exceeds maximum size limit')
+  }
+  const buf = fs.readFileSync(filePath)
+  return extractPromptDocumentText(fileName || filePath, new Uint8Array(buf), mimeType)
 }

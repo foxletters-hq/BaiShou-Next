@@ -41,9 +41,11 @@ export interface PersistResultParams {
   namingProvider?: IAIProvider
   namingModelId?: string
   namingReasoningEffort?: import('@baishou/shared').ReasoningEffortSetting
+  flushSessionToDisk?: (sessionId: string) => Promise<void>
   /** 用户配置，用于查找 emoji_send 工具对应的表情包文件 */
   userConfig?: Record<string, any>
   agentGateParts?: import('@baishou/shared').AgentGatePartData[]
+  fileChangeParts?: import('@baishou/shared').FileChangePartData[]
   /** 流式中途已写入的助手消息：收尾时覆盖同一行，不要再插一条 */
   existingAssistantMessageId?: string
   /** 用户主动停止时不把 Abort 当成落盘失败 */
@@ -74,6 +76,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
     skipUserMessageRecording,
     userMessageId,
     streamError,
+    flushSessionToDisk,
     userAborted
   } = params
 
@@ -89,7 +92,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
     assistantMsgId,
     sessionId,
     userConfig: params.userConfig,
-    agentGateParts: params.agentGateParts
+    agentGateParts: params.agentGateParts,
+    fileChangeParts: params.fileChangeParts
   })
 
   // 从 Vercel AI SDK 获取最终 usage
@@ -191,6 +195,8 @@ export async function persistResult(params: PersistResultParams): Promise<{
 
   if (partsToInsert.length > 0) {
     const billing = {
+      role: 'assistant' as const,
+      orderIndex: userOrderIndex + 1,
       inputTokens: finalUsage.inputTokens,
       outputTokens: finalUsage.outputTokens,
       cacheReadInputTokens: streamUsage.cacheReadInputTokens,
@@ -206,8 +212,6 @@ export async function persistResult(params: PersistResultParams): Promise<{
         {
           id: assistantMsgId,
           sessionId,
-          role: 'assistant',
-          orderIndex: userOrderIndex + 1,
           ...billing
         },
         partsToInsert
@@ -223,6 +227,14 @@ export async function persistResult(params: PersistResultParams): Promise<{
     streamUsage.cacheReadInputTokens,
     streamUsage.cacheWriteInputTokens
   )
+
+  if (flushSessionToDisk) {
+    try {
+      await flushSessionToDisk(sessionId)
+    } catch (e: unknown) {
+      logger.warn('[Persist Result] flushSessionToDisk failed:', e as Error)
+    }
+  }
 
   // ==========================================
   // 触发闲置后台服务 (仅在无流错误时执行)
@@ -242,6 +254,9 @@ export async function persistResult(params: PersistResultParams): Promise<{
             namingModelId: params.namingModelId,
             namingReasoningEffort: params.namingReasoningEffort
           })
+          if (flushSessionToDisk) {
+            await flushSessionToDisk(sessionId)
+          }
         }
       } catch (e: unknown) {
         logger.warn('[Persist Result] background title update failed:', e as Error)
