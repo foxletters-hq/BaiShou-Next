@@ -2,7 +2,7 @@ import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { createBaishouMcpServer } from '@baishou/ai/mcp/baishou-mcp-server'
 import { listBaishouMcpToolsForUi, type ToolRegistry, type ToolContext } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { extractMcpTargetVault, logger } from '@baishou/shared'
 import * as ExpoCrypto from 'expo-crypto'
 import * as BaishouServer from 'expo-baishou-server'
 import type { McpHttpResponseEnvelope } from 'expo-baishou-server'
@@ -13,6 +13,7 @@ import {
   parseMcpRequestBody,
   type McpNativeResponseSink
 } from './mobile-mcp-web-response.util'
+import { extractMcpSessionId } from './mobile-mcp-sse.util'
 import { MobileSseServerTransport } from './mobile-mcp-sse.transport'
 
 export {
@@ -67,8 +68,8 @@ export class MobileMcpSdkBridge {
   constructor(
     private readonly appVersion: string,
     private readonly toolRegistry: ToolRegistry,
-    private readonly resolveToolContext: () => Promise<ToolContext>,
-    private readonly resolveToolListContext?: () => Promise<ToolContext>
+    private readonly resolveToolContext: (targetVault?: string) => Promise<ToolContext>,
+    private readonly resolveToolListContext?: (targetVault?: string) => Promise<ToolContext>
   ) {}
 
   setActivePort(port: number): void {
@@ -98,8 +99,9 @@ export class MobileMcpSdkBridge {
     path = '/mcp'
   ): Promise<void> {
     const pathname = pathnameOf(path)
-    if (pathname === '/sse' || pathname === '/sse/') {
-      await this.handleSseConnect(requestId, method)
+    const targetVault = extractMcpTargetVault(path)
+    if (pathname === '/sse' || pathname === '/sse/' || pathname.startsWith('/sse/')) {
+      await this.handleSseConnect(requestId, method, targetVault)
       return
     }
     if (pathname === '/message') {
@@ -107,7 +109,7 @@ export class MobileMcpSdkBridge {
       return
     }
 
-    await this.handleStreamableRequest(requestId, method, headers, body)
+    await this.handleStreamableRequest(requestId, method, headers, body, targetVault)
   }
 
   async closeAllSessions(): Promise<void> {
@@ -121,7 +123,11 @@ export class MobileMcpSdkBridge {
     this.sessionChains.clear()
   }
 
-  private async handleSseConnect(requestId: string, method: string): Promise<void> {
+  private async handleSseConnect(
+    requestId: string,
+    method: string,
+    targetVault?: string
+  ): Promise<void> {
     if (method !== 'GET') {
       this.resolvePlainError(requestId, 405, 'Method Not Allowed')
       return
@@ -134,7 +140,7 @@ export class MobileMcpSdkBridge {
       transport = new MobileSseServerTransport('/message')
       transport.bindStreamRequest(requestId)
       server = createBaishouMcpServer(this.appVersion, this.toolRegistry, () =>
-        this.resolveToolContext()
+        this.resolveToolContext(targetVault)
       )
 
       const sessionId = transport.sessionId
@@ -226,16 +232,49 @@ export class MobileMcpSdkBridge {
     requestId: string,
     method: string,
     headers: Record<string, string>,
-    body: string
+    body: string,
+    targetVault?: string
   ): Promise<void> {
-    const sessionId = headers['mcp-session-id']
+    const upperMethod = method.toUpperCase()
+    const sessionId = extractMcpSessionId(headers)
     const port = this.activePort || 31004
-    const parsedBody = method === 'POST' ? parseMcpRequestBody(body) : undefined
     const delivery = new AbortController()
     this.activeDeliveries.set(requestId, delivery)
 
     try {
+      let parsedBody: unknown
+      if (upperMethod === 'POST') {
+        try {
+          parsedBody = parseMcpRequestBody(body)
+        } catch (parseErr: unknown) {
+          const msg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+          this.resolveJsonRpcError(requestId, 400, -32700, `Parse error: ${msg}`)
+          return
+        }
+      }
+
       if (sessionId) {
+        const existingSession = this.sessions.get(sessionId)
+        if (!existingSession || existingSession.kind !== 'streamable') {
+          this.resolveJsonRpcError(requestId, 404, -32001, `Session not found: ${sessionId}`)
+          return
+        }
+
+        // 移动端启用了 enableJsonResponse: true（JSON 响应模式，不通过独立 GET SSE 流主动推送通知）。
+        // React Native 的 whatwg-fetch Response 不支持 ReadableStream，且在会话锁内保持 GET 长连接会死锁后续 POST 请求；
+        // 按 MCP Streamable HTTP 规范返回 405，告知客户端禁用独立 GET SSE 流并保持 JSON 模式。
+        if (upperMethod === 'GET') {
+          BaishouServer.resolveMcpHttpResponse(requestId, {
+            statusCode: 405,
+            headers: {
+              allow: 'POST, DELETE',
+              'content-type': 'text/plain; charset=utf-8'
+            },
+            body: 'Method Not Allowed'
+          })
+          return
+        }
+
         await this.runWithSessionLock(sessionId, async () => {
           const session = this.sessions.get(sessionId)
           if (!session || session.kind !== 'streamable') {
@@ -243,14 +282,20 @@ export class MobileMcpSdkBridge {
             return
           }
 
-          const webRequest = nanoEventToRequest(method, headers, body, port)
+          const webRequest = nanoEventToRequest(upperMethod, headers, body, port)
           const response = await session.transport.handleRequest(webRequest, { parsedBody })
           await deliverMcpWebResponse(requestId, response, nativeSink, delivery.signal)
         })
         return
       }
 
-      if (method !== 'POST' || !isInitializePayload(body)) {
+      // 兼容外部客户端将复制的 /mcp 地址配置为 Legacy SSE 连接类型的场景（发送无 mcp-session-id 的 GET /mcp）
+      if (upperMethod === 'GET') {
+        await this.handleSseConnect(requestId, 'GET', targetVault)
+        return
+      }
+
+      if (upperMethod !== 'POST' || !isInitializePayload(body)) {
         this.resolveJsonRpcError(
           requestId,
           400,
@@ -262,12 +307,13 @@ export class MobileMcpSdkBridge {
 
       await this.handleInitializeRequest(
         requestId,
-        method,
+        upperMethod,
         headers,
         body,
         port,
         parsedBody,
-        delivery.signal
+        delivery.signal,
+        targetVault
       )
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
@@ -285,7 +331,8 @@ export class MobileMcpSdkBridge {
     body: string,
     port: number,
     parsedBody: unknown,
-    signal: AbortSignal
+    signal: AbortSignal,
+    targetVault?: string
   ): Promise<void> {
     let server: Server | null = null
     let transport: WebStandardStreamableHTTPServerTransport | null = null
@@ -293,7 +340,7 @@ export class MobileMcpSdkBridge {
 
     try {
       server = createBaishouMcpServer(this.appVersion, this.toolRegistry, () =>
-        this.resolveToolContext()
+        this.resolveToolContext(targetVault)
       )
 
       transport = new WebStandardStreamableHTTPServerTransport({

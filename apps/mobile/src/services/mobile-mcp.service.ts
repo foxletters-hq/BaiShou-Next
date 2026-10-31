@@ -1,13 +1,13 @@
 import { ToolRegistry, type ToolContext, listBaishouMcpToolsForUi } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import type { McpServerConfig } from '@baishou/shared'
-import { isMcpRequestAuthorized, logger } from '@baishou/shared'
+import { extractMcpTargetVault, isMcpRequestAuthorized, logger } from '@baishou/shared'
 import * as BaishouServer from 'expo-baishou-server'
 import { APP_VERSION } from '../app-version'
 import { MOBILE_MCP_ENABLED } from '../config/mobile-features'
 import type { MobileMcpSdkBridge } from './mobile-mcp-sdk.bridge'
 import type { MobileMcpSseBridge } from './mobile-mcp-sse.bridge'
-import { isMcpMessagePath, isMcpSsePath } from './mobile-mcp-sse.util'
+import { extractMcpSessionId, isMcpMessagePath, isMcpSsePath } from './mobile-mcp-sse.util'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
@@ -29,8 +29,8 @@ export class MobileMcpService {
   constructor(
     private readonly settingsManager: SettingsManagerService,
     private readonly toolRegistry: ToolRegistry,
-    private readonly resolveToolContext: () => Promise<ToolContext>,
-    private readonly resolveToolListContext?: () => Promise<ToolContext>
+    private readonly resolveToolContext: (targetVault?: string) => Promise<ToolContext>,
+    private readonly resolveToolListContext?: (targetVault?: string) => Promise<ToolContext>
   ) {}
 
   /** MCP SDK 的 Server 继承链在 Hermes 上会拖垮启动，所以只在真正开服务时加载。 */
@@ -219,14 +219,28 @@ export class MobileMcpService {
         return
       }
 
-      if (isMcpSsePath(path) || isMcpMessagePath(path)) {
+      const upperMethod = method.toUpperCase()
+      const isLegacySseFallbackOnMcp =
+        upperMethod === 'GET' && !isMcpMessagePath(path) && !extractMcpSessionId(headers)
+
+      if (isMcpSsePath(path) || isMcpMessagePath(path) || isLegacySseFallbackOnMcp) {
         await this.ensureBridges()
-        await this.sseBridge!.handleRequest(requestId, method, path, headers, body)
+        const queryIdx = path.indexOf('?')
+        const querySuffix = queryIdx >= 0 ? path.slice(queryIdx) : ''
+        const hasVaultInQuery =
+          queryIdx >= 0 && new URLSearchParams(path.slice(queryIdx + 1)).has('vault')
+        const targetVault = extractMcpTargetVault(path)
+        const targetPath = isLegacySseFallbackOnMcp
+          ? targetVault && !hasVaultInQuery
+            ? `/sse/${encodeURIComponent(targetVault)}${querySuffix}`
+            : `/sse${querySuffix}`
+          : path
+        await this.sseBridge!.handleRequest(requestId, upperMethod, targetPath, headers, body)
         return
       }
 
       await this.ensureBridges()
-      await this.sdkBridge!.handleHttpRequest(requestId, method, headers, body, path ?? '/mcp')
+      await this.sdkBridge!.handleHttpRequest(requestId, upperMethod, headers, body, path ?? '/mcp')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.error('[MobileMcpService] MCP request failed', e as Error)
