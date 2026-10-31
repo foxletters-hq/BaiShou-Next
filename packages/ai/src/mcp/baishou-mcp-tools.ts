@@ -35,12 +35,14 @@ export const BAISHOU_MCP_CONCISE_DESCRIPTIONS: Readonly<Record<string, string>> 
   diary_edit: 'Append to or overwrite an existing diary entry for a given date.',
   diary_delete: 'Permanently delete the diary entry for a specific YYYY-MM-DD date.',
   diary_list: 'List diary dates and short previews within a YYYY-MM-DD date range.',
-  diary_search: 'Search local personal diary entries by keyword or phrase.',
+  diary_search:
+    'Search local personal diary entries by exact keyword or phrase (FTS5). For semantic/synonym search over diaries, use vector_search.',
   summary_read: 'Read AI-generated period summaries (weekly, monthly, quarterly, or yearly).',
   summary_write: 'Write or update a period summary (weekly, monthly, quarterly, or yearly).',
   message_search: 'Search past conversation messages by keyword or date range.',
   session_list: 'List active chat sessions and previews within a YYYY-MM-DD date range.',
-  vector_search: 'Semantic vector search across conversation history and stored memories.',
+  vector_search:
+    'Semantic and hybrid (vector + keyword) search across personal diary entries, conversation history, and stored memories.',
   memory_store: 'Store an important fact or preference into long-term vector memory.',
   memory_delete: 'Delete a stored long-term memory item by its exact ID.',
   recall_relations:

@@ -178,26 +178,65 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     let lastDimension = 0
     const metadataJson = mergeEmbedContentHashIntoMetadata(options.metadataJson, contentHash)
     const preparedChunks: Array<{ index: number; chunkText: string; embedding: number[] }> = []
+    const prefixedChunks = chunks.map((rawChunk) =>
+      options.chunkPrefix ? `${options.chunkPrefix}${rawChunk}` : rawChunk
+    )
 
-    const embedOneChunk = async (index: number): Promise<boolean> => {
-      const rawChunk = chunks[index]!
-      const chunk = options.chunkPrefix ? `${options.chunkPrefix}${rawChunk}` : rawChunk
-      const embVector = await this.embedQueryWithRetry(chunk, `chunk ${index}`)
-      if (!embVector) {
-        return false
+    let batchDone = false
+    if (chunks.length > 1 && !this.batchUnsupported) {
+      try {
+        const { embeddings } = await withEmbeddingSlot(() =>
+          embedMany({
+            model: this.provider.getEmbeddingModel(this.modelId),
+            values: prefixedChunks
+          })
+        )
+        if (
+          Array.isArray(embeddings) &&
+          embeddings.length === prefixedChunks.length &&
+          embeddings.every((vec) => Array.isArray(vec) && vec.length > 0)
+        ) {
+          for (let i = 0; i < prefixedChunks.length; i++) {
+            const vec = normalizeEmbeddingVector(embeddings[i]!)
+            preparedChunks.push({ index: i, chunkText: prefixedChunks[i]!, embedding: vec })
+            lastDimension = vec.length
+          }
+          successCount = prefixedChunks.length
+          batchDone = true
+        }
+      } catch (e) {
+        if (!isTransientEmbeddingError(e)) {
+          this.batchUnsupported = true
+        }
+        const msg = String((e as { message?: string } | null)?.message ?? e ?? '')
+        if (!msg.includes('No "embedMany" export')) {
+          logger.warn('[EmbeddingAdapter] embedText embedMany fallback to per-chunk embed', {
+            error: e
+          })
+        }
       }
-
-      preparedChunks.push({ index, chunkText: chunk, embedding: embVector })
-      lastDimension = embVector.length
-      return true
     }
 
-    for (let start = 0; start < chunks.length; start += CHUNK_EMBED_CONCURRENCY) {
-      const end = Math.min(start + CHUNK_EMBED_CONCURRENCY, chunks.length)
-      const results = await Promise.all(
-        Array.from({ length: end - start }, (_, offset) => embedOneChunk(start + offset))
-      )
-      successCount += results.filter(Boolean).length
+    if (!batchDone) {
+      const embedOneChunk = async (index: number): Promise<boolean> => {
+        const chunk = prefixedChunks[index]!
+        const embVector = await this.embedQueryWithRetry(chunk, `chunk ${index}`)
+        if (!embVector) {
+          return false
+        }
+
+        preparedChunks.push({ index, chunkText: chunk, embedding: embVector })
+        lastDimension = embVector.length
+        return true
+      }
+
+      for (let start = 0; start < chunks.length; start += CHUNK_EMBED_CONCURRENCY) {
+        const end = Math.min(start + CHUNK_EMBED_CONCURRENCY, chunks.length)
+        const results = await Promise.all(
+          Array.from({ length: end - start }, (_, offset) => embedOneChunk(start + offset))
+        )
+        successCount += results.filter(Boolean).length
+      }
     }
 
     if (options.requireSuccess && chunks.length > 0) {
@@ -267,6 +306,124 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         chunks.length,
         lastDimension
       )
+    }
+  }
+
+  /**
+   * 批量嵌入多条记录（如多条伙伴记忆），将所有分块合并为单次 embedBatch 请求，
+   * 随后按各记录原子替换入库。
+   */
+  async embedTextsBatch(
+    items: ReadonlyArray<{
+      text: string
+      sourceType: string
+      sourceId: string
+      groupId: string
+      vaultId: string
+      sourceCreatedAt?: number
+      metadataJson?: string
+      chunkPrefix?: string
+      contentHash?: string
+    }>
+  ): Promise<void> {
+    if (!this.hybridRepo) {
+      throw new Error('hybridRepo must be provided to store embeddings permanently.')
+    }
+    if (!this.isConfigured || items.length === 0) return
+    const hybridRepo = this.hybridRepo
+
+    type PreparedItem = {
+      options: (typeof items)[number]
+      vaultId: string
+      contentHash: string
+      metadataJson: string
+      prefixedChunks: string[]
+      startOffset: number
+    }
+    const nonEmptyItems: PreparedItem[] = []
+    const allChunkTexts: string[] = []
+
+    for (const item of items) {
+      const vaultId = item.vaultId.trim()
+      if (!vaultId) {
+        throw new Error('embedTextsBatch: vaultId is required')
+      }
+      const contentHash = item.contentHash?.trim() || hashEmbedSourceContent(item.text)
+      if (!item.text.trim()) {
+        await this.writeEmbedLedgerSuccess(hybridRepo, { ...item, contentHash }, vaultId, 0, 0)
+        continue
+      }
+      const chunks = splitTextIntoChunks(item.text).map((c) =>
+        item.chunkPrefix ? `${item.chunkPrefix}${c.text}` : c.text
+      )
+      const startOffset = allChunkTexts.length
+      allChunkTexts.push(...chunks)
+      nonEmptyItems.push({
+        options: item,
+        vaultId,
+        contentHash,
+        metadataJson: mergeEmbedContentHashIntoMetadata(item.metadataJson, contentHash),
+        prefixedChunks: chunks,
+        startOffset
+      })
+    }
+
+    if (nonEmptyItems.length === 0) return
+
+    const vectors = await this.embedBatch(allChunkTexts)
+
+    for (const entry of nonEmptyItems) {
+      const { options, vaultId, contentHash, metadataJson, prefixedChunks, startOffset } = entry
+      const chunkVectors = prefixedChunks.map((_, idx) => vectors[startOffset + idx] ?? null)
+      if (chunkVectors.some((v) => !v || v.length === 0)) {
+        await this.embedText(options)
+        continue
+      }
+      const dimension = chunkVectors[0]!.length
+      if (typeof hybridRepo.replaceSourceEmbeddings === 'function') {
+        await hybridRepo.replaceSourceEmbeddings({
+          vaultId,
+          sourceType: options.sourceType,
+          sourceId: options.sourceId,
+          groupId: options.groupId,
+          modelId: this.modelId,
+          dimension,
+          contentHash,
+          metadataJson,
+          sourceCreatedAt: options.sourceCreatedAt ?? Date.now(),
+          replaceExisting: true,
+          recordLedger: this.isLedgerSourceType(options.sourceType),
+          chunks: prefixedChunks.map((chunkText, index) => ({
+            id: `${options.sourceId}_chunk_${index}`,
+            chunkIndex: index,
+            chunkText,
+            embedding: chunkVectors[index]!
+          }))
+        })
+      } else {
+        for (let index = 0; index < prefixedChunks.length; index++) {
+          await hybridRepo.insertEmbedding({
+            id: `${options.sourceId}_chunk_${index}`,
+            sourceType: options.sourceType,
+            sourceId: options.sourceId,
+            groupId: options.groupId,
+            vaultId,
+            chunkIndex: index,
+            chunkText: prefixedChunks[index]!,
+            metadataJson,
+            embedding: chunkVectors[index]!,
+            modelId: this.modelId,
+            sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
+          })
+        }
+        await this.writeEmbedLedgerSuccess(
+          hybridRepo,
+          { ...options, contentHash },
+          vaultId,
+          prefixedChunks.length,
+          dimension
+        )
+      }
     }
   }
 
