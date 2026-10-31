@@ -42,6 +42,44 @@ let runtime: {
   versionManager: IVersionManager
 } | null = null
 
+const vaultScopedRuntimes = new Map<
+  string,
+  {
+    manager: RawDataSourceManager
+    memoryManager: MemoryRawManager
+    graphManager: GraphRawManager
+    notebookManager: NotebookRawManager
+    freshness: DerivedFreshnessService
+    versionManager: IVersionManager
+  }
+>()
+
+function ensureVaultScopedRawDataRuntime(vaultName: string) {
+  const activeName = vaultService.getActiveVault()?.name
+  if (!vaultName || (activeName && activeName === vaultName)) {
+    return ensureRawDataRuntime()
+  }
+  const existing = vaultScopedRuntimes.get(vaultName)
+  if (existing) return existing
+  const scopedPath: IStoragePathService = new VaultScopedStoragePathService(pathService, vaultName)
+  const versionManager = new FsVersionManager(scopedPath, fileSystem)
+  const created = createRawDataSourceManager({
+    pathService: scopedPath,
+    fs: fileSystem,
+    versionManager
+  })
+  const entry = {
+    manager: created.manager,
+    memoryManager: created.memoryManager,
+    graphManager: created.graphManager,
+    notebookManager: created.notebookManager,
+    freshness: created.freshness,
+    versionManager
+  }
+  vaultScopedRuntimes.set(vaultName, entry)
+  return entry
+}
+
 export function getVersionManager(): IVersionManager {
   return ensureRawDataRuntime().versionManager
 }
@@ -50,12 +88,22 @@ export function getRawDataSourceManager(): RawDataSourceManager {
   return ensureRawDataRuntime().manager
 }
 
+export function getRawDataSourceManagerForVault(vaultName?: string): RawDataSourceManager {
+  if (!vaultName) return getRawDataSourceManager()
+  return ensureVaultScopedRawDataRuntime(vaultName).manager
+}
+
 export function getMemoryRawManager(): MemoryRawManager {
   return ensureRawDataRuntime().memoryManager
 }
 
 export function getGraphRawManager(): GraphRawManager {
   return ensureRawDataRuntime().graphManager
+}
+
+export function getGraphRawManagerForVault(vaultName?: string): GraphRawManager {
+  if (!vaultName) return getGraphRawManager()
+  return ensureVaultScopedRawDataRuntime(vaultName).graphManager
 }
 
 export function getNotebookRawManager(): NotebookRawManager {
@@ -130,6 +178,11 @@ export function resetRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+  for (const scoped of vaultScopedRuntimes.values()) {
+    scoped.memoryManager.resetCache()
+    scoped.graphManager.resetCache()
+  }
+  vaultScopedRuntimes.clear()
   void import('./pending-embed-counts.service').then((m) => m.invalidatePendingEmbedCountsCache())
 }
 
@@ -155,6 +208,28 @@ function createMemoryEmbedSink(
         groupId: MEMORY_EMBED_GROUP_ID,
         vaultId: opts.vaultId
       })
+    },
+    embedTextsBatch: async (
+      items: Array<{
+        text: string
+        sourceType: string
+        sourceId: string
+        groupId: string
+        vaultId: string
+        metadataJson?: string
+        sourceCreatedAt?: number
+      }>
+    ) => {
+      if (!embeddingAdapter?.isConfigured) {
+        throw new Error('Embedding adapter not configured')
+      }
+      await embeddingAdapter.embedTextsBatch(
+        items.map((item) => ({
+          ...item,
+          groupId: MEMORY_EMBED_GROUP_ID,
+          vaultId: item.vaultId
+        }))
+      )
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
@@ -300,6 +375,7 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
 
 export async function syncGraphPendingIndexWithDeps(options: {
   graphRepo: GraphRepository
+  graphManager?: GraphRawManager
   embeddingAdapter?: EmbeddingAdapter | null
   vaultId?: string
   absentSweep?: 'shard-present' | 'off'
@@ -317,7 +393,7 @@ export async function syncGraphPendingIndexWithDeps(options: {
   deleted: number
   skippedNoVaultId: number
 }> {
-  const { graphManager } = ensureRawDataRuntime()
+  const graphManager = options.graphManager ?? ensureRawDataRuntime().graphManager
   const embedMissing = options.embedMissing !== false
   const sync = new GraphSyncService(graphManager, options.graphRepo, {
     embedQuery:
@@ -338,6 +414,8 @@ export async function syncGraphPendingIndex(opts?: {
   absentSweep?: 'shard-present' | 'off'
   deletedShardPaths?: string[]
   embedMissing?: boolean
+  vaultId?: string
+  vaultName?: string
 }): Promise<void> {
   if (!connectionManager.isConnected()) return
   const drizzleDb = connectionManager.getDb()
@@ -356,8 +434,9 @@ export async function syncGraphPendingIndex(opts?: {
   }
   await syncGraphPendingIndexWithDeps({
     graphRepo,
+    graphManager: getGraphRawManagerForVault(opts?.vaultName),
     embeddingAdapter,
-    vaultId: resolveActiveVaultId(),
+    vaultId: opts?.vaultId || resolveActiveVaultId(),
     absentSweep: opts?.absentSweep,
     deletedShardPaths: opts?.deletedShardPaths,
     embedMissing: opts?.embedMissing

@@ -223,7 +223,7 @@ export const TitleBar: React.FC = () => {
                   <span className={styles.vaultName}>
                     {isSwitchingVault
                       ? t('workspace.switching', 'Switching…')
-                      : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
+                      : activeVault?.name || t('workspace.no_active', '未选择小窝')}
                   </span>
                   <ChevronDown className={styles.actionIconSm} />
                 </button>

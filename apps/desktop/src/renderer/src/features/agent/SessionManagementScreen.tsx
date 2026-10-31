@@ -8,7 +8,7 @@ export const SessionManagementScreen: React.FC = () => {
 
   const loadSessions = async () => {
     if (typeof window !== 'undefined' && window.electron) {
-      const data = await window.electron.ipcRenderer.invoke('agent:get-sessions')
+      const data = await window.electron.ipcRenderer.invoke('agent:get-sessions', -1)
       setSessions(data || [])
     }
   }

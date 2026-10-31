@@ -1,13 +1,17 @@
 import { BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
+import { isAgentStreamSessionBusy } from '@baishou/ai'
 import { logger } from '@baishou/shared'
 import * as chokidar from 'chokidar'
 import { SessionSyncService, SessionFileService } from '@baishou/core-desktop'
 import { SessionRepository, connectionManager } from '@baishou/database-desktop'
+import { getAgentManagers } from '../ipc/agent-managers'
+import { getActiveMainStreamSnapshot } from '../ipc/electron-stream-emitter'
 import { pathService } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { getRawDataSourceManager } from './raw-data-source.runtime'
+import { isSessionInboxDraining } from './session-inbox-drain'
 
 /**
  * 会话文件变动监听服务
@@ -84,21 +88,40 @@ export class SessionWatcherService {
    * 用于 SessionManagerService 自身写入时防止触发循环同步
    */
   public suppressPath(filePath: string, durationMs: number = 2000) {
-    this.suppressedPaths.set(filePath, Date.now() + durationMs)
+    this.suppressedPaths.set(path.normalize(filePath), Date.now() + durationMs)
   }
 
   private isSuppressed(filePath: string): boolean {
-    const expiry = this.suppressedPaths.get(filePath)
+    const norm = path.normalize(filePath)
+    const expiry = this.suppressedPaths.get(norm)
     if (!expiry) return false
     if (Date.now() > expiry) {
-      this.suppressedPaths.delete(filePath)
+      this.suppressedPaths.delete(norm)
       return false
     }
     return true
   }
 
+  private isSessionLocallyActive(sessionId: string): boolean {
+    if (!sessionId) return false
+    if (
+      isAgentStreamSessionBusy(sessionId) ||
+      isSessionInboxDraining(sessionId) ||
+      Boolean(getActiveMainStreamSnapshot(sessionId))
+    ) {
+      return true
+    }
+    try {
+      return getAgentManagers().sessionManager.hasPendingDiskPersistence(sessionId)
+    } catch {
+      return false
+    }
+  }
+
   private scheduleSync(changedPath: string) {
     if (this.isSuppressed(changedPath)) return
+    const sessionId = path.basename(changedPath, '.json')
+    if (sessionId && this.isSessionLocallyActive(sessionId)) return
     this.pendingPaths.add(changedPath)
     if (this.globalDebounceTimer) {
       clearTimeout(this.globalDebounceTimer)
@@ -113,27 +136,33 @@ export class SessionWatcherService {
     this.isProcessing = true
 
     try {
+      let syncedAny = false
       while (this.pendingPaths.size > 0) {
         const pathsToProcess = Array.from(this.pendingPaths)
         this.pendingPaths.clear()
 
         for (const changedPath of pathsToProcess) {
+          if (this.isSuppressed(changedPath)) continue
           const sessionId = path.basename(changedPath, '.json')
           if (!sessionId) continue
+          if (this.isSessionLocallyActive(sessionId)) continue
 
           try {
             await this.sessionSync.syncSessionFile(sessionId)
+            syncedAny = true
           } catch (e) {
             logger.error(`[SessionWatcher] 同步失败: ${changedPath}`, e as any)
           }
         }
       }
 
-      // 通知前端刷新会话列表
-      const wins = BrowserWindow.getAllWindows()
-      wins.forEach((w) => {
-        w.webContents.send('session:file-changed')
-      })
+      if (syncedAny) {
+        // 通知前端刷新会话列表
+        const wins = BrowserWindow.getAllWindows()
+        wins.forEach((w) => {
+          w.webContents.send('session:file-changed')
+        })
+      }
     } finally {
       this.isProcessing = false
     }

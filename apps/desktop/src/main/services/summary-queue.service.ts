@@ -262,7 +262,12 @@ export class SummaryQueueService {
         this.broadcastState()
         logger.info(`[SummaryQueueService] Task completed successfully: ${task.id}`)
       } else {
-        throw new Error('Generated content was empty.')
+        throw new Error(
+          i18n.t(
+            'summary.error.empty_content',
+            '生成内容为空，请检查模型思考配置、输出限制或尝试更换其他模型'
+          )
+        )
       }
     } catch (e: any) {
       if (isSummaryUserAbortError(e, signal)) {
