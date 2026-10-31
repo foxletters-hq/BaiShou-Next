@@ -67,6 +67,33 @@ async function fetchContributors() {
     page += 1
   }
 
+  // GitHub 的 /contributors 端点存在较长的边缘缓存；
+  // 结合 /stats/contributors 补充最新合并的主分支贡献者
+  try {
+    const statsUrl = `https://api.github.com/repos/${repo}/stats/contributors`
+    const statsRes = await fetch(statsUrl, { headers })
+    if (statsRes.ok) {
+      const stats = await statsRes.json()
+      if (Array.isArray(stats)) {
+        const existingLogins = new Set(all.map((c) => (c.login || '').toLowerCase()))
+        for (const item of stats) {
+          const author = item?.author
+          if (author?.login && !existingLogins.has(author.login.toLowerCase())) {
+            all.push({
+              login: author.login,
+              id: author.id,
+              avatar_url: author.avatar_url,
+              contributions: item.total || 1
+            })
+            existingLogins.add(author.login.toLowerCase())
+          }
+        }
+      }
+    }
+  } catch {
+    // 忽略统计接口异常，回退为主接口数据
+  }
+
   return all
     .filter((c) => c?.login && !isBot(c))
     .sort((a, b) => (b.contributions || 0) - (a.contributions || 0))
