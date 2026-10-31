@@ -98,6 +98,7 @@ export * from './agent/session-branch.compression'
 export * from './agent/session-truncate.utils'
 export {
   readPdfTextFromPath,
+  readLocalDocumentText,
   readLocalFileAsBase64,
   readLocalFileAsBase64Async,
   readLocalTextFile,

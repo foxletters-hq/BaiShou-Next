@@ -12,6 +12,8 @@ describe('native persistResult checkpoint reuse', () => {
       updateTokenUsage: vi.fn().mockResolvedValue(undefined)
     }
 
+    const flushSessionToDisk = vi.fn().mockResolvedValue(undefined)
+
     await persistResult({
       sessionId: 's1',
       rawUserText: 'hi',
@@ -30,7 +32,8 @@ describe('native persistResult checkpoint reuse', () => {
       provider: { config: { id: 'mock', type: 'openai' } } as any,
       modelId: 'gpt-4',
       streamError: null,
-      existingAssistantMessageId: 'asst-1'
+      existingAssistantMessageId: 'asst-1',
+      flushSessionToDisk
     })
 
     expect(sessionRepo.insertMessageWithParts).not.toHaveBeenCalled()
@@ -38,7 +41,8 @@ describe('native persistResult checkpoint reuse', () => {
       'asst-1',
       's1',
       expect.any(Array),
-      expect.objectContaining({ outputTokens: 2 })
+      expect.objectContaining({ role: 'assistant', orderIndex: 2, outputTokens: 2 })
     )
+    expect(flushSessionToDisk).toHaveBeenCalledWith('s1')
   })
 })

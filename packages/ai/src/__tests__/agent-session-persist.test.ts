@@ -361,7 +361,7 @@ describe('persistResult token estimation', () => {
       'asst-1',
       's1',
       expect.any(Array),
-      expect.objectContaining({ outputTokens: 2 })
+      expect.objectContaining({ role: 'assistant', orderIndex: 2, outputTokens: 2 })
     )
   })
 })

@@ -9,7 +9,7 @@ export async function resolveAssistantParentOrderIndex(
   sessionId: string,
   options: { skipUserMessageRecording?: boolean; userMessageId?: string }
 ): Promise<number> {
-  if (options.skipUserMessageRecording && options.userMessageId) {
+  if (options.userMessageId && typeof sessionRepo.getMessageById === 'function') {
     const userMsg = await sessionRepo.getMessageById(options.userMessageId)
     if (userMsg && typeof userMsg.orderIndex === 'number') {
       return userMsg.orderIndex
